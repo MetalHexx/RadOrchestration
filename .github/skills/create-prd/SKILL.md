@@ -5,7 +5,7 @@ description: 'Create a Product Requirements Document (PRD) from research finding
 
 # Create PRD
 
-Generate a Product Requirements Document from research findings and an idea draft. The PRD defines WHAT needs to be built and WHY — never HOW.
+Generate a Product Requirements Document from research findings and a brainstorming document. The PRD defines WHAT needs to be built and WHY — never HOW.
 
 ## When to Use This Skill
 
@@ -18,11 +18,11 @@ Generate a Product Requirements Document from research findings and an idea draf
 | Input | Source | Description |
 |-------|--------|-------------|
 | Research Findings | `RESEARCH-FINDINGS.md` | Codebase analysis, patterns, constraints discovered |
-| Idea Draft | `IDEA-DRAFT.md` | Original project idea/request |
+| Brainstorming document *(optional)* | `BRAINSTORMING.md` | Project idea, validated concepts, and scope boundaries.  |
 
 ## Workflow
 
-1. **Read inputs**: Load the Research Findings and Idea Draft documents
+1. **Read inputs**: Load the Research Findings and Brainstorming document (if it exists). If no brainstorming doc exists, derive context from the Research Findings alone
 2. **Identify the problem**: Synthesize a clear, concise problem statement (2-4 sentences)
 3. **Define goals and non-goals**: Goals must be measurable outcomes; non-goals prevent scope creep
 4. **Write user stories**: Standard format (As a... I want to... So that...) with P0/P1/P2 priority

@@ -6,13 +6,13 @@
 
 ## Read/Write Matrix
 
-| Document | Research | PM | Designer | Architect | Planner | Coder | Reviewer | Orchestrator |
-|----------|----------|-----|----------|-----------|---------|-------|----------|-------------|
-| `orchestration.yml` | — | — | — | — | R | — | — | R |
-| `state.json` | — | — | — | — | **RW** | — | — | R |
-| `STATUS.md` | — | — | — | — | **W** | — | — | R |
-| `IDEA-DRAFT.md` | R | R | — | — | R | — | — | R |
-| `RESEARCH-FINDINGS.md` | **W** | R | R | R | R | — | — | — |
+| Document | Brainstormer | Research | PM | Designer | Architect | Planner | Coder | Reviewer | Orchestrator |
+|----------|-------------|----------|-----|----------|-----------|---------|-------|----------|-------------|
+| `orchestration.yml` | — | — | — | — | — | R | — | — | R |
+| `state.json` | — | — | — | — | — | **RW** | — | — | R |
+| `STATUS.md` | — | — | — | — | — | **W** | — | — | R |
+| `BRAINSTORMING.md` | **W** | R | R | — | R | R | — | — | R |
+| `RESEARCH-FINDINGS.md` | — | **W** | R | R | R | R | — | — | — |
 | `PRD.md` | — | **W** | R | R | R | — | R | — |
 | `DESIGN.md` | — | — | **W** | R | R | — | R | — |
 | `ARCHITECTURE.md` | — | — | — | **W** | R | — | R | — |
@@ -31,7 +31,7 @@
 ## Data Flow Diagram
 
 ```
-IDEA-DRAFT ──→ Research Agent ──→ RESEARCH-FINDINGS
+BRAINSTORMING ──→ Research Agent ──→ RESEARCH-FINDINGS
                                         │
                                         ▼
                                   PM Agent ──→ PRD
@@ -72,7 +72,7 @@ IDEA-DRAFT ──→ Research Agent ──→ RESEARCH-FINDINGS
 1. **Only the Tactical Planner writes state files** (state.json, STATUS.md)
 2. **The Coder reads ONLY the TASK-HANDOFF** — nothing else. Self-contained.
 3. **The Orchestrator reads ONLY state.json + STATUS.md** — never reads planning docs directly
-4. **Each planning agent reads all prior planning docs** — Research reads Idea, PM reads Research+Idea, etc.
+4. **Each planning agent reads all prior planning docs** — Research reads Brainstorming, PM reads Research+Brainstorming, etc.
 5. **The Reviewer reads planning docs + reports** — validates code against the plan
 6. **No agent reads another agent's working state** — they communicate through documents only
 
@@ -84,6 +84,7 @@ IDEA-DRAFT ──→ Research Agent ──→ RESEARCH-FINDINGS
 |----------|-------------|
 | `state.json` | Tactical Planner |
 | `STATUS.md` | Tactical Planner |
+| `BRAINSTORMING.md` | Brainstormer — **sole writer** (optional document; not auto-created) |
 | `RESEARCH-FINDINGS.md` | Research Agent |
 | `PRD.md` | Product Manager Agent |
 | `DESIGN.md` | UX Designer Agent |

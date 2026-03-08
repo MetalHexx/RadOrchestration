@@ -5,7 +5,7 @@ We're going to plan a system that can orchestrate multiple agents to work togeth
 
 ### File Structure:
 docs/projects/<PROJECT-NAME>/
-├── <PROJECT-NAME>-IDEA-DRAFT.md                 
+├── <PROJECT-NAME>-BRAINSTORMING.md                 
 ├── <PROJECT-NAME>-PRD.md                         
 ├── <PROJECT-NAME>-DESIGN.md                     
 ├── <PROJECT-NAME>-ARCHITECTURE.md               
@@ -19,8 +19,8 @@ docs/projects/<PROJECT-NAME>/
     └── <PROJECT-NAME>-TASK-REPORT-P##-T##.md
     └──  <PROJECT-NAME>-PHASE-REPORT-P##.md   
 
-### IDEA-DRAFT.md (TEMPLATE):
-This is an optional document that contains the initial prompt for the project. It can be used to capture the initial idea and any relevant information that can help guide the planning process. This document can be created by anyone on the team and can be used as a starting point for the planning automation process.
+### BRAINSTORMING.md (TEMPLATE):
+This is an optional document that captures the brainstormed and refined project idea. It can be created through a collaborative brainstorming session with the Brainstormer Agent, or manually by anyone on the team. It contains validated ideas, scope boundaries, and enough context to guide the planning automation process.
 
 ### PRD.md (TEMPLATE):
 The Product Requirements Document (PRD) is a high-level document that describes the feature requirements. It outlines the user needs, the problem statement, and what problems we need to solve or feature we need to add. This document is created by the Product Manager Agent and serves as a blueprint for the development process.

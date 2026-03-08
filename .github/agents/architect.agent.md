@@ -58,7 +58,7 @@ When spawned by the Orchestrator to create an Architecture document:
 
 When spawned by the Orchestrator to create a Master Plan:
 
-1. **Read ALL planning documents**: Idea Draft, Research Findings, PRD, Design, Architecture
+1. **Read ALL planning documents**: Brainstorming document, Research Findings, PRD, Design, Architecture
 2. **Read `orchestration.yml`** for execution constraints (limits, git strategy, human gates)
 3. **Write executive summary**: 3-5 sentences — a new reader understands the project from this alone
 4. **Link source documents**: Table of all planning docs with paths and status

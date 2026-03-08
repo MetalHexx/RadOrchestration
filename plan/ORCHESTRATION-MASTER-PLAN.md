@@ -158,7 +158,7 @@ Hard limits configured in `.github/orchestration.yml`:
 
 - Full planning pipeline (Idea → PRD → Design → Architecture → Master Plan)
 - Single-phase execution (generate phase → generate tasks → code → test → review)
-- All 8 agents, all 12 skills
+- All 9 agents, all 13 skills
 - Designed for expansion to multi-phase autonomous execution
 
 ---
@@ -170,6 +170,7 @@ Hard limits configured in `.github/orchestration.yml`:
 ├── orchestration.yml                          # System configuration
 ├── copilot-instructions.md                    # Always-on workspace instructions
 ├── agents/
+│   ├── brainstormer.agent.md
 │   ├── orchestrator.agent.md
 │   ├── research.agent.md
 │   ├── product-manager.agent.md
@@ -190,6 +191,10 @@ Hard limits configured in `.github/orchestration.yml`:
 │   │   ├── SKILL.md
 │   │   └── templates/
 │   │       └── PRD.md
+│   ├── create-brainstorming/
+│   │   ├── SKILL.md
+│   │   └── templates/
+│   │       └── BRAINSTORMING.md
 │   ├── create-design/
 │   │   ├── SKILL.md
 │   │   └── templates/
@@ -237,7 +242,7 @@ Hard limits configured in `.github/orchestration.yml`:
 │   └── state-management.instructions.md       # applyTo: '**/state.json,**/*STATUS.md'
 └── projects/                                  # Project artifacts (path from orchestration.yml)
     └── <PROJECT-NAME>/
-        ├── <NAME>-IDEA-DRAFT.md
+        ├── <NAME>-BRAINSTORMING.md
         ├── <NAME>-PRD.md
         ├── <NAME>-DESIGN.md
         ├── <NAME>-ARCHITECTURE.md
@@ -325,8 +330,9 @@ Create all 12 skill folders with `SKILL.md` files and bundled templates from Pha
 **Skill-to-Agent mapping (for Phase 3):**
 | Agent | Skills it uses | Read access | Write access |
 |-------|---------------|-------------|-------------|
-| Research | `research-codebase` | IDEA-DRAFT | RESEARCH-FINDINGS |
-| Product Manager | `create-prd` | IDEA-DRAFT, RESEARCH-FINDINGS | PRD |
+| Brainstormer | `create-brainstorming` | (conversation context) | BRAINSTORMING |
+| Research | `research-codebase` | BRAINSTORMING | RESEARCH-FINDINGS |
+| Product Manager | `create-prd` | BRAINSTORMING, RESEARCH-FINDINGS | PRD |
 | UX Designer | `create-design` | PRD, RESEARCH-FINDINGS | DESIGN |
 | Architect | `create-architecture`, `create-master-plan` | PRD, DESIGN, RESEARCH-FINDINGS | ARCHITECTURE, MASTER-PLAN |
 | Tactical Planner | `create-phase-plan`, `create-task-handoff`, `generate-phase-report` | MASTER-PLAN, ARCHITECTURE, DESIGN, state.json, orchestration.yml, task reports, code reviews | PHASE-PLAN, TASK-HANDOFF, PHASE-REPORT, STATUS.md, state.json |

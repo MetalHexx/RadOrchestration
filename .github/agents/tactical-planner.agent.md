@@ -51,7 +51,8 @@ When spawned to initialize a new project:
    - Execution: empty phases array
    - Copy limits from `orchestration.yml`
 4. **Create `STATUS.md`** with initial status (project created, planning phase)
-5. **Ensure the Idea Draft exists** — if the human provided an idea, save it as `{NAME}-IDEA-DRAFT.md`
+
+> **Note**: Do NOT create `{NAME}-BRAINSTORMING.md`. Brainstorming is an optional, human-generated document. 
 
 ## Mode 2: Update State
 

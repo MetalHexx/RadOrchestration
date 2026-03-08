@@ -23,6 +23,7 @@ Every document has exactly ONE agent that may write it. No other agent may creat
 |----------|-------------|
 | `state.json` | Tactical Planner |
 | `STATUS.md` | Tactical Planner |
+| `BRAINSTORMING.md` | Brainstormer |
 | `RESEARCH-FINDINGS.md` | Research Agent |
 | `PRD.md` | Product Manager |
 | `DESIGN.md` | UX Designer |

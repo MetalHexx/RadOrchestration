@@ -4,11 +4,12 @@
 
 ## Orchestration System
 
-This workspace contains a **document-driven agent orchestration system** built on Copilot's native primitives (custom agents, skills, prompt files, and instruction files). The system takes software projects from idea through planning, execution, and review using 8 specialized agents.
+This workspace contains a **document-driven agent orchestration system** built on Copilot's native primitives (custom agents, skills, prompt files, and instruction files). The system takes software projects from idea through planning, execution, and review using 9 specialized agents.
 
 ### How It Works
 
-- **Start a project**: Use `@Orchestrator` with a project idea. The Orchestrator reads state and spawns specialized agents to advance the pipeline.
+- **Brainstorm an idea**: Use `@Brainstormer` to collaboratively explore and refine a project idea before starting the pipeline. This is optional — you can skip straight to `@Orchestrator` if you already have a clear idea.
+- **Start a project**: Use `@Orchestrator` with a project idea. The Orchestrator reads state and spawns specialized agents to advance the pipeline. If a `BRAINSTORMING.md` exists, it uses that as input.
 - **Continue a project**: Use `@Orchestrator` and ask to continue. It reads `state.json` to determine the next step automatically.
 - **Check status**: Use `@Orchestrator` and ask for project status. It reads `STATUS.md` for a human-readable summary.
 
@@ -16,6 +17,7 @@ This workspace contains a **document-driven agent orchestration system** built o
 
 | Agent | Purpose |
 |-------|---------|
+| `@Brainstormer` | Collaboratively brainstorms and refines project ideas — standalone, outside the pipeline |
 | `@Orchestrator` | Coordinates the pipeline — spawns agents, reads state, asks human questions. **Never writes files.** |
 | `@Research` | Explores codebase and external sources to gather context |
 | `@Product Manager` | Creates PRDs from research findings |
@@ -28,14 +30,14 @@ This workspace contains a **document-driven agent orchestration system** built o
 ### Pipeline
 
 ```
-Planning:  Idea → Research → PRD → Design → Architecture → Master Plan → Human Approval
+Planning:  Brainstorming (optional) → Research → PRD → Design → Architecture → Master Plan → Human Approval
 Execution: Phase Plan → Task Handoffs → Code → Review → (loop) → Phase Review
 Final:     Comprehensive Review → Human Approval → Complete
 ```
 
 ### Key Rules
 
-1. **Always start with `@Orchestrator`** — it determines the correct next step from project state.
+1. **Start with `@Brainstormer` (optional) or `@Orchestrator`** — brainstorm ideas first, or go directly to the Orchestrator if you have a clear idea.
 2. **The Coder reads ONLY its Task Handoff** — everything it needs is self-contained in that one document.
 3. **Only the Tactical Planner writes `state.json` and `STATUS.md`** — no other agent touches these.
 4. **Human gates** are enforced after planning (Master Plan review) and after final review.
@@ -55,6 +57,7 @@ System configuration lives in `.github/orchestration.yml`. It controls:
 Project artifacts are stored under the path configured in `orchestration.yml` → `projects.base_path` (default: `.github/projects/`). Each project gets a subfolder: `{base_path}/{PROJECT-NAME}/`.
 
 Contents:
+- Brainstorming: `BRAINSTORMING.md` (optional, created by `@Brainstormer`)
 - Planning docs: `PRD.md`, `DESIGN.md`, `ARCHITECTURE.md`, `MASTER-PLAN.md`
 - Execution docs: `phases/`, `tasks/`, `reports/`
 - State: `state.json`, `STATUS.md`

@@ -17,11 +17,12 @@ Explore the codebase, documentation, and external sources to gather technical co
 
 | Input | Source | Description |
 |-------|--------|-------------|
-| Idea Draft | `{NAME}-IDEA-DRAFT.md` | Original project idea/request — defines research scope |
+| Brainstorming document *(optional)* | `{NAME}-BRAINSTORMING.md` | Project idea and scope — defines research direction. Only exists if the human used `@Brainstormer`. |
+| Human's project idea | Orchestrator prompt | If no brainstorming doc exists, the Orchestrator provides the idea directly |
 
 ## Workflow
 
-1. **Read the Idea Draft**: Understand what needs to be researched
+1. **Read the Brainstorming document** (if it exists) or the human's project idea: Understand what needs to be researched
 2. **Analyze the codebase**: Find files, modules, and patterns relevant to the project
    - Search for relevant file names, function names, and patterns
    - Read key files to understand existing architecture

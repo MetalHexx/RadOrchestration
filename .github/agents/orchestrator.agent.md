@@ -98,8 +98,8 @@ Find the first planning step with status != `complete`:
 
 | Step | Agent to Spawn | Input | Output |
 |------|---------------|-------|--------|
-| `research` | **Research Agent** | IDEA-DRAFT.md | RESEARCH-FINDINGS.md |
-| `prd` | **Product Manager Agent** | IDEA-DRAFT.md + RESEARCH-FINDINGS.md | PRD.md |
+| `research` | **Research Agent** | BRAINSTORMING.md *(if exists)* + human idea | RESEARCH-FINDINGS.md |
+| `prd` | **Product Manager Agent** | BRAINSTORMING.md *(if exists)* + RESEARCH-FINDINGS.md | PRD.md |
 | `design` | **UX Designer Agent** | PRD.md + RESEARCH-FINDINGS.md | DESIGN.md |
 | `architecture` | **Architect Agent** | PRD.md + DESIGN.md + RESEARCH-FINDINGS.md | ARCHITECTURE.md |
 | `master_plan` | **Architect Agent** | All planning docs | MASTER-PLAN.md |
@@ -194,7 +194,7 @@ When spawning a subagent, always provide:
 4. **Output expectations**: Where to save the output document
 
 Example spawn instruction:
-> "Create the PRD for the MYAPP project. Read the idea draft at `.github/projects/MYAPP/MYAPP-IDEA-DRAFT.md` and research findings at `.github/projects/MYAPP/MYAPP-RESEARCH-FINDINGS.md`. Save the PRD to `.github/projects/MYAPP/MYAPP-PRD.md`."
+> "Create the PRD for the MYAPP project. Read the research findings at `.github/projects/MYAPP/MYAPP-RESEARCH-FINDINGS.md`. If a brainstorming document exists at `.github/projects/MYAPP/MYAPP-BRAINSTORMING.md`, read that too. Save the PRD to `.github/projects/MYAPP/MYAPP-PRD.md`."
 
 ## Status Reporting
 
