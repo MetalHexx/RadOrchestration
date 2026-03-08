@@ -1,0 +1,44 @@
+{
+  "$schema": "orchestration-state-v1",
+  "project": {
+    "name": "PIPELINE-FEEDBACK",
+    "created": "2025-07-14T12:00:00Z",
+    "updated": "2025-07-14T20:30:00Z"
+  },
+  "pipeline": {
+    "current_tier": "planning",
+    "human_gate_mode": "ask"
+  },
+  "planning": {
+    "status": "complete",
+    "steps": {
+      "research":     { "status": "complete", "output": "PIPELINE-FEEDBACK-RESEARCH-FINDINGS.md" },
+      "prd":          { "status": "complete", "output": "PIPELINE-FEEDBACK-PRD.md" },
+      "design":       { "status": "skipped",  "output": null },
+      "architecture": { "status": "complete", "output": "PIPELINE-FEEDBACK-ARCHITECTURE.md" },
+      "master_plan":  { "status": "complete", "output": "PIPELINE-FEEDBACK-MASTER-PLAN.md" }
+    },
+    "human_approved": false
+  },
+  "execution": {
+    "status": "not_started",
+    "current_phase": 0,
+    "total_phases": 0,
+    "phases": []
+  },
+  "final_review": {
+    "status": "not_started",
+    "report_doc": null,
+    "human_approved": false
+  },
+  "errors": {
+    "total_retries": 0,
+    "total_halts": 0,
+    "active_blockers": []
+  },
+  "limits": {
+    "max_phases": 10,
+    "max_tasks_per_phase": 8,
+    "max_retries_per_task": 2
+  }
+}
