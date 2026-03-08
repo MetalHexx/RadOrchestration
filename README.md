@@ -107,6 +107,14 @@ After each task or phase completion structured reports are checked against the p
 
 ## Features
 
+### Human Gates
+
+The system enforces human checkpoints at critical decision points:
+
+- **After planning** — review the Master Plan before any code is written (always enforced)
+- **During execution** — configurable: ask at start, gate per-phase, gate per-task, or autonomous
+- **After final review** — approve completion before the project is marked done (always enforced)
+
 ### 9 Specialized Agents
 
 | Agent | Role | Write Access |
@@ -197,14 +205,6 @@ All system behavior is controlled by a single `orchestration.yml` file:
 A zero-dependency Node.js CLI tool validates the entire orchestration ecosystem — file structure, frontmatter correctness, cross-references between agents and skills, configuration schema, and more. Returns CI-friendly exit codes with category-grouped output.
 
 See [.github/skills/validate-orchestration/README.md](.github/skills/validate-orchestration/README.md) for usage, CLI options, and complete validation details.
-
-### Human Gates
-
-The system enforces human checkpoints at critical decision points:
-
-- **After planning** — review the Master Plan before any code is written (always enforced)
-- **During execution** — configurable: ask at start, gate per-phase, gate per-task, or autonomous
-- **After final review** — approve completion before the project is marked done (always enforced)
 
 ### Error Handling
 
