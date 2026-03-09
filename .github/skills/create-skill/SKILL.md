@@ -47,7 +47,7 @@ description: '<What it does>. Use when <specific triggers, scenarios, keywords u
 | Field | Required | Constraints |
 |-------|----------|-------------|
 | `name` | **Yes** | 1-64 chars, lowercase letters/numbers/hyphens only, must match folder name |
-| `description` | **Yes** | 1-1024 chars, must describe WHAT it does AND WHEN to use it |
+| `description` | **Yes** | 1-1024 chars, single-quoted single-line string — **no block scalars** (`>-`, `|`), must describe WHAT it does AND WHEN to use it |
 | `license` | No | License name or reference to bundled LICENSE.txt |
 | `compatibility` | No | 1-500 chars, environment requirements if needed |
 | `metadata` | No | Key-value pairs for additional properties |
@@ -220,7 +220,7 @@ The examples in this file show skill content inside ` ```skill ` code fences for
 - [ ] `name` field matches folder name exactly
 - [ ] `description` is 10-1024 characters
 - [ ] `description` explains WHAT and WHEN
-- [ ] `description` is wrapped in single quotes
+- [ ] `description` is a single-line single-quoted string (no `>-` or `|` block scalars)
 - [ ] Body content is under 500 lines
 - [ ] Bundled assets are under 5MB each
 
