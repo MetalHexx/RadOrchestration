@@ -26,17 +26,18 @@ Generate a self-contained Task Handoff document that is the sole input a Coding 
 ## Workflow
 
 1. **Read inputs**: Load Phase Plan, Architecture, Design (if relevant), and any prior task reports
-2. **Write objective**: 1-3 sentences as a completion statement ("Create...", "Implement...", "Configure...")
-3. **Write context**: Minimal immediate technical context (max 5 sentences) — NOT project history
-4. **Define file targets**: Exact file paths with CREATE/MODIFY action types
-5. **Write implementation steps**: Specific, actionable, ordered steps (max 10)
-6. **Inline contracts**: Copy the exact interfaces/contracts from Architecture — do NOT reference the Architecture doc
-7. **Inline design tokens**: Copy the actual token values from Design — do NOT say "see design doc"
-8. **Define test requirements**: Specific, verifiable test cases
-9. **Define acceptance criteria**: Binary pass/fail checklist
-10. **Add constraints**: Explicit boundaries (what NOT to do)
-11. **Write the Task Handoff**: Use the bundled template at [templates/TASK-HANDOFF.md](./templates/TASK-HANDOFF.md)
-12. **Save**: Write to `{PROJECT-DIR}/tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md`
+2. **Discover available skills**: Discover agent skills in the skills directory to recommend relevant ones for the task handoff
+3. **Write objective**: 1-3 sentences as a completion statement ("Create...", "Implement...", "Configure...")
+4. **Write context**: Minimal immediate technical context (max 5 sentences) — NOT project history
+5. **Define file targets**: Exact file paths with CREATE/MODIFY action types
+6. **Write implementation steps**: Specific, actionable, ordered steps (max 10)
+7. **Inline contracts**: Copy the exact interfaces/contracts from Architecture — do NOT reference the Architecture doc
+8. **Inline design tokens**: Copy the actual token values from Design — do NOT say "see design doc"
+9. **Define test requirements**: Specific, verifiable test cases
+10. **Define acceptance criteria**: Binary pass/fail checklist
+11. **Add constraints**: Explicit boundaries (what NOT to do)
+12. **Write the Task Handoff**: Use the bundled template at [templates/TASK-HANDOFF.md](./templates/TASK-HANDOFF.md)
+13. **Save**: Write to `{PROJECT-DIR}/tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md`
 
 ## Prior Context (Corrective Handling)
 
@@ -82,6 +83,12 @@ Before producing a task handoff, verify:
 - [ ] Are there zero references to external planning documents?
 - [ ] Are design tokens actual values, not "see design system"?
 - [ ] Is the task scope achievable in a single agent session?
+
+## Skill Discovery and Assignment
+- Enumerate `.github/skills/` folder names. For each skill, read the `description` field from its `SKILL.md` frontmatter. 
+- Evaluate each skill against this task's objective and implementation steps using the lens: "would a coder working on this task benefit from invoking this skill?" 
+- Select only skills with a direct functional match. Populate the `skills` frontmatter field with the selected skill folder names. 
+- Technology or framework names (e.g., "TypeScript", "React") are NOT valid values — only `.github/skills/` folder names.
 
 ## Template
 

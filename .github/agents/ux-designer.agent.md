@@ -42,16 +42,22 @@ When spawned by the Orchestrator:
 
 1. **Read the PRD** at the path provided by the Orchestrator
 2. **Read the Research Findings** at the path provided by the Orchestrator (for existing patterns and design system context)
-3. **Design overview**: Summarize the user experience being designed (2-3 sentences)
-4. **Map user flows**: Step-by-step flows for each key user story from the PRD
-5. **Define layouts**: View/page layouts with regions, components, and breakpoints
-6. **Define new components**: Full props, design tokens, descriptions
-7. **Document design tokens**: Reference actual tokens from existing design system; list new ones
-8. **Specify states & interactions**: Every component state with visual treatment
-9. **Define accessibility**: Keyboard nav, screen readers, color contrast, focus indicators
-10. **Specify responsive behavior**: Layout changes per breakpoint
-11. **Use the `create-design` skill** to produce the output document
-12. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-DESIGN.md`)
+3. **Triage project type**: Evaluate the PRD's user stories and functional requirements to determine the project's interaction model. Route to one of three output paths:
+   - **Full Design** — The project has a visual UI (frontend views, components, pages). Proceed with steps 4–13 using the full template.
+   - **Flows only** — The project has user-facing flows but no visual UI (CLI wizard, interactive terminal, multi-step process). Use the flows-only template at `templates/DESIGN-FLOWS-ONLY.md`. Write only the Design Overview and User Flows sections, then save and stop.
+   - **Not required** — The project has no user interaction (backend service, pipeline script, data processor, instruction file changes). Use the stub template at `templates/DESIGN-NOT-REQUIRED.md`. Record the triage decision and rationale, then save and stop.
+
+   Default to "Not required" when the classification is uncertain.
+4. **Design overview**: Summarize the user experience being designed (2-3 sentences)
+5. **Map user flows**: Step-by-step flows for each key user story from the PRD
+6. **Define layouts**: View/page layouts with regions, components, and breakpoints
+7. **Define new components**: Full props, design tokens, descriptions
+8. **Document design tokens**: Reference actual tokens from existing design system; list new ones
+9. **Specify states & interactions**: Every component state with visual treatment
+10. **Define accessibility**: Keyboard nav, screen readers, color contrast, focus indicators
+11. **Specify responsive behavior**: Layout changes per breakpoint
+12. **Use the `create-design` skill** to produce the output document
+13. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-DESIGN.md`)
 
 ## Skills
 
