@@ -1,3 +1,75 @@
+---
+project: "UI-LIVE-PROJECTS"
+phase: 1
+phase_id: "P01"
+task: 2
+task_id: "P01-T02"
+title: "Client Hook — Fetch Cache Fix"
+status: "pending"
+skills_required: ["typescript"]
+estimated_files: 1
+---
+
+# Client Hook — Fetch Cache Fix
+
+## Objective
+
+Add `{ cache: 'no-store' }` as the second argument to both `fetch("/api/projects")` call sites in `ui/hooks/use-projects.ts` so that a manual page refresh always bypasses the Next.js fetch cache and returns current filesystem state.
+
+## Context
+
+`use-projects.ts` calls `fetch("/api/projects")` in exactly two places: once inside the `fetchProjectList` useCallback (used by the SSE event handler) and once inside the `fetchProjects` inner function inside the mount `useEffect`. Without `{ cache: 'no-store' }`, Next.js may serve a stale cached response on page reload. No other logic changes are required.
+
+## File Targets
+
+| Action | Path | Notes |
+|--------|------|-------|
+| MODIFY | `ui/hooks/use-projects.ts` | Add cache option to two fetch call sites only |
+
+## Implementation Steps
+
+1. Read the current file at `ui/hooks/use-projects.ts` to confirm the two call sites.
+2. In the `fetchProjectList` useCallback, change:
+   ```typescript
+   const res = await fetch("/api/projects");
+   ```
+   to:
+   ```typescript
+   const res = await fetch("/api/projects", { cache: "no-store" });
+   ```
+3. In the `fetchProjects` inner function inside the mount `useEffect`, change:
+   ```typescript
+   const res = await fetch("/api/projects");
+   ```
+   to:
+   ```typescript
+   const res = await fetch("/api/projects", { cache: "no-store" });
+   ```
+4. Confirm no other lines in the file were altered.
+5. Verify `next build` passes with no TypeScript errors.
+
+## Contracts & Interfaces
+
+The `fetch` Web API accepts an optional `RequestInit` second argument. The only valid cache-busting option supported by Next.js App Router for disabling the fetch cache is:
+
+```typescript
+fetch(url: string, init?: RequestInit): Promise<Response>
+
+// Use exactly this shape:
+{ cache: "no-store" }
+```
+
+No other `RequestInit` fields should be added.
+
+## Styles & Design Tokens
+
+N/A — this is a data-fetching hook with no UI impact.
+
+## Current File Content
+
+The following is the **current full content** of `ui/hooks/use-projects.ts`. The two lines to change are marked with `// ← CHANGE THIS`.
+
+```typescript
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -40,7 +112,7 @@ export function useProjects(): UseProjectsReturn {
 
   const fetchProjectList = useCallback(async () => {
     try {
-      const res = await fetch("/api/projects", { cache: "no-store" });
+      const res = await fetch("/api/projects");  // ← CHANGE THIS
       if (res.ok) {
         const data = await res.json();
         setProjects(data.projects ?? []);
@@ -138,7 +210,7 @@ export function useProjects(): UseProjectsReturn {
       setError(null);
 
       try {
-        const res = await fetch("/api/projects", { cache: "no-store" });
+        const res = await fetch("/api/projects");  // ← CHANGE THIS
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({ error: "Unknown error" }));
@@ -236,3 +308,28 @@ export function useProjects(): UseProjectsReturn {
     reconnect,
   };
 }
+```
+
+The two lines marked `// ← CHANGE THIS` are the only lines to modify. After the edit they must read:
+```typescript
+const res = await fetch("/api/projects", { cache: "no-store" });
+```
+
+## Test Requirements
+
+- [ ] Open browser dev tools → Network tab → hard-reload the page → confirm `/api/projects` response header `Cache-Control` is not served from cache
+- [ ] `next build` completes with zero TypeScript errors and zero warnings about the `use-projects.ts` file
+
+## Acceptance Criteria
+
+- [ ] `fetchProjectList` useCallback contains `fetch("/api/projects", { cache: "no-store" })`
+- [ ] `fetchProjects` inner function in the mount `useEffect` contains `fetch("/api/projects", { cache: "no-store" })`
+- [ ] No other lines in `ui/hooks/use-projects.ts` are modified (diff shows exactly 2 changed lines)
+- [ ] `next build` passes with no TypeScript errors
+
+## Constraints
+
+- **Do NOT** modify any logic, state, imports, exports, or structure in `use-projects.ts`
+- **Do NOT** add `{ cache: 'no-store' }` to any other fetch call (e.g., `/api/projects/${name}/state`) — only the two `/api/projects` call sites
+- **Do NOT** change single quotes to double quotes or vice versa in unrelated lines (avoid noisy diffs)
+- **Do NOT** touch any other file
