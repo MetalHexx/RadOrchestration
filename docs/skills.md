@@ -67,6 +67,10 @@ Each agent is explicitly assigned skills in its `.agent.md` frontmatter. This ta
 | Coder | `generate-task-report`, `run-tests` |
 | Reviewer | `review-task`, `review-phase` |
 
+## Skill Recommendation in Task Handoffs
+
+When creating task handoffs, the Tactical Planner enumerates the agent skills directory and evaluates each skill's description against the task being prepared. Skills that would help the Coder complete the task are listed in the handoff's `skills` field.
+
 ## Creating New Skills
 
 Use the `create-skill` meta-skill to scaffold a new skill:
