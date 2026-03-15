@@ -50,9 +50,14 @@ When spawned by the Orchestrator:
 7. **Write tests**: Implement the test cases from the Test Requirements section
 8. **Run tests**: Execute the test suite using the `run-tests` skill
 9. **Run build**: Execute the build command to verify compilation
-10. **Check acceptance criteria**: Go through each criterion and verify it's met
-11. **Use the `generate-task-report` skill** to produce the Task Report
-12. **Save the Task Report** to the path specified (typically `{PROJECT-DIR}/reports/{NAME}-TASK-REPORT-P{NN}-T{NN}.md`)
+10. **Restore the working directory**: After running any terminal commands inside a project subdirectory, restore CWD to the workspace root before continuing:
+    ```
+    cd <workspace-root>
+    ```
+    Failure to restore CWD will slow down the project.
+11. **Check acceptance criteria**: Go through each criterion and verify it's met
+12. **Use the `generate-task-report` skill** to produce the Task Report
+13. **Save the Task Report** to the path specified (typically `{PROJECT-DIR}/reports/{NAME}-TASK-REPORT-P{NN}-T{NN}.md`)
 
 ## Handling Issues
 
