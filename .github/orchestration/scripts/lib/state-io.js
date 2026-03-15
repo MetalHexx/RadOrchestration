@@ -75,7 +75,7 @@ function mergeConfig(parsed) {
 function readConfig(configPath) {
   let resolvedPath = configPath;
   if (!resolvedPath) {
-    resolvedPath = path.join(process.cwd(), '.github', 'orchestration.yml');
+    resolvedPath = path.resolve(__dirname, '../../../orchestration.yml');
   }
   if (exists(resolvedPath)) {
     const content = readFile(resolvedPath);
