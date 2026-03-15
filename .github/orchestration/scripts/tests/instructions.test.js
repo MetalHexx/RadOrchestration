@@ -193,7 +193,7 @@ describe('checkInstructions', () => {
     const fm2 = makeFrontmatter({ applyTo: '**/state.json' });
 
     let callCount = 0;
-    mockListFiles = () => ['project-docs.instructions.md', 'state-management.instructions.md'];
+    mockListFiles = () => ['project-docs.instructions.md', 'coding-standards.instructions.md'];
     mockReadFile = () => 'content';
     mockExtractFrontmatter = () => {
       callCount++;
@@ -208,7 +208,7 @@ describe('checkInstructions', () => {
     assert.ok(results.every(r => r.category === 'instructions'));
     assert.strictEqual(ctx.instructions.length, 2);
     assert.strictEqual(ctx.instructions[0].filename, 'project-docs.instructions.md');
-    assert.strictEqual(ctx.instructions[1].filename, 'state-management.instructions.md');
+    assert.strictEqual(ctx.instructions[1].filename, 'coding-standards.instructions.md');
   });
 
   it('unexpected thrown error — returns fail result (no crash)', async () => {

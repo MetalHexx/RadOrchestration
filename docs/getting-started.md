@@ -37,15 +37,17 @@ If you have a rough idea but want to explore it first:
 
 1. Open Copilot chat and invoke `@Brainstormer`
 2. Describe your idea — the Brainstormer will ask questions, explore trade-offs, and help you converge on a clear concept
+   - Add any other docs or resources to the brainstorming folder as needed — the Brainstormer can read them for context
 3. The output is a `BRAINSTORMING.md` document in your project folder
-4. Then invoke `@Orchestrator` — it will pick up the brainstorming document and start the pipeline
+4. Then invoke `@Orchestrator` — it will pick up the brainstorming document and start the planning pipeline and scaffold the project structure
+   - You can provide additional instructions or resources to the Orchestrator as needed — it reads the entire project folder for context
 
 ### Option B: Start Directly
 
 If you already know what you want to build:
 
 1. Open Copilot chat and invoke `@Orchestrator`
-2. Describe your project: *"Build me a REST API for managing inventory with auth, CRUD operations, and a React dashboard"*
+2. Describe your project: *"Build me a REST API for managing inventory with auth, CRUD operations, and a React dashboard"* -- You can do better than that ;)
 3. The Orchestrator initializes the project and begins the planning pipeline
 
 ### What Happens Next
@@ -66,6 +68,8 @@ After approval, execution begins:
 9. **Reviewer** — reviews code against the plan
 10. Loop until all phases are complete, then final review and human approval
 
+> Pro Tip:  Tell it that you want a human gate at the task completion, phase completion or go fully autonomous for the entire project.
+
 ## Continuing a Project
 
 To resume a project that's already in progress:
@@ -74,7 +78,7 @@ To resume a project that's already in progress:
 @Orchestrator continue the project
 ```
 
-The Orchestrator reads `state.json` to determine exactly where the pipeline left off and spawns the appropriate agent. The deterministic [Next-Action Resolver](scripts.md) ensures consistent routing regardless of how many times you resume.
+The Orchestrator reads `state.json` to determine exactly where the pipeline left off and spawns the appropriate agent. The deterministic `pipeline.js` event-driven engine — with its 19-event vocabulary and ~18-action output set — ensures consistent routing regardless of how many times you resume.
 
 ## Checking Status
 
@@ -82,7 +86,9 @@ The Orchestrator reads `state.json` to determine exactly where the pipeline left
 @Orchestrator what's the project status?
 ```
 
-The Orchestrator reads `STATUS.md` — a human-readable summary that's updated after every significant event (task completion, phase advance, error, halt).
+The Orchestrator reads `state.json` directly to determine the current project status, or calls `pipeline.js --event start` to get the current state and recommended next action. Every state mutation flows through `pipeline.js`, so `state.json` is always the authoritative source of truth.
+
+> Recommended: Check out the [UI Status Dashboard](project-structure.md#project-file-structure) — it surfaces the current status, recent activity, and next steps based on `state.json` in a human-friendly format and in realtime.
 
 ## Running Validation
 

@@ -30,8 +30,7 @@ You are the {Agent Name}. {1-2 sentence role description — what this agent doe
 ### What you do NOT do:
 - {Explicit boundary — what this agent must never do}
 - {Another boundary}
-- Write to `state.json` or `STATUS.md` — only the Tactical Planner does that
-- Spawn other agents (unless this is the Orchestrator)
+- Write directly to `state.json`.
 
 ### Write access: {Specify exactly — e.g., "Project docs only", "Source code + tests + reports", "NONE (read-only)"}
 

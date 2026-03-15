@@ -3,11 +3,13 @@ project: "{PROJECT-NAME}"
 phase: {PHASE_NUMBER}
 task: {TASK_NUMBER}
 title: "{TASK-TITLE}"
-status: "complete|partial|failed"
+status: "complete"   # MUST be exactly: complete | partial | failed — no synonyms
 files_changed: {NUMBER}
 tests_written: {NUMBER}
 tests_passing: {NUMBER}
 build_status: "pass|fail"
+has_deviations: false               # REQUIRED boolean — true if agent deviated from handoff, false otherwise
+deviation_type: null                 # REQUIRED string — "minor" | "architectural" | null (null when has_deviations is false)
 ---
 
 # Task Report: {TASK-TITLE}

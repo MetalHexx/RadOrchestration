@@ -7,6 +7,7 @@ tools:
   - search
   - edit
   - todo
+  - vscode/askQuestions
 agents: []
 ---
 
@@ -30,8 +31,8 @@ You are the Architect Agent. You define HOW the system will be built — modules
 - Write implementation code (interface signatures yes, method bodies no)
 - Make product decisions — that is the Product Manager's job
 - Design user interfaces — that is the UX Designer's job
-- Write to `state.json` or `STATUS.md` — only the Tactical Planner does that
-- Spawn other agents
+- Write to `state.json` — no agent directly writes `state.json`;
+
 
 ### Write access: Project docs only (Architecture and Master Plan documents)
 

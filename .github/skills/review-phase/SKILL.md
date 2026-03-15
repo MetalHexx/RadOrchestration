@@ -39,6 +39,16 @@ Perform a holistic review of an entire phase after all tasks are complete. Asses
 10. **Write the Phase Review**: Use the bundled template at [templates/PHASE-REVIEW.md](./templates/PHASE-REVIEW.md)
 11. **Save**: Write to `{PROJECT-DIR}/reports/PHASE-REVIEW-P{NN}.md`
 
+## Required Frontmatter Fields
+
+The Phase Review template frontmatter includes fields consumed by the pipeline engine. These fields are **REQUIRED** — the pipeline engine validates their presence and returns an error if they are missing.
+
+| Field | Type | Required | Allowed Values | Consumer | Purpose |
+|-------|------|----------|---------------|----------|--------|
+| `exit_criteria_met` | boolean | **REQUIRED** | `true` or `false` | Mutation handler `resolvePhaseOutcome` | Indicates whether all phase exit criteria from the Phase Plan were verified as met during the phase review |
+
+> **IMPORTANT: The `exit_criteria_met` field is REQUIRED in phase review frontmatter. The pipeline engine validates that this field is present and is a boolean. If `exit_criteria_met` is missing, the pipeline engine returns an error. Set `exit_criteria_met: true` only when ALL exit criteria are verified as met. Set `exit_criteria_met: false` when any exit criterion is not met or only partially met.**
+
 ## Verdict Rules
 
 | Verdict | When | Planner Action |

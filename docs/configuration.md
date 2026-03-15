@@ -113,9 +113,9 @@ Human approval checkpoints during pipeline execution.
 
 ## Configuration at Runtime
 
-When a project is initialized, key configuration values (limits, human gate mode) are copied into `state.json`. The deterministic scripts read these values from `state.json` at runtime, keeping the interface clean — one input file per script invocation.
+When a project is initialized, key configuration values (limits, human gate mode) are copied into `state.json`. The scripts read these values from `state.json` at runtime, keeping the interface clean — one input file per script invocation.
 
-The one exception: the [Next-Action Resolver](scripts.md) optionally reads `orchestration.yml` directly for `human_gate_mode` when checking phase-level gates.
+The one exception: the [pipeline script](scripts.md) optionally reads `orchestration.yml` directly for `human_gate_mode` when checking phase-level gates.
 
 ## Changing Configuration
 

@@ -21,8 +21,7 @@ Every document has exactly ONE agent that may write it. No other agent may creat
 
 | Document | Sole Writer |
 |----------|-------------|
-| `state.json` | Tactical Planner |
-| `STATUS.md` | Tactical Planner |
+| `state.json` | Orchestrator via Pipeline Script (`pipeline.js`) |
 | `BRAINSTORMING.md` | Brainstormer |
 | `RESEARCH-FINDINGS.md` | Research Agent |
 | `PRD.md` | Product Manager |
@@ -35,6 +34,7 @@ Every document has exactly ONE agent that may write it. No other agent may creat
 | `CODE-REVIEW.md` | Reviewer |
 | `PHASE-REPORT.md` | Tactical Planner |
 | `PHASE-REVIEW.md` | Reviewer |
+| `ERROR-LOG.md` | Orchestrator (via `log-error` skill) |
 
 ## Document Quality Standards
 

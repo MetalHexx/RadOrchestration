@@ -62,5 +62,13 @@ export function resolveDocPath(
   projectName: string,
   relativePath: string
 ): string {
-  return path.resolve(workspaceRoot, basePath, projectName, relativePath);
+  const prefix = basePath + '/' + projectName + '/';
+  const normalizedPrefix = prefix.replace(/\\/g, '/');
+  const normalizedRelPath = relativePath.replace(/\\/g, '/');
+
+  const strippedPath = normalizedRelPath.startsWith(normalizedPrefix)
+    ? normalizedRelPath.slice(normalizedPrefix.length)
+    : relativePath;
+
+  return path.resolve(workspaceRoot, basePath, projectName, strippedPath);
 }

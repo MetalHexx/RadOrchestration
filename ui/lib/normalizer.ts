@@ -12,10 +12,18 @@ export function detectSchemaVersion(raw: RawStateJson): 1 | 2 {
   return raw.$schema ? 2 : 1;
 }
 
+/** Parse a numeric suffix from an id string (e.g. "P01" → 1, "T03" → 3). */
+function parseIdNumber(id: unknown): number | undefined {
+  if (typeof id !== 'string' || id === '') return undefined;
+  const remainder = id.replace(/^\D+/, '');
+  const num = parseInt(remainder, 10);
+  return Number.isNaN(num) ? undefined : num;
+}
+
 /** Normalize a raw task object, mapping v1 field names to v2. */
-export function normalizeTask(raw: RawTask): NormalizedTask {
+export function normalizeTask(raw: RawTask, index: number): NormalizedTask {
   return {
-    task_number: raw.task_number,
+    task_number: raw.task_number ?? parseIdNumber((raw as unknown as Record<string, unknown>).id) ?? (index + 1),
     title: raw.title ?? raw.name ?? 'Unnamed Task',
     status: raw.status,
     handoff_doc: raw.handoff_doc,
@@ -30,15 +38,15 @@ export function normalizeTask(raw: RawTask): NormalizedTask {
 }
 
 /** Normalize a raw phase object, mapping v1 field names to v2. */
-export function normalizePhase(raw: RawPhase): NormalizedPhase {
+export function normalizePhase(raw: RawPhase, index: number): NormalizedPhase {
   return {
-    phase_number: raw.phase_number,
+    phase_number: raw.phase_number ?? parseIdNumber((raw as unknown as Record<string, unknown>).id) ?? (index + 1),
     title: raw.title ?? raw.name ?? 'Unnamed Phase',
     status: raw.status,
     phase_doc: raw.phase_doc ?? raw.plan_doc ?? null,
     current_task: raw.current_task,
-    total_tasks: raw.total_tasks,
-    tasks: raw.tasks.map(normalizeTask),
+    total_tasks: raw.total_tasks ?? raw.tasks?.length ?? 0,
+    tasks: raw.tasks.map((t, i) => normalizeTask(t, i)),
     phase_report: raw.phase_report,
     human_approved: raw.human_approved,
     phase_review: raw.phase_review ?? null,

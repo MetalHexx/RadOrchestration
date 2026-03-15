@@ -162,9 +162,33 @@ function parseYaml(yamlLines) {
       while (j < yamlLines.length && yamlLines[j].match(/^\s+-\s+/)) {
         const itemMatch = yamlLines[j].match(/^\s+-\s+(.*)/);
         if (itemMatch) {
-          listItems.push(parseScalar(itemMatch[1].trim()));
+          const itemContent = itemMatch[1].trim();
+          const colonMatch = itemContent.match(/^([A-Za-z0-9_-]+)\s*:\s*(.*)/);
+          if (colonMatch) {
+            // Key-value pair → object item
+            const obj = {};
+            obj[colonMatch[1]] = parseScalar(colonMatch[2].trim());
+            // Consume continuation lines (indented deeper, not a new list item)
+            let k = j + 1;
+            while (k < yamlLines.length) {
+              const contLine = yamlLines[k];
+              const contTrimmed = contLine.trim();
+              if (contTrimmed === '' || contLine.match(/^\s+-\s+/) || !contLine.match(/^\s+/)) break;
+              const contMatch = contTrimmed.match(/^([A-Za-z0-9_-]+)\s*:\s*(.*)/);
+              if (contMatch) {
+                obj[contMatch[1]] = parseScalar(contMatch[2].trim());
+              }
+              k++;
+            }
+            listItems.push(obj);
+            j = k;
+          } else {
+            listItems.push(parseScalar(itemContent));
+            j++;
+          }
+        } else {
+          j++;
         }
-        j++;
       }
       if (listItems.length > 0) {
         result[key] = listItems;

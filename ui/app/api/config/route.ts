@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 import { getWorkspaceRoot } from '@/lib/path-resolver';
 import { readConfig } from '@/lib/fs-reader';
 import { transformConfig } from '@/lib/config-transformer';

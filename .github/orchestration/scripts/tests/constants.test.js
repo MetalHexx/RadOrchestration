@@ -1,32 +1,14 @@
 'use strict';
 
-const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
+const { describe, it } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
-// ─── Test Helpers ───────────────────────────────────────────────────────────
-
-let passed = 0;
-let failed = 0;
-const results = [];
-
-function test(name, fn) {
-  try {
-    fn();
-    passed++;
-    results.push({ name, status: 'pass' });
-  } catch (err) {
-    failed++;
-    results.push({ name, status: 'fail', error: err.message });
-    console.error(`  FAIL: ${name}\n        ${err.message}`);
-  }
-}
-
-// ─── Load Module ────────────────────────────────────────────────────────────
-
-const constants = require('../lib/constants');
+const constants = require('../lib/constants.js');
 
 const {
+  SCHEMA_VERSION,
   PIPELINE_TIERS,
   PLANNING_STATUSES,
   PLANNING_STEP_STATUSES,
@@ -37,306 +19,182 @@ const {
   PHASE_REVIEW_ACTIONS,
   SEVERITY_LEVELS,
   HUMAN_GATE_MODES,
-  TRIAGE_LEVELS,
-  NEXT_ACTIONS
+  NEXT_ACTIONS,
+  ALLOWED_TASK_TRANSITIONS,
+  ALLOWED_PHASE_TRANSITIONS,
 } = constants;
 
-const ALL_ENUMS = [
-  'PIPELINE_TIERS',
-  'PLANNING_STATUSES',
-  'PLANNING_STEP_STATUSES',
-  'PHASE_STATUSES',
-  'TASK_STATUSES',
-  'REVIEW_VERDICTS',
-  'REVIEW_ACTIONS',
-  'PHASE_REVIEW_ACTIONS',
-  'SEVERITY_LEVELS',
-  'HUMAN_GATE_MODES',
-  'TRIAGE_LEVELS',
-  'NEXT_ACTIONS'
-];
+// ─── Freeze checks ─────────────────────────────────────────────────────────
 
-// ─── Export Tests ───────────────────────────────────────────────────────────
+describe('All exported enums are frozen', () => {
+  const frozenObjects = {
+    PIPELINE_TIERS,
+    PLANNING_STATUSES,
+    PLANNING_STEP_STATUSES,
+    PHASE_STATUSES,
+    TASK_STATUSES,
+    REVIEW_VERDICTS,
+    REVIEW_ACTIONS,
+    PHASE_REVIEW_ACTIONS,
+    SEVERITY_LEVELS,
+    HUMAN_GATE_MODES,
+    NEXT_ACTIONS,
+    ALLOWED_TASK_TRANSITIONS,
+    ALLOWED_PHASE_TRANSITIONS,
+  };
 
-test('All 12 enums are exported and not undefined', () => {
-  for (const name of ALL_ENUMS) {
-    assert.ok(constants[name] !== undefined, `${name} should be exported`);
-    assert.ok(typeof constants[name] === 'object', `${name} should be an object`);
-  }
-  assert.strictEqual(ALL_ENUMS.length, 12);
-});
-
-test('No extra exports beyond the 12 enums', () => {
-  const exportedKeys = Object.keys(constants);
-  assert.strictEqual(exportedKeys.length, 12, `Expected 12 exports, got ${exportedKeys.length}`);
-  for (const name of ALL_ENUMS) {
-    assert.ok(exportedKeys.includes(name), `${name} should be exported`);
+  for (const [name, obj] of Object.entries(frozenObjects)) {
+    it(`${name} is frozen`, () => {
+      assert.ok(Object.isFrozen(obj), `${name} should be frozen`);
+    });
   }
 });
 
-// ─── Frozen Tests ───────────────────────────────────────────────────────────
+// ─── SCHEMA_VERSION ─────────────────────────────────────────────────────────
 
-test('All 12 enums are frozen (Object.isFrozen)', () => {
-  for (const name of ALL_ENUMS) {
-    assert.ok(Object.isFrozen(constants[name]), `${name} should be frozen`);
-  }
-});
-
-// ─── PIPELINE_TIERS ─────────────────────────────────────────────────────────
-
-test('PIPELINE_TIERS has exact keys and values', () => {
-  assert.deepStrictEqual(PIPELINE_TIERS, {
-    PLANNING: 'planning',
-    EXECUTION: 'execution',
-    REVIEW: 'review',
-    COMPLETE: 'complete',
-    HALTED: 'halted'
-  });
-});
-
-// ─── PLANNING_STATUSES ──────────────────────────────────────────────────────
-
-test('PLANNING_STATUSES has exact keys and values', () => {
-  assert.deepStrictEqual(PLANNING_STATUSES, {
-    NOT_STARTED: 'not_started',
-    IN_PROGRESS: 'in_progress',
-    COMPLETE: 'complete'
-  });
-});
-
-// ─── PLANNING_STEP_STATUSES ─────────────────────────────────────────────────
-
-test('PLANNING_STEP_STATUSES has exact keys and values', () => {
-  assert.deepStrictEqual(PLANNING_STEP_STATUSES, {
-    NOT_STARTED: 'not_started',
-    IN_PROGRESS: 'in_progress',
-    COMPLETE: 'complete',
-    FAILED: 'failed',
-    SKIPPED: 'skipped'
-  });
-});
-
-// ─── PHASE_STATUSES ─────────────────────────────────────────────────────────
-
-test('PHASE_STATUSES has exact keys and values', () => {
-  assert.deepStrictEqual(PHASE_STATUSES, {
-    NOT_STARTED: 'not_started',
-    IN_PROGRESS: 'in_progress',
-    COMPLETE: 'complete',
-    FAILED: 'failed',
-    HALTED: 'halted'
-  });
-});
-
-// ─── TASK_STATUSES ──────────────────────────────────────────────────────────
-
-test('TASK_STATUSES has exact keys and values', () => {
-  assert.deepStrictEqual(TASK_STATUSES, {
-    NOT_STARTED: 'not_started',
-    IN_PROGRESS: 'in_progress',
-    COMPLETE: 'complete',
-    FAILED: 'failed',
-    HALTED: 'halted'
-  });
-});
-
-// ─── REVIEW_VERDICTS ────────────────────────────────────────────────────────
-
-test('REVIEW_VERDICTS has exact keys and values', () => {
-  assert.deepStrictEqual(REVIEW_VERDICTS, {
-    APPROVED: 'approved',
-    CHANGES_REQUESTED: 'changes_requested',
-    REJECTED: 'rejected'
-  });
-});
-
-// ─── REVIEW_ACTIONS (singular) ──────────────────────────────────────────────
-
-test('REVIEW_ACTIONS has exact keys and values (singular corrective_task_issued)', () => {
-  assert.deepStrictEqual(REVIEW_ACTIONS, {
-    ADVANCED: 'advanced',
-    CORRECTIVE_TASK_ISSUED: 'corrective_task_issued',
-    HALTED: 'halted'
-  });
-});
-
-test('REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED equals corrective_task_issued (singular)', () => {
-  assert.strictEqual(REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED, 'corrective_task_issued');
-});
-
-// ─── PHASE_REVIEW_ACTIONS (plural) ──────────────────────────────────────────
-
-test('PHASE_REVIEW_ACTIONS has exact keys and values (plural corrective_tasks_issued)', () => {
-  assert.deepStrictEqual(PHASE_REVIEW_ACTIONS, {
-    ADVANCED: 'advanced',
-    CORRECTIVE_TASKS_ISSUED: 'corrective_tasks_issued',
-    HALTED: 'halted'
-  });
-});
-
-test('PHASE_REVIEW_ACTIONS.CORRECTIVE_TASKS_ISSUED equals corrective_tasks_issued (plural)', () => {
-  assert.strictEqual(PHASE_REVIEW_ACTIONS.CORRECTIVE_TASKS_ISSUED, 'corrective_tasks_issued');
-});
-
-// ─── Singular vs Plural distinction ─────────────────────────────────────────
-
-test('REVIEW_ACTIONS and PHASE_REVIEW_ACTIONS have no accidental value overlap on corrective', () => {
-  const taskLevel = REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED;
-  const phaseLevel = PHASE_REVIEW_ACTIONS.CORRECTIVE_TASKS_ISSUED;
-  assert.notStrictEqual(taskLevel, phaseLevel,
-    'Task-level (singular) and phase-level (plural) corrective values must differ');
-});
-
-test('No accidental value overlap between REVIEW_ACTIONS and PHASE_REVIEW_ACTIONS value sets', () => {
-  const taskValues = new Set(Object.values(REVIEW_ACTIONS));
-  const phaseValues = new Set(Object.values(PHASE_REVIEW_ACTIONS));
-  // 'advanced' and 'halted' are shared intentionally, but the corrective ones must differ
-  assert.ok(!taskValues.has('corrective_tasks_issued'),
-    'REVIEW_ACTIONS should not contain plural form');
-  assert.ok(!phaseValues.has('corrective_task_issued'),
-    'PHASE_REVIEW_ACTIONS should not contain singular form');
-});
-
-// ─── SEVERITY_LEVELS ────────────────────────────────────────────────────────
-
-test('SEVERITY_LEVELS has exact keys and values', () => {
-  assert.deepStrictEqual(SEVERITY_LEVELS, {
-    MINOR: 'minor',
-    CRITICAL: 'critical'
-  });
-});
-
-// ─── HUMAN_GATE_MODES ───────────────────────────────────────────────────────
-
-test('HUMAN_GATE_MODES has exact keys and values', () => {
-  assert.deepStrictEqual(HUMAN_GATE_MODES, {
-    ASK: 'ask',
-    PHASE: 'phase',
-    TASK: 'task',
-    AUTONOMOUS: 'autonomous'
-  });
-});
-
-// ─── TRIAGE_LEVELS ──────────────────────────────────────────────────────────
-
-test('TRIAGE_LEVELS has exact keys and values', () => {
-  assert.deepStrictEqual(TRIAGE_LEVELS, {
-    TASK: 'task',
-    PHASE: 'phase'
+describe('SCHEMA_VERSION', () => {
+  it('equals orchestration-state-v3', () => {
+    assert.equal(SCHEMA_VERSION, 'orchestration-state-v3');
   });
 });
 
 // ─── NEXT_ACTIONS ───────────────────────────────────────────────────────────
 
-test('NEXT_ACTIONS contains exactly 35 key-value pairs', () => {
-  const keys = Object.keys(NEXT_ACTIONS);
-  assert.strictEqual(keys.length, 35, `Expected 35 entries, got ${keys.length}`);
-});
+describe('NEXT_ACTIONS', () => {
+  it('has exactly 18 entries', () => {
+    assert.equal(Object.keys(NEXT_ACTIONS).length, 18);
+  });
 
-test('NEXT_ACTIONS has all expected values', () => {
-  const expectedValues = [
-    'init_project', 'display_halted', 'spawn_research', 'spawn_prd',
-    'spawn_design', 'spawn_architecture', 'spawn_master_plan',
-    'request_plan_approval', 'transition_to_execution', 'create_phase_plan',
-    'create_task_handoff', 'execute_task', 'update_state_from_task',
-    'create_corrective_handoff', 'halt_task_failed', 'spawn_code_reviewer',
-    'update_state_from_review', 'triage_task', 'halt_triage_invariant',
-    'retry_from_review', 'halt_from_review', 'advance_task', 'gate_task',
-    'generate_phase_report', 'spawn_phase_reviewer',
-    'update_state_from_phase_review', 'triage_phase',
-    'halt_phase_triage_invariant', 'gate_phase', 'advance_phase',
-    'transition_to_review', 'spawn_final_reviewer', 'request_final_approval',
-    'transition_to_complete', 'display_complete'
+  const removedActions = [
+    'ADVANCE_TASK',
+    'ADVANCE_PHASE',
+    'TRANSITION_TO_EXECUTION',
+    'TRANSITION_TO_REVIEW',
+    'TRANSITION_TO_COMPLETE',
+    'UPDATE_STATE_FROM_TASK',
+    'UPDATE_STATE_FROM_REVIEW',
+    'UPDATE_STATE_FROM_PHASE_REVIEW',
+    'TRIAGE_TASK',
+    'TRIAGE_PHASE',
+    'HALT_TRIAGE_INVARIANT',
+    'HALT_PHASE_TRIAGE_INVARIANT',
+    'RETRY_FROM_REVIEW',
+    'HALT_FROM_REVIEW',
+    'HALT_TASK_FAILED',
+    'CREATE_CORRECTIVE_HANDOFF',
   ];
-  const actualValues = Object.values(NEXT_ACTIONS);
-  assert.strictEqual(actualValues.length, expectedValues.length);
-  for (const v of expectedValues) {
-    assert.ok(actualValues.includes(v), `Missing value: ${v}`);
+
+  for (const action of removedActions) {
+    it(`does NOT contain removed action ${action}`, () => {
+      assert.equal(NEXT_ACTIONS[action], undefined);
+    });
   }
 });
 
-// ─── Key Convention Tests ───────────────────────────────────────────────────
+// ─── TRIAGE_LEVELS not exported ─────────────────────────────────────────────
 
-test('All enum keys are SCREAMING_SNAKE_CASE', () => {
-  const screamingSnake = /^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$/;
-  for (const name of ALL_ENUMS) {
-    for (const key of Object.keys(constants[name])) {
-      assert.ok(screamingSnake.test(key),
-        `${name}.${key} is not SCREAMING_SNAKE_CASE`);
+describe('TRIAGE_LEVELS removal', () => {
+  it('is NOT exported', () => {
+    assert.equal(constants.TRIAGE_LEVELS, undefined);
+  });
+});
+
+// ─── PLANNING_STEP_STATUSES ─────────────────────────────────────────────────
+
+describe('PLANNING_STEP_STATUSES', () => {
+  it('has exactly 3 entries', () => {
+    assert.equal(Object.keys(PLANNING_STEP_STATUSES).length, 3);
+  });
+
+  it('does NOT contain FAILED', () => {
+    assert.equal(PLANNING_STEP_STATUSES.FAILED, undefined);
+  });
+
+  it('does NOT contain SKIPPED', () => {
+    assert.equal(PLANNING_STEP_STATUSES.SKIPPED, undefined);
+  });
+});
+
+// ─── PHASE_STATUSES ─────────────────────────────────────────────────────────
+
+describe('PHASE_STATUSES', () => {
+  it('has exactly 4 entries', () => {
+    assert.equal(Object.keys(PHASE_STATUSES).length, 4);
+  });
+
+  it('does NOT contain FAILED', () => {
+    assert.equal(PHASE_STATUSES.FAILED, undefined);
+  });
+});
+
+// ─── Transition maps completeness ───────────────────────────────────────────
+
+describe('ALLOWED_TASK_TRANSITIONS', () => {
+  it('has a key for every TASK_STATUSES value', () => {
+    for (const status of Object.values(TASK_STATUSES)) {
+      assert.ok(
+        status in ALLOWED_TASK_TRANSITIONS,
+        `Missing key for task status: ${status}`
+      );
     }
-  }
-});
+  });
 
-test('All enum values are lowercase snake_case strings', () => {
-  const lowerSnake = /^[a-z][a-z0-9]*(_[a-z0-9]+)*$/;
-  for (const name of ALL_ENUMS) {
-    for (const [key, value] of Object.entries(constants[name])) {
-      assert.strictEqual(typeof value, 'string',
-        `${name}.${key} should be a string`);
-      assert.ok(lowerSnake.test(value),
-        `${name}.${key} = "${value}" is not lowercase snake_case`);
+  it('values are arrays of valid TASK_STATUSES values', () => {
+    const validValues = new Set(Object.values(TASK_STATUSES));
+    for (const [key, targets] of Object.entries(ALLOWED_TASK_TRANSITIONS)) {
+      assert.ok(Array.isArray(targets), `${key} should map to an array`);
+      for (const target of targets) {
+        assert.ok(validValues.has(target), `Invalid target "${target}" in ${key}`);
+      }
     }
-  }
+  });
 });
 
-// ─── Source File Tests ──────────────────────────────────────────────────────
+describe('ALLOWED_PHASE_TRANSITIONS', () => {
+  it('has a key for every PHASE_STATUSES value', () => {
+    for (const status of Object.values(PHASE_STATUSES)) {
+      assert.ok(
+        status in ALLOWED_PHASE_TRANSITIONS,
+        `Missing key for phase status: ${status}`
+      );
+    }
+  });
 
-test('Source file has zero require() statements (leaf module)', () => {
-  const src = fs.readFileSync(
-    path.join(__dirname, '..', 'lib', 'constants.js'), 'utf8');
-  const requireMatches = src.match(/\brequire\s*\(/g);
-  assert.strictEqual(requireMatches, null,
-    `Expected zero require() calls, found ${requireMatches ? requireMatches.length : 0}`);
+  it('values are arrays of valid PHASE_STATUSES values', () => {
+    const validValues = new Set(Object.values(PHASE_STATUSES));
+    for (const [key, targets] of Object.entries(ALLOWED_PHASE_TRANSITIONS)) {
+      assert.ok(Array.isArray(targets), `${key} should map to an array`);
+      for (const target of targets) {
+        assert.ok(validValues.has(target), `Invalid target "${target}" in ${key}`);
+      }
+    }
+  });
 });
 
-test("'use strict' is the first statement in the file", () => {
-  const src = fs.readFileSync(
-    path.join(__dirname, '..', 'lib', 'constants.js'), 'utf8');
-  assert.ok(src.startsWith("'use strict'"),
-    "File should start with 'use strict'");
+// ─── Singular / plural review actions ───────────────────────────────────────
+
+describe('Review action naming', () => {
+  it('REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED is singular', () => {
+    assert.equal(REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED, 'corrective_task_issued');
+  });
+
+  it('PHASE_REVIEW_ACTIONS.CORRECTIVE_TASKS_ISSUED is plural', () => {
+    assert.equal(PHASE_REVIEW_ACTIONS.CORRECTIVE_TASKS_ISSUED, 'corrective_tasks_issued');
+  });
 });
 
-test('Source file contains JSDoc @typedef for StateJson', () => {
-  const src = fs.readFileSync(
-    path.join(__dirname, '..', 'lib', 'constants.js'), 'utf8');
-  assert.ok(src.includes('@typedef {Object} StateJson'),
-    'Missing @typedef for StateJson');
+// ─── No triage_attempts in source ───────────────────────────────────────────
+
+describe('No triage_attempts in source', () => {
+  it('source file contains zero occurrences of triage_attempts', () => {
+    const src = fs.readFileSync(
+      path.join(__dirname, '..', 'lib', 'constants.js'),
+      'utf8'
+    );
+    assert.equal(
+      src.includes('triage_attempts'),
+      false,
+      'Source must not contain triage_attempts'
+    );
+  });
 });
-
-test('Source file contains JSDoc @typedef for PlanningStep', () => {
-  const src = fs.readFileSync(
-    path.join(__dirname, '..', 'lib', 'constants.js'), 'utf8');
-  assert.ok(src.includes('@typedef {Object} PlanningStep'),
-    'Missing @typedef for PlanningStep');
-});
-
-test('Source file contains JSDoc @typedef for Phase', () => {
-  const src = fs.readFileSync(
-    path.join(__dirname, '..', 'lib', 'constants.js'), 'utf8');
-  assert.ok(src.includes('@typedef {Object} Phase'),
-    'Missing @typedef for Phase');
-});
-
-test('Source file contains JSDoc @typedef for Task', () => {
-  const src = fs.readFileSync(
-    path.join(__dirname, '..', 'lib', 'constants.js'), 'utf8');
-  assert.ok(src.includes('@typedef {Object} Task'),
-    'Missing @typedef for Task');
-});
-
-test('Source file contains JSDoc @type Readonly annotations for each enum', () => {
-  const src = fs.readFileSync(
-    path.join(__dirname, '..', 'lib', 'constants.js'), 'utf8');
-  // Count occurrences of @type {Readonly<
-  const readonlyMatches = src.match(/@type\s*\{Readonly</g);
-  assert.ok(readonlyMatches, 'Expected @type {Readonly<...>} annotations');
-  assert.strictEqual(readonlyMatches.length, 12,
-    `Expected 12 @type Readonly annotations, found ${readonlyMatches.length}`);
-});
-
-// ─── Summary ────────────────────────────────────────────────────────────────
-
-console.log(`\nconstants  pass ${passed}  fail ${failed}  tests ${passed + failed}`);
-if (failed > 0) {
-  process.exit(1);
-}

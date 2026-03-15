@@ -10,19 +10,19 @@ created: "{ISO-DATE}"
 
 {What problem are we trying to solve? What pain points exist? What opportunity are we exploring? 2-4 sentences describing the space.}
 
-## Validated Ideas
+## Validated Goals
 
-{Only ideas that have been discussed and agreed upon. Each idea should have a brief rationale.}
+{Only goals that have been discussed and agreed upon. Each goal should have a brief rationale.}
 
-### Idea 1: {Title}
+### Goal 1: {Title}
 
-**Description**: {What is this idea?}
+**Description**: {What is this goal?}
 **Rationale**: {Why is this worth pursuing?}
 **Key considerations**: {Any important constraints, risks, or dependencies}
 
-### Idea 2: {Title}
+### Goal 2: {Title}
 
-**Description**: {What is this idea?}
+**Description**: {What is this goal?}
 **Rationale**: {Why is this worth pursuing?}
 **Key considerations**: {Any important constraints, risks, or dependencies}
 

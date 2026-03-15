@@ -2,7 +2,7 @@
 
 A **document-driven agent orchestration system** that takes software projects from idea through planning, execution, and review — built on native AI coding assistant primitives and a small set of simple Node.js scripts.
 
-Agents communicate through structured markdown documents. Routing, triage, and state validation are handled by pure JavaScript functions. No external services, no Docker, no npm install.
+Agents communicate through structured markdown documents. Routing, triage, and state validation are handled by a single pipeline script (`pipeline.js`). No external services, no Docker, no npm install (unless you use the Dashboard UI).
 
 ## What It Does
 
@@ -11,28 +11,28 @@ Tell the Orchestrator your project idea, and it coordinates **9 specialized agen
 ```mermaid
 flowchart TD
     START([💡 Idea]) --> BRAINSTORM[Brainstorm]
-    BRAINSTORM --> RESEARCH
+    BRAINSTORM --> |Goals| RESEARCH
 
     subgraph PLANNING [Planning]
         direction TB
-        RESEARCH[Code Research] --> PRD[Create Requirements]
-        PRD --> DESIGN[Create UI/UX Design]
-        DESIGN --> ARCH[Create Architecture Plan]
-        ARCH --> MASTERPLAN[Create Master Plan]
+        RESEARCH[Researcher] --> |Research| PRD[Product Manager]
+        PRD --> |Requirements, Research| DESIGN[Create UI/UX Design]
+        DESIGN --> |Design, Requirements, Research| ARCH[Create Architecture Plan]
+        ARCH --> |Requirements, Architecture, Design, Research| MASTERPLAN[Create Master Plan]
     end
 
     MASTERPLAN --> GATE1(["✋ Human Approval"])
 
     subgraph EXECUTION [Execution Loop]
         direction TB
-        GATE1 --> PHASE[Create Phase Plan]
-        PHASE --> HANDOFF[Create Task Handoff]
-        HANDOFF --> CODE[Code]
-        CODE --> REVIEW[Task Code Review]
-        REVIEW -->|retry| HANDOFF
+        GATE1 --> PHASE[Plan Phase]
+        PHASE --> HANDOFF[Plan Task]
+        HANDOFF --> |handoff| CODE[Code]
+        CODE --> |code, task report|REVIEW[Code Review]
+        REVIEW -->|needs correction | HANDOFF
         REVIEW -->|approved| MORETASKS{more tasks?}
         MORETASKS -->|yes| HANDOFF
-        MORETASKS -->|no| PHASEREVIEW[Phase Code Review]
+        MORETASKS -->|no| PHASEREVIEW[Phase Review]
         PHASEREVIEW -->|next phase| PHASE
     end
 
@@ -61,7 +61,7 @@ build the UI in 1-shot.
 
 ### Specialized Agents
 
-Nine agents with strict separation of concerns. Each agent has a defined role, scoped tool access, and explicit write permissions. The Orchestrator coordinates but never writes. The Coder reads only its task handoff. Only the Tactical Planner touches state.
+Nine agents with strict separation of concerns. Each agent has a defined role, scoped tool access, and explicit write permissions. The Orchestrator coordinates but never writes. The Coder reads only its task handoff.
 
 [Learn more about agents →](docs/agents.md)
 
@@ -79,7 +79,7 @@ Critical checkpoints are enforced, not optional. Humans approve the Master Plan 
 
 ### Deterministic Routing & Triage
 
-Pipeline routing and triage decisions are handled by Node.js CLI scripts — not LLM interpretation of prose. The Next-Action Resolver encodes ~30 routing paths as a pure function. The Triage Executor evaluates decision tables for task and phase reviews. The State Validator checks 15 invariants before every state write. Same input always produces the same output.
+Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes ~18 external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
 
 [Learn more about the scripts →](docs/scripts.md)
 
@@ -97,7 +97,7 @@ A single `orchestration.yml` controls everything: project storage, pipeline limi
 
 ### Continuous Verification
 
-Every task produces a report. Every report is reviewed against the plan. Minor issues trigger automatic corrective tasks. Critical issues halt the pipeline for human intervention. Plans don't drift unchecked.
+Every task produces a report. Every report is reviewed against the plan. Minor issues trigger automatic corrective tasks. Critical issues halt the pipeline for human intervention. Plans don't drift unchecked. Pipeline failures are logged to a structured, append-only error log (`ERROR-LOG.md`) in each project folder.
 
 ### Built-in Validation
 
@@ -133,7 +133,7 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 | [Skills](docs/skills.md) | All 17 skills and how they compose with agents |
 | [Configuration](docs/configuration.md) | `orchestration.yml` reference — all options explained |
 | [Project Structure](docs/project-structure.md) | File layout, naming conventions, document types, state management |
-| [Deterministic Scripts](docs/scripts.md) | Next-Action Resolver, Triage Executor, State Validator CLIs |
+| [Pipeline Script](docs/scripts.md) | Unified event-driven CLI — routing, triage, state mutations, validation |
 | [Validation](docs/validation.md) | The `validate-orchestration` CLI tool |
 | [Monitoring Dashboard](docs/dashboard.md) | Dashboard startup, features, data sources, real-time updates |
 

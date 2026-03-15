@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 import { getWorkspaceRoot, resolveProjectDir } from '@/lib/path-resolver';
 import { readConfig, readProjectState } from '@/lib/fs-reader';
 import { normalizeState } from '@/lib/normalizer';

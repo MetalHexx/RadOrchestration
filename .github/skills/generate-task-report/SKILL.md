@@ -41,6 +41,19 @@ Generate a Task Report after completing a coding task. The report documents what
 - **Every handoff file target must be accounted for**: In the Files Changed table
 - **Every handoff acceptance criterion must have a result**: In the Acceptance Criteria Results table
 
+> **IMPORTANT: The `status` field in the frontmatter MUST be exactly one of: `complete`, `partial`, or `failed`. Do NOT use synonyms like `pass`, `fail`, `success`, `done`, or any other word. The pipeline engine will reject reports with unrecognized status values.**
+
+## Required Frontmatter Fields
+
+The Task Report template frontmatter includes fields consumed by the pipeline engine (mutation handler and pre-read). These fields are **REQUIRED** — the pipeline validates their presence and returns an error if they are missing.
+
+| Field | Type | Required | Allowed Values | Consumer | Purpose |
+|-------|------|----------|---------------|----------|--------|
+| `has_deviations` | boolean | **REQUIRED** | `true` or `false` | Mutation handler `resolveTaskOutcome`, pipeline `task_completed` pre-read | Indicates whether the agent deviated from the task handoff instructions during implementation |
+| `deviation_type` | string or null | **REQUIRED** | `"minor"` \| `"architectural"` \| `null` | Mutation handler `resolveTaskOutcome` | Classifies the severity of any deviation; must be `null` when `has_deviations` is `false` |
+
+> **IMPORTANT: Both `has_deviations` and `deviation_type` are REQUIRED in task report frontmatter. The pipeline engine validates that both fields are present. If either is missing, the pipeline returns an error result and halts processing. Set `has_deviations: false` and `deviation_type: null` when there are no deviations — do NOT omit the fields.**
+
 ## Status Classification
 
 | Status | Meaning | Planner Action |

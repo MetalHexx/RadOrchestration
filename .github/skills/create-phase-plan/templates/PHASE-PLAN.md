@@ -1,11 +1,14 @@
 ---
-project: "{PROJECT-NAME}"
-phase: {PHASE_NUMBER}
-title: "{PHASE-TITLE}"
-status: "active|complete|halted"
-total_tasks: {NUMBER}
-author: "tactical-planner-agent"
-created: "{ISO-DATE}"
+project: "{PROJECT-NAME}"           # string, e.g., "MONITORING-UI", should match project folder name
+phase: {PHASE_NUMBER}               # integer, e.g., 1
+title: "{PHASE-TITLE}"              # string, human-readable phase title, not just "Phase 1"
+status: "active|complete|halted"    # string, one of "active", "complete", or "halted"
+total_tasks: {NUMBER}               # integer, total number of tasks in this phase
+tasks:                              # list of tasks with id, title
+  - id: "{TASK-ID}"                 # string, e.g., "T01-AUTH"
+    title: "{TASK-TITLE}"           # string, human-readable task title
+author: "tactical-planner-agent"    # string, name of the agent creating this phase plan
+created: "{ISO-DATE}"               # string, ISO 8601 date-time of phase plan creation
 ---
 
 # Phase {N}: {PHASE-TITLE}

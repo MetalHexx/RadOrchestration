@@ -21,6 +21,7 @@ Generate a self-contained Task Handoff document that is the sole input a Coding 
 | Architecture | `{NAME}-ARCHITECTURE.md` | Contracts, interfaces, file structure |
 | Design | `{NAME}-DESIGN.md` | Design tokens, component specs (if UI task) |
 | Previous Task Report | `{NAME}-TASK-REPORT-P{NN}-T{NN}.md` | Output from prior task (if dependency exists) |
+| State | `state.json` | Current project state, review actions, mutation handler outcomes |
 
 ## Workflow
 
@@ -36,6 +37,31 @@ Generate a self-contained Task Handoff document that is the sole input a Coding 
 10. **Add constraints**: Explicit boundaries (what NOT to do)
 11. **Write the Task Handoff**: Use the bundled template at [templates/TASK-HANDOFF.md](./templates/TASK-HANDOFF.md)
 12. **Save**: Write to `{PROJECT-DIR}/tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md`
+
+## Prior Context (Corrective Handling)
+
+Before creating the task handoff, check for corrective routing:
+
+1. **Read** `state.json → execution.phases[current].tasks[previous].review_action`
+2. **Route** based on the value:
+
+| `review_action` value | What to produce |
+|-----------------------|------------------|
+| `null` (no review doc) | Normal Task Handoff; include Task Report Recommendations in context |
+| `"advanced"` / `"advance"` | Normal Task Handoff; include carry-forward items in context |
+| `"corrective_task_issued"` | Corrective Task Handoff; inline all Issues from Code Review; include original acceptance criteria |
+| `"halted"` | DO NOT produce a Task Handoff — inform the Orchestrator the pipeline is halted |
+
+### Corrective Task Handoff
+
+When `review_action == "corrective_task_issued"`:
+
+1. Read the code review document at the task's `review_doc` path in `state.json`
+2. Extract the **Issues** table from the review
+3. These issues become the primary objective of the corrective handoff
+4. Include the original task's acceptance criteria (they still apply)
+5. Focus implementation steps ONLY on fixing the identified issues — do not re-implement the full task
+6. Save with the same task ID (overwrite or append `-fix` suffix as appropriate)
 
 ## Key Rules
 

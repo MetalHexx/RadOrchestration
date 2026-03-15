@@ -31,7 +31,7 @@ Generate a Master Plan that is the single source of truth for the project. Synth
 4. **Curate key requirements**: Extract P0 functional and critical non-functional requirements from the PRD (3-8 items, not a copy)
 5. **Curate key technical decisions**: Extract architectural decisions that constrain implementation (3-8 items)
 6. **Curate key design constraints**: Extract design decisions that affect implementation (3-8 items)
-7. **Define phase outline**: High-level phases with goals, scope bullets (cross-referencing source docs), and exit criteria
+7. **Define phase outline**: High-level phases with goals, scope bullets (cross-referencing source docs), and exit criteria. Ensure `total_phases` in the frontmatter matches the number of phases defined here.
 8. **Set execution constraints**: Pull limits from `orchestration.yml` — max phases, max tasks, git strategy, human gates
 9. **Build risk register**: Aggregate risks from PRD and Architecture with mitigation strategies
 10. **Write the Master Plan**: Use the bundled template at [templates/MASTER-PLAN.md](./templates/MASTER-PLAN.md)
@@ -43,6 +43,23 @@ Generate a Master Plan that is the single source of truth for the project. Synth
 - **Curated summaries, not copies**: 3-8 items per section, linking back to source doc sections
 - **Phase outline is high-level**: NO task details — each phase has a goal, scope bullets, and exit criteria
 - **Phase docs are NOT created here**: Just placeholders with future paths — the Tactical Planner creates them at execution time
+- **`total_phases` must be set**: The frontmatter `total_phases` field must be a positive integer matching the number of phases in the Phase Outline. The pipeline engine requires this field to initialize execution state.
+
+## Frontmatter Requirements
+
+The master plan document must include the following YAML frontmatter fields:
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `project` | Yes | String | The project name (e.g., `MY-PROJECT`) |
+| `total_phases` | Yes | Positive integer | The number of execution phases in the plan |
+| `status` | Yes | String | Document status: `draft` or `approved` |
+| `author` | Yes | String | Agent that created the document (e.g., `architect-agent`) |
+| `created` | Yes | String | ISO-8601 date of creation |
+
+### `total_phases`
+
+The `total_phases` field is a required positive integer (1 or greater) that must match the number of phases defined in the Phase Outline section. The pipeline engine reads this field on `plan_approved` to initialize the `execution.phases[]` array with the correct number of phase entries. A missing or invalid `total_phases` value produces a hard error (exit code 1).
 
 ## Template
 

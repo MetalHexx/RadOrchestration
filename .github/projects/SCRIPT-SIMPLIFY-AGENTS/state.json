@@ -1,0 +1,364 @@
+{
+  "$schema": "orchestration-state-v2",
+  "project": {
+    "name": "SCRIPT-SIMPLIFY-AGENTS",
+    "created": "2026-03-12T21:00:00Z",
+    "updated": "2026-03-12T23:00:00.000Z"
+  },
+  "pipeline": {
+    "current_tier": "complete",
+    "human_gate_mode": "ask"
+  },
+  "planning": {
+    "status": "complete",
+    "brainstorming_doc": "SCRIPT-SIMPLIFY-AGENTS-BRAINSTORMING.md",
+    "steps": {
+      "research": {
+        "status": "complete",
+        "output": "SCRIPT-SIMPLIFY-AGENTS-RESEARCH-FINDINGS.md"
+      },
+      "prd": {
+        "status": "complete",
+        "output": "SCRIPT-SIMPLIFY-AGENTS-PRD.md"
+      },
+      "design": {
+        "status": "complete",
+        "output": "SCRIPT-SIMPLIFY-AGENTS-DESIGN.md"
+      },
+      "architecture": {
+        "status": "complete",
+        "output": "SCRIPT-SIMPLIFY-AGENTS-ARCHITECTURE.md"
+      },
+      "master_plan": {
+        "status": "complete",
+        "output": "SCRIPT-SIMPLIFY-AGENTS-MASTER-PLAN.md"
+      }
+    },
+    "human_approved": true
+  },
+  "execution": {
+    "status": "complete",
+    "current_phase": 3,
+    "total_phases": 4,
+    "phases": [
+      {
+        "id": "P01-CORE-PIPELINE-ENGINE",
+        "status": "complete",
+        "current_task": 6,
+        "phase_doc": "phases/SCRIPT-SIMPLIFY-AGENTS-PHASE-01-CORE-PIPELINE-ENGINE.md",
+        "phase_report": "reports/SCRIPT-SIMPLIFY-AGENTS-PHASE-01-REPORT.md",
+        "phase_review": "reports/SCRIPT-SIMPLIFY-AGENTS-PHASE-01-REVIEW.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advance",
+        "tasks": [
+          {
+            "id": "T01-STATE-IO",
+            "title": "State I/O Module + Tests",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T01-STATE-IO.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T01-STATE-IO-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T01-STATE-IO-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "id": "T02-MUTATIONS",
+            "title": "Mutations Module — All 18 Handlers + Helpers",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T02-MUTATIONS.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T02-MUTATIONS-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T02-MUTATIONS-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "id": "T03-MUTATIONS-TESTS",
+            "title": "Mutations Unit Tests",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T03-MUTATIONS-TESTS.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T03-MUTATIONS-TESTS-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T03-MUTATIONS-TESTS-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "id": "T04-PIPELINE-ENGINE",
+            "title": "Pipeline Engine",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T04-PIPELINE-ENGINE.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T04-PIPELINE-ENGINE-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T04-PIPELINE-ENGINE-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "id": "T05-PIPELINE-ENGINE-TESTS",
+            "title": "Pipeline Engine Integration Tests",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T05-PIPELINE-ENGINE-TESTS.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T05-PIPELINE-ENGINE-TESTS-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T05-PIPELINE-ENGINE-TESTS-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "id": "T06-PIPELINE-CLI",
+            "title": "Pipeline CLI Entry Point + Tests",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T06-PIPELINE-CLI.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T06-PIPELINE-CLI-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P01-T06-PIPELINE-CLI-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          }
+        ]
+      },
+      {
+        "id": "P02-AGENT-SKILL-REFACTORING",
+        "status": "complete",
+        "current_task": 7,
+        "phase_doc": "phases/SCRIPT-SIMPLIFY-AGENTS-PHASE-02-AGENT-SKILL-REFACTORING.md",
+        "phase_report": "reports/SCRIPT-SIMPLIFY-AGENTS-PHASE-02-REPORT.md",
+        "phase_review": "reports/SCRIPT-SIMPLIFY-AGENTS-PHASE-02-REVIEW.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advance",
+        "tasks": [
+          {
+            "id": "T01-PIPELINE-ENGINE-FIXES",
+            "title": "Pipeline Engine Carry-Forward Fixes",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T01-CARRY-FORWARD.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T01-CARRY-FORWARD-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T01-CARRY-FORWARD-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T02-ORCHESTRATOR-REWRITE",
+            "title": "Orchestrator Agent Rewrite",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T02-ORCHESTRATOR.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T02-ORCHESTRATOR-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T02-ORCHESTRATOR-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T03-TACTICAL-PLANNER-REWRITE",
+            "title": "Tactical Planner Agent Rewrite",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T03-TACTICAL-PLANNER.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T03-TACTICAL-PLANNER-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T03-TACTICAL-PLANNER-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T04-REVIEWER-REVIEW-TASK",
+            "title": "Reviewer Agent + review-task Skill Rename",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T04-REVIEWER.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T04-REVIEWER-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T04-REVIEWER-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T05-OTHER-AGENTS-TRIAGE-DELETE",
+            "title": "Other Agent Updates + triage-report Deletion",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T05-OTHER-AGENTS.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T05-OTHER-AGENTS-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T05-OTHER-AGENTS-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T06-PLANNING-SKILL-UPDATES",
+            "title": "Planning Skill Updates",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T06-PLANNING-SKILLS.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-REPORT-P02-T06.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T06-PLANNING-SKILLS-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T07-INSTRUCTION-FILE-UPDATES",
+            "title": "Instruction & Configuration File Updates",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T07-INSTRUCTIONS.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T07-INSTRUCTIONS-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P02-T07-INSTRUCTIONS-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          }
+        ]
+      },
+      {
+        "id": "P03-CLEANUP-DELETION",
+        "status": "complete",
+        "current_task": 4,
+        "phase_doc": "phases/SCRIPT-SIMPLIFY-AGENTS-PHASE-03-CLEANUP-DELETION.md",
+        "phase_report": "reports/SCRIPT-SIMPLIFY-AGENTS-PHASE-03-REPORT.md",
+        "phase_review": "reports/SCRIPT-SIMPLIFY-AGENTS-PHASE-03-REVIEW.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advance",
+        "tasks": [
+          {
+            "id": "T01-DELETE-SCRIPTS",
+            "title": "Delete Standalone Scripts & Tests",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P03-T01-DELETE-SCRIPTS.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-REPORT-P03-T01.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P03-T01-DELETE-SCRIPTS-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T02-DELETE-SHADOW-DOCS",
+            "title": "Delete Shadow Docs & Schemas Dir",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P03-T02-DELETE-DOCS.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P03-T02-DELETE-DOCS-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P03-T02-DELETE-DOCS-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T03-UPDATE-VALIDATION-TESTS",
+            "title": "Update Validation Test Suites",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P03-T03-VALIDATION-TESTS.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-REPORT-P03-T03.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P03-T03-VALIDATION-TESTS-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T04-CARRY-FORWARD-SWEEP",
+            "title": "Carry-Forward + Reference Sweep",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P03-T04-SWEEP.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P03-T04-SWEEP-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P03-T04-SWEEP-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          }
+        ]
+      },
+      {
+        "id": "P04-DOCUMENTATION-OVERHAUL",
+        "status": "complete",
+        "current_task": 5,
+        "phase_doc": "phases/SCRIPT-SIMPLIFY-AGENTS-PHASE-04-DOCUMENTATION-OVERHAUL.md",
+        "phase_report": "reports/SCRIPT-SIMPLIFY-AGENTS-PHASE-04-REPORT.md",
+        "phase_review": "reports/SCRIPT-SIMPLIFY-AGENTS-PHASE-04-REVIEW.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advance",
+        "tasks": [
+          {
+            "id": "T01-SCRIPTS-MD",
+            "title": "Rewrite scripts.md",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P04-T01-SCRIPTS-MD.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P04-T01-SCRIPTS-MD-REPORT.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P04-T01-SCRIPTS-MD-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T02-PIPELINE-MD",
+            "title": "Rewrite pipeline.md",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P04-T02-PIPELINE-MD.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-REPORT-P04-T02.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P04-T02-PIPELINE-MD-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T03-AGENTS-SKILLS-MD",
+            "title": "Update agents.md & skills.md",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P04-T03-AGENTS-SKILLS-MD.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-REPORT-P04-T03.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P04-T03-AGENTS-SKILLS-MD-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T04-GETTING-STARTED-MD",
+            "title": "Update getting-started.md",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P04-T04-GETTING-STARTED-MD.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-REPORT-P04-T04.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P04-T04-GETTING-STARTED-MD-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T05-VALIDATION-PROJECT-MD",
+            "title": "Update validation.md & project-structure.md",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P04-T05-VALIDATION-STRUCTURE-MD.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-REPORT-P04-T05.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P04-T05-VALIDATION-STRUCTURE-MD-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "id": "T06-README-SWEEP",
+            "title": "Update README.md + final sweep",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/SCRIPT-SIMPLIFY-AGENTS-TASK-P04-T06-README-SWEEP.md",
+            "report_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-REPORT-P04-T06.md",
+            "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-TASK-P04-T06-README-SWEEP-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          }
+        ]
+      }
+    ]
+  },
+  "final_review": {
+    "status": "complete",
+    "review_doc": "reports/SCRIPT-SIMPLIFY-AGENTS-FINAL-REVIEW.md",
+    "verdict": "approved",
+    "human_approved": true
+  },
+  "errors": {
+    "total_retries": 0,
+    "total_halts": 0,
+    "active_blockers": []
+  },
+  "limits": {
+    "max_phases": 10,
+    "max_tasks_per_phase": 8,
+    "max_retries_per_task": 2,
+    "max_consecutive_review_rejections": 3
+  }
+}

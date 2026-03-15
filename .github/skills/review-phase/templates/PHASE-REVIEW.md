@@ -3,6 +3,7 @@ project: "{PROJECT-NAME}"
 phase: {PHASE_NUMBER}
 verdict: "approved|changes_requested|rejected"
 severity: "none|minor|critical"
+exit_criteria_met: true             # REQUIRED boolean — true if all phase exit criteria verified, false otherwise
 author: "reviewer-agent"
 created: "{ISO-DATE}"
 ---

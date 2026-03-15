@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 import { getWorkspaceRoot, resolveDocPath, resolveProjectDir } from '@/lib/path-resolver';
 import { readConfig, readDocument } from '@/lib/fs-reader';
 import { parseDocument } from '@/lib/markdown-parser';

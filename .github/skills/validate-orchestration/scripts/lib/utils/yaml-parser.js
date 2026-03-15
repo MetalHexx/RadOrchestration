@@ -61,7 +61,33 @@ function parseYaml(yamlString) {
       if (trimmed.startsWith('- ')) {
         if (Array.isArray(current)) {
           const itemContent = trimmed.slice(2).trim();
-          current.push(parseScalar(itemContent));
+          const colonIdx = findKeyColon(itemContent);
+          if (colonIdx !== -1) {
+            // Key-value pair → object item
+            const obj = {};
+            const key = itemContent.slice(0, colonIdx).trim();
+            const rawValue = itemContent.slice(colonIdx + 1).trim();
+            obj[key] = parseScalar(rawValue);
+            // Consume continuation lines (indented deeper than the `- ` prefix)
+            const itemIndent = indent + 2; // indent of content after `- `
+            while (i + 1 < lines.length) {
+              const nextLine = lines[i + 1];
+              const nextIndent = getIndent(nextLine);
+              const nextTrimmed = nextLine.trim();
+              if (nextTrimmed === '' || nextIndent <= indent) break;
+              const contColonIdx = findKeyColon(nextTrimmed);
+              if (contColonIdx !== -1) {
+                const contKey = nextTrimmed.slice(0, contColonIdx).trim();
+                const contRawValue = nextTrimmed.slice(contColonIdx + 1).trim();
+                obj[contKey] = parseScalar(contRawValue);
+              }
+              i++;
+            }
+            current.push(obj);
+          } else {
+            // No colon → scalar item (existing behavior)
+            current.push(parseScalar(itemContent));
+          }
         }
         i++;
         continue;
