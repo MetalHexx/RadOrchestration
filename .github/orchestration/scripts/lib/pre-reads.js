@@ -1,5 +1,8 @@
 'use strict';
 
+const path = require('path');
+const { readFile } = require('../../../skills/validate-orchestration/scripts/lib/utils/fs-helpers');
+
 // ─── Status Normalization ───────────────────────────────────────────────────
 
 const STATUS_MAP = Object.freeze({
@@ -25,8 +28,42 @@ function readOrFail(readDocument, docPath, event) {
 
 // ─── Per-Event Handlers ─────────────────────────────────────────────────────
 
-function handlePlanApproved(context, readDocument) {
-  const { ok, frontmatter, result } = readOrFail(readDocument, context.doc_path, 'plan_approved');
+function handlePlanApproved(context, readDocument, projectDir) {
+  let docPath = context.doc_path;
+
+  if (!docPath) {
+    // Derive doc_path from state.planning.steps[4] (master_plan step).
+    // This step is always populated before plan_approved is ever signaled.
+    const stateRaw = readFile(path.join(projectDir, 'state.json'));
+    if (!stateRaw) {
+      return failure(
+        "Cannot derive master plan path: state.json unreadable at '" + projectDir + "'",
+        'plan_approved',
+        'doc_path',
+      );
+    }
+    let state;
+    try {
+      state = JSON.parse(stateRaw);
+    } catch (err) {
+      return failure(
+        'Cannot derive master plan path: state.json is not valid JSON',
+        'plan_approved',
+        'doc_path',
+      );
+    }
+    const derived = state?.planning?.steps?.[4]?.doc_path;
+    if (!derived) {
+      return failure(
+        'Cannot derive master plan path: state.planning.steps[4].doc_path is not set',
+        'plan_approved',
+        'doc_path',
+      );
+    }
+    docPath = path.isAbsolute(derived) ? derived : path.join(projectDir, derived);
+  }
+
+  const { ok, frontmatter, result } = readOrFail(readDocument, docPath, 'plan_approved');
   if (!ok) return result;
   const n = frontmatter.total_phases;
   if (n === undefined || n === null) return failure('Missing required field', 'plan_approved', 'total_phases');
