@@ -4,8 +4,7 @@ phase: {PHASE_NUMBER}
 task: {TASK_NUMBER}
 title: "{TASK-TITLE}"
 status: "pending"
-skills_required: ["{skill-1}", "{skill-2}"]
-skills_optional: ["{skill-3}"]
+skills: ["{skill-1}", "{skill-2}"]  # Skill folder names from  agent skills folder — NOT technology or framework names
 estimated_files: {NUMBER}
 ---
 
