@@ -84,6 +84,11 @@ When a user starts a brainstorming session:
 |----------|------|--------|
 | Brainstorming | `{PROJECT-DIR}/{NAME}-BRAINSTORMING.md` | Structured markdown per template |
 
+## Interview User / Open Questions
+- Try to resolve your open questions with the user before documenting them in `BRAINSTORMING.md`
+- Use the `vscode/AskQuestions` tool to ask questions in a structured way that allows the user to easily respond.
+- Don't just write questions in the BRAINSTORMING.md and wait for the user to see them there
+
 ## Quality Standards
 
 - **Consensus-driven**: Only write goals that the human has validated — don't dump every thought
