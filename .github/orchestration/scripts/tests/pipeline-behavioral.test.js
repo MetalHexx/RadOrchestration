@@ -885,3 +885,73 @@ describe('Category 10: Edge cases', () => {
     assert.equal(result.mutations_applied.length, 0);
   });
 });
+
+// ─── Category 11: Corrective Task Flow ───────────────────────────────────
+
+describe('Category 11 — Corrective Task Flow', () => {
+  const state = createExecutionState({
+    execution: {
+      total_phases: 1,
+      phases: [{
+        name: 'Phase 1',
+        status: 'in_progress',
+        current_task: 0,
+        total_tasks: 1,
+        tasks: [{
+          name: 'T01',
+          status: 'failed',
+          handoff_doc: 'c11-original-handoff.md',
+          report_doc: 'c11-report.md',
+          report_status: 'complete',
+          review_doc: 'c11-review.md',
+          review_verdict: 'changes_requested',
+          review_action: 'corrective_task_issued',
+          has_deviations: false,
+          deviation_type: null,
+          retries: 1,
+        }],
+        phase_plan_doc: 'pp.md',
+        phase_report_doc: null,
+        phase_review_doc: null,
+        phase_review_verdict: null,
+        phase_review_action: null,
+      }],
+    },
+  });
+  delete state.project.updated;
+
+  const documents = {
+    'c11-corrective-report.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+  };
+
+  const io = createMockIO({ state, documents });
+  let writeCount = 0;
+
+  it('Step 1: task_handoff_created (corrective) → execute_task; stale fields cleared', () => {
+    const result = processEvent('task_handoff_created', PROJECT_DIR, { doc_path: 'c11-corrective-handoff.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'execute_task');
+    assert.equal(io.getWrites().length, writeCount);
+
+    const task = io.getState().execution.phases[0].tasks[0];
+    // Status and handoff_doc set correctly
+    assert.equal(task.status, 'in_progress');
+    assert.equal(task.handoff_doc, 'c11-corrective-handoff.md');
+
+    // All five stale fields cleared to null
+    assert.equal(task.report_doc, null);
+    assert.equal(task.report_status, null);
+    assert.equal(task.review_doc, null);
+    assert.equal(task.review_verdict, null);
+    assert.equal(task.review_action, null);
+  });
+
+  it('Step 2: task_completed → spawn_code_reviewer', () => {
+    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c11-corrective-report.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_code_reviewer');
+    assert.equal(io.getWrites().length, writeCount);
+  });
+});

@@ -238,15 +238,27 @@ function handlePhasePlanCreated(state, context, config) {
 /** @type {MutationHandler} */
 function handleTaskHandoffCreated(state, context, config) {
   const task = currentTask(state);
+  const mutations = [];
+
+  // Clear stale report/review from previous attempt (corrective re-execution)
+  if (task.report_doc) {
+    task.report_doc = null;
+    task.report_status = null;
+    mutations.push('Cleared task.report_doc and report_status (corrective re-execution)');
+  }
+  if (task.review_doc) {
+    task.review_doc = null;
+    task.review_verdict = null;
+    task.review_action = null;
+    mutations.push('Cleared task.review_doc, review_verdict, and review_action (corrective re-execution)');
+  }
+
   task.handoff_doc = context.doc_path;
   task.status = TASK_STATUSES.IN_PROGRESS;
-  return {
-    state,
-    mutations_applied: [
-      `Set task.handoff_doc to "${context.doc_path}"`,
-      `Set task.status to "${TASK_STATUSES.IN_PROGRESS}"`,
-    ],
-  };
+  mutations.push(`Set task.handoff_doc to "${context.doc_path}"`);
+  mutations.push(`Set task.status to "${TASK_STATUSES.IN_PROGRESS}"`);
+
+  return { state, mutations_applied: mutations };
 }
 
 /** @type {MutationHandler} */
