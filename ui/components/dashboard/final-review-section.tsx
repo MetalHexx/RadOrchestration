@@ -5,14 +5,17 @@ import { CheckCircle2, Circle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { StatusIcon } from "@/components/badges";
 import { DocumentLink } from "@/components/documents";
-import type { NormalizedFinalReview } from "@/types/state";
+import { ApproveGateButton } from "@/components/dashboard/approve-gate-button";
+import type { NormalizedFinalReview, PipelineTier } from "@/types/state";
 
 interface FinalReviewSectionProps {
   finalReview: NormalizedFinalReview;
+  projectName: string;
+  pipelineTier: PipelineTier;
   onDocClick: (path: string) => void;
 }
 
-export function FinalReviewSection({ finalReview, onDocClick }: FinalReviewSectionProps) {
+export function FinalReviewSection({ finalReview, projectName, pipelineTier, onDocClick }: FinalReviewSectionProps) {
   if (finalReview.status === "not_started") {
     return null;
   }
@@ -45,6 +48,14 @@ export function FinalReviewSection({ finalReview, onDocClick }: FinalReviewSecti
               />
               <span>Human Approved</span>
             </>
+          ) : pipelineTier === "review" ? (
+            <ApproveGateButton
+              gateEvent="final_approved"
+              projectName={projectName}
+              documentName={`${projectName}-FINAL-REVIEW.md`}
+              label="Approve Final Review"
+              className="mt-1"
+            />
           ) : (
             <>
               <Circle

@@ -109,9 +109,13 @@ export function normalizeState(raw: RawStateJson): NormalizedProjectState {
       phases: raw.execution.phases.map((p, i) => normalizePhase(p, i)),
     },
     final_review: raw.final_review ?? {
-      status: 'not_started' as FinalReviewStatus,
-      report_doc: null,
-      human_approved: false,
+      status:
+        (raw.execution as Record<string, unknown>).final_review_status as FinalReviewStatus
+        ?? 'not_started' as FinalReviewStatus,
+      report_doc:
+        ((raw.execution as Record<string, unknown>).final_review_doc as string) ?? null,
+      human_approved:
+        ((raw.execution as Record<string, unknown>).final_review_approved as boolean) ?? false,
     },
     errors: raw.errors ?? {
       total_retries: 0,

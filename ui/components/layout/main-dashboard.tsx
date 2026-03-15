@@ -109,6 +109,7 @@ export function MainDashboard({
 
         <PlanningSection
           planning={projectState.planning}
+          projectName={projectState.project.name}
           onDocClick={onDocClick}
         />
 
@@ -120,6 +121,8 @@ export function MainDashboard({
 
         <FinalReviewSection
           finalReview={projectState.final_review}
+          projectName={projectState.project.name}
+          pipelineTier={projectState.pipeline.current_tier}
           onDocClick={onDocClick}
         />
 

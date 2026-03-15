@@ -202,3 +202,26 @@ export interface NormalizedLimits {
   max_tasks_per_phase: number;
   max_retries_per_task: number;
 }
+
+// ─── Gate Approval Types ────────────────────────────────────────────────────
+
+/** Whitelist of allowed gate events — prevents arbitrary event forwarding. */
+export type GateEvent = 'plan_approved' | 'final_approved';
+
+/** POST /api/projects/[name]/gate — request body. */
+export interface GateApproveRequest {
+  event: GateEvent;
+}
+
+/** POST /api/projects/[name]/gate — success response (HTTP 200). */
+export interface GateApproveResponse {
+  success: true;
+  action: string;
+  mutations_applied: string[];
+}
+
+/** POST /api/projects/[name]/gate — error response (HTTP 400/404/409/500). */
+export interface GateErrorResponse {
+  error: string;
+  detail?: string;
+}
