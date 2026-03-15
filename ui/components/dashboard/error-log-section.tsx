@@ -1,13 +1,18 @@
 "use client";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { DocumentLink } from "@/components/documents";
 import type { NormalizedErrors } from "@/types/state";
 
 interface ErrorLogSectionProps {
   errors: NormalizedErrors;
+  /** Path to error log file, or null if no error log exists */
+  errorLogPath?: string | null;
+  /** Callback to open a document in the viewer */
+  onDocClick?: (path: string) => void;
 }
 
-export function ErrorLogSection({ errors }: ErrorLogSectionProps) {
+export function ErrorLogSection({ errors, errorLogPath = null, onDocClick }: ErrorLogSectionProps) {
   return (
     <Card>
       <CardHeader>
@@ -34,6 +39,12 @@ export function ErrorLogSection({ errors }: ErrorLogSectionProps) {
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">No active blockers</p>
+        )}
+
+        {errorLogPath !== null && onDocClick && (
+          <div>
+            <DocumentLink path={errorLogPath} label="View Error Log" onDocClick={onDocClick} />
+          </div>
         )}
       </CardContent>
     </Card>

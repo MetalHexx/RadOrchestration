@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import {
   Sheet,
   SheetContent,
@@ -9,9 +10,10 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { DocumentResponse } from "@/types/components";
+import type { DocumentResponse, OrderedDoc } from "@/types/components";
 
 import { DocumentMetadata } from "./document-metadata";
+import { DocumentNavFooter } from "./document-nav-footer";
 import { MarkdownRenderer } from "./markdown-renderer";
 
 interface DocumentDrawerProps {
@@ -27,6 +29,12 @@ interface DocumentDrawerProps {
   data: DocumentResponse | null;
   /** Callback to close the drawer */
   onClose: () => void;
+  /** Ref to the scroll container — used to reset scroll position on document change */
+  scrollAreaRef: React.RefObject<HTMLDivElement>;
+  /** Ordered document list for Prev/Next navigation */
+  docs?: OrderedDoc[];
+  /** Callback when user navigates via Prev/Next */
+  onNavigate?: (path: string) => void;
 }
 
 function extractFilename(docPath: string): string {
@@ -41,6 +49,9 @@ export function DocumentDrawer({
   error,
   data,
   onClose,
+  scrollAreaRef,
+  docs,
+  onNavigate,
 }: DocumentDrawerProps) {
   const title = data?.frontmatter?.title || (docPath ? extractFilename(docPath) : "Document");
 
@@ -54,33 +65,45 @@ export function DocumentDrawer({
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-[640px]"
+        className="!w-full md:!w-[50vw] md:!max-w-[50vw] overflow-hidden"
         aria-label={`Document viewer: ${title}`}
       >
-        <SheetHeader>
+        <SheetHeader className="border-b border-border px-6 py-4">
           <SheetTitle>{title}</SheetTitle>
           <SheetDescription>
             {docPath ? extractFilename(docPath) : "No document selected"}
           </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="flex-1 px-4 pb-4">
-          {loading && <LoadingSkeleton />}
+        <div ref={scrollAreaRef} className="flex-1 min-h-0">
+          <ScrollArea className="h-full">
+            <div className="px-6 py-4">
+              {loading && <LoadingSkeleton />}
 
-          {error && (
-            <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
-              <p className="font-medium">Failed to load document</p>
-              <p className="mt-1 text-destructive/80">{error}</p>
-            </div>
-          )}
+              {error && (
+                <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+                  <p className="font-medium">Failed to load document</p>
+                  <p className="mt-1 text-destructive/80">{error}</p>
+                </div>
+              )}
 
-          {data && !loading && !error && (
-            <div className="space-y-4">
-              <DocumentMetadata frontmatter={data.frontmatter} />
-              <MarkdownRenderer content={data.content} />
+              {data && !loading && !error && (
+                <div className="space-y-4">
+                  <DocumentMetadata frontmatter={data.frontmatter} />
+                  <MarkdownRenderer content={data.content} />
+                </div>
+              )}
             </div>
-          )}
-        </ScrollArea>
+          </ScrollArea>
+        </div>
+
+        {data && !loading && !error && docPath && docs && docs.length > 0 && onNavigate && (
+          <DocumentNavFooter
+            docs={docs}
+            currentPath={docPath}
+            onNavigate={onNavigate}
+          />
+        )}
       </SheetContent>
     </Sheet>
   );

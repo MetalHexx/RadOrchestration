@@ -7,6 +7,7 @@ import { PlanningSection } from "@/components/dashboard/planning-section";
 import { ExecutionSection } from "@/components/execution/execution-section";
 import { FinalReviewSection } from "@/components/dashboard/final-review-section";
 import { ErrorLogSection } from "@/components/dashboard/error-log-section";
+import { OtherDocsSection } from "@/components/dashboard";
 import { GateHistorySection } from "@/components/dashboard/gate-history-section";
 import { LimitsSection } from "@/components/dashboard/limits-section";
 import { NotInitializedView } from "./not-initialized-view";
@@ -18,6 +19,8 @@ interface MainDashboardProps {
   projectState: NormalizedProjectState | null;
   project: ProjectSummary;
   onDocClick: (path: string) => void;
+  errorLogPath?: string | null;
+  otherDocs?: string[];
 }
 
 function deriveGateEntries(state: NormalizedProjectState): GateEntry[] {
@@ -52,6 +55,8 @@ export function MainDashboard({
   projectState,
   project,
   onDocClick,
+  errorLogPath,
+  otherDocs,
 }: MainDashboardProps) {
   // Malformed state takes priority
   if (projectState === null && project.hasMalformedState) {
@@ -118,7 +123,9 @@ export function MainDashboard({
           onDocClick={onDocClick}
         />
 
-        <ErrorLogSection errors={projectState.errors} />
+        <ErrorLogSection errors={projectState.errors} errorLogPath={errorLogPath} onDocClick={onDocClick} />
+
+        <OtherDocsSection files={otherDocs ?? []} onDocClick={onDocClick} />
 
         <GateHistorySection gates={gates} />
 

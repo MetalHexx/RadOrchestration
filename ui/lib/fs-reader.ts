@@ -137,3 +137,31 @@ export async function fileExists(absolutePath: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Recursively list all .md files in a project directory.
+ * Returns paths relative to the project directory using forward slashes.
+ * Does not follow symlinks. Skips entries containing "..".
+ *
+ * @param projectDir - Absolute path to the project directory
+ * @returns Array of relative file paths (e.g., ["PRD.md", "tasks/TASK-P01-T01.md"])
+ */
+export async function listProjectFiles(projectDir: string): Promise<string[]> {
+  const files: string[] = [];
+
+  async function walk(dir: string): Promise<void> {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name.includes('..')) continue;
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(fullPath);
+      } else if (entry.name.endsWith('.md')) {
+        files.push(path.relative(projectDir, fullPath).replace(/\\/g, '/'));
+      }
+    }
+  }
+
+  await walk(projectDir);
+  return files;
+}

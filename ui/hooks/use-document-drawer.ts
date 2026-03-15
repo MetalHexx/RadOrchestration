@@ -23,6 +23,10 @@ interface UseDocumentDrawerReturn {
   openDocument: (path: string) => void;
   /** Close the drawer and reset state */
   close: () => void;
+  /** Navigate to a new document without closing the drawer; resets scroll */
+  navigateTo: (path: string) => void;
+  /** Ref to attach to the scroll viewport wrapper — auto-resets on docPath change */
+  scrollAreaRef: React.RefObject<HTMLDivElement>;
 }
 
 export function useDocumentDrawer({
@@ -35,6 +39,7 @@ export function useDocumentDrawer({
   const [data, setData] = useState<DocumentResponse | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const openDocument = useCallback((path: string) => {
     setIsOpen(true);
@@ -47,6 +52,13 @@ export function useDocumentDrawer({
   const close = useCallback(() => {
     setIsOpen(false);
     // Preserve docPath and data so closing animation shows content
+  }, []);
+
+  const navigateTo = useCallback((path: string) => {
+    setDocPath(path);
+    setData(null);
+    setError(null);
+    setLoading(true);
   }, []);
 
   useEffect(() => {
@@ -95,6 +107,18 @@ export function useDocumentDrawer({
     };
   }, [isOpen, docPath, projectName]);
 
+  // Reset scroll position when docPath changes
+  useEffect(() => {
+    if (docPath && scrollAreaRef.current) {
+      const viewport = scrollAreaRef.current.querySelector<HTMLElement>(
+        '[data-slot="scroll-area-viewport"]'
+      );
+      if (viewport) {
+        viewport.scrollTop = 0;
+      }
+    }
+  }, [docPath]);
+
   return {
     isOpen,
     docPath,
@@ -103,5 +127,7 @@ export function useDocumentDrawer({
     data,
     openDocument,
     close,
+    navigateTo,
+    scrollAreaRef,
   };
 }

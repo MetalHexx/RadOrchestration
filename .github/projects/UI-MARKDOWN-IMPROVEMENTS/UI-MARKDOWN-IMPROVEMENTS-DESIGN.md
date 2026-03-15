@@ -115,7 +115,7 @@ User toggles dark/light theme via the theme toggle in the header
 │  ├──────────────────────────────────────┤  │
 │  │ MarkdownRenderer                     │  │
 │  │   prose prose-sm dark:prose-invert   │  │
-│  │   ┌─ Headings with anchor links ──┐ │  │
+│  │   ┌─ Headings with anchor links  ──┐ │  │
 │  │   │ Rich prose content             │ │  │
 │  │   │ Tables with borders/stripes    │ │  │
 │  │   │ Code blocks with copy button   │ │  │
