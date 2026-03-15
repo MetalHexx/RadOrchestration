@@ -3,7 +3,7 @@
   "project": {
     "name": "SKILL-RECOMMENDATION",
     "created": "2026-03-15T16:29:33.847Z",
-    "updated": "2026-03-15T17:30:42.948Z"
+    "updated": "2026-03-15T17:35:14.838Z"
   },
   "planning": {
     "status": "complete",
@@ -134,6 +134,8 @@
         "phase_review_verdict": "approved",
         "phase_review_action": "advanced"
       }
-    ]
+    ],
+    "final_review_doc": ".github/projects/SKILL-RECOMMENDATION/reports/SKILL-RECOMMENDATION-FINAL-REVIEW.md",
+    "final_review_status": "complete"
   }
 }
