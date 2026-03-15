@@ -53,7 +53,7 @@ export async function discoverProjects(
       const state: RawStateJson = JSON.parse(raw);
       projects.push({
         name: projectName,
-        tier: state.pipeline.current_tier as PipelineTier,
+        tier: (state.pipeline?.current_tier ?? state.execution?.current_tier ?? 'planning') as PipelineTier,
         hasState: true,
         hasMalformedState: false,
         brainstormingDoc: state.project.brainstorming_doc ?? null,

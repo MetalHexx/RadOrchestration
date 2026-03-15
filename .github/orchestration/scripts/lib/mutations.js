@@ -208,9 +208,10 @@ function handlePhasePlanCreated(state, context, config) {
   const phase = currentPhase(state);
   phase.status = PHASE_STATUSES.IN_PROGRESS;
   phase.phase_plan_doc = context.doc_path;
+  if (context.title) phase.name = context.title;
   phase.total_tasks = context.tasks.length;
-  phase.tasks = context.tasks.map(taskName => ({
-    name: taskName,
+  phase.tasks = context.tasks.map(taskObj => ({
+    name: typeof taskObj === 'object' && taskObj !== null ? (taskObj.title ?? taskObj.id ?? String(taskObj)) : taskObj,
     status: TASK_STATUSES.NOT_STARTED,
     handoff_doc: null,
     report_doc: null,
@@ -227,6 +228,7 @@ function handlePhasePlanCreated(state, context, config) {
     mutations_applied: [
       `Set phase.status to "${PHASE_STATUSES.IN_PROGRESS}"`,
       `Set phase.phase_plan_doc to "${context.doc_path}"`,
+      ...(context.title ? [`Updated phase.name to "${context.title}"`] : []),
       `Set phase.total_tasks to ${context.tasks.length}`,
       `Populated phase.tasks with ${context.tasks.length} task(s)`,
     ],

@@ -221,6 +221,22 @@ describe('phase_plan_created', () => {
     assert.equal(res.context, undefined);
     assert.equal(res.error.field, 'tasks');
   });
+
+  it('forwards title to context when present in frontmatter', () => {
+    const tasks = [{ id: 't1' }];
+    const read = mockReadDocument({ '/phase.md': { frontmatter: { tasks, title: 'Core Features' }, body: '' } });
+    const res = preRead(event, ctx, read, '/proj');
+    assert.equal(res.error, undefined);
+    assert.equal(res.context.title, 'Core Features');
+  });
+
+  it('sets context.title to null when title is absent from frontmatter', () => {
+    const tasks = [{ id: 't1' }];
+    const read = mockReadDocument({ '/phase.md': { frontmatter: { tasks }, body: '' } });
+    const res = preRead(event, ctx, read, '/proj');
+    assert.equal(res.error, undefined);
+    assert.equal(res.context.title, null);
+  });
 });
 
 // ─── phase_review_completed ─────────────────────────────────────────────────

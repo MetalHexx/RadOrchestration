@@ -416,6 +416,28 @@ describe('handlePhasePlanCreated', () => {
     assert.ok(Array.isArray(result.mutations_applied));
     assert.ok(result.mutations_applied.length > 0);
   });
+
+  it('updates phase.name when context.title is provided', () => {
+    const s = makeExecutionState();
+    s.execution.phases[0].status = 'not_started';
+    s.execution.phases[0].total_tasks = 0;
+    s.execution.phases[0].tasks = [];
+    const handler = getMutation('phase_plan_created');
+    const r = handler(s, { doc_path: 'phases/p.md', tasks: ['T01'], title: 'Core Features' }, defaultConfig);
+    assert.equal(r.state.execution.phases[0].name, 'Core Features');
+    assert.ok(r.mutations_applied.some(m => m.includes('Core Features')));
+  });
+
+  it('does not change phase.name when context.title is absent', () => {
+    const s = makeExecutionState();
+    s.execution.phases[0].status = 'not_started';
+    s.execution.phases[0].total_tasks = 0;
+    s.execution.phases[0].tasks = [];
+    const originalName = s.execution.phases[0].name;
+    const handler = getMutation('phase_plan_created');
+    const r = handler(s, { doc_path: 'phases/p.md', tasks: ['T01'] }, defaultConfig);
+    assert.equal(r.state.execution.phases[0].name, originalName);
+  });
 });
 
 // ─── handleTaskHandoffCreated ───────────────────────────────────────────────

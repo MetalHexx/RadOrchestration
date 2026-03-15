@@ -43,7 +43,7 @@ export interface RawStateJson {
     updated: string;            // ISO 8601
     brainstorming_doc?: string; // v2 only
   };
-  pipeline: {
+  pipeline?: {                  // optional in v3 (tier moved to execution)
     current_tier: PipelineTier;
     human_gate_mode: HumanGateMode;
   };
@@ -52,26 +52,28 @@ export interface RawStateJson {
     steps: Record<PlanningStepName, {
       status: PlanningStepStatus;
       output: string | null;
-    }>;
+    }> | Array<{ name: string; status: PlanningStepStatus; doc_path: string | null }>; // v3 array format
     human_approved: boolean;
+    current_step?: string;      // v3 only
   };
   execution: {
     status: 'not_started' | 'in_progress' | 'complete' | 'halted';
+    current_tier?: PipelineTier; // v3: tier moved here from pipeline
     current_phase: number;
     total_phases: number;
     phases: RawPhase[];
   };
-  final_review: {
+  final_review?: {              // optional in v3
     status: FinalReviewStatus;
     report_doc: string | null;
     human_approved: boolean;
   };
-  errors: {
+  errors?: {                    // optional in v3
     total_retries: number;
     total_halts: number;
     active_blockers: string[];
   };
-  limits: {
+  limits?: {                    // optional in v3
     max_phases: number;
     max_tasks_per_phase: number;
     max_retries_per_task: number;
@@ -79,18 +81,21 @@ export interface RawStateJson {
 }
 
 export interface RawPhase {
-  phase_number: number;
-  title?: string;               // v2
-  name?: string;                // v1
+  phase_number?: number;            // optional in v3 (not present)
+  title?: string;                   // v2
+  name?: string;                    // v1 and v3
   status: PhaseStatus;
-  phase_doc?: string | null;    // v2
-  plan_doc?: string | null;     // v1
+  phase_doc?: string | null;        // v2
+  plan_doc?: string | null;         // v1
+  phase_plan_doc?: string | null;   // v3
   current_task: number;
   total_tasks: number;
   tasks: RawTask[];
-  phase_report: string | null;
-  human_approved: boolean;
-  phase_review?: string | null;
+  phase_report?: string | null;     // v2
+  phase_report_doc?: string | null; // v3
+  human_approved?: boolean;         // optional in v3 (not present)
+  phase_review?: string | null;     // v2
+  phase_review_doc?: string | null; // v3
   phase_review_verdict?: ReviewVerdict | null;
   phase_review_action?: PhaseReviewAction | null;
 }

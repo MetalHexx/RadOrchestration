@@ -60,11 +60,11 @@ function handleCodeReviewCompleted(context, readDocument) {
 function handlePhasePlanCreated(context, readDocument) {
   const { ok, frontmatter, result } = readOrFail(readDocument, context.doc_path, 'phase_plan_created');
   if (!ok) return result;
-  const { tasks } = frontmatter;
+  const { tasks, title } = frontmatter;
   if (tasks === undefined || tasks === null) return failure('Missing required field', 'phase_plan_created', 'tasks');
   if (!Array.isArray(tasks)) return failure('Invalid value: tasks must be an array', 'phase_plan_created', 'tasks');
   if (tasks.length === 0) return failure('Invalid value: tasks must be a non-empty array', 'phase_plan_created', 'tasks');
-  return success({ ...context, tasks });
+  return success({ ...context, tasks, title: title ?? null });
 }
 
 function handlePhaseReviewCompleted(context, readDocument) {
