@@ -31,6 +31,7 @@ Skills can include:
 |-------|-------------|---------|
 | `create-phase-plan` | Break project phases into concrete tasks with dependencies, execution order, and acceptance criteria | Tactical Planner |
 | `create-task-handoff` | Create self-contained task documents that inline all contracts, interfaces, and requirements | Tactical Planner |
+| `execute-coding-task` | Full coding task execution loop — read handoff, implement code, run tests, verify acceptance criteria, write Task Report | Coder |
 | `generate-task-report` | Document task completion — files changed, test results, deviations, discoveries | Coder, Tactical Planner |
 | `generate-phase-report` | Summarize phase outcomes — aggregated task results, exit criteria assessment, carry-forward items | Tactical Planner |
 | `run-tests` | Execute the project test suite and report structured results with pass/fail and error details | Coder, Tactical Planner |
@@ -64,7 +65,7 @@ Each agent is explicitly assigned skills in its `.agent.md` frontmatter. This ta
 | UX Designer | `create-design` |
 | Architect | `create-architecture`, `create-master-plan` |
 | Tactical Planner | `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
-| Coder | `generate-task-report`, `run-tests` |
+| Coder | `execute-coding-task`, `generate-task-report`, `run-tests` |
 | Reviewer | `review-task`, `review-phase` |
 
 ## Skill Recommendation in Task Handoffs

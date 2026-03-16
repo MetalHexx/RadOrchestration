@@ -142,7 +142,7 @@ Reads a single Task Handoff, implements the code changes, writes tests, runs the
 **Input:** `TASK-HANDOFF.md`
 **Output:** Source code, tests, `TASK-REPORT.md`
 
-**Skills:** `generate-task-report`, `run-tests`
+**Skills:** `execute-coding-task`, `generate-task-report`, `run-tests`
 
 ---
 
