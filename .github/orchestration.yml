@@ -6,7 +6,9 @@ version: "1.0"
 
 # ─── Project Storage ───────────────────────────────────────────────
 projects:
-  base_path: ".github/projects"          # Where project folders are created
+  # base_path accepts both relative paths (resolved from workspace root)
+  # and absolute paths (e.g., /shared/projects for git worktree setups).
+  base_path: "C:\\dev\\orchestration-projects"          # Where project folders are created
   naming: "SCREAMING_CASE"               # SCREAMING_CASE | lowercase | numbered
 
 # ─── Pipeline Limits (Scope Guards) ───────────────────────────────

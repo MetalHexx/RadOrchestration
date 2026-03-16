@@ -93,7 +93,7 @@ async function main() {
   const allResults = [];
   for (const mod of CHECK_MODULES) {
     if (mod.check === null) continue;
-    const results = await mod.check(basePath, context);
+    const results = await mod.check(basePath, context, context.config);
     allResults.push(...results);
   }
 

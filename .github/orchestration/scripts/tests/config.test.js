@@ -63,7 +63,7 @@ function makeConfig(overrides = {}) {
   const base = {
     version: '1.0',
     projects: {
-      base_path: '.github/projects',
+      base_path: 'custom/project-store',
       naming: 'SCREAMING_CASE'
     },
     limits: {
@@ -229,7 +229,7 @@ describe('checkConfig', () => {
   // ── Enum validation ───────────────────────────────────────────────
 
   it('invalid enum: projects.naming = "camelCase" → fail with expected list', async () => {
-    const config = makeConfig({ projects: { base_path: '.github/projects', naming: 'camelCase' } });
+    const config = makeConfig({ projects: { base_path: 'custom/project-store', naming: 'camelCase' } });
     mockReadFile = () => 'yaml content';
     mockParseYaml = () => config;
 

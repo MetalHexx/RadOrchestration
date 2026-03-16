@@ -59,7 +59,7 @@ function makeContext() {
 
 function makeFrontmatter(overrides = {}) {
   return {
-    applyTo: '.github/projects/**',
+    applyTo: 'custom/project-store/**',
     ...overrides,
   };
 }
@@ -189,7 +189,7 @@ describe('checkInstructions', () => {
   });
 
   it('multiple instruction files — all validated, all added to context', async () => {
-    const fm1 = makeFrontmatter({ applyTo: '.github/projects/**' });
+    const fm1 = makeFrontmatter({ applyTo: 'custom/project-store/**' });
     const fm2 = makeFrontmatter({ applyTo: '**/state.json' });
 
     let callCount = 0;
@@ -270,5 +270,123 @@ describe('checkInstructions', () => {
     assert.ok(fails.some(r => r.message.includes('frontmatter')), 'Should fail for corrupt frontmatter');
     assert.strictEqual(ctx.instructions.length, 1);
     assert.strictEqual(ctx.instructions[0].frontmatter, null);
+  });
+
+  // ── checkApplyToSync via checkInstructions ────────────────────────────
+
+  describe('checkApplyToSync via checkInstructions', () => {
+
+    beforeEach(() => {
+      mockListFiles = () => [];
+      mockReadFile = () => null;
+      mockExtractFrontmatter = () => ({ frontmatter: null, body: '' });
+    });
+
+    function makeConfig(overrides = {}) {
+      return { projects: { base_path: 'custom/project-store', ...overrides } };
+    }
+
+    it('mismatch detected — warns with actual, expected applyTo and configure-system text', async () => {
+      const fm = makeFrontmatter({ applyTo: '.github/projects/**' });
+      mockListFiles = () => ['project-docs.instructions.md'];
+      mockReadFile = () => 'file content';
+      mockExtractFrontmatter = () => ({ frontmatter: fm, body: '' });
+
+      const ctx = makeContext();
+      const config = makeConfig();
+      const results = await checkInstructions('/fake', ctx, config);
+
+      const warns = results.filter(r => r.status === 'warn');
+      assert.strictEqual(warns.length, 1, 'Should have exactly one warn result');
+      assert.ok(warns[0].message.includes('.github/projects/**'), 'Should include actual applyTo');
+      assert.ok(warns[0].message.includes('custom/project-store/**'), 'Should include expected applyTo');
+      assert.ok(warns[0].message.includes('configure-system'), 'Should mention configure-system');
+    });
+
+    it('match (silent pass) — zero warn results when applyTo matches base_path', async () => {
+      const fm = makeFrontmatter({ applyTo: 'custom/project-store/**' });
+      mockListFiles = () => ['project-docs.instructions.md'];
+      mockReadFile = () => 'file content';
+      mockExtractFrontmatter = () => ({ frontmatter: fm, body: '' });
+
+      const ctx = makeContext();
+      const config = makeConfig();
+      const results = await checkInstructions('/fake', ctx, config);
+
+      const warns = results.filter(r => r.status === 'warn');
+      assert.strictEqual(warns.length, 0, 'Should have zero warn results');
+      const passes = results.filter(r => r.status === 'pass');
+      assert.ok(passes.length >= 1, 'Should have at least one pass result');
+    });
+
+    it('missing config (null) — zero warn results, no error thrown', async () => {
+      const fm = makeFrontmatter({ applyTo: '.github/projects/**' });
+      mockListFiles = () => ['project-docs.instructions.md'];
+      mockReadFile = () => 'file content';
+      mockExtractFrontmatter = () => ({ frontmatter: fm, body: '' });
+
+      const ctx = makeContext();
+      const results = await checkInstructions('/fake', ctx, null);
+
+      const warns = results.filter(r => r.status === 'warn');
+      assert.strictEqual(warns.length, 0, 'Should have zero warn results when config is null');
+    });
+
+    it('missing projects.base_path in config — zero warn results, no error thrown', async () => {
+      const fm = makeFrontmatter({ applyTo: '.github/projects/**' });
+      mockListFiles = () => ['project-docs.instructions.md'];
+      mockReadFile = () => 'file content';
+      mockExtractFrontmatter = () => ({ frontmatter: fm, body: '' });
+
+      const ctx = makeContext();
+      const results = await checkInstructions('/fake', ctx, {});
+
+      const warns = results.filter(r => r.status === 'warn');
+      assert.strictEqual(warns.length, 0, 'Should have zero warn results when config has no projects.base_path');
+    });
+
+    it('non-project-docs file ignored — zero warn results even with mismatch', async () => {
+      const fm = makeFrontmatter({ applyTo: '.github/projects/**' });
+      mockListFiles = () => ['coding-standards.instructions.md'];
+      mockReadFile = () => 'file content';
+      mockExtractFrontmatter = () => ({ frontmatter: fm, body: '' });
+
+      const ctx = makeContext();
+      const config = makeConfig();
+      const results = await checkInstructions('/fake', ctx, config);
+
+      const warns = results.filter(r => r.status === 'warn');
+      assert.strictEqual(warns.length, 0, 'Should have zero warn results for non-project-docs files');
+    });
+
+    it('trailing slash normalization — no false positive when base_path has trailing slash', async () => {
+      const fm = makeFrontmatter({ applyTo: 'custom/project-store/**' });
+      mockListFiles = () => ['project-docs.instructions.md'];
+      mockReadFile = () => 'file content';
+      mockExtractFrontmatter = () => ({ frontmatter: fm, body: '' });
+
+      const ctx = makeContext();
+      const config = makeConfig({ base_path: 'custom/project-store/' });
+      const results = await checkInstructions('/fake', ctx, config);
+
+      const warns = results.filter(r => r.status === 'warn');
+      assert.strictEqual(warns.length, 0, 'Should have zero warn results with trailing slash normalization');
+    });
+
+    it('whitespace-only applyTo with config — both fail and warn coexist', async () => {
+      const fm = makeFrontmatter({ applyTo: '   ' });
+      mockListFiles = () => ['project-docs.instructions.md'];
+      mockReadFile = () => 'file content';
+      mockExtractFrontmatter = () => ({ frontmatter: fm, body: '' });
+
+      const ctx = makeContext();
+      const config = makeConfig();
+      const results = await checkInstructions('/fake', ctx, config);
+
+      const fails = results.filter(r => r.status === 'fail');
+      const warns = results.filter(r => r.status === 'warn');
+      assert.ok(fails.length >= 1, 'Should have a fail result for whitespace-only applyTo');
+      assert.ok(warns.length >= 1, 'Should have a warn result from sync check (applyTo is truthy)');
+    });
   });
 });

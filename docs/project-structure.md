@@ -55,7 +55,7 @@ ui/                            # Monitoring dashboard (Next.js)
 
 ## Project Folder Structure
 
-Each project gets its own subfolder under the configured `base_path` (default: `.github/projects/` -- configurable via `orchestration.yml`):
+Each project gets its own subfolder under the configured `base_path` (default: `.github/projects/` — configurable via `orchestration.yml`). The `base_path` supports both relative paths (resolved from workspace root) and absolute paths (used as-is, useful for git worktree setups):
 
 ```
 {PROJECT-NAME}/
@@ -159,6 +159,8 @@ Instruction files use `applyTo` glob patterns to load context-specific rules onl
 | File | Applies To | Rules |
 |------|-----------|-------|
 | `project-docs.instructions.md` | `.github/projects/**` | Naming conventions, file ownership (sole writer policy), document quality standards |
+
+> **Note:** The `applyTo` glob in `project-docs.instructions.md` must match the `base_path` configured in `orchestration.yml`. If you change `base_path`, update `applyTo` to `{new_base_path}/**` or run `/configure-system` to sync automatically.
 
 ## Prompt Files
 

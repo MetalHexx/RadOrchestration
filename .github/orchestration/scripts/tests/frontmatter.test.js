@@ -83,10 +83,10 @@ test('Fenced ```chatagent frontmatter: extracts frontmatter and body', () => {
 });
 
 test('Fenced ```instructions frontmatter: extracts frontmatter and body', () => {
-  const input = '```instructions\n---\napplyTo: \'.github/projects/**\'\n---\n\n# Conventions\n\nWhen editing...\n```\n';
+  const input = '```instructions\n---\napplyTo: \'custom/project-store/**\'\n---\n\n# Conventions\n\nWhen editing...\n```\n';
   const result = extractFrontmatter(input);
   assert.deepStrictEqual(result.frontmatter, {
-    applyTo: '.github/projects/**'
+    applyTo: 'custom/project-store/**'
   });
   assert.strictEqual(result.body, '\n# Conventions\n\nWhen editing...');
 });

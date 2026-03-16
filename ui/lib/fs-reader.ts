@@ -30,7 +30,7 @@ export async function readConfig(workspaceRoot: string): Promise<OrchestrationCo
  * If state.json is malformed, mark hasMalformedState: true with errorMessage.
  *
  * @param workspaceRoot - Absolute path to workspace root
- * @param basePath - Relative base path (e.g., ".github/projects")
+ * @param basePath - Base path from orchestration.yml (relative or absolute)
  * @returns Array of ProjectSummary objects
  */
 export async function discoverProjects(

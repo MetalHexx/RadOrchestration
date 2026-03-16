@@ -138,7 +138,7 @@ function checkConfigPaths(basePath, config) {
     return results;
   }
 
-  const resolvedConfigPath = path.join(basePath, configBasePath);
+  const resolvedConfigPath = path.resolve(basePath, configBasePath);
   if (exists(resolvedConfigPath)) {
     results.push({
       category: CATEGORY,

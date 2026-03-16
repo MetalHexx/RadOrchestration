@@ -3,7 +3,7 @@
 const path = require('path');
 
 const { preRead }             = require('./pre-reads');
-const { getMutation }         = require('./mutations');
+const { getMutation, normalizeDocPath } = require('./mutations');
 const { validateTransition }  = require('./validator');
 const { resolveNextAction }   = require('./resolver');
 const { SCHEMA_VERSION }      = require('./constants');
@@ -140,7 +140,17 @@ function processEvent(event, projectDir, context, io, configPath) {
     };
   }
 
-  const proposed = mutationFn(deepClone(currentState), preReadResult.context, config);
+  // ── Single-point doc_path normalization ──────────────────────────────
+  const normalizedContext = { ...preReadResult.context };
+  if (normalizedContext.doc_path) {
+    normalizedContext.doc_path = normalizeDocPath(
+      normalizedContext.doc_path,
+      config.projects.base_path,
+      path.basename(projectDir)
+    );
+  }
+
+  const proposed = mutationFn(deepClone(currentState), normalizedContext, config);
 
   // ensure project.updated strictly advances before validation
   const now = new Date().toISOString();

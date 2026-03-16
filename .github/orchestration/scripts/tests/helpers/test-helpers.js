@@ -10,7 +10,7 @@ function deepClone(obj) {
 
 function createDefaultConfig() {
   return {
-    projects: { base_path: '.github/projects', naming: 'SCREAMING_CASE' },
+    projects: { base_path: 'custom/project-store', naming: 'SCREAMING_CASE' },
     limits: {
       max_phases: 10,
       max_tasks_per_phase: 8,

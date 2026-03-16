@@ -122,7 +122,7 @@ When the pipeline returns `success: false`, attempt recovery in this order befor
 
 **On every `success: false` result, follow these 3 steps in order:**
 
-1. **Log the error**: Invoke the `log-error` skill to append a structured entry to `{NAME}-ERROR-LOG.md` in the project directory (e.g., `.github/projects/MYAPP/MYAPP-ERROR-LOG.md`). Populate the entry fields from the pipeline result:
+1. **Log the error**: Invoke the `log-error` skill to append a structured entry to `{NAME}-ERROR-LOG.md` in the project directory (e.g., `{base_path}/MYAPP/MYAPP-ERROR-LOG.md`). Populate the entry fields from the pipeline result:
    - **Pipeline Event**: from `result.event`
    - **Pipeline Action**: from `result.action` (or `N/A` if not present)
    - **Severity**: classify using the skill's severity guide (`critical` = blocks execution, `high` = incorrect state, `medium` = degraded behavior, `low` = cosmetic)
@@ -207,7 +207,7 @@ When spawning a subagent, always provide:
 4. **Output expectations**: Where to save the output document (derive from project naming conventions)
 
 Example spawn instruction:
-> "Create the PRD for the MYAPP project. Read the research findings at `.github/projects/MYAPP/MYAPP-RESEARCH-FINDINGS.md`. If a brainstorming document exists at `.github/projects/MYAPP/MYAPP-BRAINSTORMING.md`, read that too. Save the PRD to `.github/projects/MYAPP/MYAPP-PRD.md`."
+> "Create the PRD for the MYAPP project. Read the research findings at `{base_path}/MYAPP/MYAPP-RESEARCH-FINDINGS.md`. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that too. Save the PRD to `{base_path}/MYAPP/MYAPP-PRD.md`."
 
 ## Status Reporting
 

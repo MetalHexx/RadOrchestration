@@ -57,6 +57,20 @@ human_gates:
 | `base_path` | string | `".github/projects"` | Directory where project folders are created. Each project gets a subfolder: `{base_path}/{PROJECT-NAME}/` |
 | `naming` | string | `"SCREAMING_CASE"` | Naming convention for project folders and files. Options: `SCREAMING_CASE`, `lowercase`, `numbered` |
 
+#### Path Resolution
+
+The `base_path` setting accepts both relative and absolute paths:
+
+- **Relative paths** (e.g., `".github/projects"`) are resolved from the workspace root. This is the default and works for standard single-workspace setups.
+- **Absolute paths** (e.g., `"/shared/projects"`) are used as-is. This is useful for **git worktree setups** where multiple worktrees need to share a single project folder outside any individual worktree.
+
+When you change `base_path`, the `applyTo` glob in `.github/instructions/project-docs.instructions.md` must also be updated to match — otherwise, Copilot's scoped instructions will silently stop applying to project files. You can either:
+
+1. Update `applyTo` manually to `{new_base_path}/**`
+2. Run `/configure-system`, which updates it automatically
+
+The [validation tool](validation.md) warns if `applyTo` and `base_path` fall out of sync.
+
 ### `limits`
 
 Pipeline scope guards that prevent runaway execution.
@@ -121,7 +135,7 @@ The one exception: the [pipeline script](scripts.md) optionally reads `orchestra
 
 Changes to `orchestration.yml` affect **new projects only**. In-progress projects use the limits and settings captured in their `state.json` at initialization.
 
-If you change `projects.base_path`, run `/configure-system` — it automatically scans the `.github/` directory for hardcoded path references and updates them.
+If you change `projects.base_path`, run `/configure-system` — it automatically scans the `.github/` directory for hardcoded path references and updates them. It also updates the `applyTo` glob in `.github/instructions/project-docs.instructions.md` to match the new path. If you skip this step, run the [validation tool](validation.md) — it warns if `applyTo` and `base_path` are out of sync.
 
 ## Validation
 

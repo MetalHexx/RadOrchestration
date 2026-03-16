@@ -27,44 +27,44 @@ function test(name, fn) {
 }
 
 test('Workspace-relative path strips prefix correctly', () => {
-  const result = resolveDocPath('/ws', '.github/projects', 'PROJ', '.github/projects/PROJ/tasks/FILE.md');
-  const expected = path.resolve('/ws', '.github/projects', 'PROJ', 'tasks/FILE.md');
+  const result = resolveDocPath('/ws', 'custom/project-store', 'PROJ', 'custom/project-store/PROJ/tasks/FILE.md');
+  const expected = path.resolve('/ws', 'custom/project-store', 'PROJ', 'tasks/FILE.md');
   assert.strictEqual(result, expected);
 });
 
 test('Project-relative path passes through unchanged', () => {
-  const result = resolveDocPath('/ws', '.github/projects', 'PROJ', 'tasks/FILE.md');
-  const expected = path.resolve('/ws', '.github/projects', 'PROJ', 'tasks/FILE.md');
+  const result = resolveDocPath('/ws', 'custom/project-store', 'PROJ', 'tasks/FILE.md');
+  const expected = path.resolve('/ws', 'custom/project-store', 'PROJ', 'tasks/FILE.md');
   assert.strictEqual(result, expected);
 });
 
 test('Root-level file passes through unchanged', () => {
-  const result = resolveDocPath('/ws', '.github/projects', 'PROJ', 'PROJ-PRD.md');
-  const expected = path.resolve('/ws', '.github/projects', 'PROJ', 'PROJ-PRD.md');
+  const result = resolveDocPath('/ws', 'custom/project-store', 'PROJ', 'PROJ-PRD.md');
+  const expected = path.resolve('/ws', 'custom/project-store', 'PROJ', 'PROJ-PRD.md');
   assert.strictEqual(result, expected);
 });
 
 test('Workspace-relative root-level file strips prefix correctly', () => {
-  const result = resolveDocPath('/ws', '.github/projects', 'PROJ', '.github/projects/PROJ/PROJ-PRD.md');
-  const expected = path.resolve('/ws', '.github/projects', 'PROJ', 'PROJ-PRD.md');
+  const result = resolveDocPath('/ws', 'custom/project-store', 'PROJ', 'custom/project-store/PROJ/PROJ-PRD.md');
+  const expected = path.resolve('/ws', 'custom/project-store', 'PROJ', 'PROJ-PRD.md');
   assert.strictEqual(result, expected);
 });
 
 test('Windows backslash path normalizes and strips prefix', () => {
-  const result = resolveDocPath('/ws', '.github/projects', 'PROJ', '.github\\projects\\PROJ\\tasks\\FILE.md');
-  const expected = path.resolve('/ws', '.github/projects', 'PROJ', 'tasks/FILE.md');
+  const result = resolveDocPath('/ws', 'custom/project-store', 'PROJ', 'custom\\project-store\\PROJ\\tasks\\FILE.md');
+  const expected = path.resolve('/ws', 'custom/project-store', 'PROJ', 'tasks/FILE.md');
   assert.strictEqual(result, expected);
 });
 
 test('Idempotent - already-stripped path produces same result', () => {
-  const withPrefix = resolveDocPath('/ws', '.github/projects', 'PROJ', '.github/projects/PROJ/tasks/FILE.md');
-  const withoutPrefix = resolveDocPath('/ws', '.github/projects', 'PROJ', 'tasks/FILE.md');
+  const withPrefix = resolveDocPath('/ws', 'custom/project-store', 'PROJ', 'custom/project-store/PROJ/tasks/FILE.md');
+  const withoutPrefix = resolveDocPath('/ws', 'custom/project-store', 'PROJ', 'tasks/FILE.md');
   assert.strictEqual(withPrefix, withoutPrefix);
 });
 
 test('Both workspace-relative and project-relative produce identical output', () => {
-  const wsRelative = resolveDocPath('/ws', '.github/projects', 'PROJ', '.github/projects/PROJ/phases/PHASE-PLAN-P01.md');
-  const projRelative = resolveDocPath('/ws', '.github/projects', 'PROJ', 'phases/PHASE-PLAN-P01.md');
+  const wsRelative = resolveDocPath('/ws', 'custom/project-store', 'PROJ', 'custom/project-store/PROJ/phases/PHASE-PLAN-P01.md');
+  const projRelative = resolveDocPath('/ws', 'custom/project-store', 'PROJ', 'phases/PHASE-PLAN-P01.md');
   assert.strictEqual(wsRelative, projRelative);
 });
 

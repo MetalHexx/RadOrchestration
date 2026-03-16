@@ -250,7 +250,7 @@ describe('checkCrossRefs', () => {
         agents: [],
       }));
 
-      const config = { projects: { base_path: '.github/projects/' } };
+      const config = { projects: { base_path: 'custom/project-store/' } };
       const ctx = makeContext({ agents, config });
       const results = await checkCrossRefs('/fake', ctx);
 
@@ -269,7 +269,7 @@ describe('checkCrossRefs', () => {
         agents: [],
       }));
 
-      const config = { projects: { base_path: '.github/projects/' } };
+      const config = { projects: { base_path: 'custom/project-store/' } };
       const ctx = makeContext({ agents, config });
       const results = await checkCrossRefs('/fake', ctx);
 
@@ -277,6 +277,30 @@ describe('checkCrossRefs', () => {
       assert.strictEqual(warns.length, 1);
       assert.strictEqual(warns[0].category, 'cross-references');
       assert.ok(warns[0].detail);
+    });
+
+    it('absolute config base_path — resolves to absolute path, not concatenated', async () => {
+      // Track what path exists() receives
+      let receivedPath;
+      mockExists = (p) => { receivedPath = p; return true; };
+
+      const agents = new Map();
+      agents.set('orchestrator.agent.md', makeAgentInfo({
+        filename: 'orchestrator.agent.md',
+        frontmatter: { name: 'Orchestrator' },
+        agents: [],
+      }));
+
+      const config = { projects: { base_path: '/shared/projects' } };
+      const ctx = makeContext({ agents, config });
+      const results = await checkCrossRefs('/workspace', ctx);
+
+      const passes = results.filter(r => r.status === 'pass' && r.message.includes('base_path'));
+      assert.strictEqual(passes.length, 1);
+
+      // path.resolve('/workspace', '/shared/projects') === '/shared/projects'
+      // path.join('/workspace', '/shared/projects') would be '/workspace/shared/projects' (wrong)
+      assert.strictEqual(receivedPath, path.resolve('/workspace', '/shared/projects'));
     });
 
     it('config is null — zero results from config path check', async () => {
@@ -368,7 +392,7 @@ describe('checkCrossRefs', () => {
       // Set exists() to handle different paths differently
       mockExists = (p) => {
         if (p.includes('PRD.md')) return true;
-        if (p.includes('projects')) return true;
+        if (p.includes('project-store')) return true;
         return false;
       };
 
@@ -400,7 +424,7 @@ describe('checkCrossRefs', () => {
         templateLinks: ['./templates/MISSING.md'],
       }));
 
-      const config = { projects: { base_path: '.github/projects/' } };
+      const config = { projects: { base_path: 'custom/project-store/' } };
       const ctx = makeContext({ agents, skills, config });
 
       const results = await checkCrossRefs('/fake', ctx);
@@ -452,7 +476,7 @@ describe('checkCrossRefs', () => {
       const ctx = {
         agents: new Map(),
         skills: new Map(),
-        config: { projects: { base_path: '.github/projects' } },
+        config: { projects: { base_path: 'custom/project-store' } },
       };
       const results = await checkCrossRefs(null, ctx);
 

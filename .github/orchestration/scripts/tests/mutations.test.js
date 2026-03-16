@@ -60,24 +60,38 @@ describe('getMutation', () => {
 describe('normalizeDocPath', () => {
   it('strips basePath/projectName/ prefix when present', () => {
     const result = normalizeDocPath(
-      '.github/projects/MY-PROJECT/PRD.md',
-      '.github/projects',
+      'custom/project-store/MY-PROJECT/PRD.md',
+      'custom/project-store',
       'MY-PROJECT',
     );
     assert.equal(result, 'PRD.md');
   });
 
   it('returns path unchanged when prefix is not present', () => {
-    const result = normalizeDocPath('some/other/path.md', '.github/projects', 'MY-PROJECT');
+    const result = normalizeDocPath('some/other/path.md', 'custom/project-store', 'MY-PROJECT');
     assert.equal(result, 'some/other/path.md');
   });
 
   it('returns null when input is null', () => {
-    assert.equal(normalizeDocPath(null, '.github/projects', 'MY-PROJECT'), null);
+    assert.equal(normalizeDocPath(null, 'custom/project-store', 'MY-PROJECT'), null);
   });
 
   it('returns undefined when input is undefined', () => {
-    assert.equal(normalizeDocPath(undefined, '.github/projects', 'MY-PROJECT'), undefined);
+    assert.equal(normalizeDocPath(undefined, 'custom/project-store', 'MY-PROJECT'), undefined);
+  });
+
+  it('normalizes backslashes and strips prefix', () => {
+    const result = normalizeDocPath(
+      'custom\\project-store\\MY-PROJECT\\PRD.md',
+      'custom/project-store',
+      'MY-PROJECT',
+    );
+    assert.equal(result, 'PRD.md');
+  });
+
+  it('returns already project-relative path unchanged (idempotent)', () => {
+    const result = normalizeDocPath('PRD.md', 'custom/project-store', 'MY-PROJECT');
+    assert.equal(result, 'PRD.md');
   });
 });
 

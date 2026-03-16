@@ -20,7 +20,7 @@ export function getWorkspaceRoot(): string {
  * Combines workspace root with the base_path from orchestration.yml.
  *
  * @param workspaceRoot - Absolute path to workspace root
- * @param basePath - Relative base path from orchestration.yml (e.g., ".github/projects")
+ * @param basePath - Base path from orchestration.yml (relative or absolute)
  * @returns Absolute path to the projects base directory
  */
 export function resolveBasePath(workspaceRoot: string, basePath: string): string {
@@ -31,7 +31,7 @@ export function resolveBasePath(workspaceRoot: string, basePath: string): string
  * Resolve a project directory path.
  *
  * @param workspaceRoot - Absolute path to workspace root
- * @param basePath - Relative base path from orchestration.yml
+ * @param basePath - Base path from orchestration.yml (relative or absolute)
  * @param projectName - Project name (e.g., "MONITORING-UI")
  * @returns Absolute path: {workspaceRoot}/{basePath}/{projectName}
  */
@@ -48,7 +48,7 @@ export function resolveProjectDir(
  * Document paths in state.json are relative to the project folder.
  *
  * @param workspaceRoot - Absolute path to workspace root
- * @param basePath - Relative base path from orchestration.yml
+ * @param basePath - Base path from orchestration.yml (relative or absolute)
  * @param projectName - Project name
  * @param relativePath - Document path relative to project dir (e.g., "tasks/MONITORING-UI-TASK-P01-T01.md")
  * @returns Absolute filesystem path

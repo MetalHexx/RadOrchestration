@@ -19,7 +19,7 @@ Guide a collaborative brainstorming session and produce a structured BRAINSTORMI
 |-------|--------|-------------|
 | Conversation context | User dialogue | Ideas, problems, goals discussed with the human |
 | Project name | User-provided | The `SCREAMING-CASE` project name for folder/file naming |
-| Base path | `orchestration.yml` | `projects.base_path` (default: `.github/projects`) |
+| Base path | `orchestration.yml` | `projects.base_path` — configurable project storage path |
 
 ## Workflow
 

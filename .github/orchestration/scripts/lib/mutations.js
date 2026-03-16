@@ -105,16 +105,20 @@ function resolvePhaseOutcome(verdict, exitCriteriaMet) {
 
 /**
  * Normalize a document path to project-relative form.
- * @param {string} docPath
- * @param {string} basePath
- * @param {string} projectName
- * @returns {string}
+ * Converts backslashes to forward slashes before prefix comparison.
+ * Returns input unchanged if null/undefined or no prefix match (fail-safe).
+ *
+ * @param {string|null|undefined} docPath - Raw document path (may be workspace-relative or project-relative)
+ * @param {string} basePath - The base_path value from config (e.g., ".github/projects")
+ * @param {string} projectName - The project name (e.g., "MYAPP")
+ * @returns {string|null|undefined} Project-relative path (e.g., "tasks/TASK-P01-T01.md")
  */
 function normalizeDocPath(docPath, basePath, projectName) {
   if (!docPath) return docPath;
+  const normalized = docPath.replace(/\\/g, '/');
   const prefix = basePath + '/' + projectName + '/';
-  if (docPath.startsWith(prefix)) return docPath.slice(prefix.length);
-  return docPath;
+  if (normalized.startsWith(prefix)) return normalized.slice(prefix.length);
+  return normalized;
 }
 
 // ─── Planning Handlers ──────────────────────────────────────────────────────

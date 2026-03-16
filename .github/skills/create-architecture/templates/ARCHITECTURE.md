@@ -13,16 +13,14 @@ created: "{ISO-DATE}"
 
 ## System Layers
 
-```
-┌─────────────────────────┐
-│     Presentation        │  Components, pages, routing
-├─────────────────────────┤
-│     Application         │  Services, state management, hooks
-├─────────────────────────┤
-│     Domain              │  Models, types, validation, business logic
-├─────────────────────────┤
-│     Infrastructure      │  API clients, storage, auth, external services
-└─────────────────────────┘
+```mermaid
+graph TD
+    P["**Presentation**\nComponents, pages, routing"]
+    A["**Application**\nServices, state management, hooks"]
+    D["**Domain**\nModels, types, validation, business logic"]
+    I["**Infrastructure**\nAPI clients, storage, auth, external services"]
+
+    P --> A --> D --> I
 ```
 
 ## Module Map

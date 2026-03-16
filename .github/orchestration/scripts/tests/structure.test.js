@@ -24,7 +24,7 @@ function setupFullGithub() {
   fs.mkdirSync(path.join(ghDir, 'skills'));
   fs.mkdirSync(path.join(ghDir, 'instructions'));
   fs.mkdirSync(path.join(ghDir, 'prompts'));
-  fs.writeFileSync(path.join(ghDir, 'orchestration.yml'), 'projects:\n  base_path: .github/projects/\n');
+  fs.writeFileSync(path.join(ghDir, 'orchestration.yml'), 'projects:\n  base_path: custom/project-store/\n');
   fs.writeFileSync(path.join(ghDir, 'copilot-instructions.md'), '# Instructions\n');
 }
 

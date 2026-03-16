@@ -54,7 +54,7 @@ System configuration lives in `.github/orchestration.yml`. It controls:
 
 ### Project Files
 
-Project artifacts are stored under the path configured in `orchestration.yml` → `projects.base_path` (default: `.github/projects/`). Each project gets a subfolder: `{base_path}/{PROJECT-NAME}/`.
+Project artifacts are stored in a configurable location set by `orchestration.yml` → `projects.base_path` (supports both relative and absolute paths). Each project gets a subfolder: `{base_path}/{PROJECT-NAME}/`.
 
 Contents:
 - Brainstorming: `BRAINSTORMING.md` (optional, created by `@Brainstormer`)

@@ -86,7 +86,7 @@ The dashboard reads project data directly from the workspace filesystem:
 | `{project}/state.json` | Pipeline state — tiers, phases, tasks, errors |
 | `{project}/*.md` | Planning and execution documents rendered in the document viewer |
 
-The dashboard discovers projects by scanning the configured `projects.base_path` directory (default: `.github/projects/`).
+The dashboard discovers projects by scanning the configured `projects.base_path` directory. See [Configuration](configuration.md) for details.
 
 ## Real-Time Updates
 

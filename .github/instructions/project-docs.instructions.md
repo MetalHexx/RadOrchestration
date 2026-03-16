@@ -1,4 +1,6 @@
 ---
+# The applyTo glob below must match the base_path configured in orchestration.yml.
+# If you change base_path, update this pattern to match (or use the configure-system prompt).
 applyTo: '.github/projects/**'
 ---
 

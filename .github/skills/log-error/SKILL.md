@@ -11,7 +11,7 @@ The Orchestrator invokes this skill when `pipeline.js` returns `{ success: false
 
 ## Workflow
 
-1. **Determine the error log file path**: `{PROJECT-DIR}/{NAME}-ERROR-LOG.md` (e.g., `.github/projects/MYAPP/MYAPP-ERROR-LOG.md`)
+1. **Determine the error log file path**: `{PROJECT-DIR}/{NAME}-ERROR-LOG.md` (e.g., `{base_path}/MYAPP/MYAPP-ERROR-LOG.md`)
 
 2. **If the file does not exist** — create it using the bundled template at `templates/ERROR-LOG.md`, fill the frontmatter fields (`project`, `created`, `last_updated`), then write the first entry as `## Error 1`
 

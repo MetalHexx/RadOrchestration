@@ -1,0 +1,12 @@
+// {
+//   "version": 1,
+//   "hooks": {
+//     "sessionStart": [...],
+//     "sessionEnd": [...],
+//     "userPromptSubmitted": [...],
+//     "preToolUse": [...],
+//     "postToolUse": [...],
+//     "errorOccurred": [...]
+//   }
+// }
+//https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/use-hooks

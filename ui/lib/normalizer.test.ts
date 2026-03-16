@@ -63,14 +63,14 @@ test('v3 with final review complete and approved', () => {
   const raw = makeV3Raw({
     execution: {
       final_review_status: 'complete',
-      final_review_doc: '.github/projects/X/reports/FINAL-REVIEW.md',
+      final_review_doc: 'custom/project-store/X/reports/FINAL-REVIEW.md',
       final_review_approved: true,
     },
   });
   const result = normalizeState(raw);
   assert.deepStrictEqual(result.final_review, {
     status: 'complete',
-    report_doc: '.github/projects/X/reports/FINAL-REVIEW.md',
+    report_doc: 'custom/project-store/X/reports/FINAL-REVIEW.md',
     human_approved: true,
   });
 });
@@ -79,14 +79,14 @@ test('v3 with final review complete but not yet approved', () => {
   const raw = makeV3Raw({
     execution: {
       final_review_status: 'complete',
-      final_review_doc: '.github/projects/X/reports/FINAL-REVIEW.md',
+      final_review_doc: 'custom/project-store/X/reports/FINAL-REVIEW.md',
       // no final_review_approved
     },
   });
   const result = normalizeState(raw);
   assert.deepStrictEqual(result.final_review, {
     status: 'complete',
-    report_doc: '.github/projects/X/reports/FINAL-REVIEW.md',
+    report_doc: 'custom/project-store/X/reports/FINAL-REVIEW.md',
     human_approved: false,
   });
 });

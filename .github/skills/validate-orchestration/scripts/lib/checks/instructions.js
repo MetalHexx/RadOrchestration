@@ -8,15 +8,47 @@ const { extractFrontmatter } = require('../utils/frontmatter');
 
 const CATEGORY = 'instructions';
 
+// ─── Internal Helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Check if the project-docs instruction file's applyTo glob matches the configured base_path.
+ *
+ * @param {string} filename - instruction filename being checked
+ * @param {object} frontmatter - parsed frontmatter with applyTo field
+ * @param {object} config - parsed orchestration.yml config (null if not available)
+ * @returns {object|null} - validation result object, or null if check doesn't apply
+ */
+function checkApplyToSync(filename, frontmatter, config) {
+  if (filename !== 'project-docs.instructions.md') return null;
+  if (!config || !config.projects || !config.projects.base_path) return null;
+
+  const basePath = config.projects.base_path;
+  const applyTo = frontmatter.applyTo;
+  const expectedPrefix = basePath.replace(/\\/g, '/').replace(/\/+$/, '');
+  const actualPrefix = applyTo.replace(/\/?\*\*$/, '').replace(/\/+$/, '');
+
+  if (actualPrefix !== expectedPrefix) {
+    const expectedApplyTo = basePath.replace(/\\/g, '/').replace(/\/+$/, '') + '/**';
+    return {
+      category: CATEGORY,
+      name: filename,
+      status: 'warn',
+      message: `applyTo pattern '${applyTo}' does not match configured base_path '${basePath}'. Update applyTo to '${expectedApplyTo}' or run the configure-system prompt to sync automatically.`,
+    };
+  }
+  return null;
+}
+
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 /**
  * Validate all .instructions.md files in .github/instructions/.
  * @param {string} basePath - Absolute path to workspace root (parent of .github/)
  * @param {object} context  - Mutable shared discovery context
+ * @param {object} [config] - Parsed orchestration.yml config (optional; needed for applyTo sync check)
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: object}>>}
  */
-async function checkInstructions(basePath, context) {
+async function checkInstructions(basePath, context, config) {
   try {
     const results = [];
     const instrDir = path.join(basePath, '.github', 'instructions');
@@ -95,6 +127,12 @@ async function checkInstructions(basePath, context) {
           status: 'pass',
           message: `Instruction file "${filename}" is valid`
         });
+      }
+
+      // Check applyTo sync with configured base_path
+      if (frontmatter && frontmatter.applyTo) {
+        const syncResult = checkApplyToSync(filename, frontmatter, config);
+        if (syncResult) results.push(syncResult);
       }
     }
 
