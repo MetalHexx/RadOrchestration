@@ -32,9 +32,18 @@ export function ProjectSidebar({
 }: ProjectSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredProjects = projects.filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const TIER_SORT_ORDER: Record<string, number> = {
+    execution: 0,
+    review: 1,
+    planning: 2,
+    not_initialized: 3,
+    halted: 4,
+    complete: 5,
+  };
+
+  const filteredProjects = projects
+    .filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => (TIER_SORT_ORDER[a.tier] ?? 3) - (TIER_SORT_ORDER[b.tier] ?? 3));
 
   const handleListboxKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLUListElement>) => {
