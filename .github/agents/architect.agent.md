@@ -9,6 +9,7 @@ tools:
   - todo
   - vscode/askQuestions
 agents: []
+model: Claude Opus 4.6 (copilot)
 ---
 
 # Architect Agent

@@ -10,6 +10,7 @@ tools:
   - vscode/askQuestions
   - agent
   - web
+model: Claude Sonnet 4.6 (copilot)
 agents:
   - Research
 handoffs:
