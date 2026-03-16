@@ -65,7 +65,7 @@ export function DocumentDrawer({
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="right"
-        className="!w-full md:!w-[50vw] md:!max-w-[50vw] overflow-hidden"
+        className="!w-full md:!w-[80vw] md:!max-w-[80vw] overflow-hidden"
         aria-label={`Document viewer: ${title}`}
       >
         <SheetHeader className="border-b border-border px-6 py-4">
