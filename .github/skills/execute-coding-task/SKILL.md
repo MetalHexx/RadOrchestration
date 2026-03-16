@@ -1,6 +1,6 @@
 ---
 name: execute-coding-task
-description: 'Execute any coding task end-to-end from a Task Handoff document. Covers reading the handoff, implementing code, running tests and builds, verifying acceptance criteria, and writing the Task Report.'
+description: 'Execute any coding or testing task end-to-end from a Task Handoff document. Covers reading the handoff, implementing code, creating / running tests, and builds, verifying acceptance criteria, and writing the Task Report.'
 ---
 
 # Execute Coding Task
