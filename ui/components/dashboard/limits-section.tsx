@@ -7,13 +7,14 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import type { NormalizedLimits } from "@/types/state";
 
 interface LimitsSectionProps {
-  limits: NormalizedLimits;
+  maxPhases: number;
+  maxTasksPerPhase: number;
+  maxRetriesPerTask: number;
 }
 
-export function LimitsSection({ limits }: LimitsSectionProps) {
+export function LimitsSection({ maxPhases, maxTasksPerPhase, maxRetriesPerTask }: LimitsSectionProps) {
   return (
     <Card>
       <CardContent className="py-0">
@@ -24,15 +25,15 @@ export function LimitsSection({ limits }: LimitsSectionProps) {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Max Phases</span>
-                  <span className="font-mono">{limits.max_phases}</span>
+                  <span className="font-mono">{maxPhases}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Max Tasks per Phase</span>
-                  <span className="font-mono">{limits.max_tasks_per_phase}</span>
+                  <span className="font-mono">{maxTasksPerPhase}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Max Retries per Task</span>
-                  <span className="font-mono">{limits.max_retries_per_task}</span>
+                  <span className="font-mono">{maxRetriesPerTask}</span>
                 </div>
               </div>
             </AccordionContent>

@@ -28,7 +28,7 @@ export function OtherDocsSection({ files, onDocClick }: OtherDocsSectionProps) {
                 <div key={file}>
                   <DocumentLink
                     path={file}
-                    label={file.replace(/\.md$/i, "")}
+                    label={(file.split(/[\/\\]/).pop() ?? file).replace(/\.md$/i, "")}
                     onDocClick={onDocClick}
                   />
                 </div>

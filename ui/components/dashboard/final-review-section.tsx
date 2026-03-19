@@ -6,10 +6,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { StatusIcon } from "@/components/badges";
 import { DocumentLink } from "@/components/documents";
 import { ApproveGateButton } from "@/components/dashboard/approve-gate-button";
-import type { NormalizedFinalReview, PipelineTier } from "@/types/state";
+import type { FinalReview, PipelineTier } from "@/types/state";
 
 interface FinalReviewSectionProps {
-  finalReview: NormalizedFinalReview;
+  finalReview: FinalReview;
   projectName: string;
   pipelineTier: PipelineTier;
   onDocClick: (path: string) => void;
@@ -33,7 +33,7 @@ export function FinalReviewSection({ finalReview, projectName, pipelineTier, onD
 
         <div>
           <DocumentLink
-            path={finalReview.report_doc}
+            path={finalReview.doc_path}
             label="Review Report"
             onDocClick={onDocClick}
           />

@@ -2,17 +2,18 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { DocumentLink } from "@/components/documents";
-import type { NormalizedErrors } from "@/types/state";
 
 interface ErrorLogSectionProps {
-  errors: NormalizedErrors;
+  totalRetries: number;
+  totalHalts: number;
+  activeBlockers: string[];
   /** Path to error log file, or null if no error log exists */
   errorLogPath?: string | null;
   /** Callback to open a document in the viewer */
   onDocClick?: (path: string) => void;
 }
 
-export function ErrorLogSection({ errors, errorLogPath = null, onDocClick }: ErrorLogSectionProps) {
+export function ErrorLogSection({ totalRetries, totalHalts, activeBlockers, errorLogPath = null, onDocClick }: ErrorLogSectionProps) {
   return (
     <Card>
       <CardHeader>
@@ -21,16 +22,16 @@ export function ErrorLogSection({ errors, errorLogPath = null, onDocClick }: Err
       <CardContent className="space-y-3">
         <div className="flex items-center gap-4 text-sm">
           <span>
-            Total Retries: <span className="font-mono">{errors.total_retries}</span>
+            Total Retries: <span className="font-mono">{totalRetries}</span>
           </span>
           <span>
-            Total Halts: <span className="font-mono">{errors.total_halts}</span>
+            Total Halts: <span className="font-mono">{totalHalts}</span>
           </span>
         </div>
 
-        {errors.active_blockers.length > 0 ? (
+        {activeBlockers.length > 0 ? (
           <ul className="space-y-1 text-sm text-destructive">
-            {errors.active_blockers.map((blocker, index) => (
+            {activeBlockers.map((blocker, index) => (
               <li key={index} className="flex items-start gap-2">
                 <span className="select-none" aria-hidden="true">•</span>
                 <span>{blocker}</span>

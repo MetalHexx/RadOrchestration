@@ -3,17 +3,10 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { PlanningChecklist } from "@/components/planning";
 import { ApproveGateButton } from "@/components/dashboard/approve-gate-button";
-import type { PlanningStepName, PlanningStepStatus, PlanningStatus } from "@/types/state";
+import type { PlanningState } from "@/types/state";
 
 interface PlanningSectionProps {
-  planning: {
-    status: PlanningStatus;
-    steps: Record<PlanningStepName, {
-      status: PlanningStepStatus;
-      output: string | null;
-    }>;
-    human_approved: boolean;
-  };
+  planning: PlanningState;
   projectName: string;
   onDocClick: (path: string) => void;
 }

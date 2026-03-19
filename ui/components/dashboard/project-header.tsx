@@ -1,19 +1,17 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PipelineTierBadge } from "@/components/badges";
-import type { PipelineTier, HumanGateMode } from "@/types/state";
+import { GateModeBadge, PipelineTierBadge } from "@/components/badges";
+import type { GateMode, PipelineTier } from "@/types/state";
 
 interface ProjectHeaderProps {
   project: {
     name: string;
-    description: string | null;
     created: string;
     updated: string;
   };
   tier: PipelineTier;
-  gateMode: HumanGateMode;
+  gateMode: GateMode | null;
 }
 
 function formatTimestamp(iso: string): string {
@@ -30,14 +28,8 @@ export function ProjectHeader({ project, tier, gateMode }: ProjectHeaderProps) {
       <div className="flex items-center gap-2">
         <h1 className="text-lg font-semibold">{project.name}</h1>
         <PipelineTierBadge tier={tier} />
-        <Badge variant="outline" className="text-xs">
-          {gateMode}
-        </Badge>
+        <GateModeBadge mode={gateMode} />
       </div>
-
-      {project.description && (
-        <p className="text-sm text-muted-foreground">{project.description}</p>
-      )}
 
       <div role="group" aria-label="Project metadata" className="flex items-center gap-3 flex-wrap">
         <span className="text-xs text-muted-foreground font-mono">
@@ -60,9 +52,8 @@ export function ProjectHeaderSkeleton() {
       <div className="flex items-center gap-2">
         <Skeleton className="h-6 w-40" />
         <Skeleton className="h-5 w-20 rounded-full" />
-        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-5 w-24 rounded-full" />
       </div>
-      <Skeleton className="h-4 w-72" />
       <div className="flex items-center gap-3">
         <Skeleton className="h-3 w-36" />
         <Skeleton className="h-3 w-36" />

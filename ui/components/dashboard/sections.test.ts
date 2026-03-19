@@ -77,7 +77,7 @@ function simulateOtherDocsSection({ files, onDocClick }: OtherDocsSectionInputs)
   const navAriaLabel = "Other project documents";
   const renderedFiles = sorted.map((file) => ({
     path: file,
-    label: file.replace(/\.md$/i, ""),
+    label: (file.split(/[\/\\]/).pop() ?? file).replace(/\.md$/i, ""),
   }));
 
   return {
@@ -200,6 +200,18 @@ test("labels are derived by stripping .md extension", () => {
   );
 });
 
+test("labels with a full absolute path show only the basename without .md extension", () => {
+  const result = simulateOtherDocsSection({
+    files: ["C:/dev/projects/MY-PROJECT/MY-PROJECT-BRAINSTORMING.md"],
+    onDocClick: () => {},
+  });
+  assert.deepStrictEqual(
+    result.renderedFiles.map((f) => f.label),
+    ["MY-PROJECT-BRAINSTORMING"],
+    "Label should be basename only, no path prefix or extension",
+  );
+});
+
 test("clicking a file calls onDocClick with the file path", () => {
   let clickedPath = "";
   const result = simulateOtherDocsSection({
@@ -215,6 +227,45 @@ test("does not mutate the original files array", () => {
   const copy = [...original];
   simulateOtherDocsSection({ files: original, onDocClick: () => {} });
   assert.deepStrictEqual(original, copy, "Original array should not be mutated");
+});
+
+// ==================== PlanningChecklist label logic ====================
+
+console.log("\nPlanningChecklist label logic");
+
+const STEP_DISPLAY_NAMES_SIM: Record<string, string> = {
+  research: "Research",
+  prd: "PRD",
+  design: "Design",
+  architecture: "Architecture",
+  master_plan: "Master Plan",
+};
+
+function simulatePlanningChecklistLabel(docPath: string | null, stepName: string): string {
+  return docPath
+    ? (docPath.split(/[\/\\]/).pop() ?? docPath).replace(/\.md$/i, "")
+    : STEP_DISPLAY_NAMES_SIM[stepName] ?? stepName;
+}
+
+test("shows basename-only label when doc_path is an absolute path", () => {
+  const label = simulatePlanningChecklistLabel(
+    "C:/dev/orchestration-projects/MY-APP/MY-APP-PRD.md",
+    "prd",
+  );
+  assert.strictEqual(label, "MY-APP-PRD", "Should show basename without extension");
+});
+
+test("falls back to step display name when doc_path is null", () => {
+  const label = simulatePlanningChecklistLabel(null, "architecture");
+  assert.strictEqual(label, "Architecture", "Should fall back to display name");
+});
+
+test("shows basename-only label when doc_path is a relative path", () => {
+  const label = simulatePlanningChecklistLabel(
+    "MY-APP-RESEARCH-FINDINGS.md",
+    "research",
+  );
+  assert.strictEqual(label, "MY-APP-RESEARCH-FINDINGS", "Should strip extension from relative path");
 });
 
 // ==================== Summary ====================
