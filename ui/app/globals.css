@@ -111,6 +111,12 @@
     --connection-warning: hsl(32, 95%, 34%);
     --connection-error: hsl(0, 84%, 45%);
 
+    /* ── Gate Mode Colors (WCAG AA corrected for light mode) ── */
+    --gate-task: hsl(32, 95%, 34%);
+    --gate-phase: hsl(271, 91%, 46%);
+    --gate-autonomous: hsl(142, 71%, 33%);
+    --gate-global: hsl(215, 14%, 43%);
+
     /* ── Surface & Layout Tokens ── */
     --header-bg: var(--card);
     --header-border: var(--border);
@@ -190,6 +196,12 @@
     --connection-ok: hsl(142, 71%, 45%);
     --connection-warning: hsl(38, 92%, 50%);
     --connection-error: hsl(0, 84%, 60%);
+
+    /* ── Gate Mode Colors (dark mode — slate adjusted for contrast) ── */
+    --gate-task: hsl(38, 92%, 50%);
+    --gate-phase: hsl(271, 91%, 65%);
+    --gate-autonomous: hsl(142, 71%, 45%);
+    --gate-global: hsl(215, 14%, 63%);
 
     /* ── Surface & Layout Tokens (dark mode overrides) ── */
     --color-error-bg: hsl(0, 63%, 15%);
