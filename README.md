@@ -6,7 +6,7 @@ Agents communicate through structured markdown documents. Routing, triage, and s
 
 ## What It Does
 
-Tell the Orchestrator your project idea, and it coordinates **9 specialized agents** through a structured pipeline — research, requirements, design, architecture, planning, coding, and review — producing working software with full traceability from idea to implementation.
+Tell the Orchestrator your project idea, and it coordinates **9 specialized agents** through a structured pipeline — research, requirements, design, architecture, planning, coding, and review — producing working software with full traceability from idea to implementation.  It's automated spec-driven development!
 
 ```mermaid
 flowchart TD
@@ -69,23 +69,19 @@ Nine agents with strict separation of concerns. Each agent has a defined role, s
 
 Documents are the inter-agent API. Every agent reads specific input documents, does its job, and writes its output document. There is no shared memory, no message passing, no runtime coupling between agents. Every interaction produces a traceable artifact.
 
-CLI scripts handle the mechanical decisions *around* that document exchange — routing, triage, and state validation — but agents themselves still communicate exclusively through structured markdown. The document-driven model is what makes the system portable and auditable.
+CLI scripts, essentially a state machine, handles the mechanical decisions *around* that document exchange — routing, triage, and state validation — but agents themselves still communicate exclusively through structured markdown. The document-driven model is what makes the system portable and auditable.
 
 [Learn more about the pipeline →](docs/pipeline.md)
 
 ### Human Gates
 
-Critical checkpoints are enforced, not optional. Humans approve the Master Plan before any code is written and approve final results before completion. Execution gates are configurable: per-phase, per-task, or fully autonomous.
+Configurable critical human checkpoints are reliably enforced.  Humans approve the Master Plan before any code is written and approve final results before completion. Execution gates are configurable: per-phase, per-task, or fully autonomous. 
 
 ### Deterministic Routing & Triage
 
 Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes ~18 external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
 
 [Learn more about the scripts →](docs/scripts.md)
-
-### Stage Tracking
-
-Tasks and phases have a `stage` field that tracks precise work focus independently of coarse `status`. Task stages flow through `planning → coding → reviewing → complete` (or `failed` for corrective re-entry). Phase stages flow through `planning → executing → reviewing → complete`. Stages make it unambiguous what the pipeline should do next without inspecting document paths.
 
 ### Composable Skills
 
@@ -101,7 +97,7 @@ A single `orchestration.yml` controls everything: project storage, pipeline limi
 
 ### Continuous Verification
 
-Every task produces a report. Every report is reviewed against the plan. Minor issues trigger automatic corrective tasks. Critical issues halt the pipeline for human intervention. Plans don't drift unchecked. Pipeline failures are logged to a structured, append-only error log (`ERROR-LOG.md`) in each project folder.
+Every task produces a report. Every report is reviewed against the plan.  Code reviewers never fully trust the coder reports. :)  Minor issues trigger automatic corrective tasks. Critical issues halt the pipeline for human intervention. Plans don't drift unchecked. Pipeline failures are logged to a structured, append-only error log (`ERROR-LOG.md`) in each project folder.
 
 ### Built-in Validation
 
@@ -121,8 +117,8 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 1. Clone the repo and open in VS Code with GitHub Copilot
 2. Copy the `.github/` directory into the root of your target project
 3. Run `/configure-system` to set up `orchestration.yml`
-4. *(Optional)* Use `@Brainstormer` to explore and refine your idea
-5. Use `@Orchestrator` with your project idea to start the pipeline
+4. *(Optional)* Use `@Brainstormer` to explore and refine your ideas into goals
+5. Use `@Orchestrator` with your project goals to start the pipeline
 6. Use `@Orchestrator` to continue — it reads `state.json` and picks up where it left off
 
 [Full getting started guide →](docs/getting-started.md)
