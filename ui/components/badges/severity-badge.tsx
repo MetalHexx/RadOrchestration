@@ -1,7 +1,8 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import type { Severity } from "@/types/state";
+
+type Severity = 'critical' | 'minor';
 
 interface SeverityBadgeProps {
   severity: Severity | null;

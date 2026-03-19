@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Circle,
   Loader2,
-  MinusCircle,
   XOctagon,
   XCircle,
 } from "lucide-react";
@@ -31,7 +30,6 @@ const STATUS_CONFIG: Record<
   not_started: { icon: Circle, cssVar: "--status-not-started", label: "Not Started" },
   failed: { icon: XCircle, cssVar: "--status-failed", label: "Failed" },
   halted: { icon: XOctagon, cssVar: "--status-halted", label: "Halted" },
-  skipped: { icon: MinusCircle, cssVar: "--status-skipped", label: "Skipped" },
 };
 
 export function StatusIcon({ status, className }: StatusIconProps) {
