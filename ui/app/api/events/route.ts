@@ -4,10 +4,9 @@ import path from 'node:path';
 import chokidar from 'chokidar';
 
 import type { SSEEvent, SSEEventType, SSEPayloadMap } from '@/types/events';
-import type { RawStateJson } from '@/types/state';
+import type { ProjectState } from '@/types/state';
 import { getWorkspaceRoot, resolveBasePath } from '@/lib/path-resolver';
 import { readConfig } from '@/lib/fs-reader';
-import { normalizeState } from '@/lib/normalizer';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,14 +104,13 @@ export async function GET(request: Request) {
         ignoreInitial: true,
       });
 
-      // change handler — read, parse, normalize, emit
+      // change handler — read, parse, emit v4 state directly
       watcher.on('change', (filePath: string) => {
         const projectName = extractProjectName(filePath, absoluteProjectsDir);
         debouncedEmit(projectName, () => {
           readFile(filePath, 'utf-8')
             .then((content) => {
-              const raw: RawStateJson = JSON.parse(content);
-              const state = normalizeState(raw);
+              const state: ProjectState = JSON.parse(content);
               enqueue(createSSEEvent('state_change', { projectName, state }));
             })
             .catch((err) => {

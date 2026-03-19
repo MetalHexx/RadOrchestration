@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { ProjectSummary } from "@/types/components";
-import type { NormalizedProjectState } from "@/types/state";
+import type { ProjectState } from "@/types/state";
 import type { SSEEvent, SSEConnectionStatus } from "@/types/events";
 import { useSSE } from "@/hooks/use-sse";
 
@@ -13,8 +13,8 @@ interface UseProjectsReturn {
   projects: ProjectSummary[];
   /** Name of the currently selected project, or null */
   selectedProject: string | null;
-  /** Normalized state for the selected project, or null if not available */
-  projectState: NormalizedProjectState | null;
+  /** State for the selected project, or null if not available */
+  projectState: ProjectState | null;
   /** Function to select a project by name */
   selectProject: (name: string) => void;
   /** True while any fetch is in progress */
@@ -31,7 +31,7 @@ export function useProjects(): UseProjectsReturn {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [projectState, setProjectState] =
-    useState<NormalizedProjectState | null>(null);
+    useState<ProjectState | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +56,7 @@ export function useProjects(): UseProjectsReturn {
 
       switch (event.type) {
         case "state_change": {
-          const payload = event.payload as { projectName: string; state: NormalizedProjectState };
+          const payload = event.payload as { projectName: string; state: ProjectState };
           if (payload.projectName === currentSelected) {
             setProjectState(payload.state);
           }

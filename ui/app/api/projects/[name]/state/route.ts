@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic';
 
 import { getWorkspaceRoot, resolveProjectDir } from '@/lib/path-resolver';
 import { readConfig, readProjectState } from '@/lib/fs-reader';
-import { normalizeState } from '@/lib/normalizer';
 
 export async function GET(
   request: NextRequest,
@@ -20,8 +19,7 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    const state = normalizeState(raw);
-    return NextResponse.json({ state }, { status: 200 });
+    return NextResponse.json({ state: raw }, { status: 200 });
   } catch (err) {
     if (err instanceof SyntaxError) {
       return NextResponse.json(
