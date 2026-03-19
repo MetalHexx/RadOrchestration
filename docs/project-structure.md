@@ -8,7 +8,7 @@ This page documents the file layout, naming conventions, document types, and sta
 .github/ 
 ├── agents/                    # 9 agent definitions
 │   └── ...
-├── skills/                    # 15 skill bundles
+├── skills/                    # 18 skill bundles
 │   └── ...
 ├── instructions/              # Scoped instruction files
 │   └── ...
@@ -42,16 +42,17 @@ archive/                       # Historical design artifacts -- the plan that st
     └── ...
 assets/                        # Static assets
 └── dashboard-screenshot.png
-docs/                          # Documentation (9 pages)
+docs/                          # Documentation (10 pages)
 ├── getting-started.md
 ├── agents.md
 ├── pipeline.md
 ├── skills.md
+├── templates.md
 ├── configuration.md
 ├── project-structure.md
 ├── scripts.md
 ├── validation.md
-└── dashboard.md               # NEW
+└── dashboard.md
 ui/                            # Monitoring dashboard (Next.js)
 └── components/
     └── badges/
@@ -179,3 +180,8 @@ Prompt files provide utility workflows accessible via `/` commands in Copilot:
 |--------|---------|---------|
 | `configure-system.prompt.md` | `/configure-system` | Create or update `orchestration.yml`, scan for stale path references |
 | `execute-plan.prompt.md` | `/execute-plan` | Approve a Master Plan and begin execution |
+
+## Next Steps
+
+- [Templates](templates.md) — customization rules and the full template inventory
+- [Validation](validation.md) — how to validate your project structure and state

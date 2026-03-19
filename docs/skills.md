@@ -12,6 +12,14 @@ Skills can include:
 - **References** — background material and examples
 - **Scripts** — CLI tools the skill uses
 
+## Customizing Skills
+
+Skills can be modified to adjust agent behavior — for example, changing the number of steps in a procedure, adjusting quality thresholds, or tailoring instructions to match a team's specific workflow and conventions.
+
+> **Warning**: Core instructions within skills — such as output format requirements, frontmatter schemas, and self-containment rules — should be preserved. Other parts of the pipeline depend on these contracts, and changing them can cause downstream agents to produce incompatible output.
+
+To customize the **output format** of documents a skill produces, modify the skill's template files. See [Templates](templates.md) for details on the 16 output templates and their customization rules.
+
 ## Skill Inventory
 
 ### Planning Skills
@@ -100,3 +108,8 @@ The `SKILL.md` file contains:
 - **Instructions** — step-by-step procedures
 - **Templates** — output document schemas
 - **Rules** — constraints and quality standards
+
+## Next Steps
+
+- [Templates](templates.md) — Customize the 16 output templates that skills produce
+- [Agents](agents.md) — See which agents use which skills

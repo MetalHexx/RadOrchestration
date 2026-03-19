@@ -16,23 +16,7 @@ The orchestration system uses 9 specialized agents, each with a defined role, sc
 | **Coder** | Code implementation | Code, tests, `TASK-REPORT.md` |
 | **Reviewer** | Code and phase review | `CODE-REVIEW.md`, `PHASE-REVIEW.md` |
 
-## Design Constraints
 
-### Sole Writer Policy
-
-Every document type has exactly one agent that may create or modify it. This eliminates write conflicts and makes the system's data flow explicit and traceable.
-
-### Read-Only Orchestrator
-
-The Orchestrator coordinates the entire pipeline but **never writes files**. It reads `state.json` to determine the current pipeline position, signals events to `pipeline.js` to get deterministic routing, and spawns the appropriate agent. This separation ensures the Orchestrator can't accidentally corrupt project state.  That said, agents are smart and the orchestrator can coordinate project correction if something goes wrong. 
-
-### Self-Contained Coder
-
-The Coder agent reads **only its Task Handoff document** — a single file containing everything needed to complete the task: inlined contracts, interfaces, design tokens, acceptance criteria, and file targets. The Coder never reads the PRD, Architecture, or Design documents directly. This ensures tasks are atomic, reproducible, high in signal, and low in noise.
-
-### Pipeline Script as State Authority
-
-Only the pipeline script (`pipeline.js`) writes `state.json`. Before every write, the pipeline engine runs integrated state-transition validation to ensure the process is always on track and predictable. 
 
 ---
 
@@ -45,7 +29,9 @@ Only the pipeline script (`pipeline.js`) writes `state.json`. Before every write
 The Brainstormer works directly with the human in a conversational loop — asking probing questions, exploring trade-offs, identifying scope boundaries, and converging on a well-defined goals. It operates outside the main pipeline and is entirely optional.
 
 **Input:** Human prompts and whatever you want.
+
 **Output:** `BRAINSTORMING.md` — validated ideas, scope boundaries, target users, and problem statements.
+
 **Skills:** `brainstorm`
 
 ---
@@ -54,7 +40,7 @@ The Brainstormer works directly with the human in a conversational loop — aski
 
 **Purpose:** Read project state and coordinate the pipeline by spawning the right agent at the right time.
 
-The Orchestrator is the entry point for all project interactions. It signals events to `pipeline.js`, parses the JSON result, and routes on an 18-action table to spawn the appropriate agent, present human gates, or display terminal messages. When the pipeline returns a failure result, the Orchestrator invokes the log-error skill to append a structured entry to the project's ERROR-LOG.md.
+The Orchestrator is the entry point for all project interactions. It signals events to `pipeline.js`, parses the JSON result, and routes on a 19-action table to spawn the appropriate agent, present human gates, or display terminal messages. When the pipeline returns a failure result, the Orchestrator invokes the log-error skill to append a structured entry to the project's ERROR-LOG.md.
 
 **Input:** Human prompts, `state.json`, pipeline script results
 **Output:** None — strictly read-only, prompts agents to do work.
@@ -70,7 +56,9 @@ The Orchestrator is the entry point for all project interactions. It signals eve
 The Research agent analyzes the existing project structure, technology stack, patterns, and constraints. If a `BRAINSTORMING.md` exists, it uses that as input context.
 
 **Input:** Codebase, documentation, `BRAINSTORMING.md` (if exists)
+
 **Output:** `RESEARCH-FINDINGS.md` — codebase analysis, technology inventory, patterns discovered, constraints, and recommendations.
+
 **Skills:** `research-codebase`
 
 ---
@@ -82,7 +70,9 @@ The Research agent analyzes the existing project structure, technology stack, pa
 Translates technical research and brainstorming output into structured requirements with numbered items (FR-1, NFR-1) for cross-referencing throughout the pipeline.
 
 **Input:** `RESEARCH-FINDINGS.md`, `BRAINSTORMING.md`
+
 **Output:** `PRD.md` — functional requirements, non-functional requirements, user stories, etc.
+
 **Skills:** `create-prd`
 
 ---
@@ -94,7 +84,9 @@ Translates technical research and brainstorming output into structured requireme
 Defines user flows, component layouts, interaction states, responsive behavior, accessibility requirements, and design tokens.
 
 **Input:** `PRD.md`
+
 **Output:** `DESIGN.md` — user flows, layout specifications, component definitions, states, breakpoints, and accessibility requirements.
+
 **Skills:** `create-design`
 
 ---
@@ -106,7 +98,9 @@ Defines user flows, component layouts, interaction states, responsive behavior, 
 The Architect reads Research, PRD, and Design to produce the technical architecture — system layers, module map, API contracts, database schemas, interfaces, and dependency graphs. It then synthesizes all planning documents into a Master Plan with high level a phased execution plan.
 
 **Input:** `RESEARCH-FINDINGS.md`, `PRD.md`, `DESIGN.md`
+
 **Output:** `ARCHITECTURE.md`, `MASTER-PLAN.md`
+
 **Skills:** `create-architecture`, `create-master-plan`
 
 ---
@@ -124,7 +118,9 @@ The Tactical Planner is a pure planning agent that operates in 3 modes:
 3. **Phase reports** — aggregate task results and assess exit criteria
 
 **Input:** `ARCHITECTURE.md`, `PRD.md`, `MASTER-PLAN.md`, `DESIGN.md`, `CODE-REVIEW.md`, `TASK-REPORT.md`, `state.json`
+
 **Output:**`PHASE-PLAN.md`, `PHASE-REPORT.md`, `TASK-HANDOFF.md`
+
 **Skills:** `create-phase-plan`, `create-task-handoff`, `generate-phase-report`
 
 ---
@@ -136,7 +132,9 @@ The Tactical Planner is a pure planning agent that operates in 3 modes:
 Reads a single Task Handoff, implements the code changes, writes tests, runs the build, and produces a Task Report documenting what was done, what changed, and any deviations or discoveries.
 
 **Input:** `TASK-HANDOFF.md`
+
 **Output:** Source code, tests, `TASK-REPORT.md`
+
 **Skills:** `execute-coding-task`, `generate-task-report`, `run-tests`
 
 ---
@@ -153,5 +151,13 @@ The Reviewer operates at three levels:
 - **Final review** — comprehensive project-level review before completion
 
 **Input:** Code changes, `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `PHASE-PLAN.md`, `TASK-REPORT.md`
+
 **Output:** `CODE-REVIEW.md`, `PHASE-REVIEW.md`
+
 **Skills:** `review-task`, `review-phase`
+
+## Next Steps
+
+- [Skills](skills.md) — Explore the 18 skill bundles agents use
+- [Templates](templates.md) — See the 16 output templates skills produce
+

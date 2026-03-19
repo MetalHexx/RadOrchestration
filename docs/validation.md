@@ -128,69 +128,6 @@ node .github/skills/validate-orchestration/scripts/validate-orchestration.js --n
 - Exit code `1` means one or more failures (warnings are allowed)
 - `--no-color` strips ANSI escape codes for clean logs
 
-## State Transition Validation
-
-Runtime state validation runs automatically inside `pipeline-engine.js` on every event — there is no separate CLI validator. Before writing `state.json`, the engine calls `validateTransition(currentState, proposedState, config)` from `validator.js`. This function checks **12 active invariants** and returns an array of errors. It validates both status transitions (V12) and stage transitions (V14/V15) in addition to structural and timestamp checks:
-
-```javascript
-/**
- * Validate a v4 state transition.
- * Checks structural invariants (V1, V2, V5–V7, V10, V16),
- * transition invariants (V11–V15), and timestamp monotonicity (V13).
- *
- * @param {StateV4 | null} current - state before mutation (null on init)
- * @param {StateV4} proposed - state after mutation
- * @param {Object} config - parsed orchestration config
- * @returns {ValidationError[]} - empty array means valid
- */
-validateTransition(current, proposed, config)
-// → ValidationError[]  (empty array means valid)
-```
-
-Validation runs once per event, after the mutation. If any invariant fails, the pipeline returns an error result and does **not** write `state.json`.
-
-### Invariant Catalog (12 active)
-
-| ID | Name | Check Type | Description |
-|----|------|-----------|-------------|
-| V1 | Phase index bounds | Proposed-only | `current_phase` must be within `[1, phases.length]`; 0 when `phases` empty |
-| V2 | Task index bounds | Proposed-only | `current_task` must be within `[1, tasks.length]`; 0 when `tasks` empty; may equal `tasks.length + 1` as transient "all tasks processed" state |
-| V5 | Config limits | Proposed-only | `phases.length ≤ max_phases`; each `phase.tasks.length ≤ max_tasks_per_phase` |
-| V6 | Execution tier gate | Proposed-only | `pipeline.current_tier === 'execution'` requires `planning.human_approved === true` |
-| V7 | Final review gate | Proposed-only | `pipeline.current_tier === 'complete'` with `after_final_review` gate requires `final_review.human_approved === true` |
-| V10 | Phase-tier consistency | Proposed-only | Active phase status must be consistent with `pipeline.current_tier` (no `in_progress` during planning; all `complete`/`halted` during review/complete) |
-| V11 | Retry monotonicity | Current→Proposed | Task `retries` count must never decrease |
-| V12 | Status transitions | Current→Proposed | Phase and task status changes must follow allowed transition maps; `complete` is terminal for tasks (no `complete → failed` path) |
-| V13 | Timestamp monotonicity | Current→Proposed | `project.updated` must strictly increase |
-| V14 | Task stage transitions | Current→Proposed | Task `stage` changes must follow `ALLOWED_TASK_STAGE_TRANSITIONS` |
-| V15 | Phase stage transitions | Current→Proposed | Phase `stage` changes must follow `ALLOWED_PHASE_STAGE_TRANSITIONS` |
-| V16 | JSON Schema validation | Proposed-only | Structural validation against `state-v4.schema.json` (field types, required fields, enum values) |
-
-### Valid Status Transitions (V12)
-
-**Phase transitions:**
-
-```
-not_started → in_progress
-in_progress → complete | halted
-complete    → (terminal)
-halted      → (terminal)
-```
-
-**Task transitions:**
-
-```
-not_started → in_progress
-in_progress → complete | failed | halted
-failed      → in_progress  (retry path)
-complete    → (terminal)
-halted      → (terminal)
-```
-
-> **Note:** `complete` is terminal for tasks. Corrective retries happen via the `stage` field while `status` remains `in_progress` (see V14).
-
-See [Pipeline Script](scripts.md) for details on the unified pipeline CLI.
-
 ## When to Run
 
 Run validation after:
@@ -200,3 +137,9 @@ Run validation after:
 - Modifying instruction files
 - Adding prompt files
 - Any structural changes to `.github/`
+
+## Next Steps
+
+- [Configuration](configuration.md) — Understand the settings the validator checks
+- [Scripts](scripts.md) — Explore the pipeline CLI and action vocabulary
+- [Project Structure](project-structure.md) — See the workspace layout the validator expects

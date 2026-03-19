@@ -86,6 +86,8 @@ These limits are read from `orchestration.yml` at runtime by the pipeline engine
 
 ### `errors`
 
+> **Planned — not yet functional.** This section documents a planned feature. The pipeline does not currently use these settings. They are validated for syntax but have no runtime effect.
+
 Error classification determines the pipeline's automatic response.
 
 | Key | Type | Default | Description |
@@ -96,6 +98,8 @@ Error classification determines the pipeline's automatic response.
 | `on_minor` | string | `"retry"` | Response to minor errors. Options: `retry`, `halt`, `skip` |
 
 ### `git`
+
+> **Planned — not yet functional.** This section documents a planned feature. The pipeline does not currently use these settings. They are validated for syntax but have no runtime effect.
 
 Git strategy for orchestration branches and commits.
 
@@ -120,7 +124,7 @@ Human approval checkpoints during pipeline execution.
 
 | Mode | Behavior |
 |------|----------|
-| `ask` | Prompt the human at execution start for their preferred oversight level |
+| `ask` | Prompt the human for their preferred gate level. When the pipeline encounters a gate and no mode has been resolved, it returns the [`ask_gate_mode`](scripts.md#gate-actions-3) action, and the Orchestrator asks the human which mode to use for the remainder of execution. |
 | `phase` | Require human approval before each phase begins |
 | `task` | Require human approval before each task begins |
 | `autonomous` | No gates during execution — all phases and tasks run without human approval |
@@ -129,42 +133,7 @@ Human approval checkpoints during pipeline execution.
 
 The pipeline engine reads limits and human gate settings directly from `orchestration.yml` at runtime. These values are not copied into `state.json` at project initialization — `state.json` holds only pipeline state, not configuration. This means changes to `orchestration.yml` limits take effect for all projects on the next pipeline invocation.
 
-The initial `state.json` shape for a new project is:
-
-```json
-{
-  "$schema": "orchestration-state-v4",
-  "project": {
-    "name": "PROJECT-NAME",
-    "created": "2026-03-15T00:00:00.000Z",
-    "updated": "2026-03-15T00:00:00.000Z"
-  },
-  "pipeline": {
-    "current_tier": "planning"
-  },
-  "planning": {
-    "status": "not_started",
-    "human_approved": false,
-    "steps": [
-      { "name": "research", "status": "not_started", "doc_path": null },
-      { "name": "prd", "status": "not_started", "doc_path": null },
-      { "name": "design", "status": "not_started", "doc_path": null },
-      { "name": "architecture", "status": "not_started", "doc_path": null },
-      { "name": "master_plan", "status": "not_started", "doc_path": null }
-    ]
-  },
-  "execution": {
-    "status": "not_started",
-    "current_phase": 0,
-    "phases": []
-  },
-  "final_review": {
-    "status": "not_started",
-    "doc_path": null,
-    "human_approved": false
-  }
-}
-```
+See [state-v4.schema.json](../.github/orchestration/schemas/state-v4.schema.json) for the full initial state shape and schema definition.
 
 ## Changing Configuration
 
@@ -185,3 +154,8 @@ This checks:
 - All required keys are present with correct types
 - Values are within allowed ranges
 - Error severity categories are valid
+
+## Next Steps
+
+- [Validation](validation.md) — Run the validator to check your configuration
+- [Scripts](scripts.md) — Pipeline scripts reference: actions, events, and CLI interface

@@ -78,7 +78,7 @@ To resume a project that's already in progress:
 @Orchestrator continue the project
 ```
 
-The Orchestrator reads `state.json` to determine exactly where the pipeline left off and spawns the appropriate agent. The deterministic `pipeline.js` event-driven engine — with its 17-event vocabulary and 18-action output set — ensures consistent routing regardless of how many times you resume.
+The Orchestrator reads `state.json` to determine exactly where the pipeline left off and spawns the appropriate agent. The deterministic `pipeline.js` event-driven engine — with its 17-event vocabulary and 19-action output set — ensures consistent routing regardless of how many times you resume.
 
 ## Checking Status
 
@@ -88,7 +88,7 @@ The Orchestrator reads `state.json` to determine exactly where the pipeline left
 
 The Orchestrator reads `state.json` directly to determine the current project status, or calls `pipeline.js --event start` to get the current state and recommended next action. Every state mutation flows through `pipeline.js`, so `state.json` is always the authoritative source of truth. The `pipeline.current_tier` field identifies the active tier (`planning`, `execution`, or `complete`).
 
-> Recommended: Check out the [UI Status Dashboard](project-structure.md#project-file-structure) — it surfaces the current status, recent activity, and next steps based on `state.json` in a human-friendly format and in realtime.
+> Recommended: Check out the [UI Status Dashboard](dashboard.md) — it surfaces the current status, recent activity, and next steps based on `state.json` in a human-friendly format and in realtime.
 
 ## Running Validation
 
@@ -118,3 +118,6 @@ Add `--verbose` for detailed output, or `--category agents` to check a single ca
 - [Pipeline](pipeline.md) — learn how the planning and execution pipeline works
 - [Configuration](configuration.md) — customize pipeline behavior via `orchestration.yml`
 - [Project Structure](project-structure.md) — understand the file layout and naming conventions
+- [Skills](skills.md) — explore the 18 skill bundles agents use to produce artifacts
+- [Templates](templates.md) — discover the 16 output templates and how to customize them
+- [Dashboard](dashboard.md) — monitor project status and manage human gates in the UI

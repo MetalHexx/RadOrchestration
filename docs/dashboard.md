@@ -38,6 +38,8 @@ WORKSPACE_ROOT=..
 
 Browse all detected projects in the workspace. The sidebar shows each project's name and current status at a glance. Click a project to select it and view its full details in the main panel.
 
+Projects are sorted by pipeline tier: execution first, then review, planning, not_initialized, halted, and complete last.
+
 ### Dashboard Overview
 
 Displays pipeline progress, phase/task summary, and key metrics including total phases, completed tasks, and retry counts. The project header shows the project name alongside a pipeline tier badge indicating the current stage.
@@ -49,6 +51,34 @@ Visualizes the planning steps as a checklist: Research → PRD → Design → Ar
 ### Execution Drill-Down
 
 Phase cards with progress bars showing task completion percentages. Individual task cards display status, retry counts, and verdict badges. Cards are expandable to reveal links to handoff, report, and review documents.
+
+### Final Review
+
+For projects that have reached the final review stage, the dashboard displays a Final Review section showing the final review document alongside the approval gate. When the final review is complete, the approval gate button allows a human to approve the project and advance it to the complete state.
+
+### Other Docs
+
+The dashboard lists supplementary project documents that are not part of the standard pipeline slots — such as brainstorming notes and research findings. These appear in an Other Docs section, making them accessible through the document viewer alongside the primary planning and execution documents.
+
+### Not Initialized View
+
+When a project folder is detected in the workspace but contains no `state.json` file, the dashboard displays a "Not Initialized" view in place of the normal project dashboard. This provides a clear signal that the project has not yet been started through the pipeline.
+
+### Malformed State View
+
+When `state.json` exists but fails JSON parsing or schema validation, the dashboard displays a warning badge containing the specific error message. This allows you to identify and fix corrupted state without leaving the dashboard.
+
+### Approve Gate Button
+
+Human gate steps (planning approval and final approval) display an Approve button directly in the dashboard. Clicking the button opens a confirmation dialog before firing the approval event, preventing accidental approvals. Once confirmed, the pipeline advances automatically.
+
+### Gate Error Banner
+
+If a gate approval API call fails, an inline error banner is displayed immediately below the approval button. The banner shows the error message and remains visible until the next successful action or page navigation.
+
+### Document Navigation
+
+The document viewer drawer includes a prev/next navigation footer that lets you move between project documents without closing and reopening the drawer. A position indicator (for example, "2 of 7") shows your current location within the document set.
 
 ### Document Viewer
 
@@ -71,10 +101,12 @@ A collection of visual badges and indicators used throughout the dashboard:
 | Retry count badge | Displays the number of task retries |
 | Lock badge | Marks human gates that require manual approval |
 | Warning badge | Highlights items needing attention |
+| Stage badge | Shows the current task or phase stage (e.g., planning, coding, reviewing) |
+| Gate mode badge | Shows the active execution gate mode (ask, phase, task, autonomous) |
 
 ### Theme Support
 
-Light and dark mode toggle available in the header. The dashboard respects your system preference on first visit and persists your choice across sessions.
+System, dark, and light mode toggle available in the header. The toggle uses three icons: Monitor for system, Moon for dark, and Sun for light. The dashboard respects your system preference on first visit and persists your choice across sessions.
 
 ## Data Sources
 
@@ -97,29 +129,6 @@ The dashboard stays current without manual refreshing:
 - The browser's SSE client (`/api/events` endpoint) receives the event and triggers a state re-fetch
 - Supported event types: `connected`, `state_change`, `project_added`, `project_removed`, `heartbeat`
 - Reconnection uses exponential backoff (1s → 2s → 4s → ... → 30s max, up to 10 attempts)
-
-## Component Architecture
-
-```
-ui/
-├── app/
-│   ├── page.tsx              # Main page — assembles all top-level components
-│   ├── layout.tsx            # Root layout with theme provider
-│   └── api/                  # API routes (projects, events, config)
-├── components/
-│   ├── sidebar/              # Project list, search, selection
-│   ├── dashboard/            # Project header, planning section, execution phases
-│   ├── planning/             # Planning checklist, error summary
-│   ├── execution/            # Phase cards, task cards, progress bars
-│   ├── documents/            # Document drawer, markdown renderer
-│   ├── config/               # Config drawer, config sections
-│   ├── badges/               # Status indicators (tier, verdict, severity, connection)
-│   ├── layout/               # App header, main dashboard shell
-│   └── theme/                # Theme toggle (light/dark)
-├── hooks/                    # Custom React hooks (useProjects, useSSE, useTheme, etc.)
-├── types/                    # TypeScript type definitions
-└── lib/                      # Utilities (path resolver, markdown parser, YAML parser)
-```
 
 ## Next Steps
 

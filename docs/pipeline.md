@@ -1,13 +1,14 @@
 # Pipeline
 
-The orchestration pipeline takes a project from idea through planning, execution, and review. The Orchestrator operates as an event-driven controller: it signals events to `pipeline.js`, parses JSON results, and routes on an 18-action table. The pipeline script (`pipeline.js`) is the sole state-mutation authority — it internalizes all state transitions, validation, and next-action resolution to maximize determinism in your agentic SDLC.
+The orchestration pipeline takes a project from idea through planning, execution, and review. The Orchestrator operates as an event-driven controller: it signals events to `pipeline.js`, parses JSON results, and routes on a 19-action table. The pipeline script (`pipeline.js`) is the sole state-mutation authority — it internalizes all state transitions, validation, and next-action resolution to maximize determinism in your agentic SDLC.
 
 ## Pipeline Tiers
 
 The pipeline progresses through four major tiers:
 
-```
-planning → execution → review → complete
+```mermaid
+flowchart LR
+    planning --> execution --> review --> complete
 ```
 
 A project can also be `halted` from any tier when a critical error occurs or a human gate is not satisfied.
@@ -25,18 +26,11 @@ The system tracks work progress at two levels of granularity on every task and p
 
 ### Task Stage Lifecycle
 
-```
-         ┌─────────────────────────────────────────┐
-         │              corrective                  │
-         ▼               re-entry                   │
-    ┌──────────┐    ┌──────────┐    ┌───────────┐   │  ┌──────────┐
-    │ planning ├───►│  coding  ├───►│ reviewing ├───┼─►│ complete │
-    └──────────┘    └──────────┘    └───────────┘   │  └──────────┘
-                                         │          │
-                                         ▼          │
-                                    ┌──────────┐    │
-                                    │  failed  ├────┘
-                                    └──────────┘
+```mermaid
+flowchart LR
+    planning --> coding --> reviewing --> complete
+    reviewing --> failed
+    failed -->|corrective re-entry| coding
 ```
 
 | Stage | Meaning |
@@ -45,34 +39,21 @@ The system tracks work progress at two levels of granularity on every task and p
 | `coding` | Coder is executing the task |
 | `reviewing` | Reviewer is evaluating the code |
 | `complete` | Code review approved — terminal |
-| `failed` | Review rejected with no remaining retries — terminal (unless corrective re-entry) |
+| `failed` | Review verdict was `changes_requested` — Tactical Planner creates a corrective task handoff to re-enter at `coding` if retries remain; terminal if retries exhausted |
 
 > **Note:** `reporting` is a reserved enum value in the schema but is not set by any current mutation handler.
 
 Allowed task stage transitions:
 
-```javascript
-const ALLOWED_TASK_STAGE_TRANSITIONS = Object.freeze({
-  'planning':  ['coding'],
-  'coding':    ['reviewing'],
-  'reviewing': ['complete', 'failed'],
-  'complete':  [],
-  'failed':    ['coding'],       // corrective re-entry (skips planning)
-});
-```
+See [constants.js](../.github/orchestration/scripts/lib/constants.js) for the full transition map.
 
 ### Phase Stage Lifecycle
 
-```
-    ┌──────────┐    ┌───────────┐    ┌───────────┐    ┌──────────┐
-    │ planning ├───►│ executing ├───►│ reviewing ├───►│ complete │
-    └──────────┘    └───────────┘    └───────────┘    └──────────┘
-                         ▲                │
-                         │  corrective    │
-                         │  tasks         ▼
-                         │           ┌──────────┐
-                         └───────────┤  failed  │
-                                     └──────────┘
+```mermaid
+flowchart LR
+    planning --> executing --> reviewing --> complete
+    reviewing --> failed
+    failed -->|corrective tasks| executing
 ```
 
 | Stage | Meaning |
@@ -81,19 +62,11 @@ const ALLOWED_TASK_STAGE_TRANSITIONS = Object.freeze({
 | `executing` | Tasks are being executed |
 | `reviewing` | Phase report/review is in progress |
 | `complete` | Phase review approved — terminal |
-| `failed` | Phase review rejected — corrective tasks re-enter execution |
+| `failed` | Phase review verdict was `changes_requested` — Tactical Planner creates a corrective Phase Plan re-entering execution; or phase review was `rejected` — pipeline halts |
 
 Allowed phase stage transitions:
 
-```javascript
-const ALLOWED_PHASE_STAGE_TRANSITIONS = Object.freeze({
-  'planning':  ['executing'],
-  'executing': ['reviewing'],
-  'reviewing': ['complete', 'failed'],
-  'complete':  [],
-  'failed':    ['executing'],   // corrective tasks re-enter execution
-});
-```
+See [constants.js](../.github/orchestration/scripts/lib/constants.js) for the full transition map.
 
 ## Planning Pipeline
 
@@ -174,21 +147,24 @@ sequenceDiagram
         loop Each Task
             ORC->>TP: Create Task Handoff
             TP-->>ORC: TASK-HANDOFF.md
-            Note over ORC: pipeline.js --event task_handoff_created
+            Note over ORC: event task_handoff_created
 
             ORC->>COD: Execute task
             COD-->>ORC: TASK-REPORT.md
-            Note over ORC: pipeline.js --event task_completed (stage → reviewing; status stays in_progress)
+            Note over ORC: event task_completed<br/>stage → reviewing, status stays in_progress
 
             ORC->>REV: Review code
             REV-->>ORC: CODE-REVIEW.md
-            Note over ORC: pipeline.js --event code_review_completed (mutates state + resolves action)
+            Note over ORC: event code_review_completed<br/>mutates state, resolves action
 
-            alt result.action == create_task_handoff (corrective)
-                Note over ORC: Corrective retry
-            else result.action == display_halted
+            alt corrective task handoff
+                ORC->>TP: Create corrective Task Handoff
+                TP-->>ORC: Corrective TASK-HANDOFF.md
+                Note over ORC: event task_handoff_created<br/>clears stale docs, stage → coding
+                Note over ORC: Loop continues, Coder re-executes task
+            else display_halted
                 ORC->>Human: Intervention required
-            else result.action == execute_task / create_task_handoff (next)
+            else next task
                 Note over ORC: Continue to next task
             end
         end
@@ -197,14 +173,14 @@ sequenceDiagram
         TP-->>ORC: PHASE-REPORT.md
         ORC->>REV: Phase review
         REV-->>ORC: PHASE-REVIEW.md
-        Note over ORC: pipeline.js --event phase_review_completed (mutates state + resolves action)
+        Note over ORC: event phase_review_completed<br/>mutates state, resolves action
     end
 
     ORC->>REV: Final comprehensive review
     REV-->>ORC: Final verdict
     ORC->>Human: Review final results
     Human->>ORC: Approved
-    Note over ORC: pipeline.js --event final_approved (transitions to complete)
+    Note over ORC: event final_approved, transitions to complete
 ```
 
 ### Task Lifecycle
@@ -214,9 +190,9 @@ Each task progresses through a deterministic lifecycle:
 1. **Handoff** — Tactical Planner creates a self-contained Task Handoff document; task `stage` advances to `coding`
 2. **Execution** — Coder implements the task and produces a Task Report; the `task_completed` event sets `stage → reviewing` while `status` **remains `in_progress`** — the task is not complete yet, it is waiting for review
 3. **Review** — Reviewer evaluates the code against PRD, architecture, and design
-4. **Resolution** — Pipeline script processes the `code_review_completed` event: if approved, `status → complete` and `stage → complete`; if rejected with retries remaining, `stage → coding` (corrective re-entry); if rejected with no retries, `status → failed` and `stage → failed`
+4. **Resolution** — Pipeline script processes the `code_review_completed` event: if approved, `status → complete` and `stage → complete`; if `changes_requested` with retries remaining, `status → failed` and `stage → failed` (retries incremented) — the Tactical Planner then creates a corrective task handoff, which resets `status → in_progress` and `stage → coding`; if `changes_requested` with no retries remaining, `status → halted` and `stage → failed`
 
-> **Note:** `complete` is truly terminal for tasks. A task that reaches `status = complete` cannot be retried or failed. The only retry path is corrective re-entry from `stage = reviewing → coding` while `status` is still `in_progress`.
+> **Note:** `complete` is truly terminal for tasks. A task that reaches `status = complete` cannot be retried or failed. The retry path is corrective re-entry: on `changes_requested`, the task transitions to `status = failed`, `stage = failed` (retries incremented); the Tactical Planner then creates a corrective task handoff which resets `status → in_progress`, `stage → coding`, and clears the stale report and review docs.
 
 ### Phase Lifecycle
 
@@ -225,7 +201,7 @@ After all tasks in a phase are complete:
 1. **Phase Report** — Tactical Planner aggregates task results and assesses exit criteria; phase `stage` advances to `reviewing`
 2. **Phase Review** — Reviewer performs cross-task integration review
 3. **Resolution** — Pipeline script processes the `phase_review_completed` event: applies state mutation, validates, resolves next action
-4. **Advance or Correct** — pipeline returns `create_phase_plan` (advance), `create_task_handoff` with `context.is_correction` (corrective), or `display_halted` (halt)
+4. **Advance or Correct** — if approved, the pipeline advances to the next phase via `create_phase_plan`; if `changes_requested`, the phase re-enters the planning stage via `create_phase_plan` where the Tactical Planner produces a new Phase Plan leading with corrective tasks addressing the Phase Review's findings; if rejected, `display_halted` (halt)
 
 ## Human Gates
 
@@ -265,7 +241,7 @@ The pipeline script encodes this logic in a deterministic decision table — the
 
 ## Pipeline Routing
 
-Pipeline routing is event-driven. The Orchestrator signals events to `pipeline.js` and receives one of 18 possible actions in the JSON result. All routing is deterministic: the same event combined with the same `state.json` always produces the same result.
+Pipeline routing is event-driven. The Orchestrator signals events to `pipeline.js` and receives one of 19 possible actions in the JSON result. All routing is deterministic: the same event combined with the same `state.json` always produces the same result.
 
 The Orchestrator calls `pipeline.js`, reads `result.action`, and performs the corresponding operation (spawn an agent, present a human gate, or terminate the loop).
 
@@ -309,7 +285,7 @@ Only two synonyms are normalized. Any unrecognized status value produces a hard 
 
 The canonical status vocabulary is `complete`, `partial`, `failed`. The normalization acts as a safety net for minor LLM vocabulary drift; the `generate-task-report` skill enforces the canonical values at the source.
 
-### 18-Action Routing Table
+### 19-Action Routing Table
 
 | # | Action | Category | Orchestrator Operation |
 |---|--------|----------|----------------------|
@@ -329,8 +305,9 @@ The canonical status vocabulary is `complete`, `partial`, `failed`. The normaliz
 | 14 | `request_final_approval` | Human gate | Present final review for approval |
 | 15 | `gate_task` | Human gate | Present task results for approval |
 | 16 | `gate_phase` | Human gate | Present phase results for approval |
-| 17 | `display_halted` | Terminal | Display halt message — loop terminates |
-| 18 | `display_complete` | Terminal | Display completion — loop terminates |
+| 17 | `ask_gate_mode` | Human gate | Prompt human for execution gate mode preference |
+| 18 | `display_halted` | Terminal | Display halt message — loop terminates |
+| 19 | `display_complete` | Terminal | Display completion — loop terminates |
 
 ## State Management
 
@@ -340,12 +317,15 @@ Key rules:
 - Only the pipeline script (`pipeline.js`) writes `state.json`
 - Every state mutation is validated against invariants before being written to disk. Invalid state never reaches disk.
 - Task `status` transitions follow a strict map — `complete` is **terminal** (no `complete → failed` path exists):
-  ```
-  not_started → in_progress
-  in_progress → complete | failed | halted
-  failed      → in_progress  (retry path)
-  complete    → (terminal)
-  halted      → (terminal)
+  ```mermaid
+  flowchart LR
+      not_started --> in_progress
+      in_progress --> complete
+      in_progress --> failed
+      in_progress --> halted
+      failed -->|retry path| in_progress
+      complete([complete - terminal])
+      halted([halted - terminal])
   ```
 - Task `stage` tracks precise work focus within `in_progress` — the resolver matches on `stage` to determine the next action
 - All index references (phases, tasks) are **1-based**: `current_phase = 1` means the first phase; `current_task = 1` means the first task within the current phase
@@ -369,3 +349,8 @@ Key rules:
 | Final review document | `final_review.doc_path` |
 | Final review status | `final_review.status` |
 | Final review human approval | `final_review.human_approved` |
+
+## Next Steps
+
+- [Scripts Reference](scripts.md) — Full event vocabulary, action definitions, and CLI interface
+- [Project Structure](project-structure.md) — State schema, file layout, and project directory conventions
