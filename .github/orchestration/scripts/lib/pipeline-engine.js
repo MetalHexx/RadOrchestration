@@ -21,7 +21,7 @@ function deepClone(obj) {
  *
  * @param {Object} config - parsed orchestration config
  * @param {string} projectDir - absolute path to project directory
- * @returns {Object} fresh v3 state object
+ * @returns {Object} fresh v4 state object
  */
 function scaffoldInitialState(config, projectDir) {
   const now = new Date().toISOString();
@@ -31,6 +31,10 @@ function scaffoldInitialState(config, projectDir) {
       name: path.basename(projectDir),
       created: now,
       updated: now,
+    },
+    pipeline: {
+      current_tier: 'planning',
+      gate_mode: null,
     },
     planning: {
       status: 'not_started',
@@ -42,14 +46,16 @@ function scaffoldInitialState(config, projectDir) {
         { name: 'architecture',  status: 'not_started', doc_path: null },
         { name: 'master_plan',   status: 'not_started', doc_path: null },
       ],
-      current_step: 'research',
     },
     execution: {
       status: 'not_started',
-      current_tier: 'planning',
       current_phase: 0,
-      total_phases: 0,
       phases: [],
+    },
+    final_review: {
+      status: 'not_started',
+      doc_path: null,
+      human_approved: false,
     },
   };
 }

@@ -6,6 +6,8 @@ const {
   PLANNING_STEP_STATUSES,
   TASK_STATUSES,
   PHASE_STATUSES,
+  TASK_STAGES,
+  PHASE_STAGES,
   REVIEW_VERDICTS,
   REVIEW_ACTIONS,
   PHASE_REVIEW_ACTIONS,
@@ -15,19 +17,19 @@ const {
 
 /**
  * @param {Object} state
- * @returns {Object} current phase object
+ * @returns {Object} current phase object (1-based index)
  */
 function currentPhase(state) {
-  return state.execution.phases[state.execution.current_phase];
+  return state.execution.phases[state.execution.current_phase - 1];
 }
 
 /**
  * @param {Object} state
- * @returns {Object} current task object
+ * @returns {Object} current task object (1-based index)
  */
 function currentTask(state) {
   const phase = currentPhase(state);
-  return phase.tasks[phase.current_task];
+  return phase.tasks[phase.current_task - 1];
 }
 
 /**
@@ -136,7 +138,10 @@ function completePlanningStep(state, stepName, docPath) {
   step.doc_path = docPath;
   return {
     state,
-    mutations_applied: [`Set planning step "${stepName}" status to complete`, `Set planning step "${stepName}" doc_path to "${docPath}"`],
+    mutations_applied: [
+      `Set planning step "${stepName}" status to complete`,
+      `Set planning step "${stepName}" doc_path to "${docPath}"`,
+    ],
   };
 }
 
@@ -173,34 +178,58 @@ function handleMasterPlanCompleted(state, context, config) {
 /** @type {MutationHandler} */
 function handlePlanApproved(state, context, config) {
   state.planning.human_approved = true;
-  state.execution.current_tier = PIPELINE_TIERS.EXECUTION;
+  state.pipeline.current_tier = PIPELINE_TIERS.EXECUTION;
   state.execution.status = 'in_progress';
-  state.execution.total_phases = context.total_phases;
+  state.execution.current_phase = 1; // 1-based; first phase active
   state.execution.phases = [];
   for (let i = 0; i < context.total_phases; i++) {
     state.execution.phases.push({
       name: `Phase ${i + 1}`,
       status: PHASE_STATUSES.NOT_STARTED,
-      current_task: 0,
-      total_tasks: 0,
+      stage: PHASE_STAGES.PLANNING,
+      current_task: 0, // 1-based; 0 = no tasks yet
       tasks: [],
-      phase_plan_doc: null,
-      phase_report_doc: null,
-      phase_review_doc: null,
-      phase_review_verdict: null,
-      phase_review_action: null,
+      docs: {
+        phase_plan: null,
+        phase_report: null,
+        phase_review: null,
+      },
+      review: {
+        verdict: null,
+        action: null,
+      },
     });
   }
-  state.execution.current_phase = 0;
   return {
     state,
     mutations_applied: [
       'Set planning.human_approved to true',
-      `Set execution.current_tier to "${PIPELINE_TIERS.EXECUTION}"`,
+      `Set pipeline.current_tier to "${PIPELINE_TIERS.EXECUTION}"`,
       'Set execution.status to "in_progress"',
-      `Set execution.total_phases to ${context.total_phases}`,
+      'Set execution.current_phase to 1',
       `Initialized execution.phases with ${context.total_phases} phase(s)`,
-      'Set execution.current_phase to 0',
+    ],
+  };
+}
+
+// ─── Plan Rejection Handler ─────────────────────────────────────────────────
+
+/**
+ * plan_rejected — Resets planning to allow revision of the master plan.
+ * @param {Object} state
+ * @param {Object} context  (no fields required)
+ * @param {Object} config
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handlePlanRejected(state, context, config) {
+  state.planning.human_approved = false;
+  const masterPlanStep = state.planning.steps.find(s => s.name === 'master_plan');
+  masterPlanStep.status = PLANNING_STEP_STATUSES.IN_PROGRESS;
+  return {
+    state,
+    mutations_applied: [
+      'Set planning.human_approved to false',
+      `Set planning step "master_plan" status to "${PLANNING_STEP_STATUSES.IN_PROGRESS}"`,
     ],
   };
 }
@@ -211,29 +240,36 @@ function handlePlanApproved(state, context, config) {
 function handlePhasePlanCreated(state, context, config) {
   const phase = currentPhase(state);
   phase.status = PHASE_STATUSES.IN_PROGRESS;
-  phase.phase_plan_doc = context.doc_path;
+  phase.stage = PHASE_STAGES.EXECUTING;
+  phase.docs.phase_plan = context.doc_path;
   if (context.title) phase.name = context.title;
-  phase.total_tasks = context.tasks.length;
+  phase.current_task = 1; // 1-based; first task active
   phase.tasks = context.tasks.map(taskObj => ({
     name: typeof taskObj === 'object' && taskObj !== null ? (taskObj.title ?? taskObj.id ?? String(taskObj)) : taskObj,
     status: TASK_STATUSES.NOT_STARTED,
-    handoff_doc: null,
-    report_doc: null,
-    review_doc: null,
-    review_verdict: null,
-    review_action: null,
+    stage: TASK_STAGES.PLANNING,
+    docs: {
+      handoff: null,
+      report: null,
+      review: null,
+    },
+    review: {
+      verdict: null,
+      action: null,
+    },
+    report_status: null,
     has_deviations: false,
     deviation_type: null,
     retries: 0,
-    report_status: null,
   }));
   return {
     state,
     mutations_applied: [
       `Set phase.status to "${PHASE_STATUSES.IN_PROGRESS}"`,
-      `Set phase.phase_plan_doc to "${context.doc_path}"`,
+      `Set phase.stage to "${PHASE_STAGES.EXECUTING}"`,
+      `Set phase.docs.phase_plan to "${context.doc_path}"`,
       ...(context.title ? [`Updated phase.name to "${context.title}"`] : []),
-      `Set phase.total_tasks to ${context.tasks.length}`,
+      'Set phase.current_task to 1',
       `Populated phase.tasks with ${context.tasks.length} task(s)`,
     ],
   };
@@ -245,22 +281,24 @@ function handleTaskHandoffCreated(state, context, config) {
   const mutations = [];
 
   // Clear stale report/review from previous attempt (corrective re-execution)
-  if (task.report_doc) {
-    task.report_doc = null;
+  if (task.docs.report) {
+    task.docs.report = null;
     task.report_status = null;
-    mutations.push('Cleared task.report_doc and report_status (corrective re-execution)');
+    mutations.push('Cleared task.docs.report and report_status (corrective re-execution)');
   }
-  if (task.review_doc) {
-    task.review_doc = null;
-    task.review_verdict = null;
-    task.review_action = null;
-    mutations.push('Cleared task.review_doc, review_verdict, and review_action (corrective re-execution)');
+  if (task.docs.review) {
+    task.docs.review = null;
+    task.review.verdict = null;
+    task.review.action = null;
+    mutations.push('Cleared task.docs.review, review.verdict, and review.action (corrective re-execution)');
   }
 
-  task.handoff_doc = context.doc_path;
+  task.docs.handoff = context.doc_path;
   task.status = TASK_STATUSES.IN_PROGRESS;
-  mutations.push(`Set task.handoff_doc to "${context.doc_path}"`);
+  task.stage = TASK_STAGES.CODING;
+  mutations.push(`Set task.docs.handoff to "${context.doc_path}"`);
   mutations.push(`Set task.status to "${TASK_STATUSES.IN_PROGRESS}"`);
+  mutations.push(`Set task.stage to "${TASK_STAGES.CODING}"`);
 
   return { state, mutations_applied: mutations };
 }
@@ -268,19 +306,21 @@ function handleTaskHandoffCreated(state, context, config) {
 /** @type {MutationHandler} */
 function handleTaskCompleted(state, context, config) {
   const task = currentTask(state);
-  task.report_doc = context.doc_path;
+  task.docs.report = context.doc_path;
   task.has_deviations = context.has_deviations;
   task.deviation_type = context.deviation_type;
   task.report_status = context.report_status || 'complete';
-  task.status = TASK_STATUSES.COMPLETE;
+  task.stage = TASK_STAGES.REVIEWING;
+  // KEY v4 CHANGE: task.status stays in_progress — complete is truly terminal (set only after code review approves)
   return {
     state,
     mutations_applied: [
-      `Set task.report_doc to "${context.doc_path}"`,
+      `Set task.docs.report to "${context.doc_path}"`,
       `Set task.has_deviations to ${context.has_deviations}`,
       `Set task.deviation_type to ${context.deviation_type}`,
       `Set task.report_status to "${task.report_status}"`,
-      `Set task.status to "${TASK_STATUSES.COMPLETE}"`,
+      `Set task.stage to "${TASK_STAGES.REVIEWING}"`,
+      `task.status stays "${TASK_STATUSES.IN_PROGRESS}" (awaiting code review)`,
     ],
   };
 }
@@ -289,8 +329,8 @@ function handleTaskCompleted(state, context, config) {
 function handleCodeReviewCompleted(state, context, config) {
   const task = currentTask(state);
   const phase = currentPhase(state);
-  task.review_doc = context.doc_path;
-  task.review_verdict = context.verdict;
+  task.docs.review = context.doc_path;
+  task.review.verdict = context.verdict;
 
   const { taskStatus, reviewAction } = resolveTaskOutcome(
     context.verdict,
@@ -302,24 +342,37 @@ function handleCodeReviewCompleted(state, context, config) {
   );
 
   task.status = taskStatus;
-  task.review_action = reviewAction;
+  task.review.action = reviewAction;
 
   const mutations = [
-    `Set task.review_doc to "${context.doc_path}"`,
-    `Set task.review_verdict to "${context.verdict}"`,
+    `Set task.docs.review to "${context.doc_path}"`,
+    `Set task.review.verdict to "${context.verdict}"`,
     `Set task.status to "${taskStatus}"`,
-    `Set task.review_action to "${reviewAction}"`,
+    `Set task.review.action to "${reviewAction}"`,
   ];
 
   if (reviewAction === REVIEW_ACTIONS.ADVANCED) {
-    phase.current_task += 1;
-    mutations.push(`Bumped phase.current_task to ${phase.current_task}`);
+    task.stage = TASK_STAGES.COMPLETE;
+    mutations.push(`Set task.stage to "${TASK_STAGES.COMPLETE}"`);
+
+    const effectiveGateMode = state.pipeline.gate_mode ?? config.human_gates.execution_mode;
+    if (effectiveGateMode === 'task') {
+      // Defer pointer advancement to handleGateApproved
+      mutations.push(`Deferred phase.current_task advancement (gate mode: task)`);
+    } else {
+      phase.current_task += 1;
+      mutations.push(`Bumped phase.current_task to ${phase.current_task}`);
+    }
   } else if (reviewAction === REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED) {
-    task.retries += 1;
+    task.stage = TASK_STAGES.FAILED;
     task.status = TASK_STATUSES.FAILED;
+    task.retries += 1;
+    mutations.push(`Set task.stage to "${TASK_STAGES.FAILED}"`);
     mutations.push(`Incremented task.retries to ${task.retries}`);
   } else if (reviewAction === REVIEW_ACTIONS.HALTED) {
+    task.stage = TASK_STAGES.FAILED;
     task.status = TASK_STATUSES.HALTED;
+    mutations.push(`Set task.stage to "${TASK_STAGES.FAILED}"`);
     mutations.push('Set task.status to halted (explicit)');
   }
 
@@ -329,11 +382,13 @@ function handleCodeReviewCompleted(state, context, config) {
 /** @type {MutationHandler} */
 function handlePhaseReportCreated(state, context, config) {
   const phase = currentPhase(state);
-  phase.phase_report_doc = context.doc_path;
+  phase.docs.phase_report = context.doc_path;
+  phase.stage = PHASE_STAGES.REVIEWING;
   return {
     state,
     mutations_applied: [
-      `Set phase.phase_report_doc to "${context.doc_path}"`,
+      `Set phase.docs.phase_report to "${context.doc_path}"`,
+      `Set phase.stage to "${PHASE_STAGES.REVIEWING}"`,
     ],
   };
 }
@@ -341,8 +396,8 @@ function handlePhaseReportCreated(state, context, config) {
 /** @type {MutationHandler} */
 function handlePhaseReviewCompleted(state, context, config) {
   const phase = currentPhase(state);
-  phase.phase_review_doc = context.doc_path;
-  phase.phase_review_verdict = context.verdict;
+  phase.docs.phase_review = context.doc_path;
+  phase.review.verdict = context.verdict;
 
   const { phaseStatus, phaseReviewAction } = resolvePhaseOutcome(
     context.verdict,
@@ -350,28 +405,43 @@ function handlePhaseReviewCompleted(state, context, config) {
   );
 
   phase.status = phaseStatus;
-  phase.phase_review_action = phaseReviewAction;
+  phase.review.action = phaseReviewAction;
 
   const mutations = [
-    `Set phase.phase_review_doc to "${context.doc_path}"`,
-    `Set phase.phase_review_verdict to "${context.verdict}"`,
+    `Set phase.docs.phase_review to "${context.doc_path}"`,
+    `Set phase.review.verdict to "${context.verdict}"`,
     `Set phase.status to "${phaseStatus}"`,
-    `Set phase.phase_review_action to "${phaseReviewAction}"`,
+    `Set phase.review.action to "${phaseReviewAction}"`,
   ];
 
   if (phaseReviewAction === PHASE_REVIEW_ACTIONS.ADVANCED) {
-    if (state.execution.current_phase < state.execution.total_phases - 1) {
-      state.execution.current_phase += 1;
-      mutations.push(`Bumped execution.current_phase to ${state.execution.current_phase}`);
+    phase.stage = PHASE_STAGES.COMPLETE;
+    mutations.push(`Set phase.stage to "${PHASE_STAGES.COMPLETE}"`);
+
+    const effectiveGateMode = state.pipeline.gate_mode ?? config.human_gates.execution_mode;
+    if (effectiveGateMode === 'phase' || effectiveGateMode === 'task') {
+      // Defer pointer advancement to handleGateApproved
+      mutations.push(`Deferred execution.current_phase advancement (gate mode: ${effectiveGateMode})`);
     } else {
-      state.execution.status = 'complete';
-      state.execution.current_tier = PIPELINE_TIERS.REVIEW;
-      mutations.push('Set execution.status to "complete"');
-      mutations.push(`Set execution.current_tier to "${PIPELINE_TIERS.REVIEW}"`);
+      // autonomous mode — advance immediately
+      if (state.execution.current_phase < state.execution.phases.length) {
+        state.execution.current_phase += 1;
+        mutations.push(`Bumped execution.current_phase to ${state.execution.current_phase}`);
+      } else {
+        state.execution.status = 'complete';
+        state.pipeline.current_tier = PIPELINE_TIERS.REVIEW;
+        mutations.push('Set execution.status to "complete"');
+        mutations.push(`Set pipeline.current_tier to "${PIPELINE_TIERS.REVIEW}"`);
+      }
     }
+  } else if (phaseReviewAction === PHASE_REVIEW_ACTIONS.CORRECTIVE_TASKS_ISSUED) {
+    phase.stage = PHASE_STAGES.EXECUTING;
+    mutations.push(`Set phase.stage to "${PHASE_STAGES.EXECUTING}" (corrective re-entry)`);
   } else if (phaseReviewAction === PHASE_REVIEW_ACTIONS.HALTED) {
-    state.execution.current_tier = PIPELINE_TIERS.HALTED;
-    mutations.push(`Set execution.current_tier to "${PIPELINE_TIERS.HALTED}"`);
+    phase.stage = PHASE_STAGES.FAILED;
+    state.pipeline.current_tier = PIPELINE_TIERS.HALTED;
+    mutations.push(`Set phase.stage to "${PHASE_STAGES.FAILED}"`);
+    mutations.push(`Set pipeline.current_tier to "${PIPELINE_TIERS.HALTED}"`);
   }
 
   return { state, mutations_applied: mutations };
@@ -379,40 +449,118 @@ function handlePhaseReviewCompleted(state, context, config) {
 
 // ─── Gate Handlers ──────────────────────────────────────────────────────────
 
-/** @type {MutationHandler} */
-function handleTaskApproved(state, context, config) {
-  return { state, mutations_applied: ['Task gate approved (no-op)'] };
+/**
+ * gate_approved — Advances the deferred pointer after gate approval.
+ * @param {Object} state
+ * @param {{ gate_type: 'task' | 'phase' }} context
+ * @param {Object} config
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleGateApproved(state, context, config) {
+  const mutations = [];
+
+  if (context.gate_type === 'task') {
+    const phase = state.execution.phases[state.execution.current_phase - 1];
+    phase.current_task += 1;
+    mutations.push(`Bumped phase.current_task to ${phase.current_task} (gate approved)`);
+  } else if (context.gate_type === 'phase') {
+    if (state.execution.current_phase < state.execution.phases.length) {
+      state.execution.current_phase += 1;
+      mutations.push(`Bumped execution.current_phase to ${state.execution.current_phase} (gate approved)`);
+    } else {
+      state.execution.status = 'complete';
+      state.pipeline.current_tier = PIPELINE_TIERS.REVIEW;
+      mutations.push('Set execution.status to "complete" (last phase gate approved)');
+      mutations.push(`Set pipeline.current_tier to "${PIPELINE_TIERS.REVIEW}"`);
+    }
+  }
+
+  return { state, mutations_applied: mutations };
 }
 
-/** @type {MutationHandler} */
-function handlePhaseApproved(state, context, config) {
-  return { state, mutations_applied: ['Phase gate approved (no-op)'] };
+/**
+ * gate_rejected — Halts the pipeline with rejection context.
+ * @param {Object} state
+ * @param {{ gate_type: 'task' | 'phase', reason: string }} context
+ * @param {Object} config
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleGateRejected(state, context, config) {
+  state.pipeline.current_tier = PIPELINE_TIERS.HALTED;
+
+  const phase = state.execution.phases[state.execution.current_phase - 1];
+  const locationInfo = context.gate_type === 'task'
+    ? `phase ${state.execution.current_phase}, task ${phase.current_task}`
+    : `phase ${state.execution.current_phase}`;
+
+  return {
+    state,
+    mutations_applied: [
+      `Set pipeline.current_tier to "${PIPELINE_TIERS.HALTED}"`,
+      `Gate rejected: ${context.gate_type} gate at ${locationInfo}`,
+      `Rejection reason: ${context.reason}`,
+    ],
+  };
+}
+
+/**
+ * gate_mode_set — Persists the operator's gate mode choice (from ask-mode resolution).
+ * @param {Object} state
+ * @param {{ gate_mode: 'task' | 'phase' | 'autonomous' }} context
+ * @param {Object} config
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleGateModeSet(state, context, config) {
+  state.pipeline.gate_mode = context.gate_mode;
+  return {
+    state,
+    mutations_applied: [`Set pipeline.gate_mode to "${context.gate_mode}"`],
+  };
 }
 
 // ─── Review Handlers ────────────────────────────────────────────────────────
 
 /** @type {MutationHandler} */
 function handleFinalReviewCompleted(state, context, config) {
-  state.execution.final_review_doc = context.doc_path;
-  state.execution.final_review_status = 'complete';
+  state.final_review.doc_path = context.doc_path;
+  state.final_review.status = 'complete';
   return {
     state,
     mutations_applied: [
-      `Set execution.final_review_doc to "${context.doc_path}"`,
-      'Set execution.final_review_status to "complete"',
+      `Set final_review.doc_path to "${context.doc_path}"`,
+      'Set final_review.status to "complete"',
     ],
   };
 }
 
 /** @type {MutationHandler} */
 function handleFinalApproved(state, context, config) {
-  state.execution.final_review_approved = true;
-  state.execution.current_tier = PIPELINE_TIERS.COMPLETE;
+  state.final_review.human_approved = true;
+  state.pipeline.current_tier = PIPELINE_TIERS.COMPLETE;
   return {
     state,
     mutations_applied: [
-      'Set execution.final_review_approved to true',
-      `Set execution.current_tier to "${PIPELINE_TIERS.COMPLETE}"`,
+      'Set final_review.human_approved to true',
+      `Set pipeline.current_tier to "${PIPELINE_TIERS.COMPLETE}"`,
+    ],
+  };
+}
+
+/**
+ * final_rejected — Resets final review to allow re-review.
+ * @param {Object} state
+ * @param {Object} context  (no fields required)
+ * @param {Object} config
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleFinalRejected(state, context, config) {
+  state.final_review.doc_path = null;
+  state.final_review.status = 'not_started';
+  return {
+    state,
+    mutations_applied: [
+      'Set final_review.doc_path to null',
+      'Set final_review.status to "not_started"',
     ],
   };
 }
@@ -421,32 +569,46 @@ function handleFinalApproved(state, context, config) {
 
 /** @type {MutationHandler} */
 function handleHalt(state, context, config) {
-  state.execution.current_tier = PIPELINE_TIERS.HALTED;
+  state.pipeline.current_tier = PIPELINE_TIERS.HALTED;
   return {
     state,
-    mutations_applied: [`Set execution.current_tier to "${PIPELINE_TIERS.HALTED}"`],
+    mutations_applied: [`Set pipeline.current_tier to "${PIPELINE_TIERS.HALTED}"`],
   };
 }
 
-// ─── MUTATIONS Map ─────────────────────────────────────────────
+// ─── MUTATIONS Map ──────────────────────────────────────────────────────────
 
 const MUTATIONS = Object.freeze({
+  // Planning (6)
   research_completed:       handleResearchCompleted,
   prd_completed:            handlePrdCompleted,
   design_completed:         handleDesignCompleted,
   architecture_completed:   handleArchitectureCompleted,
   master_plan_completed:    handleMasterPlanCompleted,
   plan_approved:            handlePlanApproved,
+
+  // Planning rejection (1)
+  plan_rejected:            handlePlanRejected,
+
+  // Execution (6)
   phase_plan_created:       handlePhasePlanCreated,
   task_handoff_created:     handleTaskHandoffCreated,
   task_completed:           handleTaskCompleted,
   code_review_completed:    handleCodeReviewCompleted,
   phase_report_created:     handlePhaseReportCreated,
   phase_review_completed:   handlePhaseReviewCompleted,
-  task_approved:            handleTaskApproved,
-  phase_approved:           handlePhaseApproved,
+
+  // Gate events (3)
+  gate_mode_set:            handleGateModeSet,
+  gate_approved:            handleGateApproved,
+  gate_rejected:            handleGateRejected,
+
+  // Review (3)
   final_review_completed:   handleFinalReviewCompleted,
   final_approved:           handleFinalApproved,
+  final_rejected:           handleFinalRejected,
+
+  // Utility (1)
   halt:                     handleHalt,
 });
 

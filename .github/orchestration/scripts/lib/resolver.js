@@ -2,8 +2,10 @@
 
 const {
   PIPELINE_TIERS, PLANNING_STEP_STATUSES,
-  PHASE_STATUSES, TASK_STATUSES, REVIEW_ACTIONS,
-  PHASE_REVIEW_ACTIONS, HUMAN_GATE_MODES, NEXT_ACTIONS,
+  PHASE_STATUSES, TASK_STATUSES,
+  PHASE_STAGES, TASK_STAGES,
+  REVIEW_ACTIONS, PHASE_REVIEW_ACTIONS,
+  HUMAN_GATE_MODES, NEXT_ACTIONS,
 } = require('./constants');
 
 // ─── Planning Step → Action Map ─────────────────────────────────────────────
@@ -18,16 +20,29 @@ const PLANNING_STEP_ORDER = [
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function formatPhaseId(phaseIndex) {
-  return `P${String(phaseIndex + 1).padStart(2, '0')}`;
+// phaseNumber is already 1-based — no + 1 needed
+function formatPhaseId(phaseNumber) {
+  return `P${String(phaseNumber).padStart(2, '0')}`;
 }
 
-function formatTaskId(phaseIndex, taskIndex) {
-  return `P${String(phaseIndex + 1).padStart(2, '0')}-T${String(taskIndex + 1).padStart(2, '0')}`;
+// phaseNumber and taskNumber are already 1-based — no + 1 needed
+function formatTaskId(phaseNumber, taskNumber) {
+  return `P${String(phaseNumber).padStart(2, '0')}-T${String(taskNumber).padStart(2, '0')}`;
 }
 
 function halted(details) {
   return { action: NEXT_ACTIONS.DISPLAY_HALTED, context: { details } };
+}
+
+/**
+ * Resolve effective gate mode for a project.
+ * Reads from state first; falls back to config when state value is null/undefined.
+ * @param {Object} state - post-mutation state
+ * @param {Object} config - merged orchestration config
+ * @returns {'task' | 'phase' | 'autonomous' | 'ask'}
+ */
+function resolveGateMode(state, config) {
+  return state.pipeline.gate_mode ?? config.human_gates.execution_mode;
 }
 
 // ─── Planning Tier ──────────────────────────────────────────────────────────
@@ -55,215 +70,200 @@ function resolvePlanning(state) {
 // ─── Execution Tier ─────────────────────────────────────────────────────────
 
 function resolveExecution(state, config) {
+  // Ask-mode detection — prompt operator to choose gate mode once
+  const effectiveMode = resolveGateMode(state, config);
+  if (effectiveMode === HUMAN_GATE_MODES.ASK && state.pipeline.gate_mode == null) {
+    return { action: NEXT_ACTIONS.ASK_GATE_MODE, context: {} };
+  }
+
   const exec = state.execution;
-  const phaseIndex = exec.current_phase;
-  const phase = exec.phases[phaseIndex];
+  const phaseNumber = exec.current_phase;          // 1-based
+  const phase = exec.phases[phaseNumber - 1];      // 1-based access
 
   if (!phase) {
-    return halted('No phase found at current_phase index ' + phaseIndex);
+    return halted('No phase found at current_phase ' + phaseNumber);
   }
 
-  // Phase-level halted
+  // Phase-level halted (check status first, before stage)
   if (phase.status === PHASE_STATUSES.HALTED) {
-    return halted(`Phase ${formatPhaseId(phaseIndex)} (${phase.name}) is halted`);
+    return halted(`Phase ${formatPhaseId(phaseNumber)} (${phase.name}) is halted`);
   }
 
-  // Phase not started → need phase plan
-  if (phase.status === PHASE_STATUSES.NOT_STARTED) {
+  // Route on phase stage
+  if (phase.stage === PHASE_STAGES.PLANNING) {
     return {
       action: NEXT_ACTIONS.CREATE_PHASE_PLAN,
       context: {
-        phase_index: phaseIndex,
-        phase_id: formatPhaseId(phaseIndex),
+        phase_number: phaseNumber,
+        phase_id: formatPhaseId(phaseNumber),
       },
     };
   }
 
-  // Phase in progress → task-level or phase-level resolution
-  if (phase.status === PHASE_STATUSES.IN_PROGRESS) {
-    return resolvePhaseInProgress(phase, phaseIndex, config);
+  if (phase.stage === PHASE_STAGES.EXECUTING) {
+    return resolvePhaseExecuting(phase, phaseNumber, state, config);
   }
 
-  // Phase complete — should not normally reach here in execution tier
-  return halted('Unexpected phase status: ' + phase.status);
-}
-
-function resolvePhaseInProgress(phase, phaseIndex, config) {
-  const taskIndex = phase.current_task;
-
-  // All tasks processed → phase-level resolution
-  if (taskIndex >= phase.total_tasks) {
-    return resolvePhaseCompletion(phase, phaseIndex, config);
-  }
-
-  const task = phase.tasks[taskIndex];
-  if (!task) {
-    return halted(`No task found at index ${taskIndex} in phase ${formatPhaseId(phaseIndex)}`);
-  }
-
-  return resolveTask(task, phase, phaseIndex, taskIndex, config);
-}
-
-function resolveTask(task, phase, phaseIndex, taskIndex, config) {
-  // Task halted
-  if (task.status === TASK_STATUSES.HALTED) {
-    return halted(`Task ${formatTaskId(phaseIndex, taskIndex)} (${task.name}) is halted`);
-  }
-
-  // Corrective: task failed + corrective review action → re-issue handoff
-  if (task.status === TASK_STATUSES.FAILED && task.review_action === REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED) {
+  if (phase.stage === PHASE_STAGES.REVIEWING) {
     return {
-      action: NEXT_ACTIONS.CREATE_TASK_HANDOFF,
+      action: NEXT_ACTIONS.SPAWN_PHASE_REVIEWER,
       context: {
-        is_correction: true,
-        previous_review: task.review_doc,
-        reason: task.review_verdict,
-        phase_index: phaseIndex,
-        task_index: taskIndex,
-        phase_id: formatPhaseId(phaseIndex),
-        task_id: formatTaskId(phaseIndex, taskIndex),
+        phase_report_doc: phase.docs.phase_report,
+        phase_number: phaseNumber,
+        phase_id: formatPhaseId(phaseNumber),
       },
     };
   }
 
-  // Task not started, no handoff → create handoff
-  if (task.status === TASK_STATUSES.NOT_STARTED && !task.handoff_doc) {
+  if (phase.stage === PHASE_STAGES.COMPLETE && phase.review.action === PHASE_REVIEW_ACTIONS.ADVANCED) {
+    return resolvePhaseGate(phaseNumber, state, config);
+  }
+
+  return halted(`Unresolvable phase state at ${formatPhaseId(phaseNumber)}: stage=${phase.stage}`);
+}
+
+function resolvePhaseExecuting(phase, phaseNumber, state, config) {
+  // Edge case: empty phase (0 tasks) — treat as all tasks done
+  if (phase.current_task === 0 && phase.tasks.length === 0) {
+    return {
+      action: NEXT_ACTIONS.GENERATE_PHASE_REPORT,
+      context: {
+        phase_number: phaseNumber,
+        phase_id: formatPhaseId(phaseNumber),
+      },
+    };
+  }
+
+  // All tasks processed: 1-based pointer has advanced past last task
+  if (phase.current_task > phase.tasks.length) {
+    return {
+      action: NEXT_ACTIONS.GENERATE_PHASE_REPORT,
+      context: {
+        phase_number: phaseNumber,
+        phase_id: formatPhaseId(phaseNumber),
+      },
+    };
+  }
+
+  const taskNumber = phase.current_task;            // 1-based
+  const task = phase.tasks[taskNumber - 1];         // 1-based access
+  if (!task) {
+    return halted(`No task found at current_task ${taskNumber} in phase ${formatPhaseId(phaseNumber)}`);
+  }
+
+  return resolveTask(task, phase, phaseNumber, taskNumber, state, config);
+}
+
+function resolveTask(task, phase, phaseNumber, taskNumber, state, config) {
+  // Task-level halted (check status first, before stage)
+  if (task.status === TASK_STATUSES.HALTED) {
+    return halted(`Task ${formatTaskId(phaseNumber, taskNumber)} (${task.name}) is halted`);
+  }
+
+  // Stage-based routing — no null-path inference
+  if (task.stage === TASK_STAGES.PLANNING) {
     return {
       action: NEXT_ACTIONS.CREATE_TASK_HANDOFF,
       context: {
         is_correction: false,
-        phase_index: phaseIndex,
-        task_index: taskIndex,
-        phase_id: formatPhaseId(phaseIndex),
-        task_id: formatTaskId(phaseIndex, taskIndex),
+        phase_number: phaseNumber,
+        task_number: taskNumber,
+        phase_id: formatPhaseId(phaseNumber),
+        task_id: formatTaskId(phaseNumber, taskNumber),
       },
     };
   }
 
-  // Task in progress with handoff but no report → execute
-  if (task.status === TASK_STATUSES.IN_PROGRESS && task.handoff_doc && !task.report_doc) {
+  if (task.stage === TASK_STAGES.CODING) {
     return {
       action: NEXT_ACTIONS.EXECUTE_TASK,
       context: {
-        handoff_doc: task.handoff_doc,
-        phase_index: phaseIndex,
-        task_index: taskIndex,
-        phase_id: formatPhaseId(phaseIndex),
-        task_id: formatTaskId(phaseIndex, taskIndex),
+        handoff_doc: task.docs.handoff,
+        phase_number: phaseNumber,
+        task_number: taskNumber,
+        phase_id: formatPhaseId(phaseNumber),
+        task_id: formatTaskId(phaseNumber, taskNumber),
       },
     };
   }
 
-  // Task complete with no review → spawn reviewer
-  if (task.status === TASK_STATUSES.COMPLETE && !task.review_doc) {
+  if (task.stage === TASK_STAGES.REVIEWING) {
     return {
       action: NEXT_ACTIONS.SPAWN_CODE_REVIEWER,
       context: {
-        report_doc: task.report_doc,
-        phase_index: phaseIndex,
-        task_index: taskIndex,
-        phase_id: formatPhaseId(phaseIndex),
-        task_id: formatTaskId(phaseIndex, taskIndex),
+        report_doc: task.docs.report,
+        phase_number: phaseNumber,
+        task_number: taskNumber,
+        phase_id: formatPhaseId(phaseNumber),
+        task_id: formatTaskId(phaseNumber, taskNumber),
       },
     };
   }
 
-  // Task complete with review + advanced → check task gate
-  if (task.status === TASK_STATUSES.COMPLETE && task.review_action === REVIEW_ACTIONS.ADVANCED) {
-    return resolveTaskGate(phaseIndex, taskIndex, config);
+  if (task.stage === TASK_STAGES.COMPLETE && task.review.action === REVIEW_ACTIONS.ADVANCED) {
+    return resolveTaskGate(phaseNumber, taskNumber, state, config);
   }
 
-  return halted(`Unresolvable task state at ${formatTaskId(phaseIndex, taskIndex)}: status=${task.status}, handoff=${!!task.handoff_doc}, report=${!!task.report_doc}, review=${!!task.review_doc}`);
+  if (task.stage === TASK_STAGES.FAILED && task.review.action === REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED) {
+    return {
+      action: NEXT_ACTIONS.CREATE_TASK_HANDOFF,
+      context: {
+        is_correction: true,
+        previous_review: task.docs.review,
+        reason: task.review.verdict,
+        phase_number: phaseNumber,
+        task_number: taskNumber,
+        phase_id: formatPhaseId(phaseNumber),
+        task_id: formatTaskId(phaseNumber, taskNumber),
+      },
+    };
+  }
+
+  return halted(`Unresolvable task state at ${formatTaskId(phaseNumber, taskNumber)}: status=${task.status}, stage=${task.stage}`);
 }
 
-function resolveTaskGate(phaseIndex, taskIndex, config) {
-  const mode = config.human_gates.execution_mode;
+function resolveTaskGate(phaseNumber, taskNumber, state, config) {
+  const mode = resolveGateMode(state, config);
   if (mode === HUMAN_GATE_MODES.TASK) {
     return {
       action: NEXT_ACTIONS.GATE_TASK,
       context: {
-        phase_index: phaseIndex,
-        task_index: taskIndex,
-        phase_id: formatPhaseId(phaseIndex),
-        task_id: formatTaskId(phaseIndex, taskIndex),
+        phase_number: phaseNumber,
+        task_number: taskNumber,
+        phase_id: formatPhaseId(phaseNumber),
+        task_id: formatTaskId(phaseNumber, taskNumber),
       },
     };
   }
-  // For ask/autonomous/phase modes at task level, no gate — task already advanced
-  // This means mutations should advance the pointer; resolver should not be called
-  // in this state under normal flow. Return halted as a safety net.
-  return halted(`Task ${formatTaskId(phaseIndex, taskIndex)} is advanced but no gate required — expected mutation to advance pointer`);
+  // ask/autonomous/phase modes at task level: no gate — mutations should advance pointer
+  return halted(`Task ${formatTaskId(phaseNumber, taskNumber)} is advanced but no gate required — expected mutation to advance pointer`);
 }
 
-function resolvePhaseCompletion(phase, phaseIndex, config) {
-  // Need phase report
-  if (!phase.phase_report_doc) {
-    return {
-      action: NEXT_ACTIONS.GENERATE_PHASE_REPORT,
-      context: {
-        phase_index: phaseIndex,
-        phase_id: formatPhaseId(phaseIndex),
-      },
-    };
-  }
-
-  // Need phase review
-  if (!phase.phase_review_doc) {
-    return {
-      action: NEXT_ACTIONS.SPAWN_PHASE_REVIEWER,
-      context: {
-        phase_report_doc: phase.phase_report_doc,
-        phase_index: phaseIndex,
-        phase_id: formatPhaseId(phaseIndex),
-      },
-    };
-  }
-
-  // Phase review exists + advanced → check phase gate
-  if (phase.phase_review_action === PHASE_REVIEW_ACTIONS.ADVANCED) {
-    return resolvePhaseGate(phaseIndex, config);
-  }
-
-  // Phase review exists + corrective → resolve first corrective task
-  if (phase.phase_review_action === PHASE_REVIEW_ACTIONS.CORRECTIVE_TASKS_ISSUED) {
-    // Mutations should have set up corrective tasks and reset pointer
-    // The next call to resolveExecution will pick them up via normal task resolution
-    return halted(`Phase ${formatPhaseId(phaseIndex)} has corrective tasks but current_task >= total_tasks — expected mutation to reset pointer`);
-  }
-
-  // Phase review halted
-  if (phase.phase_review_action === PHASE_REVIEW_ACTIONS.HALTED) {
-    return halted(`Phase ${formatPhaseId(phaseIndex)} review resulted in halt`);
-  }
-
-  return halted(`Unresolvable phase completion state at ${formatPhaseId(phaseIndex)}`);
-}
-
-function resolvePhaseGate(phaseIndex, config) {
-  const mode = config.human_gates.execution_mode;
+function resolvePhaseGate(phaseNumber, state, config) {
+  const mode = resolveGateMode(state, config);
   if (mode === HUMAN_GATE_MODES.PHASE || mode === HUMAN_GATE_MODES.TASK) {
     return {
       action: NEXT_ACTIONS.GATE_PHASE,
       context: {
-        phase_index: phaseIndex,
-        phase_id: formatPhaseId(phaseIndex),
+        phase_number: phaseNumber,
+        phase_id: formatPhaseId(phaseNumber),
       },
     };
   }
-  // ask/autonomous → skip gate; mutations should advance phase
-  return halted(`Phase ${formatPhaseId(phaseIndex)} is advanced but no gate required — expected mutation to advance phase`);
+  // ask/autonomous: skip gate; mutations should advance phase
+  return halted(`Phase ${formatPhaseId(phaseNumber)} is advanced but no gate required — expected mutation to advance phase`);
 }
 
 // ─── Review Tier ────────────────────────────────────────────────────────────
 
 function resolveReview(state) {
-  const exec = state.execution;
+  const final_review = state.final_review;
 
-  if (!exec.final_review_doc) {
+  if (!final_review.doc_path) {
     return { action: NEXT_ACTIONS.SPAWN_FINAL_REVIEWER, context: {} };
   }
 
-  if (!exec.final_review_approved) {
+  if (!final_review.human_approved) {
     return { action: NEXT_ACTIONS.REQUEST_FINAL_APPROVAL, context: {} };
   }
 
@@ -277,16 +277,19 @@ function resolveReview(state) {
  * Pure state inspector. Given post-mutation state and config, returns the
  * next external action the Orchestrator should execute.
  *
+ * v4: Uses task.stage and phase.stage for resolution instead of
+ * inferring work focus from null doc paths.
+ *
  * @param {import('./constants').StateJson} state - post-mutation, post-validation state
  * @param {import('./constants').Config} config - parsed orchestration config
  * @returns {{ action: string, context: Object }}
  */
 function resolveNextAction(state, config) {
-  const tier = state.execution.current_tier;
+  const tier = state.pipeline.current_tier;
 
   // Terminal tiers first
   if (tier === PIPELINE_TIERS.HALTED) {
-    return halted(state.execution.halt_reason || 'Pipeline is halted');
+    return halted('Pipeline is halted');
   }
 
   if (tier === PIPELINE_TIERS.COMPLETE) {

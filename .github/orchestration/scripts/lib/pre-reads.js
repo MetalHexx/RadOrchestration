@@ -26,6 +26,11 @@ function readOrFail(readDocument, docPath, event) {
   return { ok: true, frontmatter: doc.frontmatter || {} };
 }
 
+function coerceNull(value) {
+  if (value === 'null' || value === 'undefined') return null;
+  return value;
+}
+
 // ─── Per-Event Handlers ─────────────────────────────────────────────────────
 
 function handlePlanApproved(context, readDocument, projectDir) {
@@ -80,18 +85,20 @@ function handleTaskCompleted(context, readDocument) {
   if (status === undefined || status === null) return failure('Missing required field', 'task_completed', 'status');
   if (has_deviations === undefined || has_deviations === null) return failure('Missing required field', 'task_completed', 'has_deviations');
   if (deviation_type === undefined) return failure('Missing required field', 'task_completed', 'deviation_type');
+  const coerced_deviation_type = coerceNull(deviation_type);
   const normalized = STATUS_MAP[status];
   if (!normalized) return failure(`Unrecognized status value: '${status}'`, 'task_completed', 'status');
-  return success({ ...context, report_status: normalized, has_deviations: Boolean(has_deviations), deviation_type });
+  return success({ ...context, report_status: normalized, has_deviations: Boolean(has_deviations), deviation_type: coerced_deviation_type });
 }
 
 function handleCodeReviewCompleted(context, readDocument) {
   const { ok, frontmatter, result } = readOrFail(readDocument, context.doc_path, 'code_review_completed');
   if (!ok) return result;
-  if (frontmatter.verdict === undefined || frontmatter.verdict === null) {
+  const verdict = coerceNull(frontmatter.verdict);
+  if (verdict === undefined || verdict === null) {
     return failure('Missing required field', 'code_review_completed', 'verdict');
   }
-  return success({ ...context, verdict: frontmatter.verdict, review_doc_path: context.doc_path });
+  return success({ ...context, verdict, review_doc_path: context.doc_path });
 }
 
 function handlePhasePlanCreated(context, readDocument) {
@@ -107,13 +114,14 @@ function handlePhasePlanCreated(context, readDocument) {
 function handlePhaseReviewCompleted(context, readDocument) {
   const { ok, frontmatter, result } = readOrFail(readDocument, context.doc_path, 'phase_review_completed');
   if (!ok) return result;
-  if (frontmatter.verdict === undefined || frontmatter.verdict === null) {
+  const verdict = coerceNull(frontmatter.verdict);
+  if (verdict === undefined || verdict === null) {
     return failure('Missing required field', 'phase_review_completed', 'verdict');
   }
   if (frontmatter.exit_criteria_met === undefined || frontmatter.exit_criteria_met === null) {
     return failure('Missing required field', 'phase_review_completed', 'exit_criteria_met');
   }
-  return success({ ...context, verdict: frontmatter.verdict, exit_criteria_met: frontmatter.exit_criteria_met, review_doc_path: context.doc_path });
+  return success({ ...context, verdict, exit_criteria_met: frontmatter.exit_criteria_met, review_doc_path: context.doc_path });
 }
 
 // ─── Lookup Table ───────────────────────────────────────────────────────────
