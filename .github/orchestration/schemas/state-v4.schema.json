@@ -1,0 +1,257 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Orchestration State v4",
+  "description": "Canonical schema for the orchestration system's v4 state format.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "project", "pipeline", "planning", "execution", "final_review"],
+  "properties": {
+    "$schema": {
+      "const": "orchestration-state-v4"
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "created", "updated"],
+      "properties": {
+        "name": { "type": "string" },
+        "created": { "type": "string" },
+        "updated": { "type": "string" }
+      }
+    },
+    "pipeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["current_tier"],
+      "properties": {
+        "current_tier": {
+          "type": "string",
+          "enum": ["planning", "execution", "review", "complete", "halted"]
+        },
+        "gate_mode": {
+          "oneOf": [
+            { "type": "string", "enum": ["task", "phase", "autonomous"] },
+            { "type": "null" }
+          ],
+          "default": null
+        }
+      }
+    },
+    "planning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "human_approved", "steps"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["not_started", "in_progress", "complete"]
+        },
+        "human_approved": { "type": "boolean" },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "status", "doc_path"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "enum": ["research", "prd", "design", "architecture", "master_plan"]
+              },
+              "status": {
+                "type": "string",
+                "enum": ["not_started", "in_progress", "complete"]
+              },
+              "doc_path": {
+                "oneOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "current_phase", "phases"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["not_started", "in_progress", "complete", "halted"]
+        },
+        "current_phase": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "phases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "status", "stage", "current_task", "tasks", "docs", "review"],
+            "properties": {
+              "name": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": ["not_started", "in_progress", "complete", "halted"]
+              },
+              "stage": {
+                "type": "string",
+                "enum": ["planning", "executing", "reporting", "reviewing", "complete", "failed"]
+              },
+              "current_task": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tasks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["name", "status", "stage", "docs", "review", "report_status", "has_deviations", "deviation_type", "retries"],
+                  "properties": {
+                    "name": { "type": "string" },
+                    "status": {
+                      "type": "string",
+                      "enum": ["not_started", "in_progress", "complete", "failed", "halted"]
+                    },
+                    "stage": {
+                      "type": "string",
+                      "enum": ["planning", "coding", "reporting", "reviewing", "complete", "failed"]
+                    },
+                    "docs": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["handoff", "report", "review"],
+                      "properties": {
+                        "handoff": {
+                          "oneOf": [
+                            { "type": "string" },
+                            { "type": "null" }
+                          ]
+                        },
+                        "report": {
+                          "oneOf": [
+                            { "type": "string" },
+                            { "type": "null" }
+                          ]
+                        },
+                        "review": {
+                          "oneOf": [
+                            { "type": "string" },
+                            { "type": "null" }
+                          ]
+                        }
+                      }
+                    },
+                    "review": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["verdict", "action"],
+                      "properties": {
+                        "verdict": {
+                          "oneOf": [
+                            { "type": "string", "enum": ["approved", "changes_requested", "rejected"] },
+                            { "type": "null" }
+                          ]
+                        },
+                        "action": {
+                          "oneOf": [
+                            { "type": "string", "enum": ["advanced", "corrective_task_issued", "halted"] },
+                            { "type": "null" }
+                          ]
+                        }
+                      }
+                    },
+                    "report_status": {
+                      "oneOf": [
+                        { "type": "string", "enum": ["complete", "failed"] },
+                        { "type": "null" }
+                      ]
+                    },
+                    "has_deviations": { "type": "boolean" },
+                    "deviation_type": {
+                      "oneOf": [
+                        { "type": "string" },
+                        { "type": "null" }
+                      ]
+                    },
+                    "retries": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              },
+              "docs": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["phase_plan", "phase_report", "phase_review"],
+                "properties": {
+                  "phase_plan": {
+                    "oneOf": [
+                      { "type": "string" },
+                      { "type": "null" }
+                    ]
+                  },
+                  "phase_report": {
+                    "oneOf": [
+                      { "type": "string" },
+                      { "type": "null" }
+                    ]
+                  },
+                  "phase_review": {
+                    "oneOf": [
+                      { "type": "string" },
+                      { "type": "null" }
+                    ]
+                  }
+                }
+              },
+              "review": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["verdict", "action"],
+                "properties": {
+                  "verdict": {
+                    "oneOf": [
+                      { "type": "string", "enum": ["approved", "changes_requested", "rejected"] },
+                      { "type": "null" }
+                    ]
+                  },
+                  "action": {
+                    "oneOf": [
+                      { "type": "string", "enum": ["advanced", "corrective_tasks_issued", "halted"] },
+                      { "type": "null" }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "final_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "doc_path", "human_approved"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["not_started", "in_progress", "complete"]
+        },
+        "doc_path": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "human_approved": { "type": "boolean" }
+      }
+    }
+  }
+}
