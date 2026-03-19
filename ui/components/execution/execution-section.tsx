@@ -2,18 +2,18 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PhaseCard } from "./phase-card";
-import type { NormalizedExecution, NormalizedLimits } from "@/types/state";
+import { PhaseCard } from "@/components/execution/phase-card";
+import type { ExecutionState } from "@/types/state";
 
 interface ExecutionSectionProps {
-  execution: NormalizedExecution;
-  limits: NormalizedLimits;
+  execution: ExecutionState;
+  maxRetries: number;
   onDocClick: (path: string) => void;
 }
 
 export function ExecutionSection({
   execution,
-  limits,
+  maxRetries,
   onDocClick,
 }: ExecutionSectionProps) {
   if (execution.status === "not_started") {
@@ -27,12 +27,13 @@ export function ExecutionSection({
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {execution.phases.map((phase) => (
+          {execution.phases.map((phase, index) => (
             <PhaseCard
-              key={phase.phase_number}
+              key={index}
               phase={phase}
-              isActive={phase.phase_number === execution.current_phase}
-              maxRetries={limits.max_retries_per_task}
+              phaseNumber={index + 1}
+              isActive={(index + 1) === execution.current_phase}
+              maxRetries={maxRetries}
               onDocClick={onDocClick}
             />
           ))}
