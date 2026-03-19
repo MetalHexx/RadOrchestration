@@ -28,14 +28,34 @@ function cleanTmpDir(dir) {
 
 function makeValidState() {
   return {
-    $schema: 'orchestration-state-v3',
+    $schema: 'orchestration-state-v4',
     project: {
       name: 'TEST-PROJECT',
       created: '2025-01-01T00:00:00.000Z',
       updated: '2025-01-01T00:00:00.000Z',
     },
-    planning: { status: 'not_started', steps: {} },
-    execution: { current_phase: 0, phases: [] },
+    pipeline: { current_tier: 'planning' },
+    planning: {
+      status: 'not_started',
+      human_approved: false,
+      steps: [
+        { name: 'research', status: 'not_started', doc_path: null },
+        { name: 'prd', status: 'not_started', doc_path: null },
+        { name: 'design', status: 'not_started', doc_path: null },
+        { name: 'architecture', status: 'not_started', doc_path: null },
+        { name: 'master_plan', status: 'not_started', doc_path: null },
+      ],
+    },
+    execution: {
+      status: 'not_started',
+      current_phase: 0,
+      phases: [],
+    },
+    final_review: {
+      status: 'not_started',
+      doc_path: null,
+      human_approved: false,
+    },
   };
 }
 
@@ -55,10 +75,12 @@ describe('readState', () => {
     const state = makeValidState();
     fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(state, null, 2), 'utf-8');
     const result = readState(tmpDir);
-    assert.equal(result.$schema, 'orchestration-state-v3');
+    assert.equal(result.$schema, 'orchestration-state-v4');
     assert.ok(result.project);
     assert.ok(result.planning);
     assert.ok(result.execution);
+    assert.ok(result.pipeline);
+    assert.ok(result.final_review);
   });
 
   it('throws on invalid JSON', () => {
@@ -69,7 +91,16 @@ describe('readState', () => {
     });
   });
 
-  it('throws on schema version mismatch', () => {
+  it('throws on schema version mismatch — v3 rejected', () => {
+    const state = { $schema: 'orchestration-state-v3', project: {}, planning: {}, execution: {} };
+    fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(state), 'utf-8');
+    assert.throws(() => readState(tmpDir), (err) => {
+      assert.ok(err.message.includes('Schema version mismatch'));
+      return true;
+    });
+  });
+
+  it('throws on schema version mismatch — v2 rejected', () => {
     const state = { $schema: 'orchestration-state-v2', project: {}, planning: {}, execution: {} };
     fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(state), 'utf-8');
     assert.throws(() => readState(tmpDir), (err) => {

@@ -103,9 +103,9 @@ describe('E2E: pipeline.js via child_process', () => {
 
     // Verify state.json content
     const state = JSON.parse(fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8'));
-    assert.strictEqual(state.$schema, 'orchestration-state-v3');
+    assert.strictEqual(state.$schema, 'orchestration-state-v4');
     assert.ok(state.project.name);
-    assert.strictEqual(state.execution.current_tier, 'planning');
+    assert.strictEqual(state.pipeline.current_tier, 'planning');
   });
 
   it('--event start with existing state.json performs cold start', () => {

@@ -14,6 +14,8 @@ const {
   PLANNING_STEP_STATUSES,
   PHASE_STATUSES,
   TASK_STATUSES,
+  TASK_STAGES,
+  PHASE_STAGES,
   REVIEW_VERDICTS,
   REVIEW_ACTIONS,
   PHASE_REVIEW_ACTIONS,
@@ -22,6 +24,8 @@ const {
   NEXT_ACTIONS,
   ALLOWED_TASK_TRANSITIONS,
   ALLOWED_PHASE_TRANSITIONS,
+  ALLOWED_TASK_STAGE_TRANSITIONS,
+  ALLOWED_PHASE_STAGE_TRANSITIONS,
 } = constants;
 
 // ─── Freeze checks ─────────────────────────────────────────────────────────
@@ -33,6 +37,8 @@ describe('All exported enums are frozen', () => {
     PLANNING_STEP_STATUSES,
     PHASE_STATUSES,
     TASK_STATUSES,
+    TASK_STAGES,
+    PHASE_STAGES,
     REVIEW_VERDICTS,
     REVIEW_ACTIONS,
     PHASE_REVIEW_ACTIONS,
@@ -41,6 +47,8 @@ describe('All exported enums are frozen', () => {
     NEXT_ACTIONS,
     ALLOWED_TASK_TRANSITIONS,
     ALLOWED_PHASE_TRANSITIONS,
+    ALLOWED_TASK_STAGE_TRANSITIONS,
+    ALLOWED_PHASE_STAGE_TRANSITIONS,
   };
 
   for (const [name, obj] of Object.entries(frozenObjects)) {
@@ -53,16 +61,146 @@ describe('All exported enums are frozen', () => {
 // ─── SCHEMA_VERSION ─────────────────────────────────────────────────────────
 
 describe('SCHEMA_VERSION', () => {
-  it('equals orchestration-state-v3', () => {
-    assert.equal(SCHEMA_VERSION, 'orchestration-state-v3');
+  it('equals orchestration-state-v4', () => {
+    assert.equal(SCHEMA_VERSION, 'orchestration-state-v4');
+  });
+});
+
+// ─── TASK_STAGES ─────────────────────────────────────────────────────────────
+
+describe('TASK_STAGES', () => {
+  it('has exactly 6 keys', () => {
+    assert.equal(Object.keys(TASK_STAGES).length, 6);
+  });
+
+  it('PLANNING equals planning', () => { assert.equal(TASK_STAGES.PLANNING, 'planning'); });
+  it('CODING equals coding', () => { assert.equal(TASK_STAGES.CODING, 'coding'); });
+  it('REPORTING equals reporting', () => { assert.equal(TASK_STAGES.REPORTING, 'reporting'); });
+  it('REVIEWING equals reviewing', () => { assert.equal(TASK_STAGES.REVIEWING, 'reviewing'); });
+  it('COMPLETE equals complete', () => { assert.equal(TASK_STAGES.COMPLETE, 'complete'); });
+  it('FAILED equals failed', () => { assert.equal(TASK_STAGES.FAILED, 'failed'); });
+
+  it('is frozen', () => {
+    assert.ok(Object.isFrozen(TASK_STAGES), 'TASK_STAGES should be frozen');
+  });
+});
+
+// ─── PHASE_STAGES ────────────────────────────────────────────────────────────
+
+describe('PHASE_STAGES', () => {
+  it('has exactly 6 keys', () => {
+    assert.equal(Object.keys(PHASE_STAGES).length, 6);
+  });
+
+  it('PLANNING equals planning', () => { assert.equal(PHASE_STAGES.PLANNING, 'planning'); });
+  it('EXECUTING equals executing', () => { assert.equal(PHASE_STAGES.EXECUTING, 'executing'); });
+  it('REPORTING equals reporting', () => { assert.equal(PHASE_STAGES.REPORTING, 'reporting'); });
+  it('REVIEWING equals reviewing', () => { assert.equal(PHASE_STAGES.REVIEWING, 'reviewing'); });
+  it('COMPLETE equals complete', () => { assert.equal(PHASE_STAGES.COMPLETE, 'complete'); });
+  it('FAILED equals failed', () => { assert.equal(PHASE_STAGES.FAILED, 'failed'); });
+
+  it('is frozen', () => {
+    assert.ok(Object.isFrozen(PHASE_STAGES), 'PHASE_STAGES should be frozen');
+  });
+});
+
+// ─── ALLOWED_TASK_STAGE_TRANSITIONS ──────────────────────────────────────────
+
+describe('ALLOWED_TASK_STAGE_TRANSITIONS', () => {
+  it('has exactly 5 keys', () => {
+    assert.equal(Object.keys(ALLOWED_TASK_STAGE_TRANSITIONS).length, 5);
+  });
+
+  it('planning -> [coding]', () => {
+    assert.deepEqual(ALLOWED_TASK_STAGE_TRANSITIONS['planning'], ['coding']);
+  });
+
+  it('coding -> [reviewing]', () => {
+    assert.deepEqual(ALLOWED_TASK_STAGE_TRANSITIONS['coding'], ['reviewing']);
+  });
+
+  it('reviewing -> [complete, failed]', () => {
+    assert.deepEqual(ALLOWED_TASK_STAGE_TRANSITIONS['reviewing'], ['complete', 'failed']);
+  });
+
+  it('complete -> []', () => {
+    assert.deepEqual(ALLOWED_TASK_STAGE_TRANSITIONS['complete'], []);
+  });
+
+  it('failed -> [coding]', () => {
+    assert.deepEqual(ALLOWED_TASK_STAGE_TRANSITIONS['failed'], ['coding']);
+  });
+
+  it('all target values are valid TASK_STAGES values', () => {
+    const validValues = new Set(Object.values(TASK_STAGES));
+    for (const [key, targets] of Object.entries(ALLOWED_TASK_STAGE_TRANSITIONS)) {
+      assert.ok(Array.isArray(targets), `${key} should map to an array`);
+      for (const target of targets) {
+        assert.ok(validValues.has(target), `Invalid target "${target}" in ${key}`);
+      }
+    }
+  });
+
+  it('is frozen', () => {
+    assert.ok(Object.isFrozen(ALLOWED_TASK_STAGE_TRANSITIONS), 'ALLOWED_TASK_STAGE_TRANSITIONS should be frozen');
+  });
+});
+
+// ─── ALLOWED_PHASE_STAGE_TRANSITIONS ─────────────────────────────────────────
+
+describe('ALLOWED_PHASE_STAGE_TRANSITIONS', () => {
+  it('has exactly 5 keys', () => {
+    assert.equal(Object.keys(ALLOWED_PHASE_STAGE_TRANSITIONS).length, 5);
+  });
+
+  it('planning -> [executing]', () => {
+    assert.deepEqual(ALLOWED_PHASE_STAGE_TRANSITIONS['planning'], ['executing']);
+  });
+
+  it('executing -> [reviewing]', () => {
+    assert.deepEqual(ALLOWED_PHASE_STAGE_TRANSITIONS['executing'], ['reviewing']);
+  });
+
+  it('reviewing -> [complete, failed]', () => {
+    assert.deepEqual(ALLOWED_PHASE_STAGE_TRANSITIONS['reviewing'], ['complete', 'failed']);
+  });
+
+  it('complete -> []', () => {
+    assert.deepEqual(ALLOWED_PHASE_STAGE_TRANSITIONS['complete'], []);
+  });
+
+  it('failed -> [executing]', () => {
+    assert.deepEqual(ALLOWED_PHASE_STAGE_TRANSITIONS['failed'], ['executing']);
+  });
+
+  it('all target values are valid PHASE_STAGES values', () => {
+    const validValues = new Set(Object.values(PHASE_STAGES));
+    for (const [key, targets] of Object.entries(ALLOWED_PHASE_STAGE_TRANSITIONS)) {
+      assert.ok(Array.isArray(targets), `${key} should map to an array`);
+      for (const target of targets) {
+        assert.ok(validValues.has(target), `Invalid target "${target}" in ${key}`);
+      }
+    }
+  });
+
+  it('is frozen', () => {
+    assert.ok(Object.isFrozen(ALLOWED_PHASE_STAGE_TRANSITIONS), 'ALLOWED_PHASE_STAGE_TRANSITIONS should be frozen');
   });
 });
 
 // ─── NEXT_ACTIONS ───────────────────────────────────────────────────────────
 
 describe('NEXT_ACTIONS', () => {
-  it('has exactly 18 entries', () => {
-    assert.equal(Object.keys(NEXT_ACTIONS).length, 18);
+  it('has exactly 19 entries', () => {
+    assert.equal(Object.keys(NEXT_ACTIONS).length, 19);
+  });
+
+  it('contains ASK_GATE_MODE with value ask_gate_mode', () => {
+    assert.equal(NEXT_ACTIONS.ASK_GATE_MODE, 'ask_gate_mode');
+  });
+
+  it('is frozen', () => {
+    assert.ok(Object.isFrozen(NEXT_ACTIONS));
   });
 
   const removedActions = [
@@ -147,6 +285,10 @@ describe('ALLOWED_TASK_TRANSITIONS', () => {
         assert.ok(validValues.has(target), `Invalid target "${target}" in ${key}`);
       }
     }
+  });
+
+  it('complete is truly terminal (deep-equals [])', () => {
+    assert.deepEqual(ALLOWED_TASK_TRANSITIONS.complete, []);
   });
 });
 

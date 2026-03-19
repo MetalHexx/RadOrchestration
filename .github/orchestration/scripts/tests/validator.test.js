@@ -10,67 +10,66 @@ function makeTask(overrides = {}) {
   return {
     name: 'task',
     status: 'not_started',
-    retries: 0,
-    handoff_doc: null,
-    report_doc: null,
-    review_doc: null,
-    review_verdict: null,
-    review_action: null,
+    stage: 'planning',
+    docs: { handoff: null, report: null, review: null },
+    review: { verdict: null, action: null },
+    report_status: null,
     has_deviations: false,
     deviation_type: null,
+    retries: 0,
     ...overrides,
   };
 }
 
-function makePhase(overrides = {}, taskOverrides = []) {
-  const tasks = taskOverrides.length > 0
-    ? taskOverrides.map(t => makeTask(t))
-    : [makeTask()];
+function makePhase(overrides = {}) {
+  const tasks = overrides.tasks !== undefined ? overrides.tasks : [];
   return {
     name: 'phase',
     status: 'not_started',
+    stage: 'planning',
     current_task: 0,
-    total_tasks: tasks.length,
     tasks,
-    phase_plan_doc: null,
-    phase_report_doc: null,
-    phase_review_doc: null,
-    phase_review_verdict: null,
-    phase_review_action: null,
+    docs: { phase_plan: null, phase_report: null, phase_review: null },
+    review: { verdict: null, action: null },
     ...overrides,
-    // ensure tasks matches if overrides.tasks was provided
-    ...(overrides.tasks ? {} : { tasks }),
+    tasks,
   };
 }
 
 function makeState(overrides = {}) {
   const base = {
-    $schema: 'orchestration-state-v3',
+    $schema: 'orchestration-state-v4',
     project: {
       name: 'TEST',
       created: '2026-01-01T00:00:00.000Z',
       updated: '2026-01-01T00:00:01.000Z',
     },
+    pipeline: {
+      current_tier: 'planning',
+    },
     planning: {
-      status: 'complete',
-      human_approved: true,
+      status: 'not_started',
+      human_approved: false,
       steps: [],
-      current_step: 'research',
     },
     execution: {
       status: 'not_started',
-      current_tier: 'planning',
       current_phase: 0,
-      total_phases: 1,
-      phases: [makePhase()],
+      phases: [],
+    },
+    final_review: {
+      status: 'not_started',
+      doc_path: null,
+      human_approved: false,
     },
   };
 
-  // Deep-merge top-level sections
   const result = { ...base };
   if (overrides.project) result.project = { ...base.project, ...overrides.project };
+  if (overrides.pipeline) result.pipeline = { ...base.pipeline, ...overrides.pipeline };
   if (overrides.planning) result.planning = { ...base.planning, ...overrides.planning };
   if (overrides.execution) result.execution = { ...base.execution, ...overrides.execution };
+  if (overrides.final_review) result.final_review = { ...base.final_review, ...overrides.final_review };
   return result;
 }
 
@@ -94,19 +93,19 @@ const defaultConfig = makeConfig();
 
 describe('V1 — current_phase bounds', () => {
   it('errors when current_phase is -1', () => {
-    const proposed = makeState({ execution: { current_tier: 'planning', current_phase: -1, total_phases: 1, phases: [makePhase()], status: 'not_started' } });
+    const proposed = makeState({ execution: { current_phase: -1, phases: [makePhase()], status: 'not_started' } });
     const errors = validateTransition(null, proposed, defaultConfig);
     assert.ok(errors.some(e => e.invariant === 'V1'));
   });
 
   it('errors when current_phase >= phases.length', () => {
-    const proposed = makeState({ execution: { current_tier: 'planning', current_phase: 2, total_phases: 1, phases: [makePhase()], status: 'not_started' } });
+    const proposed = makeState({ execution: { current_phase: 2, phases: [makePhase()], status: 'not_started' } });
     const errors = validateTransition(null, proposed, defaultConfig);
     assert.ok(errors.some(e => e.invariant === 'V1'));
   });
 
   it('allows current_phase = 0 with empty phases', () => {
-    const proposed = makeState({ execution: { current_tier: 'planning', current_phase: 0, total_phases: 0, phases: [], status: 'not_started' } });
+    const proposed = makeState({ execution: { current_phase: 0, phases: [], status: 'not_started' } });
     const errors = validateTransition(null, proposed, defaultConfig);
     assert.ok(!errors.some(e => e.invariant === 'V1'));
   });
@@ -117,44 +116,23 @@ describe('V1 — current_phase bounds', () => {
 describe('V2 — current_task bounds', () => {
   it('errors when current_task is -1', () => {
     const phase = makePhase({ current_task: -1 });
-    const proposed = makeState({ execution: { current_tier: 'planning', current_phase: 0, total_phases: 1, phases: [phase], status: 'not_started' } });
+    const proposed = makeState({ execution: { current_phase: 1, phases: [phase], status: 'not_started' } });
     const errors = validateTransition(null, proposed, defaultConfig);
     assert.ok(errors.some(e => e.invariant === 'V2'));
   });
 
   it('errors when current_task > tasks.length', () => {
     const phase = makePhase({ current_task: 5 });
-    const proposed = makeState({ execution: { current_tier: 'planning', current_phase: 0, total_phases: 1, phases: [phase], status: 'not_started' } });
+    const proposed = makeState({ execution: { current_phase: 1, phases: [phase], status: 'not_started' } });
     const errors = validateTransition(null, proposed, defaultConfig);
     assert.ok(errors.some(e => e.invariant === 'V2'));
   });
 
   it('allows current_task === tasks.length when all tasks complete', () => {
-    const phase = makePhase({ current_task: 2, total_tasks: 2, tasks: [makeTask({ status: 'complete' }), makeTask({ status: 'complete' })] });
-    const proposed = makeState({ execution: { current_tier: 'planning', current_phase: 0, total_phases: 1, phases: [phase], status: 'not_started' } });
+    const phase = makePhase({ current_task: 2, tasks: [makeTask({ status: 'complete' }), makeTask({ status: 'complete' })] });
+    const proposed = makeState({ execution: { current_phase: 1, phases: [phase], status: 'not_started' } });
     const errors = validateTransition(null, proposed, defaultConfig);
     assert.ok(!errors.some(e => e.invariant === 'V2'));
-  });
-});
-
-// ─── V3 — total_phases mismatch ─────────────────────────────────────────────
-
-describe('V3 — total_phases mismatch', () => {
-  it('errors when total_phases !== phases.length', () => {
-    const proposed = makeState({ execution: { current_tier: 'planning', current_phase: 0, total_phases: 5, phases: [makePhase()], status: 'not_started' } });
-    const errors = validateTransition(null, proposed, defaultConfig);
-    assert.ok(errors.some(e => e.invariant === 'V3'));
-  });
-});
-
-// ─── V4 — total_tasks mismatch ──────────────────────────────────────────────
-
-describe('V4 — total_tasks mismatch', () => {
-  it('errors when total_tasks !== tasks.length', () => {
-    const phase = makePhase({ total_tasks: 99 });
-    const proposed = makeState({ execution: { current_tier: 'planning', current_phase: 0, total_phases: 1, phases: [phase], status: 'not_started' } });
-    const errors = validateTransition(null, proposed, defaultConfig);
-    assert.ok(errors.some(e => e.invariant === 'V4'));
   });
 });
 
@@ -163,15 +141,15 @@ describe('V4 — total_tasks mismatch', () => {
 describe('V5 — config limits exceeded', () => {
   it('errors when phases.length > max_phases', () => {
     const phases = Array.from({ length: 11 }, () => makePhase());
-    const proposed = makeState({ execution: { current_tier: 'planning', current_phase: 0, total_phases: 11, phases, status: 'not_started' } });
+    const proposed = makeState({ execution: { current_phase: 0, phases, status: 'not_started' } });
     const errors = validateTransition(null, proposed, defaultConfig);
     assert.ok(errors.some(e => e.invariant === 'V5'));
   });
 
   it('errors when tasks.length > max_tasks_per_phase', () => {
     const tasks = Array.from({ length: 11 }, () => makeTask());
-    const phase = makePhase({ current_task: 0, total_tasks: 11, tasks });
-    const proposed = makeState({ execution: { current_tier: 'planning', current_phase: 0, total_phases: 1, phases: [phase], status: 'not_started' } });
+    const phase = makePhase({ current_task: 0, tasks });
+    const proposed = makeState({ execution: { current_phase: 0, phases: [phase], status: 'not_started' } });
     const errors = validateTransition(null, proposed, defaultConfig);
     assert.ok(errors.some(e => e.invariant === 'V5'));
   });
@@ -183,8 +161,9 @@ describe('V6 — human approval gate (execution)', () => {
   it('errors when execution tier with human_approved = false', () => {
     const phase = makePhase({ status: 'in_progress' });
     const proposed = makeState({
-      planning: { status: 'complete', human_approved: false, steps: [], current_step: 'research' },
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [phase], status: 'in_progress' },
+      pipeline: { current_tier: 'execution' },
+      planning: { status: 'complete', human_approved: false, steps: [] },
+      execution: { current_phase: 1, phases: [phase], status: 'in_progress' },
     });
     const errors = validateTransition(null, proposed, defaultConfig);
     assert.ok(errors.some(e => e.invariant === 'V6'));
@@ -195,10 +174,11 @@ describe('V6 — human approval gate (execution)', () => {
 
 describe('V7 — human approval gate (completion)', () => {
   it('errors when complete tier with after_final_review and human_approved = false', () => {
-    const phase = makePhase({ status: 'complete', current_task: 1, total_tasks: 1, tasks: [makeTask({ status: 'complete' })] });
+    const phase = makePhase({ status: 'complete', current_task: 1, tasks: [makeTask({ status: 'complete' })] });
     const proposed = makeState({
-      planning: { status: 'complete', human_approved: false, steps: [], current_step: 'research' },
-      execution: { current_tier: 'complete', current_phase: 0, total_phases: 1, phases: [phase], status: 'complete' },
+      pipeline: { current_tier: 'complete' },
+      planning: { status: 'complete', human_approved: true, steps: [] },
+      execution: { current_phase: 1, phases: [phase], status: 'complete' },
     });
     const config = makeConfig({ human_gates: { after_final_review: true } });
     const errors = validateTransition(null, proposed, config);
@@ -206,10 +186,11 @@ describe('V7 — human approval gate (completion)', () => {
   });
 
   it('passes when after_final_review = false', () => {
-    const phase = makePhase({ status: 'complete', current_task: 1, total_tasks: 1, tasks: [makeTask({ status: 'complete' })] });
+    const phase = makePhase({ status: 'complete', current_task: 1, tasks: [makeTask({ status: 'complete' })] });
     const proposed = makeState({
-      planning: { status: 'complete', human_approved: false, steps: [], current_step: 'research' },
-      execution: { current_tier: 'complete', current_phase: 0, total_phases: 1, phases: [phase], status: 'complete' },
+      pipeline: { current_tier: 'complete' },
+      planning: { status: 'complete', human_approved: true, steps: [] },
+      execution: { current_phase: 1, phases: [phase], status: 'complete' },
     });
     const config = makeConfig({ human_gates: { after_final_review: false } });
     const errors = validateTransition(null, proposed, config);
@@ -221,9 +202,10 @@ describe('V7 — human approval gate (completion)', () => {
 
 describe('V10 — phase status vs tier', () => {
   it('errors when active phase is complete during execution tier', () => {
-    const phase = makePhase({ status: 'complete', current_task: 1, total_tasks: 1, tasks: [makeTask({ status: 'complete' })] });
+    const phase = makePhase({ status: 'complete', current_task: 1, tasks: [makeTask({ status: 'complete' })] });
     const proposed = makeState({
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [phase], status: 'in_progress' },
+      pipeline: { current_tier: 'execution' },
+      execution: { current_phase: 1, phases: [phase], status: 'in_progress' },
     });
     const errors = validateTransition(null, proposed, defaultConfig);
     assert.ok(errors.some(e => e.invariant === 'V10'));
@@ -232,7 +214,7 @@ describe('V10 — phase status vs tier', () => {
   it('errors when a phase is in_progress during planning tier', () => {
     const phase = makePhase({ status: 'in_progress' });
     const proposed = makeState({
-      execution: { current_tier: 'planning', current_phase: 0, total_phases: 1, phases: [phase], status: 'not_started' },
+      execution: { current_phase: 0, phases: [phase], status: 'not_started' },
     });
     const errors = validateTransition(null, proposed, defaultConfig);
     assert.ok(errors.some(e => e.invariant === 'V10'));
@@ -244,11 +226,11 @@ describe('V10 — phase status vs tier', () => {
 describe('V11 — retry monotonicity', () => {
   it('errors when retries decrease', () => {
     const current = makeState({
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress', retries: 3 })] })], status: 'in_progress' },
+      execution: { current_phase: 0, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress', retries: 3 })] })], status: 'in_progress' },
     });
     const proposed = makeState({
       project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress', retries: 2 })] })], status: 'in_progress' },
+      execution: { current_phase: 0, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress', retries: 2 })] })], status: 'in_progress' },
     });
     const errors = validateTransition(current, proposed, defaultConfig);
     const v11 = errors.filter(e => e.invariant === 'V11');
@@ -259,11 +241,11 @@ describe('V11 — retry monotonicity', () => {
 
   it('passes when retries increase or stay same', () => {
     const current = makeState({
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress', retries: 1 })] })], status: 'in_progress' },
+      execution: { current_phase: 0, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress', retries: 1 })] })], status: 'in_progress' },
     });
     const proposed = makeState({
       project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress', retries: 2 })] })], status: 'in_progress' },
+      execution: { current_phase: 0, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress', retries: 2 })] })], status: 'in_progress' },
     });
     const errors = validateTransition(current, proposed, defaultConfig);
     assert.ok(!errors.some(e => e.invariant === 'V11'));
@@ -275,11 +257,11 @@ describe('V11 — retry monotonicity', () => {
 describe('V12 — status transitions', () => {
   it('errors on illegal task transition not_started → complete', () => {
     const current = makeState({
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'not_started' })] })], status: 'in_progress' },
+      execution: { current_phase: 0, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'not_started' })] })], status: 'in_progress' },
     });
     const proposed = makeState({
       project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'complete' })] })], status: 'in_progress' },
+      execution: { current_phase: 0, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'complete' })] })], status: 'in_progress' },
     });
     const errors = validateTransition(current, proposed, defaultConfig);
     const v12 = errors.filter(e => e.invariant === 'V12');
@@ -288,11 +270,11 @@ describe('V12 — status transitions', () => {
 
   it('passes on legal task transition not_started → in_progress', () => {
     const current = makeState({
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'not_started' })] })], status: 'in_progress' },
+      execution: { current_phase: 0, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'not_started' })] })], status: 'in_progress' },
     });
     const proposed = makeState({
       project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress' })] })], status: 'in_progress' },
+      execution: { current_phase: 0, phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress' })] })], status: 'in_progress' },
     });
     const errors = validateTransition(current, proposed, defaultConfig);
     assert.ok(!errors.some(e => e.invariant === 'V12'));
@@ -300,11 +282,11 @@ describe('V12 — status transitions', () => {
 
   it('errors on illegal phase transition in_progress → not_started', () => {
     const current = makeState({
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [makePhase({ status: 'in_progress' })], status: 'in_progress' },
+      execution: { current_phase: 0, phases: [makePhase({ status: 'in_progress' })], status: 'in_progress' },
     });
     const proposed = makeState({
       project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [makePhase({ status: 'not_started' })], status: 'in_progress' },
+      execution: { current_phase: 0, phases: [makePhase({ status: 'not_started' })], status: 'in_progress' },
     });
     const errors = validateTransition(current, proposed, defaultConfig);
     const v12 = errors.filter(e => e.invariant === 'V12');
@@ -313,11 +295,11 @@ describe('V12 — status transitions', () => {
 
   it('passes on legal phase transition in_progress → complete', () => {
     const current = makeState({
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [makePhase({ status: 'in_progress', current_task: 1, total_tasks: 1, tasks: [makeTask({ status: 'complete' })] })], status: 'in_progress' },
+      execution: { current_phase: 0, phases: [makePhase({ status: 'in_progress', current_task: 1, tasks: [makeTask({ status: 'complete' })] })], status: 'in_progress' },
     });
     const proposed = makeState({
       project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
-      execution: { current_tier: 'execution', current_phase: 0, total_phases: 1, phases: [makePhase({ status: 'complete', current_task: 1, total_tasks: 1, tasks: [makeTask({ status: 'complete' })] })], status: 'in_progress' },
+      execution: { current_phase: 0, phases: [makePhase({ status: 'complete', current_task: 1, tasks: [makeTask({ status: 'complete' })] })], status: 'in_progress' },
     });
     const errors = validateTransition(current, proposed, defaultConfig);
     assert.ok(!errors.some(e => e.invariant === 'V12'));
@@ -353,15 +335,193 @@ describe('V13 — timestamp monotonicity', () => {
   });
 });
 
-// ─── Removed Invariants (V8, V9, V14, V15 absent) ──────────────────────────
+// ─── V14 — task stage transitions ──────────────────────────────────────────
 
-describe('Removed invariants are NOT checked', () => {
+describe('V14 — task stage transitions', () => {
+  // Helper to build a current/proposed pair differing only in task stage
+  function makeTransitionPair(fromStage, toStage) {
+    const current = makeState({
+      pipeline: { current_tier: 'execution' },
+      planning: { status: 'complete', human_approved: true, steps: [] },
+      execution: {
+        current_phase: 1,
+        phases: [makePhase({
+          status: 'in_progress',
+          current_task: 1,
+          tasks: [makeTask({ status: 'in_progress', stage: fromStage })],
+        })],
+        status: 'in_progress',
+      },
+    });
+    const proposed = makeState({
+      project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
+      pipeline: { current_tier: 'execution' },
+      planning: { status: 'complete', human_approved: true, steps: [] },
+      execution: {
+        current_phase: 1,
+        phases: [makePhase({
+          status: 'in_progress',
+          current_task: 1,
+          tasks: [makeTask({ status: 'in_progress', stage: toStage })],
+        })],
+        status: 'in_progress',
+      },
+    });
+    return { current, proposed };
+  }
+
+  it('errors on illegal planning → reviewing', () => {
+    const { current, proposed } = makeTransitionPair('planning', 'reviewing');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(errors.some(e => e.invariant === 'V14'));
+  });
+
+  it('errors on illegal coding → complete', () => {
+    const { current, proposed } = makeTransitionPair('coding', 'complete');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(errors.some(e => e.invariant === 'V14'));
+  });
+
+  it('errors on illegal complete → coding (terminal)', () => {
+    const { current, proposed } = makeTransitionPair('complete', 'coding');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(errors.some(e => e.invariant === 'V14'));
+  });
+
+  it('passes on legal planning → coding', () => {
+    const { current, proposed } = makeTransitionPair('planning', 'coding');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V14'));
+  });
+
+  it('passes on legal coding → reviewing', () => {
+    const { current, proposed } = makeTransitionPair('coding', 'reviewing');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V14'));
+  });
+
+  it('passes on legal reviewing → complete', () => {
+    const { current, proposed } = makeTransitionPair('reviewing', 'complete');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V14'));
+  });
+
+  it('passes on legal reviewing → failed', () => {
+    const { current, proposed } = makeTransitionPair('reviewing', 'failed');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V14'));
+  });
+
+  it('passes on legal failed → coding (corrective re-entry)', () => {
+    const { current, proposed } = makeTransitionPair('failed', 'coding');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V14'));
+  });
+
+  it('no V14 error when current is null (init path)', () => {
+    const proposed = makeState({
+      execution: {
+        current_phase: 1,
+        phases: [makePhase({
+          current_task: 1,
+          tasks: [makeTask({ stage: 'coding' })],
+        })],
+        status: 'not_started',
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V14'));
+  });
+});
+
+// ─── V15 — phase stage transitions ──────────────────────────────────────────
+
+describe('V15 — phase stage transitions', () => {
+  function makePhaseTransitionPair(fromStage, toStage) {
+    const current = makeState({
+      pipeline: { current_tier: 'execution' },
+      planning: { status: 'complete', human_approved: true, steps: [] },
+      execution: {
+        current_phase: 1,
+        phases: [makePhase({ status: 'in_progress', stage: fromStage })],
+        status: 'in_progress',
+      },
+    });
+    const proposed = makeState({
+      project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
+      pipeline: { current_tier: 'execution' },
+      planning: { status: 'complete', human_approved: true, steps: [] },
+      execution: {
+        current_phase: 1,
+        phases: [makePhase({ status: 'in_progress', stage: toStage })],
+        status: 'in_progress',
+      },
+    });
+    return { current, proposed };
+  }
+
+  it('errors on illegal planning → reviewing', () => {
+    const { current, proposed } = makePhaseTransitionPair('planning', 'reviewing');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(errors.some(e => e.invariant === 'V15'));
+  });
+
+  it('errors on illegal complete → executing (terminal)', () => {
+    const { current, proposed } = makePhaseTransitionPair('complete', 'executing');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(errors.some(e => e.invariant === 'V15'));
+  });
+
+  it('passes on legal planning → executing', () => {
+    const { current, proposed } = makePhaseTransitionPair('planning', 'executing');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V15'));
+  });
+
+  it('passes on legal executing → reviewing', () => {
+    const { current, proposed } = makePhaseTransitionPair('executing', 'reviewing');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V15'));
+  });
+
+  it('passes on legal reviewing → complete', () => {
+    const { current, proposed } = makePhaseTransitionPair('reviewing', 'complete');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V15'));
+  });
+
+  it('passes on legal reviewing → failed', () => {
+    const { current, proposed } = makePhaseTransitionPair('reviewing', 'failed');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V15'));
+  });
+
+  it('passes on legal failed → executing (corrective re-entry)', () => {
+    const { current, proposed } = makePhaseTransitionPair('failed', 'executing');
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V15'));
+  });
+
+  it('no V15 error when current is null (init path)', () => {
+    const proposed = makeState({
+      execution: {
+        current_phase: 1,
+        phases: [makePhase({ stage: 'executing' })],
+        status: 'not_started',
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V15'));
+  });
+});
+
+// ─── Removed invariants (V8, V9 absent) ─────────────────────────────────────
+
+describe('Removed invariants (V8, V9 absent)', () => {
   it('V8 absent — review_doc set but review_verdict null produces no V8 error', () => {
     const proposed = makeState({
       execution: {
-        current_tier: 'execution',
         current_phase: 0,
-        total_phases: 1,
         phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress', review_doc: 'some/path.md', review_verdict: null })] })],
         status: 'in_progress',
       },
@@ -373,79 +533,13 @@ describe('Removed invariants are NOT checked', () => {
   it('V9 absent — phase_review_doc set but phase_review_verdict null produces no V9 error', () => {
     const proposed = makeState({
       execution: {
-        current_tier: 'execution',
         current_phase: 0,
-        total_phases: 1,
         phases: [makePhase({ status: 'in_progress', phase_review_doc: 'some/path.md', phase_review_verdict: null })],
         status: 'in_progress',
       },
     });
     const errors = validateTransition(null, proposed, defaultConfig);
     assert.ok(!errors.some(e => e.invariant === 'V9'));
-  });
-
-  it('V14 absent — review_doc and review_verdict both change in same write produces no V14 error', () => {
-    const current = makeState({
-      execution: {
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress', review_doc: null, review_verdict: null })] })],
-        status: 'in_progress',
-      },
-    });
-    const proposed = makeState({
-      project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
-      execution: {
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress', review_doc: 'review.md', review_verdict: 'approved' })] })],
-        status: 'in_progress',
-      },
-    });
-    const errors = validateTransition(current, proposed, defaultConfig);
-    assert.ok(!errors.some(e => e.invariant === 'V14'));
-  });
-
-  it('V15 absent — two tasks change review_verdict in same write produces no V15 error', () => {
-    const current = makeState({
-      execution: {
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({
-          status: 'in_progress',
-          current_task: 0,
-          total_tasks: 2,
-          tasks: [
-            makeTask({ status: 'in_progress', review_verdict: null }),
-            makeTask({ status: 'in_progress', review_verdict: null }),
-          ],
-        })],
-        status: 'in_progress',
-      },
-    });
-    const proposed = makeState({
-      project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
-      execution: {
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({
-          status: 'in_progress',
-          current_task: 0,
-          total_tasks: 2,
-          tasks: [
-            makeTask({ status: 'in_progress', review_verdict: 'approved' }),
-            makeTask({ status: 'in_progress', review_verdict: 'approved' }),
-          ],
-        })],
-        status: 'in_progress',
-      },
-    });
-    const errors = validateTransition(current, proposed, defaultConfig);
-    assert.ok(!errors.some(e => e.invariant === 'V15'));
   });
 });
 
@@ -454,21 +548,21 @@ describe('Removed invariants are NOT checked', () => {
 describe('Valid state passes', () => {
   it('returns empty array for a fully valid state pair', () => {
     const current = makeState({
+      pipeline: { current_tier: 'execution' },
+      planning: { status: 'complete', human_approved: true, steps: [] },
       execution: {
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'not_started' })] })],
+        current_phase: 1,
+        phases: [makePhase({ status: 'in_progress', current_task: 1, tasks: [makeTask({ status: 'not_started' })] })],
         status: 'in_progress',
       },
     });
     const proposed = makeState({
       project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
+      pipeline: { current_tier: 'execution' },
+      planning: { status: 'complete', human_approved: true, steps: [] },
       execution: {
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({ status: 'in_progress', tasks: [makeTask({ status: 'in_progress' })] })],
+        current_phase: 1,
+        phases: [makePhase({ status: 'in_progress', current_task: 1, tasks: [makeTask({ status: 'in_progress' })] })],
         status: 'in_progress',
       },
     });
@@ -481,9 +575,7 @@ describe('Init path (current = null)', () => {
   it('skips V11–V13 and checks only structural invariants', () => {
     const proposed = makeState({
       execution: {
-        current_tier: 'planning',
-        current_phase: 0,
-        total_phases: 1,
+        current_phase: 1,
         phases: [makePhase()],
         status: 'not_started',
       },
@@ -495,9 +587,7 @@ describe('Init path (current = null)', () => {
   it('still catches structural errors on init', () => {
     const proposed = makeState({
       execution: {
-        current_tier: 'planning',
         current_phase: 5,
-        total_phases: 1,
         phases: [makePhase()],
         status: 'not_started',
       },

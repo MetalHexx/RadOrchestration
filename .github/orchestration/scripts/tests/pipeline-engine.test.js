@@ -93,30 +93,30 @@ describe('createMockIO', () => {
 // ─── State Factory Tests ────────────────────────────────────────────────────
 
 describe('State factories', () => {
-  it('createBaseState produces valid v3 state', () => {
+  it('createBaseState produces valid v4 state', () => {
     const s = createBaseState();
-    assert.equal(s.$schema, 'orchestration-state-v3');
-    assert.equal(s.execution.current_tier, 'planning');
+    assert.equal(s.$schema, 'orchestration-state-v4');
+    assert.equal(s.pipeline.current_tier, 'planning');
     assert.equal(s.planning.steps.length, 5);
     assert.equal(s.planning.human_approved, false);
   });
 
   it('createExecutionState produces execution-tier state with human_approved', () => {
     const s = createExecutionState();
-    assert.equal(s.$schema, 'orchestration-state-v3');
-    assert.equal(s.execution.current_tier, 'execution');
+    assert.equal(s.$schema, 'orchestration-state-v4');
+    assert.equal(s.pipeline.current_tier, 'execution');
     assert.equal(s.planning.human_approved, true);
     assert.equal(s.execution.phases[0].tasks.length, 2);
   });
 
-  it('createReviewState produces review-tier state with NO execution.final_review (CF-3)', () => {
+  it('createReviewState produces review-tier state with top-level final_review (v4)', () => {
     const s = createReviewState();
-    assert.equal(s.$schema, 'orchestration-state-v3');
-    assert.equal(s.execution.current_tier, 'review');
-    assert.equal(s.execution.final_review, undefined);
-    assert.equal(s.execution.final_review_doc, undefined);
-    assert.equal(s.execution.final_review_status, undefined);
-    assert.equal(s.execution.final_review_approved, undefined);
+    assert.equal(s.$schema, 'orchestration-state-v4');
+    assert.equal(s.pipeline.current_tier, 'review');
+    assert.ok(s.final_review !== undefined, 'top-level final_review should exist');
+    assert.equal(s.final_review.doc_path, null);
+    assert.equal(s.final_review.status, 'not_started');
+    assert.equal(s.final_review.human_approved, false);
   });
 });
 
@@ -144,11 +144,11 @@ describe('processEvent — init path', () => {
     assert.equal(io.getEnsureDirsCalled(), 1);
   });
 
-  it('written state has $schema orchestration-state-v3', () => {
+  it('written state has $schema orchestration-state-v4', () => {
     const io = createMockIO({ state: null });
     processEvent('start', PROJECT_DIR, {}, io);
     const written = io.getWrites()[0];
-    assert.equal(written.$schema, 'orchestration-state-v3');
+    assert.equal(written.$schema, 'orchestration-state-v4');
   });
 
   it('written state project.name matches path.basename(projectDir)', () => {
@@ -181,11 +181,12 @@ describe('processEvent — cold-start path', () => {
 
   it('existing execution state (mid-task) + start → correct next action', () => {
     const state = createExecutionState();
+    state.execution.phases[0].current_task = 1; // 1-based: T01 is active
     const io = createMockIO({ state });
     const result = processEvent('start', PROJECT_DIR, {}, io);
     assertResultShape(result);
     assert.equal(result.success, true);
-    // Execution state has task T01 at not_started with no handoff → create_task_handoff
+    // Execution state has task T01 at not_started/planning stage → create_task_handoff
     assert.equal(result.action, 'create_task_handoff');
     assert.equal(io.getWrites().length, 0);
   });
@@ -219,10 +220,12 @@ describe('processEvent — standard event path', () => {
   });
 
   it('task_completed with valid pre-read document → success, single write, correct mutations', () => {
-    // Set up execution state with task in_progress and handoff_doc
+    // Set up execution state with task in_progress and docs.handoff (v4)
     const state = stripTimestamp(createExecutionState());
+    state.execution.phases[0].current_task = 1; // 1-based: T01 is active
     state.execution.phases[0].tasks[0].status = 'in_progress';
-    state.execution.phases[0].tasks[0].handoff_doc = 'tasks/handoff.md';
+    state.execution.phases[0].tasks[0].stage = 'coding'; // V14: coding → reviewing
+    state.execution.phases[0].tasks[0].docs.handoff = 'tasks/handoff.md';
 
     const docPath = 'tasks/report.md';
     const documents = {
@@ -241,11 +244,13 @@ describe('processEvent — standard event path', () => {
   });
 
   it('code_review_completed with approved verdict → task advances, 1 write', () => {
-    // Set up execution state: task in_progress -> complete (report filed), needs review
+    // Set up execution state: task in_progress (stage=reviewing), report filed, needs review
     const state = stripTimestamp(createExecutionState());
-    state.execution.phases[0].tasks[0].status = 'complete';
-    state.execution.phases[0].tasks[0].handoff_doc = 'tasks/handoff.md';
-    state.execution.phases[0].tasks[0].report_doc = 'tasks/report.md';
+    state.execution.phases[0].current_task = 1; // 1-based: T01 is active
+    state.execution.phases[0].tasks[0].status = 'in_progress'; // v4: in_progress until code review
+    state.execution.phases[0].tasks[0].stage = 'reviewing'; // V14: reviewing → complete
+    state.execution.phases[0].tasks[0].docs.handoff = 'tasks/handoff.md';
+    state.execution.phases[0].tasks[0].docs.report = 'tasks/report.md';
     state.execution.phases[0].tasks[0].report_status = 'complete';
 
     const docPath = 'reviews/review.md';
@@ -261,10 +266,10 @@ describe('processEvent — standard event path', () => {
     assertResultShape(result);
     assert.equal(result.success, true);
     assert.equal(io.getWrites().length, 1);
-    // Verify the task was advanced
+    // Verify the task was advanced using v4 nested paths
     const writtenState = io.getWrites()[0];
-    assert.equal(writtenState.execution.phases[0].tasks[0].review_verdict, 'approved');
-    assert.equal(writtenState.execution.phases[0].tasks[0].review_action, 'advanced');
+    assert.equal(writtenState.execution.phases[0].tasks[0].review.verdict, 'approved');
+    assert.equal(writtenState.execution.phases[0].tasks[0].review.action, 'advanced');
     assert.equal(writtenState.execution.phases[0].tasks[0].status, 'complete');
   });
 });
@@ -275,7 +280,7 @@ describe('processEvent — pre-read failure', () => {
   it('task_completed with missing document → success false, action null, 0 writes', () => {
     const state = createExecutionState();
     state.execution.phases[0].tasks[0].status = 'in_progress';
-    state.execution.phases[0].tasks[0].handoff_doc = 'tasks/handoff.md';
+    state.execution.phases[0].tasks[0].docs.handoff = 'tasks/handoff.md';
 
     const io = createMockIO({ state, documents: {} });
     const ctx = { doc_path: 'nonexistent/report.md' };
@@ -326,12 +331,10 @@ describe('processEvent — pre-read failure', () => {
 describe('processEvent — validation failure', () => {
   it('V12 violation: illegal task status transition → success false, action null, 0 writes, violations array', () => {
     // Craft a state where the mutation would produce an illegal transition:
-    // task in 'complete' status, but code_review_completed mutation tries to set it to 'complete'
-    // again — that's actually a no-op (same status). Instead, craft a scenario where
-    // task is 'halted' and a mutation would try to transition it.
-    // The simplest V12 trigger: task_handoff_created sets status to 'in_progress',
+    // task_handoff_created sets status to 'in_progress',
     // but if current task status is 'complete', that transition is illegal.
     const state = createExecutionState();
+    state.execution.phases[0].current_task = 1; // 1-based: T01 is active
     state.execution.phases[0].tasks[0].status = 'complete';
 
     // task_handoff_created sets task.status = 'in_progress', but complete -> in_progress is not allowed
@@ -369,9 +372,15 @@ describe('scaffoldInitialState', () => {
   const config = createDefaultConfig();
   const dir = '/test/my-project';
 
-  it('has $schema orchestration-state-v3', () => {
+  it('has $schema orchestration-state-v4', () => {
     const s = scaffoldInitialState(config, dir);
-    assert.equal(s.$schema, 'orchestration-state-v3');
+    assert.equal(s.$schema, 'orchestration-state-v4');
+    assert.ok(s.final_review !== undefined, 'top-level final_review should exist');
+    assert.equal(s.final_review.status, 'not_started');
+    assert.equal(s.final_review.doc_path, null);
+    assert.equal(s.final_review.human_approved, false);
+    assert.equal(s.execution.current_phase, 0);
+    assert.equal(s.execution.total_phases, undefined);
   });
 
   it('project.name matches path.basename(projectDir)', () => {
@@ -387,14 +396,17 @@ describe('scaffoldInitialState', () => {
     }
   });
 
-  it('has planning.current_step set to research', () => {
+  it('planning.current_step is removed in v4 (field does not exist)', () => {
     const s = scaffoldInitialState(config, dir);
-    assert.equal(s.planning.current_step, 'research');
+    assert.equal(s.planning.current_step, undefined);
+    assert.ok(s.pipeline !== undefined, 'pipeline should exist as top-level section');
+    assert.equal(s.pipeline.current_tier, 'planning');
   });
 
-  it('has execution.current_tier set to planning', () => {
+  it('has pipeline.current_tier set to planning', () => {
     const s = scaffoldInitialState(config, dir);
-    assert.equal(s.execution.current_tier, 'planning');
+    assert.equal(s.pipeline.current_tier, 'planning');
+    assert.equal(s.execution.current_tier, undefined);
   });
 
   it('has no triage_attempts at any level', () => {
@@ -404,6 +416,29 @@ describe('scaffoldInitialState', () => {
       assert.equal(phase.triage_attempts, undefined);
     }
   });
+
+  it('pipeline.gate_mode is null', () => {
+    const s = scaffoldInitialState(config, dir);
+    assert.equal(s.pipeline.gate_mode, null, 'gate_mode must be null on initial scaffold');
+  });
+
+  it('pipeline.current_tier is still planning (no regression)', () => {
+    const s = scaffoldInitialState(config, dir);
+    assert.equal(s.pipeline.current_tier, 'planning', 'current_tier must remain planning');
+  });
+
+  it('pipeline has exactly two keys: current_tier and gate_mode', () => {
+    const s = scaffoldInitialState(config, dir);
+    const keys = Object.keys(s.pipeline).sort();
+    assert.deepEqual(keys, ['current_tier', 'gate_mode']);
+  });
+
+  it('scaffolded state passes validateTransition with zero errors', () => {
+    const { validateTransition } = require('../lib/validator');
+    const s = scaffoldInitialState(config, dir);
+    const errs = validateTransition(null, s, config);
+    assert.deepEqual(errs, [], `Expected zero errors, got: ${JSON.stringify(errs)}`);
+  });
 });
 
 // ─── halted tier — validateTransition passthrough (CF-5) ────────────────────
@@ -412,7 +447,8 @@ describe('halted tier — validateTransition passthrough (CF-5)', () => {
   it('state with current_tier halted does not produce V10 false positives', () => {
     // Create a state in halted tier — phases may have varying statuses
     const state = stripTimestamp(createExecutionState());
-    state.execution.current_tier = 'halted';
+    state.execution.phases[0].current_task = 1; // 1-based: required for V2
+    state.pipeline.current_tier = 'halted';
     // Phase is still in_progress — in other tiers this might cause V10, but halted has no branch
 
     const io = createMockIO({ state });
@@ -431,7 +467,7 @@ describe('halted tier — validateTransition passthrough (CF-5)', () => {
 
   it('halted tier with complete phases does not produce V10 errors', () => {
     const state = stripTimestamp(createReviewState());
-    state.execution.current_tier = 'halted';
+    state.pipeline.current_tier = 'halted';
 
     const io = createMockIO({ state });
     // Use a simple event

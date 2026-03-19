@@ -10,14 +10,13 @@ function makeTask(overrides = {}) {
   return {
     name: 'task',
     status: 'not_started',
-    retries: 0,
-    handoff_doc: null,
-    report_doc: null,
-    review_doc: null,
-    review_verdict: null,
-    review_action: null,
+    stage: 'planning',
+    docs: { handoff: null, report: null, review: null },
+    review: { verdict: null, action: null },
+    report_status: null,
     has_deviations: false,
     deviation_type: null,
+    retries: 0,
     ...overrides,
   };
 }
@@ -29,14 +28,11 @@ function makePhase(overrides = {}, taskOverrides = []) {
   return {
     name: 'phase',
     status: 'not_started',
+    stage: 'planning',
     current_task: 0,
-    total_tasks: tasks.length,
     tasks,
-    phase_plan_doc: null,
-    phase_report_doc: null,
-    phase_review_doc: null,
-    phase_review_verdict: null,
-    phase_review_action: null,
+    docs: { phase_plan: null, phase_report: null, phase_review: null },
+    review: { verdict: null, action: null },
     ...overrides,
     ...(overrides.tasks ? {} : { tasks }),
   };
@@ -48,12 +44,13 @@ function makePlanningStep(name, status = 'not_started') {
 
 function makeState(overrides = {}) {
   const base = {
-    $schema: 'orchestration-state-v3',
+    $schema: 'orchestration-state-v4',
     project: {
       name: 'TEST',
       created: '2026-01-01T00:00:00.000Z',
       updated: '2026-01-01T00:00:01.000Z',
     },
+    pipeline: { current_tier: 'execution' },
     planning: {
       status: 'complete',
       human_approved: true,
@@ -64,22 +61,21 @@ function makeState(overrides = {}) {
         makePlanningStep('architecture', 'complete'),
         makePlanningStep('master_plan', 'complete'),
       ],
-      current_step: 'master_plan',
     },
     execution: {
       status: 'in_progress',
-      current_tier: 'execution',
-      current_phase: 0,
-      total_phases: 1,
+      current_phase: 1,
       phases: [makePhase()],
     },
+    final_review: { status: 'not_started', doc_path: null, human_approved: false },
   };
 
-  // Deep merge overrides
   const result = { ...base };
   if (overrides.project) result.project = { ...base.project, ...overrides.project };
+  if (overrides.pipeline) result.pipeline = { ...base.pipeline, ...overrides.pipeline };
   if (overrides.planning) result.planning = { ...base.planning, ...overrides.planning };
   if (overrides.execution) result.execution = { ...base.execution, ...overrides.execution };
+  if (overrides.final_review) result.final_review = { ...base.final_review, ...overrides.final_review };
   return result;
 }
 
@@ -114,7 +110,7 @@ describe('resolver — structural', () => {
   });
 
   it('return value always has action (string) and context (object)', () => {
-    const state = makeState({ execution: { ...makeState().execution, current_tier: 'complete' } });
+    const state = makeState({ pipeline: { current_tier: 'complete' } });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(typeof result.action, 'string');
     assert.equal(typeof result.context, 'object');
@@ -130,17 +126,15 @@ describe('resolver — planning tier', () => {
       makePlanningStep(name, completedSteps.includes(name) ? 'complete' : 'not_started')
     );
     return makeState({
+      pipeline: { current_tier: 'planning' },
       planning: {
         status: 'in_progress',
         human_approved: false,
         steps,
-        current_step: completedSteps.length > 0 ? completedSteps[completedSteps.length - 1] : 'research',
       },
       execution: {
         status: 'not_started',
-        current_tier: 'planning',
         current_phase: 0,
-        total_phases: 0,
         phases: [],
       },
     });
@@ -178,12 +172,11 @@ describe('resolver — planning tier', () => {
 
   it('returns request_plan_approval when all steps complete and human_approved is false', () => {
     const state = planningState(['research', 'prd', 'design', 'architecture', 'master_plan']);
-    // All steps complete but human_approved is false
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'request_plan_approval');
   });
 
-  it('returns display_halted (not request_plan_approval) when all steps complete and human_approved is true but tier is still planning', () => {
+  it('returns display_halted when all steps complete and human_approved is true but tier is still planning', () => {
     const state = planningState(['research', 'prd', 'design', 'architecture', 'master_plan']);
     state.planning.human_approved = true;
     const result = resolveNextAction(state, makeConfig());
@@ -193,186 +186,194 @@ describe('resolver — planning tier', () => {
   });
 });
 
-// ─── Execution Tier — Task-Level Tests ──────────────────────────────────────
+// ─── Execution Tier — Phase Stage Routing Tests ──────────────────────────────
 
-describe('resolver — execution tier — task level', () => {
-  it('returns create_phase_plan when phase status is not_started', () => {
+describe('resolver — execution tier — phase stage routing', () => {
+  it('returns create_phase_plan when phase.stage is planning', () => {
     const state = makeState({
       execution: {
         status: 'in_progress',
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({ status: 'not_started' })],
+        current_phase: 1,
+        phases: [makePhase({ status: 'not_started', stage: 'planning' })],
       },
     });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'create_phase_plan');
-    assert.equal(result.context.phase_index, 0);
+    assert.equal(result.context.phase_number, 1);
     assert.equal(result.context.phase_id, 'P01');
   });
 
-  it('returns create_task_handoff when task has no handoff_doc and status is not_started', () => {
+  it('returns task-level action when phase.stage is executing with active task', () => {
     const state = makeState({
       execution: {
         status: 'in_progress',
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({ status: 'in_progress' }, [{ status: 'not_started' }])],
+        current_phase: 1,
+        phases: [makePhase(
+          { status: 'in_progress', stage: 'executing', current_task: 1 },
+          [{ stage: 'planning' }]
+        )],
       },
     });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'create_task_handoff');
+  });
+
+  it('returns spawn_phase_reviewer when phase.stage is reviewing', () => {
+    const state = makeState({
+      execution: {
+        status: 'in_progress',
+        current_phase: 1,
+        phases: [makePhase({
+          status: 'in_progress',
+          stage: 'reviewing',
+          docs: { phase_plan: 'plans/pp.md', phase_report: 'reports/pr.md', phase_review: null },
+        })],
+      },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'spawn_phase_reviewer');
+    assert.equal(result.context.phase_report_doc, 'reports/pr.md');
+    assert.equal(result.context.phase_number, 1);
+    assert.equal(result.context.phase_id, 'P01');
+  });
+
+  it('returns gate_phase when phase.stage is complete and review.action is advanced (phase mode)', () => {
+    const state = makeState({
+      execution: {
+        status: 'in_progress',
+        current_phase: 1,
+        phases: [makePhase({
+          status: 'in_progress',
+          stage: 'complete',
+          docs: { phase_plan: 'plans/pp.md', phase_report: 'reports/pr.md', phase_review: 'reviews/pvr.md' },
+          review: { verdict: 'approved', action: 'advanced' },
+        })],
+      },
+    });
+    const config = makeConfig({ human_gates: { execution_mode: 'phase' } });
+    const result = resolveNextAction(state, config);
+    assert.equal(result.action, 'gate_phase');
+    assert.equal(result.context.phase_number, 1);
+    assert.equal(result.context.phase_id, 'P01');
+  });
+});
+
+// ─── Execution Tier — Task Stage Routing Tests ───────────────────────────────
+
+describe('resolver — execution tier — task stage routing', () => {
+  function executingPhaseState(taskOverrides) {
+    return makeState({
+      execution: {
+        status: 'in_progress',
+        current_phase: 1,
+        phases: [makePhase(
+          { status: 'in_progress', stage: 'executing', current_task: 1 },
+          [taskOverrides]
+        )],
+      },
+    });
+  }
+
+  it('returns create_task_handoff with is_correction: false when task.stage is planning', () => {
+    const state = executingPhaseState({ stage: 'planning' });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'create_task_handoff');
     assert.equal(result.context.is_correction, false);
-    assert.equal(result.context.phase_index, 0);
-    assert.equal(result.context.task_index, 0);
+    assert.equal(result.context.phase_number, 1);
+    assert.equal(result.context.task_number, 1);
     assert.equal(result.context.phase_id, 'P01');
     assert.equal(result.context.task_id, 'P01-T01');
   });
 
-  it('returns create_task_handoff with is_correction: true when task failed with corrective_task_issued', () => {
-    const state = makeState({
-      execution: {
-        status: 'in_progress',
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({ status: 'in_progress' }, [{
-          status: 'failed',
-          review_doc: 'reviews/review.md',
-          review_verdict: 'changes_requested',
-          review_action: 'corrective_task_issued',
-          report_doc: 'reports/report.md',
-          handoff_doc: 'tasks/handoff.md',
-        }])],
-      },
-    });
-    const result = resolveNextAction(state, makeConfig());
-    assert.equal(result.action, 'create_task_handoff');
-    assert.equal(result.context.is_correction, true);
-  });
-
-  it('corrective context includes previous_review and reason', () => {
-    const state = makeState({
-      execution: {
-        status: 'in_progress',
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({ status: 'in_progress' }, [{
-          status: 'failed',
-          review_doc: 'reviews/r1.md',
-          review_verdict: 'changes_requested',
-          review_action: 'corrective_task_issued',
-          report_doc: 'reports/rpt.md',
-          handoff_doc: 'tasks/h.md',
-        }])],
-      },
-    });
-    const result = resolveNextAction(state, makeConfig());
-    assert.equal(result.context.previous_review, 'reviews/r1.md');
-    assert.equal(result.context.reason, 'changes_requested');
-    assert.equal(result.context.phase_index, 0);
-    assert.equal(result.context.task_index, 0);
-    assert.equal(result.context.phase_id, 'P01');
-    assert.equal(result.context.task_id, 'P01-T01');
-  });
-
-  it('returns execute_task when task has handoff_doc but no report_doc and status is in_progress', () => {
-    const state = makeState({
-      execution: {
-        status: 'in_progress',
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({ status: 'in_progress' }, [{
-          status: 'in_progress',
-          handoff_doc: 'tasks/handoff.md',
-        }])],
-      },
+  it('returns execute_task when task.stage is coding', () => {
+    const state = executingPhaseState({
+      stage: 'coding',
+      status: 'in_progress',
+      docs: { handoff: 'tasks/handoff.md', report: null, review: null },
     });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'execute_task');
     assert.equal(result.context.handoff_doc, 'tasks/handoff.md');
-    assert.equal(result.context.phase_index, 0);
-    assert.equal(result.context.task_index, 0);
+    assert.equal(result.context.phase_number, 1);
+    assert.equal(result.context.task_number, 1);
+    assert.equal(result.context.phase_id, 'P01');
+    assert.equal(result.context.task_id, 'P01-T01');
   });
 
-  it('returns spawn_code_reviewer when task status is complete and no review_doc', () => {
-    const state = makeState({
-      execution: {
-        status: 'in_progress',
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({ status: 'in_progress' }, [{
-          status: 'complete',
-          handoff_doc: 'tasks/handoff.md',
-          report_doc: 'reports/report.md',
-        }])],
-      },
+  it('returns spawn_code_reviewer when task.stage is reviewing', () => {
+    const state = executingPhaseState({
+      stage: 'reviewing',
+      status: 'complete',
+      docs: { handoff: 'tasks/handoff.md', report: 'reports/report.md', review: null },
     });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'spawn_code_reviewer');
     assert.equal(result.context.report_doc, 'reports/report.md');
+    assert.equal(result.context.phase_number, 1);
+    assert.equal(result.context.task_number, 1);
+    assert.equal(result.context.phase_id, 'P01');
+    assert.equal(result.context.task_id, 'P01-T01');
+  });
+
+  it('returns gate_task when task.stage is complete and review.action is advanced (task mode)', () => {
+    const state = executingPhaseState({
+      stage: 'complete',
+      status: 'complete',
+      docs: { handoff: 'tasks/handoff.md', report: 'reports/report.md', review: 'reviews/rv.md' },
+      review: { verdict: 'approved', action: 'advanced' },
+    });
+    const config = makeConfig({ human_gates: { execution_mode: 'task' } });
+    const result = resolveNextAction(state, config);
+    assert.equal(result.action, 'gate_task');
+    assert.equal(result.context.phase_number, 1);
+    assert.equal(result.context.task_number, 1);
+    assert.equal(result.context.phase_id, 'P01');
+    assert.equal(result.context.task_id, 'P01-T01');
+  });
+
+  it('returns create_task_handoff (corrective) when task.stage is failed and review.action is corrective_task_issued', () => {
+    const state = executingPhaseState({
+      stage: 'failed',
+      status: 'failed',
+      docs: { handoff: 'tasks/handoff.md', report: 'reports/report.md', review: 'reviews/rv.md' },
+      review: { verdict: 'changes_requested', action: 'corrective_task_issued' },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(result.context.is_correction, true);
+    assert.equal(result.context.previous_review, 'reviews/rv.md');
+    assert.equal(result.context.reason, 'changes_requested');
+    assert.equal(result.context.phase_number, 1);
+    assert.equal(result.context.task_number, 1);
+    assert.equal(result.context.phase_id, 'P01');
+    assert.equal(result.context.task_id, 'P01-T01');
   });
 });
 
-// ─── Execution Tier — Phase-Level Tests ─────────────────────────────────────
+// ─── Phase Completion Tests ──────────────────────────────────────────────────
 
-describe('resolver — execution tier — phase level', () => {
-  it('returns generate_phase_report when all tasks processed and no phase_report_doc', () => {
+describe('resolver — execution tier — phase completion', () => {
+  it('returns generate_phase_report when current_task > tasks.length (all tasks done)', () => {
     const state = makeState({
       execution: {
         status: 'in_progress',
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
+        current_phase: 1,
         phases: [makePhase({
           status: 'in_progress',
-          current_task: 1,
-          total_tasks: 1,
+          stage: 'executing',
+          current_task: 2,
         }, [{
+          stage: 'complete',
           status: 'complete',
-          handoff_doc: 'h.md',
-          report_doc: 'r.md',
-          review_doc: 'rv.md',
-          review_action: 'advanced',
+          docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+          review: { verdict: 'approved', action: 'advanced' },
         }])],
       },
     });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'generate_phase_report');
-    assert.equal(result.context.phase_index, 0);
+    assert.equal(result.context.phase_number, 1);
     assert.equal(result.context.phase_id, 'P01');
-  });
-
-  it('returns spawn_phase_reviewer when phase_report_doc exists and no phase_review_doc', () => {
-    const state = makeState({
-      execution: {
-        status: 'in_progress',
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({
-          status: 'in_progress',
-          current_task: 1,
-          total_tasks: 1,
-          phase_report_doc: 'reports/phase-report.md',
-        }, [{
-          status: 'complete',
-          handoff_doc: 'h.md',
-          report_doc: 'r.md',
-          review_doc: 'rv.md',
-          review_action: 'advanced',
-        }])],
-      },
-    });
-    const result = resolveNextAction(state, makeConfig());
-    assert.equal(result.action, 'spawn_phase_reviewer');
-    assert.equal(result.context.phase_report_doc, 'reports/phase-report.md');
-    assert.equal(result.context.phase_index, 0);
   });
 });
 
@@ -383,17 +384,16 @@ describe('resolver — gates', () => {
     return makeState({
       execution: {
         status: 'in_progress',
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({ status: 'in_progress' }, [{
-          status: 'complete',
-          handoff_doc: 'h.md',
-          report_doc: 'r.md',
-          review_doc: 'rv.md',
-          review_verdict: 'approved',
-          review_action: 'advanced',
-        }])],
+        current_phase: 1,
+        phases: [makePhase(
+          { status: 'in_progress', stage: 'executing', current_task: 1 },
+          [{
+            stage: 'complete',
+            status: 'complete',
+            docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+            review: { verdict: 'approved', action: 'advanced' },
+          }]
+        )],
       },
     });
   }
@@ -402,58 +402,52 @@ describe('resolver — gates', () => {
     return makeState({
       execution: {
         status: 'in_progress',
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
+        current_phase: 1,
         phases: [makePhase({
           status: 'in_progress',
-          current_task: 1,
-          total_tasks: 1,
-          phase_report_doc: 'reports/pr.md',
-          phase_review_doc: 'reviews/pvr.md',
-          phase_review_verdict: 'approved',
-          phase_review_action: 'advanced',
+          stage: 'complete',
+          current_task: 2,
+          docs: { phase_plan: 'plans/pp.md', phase_report: 'reports/pr.md', phase_review: 'reviews/pvr.md' },
+          review: { verdict: 'approved', action: 'advanced' },
         }, [{
+          stage: 'complete',
           status: 'complete',
-          handoff_doc: 'h.md',
-          report_doc: 'r.md',
-          review_doc: 'rv.md',
-          review_action: 'advanced',
+          docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+          review: { verdict: 'approved', action: 'advanced' },
         }])],
       },
     });
   }
 
-  it('returns gate_task when task review_action is advanced and gate mode is task', () => {
+  it('returns gate_task when task review.action is advanced and gate mode is task', () => {
     const state = completedTaskState();
     const config = makeConfig({ human_gates: { execution_mode: 'task' } });
     const result = resolveNextAction(state, config);
     assert.equal(result.action, 'gate_task');
-    assert.equal(result.context.phase_index, 0);
-    assert.equal(result.context.task_index, 0);
+    assert.equal(result.context.phase_number, 1);
+    assert.equal(result.context.task_number, 1);
   });
 
-  it('returns gate_phase when phase_review_action is advanced and gate mode is phase', () => {
+  it('returns gate_phase when phase review.action is advanced and gate mode is phase', () => {
     const state = completedPhaseState();
     const config = makeConfig({ human_gates: { execution_mode: 'phase' } });
     const result = resolveNextAction(state, config);
     assert.equal(result.action, 'gate_phase');
-    assert.equal(result.context.phase_index, 0);
+    assert.equal(result.context.phase_number, 1);
   });
 
-  it('returns gate_phase when phase_review_action is advanced and gate mode is task (task mode also gates phases)', () => {
+  it('returns gate_phase when phase review.action is advanced and gate mode is task (task mode also gates phases)', () => {
     const state = completedPhaseState();
     const config = makeConfig({ human_gates: { execution_mode: 'task' } });
     const result = resolveNextAction(state, config);
     assert.equal(result.action, 'gate_phase');
-    assert.equal(result.context.phase_index, 0);
+    assert.equal(result.context.phase_number, 1);
   });
 
   it('skips gate when mode is autonomous', () => {
     const state = completedTaskState();
     const config = makeConfig({ human_gates: { execution_mode: 'autonomous' } });
     const result = resolveNextAction(state, config);
-    // Autonomous mode should not return gate_task — returns halted as a safety net
     assert.notEqual(result.action, 'gate_task');
     assert.notEqual(result.action, 'gate_phase');
   });
@@ -470,31 +464,21 @@ describe('resolver — gates', () => {
 // ─── Review Tier Tests ──────────────────────────────────────────────────────
 
 describe('resolver — review tier', () => {
-  it('returns spawn_final_reviewer when tier is review and no final review doc', () => {
+  it('returns spawn_final_reviewer when tier is review and final_review.doc_path is null', () => {
     const state = makeState({
-      execution: {
-        status: 'in_progress',
-        current_tier: 'review',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [],
-      },
+      pipeline: { current_tier: 'review' },
+      execution: { status: 'complete', current_phase: 0, phases: [] },
+      final_review: { status: 'not_started', doc_path: null, human_approved: false },
     });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'spawn_final_reviewer');
   });
 
-  it('returns request_final_approval when final review exists but not human-approved', () => {
+  it('returns request_final_approval when final_review.doc_path exists but human_approved is false', () => {
     const state = makeState({
-      execution: {
-        status: 'in_progress',
-        current_tier: 'review',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [],
-        final_review_doc: 'reviews/final.md',
-        final_review_approved: false,
-      },
+      pipeline: { current_tier: 'review' },
+      execution: { status: 'complete', current_phase: 0, phases: [] },
+      final_review: { status: 'in_progress', doc_path: 'reviews/final.md', human_approved: false },
     });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'request_final_approval');
@@ -506,14 +490,8 @@ describe('resolver — review tier', () => {
 describe('resolver — terminal', () => {
   it('returns display_halted when tier is halted', () => {
     const state = makeState({
-      execution: {
-        status: 'halted',
-        current_tier: 'halted',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [],
-        halt_reason: 'Critical error occurred',
-      },
+      pipeline: { current_tier: 'halted' },
+      execution: { status: 'halted', current_phase: 0, phases: [] },
     });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'display_halted');
@@ -525,13 +503,11 @@ describe('resolver — terminal', () => {
     const state = makeState({
       execution: {
         status: 'in_progress',
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({ status: 'in_progress' }, [{
-          status: 'halted',
-          name: 'broken-task',
-        }])],
+        current_phase: 1,
+        phases: [makePhase(
+          { status: 'in_progress', stage: 'executing', current_task: 1 },
+          [{ status: 'halted', name: 'broken-task' }]
+        )],
       },
     });
     const result = resolveNextAction(state, makeConfig());
@@ -545,10 +521,8 @@ describe('resolver — terminal', () => {
     const state = makeState({
       execution: {
         status: 'in_progress',
-        current_tier: 'execution',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [makePhase({ status: 'halted', name: 'broken-phase' })],
+        current_phase: 1,
+        phases: [makePhase({ status: 'halted', stage: 'planning', name: 'broken-phase' })],
       },
     });
     const result = resolveNextAction(state, makeConfig());
@@ -560,13 +534,8 @@ describe('resolver — terminal', () => {
 
   it('returns display_complete when tier is complete', () => {
     const state = makeState({
-      execution: {
-        status: 'complete',
-        current_tier: 'complete',
-        current_phase: 0,
-        total_phases: 1,
-        phases: [],
-      },
+      pipeline: { current_tier: 'complete' },
+      execution: { status: 'complete', current_phase: 0, phases: [] },
     });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'display_complete');
@@ -578,45 +547,131 @@ describe('resolver — terminal', () => {
 describe('resolver — halt consolidation', () => {
   it('all halted states produce action display_halted (no separate halt action types)', () => {
     const haltedScenarios = [
-      // tier halted
       makeState({
-        execution: { status: 'halted', current_tier: 'halted', current_phase: 0, total_phases: 0, phases: [] },
+        pipeline: { current_tier: 'halted' },
+        execution: { status: 'halted', current_phase: 0, phases: [] },
       }),
-      // phase halted
       makeState({
         execution: {
-          status: 'in_progress', current_tier: 'execution', current_phase: 0, total_phases: 1,
+          status: 'in_progress', current_phase: 1,
           phases: [makePhase({ status: 'halted' })],
         },
       }),
-      // task halted
       makeState({
         execution: {
-          status: 'in_progress', current_tier: 'execution', current_phase: 0, total_phases: 1,
-          phases: [makePhase({ status: 'in_progress' }, [{ status: 'halted' }])],
+          status: 'in_progress', current_phase: 1,
+          phases: [makePhase(
+            { status: 'in_progress', stage: 'executing', current_task: 1 },
+            [{ status: 'halted' }]
+          )],
         },
       }),
     ];
 
     for (const state of haltedScenarios) {
       const result = resolveNextAction(state, makeConfig());
-      assert.equal(result.action, 'display_halted', `Expected display_halted for tier=${state.execution.current_tier}`);
+      assert.equal(result.action, 'display_halted', `Expected display_halted for tier=${state.pipeline.current_tier}`);
     }
   });
 
   it('context.details is a non-empty string describing the halt reason', () => {
     const state = makeState({
-      execution: {
-        status: 'halted',
-        current_tier: 'halted',
-        current_phase: 0,
-        total_phases: 0,
-        phases: [],
-        halt_reason: 'Maximum retries exceeded',
-      },
+      pipeline: { current_tier: 'halted' },
+      execution: { status: 'halted', current_phase: 0, phases: [] },
     });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(typeof result.context.details, 'string');
     assert.ok(result.context.details.length > 0);
+  });
+});
+
+// ─── Edge Case Tests ─────────────────────────────────────────────────────────
+
+describe('resolver — edge cases', () => {
+  it('returns generate_phase_report for empty phase (current_task: 0, tasks: [])', () => {
+    const state = makeState({
+      execution: {
+        status: 'in_progress',
+        current_phase: 1,
+        phases: [makePhase({ status: 'in_progress', stage: 'executing', current_task: 0, tasks: [] })],
+      },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'generate_phase_report');
+    assert.equal(result.context.phase_number, 1);
+    assert.equal(result.context.phase_id, 'P01');
+  });
+
+  it('returns generate_phase_report when current_task advances past last task boundary', () => {
+    const state = makeState({
+      execution: {
+        status: 'in_progress',
+        current_phase: 1,
+        phases: [makePhase({
+          status: 'in_progress',
+          stage: 'executing',
+          current_task: 2,
+        }, [{
+          stage: 'complete',
+          status: 'complete',
+          docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+          review: { verdict: 'approved', action: 'advanced' },
+        }])],
+      },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'generate_phase_report');
+    assert.equal(result.context.phase_number, 1);
+  });
+
+  it('returns display_halted when no phase found at current_phase (out-of-bounds)', () => {
+    const state = makeState({
+      execution: {
+        status: 'in_progress',
+        current_phase: 3,
+        phases: [makePhase()],
+      },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'display_halted');
+    assert.equal(typeof result.context.details, 'string');
+    assert.ok(result.context.details.length > 0);
+  });
+
+  it('formatPhaseId produces 1-based IDs: phase 1 => P01, phase 2 => P02', () => {
+    for (const [phaseNum, expectedId] of [[1, 'P01'], [2, 'P02'], [10, 'P10']]) {
+      const phases = Array.from({ length: phaseNum }, (_, i) =>
+        makePhase({ stage: i === phaseNum - 1 ? 'planning' : 'complete' })
+      );
+      const state = makeState({
+        execution: { status: 'in_progress', current_phase: phaseNum, phases },
+      });
+      const result = resolveNextAction(state, makeConfig());
+      assert.equal(result.context.phase_id, expectedId, `Expected phase_id=${expectedId} for phase ${phaseNum}`);
+    }
+  });
+
+  it('formatTaskId produces 1-based IDs: phase 2 task 3 => P02-T03', () => {
+    const tasks = [
+      makeTask({ stage: 'complete', status: 'complete', docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' }, review: { verdict: 'approved', action: 'advanced' } }),
+      makeTask({ stage: 'complete', status: 'complete', docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' }, review: { verdict: 'approved', action: 'advanced' } }),
+      makeTask({ stage: 'planning' }),
+    ];
+    const state = makeState({
+      execution: {
+        status: 'in_progress',
+        current_phase: 2,
+        phases: [
+          makePhase({ stage: 'complete' }),
+          makePhase({ stage: 'executing', status: 'in_progress', current_task: 3, tasks }),
+        ],
+      },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(result.context.phase_id, 'P02');
+    assert.equal(result.context.task_id, 'P02-T03');
+    assert.equal(result.context.phase_number, 2);
+    assert.equal(result.context.task_number, 3);
   });
 });

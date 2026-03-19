@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { preRead } = require('../lib/pre-reads.js');
+const { preRead } = require('../lib/pre-reads');
 
 // ─── Mock Factory ───────────────────────────────────────────────────────────
 
@@ -293,6 +293,84 @@ describe('pass-through behavior', () => {
     const res = preRead('unknown_event', ctx, read, '/proj');
     assert.equal(res.error, undefined);
     assert.deepEqual(res.context, { x: 1 });
+  });
+});
+
+// ─── coerceNull behavior (via preRead entry point) ──────────────────────────
+
+describe('coerceNull via task_completed', () => {
+  const event = 'task_completed';
+  const ctx = { doc_path: '/report.md' };
+  const base = { status: 'complete', has_deviations: false };
+
+  it('coerces deviation_type "null" string to JSON null', () => {
+    const read = mockReadDocument({ '/report.md': { frontmatter: { ...base, deviation_type: 'null' }, body: '' } });
+    const res = preRead(event, ctx, read, '/proj');
+    assert.equal(res.error, undefined);
+    assert.strictEqual(res.context.deviation_type, null);
+  });
+
+  it('coerces deviation_type "undefined" string to JSON null', () => {
+    const read = mockReadDocument({ '/report.md': { frontmatter: { ...base, deviation_type: 'undefined' }, body: '' } });
+    const res = preRead(event, ctx, read, '/proj');
+    assert.equal(res.error, undefined);
+    assert.strictEqual(res.context.deviation_type, null);
+  });
+
+  it('passes through deviation_type "minor" unchanged', () => {
+    const read = mockReadDocument({ '/report.md': { frontmatter: { ...base, deviation_type: 'minor' }, body: '' } });
+    const res = preRead(event, ctx, read, '/proj');
+    assert.equal(res.error, undefined);
+    assert.strictEqual(res.context.deviation_type, 'minor');
+  });
+
+  it('passes through deviation_type null (JSON null) unchanged', () => {
+    const read = mockReadDocument({ '/report.md': { frontmatter: { ...base, deviation_type: null }, body: '' } });
+    const res = preRead(event, ctx, read, '/proj');
+    assert.equal(res.error, undefined);
+    assert.strictEqual(res.context.deviation_type, null);
+  });
+});
+
+describe('coerceNull via code_review_completed', () => {
+  const event = 'code_review_completed';
+  const ctx = { doc_path: '/review.md' };
+
+  it('coerces verdict "null" string to null and returns structured error (missing required field)', () => {
+    const read = mockReadDocument({ '/review.md': { frontmatter: { verdict: 'null' }, body: '' } });
+    const res = preRead(event, ctx, read, '/proj');
+    assert.equal(res.context, undefined);
+    assert.equal(res.error.field, 'verdict');
+    assert.equal(res.error.error, 'Missing required field');
+  });
+
+  it('coerces verdict "undefined" string to null and returns structured error (missing required field)', () => {
+    const read = mockReadDocument({ '/review.md': { frontmatter: { verdict: 'undefined' }, body: '' } });
+    const res = preRead(event, ctx, read, '/proj');
+    assert.equal(res.context, undefined);
+    assert.equal(res.error.field, 'verdict');
+    assert.equal(res.error.error, 'Missing required field');
+  });
+});
+
+describe('coerceNull via phase_review_completed', () => {
+  const event = 'phase_review_completed';
+  const ctx = { doc_path: '/phase-review.md' };
+
+  it('coerces verdict "null" string to null and returns structured error (missing required field)', () => {
+    const read = mockReadDocument({ '/phase-review.md': { frontmatter: { verdict: 'null', exit_criteria_met: true }, body: '' } });
+    const res = preRead(event, ctx, read, '/proj');
+    assert.equal(res.context, undefined);
+    assert.equal(res.error.field, 'verdict');
+    assert.equal(res.error.error, 'Missing required field');
+  });
+
+  it('coerces verdict "undefined" string to null and returns structured error (missing required field)', () => {
+    const read = mockReadDocument({ '/phase-review.md': { frontmatter: { verdict: 'undefined', exit_criteria_met: true }, body: '' } });
+    const res = preRead(event, ctx, read, '/proj');
+    assert.equal(res.context, undefined);
+    assert.equal(res.error.field, 'verdict');
+    assert.equal(res.error.error, 'Missing required field');
   });
 });
 

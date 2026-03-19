@@ -25,7 +25,7 @@ function createDefaultConfig() {
       on_critical: 'halt',
       on_minor: 'retry',
     },
-    human_gates: { after_planning: true, execution_mode: 'ask', after_final_review: true },
+    human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
   };
 }
 
@@ -74,8 +74,9 @@ function createMockIO({ state = null, documents = {}, config = null } = {}) {
 function createBaseState(overrides) {
   const now = new Date().toISOString();
   const base = {
-    $schema: 'orchestration-state-v3',
+    $schema: 'orchestration-state-v4',
     project: { name: 'TEST', created: now, updated: now },
+    pipeline: { current_tier: 'planning' },
     planning: {
       status: 'not_started',
       human_approved: false,
@@ -86,14 +87,16 @@ function createBaseState(overrides) {
         { name: 'architecture', status: 'not_started', doc_path: null },
         { name: 'master_plan', status: 'not_started', doc_path: null },
       ],
-      current_step: 'research',
     },
     execution: {
       status: 'not_started',
-      current_tier: 'planning',
       current_phase: 0,
-      total_phases: 0,
       phases: [],
+    },
+    final_review: {
+      status: 'not_started',
+      doc_path: null,
+      human_approved: false,
     },
   };
   if (overrides) {
@@ -105,8 +108,9 @@ function createBaseState(overrides) {
 function createExecutionState(overrides) {
   const now = new Date().toISOString();
   const base = {
-    $schema: 'orchestration-state-v3',
+    $schema: 'orchestration-state-v4',
     project: { name: 'TEST', created: now, updated: now },
+    pipeline: { current_tier: 'execution', gate_mode: 'autonomous' },
     planning: {
       status: 'complete',
       human_approved: true,
@@ -117,28 +121,47 @@ function createExecutionState(overrides) {
         { name: 'architecture', status: 'complete', doc_path: 'docs/architecture.md' },
         { name: 'master_plan', status: 'complete', doc_path: 'docs/master_plan.md' },
       ],
-      current_step: 'master_plan',
     },
     execution: {
       status: 'in_progress',
-      current_tier: 'execution',
-      current_phase: 0,
-      total_phases: 1,
+      current_phase: 1,
       phases: [{
         name: 'Phase 1',
         status: 'in_progress',
-        current_task: 0,
-        total_tasks: 2,
+        stage: 'executing',
+        current_task: 1,
         tasks: [
-          { name: 'T01', status: 'not_started', handoff_doc: null, report_doc: null, review_doc: null, review_verdict: null, review_action: null, has_deviations: false, deviation_type: null, retries: 0, report_status: null },
-          { name: 'T02', status: 'not_started', handoff_doc: null, report_doc: null, review_doc: null, review_verdict: null, review_action: null, has_deviations: false, deviation_type: null, retries: 0, report_status: null },
+          {
+            name: 'T01',
+            status: 'not_started',
+            stage: 'planning',
+            docs: { handoff: null, report: null, review: null },
+            review: { verdict: null, action: null },
+            report_status: null,
+            has_deviations: false,
+            deviation_type: null,
+            retries: 0,
+          },
+          {
+            name: 'T02',
+            status: 'not_started',
+            stage: 'planning',
+            docs: { handoff: null, report: null, review: null },
+            review: { verdict: null, action: null },
+            report_status: null,
+            has_deviations: false,
+            deviation_type: null,
+            retries: 0,
+          },
         ],
-        phase_plan_doc: 'phases/PHASE-01.md',
-        phase_report_doc: null,
-        phase_review_doc: null,
-        phase_review_verdict: null,
-        phase_review_action: null,
+        docs: { phase_plan: 'phases/PHASE-01.md', phase_report: null, phase_review: null },
+        review: { verdict: null, action: null },
       }],
+    },
+    final_review: {
+      status: 'not_started',
+      doc_path: null,
+      human_approved: false,
     },
   };
   if (overrides) {
@@ -150,8 +173,9 @@ function createExecutionState(overrides) {
 function createReviewState(overrides) {
   const now = new Date().toISOString();
   const base = {
-    $schema: 'orchestration-state-v3',
+    $schema: 'orchestration-state-v4',
     project: { name: 'TEST', created: now, updated: now },
+    pipeline: { current_tier: 'review' },
     planning: {
       status: 'complete',
       human_approved: true,
@@ -162,25 +186,34 @@ function createReviewState(overrides) {
         { name: 'architecture', status: 'complete', doc_path: 'docs/architecture.md' },
         { name: 'master_plan', status: 'complete', doc_path: 'docs/master_plan.md' },
       ],
-      current_step: 'master_plan',
     },
     execution: {
       status: 'complete',
-      current_tier: 'review',
-      current_phase: 0,
-      total_phases: 1,
+      current_phase: 1,
       phases: [{
         name: 'Phase 1',
         status: 'complete',
+        stage: 'complete',
         current_task: 1,
-        total_tasks: 1,
-        tasks: [{ name: 'T01', status: 'complete', handoff_doc: 'h.md', report_doc: 'r.md', review_doc: 'rv.md', review_verdict: 'approved', review_action: 'advanced', has_deviations: false, deviation_type: null, retries: 0, report_status: 'complete' }],
-        phase_plan_doc: 'pp.md',
-        phase_report_doc: 'pr.md',
-        phase_review_doc: 'prv.md',
-        phase_review_verdict: 'approved',
-        phase_review_action: 'advanced',
+        tasks: [{
+          name: 'T01',
+          status: 'complete',
+          stage: 'complete',
+          docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+          review: { verdict: 'approved', action: 'advanced' },
+          report_status: 'complete',
+          has_deviations: false,
+          deviation_type: null,
+          retries: 0,
+        }],
+        docs: { phase_plan: 'pp.md', phase_report: 'pr.md', phase_review: 'prv.md' },
+        review: { verdict: 'approved', action: 'advanced' },
       }],
+    },
+    final_review: {
+      status: 'not_started',
+      doc_path: null,
+      human_approved: false,
     },
   };
   if (overrides) {
