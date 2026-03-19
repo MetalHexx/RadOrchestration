@@ -1,0 +1,149 @@
+{
+  "$schema": "orchestration-state-v2",
+  "project": {
+    "name": "EXECUTE-BEHAVIORAL-TESTS",
+    "created": "2026-03-14T20:15:55.046Z",
+    "updated": "2026-03-14T22:02:52.932Z"
+  },
+  "pipeline": {
+    "current_tier": "complete",
+    "human_gate_mode": "ask"
+  },
+  "planning": {
+    "status": "complete",
+    "brainstorming_doc": null,
+    "steps": {
+      "research": {
+        "status": "complete",
+        "output": "EXECUTE-BEHAVIORAL-TESTS-RESEARCH-FINDINGS.md"
+      },
+      "prd": {
+        "status": "complete",
+        "output": "EXECUTE-BEHAVIORAL-TESTS-PRD.md"
+      },
+      "design": {
+        "status": "complete",
+        "output": "EXECUTE-BEHAVIORAL-TESTS-DESIGN.md"
+      },
+      "architecture": {
+        "status": "complete",
+        "output": "EXECUTE-BEHAVIORAL-TESTS-ARCHITECTURE.md"
+      },
+      "master_plan": {
+        "status": "complete",
+        "output": "EXECUTE-BEHAVIORAL-TESTS-MASTER-PLAN.md"
+      }
+    },
+    "human_approved": true
+  },
+  "execution": {
+    "status": "complete",
+    "current_phase": 0,
+    "total_phases": 1,
+    "triage_attempts": 0,
+    "phases": [
+      {
+        "phase_number": 1,
+        "title": "Phase 1",
+        "total_tasks": 5,
+        "status": "complete",
+        "tasks": [
+          {
+            "id": "T01-TRIAGE-FIX",
+            "title": "Fix triage engine Row 1 + insert Row 1b + renumber",
+            "task_number": 1,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T01-TRIAGE-FIX.md",
+            "report_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T01-TRIAGE-FIX-REPORT.md",
+            "review_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T01-TRIAGE-FIX-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "id": "T02-MUTATIONS-GUARD",
+            "title": "Fix mutations guard (defense-in-depth evaluation)",
+            "task_number": 2,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T02-MUTATIONS-GUARD.md",
+            "report_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T02-MUTATIONS-GUARD-REPORT.md",
+            "review_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T02-MUTATIONS-GUARD-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "id": "T03-YAML-PARSER",
+            "title": "Fix YAML parser array-of-objects",
+            "task_number": 3,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T03-YAML-PARSER.md",
+            "report_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T03-YAML-PARSER-REPORT.md",
+            "review_doc": "reports/CODE-REVIEW-P01-T03.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "id": "T04-TEST-EXPECTATIONS",
+            "title": "Update test expectations for new triage behavior",
+            "task_number": 4,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T04-TEST-EXPECTATIONS.md",
+            "report_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T04-TEST-EXPECTATIONS-REPORT.md",
+            "review_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T04-TEST-EXPECTATIONS-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "id": "T05-RUN-AND-REPORT",
+            "title": "Run tests and produce test report",
+            "task_number": 5,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T05-RUN-AND-REPORT.md",
+            "report_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T05-RUN-AND-REPORT-REPORT.md",
+            "review_doc": "tasks/EXECUTE-BEHAVIORAL-TESTS-TASK-P01-T05-RUN-AND-REPORT-REVIEW.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          }
+        ],
+        "current_task": 5,
+        "phase_doc": "phases/EXECUTE-BEHAVIORAL-TESTS-PHASE-P01-FIX-VERIFY-REPORT.md",
+        "phase_report": "reports/EXECUTE-BEHAVIORAL-TESTS-PHASE-P01-REPORT.md",
+        "phase_review": "reports/EXECUTE-BEHAVIORAL-TESTS-PHASE-P01-REVIEW.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced",
+        "triage_attempts": 0,
+        "human_approved": false
+      }
+    ]
+  },
+  "final_review": {
+    "status": "complete",
+    "report_doc": "reports/EXECUTE-BEHAVIORAL-TESTS-FINAL-REVIEW.md",
+    "human_approved": true
+  },
+  "errors": {
+    "total_retries": 0,
+    "total_halts": 0,
+    "active_blockers": []
+  },
+  "limits": {
+    "max_phases": 10,
+    "max_tasks_per_phase": 8,
+    "max_retries_per_task": 2,
+    "max_consecutive_review_rejections": 3
+  }
+}

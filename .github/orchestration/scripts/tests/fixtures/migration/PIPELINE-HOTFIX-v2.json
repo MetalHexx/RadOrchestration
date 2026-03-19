@@ -1,0 +1,306 @@
+{
+  "$schema": "orchestration-state-v2",
+  "project": {
+    "name": "PIPELINE-HOTFIX",
+    "created": "2026-03-14T01:22:09.802Z",
+    "updated": "2026-03-14T04:56:52.263Z"
+  },
+  "pipeline": {
+    "current_tier": "review",
+    "human_gate_mode": "ask"
+  },
+  "planning": {
+    "status": "complete",
+    "brainstorming_doc": null,
+    "steps": {
+      "research": {
+        "status": "complete",
+        "output": "PIPELINE-HOTFIX-RESEARCH-FINDINGS.md"
+      },
+      "prd": {
+        "status": "complete",
+        "output": "PIPELINE-HOTFIX-PRD.md"
+      },
+      "design": {
+        "status": "complete",
+        "output": "PIPELINE-HOTFIX-DESIGN.md"
+      },
+      "architecture": {
+        "status": "complete",
+        "output": "PIPELINE-HOTFIX-ARCHITECTURE.md"
+      },
+      "master_plan": {
+        "status": "complete",
+        "output": "PIPELINE-HOTFIX-MASTER-PLAN.md"
+      }
+    },
+    "human_approved": true
+  },
+  "execution": {
+    "status": "complete",
+    "current_phase": 2,
+    "total_phases": 3,
+    "triage_attempts": 0,
+    "phases": [
+      {
+        "title": "Pipeline Engine Fixes & Regression Tests",
+        "phase_number": 1,
+        "current_task": 6,
+        "total_tasks": 7,
+        "status": "complete",
+        "triage_attempts": 0,
+        "phase_doc": "phases/PIPELINE-HOTFIX-PHASE-P01-PLAN.md",
+        "phase_report": null,
+        "phase_review": null,
+        "phase_review_verdict": null,
+        "phase_review_action": null,
+        "tasks": [
+          {
+            "title": "Error 1 — Master Plan Pre-Read & Phase Initialization",
+            "task_number": 1,
+            "status": "complete",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T01.md",
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T01-REPORT.md",
+            "review_doc": null,
+            "review_verdict": null,
+            "review_action": null
+          },
+          {
+            "title": "Error 2 — Resolver Conditional Fix for In-Progress Tasks",
+            "task_number": 2,
+            "status": "complete",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T02.md",
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T02-REPORT.md",
+            "review_doc": null,
+            "review_verdict": null,
+            "review_action": null
+          },
+          {
+            "title": "Error 3 — Status Normalization & Skill Vocabulary",
+            "task_number": 3,
+            "status": "complete",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T03.md",
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T03-REPORT.md",
+            "review_doc": null,
+            "review_verdict": null,
+            "review_action": null
+          },
+          {
+            "title": "Error 4 — Auto-Approve Clean Reports on Null/Null Triage",
+            "task_number": 4,
+            "status": "complete",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T04.md",
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T04-REPORT.md",
+            "review_doc": null,
+            "review_verdict": null,
+            "review_action": null
+          },
+          {
+            "title": "Errors 5+6 — Internal advance_phase & Unmapped Action Guard",
+            "task_number": 5,
+            "status": "complete",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T05.md",
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T05-REPORT.md",
+            "review_doc": null,
+            "review_verdict": null,
+            "review_action": null
+          },
+          {
+            "title": "Regression Tests — mutations.test.js",
+            "task_number": 6,
+            "status": "complete",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T06.md",
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T06-REPORT.md",
+            "review_doc": null,
+            "review_verdict": null,
+            "review_action": null
+          },
+          {
+            "title": "Regression Tests — pipeline-engine.test.js",
+            "task_number": 7,
+            "status": "complete",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T07.md",
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P01-T07-REPORT.md",
+            "review_doc": null,
+            "review_verdict": null,
+            "review_action": null
+          }
+        ]
+      },
+      {
+        "title": "Skill Creation & Agent Updates",
+        "phase_number": 2,
+        "current_task": 2,
+        "total_tasks": 2,
+        "status": "complete",
+        "triage_attempts": 0,
+        "phase_doc": "phases/PIPELINE-HOTFIX-PHASE-P02-PLAN.md",
+        "phase_report": "phases/PIPELINE-HOTFIX-PHASE-P02-REPORT.md",
+        "phase_review": "phases/PIPELINE-HOTFIX-PHASE-P02-REVIEW.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced",
+        "human_approved": false,
+        "tasks": [
+          {
+            "title": "Create log-error Skill",
+            "task_number": 1,
+            "status": "complete",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P02-T01.md",
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P02-T01-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "title": "Update Orchestrator Agent",
+            "task_number": 2,
+            "status": "complete",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P02-T02.md",
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P02-T02-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          }
+        ]
+      },
+      {
+        "title": "Documentation & Instruction File Updates",
+        "phase_number": 3,
+        "current_task": 5,
+        "total_tasks": 5,
+        "status": "complete",
+        "triage_attempts": 0,
+        "phase_doc": "phases/PIPELINE-HOTFIX-PHASE-P03-PLAN.md",
+        "phase_report": "phases/PIPELINE-HOTFIX-PHASE-P03-REPORT.md",
+        "phase_review": "phases/PIPELINE-HOTFIX-PHASE-P03-REVIEW.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced",
+        "human_approved": false,
+        "tasks": [
+          {
+            "title": "Update docs/scripts.md & docs/pipeline.md",
+            "task_number": 1,
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P03-T01-REPORT.md",
+            "review_doc": null,
+            "status": "complete",
+            "review_action": "advanced",
+            "review_verdict": "approved",
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P03-T01.md",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null
+          },
+          {
+            "title": "Update docs/agents.md & docs/skills.md",
+            "task_number": 2,
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P03-T02-REPORT.md",
+            "review_doc": null,
+            "status": "complete",
+            "review_action": "advanced",
+            "review_verdict": "approved",
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P03-T02.md",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null
+          },
+          {
+            "title": "Update docs/project-structure.md & README.md",
+            "task_number": 3,
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P03-T03-REPORT.md",
+            "review_doc": null,
+            "status": "complete",
+            "review_action": "advanced",
+            "review_verdict": "approved",
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P03-T03.md",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null
+          },
+          {
+            "title": "Update copilot-instructions.md & project-docs.instructions.md",
+            "task_number": 4,
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P03-T04-REPORT.md",
+            "review_doc": null,
+            "status": "complete",
+            "review_action": "advanced",
+            "review_verdict": "approved",
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P03-T04.md",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null
+          },
+          {
+            "title": "Update create-master-plan SKILL.md",
+            "task_number": 5,
+            "report_doc": "tasks/PIPELINE-HOTFIX-TASK-P03-T05-REPORT.md",
+            "review_doc": null,
+            "status": "complete",
+            "review_action": "advanced",
+            "review_verdict": "approved",
+            "handoff_doc": "tasks/PIPELINE-HOTFIX-TASK-P03-T05.md",
+            "triage_attempts": 0,
+            "retries": 0,
+            "last_error": null,
+            "severity": null
+          }
+        ]
+      }
+    ]
+  },
+  "final_review": {
+    "status": "complete",
+    "report_doc": "PIPELINE-HOTFIX-FINAL-REVIEW.md",
+    "human_approved": false
+  },
+  "errors": {
+    "total_retries": 0,
+    "total_halts": 0,
+    "active_blockers": []
+  },
+  "limits": {
+    "max_phases": 10,
+    "max_tasks_per_phase": 8,
+    "max_retries_per_task": 2,
+    "max_consecutive_review_rejections": 3
+  }
+}

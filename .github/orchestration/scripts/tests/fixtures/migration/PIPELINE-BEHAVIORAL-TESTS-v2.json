@@ -1,0 +1,278 @@
+{
+  "$schema": "orchestration-state-v2",
+  "project": {
+    "name": "PIPELINE-BEHAVIORAL-TESTS",
+    "created": "2026-03-14T15:22:14.764Z",
+    "updated": "2026-03-14T19:51:11.763Z"
+  },
+  "pipeline": {
+    "current_tier": "review",
+    "human_gate_mode": "ask"
+  },
+  "planning": {
+    "status": "complete",
+    "brainstorming_doc": null,
+    "steps": {
+      "research": {
+        "status": "complete",
+        "output": "PIPELINE-BEHAVIORAL-TESTS-RESEARCH-FINDINGS.md"
+      },
+      "prd": {
+        "status": "complete",
+        "output": "PIPELINE-BEHAVIORAL-TESTS-PRD.md"
+      },
+      "design": {
+        "status": "complete",
+        "output": "PIPELINE-BEHAVIORAL-TESTS-DESIGN.md"
+      },
+      "architecture": {
+        "status": "complete",
+        "output": "PIPELINE-BEHAVIORAL-TESTS-ARCHITECTURE.md"
+      },
+      "master_plan": {
+        "status": "complete",
+        "output": "PIPELINE-BEHAVIORAL-TESTS-MASTER-PLAN.md"
+      }
+    },
+    "human_approved": true
+  },
+  "execution": {
+    "status": "complete",
+    "current_phase": 2,
+    "total_phases": 3,
+    "triage_attempts": 0,
+    "phases": [
+      {
+        "phase_number": 1,
+        "title": "Phase 1",
+        "total_tasks": 2,
+        "status": "complete",
+        "tasks": [
+          {
+            "id": "T01-READDOCUMENT-NULL",
+            "title": "Change readDocument to null-return contract",
+            "task_number": 1,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-BEHAVIORAL-TESTS-TASK-P01-T01-READDOCUMENT-NULL.md",
+            "report_doc": "reports/PIPELINE-BEHAVIORAL-TESTS-TASK-P01-T01-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          },
+          {
+            "id": "T02-PROJECTREADER-NULLCHECK",
+            "title": "Update createProjectAwareReader to null-check fallback",
+            "task_number": 2,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-BEHAVIORAL-TESTS-TASK-P01-T02-PROJECTREADER-NULLCHECK.md",
+            "report_doc": "reports/PIPELINE-BEHAVIORAL-TESTS-TASK-P01-T02-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          }
+        ],
+        "current_task": 2,
+        "phase_doc": "phases/PIPELINE-BEHAVIORAL-TESTS-PHASE-01-CORE-CONTRACT.md",
+        "phase_report": "reports/PIPELINE-BEHAVIORAL-TESTS-PHASE-01-REPORT.md",
+        "phase_review": "reports/PIPELINE-BEHAVIORAL-TESTS-PHASE-01-REVIEW.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced",
+        "triage_attempts": 0,
+        "human_approved": false
+      },
+      {
+        "phase_number": 2,
+        "title": "Phase 2",
+        "total_tasks": 4,
+        "status": "complete",
+        "tasks": [
+          {
+            "id": "T01-TEMPLATE-SKILLMD",
+            "title": "Template & SKILL.md Frontmatter Updates",
+            "task_number": 1,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-BEHAVIORAL-TESTS-TASK-P02-T01-TEMPLATE-SKILLMD.md",
+            "report_doc": "reports/PIPELINE-BEHAVIORAL-TESTS-TASK-P02-T01-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          },
+          {
+            "id": "T02-PREREAD-PHASEPLAN",
+            "title": "Add phase_plan_created Pre-Read Block",
+            "task_number": 2,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-BEHAVIORAL-TESTS-TASK-P02-T02-PREREAD-PHASEPLAN.md",
+            "report_doc": "reports/PIPELINE-BEHAVIORAL-TESTS-TASK-P02-T02-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          },
+          {
+            "id": "T03-PREREAD-TASKREPORT",
+            "title": "Add task_completed Required-Field Validation",
+            "task_number": 3,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-BEHAVIORAL-TESTS-TASK-P02-T03-PREREAD-TASKREPORT.md",
+            "report_doc": "reports/PIPELINE-BEHAVIORAL-TESTS-TASK-P02-T03-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          },
+          {
+            "id": "T04-TRIAGE-VALIDATION",
+            "title": "Triage Engine Fallback Removal & Required-Field Validation",
+            "task_number": 4,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-BEHAVIORAL-TESTS-TASK-P02-T04-TRIAGE-VALIDATION.md",
+            "report_doc": "reports/PIPELINE-BEHAVIORAL-TESTS-TASK-P02-T04-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          }
+        ],
+        "current_task": 4,
+        "phase_doc": "phases/PIPELINE-BEHAVIORAL-TESTS-PHASE-02-FRONTMATTER.md",
+        "phase_report": "reports/PIPELINE-BEHAVIORAL-TESTS-PHASE-02-REPORT.md",
+        "phase_review": "reports/PIPELINE-BEHAVIORAL-TESTS-PHASE-02-REVIEW.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced",
+        "triage_attempts": 0,
+        "human_approved": false
+      },
+      {
+        "phase_number": 3,
+        "title": "Phase 3",
+        "total_tasks": 5,
+        "status": "complete",
+        "tasks": [
+          {
+            "id": "T01-SCAFFOLD-HAPPY-PATH",
+            "title": "Test Scaffold, Factory Functions and Happy Path",
+            "task_number": 1,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-BEHAVIORAL-TESTS-TASK-P03-T01-SCAFFOLD-HAPPY-PATH.md",
+            "report_doc": "reports/PIPELINE-BEHAVIORAL-TESTS-TASK-P03-T01-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          },
+          {
+            "id": "T02-TASK-TRIAGE-ROWS",
+            "title": "Task-Level Triage Rows 1-11",
+            "task_number": 2,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-BEHAVIORAL-TESTS-TASK-P03-T02-TASK-TRIAGE-ROWS.md",
+            "report_doc": "reports/PIPELINE-BEHAVIORAL-TESTS-TASK-P03-T02-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          },
+          {
+            "id": "T03-PHASE-TRIAGE-ROWS",
+            "title": "Phase-Level Triage Rows 1-5",
+            "task_number": 3,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-BEHAVIORAL-TESTS-TASK-P03-T03-PHASE-TRIAGE-ROWS.md",
+            "report_doc": "reports/PIPELINE-BEHAVIORAL-TESTS-TASK-P03-T03-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          },
+          {
+            "id": "T04-GATES-RETRIES-HALTS",
+            "title": "Gate Modes, Retry/Corrective Cycles and Halt Paths",
+            "task_number": 4,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-BEHAVIORAL-TESTS-TASK-P03-T04-GATES-RETRIES-HALTS.md",
+            "report_doc": "reports/PIPELINE-BEHAVIORAL-TESTS-TASK-P03-T04-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          },
+          {
+            "id": "T05-RESUME-PREREADS-FRONTMATTER",
+            "title": "Cold-Start Resume, Pre-Read Failures and Frontmatter-Driven Flows",
+            "task_number": 5,
+            "status": "complete",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "handoff_doc": "tasks/PIPELINE-BEHAVIORAL-TESTS-TASK-P03-T05-RESUME-PREREADS-FRONTMATTER.md",
+            "report_doc": "reports/PIPELINE-BEHAVIORAL-TESTS-TASK-P03-T05-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          }
+        ],
+        "current_task": 5,
+        "phase_doc": "phases/PIPELINE-BEHAVIORAL-TESTS-PHASE-03-BEHAVIORAL-TESTS.md",
+        "phase_report": "reports/PIPELINE-BEHAVIORAL-TESTS-PHASE-03-REPORT.md",
+        "phase_review": "reports/PIPELINE-BEHAVIORAL-TESTS-PHASE-03-REVIEW.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced",
+        "triage_attempts": 0,
+        "human_approved": false
+      }
+    ]
+  },
+  "final_review": {
+    "status": "complete",
+    "report_doc": "reports/PIPELINE-BEHAVIORAL-TESTS-FINAL-REVIEW.md",
+    "human_approved": false
+  },
+  "errors": {
+    "total_retries": 0,
+    "total_halts": 1,
+    "active_blockers": [
+      "Plan rejected by human"
+    ]
+  },
+  "limits": {
+    "max_phases": 10,
+    "max_tasks_per_phase": 8,
+    "max_retries_per_task": 2,
+    "max_consecutive_review_rejections": 3
+  }
+}

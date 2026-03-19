@@ -1,0 +1,321 @@
+{
+  "$schema": "orchestration-state-v3",
+  "project": {
+    "name": "PIPELINE-SIMPLIFICATION",
+    "created": "2026-03-14T23:07:14.531Z",
+    "updated": "2026-03-15T03:57:37.870Z"
+  },
+  "planning": {
+    "status": "complete",
+    "human_approved": true,
+    "steps": [
+      {
+        "name": "research",
+        "status": "complete",
+        "doc_path": "PIPELINE-SIMPLIFICATION-RESEARCH-FINDINGS.md"
+      },
+      {
+        "name": "prd",
+        "status": "complete",
+        "doc_path": "PIPELINE-SIMPLIFICATION-PRD.md"
+      },
+      {
+        "name": "design",
+        "status": "complete",
+        "doc_path": "PIPELINE-SIMPLIFICATION-DESIGN.md"
+      },
+      {
+        "name": "architecture",
+        "status": "complete",
+        "doc_path": "PIPELINE-SIMPLIFICATION-ARCHITECTURE.md"
+      },
+      {
+        "name": "master_plan",
+        "status": "complete",
+        "doc_path": "PIPELINE-SIMPLIFICATION-MASTER-PLAN.md"
+      }
+    ],
+    "current_step": "master_plan"
+  },
+  "execution": {
+    "status": "complete",
+    "current_tier": "complete",
+    "current_phase": 3,
+    "total_phases": 4,
+    "triage_attempts": 0,
+    "final_review_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/PIPELINE-SIMPLIFICATION-FINAL-REVIEW.md",
+    "final_review_status": "complete",
+    "final_review_approved": true,
+    "phases": [
+      {
+        "status": "complete",
+        "total_tasks": 4,
+        "current_task": 4,
+        "tasks": [
+          {
+            "name": "T01-CONSTANTS",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-P01-T01-CONSTANTS.md",
+            "report_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P01-T01.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": null,
+            "review_doc": "tasks/CODE-REVIEW-P01-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          },
+          {
+            "name": "T02-STATE-IO",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-P01-T02-STATE-IO.md",
+            "report_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P01-T02.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": null,
+            "review_doc": "tasks/CODE-REVIEW-P01-T02.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          },
+          {
+            "name": "T03-PRE-READS",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-P01-T03-PRE-READS.md",
+            "report_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P01-T03.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": null,
+            "review_doc": "tasks/CODE-REVIEW-P01-T03.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          },
+          {
+            "name": "T04-VALIDATOR",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-P01-T04-VALIDATOR.md",
+            "report_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P01-T04.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": null,
+            "review_doc": "tasks/CODE-REVIEW-P01-T04.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          }
+        ],
+        "phase_plan_doc": "phases/PIPELINE-SIMPLIFICATION-PHASE-01-FOUNDATION.md",
+        "phase_report_doc": "phases/PIPELINE-SIMPLIFICATION-PHASE-REPORT-P01.md",
+        "phase_review_doc": "phases/PIPELINE-SIMPLIFICATION-PHASE-REVIEW-P01.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced"
+      },
+      {
+        "status": "complete",
+        "total_tasks": 5,
+        "current_task": 5,
+        "tasks": [
+          {
+            "name": "T01-MUTATIONS-SCAFFOLDING",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-P02-T01-MUTATIONS-SCAFFOLD.md",
+            "report_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P02-T01.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": null,
+            "review_doc": "tasks/CODE-REVIEW-P02-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          },
+          {
+            "name": "T02-MUTATIONS-EXECUTION",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-P02-T02-EXECUTION-HANDLERS.md",
+            "report_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P02-T02.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": null,
+            "review_doc": "tasks/CODE-REVIEW-P02-T02.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          },
+          {
+            "name": "T03-MUTATIONS-REMAINING",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-P02-T03-GATE-HANDLERS.md",
+            "report_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P02-T03.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": null,
+            "review_doc": "tasks/CODE-REVIEW-P02-T03.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          },
+          {
+            "name": "T04-RESOLVER",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-P02-T04-RESOLVER.md",
+            "report_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P02-T04.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": null,
+            "review_doc": "tasks/CODE-REVIEW-P02-T04.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          },
+          {
+            "name": "T05-CROSS-MODULE-FIXES",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-P02-T05-CROSS-MODULE-FIXES.md",
+            "report_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P02-T05.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": null,
+            "review_doc": "tasks/CODE-REVIEW-P02-T05.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          }
+        ],
+        "phase_plan_doc": "phases/PIPELINE-SIMPLIFICATION-PHASE-02-CORE-LOGIC.md",
+        "phase_report_doc": "phases/PIPELINE-SIMPLIFICATION-PHASE-REPORT-P02.md",
+        "phase_review_doc": "phases/PIPELINE-SIMPLIFICATION-PHASE-REVIEW-P02.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced"
+      },
+      {
+        "status": "complete",
+        "total_tasks": 4,
+        "current_task": 4,
+        "tasks": [
+          {
+            "name": "T01-ENGINE",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-P03-T01-PIPELINE-ENGINE.md",
+            "report_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P03-T01.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": null,
+            "review_doc": "tasks/CODE-REVIEW-P03-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          },
+          {
+            "name": "T02-ENGINE-TESTS",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-P03-T02-INTEGRATION-TESTS.md",
+            "report_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P03-T02.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": null,
+            "review_doc": "tasks/CODE-REVIEW-P03-T02.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          },
+          {
+            "name": "T03-BEHAVIORAL-CORE",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-P03-T03-BEHAVIORAL-CORE.md",
+            "report_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P03-T03.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": null,
+            "review_doc": "tasks/CODE-REVIEW-P03-T03.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          },
+          {
+            "name": "T04-BEHAVIORAL-EDGE",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-P03-T04-EDGE-CASES-ENGINE-FIXES.md",
+            "report_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P03-T04.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": null,
+            "review_doc": "reports/CODE-REVIEW-P03-T04.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          }
+        ],
+        "phase_plan_doc": "phases/PIPELINE-SIMPLIFICATION-PHASE-03-ENGINE-ASSEMBLY.md",
+        "phase_report_doc": "phases/PIPELINE-SIMPLIFICATION-PHASE-REPORT-P03.md",
+        "phase_review_doc": "phases/PIPELINE-SIMPLIFICATION-PHASE-REVIEW-P03.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced"
+      },
+      {
+        "status": "complete",
+        "total_tasks": 4,
+        "current_task": 4,
+        "tasks": [
+          {
+            "name": "T01-SWAP",
+            "status": "complete",
+            "handoff_doc": "tasks/PIPELINE-SIMPLIFICATION-TASK-HANDOFF-P04-T01.md",
+            "report_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P04-T01.md",
+            "report_status": "complete",
+            "has_deviations": true,
+            "deviation_type": "minor",
+            "review_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/reports/CODE-REVIEW-P04-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          },
+          {
+            "name": "T02-PROMPTS",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/tasks/PIPELINE-SIMPLIFICATION-TASK-HANDOFF-P04-T02.md",
+            "report_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/reports/PIPELINE-SIMPLIFICATION-TASK-REPORT-P04-T02.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "review_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/tasks/PIPELINE-SIMPLIFICATION-CODE-REVIEW-P04-T02.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          },
+          {
+            "name": "T03-DOCS",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/tasks/PIPELINE-SIMPLIFICATION-TASK-HANDOFF-P04-T03-CORRECTIVE.md",
+            "report_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P04-T03.md",
+            "report_status": "complete",
+            "has_deviations": true,
+            "deviation_type": "minor",
+            "review_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/tasks/PIPELINE-SIMPLIFICATION-CODE-REVIEW-P04-T03-R2.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 1
+          },
+          {
+            "name": "T04-CLEANUP",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/tasks/PIPELINE-SIMPLIFICATION-TASK-HANDOFF-P04-T04.md",
+            "report_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/tasks/PIPELINE-SIMPLIFICATION-TASK-REPORT-P04-T04.md",
+            "report_status": "complete",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "review_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/tasks/PIPELINE-SIMPLIFICATION-CODE-REVIEW-P04-T04.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "retries": 0
+          }
+        ],
+        "phase_plan_doc": "phases/PIPELINE-SIMPLIFICATION-PHASE-04-SWAP-ALIGNMENT.md",
+        "phase_report_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/phases/PIPELINE-SIMPLIFICATION-PHASE-REPORT-P04.md",
+        "phase_review_doc": "C:/dev/orchestration-projects/PIPELINE-SIMPLIFICATION/phases/PIPELINE-SIMPLIFICATION-PHASE-REVIEW-P04.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced"
+      }
+    ]
+  }
+}

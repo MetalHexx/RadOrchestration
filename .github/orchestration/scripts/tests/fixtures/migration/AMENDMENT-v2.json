@@ -1,0 +1,62 @@
+{
+  "$schema": "orchestration-state-v2",
+  "project": {
+    "name": "AMENDMENT",
+    "created": "2026-03-14T03:30:36.257Z",
+    "updated": "2026-03-14T03:49:00.105Z"
+  },
+  "pipeline": {
+    "current_tier": "planning",
+    "human_gate_mode": "ask"
+  },
+  "planning": {
+    "status": "complete",
+    "brainstorming_doc": null,
+    "steps": {
+      "research": {
+        "status": "complete",
+        "output": "C:/dev/orchestration-projects/AMENDMENT/AMENDMENT-RESEARCH-FINDINGS.md"
+      },
+      "prd": {
+        "status": "complete",
+        "output": "C:/dev/orchestration-projects/AMENDMENT/AMENDMENT-PRD.md"
+      },
+      "design": {
+        "status": "complete",
+        "output": "C:/dev/orchestration-projects/AMENDMENT/AMENDMENT-DESIGN.md"
+      },
+      "architecture": {
+        "status": "complete",
+        "output": "C:/dev/orchestration-projects/AMENDMENT/AMENDMENT-ARCHITECTURE.md"
+      },
+      "master_plan": {
+        "status": "complete",
+        "output": "C:/dev/orchestration-projects/AMENDMENT/AMENDMENT-MASTER-PLAN.md"
+      }
+    },
+    "human_approved": false
+  },
+  "execution": {
+    "status": "not_started",
+    "current_phase": 0,
+    "total_phases": 0,
+    "triage_attempts": 0,
+    "phases": []
+  },
+  "final_review": {
+    "status": "not_started",
+    "report_doc": null,
+    "human_approved": false
+  },
+  "errors": {
+    "total_retries": 0,
+    "total_halts": 0,
+    "active_blockers": []
+  },
+  "limits": {
+    "max_phases": 10,
+    "max_tasks_per_phase": 8,
+    "max_retries_per_task": 2,
+    "max_consecutive_review_rejections": 3
+  }
+}

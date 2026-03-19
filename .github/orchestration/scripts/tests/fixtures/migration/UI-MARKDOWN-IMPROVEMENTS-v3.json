@@ -1,0 +1,260 @@
+{
+  "$schema": "orchestration-state-v3",
+  "project": {
+    "name": "UI-MARKDOWN-IMPROVEMENTS",
+    "created": "2026-03-15T06:50:40.488Z",
+    "updated": "2026-03-15T19:50:14.453Z"
+  },
+  "planning": {
+    "status": "complete",
+    "human_approved": true,
+    "steps": [
+      {
+        "name": "research",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/UI-MARKDOWN-IMPROVEMENTS-RESEARCH-FINDINGS.md"
+      },
+      {
+        "name": "prd",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/UI-MARKDOWN-IMPROVEMENTS-PRD.md"
+      },
+      {
+        "name": "design",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/UI-MARKDOWN-IMPROVEMENTS-DESIGN.md"
+      },
+      {
+        "name": "architecture",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/UI-MARKDOWN-IMPROVEMENTS-ARCHITECTURE.md"
+      },
+      {
+        "name": "master_plan",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/UI-MARKDOWN-IMPROVEMENTS-MASTER-PLAN.md"
+      }
+    ],
+    "current_step": "research"
+  },
+  "execution": {
+    "status": "complete",
+    "current_tier": "complete",
+    "current_phase": 3,
+    "total_phases": 4,
+    "phases": [
+      {
+        "name": "FOUNDATION",
+        "status": "complete",
+        "current_task": 2,
+        "total_tasks": 2,
+        "tasks": [
+          {
+            "name": "Register Typography Plugin and Verify Prose Styling",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/tasks/UI-MARKDOWN-IMPROVEMENTS-TASK-P01-T01-TYPOGRAPHY.md",
+            "report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-TASK-REPORT-P01-T01.md",
+            "review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/CODE-REVIEW-P01-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Fix Pane Width, Scroll Behavior, and Scroll Reset",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/tasks/UI-MARKDOWN-IMPROVEMENTS-TASK-P01-T02-LAYOUT-SCROLL.md",
+            "report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-TASK-REPORT-P01-T02.md",
+            "review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/CODE-REVIEW-P01-T02.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 1,
+            "report_status": "complete"
+          }
+        ],
+        "phase_plan_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/phases/UI-MARKDOWN-IMPROVEMENTS-PHASE-01-FOUNDATION.md",
+        "phase_report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-PHASE-REPORT-P01.md",
+        "phase_review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-PHASE-REVIEW-P01.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced"
+      },
+      {
+        "name": "REHYPE-PIPELINE",
+        "status": "complete",
+        "current_task": 3,
+        "total_tasks": 3,
+        "tasks": [
+          {
+            "name": "Rehype Plugin Infrastructure and Shiki Adapter",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/tasks/UI-MARKDOWN-IMPROVEMENTS-TASK-P02-T01-REHYPE-INFRASTRUCTURE.md",
+            "report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-TASK-REPORT-P02-T01.md",
+            "review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/CODE-REVIEW-P02-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Syntax Highlighting Integration, CopyButton, and Table Verification",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/tasks/UI-MARKDOWN-IMPROVEMENTS-TASK-P02-T02-SYNTAX-COPY-TABLES.md",
+            "report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-TASK-REPORT-P02-T02.md",
+            "review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/CODE-REVIEW-P02-T02.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Heading Anchor Links with In-Pane Smooth Scrolling",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/tasks/UI-MARKDOWN-IMPROVEMENTS-TASK-P02-T03-HEADING-ANCHORS.md",
+            "report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-TASK-REPORT-P02-T03.md",
+            "review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/CODE-REVIEW-P02-T03.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          }
+        ],
+        "phase_plan_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/phases/UI-MARKDOWN-IMPROVEMENTS-PHASE-02-REHYPE-PIPELINE.md",
+        "phase_report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-PHASE-REPORT-P02.md",
+        "phase_review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-PHASE-REVIEW-P02.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced"
+      },
+      {
+        "name": "MERMAID",
+        "status": "complete",
+        "current_task": 2,
+        "total_tasks": 2,
+        "tasks": [
+          {
+            "name": "Install Mermaid and Create Adapter Module",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/tasks/UI-MARKDOWN-IMPROVEMENTS-TASK-P03-T01-MERMAID-ADAPTER.md",
+            "report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-TASK-REPORT-P03-T01.md",
+            "review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/CODE-REVIEW-P03-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": true,
+            "deviation_type": "minor",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "MermaidBlock Component and MarkdownRenderer Integration",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/tasks/UI-MARKDOWN-IMPROVEMENTS-TASK-P03-T02-MERMAID-COMPONENT.md",
+            "report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-TASK-REPORT-P03-T02.md",
+            "review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/CODE-REVIEW-P03-T02.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": true,
+            "deviation_type": "minor",
+            "retries": 0,
+            "report_status": "complete"
+          }
+        ],
+        "phase_plan_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/phases/UI-MARKDOWN-IMPROVEMENTS-PHASE-03-MERMAID.md",
+        "phase_report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-PHASE-REPORT-P03.md",
+        "phase_review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-PHASE-REVIEW-P03.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced"
+      },
+      {
+        "name": "NAVIGATION",
+        "status": "complete",
+        "current_task": 5,
+        "total_tasks": 5,
+        "tasks": [
+          {
+            "name": "OrderedDoc Types and Document Ordering Utility",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/tasks/UI-MARKDOWN-IMPROVEMENTS-TASK-P04-T01-TYPES-AND-ORDERING.md",
+            "report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-TASK-REPORT-P04-T01.md",
+            "review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/CODE-REVIEW-P04-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "File Listing API and fs-reader Enhancement",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/tasks/UI-MARKDOWN-IMPROVEMENTS-TASK-P04-T02-FILES-API.md",
+            "report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/TASK-REPORT-P04-T02.md",
+            "review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/CODE-REVIEW-P04-T02.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "DocumentNavFooter Component and Drawer Navigation",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/tasks/UI-MARKDOWN-IMPROVEMENTS-TASK-P04-T03-NAV-FOOTER.md",
+            "report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/TASK-REPORT-P04-T03.md",
+            "review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/CODE-REVIEW-P04-T03.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": true,
+            "deviation_type": "minor",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "ErrorLogSection Enhancement and OtherDocsSection",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/tasks/UI-MARKDOWN-IMPROVEMENTS-TASK-P04-T04-SECTIONS.md",
+            "report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/TASK-REPORT-P04-T04.md",
+            "review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/CODE-REVIEW-P04-T04.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": true,
+            "deviation_type": "minor",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Home Page Wiring and Carry-Forward Fixes",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/tasks/UI-MARKDOWN-IMPROVEMENTS-TASK-P04-T05-INTEGRATION.md",
+            "report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/TASK-REPORT-P04-T05.md",
+            "review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/CODE-REVIEW-P04-T05.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          }
+        ],
+        "phase_plan_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/phases/UI-MARKDOWN-IMPROVEMENTS-PHASE-04-NAVIGATION.md",
+        "phase_report_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-PHASE-04-REPORT.md",
+        "phase_review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-PHASE-04-REVIEW.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced"
+      }
+    ],
+    "final_review_doc": "C:/dev/orchestration-projects/UI-MARKDOWN-IMPROVEMENTS/reports/UI-MARKDOWN-IMPROVEMENTS-FINAL-REVIEW.md",
+    "final_review_status": "complete",
+    "final_review_approved": true
+  }
+}
+

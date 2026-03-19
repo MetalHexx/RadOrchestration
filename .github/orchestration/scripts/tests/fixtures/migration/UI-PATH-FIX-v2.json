@@ -1,0 +1,125 @@
+{
+  "$schema": "orchestration-state-v2",
+  "project": {
+    "name": "UI-PATH-FIX",
+    "created": "2026-03-14T05:54:02.180Z",
+    "updated": "2026-03-14T07:08:19.978Z"
+  },
+  "pipeline": {
+    "current_tier": "complete",
+    "human_gate_mode": "ask"
+  },
+  "planning": {
+    "status": "complete",
+    "brainstorming_doc": null,
+    "steps": {
+      "research": {
+        "status": "complete",
+        "output": "C:/dev/orchestration-projects/UI-PATH-FIX/UI-PATH-FIX-RESEARCH-FINDINGS.md"
+      },
+      "prd": {
+        "status": "complete",
+        "output": "C:/dev/orchestration-projects/UI-PATH-FIX/UI-PATH-FIX-PRD.md"
+      },
+      "design": {
+        "status": "complete",
+        "output": "C:/dev/orchestration-projects/UI-PATH-FIX/UI-PATH-FIX-DESIGN.md"
+      },
+      "architecture": {
+        "status": "complete",
+        "output": "C:/dev/orchestration-projects/UI-PATH-FIX/UI-PATH-FIX-ARCHITECTURE.md"
+      },
+      "master_plan": {
+        "status": "complete",
+        "output": "C:/dev/orchestration-projects/UI-PATH-FIX/UI-PATH-FIX-MASTER-PLAN.md"
+      }
+    },
+    "human_approved": true
+  },
+  "execution": {
+    "status": "complete",
+    "current_phase": 0,
+    "total_phases": 1,
+    "triage_attempts": 0,
+    "phases": [
+      {
+        "status": "complete",
+        "tasks": [
+          {
+            "id": "T01",
+            "title": "Pipeline Metadata & Path Helper",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/UI-PATH-FIX-TASK-P01-T01-PIPELINE-METADATA.md",
+            "report_doc": "C:/dev/orchestration-projects/UI-PATH-FIX/tasks/UI-PATH-FIX-TASK-P01-T01-PIPELINE-METADATA-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          },
+          {
+            "id": "T02",
+            "title": "Centralized Path Normalization",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "C:/dev/orchestration-projects/UI-PATH-FIX/tasks/UI-PATH-FIX-TASK-P01-T02-PATH-NORMALIZATION.md",
+            "report_doc": "tasks/UI-PATH-FIX-TASK-P01-T02-PATH-NORMALIZATION-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          },
+          {
+            "id": "T03",
+            "title": "UI Normalizer Fallback Chains",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/UI-PATH-FIX-TASK-P01-T03-NORMALIZER-FALLBACKS.md",
+            "report_doc": "tasks/UI-PATH-FIX-TASK-P01-T03-NORMALIZER-FALLBACKS-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          },
+          {
+            "id": "T04",
+            "title": "UI Path Resolver Prefix Stripping",
+            "status": "complete",
+            "retries": 0,
+            "handoff_doc": "tasks/UI-PATH-FIX-TASK-P01-T04-PATH-RESOLVER.md",
+            "report_doc": "tasks/UI-PATH-FIX-TASK-P01-T04-PATH-RESOLVER-REPORT.md",
+            "review_doc": null,
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "triage_attempts": 0
+          }
+        ],
+        "current_task": 4,
+        "phase_doc": "phases/UI-PATH-FIX-PHASE-01-PIPELINE-UI-BUGFIX.md",
+        "phase_report": "reports/UI-PATH-FIX-PHASE-01-REPORT.md",
+        "phase_review": "reports/UI-PATH-FIX-PHASE-01-REVIEW.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced",
+        "triage_attempts": 0,
+        "human_approved": false,
+        "total_tasks": 4
+      }
+    ]
+  },
+  "final_review": {
+    "status": "complete",
+    "report_doc": "reports/UI-PATH-FIX-FINAL-REVIEW.md",
+    "human_approved": true
+  },
+  "errors": {
+    "total_retries": 0,
+    "total_halts": 0,
+    "active_blockers": []
+  },
+  "limits": {
+    "max_phases": 10,
+    "max_tasks_per_phase": 8,
+    "max_retries_per_task": 2,
+    "max_consecutive_review_rejections": 3
+  }
+}

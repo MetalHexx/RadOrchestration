@@ -1,0 +1,292 @@
+{
+  "$schema": "orchestration-state-v3",
+  "project": {
+    "name": "SCHEMA-OVERHAUL",
+    "created": "2026-03-16T03:25:28.030Z",
+    "updated": "2026-03-16T07:37:10.504Z"
+  },
+  "planning": {
+    "status": "complete",
+    "human_approved": true,
+    "steps": [
+      {
+        "name": "research",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/SCHEMA-OVERHAUL-RESEARCH-FINDINGS.md"
+      },
+      {
+        "name": "prd",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/SCHEMA-OVERHAUL-PRD.md"
+      },
+      {
+        "name": "design",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/SCHEMA-OVERHAUL-DESIGN.md"
+      },
+      {
+        "name": "architecture",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/SCHEMA-OVERHAUL-ARCHITECTURE.md"
+      },
+      {
+        "name": "master_plan",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/SCHEMA-OVERHAUL-MASTER-PLAN.md"
+      }
+    ],
+    "current_step": "research"
+  },
+  "execution": {
+    "status": "in_progress",
+    "current_tier": "execution",
+    "current_phase": 2,
+    "total_phases": 6,
+    "phases": [
+      {
+        "name": "Schema Foundation",
+        "status": "complete",
+        "current_task": 4,
+        "total_tasks": 4,
+        "tasks": [
+          {
+            "name": "Create v4 JSON Schema",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/tasks/SCHEMA-OVERHAUL-TASK-P01-T01-SCHEMA.md",
+            "report_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-TASK-REPORT-P01-T01.md",
+            "review_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-CODE-REVIEW-P01-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Build v4 constants.js in staging",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/tasks/SCHEMA-OVERHAUL-TASK-P01-T02-CONSTANTS.md",
+            "report_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-TASK-REPORT-P01-T02.md",
+            "review_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-CODE-REVIEW-P01-T02.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Update test fixture factories",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/tasks/SCHEMA-OVERHAUL-TASK-P01-T03-FIXTURES.md",
+            "report_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-TASK-REPORT-P01-T03.md",
+            "review_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-CODE-REVIEW-P01-T03.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Update constants.test.js for v4",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/tasks/SCHEMA-OVERHAUL-TASK-P01-T04-CONST-TESTS.md",
+            "report_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-TASK-REPORT-P01-T04.md",
+            "review_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-CODE-REVIEW-P01-T04.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          }
+        ],
+        "phase_plan_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/phases/SCHEMA-OVERHAUL-PHASE-P01-SCHEMA-FOUNDATION.md",
+        "phase_report_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-PHASE-REPORT-P01.md",
+        "phase_review_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-PHASE-REVIEW-P01.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced"
+      },
+      {
+        "name": "Pipeline Engine",
+        "status": "complete",
+        "current_task": 6,
+        "total_tasks": 6,
+        "tasks": [
+          {
+            "name": "Build v4 mutations.js + update mutations tests",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/tasks/SCHEMA-OVERHAUL-TASK-P02-T01-MUTATIONS.md",
+            "report_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-TASK-REPORT-P02-T01.md",
+            "review_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-CODE-REVIEW-P02-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Build v4 validator.js + update validator tests",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/tasks/SCHEMA-OVERHAUL-TASK-P02-T02-VALIDATOR-FIX.md",
+            "report_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-TASK-REPORT-P02-T02-FIX.md",
+            "review_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-CODE-REVIEW-P02-T02-FIX.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 1,
+            "report_status": "complete"
+          },
+          {
+            "name": "Build v4 resolver.js + update resolver tests",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/tasks/SCHEMA-OVERHAUL-TASK-P02-T03-RESOLVER.md",
+            "report_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-TASK-REPORT-P02-T03.md",
+            "review_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-CODE-REVIEW-P02-T03.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Build v4 state-io.js + pre-reads.js + update their tests",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/tasks/SCHEMA-OVERHAUL-TASK-P02-T04-IO-PREREADS.md",
+            "report_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-TASK-REPORT-P02-T04.md",
+            "review_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-CODE-REVIEW-P02-T04.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Build v4 pipeline-engine.js + pipeline.js CLI + update engine tests",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/tasks/SCHEMA-OVERHAUL-TASK-P02-T05-ENGINE.md",
+            "report_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-TASK-REPORT-P02-T05.md",
+            "review_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-CODE-REVIEW-P02-T05.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": true,
+            "deviation_type": "scope_addition",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Update pipeline-behavioral.test.js for v4 end-to-end",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/tasks/SCHEMA-OVERHAUL-TASK-P02-T06-BEHAVIORAL.md",
+            "report_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-TASK-REPORT-P02-T06.md",
+            "review_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-CODE-REVIEW-P02-T06.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": true,
+            "deviation_type": "minor",
+            "retries": 0,
+            "report_status": "complete"
+          }
+        ],
+        "phase_plan_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/phases/SCHEMA-OVERHAUL-PHASE-P02-PIPELINE-ENGINE.md",
+        "phase_report_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-PHASE-REPORT-P02.md",
+        "phase_review_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/reports/SCHEMA-OVERHAUL-PHASE-REVIEW-P02.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced"
+      },
+      {
+        "name": "Migration",
+        "status": "in_progress",
+        "current_task": 0,
+        "total_tasks": 3,
+        "tasks": [
+          {
+            "name": "Fix Phase 2 carry-forward test residuals and collect migration test snapshots",
+            "status": "in_progress",
+            "handoff_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/tasks/SCHEMA-OVERHAUL-TASK-P03-T01-CARRY-FORWARD.md",
+            "report_doc": null,
+            "review_doc": null,
+            "review_verdict": null,
+            "review_action": null,
+            "has_deviations": false,
+            "deviation_type": null,
+            "retries": 0,
+            "report_status": null
+          },
+          {
+            "name": "Build migrate-to-v4.js migration script",
+            "status": "not_started",
+            "handoff_doc": null,
+            "report_doc": null,
+            "review_doc": null,
+            "review_verdict": null,
+            "review_action": null,
+            "has_deviations": false,
+            "deviation_type": null,
+            "retries": 0,
+            "report_status": null
+          },
+          {
+            "name": "Build migration.test.js comprehensive test suite",
+            "status": "not_started",
+            "handoff_doc": null,
+            "report_doc": null,
+            "review_doc": null,
+            "review_verdict": null,
+            "review_action": null,
+            "has_deviations": false,
+            "deviation_type": null,
+            "retries": 0,
+            "report_status": null
+          }
+        ],
+        "phase_plan_doc": "C:/dev/orchestration-projects/SCHEMA-OVERHAUL/phases/SCHEMA-OVERHAUL-PHASE-P03-MIGRATION.md",
+        "phase_report_doc": null,
+        "phase_review_doc": null,
+        "phase_review_verdict": null,
+        "phase_review_action": null
+      },
+      {
+        "name": "Phase 4",
+        "status": "not_started",
+        "current_task": 0,
+        "total_tasks": 0,
+        "tasks": [],
+        "phase_plan_doc": null,
+        "phase_report_doc": null,
+        "phase_review_doc": null,
+        "phase_review_verdict": null,
+        "phase_review_action": null
+      },
+      {
+        "name": "Phase 5",
+        "status": "not_started",
+        "current_task": 0,
+        "total_tasks": 0,
+        "tasks": [],
+        "phase_plan_doc": null,
+        "phase_report_doc": null,
+        "phase_review_doc": null,
+        "phase_review_verdict": null,
+        "phase_review_action": null
+      },
+      {
+        "name": "Phase 6",
+        "status": "not_started",
+        "current_task": 0,
+        "total_tasks": 0,
+        "tasks": [],
+        "phase_plan_doc": null,
+        "phase_report_doc": null,
+        "phase_review_doc": null,
+        "phase_review_verdict": null,
+        "phase_review_action": null
+      }
+    ]
+  }
+}

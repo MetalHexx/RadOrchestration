@@ -1,0 +1,408 @@
+{
+  "$schema": "orchestration-state-v2",
+  "project": {
+    "name": "MONITORING-UI",
+    "description": "A real-time Next.js monitoring dashboard for the orchestration system — featuring project switcher sidebar, live dashboard via SSE + chokidar, inline document viewer, and orchestration.yml config viewer. Read-only, local-only, using shadcn/ui and Tailwind CSS.",
+    "created": "2026-03-09T00:00:00Z",
+    "updated": "2026-03-10T18:00:00Z",
+    "brainstorming_doc": "MONITORING-UI-BRAINSTORMING.md"
+  },
+  "pipeline": {
+    "current_tier": "complete",
+    "human_gate_mode": "autonomous"
+  },
+  "planning": {
+    "status": "complete",
+    "steps": {
+      "research": {
+        "status": "complete",
+        "output": "MONITORING-UI-RESEARCH-FINDINGS.md"
+      },
+      "prd": {
+        "status": "complete",
+        "output": "MONITORING-UI-PRD.md"
+      },
+      "design": {
+        "status": "complete",
+        "output": "MONITORING-UI-DESIGN.md"
+      },
+      "architecture": {
+        "status": "complete",
+        "output": "MONITORING-UI-ARCHITECTURE.md"
+      },
+      "master_plan": {
+        "status": "complete",
+        "output": "MONITORING-UI-MASTER-PLAN.md"
+      }
+    },
+    "human_approved": true
+  },
+  "execution": {
+    "status": "complete",
+    "current_phase": 4,
+    "total_phases": 4,
+    "phases": [
+      {
+        "phase_number": 1,
+        "title": "Project Scaffold + Data Layer",
+        "status": "complete",
+        "phase_doc": "phases/MONITORING-UI-PHASE-01-SCAFFOLD-DATA-LAYER.md",
+        "current_task": 5,
+        "total_tasks": 6,
+        "tasks": [
+          {
+            "task_number": 1,
+            "title": "Next.js Project Init + Dependencies + shadcn/ui Setup",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P01-T01-INIT.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P01-T01.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P01-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "task_number": 2,
+            "title": "TypeScript Type Definitions",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P01-T02-TYPES.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P01-T02.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": null,
+            "review_verdict": null,
+            "review_action": null
+          },
+          {
+            "task_number": 3,
+            "title": "Infrastructure Utilities",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P01-T03-INFRA.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P01-T03.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P01-T03.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "task_number": 4,
+            "title": "Domain Utilities",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P01-T04-DOMAIN.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P01-T04.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P01-T04.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "task_number": 5,
+            "title": "API Routes",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P01-T05-API.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P01-T05.md",
+            "retries": 1,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P01-T05.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          },
+          {
+            "task_number": 6,
+            "title": "Root Layout + Global Styles + Error Boundaries",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P01-T06-LAYOUT.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P01-T06.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P01-T06.md",
+            "review_verdict": "approved",
+            "review_action": "advanced"
+          }
+        ],
+        "phase_report": "reports/MONITORING-UI-PHASE-REPORT-P01.md",
+        "human_approved": false,
+        "phase_review": "reports/MONITORING-UI-PHASE-REVIEW-P01.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advance"
+      },
+      {
+        "phase_number": 2,
+        "title": "Dashboard Components + Sidebar",
+        "status": "complete",
+        "phase_doc": "phases/MONITORING-UI-PHASE-02-DASHBOARD-SIDEBAR.md",
+        "current_task": 5,
+        "total_tasks": 6,
+        "tasks": [
+          {
+            "task_number": 1,
+            "title": "Badge Component Library",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P02-T01-BADGES.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P02-T01.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P02-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "task_number": 2,
+            "title": "Sidebar Components + useProjects Hook",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P02-T02-SIDEBAR.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P02-T02.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P02-T02.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "task_number": 3,
+            "title": "Dashboard Header + Planning Section",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P02-T03-HEADER-PLANNING.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P02-T03.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P02-T03.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "task_number": 4,
+            "title": "Execution Section",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P02-T04-EXECUTION.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P02-T04.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P02-T04.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "task_number": 5,
+            "title": "Remaining Dashboard Sections",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P02-T05-REMAINING.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P02-T05.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P02-T05.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "task_number": 6,
+            "title": "Layout Shell + Edge-Case Views + Page Wiring",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P02-T06-LAYOUT.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P02-T06.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P02-T06.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          }
+        ],
+        "phase_report": "reports/MONITORING-UI-PHASE-REPORT-P02.md",
+        "human_approved": false,
+        "phase_review": "reports/MONITORING-UI-PHASE-REVIEW-P02.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advance"
+      },
+      {
+        "phase_number": 3,
+        "title": "SSE Real-Time Updates + Document Viewer",
+        "status": "complete",
+        "phase_doc": "phases/MONITORING-UI-PHASE-03-SSE-DOCVIEWER.md",
+        "current_task": 4,
+        "total_tasks": 5,
+        "tasks": [
+          {
+            "task_number": 1,
+            "title": "SSE API Endpoint",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P03-T01-SSE-ENDPOINT.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P03-T01.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P03-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "task_number": 2,
+            "title": "SSE Client Hook",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P03-T02-SSE-HOOK.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P03-T02.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P03-T02.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "task_number": 3,
+            "title": "Real-Time State Integration + Connection Status",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P03-T03-SSE-INTEGRATION.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P03-T03.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P03-T03.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "task_number": 4,
+            "title": "Document Viewer Components",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P03-T04-DOCVIEWER.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P03-T04.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P03-T04.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          },
+          {
+            "task_number": 5,
+            "title": "Document Viewer Hook + Dashboard Wiring",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P03-T05-DOCWIRING.md",
+            "report_doc": "reports/MONITORING-UI-TASK-REPORT-P03-T05.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/CODE-REVIEW-P03-T05.md",
+            "review_verdict": "approved",
+            "review_action": "advance"
+          }
+        ],
+        "phase_report": "reports/MONITORING-UI-PHASE-REPORT-P03.md",
+        "human_approved": false,
+        "phase_review": "reports/MONITORING-UI-PHASE-REVIEW-P03.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advance"
+      },
+      {
+        "phase_number": 4,
+        "title": "Config Viewer + Theme + Polish",
+        "status": "complete",
+        "phase_doc": "phases/MONITORING-UI-PHASE-04-CONFIG-THEME-POLISH.md",
+        "current_task": 5,
+        "total_tasks": 5,
+        "tasks": [
+          {
+            "task_number": 1,
+            "title": "Config Viewer",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P04-T01-CONFIG.md",
+            "report_doc": "reports/MONITORING-UI-TASK-P04-T01-REPORT.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/MONITORING-UI-REVIEW-P04-T01.md",
+            "review_verdict": "approved",
+            "review_action": "proceed"
+          },
+          {
+            "task_number": 2,
+            "title": "Theme Toggle + Flash Prevention",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P04-T02-THEME.md",
+            "report_doc": "reports/MONITORING-UI-TASK-P04-T02-REPORT.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/MONITORING-UI-REVIEW-P04-T02.md",
+            "review_verdict": "approved",
+            "review_action": "proceed"
+          },
+          {
+            "task_number": 3,
+            "title": "Keyboard Navigation + ARIA Attributes",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P04-T03-A11Y.md",
+            "report_doc": "reports/MONITORING-UI-TASK-P04-T03-REPORT.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/MONITORING-UI-REVIEW-P04-T03.md",
+            "review_verdict": "approved",
+            "review_action": "proceed"
+          },
+          {
+            "task_number": 4,
+            "title": "Loading States + Error Boundaries + Carry-Forward Hardening",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P04-T04-HARDENING.md",
+            "report_doc": "reports/MONITORING-UI-TASK-P04-T04-REPORT.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/MONITORING-UI-REVIEW-P04-T04.md",
+            "review_verdict": "approved",
+            "review_action": "proceed"
+          },
+          {
+            "task_number": 5,
+            "title": "Accessibility Audit + Contrast Validation",
+            "status": "complete",
+            "handoff_doc": "tasks/MONITORING-UI-TASK-P04-T05-AUDIT.md",
+            "report_doc": "reports/MONITORING-UI-TASK-P04-T05-REPORT.md",
+            "retries": 0,
+            "last_error": null,
+            "severity": null,
+            "review_doc": "reports/MONITORING-UI-REVIEW-P04-T05.md",
+            "review_verdict": "approved",
+            "review_action": "proceed"
+          }
+        ],
+        "phase_report": "reports/MONITORING-UI-PHASE-04-REPORT.md",
+        "human_approved": false,
+        "phase_review": "reports/MONITORING-UI-PHASE-04-REVIEW.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "proceed"
+      }
+    ]
+  },
+  "final_review": {
+    "status": "complete",
+    "report_doc": "reports/MONITORING-UI-FINAL-REVIEW.md",
+    "human_approved": true
+  },
+  "errors": {
+    "total_retries": 1,
+    "total_halts": 0,
+    "active_blockers": []
+  },
+  "limits": {
+    "max_phases": 10,
+    "max_tasks_per_phase": 8,
+    "max_retries_per_task": 2
+  }
+}

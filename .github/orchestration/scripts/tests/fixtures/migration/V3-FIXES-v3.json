@@ -1,0 +1,168 @@
+{
+  "$schema": "orchestration-state-v3",
+  "project": {
+    "name": "V3-FIXES",
+    "created": "2026-03-15T15:48:00.044Z",
+    "updated": "2026-03-15T17:31:51.439Z"
+  },
+  "planning": {
+    "status": "complete",
+    "human_approved": true,
+    "steps": [
+      {
+        "name": "research",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/V3-FIXES/V3-FIXES-RESEARCH-FINDINGS.md"
+      },
+      {
+        "name": "prd",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/V3-FIXES/V3-FIXES-PRD.md"
+      },
+      {
+        "name": "design",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/V3-FIXES/V3-FIXES-DESIGN.md"
+      },
+      {
+        "name": "architecture",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/V3-FIXES/V3-FIXES-ARCHITECTURE.md"
+      },
+      {
+        "name": "master_plan",
+        "status": "complete",
+        "doc_path": "C:/dev/orchestration-projects/V3-FIXES/V3-FIXES-MASTER-PLAN.md"
+      }
+    ],
+    "current_step": "research"
+  },
+  "execution": {
+    "status": "complete",
+    "current_tier": "complete",
+    "current_phase": 2,
+    "total_phases": 3,
+    "phases": [
+      {
+        "name": "Pipeline Script Fixes + Unit Tests",
+        "status": "complete",
+        "current_task": 3,
+        "total_tasks": 3,
+        "tasks": [
+          {
+            "name": "Add corrective clearing and idempotency unit tests to mutations.test.js",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/V3-FIXES/tasks/V3-FIXES-TASK-P01-T01-MUTATIONS-TESTS.md",
+            "report_doc": "C:/dev/orchestration-projects/V3-FIXES/reports/V3-FIXES-TASK-REPORT-P01-T01.md",
+            "review_doc": "C:/dev/orchestration-projects/V3-FIXES/reviews/V3-FIXES-CODE-REVIEW-P01-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Add state-derivation fallback to handlePlanApproved in pre-reads.js",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/V3-FIXES/tasks/V3-FIXES-TASK-P01-T02-PREREADS-FIX.md",
+            "report_doc": "C:/dev/orchestration-projects/V3-FIXES/reports/V3-FIXES-TASK-REPORT-P01-T02.md",
+            "review_doc": "C:/dev/orchestration-projects/V3-FIXES/reviews/V3-FIXES-CODE-REVIEW-P01-T02.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Replace process.cwd() with __dirname-relative path in state-io.js",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/V3-FIXES/tasks/V3-FIXES-TASK-P01-T03-STATEIO-FIX.md",
+            "report_doc": "C:/dev/orchestration-projects/V3-FIXES/reports/V3-FIXES-TASK-REPORT-P01-T03.md",
+            "review_doc": "C:/dev/orchestration-projects/V3-FIXES/reviews/V3-FIXES-CODE-REVIEW-P01-T03.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          }
+        ],
+        "phase_plan_doc": "C:/dev/orchestration-projects/V3-FIXES/phases/V3-FIXES-PHASE-01-SCRIPT-FIXES.md",
+        "phase_report_doc": "C:/dev/orchestration-projects/V3-FIXES/reports/V3-FIXES-PHASE-REPORT-P01.md",
+        "phase_review_doc": "C:/dev/orchestration-projects/V3-FIXES/reviews/V3-FIXES-PHASE-REVIEW-P01.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced"
+      },
+      {
+        "name": "Behavioral Test Updates",
+        "status": "complete",
+        "current_task": 1,
+        "total_tasks": 1,
+        "tasks": [
+          {
+            "name": "Add Category 11 — Corrective Task Flow behavioral test to pipeline-behavioral.test.js",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/V3-FIXES/tasks/V3-FIXES-TASK-P02-T01-CAT11-BEHAVIORAL.md",
+            "report_doc": "C:/dev/orchestration-projects/V3-FIXES/reports/V3-FIXES-TASK-REPORT-P02-T01.md",
+            "review_doc": "C:/dev/orchestration-projects/V3-FIXES/reviews/V3-FIXES-CODE-REVIEW-P02-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          }
+        ],
+        "phase_plan_doc": "C:/dev/orchestration-projects/V3-FIXES/phases/V3-FIXES-PHASE-02-BEHAVIORAL-TESTS.md",
+        "phase_report_doc": "C:/dev/orchestration-projects/V3-FIXES/reports/V3-FIXES-PHASE-REPORT-P02.md",
+        "phase_review_doc": "C:/dev/orchestration-projects/V3-FIXES/reviews/V3-FIXES-PHASE-REVIEW-P02.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced"
+      },
+      {
+        "name": "Agent Instruction Updates",
+        "status": "complete",
+        "current_task": 2,
+        "total_tasks": 2,
+        "tasks": [
+          {
+            "name": "Add five instruction additions and update plan_approved row in orchestrator.agent.md",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/V3-FIXES/tasks/V3-FIXES-TASK-P03-T01-ORCHESTRATOR-AGENT.md",
+            "report_doc": "C:/dev/orchestration-projects/V3-FIXES/reports/V3-FIXES-TASK-REPORT-P03-T01.md",
+            "review_doc": "C:/dev/orchestration-projects/V3-FIXES/reviews/V3-FIXES-CODE-REVIEW-P03-T01.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          },
+          {
+            "name": "Add CWD restoration step to coder.agent.md workflow",
+            "status": "complete",
+            "handoff_doc": "C:/dev/orchestration-projects/V3-FIXES/tasks/V3-FIXES-TASK-P03-T02-CODER-AGENT.md",
+            "report_doc": "C:/dev/orchestration-projects/V3-FIXES/reports/V3-FIXES-TASK-REPORT-P03-T02.md",
+            "review_doc": "C:/dev/orchestration-projects/V3-FIXES/reviews/V3-FIXES-CODE-REVIEW-P03-T02.md",
+            "review_verdict": "approved",
+            "review_action": "advanced",
+            "has_deviations": false,
+            "deviation_type": "null",
+            "retries": 0,
+            "report_status": "complete"
+          }
+        ],
+        "phase_plan_doc": "C:/dev/orchestration-projects/V3-FIXES/phases/V3-FIXES-PHASE-03-AGENT-INSTRUCTIONS.md",
+        "phase_report_doc": "C:/dev/orchestration-projects/V3-FIXES/reports/V3-FIXES-PHASE-REPORT-P03.md",
+        "phase_review_doc": "C:/dev/orchestration-projects/V3-FIXES/reviews/V3-FIXES-PHASE-REVIEW-P03.md",
+        "phase_review_verdict": "approved",
+        "phase_review_action": "advanced"
+      }
+    ],
+    "final_review_doc": "C:/dev/orchestration-projects/V3-FIXES/reviews/V3-FIXES-FINAL-REVIEW.md",
+    "final_review_status": "complete",
+    "final_review_approved": true
+  }
+}
