@@ -3,7 +3,6 @@ project: "{PROJECT-NAME}"           # string, e.g., "MONITORING-UI", should matc
 phase: {PHASE_NUMBER}               # integer, e.g., 1
 title: "{PHASE-TITLE}"              # string, human-readable phase title, not just "Phase 1"
 status: "active|complete|halted"    # string, one of "active", "complete", or "halted"
-total_tasks: {NUMBER}               # integer, total number of tasks in this phase
 tasks:                              # list of tasks with id, title
   - id: "{TASK-ID}"                 # string, e.g., "T01-AUTH"
     title: "{TASK-TITLE}"           # string, human-readable task title

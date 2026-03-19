@@ -83,6 +83,10 @@ Pipeline routing, triage, and state validation are handled by a unified pipeline
 
 [Learn more about the scripts →](docs/scripts.md)
 
+### Stage Tracking
+
+Tasks and phases have a `stage` field that tracks precise work focus independently of coarse `status`. Task stages flow through `planning → coding → reviewing → complete` (or `failed` for corrective re-entry). Phase stages flow through `planning → executing → reviewing → complete`. Stages make it unambiguous what the pipeline should do next without inspecting document paths.
+
 ### Composable Skills
 
 Seventeen reusable skills bundle domain knowledge, templates, and instructions. Agents are composed with the skills they need — the system can be extended with new agents, capabilities, or adapted to new workflows by remixing skills.
@@ -122,6 +126,8 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 6. Use `@Orchestrator` to continue — it reads `state.json` and picks up where it left off
 
 [Full getting started guide →](docs/getting-started.md)
+
+> **Migrating an existing project?** Run `node .github/orchestration/scripts/migrate-to-v4.js` to upgrade `state.json` files from earlier schema versions. The script creates `.backup` copies before writing.
 
 ## Documentation
 

@@ -82,7 +82,7 @@ Pipeline scope guards that prevent runaway execution.
 | `max_retries_per_task` | number | `2` | Auto-retries per task before escalation to human |
 | `max_consecutive_review_rejections` | number | `3` | Consecutive reviewer rejections before human escalation |
 
-These limits are copied into `state.json` at project initialization. The [State Transition Validator](scripts.md) enforces them on every state write.
+These limits are read from `orchestration.yml` at runtime by the pipeline engine — they are not copied into `state.json` at project initialization. The [State Transition Validator](scripts.md) enforces them on every state write by reading from the configuration file directly.
 
 ### `errors`
 
@@ -127,13 +127,48 @@ Human approval checkpoints during pipeline execution.
 
 ## Configuration at Runtime
 
-When a project is initialized, key configuration values (limits, human gate mode) are copied into `state.json`. The scripts read these values from `state.json` at runtime, keeping the interface clean — one input file per script invocation.
+The pipeline engine reads limits and human gate settings directly from `orchestration.yml` at runtime. These values are not copied into `state.json` at project initialization — `state.json` holds only pipeline state, not configuration. This means changes to `orchestration.yml` limits take effect for all projects on the next pipeline invocation.
 
-The one exception: the [pipeline script](scripts.md) optionally reads `orchestration.yml` directly for `human_gate_mode` when checking phase-level gates.
+The initial `state.json` shape for a new project is:
+
+```json
+{
+  "$schema": "orchestration-state-v4",
+  "project": {
+    "name": "PROJECT-NAME",
+    "created": "2026-03-15T00:00:00.000Z",
+    "updated": "2026-03-15T00:00:00.000Z"
+  },
+  "pipeline": {
+    "current_tier": "planning"
+  },
+  "planning": {
+    "status": "not_started",
+    "human_approved": false,
+    "steps": [
+      { "name": "research", "status": "not_started", "doc_path": null },
+      { "name": "prd", "status": "not_started", "doc_path": null },
+      { "name": "design", "status": "not_started", "doc_path": null },
+      { "name": "architecture", "status": "not_started", "doc_path": null },
+      { "name": "master_plan", "status": "not_started", "doc_path": null }
+    ]
+  },
+  "execution": {
+    "status": "not_started",
+    "current_phase": 0,
+    "phases": []
+  },
+  "final_review": {
+    "status": "not_started",
+    "doc_path": null,
+    "human_approved": false
+  }
+}
+```
 
 ## Changing Configuration
 
-Changes to `orchestration.yml` affect **new projects only**. In-progress projects use the limits and settings captured in their `state.json` at initialization.
+Changes to `orchestration.yml` affect all projects on the next pipeline invocation, since limits are read at runtime rather than copied into `state.json`.
 
 If you change `projects.base_path`, run `/configure-system` — it automatically scans the `.github/` directory for hardcoded path references and updates them. It also updates the `applyTo` glob in `.github/instructions/project-docs.instructions.md` to match the new path. If you skip this step, run the [validation tool](validation.md) — it warns if `applyTo` and `base_path` are out of sync.
 

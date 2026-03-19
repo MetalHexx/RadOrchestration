@@ -78,7 +78,7 @@ To resume a project that's already in progress:
 @Orchestrator continue the project
 ```
 
-The Orchestrator reads `state.json` to determine exactly where the pipeline left off and spawns the appropriate agent. The deterministic `pipeline.js` event-driven engine — with its 19-event vocabulary and ~18-action output set — ensures consistent routing regardless of how many times you resume.
+The Orchestrator reads `state.json` to determine exactly where the pipeline left off and spawns the appropriate agent. The deterministic `pipeline.js` event-driven engine — with its 17-event vocabulary and 18-action output set — ensures consistent routing regardless of how many times you resume.
 
 ## Checking Status
 
@@ -86,7 +86,7 @@ The Orchestrator reads `state.json` to determine exactly where the pipeline left
 @Orchestrator what's the project status?
 ```
 
-The Orchestrator reads `state.json` directly to determine the current project status, or calls `pipeline.js --event start` to get the current state and recommended next action. Every state mutation flows through `pipeline.js`, so `state.json` is always the authoritative source of truth.
+The Orchestrator reads `state.json` directly to determine the current project status, or calls `pipeline.js --event start` to get the current state and recommended next action. Every state mutation flows through `pipeline.js`, so `state.json` is always the authoritative source of truth. The `pipeline.current_tier` field identifies the active tier (`planning`, `execution`, or `complete`).
 
 > Recommended: Check out the [UI Status Dashboard](project-structure.md#project-file-structure) — it surfaces the current status, recent activity, and next steps based on `state.json` in a human-friendly format and in realtime.
 

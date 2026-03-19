@@ -1,7 +1,7 @@
 ---
 project: "{PROJECT-NAME}"
-total_phases: {NUMBER}
 status: "draft|approved"
+total_phases: {Number}
 author: "architect-agent"
 created: "{ISO-DATE}"
 ---

@@ -43,10 +43,10 @@ Generate a self-contained Task Handoff document that is the sole input a Coding 
 
 Before creating the task handoff, check for corrective routing:
 
-1. **Read** `state.json → execution.phases[current].tasks[previous].review_action`
+1. **Read** `state.json → execution.phases[current_phase - 1].tasks[task_index].review.action`
 2. **Route** based on the value:
 
-| `review_action` value | What to produce |
+| `review.action` value | What to produce |
 |-----------------------|------------------|
 | `null` (no review doc) | Normal Task Handoff; include Task Report Recommendations in context |
 | `"advanced"` / `"advance"` | Normal Task Handoff; include carry-forward items in context |
@@ -55,9 +55,9 @@ Before creating the task handoff, check for corrective routing:
 
 ### Corrective Task Handoff
 
-When `review_action == "corrective_task_issued"`:
+When `review.action == "corrective_task_issued"`:
 
-1. Read the code review document at the task's `review_doc` path in `state.json`
+1. Read the code review document at the task's `docs.review` path in `state.json`
 2. Extract the **Issues** table from the review
 3. These issues become the primary objective of the corrective handoff
 4. Include the original task's acceptance criteria (they still apply)

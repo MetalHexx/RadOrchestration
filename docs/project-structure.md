@@ -15,8 +15,11 @@ This page documents the file layout, naming conventions, document types, and sta
 ├── prompts/                   # Utility prompt files
 │   └── ...
 ├── orchestration/             # Runtime scripts and tests
+│   ├── schemas/               # JSON Schema definitions
+│   │   └── state-v4.schema.json  # Canonical v4 state JSON Schema
 │   └── scripts/
 │       ├── pipeline.js        # Unified pipeline CLI (sole state writer)
+│       ├── migrate-to-v4.js   # Migration CLI tool (v3 → v4 state upgrade)
 │       ├── lib/
 │       │   ├── constants.js
 │       │   ├── mutations.js
@@ -50,7 +53,12 @@ docs/                          # Documentation (9 pages)
 ├── validation.md
 └── dashboard.md               # NEW
 ui/                            # Monitoring dashboard (Next.js)
-└── ...
+└── components/
+    └── badges/
+        ├── pipeline-tier-badge.tsx
+        ├── review-verdict-badge.tsx
+        ├── status-icon.tsx
+        └── stage-badge.tsx    # Stage badge component
 ```
 
 ## Project Folder Structure
@@ -147,10 +155,11 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 - Each project folder contains its own `state.json` that tracks the current phase, task, agent, and other relevant metadata. 
 - The pipeline script (`pipeline.js`) is the sole writer of `state.json` — no agent directly modifies it. 
 - Agents read `state.json` for context but never write to it.
+- The schema identifier is `orchestration-state-v4`. The full JSON Schema is defined in [`.github/orchestration/schemas/state-v4.schema.json`](../../.github/orchestration/schemas/state-v4.schema.json).
 
 ### Invariants
 
-The pipeline engine (`pipeline-engine.js`) runs all 15 invariant checks (V1–V15) on every state transition — see [Validation](validation.md) for the full invariant catalog. Only the pipeline script (`pipeline.js`) writes `state.json`; no agent touches it directly.
+The pipeline engine (`pipeline-engine.js`) runs all 12 invariant checks (V1–V2, V5–V7, V10–V16) on every state transition — see [Validation](validation.md) for the full invariant catalog. Only the pipeline script (`pipeline.js`) writes `state.json`; no agent touches it directly.
 
 ## Scoped Instructions
 

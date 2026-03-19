@@ -42,10 +42,10 @@ Generate a Phase Plan that breaks a phase from the Master Plan into concrete tas
 
 Before creating the phase plan, check for corrective routing:
 
-1. **Read** `state.json → execution.phases[current].phase_review_action`
+1. **Read** `state.json → execution.phases[current_phase - 1].review.action`
 2. **Route** based on the value:
 
-| `phase_review_action` value | What to produce |
+| `review.action` value | What to produce |
 |-----------------------------|------------------|
 | `null` (no review) | Normal Phase Plan for the next phase |
 | `"advance"` | Normal Phase Plan (include carry-forward tasks if any exit criteria were unmet) |
@@ -54,9 +54,9 @@ Before creating the phase plan, check for corrective routing:
 
 ### Corrective Phase Plan
 
-When `phase_review_action == "corrective_tasks_issued"`:
+When `review.action == "corrective_tasks_issued"`:
 
-1. Read the phase review document at the phase's `phase_review_doc` path in `state.json`
+1. Read the phase review document at the phase's `docs.phase_review` path in `state.json`
 2. Extract the **Cross-Task Issues** section from the review
 3. Create corrective tasks targeting those issues — these tasks come FIRST in the task outline
 4. Follow corrective tasks with any remaining normal tasks for the phase

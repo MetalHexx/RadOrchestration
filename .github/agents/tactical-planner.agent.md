@@ -44,14 +44,15 @@ When spawned to plan a phase:
 2. **Read the Architecture** — module map, contracts, file structure
 3. **Read the Design** — components, design tokens (if applicable)
 4. **Read `state.json`** (read-only) — current state, config limits
+   - Note: `execution.current_phase` is 1-based (0 = no phases active). Array access: `phases[current_phase - 1]`
 5. **Read previous Phase Report** (if not first phase) — carry-forward items
 6. **Read the Phase Review** (if not first phase) — cross-task issues, review action
 
 ### Prior Context Routing
 
-Read `state.json → execution.phases[current].phase_review_action` and route:
+Read `state.json → execution.phases[current].review.action` and route:
 
-| `phase_review_action` value | What to produce |
+| `review.action` value | What to produce |
 |-----------------------------|-----------------|
 | `null` (no review) | Normal Phase Plan for the next phase |
 | `"advance"` | Normal Phase Plan (include carry-forward tasks if any exit criteria were unmet) |
@@ -74,14 +75,14 @@ When spawned to create a task handoff:
 1. **Read the Phase Plan** — task outline, dependencies
 2. **Read the Architecture** — contracts, interfaces, file structure
 3. **Read the Design** — design tokens, component specs (if UI task)
-4. **Read previous Task Report(s)** — for each dependent completed task: path from `state.json → task.report_doc`
-5. **Read the Code Review** (if present) — path from `state.json → task.review_doc` for the relevant completed task
+4. **Read previous Task Report(s)** — for each dependent completed task: path from `state.json → task.docs.report`
+5. **Read the Code Review** (if present) — path from `state.json → task.docs.review` for the relevant completed task
 
 ### Prior Context Routing
 
-Read `state.json → execution.phases[current].tasks[previous].review_action` and route:
+Read `state.json → execution.phases[current].tasks[previous].review.action` and route:
 
-| `review_action` value | What to produce |
+| `review.action` value | What to produce |
 |-----------------------|-----------------|
 | `null` (no review doc) | Normal Task Handoff; include Task Report Recommendations in context |
 | `"advanced"` / `"advance"` | Normal Task Handoff; include carry-forward items in context |
@@ -89,6 +90,7 @@ Read `state.json → execution.phases[current].tasks[previous].review_action` an
 | `"halted"` | DO NOT produce a Task Handoff — inform the Orchestrator the pipeline is halted |
 
 6. **PLAN**: Produce Task Handoff (or corrective handoff) based on the routing outcome:
+   - Note: `phases[].current_task` is 1-based (0 = no tasks active). Array access: `phase.tasks[current_task - 1]`
    - Write a self-contained handoff: Everything the Coder needs in ONE document
      - Objective (1-3 sentences)
      - Context (max 5 sentences — immediate technical context only)
@@ -104,7 +106,7 @@ Read `state.json → execution.phases[current].tasks[previous].review_action` an
 
 ### Corrective Task Handoffs
 
-When the Prior Context routing produces `review_action: "corrective_task_issued"`, follow these rules:
+When the Prior Context routing produces `review.action: "corrective_task_issued"`, follow these rules:
 
 1. **Read the original Task Handoff** — understand the original intent
 2. **Read the Code Review** — understand what issues were found

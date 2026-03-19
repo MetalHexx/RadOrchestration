@@ -12,6 +12,89 @@ planning → execution → review → complete
 
 A project can also be `halted` from any tier when a critical error occurs or a human gate is not satisfied.
 
+## Status vs. Stage
+
+The system tracks work progress at two levels of granularity on every task and phase:
+
+| Field | Purpose | Values |
+|-------|---------|--------|
+| `status` | Coarse pipeline gate — controls tier advancement and human gates | `not_started`, `in_progress`, `complete`, `failed`, `halted` |
+| `stage` | Precise work focus within a status — controls what the next agent action is | See lifecycle diagrams below |
+
+**Why two fields?** `status` alone cannot distinguish "started but still coding" from "started but waiting for review". The `stage` field fills this gap: the resolver matches on `stage` to determine the correct next action rather than inferring it from the presence or absence of doc paths.
+
+### Task Stage Lifecycle
+
+```
+         ┌─────────────────────────────────────────┐
+         │              corrective                  │
+         ▼               re-entry                   │
+    ┌──────────┐    ┌──────────┐    ┌───────────┐   │  ┌──────────┐
+    │ planning ├───►│  coding  ├───►│ reviewing ├───┼─►│ complete │
+    └──────────┘    └──────────┘    └───────────┘   │  └──────────┘
+                                         │          │
+                                         ▼          │
+                                    ┌──────────┐    │
+                                    │  failed  ├────┘
+                                    └──────────┘
+```
+
+| Stage | Meaning |
+|-------|---------|
+| `planning` | Tactical Planner is creating (or re-creating) the task handoff |
+| `coding` | Coder is executing the task |
+| `reviewing` | Reviewer is evaluating the code |
+| `complete` | Code review approved — terminal |
+| `failed` | Review rejected with no remaining retries — terminal (unless corrective re-entry) |
+
+> **Note:** `reporting` is a reserved enum value in the schema but is not set by any current mutation handler.
+
+Allowed task stage transitions:
+
+```javascript
+const ALLOWED_TASK_STAGE_TRANSITIONS = Object.freeze({
+  'planning':  ['coding'],
+  'coding':    ['reviewing'],
+  'reviewing': ['complete', 'failed'],
+  'complete':  [],
+  'failed':    ['coding'],       // corrective re-entry (skips planning)
+});
+```
+
+### Phase Stage Lifecycle
+
+```
+    ┌──────────┐    ┌───────────┐    ┌───────────┐    ┌──────────┐
+    │ planning ├───►│ executing ├───►│ reviewing ├───►│ complete │
+    └──────────┘    └───────────┘    └───────────┘    └──────────┘
+                         ▲                │
+                         │  corrective    │
+                         │  tasks         ▼
+                         │           ┌──────────┐
+                         └───────────┤  failed  │
+                                     └──────────┘
+```
+
+| Stage | Meaning |
+|-------|---------|
+| `planning` | Tactical Planner is creating the phase plan |
+| `executing` | Tasks are being executed |
+| `reviewing` | Phase report/review is in progress |
+| `complete` | Phase review approved — terminal |
+| `failed` | Phase review rejected — corrective tasks re-enter execution |
+
+Allowed phase stage transitions:
+
+```javascript
+const ALLOWED_PHASE_STAGE_TRANSITIONS = Object.freeze({
+  'planning':  ['executing'],
+  'executing': ['reviewing'],
+  'reviewing': ['complete', 'failed'],
+  'complete':  [],
+  'failed':    ['executing'],   // corrective tasks re-enter execution
+});
+```
+
 ## Planning Pipeline
 
 The planning phase produces all the documents needed before any code is written.
@@ -95,7 +178,7 @@ sequenceDiagram
 
             ORC->>COD: Execute task
             COD-->>ORC: TASK-REPORT.md
-            Note over ORC: pipeline.js --event task_completed (mutates state + resolves action)
+            Note over ORC: pipeline.js --event task_completed (stage → reviewing; status stays in_progress)
 
             ORC->>REV: Review code
             REV-->>ORC: CODE-REVIEW.md
@@ -128,16 +211,18 @@ sequenceDiagram
 
 Each task progresses through a deterministic lifecycle:
 
-1. **Handoff** — Tactical Planner creates a self-contained Task Handoff document
-2. **Execution** — Coder implements the task and produces a Task Report
+1. **Handoff** — Tactical Planner creates a self-contained Task Handoff document; task `stage` advances to `coding`
+2. **Execution** — Coder implements the task and produces a Task Report; the `task_completed` event sets `stage → reviewing` while `status` **remains `in_progress`** — the task is not complete yet, it is waiting for review
 3. **Review** — Reviewer evaluates the code against PRD, architecture, and design
-4. **Resolution** — Pipeline script processes the `code_review_completed` event: applies state mutation, validates, resolves next action (advance to next task, corrective retry via `create_task_handoff` with `context.is_correction`, or halt)
+4. **Resolution** — Pipeline script processes the `code_review_completed` event: if approved, `status → complete` and `stage → complete`; if rejected with retries remaining, `stage → coding` (corrective re-entry); if rejected with no retries, `status → failed` and `stage → failed`
+
+> **Note:** `complete` is truly terminal for tasks. A task that reaches `status = complete` cannot be retried or failed. The only retry path is corrective re-entry from `stage = reviewing → coding` while `status` is still `in_progress`.
 
 ### Phase Lifecycle
 
 After all tasks in a phase are complete:
 
-1. **Phase Report** — Tactical Planner aggregates task results and assesses exit criteria
+1. **Phase Report** — Tactical Planner aggregates task results and assesses exit criteria; phase `stage` advances to `reviewing`
 2. **Phase Review** — Reviewer performs cross-task integration review
 3. **Resolution** — Pipeline script processes the `phase_review_completed` event: applies state mutation, validates, resolves next action
 4. **Advance or Correct** — pipeline returns `create_phase_plan` (advance), `create_task_handoff` with `context.is_correction` (corrective), or `display_halted` (halt)
@@ -174,7 +259,7 @@ Errors are classified by severity with deterministic responses:
 
 ### Retry Budget
 
-Each task has a retry budget defined by `limits.max_retries_per_task` (default: 2). When a task receives a `changes_requested` review verdict: if retries remain (`task.retries < config.limits.max_retries_per_task`), a corrective task handoff is issued; if retries are exhausted, the pipeline halts.
+Each task has a retry budget defined by `limits.max_retries_per_task` (default: 2). When a task receives a `changes_requested` review verdict: if retries remain (`task.retries < config.limits.max_retries_per_task`), a corrective task handoff is issued (re-entering at `stage = coding`); if retries are exhausted, the pipeline halts.
 
 The pipeline script encodes this logic in a deterministic decision table — the same review verdict with the same retry state always produces the same action.
 
@@ -190,22 +275,22 @@ See [Deterministic Scripts](scripts.md) for the full event vocabulary and CLI re
 
 When the engine processes the `plan_approved` event, it performs a pre-read of the master plan document before applying the mutation:
 
-1. Reads the master plan path from `state.planning.steps.master_plan.output`
+1. Reads the master plan path from the `planning.steps` array (the step with `name: 'master_plan'`, index 4) → `doc_path`
 2. Loads the document via `io.readDocument()`
 3. Extracts `total_phases` from the document's YAML frontmatter
 4. Validates that `total_phases` is a positive integer
 5. Injects the value into the mutation context as `context.total_phases`
 
-The `handlePlanApproved` mutation then uses `context.total_phases` to initialize `execution.phases[]` with the correct number of phase entries (each starting as `not_started` with empty tasks).
+The `handlePlanApproved` mutation then uses `context.total_phases` to initialize `execution.phases[]` with the correct number of phase entries (each starting as `not_started` with empty tasks). **`total_phases` is not stored in `state.json`** — it is derived from `phases.length` at runtime when needed.
 
 **Error conditions** — all produce a hard error (exit 1, no state written):
 
 | Condition | Error |
 |-----------|-------|
-| Master plan path missing from state | `"Master plan path not found in state.planning.steps.master_plan.output"` |
-| Document not found or unreadable | `"Failed to read master plan at '{path}': {reason}"` |
-| `total_phases` missing from frontmatter | `"Master plan total_phases must be a positive integer, got 'undefined'"` |
-| `total_phases` not a positive integer | `"Master plan total_phases must be a positive integer, got '{value}'"` |
+| Master plan `doc_path` not in context and not derivable from state | `"Cannot derive master plan path: state.planning.steps[4].doc_path is not set"` |
+| Document not found at the resolved path | `"Document not found at '{path}'"` |
+| `total_phases` missing from frontmatter | `"Missing required field"` (event=`plan_approved`, field=`total_phases`) |
+| `total_phases` not a positive integer | `"Invalid value: total_phases must be a positive integer"` (event=`plan_approved`, field=`total_phases`) |
 
 ### Status Normalization
 
@@ -249,10 +334,38 @@ The canonical status vocabulary is `complete`, `partial`, `failed`. The normaliz
 
 ## State Management
 
-Pipeline state is tracked in `state.json` — see [Project Structure](project-structure.md) for the full state schema and invariants.
+Pipeline state is tracked in `state.json` — see [Project Structure](project-structure.md) for the full state schema and invariants, and [`state-v4.schema.json`](../../schemas/state-v4.schema.json) for the formal v4 JSON Schema.
 
 Key rules:
 - Only the pipeline script (`pipeline.js`) writes `state.json`
 - Every state mutation is validated against invariants before being written to disk. Invalid state never reaches disk.
-- Tasks progress linearly: `not_started` → `in_progress` → `complete` | `failed`
-- Only one task can be `in_progress` at a time across the entire project (for now -- parallel execution is a future enhancement)
+- Task `status` transitions follow a strict map — `complete` is **terminal** (no `complete → failed` path exists):
+  ```
+  not_started → in_progress
+  in_progress → complete | failed | halted
+  failed      → in_progress  (retry path)
+  complete    → (terminal)
+  halted      → (terminal)
+  ```
+- Task `stage` tracks precise work focus within `in_progress` — the resolver matches on `stage` to determine the next action
+- All index references (phases, tasks) are **1-based**: `current_phase = 1` means the first phase; `current_task = 1` means the first task within the current phase
+- Only one task can be `in_progress` at a time across the entire project (for now — parallel execution is a future enhancement)
+
+### Key Field Paths
+
+| Concept | v4 Field Path |
+|---------|--------------|
+| Active pipeline tier | `pipeline.current_tier` |
+| Task handoff document | `task.docs.handoff` |
+| Task report document | `task.docs.report` |
+| Task review document | `task.docs.review` |
+| Task review verdict | `task.review.verdict` |
+| Task review action | `task.review.action` |
+| Phase plan document | `phase.docs.phase_plan` |
+| Phase report document | `phase.docs.phase_report` |
+| Phase review document | `phase.docs.phase_review` |
+| Phase review verdict | `phase.review.verdict` |
+| Phase review action | `phase.review.action` |
+| Final review document | `final_review.doc_path` |
+| Final review status | `final_review.status` |
+| Final review human approval | `final_review.human_approved` |
