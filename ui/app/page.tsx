@@ -65,11 +65,6 @@ export default function Home() {
     [projectState, selectedProject, fileList],
   );
 
-  const errorLogPath = useMemo(
-    () => fileList.find((f) => f.endsWith(`${selectedProject}-ERROR-LOG.md`)) ?? null,
-    [fileList, selectedProject],
-  );
-
   const otherDocs = useMemo(
     () => orderedDocs.filter((d) => d.category === "other").map((d) => d.path),
     [orderedDocs],
@@ -116,7 +111,6 @@ export default function Home() {
               projectState={projectState}
               project={selected}
               onDocClick={handleDocClick}
-              errorLogPath={errorLogPath}
               otherDocs={otherDocs}
             />
           ) : (

@@ -2,14 +2,10 @@
 
 import { StatusIcon } from "@/components/badges";
 import { DocumentLink } from "@/components/documents";
-import { PLANNING_STEP_ORDER } from "@/types/state";
-import type { PlanningStepName, PlanningStepStatus } from "@/types/state";
+import type { PlanningStep, PlanningStepName } from "@/types/state";
 
 interface PlanningChecklistProps {
-  steps: Record<PlanningStepName, {
-    status: PlanningStepStatus;
-    output: string | null;
-  }>;
+  steps: PlanningStep[];
   humanApproved: boolean;
   onDocClick: (path: string) => void;
 }
@@ -30,19 +26,22 @@ export function PlanningChecklist({
   return (
     <div>
       <ol className="list-none m-0 p-0" aria-label="Planning steps">
-        {PLANNING_STEP_ORDER.map((stepName) => {
-          const step = steps[stepName];
+        {steps.map((step) => {
           return (
             <li
-              key={stepName}
+              key={step.name}
               className="flex items-center gap-2 py-2"
             >
               <StatusIcon status={step.status} />
-              <span className="text-sm">{STEP_DISPLAY_NAMES[stepName]}</span>
+              <span className="text-sm">{STEP_DISPLAY_NAMES[step.name]}</span>
               <span className="ml-auto">
                 <DocumentLink
-                  path={step.output}
-                  label={step.output ?? STEP_DISPLAY_NAMES[stepName]}
+                  path={step.doc_path}
+                  label={
+                    step.doc_path
+                      ? step.doc_path.split(/[\/\\]/).pop()!.replace(/\.md$/i, '')
+                      : STEP_DISPLAY_NAMES[step.name]
+                  }
                   onDocClick={onDocClick}
                 />
               </span>
