@@ -130,31 +130,41 @@ node .github/skills/validate-orchestration/scripts/validate-orchestration.js --n
 
 ## State Transition Validation
 
-Runtime state validation runs automatically inside `pipeline-engine.js` on every event — there is no separate CLI validator. Before writing `state.json`, the engine calls `validateTransition(currentState, proposedState, config)` from `validator.js`. This function checks ~11 invariants and returns an array of errors:
+Runtime state validation runs automatically inside `pipeline-engine.js` on every event — there is no separate CLI validator. Before writing `state.json`, the engine calls `validateTransition(currentState, proposedState, config)` from `validator.js`. This function checks **12 active invariants** and returns an array of errors. It validates both status transitions (V12) and stage transitions (V14/V15) in addition to structural and timestamp checks:
 
 ```javascript
-// Signature (from validator.js)
+/**
+ * Validate a v4 state transition.
+ * Checks structural invariants (V1, V2, V5–V7, V10, V16),
+ * transition invariants (V11–V15), and timestamp monotonicity (V13).
+ *
+ * @param {StateV4 | null} current - state before mutation (null on init)
+ * @param {StateV4} proposed - state after mutation
+ * @param {Object} config - parsed orchestration config
+ * @returns {ValidationError[]} - empty array means valid
+ */
 validateTransition(current, proposed, config)
 // → ValidationError[]  (empty array means valid)
 ```
 
 Validation runs once per event, after the mutation. If any invariant fails, the pipeline returns an error result and does **not** write `state.json`.
 
-### Invariant Catalog (V1–V7, V10–V13)
+### Invariant Catalog (12 active)
 
 | ID | Name | Check Type | Description |
 |----|------|-----------|-------------|
-| V1 | Phase index bounds | Proposed-only | `current_phase` must be a valid index into `execution.phases[]` (0 when empty) |
-| V2 | Task index bounds | Proposed-only | Each phase's `current_task` must be a valid index into its `tasks[]` (0 when empty, may equal length when all complete) |
-| V3 | Phase count match | Proposed-only | `total_phases` matches `phases.length` |
-| V4 | Task count match | Proposed-only | `total_tasks` matches `tasks.length` per phase |
-| V5 | Config limits | Proposed-only | `phases.length` must not exceed `config.limits.max_phases`; each phase's `tasks.length` must not exceed `config.limits.max_tasks_per_phase` |
-| V6 | Execution tier gate | Proposed-only | Execution tier requires `planning.human_approved` to be `true` |
-| V7 | Final review gate | Proposed-only | Complete tier with `after_final_review` gate enabled requires `planning.human_approved` to be `true` |
-| V10 | Phase-tier consistency | Proposed-only | Active phase status must be consistent with `current_tier` (e.g., no `in_progress` phase during planning tier; all phases `complete` or `halted` during review/complete tier) |
-| V11 | Retry monotonicity | Current→Proposed | Task `retries` count must never decrease between transitions |
-| V12 | Status transitions | Current→Proposed | Phase and task status changes must follow allowed transition maps (see diagrams below) |
-| V13 | Timestamp monotonicity | Current→Proposed | `project.updated` must strictly increase on every write |
+| V1 | Phase index bounds | Proposed-only | `current_phase` must be within `[1, phases.length]`; 0 when `phases` empty |
+| V2 | Task index bounds | Proposed-only | `current_task` must be within `[1, tasks.length]`; 0 when `tasks` empty; may equal `tasks.length + 1` as transient "all tasks processed" state |
+| V5 | Config limits | Proposed-only | `phases.length ≤ max_phases`; each `phase.tasks.length ≤ max_tasks_per_phase` |
+| V6 | Execution tier gate | Proposed-only | `pipeline.current_tier === 'execution'` requires `planning.human_approved === true` |
+| V7 | Final review gate | Proposed-only | `pipeline.current_tier === 'complete'` with `after_final_review` gate requires `final_review.human_approved === true` |
+| V10 | Phase-tier consistency | Proposed-only | Active phase status must be consistent with `pipeline.current_tier` (no `in_progress` during planning; all `complete`/`halted` during review/complete) |
+| V11 | Retry monotonicity | Current→Proposed | Task `retries` count must never decrease |
+| V12 | Status transitions | Current→Proposed | Phase and task status changes must follow allowed transition maps; `complete` is terminal for tasks (no `complete → failed` path) |
+| V13 | Timestamp monotonicity | Current→Proposed | `project.updated` must strictly increase |
+| V14 | Task stage transitions | Current→Proposed | Task `stage` changes must follow `ALLOWED_TASK_STAGE_TRANSITIONS` |
+| V15 | Phase stage transitions | Current→Proposed | Phase `stage` changes must follow `ALLOWED_PHASE_STAGE_TRANSITIONS` |
+| V16 | JSON Schema validation | Proposed-only | Structural validation against `state-v4.schema.json` (field types, required fields, enum values) |
 
 ### Valid Status Transitions (V12)
 
@@ -173,9 +183,11 @@ halted      → (terminal)
 not_started → in_progress
 in_progress → complete | failed | halted
 failed      → in_progress  (retry path)
-complete    → failed | halted
+complete    → (terminal)
 halted      → (terminal)
 ```
+
+> **Note:** `complete` is terminal for tasks. Corrective retries happen via the `stage` field while `status` remains `in_progress` (see V14).
 
 See [Pipeline Script](scripts.md) for details on the unified pipeline CLI.
 

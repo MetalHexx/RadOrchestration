@@ -4,29 +4,27 @@
  */
 import assert from 'node:assert';
 import { getOrderedDocs, getAdjacentDocs } from './document-ordering';
-import type { NormalizedProjectState } from '@/types/state';
+import type { ProjectState } from '@/types/state';
 import type { OrderedDoc } from '@/types/components';
 
-function makeState(overrides?: Partial<NormalizedProjectState>): NormalizedProjectState {
+function makeState(overrides?: Partial<ProjectState>): ProjectState {
   return {
-    schema: '2.0',
-    project: { name: 'TEST', description: null, created: '', updated: '', brainstorming_doc: null },
-    pipeline: { current_tier: 'execution', human_gate_mode: 'ask' },
+    $schema: 'orchestration-state-v4',
+    project: { name: 'TEST', created: '', updated: '' },
+    pipeline: { current_tier: 'execution', gate_mode: null },
     planning: {
       status: 'complete',
-      steps: {
-        research: { status: 'not_started', output: null },
-        prd: { status: 'not_started', output: null },
-        design: { status: 'not_started', output: null },
-        architecture: { status: 'not_started', output: null },
-        master_plan: { status: 'not_started', output: null },
-      },
       human_approved: false,
+      steps: [
+        { name: 'research', status: 'not_started', doc_path: null },
+        { name: 'prd', status: 'not_started', doc_path: null },
+        { name: 'design', status: 'not_started', doc_path: null },
+        { name: 'architecture', status: 'not_started', doc_path: null },
+        { name: 'master_plan', status: 'not_started', doc_path: null },
+      ],
     },
-    execution: { status: 'not_started', current_phase: 0, total_phases: 0, phases: [] },
-    final_review: { status: 'not_started', report_doc: null, human_approved: false },
-    errors: { total_retries: 0, total_halts: 0, active_blockers: [] },
-    limits: { max_phases: 5, max_tasks_per_phase: 10, max_retries_per_task: 3 },
+    execution: { status: 'not_started', current_phase: 0, phases: [] },
+    final_review: { status: 'not_started', doc_path: null, human_approved: false },
     ...overrides,
   };
 }
@@ -52,47 +50,47 @@ test('returns planning + phase docs in canonical order', () => {
   const state = makeState({
     planning: {
       status: 'complete',
-      steps: {
-        research: { status: 'complete', output: 'docs/RESEARCH.md' },
-        prd: { status: 'complete', output: 'docs/PRD.md' },
-        design: { status: 'not_started', output: null },
-        architecture: { status: 'not_started', output: null },
-        master_plan: { status: 'not_started', output: null },
-      },
       human_approved: true,
+      steps: [
+        { name: 'research', status: 'complete', doc_path: 'docs/RESEARCH.md' },
+        { name: 'prd', status: 'complete', doc_path: 'docs/PRD.md' },
+        { name: 'design', status: 'not_started', doc_path: null },
+        { name: 'architecture', status: 'not_started', doc_path: null },
+        { name: 'master_plan', status: 'not_started', doc_path: null },
+      ],
     },
     execution: {
       status: 'in_progress',
       current_phase: 1,
-      total_phases: 1,
       phases: [
         {
-          phase_number: 1,
-          title: 'Phase One',
+          name: 'Phase One',
           status: 'in_progress',
-          phase_doc: 'phases/P01-PLAN.md',
+          stage: 'executing',
           current_task: 1,
-          total_tasks: 1,
           tasks: [
             {
-              task_number: 1,
-              title: 'Setup',
+              name: 'Setup',
               status: 'complete',
-              handoff_doc: 'tasks/T01.md',
-              report_doc: 'reports/T01-REPORT.md',
+              stage: 'complete',
+              docs: {
+                handoff: 'tasks/T01.md',
+                report: 'reports/T01-REPORT.md',
+                review: 'reviews/T01-REVIEW.md',
+              },
+              review: { verdict: 'approved', action: 'advanced' },
+              report_status: 'complete',
+              has_deviations: false,
+              deviation_type: null,
               retries: 0,
-              last_error: null,
-              severity: null,
-              review_doc: 'reviews/T01-REVIEW.md',
-              review_verdict: 'approved',
-              review_action: 'advanced',
             },
           ],
-          phase_report: 'reports/P01-REPORT.md',
-          human_approved: false,
-          phase_review: 'reviews/P01-REVIEW.md',
-          phase_review_verdict: null,
-          phase_review_action: null,
+          docs: {
+            phase_plan: 'phases/P01-PLAN.md',
+            phase_report: 'reports/P01-REPORT.md',
+            phase_review: 'reviews/P01-REVIEW.md',
+          },
+          review: { verdict: null, action: null },
         },
       ],
     },
@@ -122,14 +120,14 @@ test('skips null paths', () => {
   const state = makeState({
     planning: {
       status: 'complete',
-      steps: {
-        research: { status: 'complete', output: 'docs/RESEARCH.md' },
-        prd: { status: 'not_started', output: null },
-        design: { status: 'not_started', output: null },
-        architecture: { status: 'not_started', output: null },
-        master_plan: { status: 'not_started', output: null },
-      },
       human_approved: true,
+      steps: [
+        { name: 'research', status: 'complete', doc_path: 'docs/RESEARCH.md' },
+        { name: 'prd', status: 'not_started', doc_path: null },
+        { name: 'design', status: 'not_started', doc_path: null },
+        { name: 'architecture', status: 'not_started', doc_path: null },
+        { name: 'master_plan', status: 'not_started', doc_path: null },
+      ],
     },
   });
 
@@ -140,7 +138,7 @@ test('skips null paths', () => {
 
 test('appends error log from allFiles after final review', () => {
   const state = makeState({
-    final_review: { status: 'complete', report_doc: 'reviews/FINAL.md', human_approved: true },
+    final_review: { status: 'complete', doc_path: 'reviews/FINAL.md', human_approved: true },
   });
 
   const allFiles = ['reviews/FINAL.md', 'projects/TEST-ERROR-LOG.md'];
@@ -158,6 +156,107 @@ test('appends other docs sorted alphabetically', () => {
   assert.deepStrictEqual(docs.map((d) => d.title), ['ALPHA', 'ZEBRA']);
   assert.strictEqual(docs[0].category, 'other');
   assert.strictEqual(docs[1].category, 'other');
+});
+
+test('excludes planning docs from Other Documents when state uses absolute paths but allFiles has relative paths', () => {
+  const state = makeState({
+    planning: {
+      status: 'complete',
+      human_approved: true,
+      steps: [
+        { name: 'research', status: 'complete', doc_path: 'C:/dev/projects/TEST/TEST-RESEARCH-FINDINGS.md' },
+        { name: 'prd', status: 'complete', doc_path: 'C:/dev/projects/TEST/TEST-PRD.md' },
+        { name: 'design', status: 'not_started', doc_path: null },
+        { name: 'architecture', status: 'not_started', doc_path: null },
+        { name: 'master_plan', status: 'not_started', doc_path: null },
+      ],
+    },
+  });
+
+  const allFiles = ['TEST-RESEARCH-FINDINGS.md', 'TEST-PRD.md', 'EXTRA-NOTES.md'];
+  const docs = getOrderedDocs(state, 'TEST', allFiles);
+
+  const otherDocs = docs.filter((d) => d.category === 'other');
+  assert.strictEqual(otherDocs.length, 1, 'Only EXTRA-NOTES.md should be other');
+  assert.strictEqual(otherDocs[0].title, 'EXTRA-NOTES');
+});
+
+test('excludes phase plan docs from Other Documents when state paths differ in format', () => {
+  const state = makeState({
+    execution: {
+      status: 'in_progress',
+      current_phase: 1,
+      phases: [
+        {
+          name: 'Phase One',
+          status: 'in_progress',
+          stage: 'executing',
+          current_task: 0,
+          tasks: [],
+          docs: {
+            phase_plan: 'C:/dev/projects/TEST/phases/TEST-PHASE-P01-PLAN.md',
+            phase_report: null,
+            phase_review: null,
+          },
+          review: { verdict: null, action: null },
+        },
+      ],
+    },
+  });
+
+  const allFiles = ['phases/TEST-PHASE-P01-PLAN.md', 'EXTRA.md'];
+  const docs = getOrderedDocs(state, 'TEST', allFiles);
+
+  const otherDocs = docs.filter((d) => d.category === 'other');
+  assert.strictEqual(otherDocs.length, 1, 'Only EXTRA.md should be other');
+  assert.strictEqual(otherDocs[0].title, 'EXTRA');
+});
+
+test('excludes task handoff and report docs from Other Documents when paths differ in format', () => {
+  const state = makeState({
+    execution: {
+      status: 'in_progress',
+      current_phase: 1,
+      phases: [
+        {
+          name: 'Phase One',
+          status: 'in_progress',
+          stage: 'executing',
+          current_task: 1,
+          tasks: [
+            {
+              name: 'Setup',
+              status: 'complete',
+              stage: 'complete',
+              docs: {
+                handoff: 'C:/dev/projects/TEST/tasks/TEST-TASK-P01-T01-SETUP.md',
+                report: 'C:/dev/projects/TEST/reports/TEST-TASK-P01-T01-SETUP-REPORT.md',
+                review: null,
+              },
+              review: { verdict: 'approved', action: 'advanced' },
+              report_status: 'complete',
+              has_deviations: false,
+              deviation_type: null,
+              retries: 0,
+            },
+          ],
+          docs: { phase_plan: null, phase_report: null, phase_review: null },
+          review: { verdict: null, action: null },
+        },
+      ],
+    },
+  });
+
+  const allFiles = [
+    'tasks/TEST-TASK-P01-T01-SETUP.md',
+    'reports/TEST-TASK-P01-T01-SETUP-REPORT.md',
+    'NOTES.md',
+  ];
+  const docs = getOrderedDocs(state, 'TEST', allFiles);
+
+  const otherDocs = docs.filter((d) => d.category === 'other');
+  assert.strictEqual(otherDocs.length, 1, 'Only NOTES.md should be other');
+  assert.strictEqual(otherDocs[0].title, 'NOTES');
 });
 
 console.log('\ngetAdjacentDocs');

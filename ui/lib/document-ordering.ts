@@ -1,5 +1,5 @@
 import { PLANNING_STEP_ORDER } from '@/types/state';
-import type { PlanningStepName, NormalizedProjectState } from '@/types/state';
+import type { PlanningStepName, ProjectState } from '@/types/state';
 import type { OrderedDoc } from '@/types/components';
 
 const STEP_TITLES: Record<PlanningStepName, string> = {
@@ -19,59 +19,65 @@ const STEP_TITLES: Record<PlanningStepName, string> = {
  * Only non-null paths are included.
  */
 export function getOrderedDocs(
-  state: NormalizedProjectState,
+  state: ProjectState,
   projectName: string,
   allFiles?: string[],
 ): OrderedDoc[] {
   const docs: OrderedDoc[] = [];
   const seenPaths = new Set<string>();
+  const seenBasenames = new Set<string>();
+  const basename = (p: string) => p.split(/[\/\\]/).pop() ?? p;
 
   const push = (path: string, title: string, category: OrderedDoc['category']) => {
     docs.push({ path, title, category });
     seenPaths.add(path);
+    seenBasenames.add(basename(path));
   };
 
   // 1. Planning docs
+  const stepMap = new Map(state.planning.steps.map(s => [s.name, s]));
   for (const step of PLANNING_STEP_ORDER) {
-    const output = state.planning.steps[step].output;
-    if (output != null) {
-      push(output, STEP_TITLES[step], 'planning');
+    const docPath = stepMap.get(step)?.doc_path;
+    if (docPath != null) {
+      push(docPath, STEP_TITLES[step], 'planning');
     }
   }
 
   // 2. Per phase
-  for (const phase of state.execution.phases) {
-    const n = phase.phase_number;
+  for (let i = 0; i < state.execution.phases.length; i++) {
+    const phase = state.execution.phases[i];
+    const n = i + 1;
 
-    if (phase.phase_doc != null) {
-      push(phase.phase_doc, `Phase ${n} Plan`, 'phase');
+    if (phase.docs.phase_plan != null) {
+      push(phase.docs.phase_plan, `Phase ${n} Plan`, 'phase');
     }
 
-    for (const task of phase.tasks) {
-      const m = task.task_number;
+    for (let j = 0; j < phase.tasks.length; j++) {
+      const task = phase.tasks[j];
+      const m = j + 1;
 
-      if (task.handoff_doc != null) {
-        push(task.handoff_doc, `P${n}-T${m}: ${task.title}`, 'task');
+      if (task.docs.handoff != null) {
+        push(task.docs.handoff, `P${n}-T${m}: ${task.name}`, 'task');
       }
-      if (task.report_doc != null) {
-        push(task.report_doc, `P${n}-T${m} Report`, 'task');
+      if (task.docs.report != null) {
+        push(task.docs.report, `P${n}-T${m} Report`, 'task');
       }
-      if (task.review_doc != null) {
-        push(task.review_doc, `P${n}-T${m} Review`, 'review');
+      if (task.docs.review != null) {
+        push(task.docs.review, `P${n}-T${m} Review`, 'review');
       }
     }
 
-    if (phase.phase_report != null) {
-      push(phase.phase_report, `Phase ${n} Report`, 'phase');
+    if (phase.docs.phase_report != null) {
+      push(phase.docs.phase_report, `Phase ${n} Report`, 'phase');
     }
-    if (phase.phase_review != null) {
-      push(phase.phase_review, `Phase ${n} Review`, 'review');
+    if (phase.docs.phase_review != null) {
+      push(phase.docs.phase_review, `Phase ${n} Review`, 'review');
     }
   }
 
   // 3. Final review
-  if (state.final_review.report_doc != null) {
-    push(state.final_review.report_doc, 'Final Review', 'review');
+  if (state.final_review.doc_path != null) {
+    push(state.final_review.doc_path, 'Final Review', 'review');
   }
 
   // 4 & 5. Error log + other docs from allFiles
@@ -83,7 +89,7 @@ export function getOrderedDocs(
     }
 
     const otherDocs = allFiles
-      .filter((f) => f.endsWith('.md') && !seenPaths.has(f))
+      .filter((f) => f.endsWith('.md') && !seenBasenames.has(basename(f)))
       .sort();
 
     for (const filePath of otherDocs) {
