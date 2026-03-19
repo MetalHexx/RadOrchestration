@@ -7,13 +7,13 @@ The orchestration system uses 9 specialized agents, each with a defined role, sc
 | Agent | Role | Writes |
 |-------|------|--------|
 | **Brainstormer** | Collaborative ideation with the human | `BRAINSTORMING.md` |
-| **Orchestrator** | Pipeline coordination — spawns agents, reads state | ERROR-LOG.md (via log-error skill) |
+| **Orchestrator** | Pipeline coordination — spawns agents, reads state | `ERROR-LOG.md` (via log-error skill) |
 | **Research** | Codebase and context exploration | `RESEARCH-FINDINGS.md` |
 | **Product Manager** | Requirements definition | `PRD.md` |
 | **UX Designer** | Interface and interaction design | `DESIGN.md` |
 | **Architect** | System architecture and master planning | `ARCHITECTURE.md`, `MASTER-PLAN.md` |
-| **Tactical Planner** | Task breakdown and phase reporting | Phase plans, task handoffs, phase reports |
-| **Coder** | Code implementation | Source code, tests, `TASK-REPORT.md` |
+| **Tactical Planner** | Task breakdown and phase reporting | `PHASE-PLAN`, `TASK-HANDOFF.md`, `PHASE-REPORT.md` |
+| **Coder** | Code implementation | Code, tests, `TASK-REPORT.md` |
 | **Reviewer** | Code and phase review | `CODE-REVIEW.md`, `PHASE-REVIEW.md` |
 
 ## Design Constraints
@@ -24,15 +24,15 @@ Every document type has exactly one agent that may create or modify it. This eli
 
 ### Read-Only Orchestrator
 
-The Orchestrator coordinates the entire pipeline but **never writes files**. It reads `state.json` to determine the current pipeline position, signals events to `pipeline.js` to get deterministic routing, and spawns the appropriate agent. This separation ensures the Orchestrator can't accidentally corrupt project state.
+The Orchestrator coordinates the entire pipeline but **never writes files**. It reads `state.json` to determine the current pipeline position, signals events to `pipeline.js` to get deterministic routing, and spawns the appropriate agent. This separation ensures the Orchestrator can't accidentally corrupt project state.  That said, agents are smart and the orchestrator can coordinate project correction if something goes wrong. 
 
 ### Self-Contained Coder
 
-The Coder agent reads **only its Task Handoff document** — a single file containing everything needed to complete the task: inlined contracts, interfaces, design tokens, acceptance criteria, and file targets. The Coder never reads the PRD, Architecture, or Design documents directly. This ensures tasks are atomic and reproducible.
+The Coder agent reads **only its Task Handoff document** — a single file containing everything needed to complete the task: inlined contracts, interfaces, design tokens, acceptance criteria, and file targets. The Coder never reads the PRD, Architecture, or Design documents directly. This ensures tasks are atomic, reproducible, high in signal, and low in noise.
 
 ### Pipeline Script as State Authority
 
-Only the pipeline script (`pipeline.js`) writes `state.json`. Before every write, the pipeline engine runs integrated state-transition validation to check all invariants. If validation fails, the write is rejected and the error is returned in the result object. No agent writes `state.json` directly.
+Only the pipeline script (`pipeline.js`) writes `state.json`. Before every write, the pipeline engine runs integrated state-transition validation to ensure the process is always on track and predictable. 
 
 ---
 
@@ -42,10 +42,10 @@ Only the pipeline script (`pipeline.js`) writes `state.json`. Before every write
 
 **Purpose:** Collaboratively explore and refine project ideas before entering the pipeline.
 
-The Brainstormer works directly with the human in a conversational loop — asking probing questions, exploring trade-offs, identifying scope boundaries, and converging on a well-defined concept. It operates outside the main pipeline and is entirely optional.
+The Brainstormer works directly with the human in a conversational loop — asking probing questions, exploring trade-offs, identifying scope boundaries, and converging on a well-defined goals. It operates outside the main pipeline and is entirely optional.
+
 **Input:** Human prompts and whatever you want.
 **Output:** `BRAINSTORMING.md` — validated ideas, scope boundaries, target users, and problem statements.
-
 **Skills:** `brainstorm`
 
 ---
@@ -71,20 +71,18 @@ The Research agent analyzes the existing project structure, technology stack, pa
 
 **Input:** Codebase, documentation, `BRAINSTORMING.md` (if exists)
 **Output:** `RESEARCH-FINDINGS.md` — codebase analysis, technology inventory, patterns discovered, constraints, and recommendations.
-
 **Skills:** `research-codebase`
 
 ---
 
 ### Product Manager
 
-**Purpose:** Create a Product Requirements Document from research findings.
+**Purpose:** Create a Product Requirements Document from research findings to keep plans grounded in reality.
 
 Translates technical research and brainstorming output into structured requirements with numbered items (FR-1, NFR-1) for cross-referencing throughout the pipeline.
 
 **Input:** `RESEARCH-FINDINGS.md`, `BRAINSTORMING.md`
 **Output:** `PRD.md` — functional requirements, non-functional requirements, user stories, etc.
-
 **Skills:** `create-prd`
 
 ---
@@ -97,7 +95,6 @@ Defines user flows, component layouts, interaction states, responsive behavior, 
 
 **Input:** `PRD.md`
 **Output:** `DESIGN.md` — user flows, layout specifications, component definitions, states, breakpoints, and accessibility requirements.
-
 **Skills:** `create-design`
 
 ---
@@ -106,17 +103,19 @@ Defines user flows, component layouts, interaction states, responsive behavior, 
 
 **Purpose:** Define system architecture and synthesize all planning documents into a Master Plan.
 
-The Architect reads Research, PRD, and Design to produce the technical architecture — system layers, module map, API contracts, database schemas, interfaces, and dependency graphs. It then synthesizes all planning documents into a Master Plan with phased execution.
+The Architect reads Research, PRD, and Design to produce the technical architecture — system layers, module map, API contracts, database schemas, interfaces, and dependency graphs. It then synthesizes all planning documents into a Master Plan with high level a phased execution plan.
+
 **Input:** `RESEARCH-FINDINGS.md`, `PRD.md`, `DESIGN.md`
 **Output:** `ARCHITECTURE.md`, `MASTER-PLAN.md`
-
 **Skills:** `create-architecture`, `create-master-plan`
 
 ---
 
 ### Tactical Planner
 
-**Purpose:** Builds phase plans, breaks phases into tasks, creates self-contained task handoffs, and generates phase reports.
+**Purpose:** Builds individual phase plans, breaks phases into tasks, creates self-contained task handoffs, and generates phase reports.  All plans and tasks created reference the planning documents to keep the work grounded in the original plans.  
+
+The tactical planner also reviews the Coder / Reviewer agents reports and reviews to keep the plans grounded in the current reality of the code.  For example, ff a code review fails, the task planner will issue corrective tasks.
 
 The Tactical Planner is a pure planning agent that operates in 3 modes:
 
@@ -124,11 +123,8 @@ The Tactical Planner is a pure planning agent that operates in 3 modes:
 2. **Task handoffs** — create self-contained coding instructions for the Coder
 3. **Phase reports** — aggregate task results and assess exit criteria
 
-The pipeline script (`pipeline.js`) handles all state mutations and validation. The Tactical Planner reads `state.json` for context but never writes it.
-
 **Input:** `ARCHITECTURE.md`, `PRD.md`, `MASTER-PLAN.md`, `DESIGN.md`, `CODE-REVIEW.md`, `TASK-REPORT.md`, `state.json`
 **Output:**`PHASE-PLAN.md`, `PHASE-REPORT.md`, `TASK-HANDOFF.md`
-
 **Skills:** `create-phase-plan`, `create-task-handoff`, `generate-phase-report`
 
 ---
@@ -141,36 +137,21 @@ Reads a single Task Handoff, implements the code changes, writes tests, runs the
 
 **Input:** `TASK-HANDOFF.md`
 **Output:** Source code, tests, `TASK-REPORT.md`
-
 **Skills:** `execute-coding-task`, `generate-task-report`, `run-tests`
 
 ---
 
 ### Reviewer
 
-**Purpose:** Review code changes and entire phases against planning documents.
+**Purpose:** Review code changes and entire phases checking for code quality, bugs, etc.  It also checks the code against all the planning documents to ensure the code is meeting all expected requirements.
+
+Issues found by the reviewer will signal for corrective tasks.  The Tactical Planner uses this to course correct the execution leading to code that works right the first time.
 
 The Reviewer operates at three levels:
 - **Code review** — evaluates individual task output against PRD, architecture, and design
 - **Phase review** — assesses cross-task integration, module consistency, and exit criteria
 - **Final review** — comprehensive project-level review before completion
 
-Reviews produce structured verdicts: `approved`, `changes_requested`, or `rejected`, with severity classifications that determine whether the pipeline auto-retries or halts.
-
 **Input:** Code changes, `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `PHASE-PLAN.md`, `TASK-REPORT.md`
 **Output:** `CODE-REVIEW.md`, `PHASE-REVIEW.md`
-
 **Skills:** `review-task`, `review-phase`
-
----
-
-## Adding New Agents
-
-The system includes a `create-agent` meta-skill for scaffolding new agents. New agents follow the same pattern:
-
-1. Define the agent in `.github/agents/{name}.agent.md` with frontmatter declaring tools, subagents, and skills
-2. Assign write permissions to specific document types
-3. Add the agent to the Orchestrator's subagent list if it participates in the pipeline
-4. Run the [validation tool](validation.md) to verify cross-references
-
-See [Skills](skills.md) for the `create-agent` and `create-skill` meta-skills.
