@@ -85,10 +85,12 @@ Before producing a task handoff, verify:
 - [ ] Is the task scope achievable in a single agent session?
 
 ## Skill Discovery and Assignment
-- Enumerate `.github/skills/` folder names. For each skill, read the `description` field from its `SKILL.md` frontmatter. 
+> **Note:** `{orch_root}` is your orchestration root folder — `.github` by default. Set via `system.orch_root` in `orchestration.yml`.
+
+- Enumerate `{orch_root}/skills/` folder names. For each skill, read the `description` field from its `SKILL.md` frontmatter. 
 - Evaluate each skill against this task's objective and implementation steps using the lens: "would a coder working on this task benefit from invoking this skill?" 
 - Select only skills with a direct functional match. Populate the `skills` frontmatter field with the selected skill folder names. 
-- Technology or framework names (e.g., "TypeScript", "React") are NOT valid values — only `.github/skills/` folder names.
+- Technology or framework names (e.g., "TypeScript", "React") are NOT valid values — only `{orch_root}/skills/` folder names.
 
 ## Template
 

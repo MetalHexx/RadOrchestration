@@ -25,8 +25,6 @@ interface ConfigDrawerProps {
 const SECTION_KEYS = [
   "project-storage",
   "pipeline-limits",
-  "error-handling",
-  "git-strategy",
   "human-gates",
 ];
 
@@ -36,12 +34,6 @@ function ConfigRow({ label, value }: { label: string; value: React.ReactNode }) 
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="text-sm text-foreground">{value}</span>
     </div>
-  );
-}
-
-function ArrayValue({ items }: { items: string[] }) {
-  return (
-    <span className="text-sm text-foreground">{items.join(", ")}</span>
   );
 }
 
@@ -68,7 +60,7 @@ function GateRow({
 function LoadingSkeleton() {
   return (
     <div className="space-y-4">
-      {Array.from({ length: 5 }).map((_, i) => (
+      {Array.from({ length: 3 }).map((_, i) => (
         <div key={i} className="space-y-2 rounded-lg bg-muted/50 p-3">
           <Skeleton className="h-5 w-32" />
           <Skeleton className="h-4 w-full" />
@@ -132,29 +124,6 @@ export function ConfigDrawer({
                 <ConfigRow
                   label="Max Consecutive Review Rejections"
                   value={config.pipelineLimits.maxConsecutiveReviewRejections}
-                />
-              </ConfigSection>
-
-              <ConfigSection value="error-handling" title="Error Handling">
-                <ConfigRow
-                  label="Critical"
-                  value={<ArrayValue items={config.errorHandling.critical} />}
-                />
-                <ConfigRow
-                  label="Minor"
-                  value={<ArrayValue items={config.errorHandling.minor} />}
-                />
-                <ConfigRow label="On Critical" value={config.errorHandling.onCritical} />
-                <ConfigRow label="On Minor" value={config.errorHandling.onMinor} />
-              </ConfigSection>
-
-              <ConfigSection value="git-strategy" title="Git Strategy">
-                <ConfigRow label="Strategy" value={config.gitStrategy.strategy} />
-                <ConfigRow label="Branch Prefix" value={config.gitStrategy.branchPrefix} />
-                <ConfigRow label="Commit Prefix" value={config.gitStrategy.commitPrefix} />
-                <ConfigRow
-                  label="Auto Commit"
-                  value={String(config.gitStrategy.autoCommit)}
                 />
               </ConfigSection>
 

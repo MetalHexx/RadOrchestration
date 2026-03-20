@@ -60,21 +60,27 @@ To customize the **output format** of documents a skill produces, modify the ski
 | `create-skill` | Scaffold new skills with `SKILL.md`, directory structure, and optional scripts/references | Any |
 | `validate-orchestration` | Validate all orchestration files — agents, skills, instructions, config, cross-references | Any |
 
+### Context Skills
+
+| Skill | Description | Used By |
+|-------|-------------|---------|
+| `orchestration-context` | Orchestration system context: agent roles, pipeline flow, naming conventions, key rules. Loaded by all pipeline agents to replace workspace-global instructions. | All Agents |
+
 ## Skill-Agent Composition
 
 Each agent is explicitly assigned skills in its `.agent.md` frontmatter. This table shows the full mapping:
 
 | Agent | Skills |
 |-------|--------|
-| Brainstormer | `brainstorm` |
-| Orchestrator | `log-error` |
-| Research | `research-codebase` |
-| Product Manager | `create-prd` |
-| UX Designer | `create-design` |
-| Architect | `create-architecture`, `create-master-plan` |
-| Tactical Planner | `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
-| Coder | `execute-coding-task`, `generate-task-report`, `run-tests` |
-| Reviewer | `review-task`, `review-phase` |
+| Brainstormer | `orchestration-context`, `brainstorm` |
+| Orchestrator | `orchestration-context`, `log-error` |
+| Research | `orchestration-context`, `research-codebase` |
+| Product Manager | `orchestration-context`, `create-prd` |
+| UX Designer | `orchestration-context`, `create-design` |
+| Architect | `orchestration-context`, `create-architecture`, `create-master-plan` |
+| Tactical Planner | `orchestration-context`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
+| Coder | `orchestration-context`, `execute-coding-task`, `generate-task-report`, `run-tests` |
+| Reviewer | `orchestration-context`, `review-task`, `review-phase` |
 
 ## Skill Recommendation in Task Handoffs
 
@@ -82,10 +88,12 @@ When creating task handoffs, the Tactical Planner enumerates the agent skills di
 
 ## Creating New Skills
 
+> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
+
 Use the `create-skill` meta-skill to scaffold a new skill:
 
 1. Invoke Copilot with a description of what the skill should do
-2. The skill is created under `.github/skills/{skill-name}/` with:
+2. The skill is created under `.github/skills/{skill-name}/` _(or your [configured root](configuration.md))_ with:
    - `SKILL.md` — the main skill file with frontmatter and instructions
    - `scripts/` — optional CLI tools
    - `references/` — optional background material

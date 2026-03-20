@@ -72,14 +72,12 @@ For every subdirectory in `.github/skills/`:
 Validates `.github/orchestration.yml`:
 
 - File can be read and parses as valid YAML
-- All required top-level sections are present: `version`, `projects`, `limits`, `errors`, `human_gates`, `git`
+- All required top-level sections are present: `version`, `projects`, `limits`, `human_gates`
 - Required limit fields are present: `max_phases`, `max_tasks_per_phase`, `max_retries_per_task`, `max_consecutive_review_rejections`
 - Enum fields contain only allowed values:
   - `projects.naming`: `SCREAMING_CASE | lowercase | numbered`
-  - `errors.on_critical`: `halt | report_and_continue`
-  - `errors.on_minor`: `retry | halt | skip`
-  - `git.strategy`: `single_branch | branch_per_phase | branch_per_task`
   - `human_gates.execution_mode`: `ask | phase | task | autonomous`
+- Optional `system.orch_root`: if present, must be a non-empty string (single folder name or absolute path)
 
 ### 5. Instructions
 For every `.instructions.md` file in `.github/instructions/`:

@@ -171,8 +171,9 @@ function checkConfigPaths(basePath, config) {
  * @param {object} context  - Shared DiscoveryContext (read-only for this module)
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: object}>>}
  */
-module.exports = async function checkCrossRefs(basePath, context) {
+module.exports = async function checkCrossRefs(basePath, context, _config, orchRoot) {
   try {
+    const root = orchRoot || '.github';
     const results = [];
 
     // Gracefully handle null/empty context sections (do NOT mutate context)

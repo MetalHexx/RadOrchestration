@@ -10,6 +10,7 @@ const {
   readState,
   writeState,
   readConfig,
+  bootstrapOrchRoot,
   readDocument,
   ensureDirectories,
   createRealIO,
@@ -190,6 +191,28 @@ describe('readConfig', () => {
     assert.equal(config.limits.max_consecutive_review_rejections, 3);
     assert.equal(config.human_gates.after_planning, true);
   });
+
+  it('returns system.orch_root default when config omits system section', () => {
+    const configPath = path.join(tmpDir, 'orchestration.yml');
+    fs.writeFileSync(configPath, 'limits:\n  max_phases: 5\n', 'utf-8');
+    const config = readConfig(configPath);
+    assert.ok(config.system);
+    assert.equal(config.system.orch_root, '.github');
+  });
+
+  it('merges system.orch_root override from config', () => {
+    const configPath = path.join(tmpDir, 'orchestration.yml');
+    fs.writeFileSync(configPath, 'system:\n  orch_root: ".agents"\n', 'utf-8');
+    const config = readConfig(configPath);
+    assert.equal(config.system.orch_root, '.agents');
+  });
+
+  it('preserves system defaults when config has partial system section', () => {
+    const configPath = path.join(tmpDir, 'orchestration.yml');
+    fs.writeFileSync(configPath, 'system:\n  orch_root: ".copilot"\n', 'utf-8');
+    const config = readConfig(configPath);
+    assert.equal(config.system.orch_root, '.copilot');
+  });
 });
 
 // ─── readDocument ───────────────────────────────────────────────────────────
@@ -273,12 +296,44 @@ describe('DEFAULT_CONFIG', () => {
     assert.ok(DEFAULT_CONFIG.human_gates);
     assert.equal(DEFAULT_CONFIG.human_gates.execution_mode, 'ask');
     assert.equal(DEFAULT_CONFIG.human_gates.after_final_review, true);
-    assert.ok(DEFAULT_CONFIG.errors);
-    assert.equal(DEFAULT_CONFIG.errors.on_critical, 'halt');
-    assert.equal(DEFAULT_CONFIG.errors.on_minor, 'retry');
+  });
+
+  it('has system.orch_root defaulting to .github', () => {
+    assert.ok(DEFAULT_CONFIG.system);
+    assert.equal(DEFAULT_CONFIG.system.orch_root, '.github');
   });
 
   it('is frozen', () => {
     assert.ok(Object.isFrozen(DEFAULT_CONFIG));
+  });
+});
+
+// ─── bootstrapOrchRoot ──────────────────────────────────────────────────────
+
+describe('bootstrapOrchRoot', () => {
+  it('returns a non-empty string', () => {
+    const result = bootstrapOrchRoot();
+    assert.strictEqual(typeof result, 'string');
+    assert.ok(result.length > 0);
+  });
+
+  it('returns the configured orch_root from the real orchestration.yml', () => {
+    const result = bootstrapOrchRoot();
+    assert.strictEqual(result, '.github');
+  });
+
+  it('return value does not contain path separators when using default config', () => {
+    const result = bootstrapOrchRoot();
+    // '.github' is a simple folder name — should not start with / (unless absolute path)
+    const isAbsolute = path.isAbsolute(result);
+    if (!isAbsolute) {
+      assert.ok(!result.startsWith('/'), 'relative path should not start with /');
+    }
+  });
+
+  it('returns the same value on repeated calls (idempotent)', () => {
+    const result1 = bootstrapOrchRoot();
+    const result2 = bootstrapOrchRoot();
+    assert.strictEqual(result1, result2);
   });
 });

@@ -8,15 +8,12 @@ const { parseYaml } = require('../utils/yaml-parser');
 
 const CATEGORY = 'config';
 
-const REQUIRED_SECTIONS = ['version', 'projects', 'limits', 'errors', 'human_gates', 'git'];
+const REQUIRED_SECTIONS = ['version', 'projects', 'limits', 'human_gates'];
 
 const REQUIRED_LIMIT_FIELDS = ['max_phases', 'max_tasks_per_phase', 'max_retries_per_task', 'max_consecutive_review_rejections'];
 
 const ENUM_RULES = {
   'projects.naming': ['SCREAMING_CASE', 'lowercase', 'numbered'],
-  'errors.on_critical': ['halt', 'report_and_continue'],
-  'errors.on_minor': ['retry', 'halt', 'skip'],
-  'git.strategy': ['single_branch', 'branch_per_phase', 'branch_per_task'],
   'human_gates.execution_mode': ['ask', 'phase', 'task', 'autonomous']
 };
 
@@ -46,15 +43,18 @@ function resolveDottedKey(config, dottedKey) {
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 /**
- * Validate .github/orchestration.yml configuration.
- * @param {string} basePath - Absolute path to workspace root (parent of .github/)
+ * Validate orchestration.yml configuration.
+ * @param {string} basePath - Absolute path to workspace root
  * @param {object} context  - Shared DiscoveryContext
+ * @param {object|null} _config - Parsed config (passed by entry point, unused — checkConfig reads its own copy)
+ * @param {string} [orchRoot='.github'] - Orchestration root folder name
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: object}>>}
  */
-module.exports = async function checkConfig(basePath, context) {
+module.exports = async function checkConfig(basePath, context, _config, orchRoot) {
+  const root = orchRoot || '.github';
   try {
     const results = [];
-    const configPath = path.join(basePath, '.github', 'orchestration.yml');
+    const configPath = path.join(basePath, root, 'orchestration.yml');
 
     // ── Read file ──────────────────────────────────────────────────────
     const content = readFile(configPath);
@@ -89,6 +89,43 @@ module.exports = async function checkConfig(basePath, context) {
     }
 
     context.config = config;
+
+    // ── Validate system.orch_root (optional section) ──────────────────────
+    if (config.system && config.system.orch_root !== undefined) {
+      const sysRoot = config.system.orch_root;
+      if (typeof sysRoot !== 'string' || sysRoot.trim() === '') {
+        results.push({
+          category: CATEGORY,
+          name: 'orchestration.yml — system.orch_root',
+          status: 'fail',
+          message: 'system.orch_root must be a non-empty string',
+          detail: {
+            expected: 'Non-empty string (e.g. ".github", ".agents", or absolute path)',
+            found: String(sysRoot)
+          }
+        });
+      } else if (!path.isAbsolute(sysRoot) && (sysRoot.includes('/') || sysRoot.includes('\\'))) {
+        // Path separator check applies ONLY to relative paths.
+        // Absolute paths like /shared/orch or C:\orch naturally contain separators.
+        results.push({
+          category: CATEGORY,
+          name: 'orchestration.yml — system.orch_root',
+          status: 'fail',
+          message: 'system.orch_root must be a single folder name (relative) or an absolute path',
+          detail: {
+            expected: 'Single folder name (no separators) or absolute path',
+            found: sysRoot
+          }
+        });
+      } else {
+        results.push({
+          category: CATEGORY,
+          name: 'orchestration.yml',
+          status: 'pass',
+          message: 'Valid system.orch_root'
+        });
+      }
+    }
 
     // ── Validate required sections (FR-9) ──────────────────────────────
     for (const section of REQUIRED_SECTIONS) {
@@ -190,34 +227,6 @@ module.exports = async function checkConfig(basePath, context) {
             message: `Valid limit: ${field}`
           });
         }
-      }
-    }
-
-    // ── Check severity overlap (FR-11) ─────────────────────────────────
-    if (config.errors && config.errors.severity) {
-      const critical = config.errors.severity.critical || [];
-      const minor = config.errors.severity.minor || [];
-      const overlap = critical.filter(item => minor.includes(item));
-
-      if (overlap.length > 0) {
-        results.push({
-          category: CATEGORY,
-          name: 'orchestration.yml',
-          status: 'fail',
-          message: 'Severity list overlap detected',
-          detail: {
-            expected: 'No overlap between critical and minor lists',
-            found: `Overlapping items: ${overlap.join(', ')}`,
-            context: 'critical ∩ minor must be empty'
-          }
-        });
-      } else {
-        results.push({
-          category: CATEGORY,
-          name: 'orchestration.yml',
-          status: 'pass',
-          message: 'No severity list overlap'
-        });
       }
     }
 

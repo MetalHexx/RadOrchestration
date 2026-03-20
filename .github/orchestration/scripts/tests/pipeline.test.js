@@ -94,6 +94,8 @@ describe('E2E: pipeline.js via child_process', () => {
     assert.strictEqual(typeof result.action, 'string');
     assert.strictEqual(result.action, 'spawn_research');
     assert.ok(result.mutations_applied.includes('project_initialized'));
+    assert.strictEqual(typeof result.orchRoot, 'string');
+    assert.ok(result.orchRoot.length > 0);
 
     // Verify files/directories on disk
     assert.ok(fs.existsSync(path.join(tmpDir, 'state.json')));
@@ -118,6 +120,8 @@ describe('E2E: pipeline.js via child_process', () => {
     assert.strictEqual(result.success, true);
     assert.deepStrictEqual(result.mutations_applied, []);
     assert.strictEqual(typeof result.action, 'string');
+    assert.strictEqual(typeof result.orchRoot, 'string');
+    assert.strictEqual(result.orchRoot, '.github');
   });
 
   it('missing --event flag returns exit code 1 with stderr message', () => {
@@ -164,7 +168,18 @@ describe('E2E: pipeline.js via child_process', () => {
       const result = JSON.parse(error.stdout.toString());
       assert.strictEqual(result.success, false);
       assert.ok(/Unknown event/.test(result.context.error));
+      assert.strictEqual(typeof result.orchRoot, 'string');
     }
+  });
+
+  it('all JSON results include orchRoot field with string value', () => {
+    const stdout = execFileSync('node', [pipelinePath, '--event', 'start', '--project-dir', tmpDir], {
+      encoding: 'utf-8'
+    });
+    const result = JSON.parse(stdout);
+    assert.strictEqual(typeof result.orchRoot, 'string');
+    assert.strictEqual(result.orchRoot, '.github');
+    assert.ok(Object.prototype.hasOwnProperty.call(result, 'orchRoot'));
   });
 
   it('stdout is valid JSON on both success and error cases', () => {

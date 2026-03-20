@@ -1,14 +1,26 @@
 # Configuration
 
-All system behavior is controlled by a single file: `.github/orchestration.yml`. This page documents every configuration option.
+All system behavior is controlled by a single file: `{orch_root}/orchestration.yml`. This page documents every configuration option.
+
+> **Note:** `{orch_root}` is your orchestration root folder — `.github` by default. Set via `system.orch_root` in `orchestration.yml`. See [Orchestration Root](#orchestration-root) below.
+
+> **Migration (ORCH-ROOT-CONFIG-2)**
+>
+> - `system.root` has been renamed to `system.orch_root` — the old name continues to work but is deprecated
+> - The `errors` and `git` configuration sections have been removed — they were declared but had no runtime effect
+> - Documentation commands now use `.github` as the concrete default instead of `{orch_root}`
 
 ## Quick Setup
 
 Run the `/configure-system` prompt in Copilot to create or update the configuration interactively. Or create the file manually:
 
 ```yaml
-# .github/orchestration.yml
+# {orch_root}/orchestration.yml
 version: "1.0"
+
+# ─── System ────────────────────────────────────────────────────────
+system:
+  orch_root: ".github"                    # Orchestration root folder (default: .github)
 
 projects:
   base_path: ".github/projects"
@@ -20,28 +32,6 @@ limits:
   max_retries_per_task: 2
   max_consecutive_review_rejections: 3
 
-errors:
-  severity:
-    critical:
-      - "build_failure"
-      - "security_vulnerability"
-      - "architectural_violation"
-      - "data_loss_risk"
-    minor:
-      - "test_failure"
-      - "lint_error"
-      - "review_suggestion"
-      - "missing_test_coverage"
-      - "style_violation"
-  on_critical: "halt"
-  on_minor: "retry"
-
-git:
-  strategy: "single_branch"
-  branch_prefix: "orch/"
-  commit_prefix: "[orch]"
-  auto_commit: true
-
 human_gates:
   after_planning: true
   execution_mode: "ask"
@@ -49,6 +39,43 @@ human_gates:
 ```
 
 ## Reference
+
+### `system`
+
+Core system settings.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `orch_root` | string | `".github"` | Orchestration root folder name or absolute path. All agents, skills, prompts, instructions, and pipeline scripts live under this folder. Accepts a single folder name (relative to workspace root) or an absolute path. |
+
+#### Orchestration Root
+
+The `system.orch_root` setting declares where orchestration system files live. It accepts a single folder name relative to the workspace root, or an absolute path.
+
+| Input | Resolved Root | Notes |
+|-------|---------------|-------|
+| _(omitted)_ | `.github` | Default — full backward compatibility; no `system` section needed |
+| `".github"` | `.github` | Explicit default — same behavior as omitted |
+| `".agents"` | `.agents` | VS Code alternate discovery folder |
+| `".copilot"` | `.copilot` | VS Code alternate discovery folder |
+| `"custom-orch"` | `custom-orch` | Any single folder name is accepted |
+| `"/shared/orch"` | `/shared/orch` | Absolute path — used as-is |
+| `"C:\\orch"` | `C:\orch` | Windows absolute path — used as-is |
+
+**Validation rules:**
+- Must be a non-empty string
+- Relative paths: must be a single folder name (no `/` or `\` path separators)
+- Absolute paths: accepted as-is via `path.isAbsolute()` — no separator restriction
+
+**Relationship to `projects.base_path`:** The `system.orch_root` setting controls where orchestration system files live (agents, skills, prompts, instructions, scripts, config). It is independent of `projects.base_path`, which controls where project artifacts are stored. Changing `system.orch_root` does NOT move or affect project storage.
+
+**UI bootstrap (`ORCH_ROOT` env var):** The UI dashboard needs to locate `orchestration.yml` before it can read `system.orch_root`. For non-default root deployments, set the `ORCH_ROOT` environment variable to the root folder name:
+
+```bash
+ORCH_ROOT=.agents npm run dev
+```
+
+For default `.github` deployments, no environment variable is needed.
 
 ### `projects`
 
@@ -64,7 +91,7 @@ The `base_path` setting accepts both relative and absolute paths:
 - **Relative paths** (e.g., `".github/projects"`) are resolved from the workspace root. This is the default and works for standard single-workspace setups.
 - **Absolute paths** (e.g., `"/shared/projects"`) are used as-is. This is useful for **git worktree setups** where multiple worktrees need to share a single project folder outside any individual worktree.
 
-When you change `base_path`, the `applyTo` glob in `.github/instructions/project-docs.instructions.md` must also be updated to match — otherwise, Copilot's scoped instructions will silently stop applying to project files. You can either:
+When you change `base_path`, the `applyTo` glob in `{orch_root}/instructions/project-docs.instructions.md` must also be updated to match — otherwise, Copilot's scoped instructions will silently stop applying to project files. You can either:
 
 1. Update `applyTo` manually to `{new_base_path}/**`
 2. Run `/configure-system`, which updates it automatically
@@ -84,31 +111,6 @@ Pipeline scope guards that prevent runaway execution.
 
 These limits are read from `orchestration.yml` at runtime by the pipeline engine — they are not copied into `state.json` at project initialization. The [State Transition Validator](scripts.md) enforces them on every state write by reading from the configuration file directly.
 
-### `errors`
-
-> **Planned — not yet functional.** This section documents a planned feature. The pipeline does not currently use these settings. They are validated for syntax but have no runtime effect.
-
-Error classification determines the pipeline's automatic response.
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `severity.critical` | string[] | See above | Error types that halt the pipeline and require human intervention |
-| `severity.minor` | string[] | See above | Error types that trigger automatic retry via corrective task |
-| `on_critical` | string | `"halt"` | Response to critical errors. Options: `halt`, `report_and_continue` |
-| `on_minor` | string | `"retry"` | Response to minor errors. Options: `retry`, `halt`, `skip` |
-
-### `git`
-
-> **Planned — not yet functional.** This section documents a planned feature. The pipeline does not currently use these settings. They are validated for syntax but have no runtime effect.
-
-Git strategy for orchestration branches and commits.
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `strategy` | string | `"single_branch"` | Branching strategy. Options: `single_branch`, `branch_per_phase`, `branch_per_task` |
-| `branch_prefix` | string | `"orch/"` | Prefix for orchestration branches |
-| `commit_prefix` | string | `"[orch]"` | Prefix for commit messages |
-| `auto_commit` | boolean | `true` | Whether agents commit after task completion |
 
 ### `human_gates`
 
@@ -139,14 +141,14 @@ See [state-v4.schema.json](../.github/orchestration/schemas/state-v4.schema.json
 
 Changes to `orchestration.yml` affect all projects on the next pipeline invocation, since limits are read at runtime rather than copied into `state.json`.
 
-If you change `projects.base_path`, run `/configure-system` — it automatically scans the `.github/` directory for hardcoded path references and updates them. It also updates the `applyTo` glob in `.github/instructions/project-docs.instructions.md` to match the new path. If you skip this step, run the [validation tool](validation.md) — it warns if `applyTo` and `base_path` are out of sync.
+If you change `projects.base_path`, run `/configure-system` — it automatically scans the `{orch_root}/` directory for hardcoded path references and updates them. It also updates the `applyTo` glob in `{orch_root}/instructions/project-docs.instructions.md` to match the new path. If you skip this step, run the [validation tool](validation.md) — it warns if `applyTo` and `base_path` are out of sync.
 
 ## Validation
 
 Run the [validation tool](validation.md) to check your configuration:
 
 ```bash
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --category config
+node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js --category config
 ```
 
 This checks:

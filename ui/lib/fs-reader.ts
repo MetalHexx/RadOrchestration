@@ -11,14 +11,35 @@ import { parseYaml } from '@/lib/yaml-parser';
 /**
  * Read and parse orchestration.yml from the workspace root.
  *
+ * Bootstrap strategy:
+ * 1. Check the `ORCH_ROOT` environment variable for the orchestration root folder name.
+ * 2. Fall back to `'.github'` when `ORCH_ROOT` is unset or empty.
+ * 3. Read `orchestration.yml` from the resolved bootstrap root.
+ * 4. Use `system.orch_root` from the loaded config for subsequent operations (downstream responsibility).
+ *
  * @param workspaceRoot - Absolute path to workspace root
  * @returns Parsed OrchestrationConfig
  * @throws If orchestration.yml does not exist or is invalid YAML
  */
 export async function readConfig(workspaceRoot: string): Promise<OrchestrationConfig> {
-  const configPath = path.join(workspaceRoot, '.github', 'orchestration.yml');
+  const bootstrapRoot = process.env.ORCH_ROOT || '.github';
+  const configPath = path.join(workspaceRoot, bootstrapRoot, 'orchestration.yml');
   const content = await readFile(configPath, 'utf-8');
   return parseYaml<OrchestrationConfig>(content);
+}
+
+/**
+ * Resolve the effective orchestration root folder name from a loaded config.
+ *
+ * Returns `config.system.orch_root` when present, otherwise defaults to `'.github'`.
+ * This is the canonical way for downstream consumers (e.g., API routes) to obtain
+ * the orchestration root after a config has been loaded.
+ *
+ * @param config - A parsed OrchestrationConfig object
+ * @returns The effective orchestration root folder name (e.g., `'.github'`, `'.agents'`)
+ */
+export function resolveOrchRoot(config: OrchestrationConfig): string {
+  return config.system?.orch_root ?? '.github';
 }
 
 /**

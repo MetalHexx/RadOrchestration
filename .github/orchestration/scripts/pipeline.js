@@ -30,6 +30,8 @@ function main() {
     ensureDirectories: stateIo.ensureDirectories,
   };
   const result = processEvent(args.event, args.projectDir, args.context || {}, io, args.configPath);
+  const orchRoot = stateIo.bootstrapOrchRoot();
+  result.orchRoot = orchRoot;
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   process.exit(result.success ? 0 : 1);
 }

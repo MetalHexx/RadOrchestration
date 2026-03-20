@@ -133,7 +133,7 @@ When spawned to generate a phase report after all tasks complete:
 12. **Save** to `{PROJECT-DIR}/reports/{NAME}-PHASE-REPORT-P{NN}.md`
 
 ## Skills
-
+- **`orchestration-context`**: Instructions on operating as an agent within the orchestration system.
 - **`create-phase-plan`**: Guides phase planning and provides template
 - **`create-task-handoff`**: Guides task handoff creation and provides template
 - **`generate-phase-report`**: Guides phase report generation and provides template

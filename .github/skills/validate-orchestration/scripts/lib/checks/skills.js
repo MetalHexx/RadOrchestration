@@ -40,10 +40,11 @@ function parseTemplateLinks(body) {
  * @param {object} context  - Mutable shared discovery context
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: object}>>}
  */
-async function checkSkills(basePath, context) {
+async function checkSkills(basePath, context, _config, orchRoot) {
   try {
+    const root = orchRoot || '.github';
     const results = [];
-    const skillsDir = path.join(basePath, '.github', 'skills');
+    const skillsDir = path.join(basePath, root, 'skills');
 
     // Discover skill subdirectories
     const dirs = listDirs(skillsDir);

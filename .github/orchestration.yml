@@ -4,6 +4,10 @@
 
 version: "1.0"
 
+# ─── System ────────────────────────────────────────────────────────
+system:
+  orch_root: ".github"                   # Orchestration root folder (relative name or absolute path)
+
 # ─── Project Storage ───────────────────────────────────────────────
 projects:
   # base_path accepts both relative paths (resolved from workspace root)
@@ -17,30 +21,6 @@ limits:
   max_tasks_per_phase: 8                 # Maximum tasks per phase
   max_retries_per_task: 2                # Auto-retries before escalation
   max_consecutive_review_rejections: 3   # Reviewer rejects before human escalation
-
-# ─── Error Handling ────────────────────────────────────────────────
-errors:
-  severity:
-    critical:                            # Fail-fast → stop pipeline → human
-      - "build_failure"
-      - "security_vulnerability"
-      - "architectural_violation"
-      - "data_loss_risk"
-    minor:                               # Auto-retry via corrective task
-      - "test_failure"
-      - "lint_error"
-      - "review_suggestion"
-      - "missing_test_coverage"
-      - "style_violation"
-  on_critical: "halt"                    # halt | report_and_continue
-  on_minor: "retry"                      # retry | halt | skip
-
-# ─── Git Strategy ──────────────────────────────────────────────────
-git:
-  strategy: "single_branch"             # single_branch | branch_per_phase | branch_per_task
-  branch_prefix: "orch/"                # Prefix for orchestration branches
-  commit_prefix: "[orch]"               # Prefix for commit messages
-  auto_commit: true                     # Agents commit after task completion
 
 # ─── Human Gate Defaults ───────────────────────────────────────────
 human_gates:

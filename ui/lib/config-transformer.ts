@@ -13,18 +13,6 @@ export function transformConfig(raw: OrchestrationConfig): ParsedConfig {
       maxRetriesPerTask: raw.limits.max_retries_per_task,
       maxConsecutiveReviewRejections: raw.limits.max_consecutive_review_rejections,
     },
-    errorHandling: {
-      critical: raw.errors.severity.critical,
-      minor: raw.errors.severity.minor,
-      onCritical: raw.errors.on_critical,
-      onMinor: raw.errors.on_minor,
-    },
-    gitStrategy: {
-      strategy: raw.git.strategy,
-      branchPrefix: raw.git.branch_prefix,
-      commitPrefix: raw.git.commit_prefix,
-      autoCommit: raw.git.auto_commit,
-    },
     humanGates: {
       afterPlanning: { value: raw.human_gates.after_planning, locked: true as const },
       executionMode: raw.human_gates.execution_mode,

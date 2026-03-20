@@ -1,5 +1,7 @@
 # Getting Started
 
+> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
+
 This guide walks you through setting up the orchestration system and running your first project.
 
 ## Prerequisites
@@ -21,11 +23,11 @@ This guide walks you through setting up the orchestration system and running you
 
 3. **Copy into your project** (if using in an existing workspace)
 
-   Copy the `.github/` directory into the root of your target project. It contains all agents, skills, instructions, configuration, and orchestration scripts.
+   Copy the `.github/` directory _(or your [configured root](configuration.md))_ into the root of your target project. It contains all agents, skills, instructions, configuration, and orchestration scripts.
 
 4. **Configure the system**
 
-   Run the `/configure-system` prompt in Copilot. This creates or updates `.github/orchestration.yml` with your preferences — project storage path, pipeline limits, git strategy, and human gate settings.
+   Run the `/configure-system` prompt in Copilot. This creates or updates `.github/orchestration.yml` _(or your [configured root](configuration.md))_ with your preferences — project storage path, pipeline limits, and human gate settings.
 
    Or manually edit `.github/orchestration.yml` — see [Configuration](configuration.md) for all options.
 
@@ -95,6 +97,7 @@ The Orchestrator reads `state.json` directly to determine the current project st
 Validate that all orchestration files are correctly configured:
 
 ```bash
+# Default .github root shown. Adjust if you configured a custom orch_root.
 node .github/skills/validate-orchestration/scripts/validate-orchestration.js
 ```
 

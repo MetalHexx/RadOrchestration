@@ -61,7 +61,7 @@ When spawned by the Orchestrator:
 13. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-DESIGN.md`)
 
 ## Skills
-
+- **`orchestration-context`**: Instructions on operating as an agent within the orchestration system.
 - **`create-design`**: Primary skill — guides design workflow and provides the Design template
 
 ## Output Contract

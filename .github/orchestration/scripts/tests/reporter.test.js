@@ -46,7 +46,7 @@ const mixedResults = [
   { category: 'agents', name: 'research.agent.md', status: 'fail', message: 'missing required field: argument-hint', detail: { expected: 'non-empty string value', found: 'field absent' } },
   { category: 'agents', name: 'coder.agent.md', status: 'warn', message: 'description length is 42 chars', detail: { expected: '>= 50 chars', found: '42 chars' } },
   { category: 'config', name: 'orchestration.yml', status: 'pass', message: 'all required fields present' },
-  { category: 'config', name: 'orchestration.yml \u2014 git.strategy', status: 'fail', message: 'invalid git strategy', detail: { expected: 'branch-per-phase | branch-per-task | single-branch', found: 'yolo', context: 'at config.git.strategy' } },
+  { category: 'config', name: 'orchestration.yml — human_gates.execution_mode', status: 'fail', message: 'invalid execution mode', detail: { expected: 'ask | phase | task | autonomous', found: 'yolo', context: 'at config.human_gates.execution_mode' } },
 ];
 
 const allPassResults = [
@@ -101,7 +101,7 @@ const verboseOutput = captureStop();
 assert(verboseOutput.includes('Expected: name, description, tools'), 'verbose mode shows detail for pass results');
 assert(verboseOutput.includes('Found: 42 chars'), 'verbose mode shows detail for warn results');
 assert(verboseOutput.includes('Expected: non-empty string value'), 'verbose mode shows detail for fail results');
-assert(verboseOutput.includes('at config.git.strategy'), 'verbose mode shows context when present');
+assert(verboseOutput.includes('at config.human_gates.execution_mode'), 'verbose mode shows context when present');
 
 // Test 4: Quiet mode — only summary bar
 originalWrite.call(process.stdout, '\nQuiet mode:\n');

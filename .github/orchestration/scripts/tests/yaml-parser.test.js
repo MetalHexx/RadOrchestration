@@ -41,30 +41,6 @@ limits:
   max_retries_per_task: 2                # Auto-retries before escalation
   max_consecutive_review_rejections: 3   # Reviewer rejects before human escalation
 
-# ─── Error Handling ────────────────────────────────────────────────
-errors:
-  severity:
-    critical:                            # Fail-fast → stop pipeline → human
-      - "build_failure"
-      - "security_vulnerability"
-      - "architectural_violation"
-      - "data_loss_risk"
-    minor:                               # Auto-retry via corrective task
-      - "test_failure"
-      - "lint_error"
-      - "review_suggestion"
-      - "missing_test_coverage"
-      - "style_violation"
-  on_critical: "halt"                    # halt | report_and_continue
-  on_minor: "retry"                      # retry | halt | skip
-
-# ─── Git Strategy ──────────────────────────────────────────────────
-git:
-  strategy: "single_branch"             # single_branch | branch_per_phase | branch_per_task
-  branch_prefix: "orch/"                # Prefix for orchestration branches
-  commit_prefix: "[orch]"               # Prefix for commit messages
-  auto_commit: true                     # Agents commit after task completion
-
 # ─── Human Gate Defaults ───────────────────────────────────────────
 human_gates:
   after_planning: true                   # Always gate after master plan (hard default)
@@ -88,31 +64,6 @@ const EXPECTED = {
     max_retries_per_task: 2,
     max_consecutive_review_rejections: 3
   },
-  errors: {
-    severity: {
-      critical: [
-        'build_failure',
-        'security_vulnerability',
-        'architectural_violation',
-        'data_loss_risk'
-      ],
-      minor: [
-        'test_failure',
-        'lint_error',
-        'review_suggestion',
-        'missing_test_coverage',
-        'style_violation'
-      ]
-    },
-    on_critical: 'halt',
-    on_minor: 'retry'
-  },
-  git: {
-    strategy: 'single_branch',
-    branch_prefix: 'orch/',
-    commit_prefix: '[orch]',
-    auto_commit: true
-  },
   human_gates: {
     after_planning: true,
     execution_mode: 'ask',
@@ -133,8 +84,6 @@ test('Top-level keys parse correctly', () => {
   assert.ok('version' in result);
   assert.ok('projects' in result);
   assert.ok('limits' in result);
-  assert.ok('errors' in result);
-  assert.ok('git' in result);
   assert.ok('human_gates' in result);
 });
 
@@ -142,12 +91,7 @@ test('Nested objects parse at multiple depth levels', () => {
   const result = parseYaml(REFERENCE_YAML);
   assert.ok(result !== null);
   assert.strictEqual(result.projects.base_path, '.github/projects');
-  assert.deepStrictEqual(result.errors.severity.critical, [
-    'build_failure',
-    'security_vulnerability',
-    'architectural_violation',
-    'data_loss_risk'
-  ]);
+  assert.strictEqual(result.limits.max_phases, 10);
 });
 
 // ─── Type Coercion ──────────────────────────────────────────────────────────
@@ -164,8 +108,6 @@ test('Quoted strings have quotes stripped', () => {
   assert.ok(result !== null);
   assert.strictEqual(result.version, '1.0');
   assert.strictEqual(result.projects.base_path, '.github/projects');
-  assert.strictEqual(result.git.commit_prefix, '[orch]');
-  assert.strictEqual(result.git.branch_prefix, 'orch/');
   assert.strictEqual(result.projects.naming, 'SCREAMING_CASE');
 });
 
@@ -182,8 +124,6 @@ test('Integer values are JavaScript numbers', () => {
 test('Boolean values are JavaScript booleans', () => {
   const result = parseYaml(REFERENCE_YAML);
   assert.ok(result !== null);
-  assert.strictEqual(result.git.auto_commit, true);
-  assert.strictEqual(typeof result.git.auto_commit, 'boolean');
   assert.strictEqual(result.human_gates.after_planning, true);
   assert.strictEqual(result.human_gates.after_final_review, true);
 });
@@ -203,23 +143,11 @@ test('Boolean case-sensitivity: quoted "true" is string, unquoted true is boolea
 // ─── Arrays ─────────────────────────────────────────────────────────────────
 
 test('Array items using - item syntax produce JavaScript arrays', () => {
-  const result = parseYaml(REFERENCE_YAML);
+  const yaml = 'items:\n  - "alpha"\n  - "beta"\n  - "gamma"\n';
+  const result = parseYaml(yaml);
   assert.ok(result !== null);
-  assert.ok(Array.isArray(result.errors.severity.critical));
-  assert.deepStrictEqual(result.errors.severity.critical, [
-    'build_failure',
-    'security_vulnerability',
-    'architectural_violation',
-    'data_loss_risk'
-  ]);
-  assert.ok(Array.isArray(result.errors.severity.minor));
-  assert.deepStrictEqual(result.errors.severity.minor, [
-    'test_failure',
-    'lint_error',
-    'review_suggestion',
-    'missing_test_coverage',
-    'style_violation'
-  ]);
+  assert.ok(Array.isArray(result.items));
+  assert.deepStrictEqual(result.items, ['alpha', 'beta', 'gamma']);
 });
 
 // ─── Comments ───────────────────────────────────────────────────────────────
@@ -309,12 +237,12 @@ test('Single-quoted strings have quotes stripped', () => {
 });
 
 test('Nested structures at 3 depth levels', () => {
-  const yaml = 'errors:\n  severity:\n    critical:\n      - "build_failure"\n      - "security_vulnerability"\n';
+  const yaml = 'level1:\n  level2:\n    level3:\n      - "item_a"\n      - "item_b"\n';
   const result = parseYaml(yaml);
   assert.ok(result !== null);
-  assert.deepStrictEqual(result.errors.severity.critical, [
-    'build_failure',
-    'security_vulnerability'
+  assert.deepStrictEqual(result.level1.level2.level3, [
+    'item_a',
+    'item_b'
   ]);
 });
 

@@ -301,10 +301,11 @@ function validateAgent(filePath, filename, context) {
  * @param {object} context  - Mutable shared discovery context
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: object}>>}
  */
-async function checkAgents(basePath, context) {
+async function checkAgents(basePath, context, _config, orchRoot) {
   try {
+    const root = orchRoot || '.github';
     const results = [];
-    const agentsDir = path.join(basePath, '.github', 'agents');
+    const agentsDir = path.join(basePath, root, 'agents');
 
     // Discover agent files
     const agentFiles = listFiles(agentsDir, '.agent.md');

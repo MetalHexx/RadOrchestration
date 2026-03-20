@@ -47,10 +47,11 @@ function validateTools(tools, filename) {
  * @param {object} context  - Mutable shared discovery context
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: object}>>}
  */
-async function checkPrompts(basePath, context) {
+async function checkPrompts(basePath, context, _config, orchRoot) {
   try {
+    const root = orchRoot || '.github';
     const results = [];
-    const promptsDir = path.join(basePath, '.github', 'prompts');
+    const promptsDir = path.join(basePath, root, 'prompts');
 
     // Discover prompt files
     const files = listFiles(promptsDir, '.prompt.md');

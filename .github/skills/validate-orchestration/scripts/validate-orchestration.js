@@ -3,6 +3,8 @@
 
 const path = require('path');
 const { report, printHelp } = require('./lib/reporter');
+const { readFile } = require('./lib/utils/fs-helpers');
+const { parseYaml } = require('./lib/utils/yaml-parser');
 const checkStructure = require('./lib/checks/structure');
 const checkAgents = require('./lib/checks/agents');
 const checkSkills = require('./lib/checks/skills');
@@ -65,11 +67,34 @@ function parseArgs(argv) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Resolve the orchestration root folder name from orchestration.yml.
+ * Uses __dirname-relative discovery (same pattern as pipeline scripts).
+ * @param {string} basePath - Workspace root (reserved — config resolved via __dirname)
+ * @returns {string} Folder name, e.g. '.github'
+ */
+function bootstrapOrchRoot(basePath) {
+  try {
+    const configPath = path.resolve(__dirname, '../../../orchestration.yml');
+    const content = readFile(configPath);
+    if (content === null) return '.github';
+    const parsed = parseYaml(content);
+    if (parsed && parsed.system && typeof parsed.system.orch_root === 'string' && parsed.system.orch_root.trim() !== '') {
+      return parsed.system.orch_root;
+    }
+    return '.github';
+  } catch {
+    return '.github';
+  }
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
+  const basePath = path.resolve(process.cwd());
+  const orchRoot = bootstrapOrchRoot(basePath);
 
   if (options.help) {
-    printHelp();
+    printHelp(orchRoot);
     process.exit(0);
   }
 
@@ -77,8 +102,6 @@ async function main() {
     console.error(`Error: Unknown category "${options.category}". Valid categories: ${CATEGORIES.join(', ')}`);
     process.exit(1);
   }
-
-  const basePath = path.resolve(process.cwd());
 
   const context = {
     agents: new Map(),
@@ -93,7 +116,7 @@ async function main() {
   const allResults = [];
   for (const mod of CHECK_MODULES) {
     if (mod.check === null) continue;
-    const results = await mod.check(basePath, context, context.config);
+    const results = await mod.check(basePath, context, context.config, orchRoot);
     allResults.push(...results);
   }
 
@@ -118,4 +141,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArgs };
+module.exports = { parseArgs, bootstrapOrchRoot };

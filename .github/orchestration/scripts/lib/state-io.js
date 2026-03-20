@@ -10,20 +10,13 @@ const { SCHEMA_VERSION } = require('./constants');
 // ─── Default Configuration ──────────────────────────────────────────────────
 
 const DEFAULT_CONFIG = Object.freeze({
+  system: { orch_root: '.github' },
   projects: { base_path: '.github/projects', naming: 'SCREAMING_CASE' },
   limits: {
     max_phases: 10,
     max_tasks_per_phase: 8,
     max_retries_per_task: 2,
     max_consecutive_review_rejections: 3,
-  },
-  errors: {
-    severity: {
-      critical: ['build_failure', 'security_vulnerability', 'architectural_violation', 'data_loss_risk'],
-      minor: ['test_failure', 'lint_error', 'review_suggestion', 'missing_test_coverage', 'style_violation'],
-    },
-    on_critical: 'halt',
-    on_minor: 'retry',
   },
   human_gates: { after_planning: true, execution_mode: 'ask', after_final_review: true },
 });
@@ -65,9 +58,9 @@ function mergeConfig(parsed) {
   return {
     ...DEFAULT_CONFIG,
     ...parsed,
+    system: { ...DEFAULT_CONFIG.system, ...(parsed.system || {}) },
     projects: { ...DEFAULT_CONFIG.projects, ...(parsed.projects || {}) },
     limits: { ...DEFAULT_CONFIG.limits, ...(parsed.limits || {}) },
-    errors: { ...DEFAULT_CONFIG.errors, ...(parsed.errors || {}) },
     human_gates: { ...DEFAULT_CONFIG.human_gates, ...(parsed.human_gates || {}) },
   };
 }
@@ -87,6 +80,29 @@ function readConfig(configPath) {
     }
   }
   return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+}
+
+// ─── bootstrapOrchRoot ─────────────────────────────────────────────────────
+
+/**
+ * Resolve the orchestration root folder from orchestration.yml.
+ * Uses __dirname-relative discovery (same pattern as validate-orchestration.js).
+ * Supports both relative folder names and absolute paths.
+ * @returns {string} The orch_root value, e.g. '.github' or '/shared/orch'
+ */
+function bootstrapOrchRoot() {
+  try {
+    const configPath = path.resolve(__dirname, '../../../orchestration.yml');
+    const content = readFile(configPath);
+    if (content === null) return '.github';
+    const parsed = parseYaml(content);
+    if (parsed && parsed.system && typeof parsed.system.orch_root === 'string' && parsed.system.orch_root.trim() !== '') {
+      return parsed.system.orch_root;
+    }
+    return '.github';
+  } catch {
+    return '.github';
+  }
 }
 
 // ─── readDocument ───────────────────────────────────────────────────────────
@@ -119,6 +135,7 @@ module.exports = {
   readState,
   writeState,
   readConfig,
+  bootstrapOrchRoot,
   readDocument,
   ensureDirectories,
   createRealIO,

@@ -48,10 +48,11 @@ function checkApplyToSync(filename, frontmatter, config) {
  * @param {object} [config] - Parsed orchestration.yml config (optional; needed for applyTo sync check)
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: object}>>}
  */
-async function checkInstructions(basePath, context, config) {
+async function checkInstructions(basePath, context, config, orchRoot) {
   try {
+    const root = orchRoot || '.github';
     const results = [];
-    const instrDir = path.join(basePath, '.github', 'instructions');
+    const instrDir = path.join(basePath, root, 'instructions');
 
     // Discover instruction files
     const files = listFiles(instrDir, '.instructions.md');

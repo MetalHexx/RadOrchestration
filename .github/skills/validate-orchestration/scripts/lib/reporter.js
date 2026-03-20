@@ -290,13 +290,15 @@ function report(results, options) {
 
 /**
  * Print the --help usage text to stdout.
+ * @param {string} [orchRoot='.github'] - Orchestration root folder name
  */
-function printHelp() {
+function printHelp(orchRoot) {
   try {
+    const root = orchRoot || '.github';
     const helpText = [
       'Orchestration Validator v1.0.0',
       '',
-      'Usage: node .github/skills/validate-orchestration/scripts/validate-orchestration.js [options]',
+      `Usage: node ${root}/skills/validate-orchestration/scripts/validate-orchestration.js [options]`,
       '',
       'Options:',
       '  -h, --help              Show this help message and exit',
@@ -306,7 +308,7 @@ function printHelp() {
       '      --no-color          Suppress ANSI color codes',
       '',
       'Categories:',
-      '  structure        .github/ directory structure and required files',
+      `  structure        ${root}/ directory structure and required files`,
       '  agents           Agent file frontmatter, tools, and body conventions',
       '  skills           Skill directory structure, SKILL.md frontmatter',
       '  config           orchestration.yml field presence and value validation',
@@ -318,11 +320,11 @@ function printHelp() {
       '  NO_COLOR=1       Equivalent to --no-color',
       '',
       'Examples:',
-      '  node .github/skills/validate-orchestration/scripts/validate-orchestration.js                  Run all checks',
-      '  node .github/skills/validate-orchestration/scripts/validate-orchestration.js --category agents  Check agents only',
-      '  node .github/skills/validate-orchestration/scripts/validate-orchestration.js --verbose          Detailed output',
-      '  node .github/skills/validate-orchestration/scripts/validate-orchestration.js --quiet            Summary only',
-      '  node .github/skills/validate-orchestration/scripts/validate-orchestration.js --no-color         CI-friendly output',
+      `  node ${root}/skills/validate-orchestration/scripts/validate-orchestration.js                  Run all checks`,
+      `  node ${root}/skills/validate-orchestration/scripts/validate-orchestration.js --category agents  Check agents only`,
+      `  node ${root}/skills/validate-orchestration/scripts/validate-orchestration.js --verbose          Detailed output`,
+      `  node ${root}/skills/validate-orchestration/scripts/validate-orchestration.js --quiet            Summary only`,
+      `  node ${root}/skills/validate-orchestration/scripts/validate-orchestration.js --no-color         CI-friendly output`,
     ].join('\n') + '\n';
 
     write(helpText);

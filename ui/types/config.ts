@@ -1,5 +1,8 @@
 export interface OrchestrationConfig {
   version: string;
+  system?: {
+    orch_root?: string;
+  };
   projects: {
     base_path: string;
     naming: string;
@@ -9,20 +12,6 @@ export interface OrchestrationConfig {
     max_tasks_per_phase: number;
     max_retries_per_task: number;
     max_consecutive_review_rejections: number;
-  };
-  errors: {
-    severity: {
-      critical: string[];
-      minor: string[];
-    };
-    on_critical: string;
-    on_minor: string;
-  };
-  git: {
-    strategy: string;
-    branch_prefix: string;
-    commit_prefix: string;
-    auto_commit: boolean;
   };
   human_gates: {
     after_planning: boolean;
@@ -42,18 +31,6 @@ export interface ParsedConfig {
     maxTasksPerPhase: number;
     maxRetriesPerTask: number;
     maxConsecutiveReviewRejections: number;
-  };
-  errorHandling: {
-    critical: string[];
-    minor: string[];
-    onCritical: string;
-    onMinor: string;
-  };
-  gitStrategy: {
-    strategy: string;
-    branchPrefix: string;
-    commitPrefix: string;
-    autoCommit: boolean;
   };
   humanGates: {
     afterPlanning: { value: boolean; locked: true };

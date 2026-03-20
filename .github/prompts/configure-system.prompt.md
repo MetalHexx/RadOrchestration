@@ -1,5 +1,5 @@
 ---
-description: "Configure the orchestration system. Creates orchestration.yml if it doesn't exist, or presents the current configuration for review and editing. When base_path changes, scans the entire .github/ directory for hardcoded references and updates them automatically."
+description: "Configure the orchestration system using a structured questionnaire. Walks through system root, project storage, pipeline limits, and gate behavior settings using askQuestions, then generates orchestration.yml."
 agent: agent
 tools:
   - read
@@ -9,27 +9,58 @@ tools:
 
 # Configure Orchestration System
 
-You are configuring the orchestration system for this workspace. Follow these steps precisely.
+You are configuring the orchestration system for this workspace. Follow these steps precisely. Use the `askQuestions` tool to interview the user through 4 structured groups.
+
+---
+
+## Group 1 — System Root
+
+Call `askQuestions` with 1 question:
+
+```json
+{
+  "questions": [
+    {
+      "header": "orch_root",
+      "question": "Where should orchestration system files live?",
+      "options": [
+        { "label": ".github", "recommended": true, "description": "Standard GitHub location" },
+        { "label": ".agents", "description": "VS Code alternate discovery folder" },
+        { "label": ".copilot", "description": "VS Code alternate discovery folder" },
+        { "label": "Custom", "description": "Type a custom folder name or absolute path" }
+      ],
+      "allowFreeformInput": true
+    }
+  ]
+}
+```
+
+**Validation**: Non-empty string. If the user typed a value (not one of the predefined options), validate that relative names are a single folder with no path separators (`/` or `\`). Absolute paths are accepted as-is. If the user selected "Custom" without providing a value, prompt again.
 
 ---
 
 ## Step 1: Check for existing configuration
 
-Look for `.github/orchestration.yml` in the workspace root.
+Using the `orch_root` value from Group 1, look for `{orch_root}/orchestration.yml` in the workspace root.
+
+> **Note**: If the previous config had a `system.root` key, that key has been renamed to `system.orch_root`. Note this migration when reading old config values.
 
 **If it does NOT exist:**
 - Inform the user no configuration file was found
-- Create `.github/orchestration.yml` with the default content below
-- Skip to Step 4 (scan for stale references using the default base_path `.github/projects`)
+- Create `{orch_root}/orchestration.yml` with the default content below and **skip to Path Propagation**
 
-**Default `orchestration.yml` content to create:**
+**Default `orchestration.yml` content to create (for fresh setup):**
 
 ```yaml
-# .github/orchestration.yml
+# {orch_root}/orchestration.yml
 # Orchestration System Configuration
 # -----------------------------------
 
 version: "1.0"
+
+# ─── System ────────────────────────────────────────────────────────
+system:
+  orch_root: "{orch_root}"               # Orchestration root folder (relative name or absolute path)
 
 # ─── Project Storage ───────────────────────────────────────────────
 projects:
@@ -43,133 +74,225 @@ limits:
   max_retries_per_task: 2                # Auto-retries before escalation
   max_consecutive_review_rejections: 3   # Reviewer rejects before human escalation
 
-# ─── Error Handling ────────────────────────────────────────────────
-errors:
-  severity:
-    critical:
-      - "build_failure"
-      - "security_vulnerability"
-      - "architectural_violation"
-      - "data_loss_risk"
-    minor:
-      - "test_failure"
-      - "lint_error"
-      - "review_suggestion"
-      - "missing_test_coverage"
-      - "style_violation"
-  on_critical: "halt"                    # halt | report_and_continue
-  on_minor: "retry"                      # retry | halt | skip
+# ─── Human Gate Defaults ───────────────────────────────────────────
+human_gates:
+  after_planning: true                   # Always gate after master plan (hard default)
+  execution_mode: "ask"                  # ask | phase | task | autonomous
+  after_final_review: true               # Always gate after final review (hard default)
 
-# ─── Git Strategy ──────────────────────────────────────────────────
-git:
-  strategy: "single_branch"             # single_branch | branch_per_phase | branch_per_task
-  branch_prefix: "orch/"
-  commit_prefix: "[orch]"
-  auto_commit: true
+# ─── Notes ─────────────────────────────────────────────────────────
+# Model selection is configured per-agent in .agent.md frontmatter.
+```
+
+**If it DOES exist:**
+- Read the current values from the file
+- Note the **current `system.orch_root`** and **current `projects.base_path`** — you'll need them in Path Propagation to detect stale references
+- Proceed to Groups 2–4 to allow the user to review and change settings
+
+---
+
+## Group 2 — Project Storage
+
+Call `askQuestions` with 2 questions:
+
+```json
+{
+  "questions": [
+    {
+      "header": "base_path",
+      "question": "Where should project folders be stored?",
+      "options": [
+        { "label": ".github/projects", "recommended": true, "description": "Under the orchestration root" },
+        { "label": "orchestration-projects", "description": "Top-level sibling folder" },
+        { "label": "Custom", "description": "Type a custom relative or absolute path" }
+      ],
+      "allowFreeformInput": true
+    },
+    {
+      "header": "naming",
+      "question": "File naming convention for project artifacts?",
+      "options": [
+        { "label": "SCREAMING_CASE", "recommended": true, "description": "MY-PROJECT-NAME (default)" },
+        { "label": "lowercase", "description": "my-project-name" },
+        { "label": "numbered", "description": "001-project-name" }
+      ],
+      "allowFreeformInput": false
+    }
+  ]
+}
+```
+
+---
+
+## Group 3 — Pipeline Limits
+
+Call `askQuestions` with 4 questions:
+
+```json
+{
+  "questions": [
+    {
+      "header": "max_phases",
+      "question": "Maximum phases per project?",
+      "options": [
+        { "label": "5" },
+        { "label": "8" },
+        { "label": "10", "recommended": true },
+        { "label": "15" },
+        { "label": "20" }
+      ],
+      "allowFreeformInput": true
+    },
+    {
+      "header": "max_tasks",
+      "question": "Maximum tasks per phase?",
+      "options": [
+        { "label": "4" },
+        { "label": "6" },
+        { "label": "8", "recommended": true },
+        { "label": "12" }
+      ],
+      "allowFreeformInput": true
+    },
+    {
+      "header": "max_retries",
+      "question": "Maximum retries per task before escalation?",
+      "options": [
+        { "label": "1" },
+        { "label": "2", "recommended": true },
+        { "label": "3" }
+      ],
+      "allowFreeformInput": true
+    },
+    {
+      "header": "max_rejections",
+      "question": "Maximum consecutive review rejections before human escalation?",
+      "options": [
+        { "label": "2" },
+        { "label": "3", "recommended": true },
+        { "label": "5" }
+      ],
+      "allowFreeformInput": true
+    }
+  ]
+}
+```
+
+---
+
+## Group 4 — Gate Behavior
+
+Call `askQuestions` with 1 question:
+
+```json
+{
+  "questions": [
+    {
+      "header": "execution_mode",
+      "question": "How should execution gates work?",
+      "options": [
+        { "label": "ask", "recommended": true, "description": "Confirm before each action" },
+        { "label": "phase", "description": "Confirm per phase" },
+        { "label": "task", "description": "Confirm per task" },
+        { "label": "autonomous", "description": "No confirmation required" }
+      ],
+      "allowFreeformInput": false
+    }
+  ]
+}
+```
+
+---
+
+## YAML Generation
+
+After completing all 4 groups (Groups 2–4 for existing config), assemble and write `{orch_root}/orchestration.yml` with the collected values:
+
+```yaml
+# {orch_root}/orchestration.yml
+# Orchestration System Configuration
+# -----------------------------------
+
+version: "1.0"
+
+# ─── System ────────────────────────────────────────────────────────
+system:
+  orch_root: "{orch_root}"               # Orchestration root folder (relative name or absolute path)
+
+# ─── Project Storage ───────────────────────────────────────────────
+projects:
+  base_path: "{base_path}"               # Where project folders are created
+  naming: "{naming}"                     # SCREAMING_CASE | lowercase | numbered
+
+# ─── Pipeline Limits (Scope Guards) ───────────────────────────────
+limits:
+  max_phases: {max_phases}               # Maximum phases per project
+  max_tasks_per_phase: {max_tasks}       # Maximum tasks per phase
+  max_retries_per_task: {max_retries}    # Auto-retries before escalation
+  max_consecutive_review_rejections: {max_rejections}  # Reviewer rejects before human escalation
 
 # ─── Human Gate Defaults ───────────────────────────────────────────
 human_gates:
-  after_planning: true
-  execution_mode: "ask"                  # ask | phase | task | autonomous
-  after_final_review: true
+  after_planning: true                   # Always gate after master plan (hard default)
+  execution_mode: "{execution_mode}"     # ask | phase | task | autonomous
+  after_final_review: true               # Always gate after final review (hard default)
 
 # ─── Notes ─────────────────────────────────────────────────────────
-# Model selection is configured per-agent in .github/agents/*.agent.md
+# Model selection is configured per-agent in .agent.md frontmatter.
 ```
 
----
+**Important**: Do NOT include `errors:` or `git:` sections in the generated YAML — these have been removed from the system.
 
-## Step 2: Read and display the current configuration
-
-Read `.github/orchestration.yml` and display the current values in a clean table:
-
-| Setting | Current Value |
-|---------|---------------|
-| `projects.base_path` | _(value)_ |
-| `projects.naming` | _(value)_ |
-| `limits.max_phases` | _(value)_ |
-| `limits.max_tasks_per_phase` | _(value)_ |
-| `limits.max_retries_per_task` | _(value)_ |
-| `limits.max_consecutive_review_rejections` | _(value)_ |
-| `errors.on_critical` | _(value)_ |
-| `errors.on_minor` | _(value)_ |
-| `git.strategy` | _(value)_ |
-| `git.branch_prefix` | _(value)_ |
-| `git.commit_prefix` | _(value)_ |
-| `git.auto_commit` | _(value)_ |
-| `human_gates.after_planning` | _(value)_ |
-| `human_gates.execution_mode` | _(value)_ |
-| `human_gates.after_final_review` | _(value)_ |
-
-Note the **current `projects.base_path`** — you'll need it in Step 4 to find stale references.
+**Hard-coded gates**: `human_gates.after_planning` and `human_gates.after_final_review` are always `true` and are not user-configurable. If the user attempts to set either to `false`, warn them: _"These are hard-coded safety gates and cannot be disabled."_
 
 ---
 
-## Step 3: Ask the user what to change
+## Path Propagation
 
-Ask the user:
+If `system.orch_root` or `projects.base_path` changed from its previous value (or this is a fresh setup), scan for stale references and update them.
 
-> "Which settings would you like to change? You can specify one or more. Press Enter with no changes to keep the current configuration."
+**Migration note**: If the old config used `system.root`, note that it has been renamed to `system.orch_root`. Scan for any references to the old key name and update them.
 
-Wait for the user's response. If they specify changes:
-- Validate allowed values for each field:
-  - `projects.naming`: `SCREAMING_CASE` | `lowercase` | `numbered`
-  - `errors.on_critical`: `halt` | `report_and_continue`
-  - `errors.on_minor`: `retry` | `halt` | `skip`
-  - `git.strategy`: `single_branch` | `branch_per_phase` | `branch_per_task`
-  - `human_gates.execution_mode`: `ask` | `phase` | `task` | `autonomous`
-  - `human_gates.after_planning` and `after_final_review`: always `true` (these are hard-coded safety gates — warn the user if they try to set these to `false`)
-- Apply the changes to `.github/orchestration.yml`
+**Old orch_root** = previous value of `system.orch_root` (or `system.root` if migrating)
+**New orch_root** = newly selected value
+**Old base_path** = previous value of `projects.base_path` (or `.github/projects` if freshly created)
+**New base_path** = newly selected value
 
-If the user makes no changes, skip to Step 5.
+### If `system.orch_root` changed
 
----
+Search every file under `{new_orch_root}/` for occurrences of the old root string and update them to the new root string. Report every file that contains the old root string.
 
-## Step 4: Propagate `projects.base_path` changes (if it changed)
+### If `projects.base_path` changed
 
-If the user changed `projects.base_path` (or this is a fresh setup where you need to confirm the current value is reflected), do the following:
+Search every file under `{orch_root}/` for occurrences of the old `projects.base_path` string. This includes:
+- `{orch_root}/instructions/` — look for `applyTo` patterns containing the old path
+- `{orch_root}/copilot-instructions.md` — look for any hardcoded path references
+- `{orch_root}/agents/*.agent.md` — look for any hardcoded paths
+- `{orch_root}/skills/**/*.md` — look for any hardcoded paths
+- `{orch_root}/prompts/**/*.md` — look for any hardcoded paths
+- Any other files under `{orch_root}/`
 
-**Old path** = the previous value of `projects.base_path` (before the change, or the default `.github/projects` if freshly created)
-**New path** = the new value of `projects.base_path`
+For each file found, replace the old path with the new path. Key replacement pattern:
 
-### 4a. Scan the entire `.github/` directory
-
-Search every file under `.github/` for occurrences of the old path string. This includes:
-- `.github/instructions/` — look for `applyTo` patterns containing the old path
-- `.github/copilot-instructions.md` — look for any hardcoded path references
-- `.github/agents/*.agent.md` — look for any hardcoded paths (there should be none; agents use `{base_path}`)
-- `.github/skills/**/*.md` — look for any hardcoded paths
-- `.github/prompts/**/*.md` — look for any hardcoded paths
-- Any other files under `.github/`
-
-Report every file that contains the old path string.
-
-### 4b. Update all occurrences
-
-For each file found in 4a, replace the old path with the new path. Key replacements:
-
-**In `.github/instructions/project-docs.instructions.md`:**
+**In `{orch_root}/instructions/project-docs.instructions.md`:**
 ```
-applyTo: '<old_path>/**'
+applyTo: '<old_base_path>/**'
 →
-applyTo: '<new_path>/**'
+applyTo: '<new_base_path>/**'
 ```
-
-**In `.github/copilot-instructions.md`** (if it contains the old path):
-Update any hardcoded references to reflect the new path or ensure they reference `orchestration.yml` as the authority.
 
 **In any other files**: Replace the old path string with the new path string.
 
 ---
 
-## Step 5: Verify and report
+## Verification and Report
 
 After all updates are complete, report:
 
-1. **Configuration saved**: Show the final `orchestration.yml` values that changed
+1. **Configuration saved**: Show the final `orchestration.yml` values, highlighting any that changed
 2. **Files updated**: List every file that was modified and what changed (old → new)
 3. **Files scanned with no changes needed**: List files that were checked but had no hardcoded references
-4. **Action items**: Anything the user needs to do manually (e.g., if any existing project folders need to be moved to the new `base_path`)
+4. **Action items**: Anything the user needs to do manually
 
 If `projects.base_path` changed and existing project folders exist at the old path:
-> ⚠️ **Manual step required**: Existing project folders at `<old_path>/` will not be moved automatically. Move them to `<new_path>/` to continue using existing projects.
+> ⚠️ **Manual step required**: Existing project folders at `<old_base_path>/` will not be moved automatically. Move them to `<new_base_path>/` to continue using existing projects.

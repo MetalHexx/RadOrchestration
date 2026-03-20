@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import type { GateApproveResponse, GateErrorResponse } from '@/types/state';
 import { getWorkspaceRoot, resolveProjectDir } from '@/lib/path-resolver';
-import { readConfig, readProjectState } from '@/lib/fs-reader';
+import { readConfig, readProjectState, resolveOrchRoot } from '@/lib/fs-reader';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,7 +64,7 @@ export async function POST(
     }
 
     // Resolve pipeline script path and invoke
-    const pipelineScript = path.join(root, '.github', 'orchestration', 'scripts', 'pipeline.js');
+    const pipelineScript = path.resolve(root, resolveOrchRoot(config), 'orchestration', 'scripts', 'pipeline.js');
 
     const relativeProjectDir = path.relative(root, projectDir);
 

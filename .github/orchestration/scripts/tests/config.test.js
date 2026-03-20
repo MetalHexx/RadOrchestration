@@ -72,20 +72,6 @@ function makeConfig(overrides = {}) {
       max_retries_per_task: 2,
       max_consecutive_review_rejections: 3
     },
-    errors: {
-      severity: {
-        critical: ['build_failure', 'security_vulnerability', 'architectural_violation', 'data_loss_risk'],
-        minor: ['test_failure', 'lint_error', 'review_suggestion', 'missing_test_coverage', 'style_violation']
-      },
-      on_critical: 'halt',
-      on_minor: 'retry'
-    },
-    git: {
-      strategy: 'single_branch',
-      branch_prefix: 'orch/',
-      commit_prefix: '[orch]',
-      auto_commit: true
-    },
     human_gates: {
       after_planning: true,
       execution_mode: 'ask',
@@ -180,8 +166,8 @@ describe('checkConfig', () => {
 
   it('missing multiple sections → fail result for each missing section', async () => {
     const config = makeConfig();
+    delete config.version;
     delete config.limits;
-    delete config.git;
     delete config.human_gates;
     mockReadFile = () => 'yaml content';
     mockParseYaml = () => config;
@@ -192,8 +178,8 @@ describe('checkConfig', () => {
     const fails = results.filter(r => r.status === 'fail' && r.message.startsWith('Missing required section'));
     assert.strictEqual(fails.length, 3, `Expected 3 missing section fails, got ${fails.length}`);
     const messages = fails.map(f => f.message);
+    assert.ok(messages.includes('Missing required section: version'));
     assert.ok(messages.includes('Missing required section: limits'));
-    assert.ok(messages.includes('Missing required section: git'));
     assert.ok(messages.includes('Missing required section: human_gates'));
   });
 
@@ -255,59 +241,6 @@ describe('checkConfig', () => {
     assert.strictEqual(pass.status, 'pass');
   });
 
-  it('invalid enum: errors.on_critical = "ignore" → fail result', async () => {
-    const config = makeConfig({
-      errors: {
-        severity: { critical: [], minor: [] },
-        on_critical: 'ignore',
-        on_minor: 'retry'
-      }
-    });
-    mockReadFile = () => 'yaml content';
-    mockParseYaml = () => config;
-
-    const ctx = makeContext();
-    const results = await checkConfig('/fake', ctx);
-
-    const fail = results.find(r => r.message === 'Invalid value for errors.on_critical');
-    assert.ok(fail, 'Should have fail for invalid errors.on_critical');
-    assert.strictEqual(fail.detail.found, 'ignore');
-  });
-
-  it('invalid enum: errors.on_minor = "crash" → fail result', async () => {
-    const config = makeConfig({
-      errors: {
-        severity: { critical: [], minor: [] },
-        on_critical: 'halt',
-        on_minor: 'crash'
-      }
-    });
-    mockReadFile = () => 'yaml content';
-    mockParseYaml = () => config;
-
-    const ctx = makeContext();
-    const results = await checkConfig('/fake', ctx);
-
-    const fail = results.find(r => r.message === 'Invalid value for errors.on_minor');
-    assert.ok(fail, 'Should have fail for invalid errors.on_minor');
-    assert.strictEqual(fail.detail.found, 'crash');
-  });
-
-  it('invalid enum: git.strategy = "rebase" → fail result', async () => {
-    const config = makeConfig({
-      git: { strategy: 'rebase', branch_prefix: 'orch/', commit_prefix: '[orch]', auto_commit: true }
-    });
-    mockReadFile = () => 'yaml content';
-    mockParseYaml = () => config;
-
-    const ctx = makeContext();
-    const results = await checkConfig('/fake', ctx);
-
-    const fail = results.find(r => r.message === 'Invalid value for git.strategy');
-    assert.ok(fail, 'Should have fail for invalid git.strategy');
-    assert.strictEqual(fail.detail.found, 'rebase');
-  });
-
   it('invalid enum: human_gates.execution_mode = "manual" → fail result', async () => {
     const config = makeConfig({
       human_gates: { after_planning: true, execution_mode: 'manual', after_final_review: true }
@@ -331,7 +264,7 @@ describe('checkConfig', () => {
     const ctx = makeContext();
     const results = await checkConfig('/fake', ctx);
 
-    const enumKeys = ['projects.naming', 'errors.on_critical', 'errors.on_minor', 'git.strategy', 'human_gates.execution_mode'];
+    const enumKeys = ['projects.naming', 'human_gates.execution_mode'];
     for (const key of enumKeys) {
       const pass = results.find(r => r.message === `Valid ${key}`);
       assert.ok(pass, `Should have pass for ${key}`);
@@ -457,45 +390,6 @@ describe('checkConfig', () => {
     }
   });
 
-  // ── Severity overlap ──────────────────────────────────────────────
-
-  it('severity overlap: one item in both critical and minor → fail with overlapping items', async () => {
-    const config = makeConfig({
-      errors: {
-        severity: {
-          critical: ['build_failure', 'test_failure'],
-          minor: ['test_failure', 'lint_error']
-        },
-        on_critical: 'halt',
-        on_minor: 'retry'
-      }
-    });
-    mockReadFile = () => 'yaml content';
-    mockParseYaml = () => config;
-
-    const ctx = makeContext();
-    const results = await checkConfig('/fake', ctx);
-
-    const fail = results.find(r => r.message === 'Severity list overlap detected');
-    assert.ok(fail, 'Should have fail for severity overlap');
-    assert.strictEqual(fail.status, 'fail');
-    assert.ok(fail.detail.found.includes('test_failure'));
-    assert.strictEqual(fail.detail.context, 'critical ∩ minor must be empty');
-  });
-
-  it('no severity overlap → pass result', async () => {
-    const config = makeConfig();
-    mockReadFile = () => 'yaml content';
-    mockParseYaml = () => config;
-
-    const ctx = makeContext();
-    const results = await checkConfig('/fake', ctx);
-
-    const pass = results.find(r => r.message === 'No severity list overlap');
-    assert.ok(pass, 'Should have pass for no severity overlap');
-    assert.strictEqual(pass.status, 'pass');
-  });
-
   // ── Human gate hard gates ─────────────────────────────────────────
 
   it('after_planning is false → fail', async () => {
@@ -592,25 +486,6 @@ describe('checkConfig', () => {
     assert.strictEqual(ctx.config, config);
     assert.strictEqual(ctx.config.version, '1.0');
     assert.strictEqual(ctx.config.limits.max_phases, 10);
-  });
-
-  // ── Enum with missing parent section skips validation ─────────────
-
-  it('missing parent section for enum skips that enum validation', async () => {
-    const config = makeConfig();
-    delete config.git;
-    mockReadFile = () => 'yaml content';
-    mockParseYaml = () => config;
-
-    const ctx = makeContext();
-    const results = await checkConfig('/fake', ctx);
-
-    // Should have a fail for missing git section, but NOT for git.strategy enum
-    const sectionFail = results.find(r => r.message === 'Missing required section: git');
-    assert.ok(sectionFail, 'Should fail for missing git section');
-
-    const enumFail = results.find(r => r.message === 'Invalid value for git.strategy');
-    assert.strictEqual(enumFail, undefined, 'Should NOT have enum fail when parent section is missing');
   });
 
   // ── Edge case: empty string content → parseYaml returns null ──────────

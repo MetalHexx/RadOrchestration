@@ -9,22 +9,23 @@ const { exists, isDirectory } = require('../utils/fs-helpers');
  * @param {object} context  - Shared discovery context (not populated by this module)
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: {expected: string, found: string, context?: string}}>>}
  */
-async function checkStructure(basePath, context) {
+async function checkStructure(basePath, context, _config, orchRoot) {
   try {
+    const root = orchRoot || '.github';
     const results = [];
-    const ghDir = path.join(basePath, '.github');
+    const ghDir = path.join(basePath, root);
 
     const requiredDirs = [
-      { name: '.github', path: ghDir, check: 'isDirectory' },
-      { name: '.github/agents', path: path.join(ghDir, 'agents'), check: 'isDirectory' },
-      { name: '.github/skills', path: path.join(ghDir, 'skills'), check: 'isDirectory' },
-      { name: '.github/instructions', path: path.join(ghDir, 'instructions'), check: 'isDirectory' },
-      { name: '.github/prompts', path: path.join(ghDir, 'prompts'), check: 'isDirectory', optional: true },
+      { name: root, path: ghDir, check: 'isDirectory' },
+      { name: `${root}/agents`, path: path.join(ghDir, 'agents'), check: 'isDirectory' },
+      { name: `${root}/skills`, path: path.join(ghDir, 'skills'), check: 'isDirectory' },
+      { name: `${root}/instructions`, path: path.join(ghDir, 'instructions'), check: 'isDirectory' },
+      { name: `${root}/prompts`, path: path.join(ghDir, 'prompts'), check: 'isDirectory', optional: true },
     ];
 
     const requiredFiles = [
-      { name: '.github/orchestration.yml', path: path.join(ghDir, 'orchestration.yml'), check: 'exists' },
-      { name: '.github/copilot-instructions.md', path: path.join(ghDir, 'copilot-instructions.md'), check: 'exists' },
+      { name: `${root}/orchestration.yml`, path: path.join(ghDir, 'orchestration.yml'), check: 'exists' },
+      { name: `${root}/copilot-instructions.md`, path: path.join(ghDir, 'copilot-instructions.md'), check: 'exists' },
     ];
 
     for (const entry of requiredDirs) {

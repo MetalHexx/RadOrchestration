@@ -74,7 +74,7 @@ When spawned by the Orchestrator to create a Master Plan:
 12. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-MASTER-PLAN.md`)
 
 ## Skills
-
+- **`orchestration-context`**: Instructions on operating as an agent within the orchestration system.
 - **`create-architecture`**: Guides Architecture creation workflow and provides template
 - **`create-master-plan`**: Guides Master Plan creation workflow and provides template
 

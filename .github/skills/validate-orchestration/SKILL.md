@@ -5,7 +5,9 @@ description: 'Comprehensive validation of the orchestration system ecosystem. Us
 
 # Validate Orchestration Skill
 
-A zero-dependency Node.js CLI tool that validates all `.github/` orchestration files in batch — agents, skills, instructions, prompts, configuration, and cross-references. Produces colored terminal output with category-grouped results, supports flexible verbosity levels, and exits with CI-friendly codes (0 = pass, 1 = fail).
+A zero-dependency Node.js CLI tool that validates all `{orch_root}/` orchestration files in batch — agents, skills, instructions, prompts, configuration, and cross-references. Produces colored terminal output with category-grouped results, supports flexible verbosity levels, and exits with CI-friendly codes (0 = pass, 1 = fail).
+
+> **Note:** `{orch_root}` is your orchestration root folder — `.github` by default. Set via `system.orch_root` in `orchestration.yml`. See [Configuration](docs/configuration.md).
 
 ## When to Use This Skill
 
@@ -19,7 +21,7 @@ A zero-dependency Node.js CLI tool that validates all `.github/` orchestration f
 ## Prerequisites
 
 - Node.js v14+ installed and available in PATH
-- Access to the `.github/` directory in your orchestration workspace
+- Access to the `{orch_root}/` directory in your orchestration workspace
 - No external npm dependencies required — uses only Node.js built-ins
 
 ## Basic Usage
@@ -27,7 +29,7 @@ A zero-dependency Node.js CLI tool that validates all `.github/` orchestration f
 ### Run Full Validation
 
 ```bash
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js
+node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js
 ```
 
 Validates all orchestration files and prints grouped results with a final summary bar.
@@ -37,9 +39,9 @@ Validates all orchestration files and prints grouped results with a final summar
 #### Workflow 1: Check Specific Category
 
 ```bash
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --category structure
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --category agents
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --category cross-references
+node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js --category structure
+node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js --category agents
+node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js --category cross-references
 ```
 
 Run validation for one logical grouping. Useful when fixing a specific area. Categories run in dependency order (structure → agents → skills → config → instructions → prompts → cross-refs), so prerequisite checks run silently to ensure cross-reference accuracy.
@@ -47,7 +49,7 @@ Run validation for one logical grouping. Useful when fixing a specific area. Cat
 #### Workflow 2: Verbose Debugging
 
 ```bash
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --verbose
+node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js --verbose
 ```
 
 Show detailed output including checksums, file paths, and actual vs. expected values for every check result. Helpful when diagnosing why a file is rejected.
@@ -55,7 +57,7 @@ Show detailed output including checksums, file paths, and actual vs. expected va
 #### Workflow 3: Plain-Text Output (No Colors)
 
 ```bash
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --no-color
+node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js --no-color
 ```
 
 Emit plain ASCII output with `[PASS]`, `[FAIL]`, `[WARN]` markers instead of Unicode + ANSI colors. Useful when piping output to log files or non-TTY environments.
@@ -63,7 +65,7 @@ Emit plain ASCII output with `[PASS]`, `[FAIL]`, `[WARN]` markers instead of Uni
 #### Workflow 4: Quiet Mode (CI Integration)
 
 ```bash
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --quiet
+node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js --quiet
 ```
 
 Print only the final summary bar — pass/fail counts and exit code. Perfect for CI/CD pipelines where you just need the result signal.
@@ -71,7 +73,7 @@ Print only the final summary bar — pass/fail counts and exit code. Perfect for
 #### Workflow 5: Help
 
 ```bash
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --help
+node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js --help
 ```
 
 Print usage information and exit with code 0.
@@ -81,8 +83,8 @@ Print usage information and exit with code 0.
 Most flags can combine:
 
 ```bash
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --verbose --no-color --category agents
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --quiet --no-color
+node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js --verbose --no-color --category agents
+node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js --quiet --no-color
 ```
 
 Special case: If both `--verbose` and `--quiet` are provided, `--quiet` wins (only summary bar printed).
@@ -93,7 +95,7 @@ The tool validates files in this order:
 
 | Category | What It Checks | Exit on Fail? |
 |----------|---|---|
-| **File Structure** | `.github/` directories and files exist | Yes, fails fast |
+| **File Structure** | `{orch_root}/` directories and files exist | Yes, fails fast |
 | **Agents** | `.agent.md` frontmatter, tools, agents field consistency | Yes |
 | **Skills** | `SKILL.md` exists, frontmatter valid, `templates/` directory | Yes |
 | **Configuration** | `orchestration.yml` syntax, field requirements, enum constraints | Yes |
@@ -109,9 +111,9 @@ The tool validates files in this order:
 VALIDATOR v1.0  │ Orchestration System Validator
 
 ┌─ File Structure ────────────────────────────────────────────
-│ ✓ Directory: .github/agents exists
-│ ✓ Directory: .github/skills exists
-│ ✗ File: .github/orchestration.yml not found
+│ ✓ Directory: {orch_root}/agents exists
+│ ✓ Directory: {orch_root}/skills exists
+│ ✗ File: {orch_root}/orchestration.yml not found
 ├─ Category Result: 2 pass, 1 fail, 0 warn
 └─
 
@@ -132,9 +134,9 @@ Result: 7 pass, 1 fail, 1 warn  │  Exit: 1 (FAILURES FOUND)
 VALIDATOR v1.0 | Orchestration System Validator
 
 --- File Structure -----------------------------------------------
-[PASS] Directory: .github/agents exists
-[PASS] Directory: .github/skills exists
-[FAIL] File: .github/orchestration.yml not found
+[PASS] Directory: {orch_root}/agents exists
+[PASS] Directory: {orch_root}/skills exists
+[FAIL] File: {orch_root}/orchestration.yml not found
 --- Category Result: 2 pass, 1 fail, 0 warn ---
 
 --- Agents ---
@@ -170,7 +172,7 @@ In `--verbose`, each failed check includes `Expected` and `Found` blocks:
 Use exit codes in CI/CD scripts:
 
 ```bash
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js
+node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js
 if [ $? -ne 0 ]; then
   echo "Validation failed — fix errors above and retry."
   exit 1
@@ -181,12 +183,12 @@ fi
 
 ### "File not found" errors
 
-**Problem**: Tool reports missing `.github/` directories or `orchestration.yml`
+**Problem**: Tool reports missing `{orch_root}/` directories or `orchestration.yml`
 
 **Solutions**:
-- Ensure you're running from the workspace root (where `.github/` exists)
-- Check that the tool path is correct: `node .github/skills/validate-orchestration/scripts/validate-orchestration.js` (not `node lib/validate.js`)
-- Verify `.github/` is not in `.gitignore`
+- Ensure you're running from the workspace root (where `{orch_root}/` exists)
+- Check that the tool path is correct: `node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js` (not `node lib/validate.js`)
+- Verify `{orch_root}/` is not in `.gitignore`
 
 ### "Invalid frontmatter" for valid-looking files
 
@@ -222,13 +224,13 @@ fi
 
 **Solutions**:
 - Use `--category <name>` to validate only one category
-- Check for extremely large files in `.github/` (shouldn't happen)
+- Check for extremely large files in `{orch_root}/` (shouldn't happen)
 - This is unlikely — validator is optimized for the typical orchestration structure
 
 ## References
 
-- Orchestration System: `.github/copilot-instructions.md`
-- Configuration Schema: `.github/orchestration.yml`
-- Agent Specification: `.github/skills/create-agent/SKILL.md`
-- Skill Specification: `.github/skills/create-skill/SKILL.md`
-- Validator Source: `.github/skills/validate-orchestration/scripts/validate-orchestration.js` and `.github/skills/validate-orchestration/scripts/lib/` directory
+- Orchestration System: `{orch_root}/copilot-instructions.md`
+- Configuration Schema: `{orch_root}/orchestration.yml`
+- Agent Specification: `{orch_root}/skills/create-agent/SKILL.md`
+- Skill Specification: `{orch_root}/skills/create-skill/SKILL.md`
+- Validator Source: `{orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js` and `{orch_root}/skills/validate-orchestration/scripts/lib/` directory

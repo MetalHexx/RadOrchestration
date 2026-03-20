@@ -17,14 +17,6 @@ function createDefaultConfig() {
       max_retries_per_task: 2,
       max_consecutive_review_rejections: 3,
     },
-    errors: {
-      severity: {
-        critical: ['build_failure', 'security_vulnerability', 'architectural_violation', 'data_loss_risk'],
-        minor: ['test_failure', 'lint_error', 'review_suggestion', 'missing_test_coverage', 'style_violation'],
-      },
-      on_critical: 'halt',
-      on_minor: 'retry',
-    },
     human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
   };
 }

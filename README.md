@@ -91,7 +91,7 @@ Seventeen reusable skills bundle domain knowledge, templates, and instructions. 
 
 ### Configurable Pipeline
 
-A single `orchestration.yml` controls everything: project storage, pipeline limits, error severity classification, git strategy, and human gate behavior. Sensible defaults out of the box, fully customizable.
+A single `orchestration.yml` controls everything: project storage, pipeline limits, and human gate behavior. Sensible defaults out of the box, fully customizable.
 
 [Learn more about configuration →](docs/configuration.md)
 
@@ -115,11 +115,13 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 ### Quick Start
 
 1. Clone the repo and open in VS Code with GitHub Copilot
-2. Copy the `.github/` directory into the root of your target project
+2. Copy the `.github/` directory _(or your [configured root](docs/configuration.md))_ into the root of your target project
 3. Run `/configure-system` to set up `orchestration.yml`
 4. *(Optional)* Use `@Brainstormer` to explore and refine your ideas into goals
 5. Use `@Orchestrator` with your project goals to start the pipeline
 6. Use `@Orchestrator` to continue — it reads `state.json` and picks up where it left off
+
+> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](docs/configuration.md), adjust paths accordingly.
 
 [Full getting started guide →](docs/getting-started.md)
 

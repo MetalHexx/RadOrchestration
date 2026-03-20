@@ -4,6 +4,8 @@ This page documents the file layout, naming conventions, document types, and sta
 
 ## Workspace Layout
 
+> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
+
 ```
 .github/ 
 ├── agents/                    # 9 agent definitions
