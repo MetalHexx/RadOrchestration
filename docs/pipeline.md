@@ -57,7 +57,7 @@ flowchart LR
 
 Allowed task stage transitions:
 
-See [constants.js](../.github/orchestration/scripts/lib/constants.js) for the full transition map.
+See [constants.js](../.github/skills/orchestration/scripts/lib/constants.js) for the full transition map.
 
 ### Phase Stage Lifecycle
 
@@ -78,7 +78,7 @@ flowchart LR
 
 Allowed phase stage transitions:
 
-See [constants.js](../.github/orchestration/scripts/lib/constants.js) for the full transition map.
+See [constants.js](../.github/skills/orchestration/scripts/lib/constants.js) for the full transition map.
 
 ## Planning Pipeline
 
@@ -323,7 +323,7 @@ The canonical status vocabulary is `complete`, `partial`, `failed`. The normaliz
 
 ## State Management
 
-Pipeline state is tracked in `state.json` — see [Project Structure](project-structure.md) for the full state schema and invariants, and [`state-v4.schema.json`](../../schemas/state-v4.schema.json) for the formal v4 JSON Schema.
+Pipeline state is tracked in `state.json` — see [Project Structure](project-structure.md) for the full state schema and invariants, and [`state-v4.schema.json`](../.github/skills/orchestration/schemas/state-v4.schema.json) for the formal v4 JSON Schema.
 
 Key rules:
 - Only the pipeline script (`pipeline.js`) writes `state.json`

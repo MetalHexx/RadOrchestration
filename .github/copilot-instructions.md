@@ -7,4 +7,4 @@ This is a multi-root workspace containing:
 - **orchestration-projects/** — Project artifacts and state
 
 For orchestration pipeline context (agent roles, naming conventions, pipeline flow),
-see the `orchestration-context` skill loaded by pipeline agents.
+see the `orchestration` skill loaded by pipeline agents.

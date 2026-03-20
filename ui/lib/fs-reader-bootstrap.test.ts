@@ -51,9 +51,9 @@ async function run() {
     console.log('\nreadConfig() — ORCH_ROOT bootstrap');
 
     await test('uses .github when ORCH_ROOT is not set', async () => {
-      const githubDir = path.join(tmpDir, '.github');
-      await mkdir(githubDir, { recursive: true });
-      await writeFile(path.join(githubDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
+      const configDir = path.join(tmpDir, '.github', 'skills', 'orchestration', 'config');
+      await mkdir(configDir, { recursive: true });
+      await writeFile(path.join(configDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
 
       delete process.env.ORCH_ROOT;
       const config = await readConfig(tmpDir);
@@ -61,9 +61,9 @@ async function run() {
     });
 
     await test('uses .agents when ORCH_ROOT=.agents', async () => {
-      const agentsDir = path.join(tmpDir, '.agents');
-      await mkdir(agentsDir, { recursive: true });
-      await writeFile(path.join(agentsDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
+      const configDir = path.join(tmpDir, '.agents', 'skills', 'orchestration', 'config');
+      await mkdir(configDir, { recursive: true });
+      await writeFile(path.join(configDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
 
       process.env.ORCH_ROOT = '.agents';
       const config = await readConfig(tmpDir);
@@ -72,9 +72,9 @@ async function run() {
     });
 
     await test('constructs path using ORCH_ROOT value', async () => {
-      const customDir = path.join(tmpDir, '.copilot');
-      await mkdir(customDir, { recursive: true });
-      await writeFile(path.join(customDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
+      const configDir = path.join(tmpDir, '.copilot', 'skills', 'orchestration', 'config');
+      await mkdir(configDir, { recursive: true });
+      await writeFile(path.join(configDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
 
       process.env.ORCH_ROOT = '.copilot';
       const config = await readConfig(tmpDir);

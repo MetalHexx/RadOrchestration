@@ -6,7 +6,7 @@ Templates are structured markdown files bundled inside skill folders that contro
 
 ## How Skills and Templates Relate
 
-Each skill that produces a document bundles a template in its `templates/` subfolder. The agent reads the template when executing the skill and produces output matching its structure. Four of the 18 skills have no template — `execute-coding-task`, `run-tests`, `create-skill`, and `validate-orchestration` — because they don't produce structured documents. One skill, `create-design`, has three template variants to accommodate different project types.
+Each skill that produces a document bundles a template in its `templates/` subfolder. The agent reads the template when executing the skill and produces output matching its structure. Four of the 18 skills have no template — `execute-coding-task`, `run-tests`, `create-skill`, and `orchestration` — because they don't produce structured documents. One skill, `create-design`, has three template variants to accommodate different project types.
 
 ## Customization
 

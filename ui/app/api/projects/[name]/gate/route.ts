@@ -64,7 +64,7 @@ export async function POST(
     }
 
     // Resolve pipeline script path and invoke
-    const pipelineScript = path.resolve(root, resolveOrchRoot(config), 'orchestration', 'scripts', 'pipeline.js');
+    const pipelineScript = path.resolve(root, resolveOrchRoot(config), 'skills', 'orchestration', 'scripts', 'pipeline.js');
 
     const relativeProjectDir = path.relative(root, projectDir);
 

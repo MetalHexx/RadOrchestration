@@ -98,7 +98,7 @@ When spawned for a final comprehensive review, perform a Phase Review–style ev
 Save to `{PROJECT-DIR}/reports/{NAME}-FINAL-REVIEW.md`
 
 ## Skills
-- **`orchestration-context`**: Instructions on operating as an agent within the orchestration system.
+- **`orchestration`**: System context and validation guide — agent roles, pipeline flow, validation workflow
 - **`review-task`**: Guides task-level review and provides template
 - **`review-phase`**: Guides phase-level integration review and provides template
 

@@ -14,7 +14,7 @@ The orchestration system uses a single unified pipeline script (`pipeline.js`) f
 
 ```bash
 # Default .github root shown. Adjust if you configured a custom orch_root.
-node .github/orchestration/scripts/pipeline.js \
+node .github/skills/orchestration/scripts/pipeline.js \
   --event <event_name> \
   --project-dir <path> \
   [--config <path>] \
@@ -32,7 +32,7 @@ node .github/orchestration/scripts/pipeline.js \
 
 ```bash
 # Default .github root shown. Adjust if you configured a custom orch_root.
-node .github/orchestration/scripts/migrate-to-v4.js <project-dir>
+node .github/skills/orchestration/scripts/migrate-to-v4.js <project-dir>
 ```
 
 | Argument | Required | Description |

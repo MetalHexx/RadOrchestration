@@ -10,16 +10,16 @@ The orchestration system includes a zero-dependency Node.js CLI tool that valida
 # Default .github root shown. Adjust if you configured a custom orch_root.
 
 # Run all checks
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js
+node .github/skills/orchestration/scripts/validate/validate-orchestration.js
 
 # Verbose output (show passing checks too)
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --verbose
+node .github/skills/orchestration/scripts/validate/validate-orchestration.js --verbose
 
 # Check a single category
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --category agents
+node .github/skills/orchestration/scripts/validate/validate-orchestration.js --category agents
 
 # CI-friendly (no color, exits 1 on failure)
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --no-color
+node .github/skills/orchestration/scripts/validate/validate-orchestration.js --no-color
 ```
 
 **Exit codes:** `0` = all checks passed (warnings allowed), `1` = one or more failures.
@@ -125,7 +125,7 @@ The validator is designed for CI pipelines:
 
 ```bash
 # Default .github root shown. Adjust if you configured a custom orch_root.
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --no-color
+node .github/skills/orchestration/scripts/validate/validate-orchestration.js --no-color
 ```
 
 - Exit code `0` means all checks passed

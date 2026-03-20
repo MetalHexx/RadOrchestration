@@ -45,7 +45,7 @@ You are the central coordinator of the orchestration system. You signal events t
 ### Write access: **NONE** (files). Execute access: `pipeline.js` only.
 
 ## Skills
-- **`orchestration-context`**: Instructions on operating as an agent within the orchestration system.
+- **`orchestration`**: System context and pipeline guide — event loop, action routing, CLI usage
 
 ## Configuration
 
@@ -66,7 +66,7 @@ The Orchestrator operates as an event-driven controller. The core loop:
 1. **Determine the event to signal** (see Event Signaling Reference below)
 2. **Call the pipeline script**:
    ```
-   node {orchRoot}/orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--context <json>]
+   node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--context <json>]
    ```
 3. **Parse the JSON result** from stdout
 4. **Pattern-match `result.action`** against the Action Routing Table
@@ -85,8 +85,8 @@ The `start` event is always safe — the pipeline loads `state.json`, skips muta
 ### Pipeline Invocation Rule
 
 Always invoke `pipeline.js` from the workspace root. Use one of:
-- `cd <workspace-root>; node {orchRoot}/orchestration/scripts/pipeline.js ...`
-- Absolute path: `node {orchRoot}/orchestration/scripts/pipeline.js ...`
+- `cd <workspace-root>; node {orchRoot}/skills/orchestration/scripts/pipeline.js ...`
+- Absolute path: `node {orchRoot}/skills/orchestration/scripts/pipeline.js ...`
 
 ### Loop Termination
 
@@ -206,7 +206,7 @@ These are the exact event names the Orchestrator passes to `--event`:
 On context compaction or agent restart, the Orchestrator has no runtime memory to recover. Recovery is a single call:
 
 ```
-node {orchRoot}/orchestration/scripts/pipeline.js --event start --project-dir <path>
+node {orchRoot}/skills/orchestration/scripts/pipeline.js --event start --project-dir <path>
 ```
 
 The pipeline loads `state.json`, skips mutation, and resolves the next action from the current state. All state is persisted in `state.json` by the pipeline script, so no runtime memory is needed.

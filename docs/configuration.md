@@ -4,12 +4,6 @@ All system behavior is controlled by a single file: `{orch_root}/orchestration.y
 
 > **Note:** `{orch_root}` is your orchestration root folder — `.github` by default. Set via `system.orch_root` in `orchestration.yml`. See [Orchestration Root](#orchestration-root) below.
 
-> **Migration (ORCH-ROOT-CONFIG-2)**
->
-> - `system.root` has been renamed to `system.orch_root` — the old name continues to work but is deprecated
-> - The `errors` and `git` configuration sections have been removed — they were declared but had no runtime effect
-> - Documentation commands now use `.github` as the concrete default instead of `{orch_root}`
-
 ## Quick Setup
 
 Run the `/configure-system` prompt in Copilot to create or update the configuration interactively. Or create the file manually:
@@ -135,7 +129,7 @@ Human approval checkpoints during pipeline execution.
 
 The pipeline engine reads limits and human gate settings directly from `orchestration.yml` at runtime. These values are not copied into `state.json` at project initialization — `state.json` holds only pipeline state, not configuration. This means changes to `orchestration.yml` limits take effect for all projects on the next pipeline invocation.
 
-See [state-v4.schema.json](../.github/orchestration/schemas/state-v4.schema.json) for the full initial state shape and schema definition.
+See [state-v4.schema.json](../.github/skills/orchestration/schemas/state-v4.schema.json) for the full initial state shape and schema definition.
 
 ## Changing Configuration
 
@@ -148,7 +142,7 @@ If you change `projects.base_path`, run `/configure-system` — it automatically
 Run the [validation tool](validation.md) to check your configuration:
 
 ```bash
-node {orch_root}/skills/validate-orchestration/scripts/validate-orchestration.js --category config
+node {orch_root}/skills/orchestration/scripts/validate/validate-orchestration.js --category config
 ```
 
 This checks:

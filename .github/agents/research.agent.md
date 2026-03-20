@@ -65,7 +65,7 @@ When spawned by the Orchestrator (pipeline mode):
 9. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-RESEARCH-FINDINGS.md`)
 
 ## Skills
-- **`orchestration-context`**: Instructions on operating as an agent within the orchestration system.
+- **`orchestration`**: System context — agent roles, pipeline flow, naming conventions, key rules
 - **`research-codebase`**: Primary skill — guides research workflow and provides the Research Findings template
 
 ## Output Contract

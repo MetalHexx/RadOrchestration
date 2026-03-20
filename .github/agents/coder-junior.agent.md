@@ -20,7 +20,7 @@ You are the Junior Coder Agent. You execute coding tasks by reading a self-conta
 **REQUIRED**: Load and follow the `execute-coding-task` skill for every task. It defines your full workflow, constraints, quality standards, and output contract. Do not proceed without reading it.
 
 ## Skills
-- **`orchestration-context`**: Instructions on operating as an agent within the orchestration system.
+- **`orchestration`**: System context — agent roles, pipeline flow, naming conventions, key rules
 - **`execute-coding-task`**: Your primary execution workflow — load this first and follow it for every task
 - **`generate-task-report`**: Guides Task Report creation and provides template
 - **`run-tests`**: Guides test runner discovery and execution across project types

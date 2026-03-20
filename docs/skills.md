@@ -58,13 +58,12 @@ To customize the **output format** of documents a skill produces, modify the ski
 |-------|-------------|---------|
 | `create-agent` | Scaffold new agent definitions (`.agent.md`) with proper frontmatter and tool declarations | Any |
 | `create-skill` | Scaffold new skills with `SKILL.md`, directory structure, and optional scripts/references | Any |
-| `validate-orchestration` | Validate all orchestration files — agents, skills, instructions, config, cross-references | Any |
 
-### Context Skills
+### System Skills
 
 | Skill | Description | Used By |
 |-------|-------------|---------|
-| `orchestration-context` | Orchestration system context: agent roles, pipeline flow, naming conventions, key rules. Loaded by all pipeline agents to replace workspace-global instructions. | All Agents |
+| `orchestration` | Orchestration system runtime, configuration, validation, and context. All pipeline agents load this skill for system context. The Orchestrator receives pipeline-specific guidance. Reviewers and Tactical Planners receive validation guidance. | All Agents |
 
 ## Skill-Agent Composition
 
@@ -72,15 +71,15 @@ Each agent is explicitly assigned skills in its `.agent.md` frontmatter. This ta
 
 | Agent | Skills |
 |-------|--------|
-| Brainstormer | `orchestration-context`, `brainstorm` |
-| Orchestrator | `orchestration-context`, `log-error` |
-| Research | `orchestration-context`, `research-codebase` |
-| Product Manager | `orchestration-context`, `create-prd` |
-| UX Designer | `orchestration-context`, `create-design` |
-| Architect | `orchestration-context`, `create-architecture`, `create-master-plan` |
-| Tactical Planner | `orchestration-context`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
-| Coder | `orchestration-context`, `execute-coding-task`, `generate-task-report`, `run-tests` |
-| Reviewer | `orchestration-context`, `review-task`, `review-phase` |
+| Brainstormer | `orchestration`, `brainstorm` |
+| Orchestrator | `orchestration`, `log-error` |
+| Research | `orchestration`, `research-codebase` |
+| Product Manager | `orchestration`, `create-prd` |
+| UX Designer | `orchestration`, `create-design` |
+| Architect | `orchestration`, `create-architecture`, `create-master-plan` |
+| Tactical Planner | `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
+| Coder | `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests` |
+| Reviewer | `orchestration`, `review-task`, `review-phase` |
 
 ## Skill Recommendation in Task Handoffs
 

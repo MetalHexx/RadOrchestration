@@ -14,7 +14,7 @@ import { parseYaml } from '@/lib/yaml-parser';
  * Bootstrap strategy:
  * 1. Check the `ORCH_ROOT` environment variable for the orchestration root folder name.
  * 2. Fall back to `'.github'` when `ORCH_ROOT` is unset or empty.
- * 3. Read `orchestration.yml` from the resolved bootstrap root.
+ * 3. Read `orchestration.yml` from `{bootstrapRoot}/skills/orchestration/config/`.
  * 4. Use `system.orch_root` from the loaded config for subsequent operations (downstream responsibility).
  *
  * @param workspaceRoot - Absolute path to workspace root
@@ -23,7 +23,7 @@ import { parseYaml } from '@/lib/yaml-parser';
  */
 export async function readConfig(workspaceRoot: string): Promise<OrchestrationConfig> {
   const bootstrapRoot = process.env.ORCH_ROOT || '.github';
-  const configPath = path.join(workspaceRoot, bootstrapRoot, 'orchestration.yml');
+  const configPath = path.join(workspaceRoot, bootstrapRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
   const content = await readFile(configPath, 'utf-8');
   return parseYaml<OrchestrationConfig>(content);
 }

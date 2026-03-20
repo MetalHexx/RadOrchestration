@@ -27,9 +27,9 @@ This guide walks you through setting up the orchestration system and running you
 
 4. **Configure the system**
 
-   Run the `/configure-system` prompt in Copilot. This creates or updates `.github/orchestration.yml` _(or your [configured root](configuration.md))_ with your preferences — project storage path, pipeline limits, and human gate settings.
+   Run the `/configure-system` prompt in Copilot. This creates or updates `.github/skills/orchestration/config/orchestration.yml` _(or your [configured root](configuration.md))_ with your preferences — project storage path, pipeline limits, and human gate settings.
 
-   Or manually edit `.github/orchestration.yml` — see [Configuration](configuration.md) for all options.
+   Or manually edit `.github/skills/orchestration/config/orchestration.yml` — see [Configuration](configuration.md) for all options.
 
 ## Your First Project
 
@@ -98,7 +98,7 @@ Validate that all orchestration files are correctly configured:
 
 ```bash
 # Default .github root shown. Adjust if you configured a custom orch_root.
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js
+node .github/skills/orchestration/scripts/validate/validate-orchestration.js
 ```
 
 Add `--verbose` for detailed output, or `--category agents` to check a single category. See [Validation](validation.md) for full CLI options.
@@ -113,7 +113,7 @@ Add `--verbose` for detailed output, or `--category agents` to check a single ca
 | `@Orchestrator` status | Check current project status |
 | `/configure-system` | Create or update `orchestration.yml` |
 | `/execute-plan` | Approve a Master Plan and begin execution |
-| `node .github/skills/validate-orchestration/scripts/validate-orchestration.js` | Validate orchestration files |
+| `node .github/skills/orchestration/scripts/validate/validate-orchestration.js` | Validate orchestration files |
 
 ## Next Steps
 

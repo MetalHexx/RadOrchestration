@@ -114,7 +114,7 @@ The dashboard reads project data directly from the workspace filesystem:
 
 | File | Purpose |
 |------|---------|
-| `.github/orchestration.yml` | System configuration — limits, gates, paths |
+| `.github/skills/orchestration/config/orchestration.yml` | System configuration — limits, gates, paths |
 | `{project}/state.json` | Pipeline state — tiers, phases, tasks, errors |
 | `{project}/*.md` | Planning and execution documents rendered in the document viewer |
 
