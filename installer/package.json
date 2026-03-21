@@ -1,14 +1,15 @@
 {
-  "name": "radorch-installer",
+  "name": "radorch",
   "version": "1.0.0",
   "description": "Interactive CLI installer for the RadOrchestration system",
   "type": "module",
   "private": true,
   "scripts": {
+    "start": "node index.js",
     "test": "node --test --experimental-test-module-mocks \"lib/**/*.test.js\" \"index.test.js\""
   },
   "bin": {
-    "radorch-install": "./index.js"
+    "radorch": "./index.js"
   },
   "engines": {
     "node": ">=18"

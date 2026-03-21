@@ -156,7 +156,10 @@ export async function main() {
   }
 }
 
-// Auto-invoke only when run directly (not when imported by tests)
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// Auto-invoke only when run directly (not when imported by tests).
+// Use fs.realpathSync to resolve symlinks created by `npm link` / global installs.
+const __scriptPath = fs.realpathSync(fileURLToPath(import.meta.url));
+const __argvPath = fs.realpathSync(process.argv[1]);
+if (__scriptPath === __argvPath) {
   main();
 }
