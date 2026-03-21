@@ -40,7 +40,7 @@ test('category names are in correct order', () => {
 test('Root config category has correct sourceDir, targetDir, and recursive', () => {
   const { categories } = getManifest('.github');
   const cat = categories[0];
-  assert.strictEqual(cat.sourceDir, '.github');
+  assert.strictEqual(cat.sourceDir, 'src/.github');
   assert.strictEqual(cat.targetDir, '.');
   assert.strictEqual(cat.recursive, false);
 });
@@ -50,7 +50,7 @@ test('Root config category has correct sourceDir, targetDir, and recursive', () 
 test('Agents category has correct sourceDir, targetDir, and recursive', () => {
   const { categories } = getManifest('.github');
   const cat = categories[1];
-  assert.strictEqual(cat.sourceDir, '.github/agents');
+  assert.strictEqual(cat.sourceDir, 'src/.github/agents');
   assert.strictEqual(cat.targetDir, 'agents');
   assert.strictEqual(cat.recursive, false);
 });
@@ -60,7 +60,7 @@ test('Agents category has correct sourceDir, targetDir, and recursive', () => {
 test('Instructions category has correct sourceDir, targetDir, and recursive', () => {
   const { categories } = getManifest('.github');
   const cat = categories[2];
-  assert.strictEqual(cat.sourceDir, '.github/instructions');
+  assert.strictEqual(cat.sourceDir, 'src/.github/instructions');
   assert.strictEqual(cat.targetDir, 'instructions');
   assert.strictEqual(cat.recursive, false);
 });
@@ -70,7 +70,7 @@ test('Instructions category has correct sourceDir, targetDir, and recursive', ()
 test('Prompts category has correct sourceDir, targetDir, and recursive', () => {
   const { categories } = getManifest('.github');
   const cat = categories[3];
-  assert.strictEqual(cat.sourceDir, '.github/prompts');
+  assert.strictEqual(cat.sourceDir, 'src/.github/prompts');
   assert.strictEqual(cat.targetDir, 'prompts');
   assert.strictEqual(cat.recursive, false);
 });
@@ -80,7 +80,7 @@ test('Prompts category has correct sourceDir, targetDir, and recursive', () => {
 test('Hooks category has correct sourceDir, targetDir, and recursive', () => {
   const { categories } = getManifest('.github');
   const cat = categories[4];
-  assert.strictEqual(cat.sourceDir, '.github/hooks');
+  assert.strictEqual(cat.sourceDir, 'src/.github/hooks');
   assert.strictEqual(cat.targetDir, 'hooks');
   assert.strictEqual(cat.recursive, false);
 });
@@ -90,7 +90,7 @@ test('Hooks category has correct sourceDir, targetDir, and recursive', () => {
 test('Skills category has correct sourceDir, targetDir, recursive, and excludeDirs', () => {
   const { categories } = getManifest('.github');
   const cat = categories[5];
-  assert.strictEqual(cat.sourceDir, '.github/skills');
+  assert.strictEqual(cat.sourceDir, 'src/.github/skills');
   assert.strictEqual(cat.targetDir, 'skills');
   assert.strictEqual(cat.recursive, true);
   assert.deepStrictEqual(cat.excludeDirs, ['orchestration-staging']);
@@ -110,14 +110,15 @@ test('globalExcludes matches expected array', () => {
 
 // ── Parameterization ──────────────────────────────────────────────────────────
 
-test('getManifest uses orchRoot parameter, not hardcoded .github', () => {
+test('getManifest sourceDir values are decoupled from orchRoot parameter', () => {
   const { categories } = getManifest('custom-root');
-  assert.strictEqual(categories[0].sourceDir, 'custom-root');
-  assert.strictEqual(categories[1].sourceDir, 'custom-root/agents');
-  assert.strictEqual(categories[2].sourceDir, 'custom-root/instructions');
-  assert.strictEqual(categories[3].sourceDir, 'custom-root/prompts');
-  assert.strictEqual(categories[4].sourceDir, 'custom-root/hooks');
-  assert.strictEqual(categories[5].sourceDir, 'custom-root/skills');
+  // sourceDir is always src/.github/... regardless of orchRoot
+  assert.strictEqual(categories[0].sourceDir, 'src/.github');
+  assert.strictEqual(categories[1].sourceDir, 'src/.github/agents');
+  assert.strictEqual(categories[2].sourceDir, 'src/.github/instructions');
+  assert.strictEqual(categories[3].sourceDir, 'src/.github/prompts');
+  assert.strictEqual(categories[4].sourceDir, 'src/.github/hooks');
+  assert.strictEqual(categories[5].sourceDir, 'src/.github/skills');
 });
 
 // ── No missing required properties ───────────────────────────────────────────

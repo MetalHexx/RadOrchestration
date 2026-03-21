@@ -37,11 +37,11 @@ describe('promptUiInstall', () => {
       assert.equal(args.message, 'Install the monitoring dashboard UI?');
     });
 
-    it('calls confirm() with default: false', async () => {
+    it('calls confirm() with default: true', async () => {
       confirmMock.mock.resetCalls();
       await promptUiInstall(WORKSPACE_DIR);
       const args = confirmMock.mock.calls[0].arguments[0];
-      assert.equal(args.default, false);
+      assert.equal(args.default, true);
     });
 
     it('returns { installUi: false } when user answers false', async () => {

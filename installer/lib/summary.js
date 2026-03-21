@@ -51,7 +51,7 @@ function tableRow(label, value) {
  */
 export function renderPreInstallSummary(config, manifest) {
   console.log('');
-  sectionHeader('📋', 'Installation Summary');
+  sectionHeader('::', 'Installation Summary');
   console.log('');
   console.log('  ' + THEME.label('Target:') + '  ' + THEME.body(config.workspaceDir));
   console.log('  ' + THEME.label('Root:') + '    ' + THEME.body(config.orchRoot));
@@ -107,7 +107,7 @@ export function renderPostInstallSummary(config, copyResults, configPath) {
   const totalFiles = copyResults.reduce((sum, r) => sum + r.fileCount, 0);
 
   console.log('');
-  sectionHeader('✅', 'Installation Complete');
+  sectionHeader('::', 'Installation Complete');
   console.log('');
   console.log('  ' + THEME.success('✔') + ' ' + THEME.body(`${totalFiles} files installed`));
   console.log('  ' + THEME.success('✔') + ' ' + THEME.body('Configuration: ') + THEME.secondary(configPath));
@@ -119,7 +119,7 @@ export function renderPostInstallSummary(config, copyResults, configPath) {
   }
 
   console.log('');
-  sectionHeader('🚀', "What's Next");
+  sectionHeader('::', "What's Next");
   console.log('');
 
   const validateCmd = `node ${config.orchRoot}/skills/orchestration/scripts/validate/validate-orchestration.js`;
@@ -161,7 +161,7 @@ export function renderPartialSuccessSummary(config, copyResults, configPath, err
   const retryCmd = `cd ${uiDir} && npm install && npm run build`;
 
   console.log('');
-  sectionHeader('⚠️', 'Installation Partially Complete');
+  sectionHeader('::', 'Installation Partially Complete');
   console.log('');
   console.log('  ' + THEME.success('✔') + ' ' + THEME.body(`${totalFiles} files installed`));
   console.log('  ' + THEME.success('✔') + ' ' + THEME.body('Configuration: ') + THEME.secondary(configPath));
@@ -172,7 +172,8 @@ export function renderPartialSuccessSummary(config, copyResults, configPath, err
   console.log('     ' + THEME.command(retryCmd));
   console.log('');
 
-  sectionHeader('🚀', "What's Next");
+  console.log('');
+  sectionHeader('::', "What's Next");
   console.log('');
 
   const validateCmd = `node ${config.orchRoot}/skills/orchestration/scripts/validate/validate-orchestration.js`;

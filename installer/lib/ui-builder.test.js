@@ -11,6 +11,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
 
+const expectedNpmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+
 // ── Mutable test state ────────────────────────────────────────────────────────
 
 const state = {
@@ -154,7 +156,7 @@ test('checkNodeNpm - returns { available: false, error } when node --version thr
 
 test('checkNodeNpm - returns { available: false, error } when npm --version throws', () => {
   resetMocks();
-  state.execFileSyncThrowsFor = 'npm';
+  state.execFileSyncThrowsFor = expectedNpmCmd;
   const result = checkNodeNpm();
   assert.equal(result.available, false);
   assert.ok(typeof result.error === 'string' && result.error.length > 0);
@@ -173,7 +175,7 @@ test('checkNodeNpm - execFileSync called with npm --version using stdio: pipe', 
   resetMocks();
   checkNodeNpm();
   const npmCall = execFileSyncMock.mock.calls[1];
-  assert.equal(npmCall.arguments[0], 'npm');
+  assert.equal(npmCall.arguments[0], expectedNpmCmd);
   assert.deepEqual(npmCall.arguments[1], ['--version']);
   assert.deepEqual(npmCall.arguments[2], { stdio: 'pipe' });
 });
@@ -252,7 +254,7 @@ test('installUi - spawns npm install with args [\'install\'] and cwd=uiDir', asy
   resetMocks();
   await installUi(DEFAULT_OPTS);
   const installCall = spawnMock.mock.calls[0];
-  assert.equal(installCall.arguments[0], 'npm');
+  assert.equal(installCall.arguments[0], expectedNpmCmd);
   assert.deepEqual(installCall.arguments[1], ['install']);
   assert.equal(installCall.arguments[2].cwd, DEFAULT_OPTS.uiDir);
 });
@@ -277,7 +279,7 @@ test('installUi - spawns npm run build with args [\'run\', \'build\'] and cwd=ui
   resetMocks();
   await installUi(DEFAULT_OPTS);
   const buildCall = spawnMock.mock.calls[1];
-  assert.equal(buildCall.arguments[0], 'npm');
+  assert.equal(buildCall.arguments[0], expectedNpmCmd);
   assert.deepEqual(buildCall.arguments[1], ['run', 'build']);
   assert.equal(buildCall.arguments[2].cwd, DEFAULT_OPTS.uiDir);
 });

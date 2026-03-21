@@ -12,37 +12,37 @@ export function getManifest(orchRoot) {
   const categories = [
     {
       name: 'Root config',
-      sourceDir: orchRoot,
+      sourceDir: 'src/.github',
       targetDir: '.',
       recursive: false,
     },
     {
       name: 'Agents',
-      sourceDir: orchRoot + '/agents',
+      sourceDir: 'src/.github/agents',
       targetDir: 'agents',
       recursive: false,
     },
     {
       name: 'Instructions',
-      sourceDir: orchRoot + '/instructions',
+      sourceDir: 'src/.github/instructions',
       targetDir: 'instructions',
       recursive: false,
     },
     {
       name: 'Prompts',
-      sourceDir: orchRoot + '/prompts',
+      sourceDir: 'src/.github/prompts',
       targetDir: 'prompts',
       recursive: false,
     },
     {
       name: 'Hooks',
-      sourceDir: orchRoot + '/hooks',
+      sourceDir: 'src/.github/hooks',
       targetDir: 'hooks',
       recursive: false,
     },
     {
       name: 'Skills',
-      sourceDir: orchRoot + '/skills',
+      sourceDir: 'src/.github/skills',
       targetDir: 'skills',
       recursive: true,
       excludeDirs: ['orchestration-staging'],

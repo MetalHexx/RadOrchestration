@@ -29,7 +29,7 @@ import { copyCategory } from './lib/file-copier.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const repoRoot = path.resolve(__dirname, '..');
+const repoRoot = __dirname;
 
 /**
  * Main installer flow. Exported for testability.
@@ -82,7 +82,9 @@ export async function main() {
     }
 
     // Copy files with per-category ora spinners
-    sectionHeader('📦', 'Installing');
+    console.log('');
+    sectionHeader('::', 'Installing');
+    console.log('');
     const targetBase = resolveOrchRoot(config.workspaceDir, config.orchRoot);
 
     /** @type {import('./lib/types.js').CopyResult[]} */
@@ -116,7 +118,9 @@ export async function main() {
     const configPath = path.join(resolvedRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
 
     if (config.installUi) {
-      sectionHeader('🖥️', 'Dashboard UI');
+      console.log('');
+      sectionHeader('::', 'Dashboard UI');
+      console.log('');
 
       const nodeCheck = checkNodeNpm();
       if (!nodeCheck.available) {

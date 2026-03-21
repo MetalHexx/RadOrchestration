@@ -8,7 +8,7 @@ test('renderBanner is exported as a function', () => {
   assert.equal(typeof renderBanner, 'function');
 });
 
-test('normal rendering (cols >= 80): output contains box-border characters and tagline', () => {
+test('normal rendering (cols >= 80): output has no border, no tagline, no emoji', () => {
   const logs = [];
   const originalLog = console.log;
   const originalCols = process.stdout.columns;
@@ -25,16 +25,17 @@ test('normal rendering (cols >= 80): output contains box-border characters and t
 
   const output = logs.join('\n');
 
-  // Box border characters
-  assert.ok(output.includes('╔'), 'output should contain ╔');
-  assert.ok(output.includes('═'), 'output should contain ═');
-  assert.ok(output.includes('╗'), 'output should contain ╗');
-  assert.ok(output.includes('║'), 'output should contain ║');
-  assert.ok(output.includes('╚'), 'output should contain ╚');
-  assert.ok(output.includes('╝'), 'output should contain ╝');
+  // No box border characters
+  assert.ok(!output.includes('╔'), 'output should NOT contain ╔');
+  assert.ok(!output.includes('╗'), 'output should NOT contain ╗');
+  assert.ok(!output.includes('╚'), 'output should NOT contain ╚');
+  assert.ok(!output.includes('╝'), 'output should NOT contain ╝');
 
-  // Tagline
-  assert.ok(output.includes('⚡ Orchestration System Installer ⚡'), 'output should contain tagline');
+  // No tagline
+  assert.ok(!output.includes('⚡ Orchestration System Installer ⚡'), 'output should NOT contain old tagline');
+
+  // No emoji
+  assert.ok(!output.includes('⚡'), 'output should NOT contain emoji');
 });
 
 test('normal rendering (cols >= 80): output contains Figlet-rendered text for RadOrch', () => {
@@ -54,11 +55,9 @@ test('normal rendering (cols >= 80): output contains Figlet-rendered text for Ra
 
   const output = logs.join('\n');
 
-  // Figlet ANSI Shadow for 'RadOrch' will produce multi-line ASCII art
-  // The raw text should contain something from figlet (not just our fallback)
-  assert.ok(output.length > 100, 'output should be substantial (figlet art + box)');
-  assert.ok(!output.includes('⚡ RadOrch Installer ⚡') || output.includes('╔'), 
-    'normal mode should not show narrow fallback text alone');
+  // Figlet Bloody for 'RadOrch' will produce multi-line ASCII art
+  assert.ok(output.length > 100, 'output should be substantial (figlet art)');
+  assert.ok(!output.includes('⚡'), 'output should NOT contain emoji');
 });
 
 test('narrow fallback (cols < 60): output contains fallback text', () => {
@@ -77,7 +76,8 @@ test('narrow fallback (cols < 60): output contains fallback text', () => {
   }
 
   const output = logs.join('\n');
-  assert.ok(output.includes('⚡ RadOrch Installer ⚡'), 'output should contain fallback text');
+  assert.ok(output.includes('RadOrch'), 'output should contain fallback text');
+  assert.ok(!output.includes('⚡'), 'output should NOT contain emoji');
 });
 
 test('narrow fallback (cols < 60): output does NOT contain box-border characters', () => {

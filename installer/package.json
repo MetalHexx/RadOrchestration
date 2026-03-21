@@ -1,16 +1,23 @@
 {
-  "name": "radorch",
+  "name": "rad-orchestration",
   "version": "1.0.0",
   "description": "Interactive CLI installer for the RadOrchestration system",
   "type": "module",
-  "private": true,
   "scripts": {
     "start": "node index.js",
-    "test": "node --test --experimental-test-module-mocks \"lib/**/*.test.js\" \"index.test.js\""
+    "test": "node --test --experimental-test-module-mocks \"lib/**/*.test.js\" \"index.test.js\"",
+    "prepack": "node scripts/sync-source.js"
   },
   "bin": {
     "radorch": "./index.js"
   },
+  "files": [
+    "index.js",
+    "lib/",
+    "src/",
+    "scripts/",
+    "!**/*.test.js"
+  ],
   "engines": {
     "node": ">=18"
   },
@@ -21,3 +28,4 @@
     "figlet": "^1.11.0"
   }
 }
+

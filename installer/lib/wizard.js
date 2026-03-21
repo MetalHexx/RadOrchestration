@@ -1,6 +1,6 @@
 // installer/lib/wizard.js — Interactive wizard orchestrator
 
-import { sectionHeader } from './theme.js';
+import { THEME, sectionHeader } from './theme.js';
 import { promptGettingStarted } from './prompts/getting-started.js';
 import { promptOrchRoot } from './prompts/orch-root.js';
 import { promptProjectStorage } from './prompts/project-storage.js';
@@ -15,22 +15,38 @@ import { promptUiInstall } from './prompts/ui-install.js';
  * @returns {Promise<import('./types.js').InstallerConfig>}
  */
 export async function runWizard({ skipConfirmation }) {
-  sectionHeader('🚀', 'Getting Started');
+  console.log('');
+  sectionHeader('::', 'Getting Started');
+  console.log('');
   const gettingStarted = await promptGettingStarted();
 
-  sectionHeader('📁', 'Orchestration Root');
+  console.log('');
+  sectionHeader('::', 'Orchestration Root');
+  console.log('');
+  console.log(THEME.hint('  The orchestration root is the folder inside your workspace where agents, skills, and prompts will be installed (e.g., .github).'));
+  console.log('');
   const orchRoot = await promptOrchRoot();
 
-  sectionHeader('📂', 'Project Storage');
+  console.log('');
+  sectionHeader('::', 'Project Storage');
+  console.log('');
+  console.log(THEME.hint('  The project storage path is where orchestration project files — PRDs, plans, task reports — will be saved.'));
+  console.log('');
   const projectStorage = await promptProjectStorage();
 
-  sectionHeader('⚙️', 'Pipeline Limits');
+  console.log('');
+  sectionHeader('::', 'Pipeline Limits');
+  console.log('');
   const pipelineLimits = await promptPipelineLimits();
 
-  sectionHeader('🚦', 'Gate Behavior');
+  console.log('');
+  sectionHeader('::', 'Gate Behavior');
+  console.log('');
   const gateBehavior = await promptGateBehavior();
 
-  sectionHeader('🖥️', 'Dashboard UI');
+  console.log('');
+  sectionHeader('::', 'Dashboard UI');
+  console.log('');
   const uiInstall = await promptUiInstall(gettingStarted.workspaceDir);
 
   return {

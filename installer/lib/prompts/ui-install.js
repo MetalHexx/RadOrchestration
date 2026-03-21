@@ -11,7 +11,7 @@ import path from 'node:path';
 export async function promptUiInstall(workspaceDir) {
   const installUi = await confirm({
     message: 'Install the monitoring dashboard UI?',
-    default: false,
+    default: true,
   });
 
   if (!installUi) {

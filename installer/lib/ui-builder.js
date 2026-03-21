@@ -11,13 +11,21 @@ import { generateDockerCompose } from './docker-generator.js';
 /** @import { UiBuildResult } from './types.js' */
 
 /**
+ * Returns the platform-appropriate npm executable name.
+ * @returns {string} 'npm.cmd' on Windows, 'npm' elsewhere
+ */
+function getNpmCmd() {
+  return process.platform === 'win32' ? 'npm.cmd' : 'npm';
+}
+
+/**
  * Checks that node and npm are available on the system.
  * @returns {{available: boolean, error?: string}}
  */
 export function checkNodeNpm() {
   try {
     execFileSync('node', ['--version'], { stdio: 'pipe' });
-    execFileSync('npm', ['--version'], { stdio: 'pipe' });
+    execFileSync(getNpmCmd(), ['--version'], { stdio: 'pipe' });
     return { available: true };
   } catch (err) {
     return { available: false, error: `Node.js or npm is not available: ${err.message}` };
@@ -40,7 +48,7 @@ function runNpmCommand(args, cwd, label) {
       spinner.text = `${label} (${seconds}s)`;
     }, 1000);
 
-    const child = spawn('npm', args, { cwd, stdio: 'pipe' });
+    const child = spawn(getNpmCmd(), args, { cwd, stdio: 'pipe' });
     let stderr = '';
 
     child.stderr.on('data', (chunk) => {

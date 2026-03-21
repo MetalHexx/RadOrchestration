@@ -48,6 +48,9 @@ temp/
 .DS_Store
 .DS_Store?
 ._*
+
+# Assembled source files (populated at publish time only)
+src/
 .Spotlight-V100
 .Trashes
 ehthumbs.db

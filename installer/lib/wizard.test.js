@@ -7,8 +7,8 @@ import assert from 'node:assert/strict';
 const callOrder = [];
 
 // --- Mock functions ---
-const sectionHeaderMock = mock.fn((emoji, title) => {
-  callOrder.push(`sectionHeader:${emoji}:${title}`);
+const sectionHeaderMock = mock.fn((marker, title) => {
+  callOrder.push(`sectionHeader:${marker}:${title}`);
 });
 
 const promptGettingStartedMock = mock.fn(async () => {
@@ -43,7 +43,7 @@ const promptUiInstallMock = mock.fn(async () => {
 
 // Register module mocks BEFORE importing the module under test
 mock.module('./theme.js', {
-  namedExports: { sectionHeader: sectionHeaderMock },
+  namedExports: { THEME: { hint: (s) => s }, sectionHeader: sectionHeaderMock },
 });
 mock.module('./prompts/getting-started.js', {
   namedExports: { promptGettingStarted: promptGettingStartedMock },
@@ -88,14 +88,14 @@ describe('runWizard({ skipConfirmation: false })', () => {
     assert.equal(sectionHeaderMock.mock.calls.length, 6);
   });
 
-  it('calls sectionHeader with correct emoji+title pairs in order', () => {
+  it('calls sectionHeader with correct marker+title pairs in order', () => {
     const calls = sectionHeaderMock.mock.calls.map(c => c.arguments);
-    assert.deepEqual(calls[0], ['🚀', 'Getting Started']);
-    assert.deepEqual(calls[1], ['📁', 'Orchestration Root']);
-    assert.deepEqual(calls[2], ['📂', 'Project Storage']);
-    assert.deepEqual(calls[3], ['⚙️', 'Pipeline Limits']);
-    assert.deepEqual(calls[4], ['🚦', 'Gate Behavior']);
-    assert.deepEqual(calls[5], ['🖥️', 'Dashboard UI']);
+    assert.deepEqual(calls[0], ['::', 'Getting Started']);
+    assert.deepEqual(calls[1], ['::', 'Orchestration Root']);
+    assert.deepEqual(calls[2], ['::', 'Project Storage']);
+    assert.deepEqual(calls[3], ['::', 'Pipeline Limits']);
+    assert.deepEqual(calls[4], ['::', 'Gate Behavior']);
+    assert.deepEqual(calls[5], ['::', 'Dashboard UI']);
   });
 
   it('calls promptGettingStarted exactly once', () => {
