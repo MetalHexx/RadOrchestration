@@ -12,9 +12,8 @@ export async function promptOrchRoot() {
   const selection = await select({
     message: 'Orchestration root folder',
     choices: [
+      { name: '.agent', value: '.agent' },
       { name: '.github', value: '.github' },
-      { name: '.copilot', value: '.copilot' },
-      { name: '.orchestration', value: '.orchestration' },
       { name: 'Custom…', value: 'custom' },
     ],
     default: '.github',

@@ -37,13 +37,13 @@ describe('promptOrchRoot — preset value selected', () => {
     assert.equal(selectArgs.message, 'Orchestration root folder');
   });
 
-  it('calls select() with exactly 4 choices', () => {
-    assert.equal(selectArgs.choices.length, 4);
+  it('calls select() with exactly 3 choices', () => {
+    assert.equal(selectArgs.choices.length, 3);
   });
 
-  it('choices are .github, .copilot, .orchestration, Custom…', () => {
+  it('choices are .agent, .github, Custom…', () => {
     const values = selectArgs.choices.map((c) => c.value);
-    assert.deepEqual(values, ['.github', '.copilot', '.orchestration', 'custom']);
+    assert.deepEqual(values, ['.agent', '.github', 'custom']);
   });
 
   it('".github" is the default', () => {
