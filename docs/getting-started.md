@@ -6,26 +6,99 @@ This guide walks you through setting up the orchestration system and running you
 
 ## Prerequisites
 
-- **Node.js v18+** — powers the CLI scripts and validation tool (no `npm install` required)
+- **Node.js v18+** — required for the installer, CLI scripts, and validation
 - **VS Code** with **GitHub Copilot** and agent mode enabled
-- A workspace where you want to run orchestrated projects
+- A workspace directory where you want to install the orchestration system
 
 ## Installation
 
-1. **Clone the repository**
+There are two ways to install the orchestration system. The interactive installer is recommended — it walks you through all configuration options and sets everything up in one step. Manual installation is available as an alternative.
 
-   ```bash
-   git clone <repo-url>
-   cd orchestration
-   ```
+### Using the Installer (Recommended)
 
-2. **Open in VS Code** with GitHub Copilot enabled
+Run the installer directly — no clone or repository setup required:
 
-3. **Copy into your project** (if using in an existing workspace)
+```bash
+npx rad-orchestration
+```
+
+This launches an interactive wizard with 6 configuration sections.
+
+Alternatively, install globally and run from any project directory:
+
+```bash
+npm install -g rad-orchestration
+radorch
+```
+
+#### Getting Started
+
+Select your AI coding tool and the target workspace directory.
+
+- **AI tool**: Choose GitHub Copilot. _(Cursor and Claude Code are shown as "coming soon.")_
+- **Target workspace**: The directory where orchestration files will be installed. 
+> Note: The orchestration system installs as a set of skill files into the target workspace, so it lives alongside your project code.
+
+#### Orchestration Root
+
+Choose the root folder inside your workspace where orchestration files will live:
+
+| Option | Description |
+|--------|-------------|
+| `.github` (default) | Standard location for VS Code and GitHub tooling |
+| `.agents` | Alternative configuration root |
+| Custom | Enter any valid folder name |
+
+#### Project Storage
+
+Configure where project folders are created and how they are named:
+
+- **Storage path**: The base directory for all project folders (default: `orchestration-projects`)
+- **Naming convention**:
+  - `SCREAMING_CASE` (default) — e.g. `MY-PROJECT`
+  - `lowercase` — e.g. `my-project`
+  - `numbered` — sequential numbering
+
+#### Pipeline Limits
+
+Set scope guards for the pipeline:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Max phases per project | 10 | Upper bound on phases in any single project |
+| Max tasks per phase | 8 | Maximum tasks the planner can create in a phase |
+| Max retries per task | 2 | How many times a failed task can be retried |
+| Max consecutive review rejections | 3 | Rejections before the pipeline halts for human review |
+
+#### Gate Behavior
+
+Choose how much human oversight you want during execution:
+
+| Mode | Description |
+|------|-------------|
+| `ask` (default) | Prompt for approval before each plan execution begins |
+| `phase` | Gate between phases |
+| `task` | Gate between every task |
+| `autonomous` | Fully automated — no gates |
+
+#### Dashboard UI
+
+Optionally install the real-time monitoring dashboard.
+
+- **Install dashboard?**: Defaults to `Yes`. Answer `No` to skip the dashboard.
+- **Installation directory**: Where the dashboard files go (default: `{workspace}/ui`).
+
+When enabled, the installer copies the dashboard source files, runs `npm install`, and builds the application. If the build fails, core orchestration installation still succeeds — the installer shows the specific retry command to run manually.
+
+### Alternative: Manual Installation
+
+1. **Copy the orchestration files into your project**
 
    Copy the `.github/` directory _(or your [configured root](configuration.md))_ into the root of your target project. It contains all agents, skills, instructions, configuration, and orchestration scripts.
 
-4. **Configure the system**
+2. **Open in VS Code** with GitHub Copilot enabled
+
+3. **Configure the system**
 
    Run the `/configure-system` prompt in Copilot. This creates or updates `.github/skills/orchestration/config/orchestration.yml` _(or your [configured root](configuration.md))_ with your preferences — project storage path, pipeline limits, and human gate settings.
 
@@ -37,20 +110,25 @@ This guide walks you through setting up the orchestration system and running you
 
 If you have a rough idea but want to explore it first:
 
-1. Open Copilot chat and invoke `@Brainstormer`
+1. Open Copilot chat and select the `Brainstormer` agent
 2. Describe your idea — the Brainstormer will ask questions, explore trade-offs, and help you converge on a clear concept
    - Add any other docs or resources to the brainstorming folder as needed — the Brainstormer can read them for context
-3. The output is a `BRAINSTORMING.md` document in your project folder
-4. Then invoke `@Orchestrator` — it will pick up the brainstorming document and start the planning pipeline and scaffold the project structure
-   - You can provide additional instructions or resources to the Orchestrator as needed — it reads the entire project folder for context
+3. The output is a `<PROJECT-NAME>-BRAINSTORMING.md` document in your project folder
+4. Then type `/rad-plan` in Copilot Chat — it picks up the brainstorming document and runs the full planning pipeline (Research → PRD → Design → Architecture → Master Plan)
+   - You can provide additional context or instructions alongside `/rad-plan` as needed
 
 ### Option B: Start Directly
 
 If you already know what you want to build:
 
-1. Open Copilot chat and invoke `@Orchestrator`
-2. Describe your project: *"Build me a REST API for managing inventory with auth, CRUD operations, and a React dashboard"* -- You can do better than that ;)
-3. The Orchestrator initializes the project and begins the planning pipeline
+1. Open Copilot Chat and type `/rad-plan` with a description of your project:
+   ```
+   /rad-plan Build a REST API for managing inventory with auth, CRUD operations, and a React dashboard
+   ```
+2. The Orchestrator runs the full planning pipeline (Research → PRD → Design → Architecture → Master Plan)
+
+### Add Additonal Documents as Planning Input
+As with all agent systems, you can provide anything else you need to the planning step.  This includes other documents, code references, images, etc.  The Brainstormer / Brainstorm documents are optional.
 
 ### What Happens Next
 
@@ -63,7 +141,7 @@ The Orchestrator automatically sequences agents through the pipeline:
 5. **Architect** — synthesizes everything into a Master Plan with phased execution
 6. **Human gate** — you review and approve the Master Plan before any code is written
 
-After approval, execution begins:
+After approval, type `/rad-execute` to begin the execution pipeline:
 
 7. **Tactical Planner** — breaks each phase into concrete tasks
 8. **Coder** — executes tasks from self-contained handoff documents
@@ -74,46 +152,26 @@ After approval, execution begins:
 
 ## Continuing a Project
 
-To resume a project that's already in progress:
+After Master Plan approval, type `/rad-execute` to begin execution. You can also use it to resume a project that's already in progress:
 
 ```
-@Orchestrator continue the project
+/rad-execute
 ```
 
-The Orchestrator reads `state.json` to determine exactly where the pipeline left off and spawns the appropriate agent. The deterministic `pipeline.js` event-driven engine — with its 17-event vocabulary and 19-action output set — ensures consistent routing regardless of how many times you resume.
+Or use the `Orchestrator` agent directly:
+
+```
+@orchestrator continue the project
+```
 
 ## Checking Status
 
 ```
-@Orchestrator what's the project status?
+Just ask the orchestrator. :)
 ```
 
-The Orchestrator reads `state.json` directly to determine the current project status, or calls `pipeline.js --event start` to get the current state and recommended next action. Every state mutation flows through `pipeline.js`, so `state.json` is always the authoritative source of truth. The `pipeline.current_tier` field identifies the active tier (`planning`, `execution`, or `complete`).
+> Recommended:  Check out the [UI Status Dashboard](dashboard.md) — it surfaces the current status, recent activity, and next steps based in a human-friendly format and in realtime.
 
-> Recommended: Check out the [UI Status Dashboard](dashboard.md) — it surfaces the current status, recent activity, and next steps based on `state.json` in a human-friendly format and in realtime.
-
-## Running Validation
-
-Validate that all orchestration files are correctly configured:
-
-```bash
-# Default .github root shown. Adjust if you configured a custom orch_root.
-node .github/skills/orchestration/scripts/validate/validate-orchestration.js
-```
-
-Add `--verbose` for detailed output, or `--category agents` to check a single category. See [Validation](validation.md) for full CLI options.
-
-## Key Commands
-
-| Command | What It Does |
-|---------|-------------|
-| `@Brainstormer` + idea | Collaboratively explore and refine a project idea |
-| `@Orchestrator` + idea | Start a new project through the full pipeline |
-| `@Orchestrator` continue | Resume an in-progress project |
-| `@Orchestrator` status | Check current project status |
-| `/configure-system` | Create or update `orchestration.yml` |
-| `/execute-plan` | Approve a Master Plan and begin execution |
-| `node .github/skills/orchestration/scripts/validate/validate-orchestration.js` | Validate orchestration files |
 
 ## Next Steps
 

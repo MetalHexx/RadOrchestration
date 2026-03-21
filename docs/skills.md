@@ -116,6 +116,29 @@ The `SKILL.md` file contains:
 - **Templates** — output document schemas
 - **Rules** — constraints and quality standards
 
+## Prompts
+
+Prompts (`.prompt.md` files) are slash-command shortcuts that invoke a specific agent with a predefined instruction. They differ from skills — skills provide knowledge bundles that agents load, while prompts trigger a workflow by sending a ready-made instruction directly to a target agent.
+
+### Prompt Inventory
+
+| Prompt | File | Agent | Description |
+|--------|------|-------|-------------|
+| `/rad-plan` | `.github/prompts/rad-plan.prompt.md` | Orchestrator | Start the full planning pipeline for a new project — Research through Master Plan |
+| `/rad-execute` | `.github/prompts/rad-execute.prompt.md` | Orchestrator | Continue a project through the orchestration pipeline |
+
+### rad-plan
+
+- **Purpose**: Kicks off the complete planning pipeline: Research → PRD → Design → Architecture → Master Plan.
+- **When to use**: When you have a project idea (either a free-text description or an existing `BRAINSTORMING.md` document) and want to produce a full planning suite in one shot.
+- **Behavior**: If a `BRAINSTORMING.md` exists for the project, it is used as the starting input. Otherwise, the user's description in the conversation is used. The Orchestrator presents the Master Plan for human approval when complete.
+
+### rad-execute
+
+- **Purpose**: Continues a project through the execution pipeline after the Master Plan has been approved.
+- **When to use**: After the planning pipeline completes and the Master Plan is approved, use this prompt to begin or resume phase execution.
+- **Behavior**: Instructs the Orchestrator to mark the plan as approved (if not already) and execute the project according to the Master Plan using the proper execution pipeline.
+
 ## Next Steps
 
 - [Templates](templates.md) — Customize the 16 output templates that skills produce

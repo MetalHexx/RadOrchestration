@@ -107,23 +107,14 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 
 ## Getting Started
 
-### Prerequisites
+[Full getting started guide →](docs/getting-started.md)
 
-- **Node.js v18+** — for CLI scripts and validation (no npm install needed)
-- **GitHub Copilot** in VS Code with agent mode enabled
-
-### Quick Start
+### Alternative: Manual Installation
 
 1. Clone the repo and open in VS Code with GitHub Copilot
 2. Copy the `.github/` directory _(or your [configured root](docs/configuration.md))_ into the root of your target project
 3. Run `/configure-system` to set up `orchestration.yml`
-4. *(Optional)* Use `@Brainstormer` to explore and refine your ideas into goals
-5. Use `@Orchestrator` with your project goals to start the pipeline
-6. Use `@Orchestrator` to continue — it reads `state.json` and picks up where it left off
-
-> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](docs/configuration.md), adjust paths accordingly.
-
-[Full getting started guide →](docs/getting-started.md)
+4. Use `Orchestrator` agent with your project goals to start the pipeline
 
 > **Migrating an existing project?** Run `node .github/skills/orchestration/scripts/migrate-to-v4.js` to upgrade `state.json` files from earlier schema versions. The script creates `.backup` copies before writing.
 

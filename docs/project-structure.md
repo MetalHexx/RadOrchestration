@@ -187,7 +187,8 @@ Prompt files provide utility workflows accessible via `/` commands in Copilot:
 | Prompt | Command | Purpose |
 |--------|---------|---------|
 | `configure-system.prompt.md` | `/configure-system` | Create or update `orchestration.yml`, scan for stale path references |
-| `execute-plan.prompt.md` | `/execute-plan` | Approve a Master Plan and begin execution |
+| `rad-plan.prompt.md` | `/rad-plan` | Start the full planning pipeline for a new project — Research through Master Plan |
+| `rad-execute.prompt.md` | `/rad-execute` | Approve a Master Plan and begin execution |
 
 ## Next Steps
 
