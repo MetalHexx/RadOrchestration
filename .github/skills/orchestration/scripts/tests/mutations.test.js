@@ -807,12 +807,12 @@ describe('handlePhaseReviewCompleted', () => {
     assert.equal(result.state.execution.current_tier, undefined);
   });
 
-  it('on changes_requested: sets review.action corrective_tasks_issued, phase.stage = executing', () => {
+  it('on changes_requested: sets review.action corrective_tasks_issued, phase.stage = failed', () => {
     const state = makeExecutionState();
     const handler = getMutation('phase_review_completed');
     const result = handler(state, { doc_path: 'reviews/PHASE-REVIEW-P01.md', verdict: 'changes_requested', exit_criteria_met: false }, defaultConfig);
     assert.equal(result.state.execution.phases[0].status, 'in_progress');
-    assert.equal(result.state.execution.phases[0].stage, 'executing');
+    assert.equal(result.state.execution.phases[0].stage, 'failed');
     assert.equal(result.state.execution.phases[0].review.action, 'corrective_tasks_issued');
   });
 
@@ -1044,7 +1044,7 @@ describe('handlePhaseReviewCompleted gate mode', () => {
     state.pipeline.gate_mode = 'phase';
     const handler = getMutation('phase_review_completed');
     const result = handler(state, { doc_path: 'r.md', verdict: 'changes_requested', exit_criteria_met: false }, defaultConfig);
-    assert.equal(result.state.execution.phases[0].stage, 'executing');
+    assert.equal(result.state.execution.phases[0].stage, 'failed');
     assert.equal(result.state.execution.current_phase, 1);
   });
 
@@ -1055,6 +1055,105 @@ describe('handlePhaseReviewCompleted gate mode', () => {
     const result = handler(state, { doc_path: 'r.md', verdict: 'rejected', exit_criteria_met: false }, defaultConfig);
     assert.equal(result.state.execution.phases[0].stage, 'failed');
     assert.equal(result.state.pipeline.current_tier, 'halted');
+  });
+});
+
+// ─── handlePhaseReviewCompleted corrective stage transition ─────────────────
+
+describe('handlePhaseReviewCompleted corrective stage transition', () => {
+  it('sets phase.stage to failed (not executing) on changes_requested with corrective tasks', () => {
+    const state = makeExecutionState();
+    const handler = getMutation('phase_review_completed');
+    const result = handler(state, {
+      doc_path: 'reviews/PHASE-REVIEW-P01.md',
+      verdict: 'changes_requested',
+      exit_criteria_met: false,
+    }, defaultConfig);
+    assert.equal(result.state.execution.phases[0].stage, 'failed');
+    assert.notEqual(result.state.execution.phases[0].stage, 'executing');
+    assert.equal(result.state.execution.phases[0].status, 'in_progress');
+    assert.equal(result.state.execution.phases[0].review.action, 'corrective_tasks_issued');
+  });
+});
+
+// ─── resolveTaskOutcome approved + failed ───────────────────────────────────
+
+describe('resolveTaskOutcome approved + failed', () => {
+  it('approved + failed → complete/advanced (reviewer approval is authoritative)', () => {
+    const result = resolveTaskOutcome('approved', 'failed', false, null, 0, 3);
+    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
+  });
+
+  it('approved + failed + deviations → complete/advanced', () => {
+    const result = resolveTaskOutcome('approved', 'failed', true, 'minor', 0, 3);
+    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
+  });
+
+  it('approved + failed + critical deviations → complete/advanced', () => {
+    const result = resolveTaskOutcome('approved', 'failed', true, 'critical', 0, 3);
+    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
+  });
+
+  it('approved + failed + exhausted retries → complete/advanced (retries are irrelevant for approval)', () => {
+    const result = resolveTaskOutcome('approved', 'failed', false, null, 3, 3);
+    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
+  });
+});
+
+// ─── handlePhasePlanCreated stale field clearing ─────────────────────────────
+
+describe('handlePhasePlanCreated stale field clearing', () => {
+  it('clears stale phase_report and phase_review fields on corrective re-entry', () => {
+    const state = makeExecutionState();
+    const phase = state.execution.phases[0];
+    // Simulate a phase that went through review and is now re-entering
+    phase.stage = 'failed';
+    phase.docs.phase_report = 'reports/PHASE-REPORT-P01.md';
+    phase.docs.phase_review = 'reviews/PHASE-REVIEW-P01.md';
+    phase.review.verdict = 'changes_requested';
+    phase.review.action = 'corrective_tasks_issued';
+
+    const handler = getMutation('phase_plan_created');
+    const result = handler(state, {
+      doc_path: 'phases/CORRECTIVE-PHASE-PLAN-P01.md',
+      tasks: ['Fix A', 'Fix B'],
+    }, defaultConfig);
+
+    assert.strictEqual(phase.docs.phase_report, null);
+    assert.strictEqual(phase.docs.phase_review, null);
+    assert.strictEqual(phase.review.verdict, null);
+    assert.strictEqual(phase.review.action, null);
+    assert.equal(phase.stage, 'executing');
+    assert.equal(phase.status, 'in_progress');
+    assert.equal(phase.docs.phase_plan, 'phases/CORRECTIVE-PHASE-PLAN-P01.md');
+    assert.ok(result.mutations_applied.some(m => m.includes('Cleared phase.docs.phase_report')));
+    assert.ok(result.mutations_applied.some(m => m.includes('Cleared phase.docs.phase_review')));
+  });
+
+  it('does not emit clearing entries on fresh phase (first-time plan creation)', () => {
+    const state = makeExecutionState();
+    const phase = state.execution.phases[0];
+    phase.status = 'not_started';
+    phase.stage = 'planning';
+    phase.tasks = [];
+    phase.current_task = 0;
+
+    const handler = getMutation('phase_plan_created');
+    const result = handler(state, {
+      doc_path: 'phases/PHASE-PLAN-P01.md',
+      tasks: ['Task 1'],
+    }, defaultConfig);
+
+    assert.ok(
+      !result.mutations_applied.some(m => m.includes('Cleared phase.docs.phase_report')),
+      'Should not clear phase_report on fresh phase',
+    );
+    assert.ok(
+      !result.mutations_applied.some(m => m.includes('Cleared phase.docs.phase_review')),
+      'Should not clear phase_review on fresh phase',
+    );
+    assert.equal(phase.stage, 'executing');
+    assert.equal(phase.docs.phase_plan, 'phases/PHASE-PLAN-P01.md');
   });
 });
 

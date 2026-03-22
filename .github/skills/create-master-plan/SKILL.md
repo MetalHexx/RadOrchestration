@@ -52,6 +52,8 @@ The master plan document must include the following YAML frontmatter fields:
 |-------|----------|------|-------------|
 | `project` | Yes | String | The project name (e.g., `MY-PROJECT`) |
 | `status` | Yes | String | Document status: `draft` or `approved` |
+| `type` | Yes | String | Must be `"master-plan"` |
+| `total_phases` | Yes | Integer (positive) | Must match the number of Phase Outline sections in the document |
 | `author` | Yes | String | Agent that created the document (e.g., `architect-agent`) |
 | `created` | Yes | String | ISO-8601 date of creation |
 

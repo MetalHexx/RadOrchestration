@@ -1,6 +1,7 @@
 ---
 project: "{PROJECT-NAME}"
 status: "draft|approved"
+type: "master-plan"
 total_phases: {Number}
 author: "architect-agent"
 created: "{ISO-DATE}"

@@ -88,7 +88,7 @@ The resolver is a pure function that returns one of 19 values based solely on th
 
 | Action | Meaning |
 |--------|---------|
-| `create_phase_plan` | Phase needs a plan |
+| `create_phase_plan` | Phase needs a plan (fresh or corrective — corrective includes `context.is_correction` and `context.previous_review`) |
 | `create_task_handoff` | Task needs a handoff document (fresh or corrective, distinguished by `context.is_correction`) |
 | `execute_task` | Task has handoff, ready to execute |
 | `spawn_code_reviewer` | Task needs code review |

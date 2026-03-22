@@ -258,6 +258,65 @@ describe('resolver — execution tier — phase stage routing', () => {
   });
 });
 
+// ─── Execution Tier — Phase FAILED Routing Tests ───────────────────────────────
+
+describe('resolver — execution tier — phase FAILED routing', () => {
+  it('returns create_phase_plan with corrective context when phase.stage is failed and review.action is corrective_tasks_issued', () => {
+    const state = makeState({
+      execution: {
+        status: 'in_progress',
+        current_phase: 1,
+        phases: [makePhase({
+          status: 'failed',
+          stage: 'failed',
+          docs: { phase_plan: 'plans/pp.md', phase_report: 'reports/pr.md', phase_review: 'reviews/pvr.md' },
+          review: { verdict: 'changes_requested', action: 'corrective_tasks_issued' },
+        })],
+      },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'create_phase_plan');
+    assert.equal(result.context.is_correction, true);
+    assert.equal(result.context.phase_number, 1);
+    assert.equal(result.context.phase_id, 'P01');
+    assert.equal(result.context.previous_review, 'reviews/pvr.md');
+  });
+
+  it('returns display_halted when phase.stage is failed and review.action is null', () => {
+    const state = makeState({
+      execution: {
+        status: 'in_progress',
+        current_phase: 1,
+        phases: [makePhase({
+          status: 'failed',
+          stage: 'failed',
+          docs: { phase_plan: 'plans/pp.md', phase_report: 'reports/pr.md', phase_review: null },
+          review: { verdict: null, action: null },
+        })],
+      },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'display_halted');
+  });
+
+  it('returns display_halted when phase.stage is failed and review.action is halted', () => {
+    const state = makeState({
+      execution: {
+        status: 'in_progress',
+        current_phase: 1,
+        phases: [makePhase({
+          status: 'failed',
+          stage: 'failed',
+          docs: { phase_plan: 'plans/pp.md', phase_report: 'reports/pr.md', phase_review: 'reviews/pvr.md' },
+          review: { verdict: null, action: 'halted' },
+        })],
+      },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'display_halted');
+  });
+});
+
 // ─── Execution Tier — Task Stage Routing Tests ───────────────────────────────
 
 describe('resolver — execution tier — task stage routing', () => {

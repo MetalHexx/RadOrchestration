@@ -115,6 +115,19 @@ function resolveExecution(state, config) {
     };
   }
 
+  if (phase.stage === PHASE_STAGES.FAILED
+      && phase.review.action === PHASE_REVIEW_ACTIONS.CORRECTIVE_TASKS_ISSUED) {
+    return {
+      action: NEXT_ACTIONS.CREATE_PHASE_PLAN,
+      context: {
+        is_correction: true,
+        phase_number: phaseNumber,
+        phase_id: formatPhaseId(phaseNumber),
+        previous_review: phase.docs.phase_review,
+      },
+    };
+  }
+
   if (phase.stage === PHASE_STAGES.COMPLETE && phase.review.action === PHASE_REVIEW_ACTIONS.ADVANCED) {
     return resolvePhaseGate(phaseNumber, state, config);
   }

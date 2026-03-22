@@ -7,10 +7,10 @@ const { readFile } = require('../validate/lib/utils/fs-helpers');
 
 const STATUS_MAP = Object.freeze({
   'complete': 'complete',
-  'pass': 'complete',
-  'failed': 'failed',
-  'fail': 'failed',
-  'partial': 'failed',
+  'pass':     'complete',
+  'failed':   'failed',
+  'fail':     'failed',
+  'partial':  'complete',
 });
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

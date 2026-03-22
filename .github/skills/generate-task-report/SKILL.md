@@ -37,11 +37,11 @@ Generate a Task Report after completing a coding task. The report documents what
 - **Factual only**: Report what happened, not what was intended — no aspirational language
 - **Test results are actual**: You must run the tests, not assume they pass
 - **Build status is actual**: You must run the build, not assume it passes
-- **Status classification matters**: `complete` (all met), `partial` (some met), `failed` (blocking issues)
+- **Status classification matters**: `complete` (acceptance criteria met) or `failed` (acceptance criteria not met) — there is no middle-ground status. Document pre-existing or out-of-scope issues in the "Pre-existing Issues" section.
 - **Every handoff file target must be accounted for**: In the Files Changed table
 - **Every handoff acceptance criterion must have a result**: In the Acceptance Criteria Results table
 
-> **IMPORTANT: The `status` field in the frontmatter MUST be exactly one of: `complete`, `partial`, or `failed`. Do NOT use synonyms like `pass`, `fail`, `success`, `done`, or any other word. The pipeline engine will reject reports with unrecognized status values.**
+> **IMPORTANT: The `status` field in the frontmatter MUST be exactly one of: `complete` or `failed`. Do NOT use synonyms like `pass`, `fail`, `success`, `done`, `partial`, or any other word. The pipeline engine will reject reports with unrecognized status values. Legacy reports using `partial` are mapped to `complete` for backward compatibility.**
 
 ## Required Frontmatter Fields
 
@@ -56,11 +56,20 @@ The Task Report template frontmatter includes fields consumed by the pipeline en
 
 ## Status Classification
 
-| Status | Meaning | Planner Action |
-|--------|---------|----------------|
-| `complete` | All acceptance criteria met, tests pass, build passes | Mark task complete, advance |
-| `partial` | Some criteria met, minor issues remain | Check severity → auto-retry or escalate |
-| `failed` | Blocking issues, build broken, critical errors | Check severity → halt or corrective task |
+| Status | Meaning | When to Use |
+|--------|---------|-------------|
+| `complete` | Task done; deliverables meet acceptance criteria | Default. Use even when pre-existing issues exist outside the task's scope. Document concerns in the "Pre-existing Issues" section of the report. |
+| `failed` | Task could not be completed; acceptance criteria not met | Use only when the task's own acceptance criteria cannot be satisfied. |
+
+## Pre-existing Issues Guidance
+
+When you discover issues during implementation that are **outside the scope** of the task's acceptance criteria (e.g., pre-existing test failures, unrelated bugs, technical debt), do NOT use `failed` to signal these. Instead:
+
+- Set `status: complete` if the task's own acceptance criteria are met
+- Document the out-of-scope issues in the **Pre-existing Issues** section of the report (see template)
+- The Reviewer's verdict is the authoritative outcome — your self-reported status informs but does not override the review
+
+Use `failed` **only** when you cannot satisfy the task's own acceptance criteria.
 
 ## Template
 

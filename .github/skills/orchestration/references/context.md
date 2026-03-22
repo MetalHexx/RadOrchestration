@@ -29,7 +29,7 @@ This workspace contains a **document-driven agent orchestration system** built o
 
 ```
 Planning:  Brainstorming (optional) → Research → PRD → Design → Architecture → Master Plan → Human Approval
-Execution: Phase Plan → Task Handoffs → Code → Review → (loop) → Phase Review
+Execution: Phase Plan → Task Handoffs → Code → Review → (correction loop) → Phase Review → (next / correction loop)
 Final:     Comprehensive Review → Human Approval → Complete
 ```
 
