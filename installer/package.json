@@ -4,7 +4,7 @@
   "description": "Interactive CLI installer for the RadOrchestration system",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
+    "start": "node scripts/sync-source.js && node index.js",
     "test": "node --test --experimental-test-module-mocks \"lib/**/*.test.js\" \"index.test.js\"",
     "prepack": "node scripts/sync-source.js"
   },

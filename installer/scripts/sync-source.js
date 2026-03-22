@@ -25,15 +25,34 @@ const __dirname = path.dirname(__filename);
  * @param {string} source - Absolute path to the .github/ source directory
  * @param {string} target - Absolute path to the destination directory
  */
-export function syncSource(source, target) {
+/** Names excluded from UI source sync (build artifacts, deps, env files). */
+const UI_EXCLUDES = new Set(['node_modules', '.next', '.env.local', '.env']);
+
+/**
+ * @param {string} source - Absolute path to the source directory
+ * @param {string} target - Absolute path to the destination directory
+ * @param {Set<string>} [excludes] - Optional set of directory/file names to skip
+ */
+export function syncSource(source, target, excludes) {
   fs.rmSync(target, { recursive: true, force: true });
-  fs.cpSync(source, target, { recursive: true });
-  console.log('Synced .github/ → src/.github/');
+  const options = { recursive: true };
+  if (excludes) {
+    options.filter = (src) => !excludes.has(path.basename(src));
+  }
+  fs.cpSync(source, target, options);
+  console.log(`Synced ${path.basename(source)}/ \u2192 src/${path.basename(target)}/`);
 }
 
 // Only execute when run directly (not when imported by tests)
 if (process.argv[1] === __filename) {
-  const source = path.resolve(__dirname, '../../.github');
-  const target = path.resolve(__dirname, '../src/.github');
-  syncSource(source, target);
+  syncSource(
+    path.resolve(__dirname, '../../.github'),
+    path.resolve(__dirname, '../src/.github'),
+  );
+
+  syncSource(
+    path.resolve(__dirname, '../../ui'),
+    path.resolve(__dirname, '../src/ui'),
+    UI_EXCLUDES,
+  );
 }

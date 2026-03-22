@@ -2,7 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync, spawn } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import ora from 'ora';
 import { THEME } from './theme.js';
 import { generateEnvLocal } from './env-generator.js';
@@ -11,21 +11,14 @@ import { generateDockerCompose } from './docker-generator.js';
 /** @import { UiBuildResult } from './types.js' */
 
 /**
- * Returns the platform-appropriate npm executable name.
- * @returns {string} 'npm.cmd' on Windows, 'npm' elsewhere
- */
-function getNpmCmd() {
-  return process.platform === 'win32' ? 'npm.cmd' : 'npm';
-}
-
-/**
  * Checks that node and npm are available on the system.
+ * Uses execSync (shell-backed) so npm resolves correctly on all platforms.
  * @returns {{available: boolean, error?: string}}
  */
 export function checkNodeNpm() {
   try {
-    execFileSync('node', ['--version'], { stdio: 'pipe' });
-    execFileSync(getNpmCmd(), ['--version'], { stdio: 'pipe' });
+    execSync('node --version', { stdio: 'pipe' });
+    execSync('npm --version', { stdio: 'pipe' });
     return { available: true };
   } catch (err) {
     return { available: false, error: `Node.js or npm is not available: ${err.message}` };
@@ -48,7 +41,7 @@ function runNpmCommand(args, cwd, label) {
       spinner.text = `${label} (${seconds}s)`;
     }, 1000);
 
-    const child = spawn(getNpmCmd(), args, { cwd, stdio: 'pipe' });
+    const child = spawn(`npm ${args.join(' ')}`, { cwd, stdio: 'pipe', shell: true });
     let stderr = '';
 
     child.stderr.on('data', (chunk) => {
@@ -79,7 +72,7 @@ function runNpmCommand(args, cwd, label) {
  * npm install, npm run build, generate docker-compose.yml.
  * Shows ora spinners with elapsed time for long operations.
  * @param {Object} options
- * @param {string} options.repoRoot - Absolute path to repo root (contains ui/ source)
+ * @param {string} options.repoRoot - Absolute path to installer root (contains src/ui/ source)
  * @param {string} options.uiDir - Absolute path to UI target directory
  * @param {string} options.workspaceDir - Absolute path to workspace root
  * @param {string} options.orchRoot - Orchestration root folder name
@@ -99,7 +92,7 @@ export async function installUi({ repoRoot, uiDir, workspaceDir, orchRoot }) {
   let fileCount = 0;
   try {
     fs.mkdirSync(uiDir, { recursive: true });
-    fs.cpSync(path.join(repoRoot, 'ui'), uiDir, {
+    fs.cpSync(path.join(repoRoot, 'src', 'ui'), uiDir, {
       recursive: true,
       filter: (src) => {
         const base = path.basename(src);
