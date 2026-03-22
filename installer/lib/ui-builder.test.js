@@ -11,18 +11,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
 
-const expectedNpmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-
 // ── Mutable test state ────────────────────────────────────────────────────────
 
 const state = {
-  execFileSyncThrowsFor: null,  // null | 'node' | 'npm'
-  spawnResults: [],              // queue: [{ exitCode?, stderr?, error? }, ...]
-  cpSyncThrows: null,            // Error to throw from cpSync
+  execSyncThrowsFor: null,  // null | 'node --version' | 'npm --version'
+  spawnResults: [],          // queue: [{ exitCode?, stderr?, error? }, ...]
+  cpSyncThrows: null,        // Error to throw from cpSync
 };
 
 function resetState() {
-  state.execFileSyncThrowsFor = null;
+  state.execSyncThrowsFor = null;
   state.spawnResults = [];
   state.cpSyncThrows = null;
 }
@@ -33,14 +31,15 @@ const callOrder = [];
 
 // ── Persistent mock functions ─────────────────────────────────────────────────
 
-const execFileSyncMock = mock.fn((cmd, _args, _opts) => {
-  if (state.execFileSyncThrowsFor === cmd) {
+const execSyncMock = mock.fn((cmd, _opts) => {
+  if (state.execSyncThrowsFor === cmd) {
     throw new Error(`${cmd}: command not found`);
   }
 });
 
-const spawnMock = mock.fn((cmd, args, _opts) => {
-  callOrder.push(`spawn:${args.join(' ')}`);
+const spawnMock = mock.fn((cmd, _opts) => {
+  const cmdArgs = cmd.replace(/^npm\s+/, '');
+  callOrder.push(`spawn:${cmdArgs}`);
   const { exitCode = 0, stderr = '', error = null } = state.spawnResults.shift() ?? {};
   const child = new EventEmitter();
   child.stderr = new EventEmitter();
@@ -100,7 +99,7 @@ mock.method(fs, 'statSync', statSyncMock);
 // ── Register module mocks before importing ui-builder.js ─────────────────────
 
 await mock.module('node:child_process', {
-  namedExports: { execFileSync: execFileSyncMock, spawn: spawnMock },
+  namedExports: { execSync: execSyncMock, spawn: spawnMock },
 });
 await mock.module('ora', { defaultExport: oraMock });
 await mock.module('./env-generator.js', {
@@ -117,7 +116,7 @@ const { checkNodeNpm, installUi } = await import('./ui-builder.js');
 // ── Reset helper ──────────────────────────────────────────────────────────────
 
 const ALL_MOCKS = [
-  execFileSyncMock, spawnMock, mkdirSyncMock, cpSyncMock, writeFileSyncMock,
+  execSyncMock, spawnMock, mkdirSyncMock, cpSyncMock, writeFileSyncMock,
   statSyncMock, oraMock, generateEnvLocalMock, generateDockerComposeMock,
 ];
 
@@ -135,6 +134,7 @@ const DEFAULT_OPTS = {
   uiDir: '/target/ui',
   workspaceDir: '/workspace',
   orchRoot: '.github',
+  projectsBasePath: 'orchestration-projects',
 };
 
 // ── checkNodeNpm() ────────────────────────────────────────────────────────────
@@ -143,12 +143,12 @@ test('checkNodeNpm - returns { available: true } when both node and npm succeed'
   resetMocks();
   const result = checkNodeNpm();
   assert.deepEqual(result, { available: true });
-  assert.equal(execFileSyncMock.mock.callCount(), 2);
+  assert.equal(execSyncMock.mock.callCount(), 2);
 });
 
 test('checkNodeNpm - returns { available: false, error } when node --version throws', () => {
   resetMocks();
-  state.execFileSyncThrowsFor = 'node';
+  state.execSyncThrowsFor = 'node --version';
   const result = checkNodeNpm();
   assert.equal(result.available, false);
   assert.ok(typeof result.error === 'string' && result.error.length > 0);
@@ -156,28 +156,26 @@ test('checkNodeNpm - returns { available: false, error } when node --version thr
 
 test('checkNodeNpm - returns { available: false, error } when npm --version throws', () => {
   resetMocks();
-  state.execFileSyncThrowsFor = expectedNpmCmd;
+  state.execSyncThrowsFor = 'npm --version';
   const result = checkNodeNpm();
   assert.equal(result.available, false);
   assert.ok(typeof result.error === 'string' && result.error.length > 0);
 });
 
-test('checkNodeNpm - execFileSync called with node --version using stdio: pipe', () => {
+test('checkNodeNpm - execSync called with "node --version" using stdio: pipe', () => {
   resetMocks();
   checkNodeNpm();
-  const nodecall = execFileSyncMock.mock.calls[0];
-  assert.equal(nodecall.arguments[0], 'node');
-  assert.deepEqual(nodecall.arguments[1], ['--version']);
-  assert.deepEqual(nodecall.arguments[2], { stdio: 'pipe' });
+  const nodeCall = execSyncMock.mock.calls[0];
+  assert.equal(nodeCall.arguments[0], 'node --version');
+  assert.deepEqual(nodeCall.arguments[1], { stdio: 'pipe' });
 });
 
-test('checkNodeNpm - execFileSync called with npm --version using stdio: pipe', () => {
+test('checkNodeNpm - execSync called with "npm --version" using stdio: pipe', () => {
   resetMocks();
   checkNodeNpm();
-  const npmCall = execFileSyncMock.mock.calls[1];
-  assert.equal(npmCall.arguments[0], expectedNpmCmd);
-  assert.deepEqual(npmCall.arguments[1], ['--version']);
-  assert.deepEqual(npmCall.arguments[2], { stdio: 'pipe' });
+  const npmCall = execSyncMock.mock.calls[1];
+  assert.equal(npmCall.arguments[0], 'npm --version');
+  assert.deepEqual(npmCall.arguments[1], { stdio: 'pipe' });
 });
 
 // ── installUi() — fs.mkdirSync ────────────────────────────────────────────────
@@ -250,51 +248,49 @@ test('installUi - writes .env.local content from generateEnvLocal() before runni
 
 // ── installUi() — npm install spawn args ─────────────────────────────────────
 
-test('installUi - spawns npm install with args [\'install\'] and cwd=uiDir', async () => {
+test('installUi - spawns npm install as single command string with cwd=uiDir', async () => {
   resetMocks();
   await installUi(DEFAULT_OPTS);
   const installCall = spawnMock.mock.calls[0];
-  assert.equal(installCall.arguments[0], expectedNpmCmd);
-  assert.deepEqual(installCall.arguments[1], ['install']);
-  assert.equal(installCall.arguments[2].cwd, DEFAULT_OPTS.uiDir);
+  assert.equal(installCall.arguments[0], 'npm install');
+  assert.equal(installCall.arguments[1].cwd, DEFAULT_OPTS.uiDir);
 });
 
-test('installUi - npm install spawn does not use shell: true', async () => {
+test('installUi - npm install spawn uses shell: true for cross-platform compatibility', async () => {
   resetMocks();
   await installUi(DEFAULT_OPTS);
-  const opts = spawnMock.mock.calls[0].arguments[2];
-  assert.ok(!opts.shell, 'shell must not be true');
+  const opts = spawnMock.mock.calls[0].arguments[1];
+  assert.ok(opts.shell, 'shell must be true for cross-platform npm execution');
 });
 
 test('installUi - npm install spawn uses stdio: pipe', async () => {
   resetMocks();
   await installUi(DEFAULT_OPTS);
-  const opts = spawnMock.mock.calls[0].arguments[2];
+  const opts = spawnMock.mock.calls[0].arguments[1];
   assert.equal(opts.stdio, 'pipe');
 });
 
 // ── installUi() — npm run build spawn args ────────────────────────────────────
 
-test('installUi - spawns npm run build with args [\'run\', \'build\'] and cwd=uiDir', async () => {
+test('installUi - spawns npm run build as single command string with cwd=uiDir', async () => {
   resetMocks();
   await installUi(DEFAULT_OPTS);
   const buildCall = spawnMock.mock.calls[1];
-  assert.equal(buildCall.arguments[0], expectedNpmCmd);
-  assert.deepEqual(buildCall.arguments[1], ['run', 'build']);
-  assert.equal(buildCall.arguments[2].cwd, DEFAULT_OPTS.uiDir);
+  assert.equal(buildCall.arguments[0], 'npm run build');
+  assert.equal(buildCall.arguments[1].cwd, DEFAULT_OPTS.uiDir);
 });
 
-test('installUi - npm run build spawn does not use shell: true', async () => {
+test('installUi - npm run build spawn uses shell: true for cross-platform compatibility', async () => {
   resetMocks();
   await installUi(DEFAULT_OPTS);
-  const opts = spawnMock.mock.calls[1].arguments[2];
-  assert.ok(!opts.shell, 'shell must not be true');
+  const opts = spawnMock.mock.calls[1].arguments[1];
+  assert.ok(opts.shell, 'shell must be true for cross-platform npm execution');
 });
 
 test('installUi - npm run build spawn uses stdio: pipe', async () => {
   resetMocks();
   await installUi(DEFAULT_OPTS);
-  const opts = spawnMock.mock.calls[1].arguments[2];
+  const opts = spawnMock.mock.calls[1].arguments[1];
   assert.equal(opts.stdio, 'pipe');
 });
 
@@ -485,6 +481,29 @@ test('installUi - generateDockerCompose is called with correct options', async (
   assert.equal(opts.uiDir, DEFAULT_OPTS.uiDir);
   assert.equal(opts.workspaceDir, DEFAULT_OPTS.workspaceDir);
   assert.equal(opts.orchRoot, DEFAULT_OPTS.orchRoot);
+});
+
+test('installUi - generateDockerCompose receives resolved projectsDir from relative projectsBasePath', async () => {
+  resetMocks();
+  await installUi(DEFAULT_OPTS);
+  const [opts] = generateDockerComposeMock.mock.calls[0].arguments;
+  // path.resolve('/workspace', 'orchestration-projects') → '/workspace/orchestration-projects'
+  assert.ok(
+    opts.projectsDir.endsWith('/workspace/orchestration-projects') ||
+    opts.projectsDir.endsWith('\\workspace\\orchestration-projects'),
+    `projectsDir should be resolved, got: ${opts.projectsDir}`
+  );
+});
+
+test('installUi - generateDockerCompose receives absolute projectsDir when projectsBasePath is absolute', async () => {
+  resetMocks();
+  await installUi({ ...DEFAULT_OPTS, projectsBasePath: '/data/projects' });
+  const [opts] = generateDockerComposeMock.mock.calls[0].arguments;
+  assert.ok(
+    opts.projectsDir.endsWith('/data/projects') ||
+    opts.projectsDir.endsWith('\\data\\projects'),
+    `projectsDir should be the absolute path, got: ${opts.projectsDir}`
+  );
 });
 
 test('installUi - docker-compose.yml is written to {uiDir}/docker-compose.yml', async () => {

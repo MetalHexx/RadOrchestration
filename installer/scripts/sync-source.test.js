@@ -97,7 +97,44 @@ test('logs a success message to stdout', () => {
       console.log = original;
     }
     assert.ok(logs.length > 0, 'should have logged at least one message');
-    assert.ok(logs[0].includes('.github'), 'log message should mention .github');
+  } finally {
+    cleanup();
+  }
+});
+
+// ── Excludes filter ───────────────────────────────────────────────────────────
+
+test('excludes specified directories and files when excludes set is provided', () => {
+  const { source, target, cleanup } = makeSandbox();
+  try {
+    writeFile(source, 'keep.txt', 'keep');
+    writeFile(source, 'node_modules/pkg/index.js', 'pkg');
+    writeFile(source, '.next/build/output.js', 'build');
+    writeFile(source, '.env.local', 'secret');
+    writeFile(source, 'sub/file.txt', 'sub');
+
+    const excludes = new Set(['node_modules', '.next', '.env.local']);
+    syncSource(source, target, excludes);
+
+    assert.ok(fs.existsSync(path.join(target, 'keep.txt')), 'keep.txt should be copied');
+    assert.ok(fs.existsSync(path.join(target, 'sub', 'file.txt')), 'sub/file.txt should be copied');
+    assert.ok(!fs.existsSync(path.join(target, 'node_modules')), 'node_modules should be excluded');
+    assert.ok(!fs.existsSync(path.join(target, '.next')), '.next should be excluded');
+    assert.ok(!fs.existsSync(path.join(target, '.env.local')), '.env.local should be excluded');
+  } finally {
+    cleanup();
+  }
+});
+
+test('without excludes, all files are copied including node_modules', () => {
+  const { source, target, cleanup } = makeSandbox();
+  try {
+    writeFile(source, 'keep.txt', 'keep');
+    writeFile(source, 'node_modules/pkg/index.js', 'pkg');
+    syncSource(source, target);
+
+    assert.ok(fs.existsSync(path.join(target, 'keep.txt')), 'keep.txt should be copied');
+    assert.ok(fs.existsSync(path.join(target, 'node_modules', 'pkg', 'index.js')), 'node_modules should be copied when no excludes');
   } finally {
     cleanup();
   }

@@ -17,13 +17,17 @@ export function getWorkspaceRoot(): string {
 
 /**
  * Resolve the absolute path to the projects base directory.
- * Combines workspace root with the base_path from orchestration.yml.
+ * In Docker, PROJECTS_DIR env var provides the container-mapped path directly.
+ * Otherwise, combines workspace root with the base_path from orchestration.yml.
  *
  * @param workspaceRoot - Absolute path to workspace root
  * @param basePath - Base path from orchestration.yml (relative or absolute)
  * @returns Absolute path to the projects base directory
  */
 export function resolveBasePath(workspaceRoot: string, basePath: string): string {
+  if (process.env.PROJECTS_DIR) {
+    return process.env.PROJECTS_DIR;
+  }
   return path.resolve(workspaceRoot, basePath);
 }
 
@@ -40,7 +44,7 @@ export function resolveProjectDir(
   basePath: string,
   projectName: string
 ): string {
-  return path.resolve(workspaceRoot, basePath, projectName);
+  return path.join(resolveBasePath(workspaceRoot, basePath), projectName);
 }
 
 /**
@@ -66,9 +70,21 @@ export function resolveDocPath(
   const normalizedPrefix = prefix.replace(/\\/g, '/');
   const normalizedRelPath = relativePath.replace(/\\/g, '/');
 
-  const strippedPath = normalizedRelPath.startsWith(normalizedPrefix)
-    ? normalizedRelPath.slice(normalizedPrefix.length)
-    : relativePath;
+  let strippedPath: string;
+  if (normalizedRelPath.startsWith(normalizedPrefix)) {
+    // Path already contains the full relative prefix (e.g. "orchestration-projects/PROJ/file.md")
+    strippedPath = normalizedRelPath.slice(normalizedPrefix.length);
+  } else {
+    // Fallback: strip any host-absolute prefix by locating "/<projectName>/" anywhere in the path.
+    // This handles state.json doc_path values that are absolute host paths
+    // (e.g. "C:/test/orchestration-projects/PROJ/file.md") when running inside Docker
+    // where PROJECTS_DIR differs from the host path stored in state.json.
+    const marker = '/' + projectName + '/';
+    const markerIdx = normalizedRelPath.indexOf(marker);
+    strippedPath = markerIdx !== -1
+      ? normalizedRelPath.slice(markerIdx + marker.length)
+      : relativePath;
+  }
 
-  return path.resolve(workspaceRoot, basePath, projectName, strippedPath);
+  return path.join(resolveBasePath(workspaceRoot, basePath), projectName, strippedPath);
 }

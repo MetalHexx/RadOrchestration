@@ -168,7 +168,10 @@ export function renderPartialSuccessSummary(config, copyResults, configPath, err
   console.log('  ' + THEME.error('✖') + ' ' + THEME.error('Dashboard UI: build failed'));
   console.log('');
   console.log('     ' + THEME.errorDetail(error));
-  console.log('     ' + THEME.body('The UI source files were copied. You can retry the build manually:'));
+  const copyMsg = error.includes('ENOENT') && error.includes('src')
+    ? 'The UI source files could not be found. Ensure the package is built correctly, then retry:'
+    : 'The UI source files were copied. You can retry the build manually:';
+  console.log('     ' + THEME.body(copyMsg));
   console.log('     ' + THEME.command(retryCmd));
   console.log('');
 
