@@ -22,9 +22,16 @@ function resolveDocPath(workspaceRoot, basePath, projectName, relativePath) {
   const normalizedPrefix = prefix.replace(/\\/g, '/');
   const normalizedRelPath = relativePath.replace(/\\/g, '/');
 
-  const strippedPath = normalizedRelPath.startsWith(normalizedPrefix)
-    ? normalizedRelPath.slice(normalizedPrefix.length)
-    : relativePath;
+  let strippedPath;
+  if (normalizedRelPath.startsWith(normalizedPrefix)) {
+    strippedPath = normalizedRelPath.slice(normalizedPrefix.length);
+  } else {
+    const marker = '/' + projectName + '/';
+    const markerIdx = normalizedRelPath.indexOf(marker);
+    strippedPath = markerIdx !== -1
+      ? normalizedRelPath.slice(markerIdx + marker.length)
+      : relativePath;
+  }
 
   return path.join(resolveBasePath(workspaceRoot, basePath), projectName, strippedPath);
 }
@@ -137,6 +144,60 @@ test('resolveDocPath uses PROJECTS_DIR when set', () => {
     process.env.PROJECTS_DIR = '/projects';
     const result = resolveDocPath('/workspace', 'orchestration-projects', 'PROJ', 'tasks/FILE.md');
     assert.strictEqual(result, path.join('/projects', 'PROJ', 'tasks/FILE.md'));
+  } finally {
+    if (orig === undefined) delete process.env.PROJECTS_DIR;
+    else process.env.PROJECTS_DIR = orig;
+  }
+});
+
+// ── Docker scenario: absolute host path with relative base_path ─────────────
+
+test('Docker: absolute Windows host path stripped by project marker, no PROJECTS_DIR', () => {
+  const orig = process.env.PROJECTS_DIR;
+  try {
+    delete process.env.PROJECTS_DIR;
+    // state.json contains a Windows absolute path; base_path is relative
+    const result = resolveDocPath(
+      '/workspace',
+      'orchestration-projects',
+      'MY-PROJECT',
+      'C:/test/orchestration-projects/MY-PROJECT/MY-PROJECT-PRD.md'
+    );
+    const expected = path.join(
+      path.resolve('/workspace', 'orchestration-projects'),
+      'MY-PROJECT',
+      'MY-PROJECT-PRD.md'
+    );
+    assert.strictEqual(result, expected);
+  } finally {
+    if (orig === undefined) delete process.env.PROJECTS_DIR;
+    else process.env.PROJECTS_DIR = orig;
+  }
+});
+
+test('Docker: absolute Windows host path + PROJECTS_DIR resolves to container path', () => {
+  const orig = process.env.PROJECTS_DIR;
+  try {
+    process.env.PROJECTS_DIR = '/projects';
+    const result = resolveDocPath(
+      '/workspace',
+      'orchestration-projects',
+      'MY-PROJECT',
+      'C:/test/orchestration-projects/MY-PROJECT/tasks/MY-PROJECT-HANDOFF-P01-T01.md'
+    );
+    assert.strictEqual(result, path.join('/projects', 'MY-PROJECT', 'tasks', 'MY-PROJECT-HANDOFF-P01-T01.md'));
+  } finally {
+    if (orig === undefined) delete process.env.PROJECTS_DIR;
+    else process.env.PROJECTS_DIR = orig;
+  }
+});
+
+test('Docker: project-relative path still works correctly with PROJECTS_DIR', () => {
+  const orig = process.env.PROJECTS_DIR;
+  try {
+    process.env.PROJECTS_DIR = '/projects';
+    const result = resolveDocPath('/workspace', 'orchestration-projects', 'MY-PROJECT', 'MY-PROJECT-PRD.md');
+    assert.strictEqual(result, path.join('/projects', 'MY-PROJECT', 'MY-PROJECT-PRD.md'));
   } finally {
     if (orig === undefined) delete process.env.PROJECTS_DIR;
     else process.env.PROJECTS_DIR = orig;

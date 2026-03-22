@@ -32,6 +32,7 @@ services:
       - WORKSPACE_ROOT=/workspace
       - ORCH_ROOT=${orchRoot}
       - PROJECTS_DIR=/projects
+      - CHOKIDAR_USEPOLLING=1
     command: sh -c "npm start"
 `;
 }

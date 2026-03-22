@@ -70,9 +70,21 @@ export function resolveDocPath(
   const normalizedPrefix = prefix.replace(/\\/g, '/');
   const normalizedRelPath = relativePath.replace(/\\/g, '/');
 
-  const strippedPath = normalizedRelPath.startsWith(normalizedPrefix)
-    ? normalizedRelPath.slice(normalizedPrefix.length)
-    : relativePath;
+  let strippedPath: string;
+  if (normalizedRelPath.startsWith(normalizedPrefix)) {
+    // Path already contains the full relative prefix (e.g. "orchestration-projects/PROJ/file.md")
+    strippedPath = normalizedRelPath.slice(normalizedPrefix.length);
+  } else {
+    // Fallback: strip any host-absolute prefix by locating "/<projectName>/" anywhere in the path.
+    // This handles state.json doc_path values that are absolute host paths
+    // (e.g. "C:/test/orchestration-projects/PROJ/file.md") when running inside Docker
+    // where PROJECTS_DIR differs from the host path stored in state.json.
+    const marker = '/' + projectName + '/';
+    const markerIdx = normalizedRelPath.indexOf(marker);
+    strippedPath = markerIdx !== -1
+      ? normalizedRelPath.slice(markerIdx + marker.length)
+      : relativePath;
+  }
 
   return path.join(resolveBasePath(workspaceRoot, basePath), projectName, strippedPath);
 }

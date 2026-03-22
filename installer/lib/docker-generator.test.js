@@ -62,6 +62,11 @@ test('generateDockerCompose - output contains ORCH_ROOT set to provided orchRoot
   assert.ok(result.includes('ORCH_ROOT=.github'));
 });
 
+test('generateDockerCompose - output contains CHOKIDAR_USEPOLLING=1 in environment', () => {
+  const result = generateDockerCompose(UNIX_OPTS);
+  assert.ok(result.includes('CHOKIDAR_USEPOLLING=1'));
+});
+
 test('generateDockerCompose - output contains command: sh -c "npm start"', () => {
   const result = generateDockerCompose(UNIX_OPTS);
   assert.ok(result.includes('command: sh -c "npm start"'));

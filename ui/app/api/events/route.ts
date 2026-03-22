@@ -42,6 +42,7 @@ export async function GET(request: Request) {
   const workspaceRoot = getWorkspaceRoot();
   const config = await readConfig(workspaceRoot);
   const absoluteProjectsDir = resolveBasePath(workspaceRoot, config.projects.base_path);
+  const usePolling = process.env.CHOKIDAR_USEPOLLING === '1';
 
   const stream = new ReadableStream({
     start(controller) {
@@ -96,6 +97,7 @@ export async function GET(request: Request) {
       const globPattern = path.join(absoluteProjectsDir, '**', 'state.json');
 
       const watcher = chokidar.watch(globPattern, {
+        usePolling,
         awaitWriteFinish: {
           stabilityThreshold: 200,
           pollInterval: 50,
@@ -142,6 +144,7 @@ export async function GET(request: Request) {
 
       // ── 3. Set up shallow directory watcher ───────────────────────
       const dirWatcher = chokidar.watch(absoluteProjectsDir, {
+        usePolling,
         depth: 0,
         ignoreInitial: true,
       });
