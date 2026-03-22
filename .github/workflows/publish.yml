@@ -25,7 +25,7 @@ jobs:
         run: npm ci
 
       - name: Sync source files
-        run: cp -r ../.github/ src/.github/
+        run: mkdir -p src/.github && cp -r ../.github/. src/.github/
 
       - name: Run tests
         run: npm test
