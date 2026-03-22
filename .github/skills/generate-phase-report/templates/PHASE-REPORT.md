@@ -1,15 +1,15 @@
 ---
 project: "{PROJECT-NAME}"
-phase: {PHASE_NUMBER}
+phase: {PHASE-NUMBER}
 title: "{PHASE-TITLE}"
 status: "complete|partial|failed"
-tasks_completed: {N}
-tasks_total: {N}
+tasks_completed: {NUMBER}
+tasks_total: {NUMBER}
 author: "tactical-planner-agent"
 created: "{ISO-DATE}"
 ---
 
-# Phase {N} Report: {PHASE-TITLE}
+# Phase {PHASE-NUMBER} Report: {PHASE-TITLE}
 
 ## Summary
 
@@ -36,8 +36,8 @@ created: "{ISO-DATE}"
 
 | Action | Count | Key Files |
 |--------|-------|-----------|
-| Created | {N} | `{path}`, ... |
-| Modified | {N} | `{path}`, ... |
+| Created | {NUMBER} | `{path}`, ... |
+| Modified | {NUMBER} | `{path}`, ... |
 
 ## Issues & Resolutions
 

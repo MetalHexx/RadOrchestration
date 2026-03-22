@@ -18,8 +18,8 @@ Generate a Phase Report after all tasks in a phase are complete. Summarizes phas
 | Input | Source | Description |
 |-------|--------|-------------|
 | Phase Plan | `{NAME}-PHASE-{NN}-{TITLE}.md` | Task outline, exit criteria |
-| Task Reports | `{NAME}-TASK-REPORT-P{NN}-T{NN}.md` (all) | Per-task results, files changed, issues |
-| Code Reviews | `CODE-REVIEW-P{NN}-T{NN}.md` (all) | Per-task review verdicts |
+| Task Reports | `{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md` (all) | Per-task results, files changed, issues |
+| Code Reviews | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` (all) | Per-task review verdicts |
 | State | `state.json` | Retry counts, error aggregation |
 
 ## Workflow
@@ -33,7 +33,7 @@ Generate a Phase Report after all tasks in a phase are complete. Summarizes phas
 7. **Identify carry-forward items**: Anything the next phase must address
 8. **Recommend adjustments**: If phase outcomes suggest the Master Plan needs adjustment
 9. **Write the Phase Report**: Use the bundled template at [templates/PHASE-REPORT.md](./templates/PHASE-REPORT.md)
-10. **Save**: Write to `{PROJECT-DIR}/reports/{NAME}-PHASE-REPORT-P{NN}.md`
+10. **Save**: Write to `{PROJECT-DIR}/reports/{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md`
 
 ## Key Rules
 

@@ -1,14 +1,14 @@
 ---
 project: "{PROJECT-NAME}"
-phase: {PHASE_NUMBER}
+phase: {PHASE-NUMBER}
 verdict: "approved|changes_requested|rejected"
 severity: "none|minor|critical"
-exit_criteria_met: true             # REQUIRED boolean — true if all phase exit criteria verified, false otherwise
+exit_criteria_met: true
 author: "reviewer-agent"
 created: "{ISO-DATE}"
 ---
 
-# Phase Review: Phase {N} — {PHASE-TITLE}
+# Phase Review: Phase {PHASE-NUMBER} — {PHASE-TITLE}
 
 ## Verdict: {APPROVED | CHANGES REQUESTED | REJECTED}
 
@@ -39,7 +39,7 @@ created: "{ISO-DATE}"
 
 ## Test & Build Summary
 
-- **Total tests**: {N} passing / {N} total
+- **Total tests**: {NUMBER} passing / {NUMBER} total
 - **Build**: ✅ Pass / ❌ Fail
 - **Coverage**: {X}% (if measurable)
 

@@ -1,7 +1,7 @@
 ---
 project: "{PROJECT-NAME}"
-phase: {PHASE_NUMBER}
-task: {TASK_NUMBER}
+phase: {PHASE-NUMBER}
+task: {TASK-NUMBER}
 title: "{TASK-TITLE}"
 status: "complete"
 files_changed: {NUMBER}
@@ -22,8 +22,8 @@ deviation_type: null
 
 | Action | Path | Lines | Notes |
 |--------|------|-------|-------|
-| CREATED | `{path}` | {N} | {Notes} |
-| MODIFIED | `{path}` | +{N} | {Notes} |
+| CREATED | `{path}` | {NUMBER} | {Notes} |
+| MODIFIED | `{path}` | +{NUMBER} | {Notes} |
 
 ## Implementation Notes
 

@@ -30,7 +30,7 @@ Generate a Task Report after completing a coding task. The report documents what
 6. **Document deviations**: If you deviated from the handoff instructions, explain what and why
 7. **Write recommendations**: Optional — flag anything the Planner should know for next tasks
 8. **Write the Task Report**: Use the bundled template at [templates/TASK-REPORT.md](./templates/TASK-REPORT.md)
-9. **Save**: Write to `{PROJECT-DIR}/reports/{NAME}-TASK-REPORT-P{NN}-T{NN}.md`
+9. **Save**: Write to `{PROJECT-DIR}/reports/{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md`
 
 ## Key Rules
 

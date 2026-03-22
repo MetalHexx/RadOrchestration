@@ -1,16 +1,16 @@
 ---
-project: "{PROJECT-NAME}"           # string, e.g., "MONITORING-UI", should match project folder name
-phase: {PHASE_NUMBER}               # integer, e.g., 1
-title: "{PHASE-TITLE}"              # string, human-readable phase title, not just "Phase 1"
-status: "active|complete|halted"    # string, one of "active", "complete", or "halted"
-tasks:                              # list of tasks with id, title
-  - id: "{TASK-ID}"                 # string, e.g., "T01-AUTH"
-    title: "{TASK-TITLE}"           # string, human-readable task title
-author: "tactical-planner-agent"    # string, name of the agent creating this phase plan
-created: "{ISO-DATE}"               # string, ISO 8601 date-time of phase plan creation
+project: "{PROJECT-NAME}"
+phase: {PHASE-NUMBER}
+title: "{PHASE-TITLE}"
+status: "active|complete|halted"
+tasks:
+  - id: "{TASK-ID}"
+    title: "{TASK-TITLE}"
+author: "tactical-planner-agent"
+created: "{ISO-DATE}"
 ---
 
-# Phase {N}: {PHASE-TITLE}
+# Phase {PHASE-NUMBER}: {PHASE-TITLE}
 
 ## Phase Goal
 
@@ -20,7 +20,7 @@ created: "{ISO-DATE}"               # string, ISO 8601 date-time of phase plan c
 
 | Source | Key Information Used |
 |--------|---------------------|
-| [Master Plan]({path}) | Phase {N} scope and exit criteria |
+| [Master Plan]({path}) | Phase {PHASE-NUMBER} scope and exit criteria |
 | [Architecture]({path}) | {Specific sections referenced} |
 | [Design]({path}) | {Specific sections referenced, if applicable} |
 | [Previous Phase Report]({path}) | {What carried forward, if applicable} |
@@ -29,10 +29,10 @@ created: "{ISO-DATE}"               # string, ISO 8601 date-time of phase plan c
 
 | # | Task | Dependencies | Skills Required | Est. Files | Handoff Doc |
 |---|------|-------------|-----------------|-----------|-------------|
-| T1 | {Title} | — | `{skill}` | {N} | [Link]({path}) |
-| T2 | {Title} | T1 | `{skill}` | {N} | [Link]({path}) |
-| T3 | {Title} | T1 | `{skill}` | {N} | [Link]({path}) |
-| T4 | {Title} | T2, T3 | `{skill}` | {N} | [Link]({path}) |
+| T1 | {Title} | — | `{skill}` | {NUMBER} | [Link]({path}) |
+| T2 | {Title} | T1 | `{skill}` | {NUMBER} | [Link]({path}) |
+| T3 | {Title} | T1 | `{skill}` | {NUMBER} | [Link]({path}) |
+| T4 | {Title} | T2, T3 | `{skill}` | {NUMBER} | [Link]({path}) |
 
 ## Execution Order
 
