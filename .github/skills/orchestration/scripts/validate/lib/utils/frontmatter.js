@@ -222,6 +222,9 @@ function parseYaml(yamlLines) {
  * @returns {string | number | boolean}
  */
 function parseScalar(value) {
+  // Strip inline YAML comments (space-hash pattern) before type coercion
+  value = value.replace(/ #.*$/, '').trim();
+
   // Boolean
   if (value === 'true') return true;
   if (value === 'false') return false;
