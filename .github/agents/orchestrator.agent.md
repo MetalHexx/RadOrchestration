@@ -127,28 +127,7 @@ If the pipeline exits with code 1, parse the error result:
 
 When the pipeline returns `success: false`, classify the error and act:
 
-| Category | Name | Description | Examples | Action |
-|----------|------|-------------|----------|--------|
-| 1 | Sequencing Error (Recoverable) | The Orchestrator signaled the wrong event or signaled out of order, but no agent output was produced or consumed. | Signaling `task-execute` before `task-plan` is complete; signaling an event for a phase that isn't active. | Log the error. Re-signal the correct event. Continue pipeline. |
-| 2 | Stale State (Recoverable) | A state field is stale, null, or inconsistent due to a prior incomplete transition, but the underlying agent output is valid. | `current_phase` still references a completed phase; a task status is stuck at `in-progress` after the task report confirms completion. | Log the error. Clear or correct the stale field. Re-signal the appropriate event. Continue pipeline. |
-| 3 | Output Quality Error (Recoverable) | An agent produced an output file with malformed content, invalid frontmatter, wrong status values, or missing required sections. The Orchestrator cannot fix this programmatically. | pipeline returns unexpected type due to malformed frontmatter; agent output file is missing or empty; code review verdict is not one of the valid enum values. | Log the error with full context (file path, field name, expected vs. actual value). Display the error to the human operator. Halt the pipeline immediately. Do not attempt automatic recovery. |
-| 4 | Critical issue with the project code itself (Unrecoverable) | The agent output is not just malformed, but indicates a critical failure in the codebase that prevents further progress. | Code produced that fails to compile or run at all, blocking all downstream work. | Log the error with full context. Halt the pipeline immediately. Do not attempt automatic recovery. |
-
-**Default rule**: When an error does not clearly fit Category 1 or Category 2, treat it as **Category 3 (Halt)**. A false halt is recoverable by the human operator; a false recovery may corrupt pipeline state.
-
-**On every `success: false` result:**
-
-1. **Classify** the error using the table above
-2. **Log the error**: Invoke the `log-error` skill to append a structured entry to `{NAME}-ERROR-LOG.md` in the project directory (e.g., `{base_path}/MYAPP/MYAPP-ERROR-LOG.md`). Populate the entry fields from the pipeline result:
-   - **Pipeline Event**: from `result.event`
-   - **Pipeline Action**: from `result.action` (or `N/A` if not present)
-   - **Severity**: classify using the skill's severity guide (`critical` = blocks execution, `high` = incorrect state, `medium` = degraded behavior, `low` = cosmetic)
-   - **Phase/Task**: from `result.state_snapshot`
-   - **Symptom**: describe the observable failure from `result.error`
-   - **Pipeline Output**: the full raw JSON result
-   - **Root Cause**: diagnose if obvious, otherwise "Under investigation."
-   - **Workaround Applied**: describe recovery action, or "None — awaiting fix."
-3. **Execute the category action**: Follow the Action column for the classified category. For Category 3, display `result.error` to the human and halt immediately.
+See: [Error Handling](docs/pipeline.md#error-handling) in the documentation for a full breakdown of error types, classification criteria, and handling procedures.
 
 ## Action Routing Table
 
