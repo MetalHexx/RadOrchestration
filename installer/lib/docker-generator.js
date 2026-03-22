@@ -9,13 +9,16 @@ import { toDockerPath } from './path-utils.js';
  * @param {string} options.uiDir - Absolute path to UI directory
  * @param {string} options.workspaceDir - Absolute path to workspace root
  * @param {string} options.orchRoot - Orchestration root folder name (e.g., '.github')
+ * @param {string} options.projectsDir - Absolute path to the projects directory
  * @returns {string} - Complete docker-compose.yml content
  */
-export function generateDockerCompose({ uiDir, workspaceDir, orchRoot }) {
+export function generateDockerCompose({ uiDir, workspaceDir, orchRoot, projectsDir }) {
   const dockerUiDir = toDockerPath(uiDir);
   const dockerWorkspaceDir = toDockerPath(workspaceDir);
+  const dockerProjectsDir = toDockerPath(projectsDir);
 
-  return `services:
+  return `name: RadOrchestration
+services:
   radorch-ui:
     image: node:20-alpine
     working_dir: /app
@@ -24,9 +27,11 @@ export function generateDockerCompose({ uiDir, workspaceDir, orchRoot }) {
     volumes:
       - ${dockerUiDir}:/app
       - ${dockerWorkspaceDir}:/workspace
+      - ${dockerProjectsDir}:/projects
     environment:
       - WORKSPACE_ROOT=/workspace
       - ORCH_ROOT=${orchRoot}
+      - PROJECTS_DIR=/projects
     command: sh -c "npm start"
 `;
 }

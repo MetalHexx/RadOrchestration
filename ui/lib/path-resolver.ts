@@ -17,13 +17,17 @@ export function getWorkspaceRoot(): string {
 
 /**
  * Resolve the absolute path to the projects base directory.
- * Combines workspace root with the base_path from orchestration.yml.
+ * In Docker, PROJECTS_DIR env var provides the container-mapped path directly.
+ * Otherwise, combines workspace root with the base_path from orchestration.yml.
  *
  * @param workspaceRoot - Absolute path to workspace root
  * @param basePath - Base path from orchestration.yml (relative or absolute)
  * @returns Absolute path to the projects base directory
  */
 export function resolveBasePath(workspaceRoot: string, basePath: string): string {
+  if (process.env.PROJECTS_DIR) {
+    return process.env.PROJECTS_DIR;
+  }
   return path.resolve(workspaceRoot, basePath);
 }
 
@@ -40,7 +44,7 @@ export function resolveProjectDir(
   basePath: string,
   projectName: string
 ): string {
-  return path.resolve(workspaceRoot, basePath, projectName);
+  return path.join(resolveBasePath(workspaceRoot, basePath), projectName);
 }
 
 /**
@@ -70,5 +74,5 @@ export function resolveDocPath(
     ? normalizedRelPath.slice(normalizedPrefix.length)
     : relativePath;
 
-  return path.resolve(workspaceRoot, basePath, projectName, strippedPath);
+  return path.join(resolveBasePath(workspaceRoot, basePath), projectName, strippedPath);
 }

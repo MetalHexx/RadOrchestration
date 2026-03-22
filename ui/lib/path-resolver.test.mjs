@@ -1,11 +1,22 @@
 /**
- * Tests for resolveDocPath prefix stripping logic.
+ * Tests for resolveDocPath prefix stripping logic and resolveBasePath PROJECTS_DIR override.
  * Run with: node --experimental-vm-modules ui/lib/path-resolver.test.mjs
  */
 import path from 'node:path';
 import assert from 'node:assert';
 
 // Inline the function logic since we can't directly import .ts without a transpiler
+function resolveBasePath(workspaceRoot, basePath) {
+  if (process.env.PROJECTS_DIR) {
+    return process.env.PROJECTS_DIR;
+  }
+  return path.resolve(workspaceRoot, basePath);
+}
+
+function resolveProjectDir(workspaceRoot, basePath, projectName) {
+  return path.join(resolveBasePath(workspaceRoot, basePath), projectName);
+}
+
 function resolveDocPath(workspaceRoot, basePath, projectName, relativePath) {
   const prefix = basePath + '/' + projectName + '/';
   const normalizedPrefix = prefix.replace(/\\/g, '/');
@@ -15,7 +26,7 @@ function resolveDocPath(workspaceRoot, basePath, projectName, relativePath) {
     ? normalizedRelPath.slice(normalizedPrefix.length)
     : relativePath;
 
-  return path.resolve(workspaceRoot, basePath, projectName, strippedPath);
+  return path.join(resolveBasePath(workspaceRoot, basePath), projectName, strippedPath);
 }
 
 const tests = [];
@@ -66,6 +77,70 @@ test('Both workspace-relative and project-relative produce identical output', ()
   const wsRelative = resolveDocPath('/ws', 'custom/project-store', 'PROJ', 'custom/project-store/PROJ/phases/PHASE-PLAN-P01.md');
   const projRelative = resolveDocPath('/ws', 'custom/project-store', 'PROJ', 'phases/PHASE-PLAN-P01.md');
   assert.strictEqual(wsRelative, projRelative);
+});
+
+// ── resolveBasePath — PROJECTS_DIR override ──────────────────────────────────
+
+test('resolveBasePath returns PROJECTS_DIR when env var is set', () => {
+  const orig = process.env.PROJECTS_DIR;
+  try {
+    process.env.PROJECTS_DIR = '/projects';
+    const result = resolveBasePath('/workspace', 'orchestration-projects');
+    assert.strictEqual(result, '/projects');
+  } finally {
+    if (orig === undefined) delete process.env.PROJECTS_DIR;
+    else process.env.PROJECTS_DIR = orig;
+  }
+});
+
+test('resolveBasePath falls back to path.resolve when PROJECTS_DIR is not set', () => {
+  const orig = process.env.PROJECTS_DIR;
+  try {
+    delete process.env.PROJECTS_DIR;
+    const result = resolveBasePath('/workspace', 'orchestration-projects');
+    assert.strictEqual(result, path.resolve('/workspace', 'orchestration-projects'));
+  } finally {
+    if (orig !== undefined) process.env.PROJECTS_DIR = orig;
+  }
+});
+
+// ── resolveProjectDir — PROJECTS_DIR override ────────────────────────────────
+
+test('resolveProjectDir uses PROJECTS_DIR when set', () => {
+  const orig = process.env.PROJECTS_DIR;
+  try {
+    process.env.PROJECTS_DIR = '/projects';
+    const result = resolveProjectDir('/workspace', 'orchestration-projects', 'MY-PROJECT');
+    assert.strictEqual(result, path.join('/projects', 'MY-PROJECT'));
+  } finally {
+    if (orig === undefined) delete process.env.PROJECTS_DIR;
+    else process.env.PROJECTS_DIR = orig;
+  }
+});
+
+test('resolveProjectDir falls back when PROJECTS_DIR is not set', () => {
+  const orig = process.env.PROJECTS_DIR;
+  try {
+    delete process.env.PROJECTS_DIR;
+    const result = resolveProjectDir('/workspace', 'orchestration-projects', 'MY-PROJECT');
+    assert.strictEqual(result, path.join(path.resolve('/workspace', 'orchestration-projects'), 'MY-PROJECT'));
+  } finally {
+    if (orig !== undefined) process.env.PROJECTS_DIR = orig;
+  }
+});
+
+// ── resolveDocPath — PROJECTS_DIR override ───────────────────────────────────
+
+test('resolveDocPath uses PROJECTS_DIR when set', () => {
+  const orig = process.env.PROJECTS_DIR;
+  try {
+    process.env.PROJECTS_DIR = '/projects';
+    const result = resolveDocPath('/workspace', 'orchestration-projects', 'PROJ', 'tasks/FILE.md');
+    assert.strictEqual(result, path.join('/projects', 'PROJ', 'tasks/FILE.md'));
+  } finally {
+    if (orig === undefined) delete process.env.PROJECTS_DIR;
+    else process.env.PROJECTS_DIR = orig;
+  }
 });
 
 // Run all tests

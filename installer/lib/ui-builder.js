@@ -76,9 +76,10 @@ function runNpmCommand(args, cwd, label) {
  * @param {string} options.uiDir - Absolute path to UI target directory
  * @param {string} options.workspaceDir - Absolute path to workspace root
  * @param {string} options.orchRoot - Orchestration root folder name
+ * @param {string} options.projectsBasePath - Projects base path (relative or absolute)
  * @returns {Promise<UiBuildResult>}
  */
-export async function installUi({ repoRoot, uiDir, workspaceDir, orchRoot }) {
+export async function installUi({ repoRoot, uiDir, workspaceDir, orchRoot, projectsBasePath }) {
   /** @type {UiBuildResult} */
   const result = {
     copySuccess: false,
@@ -134,7 +135,8 @@ export async function installUi({ repoRoot, uiDir, workspaceDir, orchRoot }) {
   }
 
   // Step 5 — Generate docker-compose.yml
-  const dockerContent = generateDockerCompose({ uiDir, workspaceDir, orchRoot });
+  const projectsDir = path.resolve(workspaceDir, projectsBasePath);
+  const dockerContent = generateDockerCompose({ uiDir, workspaceDir, orchRoot, projectsDir });
   fs.writeFileSync(path.join(uiDir, 'docker-compose.yml'), dockerContent);
 
   result.installSuccess = true;

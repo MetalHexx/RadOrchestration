@@ -599,7 +599,7 @@ test('Core files not rolled back on UI failure: copyCategory and generateConfig 
   assert.equal(writeConfigMock.mock.callCount(), 1, 'writeConfig called before UI failure');
 });
 
-test('installUi receives correct arguments: repoRoot, uiDir, workspaceDir, orchRoot', async () => {
+test('installUi receives correct arguments: repoRoot, uiDir, workspaceDir, orchRoot, projectsBasePath', async () => {
   resetMocks();
   runWizardMock.mock.mockImplementationOnce(async ({ skipConfirmation }) =>
     ({ ...makeUiConfig(), skipConfirmation })
@@ -618,5 +618,6 @@ test('installUi receives correct arguments: repoRoot, uiDir, workspaceDir, orchR
   assert.equal(args.uiDir, '/workspace/ui', 'uiDir from config');
   assert.equal(args.workspaceDir, '/workspace', 'workspaceDir from config');
   assert.equal(args.orchRoot, '.github', 'orchRoot from config');
+  assert.equal(args.projectsBasePath, 'projects', 'projectsBasePath from config');
   assert.ok(typeof args.repoRoot === 'string' && args.repoRoot.length > 0, 'repoRoot is a non-empty string');
 });

@@ -134,6 +134,7 @@ const DEFAULT_OPTS = {
   uiDir: '/target/ui',
   workspaceDir: '/workspace',
   orchRoot: '.github',
+  projectsBasePath: 'orchestration-projects',
 };
 
 // ── checkNodeNpm() ────────────────────────────────────────────────────────────
@@ -480,6 +481,29 @@ test('installUi - generateDockerCompose is called with correct options', async (
   assert.equal(opts.uiDir, DEFAULT_OPTS.uiDir);
   assert.equal(opts.workspaceDir, DEFAULT_OPTS.workspaceDir);
   assert.equal(opts.orchRoot, DEFAULT_OPTS.orchRoot);
+});
+
+test('installUi - generateDockerCompose receives resolved projectsDir from relative projectsBasePath', async () => {
+  resetMocks();
+  await installUi(DEFAULT_OPTS);
+  const [opts] = generateDockerComposeMock.mock.calls[0].arguments;
+  // path.resolve('/workspace', 'orchestration-projects') → '/workspace/orchestration-projects'
+  assert.ok(
+    opts.projectsDir.endsWith('/workspace/orchestration-projects') ||
+    opts.projectsDir.endsWith('\\workspace\\orchestration-projects'),
+    `projectsDir should be resolved, got: ${opts.projectsDir}`
+  );
+});
+
+test('installUi - generateDockerCompose receives absolute projectsDir when projectsBasePath is absolute', async () => {
+  resetMocks();
+  await installUi({ ...DEFAULT_OPTS, projectsBasePath: '/data/projects' });
+  const [opts] = generateDockerComposeMock.mock.calls[0].arguments;
+  assert.ok(
+    opts.projectsDir.endsWith('/data/projects') ||
+    opts.projectsDir.endsWith('\\data\\projects'),
+    `projectsDir should be the absolute path, got: ${opts.projectsDir}`
+  );
 });
 
 test('installUi - docker-compose.yml is written to {uiDir}/docker-compose.yml', async () => {

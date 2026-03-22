@@ -140,6 +140,7 @@ export async function main() {
           uiDir: config.uiDir,
           workspaceDir: config.workspaceDir,
           orchRoot: config.orchRoot,
+          projectsBasePath: config.projectsBasePath,
         });
 
         if (!uiResult.buildSuccess) {
