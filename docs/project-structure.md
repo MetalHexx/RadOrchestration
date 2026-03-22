@@ -19,6 +19,7 @@ This page documents the file layout, naming conventions, document types, and sta
 │   │   │   └── state-v4.schema.json  # Canonical v4 state JSON Schema
 │   │   ├── references/
 │   │   │   ├── context.md     # System context (all agents)
+│   │   │   ├── document-conventions.md  # Document naming & placement (all agents)
 │   │   │   ├── pipeline-guide.md  # Pipeline guide (Orchestrator)
 │   │   │   └── validation-guide.md  # Validation guide (Reviewer, Tactical Planner)
 │   │   └── scripts/
@@ -92,11 +93,11 @@ Each project gets its own subfolder under the configured `base_path` (default: `
 │   ├── {NAME}-TASK-P01-T02-{TITLE}.md
 │   └── ...
 └── reports/
-    ├── {NAME}-TASK-REPORT-P01-T01.md
-    ├── {NAME}-TASK-REPORT-P01-T02.md
-    ├── CODE-REVIEW-P01-T01.md
-    ├── {NAME}-PHASE-REPORT-P01.md
-    └── PHASE-REVIEW-P01.md
+    ├── {NAME}-TASK-REPORT-P01-T01-{TITLE}.md
+    ├── {NAME}-TASK-REPORT-P01-T02-{TITLE}.md
+    ├── {NAME}-CODE-REVIEW-P01-T01-{TITLE}.md
+    ├── {NAME}-PHASE-REPORT-P01-{TITLE}.md
+    └── {NAME}-PHASE-REVIEW-P01-{TITLE}.md
 ```
 
 ## Naming Conventions
@@ -111,9 +112,10 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 | `{NAME}-DESIGN.md` | `MYAPP-DESIGN.md` |
 | `{NAME}-PHASE-{NN}-{TITLE}.md` | `MYAPP-PHASE-01-CORE-API.md` |
 | `{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-TASK-P01-T03-AUTH.md` |
-| `{NAME}-TASK-REPORT-P{NN}-T{NN}.md` | `MYAPP-TASK-REPORT-P01-T03.md` |
-| `{NAME}-PHASE-REPORT-P{NN}.md` | `MYAPP-PHASE-REPORT-P01.md` |
-| `CODE-REVIEW-P{NN}-T{NN}.md` | `CODE-REVIEW-P01-T03.md` |
+| `{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-TASK-REPORT-P01-T03-AUTH.md` |
+| `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-CODE-REVIEW-P01-T03-AUTH.md` |
+| `{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REPORT-P01-CORE-API.md` |
+| `{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REVIEW-P01-CORE-API.md` |
 | `{NAME}-ERROR-LOG.md` | `MYAPP-ERROR-LOG.md` |
 
 ### System Files
