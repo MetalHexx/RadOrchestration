@@ -123,17 +123,23 @@ If the pipeline exits with code 1, parse the error result:
 }
 ```
 
-### Self-Healing Hierarchy
+### Error Classification
 
-When the pipeline returns `success: false`, attempt recovery in this order before logging/halting:
+When the pipeline returns `success: false`, classify the error and act:
 
-1. **Re-signal** the correct event — try the event again with corrected context
-2. **Edit `state.json`** conservatively — only null or clear stale fields; never set a field to a value not derived from a pipeline result
-3. **Log and halt** — if neither re-signaling nor state editing resolves the issue
+| Category | Name | Description | Examples | Action |
+|----------|------|-------------|----------|--------|
+| 1 | Sequencing Error (Recoverable) | The Orchestrator signaled the wrong event or signaled out of order, but no agent output was produced or consumed. | Signaling `task-execute` before `task-plan` is complete; signaling an event for a phase that isn't active. | Log the error. Re-signal the correct event. Continue pipeline. |
+| 2 | Stale State (Recoverable) | A state field is stale, null, or inconsistent due to a prior incomplete transition, but the underlying agent output is valid. | `current_phase` still references a completed phase; a task status is stuck at `in-progress` after the task report confirms completion. | Log the error. Clear or correct the stale field. Re-signal the appropriate event. Continue pipeline. |
+| 3 | Output Quality Error (Recoverable) | An agent produced an output file with malformed content, invalid frontmatter, wrong status values, or missing required sections. The Orchestrator cannot fix this programmatically. | pipeline returns unexpected type due to malformed frontmatter; agent output file is missing or empty; code review verdict is not one of the valid enum values. | Log the error with full context (file path, field name, expected vs. actual value). Display the error to the human operator. Halt the pipeline immediately. Do not attempt automatic recovery. |
+| 4 | Critical issue with the project code itself (Unrecoverable) | The agent output is not just malformed, but indicates a critical failure in the codebase that prevents further progress. | Code produced that fails to compile or run at all, blocking all downstream work. | Log the error with full context. Halt the pipeline immediately. Do not attempt automatic recovery. |
 
-**On every `success: false` result, follow these 3 steps in order:**
+**Default rule**: When an error does not clearly fit Category 1 or Category 2, treat it as **Category 3 (Halt)**. A false halt is recoverable by the human operator; a false recovery may corrupt pipeline state.
 
-1. **Log the error**: Invoke the `log-error` skill to append a structured entry to `{NAME}-ERROR-LOG.md` in the project directory (e.g., `{base_path}/MYAPP/MYAPP-ERROR-LOG.md`). Populate the entry fields from the pipeline result:
+**On every `success: false` result:**
+
+1. **Classify** the error using the table above
+2. **Log the error**: Invoke the `log-error` skill to append a structured entry to `{NAME}-ERROR-LOG.md` in the project directory (e.g., `{base_path}/MYAPP/MYAPP-ERROR-LOG.md`). Populate the entry fields from the pipeline result:
    - **Pipeline Event**: from `result.event`
    - **Pipeline Action**: from `result.action` (or `N/A` if not present)
    - **Severity**: classify using the skill's severity guide (`critical` = blocks execution, `high` = incorrect state, `medium` = degraded behavior, `low` = cosmetic)
@@ -142,10 +148,7 @@ When the pipeline returns `success: false`, attempt recovery in this order befor
    - **Pipeline Output**: the full raw JSON result
    - **Root Cause**: diagnose if obvious, otherwise "Under investigation."
    - **Workaround Applied**: describe recovery action, or "None — awaiting fix."
-
-2. **Display**: Show `result.error` to the human
-
-3. **Halt**: Do not attempt automatic recovery from pipeline errors
+3. **Execute the category action**: Follow the Action column for the classified category. For Category 3, display `result.error` to the human and halt immediately.
 
 ## Action Routing Table
 
@@ -153,18 +156,18 @@ Every `result.action` value maps to exactly one Orchestrator operation. The Orch
 
 | # | `result.action` | Category | Orchestrator Operation | Event to Signal on Completion |
 |---|-----------------|----------|----------------------|-------------------------------|
-| 1 | `spawn_research` | Agent spawn | Spawn **Research** agent with project idea + brainstorming doc (if exists). Output: RESEARCH-FINDINGS.md | `research_completed` with `{ "doc_path": "<output-path>" }` |
-| 2 | `spawn_prd` | Agent spawn | Spawn **Product Manager** agent with RESEARCH-FINDINGS.md (+ brainstorming doc if exists). Output: PRD.md | `prd_completed` with `{ "doc_path": "<output-path>" }` |
-| 3 | `spawn_design` | Agent spawn | Spawn **UX Designer** agent with PRD.md + RESEARCH-FINDINGS.md. Output: DESIGN.md | `design_completed` with `{ "doc_path": "<output-path>" }` |
-| 4 | `spawn_architecture` | Agent spawn | Spawn **Architect** agent with PRD.md + DESIGN.md + RESEARCH-FINDINGS.md. Output: ARCHITECTURE.md | `architecture_completed` with `{ "doc_path": "<output-path>" }` |
-| 5 | `spawn_master_plan` | Agent spawn | Spawn **Architect** agent with all planning docs. Output: MASTER-PLAN.md | `master_plan_completed` with `{ "doc_path": "<output-path>" }` |
-| 6 | `create_phase_plan` | Agent spawn | Spawn **Tactical Planner** (phase plan mode) for `result.context.phase`. Output: PHASE-PLAN.md | `phase_plan_created` with `{ "doc_path": "<output-path>" }` |
-| 7 | `create_task_handoff` | Agent spawn | Spawn **Tactical Planner** (handoff mode) for `result.context.phase`/`result.context.task`. If `result.context.is_correction` is true, instruct Planner to create a corrective handoff. Output: TASK-HANDOFF.md | `task_handoff_created` with `{ "doc_path": "<output-path>" }` |
-| 8 | `execute_task` | Agent spawn | Spawn **Coder** agent with the task's handoff document. Output: TASK-REPORT.md | `task_completed` with `{ "doc_path": "<output-path>" }` |
-| 9 | `spawn_code_reviewer` | Agent spawn | Spawn **Reviewer** agent for task-level code review. Output: CODE-REVIEW.md | `code_review_completed` with `{ "doc_path": "<output-path>" }` |
-| 10 | `generate_phase_report` | Agent spawn | Spawn **Tactical Planner** (report mode) for the phase. Output: PHASE-REPORT.md | `phase_report_created` with `{ "doc_path": "<output-path>" }` |
-| 11 | `spawn_phase_reviewer` | Agent spawn | Spawn **Reviewer** agent for phase-level review. Output: PHASE-REVIEW.md | `phase_review_completed` with `{ "doc_path": "<output-path>" }` |
-| 12 | `spawn_final_reviewer` | Agent spawn | Spawn **Reviewer** agent for final comprehensive review. Output: FINAL-REVIEW.md | `final_review_completed` with `{ "doc_path": "<output-path>" }` |
+| 1 | `spawn_research` | Agent spawn | Spawn **Research** agent with project idea + brainstorming doc (if exists). Output: {NAME}-RESEARCH-FINDINGS.md | `research_completed` with `{ "doc_path": "<output-path>" }` |
+| 2 | `spawn_prd` | Agent spawn | Spawn **Product Manager** agent with RESEARCH-FINDINGS.md (+ brainstorming doc if exists). Output: {NAME}-PRD.md | `prd_completed` with `{ "doc_path": "<output-path>" }` |
+| 3 | `spawn_design` | Agent spawn | Spawn **UX Designer** agent with PRD.md + RESEARCH-FINDINGS.md. Output: {NAME}-DESIGN.md | `design_completed` with `{ "doc_path": "<output-path>" }` |
+| 4 | `spawn_architecture` | Agent spawn | Spawn **Architect** agent with PRD.md + DESIGN.md + RESEARCH-FINDINGS.md. Output: {NAME}-ARCHITECTURE.md | `architecture_completed` with `{ "doc_path": "<output-path>" }` |
+| 5 | `spawn_master_plan` | Agent spawn | Spawn **Architect** agent with all planning docs. Output: {NAME}-MASTER-PLAN.md | `master_plan_completed` with `{ "doc_path": "<output-path>" }` |
+| 6 | `create_phase_plan` | Agent spawn | Spawn **Tactical Planner** (phase plan mode) for `result.context.phase`. If `result.context.is_correction` is true, create a corrective phase plan using `result.context.previous_review`. Output: phases/{NAME}-PHASE-{NN}-{TITLE}.md | `phase_plan_created` with `{ "doc_path": "<output-path>" }` |
+| 7 | `create_task_handoff` | Agent spawn | Spawn **Tactical Planner** (handoff mode) for `result.context.phase`/`result.context.task`. If `result.context.is_correction` is true, instruct Planner to create a corrective handoff. Output: tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md | `task_handoff_created` with `{ "doc_path": "<output-path>" }` |
+| 8 | `execute_task` | Agent spawn | Spawn **Coder** agent with the task's handoff document. Output: reports/{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md | `task_completed` with `{ "doc_path": "<output-path>" }` |
+| 9 | `spawn_code_reviewer` | Agent spawn | Spawn **Reviewer** agent for task-level code review. Output: reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md | `code_review_completed` with `{ "doc_path": "<output-path>" }` |
+| 10 | `generate_phase_report` | Agent spawn | Spawn **Tactical Planner** (report mode) for the phase. Output: reports/{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md | `phase_report_created` with `{ "doc_path": "<output-path>" }` |
+| 11 | `spawn_phase_reviewer` | Agent spawn | Spawn **Reviewer** agent for phase-level review. Output: reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md | `phase_review_completed` with `{ "doc_path": "<output-path>" }` |
+| 12 | `spawn_final_reviewer` | Agent spawn | Spawn **Reviewer** agent for final comprehensive review. Output: {NAME}-FINAL-REVIEW.md | `final_review_completed` with `{ "doc_path": "<output-path>" }` |
 | 13 | `request_plan_approval` | Human gate | Display Master Plan summary to the human. Ask human to approve or reject. | `plan_approved` (if approved) or `plan_rejected` (if rejected) — no context payload |
 | 14 | `request_final_approval` | Human gate | Display final review to the human. Ask human to approve or request changes. | `final_approved` (if approved) or `final_rejected` (if rejected) — no context payload |
 | 15 | `gate_task` | Human gate | Show task results to the human. Wait for approval. | `gate_approved` with `{ "gate_type": "task" }` (if approved) or `gate_rejected` with `{ "gate_type": "task", "reason": "<reason>" }` (if rejected) |
