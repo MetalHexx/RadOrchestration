@@ -15,7 +15,7 @@ export function generateConfig(config) {
 # Orchestration System Configuration
 # -----------------------------------
 
-version: "1.0"
+version: "5.0"
 
 # ─── System ────────────────────────────────────────────────────────
 system:
@@ -40,6 +40,15 @@ human_gates:
   after_planning: true                   # Always gate after master plan (hard default)
   execution_mode: "${config.executionMode}"                  # ask | phase | task | autonomous
   after_final_review: true               # Always gate after final review (hard default)
+
+# ─── Source Control ────────────────────────────────────────────────
+source_control:
+  isolation_mode: "${config.isolationMode}"             # worktree | branch | none
+  activation: "${config.worktreeActivation}"            # always | never | ask
+  branch_from: "${config.branchFrom}"                   # default | current | ask
+  worktree_path: "${config.worktreePath}"               # Relative (from repo root) or absolute path
+  branch_prefix: "${config.branchPrefix}"               # Branch naming prefix (e.g., project/MY-PROJECT)
+  cleanup: "${config.cleanupBehavior}"                  # ask | on_completion | manual
 
 # ─── Notes ─────────────────────────────────────────────────────────
 # Model selection is configured per-agent in .agent.md frontmatter.

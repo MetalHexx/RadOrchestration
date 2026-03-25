@@ -537,6 +537,53 @@ function handleGateModeSet(state, context, config) {
   };
 }
 
+// ─── Source Control Handlers ─────────────────────────────────────────────────
+
+function handleSourceControlActivationSet(state, context, config) {
+  state.pipeline.source_control.activation_choice = context.choice;
+  return {
+    state,
+    mutations_applied: [`Set source_control.activation_choice to "${context.choice}"`],
+  };
+}
+
+function handleSourceControlBranchFromSet(state, context, config) {
+  state.pipeline.source_control.branch_from_choice = context.choice;
+  return {
+    state,
+    mutations_applied: [`Set source_control.branch_from_choice to "${context.choice}"`],
+  };
+}
+
+function handleSourceControlCleanupSet(state, context, config) {
+  state.pipeline.source_control.cleanup_choice = context.choice;
+  return {
+    state,
+    mutations_applied: [`Set source_control.cleanup_choice to "${context.choice}"`],
+  };
+}
+
+function handleWorktreeCreated(state, context, config) {
+  state.pipeline.source_control.worktree_path = context.worktree_path;
+  state.pipeline.source_control.branch = context.branch;
+  return {
+    state,
+    mutations_applied: [
+      `Set source_control.worktree_path to "${context.worktree_path}"`,
+      `Set source_control.branch to "${context.branch}"`,
+    ],
+  };
+}
+
+function handleWorktreeRemoved(state, context, config) {
+  state.pipeline.source_control.worktree_path = null;
+  state.pipeline.source_control.branch = null;
+  return {
+    state,
+    mutations_applied: ['Cleared source_control worktree metadata'],
+  };
+}
+
 // ─── Review Handlers ────────────────────────────────────────────────────────
 
 /** @type {MutationHandler} */
@@ -622,6 +669,13 @@ const MUTATIONS = Object.freeze({
   gate_approved:            handleGateApproved,
   gate_rejected:            handleGateRejected,
 
+  // Source control (5)
+  source_control_activation_set:   handleSourceControlActivationSet,
+  source_control_branch_from_set:  handleSourceControlBranchFromSet,
+  source_control_cleanup_set:      handleSourceControlCleanupSet,
+  worktree_created:                handleWorktreeCreated,
+  worktree_removed:                handleWorktreeRemoved,
+
   // Review (3)
   final_review_completed:   handleFinalReviewCompleted,
   final_approved:           handleFinalApproved,
@@ -645,6 +699,8 @@ function getMutation(event) {
 module.exports = {
   getMutation,
   normalizeDocPath,
+  handleWorktreeCreated,
+  handleWorktreeRemoved,
 };
 
 // Expose internals for testing only

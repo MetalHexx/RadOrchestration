@@ -61,8 +61,8 @@ describe('All exported enums are frozen', () => {
 // ─── SCHEMA_VERSION ─────────────────────────────────────────────────────────
 
 describe('SCHEMA_VERSION', () => {
-  it('equals orchestration-state-v4', () => {
-    assert.equal(SCHEMA_VERSION, 'orchestration-state-v4');
+  it('equals orchestration-state-v5', () => {
+    assert.equal(SCHEMA_VERSION, 'orchestration-state-v5');
   });
 });
 
@@ -191,8 +191,8 @@ describe('ALLOWED_PHASE_STAGE_TRANSITIONS', () => {
 // ─── NEXT_ACTIONS ───────────────────────────────────────────────────────────
 
 describe('NEXT_ACTIONS', () => {
-  it('has exactly 19 entries', () => {
-    assert.equal(Object.keys(NEXT_ACTIONS).length, 19);
+  it('has exactly 22 entries', () => {
+    assert.equal(Object.keys(NEXT_ACTIONS).length, 22);
   });
 
   it('contains ASK_GATE_MODE with value ask_gate_mode', () => {

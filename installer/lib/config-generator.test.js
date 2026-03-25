@@ -21,14 +21,20 @@ const sampleConfig = {
   executionMode: 'ask',
   installUi: false,
   skipConfirmation: false,
+  isolationMode: 'none',
+  worktreeActivation: 'never',
+  branchFrom: 'ask',
+  worktreePath: '../worktrees',
+  branchPrefix: 'project/',
+  cleanupBehavior: 'ask',
 };
 
 // ── generateConfig ────────────────────────────────────────────────────────────
 
-test('generateConfig - returns a string containing version: "1.0"', () => {
+test('generateConfig - returns a string containing version: "5.0"', () => {
   const yaml = generateConfig(sampleConfig);
   assert.ok(typeof yaml === 'string');
-  assert.ok(yaml.includes('version: "1.0"'));
+  assert.ok(yaml.includes('version: "5.0"'));
 });
 
 test('generateConfig - output contains system: section with orch_root from config', () => {
@@ -80,6 +86,43 @@ test('generateConfig - output contains section header comments with ─── pa
   assert.ok(yaml.includes('─── '));
 });
 
+// ── source_control section ────────────────────────────────────────────────────
+
+test('generateConfig - output contains source_control: section with all 6 default keys', () => {
+  const yaml = generateConfig(sampleConfig);
+  assert.ok(yaml.includes('source_control:'));
+  assert.ok(yaml.includes(`isolation_mode: "${sampleConfig.isolationMode}"`));
+  assert.ok(yaml.includes(`activation: "${sampleConfig.worktreeActivation}"`));
+  assert.ok(yaml.includes(`branch_from: "${sampleConfig.branchFrom}"`));
+  assert.ok(yaml.includes(`worktree_path: "${sampleConfig.worktreePath}"`));
+  assert.ok(yaml.includes(`branch_prefix: "${sampleConfig.branchPrefix}"`));
+  assert.ok(yaml.includes(`cleanup: "${sampleConfig.cleanupBehavior}"`));
+});
+
+test('generateConfig - source_control section reflects custom non-default values', () => {
+  const customConfig = {
+    ...sampleConfig,
+    isolationMode: 'worktree',
+    worktreeActivation: 'always',
+    branchFrom: 'default',
+    worktreePath: '/custom/path',
+    branchPrefix: 'orch/',
+    cleanupBehavior: 'on_completion',
+  };
+  const yaml = generateConfig(customConfig);
+  assert.ok(yaml.includes('isolation_mode: "worktree"'));
+  assert.ok(yaml.includes('activation: "always"'));
+  assert.ok(yaml.includes('branch_from: "default"'));
+  assert.ok(yaml.includes('worktree_path: "/custom/path"'));
+  assert.ok(yaml.includes('branch_prefix: "orch/"'));
+  assert.ok(yaml.includes('cleanup: "on_completion"'));
+});
+
+test('generateConfig - output contains ─── Source Control ─── section header', () => {
+  const yaml = generateConfig(sampleConfig);
+  assert.ok(yaml.includes('─── Source Control ───'));
+});
+
 // ── writeConfig ───────────────────────────────────────────────────────────────
 
 test('writeConfig - creates intermediate directories when they do not exist', () => {
@@ -98,7 +141,7 @@ test('writeConfig - writes file to {resolvedOrchRoot}/skills/orchestration/confi
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'config-gen-test-'));
   try {
     const orchRoot = path.join(tmpDir, 'orch');
-    const yamlContent = 'version: "1.0"\n';
+    const yamlContent = 'version: "5.0"\n';
     writeConfig(tmpDir, orchRoot, yamlContent);
     const expectedPath = path.join(orchRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
     assert.ok(fs.existsSync(expectedPath));

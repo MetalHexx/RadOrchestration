@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --import tsx --test lib/fs-reader-list.test.ts lib/fs-reader-bootstrap.test.ts lib/document-ordering.test.ts components/documents/document-nav-footer.test.ts components/badges/stage-badge.test.ts components/badges/gate-mode-badge.test.ts components/dashboard/confirm-approval-dialog.test.ts components/dashboard/approve-gate-button.test.ts components/dashboard/dashboard-integration.test.ts components/dashboard/gate-error-banner.test.ts components/dashboard/sections.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",

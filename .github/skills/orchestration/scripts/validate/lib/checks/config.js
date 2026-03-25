@@ -8,13 +8,19 @@ const { parseYaml } = require('../utils/yaml-parser');
 
 const CATEGORY = 'config';
 
+const VALID_VERSIONS = ['1.0', '5.0'];
+
 const REQUIRED_SECTIONS = ['version', 'projects', 'limits', 'human_gates'];
 
 const REQUIRED_LIMIT_FIELDS = ['max_phases', 'max_tasks_per_phase', 'max_retries_per_task', 'max_consecutive_review_rejections'];
 
 const ENUM_RULES = {
   'projects.naming': ['SCREAMING_CASE', 'lowercase', 'numbered'],
-  'human_gates.execution_mode': ['ask', 'phase', 'task', 'autonomous']
+  'human_gates.execution_mode': ['ask', 'phase', 'task', 'autonomous'],
+  'source_control.isolation_mode': ['worktree', 'branch', 'none'],
+  'source_control.activation': ['always', 'never', 'ask'],
+  'source_control.branch_from': ['default', 'current', 'ask'],
+  'source_control.cleanup': ['ask', 'on_completion', 'manual'],
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -143,8 +149,8 @@ module.exports = async function checkConfig(basePath, context, _config, orchRoot
       }
     }
 
-    // ── Validate version (FR-10) ───────────────────────────────────────
-    if (config.version === '1.0') {
+    // ── Validate version ───────────────────────────────────────────
+    if (VALID_VERSIONS.includes(config.version)) {
       results.push({
         category: CATEGORY,
         name: 'orchestration.yml',
@@ -158,7 +164,7 @@ module.exports = async function checkConfig(basePath, context, _config, orchRoot
         status: 'fail',
         message: 'Invalid version',
         detail: {
-          expected: '1.0',
+          expected: `One of: ${VALID_VERSIONS.join(', ')}`,
           found: String(config.version)
         }
       });

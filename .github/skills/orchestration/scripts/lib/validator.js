@@ -14,6 +14,7 @@ const {
 
 // Load the v4 JSON Schema once at module initialization
 const v4Schema = require(path.resolve(__dirname, '../../schemas/state-v4.schema.json'));
+const v5Schema = require(path.resolve(__dirname, '../../schemas/state-v5.schema.json'));
 
 // ─── Helper ─────────────────────────────────────────────────────────────────
 
@@ -44,10 +45,10 @@ function makeError(invariant, message, field, current, proposed) {
 
 // ─── Structural Checks (proposed-only) ─────────────────────────────────────
 
-/** V1 — current_phase within [1, phases.length]; 0 only when phases empty */
+/** V1 — current_phase within [1, phases.length]; 0 allowed when phases empty OR execution not started */
 function checkV1(proposed) {
-  const { current_phase, phases } = proposed.execution;
-  if (phases.length === 0 && current_phase === 0) return [];
+  const { current_phase, phases, status } = proposed.execution;
+  if (current_phase === 0 && (phases.length === 0 || status === 'not_started')) return [];
   if (current_phase < 1 || current_phase > phases.length) {
     return [makeError('V1', `current_phase ${current_phase} out of bounds [1, ${phases.length}]`, 'execution.current_phase')];
   }
@@ -380,22 +381,23 @@ function validateNode(schema, value, fieldPath, errors) {
   }
 }
 
-/** V16 — JSON Schema structural validation against state-v4.schema.json */
+/** V16 — JSON Schema structural validation against the appropriate state schema */
 function checkV16(proposed) {
   const errors = [];
-  validateNode(v4Schema, proposed, '', errors);
+  const schema = proposed.$schema === 'orchestration-state-v5' ? v5Schema : v4Schema;
+  validateNode(schema, proposed, '', errors);
   return errors;
 }
 
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
- * Validate a v4 state transition. Runs structural, gate, and transition guards.
+ * Validate a state transition. Runs structural, gate, and transition guards.
  * Returns empty array if valid.
  *
- * @param {import('./constants.js').StateJson | null} current - state before mutation (null on init)
- * @param {import('./constants.js').StateJson} proposed - state after mutation
- * @param {import('./constants.js').Config} config - parsed orchestration config
+ * @param {Object|null} current - state before mutation (null on init)
+ * @param {Object} proposed - state after mutation
+ * @param {Object} config - parsed orchestration config
  * @returns {ValidationError[]}
  */
 function validateTransition(current, proposed, config) {

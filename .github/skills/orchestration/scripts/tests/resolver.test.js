@@ -44,7 +44,7 @@ function makePlanningStep(name, status = 'not_started') {
 
 function makeState(overrides = {}) {
   const base = {
-    $schema: 'orchestration-state-v4',
+    $schema: 'orchestration-state-v5',
     project: {
       name: 'TEST',
       created: '2026-01-01T00:00:00.000Z',
@@ -103,10 +103,10 @@ describe('resolver — structural', () => {
     assert.equal(typeof resolveNextAction, 'function');
   });
 
-  it('module exports only resolveNextAction', () => {
+  it('module exports resolveNextAction and resolveIsolationMode', () => {
     const mod = require('../lib/resolver.js');
     const keys = Object.keys(mod);
-    assert.deepEqual(keys, ['resolveNextAction']);
+    assert.deepEqual(keys, ['resolveNextAction', 'resolveIsolationMode']);
   });
 
   it('return value always has action (string) and context (object)', () => {

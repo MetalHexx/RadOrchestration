@@ -1,6 +1,6 @@
 'use strict';
 
-const SCHEMA_VERSION = 'orchestration-state-v4';
+const SCHEMA_VERSION = 'orchestration-state-v5';
 
 // ─── Frozen Enums ───────────────────────────────────────────────────────────
 
@@ -90,6 +90,10 @@ const NEXT_ACTIONS = Object.freeze({
   REQUEST_FINAL_APPROVAL: 'request_final_approval',
   DISPLAY_HALTED: 'display_halted',
   DISPLAY_COMPLETE: 'display_complete',
+  // ── NEW v5 entries ──
+  ASK_SOURCE_CONTROL_ACTIVATION: 'ask_source_control_activation',
+  ASK_SOURCE_CONTROL_BRANCH_FROM: 'ask_source_control_branch_from',
+  ASK_SOURCE_CONTROL_CLEANUP: 'ask_source_control_cleanup',
 });
 
 // ─── Stage Enums (v4) ──────────────────────────────────────────────────────
@@ -110,6 +114,32 @@ const PHASE_STAGES = Object.freeze({
   REVIEWING: 'reviewing',
   COMPLETE:  'complete',
   FAILED:    'failed',
+});
+
+// ─── Source Control Enums (v5) ────────────────────────────────────────────
+
+const SOURCE_CONTROL_MODES = Object.freeze({
+  WORKTREE: 'worktree',
+  BRANCH: 'branch',    // reserved, not implemented in this project
+  NONE: 'none',
+});
+
+const SOURCE_CONTROL_ACTIVATION = Object.freeze({
+  ALWAYS: 'always',
+  NEVER: 'never',
+  ASK: 'ask',
+});
+
+const SOURCE_CONTROL_BRANCH_FROM = Object.freeze({
+  DEFAULT: 'default',
+  CURRENT: 'current',
+  ASK: 'ask',
+});
+
+const SOURCE_CONTROL_CLEANUP = Object.freeze({
+  ASK: 'ask',
+  ON_COMPLETION: 'on_completion',
+  MANUAL: 'manual',
 });
 
 // ─── Stage Transition Maps (v4) ────────────────────────────────────────────
@@ -323,4 +353,9 @@ module.exports = {
   ALLOWED_PHASE_TRANSITIONS,
   ALLOWED_TASK_STAGE_TRANSITIONS,
   ALLOWED_PHASE_STAGE_TRANSITIONS,
+  // ── NEW v5 exports ──
+  SOURCE_CONTROL_MODES,
+  SOURCE_CONTROL_ACTIVATION,
+  SOURCE_CONTROL_BRANCH_FROM,
+  SOURCE_CONTROL_CLEANUP,
 };

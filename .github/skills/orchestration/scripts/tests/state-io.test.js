@@ -29,7 +29,7 @@ function cleanTmpDir(dir) {
 
 function makeValidState() {
   return {
-    $schema: 'orchestration-state-v4',
+    $schema: 'orchestration-state-v5',
     project: {
       name: 'TEST-PROJECT',
       created: '2025-01-01T00:00:00.000Z',
@@ -76,7 +76,7 @@ describe('readState', () => {
     const state = makeValidState();
     fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(state, null, 2), 'utf-8');
     const result = readState(tmpDir);
-    assert.equal(result.$schema, 'orchestration-state-v4');
+    assert.equal(result.$schema, 'orchestration-state-v5');
     assert.ok(result.project);
     assert.ok(result.planning);
     assert.ok(result.execution);

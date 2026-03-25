@@ -2,11 +2,13 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('node:path');
 
 const { processEvent } = require('../lib/pipeline-engine');
 const {
   createMockIO,
   createBaseState,
+  createBaseStateV5,
   createExecutionState,
   createReviewState,
   createDefaultConfig,
@@ -14,6 +16,7 @@ const {
 } = require('./helpers/test-helpers');
 
 const PROJECT_DIR = '/test/project';
+const SC_PROJECT_DIR = __dirname;
 
 // ─── Local Helpers ──────────────────────────────────────────────────────────
 
@@ -995,5 +998,567 @@ describe('Category 11 — Corrective Task Flow', () => {
     assert.equal(result.action, 'spawn_code_reviewer');
     assert.equal(io.getWrites().length, writeCount);
     assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'reviewing');
+  });
+});
+
+// ─── Category 12: SC — Ask activation creation paths ────────────────────────
+
+describe('Category 12: SC — Ask activation creation paths', () => {
+  it('12: ask activation + ask branch-from (full creation flow)', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'worktree',
+      activation: 'ask',
+      branch_from: 'ask',
+      cleanup: 'ask',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = makeExecutionStartState(1);
+    const documents = { 'pp.md': makeDoc({ tasks: ['T01'] }) };
+    const io = createMockIO({
+      state,
+      documents,
+      config,
+      getDefaultBranch: () => 'main',
+      getCurrentBranch: () => 'develop',
+    });
+    let writeCount = 0;
+
+    // Step 1: start → ask_source_control_activation (cold-start resume; 0 writes)
+    const r1 = processEvent('start', SC_PROJECT_DIR, {}, io);
+    assert.equal(r1.success, true);
+    assert.equal(r1.action, 'ask_source_control_activation');
+    assert.equal(io.getWrites().length, 0);
+    assert.equal(r1.mutations_applied.length, 0);
+
+    // Step 2: activation_set worktree → ask_source_control_branch_from; 1 write
+    const r2 = processEvent('source_control_activation_set', SC_PROJECT_DIR, { choice: 'worktree' }, io);
+    writeCount++;
+    assert.equal(r2.success, true);
+    assert.equal(r2.action, 'ask_source_control_branch_from');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getState().pipeline.source_control.activation_choice, 'worktree');
+    assert.equal(io.getCreateWorktreeCalls().length, 0);
+
+    // Step 3: branch_from_set default → create_phase_plan; creation fires; startPoint=main
+    const r3 = processEvent('source_control_branch_from_set', SC_PROJECT_DIR, { choice: 'default' }, io);
+    writeCount++;
+    assert.equal(r3.success, true);
+    assert.equal(r3.action, 'create_phase_plan');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getCreateWorktreeCalls().length, 1);
+    assert.equal(io.getCreateWorktreeCalls()[0].startPoint, 'main');
+    assert.ok(io.getState().pipeline.source_control.worktree_path !== null);
+    assert.ok(io.getState().pipeline.source_control.branch !== null);
+
+    // Step 4: phase_plan_created → create_task_handoff; idempotent (still 1 creation)
+    const r4 = processEvent('phase_plan_created', SC_PROJECT_DIR, { doc_path: 'pp.md' }, io);
+    writeCount++;
+    assert.equal(r4.success, true);
+    assert.equal(r4.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getCreateWorktreeCalls().length, 1);
+    assert.ok(io.getState().pipeline.source_control.worktree_path !== null);
+  });
+
+  it('12b: ask activation + config branch-from current (no branch ask)', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'worktree',
+      activation: 'ask',
+      branch_from: 'current',
+      cleanup: 'ask',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = makeExecutionStartState(1);
+    const io = createMockIO({
+      state,
+      config,
+      getDefaultBranch: () => 'main',
+      getCurrentBranch: () => 'develop',
+    });
+    let writeCount = 0;
+
+    // Step 1: start → ask_source_control_activation (cold-start resume; 0 writes)
+    const r1 = processEvent('start', SC_PROJECT_DIR, {}, io);
+    assert.equal(r1.success, true);
+    assert.equal(r1.action, 'ask_source_control_activation');
+    assert.equal(io.getWrites().length, 0);
+
+    // Step 2: activation_set worktree → create_phase_plan (no branch ask); creation fires; startPoint=develop
+    const r2 = processEvent('source_control_activation_set', SC_PROJECT_DIR, { choice: 'worktree' }, io);
+    writeCount++;
+    assert.equal(r2.success, true);
+    assert.equal(r2.action, 'create_phase_plan');
+    assert.notEqual(r2.action, 'ask_source_control_branch_from');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getCreateWorktreeCalls().length, 1);
+    assert.equal(io.getCreateWorktreeCalls()[0].startPoint, 'develop');
+    assert.ok(io.getState().pipeline.source_control.worktree_path !== null);
+  });
+});
+
+// ─── Category 13: SC — Ask activation skip ──────────────────────────────────
+
+describe('Category 13: SC — Ask activation skip', () => {
+  it('13: choose none → no worktree created', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'worktree',
+      activation: 'ask',
+      branch_from: 'ask',
+      cleanup: 'ask',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = makeExecutionStartState(1);
+    const io = createMockIO({ state, config });
+    let writeCount = 0;
+
+    // Step 1: start → ask_source_control_activation (0 writes)
+    const r1 = processEvent('start', PROJECT_DIR, {}, io);
+    assert.equal(r1.success, true);
+    assert.equal(r1.action, 'ask_source_control_activation');
+    assert.equal(io.getWrites().length, 0);
+
+    // Step 2: activation_set none → create_phase_plan; no creation; activation_choice=none
+    const r2 = processEvent('source_control_activation_set', PROJECT_DIR, { choice: 'none' }, io);
+    writeCount++;
+    assert.equal(r2.success, true);
+    assert.equal(r2.action, 'create_phase_plan');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getCreateWorktreeCalls().length, 0);
+    assert.equal(io.getState().pipeline.source_control.worktree_path, null);
+    assert.equal(io.getState().pipeline.source_control.branch, null);
+    assert.equal(io.getState().pipeline.source_control.activation_choice, 'none');
+  });
+});
+
+// ─── Category 14: SC — Always activation creation paths ─────────────────────
+
+describe('Category 14: SC — Always activation creation paths', () => {
+  it('14: always activation + default branch-from (auto-create)', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'worktree',
+      activation: 'always',
+      branch_from: 'default',
+      cleanup: 'ask',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = makeExecutionStartState(1);
+    const documents = { 'pp.md': makeDoc({ tasks: ['T01'] }) };
+    const io = createMockIO({
+      state,
+      documents,
+      config,
+      getDefaultBranch: () => 'main',
+      getCurrentBranch: () => 'develop',
+    });
+    let writeCount = 0;
+
+    // Step 1: start → create_phase_plan (always; no ask actions; 0 writes)
+    const r1 = processEvent('start', SC_PROJECT_DIR, {}, io);
+    assert.equal(r1.success, true);
+    assert.equal(r1.action, 'create_phase_plan');
+    assert.notEqual(r1.action, 'ask_source_control_activation');
+    assert.notEqual(r1.action, 'ask_source_control_branch_from');
+    assert.equal(io.getWrites().length, 0);
+
+    // Step 2: phase_plan_created → create_task_handoff; creation fires; startPoint=main
+    const r2 = processEvent('phase_plan_created', SC_PROJECT_DIR, { doc_path: 'pp.md' }, io);
+    writeCount++;
+    assert.equal(r2.success, true);
+    assert.equal(r2.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getCreateWorktreeCalls().length, 1);
+    assert.equal(io.getCreateWorktreeCalls()[0].startPoint, 'main');
+    assert.ok(io.getState().pipeline.source_control.worktree_path !== null);
+    assert.ok(io.getState().pipeline.source_control.branch !== null);
+  });
+
+  it('14b: always activation + ask branch-from (hybrid)', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'worktree',
+      activation: 'always',
+      branch_from: 'ask',
+      cleanup: 'ask',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = makeExecutionStartState(1);
+    const io = createMockIO({
+      state,
+      config,
+      getDefaultBranch: () => 'main',
+      getCurrentBranch: () => 'develop',
+    });
+    let writeCount = 0;
+
+    // Step 1: start → ask_source_control_branch_from (always; no activation ask; 0 writes)
+    const r1 = processEvent('start', SC_PROJECT_DIR, {}, io);
+    assert.equal(r1.success, true);
+    assert.equal(r1.action, 'ask_source_control_branch_from');
+    assert.notEqual(r1.action, 'ask_source_control_activation');
+    assert.equal(io.getWrites().length, 0);
+
+    // Step 2: branch_from_set current → create_phase_plan; creation fires; startPoint=develop
+    const r2 = processEvent('source_control_branch_from_set', SC_PROJECT_DIR, { choice: 'current' }, io);
+    writeCount++;
+    assert.equal(r2.success, true);
+    assert.equal(r2.action, 'create_phase_plan');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getCreateWorktreeCalls().length, 1);
+    assert.equal(io.getCreateWorktreeCalls()[0].startPoint, 'develop');
+    assert.ok(io.getState().pipeline.source_control.worktree_path !== null);
+    assert.ok(io.getState().pipeline.source_control.branch !== null);
+  });
+
+  it('14c: always activation during planning tier (tier guard prevents creation)', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'worktree',
+      activation: 'always',
+      branch_from: 'default',
+      cleanup: 'ask',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = createBaseStateV5();
+    delete state.project.updated;
+    const io = createMockIO({ state, config });
+
+    // Step 1: research_completed → spawn_prd; tier guard: planning tier, no creation
+    const r1 = processEvent('research_completed', PROJECT_DIR, { doc_path: 'r.md' }, io);
+    assert.equal(r1.success, true);
+    assert.equal(r1.action, 'spawn_prd');
+    assert.equal(io.getCreateWorktreeCalls().length, 0);
+    assert.equal(io.getState().pipeline.source_control.worktree_path, null);
+  });
+});
+
+// ─── Category 15: SC — Ask cleanup paths ────────────────────────────────────
+const CLEANUP_WORKTREE_PATH = path.resolve(SC_PROJECT_DIR, '..', 'worktrees', 'test');
+
+describe('Category 15: SC — Ask cleanup paths', () => {
+  function makeAskCleanupConfig() {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'worktree',
+      activation: 'ask',
+      branch_from: 'default',
+      cleanup: 'ask',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    return config;
+  }
+
+  function makeWorktreeState() {
+    const state = createReviewState({
+      pipeline: {
+        source_control: {
+          activation_choice: 'worktree',
+          branch_from_choice: 'default',
+          worktree_path: CLEANUP_WORKTREE_PATH,
+          branch: 'project/test',
+          cleanup_choice: null,
+        },
+      },
+    });
+    delete state.project.updated;
+    return state;
+  }
+
+  it('15: ask cleanup, choose remove', () => {
+    const config = makeAskCleanupConfig();
+    const state = makeWorktreeState();
+    const io = createMockIO({ state, config });
+
+    const result = processEvent('source_control_cleanup_set', SC_PROJECT_DIR, { choice: 'remove' }, io);
+    assert.equal(result.success, true);
+    assert.equal(io.getRemoveWorktreeCalls().length, 1);
+    assert.equal(io.getState().pipeline.source_control.worktree_path, null);
+    assert.equal(io.getState().pipeline.source_control.branch, null);
+    assert.equal(io.getWrites().length, 1);
+  });
+
+  it('15b: ask cleanup, choose keep', () => {
+    const config = makeAskCleanupConfig();
+    const state = makeWorktreeState();
+    const io = createMockIO({ state, config });
+
+    const result = processEvent('source_control_cleanup_set', PROJECT_DIR, { choice: 'keep' }, io);
+    assert.equal(result.success, true);
+    assert.equal(io.getRemoveWorktreeCalls().length, 0);
+    assert.equal(io.getState().pipeline.source_control.worktree_path, CLEANUP_WORKTREE_PATH);
+    assert.equal(io.getState().pipeline.source_control.branch, 'project/test');
+    assert.equal(io.getState().pipeline.source_control.cleanup_choice, 'keep');
+  });
+
+  it('15c: cleanup blocked by uncommitted changes', () => {
+    const config = makeAskCleanupConfig();
+    const state = makeWorktreeState();
+    const io = createMockIO({ state, config, hasUncommittedChanges: () => true });
+
+    const result = processEvent('source_control_cleanup_set', SC_PROJECT_DIR, { choice: 'remove' }, io);
+    assert.equal(result.success, false);
+    assert.ok(result.context.error.includes('uncommitted changes'));
+    assert.equal(io.getRemoveWorktreeCalls().length, 0);
+    assert.equal(io.getWrites().length, 0);
+  });
+});
+
+// ─── Category 16: SC — Completion/manual cleanup paths ──────────────────────
+
+describe('Category 16: SC — Completion/manual cleanup paths', () => {
+  function makeWorktreeStateWithFinalReview() {
+    const state = createReviewState({
+      pipeline: {
+        source_control: {
+          activation_choice: 'worktree',
+          branch_from_choice: 'default',
+          worktree_path: CLEANUP_WORKTREE_PATH,
+          branch: 'project/test',
+          cleanup_choice: null,
+        },
+      },
+      final_review: {
+        status: 'complete',
+        doc_path: 'fr.md',
+        human_approved: false,
+      },
+    });
+    delete state.project.updated;
+    return state;
+  }
+
+  it('16: on_completion auto-remove', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'worktree',
+      activation: 'ask',
+      branch_from: 'default',
+      cleanup: 'on_completion',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = makeWorktreeStateWithFinalReview();
+    const io = createMockIO({ state, config });
+
+    const result = processEvent('final_approved', SC_PROJECT_DIR, {}, io);
+    assert.equal(result.success, true);
+    assert.equal(io.getRemoveWorktreeCalls().length, 1);
+    assert.equal(io.getState().pipeline.source_control.worktree_path, null);
+    assert.equal(io.getState().pipeline.source_control.branch, null);
+    assert.equal(io.getWrites().length, 1);
+  });
+
+  it('16b: manual cleanup (no removal)', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'worktree',
+      activation: 'ask',
+      branch_from: 'default',
+      cleanup: 'manual',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = makeWorktreeStateWithFinalReview();
+    const io = createMockIO({ state, config });
+
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    assert.equal(result.success, true);
+    assert.equal(io.getRemoveWorktreeCalls().length, 0);
+    assert.ok(io.getState().pipeline.source_control.worktree_path !== null);
+    assert.ok(io.getState().pipeline.source_control.branch !== null);
+  });
+});
+
+// ─── Category 17: SC — Backwards-compatibility skip paths ───────────────────
+
+describe('Category 17: SC — Backwards-compatibility skip paths', () => {
+  it('17: activation never (skip all SC)', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'worktree',
+      activation: 'never',
+      branch_from: 'default',
+      cleanup: 'ask',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = makeExecutionStartState(1);
+    const documents = { 'pp.md': makeDoc({ tasks: ['T01'] }) };
+    const io = createMockIO({ state, config, documents });
+
+    // Step 1: start → NOT ask_source_control_* (activation: never suppresses all SC asks); 0 writes
+    const r1 = processEvent('start', PROJECT_DIR, {}, io);
+    assert.equal(r1.success, true);
+    assert.ok(!r1.action.startsWith('ask_source_control_'));
+    assert.equal(io.getCreateWorktreeCalls().length, 0);
+    assert.equal(io.getRemoveWorktreeCalls().length, 0);
+    assert.equal(io.getState().pipeline.source_control.worktree_path, null);
+
+    // Step 2: phase_plan_created → no worktree created (resolveIsolationMode returns 'none')
+    const r2 = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'pp.md' }, io);
+    assert.equal(r2.success, true);
+    assert.equal(io.getCreateWorktreeCalls().length, 0);
+  });
+
+  it('17b: isolation_mode none (skip all SC)', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'none',
+      activation: 'always',
+      branch_from: 'default',
+      cleanup: 'ask',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = makeExecutionStartState(1);
+    const documents = { 'pp.md': makeDoc({ tasks: ['T01'] }) };
+    const io = createMockIO({ state, config, documents });
+
+    // Step 1: start → NOT ask_source_control_* (isolation_mode: none suppresses creation); 0 writes
+    const r1 = processEvent('start', PROJECT_DIR, {}, io);
+    assert.equal(r1.success, true);
+    assert.ok(!r1.action.startsWith('ask_source_control_'));
+    assert.equal(io.getCreateWorktreeCalls().length, 0);
+    assert.equal(io.getRemoveWorktreeCalls().length, 0);
+
+    // Step 2: phase_plan_created → no worktree (resolveIsolationMode returns 'none')
+    const r2 = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'pp.md' }, io);
+    assert.equal(r2.success, true);
+    assert.equal(io.getCreateWorktreeCalls().length, 0);
+  });
+
+  it('17c: isolation_mode branch (reserved, no-op)', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'branch',
+      activation: 'always',
+      branch_from: 'default',
+      cleanup: 'ask',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = makeExecutionStartState(1);
+    const documents = { 'pp.md': makeDoc({ tasks: ['T01'] }) };
+    const io = createMockIO({ state, config, documents });
+
+    // Step 1: start → NOT ask_source_control_activation (activation: always); 0 writes
+    const r1 = processEvent('start', PROJECT_DIR, {}, io);
+    assert.equal(r1.success, true);
+    assert.equal(io.getCreateWorktreeCalls().length, 0);
+    assert.equal(io.getRemoveWorktreeCalls().length, 0);
+
+    // Step 2: phase_plan_created → no worktree (resolveIsolationMode returns 'branch', fails === 'worktree' check)
+    const r2 = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'pp.md' }, io);
+    assert.equal(r2.success, true);
+    assert.equal(io.getCreateWorktreeCalls().length, 0);
+  });
+});
+
+// ─── Category 18: SC — Error paths ──────────────────────────────────────────
+
+describe('Category 18: SC — Error paths', () => {
+  it('18: version mismatch rejected', () => {
+    const config = createDefaultConfig(); // version: '5.0'
+    const state = createBaseState({ $schema: 'orchestration-state-v4' });
+    const io = createMockIO({ state, config });
+
+    const result = processEvent('start', PROJECT_DIR, {}, io);
+    assert.equal(result.success, false);
+    assert.ok(result.context.error.includes('Version mismatch'));
+    assert.equal(io.getWrites().length, 0);
+  });
+
+  it('18b: creation git error', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'worktree',
+      activation: 'ask',
+      branch_from: 'ask',
+      cleanup: 'ask',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = makeExecutionStartState(1);
+    state.pipeline.source_control.activation_choice = 'worktree';
+    const io = createMockIO({
+      state,
+      config,
+      createWorktree: () => ({ success: false, error: 'branch already exists' }),
+    });
+
+    // branch_from_set satisfies final gate; creation fires; mock returns error
+    const result = processEvent('source_control_branch_from_set', SC_PROJECT_DIR, { choice: 'default' }, io);
+    assert.equal(result.success, false);
+    assert.ok(result.context.error.includes('Worktree creation failed'));
+    assert.equal(io.getWrites().length, 0);
+    assert.equal(io.getState().pipeline.source_control.worktree_path, null);
+  });
+
+  it('18c: no .git directory found', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'worktree',
+      activation: 'ask',
+      branch_from: 'current',
+      cleanup: 'ask',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = makeExecutionStartState(1);
+    state.pipeline.source_control.activation_choice = 'worktree';
+    const io = createMockIO({ state, config });
+
+    // PROJECT_DIR has no .git ancestor; findRepoRoot returns null → error before createWorktree
+    const result = processEvent('source_control_activation_set', PROJECT_DIR, { choice: 'worktree' }, io);
+    assert.equal(result.success, false);
+    assert.ok(result.context.error.includes('no git repository found'));
+    assert.equal(io.getCreateWorktreeCalls().length, 0);
+    assert.equal(io.getWrites().length, 0);
+  });
+
+  it('18d: removal git error', () => {
+    const config = createDefaultConfig();
+    config.source_control = {
+      isolation_mode: 'worktree',
+      activation: 'ask',
+      branch_from: 'default',
+      cleanup: 'ask',
+      worktree_path: '../worktrees',
+      branch_prefix: 'project/',
+    };
+    const state = createReviewState({
+      pipeline: {
+        source_control: {
+          activation_choice: 'worktree',
+          branch_from_choice: 'default',
+          worktree_path: CLEANUP_WORKTREE_PATH,
+          branch: 'project/test',
+          cleanup_choice: null,
+        },
+      },
+    });
+    delete state.project.updated;
+    const io = createMockIO({
+      state,
+      config,
+      removeWorktree: () => ({ success: false, error: 'permission denied' }),
+    });
+
+    // cleanup_set remove triggers removal; mock returns error; state NOT written
+    const result = processEvent('source_control_cleanup_set', SC_PROJECT_DIR, { choice: 'remove' }, io);
+    assert.equal(result.success, false);
+    assert.ok(result.context.error.includes('Worktree removal failed'));
+    assert.equal(io.getWrites().length, 0);
+    assert.equal(io.getState().pipeline.source_control.worktree_path, CLEANUP_WORKTREE_PATH);
   });
 });

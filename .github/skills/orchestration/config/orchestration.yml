@@ -2,7 +2,7 @@
 # Orchestration System Configuration
 # -----------------------------------
 
-version: "1.0"
+version: "5.0"
 
 # ─── System ────────────────────────────────────────────────────────
 system:
@@ -27,6 +27,17 @@ human_gates:
   after_planning: true                   # Always gate after master plan (hard default)
   execution_mode: "ask"                  # ask | phase | task | autonomous
   after_final_review: true               # Always gate after final review (hard default)
+
+
+# ─── Source Control ────────────────────────────────────────────────
+source_control:
+  isolation_mode: "worktree"             # worktree | branch | none
+  activation: "ask"                      # always | never | ask
+  branch_from: "ask"                     # default | current | ask
+  worktree_path: "../v3-worktrees"       # Relative (from repo root) or absolute path
+  branch_prefix: "project/"              # Branch naming prefix (e.g., project/MY-PROJECT)
+  cleanup: "ask"                         # ask | on_completion | manual
+  
 
 # ─── Notes ─────────────────────────────────────────────────────────
 # Model selection is configured per-agent in .agent.md frontmatter.

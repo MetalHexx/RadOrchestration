@@ -253,12 +253,12 @@ function migratePhase(rawPhase, version) {
 // ─── Full State Migration ─────────────────────────────────────────────────────
 
 /**
- * Migrate a state.json from v1, v2, or v3 to v4.
+ * Migrate a state.json from v1, v2, or v3 to current schema.
  * @param {Object} rawState - parsed state.json (any version)
  * @param {1 | 2 | 3} version - detected schema version
- * @returns {Object} valid v4 state object
+ * @returns {Object} valid current-version state object
  */
-function migrateToV4(rawState, version) {
+function migrateLegacy(rawState, version) {
   // Build pipeline section — current_tier is in different locations per version
   let current_tier;
   if (version === 3) {
@@ -304,6 +304,13 @@ function migrateToV4(rawState, version) {
     },
     pipeline: {
       current_tier,
+      source_control: {
+        activation_choice: null,
+        branch_from_choice: null,
+        worktree_path: null,
+        branch: null,
+        cleanup_choice: null,
+      },
     },
     planning: {
       status: rawState.planning.status,
@@ -347,7 +354,7 @@ function migrateProject(projectDir) {
 
   let migrated;
   try {
-    migrated = migrateToV4(rawState, version);
+    migrated = migrateLegacy(rawState, version);
   } catch (err) {
     return { success: false, backed_up: null, errors: [`Migration failed: ${err.message}`] };
   }
@@ -395,7 +402,7 @@ if (require.main === module) {
       process.exit(1);
     }
   } else {
-    console.log('Usage: node migrate-to-v4.js <project-dir>');
+    console.log('Usage: node migrate-legacy.js <project-dir>');
     console.log('  <project-dir>  Absolute path to project directory containing state.json');
   }
 }
@@ -404,7 +411,7 @@ if (require.main === module) {
 
 module.exports = {
   detectVersion,
-  migrateToV4,
+  migrateLegacy,
   inferTaskStage,
   inferPhaseStage,
   migrateProject,

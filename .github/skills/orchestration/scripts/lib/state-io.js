@@ -6,6 +6,7 @@ const { readFile, exists } = require('../validate/lib/utils/fs-helpers');
 const { parseYaml } = require('../validate/lib/utils/yaml-parser');
 const { extractFrontmatter } = require('../validate/lib/utils/frontmatter');
 const { SCHEMA_VERSION } = require('./constants');
+const { createWorktree, removeWorktree, hasUncommittedChanges, getDefaultBranch, getCurrentBranch, formatBranchName } = require('./git-operations');
 
 // ─── Default Configuration ──────────────────────────────────────────────────
 
@@ -19,6 +20,14 @@ const DEFAULT_CONFIG = Object.freeze({
     max_consecutive_review_rejections: 3,
   },
   human_gates: { after_planning: true, execution_mode: 'ask', after_final_review: true },
+  source_control: {
+    isolation_mode: 'none',
+    activation: 'never',
+    branch_from: 'ask',
+    worktree_path: '../worktrees',
+    branch_prefix: 'project/',
+    cleanup: 'ask',
+  },
 });
 
 // ─── readState ──────────────────────────────────────────────────────────────
@@ -62,6 +71,7 @@ function mergeConfig(parsed) {
     projects: { ...DEFAULT_CONFIG.projects, ...(parsed.projects || {}) },
     limits: { ...DEFAULT_CONFIG.limits, ...(parsed.limits || {}) },
     human_gates: { ...DEFAULT_CONFIG.human_gates, ...(parsed.human_gates || {}) },
+    source_control: { ...DEFAULT_CONFIG.source_control, ...(parsed.source_control || {}) },
   };
 }
 
@@ -126,7 +136,19 @@ function ensureDirectories(projectDir) {
 // ─── createRealIO ───────────────────────────────────────────────────────────
 
 function createRealIO() {
-  return { readState, writeState, readConfig, readDocument, ensureDirectories };
+  return {
+    readState,
+    writeState,
+    readConfig,
+    readDocument,
+    ensureDirectories,
+    createWorktree,
+    removeWorktree,
+    hasUncommittedChanges,
+    getDefaultBranch,
+    getCurrentBranch,
+    formatBranchName,
+  };
 }
 
 // ─── Exports ────────────────────────────────────────────────────────────────

@@ -119,6 +119,29 @@ function shouldRemoveWorktree(event, proposedState, config) {
   return false;
 }
 
+/**
+ * Compute the arguments needed to create a worktree.
+ * @param {string} projectDir - absolute path to project directory
+ * @param {Object} proposedState - post-mutation state
+ * @param {Object} config - merged config
+ * @param {Object} io - IO abstraction (for getDefaultBranch, getCurrentBranch, formatBranchName)
+ * @returns {{ repoRoot: string, worktreePath: string, branchName: string, startPoint: string }}
+ */
+function computeWorktreeArgs(projectDir, proposedState, config, io) {
+  const repoRoot = findRepoRoot(projectDir);
+
+  const branchFromValue = proposedState.pipeline.source_control.branch_from_choice
+                          ?? config.source_control.branch_from;
+  const startPoint = (branchFromValue === 'default')
+    ? io.getDefaultBranch(repoRoot)
+    : io.getCurrentBranch(repoRoot);
+
+  const branchName = io.formatBranchName(config.source_control.branch_prefix, path.basename(projectDir));
+  const worktreePath = path.resolve(repoRoot, config.source_control.worktree_path, path.basename(projectDir));
+
+  return { repoRoot, worktreePath, branchName, startPoint };
+}
+
 // ─── scaffoldInitialState ───────────────────────────────────────────────────
 
 /**
@@ -300,83 +323,6 @@ function processEvent(event, projectDir, context, io, configPath) {
     ? new Date(new Date(prev).getTime() + 1).toISOString()
     : now;
 
-  // ──── Worktree Creation Hook ─────────────────────────────────────────────
-  if (shouldCreateWorktree(proposed.state, config)) {
-    const repoRoot = findRepoRoot(projectDir);
-    if (repoRoot === null) {
-      return {
-        success: false,
-        action: null,
-        context: { error: 'Cannot create worktree: no git repository found above ' + projectDir },
-        mutations_applied: proposed.mutations_applied,
-      };
-    }
-
-    const branchFromValue = proposed.state.pipeline.source_control.branch_from_choice
-      ?? config.source_control.branch_from;
-    const startPoint = (branchFromValue === 'default')
-      ? io.getDefaultBranch(repoRoot)
-      : io.getCurrentBranch(repoRoot);
-
-    const branchName = io.formatBranchName(config.source_control.branch_prefix, path.basename(projectDir));
-    const worktreePath = path.resolve(repoRoot, config.source_control.worktree_path, path.basename(projectDir));
-
-    const gitResult = io.createWorktree(repoRoot, worktreePath, branchName, startPoint);
-    if (gitResult.success === false) {
-      return {
-        success: false,
-        action: null,
-        context: { error: 'Worktree creation failed: ' + gitResult.error },
-        mutations_applied: proposed.mutations_applied,
-      };
-    }
-
-    const wtResult = handleWorktreeCreated(proposed.state, { worktree_path: worktreePath, branch: branchName }, config);
-    proposed.state = wtResult.state;
-    proposed.mutations_applied = proposed.mutations_applied.concat(wtResult.mutations_applied);
-  }
-  // ──── End Worktree Creation Hook ─────────────────────────────────────────
-
-  // ──── Worktree Removal Hook ──────────────────────────────────────────────
-  if (shouldRemoveWorktree(event, proposed.state, config)) {
-    const repoRoot = findRepoRoot(projectDir);
-    if (repoRoot === null) {
-      return {
-        success: false,
-        action: null,
-        context: { error: 'Cannot remove worktree: no git repository found above ' + projectDir },
-        mutations_applied: proposed.mutations_applied,
-      };
-    }
-
-    const worktreePath = proposed.state.pipeline.source_control.worktree_path;
-    const branchName = proposed.state.pipeline.source_control.branch;
-
-    if (io.hasUncommittedChanges(worktreePath)) {
-      return {
-        success: false,
-        action: null,
-        context: { error: 'Cannot remove worktree: uncommitted changes exist in ' + worktreePath },
-        mutations_applied: proposed.mutations_applied,
-      };
-    }
-
-    const gitResult = io.removeWorktree(repoRoot, worktreePath, branchName);
-    if (gitResult.success === false) {
-      return {
-        success: false,
-        action: null,
-        context: { error: 'Worktree removal failed: ' + gitResult.error },
-        mutations_applied: proposed.mutations_applied,
-      };
-    }
-
-    const rmResult = handleWorktreeRemoved(proposed.state, {}, config);
-    proposed.state = rmResult.state;
-    proposed.mutations_applied = proposed.mutations_applied.concat(rmResult.mutations_applied);
-  }
-  // ──── End Worktree Removal Hook ──────────────────────────────────────────
-
   const errors = validateTransition(currentState, proposed.state, config);
   if (errors.length > 0) {
     return {
@@ -408,3 +354,4 @@ module.exports = {
   extractStateMajor,
   checkVersionCompatibility,
 };
+

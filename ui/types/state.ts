@@ -38,7 +38,7 @@ export const PLANNING_STEP_ORDER: readonly PlanningStepName[] = [
 // ─── State Root ──────────────────────────────────────────────────────────────
 
 export interface ProjectState {
-  $schema: 'orchestration-state-v4';
+  $schema: 'orchestration-state-v5';
   project: ProjectMeta;
   pipeline: Pipeline;
   planning: PlanningState;
@@ -57,6 +57,13 @@ export interface ProjectMeta {
 export interface Pipeline {
   current_tier: PipelineTier;
   gate_mode: GateMode | null;   // null = fall back to global config
+  source_control: {
+    activation_choice: string | null;
+    branch_from_choice: string | null;
+    worktree_path: string | null;
+    branch: string | null;
+    cleanup_choice: string | null;
+  };
 }
 
 export interface PlanningState {

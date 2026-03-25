@@ -96,6 +96,12 @@ A single `orchestration.yml` controls everything: project storage, pipeline limi
 
 [Learn more about configuration →](docs/configuration.md)
 
+### Git Integration
+
+First-class git worktree support for parallel project execution. Projects run in isolated worktree directories with automatic branch management and configurable cleanup. Activation modes range from fully automatic to per-project prompts.
+
+[Learn more about git integration →](docs/git.md)
+
 ### Continuous Verification
 
 Every task produces a report. Every report is reviewed against the plan.  Code reviewers never fully trust the coder reports. :)  Minor issues trigger automatic corrective tasks. Critical issues halt the pipeline for human intervention. Plans don't drift unchecked. Pipeline failures are logged to a structured, append-only error log (`ERROR-LOG.md`) in each project folder.
@@ -117,7 +123,7 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 3. Run `/configure-system` to set up `orchestration.yml`
 4. Use `Orchestrator` agent with your project goals to start the pipeline
 
-> **Migrating an existing project?** Run `node .github/skills/orchestration/scripts/migrate-to-v4.js` to upgrade `state.json` files from earlier schema versions. The script creates `.backup` copies before writing.
+> **Migrating an existing project?** Run `node .github/skills/orchestration/scripts/migrate-to-v5.js <project-dir>` to upgrade state files to v5. Use `--all <base-path>` for bulk migration. See [Git Integration](docs/git.md#migration) for details.
 
 ## Documentation
 
@@ -128,6 +134,7 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 | [Pipeline](docs/pipeline.md) | Planning and execution flow, human gates, error handling |
 | [Skills](docs/skills.md) | All 18 skills and how they compose with agents |
 | [Configuration](docs/configuration.md) | `orchestration.yml` reference — all options explained |
+| [Git Integration](docs/git.md) | Git worktree isolation, branch management, cleanup, and migration |
 | [Project Structure](docs/project-structure.md) | File layout, naming conventions, document types, state management |
 | [Pipeline Script](docs/scripts.md) | Unified event-driven CLI — routing, triage, state mutations, validation |
 | [Validation](docs/validation.md) | Zero-dependency validation CLI tool |

@@ -42,9 +42,9 @@ describe('promptOrchRoot — preset value selected', () => {
     assert.equal(selectArgs.choices.length, 3);
   });
 
-  it('choices are .agent, .github, Custom…', () => {
+  it('choices are .agents, .github, Custom…', () => {
     const values = selectArgs.choices.map((c) => c.value);
-    assert.deepEqual(values, ['.agent', '.github', 'custom']);
+    assert.deepEqual(values, ['.agents', '.github', 'custom']);
   });
 
   it('".github" is the default', () => {

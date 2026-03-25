@@ -6,6 +6,7 @@ title: "{TASK-TITLE}"
 status: "pending"
 skills: ["{skill-1}", "{skill-2}"]
 estimated_files: {NUMBER}
+working_root: "{WORKING-ROOT}"
 ---
 
 # {TASK-TITLE}

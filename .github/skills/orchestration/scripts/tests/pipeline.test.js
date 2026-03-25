@@ -105,7 +105,7 @@ describe('E2E: pipeline.js via child_process', () => {
 
     // Verify state.json content
     const state = JSON.parse(fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8'));
-    assert.strictEqual(state.$schema, 'orchestration-state-v4');
+    assert.strictEqual(state.$schema, 'orchestration-state-v5');
     assert.ok(state.project.name);
     assert.strictEqual(state.pipeline.current_tier, 'planning');
   });

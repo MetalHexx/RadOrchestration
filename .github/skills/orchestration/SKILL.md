@@ -25,7 +25,8 @@ This skill bundles:
 - **`config/orchestration.yml`** — System configuration
 - **`schemas/state-v4.schema.json`** — State file JSON Schema
 - **`scripts/pipeline.js`** — Pipeline CLI entry point
-- **`scripts/migrate-to-v4.js`** — Migration CLI
+- **`scripts/migrate-to-v5.js`** — Migrate v4 states and orchestration.yml config to v5 (bulk, dry-run, config modes)
+- **`scripts/migrate-legacy.js`** — Migrate pre-v4 states (v1/v2/v3) to current schema
 - **`scripts/lib/`** — Pipeline engine, resolver, mutations, state I/O, validator
 - **`scripts/validate/`** — Orchestration validator CLI, check modules, utilities
 - **`references/`** — Role-specific reference documents

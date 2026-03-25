@@ -23,7 +23,8 @@ The Orchestrator operates as an event-driven controller:
 - **Continuing a project**: `pipeline.js --event start --project-dir <path>`
 - **Recovery after context compaction**: `pipeline.js --event start --project-dir <path>`
 
-The `start` event is always safe — the pipeline loads `state.json`, skips mutation, and resolves the next action from the current state.
+- The `start` event is always safe — the pipeline loads `state.json`, skips mutation, and resolves the next action from the current state.
+- If planning documents already exist, but no state.json is present, short-circuit to the appropriate step based on which documents are present.
 
 ### CLI Invocation
 
@@ -56,6 +57,9 @@ Only these `result.action` values should pause execution for human input or stop
 | `gate_task` | Pause — wait for human approval |
 | `gate_phase` | Pause — wait for human approval |
 | `ask_gate_mode` | Pause — wait for operator gate mode selection |
+| `ask_source_control_activation` | Pause — waiting for human input |
+| `ask_source_control_branch_from` | Pause — waiting for human input |
+| `ask_source_control_cleanup` | Pause — waiting for human input |
 
 All other actions must be executed immediately without asking the human.
 
@@ -84,6 +88,9 @@ Every `result.action` value maps to exactly one Orchestrator operation. All bran
 | 17 | `ask_gate_mode` | Human gate | Present the three gate mode options (`task`, `phase`, `autonomous`) to the operator. Wait for selection. | `gate_mode_set` with `{ "gate_mode": "<chosen>" }` |
 | 18 | `display_halted` | Terminal | Display `result.context.message` to the human. **Loop terminates.** | *(none — terminal action)* |
 | 19 | `display_complete` | Terminal | Display completion summary to the human. **Loop terminates.** | *(none — terminal action)* |
+| 20 | `ask_source_control_activation` | Human gate | Present activation prompt to operator. Ask: "Use git worktree isolation for this project?" Options: `worktree` or `none`. | `source_control_activation_set` with `{ "choice": "worktree" }` or `{ "choice": "none" }` |
+| 21 | `ask_source_control_branch_from` | Human gate | Present branch-from prompt to operator. Ask: "Start worktree from which branch?" Options: `default` or `current`. | `source_control_branch_from_set` with `{ "choice": "default" }` or `{ "choice": "current" }` |
+| 22 | `ask_source_control_cleanup` | Human gate | Present cleanup prompt to operator. Ask: "Remove worktree and branch after project completion?" Options: `remove` or `keep`. | `source_control_cleanup_set` with `{ "choice": "remove" }` or `{ "choice": "keep" }` |
 
 ## Event Signaling Reference
 
@@ -112,6 +119,11 @@ These are the exact event names passed to `--event`:
 | `final_approved` | `{}` | After human approves final review |
 | `final_rejected` | `{}` | After human rejects final review |
 | `halt` | `{}` | Emergency stop — signals the pipeline to halt immediately |
+| `source_control_activation_set` | `{ "choice": "worktree"\|"none" }` | After operator selects activation mode in the human gate |
+| `source_control_branch_from_set` | `{ "choice": "default"\|"current" }` | After operator selects branch origin in the human gate |
+| `source_control_cleanup_set` | `{ "choice": "remove"\|"keep" }` | After operator selects cleanup action in the human gate |
+| `worktree_created` | *(internal engine event — not Orchestrator-dispatched)* | Applied inline by the engine after successful `io.createWorktree` call. The Orchestrator does NOT signal this event. |
+| `worktree_removed` | *(internal engine event — not Orchestrator-dispatched)* | Applied inline by the engine after successful `io.removeWorktree` call. The Orchestrator does NOT signal this event. |
 
 ## State Mutations
 

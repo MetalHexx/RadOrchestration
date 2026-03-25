@@ -28,25 +28,38 @@ Implement the coding task fully and correctly from a self-contained Task Handoff
 
 ### Write access: Source code + tests + Task Report only
 
+## Working Root
+
+Every task handoff includes a `working_root` field in its YAML frontmatter. This is always an absolute path — the worktree directory when worktrees are active, or the repository root otherwise.
+
+**Before running any terminal command**, read `working_root` from the handoff frontmatter and `cd` to it:
+
+```
+cd {working_root}
+```
+
+Use `working_root` as the base directory for ALL terminal operations throughout the task. Never assume the current directory is correct — always start from `working_root`.
+
 ## Workflow
 
-1. **Read the Task Handoff** at the path provided — this is your ONLY input
-2. **Understand the objective**: Read the Objective and Context sections
-3. **Review file targets**: Know exactly which files to create or modify
-4. **Follow implementation steps**: Execute each step in order
-5. **Conform to contracts**: Match the inlined interfaces exactly — type signatures, method names, return types
-6. **Apply design tokens**: If the handoff includes design tokens, use the exact values provided
-7. **Write tests**: Implement the test cases from the Test Requirements section
-8. **Run tests**: Execute the test suite and record actual results
-9. **Run build**: Execute the build command to verify compilation
-10. **Restore the working directory**: After running any terminal commands inside a project subdirectory, restore CWD to the workspace root before continuing:
+1. **Read the Task Handoff** at the path provided — this is your ONLY input. Note the `working_root` field in the frontmatter.
+2. **Set working directory**: Run `cd {working_root}` in the terminal, using the absolute path from the handoff frontmatter. This ensures all subsequent commands execute in the correct directory (worktree or repo root).
+3. **Understand the objective**: Read the Objective and Context sections
+4. **Review file targets**: Know exactly which files to create or modify
+5. **Follow implementation steps**: Execute each step in order
+6. **Conform to contracts**: Match the inlined interfaces exactly — type signatures, method names, return types
+7. **Apply design tokens**: If the handoff includes design tokens, use the exact values provided
+8. **Write tests**: Implement the test cases from the Test Requirements section
+9. **Run tests**: Execute the test suite and record actual results
+10. **Run build**: Execute the build command to verify compilation
+11. **Restore the working directory**: After running any terminal commands inside a project subdirectory, restore CWD to the `working_root` before continuing:
     ```
-    cd <workspace-root>
+    cd {working_root}
     ```
-    Failure to restore CWD will slow down the project.
-11. **Check acceptance criteria**: Go through each criterion and verify it's met
-12. **Produce the Task Report** using the `generate-task-report` skill
-13. **Save the Task Report** to the path specified (typically `{PROJECT-DIR}/reports/{NAME}-TASK-REPORT-P{NN}-T{NN}.md`)
+    Failure to restore CWD will cause commands to execute in the wrong directory.
+12. **Check acceptance criteria**: Go through each criterion and verify it's met
+13. **Produce the Task Report** using the `generate-task-report` skill
+14. **Save the Task Report** to the path specified (typically `{PROJECT-DIR}/reports/{NAME}-TASK-REPORT-P{NN}-T{NN}.md`)
 
 ## Handling Issues
 

@@ -9,9 +9,9 @@ import type { OrderedDoc } from '@/types/components';
 
 function makeState(overrides?: Partial<ProjectState>): ProjectState {
   return {
-    $schema: 'orchestration-state-v4',
+    $schema: 'orchestration-state-v5',
     project: { name: 'TEST', created: '', updated: '' },
-    pipeline: { current_tier: 'execution', gate_mode: null },
+    pipeline: { current_tier: 'execution', gate_mode: null, source_control: { activation_choice: null, branch_from_choice: null, worktree_path: null, branch: null, cleanup_choice: null } },
     planning: {
       status: 'complete',
       human_approved: false,

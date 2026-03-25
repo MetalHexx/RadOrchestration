@@ -6,6 +6,7 @@ const {
   PHASE_STAGES, TASK_STAGES,
   REVIEW_ACTIONS, PHASE_REVIEW_ACTIONS,
   HUMAN_GATE_MODES, NEXT_ACTIONS,
+  SOURCE_CONTROL_ACTIVATION, SOURCE_CONTROL_BRANCH_FROM, SOURCE_CONTROL_CLEANUP,
 } = require('./constants');
 
 // ─── Planning Step → Action Map ─────────────────────────────────────────────
@@ -45,6 +46,22 @@ function resolveGateMode(state, config) {
   return state.pipeline.gate_mode ?? config.human_gates.execution_mode;
 }
 
+/**
+ * Resolve effective isolation mode for a project.
+ * @param {Object} state  - post-mutation state
+ * @param {Object} config - merged orchestration config
+ * @returns {'worktree' | 'none' | 'pending'}
+ */
+function resolveIsolationMode(state, config) {
+  if (config.source_control.activation === SOURCE_CONTROL_ACTIVATION.NEVER) return 'none';
+  if (config.source_control.isolation_mode === 'none') return 'none';
+  if (config.source_control.activation === SOURCE_CONTROL_ACTIVATION.ASK) {
+    return state.pipeline.source_control.activation_choice || 'pending';
+  }
+  // activation === "always"
+  return config.source_control.isolation_mode;
+}
+
 // ─── Planning Tier ──────────────────────────────────────────────────────────
 
 function resolvePlanning(state) {
@@ -74,6 +91,23 @@ function resolveExecution(state, config) {
   const effectiveMode = resolveGateMode(state, config);
   if (effectiveMode === HUMAN_GATE_MODES.ASK && state.pipeline.gate_mode == null) {
     return { action: NEXT_ACTIONS.ASK_GATE_MODE, context: {} };
+  }
+
+  // ── Source control ask-actions (after gate_mode, before phase routing) ──
+
+  // 1. Activation ask — prompt user to choose worktree or none
+  if (config.source_control.activation === SOURCE_CONTROL_ACTIVATION.ASK
+      && state.pipeline.source_control.activation_choice === null
+      && state.pipeline.source_control.worktree_path === null) {
+    return { action: NEXT_ACTIONS.ASK_SOURCE_CONTROL_ACTIVATION, context: {} };
+  }
+
+  // 2. Branch-from ask — prompt user for branch origin (only if worktree chosen, not yet created)
+  if (resolveIsolationMode(state, config) === 'worktree'
+      && state.pipeline.source_control.worktree_path === null
+      && config.source_control.branch_from === SOURCE_CONTROL_BRANCH_FROM.ASK
+      && state.pipeline.source_control.branch_from_choice === null) {
+    return { action: NEXT_ACTIONS.ASK_SOURCE_CONTROL_BRANCH_FROM, context: {} };
   }
 
   const exec = state.execution;
@@ -269,7 +303,7 @@ function resolvePhaseGate(phaseNumber, state, config) {
 
 // ─── Review Tier ────────────────────────────────────────────────────────────
 
-function resolveReview(state) {
+function resolveReview(state, config) {
   const final_review = state.final_review;
 
   if (!final_review.doc_path) {
@@ -278,6 +312,13 @@ function resolveReview(state) {
 
   if (!final_review.human_approved) {
     return { action: NEXT_ACTIONS.REQUEST_FINAL_APPROVAL, context: {} };
+  }
+
+  // 3. Cleanup ask — prompt user before project completion (only if worktree exists)
+  if (state.pipeline.source_control.worktree_path !== null
+      && state.pipeline.source_control.cleanup_choice === null
+      && config.source_control.cleanup === SOURCE_CONTROL_CLEANUP.ASK) {
+    return { action: NEXT_ACTIONS.ASK_SOURCE_CONTROL_CLEANUP, context: {} };
   }
 
   // Final review approved but tier not transitioned — should not happen normally
@@ -319,7 +360,7 @@ function resolveNextAction(state, config) {
   }
 
   if (tier === PIPELINE_TIERS.REVIEW) {
-    return resolveReview(state);
+    return resolveReview(state, config);
   }
 
   return halted('Unknown tier: ' + tier);
@@ -327,4 +368,4 @@ function resolveNextAction(state, config) {
 
 // ─── Exports ────────────────────────────────────────────────────────────────
 
-module.exports = { resolveNextAction };
+module.exports = { resolveNextAction, resolveIsolationMode };

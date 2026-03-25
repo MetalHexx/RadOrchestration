@@ -93,9 +93,9 @@ describe('createMockIO', () => {
 // ─── State Factory Tests ────────────────────────────────────────────────────
 
 describe('State factories', () => {
-  it('createBaseState produces valid v4 state', () => {
+  it('createBaseState produces valid v5 state', () => {
     const s = createBaseState();
-    assert.equal(s.$schema, 'orchestration-state-v4');
+    assert.equal(s.$schema, 'orchestration-state-v5');
     assert.equal(s.pipeline.current_tier, 'planning');
     assert.equal(s.planning.steps.length, 5);
     assert.equal(s.planning.human_approved, false);
@@ -103,15 +103,15 @@ describe('State factories', () => {
 
   it('createExecutionState produces execution-tier state with human_approved', () => {
     const s = createExecutionState();
-    assert.equal(s.$schema, 'orchestration-state-v4');
+    assert.equal(s.$schema, 'orchestration-state-v5');
     assert.equal(s.pipeline.current_tier, 'execution');
     assert.equal(s.planning.human_approved, true);
     assert.equal(s.execution.phases[0].tasks.length, 2);
   });
 
-  it('createReviewState produces review-tier state with top-level final_review (v4)', () => {
+  it('createReviewState produces review-tier state with top-level final_review (v5)', () => {
     const s = createReviewState();
-    assert.equal(s.$schema, 'orchestration-state-v4');
+    assert.equal(s.$schema, 'orchestration-state-v5');
     assert.equal(s.pipeline.current_tier, 'review');
     assert.ok(s.final_review !== undefined, 'top-level final_review should exist');
     assert.equal(s.final_review.doc_path, null);
@@ -144,11 +144,11 @@ describe('processEvent — init path', () => {
     assert.equal(io.getEnsureDirsCalled(), 1);
   });
 
-  it('written state has $schema orchestration-state-v4', () => {
+  it('written state has $schema orchestration-state-v5', () => {
     const io = createMockIO({ state: null });
     processEvent('start', PROJECT_DIR, {}, io);
     const written = io.getWrites()[0];
-    assert.equal(written.$schema, 'orchestration-state-v4');
+    assert.equal(written.$schema, 'orchestration-state-v5');
   });
 
   it('written state project.name matches path.basename(projectDir)', () => {
@@ -372,9 +372,9 @@ describe('scaffoldInitialState', () => {
   const config = createDefaultConfig();
   const dir = '/test/my-project';
 
-  it('has $schema orchestration-state-v4', () => {
+  it('has $schema orchestration-state-v5', () => {
     const s = scaffoldInitialState(config, dir);
-    assert.equal(s.$schema, 'orchestration-state-v4');
+    assert.equal(s.$schema, 'orchestration-state-v5');
     assert.ok(s.final_review !== undefined, 'top-level final_review should exist');
     assert.equal(s.final_review.status, 'not_started');
     assert.equal(s.final_review.doc_path, null);
@@ -396,7 +396,7 @@ describe('scaffoldInitialState', () => {
     }
   });
 
-  it('planning.current_step is removed in v4 (field does not exist)', () => {
+  it('planning.current_step is removed in v5 (field does not exist)', () => {
     const s = scaffoldInitialState(config, dir);
     assert.equal(s.planning.current_step, undefined);
     assert.ok(s.pipeline !== undefined, 'pipeline should exist as top-level section');
@@ -427,10 +427,10 @@ describe('scaffoldInitialState', () => {
     assert.equal(s.pipeline.current_tier, 'planning', 'current_tier must remain planning');
   });
 
-  it('pipeline has exactly two keys: current_tier and gate_mode', () => {
+  it('pipeline has exactly three keys: current_tier, gate_mode, and source_control', () => {
     const s = scaffoldInitialState(config, dir);
     const keys = Object.keys(s.pipeline).sort();
-    assert.deepEqual(keys, ['current_tier', 'gate_mode']);
+    assert.deepEqual(keys, ['current_tier', 'gate_mode', 'source_control']);
   });
 
   it('scaffolded state passes validateTransition with zero errors', () => {

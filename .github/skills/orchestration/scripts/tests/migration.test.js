@@ -7,11 +7,11 @@ const path = require('node:path');
 
 const {
   detectVersion,
-  migrateToV4,
+  migrateLegacy,
   inferTaskStage,
   inferPhaseStage,
   migrateProject,
-} = require('../migrate-to-v4.js');
+} = require('../migrate-legacy.js');
 
 const { validateTransition } = require('../lib/validator.js');
 
@@ -131,28 +131,28 @@ describe('detectVersion', () => {
 
 // ─── migrateToV4 — full fixture migration tests ───────────────────────────────
 
-describe('migrateToV4 — structural assertions on all 20 fixtures', () => {
+describe('migrateLegacy — structural assertions on all 20 fixtures', () => {
   for (const { name, data, version } of allFixtures) {
     describe(`${name} (v${version})`, () => {
       let migrated;
 
       it('migrates without throwing', () => {
-        migrated = migrateToV4(data, version);
+        migrated = migrateLegacy(data, version);
         assert.ok(migrated, 'migration returned a result');
       });
 
-      it('$schema === "orchestration-state-v4"', () => {
-        const m = migrateToV4(data, version);
-        assert.equal(m.$schema, 'orchestration-state-v4');
+      it('$schema === "orchestration-state-v5"', () => {
+        const m = migrateLegacy(data, version);
+        assert.equal(m.$schema, 'orchestration-state-v5');
       });
 
       it('project.name matches fixture', () => {
-        const m = migrateToV4(data, version);
+        const m = migrateLegacy(data, version);
         assert.equal(m.project.name, data.project.name);
       });
 
       it('pipeline.current_tier is a valid tier string', () => {
-        const m = migrateToV4(data, version);
+        const m = migrateLegacy(data, version);
         assert.ok(
           VALID_TIERS.has(m.pipeline.current_tier),
           `"${m.pipeline.current_tier}" is not a valid tier`,
@@ -160,7 +160,7 @@ describe('migrateToV4 — structural assertions on all 20 fixtures', () => {
       });
 
       it('planning.steps is an array of 5 elements with correct names in order', () => {
-        const m = migrateToV4(data, version);
+        const m = migrateLegacy(data, version);
         assert.ok(Array.isArray(m.planning.steps), 'planning.steps should be an array');
         assert.equal(m.planning.steps.length, 5);
         m.planning.steps.forEach((step, i) => {
@@ -169,7 +169,7 @@ describe('migrateToV4 — structural assertions on all 20 fixtures', () => {
       });
 
       it('every phase has docs object with phase_plan, phase_report, phase_review keys', () => {
-        const m = migrateToV4(data, version);
+        const m = migrateLegacy(data, version);
         for (const phase of m.execution.phases) {
           assert.ok(typeof phase.docs === 'object' && phase.docs !== null, `phase "${phase.name}" missing docs`);
           assert.ok('phase_plan' in phase.docs, `phase "${phase.name}" docs.phase_plan missing`);
@@ -179,7 +179,7 @@ describe('migrateToV4 — structural assertions on all 20 fixtures', () => {
       });
 
       it('every phase has review object with verdict and action keys', () => {
-        const m = migrateToV4(data, version);
+        const m = migrateLegacy(data, version);
         for (const phase of m.execution.phases) {
           assert.ok(typeof phase.review === 'object' && phase.review !== null, `phase "${phase.name}" missing review`);
           assert.ok('verdict' in phase.review, `phase "${phase.name}" review.verdict missing`);
@@ -188,7 +188,7 @@ describe('migrateToV4 — structural assertions on all 20 fixtures', () => {
       });
 
       it('every phase has a valid stage field', () => {
-        const m = migrateToV4(data, version);
+        const m = migrateLegacy(data, version);
         for (const phase of m.execution.phases) {
           assert.ok(
             VALID_PHASE_STAGES.has(phase.stage),
@@ -198,7 +198,7 @@ describe('migrateToV4 — structural assertions on all 20 fixtures', () => {
       });
 
       it('every task has docs object with handoff, report, review keys', () => {
-        const m = migrateToV4(data, version);
+        const m = migrateLegacy(data, version);
         for (const phase of m.execution.phases) {
           for (const task of phase.tasks) {
             assert.ok(typeof task.docs === 'object' && task.docs !== null, `task "${task.name}" missing docs`);
@@ -210,7 +210,7 @@ describe('migrateToV4 — structural assertions on all 20 fixtures', () => {
       });
 
       it('every task has review object with verdict and action keys', () => {
-        const m = migrateToV4(data, version);
+        const m = migrateLegacy(data, version);
         for (const phase of m.execution.phases) {
           for (const task of phase.tasks) {
             assert.ok(typeof task.review === 'object' && task.review !== null, `task "${task.name}" missing review`);
@@ -221,7 +221,7 @@ describe('migrateToV4 — structural assertions on all 20 fixtures', () => {
       });
 
       it('every task has a valid stage field', () => {
-        const m = migrateToV4(data, version);
+        const m = migrateLegacy(data, version);
         for (const phase of m.execution.phases) {
           for (const task of phase.tasks) {
             assert.ok(
@@ -240,7 +240,7 @@ describe('migrateToV4 — structural assertions on all 20 fixtures', () => {
 describe('validateTransition — all 20 migrated fixtures pass with 0 errors', () => {
   for (const { name, data, version } of allFixtures) {
     it(`${name} (v${version}) → 0 validation errors`, () => {
-      const migrated = migrateToV4(data, version);
+      const migrated = migrateLegacy(data, version);
       const errors = validateTransition(null, migrated, DEFAULT_CONFIG);
       assert.equal(
         errors.length,
@@ -258,7 +258,7 @@ describe('0→1-based index conversion', () => {
     const data = loadFixture('AMENDMENT-v2.json');
     assert.equal(data.execution.current_phase, 0);
     assert.equal(data.execution.phases.length, 0);
-    const m = migrateToV4(data, 2);
+    const m = migrateLegacy(data, 2);
     assert.equal(m.execution.current_phase, 0);
   });
 
@@ -266,7 +266,7 @@ describe('0→1-based index conversion', () => {
     const data = loadFixture('SKILL-RECOMMENDATION-v3.json');
     assert.equal(data.execution.current_phase, 0);
     assert.ok(data.execution.phases.length > 0);
-    const m = migrateToV4(data, 3);
+    const m = migrateLegacy(data, 3);
     assert.equal(m.execution.current_phase, 1);
   });
 
@@ -299,7 +299,7 @@ describe('0→1-based index conversion', () => {
         ],
       },
     };
-    const m = migrateToV4(synthetic, 3);
+    const m = migrateLegacy(synthetic, 3);
     assert.equal(m.execution.phases[0].current_task, 0);
   });
 
@@ -346,13 +346,13 @@ describe('0→1-based index conversion', () => {
         ],
       },
     };
-    const m = migrateToV4(synthetic, 3);
+    const m = migrateLegacy(synthetic, 3);
     assert.equal(m.execution.phases[0].current_task, 1);
   });
 
   it('all migrated phases: current_task within [0, tasks.length]', () => {
     for (const { name, data, version } of allFixtures) {
-      const m = migrateToV4(data, version);
+      const m = migrateLegacy(data, version);
       for (const phase of m.execution.phases) {
         const ct = phase.current_task;
         const tl = phase.tasks.length;
@@ -367,7 +367,7 @@ describe('0→1-based index conversion', () => {
 
   it('all migrated states: current_phase within [0, phases.length]', () => {
     for (const { name, data, version } of allFixtures) {
-      const m = migrateToV4(data, version);
+      const m = migrateLegacy(data, version);
       const cp = m.execution.current_phase;
       const pl = m.execution.phases.length;
       if (pl === 0) {
@@ -481,7 +481,7 @@ describe('legacy action normalization', () => {
   describe('MONITORING-UI-v2: "advance" and "proceed" → "advanced"', () => {
     it('tasks with review_action "advance" normalize to "advanced"', () => {
       const data = loadFixture('MONITORING-UI-v2.json');
-      const m = migrateToV4(data, 2);
+      const m = migrateLegacy(data, 2);
       // Collect all task review actions from the migrated output
       const taskActions = m.execution.phases.flatMap(p => p.tasks.map(t => t.review.action));
       // Each non-null action should be a v4 valid value ("advanced" in this fixture)
@@ -500,7 +500,7 @@ describe('legacy action normalization', () => {
       );
       assert.ok(hasProceeds, 'MONITORING-UI-v2 should contain "proceed" review_action values');
 
-      const m = migrateToV4(data, 2);
+      const m = migrateLegacy(data, 2);
       const taskActions = m.execution.phases.flatMap(p => p.tasks.map(t => t.review.action));
       for (const action of taskActions) {
         if (action !== null) {
@@ -511,7 +511,7 @@ describe('legacy action normalization', () => {
 
     it('phases with phase_review_action "proceed" normalize to "advanced"', () => {
       const data = loadFixture('MONITORING-UI-v2.json');
-      const m = migrateToV4(data, 2);
+      const m = migrateLegacy(data, 2);
       for (const phase of m.execution.phases) {
         if (phase.review.action !== null) {
           assert.equal(phase.review.action, 'advanced', `Expected "advanced" but got "${phase.review.action}"`);
@@ -529,7 +529,7 @@ describe('legacy action normalization', () => {
       );
       assert.ok(hasAdvance, 'ORCHESTRATION-REORG-v2 should contain "advance" review_action values');
 
-      const m = migrateToV4(data, 2);
+      const m = migrateLegacy(data, 2);
       const taskActions = m.execution.phases.flatMap(p => p.tasks.map(t => t.review.action));
       for (const action of taskActions) {
         if (action !== null) {
@@ -540,7 +540,7 @@ describe('legacy action normalization', () => {
 
     it('phases with phase_review_action "advance" normalize to "advanced"', () => {
       const data = loadFixture('ORCHESTRATION-REORG-v2.json');
-      const m = migrateToV4(data, 2);
+      const m = migrateLegacy(data, 2);
       for (const phase of m.execution.phases) {
         if (phase.review.action !== null) {
           assert.equal(phase.review.action, 'advanced');
@@ -552,7 +552,7 @@ describe('legacy action normalization', () => {
   describe('SCRIPT-SIMPLIFY-AGENTS-v2: already "advanced" values carry through', () => {
     it('task review actions are "advanced" or null (no transformation needed)', () => {
       const data = loadFixture('SCRIPT-SIMPLIFY-AGENTS-v2.json');
-      const m = migrateToV4(data, 2);
+      const m = migrateLegacy(data, 2);
       const taskActions = m.execution.phases.flatMap(p => p.tasks.map(t => t.review.action));
       for (const action of taskActions) {
         if (action !== null) {
@@ -604,7 +604,7 @@ describe('legacy action normalization', () => {
         ],
       },
     };
-    const m = migrateToV4(synthetic, 3);
+    const m = migrateLegacy(synthetic, 3);
     assert.equal(m.execution.phases[0].tasks[0].review.action, null);
     assert.equal(m.execution.phases[0].review.action, null);
   });
@@ -634,7 +634,7 @@ describe('dropped fields absent in all migrated output', () => {
 
   for (const { name, data, version } of allFixtures) {
     it(`${name}: no dropped top-level fields in execution or planning`, () => {
-      const m = migrateToV4(data, version);
+      const m = migrateLegacy(data, version);
 
       // These should not appear on the root state
       for (const field of ['total_phases', 'total_tasks', 'current_step', 'human_gate_mode',
@@ -652,7 +652,7 @@ describe('dropped fields absent in all migrated output', () => {
     });
 
     it(`${name}: no dropped fields in phases`, () => {
-      const m = migrateToV4(data, version);
+      const m = migrateLegacy(data, version);
       for (const phase of m.execution.phases) {
         for (const field of DROPPED_PHASE) {
           assert.equal(
@@ -665,7 +665,7 @@ describe('dropped fields absent in all migrated output', () => {
     });
 
     it(`${name}: no dropped fields in tasks`, () => {
-      const m = migrateToV4(data, version);
+      const m = migrateLegacy(data, version);
       for (const phase of m.execution.phases) {
         for (const task of phase.tasks) {
           for (const field of DROPPED_TASK) {
@@ -692,7 +692,7 @@ describe('v1 planning step "skipped" maps to "complete"', () => {
       'skipped',
       'fixture should have design step with status "skipped"',
     );
-    const m = migrateToV4(data, 1);
+    const m = migrateLegacy(data, 1);
     const designStep = m.planning.steps.find(s => s.name === 'design');
     assert.ok(designStep, 'migrated state should have a design step');
     assert.equal(designStep.status, 'complete', '"skipped" should map to "complete" in v4');
@@ -704,7 +704,7 @@ describe('v1 planning step "skipped" maps to "complete"', () => {
 describe('v1/v2 final_review.report_doc → v4 final_review.doc_path', () => {
   it('VALIDATOR-v1: final_review.report_doc is mapped to doc_path', () => {
     const data = loadFixture('VALIDATOR-v1.json');
-    const m = migrateToV4(data, 1);
+    const m = migrateLegacy(data, 1);
     // v1 may or may not have final_review. Check that doc_path key exists and
     // if v1 had report_doc it maps correctly.
     assert.ok('doc_path' in m.final_review, 'final_review.doc_path should exist');
@@ -713,7 +713,7 @@ describe('v1/v2 final_review.report_doc → v4 final_review.doc_path', () => {
 
   for (const { name, data } of v2Fixtures) {
     it(`${name}: final_review has doc_path (not report_doc)`, () => {
-      const m = migrateToV4(data, 2);
+      const m = migrateLegacy(data, 2);
       assert.ok('doc_path' in m.final_review, `${name}: final_review.doc_path should exist`);
       assert.equal('report_doc' in m.final_review, false, `${name}: final_review.report_doc should be absent`);
     });
@@ -729,7 +729,7 @@ describe('v3 missing final_review_* fields default to not_started', () => {
     assert.equal('final_review_status' in data.execution, false, 'fixture should not have final_review_status');
     assert.equal('final_review_doc' in data.execution, false, 'fixture should not have final_review_doc');
 
-    const m = migrateToV4(data, 3);
+    const m = migrateLegacy(data, 3);
     assert.equal(m.final_review.status, 'not_started');
     assert.equal(m.final_review.doc_path, null);
     assert.equal(m.final_review.human_approved, false);
@@ -744,7 +744,7 @@ describe('v1/v2 Record→Array planning step conversion', () => {
     // Confirm the fixture uses Record format
     assert.ok(!Array.isArray(data.planning.steps), 'v1 fixture planning.steps should be a Record');
 
-    const m = migrateToV4(data, 1);
+    const m = migrateLegacy(data, 1);
     assert.ok(Array.isArray(m.planning.steps), 'migrated planning.steps should be an array');
     assert.equal(m.planning.steps.length, 5);
 
@@ -760,7 +760,7 @@ describe('v1/v2 Record→Array planning step conversion', () => {
       // Skip if already array (some v2 might differ - all should be Record per spec)
       if (Array.isArray(data.planning.steps)) return;
 
-      const m = migrateToV4(data, 2);
+      const m = migrateLegacy(data, 2);
       assert.ok(Array.isArray(m.planning.steps), `${name}: migrated planning.steps should be an array`);
       assert.equal(m.planning.steps.length, 5, `${name}: should have 5 planning steps`);
 
@@ -791,9 +791,9 @@ describe('migrateProject', () => {
       assert.ok(result.backed_up.endsWith('state.3.json.bak'), 'backup file should be state.3.json.bak');
       assert.equal(result.errors.length, 0);
 
-      // Verify the written state is valid v4
+      // Verify the written state is valid v5
       const written = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
-      assert.equal(written.$schema, 'orchestration-state-v4');
+      assert.equal(written.$schema, 'orchestration-state-v5');
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
