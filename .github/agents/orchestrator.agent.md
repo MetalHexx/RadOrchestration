@@ -8,7 +8,7 @@ tools:
   - agent
   - execute
   - vscode/askQuestions
-model: Claude Opus 4.6 (copilot)
+model: claude-sonnet-4.6
 agents:
   - Research
   - Product Manager
