@@ -1530,9 +1530,9 @@ describe('handleFinalRejected', () => {
   });
 });
 
-// ─── getMutation dispatch for all 21 events ─────────────────────────────────
+// ─── getMutation dispatch for all 22 events ─────────────────────────────────
 
-describe('getMutation (all 21 events)', () => {
+describe('getMutation (all 22 events)', () => {
   const allEvents = [
     'research_completed',
     'prd_completed',
@@ -1543,6 +1543,7 @@ describe('getMutation (all 21 events)', () => {
     'plan_rejected',
     'phase_planning_started',
     'phase_plan_created',
+    'task_handoff_started',
     'task_handoff_created',
     'task_completed',
     'code_review_completed',
@@ -1563,12 +1564,12 @@ describe('getMutation (all 21 events)', () => {
     });
   }
 
-  it('has exactly 21 registered events', () => {
+  it('has exactly 22 registered events', () => {
     let count = 0;
     for (const event of allEvents) {
       if (getMutation(event)) count++;
     }
-    assert.equal(count, 21);
+    assert.equal(count, 22);
   });
 
   it('does NOT contain task_approved', () => {
