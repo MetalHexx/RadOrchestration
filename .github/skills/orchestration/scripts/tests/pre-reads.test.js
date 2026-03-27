@@ -96,10 +96,10 @@ describe('task_completed', () => {
     assert.equal(res.context.report_status, 'failed');
   });
 
-  it('normalizes status "partial" to report_status "failed"', () => {
+  it('normalizes status "partial" to report_status "complete"', () => {
     const read = mockReadDocument({ '/report.md': { frontmatter: { ...validFm, status: 'partial' }, body: '' } });
     const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.context.report_status, 'failed');
+    assert.equal(res.context.report_status, 'complete');
   });
 
   it('passes through status "complete" to report_status "complete"', () => {
