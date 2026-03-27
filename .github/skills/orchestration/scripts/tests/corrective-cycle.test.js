@@ -257,7 +257,7 @@ describe('corrective cycle — end-to-end', () => {
       'Corrective cycle must NOT re-enter planning stage');
   });
 
-  it('does NOT emit task_handoff_started when is_correction is true', () => {
+  it('corrective path proceeds from failed to coding without planning stage re-entry', () => {
     const state = makeState();
     const config = makeConfig();
     const phase = state.execution.phases[0];
@@ -288,31 +288,27 @@ describe('corrective cycle — end-to-end', () => {
     assert.equal(result.action, 'create_task_handoff');
     assert.equal(result.context.is_correction, true);
 
-    // (e) GUARD: task_handoff_started is NEVER signaled during the corrective path.
+    // (e) Corrective path behavior:
     //     The Orchestrator checks result.context.is_correction before signaling.
-    //     When is_correction is true, the Orchestrator spawns the Tactical Planner
-    //     directly and proceeds to task_handoff_created — no task_handoff_started.
+    //     When is_correction is true, the Orchestrator skips task_handoff_started,
+    //     spawns the Tactical Planner directly, and proceeds to task_handoff_created.
     //
-    //     We verify the guard by confirming the stage sequence through the
-    //     corrective cycle contains NO 'planning' stage re-entry:
+    //     This test models that behavior by applying task_handoff_created directly
+    //     after a failed review and tracking the resulting stage sequence.
     const stages = [task.stage]; // ['failed'] after changes_requested
 
-    // (f) Proceed directly to task_handoff_created (no task_handoff_started in between)
+    // (f) Proceed directly to task_handoff_created (no task_handoff_started in between
+    //     in this modeled flow)
     const handoffHandler = getMutation('task_handoff_created');
     handoffHandler(state, {
       doc_path: 'tasks/CORRECTIVE-HANDOFF-P01-T01.md',
     }, config);
     stages.push(task.stage); // ['failed', 'coding']
 
-    // (g) The corrective stage sequence is failed → coding.
-    //     'planning' NEVER appears — task_handoff_started was not signaled.
-    //     (task_handoff_started would keep stage at 'planning' — its absence is proven)
+    // (g) The corrective stage sequence in this flow is failed → coding, with no
+    //     re-entry into a planning stage.
     assert.deepEqual(stages, ['failed', 'coding']);
     assert.equal(task.status, 'in_progress');
-
-    // (h) Verify 'planning' is NOT in the corrective stage sequence
-    assert.equal(stages.includes('planning'), false,
-      'Corrective task cycle must NOT include planning stage (task_handoff_started skipped)');
   });
 
 });
