@@ -44,7 +44,7 @@ function checkRetryBudget(retries, maxRetries) {
 // ─── Decision Tables ────────────────────────────────────────────────────────
 
 /**
- * 8-row task decision table. First-match-wins.
+ * 9-row task decision table. First-match-wins.
  * @param {string} verdict
  * @param {string} reportStatus
  * @param {boolean} hasDeviations
@@ -58,21 +58,25 @@ function resolveTaskOutcome(verdict, reportStatus, hasDeviations, deviationType,
   if (verdict === REVIEW_VERDICTS.APPROVED && reportStatus === 'complete') {
     return { taskStatus: TASK_STATUSES.COMPLETE, reviewAction: REVIEW_ACTIONS.ADVANCED };
   }
-  // Row 4-5: changes_requested + complete
+  // Row 4: approved + failed → complete/advanced (reviewer approval is authoritative)
+  if (verdict === REVIEW_VERDICTS.APPROVED && reportStatus === 'failed') {
+    return { taskStatus: TASK_STATUSES.COMPLETE, reviewAction: REVIEW_ACTIONS.ADVANCED };
+  }
+  // Row 5-6: changes_requested + complete
   if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED && reportStatus === 'complete') {
     if (checkRetryBudget(retries, maxRetries)) {
       return { taskStatus: TASK_STATUSES.FAILED, reviewAction: REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED };
     }
     return { taskStatus: TASK_STATUSES.HALTED, reviewAction: REVIEW_ACTIONS.HALTED };
   }
-  // Row 6-7: changes_requested + failed
+  // Row 7-8: changes_requested + failed
   if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED && reportStatus === 'failed') {
     if (checkRetryBudget(retries, maxRetries)) {
       return { taskStatus: TASK_STATUSES.FAILED, reviewAction: REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED };
     }
     return { taskStatus: TASK_STATUSES.HALTED, reviewAction: REVIEW_ACTIONS.HALTED };
   }
-  // Row 8: rejected
+  // Row 9: rejected
   if (verdict === REVIEW_VERDICTS.REJECTED) {
     return { taskStatus: TASK_STATUSES.HALTED, reviewAction: REVIEW_ACTIONS.HALTED };
   }
@@ -236,9 +240,42 @@ function handlePlanRejected(state, context, config) {
 
 // ─── Execution Handlers ─────────────────────────────────────────────────────
 
+/**
+ * phase_planning_started — Transitions the current phase from not_started
+ * to in_progress while keeping stage as 'planning'.
+ *
+ * @param {Object} state  - deep-cloned pipeline state
+ * @param {Object} context - empty object {} (no fields required)
+ * @param {Object} config  - merged orchestration config (unused)
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handlePhasePlanningStarted(state, context, config) {
+  const phase = currentPhase(state);
+  phase.status = PHASE_STATUSES.IN_PROGRESS;
+  // Do NOT modify phase.stage — remains 'planning'
+  return {
+    state,
+    mutations_applied: ['Set phase.status to "in_progress"'],
+  };
+}
+
 /** @type {MutationHandler} */
 function handlePhasePlanCreated(state, context, config) {
   const phase = currentPhase(state);
+  const mutations = [];
+
+  // Clear stale review fields from previous cycle (corrective re-entry)
+  if (phase.docs.phase_report) {
+    phase.docs.phase_report = null;
+    mutations.push('Cleared phase.docs.phase_report (corrective re-entry)');
+  }
+  if (phase.docs.phase_review) {
+    phase.docs.phase_review = null;
+    phase.review.verdict = null;
+    phase.review.action = null;
+    mutations.push('Cleared phase.docs.phase_review, review.verdict, and review.action (corrective re-entry)');
+  }
+
   phase.status = PHASE_STATUSES.IN_PROGRESS;
   phase.stage = PHASE_STAGES.EXECUTING;
   phase.docs.phase_plan = context.doc_path;
@@ -265,6 +302,7 @@ function handlePhasePlanCreated(state, context, config) {
   return {
     state,
     mutations_applied: [
+      ...mutations,
       `Set phase.status to "${PHASE_STATUSES.IN_PROGRESS}"`,
       `Set phase.stage to "${PHASE_STAGES.EXECUTING}"`,
       `Set phase.docs.phase_plan to "${context.doc_path}"`,
@@ -272,6 +310,25 @@ function handlePhasePlanCreated(state, context, config) {
       'Set phase.current_task to 1',
       `Populated phase.tasks with ${context.tasks.length} task(s)`,
     ],
+  };
+}
+
+/**
+ * task_handoff_started — Transitions the current task from not_started
+ * to in_progress while keeping stage as 'planning'.
+ *
+ * @param {Object} state  - deep-cloned pipeline state
+ * @param {Object} context - empty object {} (no fields required)
+ * @param {Object} config  - merged orchestration config (unused)
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleTaskHandoffStarted(state, context, config) {
+  const task = currentTask(state);
+  task.status = TASK_STATUSES.IN_PROGRESS;
+  // Do NOT modify task.stage — remains 'planning'
+  return {
+    state,
+    mutations_applied: ['Set task.status to "in_progress"'],
   };
 }
 
@@ -435,8 +492,8 @@ function handlePhaseReviewCompleted(state, context, config) {
       }
     }
   } else if (phaseReviewAction === PHASE_REVIEW_ACTIONS.CORRECTIVE_TASKS_ISSUED) {
-    phase.stage = PHASE_STAGES.EXECUTING;
-    mutations.push(`Set phase.stage to "${PHASE_STAGES.EXECUTING}" (corrective re-entry)`);
+    phase.stage = PHASE_STAGES.FAILED;
+    mutations.push(`Set phase.stage to "${PHASE_STAGES.FAILED}" (corrective re-entry)`);
   } else if (phaseReviewAction === PHASE_REVIEW_ACTIONS.HALTED) {
     phase.stage = PHASE_STAGES.FAILED;
     state.pipeline.current_tier = PIPELINE_TIERS.HALTED;
@@ -590,8 +647,10 @@ const MUTATIONS = Object.freeze({
   // Planning rejection (1)
   plan_rejected:            handlePlanRejected,
 
-  // Execution (6)
+  // Execution (8)
+  phase_planning_started:   handlePhasePlanningStarted,
   phase_plan_created:       handlePhasePlanCreated,
+  task_handoff_started:     handleTaskHandoffStarted,
   task_handoff_created:     handleTaskHandoffCreated,
   task_completed:           handleTaskCompleted,
   code_review_completed:    handleCodeReviewCompleted,

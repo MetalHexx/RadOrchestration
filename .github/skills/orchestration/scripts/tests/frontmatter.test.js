@@ -155,6 +155,57 @@ test('Never throws on any input', () => {
   }
 });
 
+// ─── Inline Comment Stripping Tests ─────────────────────────────────────────
+
+test('Inline comment: boolean true with comment stripped', () => {
+  const input = '---\nenabled: true # required\n---\nBody\n';
+  const result = extractFrontmatter(input);
+  assert.strictEqual(result.frontmatter.enabled, true);
+  assert.strictEqual(typeof result.frontmatter.enabled, 'boolean');
+});
+
+test('Inline comment: boolean false with comment stripped', () => {
+  const input = '---\ndisabled: false # optional\n---\nBody\n';
+  const result = extractFrontmatter(input);
+  assert.strictEqual(result.frontmatter.disabled, false);
+  assert.strictEqual(typeof result.frontmatter.disabled, 'boolean');
+});
+
+test('Inline comment: integer with comment stripped', () => {
+  const input = '---\nphase: 3 # current phase\n---\nBody\n';
+  const result = extractFrontmatter(input);
+  assert.strictEqual(result.frontmatter.phase, 3);
+  assert.strictEqual(typeof result.frontmatter.phase, 'number');
+});
+
+test('Inline comment: double-quoted string with comment stripped', () => {
+  const input = '---\ntitle: "My Title" # display name\n---\nBody\n';
+  const result = extractFrontmatter(input);
+  assert.strictEqual(result.frontmatter.title, 'My Title');
+  assert.strictEqual(typeof result.frontmatter.title, 'string');
+});
+
+test('Inline comment: unquoted string with comment stripped', () => {
+  const input = '---\nstatus: active # set by pipeline\n---\nBody\n';
+  const result = extractFrontmatter(input);
+  assert.strictEqual(result.frontmatter.status, 'active');
+  assert.strictEqual(typeof result.frontmatter.status, 'string');
+});
+
+test('Inline comment: hex color without space before # is preserved', () => {
+  const input = '---\ncolor: #ff0000\n---\nBody\n';
+  const result = extractFrontmatter(input);
+  assert.strictEqual(result.frontmatter.color, '#ff0000');
+  assert.strictEqual(typeof result.frontmatter.color, 'string');
+});
+
+test('Inline comment: URL fragment without space before # is preserved', () => {
+  const input = '---\nurl: /docs/guide#section-2\n---\nBody\n';
+  const result = extractFrontmatter(input);
+  assert.strictEqual(result.frontmatter.url, '/docs/guide#section-2');
+  assert.strictEqual(typeof result.frontmatter.url, 'string');
+});
+
 // ─── Report ─────────────────────────────────────────────────────────────────
 
 console.log(`\n  Results: ${passed} passed, ${failed} failed, ${passed + failed} total\n`);

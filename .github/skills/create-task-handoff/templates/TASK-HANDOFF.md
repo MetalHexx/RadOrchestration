@@ -1,10 +1,10 @@
 ---
 project: "{PROJECT-NAME}"
-phase: {PHASE_NUMBER}
-task: {TASK_NUMBER}
+phase: {PHASE-NUMBER}
+task: {TASK-NUMBER}
 title: "{TASK-TITLE}"
 status: "pending"
-skills: ["{skill-1}", "{skill-2}"]  # Skill folder names from  agent skills folder — NOT technology or framework names
+skills: ["{skill-1}", "{skill-2}"]
 estimated_files: {NUMBER}
 ---
 

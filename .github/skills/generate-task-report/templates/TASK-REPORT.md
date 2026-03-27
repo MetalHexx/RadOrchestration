@@ -1,15 +1,15 @@
 ---
 project: "{PROJECT-NAME}"
-phase: {PHASE_NUMBER}
-task: {TASK_NUMBER}
+phase: {PHASE-NUMBER}
+task: {TASK-NUMBER}
 title: "{TASK-TITLE}"
-status: "complete"   # MUST be exactly: complete | partial | failed — no synonyms
+status: "complete"
 files_changed: {NUMBER}
 tests_written: {NUMBER}
 tests_passing: {NUMBER}
 build_status: "pass|fail"
-has_deviations: false               # REQUIRED boolean — true if agent deviated from handoff, false otherwise
-deviation_type: null                 # REQUIRED string — "minor" | "architectural" | null (null when has_deviations is false)
+has_deviations: false
+deviation_type: null
 ---
 
 # Task Report: {TASK-TITLE}
@@ -22,8 +22,8 @@ deviation_type: null                 # REQUIRED string — "minor" | "architectu
 
 | Action | Path | Lines | Notes |
 |--------|------|-------|-------|
-| CREATED | `{path}` | {N} | {Notes} |
-| MODIFIED | `{path}` | +{N} | {Notes} |
+| CREATED | `{path}` | {NUMBER} | {Notes} |
+| MODIFIED | `{path}` | +{NUMBER} | {Notes} |
 
 ## Implementation Notes
 
@@ -45,6 +45,14 @@ deviation_type: null                 # REQUIRED string — "minor" | "architectu
 | 1 | {Criterion from handoff} | ✅ Met |
 | 2 | {Criterion from handoff} | ⚠️ Partial |
 | 3 | {Criterion from handoff} | ❌ Not Met |
+
+## Pre-existing Issues
+
+<!-- List any issues discovered during implementation that are OUTSIDE the
+     scope of this task's acceptance criteria. These do NOT affect the task
+     status — use status: complete if acceptance criteria are met. -->
+
+- {Issue description} — {Impact} — {Recommended follow-up}
 
 ## Build & Lint
 

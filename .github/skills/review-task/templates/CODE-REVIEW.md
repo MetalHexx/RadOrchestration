@@ -1,15 +1,14 @@
-```markdown
 ---
 project: "{PROJECT-NAME}"
-phase: {PHASE_NUMBER}
-task: {TASK_NUMBER}
+phase: {PHASE-NUMBER}
+task: {TASK-NUMBER}
 verdict: "approved|changes_requested|rejected"
 severity: "none|minor|critical"
 author: "reviewer-agent"
 created: "{ISO-DATE}"
 ---
 
-# Code Review: Phase {N}, Task {N} — {TASK-TITLE}
+# Code Review: Phase {PHASE-NUMBER}, Task {TASK-NUMBER} — {TASK-TITLE}
 
 ## Verdict: {APPROVED | CHANGES REQUESTED | REJECTED}
 

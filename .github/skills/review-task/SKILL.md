@@ -17,7 +17,7 @@ Perform a structured task review after a coding task completes. Evaluate code qu
 
 | Input | Source | Description |
 |-------|--------|-------------|
-| Task Report | `{NAME}-TASK-REPORT-P{NN}-T{NN}.md` | Files changed, tests, acceptance criteria results |
+| Task Report | `{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md` | Files changed, tests, acceptance criteria results |
 | Task Handoff | `{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | Original task requirements, contracts, acceptance criteria |
 | Architecture | `{NAME}-ARCHITECTURE.md` | Contracts, module map, file structure |
 | Design | `{NAME}-DESIGN.md` | Components, design tokens, accessibility |
@@ -38,7 +38,7 @@ Perform a structured task review after a coding task completes. Evaluate code qu
 10. **Check security**: No exposed secrets, proper input validation, auth checks
 11. **Determine verdict**: approved, changes_requested, or rejected
 12. **Write the Code Review**: Use the bundled template at [templates/CODE-REVIEW.md](./templates/CODE-REVIEW.md)
-13. **Save**: Write to `{PROJECT-DIR}/reports/CODE-REVIEW-P{NN}-T{NN}.md`
+13. **Save**: Write to `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md`
 
 ## Verdict Rules
 

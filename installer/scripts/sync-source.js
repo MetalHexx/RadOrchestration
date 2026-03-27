@@ -28,6 +28,9 @@ const __dirname = path.dirname(__filename);
 /** Names excluded from UI source sync (build artifacts, deps, env files). */
 const UI_EXCLUDES = new Set(['node_modules', '.next', '.env.local', '.env']);
 
+/** Names excluded from .github source sync (repo-specific files not for end users). */
+const GITHUB_EXCLUDES = new Set(['copilot-instructions.md']);
+
 /**
  * @param {string} source - Absolute path to the source directory
  * @param {string} target - Absolute path to the destination directory
@@ -48,6 +51,7 @@ if (process.argv[1] === __filename) {
   syncSource(
     path.resolve(__dirname, '../../.github'),
     path.resolve(__dirname, '../src/.github'),
+    GITHUB_EXCLUDES,
   );
 
   syncSource(

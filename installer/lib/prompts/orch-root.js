@@ -14,7 +14,7 @@ export async function promptOrchRoot() {
     message: 'Orchestration root folder',
     theme: INQUIRER_THEME,
     choices: [
-      { name: '.agent', value: '.agent' },
+      { name: '.agents', value: '.agents' },
       { name: '.github', value: '.github' },
       { name: 'Custom…', value: 'custom' },
     ],

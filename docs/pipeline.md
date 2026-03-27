@@ -70,7 +70,7 @@ flowchart LR
 
 | Stage | Meaning |
 |-------|---------|
-| `planning` | Tactical Planner is creating the phase plan |
+| `planning` | Tactical Planner is creating the phase plan. Phase starts as `not_started / planning`; the `phase_planning_started` event transitions it to `in_progress / planning` before the Tactical Planner is spawned (fresh phases only — corrective re-planning skips this step). |
 | `executing` | Tasks are being executed |
 | `reviewing` | Phase report/review is in progress |
 | `complete` | Phase review approved — terminal |
@@ -153,8 +153,10 @@ sequenceDiagram
     Human->>ORC: Execute project
 
     loop Each Phase
+        Note over ORC: event phase_planning_started<br/>(fresh phases only, skipped for corrective)
         ORC->>TP: Create Phase Plan
         TP-->>ORC: PHASE-PLAN.md
+        Note over ORC: event phase_plan_created
 
         loop Each Task
             ORC->>TP: Create Task Handoff
@@ -208,12 +210,14 @@ Each task progresses through a deterministic lifecycle:
 
 ### Phase Lifecycle
 
+When a fresh (non-corrective) phase begins, the Orchestrator signals `phase_planning_started` with empty context. This transitions the phase from `not_started / planning` to `in_progress / planning`. The Orchestrator then spawns the Tactical Planner to create the phase plan; upon completion, `phase_plan_created` transitions the phase to `in_progress / executing`. For corrective re-planning (`is_correction: true`), `phase_planning_started` is skipped — the phase is already `in_progress / failed` and proceeds directly to the Tactical Planner.
+
 After all tasks in a phase are complete:
 
 1. **Phase Report** — Tactical Planner aggregates task results and assesses exit criteria; phase `stage` advances to `reviewing`
 2. **Phase Review** — Reviewer performs cross-task integration review
 3. **Resolution** — Pipeline script processes the `phase_review_completed` event: applies state mutation, validates, resolves next action
-4. **Advance or Correct** — if approved, the pipeline advances to the next phase via `create_phase_plan`; if `changes_requested`, the phase re-enters the planning stage via `create_phase_plan` where the Tactical Planner produces a new Phase Plan leading with corrective tasks addressing the Phase Review's findings; if rejected, `display_halted` (halt)
+4. **Advance or Correct** — if approved, the pipeline advances to the next phase via `create_phase_plan`; if `changes_requested` with corrective tasks issued, the phase stage transitions to `failed` (`reviewing → failed`), the resolver routes to `create_phase_plan` with corrective context (`is_correction: true`, `previous_review` path), and the Tactical Planner produces a new Phase Plan leading with corrective tasks — `handlePhasePlanCreated` then transitions the phase back to `executing` (`failed → executing`) for a corrective re-entry cycle; if `rejected`, `display_halted` (halt)
 
 ## Human Gates
 
@@ -286,16 +290,16 @@ When the engine processes the `task_completed` event, the existing task report p
 
 | Raw Value | Normalized Value |
 |-----------|------------------|
+| `complete` | `complete` |
 | `pass` | `complete` |
+| `partial` | `complete` (legacy — mapped for backward compatibility) |
+| `failed` | `failed` |
 | `fail` | `failed` |
-| `complete` | `complete` (no change) |
-| `partial` | `partial` (no change) |
-| `failed` | `failed` (no change) |
 | Anything else | **Hard error** (exit 1) |
 
-Only two synonyms are normalized. Any unrecognized status value produces a hard error with message: `"Unrecognized task report status: '{value}'. Expected one of: complete, partial, failed (or synonyms: pass, fail)"`.
+The canonical task report status values are `complete` and `failed`. The synonyms `pass` and `fail` are normalized to their canonical forms. The legacy value `partial` is mapped to `complete` for backward compatibility — under the current binary model, a task that met its acceptance criteria (even with pre-existing issues outside its scope) is `complete`. Any unrecognized status value produces a hard error (exit 1).
 
-The canonical status vocabulary is `complete`, `partial`, `failed`. The normalization acts as a safety net for minor LLM vocabulary drift; the `generate-task-report` skill enforces the canonical values at the source.
+The `generate-task-report` skill enforces the canonical values at the source. Coders document pre-existing or out-of-scope concerns in the Task Report's "Pre-existing Issues" section rather than using a middle-ground status.
 
 ### 19-Action Routing Table
 

@@ -16,6 +16,7 @@ Read `references/context.md` first. If your role appears in the table below with
 | All agents | [references/context.md](references/context.md) | Agent roles, pipeline flow, naming conventions, key operating rules |
 | Orchestrator | [references/pipeline-guide.md](references/pipeline-guide.md) | Event loop, action routing, CLI usage, state mutation patterns |
 | Reviewer, Tactical Planner | [references/validation-guide.md](references/validation-guide.md) | Validator CLI, check modules, validation workflow |
+| All agents | [references/document-conventions.md](references/document-conventions.md) | Document naming, placement, filename patterns, frontmatter field values |
 
 ## Contents
 

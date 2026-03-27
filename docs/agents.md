@@ -12,7 +12,7 @@ The orchestration system uses 9 specialized agents, each with a defined role, sc
 | **Product Manager** | Requirements definition | `PRD.md` |
 | **UX Designer** | Interface and interaction design | `DESIGN.md` |
 | **Architect** | System architecture and master planning | `ARCHITECTURE.md`, `MASTER-PLAN.md` |
-| **Tactical Planner** | Task breakdown and phase reporting | `PHASE-PLAN`, `TASK-HANDOFF.md`, `PHASE-REPORT.md` |
+| **Tactical Planner** | Task breakdown and phase reporting | `PHASE-PLAN.md`, `TASK-HANDOFF.md`, `PHASE-REPORT.md` |
 | **Coder** | Code implementation | Code, tests, `TASK-REPORT.md` |
 | **Reviewer** | Code and phase review | `CODE-REVIEW.md`, `PHASE-REVIEW.md` |
 

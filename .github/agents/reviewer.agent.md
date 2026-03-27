@@ -61,7 +61,7 @@ When spawned by the Orchestrator to review a completed task:
    - `changes_requested`: Minor issues that need fixing (triggers corrective task)
    - `rejected`: Critical issues, architectural violations, security problems (triggers halt)
 9. **Use the `review-task` skill** to produce the document
-10. **Save** to `{PROJECT-DIR}/reports/CODE-REVIEW-P{NN}-T{NN}.md`
+10. **Save** to `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md`
 
 ## Mode 2: Phase Review (Integration-Level)
 
@@ -85,7 +85,7 @@ When spawned by the Orchestrator for a phase-level review:
     - `changes_requested`: Minor integration issues (triggers corrective tasks)
     - `rejected`: Critical integration failures (triggers halt)
 15. **Use the `review-phase` skill** to produce the document
-16. **Save** to `{PROJECT-DIR}/reports/PHASE-REVIEW-P{NN}.md`
+16. **Save** to `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`
 
 ## Mode 3: Final Review
 
@@ -106,8 +106,8 @@ Save to `{PROJECT-DIR}/reports/{NAME}-FINAL-REVIEW.md`
 
 | Document | Path | Format |
 |----------|------|--------|
-| Code Review | `{PROJECT-DIR}/reports/CODE-REVIEW-P{NN}-T{NN}.md` | Markdown per template |
-| Phase Review | `{PROJECT-DIR}/reports/PHASE-REVIEW-P{NN}.md` | Markdown per template |
+| Code Review | `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` | Markdown per template |
+| Phase Review | `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | Markdown per template |
 | Final Review | `{PROJECT-DIR}/reports/{NAME}-FINAL-REVIEW.md` | Markdown per template |
 
 ## Verdict Impact

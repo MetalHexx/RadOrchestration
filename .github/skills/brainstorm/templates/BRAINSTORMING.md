@@ -17,13 +17,17 @@ created: "{ISO-DATE}"
 ### Goal 1: {Title}
 
 **Description**: {What is this goal?}
+
 **Rationale**: {Why is this worth pursuing?}
+
 **Key considerations**: {Any important constraints, risks, or dependencies}
 
 ### Goal 2: {Title}
 
 **Description**: {What is this goal?}
+
 **Rationale**: {Why is this worth pursuing?}
+
 **Key considerations**: {Any important constraints, risks, or dependencies}
 
 ## Scope Boundaries

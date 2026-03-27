@@ -29,7 +29,7 @@ This workspace contains a **document-driven agent orchestration system** built o
 
 ```
 Planning:  Brainstorming (optional) → Research → PRD → Design → Architecture → Master Plan → Human Approval
-Execution: Phase Plan → Task Handoffs → Code → Review → (loop) → Phase Review
+Execution: Phase Plan → Task Handoffs → Code → Review → (correction loop) → Phase Review → (next / correction loop)
 Final:     Comprehensive Review → Human Approval → Complete
 ```
 
@@ -63,6 +63,6 @@ Contents:
 
 ## Naming Conventions
 
-- **Project files**: `SCREAMING-CASE` with project prefix — `MYAPP-PRD.md`, `MYAPP-TASK-P01-T03-AUTH.md`
+- **Project files**: `SCREAMING-CASE` with project prefix — `MYAPP-PRD.md`, `MYAPP-TASK-P01-T03-AUTH.md`. See [document-conventions.md](document-conventions.md) for the full set of filename patterns, placement rules, and frontmatter field values.
 - **Skills**: lowercase with hyphens — `{orch_root}/skills/create-prd/`
 - **Agents**: lowercase with hyphens — `{orch_root}/agents/orchestrator.agent.md`

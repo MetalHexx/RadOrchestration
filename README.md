@@ -34,6 +34,7 @@ flowchart TD
         MORETASKS -->|yes| HANDOFF
         MORETASKS -->|no| PHASEREVIEW[Phase Review]
         PHASEREVIEW -->|next phase| PHASE
+        PHASEREVIEW -->|needs correction| PHASE
     end
 
     PHASEREVIEW --> FINAL[Final Review]

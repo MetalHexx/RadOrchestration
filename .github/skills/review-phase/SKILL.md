@@ -18,8 +18,8 @@ Perform a holistic review of an entire phase after all tasks are complete. Asses
 | Input | Source | Description |
 |-------|--------|-------------|
 | Phase Plan | `{NAME}-PHASE-{NN}-{TITLE}.md` | Exit criteria, task outline |
-| Task Reports | `{NAME}-TASK-REPORT-P{NN}-T{NN}.md` (all) | Per-task results |
-| Code Reviews | `CODE-REVIEW-P{NN}-T{NN}.md` (all) | Per-task review verdicts |
+| Task Reports | `{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md` (all) | Per-task results |
+| Code Reviews | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` (all) | Per-task review verdicts |
 | Architecture | `{NAME}-ARCHITECTURE.md` | Contracts, module map |
 | Design | `{NAME}-DESIGN.md` | Component specs, design system |
 | PRD | `{NAME}-PRD.md` | Requirements being validated |
@@ -37,7 +37,7 @@ Perform a holistic review of an entire phase after all tasks are complete. Asses
 8. **Determine verdict**: approved, changes_requested, or rejected
 9. **Write recommendations**: What the next phase should be aware of
 10. **Write the Phase Review**: Use the bundled template at [templates/PHASE-REVIEW.md](./templates/PHASE-REVIEW.md)
-11. **Save**: Write to `{PROJECT-DIR}/reports/PHASE-REVIEW-P{NN}.md`
+11. **Save**: Write to `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`
 
 ## Required Frontmatter Fields
 
