@@ -470,6 +470,45 @@ describe('handlePhasePlanningStarted', () => {
   });
 });
 
+// ─── handleTaskHandoffStarted ───────────────────────────────────────────────
+
+describe('handleTaskHandoffStarted', () => {
+  it('sets task.status to "in_progress" when starting from "not_started"', () => {
+    const state = makeExecutionState();
+    const handler = getMutation('task_handoff_started');
+    const result = handler(state, {}, {});
+    const task = result.state.execution.phases[0].tasks[0];
+    assert.equal(task.status, 'in_progress');
+  });
+
+  it('does NOT modify task.stage (remains "planning")', () => {
+    const state = makeExecutionState();
+    const handler = getMutation('task_handoff_started');
+    const result = handler(state, {}, {});
+    const task = result.state.execution.phases[0].tasks[0];
+    assert.equal(task.stage, 'planning');
+  });
+
+  it('returns mutations_applied with a non-empty, descriptive entry', () => {
+    const state = makeExecutionState();
+    const handler = getMutation('task_handoff_started');
+    const result = handler(state, {}, {});
+    assert.ok(Array.isArray(result.mutations_applied));
+    assert.ok(result.mutations_applied.length > 0);
+    assert.ok(result.mutations_applied[0].includes('in_progress'));
+  });
+
+  it('is idempotent — does not throw when task is already "in_progress"', () => {
+    const state = makeExecutionState();
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    const handler = getMutation('task_handoff_started');
+    const result = handler(state, {}, {});
+    const task = result.state.execution.phases[0].tasks[0];
+    assert.equal(task.status, 'in_progress');
+    assert.equal(task.stage, 'planning');
+  });
+});
+
 // ─── handlePhasePlanCreated ─────────────────────────────────────────────────
 
 describe('handlePhasePlanCreated', () => {
