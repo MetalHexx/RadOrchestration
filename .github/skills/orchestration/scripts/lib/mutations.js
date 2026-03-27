@@ -240,6 +240,25 @@ function handlePlanRejected(state, context, config) {
 
 // ─── Execution Handlers ─────────────────────────────────────────────────────
 
+/**
+ * phase_planning_started — Transitions the current phase from not_started
+ * to in_progress while keeping stage as 'planning'.
+ *
+ * @param {Object} state  - deep-cloned pipeline state
+ * @param {Object} context - empty object {} (no fields required)
+ * @param {Object} config  - merged orchestration config (unused)
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handlePhasePlanningStarted(state, context, config) {
+  const phase = currentPhase(state);
+  phase.status = PHASE_STATUSES.IN_PROGRESS;
+  // Do NOT modify phase.stage — remains 'planning'
+  return {
+    state,
+    mutations_applied: ['Set phase.status to "in_progress"'],
+  };
+}
+
 /** @type {MutationHandler} */
 function handlePhasePlanCreated(state, context, config) {
   const phase = currentPhase(state);
@@ -609,7 +628,8 @@ const MUTATIONS = Object.freeze({
   // Planning rejection (1)
   plan_rejected:            handlePlanRejected,
 
-  // Execution (6)
+  // Execution (7)
+  phase_planning_started:   handlePhasePlanningStarted,
   phase_plan_created:       handlePhasePlanCreated,
   task_handoff_created:     handleTaskHandoffCreated,
   task_completed:           handleTaskCompleted,

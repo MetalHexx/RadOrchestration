@@ -148,6 +148,18 @@ describe('Category 1: Full happy path', () => {
     assert.equal(io.getState().execution.phases[0].stage, 'planning');
   });
 
+  it('Step 7b: phase_planning_started → create_phase_plan', () => {
+    const result = processEvent('phase_planning_started', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_phase_plan');
+    assert.equal(io.getWrites().length, writeCount);
+    // Phase status transitions to in_progress; stage stays planning
+    const state = io.getState();
+    assert.equal(state.execution.phases[0].status, 'in_progress');
+    assert.equal(state.execution.phases[0].stage, 'planning');
+  });
+
   it('Step 8: phase_plan_created → create_task_handoff', () => {
     const result = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'pp.md' }, io);
     writeCount++;
@@ -244,6 +256,18 @@ describe('Category 2: Multi-phase multi-task', () => {
 
   // ── Phase 1: 2 tasks ──
 
+  it('P1 Step 0: phase_planning_started → create_phase_plan', () => {
+    const result = processEvent('phase_planning_started', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_phase_plan');
+    assert.equal(io.getWrites().length, writeCount);
+    // Phase 1 status transitions to in_progress; stage stays planning
+    const state = io.getState();
+    assert.equal(state.execution.phases[0].status, 'in_progress');
+    assert.equal(state.execution.phases[0].stage, 'planning');
+  });
+
   it('P1 Step 1: phase_plan_created → create_task_handoff', () => {
     const result = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c2-pp1.md' }, io);
     writeCount++;
@@ -334,6 +358,18 @@ describe('Category 2: Multi-phase multi-task', () => {
     assert.equal(state.execution.phases[0].status, 'complete');
     assert.equal(state.execution.phases[1].status, 'not_started');
     assert.equal(state.execution.phases[0].stage, 'complete');
+  });
+
+  it('P2 Step 9b: phase_planning_started → create_phase_plan', () => {
+    const result = processEvent('phase_planning_started', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_phase_plan');
+    assert.equal(io.getWrites().length, writeCount);
+    // Phase 2 status transitions to in_progress; stage stays planning
+    const state = io.getState();
+    assert.equal(state.execution.phases[1].status, 'in_progress');
+    assert.equal(state.execution.phases[1].stage, 'planning');
   });
 
   // ── Phase 2: Full lifecycle ──

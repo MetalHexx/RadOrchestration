@@ -427,6 +427,49 @@ function makeExecutionState(opts = {}) {
 
 const defaultConfig = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
 
+// ─── handlePhasePlanningStarted ─────────────────────────────────────────────
+
+describe('handlePhasePlanningStarted', () => {
+  it('sets phase.status to "in_progress" when starting from "not_started"', () => {
+    const state = makeExecutionState();
+    state.execution.phases[0].status = 'not_started';
+    state.execution.phases[0].stage = 'planning';
+    const handler = getMutation('phase_planning_started');
+    const result = handler(state, {}, {});
+    assert.equal(result.state.execution.phases[0].status, 'in_progress');
+  });
+
+  it('does NOT modify phase.stage (remains "planning")', () => {
+    const state = makeExecutionState();
+    state.execution.phases[0].status = 'not_started';
+    state.execution.phases[0].stage = 'planning';
+    const handler = getMutation('phase_planning_started');
+    const result = handler(state, {}, {});
+    assert.equal(result.state.execution.phases[0].stage, 'planning');
+  });
+
+  it('returns mutations_applied with a non-empty, descriptive entry', () => {
+    const state = makeExecutionState();
+    state.execution.phases[0].status = 'not_started';
+    state.execution.phases[0].stage = 'planning';
+    const handler = getMutation('phase_planning_started');
+    const result = handler(state, {}, {});
+    assert.ok(Array.isArray(result.mutations_applied));
+    assert.ok(result.mutations_applied.length > 0);
+    assert.ok(result.mutations_applied[0].includes('in_progress'));
+  });
+
+  it('is idempotent — does not throw when phase is already "in_progress"', () => {
+    const state = makeExecutionState();
+    state.execution.phases[0].status = 'in_progress';
+    state.execution.phases[0].stage = 'planning';
+    const handler = getMutation('phase_planning_started');
+    const result = handler(state, {}, {});
+    assert.equal(result.state.execution.phases[0].status, 'in_progress');
+    assert.equal(result.state.execution.phases[0].stage, 'planning');
+  });
+});
+
 // ─── handlePhasePlanCreated ─────────────────────────────────────────────────
 
 describe('handlePhasePlanCreated', () => {
@@ -1448,9 +1491,9 @@ describe('handleFinalRejected', () => {
   });
 });
 
-// ─── getMutation dispatch for all 20 events ─────────────────────────────────
+// ─── getMutation dispatch for all 21 events ─────────────────────────────────
 
-describe('getMutation (all 20 events)', () => {
+describe('getMutation (all 21 events)', () => {
   const allEvents = [
     'research_completed',
     'prd_completed',
@@ -1459,6 +1502,7 @@ describe('getMutation (all 20 events)', () => {
     'master_plan_completed',
     'plan_approved',
     'plan_rejected',
+    'phase_planning_started',
     'phase_plan_created',
     'task_handoff_created',
     'task_completed',
@@ -1480,12 +1524,12 @@ describe('getMutation (all 20 events)', () => {
     });
   }
 
-  it('has exactly 20 registered events', () => {
+  it('has exactly 21 registered events', () => {
     let count = 0;
     for (const event of allEvents) {
       if (getMutation(event)) count++;
     }
-    assert.equal(count, 20);
+    assert.equal(count, 21);
   });
 
   it('does NOT contain task_approved', () => {
