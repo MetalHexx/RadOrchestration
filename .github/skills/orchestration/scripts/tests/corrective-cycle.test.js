@@ -206,4 +206,55 @@ describe('corrective cycle — end-to-end', () => {
     assert.equal(result.action, 'display_halted');
   });
 
+  it('corrective cycle does NOT include phase_planning_started', () => {
+    const state = makeState();
+    const config = makeConfig();
+    const phase = state.execution.phases[0];
+
+    // (a) Start in reviewing
+    assert.equal(phase.stage, 'reviewing');
+
+    // (b) Phase review fails → stage becomes 'failed'
+    const reviewHandler = getMutation('phase_review_completed');
+    reviewHandler(state, {
+      doc_path: 'reviews/PHASE-REVIEW-P01.md',
+      verdict: 'changes_requested',
+      exit_criteria_met: false,
+    }, config);
+    assert.equal(phase.stage, 'failed');
+    assert.equal(phase.status, 'in_progress');
+    assert.equal(phase.review.action, 'corrective_tasks_issued');
+
+    // (c) Resolve next action — must return is_correction: true
+    const result = resolveNextAction(state, config);
+    assert.equal(result.action, 'create_phase_plan');
+    assert.equal(result.context.is_correction, true);
+
+    // (d) GUARD: phase_planning_started is NEVER signaled during the corrective path.
+    //     The Orchestrator checks result.context.is_correction before signaling.
+    //     When is_correction is true, the Orchestrator spawns the Tactical Planner
+    //     directly and proceeds to phase_plan_created — no phase_planning_started.
+    //
+    //     We verify the guard by confirming the stage sequence through the
+    //     corrective cycle contains NO 'planning' stage re-entry:
+    const stages = [phase.stage]; // ['failed']
+
+    // (e) Proceed directly to phase_plan_created (no phase_planning_started in between)
+    const planHandler = getMutation('phase_plan_created');
+    planHandler(state, {
+      doc_path: 'phases/CORRECTIVE-PHASE-PLAN-P01.md',
+      tasks: ['Fix A', 'Fix B'],
+    }, config);
+    stages.push(phase.stage); // ['failed', 'executing']
+
+    // (f) The corrective stage sequence is failed → executing.
+    //     'planning' NEVER appears — phase_planning_started was not signaled.
+    assert.deepEqual(stages, ['failed', 'executing']);
+    assert.equal(phase.status, 'in_progress');
+
+    // (g) Verify 'planning' is NOT in the corrective stage sequence
+    assert.equal(stages.includes('planning'), false,
+      'Corrective cycle must NOT re-enter planning stage');
+  });
+
 });

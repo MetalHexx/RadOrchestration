@@ -70,7 +70,7 @@ flowchart LR
 
 | Stage | Meaning |
 |-------|---------|
-| `planning` | Tactical Planner is creating the phase plan |
+| `planning` | Tactical Planner is creating the phase plan. Phase starts as `not_started / planning`; the `phase_planning_started` event transitions it to `in_progress / planning` before the Tactical Planner is spawned (fresh phases only — corrective re-planning skips this step). |
 | `executing` | Tasks are being executed |
 | `reviewing` | Phase report/review is in progress |
 | `complete` | Phase review approved — terminal |
@@ -153,8 +153,10 @@ sequenceDiagram
     Human->>ORC: Execute project
 
     loop Each Phase
+        Note over ORC: event phase_planning_started<br/>(fresh phases only, skipped for corrective)
         ORC->>TP: Create Phase Plan
         TP-->>ORC: PHASE-PLAN.md
+        Note over ORC: event phase_plan_created
 
         loop Each Task
             ORC->>TP: Create Task Handoff
@@ -207,6 +209,8 @@ Each task progresses through a deterministic lifecycle:
 > **Note:** `complete` is truly terminal for tasks. A task that reaches `status = complete` cannot be retried or failed. The retry path is corrective re-entry: on `changes_requested`, the task transitions to `status = failed`, `stage = failed` (retries incremented); the Tactical Planner then creates a corrective task handoff which resets `status → in_progress`, `stage → coding`, and clears the stale report and review docs.
 
 ### Phase Lifecycle
+
+When a fresh (non-corrective) phase begins, the Orchestrator signals `phase_planning_started` with empty context. This transitions the phase from `not_started / planning` to `in_progress / planning`. The Orchestrator then spawns the Tactical Planner to create the phase plan; upon completion, `phase_plan_created` transitions the phase to `in_progress / executing`. For corrective re-planning (`is_correction: true`), `phase_planning_started` is skipped — the phase is already `in_progress / failed` and proceeds directly to the Tactical Planner.
 
 After all tasks in a phase are complete:
 
