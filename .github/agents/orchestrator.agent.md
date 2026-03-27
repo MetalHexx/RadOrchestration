@@ -141,7 +141,7 @@ Every `result.action` value maps to exactly one Orchestrator operation. The Orch
 | 4 | `spawn_architecture` | Agent spawn | Spawn **Architect** agent with PRD.md + DESIGN.md + RESEARCH-FINDINGS.md. Output: {NAME}-ARCHITECTURE.md | `architecture_completed` with `{ "doc_path": "<output-path>" }` |
 | 5 | `spawn_master_plan` | Agent spawn | Spawn **Architect** agent with all planning docs. Output: {NAME}-MASTER-PLAN.md | `master_plan_completed` with `{ "doc_path": "<output-path>" }` |
 | 6 | `create_phase_plan` | Agent spawn | **Two-step protocol — check `is_correction` first.** **Fresh phase** (`is_correction` is falsy): (1) Signal `phase_planning_started` with `{}` context → pipeline returns `create_phase_plan` again; (2) Spawn **Tactical Planner** (phase plan mode). **Corrective** (`is_correction` is true): Skip `phase_planning_started`, spawn **Tactical Planner** directly with `result.context.previous_review`. Output: phases/{NAME}-PHASE-{NN}-{TITLE}.md | `phase_plan_created` with `{ "doc_path": "<output-path>" }` |
-| 7 | `create_task_handoff` | Agent spawn | Spawn **Tactical Planner** (handoff mode) for `result.context.phase`/`result.context.task`. If `result.context.is_correction` is true, instruct Planner to create a corrective handoff. Output: tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md | `task_handoff_created` with `{ "doc_path": "<output-path>" }` |
+| 7 | `create_task_handoff` | Agent spawn | **Two-step protocol — check `is_correction` first.** **Fresh task** (`is_correction` is falsy): (1) Signal `task_handoff_started` with `{}` context → pipeline returns `create_task_handoff` again; (2) Spawn **Tactical Planner** (handoff mode). **Corrective** (`is_correction` is true): Skip `task_handoff_started`, spawn **Tactical Planner** directly (corrective mode) with `result.context.previous_review`. Output: tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md | `task_handoff_created` with `{ "doc_path": "<output-path>" }` |
 | 8 | `execute_task` | Agent spawn | Spawn **Coder** agent with the task's handoff document. Output: reports/{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md | `task_completed` with `{ "doc_path": "<output-path>" }` |
 | 9 | `spawn_code_reviewer` | Agent spawn | Spawn **Reviewer** agent for task-level code review. Output: reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md | `code_review_completed` with `{ "doc_path": "<output-path>" }` |
 | 10 | `generate_phase_report` | Agent spawn | Spawn **Tactical Planner** (report mode) for the phase. Output: reports/{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md | `phase_report_created` with `{ "doc_path": "<output-path>" }` |
@@ -156,6 +156,8 @@ Every `result.action` value maps to exactly one Orchestrator operation. The Orch
 | 19 | `display_complete` | Terminal | Display completion summary to the human. **Loop terminates.** | *(none — terminal action)* |
 
 > **IMPORTANT — `is_correction` guard for action #6 (`create_phase_plan`):** Only signal `phase_planning_started` when `result.context.is_correction` is falsy. For corrective re-planning (`is_correction: true`), the phase is already `in_progress / failed` — skip directly to spawning the Tactical Planner. Signaling `phase_planning_started` during a corrective cycle would be a harmless no-op but is semantically incorrect. The two-step protocol (signal `phase_planning_started` → receive `create_phase_plan` again → spawn Planner) applies ONLY to fresh phases.
+
+> **IMPORTANT — `is_correction` guard for action #7 (`create_task_handoff`):** Only signal `task_handoff_started` when `result.context.is_correction` is falsy. For corrective re-planning (`is_correction: true`), the task is already `in_progress / failed` — skip directly to spawning the Tactical Planner in corrective mode. Signaling `task_handoff_started` during a corrective cycle would be semantically incorrect. The two-step protocol (signal `task_handoff_started` → receive `create_task_handoff` again → spawn Planner) applies ONLY to fresh tasks.
 
 ## Event Signaling Reference
 
@@ -173,6 +175,7 @@ These are the exact event names the Orchestrator passes to `--event`:
 | `plan_rejected` | `{}` | After human rejects master plan |
 | `phase_planning_started` | `{}` | Before Tactical Planner spawn for fresh (non-corrective) phases only. Transitions phase from `not_started / planning` to `in_progress / planning`. See action #6 two-step protocol. |
 | `phase_plan_created` | `{ "doc_path": "<path>" }` | After Tactical Planner finishes phase plan |
+| `task_handoff_started` | `{}` | Before Tactical Planner spawn for fresh (non-corrective) tasks only. Transitions task from `not_started` to `in_progress` while leaving `task.stage` at `'planning'`. See action #7 two-step protocol. |
 | `task_handoff_created` | `{ "doc_path": "<path>" }` | After Tactical Planner finishes task handoff |
 | `task_completed` | `{ "doc_path": "<path>" }` | After Coder finishes task |
 | `code_review_completed` | `{ "doc_path": "<path>" }` | After Reviewer finishes code review |

@@ -257,4 +257,58 @@ describe('corrective cycle — end-to-end', () => {
       'Corrective cycle must NOT re-enter planning stage');
   });
 
+  it('corrective path proceeds from failed to coding without planning stage re-entry', () => {
+    const state = makeState();
+    const config = makeConfig();
+    const phase = state.execution.phases[0];
+    const task = phase.tasks[0];
+
+    // (a) Set up task-level corrective scenario:
+    //     Phase is in executing stage (not reviewing)
+    //     Task has been submitted for code review
+    phase.stage = 'executing';
+    task.status = 'in_progress';
+    task.stage = 'reviewing';
+    task.review = { verdict: null, action: null };
+
+    // (b) Code review with changes_requested verdict
+    const reviewHandler = getMutation('code_review_completed');
+    reviewHandler(state, {
+      doc_path: 'reviews/CODE-REVIEW-P01-T01.md',
+      verdict: 'changes_requested',
+    }, config);
+
+    // (c) Post-review: task must be failed with corrective action
+    assert.equal(task.status, 'failed');
+    assert.equal(task.stage, 'failed');
+    assert.equal(task.review.action, 'corrective_task_issued');
+
+    // (d) Resolve next action — must return is_correction: true
+    const result = resolveNextAction(state, config);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(result.context.is_correction, true);
+
+    // (e) Corrective path behavior:
+    //     The Orchestrator checks result.context.is_correction before signaling.
+    //     When is_correction is true, the Orchestrator skips task_handoff_started,
+    //     spawns the Tactical Planner directly, and proceeds to task_handoff_created.
+    //
+    //     This test models that behavior by applying task_handoff_created directly
+    //     after a failed review and tracking the resulting stage sequence.
+    const stages = [task.stage]; // ['failed'] after changes_requested
+
+    // (f) Proceed directly to task_handoff_created (no task_handoff_started in between
+    //     in this modeled flow)
+    const handoffHandler = getMutation('task_handoff_created');
+    handoffHandler(state, {
+      doc_path: 'tasks/CORRECTIVE-HANDOFF-P01-T01.md',
+    }, config);
+    stages.push(task.stage); // ['failed', 'coding']
+
+    // (g) The corrective stage sequence in this flow is failed → coding, with no
+    //     re-entry into a planning stage.
+    assert.deepEqual(stages, ['failed', 'coding']);
+    assert.equal(task.status, 'in_progress');
+  });
+
 });

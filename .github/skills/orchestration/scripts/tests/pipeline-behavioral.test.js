@@ -170,6 +170,16 @@ describe('Category 1: Full happy path', () => {
     assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'planning');
   });
 
+  it('Step 8b: task_handoff_started → create_task_handoff', () => {
+    const result = processEvent('task_handoff_started', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getState().execution.phases[0].tasks[0].status, 'in_progress');
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'planning');
+  });
+
   it('Step 9: task_handoff_created → execute_task', () => {
     const result = processEvent('task_handoff_created', PROJECT_DIR, { doc_path: 'th.md' }, io);
     writeCount++;
@@ -278,6 +288,16 @@ describe('Category 2: Multi-phase multi-task', () => {
     assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'planning');
   });
 
+  it('P1 Step 1b: task_handoff_started (T01) → create_task_handoff', () => {
+    const result = processEvent('task_handoff_started', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getState().execution.phases[0].tasks[0].status, 'in_progress');
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'planning');
+  });
+
   it('P1 Step 2: task_handoff_created (T01) → execute_task', () => {
     const result = processEvent('task_handoff_created', PROJECT_DIR, { doc_path: 'c2-th1.md' }, io);
     writeCount++;
@@ -307,6 +327,16 @@ describe('Category 2: Multi-phase multi-task', () => {
     const state = io.getState();
     assert.equal(state.execution.phases[0].current_task, 2);
     assert.equal(state.execution.phases[0].tasks[0].stage, 'complete');
+  });
+
+  it('P1 Step 4b: task_handoff_started (T02) → create_task_handoff', () => {
+    const result = processEvent('task_handoff_started', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getState().execution.phases[0].tasks[1].status, 'in_progress');
+    assert.equal(io.getState().execution.phases[0].tasks[1].stage, 'planning');
   });
 
   it('P1 Step 5: task_handoff_created (T02) → execute_task', () => {
@@ -382,6 +412,16 @@ describe('Category 2: Multi-phase multi-task', () => {
     assert.equal(io.getWrites().length, writeCount);
     assert.equal(io.getState().execution.phases[1].status, 'in_progress');
     assert.equal(io.getState().execution.phases[1].stage, 'executing');
+    assert.equal(io.getState().execution.phases[1].tasks[0].stage, 'planning');
+  });
+
+  it('P2 Step 10b: task_handoff_started → create_task_handoff', () => {
+    const result = processEvent('task_handoff_started', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getState().execution.phases[1].tasks[0].status, 'in_progress');
     assert.equal(io.getState().execution.phases[1].tasks[0].stage, 'planning');
   });
 

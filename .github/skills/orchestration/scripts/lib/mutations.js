@@ -313,6 +313,25 @@ function handlePhasePlanCreated(state, context, config) {
   };
 }
 
+/**
+ * task_handoff_started — Transitions the current task from not_started
+ * to in_progress while keeping stage as 'planning'.
+ *
+ * @param {Object} state  - deep-cloned pipeline state
+ * @param {Object} context - empty object {} (no fields required)
+ * @param {Object} config  - merged orchestration config (unused)
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleTaskHandoffStarted(state, context, config) {
+  const task = currentTask(state);
+  task.status = TASK_STATUSES.IN_PROGRESS;
+  // Do NOT modify task.stage — remains 'planning'
+  return {
+    state,
+    mutations_applied: ['Set task.status to "in_progress"'],
+  };
+}
+
 /** @type {MutationHandler} */
 function handleTaskHandoffCreated(state, context, config) {
   const task = currentTask(state);
@@ -628,9 +647,10 @@ const MUTATIONS = Object.freeze({
   // Planning rejection (1)
   plan_rejected:            handlePlanRejected,
 
-  // Execution (7)
+  // Execution (8)
   phase_planning_started:   handlePhasePlanningStarted,
   phase_plan_created:       handlePhasePlanCreated,
+  task_handoff_started:     handleTaskHandoffStarted,
   task_handoff_created:     handleTaskHandoffCreated,
   task_completed:           handleTaskCompleted,
   code_review_completed:    handleCodeReviewCompleted,
