@@ -261,7 +261,7 @@ describe('planning started handlers', () => {
         result = handler(state, {}, {});
       });
 
-      it(`sets planning.steps[${stepName}].status to in_progress`, () => {
+      it(`sets planning step "${stepName}" status to in_progress`, () => {
         const step = result.state.planning.steps.find(s => s.name === stepName);
         assert.equal(step.status, 'in_progress');
       });

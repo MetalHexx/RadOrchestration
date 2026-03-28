@@ -162,7 +162,7 @@ function startPlanningStep(state, stepName) {
   step.status = PLANNING_STEP_STATUSES.IN_PROGRESS;
 
   const mutations_applied = [
-    `Set planning.steps[${stepName}].status to "in_progress"`,
+    `Set planning step "${stepName}" status to in_progress`,
   ];
 
   // Advance top-level planning status from not_started → in_progress.

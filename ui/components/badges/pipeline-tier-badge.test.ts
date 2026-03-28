@@ -30,7 +30,7 @@ type ExecutionStatus = "not_started" | "in_progress" | "complete" | "halted";
 
 // ─── Simulation (mirrors pipeline-tier-badge.tsx logic) ──────────────────────
 
-const TIER_CONFIG: Record<string, { label: string; cssVar: string }> = {
+const TIER_CONFIG = {
   planning: { label: "Planning", cssVar: "--tier-planning" },
   // label is never used directly for execution — resolveBadgeState() sets it explicitly per sub-status
   execution: { label: "Approved", cssVar: "--tier-execution" },
@@ -38,7 +38,7 @@ const TIER_CONFIG: Record<string, { label: string; cssVar: string }> = {
   complete: { label: "Complete", cssVar: "--tier-complete" },
   halted: { label: "Halted", cssVar: "--tier-halted" },
   not_initialized: { label: "Not Started", cssVar: "--tier-not-initialized" },
-};
+} satisfies Record<PipelineTier | "not_initialized", { label: string; cssVar: string }>;
 
 function resolveBadgeState(
   tier: PipelineTier | "not_initialized",
