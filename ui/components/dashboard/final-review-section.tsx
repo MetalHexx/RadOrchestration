@@ -17,10 +17,10 @@ interface FinalReviewSectionProps {
 
 const FINAL_REVIEW_BADGE: Record<
   Exclude<FinalReviewStatus, "not_started">,
-  { label: string; cssVar: string; isSpinning: boolean; ariaLabel: string }
+  { label: string; cssVar: string; isSpinning: boolean; ariaLabel: string; isComplete?: boolean }
 > = {
   in_progress: { label: "In Progress", cssVar: "--status-in-progress", isSpinning: true,  ariaLabel: "Final review: In Progress, active" },
-  complete:    { label: "Complete",    cssVar: "--status-complete",     isSpinning: false, ariaLabel: "Final review: Complete" },
+  complete:    { label: "Complete",    cssVar: "--status-complete",     isSpinning: false, ariaLabel: "Final review: Complete", isComplete: true },
 };
 
 export function FinalReviewSection({ finalReview, projectName, pipelineTier, onDocClick }: FinalReviewSectionProps) {

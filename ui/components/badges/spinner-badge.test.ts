@@ -2,9 +2,10 @@
  * Tests for SpinnerBadge component logic.
  * Run with: npx tsx ui/components/badges/spinner-badge.test.ts
  *
- * SpinnerBadge is purely presentational:
- * - isSpinning=true  → renders Loader2 with animate-spin
- * - isSpinning=false → renders 6×6px dot span
+ * SpinnerBadge is purely presentational — 3-way icon slot:
+ * - isSpinning=true                    → renders Loader2 with animate-spin
+ * - isSpinning=false, isComplete=true  → renders Check icon (static checkmark)
+ * - isSpinning=false, isComplete=false → renders 6×6px dot span
  * - ariaLabel defaults to label when omitted
  * - ariaLabel overrides label when provided
  */
@@ -31,12 +32,14 @@ interface SpinnerBadgeProps {
   label: string;
   cssVar: string;
   isSpinning: boolean;
+  isComplete?: boolean;
   ariaLabel?: string;
 }
 
 interface RenderResult {
   ariaLabel: string;
   showsSpinner: boolean;
+  showsCheckmark: boolean;
   showsDot: boolean;
   label: string;
   backgroundColor: string;
@@ -49,16 +52,18 @@ function simulateSpinnerBadge(props: SpinnerBadgeProps): RenderResult {
   const resolvedAriaLabel = props.ariaLabel ?? props.label;
   const backgroundColor = `color-mix(in srgb, var(${props.cssVar}) 15%, transparent)`;
   const color = `var(${props.cssVar})`;
+  const showsCheckmark = !props.isSpinning && (props.isComplete === true);
 
   return {
     ariaLabel: resolvedAriaLabel,
     showsSpinner: props.isSpinning,
-    showsDot: !props.isSpinning,
+    showsCheckmark,
+    showsDot: !props.isSpinning && !showsCheckmark,
     label: props.label,
     backgroundColor,
     color,
-    iconColor: props.isSpinning ? `var(${props.cssVar})` : null,
-    dotBackgroundColor: !props.isSpinning ? `var(${props.cssVar})` : null,
+    iconColor: (props.isSpinning || showsCheckmark) ? `var(${props.cssVar})` : null,
+    dotBackgroundColor: (!props.isSpinning && !showsCheckmark) ? `var(${props.cssVar})` : null,
   };
 }
 
@@ -189,6 +194,74 @@ test("text color uses var(cssVar)", () => {
     isSpinning: false,
   });
   assert.strictEqual(result.color, "var(--tier-review)");
+});
+
+console.log("\nisComplete=true (checkmark)");
+
+test("isComplete=true, isSpinning=false → renders checkmark, not dot, not spinner", () => {
+  const result = simulateSpinnerBadge({
+    label: "Complete",
+    cssVar: "--status-complete",
+    isSpinning: false,
+    isComplete: true,
+  });
+  assert.strictEqual(result.showsCheckmark, true);
+  assert.strictEqual(result.showsDot, false);
+  assert.strictEqual(result.showsSpinner, false);
+});
+
+test("isComplete=true sets icon color to var(cssVar)", () => {
+  const result = simulateSpinnerBadge({
+    label: "Complete",
+    cssVar: "--status-complete",
+    isSpinning: false,
+    isComplete: true,
+  });
+  assert.strictEqual(result.iconColor, "var(--status-complete)");
+  assert.strictEqual(result.dotBackgroundColor, null);
+});
+
+test("isComplete=true still renders the label text", () => {
+  const result = simulateSpinnerBadge({
+    label: "Complete",
+    cssVar: "--status-complete",
+    isSpinning: false,
+    isComplete: true,
+  });
+  assert.strictEqual(result.label, "Complete");
+});
+
+test("isComplete=true is ignored when isSpinning=true (spinner wins)", () => {
+  const result = simulateSpinnerBadge({
+    label: "In Progress",
+    cssVar: "--status-in-progress",
+    isSpinning: true,
+    isComplete: true,
+  });
+  assert.strictEqual(result.showsSpinner, true);
+  assert.strictEqual(result.showsCheckmark, false);
+  assert.strictEqual(result.showsDot, false);
+});
+
+test("isComplete=false (explicit) falls through to dot", () => {
+  const result = simulateSpinnerBadge({
+    label: "Not Started",
+    cssVar: "--status-not-started",
+    isSpinning: false,
+    isComplete: false,
+  });
+  assert.strictEqual(result.showsDot, true);
+  assert.strictEqual(result.showsCheckmark, false);
+});
+
+test("isComplete omitted (undefined) falls through to dot", () => {
+  const result = simulateSpinnerBadge({
+    label: "Not Started",
+    cssVar: "--status-not-started",
+    isSpinning: false,
+  });
+  assert.strictEqual(result.showsDot, true);
+  assert.strictEqual(result.showsCheckmark, false);
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

@@ -135,11 +135,11 @@ Every `result.action` value maps to exactly one Orchestrator operation. The Orch
 
 | # | `result.action` | Category | Orchestrator Operation | Event to Signal on Completion |
 |---|-----------------|----------|----------------------|-------------------------------|
-| 1 | `spawn_research` | Agent spawn | Spawn **Research** agent with project idea + brainstorming doc (if exists). Output: {NAME}-RESEARCH-FINDINGS.md | `research_completed` with `{ "doc_path": "<output-path>" }` |
-| 2 | `spawn_prd` | Agent spawn | Spawn **Product Manager** agent with RESEARCH-FINDINGS.md (+ brainstorming doc if exists). Output: {NAME}-PRD.md | `prd_completed` with `{ "doc_path": "<output-path>" }` |
-| 3 | `spawn_design` | Agent spawn | Spawn **UX Designer** agent with PRD.md + RESEARCH-FINDINGS.md. Output: {NAME}-DESIGN.md | `design_completed` with `{ "doc_path": "<output-path>" }` |
-| 4 | `spawn_architecture` | Agent spawn | Spawn **Architect** agent with PRD.md + DESIGN.md + RESEARCH-FINDINGS.md. Output: {NAME}-ARCHITECTURE.md | `architecture_completed` with `{ "doc_path": "<output-path>" }` |
-| 5 | `spawn_master_plan` | Agent spawn | Spawn **Architect** agent with all planning docs. Output: {NAME}-MASTER-PLAN.md | `master_plan_completed` with `{ "doc_path": "<output-path>" }` |
+| 1 | `spawn_research` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `research_started` with `{}` context → pipeline returns `spawn_research` again; (2) Spawn **Research** agent with project idea + brainstorming doc (if exists). Output: {NAME}-RESEARCH-FINDINGS.md | `research_completed` with `{ "doc_path": "<output-path>" }` |
+| 2 | `spawn_prd` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `prd_started` with `{}` context → pipeline returns `spawn_prd` again; (2) Spawn **Product Manager** agent with RESEARCH-FINDINGS.md (+ brainstorming doc if exists). Output: {NAME}-PRD.md | `prd_completed` with `{ "doc_path": "<output-path>" }` |
+| 3 | `spawn_design` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `design_started` with `{}` context → pipeline returns `spawn_design` again; (2) Spawn **UX Designer** agent with PRD.md + RESEARCH-FINDINGS.md. Output: {NAME}-DESIGN.md | `design_completed` with `{ "doc_path": "<output-path>" }` |
+| 4 | `spawn_architecture` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `architecture_started` with `{}` context → pipeline returns `spawn_architecture` again; (2) Spawn **Architect** agent with PRD.md + DESIGN.md + RESEARCH-FINDINGS.md. Output: {NAME}-ARCHITECTURE.md | `architecture_completed` with `{ "doc_path": "<output-path>" }` |
+| 5 | `spawn_master_plan` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `master_plan_started` with `{}` context → pipeline returns `spawn_master_plan` again; (2) Spawn **Architect** agent with all planning docs. Output: {NAME}-MASTER-PLAN.md | `master_plan_completed` with `{ "doc_path": "<output-path>" }` |
 | 6 | `create_phase_plan` | Agent spawn | **Two-step protocol — check `is_correction` first.** **Fresh phase** (`is_correction` is falsy): (1) Signal `phase_planning_started` with `{}` context → pipeline returns `create_phase_plan` again; (2) Spawn **Tactical Planner** (phase plan mode). **Corrective** (`is_correction` is true): Skip `phase_planning_started`, spawn **Tactical Planner** directly with `result.context.previous_review`. Output: phases/{NAME}-PHASE-{NN}-{TITLE}.md | `phase_plan_created` with `{ "doc_path": "<output-path>" }` |
 | 7 | `create_task_handoff` | Agent spawn | **Two-step protocol — check `is_correction` first.** **Fresh task** (`is_correction` is falsy): (1) Signal `task_handoff_started` with `{}` context → pipeline returns `create_task_handoff` again; (2) Spawn **Tactical Planner** (handoff mode). **Corrective** (`is_correction` is true): Skip `task_handoff_started`, spawn **Tactical Planner** directly (corrective mode) with `result.context.previous_review`. Output: tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md | `task_handoff_created` with `{ "doc_path": "<output-path>" }` |
 | 8 | `execute_task` | Agent spawn | Spawn **Coder** agent with the task's handoff document. Output: reports/{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md | `task_completed` with `{ "doc_path": "<output-path>" }` |
@@ -159,6 +159,8 @@ Every `result.action` value maps to exactly one Orchestrator operation. The Orch
 
 > **IMPORTANT — `is_correction` guard for action #7 (`create_task_handoff`):** Only signal `task_handoff_started` when `result.context.is_correction` is falsy. For corrective re-planning (`is_correction: true`), the task is already `in_progress / failed` — skip directly to spawning the Tactical Planner in corrective mode. Signaling `task_handoff_started` during a corrective cycle would be semantically incorrect. The two-step protocol (signal `task_handoff_started` → receive `create_task_handoff` again → spawn Planner) applies ONLY to fresh tasks.
 
+> **IMPORTANT — two-step protocol for actions #1–#5 (planning spawns):** Planning steps are never corrective — there is no `is_correction` check. Always signal `{step}_started` with `{}` context first. The pipeline transitions the planning step to `in_progress` and returns the same spawn action. On the second receipt of the action, spawn the agent. This is identical to the fresh-step path for actions #6–#7.
+
 ## Event Signaling Reference
 
 These are the exact event names the Orchestrator passes to `--event`:
@@ -171,6 +173,11 @@ These are the exact event names the Orchestrator passes to `--event`:
 | `design_completed` | `{ "doc_path": "<path>" }` | After UX Designer finishes |
 | `architecture_completed` | `{ "doc_path": "<path>" }` | After Architect finishes (architecture doc) |
 | `master_plan_completed` | `{ "doc_path": "<path>" }` | After Architect finishes (master plan) |
+| `research_started` | `{}` | Before Research agent spawn (non-corrective). Transitions planning step to `in_progress`. See action #1 two-step protocol. |
+| `prd_started` | `{}` | Before Product Manager spawn (non-corrective). Transitions planning step to `in_progress`. See action #2 two-step protocol. |
+| `design_started` | `{}` | Before UX Designer spawn (non-corrective). Transitions planning step to `in_progress`. See action #3 two-step protocol. |
+| `architecture_started` | `{}` | Before Architect spawn for architecture doc (non-corrective). Transitions planning step to `in_progress`. See action #4 two-step protocol. |
+| `master_plan_started` | `{}` | Before Architect spawn for master plan (non-corrective). Transitions planning step to `in_progress`. See action #5 two-step protocol. |
 | `plan_approved` | `{}` | After human approves master plan |
 | `plan_rejected` | `{}` | After human rejects master plan |
 | `phase_planning_started` | `{}` | Before Tactical Planner spawn for fresh (non-corrective) phases only. Transitions phase from `not_started / planning` to `in_progress / planning`. See action #6 two-step protocol. |

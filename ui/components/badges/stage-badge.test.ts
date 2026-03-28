@@ -4,7 +4,8 @@
  *
  * StageBadge derives its display from BOTH status and stage:
  * - status === 'not_started' → always shows "Not Started" (ignores stage value)
- * - status === 'in_progress' | 'complete' | 'failed' | 'halted' → show stage label, or null for terminal stages
+ * - stage === 'complete'     → renders "Complete" badge with checkmark (isComplete=true)
+ * - all other stages         → show stage label; spinner when status === 'in_progress', dot otherwise
  *
  * This guards against mutations.js initializing stage: 'planning' on all new
  * phases/tasks regardless of status, which would otherwise surface as a
@@ -50,7 +51,7 @@ const NOT_STARTED_CONFIG = { label: "Not Started", cssVar: "--status-not-started
 
 type RenderResult =
   | { rendered: false }
-  | { rendered: true; label: string; cssVar: string; isSpinning: boolean; ariaLabel: string };
+  | { rendered: true; label: string; cssVar: string; isSpinning: boolean; isComplete: boolean; ariaLabel: string };
 
 function simulateStageBadge(
   stage: TaskStage | PhaseStage,
@@ -62,11 +63,20 @@ function simulateStageBadge(
       label: NOT_STARTED_CONFIG.label,
       cssVar: NOT_STARTED_CONFIG.cssVar,
       isSpinning: false,
+      isComplete: false,
       ariaLabel: "Stage: Not Started",
     };
   }
   if (stage === "complete") {
-    return { rendered: false };
+    const config = STAGE_CONFIG["complete"];
+    return {
+      rendered: true,
+      label: config.label,
+      cssVar: config.cssVar,
+      isSpinning: false,
+      isComplete: true,
+      ariaLabel: "Stage: Complete",
+    };
   }
   const config = STAGE_CONFIG[stage];
   const isSpinning = status === "in_progress";
@@ -75,6 +85,7 @@ function simulateStageBadge(
     label: config.label,
     cssVar: config.cssVar,
     isSpinning,
+    isComplete: false,
     ariaLabel: isSpinning ? `Stage: ${config.label}, active` : `Stage: ${config.label}`,
   };
 }
@@ -156,13 +167,20 @@ test("in_progress + coding → shows 'Coding'", () => {
   assert.strictEqual(result.label, "Coding");
 });
 
-// ─── Terminal stage suppression (stage = complete or failed) ─────────────────
+// ─── Complete and failed stage behavior ──────────────────────────────────────
 
-console.log("\nterminal stage suppression");
+console.log("\ncomplete and failed stage behavior");
 
-test("complete status + complete stage → null (no badge)", () => {
+test("complete status + complete stage → 'Complete' badge with checkmark", () => {
   const result = simulateStageBadge("complete", "complete");
-  assert.strictEqual(result.rendered, false);
+  assert.ok(result.rendered);
+  if (result.rendered) {
+    assert.strictEqual(result.label, "Complete");
+    assert.strictEqual(result.cssVar, "--status-complete");
+    assert.strictEqual(result.isSpinning, false);
+    assert.strictEqual(result.isComplete, true);
+    assert.strictEqual(result.ariaLabel, "Stage: Complete");
+  }
 });
 
 test("failed status + failed stage → shows 'Failed' badge (static, no spinner)", () => {
@@ -176,9 +194,15 @@ test("failed status + failed stage → shows 'Failed' badge (static, no spinner)
   }
 });
 
-test("halted status + complete stage → null (terminal guard still applies)", () => {
+test("halted status + complete stage → 'Complete' badge with checkmark (stage guard removed)", () => {
   const result = simulateStageBadge("complete", "halted");
-  assert.strictEqual(result.rendered, false);
+  assert.ok(result.rendered);
+  if (result.rendered) {
+    assert.strictEqual(result.label, "Complete");
+    assert.strictEqual(result.cssVar, "--status-complete");
+    assert.strictEqual(result.isSpinning, false);
+    assert.strictEqual(result.isComplete, true);
+  }
 });
 
 // ─── halted: stage badge shows to indicate where work stopped ────────────────

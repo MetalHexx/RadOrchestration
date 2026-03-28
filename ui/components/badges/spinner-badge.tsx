@@ -1,20 +1,23 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface SpinnerBadgeProps {
   /** Visible badge text — e.g. "Planning", "In Progress", "Complete" */
   label: string;
-  /** CSS custom property name including -- prefix — e.g. "--tier-planning" */
+  /** CSS custom property name including -- prefix — e.g. "--status-complete" */
   cssVar: string;
-  /** true → animated Loader2 icon; false → 6×6px dot span */
+  /** true → animated Loader2 icon; false → defers to isComplete for icon selection */
   isSpinning: boolean;
+  /** When true (and isSpinning is false), renders a static Check icon.
+   *  Defaults to false when omitted. isSpinning=true takes unconditional precedence. */
+  isComplete?: boolean;
   /** Accessible label override; defaults to label when omitted */
   ariaLabel?: string;
 }
 
-export function SpinnerBadge({ label, cssVar, isSpinning, ariaLabel }: SpinnerBadgeProps) {
+export function SpinnerBadge({ label, cssVar, isSpinning, isComplete, ariaLabel }: SpinnerBadgeProps) {
   return (
     <Badge
       variant="outline"
@@ -29,6 +32,12 @@ export function SpinnerBadge({ label, cssVar, isSpinning, ariaLabel }: SpinnerBa
         <Loader2
           size={12}
           className="animate-spin"
+          style={{ color: `var(${cssVar})` }}
+          aria-hidden="true"
+        />
+      ) : isComplete ? (
+        <Check
+          size={12}
           style={{ color: `var(${cssVar})` }}
           aria-hidden="true"
         />
