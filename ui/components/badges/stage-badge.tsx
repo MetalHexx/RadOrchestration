@@ -33,9 +33,18 @@ export function StageBadge({ stage, status }: StageBadgeProps) {
     );
   }
 
-  // Complete stage renders nothing (work is done)
+  // Complete stage renders a checkmark badge
   if (stage === 'complete') {
-    return null;
+    const config = STAGE_CONFIG['complete'];
+    return (
+      <SpinnerBadge
+        label={config.label}
+        cssVar={config.cssVar}
+        isSpinning={false}
+        isComplete={true}
+        ariaLabel="Stage: Complete"
+      />
+    );
   }
 
   const config = STAGE_CONFIG[stage];
