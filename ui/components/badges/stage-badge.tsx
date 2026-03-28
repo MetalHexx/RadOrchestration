@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
+import { SpinnerBadge } from "./spinner-badge";
 import type { TaskStage, PhaseStage, TaskStatus, PhaseStatus } from "@/types/state";
 
 interface StageBadgeProps {
@@ -21,50 +21,31 @@ const STAGE_CONFIG: Record<string, { label: string; cssVar: string }> = {
 const NOT_STARTED_CONFIG = { label: "Not Started", cssVar: "--status-not-started" };
 
 export function StageBadge({ stage, status }: StageBadgeProps) {
+  // status === 'not_started' always wins regardless of stage
   if (status === 'not_started') {
-    const config = NOT_STARTED_CONFIG;
     return (
-      <Badge
-        variant="outline"
-        className="gap-1.5 border-transparent"
-        style={{
-          backgroundColor: `color-mix(in srgb, var(${config.cssVar}) 15%, transparent)`,
-          color: `var(${config.cssVar})`,
-        }}
-        aria-label={`Stage: ${config.label}`}
-      >
-        <span
-          className="inline-block h-1.5 w-1.5 rounded-full"
-          style={{ backgroundColor: `var(${config.cssVar})` }}
-          aria-hidden="true"
-        />
-        {config.label}
-      </Badge>
+      <SpinnerBadge
+        label={NOT_STARTED_CONFIG.label}
+        cssVar={NOT_STARTED_CONFIG.cssVar}
+        isSpinning={false}
+      />
     );
   }
 
+  // Terminal stages render nothing
   if (stage === 'complete' || stage === 'failed') {
     return null;
   }
 
   const config = STAGE_CONFIG[stage];
+  const isSpinning = status === 'in_progress';
 
   return (
-    <Badge
-      variant="outline"
-      className="gap-1.5 border-transparent"
-      style={{
-        backgroundColor: `color-mix(in srgb, var(${config.cssVar}) 15%, transparent)`,
-        color: `var(${config.cssVar})`,
-      }}
-      aria-label={`Stage: ${config.label}`}
-    >
-      <span
-        className="inline-block h-1.5 w-1.5 rounded-full"
-        style={{ backgroundColor: `var(${config.cssVar})` }}
-        aria-hidden="true"
-      />
-      {config.label}
-    </Badge>
+    <SpinnerBadge
+      label={config.label}
+      cssVar={config.cssVar}
+      isSpinning={isSpinning}
+      ariaLabel={isSpinning ? `${config.label}: active` : undefined}
+    />
   );
 }

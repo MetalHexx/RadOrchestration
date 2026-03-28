@@ -6,7 +6,7 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import { StatusIcon, ReviewVerdictBadge } from "@/components/badges";
+import { ReviewVerdictBadge } from "@/components/badges";
 import { DocumentLink } from "@/components/documents";
 import { StageBadge } from "@/components/badges/stage-badge";
 import { ProgressBar } from "@/components/execution/progress-bar";
@@ -49,7 +49,6 @@ export function PhaseCard({
         <AccordionItem>
           <AccordionTrigger>
             <div className="flex items-center gap-2 flex-1 mr-2 pl-3">
-              <StatusIcon status={phase.status} />
               <StageBadge stage={phase.stage} status={phase.status} />
               <span className="font-medium whitespace-nowrap">
                 Phase {phaseNumber}: {phase.name}

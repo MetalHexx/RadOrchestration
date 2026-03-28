@@ -1,7 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { SpinnerBadge } from "./spinner-badge";
 import type { PipelineTier, PlanningStatus, ExecutionStatus } from "@/types/state";
 
 interface PipelineTierBadgeProps {
@@ -65,30 +64,11 @@ export function PipelineTierBadge({ tier, planningStatus, executionStatus }: Pip
   const { label, ariaLabel, isSpinning, cssVar } = resolveBadgeState(tier, planningStatus, executionStatus);
 
   return (
-    <Badge
-      variant="outline"
-      className="gap-1.5 border-transparent"
-      style={{
-        backgroundColor: `color-mix(in srgb, var(${cssVar}) 15%, transparent)`,
-        color: `var(${cssVar})`,
-      }}
-      aria-label={ariaLabel}
-    >
-      {isSpinning ? (
-        <Loader2
-          size={12}
-          className="animate-spin"
-          style={{ color: `var(${cssVar})` }}
-          aria-hidden="true"
-        />
-      ) : (
-        <span
-          className="inline-block h-1.5 w-1.5 rounded-full"
-          style={{ backgroundColor: `var(${cssVar})` }}
-          aria-hidden="true"
-        />
-      )}
-      {label}
-    </Badge>
+    <SpinnerBadge
+      label={label}
+      cssVar={cssVar}
+      isSpinning={isSpinning}
+      ariaLabel={ariaLabel}
+    />
   );
 }

@@ -3,10 +3,10 @@
 import { CheckCircle2, Circle } from "lucide-react";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { StatusIcon } from "@/components/badges";
+import { SpinnerBadge } from "@/components/badges";
 import { DocumentLink } from "@/components/documents";
 import { ApproveGateButton } from "@/components/dashboard/approve-gate-button";
-import type { FinalReview, PipelineTier } from "@/types/state";
+import type { FinalReview, FinalReviewStatus, PipelineTier } from "@/types/state";
 
 interface FinalReviewSectionProps {
   finalReview: FinalReview;
@@ -14,6 +14,14 @@ interface FinalReviewSectionProps {
   pipelineTier: PipelineTier;
   onDocClick: (path: string) => void;
 }
+
+const FINAL_REVIEW_BADGE: Record<
+  Exclude<FinalReviewStatus, "not_started">,
+  { label: string; cssVar: string; isSpinning: boolean; ariaLabel: string }
+> = {
+  in_progress: { label: "In Progress", cssVar: "--status-in-progress", isSpinning: true,  ariaLabel: "Final review: In Progress, active" },
+  complete:    { label: "Complete",    cssVar: "--status-complete",     isSpinning: false, ariaLabel: "Final review: Complete" },
+};
 
 export function FinalReviewSection({ finalReview, projectName, pipelineTier, onDocClick }: FinalReviewSectionProps) {
   if (finalReview.status === "not_started") {
@@ -27,8 +35,7 @@ export function FinalReviewSection({ finalReview, projectName, pipelineTier, onD
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2 text-sm">
-          <StatusIcon status={finalReview.status} />
-          <span className="capitalize">{finalReview.status.replace("_", " ")}</span>
+          <SpinnerBadge {...FINAL_REVIEW_BADGE[finalReview.status as Exclude<FinalReviewStatus, "not_started">]} />
         </div>
 
         <div>

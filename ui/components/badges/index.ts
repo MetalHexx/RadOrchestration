@@ -1,6 +1,6 @@
 export { PipelineTierBadge } from "./pipeline-tier-badge";
+export { SpinnerBadge } from "./spinner-badge";
 export { GateModeBadge } from "./gate-mode-badge";
-export { StatusIcon } from "./status-icon";
 export { ReviewVerdictBadge } from "./review-verdict-badge";
 export { SeverityBadge } from "./severity-badge";
 export { RetryBadge } from "./retry-badge";
