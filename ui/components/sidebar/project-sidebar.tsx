@@ -17,6 +17,40 @@ import {
 import { SidebarSearch } from "./sidebar-search";
 import { ProjectListItem } from "./project-list-item";
 
+function getProjectSortKey(p: ProjectSummary): number {
+  const { tier, planningStatus, executionStatus, hasMalformedState } = p;
+
+  // Priority 0: halted — tier-level OR execution sub-status (must be first)
+  if (tier === "halted" || (tier === "execution" && executionStatus === "halted")) return 0;
+
+  // Priority 1: malformed / warning state
+  if (hasMalformedState) return 1;
+
+  // Priority 2: final review gate
+  if (tier === "review") return 2;
+
+  // Priority 3: actively executing
+  if (tier === "execution" && executionStatus === "in_progress") return 3;
+
+  // Priority 4: actively planning
+  if (tier === "planning" && planningStatus === "in_progress") return 4;
+
+  // Priority 5: cleared planning gate, queued for execution
+  if (tier === "execution" && (executionStatus === "not_started" || executionStatus === undefined)) return 5;
+
+  // Priority 6: planning complete, awaiting execution gate approval
+  if (tier === "planning" && planningStatus === "complete") return 6;
+
+  // Priority 7: planning not yet started
+  if (tier === "planning" && (planningStatus === "not_started" || planningStatus === undefined)) return 7;
+
+  // Priority 8: not yet initialized
+  if (tier === "not_initialized") return 8;
+
+  // Priority 9: complete (or any unrecognized/edge-case combination)
+  return 9;
+}
+
 interface ProjectSidebarProps {
   projects: ProjectSummary[];
   selectedProject: string | null;
@@ -32,18 +66,9 @@ export function ProjectSidebar({
 }: ProjectSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const TIER_SORT_ORDER: Record<string, number> = {
-    execution: 0,
-    review: 1,
-    planning: 2,
-    not_initialized: 3,
-    halted: 4,
-    complete: 5,
-  };
-
   const filteredProjects = projects
     .filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => (TIER_SORT_ORDER[a.tier] ?? 3) - (TIER_SORT_ORDER[b.tier] ?? 3));
+    .sort((a, b) => getProjectSortKey(a) - getProjectSortKey(b) || a.name.localeCompare(b.name));
 
   const handleListboxKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLUListElement>) => {

@@ -160,6 +160,13 @@ function completePlanningStep(state, stepName, docPath) {
 function startPlanningStep(state, stepName) {
   const step = state.planning.steps.find(s => s.name === stepName);
   step.status = PLANNING_STEP_STATUSES.IN_PROGRESS;
+
+  // Advance top-level planning status from not_started → in_progress.
+  // Idempotent: never overwrites in_progress or complete.
+  if (state.planning.status === PLANNING_STATUSES.NOT_STARTED) {
+    state.planning.status = PLANNING_STATUSES.IN_PROGRESS;
+  }
+
   return {
     state,
     mutations_applied: [`Set planning.steps[${stepName}].status to "in_progress"`],

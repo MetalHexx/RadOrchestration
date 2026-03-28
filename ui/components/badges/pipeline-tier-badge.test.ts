@@ -33,7 +33,7 @@ type ExecutionStatus = "not_started" | "in_progress" | "complete" | "halted";
 const TIER_CONFIG: Record<string, { label: string; cssVar: string }> = {
   planning: { label: "Planning", cssVar: "--tier-planning" },
   execution: { label: "Execution", cssVar: "--tier-execution" },
-  review: { label: "Review", cssVar: "--tier-review" },
+  review: { label: "Final Review", cssVar: "--tier-review" },
   complete: { label: "Complete", cssVar: "--tier-complete" },
   halted: { label: "Halted", cssVar: "--tier-halted" },
   not_initialized: { label: "Not Started", cssVar: "--tier-not-initialized" },
@@ -45,7 +45,7 @@ function resolveBadgeState(
   executionStatus: ExecutionStatus | undefined,
 ): { label: string; ariaLabel: string; isSpinning: boolean; cssVar: string } {
   const base = TIER_CONFIG[tier];
-  const cssVar = base.cssVar;
+  let cssVar = base.cssVar;
 
   let label: string;
   let isSpinning: boolean;
@@ -62,11 +62,16 @@ function resolveBadgeState(
       isSpinning = false;
     }
   } else if (tier === "execution") {
-    if (executionStatus === "in_progress") {
+    if (executionStatus === "halted") {
+      label = "Halted";
+      cssVar = "--tier-halted";
+      isSpinning = false;
+    } else if (executionStatus === "in_progress") {
       label = "Executing";
       isSpinning = true;
     } else {
-      label = "Execution";
+      // not_started, complete, or undefined → queued/approved state
+      label = "Approved";
       isSpinning = false;
     }
   } else {
@@ -186,12 +191,12 @@ test('execution + in_progress → ariaLabel "Pipeline status: Executing, active"
   assert.strictEqual(result.ariaLabel, "Pipeline status: Executing, active");
 });
 
-// Row 6: execution + absent/other executionStatus → "Execution"
+// Row 6: execution + absent/other executionStatus → "Approved"
 console.log("\nRow 6: execution + no/other executionStatus (backward compat fallback)");
 
-test('execution + undefined executionStatus → label "Execution"', () => {
+test('execution + undefined executionStatus → label "Approved"', () => {
   const result = resolveBadgeState("execution", undefined, undefined);
-  assert.strictEqual(result.label, "Execution");
+  assert.strictEqual(result.label, "Approved");
 });
 
 test("execution + undefined executionStatus → no spinner", () => {
@@ -199,29 +204,54 @@ test("execution + undefined executionStatus → no spinner", () => {
   assert.strictEqual(result.isSpinning, false);
 });
 
-test('execution + undefined executionStatus → ariaLabel "Pipeline status: Execution"', () => {
+test('execution + undefined executionStatus → ariaLabel "Pipeline status: Approved"', () => {
   const result = resolveBadgeState("execution", undefined, undefined);
-  assert.strictEqual(result.ariaLabel, "Pipeline status: Execution");
+  assert.strictEqual(result.ariaLabel, "Pipeline status: Approved");
 });
 
-test('execution + complete executionStatus → label "Execution" (other fallback)', () => {
+test('execution + complete executionStatus → label "Approved" (other fallback)', () => {
   const result = resolveBadgeState("execution", undefined, "complete");
-  assert.strictEqual(result.label, "Execution");
+  assert.strictEqual(result.label, "Approved");
   assert.strictEqual(result.isSpinning, false);
 });
 
-test('execution + halted executionStatus → label "Execution" (other fallback)', () => {
-  const result = resolveBadgeState("execution", undefined, "halted");
-  assert.strictEqual(result.label, "Execution");
+// Row 6a: execution + not_started → "Approved"
+console.log('\nRow 6a: execution + executionStatus=not_started → "Approved"');
+
+test('execution + not_started → label "Approved"', () => {
+  const result = resolveBadgeState("execution", undefined, "not_started");
+  assert.strictEqual(result.label, "Approved");
   assert.strictEqual(result.isSpinning, false);
+  assert.strictEqual(result.cssVar, "--tier-execution");
+});
+test('execution + not_started → ariaLabel "Pipeline status: Approved"', () => {
+  const result = resolveBadgeState("execution", undefined, "not_started");
+  assert.strictEqual(result.ariaLabel, "Pipeline status: Approved");
+});
+
+// Row 6b: execution + halted → "Halted" with --tier-halted
+console.log('\nRow 6b: execution + executionStatus=halted → "Halted"');
+
+test('execution + halted → label "Halted"', () => {
+  const result = resolveBadgeState("execution", undefined, "halted");
+  assert.strictEqual(result.label, "Halted");
+  assert.strictEqual(result.isSpinning, false);
+});
+test('execution + halted → cssVar "--tier-halted"', () => {
+  const result = resolveBadgeState("execution", undefined, "halted");
+  assert.strictEqual(result.cssVar, "--tier-halted");
+});
+test('execution + halted → ariaLabel "Pipeline status: Halted"', () => {
+  const result = resolveBadgeState("execution", undefined, "halted");
+  assert.strictEqual(result.ariaLabel, "Pipeline status: Halted");
 });
 
 // Row 7: review
 console.log("\nRow 7: review");
 
-test('review → label "Review"', () => {
+test('review → label "Final Review"', () => {
   const result = resolveBadgeState("review", undefined, undefined);
-  assert.strictEqual(result.label, "Review");
+  assert.strictEqual(result.label, "Final Review");
 });
 
 test("review → no spinner", () => {
@@ -229,9 +259,9 @@ test("review → no spinner", () => {
   assert.strictEqual(result.isSpinning, false);
 });
 
-test('review → ariaLabel "Pipeline status: Review"', () => {
+test('review → ariaLabel "Pipeline status: Final Review"', () => {
   const result = resolveBadgeState("review", undefined, undefined);
-  assert.strictEqual(result.ariaLabel, "Pipeline status: Review");
+  assert.strictEqual(result.ariaLabel, "Pipeline status: Final Review");
 });
 
 // Row 8: complete
@@ -281,11 +311,11 @@ test('planning tier only → same as before: "Planning", no spinner', () => {
   assert.strictEqual(result.ariaLabel, "Pipeline status: Planning");
 });
 
-test('execution tier only → same as before: "Execution", no spinner', () => {
+test('execution tier only → same as before: "Approved", no spinner', () => {
   const result = resolveBadgeState("execution", undefined, undefined);
-  assert.strictEqual(result.label, "Execution");
+  assert.strictEqual(result.label, "Approved");
   assert.strictEqual(result.isSpinning, false);
-  assert.strictEqual(result.ariaLabel, "Pipeline status: Execution");
+  assert.strictEqual(result.ariaLabel, "Pipeline status: Approved");
 });
 
 // ─── aria-label format: must use "Pipeline status:" not "Pipeline tier:" ──────
