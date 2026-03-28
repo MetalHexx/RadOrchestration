@@ -1,0 +1,202 @@
+/**
+ * Tests for SpinnerBadge component logic.
+ * Run with: npx tsx ui/components/badges/spinner-badge.test.ts
+ *
+ * SpinnerBadge is purely presentational:
+ * - isSpinning=true  → renders Loader2 with animate-spin
+ * - isSpinning=false → renders 6×6px dot span
+ * - ariaLabel defaults to label when omitted
+ * - ariaLabel overrides label when provided
+ */
+import assert from "node:assert";
+
+let passed = 0;
+let failed = 0;
+
+function test(name: string, fn: () => void) {
+  try {
+    fn();
+    console.log(`  ✓ ${name}`);
+    passed++;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`  ✗ ${name}\n    ${msg}`);
+    failed++;
+  }
+}
+
+// ─── Simulation (mirrors spinner-badge.tsx logic) ────────────────────────────
+
+interface SpinnerBadgeProps {
+  label: string;
+  cssVar: string;
+  isSpinning: boolean;
+  ariaLabel?: string;
+}
+
+interface RenderResult {
+  ariaLabel: string;
+  showsSpinner: boolean;
+  showsDot: boolean;
+  label: string;
+  backgroundColor: string;
+  color: string;
+  iconColor: string | null;
+  dotBackgroundColor: string | null;
+}
+
+function simulateSpinnerBadge(props: SpinnerBadgeProps): RenderResult {
+  const resolvedAriaLabel = props.ariaLabel ?? props.label;
+  const backgroundColor = `color-mix(in srgb, var(${props.cssVar}) 15%, transparent)`;
+  const color = `var(${props.cssVar})`;
+
+  return {
+    ariaLabel: resolvedAriaLabel,
+    showsSpinner: props.isSpinning,
+    showsDot: !props.isSpinning,
+    label: props.label,
+    backgroundColor,
+    color,
+    iconColor: props.isSpinning ? `var(${props.cssVar})` : null,
+    dotBackgroundColor: !props.isSpinning ? `var(${props.cssVar})` : null,
+  };
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+console.log("\nisSpinning=true (spinner)");
+
+test("isSpinning=true renders spinner, not dot", () => {
+  const result = simulateSpinnerBadge({
+    label: "Planning",
+    cssVar: "--tier-planning",
+    isSpinning: true,
+  });
+  assert.strictEqual(result.showsSpinner, true);
+  assert.strictEqual(result.showsDot, false);
+});
+
+test("isSpinning=true sets spinner icon color to var(cssVar)", () => {
+  const result = simulateSpinnerBadge({
+    label: "Planning",
+    cssVar: "--tier-planning",
+    isSpinning: true,
+  });
+  assert.strictEqual(result.iconColor, "var(--tier-planning)");
+  assert.strictEqual(result.dotBackgroundColor, null);
+});
+
+test("isSpinning=true still renders the label text", () => {
+  const result = simulateSpinnerBadge({
+    label: "Executing",
+    cssVar: "--tier-execution",
+    isSpinning: true,
+  });
+  assert.strictEqual(result.label, "Executing");
+});
+
+console.log("\nisSpinning=false (dot)");
+
+test("isSpinning=false renders dot, not spinner", () => {
+  const result = simulateSpinnerBadge({
+    label: "Complete",
+    cssVar: "--tier-complete",
+    isSpinning: false,
+  });
+  assert.strictEqual(result.showsDot, true);
+  assert.strictEqual(result.showsSpinner, false);
+});
+
+test("isSpinning=false sets dot background color to var(cssVar)", () => {
+  const result = simulateSpinnerBadge({
+    label: "Complete",
+    cssVar: "--tier-complete",
+    isSpinning: false,
+  });
+  assert.strictEqual(result.dotBackgroundColor, "var(--tier-complete)");
+  assert.strictEqual(result.iconColor, null);
+});
+
+test("isSpinning=false still renders the label text", () => {
+  const result = simulateSpinnerBadge({
+    label: "Not Started",
+    cssVar: "--status-not-started",
+    isSpinning: false,
+  });
+  assert.strictEqual(result.label, "Not Started");
+});
+
+console.log("\nariaLabel default behavior");
+
+test("ariaLabel defaults to label when ariaLabel prop is omitted", () => {
+  const result = simulateSpinnerBadge({
+    label: "Planning",
+    cssVar: "--tier-planning",
+    isSpinning: true,
+  });
+  assert.strictEqual(result.ariaLabel, "Planning");
+});
+
+test("ariaLabel defaults to label for non-spinning badge", () => {
+  const result = simulateSpinnerBadge({
+    label: "Complete",
+    cssVar: "--tier-complete",
+    isSpinning: false,
+  });
+  assert.strictEqual(result.ariaLabel, "Complete");
+});
+
+console.log("\nariaLabel override behavior");
+
+test("ariaLabel uses provided value when ariaLabel prop is set", () => {
+  const result = simulateSpinnerBadge({
+    label: "Planning",
+    cssVar: "--tier-planning",
+    isSpinning: true,
+    ariaLabel: "Pipeline status: Planning, active",
+  });
+  assert.strictEqual(result.ariaLabel, "Pipeline status: Planning, active");
+});
+
+test("ariaLabel override works for non-spinning badge", () => {
+  const result = simulateSpinnerBadge({
+    label: "Not Started",
+    cssVar: "--status-not-started",
+    isSpinning: false,
+    ariaLabel: "Stage: Not Started",
+  });
+  assert.strictEqual(result.ariaLabel, "Stage: Not Started");
+});
+
+console.log("\nbadge styling");
+
+test("backgroundColor uses color-mix formula with cssVar", () => {
+  const result = simulateSpinnerBadge({
+    label: "Planning",
+    cssVar: "--tier-planning",
+    isSpinning: true,
+  });
+  assert.strictEqual(
+    result.backgroundColor,
+    "color-mix(in srgb, var(--tier-planning) 15%, transparent)"
+  );
+});
+
+test("text color uses var(cssVar)", () => {
+  const result = simulateSpinnerBadge({
+    label: "Review",
+    cssVar: "--tier-review",
+    isSpinning: false,
+  });
+  assert.strictEqual(result.color, "var(--tier-review)");
+});
+
+// ─── Summary ─────────────────────────────────────────────────────────────────
+
+console.log("");
+if (failed === 0) {
+  console.log(`All ${passed} tests passed.`);
+} else {
+  console.log(`${passed} passed, ${failed} failed.`);
+  process.exit(1);
+}

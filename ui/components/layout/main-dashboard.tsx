@@ -65,6 +65,8 @@ export function MainDashboard({
           project={projectState.project}
           tier={projectState.pipeline.current_tier}
           gateMode={projectState.pipeline.gate_mode}
+          planningStatus={projectState.planning.status}
+          executionStatus={projectState.execution.status}
         />
 
         <PlanningSection

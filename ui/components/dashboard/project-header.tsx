@@ -2,7 +2,7 @@
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { GateModeBadge, PipelineTierBadge } from "@/components/badges";
-import type { GateMode, PipelineTier } from "@/types/state";
+import type { GateMode, PipelineTier, PlanningStatus, ExecutionStatus } from "@/types/state";
 
 interface ProjectHeaderProps {
   project: {
@@ -12,6 +12,8 @@ interface ProjectHeaderProps {
   };
   tier: PipelineTier;
   gateMode: GateMode | null;
+  planningStatus?: PlanningStatus;
+  executionStatus?: ExecutionStatus;
 }
 
 function formatTimestamp(iso: string): string {
@@ -22,12 +24,12 @@ function formatTimestamp(iso: string): string {
   }
 }
 
-export function ProjectHeader({ project, tier, gateMode }: ProjectHeaderProps) {
+export function ProjectHeader({ project, tier, gateMode, planningStatus, executionStatus }: ProjectHeaderProps) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
         <h1 className="text-lg font-semibold">{project.name}</h1>
-        <PipelineTierBadge tier={tier} />
+        <PipelineTierBadge tier={tier} planningStatus={planningStatus} executionStatus={executionStatus} />
         <GateModeBadge mode={gateMode} />
       </div>
 

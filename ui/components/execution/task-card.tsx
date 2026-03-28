@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  StatusIcon,
   RetryBadge,
   ReviewVerdictBadge,
 } from "@/components/badges";
@@ -24,7 +23,6 @@ export function TaskCard({ task, taskNumber, maxRetries, onDocClick }: TaskCardP
         aria-label={`Task ${taskNumber}: ${task.name}, status: ${task.status}`}
         className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent/30"
       >
-        <StatusIcon status={task.status} />
         <StageBadge stage={task.stage} status={task.status} />
         <span className="flex-1 text-sm font-medium truncate">
           T{taskNumber}: {task.name}
