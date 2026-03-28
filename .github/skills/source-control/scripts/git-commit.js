@@ -36,8 +36,11 @@ try {
   execSync(`git commit -m ${JSON.stringify(message)}`, { cwd: worktreePath, encoding: 'utf8' });
   commitHash = execSync('git rev-parse --short HEAD', { cwd: worktreePath, encoding: 'utf8' }).trim();
 } catch (commitError) {
-  const errText = (commitError.stderr || commitError.message || '');
-  const isNothingToCommit = errText.includes('nothing to commit') || commitError.message.includes('nothing to commit');
+  const errText = (commitError.stderr || commitError.stdout || commitError.message || '');
+  const isNothingToCommit =
+    errText.includes('nothing to commit') ||
+    (commitError.stdout && commitError.stdout.includes('nothing to commit')) ||
+    commitError.message.includes('nothing to commit');
   const result = {
     committed: false,
     pushed: false,
