@@ -34,6 +34,30 @@
             { "type": "null" }
           ],
           "default": null
+        },
+        "source_control": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["branch", "base_branch", "worktree_path", "auto_commit", "auto_pr"],
+          "properties": {
+            "branch": {
+              "type": "string"
+            },
+            "base_branch": {
+              "type": "string"
+            },
+            "worktree_path": {
+              "type": "string"
+            },
+            "auto_commit": {
+              "type": "string",
+              "enum": ["always", "never"]
+            },
+            "auto_pr": {
+              "type": "string",
+              "enum": ["always", "never"]
+            }
+          }
         }
       }
     },
