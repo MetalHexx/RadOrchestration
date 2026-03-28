@@ -271,11 +271,34 @@ describe('planning started handlers', () => {
         assert.equal(step.doc_path, null);
       });
 
-      it('does not change planning.status', () => {
+      it('does not change planning.status when already in_progress', () => {
         assert.equal(result.state.planning.status, 'in_progress');
       });
     });
   }
+
+  // planning.status guard: not_started → in_progress transition
+  describe('planning.status guard', () => {
+    it('advances planning.status from not_started to in_progress', () => {
+      const state = makePlanningState();
+      state.planning.status = 'not_started';
+      const handler = getMutation('research_started');
+      const result = handler(state, {}, {});
+      assert.equal(result.state.planning.status, 'in_progress');
+      assert.ok(
+        result.mutations_applied.some(m => m.includes('planning.status')),
+        'mutations_applied should include the planning.status transition'
+      );
+    });
+
+    it('does not change planning.status when already complete', () => {
+      const state = makePlanningState();
+      state.planning.status = 'complete';
+      const handler = getMutation('research_started');
+      const result = handler(state, {}, {});
+      assert.equal(result.state.planning.status, 'complete');
+    });
+  });
 });
 
 // ─── handlePlanApproved ─────────────────────────────────────────────────────

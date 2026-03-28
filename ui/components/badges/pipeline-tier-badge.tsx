@@ -11,7 +11,8 @@ interface PipelineTierBadgeProps {
 
 const TIER_CONFIG: Record<string, { label: string; cssVar: string }> = {
   planning: { label: "Planning", cssVar: "--tier-planning" },
-  execution: { label: "Execution", cssVar: "--tier-execution" },
+  // label is never used directly for execution — resolveBadgeState() sets it explicitly per sub-status
+  execution: { label: "Approved", cssVar: "--tier-execution" },
   review: { label: "Final Review", cssVar: "--tier-review" },
   complete: { label: "Complete", cssVar: "--tier-complete" },
   halted: { label: "Halted", cssVar: "--tier-halted" },
