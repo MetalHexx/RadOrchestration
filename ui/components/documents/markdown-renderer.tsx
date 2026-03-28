@@ -86,7 +86,8 @@ const components: Components = {
     return <>{children}</>;
   },
   code({ children, className, ...props }) {
-    const isInline = !className;
+    const text = extractText(children);
+    const isInline = !className && !text.includes('\n');
     if (isInline) {
       return (
         <code
@@ -99,10 +100,10 @@ const components: Components = {
     }
     // Mermaid detection — render diagram instead of code block
     if (className?.includes('language-mermaid')) {
-      return <MermaidBlock code={extractText(children)} />;
+      return <MermaidBlock code={text} />;
     }
     const lang = (className?.replace('language-', '') ?? 'text').trim() || 'text';
-    return <SyntaxHighlighter code={extractText(children)} lang={lang} />;
+    return <SyntaxHighlighter code={text} lang={lang} />;
   },
   table({ children, ...props }) {
     return (
