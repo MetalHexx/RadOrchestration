@@ -28,6 +28,8 @@ export function FinalReviewSection({ finalReview, projectName, pipelineTier, onD
     return null;
   }
 
+  const status = finalReview.status;
+
   return (
     <Card>
       <CardHeader>
@@ -35,7 +37,7 @@ export function FinalReviewSection({ finalReview, projectName, pipelineTier, onD
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2 text-sm">
-          <SpinnerBadge {...FINAL_REVIEW_BADGE[finalReview.status as Exclude<FinalReviewStatus, "not_started">]} />
+          <SpinnerBadge {...FINAL_REVIEW_BADGE[status]} />
         </div>
 
         <div>

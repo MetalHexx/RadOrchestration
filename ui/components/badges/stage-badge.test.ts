@@ -62,10 +62,10 @@ function simulateStageBadge(
       label: NOT_STARTED_CONFIG.label,
       cssVar: NOT_STARTED_CONFIG.cssVar,
       isSpinning: false,
-      ariaLabel: NOT_STARTED_CONFIG.label,
+      ariaLabel: "Stage: Not Started",
     };
   }
-  if (stage === "complete" || stage === "failed") {
+  if (stage === "complete") {
     return { rendered: false };
   }
   const config = STAGE_CONFIG[stage];
@@ -75,7 +75,7 @@ function simulateStageBadge(
     label: config.label,
     cssVar: config.cssVar,
     isSpinning,
-    ariaLabel: isSpinning ? `${config.label}: active` : config.label,
+    ariaLabel: isSpinning ? `Stage: ${config.label}, active` : `Stage: ${config.label}`,
   };
 }
 
@@ -165,9 +165,15 @@ test("complete status + complete stage → null (no badge)", () => {
   assert.strictEqual(result.rendered, false);
 });
 
-test("in_progress status + failed stage → null (no badge)", () => {
-  const result = simulateStageBadge("failed", "in_progress");
-  assert.strictEqual(result.rendered, false);
+test("failed status + failed stage → shows 'Failed' badge (static, no spinner)", () => {
+  const result = simulateStageBadge("failed", "failed");
+  assert.ok(result.rendered);
+  if (result.rendered) {
+    assert.strictEqual(result.label, "Failed");
+    assert.strictEqual(result.cssVar, "--status-failed");
+    assert.strictEqual(result.isSpinning, false);
+    assert.strictEqual(result.ariaLabel, "Stage: Failed");
+  }
 });
 
 test("halted status + complete stage → null (terminal guard still applies)", () => {
@@ -252,19 +258,19 @@ console.log("\nariaLabel");
 test("in_progress + planning → ariaLabel includes ': active'", () => {
   const result = simulateStageBadge("planning", "in_progress");
   assert.ok(result.rendered);
-  if (result.rendered) assert.strictEqual(result.ariaLabel, "Planning: active");
+  if (result.rendered) assert.strictEqual(result.ariaLabel, "Stage: Planning, active");
 });
 
 test("halted + planning → ariaLabel is just the label (no active suffix)", () => {
   const result = simulateStageBadge("planning", "halted");
   assert.ok(result.rendered);
-  if (result.rendered) assert.strictEqual(result.ariaLabel, "Planning");
+  if (result.rendered) assert.strictEqual(result.ariaLabel, "Stage: Planning");
 });
 
-test("not_started → ariaLabel defaults to 'Not Started'", () => {
+test("not_started → ariaLabel defaults to 'Stage: Not Started'", () => {
   const result = simulateStageBadge("planning", "not_started");
   assert.ok(result.rendered);
-  if (result.rendered) assert.strictEqual(result.ariaLabel, "Not Started");
+  if (result.rendered) assert.strictEqual(result.ariaLabel, "Stage: Not Started");
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

@@ -28,12 +28,13 @@ export function StageBadge({ stage, status }: StageBadgeProps) {
         label={NOT_STARTED_CONFIG.label}
         cssVar={NOT_STARTED_CONFIG.cssVar}
         isSpinning={false}
+        ariaLabel="Stage: Not Started"
       />
     );
   }
 
-  // Terminal stages render nothing
-  if (stage === 'complete' || stage === 'failed') {
+  // Complete stage renders nothing (work is done)
+  if (stage === 'complete') {
     return null;
   }
 
@@ -45,7 +46,7 @@ export function StageBadge({ stage, status }: StageBadgeProps) {
       label={config.label}
       cssVar={config.cssVar}
       isSpinning={isSpinning}
-      ariaLabel={isSpinning ? `${config.label}: active` : undefined}
+      ariaLabel={isSpinning ? `Stage: ${config.label}, active` : `Stage: ${config.label}`}
     />
   );
 }
