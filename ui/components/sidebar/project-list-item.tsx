@@ -37,7 +37,11 @@ export function ProjectListItem({
       {project.hasMalformedState ? (
         <WarningBadge message="Malformed state" />
       ) : (
-        <PipelineTierBadge tier={project.tier} />
+        <PipelineTierBadge
+          tier={project.tier}
+          planningStatus={project.planningStatus}
+          executionStatus={project.executionStatus}
+        />
       )}
     </button>
   );

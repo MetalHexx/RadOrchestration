@@ -149,6 +149,48 @@ function completePlanningStep(state, stepName, docPath) {
   };
 }
 
+/**
+ * Set a planning step's status to in_progress.
+ * Mirrors completePlanningStep() — same signature shape, no doc_path.
+ *
+ * @param {Object} state - Mutable pipeline state
+ * @param {string} stepName - 'research'|'prd'|'design'|'architecture'|'master_plan'
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function startPlanningStep(state, stepName) {
+  const step = state.planning.steps.find(s => s.name === stepName);
+  step.status = PLANNING_STEP_STATUSES.IN_PROGRESS;
+  return {
+    state,
+    mutations_applied: [`Set planning.steps[${stepName}].status to "in_progress"`],
+  };
+}
+
+/** @type {MutationHandler} */
+function handleResearchStarted(state, context, config) {
+  return startPlanningStep(state, 'research');
+}
+
+/** @type {MutationHandler} */
+function handlePrdStarted(state, context, config) {
+  return startPlanningStep(state, 'prd');
+}
+
+/** @type {MutationHandler} */
+function handleDesignStarted(state, context, config) {
+  return startPlanningStep(state, 'design');
+}
+
+/** @type {MutationHandler} */
+function handleArchitectureStarted(state, context, config) {
+  return startPlanningStep(state, 'architecture');
+}
+
+/** @type {MutationHandler} */
+function handleMasterPlanStarted(state, context, config) {
+  return startPlanningStep(state, 'master_plan');
+}
+
 /** @type {MutationHandler} */
 function handleResearchCompleted(state, context, config) {
   return completePlanningStep(state, 'research', context.doc_path);
@@ -636,11 +678,16 @@ function handleHalt(state, context, config) {
 // ─── MUTATIONS Map ──────────────────────────────────────────────────────────
 
 const MUTATIONS = Object.freeze({
-  // Planning (6)
+  // Planning (11)
+  research_started:         handleResearchStarted,
   research_completed:       handleResearchCompleted,
+  prd_started:              handlePrdStarted,
   prd_completed:            handlePrdCompleted,
+  design_started:           handleDesignStarted,
   design_completed:         handleDesignCompleted,
+  architecture_started:     handleArchitectureStarted,
   architecture_completed:   handleArchitectureCompleted,
+  master_plan_started:      handleMasterPlanStarted,
   master_plan_completed:    handleMasterPlanCompleted,
   plan_approved:            handlePlanApproved,
 

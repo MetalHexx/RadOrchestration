@@ -99,12 +99,38 @@ describe('Category 1: Full happy path', () => {
     backdateTimestamp(io.getState());
   });
 
+  it('Step 1b: research_started → spawn_research', () => {
+    backdateTimestamp(io.getState());
+    const result = processEvent('research_started', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_research');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(
+      io.getState().planning.steps.find(s => s.name === 'research').status,
+      'in_progress'
+    );
+  });
+
   it('Step 2: research_completed → spawn_prd', () => {
     const result = processEvent('research_completed', PROJECT_DIR, { doc_path: 'research.md' }, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_prd');
     assert.equal(io.getWrites().length, writeCount);
+  });
+
+  it('Step 2b: prd_started → spawn_prd', () => {
+    backdateTimestamp(io.getState());
+    const result = processEvent('prd_started', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_prd');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(
+      io.getState().planning.steps.find(s => s.name === 'prd').status,
+      'in_progress'
+    );
   });
 
   it('Step 3: prd_completed → spawn_design', () => {
@@ -115,6 +141,19 @@ describe('Category 1: Full happy path', () => {
     assert.equal(io.getWrites().length, writeCount);
   });
 
+  it('Step 3b: design_started → spawn_design', () => {
+    backdateTimestamp(io.getState());
+    const result = processEvent('design_started', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_design');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(
+      io.getState().planning.steps.find(s => s.name === 'design').status,
+      'in_progress'
+    );
+  });
+
   it('Step 4: design_completed → spawn_architecture', () => {
     const result = processEvent('design_completed', PROJECT_DIR, { doc_path: 'design.md' }, io);
     writeCount++;
@@ -123,12 +162,38 @@ describe('Category 1: Full happy path', () => {
     assert.equal(io.getWrites().length, writeCount);
   });
 
+  it('Step 4b: architecture_started → spawn_architecture', () => {
+    backdateTimestamp(io.getState());
+    const result = processEvent('architecture_started', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_architecture');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(
+      io.getState().planning.steps.find(s => s.name === 'architecture').status,
+      'in_progress'
+    );
+  });
+
   it('Step 5: architecture_completed → spawn_master_plan', () => {
     const result = processEvent('architecture_completed', PROJECT_DIR, { doc_path: 'arch.md' }, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_master_plan');
     assert.equal(io.getWrites().length, writeCount);
+  });
+
+  it('Step 5b: master_plan_started → spawn_master_plan', () => {
+    backdateTimestamp(io.getState());
+    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_master_plan');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(
+      io.getState().planning.steps.find(s => s.name === 'master_plan').status,
+      'in_progress'
+    );
   });
 
   it('Step 6: master_plan_completed → request_plan_approval', () => {

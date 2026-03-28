@@ -40,6 +40,11 @@ function makePlanningState() {
 
 describe('getMutation', () => {
   const events = [
+    'research_started',
+    'prd_started',
+    'design_started',
+    'architecture_started',
+    'master_plan_started',
     'research_completed',
     'prd_completed',
     'design_completed',
@@ -233,6 +238,44 @@ describe('planning handlers', () => {
     const result = handler(state, { doc_path: 'MASTER-PLAN.md' }, {});
     assert.equal(result.state.planning.status, 'complete');
   });
+});
+
+// ─── Planning Started Handlers ──────────────────────────────────────────────
+
+describe('planning started handlers', () => {
+  const startedHandlers = [
+    { event: 'research_started', stepName: 'research' },
+    { event: 'prd_started', stepName: 'prd' },
+    { event: 'design_started', stepName: 'design' },
+    { event: 'architecture_started', stepName: 'architecture' },
+    { event: 'master_plan_started', stepName: 'master_plan' },
+  ];
+
+  for (const { event, stepName } of startedHandlers) {
+    describe(`handle ${event}`, () => {
+      let state, result;
+
+      beforeEach(() => {
+        state = makePlanningState();
+        const handler = getMutation(event);
+        result = handler(state, {}, {});
+      });
+
+      it(`sets planning.steps[${stepName}].status to in_progress`, () => {
+        const step = result.state.planning.steps.find(s => s.name === stepName);
+        assert.equal(step.status, 'in_progress');
+      });
+
+      it('does not change step.doc_path', () => {
+        const step = result.state.planning.steps.find(s => s.name === stepName);
+        assert.equal(step.doc_path, null);
+      });
+
+      it('does not change planning.status', () => {
+        assert.equal(result.state.planning.status, 'in_progress');
+      });
+    });
+  }
 });
 
 // ─── handlePlanApproved ─────────────────────────────────────────────────────

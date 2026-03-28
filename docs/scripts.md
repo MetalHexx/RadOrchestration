@@ -45,27 +45,32 @@ Migrates a project’s `state.json` from an older schema version (v1–v3) to v4
 
 ## Event Vocabulary
 
-The pipeline accepts exactly 17 events. Each maps to a mutation handler in the `MUTATIONS` lookup table.
+The pipeline accepts exactly 22 events. Each maps to a mutation handler in the `MUTATIONS` lookup table.
 
 | # | Event | Tier | Description |
 |---|-------|------|-------------|
-| 1 | `research_completed` | Planning | Research finished; sets `planning.steps[0].status` → complete, `planning.steps[0].doc_path` |
-| 2 | `prd_completed` | Planning | PRD created; sets `planning.steps[1].status` → complete |
-| 3 | `design_completed` | Planning | Design doc created; sets `planning.steps[2].status` → complete |
-| 4 | `architecture_completed` | Planning | Architecture created; sets `planning.steps[3].status` → complete |
-| 5 | `master_plan_completed` | Planning | Master plan created; sets `planning.steps[4].status` → complete, `planning.status` → complete |
-| 6 | `plan_approved` | Planning | Human approved; sets `planning.human_approved`, transitions `pipeline.current_tier` → execution |
-| 7 | `phase_plan_created` | Execution | Phase plan saved; sets `phase.docs.phase_plan`, `phase.status` → in_progress, `phase.stage` → executing |
-| 8 | `task_handoff_created` | Execution | Task handoff saved; sets `task.docs.handoff`, `task.status` → in_progress, `task.stage` → coding |
-| 9 | `task_completed` | Execution | Coder finished; sets `task.docs.report`, `task.stage` → reviewing (`status` stays in_progress) |
-| 10 | `code_review_completed` | Execution | Review finished; sets `task.docs.review`, `task.review.verdict`, `task.review.action`; resolves task outcome |
-| 11 | `phase_report_created` | Execution | Phase report saved; sets `phase.docs.phase_report`, `phase.stage` → reviewing |
-| 12 | `phase_review_completed` | Execution | Phase review finished; sets `phase.docs.phase_review`, `phase.review.verdict`, `phase.review.action`; resolves phase outcome |
-| 13 | `task_approved` | Execution | Human approved task gate |
-| 14 | `phase_approved` | Execution | Human approved phase gate |
-| 15 | `final_review_completed` | Review | Final review saved; sets `final_review.doc_path`, `final_review.status` → complete |
-| 16 | `final_approved` | Review | Human approved final review; sets `final_review.human_approved`, transitions `pipeline.current_tier` → complete |
-| 17 | `halt` | Any | Halt the pipeline with a reason |
+| 1 | `research_started` | Planning | Research step begun; sets `planning.steps[0].status` → in_progress |
+| 2 | `research_completed` | Planning | Research finished; sets `planning.steps[0].status` → complete, `planning.steps[0].doc_path` |
+| 3 | `prd_started` | Planning | PRD step begun; sets `planning.steps[1].status` → in_progress |
+| 4 | `prd_completed` | Planning | PRD created; sets `planning.steps[1].status` → complete |
+| 5 | `design_started` | Planning | Design step begun; sets `planning.steps[2].status` → in_progress |
+| 6 | `design_completed` | Planning | Design doc created; sets `planning.steps[2].status` → complete |
+| 7 | `architecture_started` | Planning | Architecture step begun; sets `planning.steps[3].status` → in_progress |
+| 8 | `architecture_completed` | Planning | Architecture created; sets `planning.steps[3].status` → complete |
+| 9 | `master_plan_started` | Planning | Master plan step begun; sets `planning.steps[4].status` → in_progress |
+| 10 | `master_plan_completed` | Planning | Master plan created; sets `planning.steps[4].status` → complete, `planning.status` → complete |
+| 11 | `plan_approved` | Planning | Human approved; sets `planning.human_approved`, transitions `pipeline.current_tier` → execution |
+| 12 | `phase_plan_created` | Execution | Phase plan saved; sets `phase.docs.phase_plan`, `phase.status` → in_progress, `phase.stage` → executing |
+| 13 | `task_handoff_created` | Execution | Task handoff saved; sets `task.docs.handoff`, `task.status` → in_progress, `task.stage` → coding |
+| 14 | `task_completed` | Execution | Coder finished; sets `task.docs.report`, `task.stage` → reviewing (`status` stays in_progress) |
+| 15 | `code_review_completed` | Execution | Review finished; sets `task.docs.review`, `task.review.verdict`, `task.review.action`; resolves task outcome |
+| 16 | `phase_report_created` | Execution | Phase report saved; sets `phase.docs.phase_report`, `phase.stage` → reviewing |
+| 17 | `phase_review_completed` | Execution | Phase review finished; sets `phase.docs.phase_review`, `phase.review.verdict`, `phase.review.action`; resolves phase outcome |
+| 18 | `task_approved` | Execution | Human approved task gate |
+| 19 | `phase_approved` | Execution | Human approved phase gate |
+| 20 | `final_review_completed` | Review | Final review saved; sets `final_review.doc_path`, `final_review.status` → complete |
+| 21 | `final_approved` | Review | Human approved final review; sets `final_review.human_approved`, transitions `pipeline.current_tier` → complete |
+| 22 | `halt` | Any | Halt the pipeline with a reason |
 
 ---
 

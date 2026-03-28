@@ -68,6 +68,10 @@ export async function discoverProjects(
     const projectDir = resolveProjectDir(workspaceRoot, basePath, projectName);
     const statePath = path.join(projectDir, 'state.json');
 
+    const brainstormingFile = `${projectName}-BRAINSTORMING.md`;
+    const brainstormingAbsPath = path.join(projectDir, brainstormingFile);
+    const hasBrainstorming = await fileExists(brainstormingAbsPath);
+
     try {
       const raw = await readFile(statePath, 'utf-8');
       const state: ProjectState = JSON.parse(raw);
@@ -76,6 +80,9 @@ export async function discoverProjects(
         tier: state.pipeline.current_tier,
         hasState: true,
         hasMalformedState: false,
+        brainstormingDoc: hasBrainstorming ? brainstormingFile : null,
+        planningStatus: state.planning?.status,
+        executionStatus: state.execution?.status,
       });
     } catch (err) {
       // Determine if the file is missing or malformed
@@ -90,6 +97,7 @@ export async function discoverProjects(
           tier: 'not_initialized',
           hasState: false,
           hasMalformedState: false,
+          brainstormingDoc: hasBrainstorming ? brainstormingFile : null,
         });
       } else {
         projects.push({
@@ -99,6 +107,7 @@ export async function discoverProjects(
           hasMalformedState: true,
           errorMessage:
             err instanceof Error ? err.message : 'Unknown parse error',
+          brainstormingDoc: hasBrainstorming ? brainstormingFile : null,
         });
       }
     }

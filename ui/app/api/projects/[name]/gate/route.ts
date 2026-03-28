@@ -80,9 +80,7 @@ export async function POST(
       const docPath = masterPlanStep?.doc_path;
       if (docPath) contextPayload.doc_path = docPath;
     } else if (event === 'final_approved') {
-      const raw = state as unknown as Record<string, unknown>;
-      const exec = raw.execution as Record<string, unknown> | undefined;
-      const docPath = exec?.final_review_doc as string | undefined;
+      const docPath = state.final_review?.doc_path;
       if (docPath) contextPayload.doc_path = docPath;
     }
 

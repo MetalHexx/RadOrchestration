@@ -57,6 +57,22 @@ export function useProjects(): UseProjectsReturn {
       switch (event.type) {
         case "state_change": {
           const payload = event.payload as { projectName: string; state: ProjectState };
+
+          // Unconditionally patch the projects array (sidebar reactivity)
+          setProjects(prev =>
+            prev.map(p =>
+              p.name === payload.projectName
+                ? {
+                    ...p,
+                    tier: payload.state.pipeline.current_tier,
+                    planningStatus: payload.state.planning?.status,
+                    executionStatus: payload.state.execution?.status,
+                  }
+                : p
+            )
+          );
+
+          // Existing behaviour: update detail view for the selected project
           if (payload.projectName === currentSelected) {
             setProjectState(payload.state);
           }

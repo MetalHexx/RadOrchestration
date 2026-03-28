@@ -1,4 +1,4 @@
-import type { PipelineTier } from './state';
+import type { PipelineTier, PlanningStatus, ExecutionStatus } from './state';
 
 /** Sidebar project entry */
 export interface ProjectSummary {
@@ -8,6 +8,8 @@ export interface ProjectSummary {
   hasMalformedState: boolean;
   errorMessage?: string;
   brainstormingDoc?: string | null;
+  planningStatus?: PlanningStatus;
+  executionStatus?: ExecutionStatus;
 }
 
 /** Gate history entry for the timeline */

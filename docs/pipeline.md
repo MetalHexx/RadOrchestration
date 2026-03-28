@@ -103,19 +103,24 @@ sequenceDiagram
     Human->>ORC: "Build me X"
     Note over ORC: pipeline.js --event start (initializes state.json)
 
+    Note over ORC: event research_started
     ORC->>RSC: Research codebase & context
     Note right of RSC: reads BRAINSTORMING.md if present
     RSC-->>ORC: RESEARCH-FINDINGS.md
 
+    Note over ORC: event prd_started
     ORC->>PM: Create requirements
     PM-->>ORC: PRD.md
 
+    Note over ORC: event design_started
     ORC->>UX: Create design
     UX-->>ORC: DESIGN.md
 
+    Note over ORC: event architecture_started
     ORC->>ARC: Create architecture
     ARC-->>ORC: ARCHITECTURE.md
 
+    Note over ORC: event master_plan_started
     ORC->>ARC: Create master plan
     ARC-->>ORC: MASTER-PLAN.md
 
