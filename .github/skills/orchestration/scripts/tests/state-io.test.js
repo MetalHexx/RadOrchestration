@@ -337,3 +337,78 @@ describe('bootstrapOrchRoot', () => {
     assert.strictEqual(result1, result2);
   });
 });
+
+// ─── pipeline.source_control round-trip ─────────────────────────────────────
+
+describe('pipeline.source_control round-trip', () => {
+  let tmpDir;
+  beforeEach(() => { tmpDir = makeTmpDir(); });
+  afterEach(() => { cleanTmpDir(tmpDir); });
+
+  it('writeState then readState preserves pipeline.source_control', () => {
+    const state = makeValidState();
+    state.pipeline.current_tier = 'execution';
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    writeState(tmpDir, state);
+    const result = readState(tmpDir);
+    assert.ok(result.pipeline.source_control);
+    assert.equal(result.pipeline.source_control.branch, 'feat/x');
+    assert.equal(result.pipeline.source_control.base_branch, 'main');
+    assert.equal(result.pipeline.source_control.worktree_path, '/wt');
+    assert.equal(result.pipeline.source_control.auto_commit, 'always');
+    assert.equal(result.pipeline.source_control.auto_pr, 'never');
+  });
+
+  it('state without pipeline.source_control reads without error (graceful absence)', () => {
+    const state = makeValidState();
+    state.pipeline.current_tier = 'planning';
+    // No source_control set
+    writeState(tmpDir, state);
+    const result = readState(tmpDir);
+    assert.equal(result.pipeline.source_control, undefined);
+  });
+});
+
+// ─── DEFAULT_CONFIG.source_control ──────────────────────────────────────────
+
+describe('DEFAULT_CONFIG.source_control', () => {
+  it('has source_control defaults (auto_commit: ask, auto_pr: ask, provider: github)', () => {
+    assert.ok(DEFAULT_CONFIG.source_control);
+    assert.equal(DEFAULT_CONFIG.source_control.auto_commit, 'ask');
+    assert.equal(DEFAULT_CONFIG.source_control.auto_pr, 'ask');
+    assert.equal(DEFAULT_CONFIG.source_control.provider, 'github');
+  });
+});
+
+// ─── mergeConfig source_control ─────────────────────────────────────────────
+
+describe('mergeConfig source_control', () => {
+  let tmpDir;
+  beforeEach(() => { tmpDir = makeTmpDir(); });
+  afterEach(() => { cleanTmpDir(tmpDir); });
+
+  it('merges source_control overrides from config file', () => {
+    const configPath = path.join(tmpDir, 'orchestration.yml');
+    fs.writeFileSync(configPath, 'source_control:\n  auto_commit: "always"\n', 'utf-8');
+    const config = readConfig(configPath);
+    assert.equal(config.source_control.auto_commit, 'always');
+    assert.equal(config.source_control.auto_pr, 'ask'); // default preserved
+  });
+});
+
+// ─── CF-3: fs-helpers dependency ────────────────────────────────────────────
+
+describe('CF-3: fs-helpers dependency', () => {
+  it('state-io.js loads without MODULE_NOT_FOUND errors', () => {
+    // This test passes by virtue of the require at the top of this file succeeding.
+    // If the fs-helpers dependency did not resolve, this entire test file would fail to load.
+    assert.ok(readState, 'readState function should be defined');
+    assert.ok(writeState, 'writeState function should be defined');
+  });
+});

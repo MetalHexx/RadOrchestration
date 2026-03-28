@@ -444,9 +444,9 @@ it('Scenario 11: final_rejected resets final_review.doc_path and status', () => 
   assert.equal(result.action, 'spawn_final_reviewer');
 });
 
-// ─── Scenario 12: MUTATIONS table has exactly 20 handlers ────────────────────
+// ─── Scenario 12: MUTATIONS table has exactly 23 handlers ────────────────────
 
-it('Scenario 12: MUTATIONS table has exactly 20 handlers', () => {
+it('Scenario 12: MUTATIONS table has exactly 23 handlers', () => {
   const expectedEvents = [
     // Planning (6)
     'research_completed',
@@ -464,6 +464,10 @@ it('Scenario 12: MUTATIONS table has exactly 20 handlers', () => {
     'code_review_completed',
     'phase_report_created',
     'phase_review_completed',
+    // Source control (3)
+    'source_control_init',
+    'task_commit_requested',
+    'task_committed',
     // Gate events (3)
     'gate_mode_set',
     'gate_approved',
@@ -476,8 +480,8 @@ it('Scenario 12: MUTATIONS table has exactly 20 handlers', () => {
     'halt',
   ];
 
-  // Must be exactly 20 events
-  assert.equal(expectedEvents.length, 20);
+  // Must be exactly 23 events
+  assert.equal(expectedEvents.length, 23);
 
   // Every known event must map to a function
   for (const event of expectedEvents) {
@@ -491,4 +495,137 @@ it('Scenario 12: MUTATIONS table has exactly 20 handlers', () => {
 
   // Unknown events must return undefined
   assert.equal(getMutation('nonexistent_event'), undefined);
+});
+
+// ─── Scenarios 13-16: auto_commit × gate mode interactions ──────────────────
+
+describe('Scenarios 13-16: auto_commit × gate mode interactions', () => {
+  /**
+   * Build a state at the point just AFTER code_review_completed approved with
+   * auto_commit=always — task is at stage=complete, review.action=advanced,
+   * pointer NOT bumped. This is the commit-defer state.
+   */
+  function makeCommitDeferState(gateMode) {
+    const state = createBaseState({
+      pipeline: {
+        current_tier: 'execution',
+        gate_mode: gateMode,
+        source_control: {
+          branch: 'feat/x',
+          base_branch: 'main',
+          worktree_path: '/wt',
+          auto_commit: 'always',
+          auto_pr: 'never',
+        },
+      },
+      planning: {
+        status: 'complete',
+        human_approved: true,
+        steps: [
+          { name: 'research', status: 'complete', doc_path: 'r.md' },
+          { name: 'prd', status: 'complete', doc_path: 'p.md' },
+          { name: 'design', status: 'complete', doc_path: 'd.md' },
+          { name: 'architecture', status: 'complete', doc_path: 'a.md' },
+          { name: 'master_plan', status: 'complete', doc_path: 'mp.md' },
+        ],
+      },
+      execution: {
+        status: 'in_progress',
+        current_phase: 1,
+        phases: [{
+          name: 'Phase 1',
+          status: 'in_progress',
+          stage: 'executing',
+          current_task: 1,
+          tasks: [{
+            name: 'T01', status: 'complete', stage: 'complete',
+            docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+            review: { verdict: 'approved', action: 'advanced' },
+            report_status: 'complete',
+            has_deviations: false, deviation_type: null, retries: 0,
+          }],
+          docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
+          review: { verdict: null, action: null },
+        }],
+      },
+    });
+    delete state.project.updated;
+    return state;
+  }
+
+  it('Scenario 13: auto_commit=always + gate_mode=phase → invoke_source_control_commit', () => {
+    const state = makeCommitDeferState('phase');
+    const io = createMockIO({ state });
+    const result = processEvent('start', PROJECT_DIR, {}, io);
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+    assert.equal(result.context.branch, 'feat/x');
+    assert.equal(io.getWrites().length, 0); // cold-start → no write
+  });
+
+  it('Scenario 14: auto_commit=always + gate_mode=task → gate_task (task-gate takes precedence)', () => {
+    const state = makeCommitDeferState('task');
+    const io = createMockIO({ state });
+    const result = processEvent('start', PROJECT_DIR, {}, io);
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'gate_task');
+    // Verify gate_task context does NOT contain branch/worktree
+    assert.equal(result.context.branch, undefined);
+  });
+
+  it('Scenario 15: auto_commit=always + gate_mode=autonomous → invoke_source_control_commit', () => {
+    const state = makeCommitDeferState('autonomous');
+    const io = createMockIO({ state });
+    const result = processEvent('start', PROJECT_DIR, {}, io);
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+  });
+
+  it('Scenario 16: auto_commit=never → standard pointer-bumped flow (no commit involvement)', () => {
+    // With auto_commit=never, handleCodeReviewCompleted bumps pointer immediately.
+    // So this state has pointer=2 (already past the last task), stage=executing.
+    const state = createBaseState({
+      pipeline: {
+        current_tier: 'execution',
+        gate_mode: 'phase',
+        source_control: {
+          branch: 'feat/x', base_branch: 'main', worktree_path: '/wt',
+          auto_commit: 'never', auto_pr: 'never',
+        },
+      },
+      planning: {
+        status: 'complete',
+        human_approved: true,
+        steps: [
+          { name: 'research', status: 'complete', doc_path: 'r.md' },
+          { name: 'prd', status: 'complete', doc_path: 'p.md' },
+          { name: 'design', status: 'complete', doc_path: 'd.md' },
+          { name: 'architecture', status: 'complete', doc_path: 'a.md' },
+          { name: 'master_plan', status: 'complete', doc_path: 'mp.md' },
+        ],
+      },
+      execution: {
+        status: 'in_progress',
+        current_phase: 1,
+        phases: [{
+          name: 'Phase 1', status: 'in_progress', stage: 'executing',
+          current_task: 2,  // pointer already bumped past 1 task
+          tasks: [{
+            name: 'T01', status: 'complete', stage: 'complete',
+            docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+            review: { verdict: 'approved', action: 'advanced' },
+            report_status: 'complete',
+            has_deviations: false, deviation_type: null, retries: 0,
+          }],
+          docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
+          review: { verdict: null, action: null },
+        }],
+      },
+    });
+    delete state.project.updated;
+    const io = createMockIO({ state });
+    const result = processEvent('start', PROJECT_DIR, {}, io);
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'generate_phase_report'); // standard flow, no commit
+  });
 });

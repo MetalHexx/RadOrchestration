@@ -44,6 +44,7 @@ To customize the **output format** of documents a skill produces, modify the ski
 | `generate-phase-report` | Summarize phase outcomes — aggregated task results, exit criteria assessment, carry-forward items | Tactical Planner |
 | `run-tests` | Execute the project test suite and report structured results with pass/fail and error details | Coder, Tactical Planner |
 | `log-error` | Log pipeline errors to a structured, append-only per-project error log (`ERROR-LOG.md`) | Orchestrator |
+| `source-control` | Source control automation — git commit and push via CLI wrapper; PR creation via GitHub CLI (AUTO-PR stub) | Source Control Agent |
 
 ### Review Skills
 
@@ -80,6 +81,7 @@ Each agent is explicitly assigned skills in its `.agent.md` frontmatter. This ta
 | Tactical Planner | `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
 | Coder | `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests` |
 | Reviewer | `orchestration`, `review-task`, `review-phase` |
+| Source Control Agent | `orchestration`, `source-control` |
 
 ## Skill Recommendation in Task Handoffs
 

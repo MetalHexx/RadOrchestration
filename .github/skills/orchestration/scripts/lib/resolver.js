@@ -237,6 +237,8 @@ function resolveTask(task, phase, phaseNumber, taskNumber, state, config) {
 
 function resolveTaskGate(phaseNumber, taskNumber, state, config) {
   const mode = resolveGateMode(state, config);
+
+  // Task-gate check first (takes precedence over auto_commit)
   if (mode === HUMAN_GATE_MODES.TASK) {
     return {
       action: NEXT_ACTIONS.GATE_TASK,
@@ -248,8 +250,29 @@ function resolveTaskGate(phaseNumber, taskNumber, state, config) {
       },
     };
   }
-  // ask/autonomous/phase modes at task level: no gate — mutations should advance pointer
-  return halted(`Task ${formatTaskId(phaseNumber, taskNumber)} is advanced but no gate required — expected mutation to advance pointer`);
+
+  // Commit-defer check (non-task-gate modes only)
+  // State must have been left with deferred pointer by handleCodeReviewCompleted
+  if (state.pipeline.source_control?.auto_commit === 'always') {
+    return {
+      action: NEXT_ACTIONS.INVOKE_SOURCE_CONTROL_COMMIT,
+      context: {
+        phase_number: phaseNumber,
+        task_number: taskNumber,
+        phase_id: formatPhaseId(phaseNumber),
+        task_id: formatTaskId(phaseNumber, taskNumber),
+        branch: state.pipeline.source_control.branch,
+        worktree_path: state.pipeline.source_control.worktree_path,
+      },
+    };
+  }
+
+  // Fallback — should not be reached: mutation should have bumped pointer
+  return halted(
+    `Task ${formatTaskId(phaseNumber, taskNumber)} is advanced but ` +
+    `no gate required and auto_commit is not 'always' — ` +
+    `expected mutation to advance pointer`
+  );
 }
 
 function resolvePhaseGate(phaseNumber, state, config) {

@@ -1,6 +1,6 @@
 # Agents
 
-The orchestration system uses 9 specialized agents, each with a defined role, scoped tool access, and strict write permissions. Agents communicate through structured markdown documents — never through shared memory or message passing.
+The orchestration system uses 10 specialized agents, each with a defined role, scoped tool access, and strict write permissions. Agents communicate through structured markdown documents — never through shared memory or message passing.
 
 ## Agent Overview
 
@@ -15,6 +15,7 @@ The orchestration system uses 9 specialized agents, each with a defined role, sc
 | **Tactical Planner** | Task breakdown and phase reporting | `PHASE-PLAN.md`, `TASK-HANDOFF.md`, `PHASE-REPORT.md` |
 | **Coder** | Code implementation | Code, tests, `TASK-REPORT.md` |
 | **Reviewer** | Code and phase review | `CODE-REVIEW.md`, `PHASE-REVIEW.md` |
+| **Source Control Agent** | Thin-router for git operations — commit and push (PR stubbed for AUTO-PR) | Code (via `git-commit.js` script only) |
 
 
 
@@ -40,7 +41,7 @@ The Brainstormer works directly with the human in a conversational loop — aski
 
 **Purpose:** Read project state and coordinate the pipeline by spawning the right agent at the right time.
 
-The Orchestrator is the entry point for all project interactions. It signals events to `pipeline.js`, parses the JSON result, and routes on a 19-action table to spawn the appropriate agent, present human gates, or display terminal messages. When the pipeline returns a failure result, the Orchestrator invokes the log-error skill to append a structured entry to the project's ERROR-LOG.md.
+The Orchestrator is the entry point for all project interactions. It signals events to `pipeline.js`, parses the JSON result, and routes on a 20-action table to spawn the appropriate agent, present human gates, or display terminal messages. When the pipeline returns a failure result, the Orchestrator invokes the log-error skill to append a structured entry to the project's ERROR-LOG.md.
 
 **Input:** Human prompts, `state.json`, pipeline script results
 **Output:** None — strictly read-only, prompts agents to do work.
@@ -156,8 +157,31 @@ The Reviewer operates at three levels:
 
 **Skills:** `orchestration`, `review-task`, `review-phase`
 
+---
+
+### Source Control Agent
+
+**Purpose:** Execute git commit and push operations after approved tasks, delegating all logic to the `source-control` skill.
+
+The Source Control Agent is a thin router — it loads the `source-control` skill and delegates entirely to the skill's routing table. In commit mode, it reads `pipeline.source_control` from state, constructs a conventional commit message, and runs `git-commit.js` to stage, commit, and push. In PR mode (AUTO-PR), it will delegate to `pr-guide.md` and `gh-pr.js` — both are currently stubs.
+
+**Modes:**
+
+| Mode | Trigger Action | Skill Reference | Script |
+|------|---------------|-----------------|--------|
+| commit | `invoke_source_control_commit` | `references/operations-guide.md` | `scripts/git-commit.js` |
+| PR *(AUTO-PR)* | `invoke_source_control_pr` | `references/pr-guide.md` *(stub)* | `scripts/gh-pr.js` *(stub)* |
+
+**Tool restrictions:** `read`, `execute`, `todo` only — no `edit` tool. Source files are the Coder's domain.
+
+**Input:** `state.json` (`pipeline.source_control` sub-object), task handoff title (for commit message prefix)
+
+**Output:** Structured commit result (commit hash, push status, errors) signaled back via `task_committed` event.
+
+**Skills:** `orchestration`, `source-control`
+
 ## Next Steps
 
-- [Skills](skills.md) — Explore the 18 skill bundles agents use
+- [Skills](skills.md) — Explore the 19 skill bundles agents use
 - [Templates](templates.md) — See the 16 output templates skills produce
 

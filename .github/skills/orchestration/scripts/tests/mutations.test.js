@@ -1282,6 +1282,282 @@ describe('handlePhasePlanCreated stale field clearing', () => {
   });
 });
 
+// ─── handleSourceControlInit ────────────────────────────────────────────────
+
+const { handleSourceControlInit, handleTaskCommitRequested, handleTaskCommitted } = _test;
+
+describe('handleSourceControlInit', () => {
+  it('writes all 5 fields to pipeline.source_control', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const result = handleSourceControlInit(state, context, defaultConfig);
+    assert.equal(result.state.pipeline.source_control.branch, 'feat/x');
+    assert.equal(result.state.pipeline.source_control.base_branch, 'main');
+    assert.equal(result.state.pipeline.source_control.worktree_path, '/wt');
+    assert.equal(result.state.pipeline.source_control.auto_commit, 'always');
+    assert.equal(result.state.pipeline.source_control.auto_pr, 'never');
+  });
+
+  it('returns mutations_applied with 5 entries', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const result = handleSourceControlInit(state, context, defaultConfig);
+    assert.equal(result.mutations_applied.length, 5);
+  });
+
+  it('throws on missing required field "branch"', () => {
+    const state = makeExecutionState();
+    const context = {
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    assert.throws(
+      () => handleSourceControlInit(state, context, defaultConfig),
+      (err) => err.message.includes('missing required field "branch"')
+    );
+  });
+
+  it('throws on missing required field "auto_commit"', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_pr: 'never',
+    };
+    assert.throws(
+      () => handleSourceControlInit(state, context, defaultConfig),
+      (err) => err.message.includes('missing required field "auto_commit"')
+    );
+  });
+
+  it('idempotent — second call with same context produces same state', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    handleSourceControlInit(state, context, defaultConfig);
+    const firstSC = JSON.stringify(state.pipeline.source_control);
+    handleSourceControlInit(state, context, defaultConfig);
+    const secondSC = JSON.stringify(state.pipeline.source_control);
+    assert.equal(firstSC, secondSC);
+  });
+
+  it('full replacement — second call with different context overwrites', () => {
+    const state = makeExecutionState();
+    const contextA = {
+      branch: 'feat/a',
+      base_branch: 'main',
+      worktree_path: '/wt-a',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const contextB = {
+      branch: 'feat/b',
+      base_branch: 'develop',
+      worktree_path: '/wt-b',
+      auto_commit: 'never',
+      auto_pr: 'always',
+    };
+    handleSourceControlInit(state, contextA, defaultConfig);
+    handleSourceControlInit(state, contextB, defaultConfig);
+    assert.equal(state.pipeline.source_control.branch, 'feat/b');
+    assert.equal(state.pipeline.source_control.base_branch, 'develop');
+    assert.equal(state.pipeline.source_control.worktree_path, '/wt-b');
+    assert.equal(state.pipeline.source_control.auto_commit, 'never');
+    assert.equal(state.pipeline.source_control.auto_pr, 'always');
+  });
+});
+
+// ─── handleCodeReviewCompleted commit-defer path ────────────────────────────
+
+describe('handleCodeReviewCompleted commit-defer path', () => {
+  it('auto_commit=always with non-task gate: pointer NOT bumped', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = 'phase';
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'r.md', verdict: 'approved' }, defaultConfig);
+    assert.equal(result.state.execution.phases[0].current_task, 1); // NOT bumped
+    assert.equal(result.state.execution.phases[0].tasks[0].stage, 'complete');
+    assert.ok(result.mutations_applied.some(m => m.includes('Deferred')));
+    assert.ok(result.mutations_applied.some(m => m.includes('auto_commit')));
+  });
+
+  it('auto_commit=never: pointer bumped immediately', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = 'phase';
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'never',
+      auto_pr: 'never',
+    };
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'r.md', verdict: 'approved' }, defaultConfig);
+    assert.equal(result.state.execution.phases[0].current_task, 2); // bumped
+  });
+
+  it('auto_commit absent (no source_control): pointer bumped immediately', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = 'phase';
+    // No source_control set
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    const handler = getMutation('code_review_completed');
+    // Config also has no source_control to test full fallback
+    const cfg = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
+    const result = handler(state, { doc_path: 'r.md', verdict: 'approved' }, cfg);
+    assert.equal(result.state.execution.phases[0].current_task, 2); // bumped (fallback to never)
+  });
+
+  it('task-gate takes precedence over auto_commit=always', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = 'task';
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'r.md', verdict: 'approved' }, defaultConfig);
+    assert.equal(result.state.execution.phases[0].current_task, 1); // NOT bumped
+    assert.ok(result.mutations_applied.some(m => m.includes('Deferred')));
+    assert.ok(result.mutations_applied.some(m => m.includes('task')));
+    assert.ok(!result.mutations_applied.some(m => m.includes('auto_commit')));
+  });
+
+  it('auto_commit resolved from config when absent in state', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = 'phase';
+    // No source_control in state
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    const cfg = {
+      limits: { max_retries_per_task: 2 },
+      human_gates: { execution_mode: 'autonomous' },
+      source_control: { auto_commit: 'always' },
+    };
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'r.md', verdict: 'approved' }, cfg);
+    assert.equal(result.state.execution.phases[0].current_task, 1); // deferred by config auto_commit
+  });
+});
+
+// ─── handleTaskCommitRequested ──────────────────────────────────────────────
+
+describe('handleTaskCommitRequested', () => {
+  it('branch present: no state change, logs validation success', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const originalCurrentTask = state.execution.phases[0].current_task;
+    const result = handleTaskCommitRequested(state, {}, defaultConfig);
+    assert.equal(state.execution.phases[0].current_task, originalCurrentTask);
+    assert.ok(result.mutations_applied.some(m => m.includes('Commit request validated')));
+  });
+
+  it('source_control absent: bumps pointer (graceful skip)', () => {
+    const state = makeExecutionState();
+    // No source_control set
+    const originalCurrentTask = state.execution.phases[0].current_task;
+    const result = handleTaskCommitRequested(state, {}, defaultConfig);
+    assert.equal(state.execution.phases[0].current_task, originalCurrentTask + 1);
+    assert.ok(result.mutations_applied.some(m => m.includes('skipping commit')));
+  });
+
+  it('source_control.branch empty string: bumps pointer', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: '',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const originalCurrentTask = state.execution.phases[0].current_task;
+    const result = handleTaskCommitRequested(state, {}, defaultConfig);
+    assert.equal(state.execution.phases[0].current_task, originalCurrentTask + 1);
+  });
+
+  it('returns mutations_applied array in both paths', () => {
+    const stateWithBranch = makeExecutionState();
+    stateWithBranch.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const result1 = handleTaskCommitRequested(stateWithBranch, {}, defaultConfig);
+    assert.ok(Array.isArray(result1.mutations_applied));
+    assert.ok(result1.mutations_applied.length > 0);
+
+    const stateWithoutBranch = makeExecutionState();
+    const result2 = handleTaskCommitRequested(stateWithoutBranch, {}, defaultConfig);
+    assert.ok(Array.isArray(result2.mutations_applied));
+    assert.ok(result2.mutations_applied.length > 0);
+  });
+});
+
+// ─── handleTaskCommitted ────────────────────────────────────────────────────
+
+describe('handleTaskCommitted', () => {
+  it('always bumps phase.current_task by 1', () => {
+    const state = makeExecutionState();
+    const originalCurrentTask = state.execution.phases[0].current_task;
+    const result = handleTaskCommitted(state, {}, defaultConfig);
+    assert.equal(state.execution.phases[0].current_task, originalCurrentTask + 1);
+  });
+
+  it('returns mutations_applied with descriptive entry', () => {
+    const state = makeExecutionState();
+    const result = handleTaskCommitted(state, {}, defaultConfig);
+    assert.ok(result.mutations_applied[0].toLowerCase().includes('task committed') || result.mutations_applied[0].toLowerCase().includes('current_task'));
+  });
+
+  it('context fields are accepted but do not affect behavior', () => {
+    const state1 = makeExecutionState();
+    const state2 = makeExecutionState();
+    const result1 = handleTaskCommitted(state1, {}, defaultConfig);
+    const result2 = handleTaskCommitted(state2, { task_id: 'P01-T01', committed: true, pushed: false }, defaultConfig);
+    assert.equal(state1.execution.phases[0].current_task, state2.execution.phases[0].current_task);
+  });
+});
+
 // ─── Review State Helper ────────────────────────────────────────────────────
 
 function makeReviewState() {
@@ -1573,9 +1849,9 @@ describe('handleFinalRejected', () => {
   });
 });
 
-// ─── getMutation dispatch for all 22 events ─────────────────────────────────
+// ─── getMutation dispatch for all 25 events ─────────────────────────────────
 
-describe('getMutation (all 22 events)', () => {
+describe('getMutation (all 25 events)', () => {
   const allEvents = [
     'research_completed',
     'prd_completed',
@@ -1592,6 +1868,9 @@ describe('getMutation (all 22 events)', () => {
     'code_review_completed',
     'phase_report_created',
     'phase_review_completed',
+    'source_control_init',
+    'task_commit_requested',
+    'task_committed',
     'gate_mode_set',
     'gate_approved',
     'gate_rejected',
@@ -1607,12 +1886,12 @@ describe('getMutation (all 22 events)', () => {
     });
   }
 
-  it('has exactly 22 registered events', () => {
+  it('has exactly 25 registered events', () => {
     let count = 0;
     for (const event of allEvents) {
       if (getMutation(event)) count++;
     }
-    assert.equal(count, 22);
+    assert.equal(count, 25);
   });
 
   it('does NOT contain task_approved', () => {

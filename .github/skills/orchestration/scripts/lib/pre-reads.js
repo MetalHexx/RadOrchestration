@@ -132,6 +132,9 @@ const PRE_READ_HANDLERS = {
   'code_review_completed': handleCodeReviewCompleted,
   'phase_plan_created': handlePhasePlanCreated,
   'phase_review_completed': handlePhaseReviewCompleted,
+  'source_control_init': (context) => success(context),
+  'task_commit_requested': (context) => success(context),
+  'task_committed': (context) => success(context),
 };
 
 // ─── Entry Point ────────────────────────────────────────────────────────────

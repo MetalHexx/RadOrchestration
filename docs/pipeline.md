@@ -1,6 +1,6 @@
 # Pipeline
 
-The orchestration pipeline takes a project from idea through planning, execution, and review. The Orchestrator operates as an event-driven controller: it signals events to `pipeline.js`, parses JSON results, and routes on a 19-action table. The pipeline script (`pipeline.js`) is the sole state-mutation authority — it internalizes all state transitions, validation, and next-action resolution to maximize determinism in your agentic SDLC.
+The orchestration pipeline takes a project from idea through planning, execution, and review. The Orchestrator operates as an event-driven controller: it signals events to `pipeline.js`, parses JSON results, and routes on a 20-action table. The pipeline script (`pipeline.js`) is the sole state-mutation authority — it internalizes all state transitions, validation, and next-action resolution to maximize determinism in your agentic SDLC.
 
 ```mermaid
 flowchart LR
@@ -262,7 +262,7 @@ The pipeline script encodes this logic in a deterministic decision table — the
 
 ## Pipeline Routing
 
-Pipeline routing is event-driven. The Orchestrator signals events to `pipeline.js` and receives one of 19 possible actions in the JSON result. All routing is deterministic: the same event combined with the same `state.json` always produces the same result.
+Pipeline routing is event-driven. The Orchestrator signals events to `pipeline.js` and receives one of 20 possible actions in the JSON result. All routing is deterministic: the same event combined with the same `state.json` always produces the same result.
 
 The Orchestrator calls `pipeline.js`, reads `result.action`, and performs the corresponding operation (spawn an agent, present a human gate, or terminate the loop).
 
@@ -306,7 +306,7 @@ The canonical task report status values are `complete` and `failed`. The synonym
 
 The `generate-task-report` skill enforces the canonical values at the source. Coders document pre-existing or out-of-scope concerns in the Task Report's "Pre-existing Issues" section rather than using a middle-ground status.
 
-### 19-Action Routing Table
+### 20-Action Routing Table
 
 | # | Action | Category | Orchestrator Operation |
 |---|--------|----------|----------------------|
@@ -329,6 +329,19 @@ The `generate-task-report` skill enforces the canonical values at the source. Co
 | 17 | `ask_gate_mode` | Human gate | Prompt human for execution gate mode preference |
 | 18 | `display_halted` | Terminal | Display halt message — loop terminates |
 | 19 | `display_complete` | Terminal | Display completion — loop terminates |
+| 20 | `invoke_source_control_commit` | Agent spawn | Spawn **Source Control Agent** in commit mode. Agent reads `pipeline.source_control` from state, constructs commit message, executes `git-commit.js`. On completion, signal `task_committed`. |
+
+### Source Control Events
+
+Three new events support source control automation. See [Source Control Automation](source-control.md) for full feature documentation.
+
+| Event | Triggered By | Context Shape | Mutation |
+|-------|-------------|---------------|----------|
+| `source_control_init` | `rad-execute-parallel` after worktree creation | `{ branch, base_branch, worktree_path, auto_commit, auto_pr }` | Writes `pipeline.source_control` (idempotent full-replacement) |
+| `task_commit_requested` | Resolver after task approved when `auto_commit: always` | `{}` | No state change; returns `invoke_source_control_commit` action |
+| `task_committed` | Orchestrator after Source Control Agent completes | `{ commit_hash, pushed, error }` | Advances task pointer; resumes normal pipeline flow |
+
+The `invoke_source_control_commit` action (action #20 in the routing table) spawns the Source Control Agent in commit mode.
 
 ## State Management
 

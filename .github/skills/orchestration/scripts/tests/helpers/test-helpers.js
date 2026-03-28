@@ -18,6 +18,7 @@ function createDefaultConfig() {
       max_consecutive_review_rejections: 3,
     },
     human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
+    source_control: { auto_commit: 'ask', auto_pr: 'ask', provider: 'github' },
   };
 }
 

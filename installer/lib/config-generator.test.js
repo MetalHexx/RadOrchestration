@@ -19,6 +19,9 @@ const sampleConfig = {
   maxRetriesPerTask: 2,
   maxConsecutiveReviewRejections: 3,
   executionMode: 'ask',
+  autoCommit: 'always',
+  autoPr: 'never',
+  provider: 'github',
   installUi: false,
   skipConfirmation: false,
 };
@@ -59,6 +62,38 @@ test('generateConfig - output contains human_gates: section with all 3 keys', ()
   assert.ok(yaml.includes('after_planning: true'));
   assert.ok(yaml.includes(`execution_mode: "${sampleConfig.executionMode}"`));
   assert.ok(yaml.includes('after_final_review: true'));
+});
+
+test('generateConfig - output contains source_control: section with all 3 fields', () => {
+  const yaml = generateConfig(sampleConfig);
+  assert.ok(yaml.includes('source_control:'));
+  assert.ok(yaml.includes('auto_commit: "always"'));
+  assert.ok(yaml.includes('auto_pr: "never"'));
+  assert.ok(yaml.includes('provider: "github"'));
+});
+
+test('generateConfig - source_control block appears after human_gates', () => {
+  const yaml = generateConfig(sampleConfig);
+  const humanGatesIndex = yaml.indexOf('human_gates:');
+  const sourceControlIndex = yaml.indexOf('source_control:');
+  assert.ok(sourceControlIndex > humanGatesIndex, 'source_control should appear after human_gates');
+});
+
+test('generateConfig - source_control block appears before Notes', () => {
+  const yaml = generateConfig(sampleConfig);
+  const sourceControlIndex = yaml.indexOf('source_control:');
+  const notesIndex = yaml.indexOf('Notes');
+  assert.ok(sourceControlIndex < notesIndex, 'source_control should appear before Notes');
+});
+
+test('generateConfig - source_control has inline comment "# always | ask | never" for auto_commit', () => {
+  const yaml = generateConfig(sampleConfig);
+  assert.ok(yaml.includes('# always | ask | never'));
+});
+
+test('generateConfig - source_control has inline comment "# reserved: github only in v1"', () => {
+  const yaml = generateConfig(sampleConfig);
+  assert.ok(yaml.includes('# reserved: github only in v1'));
 });
 
 test('generateConfig - output does NOT contain errors: or git: sections', () => {

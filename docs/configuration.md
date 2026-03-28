@@ -125,6 +125,25 @@ Human approval checkpoints during pipeline execution.
 | `task` | Require human approval before each task begins |
 | `autonomous` | No gates during execution — all phases and tasks run without human approval |
 
+### `source_control`
+
+Source control automation settings. See [Source Control Automation](source-control.md) for full feature documentation.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `auto_commit` | string | `"ask"` | Controls automatic git commit after task approval. Values: `always` \| `ask` \| `never` |
+| `auto_pr` | string | `"ask"` | Controls automatic PR creation on final approval. Values: `always` \| `ask` \| `never` |
+| `provider` | string | `"github"` | Git hosting provider. Reserved: only `github` supported in v1. |
+
+Example:
+
+```yaml
+source_control:
+  auto_commit: "ask"          # always | ask | never
+  auto_pr: "ask"              # always | ask | never
+  provider: "github"          # reserved: github only in v1
+```
+
 ## Configuration at Runtime
 
 The pipeline engine reads limits and human gate settings directly from `orchestration.yml` at runtime. These values are not copied into `state.json` at project initialization — `state.json` holds only pipeline state, not configuration. This means changes to `orchestration.yml` limits take effect for all projects on the next pipeline invocation.

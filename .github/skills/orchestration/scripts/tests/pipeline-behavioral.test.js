@@ -1138,3 +1138,155 @@ describe('Category 11 — Corrective Task Flow', () => {
     assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'reviewing');
   });
 });
+
+// ─── Category 12: Commit-enabled happy path (auto_commit=always) ────────────
+
+describe('Category 12: Commit-enabled happy path (auto_commit=always)', () => {
+  const documents = {
+    'c12-pp.md': makeDoc({ tasks: ['T01', 'T02'] }),
+    'c12-th1.md': makeDoc({}),
+    'c12-tr1.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    'c12-cr1.md': makeDoc({ verdict: 'approved' }),
+  };
+
+  const state = makeExecutionStartState(1);
+  const io = createMockIO({ state, documents });
+  let writeCount = 0;
+
+  it('Step 1: phase_plan_created → create_task_handoff', () => {
+    const result = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c12-pp.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getState().execution.phases[0].tasks.length, 2);
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 2: source_control_init → create_task_handoff', () => {
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getState().pipeline.source_control.auto_commit, 'always');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 3: task_handoff_created → execute_task', () => {
+    const result = processEvent('task_handoff_created', PROJECT_DIR, { doc_path: 'c12-th1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'execute_task');
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'coding');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 4: task_completed → spawn_code_reviewer', () => {
+    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c12-tr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_code_reviewer');
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'reviewing');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 5: code_review_completed → invoke_source_control_commit (pointer NOT bumped)', () => {
+    const result = processEvent('code_review_completed', PROJECT_DIR, { doc_path: 'c12-cr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+    assert.equal(io.getState().execution.phases[0].current_task, 1); // NOT bumped
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'complete');
+    assert.ok(result.mutations_applied.some(m => m.includes('Deferred')));
+    assert.ok(result.mutations_applied.some(m => m.includes('auto_commit')));
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 6: task_commit_requested → invoke_source_control_commit (validation pass)', () => {
+    const result = processEvent('task_commit_requested', PROJECT_DIR, { task_id: 'P01-T01' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+    assert.equal(io.getState().execution.phases[0].current_task, 1); // still 1
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 7: task_committed → create_task_handoff (pointer bumped to T02)', () => {
+    const result = processEvent('task_committed', PROJECT_DIR, { task_id: 'P01-T01', committed: true, pushed: true }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getState().execution.phases[0].current_task, 2); // bumped
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'complete');
+    assert.equal(io.getState().execution.phases[0].tasks[1].stage, 'planning');
+  });
+});
+
+// ─── Category 13: Commit-disabled (auto_commit=never) ───────────────────────
+
+describe('Category 13: Commit-disabled (auto_commit=never)', () => {
+  const documents = {
+    'c13-pp.md': makeDoc({ tasks: ['T01'] }),
+    'c13-th1.md': makeDoc({}),
+    'c13-tr1.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    'c13-cr1.md': makeDoc({ verdict: 'approved' }),
+  };
+
+  const state = makeExecutionStartState(1);
+  const io = createMockIO({ state, documents });
+  let writeCount = 0;
+
+  it('Step 1: phase_plan_created → create_task_handoff', () => {
+    const result = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c13-pp.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 2: source_control_init (auto_commit=never) → create_task_handoff', () => {
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/y',
+      base_branch: 'main',
+      worktree_path: '/wt2',
+      auto_commit: 'never',
+      auto_pr: 'never',
+    }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(io.getState().pipeline.source_control.auto_commit, 'never');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 3: task_handoff_created → execute_task', () => {
+    const result = processEvent('task_handoff_created', PROJECT_DIR, { doc_path: 'c13-th1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'execute_task');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 4: task_completed → spawn_code_reviewer', () => {
+    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c13-tr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_code_reviewer');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 5: code_review_completed → generate_phase_report (pointer bumped immediately, no commit step)', () => {
+    const result = processEvent('code_review_completed', PROJECT_DIR, { doc_path: 'c13-cr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    // Pointer should be bumped immediately and phase report generated (single task phase)
+    assert.equal(result.action, 'generate_phase_report');
+    assert.equal(io.getState().execution.phases[0].current_task, 2); // bumped past last task
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'complete');
+  });
+});

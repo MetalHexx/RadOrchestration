@@ -6,6 +6,7 @@ import { promptOrchRoot } from './prompts/orch-root.js';
 import { promptProjectStorage } from './prompts/project-storage.js';
 import { promptPipelineLimits } from './prompts/pipeline-limits.js';
 import { promptGateBehavior } from './prompts/gate-behavior.js';
+import { promptSourceControl } from './prompts/source-control.js';
 import { promptUiInstall } from './prompts/ui-install.js';
 
 /**
@@ -45,6 +46,11 @@ export async function runWizard({ skipConfirmation }) {
   const gateBehavior = await promptGateBehavior();
 
   console.log('');
+  sectionHeader('::', 'Source Control');
+  console.log('');
+  const sourceControl = await promptSourceControl();
+
+  console.log('');
   sectionHeader('::', 'Dashboard UI');
   console.log('');
   const uiInstall = await promptUiInstall(gettingStarted.workspaceDir);
@@ -55,6 +61,7 @@ export async function runWizard({ skipConfirmation }) {
     ...projectStorage,
     ...pipelineLimits,
     ...gateBehavior,
+    ...sourceControl,
     ...uiInstall,
     skipConfirmation,
   };

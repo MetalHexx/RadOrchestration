@@ -41,6 +41,12 @@ human_gates:
   execution_mode: "${config.executionMode}"                  # ask | phase | task | autonomous
   after_final_review: true               # Always gate after final review (hard default)
 
+# ─── Source Control ────────────────────────────────────────────────
+source_control:
+  auto_commit: "${config.autoCommit || 'ask'}"          # always | ask | never
+  auto_pr: "${config.autoPr || 'ask'}"                  # always | ask | never
+  provider: "${config.provider || 'github'}"               # reserved: github only in v1
+
 # ─── Notes ─────────────────────────────────────────────────────────
 # Model selection is configured per-agent in .agent.md frontmatter.
 # See ${config.orchRoot}/agents/*.agent.md → \`model\` field.
