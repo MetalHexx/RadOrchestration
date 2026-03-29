@@ -202,7 +202,7 @@ If `orchestration.yml` is missing or the `source_control` block is absent, defau
 - If Step 3 was executed: **`baseBranch`** = `branchFrom` (the branch origin selected in
   `/rad-create-worktree` Step 5, Q3)
 - If the worktree was reused from Step 2 (Step 3 was skipped): detect the default remote
-  branch by running `git symbolic-ref refs/remotes/origin/HEAD 2>$null` from `worktreePath`
+  branch by running `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null` from `worktreePath`
   and extracting the trailing segment (e.g. `main` from `refs/remotes/origin/main`).
   If detection fails, default to `"main"`.
 

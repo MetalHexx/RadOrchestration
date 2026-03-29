@@ -689,7 +689,7 @@ function handleHalt(state, context, config) {
 /**
  * source_control_init — Writes source control metadata to pipeline.source_control.
  * Full replacement (not merge) — idempotent. Validates all 5 required fields
- * before writing; throws Error on any missing field (caught by processEvent → success: false).
+ * before writing; throws Error on any missing field (caller is responsible for handling).
  *
  * @param {Object} state  - deep-cloned pipeline state
  * @param {Object} context - { branch, base_branch, worktree_path, auto_commit, auto_pr }
