@@ -12,10 +12,10 @@ tools:
   - web
 model: Claude Sonnet 4.6 (copilot)
 agents:
-  - Research
+  - research
 handoffs:
   - label: "Start Planning Pipeline Process"
-    agent: Orchestrator
+    agent: orchestrator
     prompt: "Brainstorming is complete. Read the project BRAINSTORMING.md and start planning."
     send: true 
 ---

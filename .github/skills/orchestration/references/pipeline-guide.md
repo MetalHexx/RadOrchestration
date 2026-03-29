@@ -59,6 +59,26 @@ Only these `result.action` values should pause execution for human input or stop
 
 All other actions must be executed immediately without asking the human.
 
+## Agent Registry Key Reference
+
+When spawning agents via the VS Code `agent` tool, the `agent_type` value must be the agent's **registry key** — the lowercase kebab-case filename stem, not the display name. The table below is the authoritative mapping. Update this table whenever a new agent file is added to `.github/agents/`.
+
+| Display Name | `.agent.md` Filename | Registry Key (`agent_type`) |
+|---|---|---|
+| Orchestrator | `orchestrator.agent.md` | `orchestrator` |
+| Brainstormer | `brainstormer.agent.md` | `brainstormer` |
+| Research | `research.agent.md` | `research` |
+| Product Manager | `product-manager.agent.md` | `product-manager` |
+| UX Designer | `ux-designer.agent.md` | `ux-designer` |
+| Architect | `architect.agent.md` | `architect` |
+| Tactical Planner | `tactical-planner.agent.md` | `tactical-planner` |
+| Coder | `coder.agent.md` | `coder` |
+| Coder Senior | `coder-senior.agent.md` | `coder-senior` |
+| Coder Junior | `coder-junior.agent.md` | `coder-junior` |
+| Reviewer | `reviewer.agent.md` | `reviewer` |
+
+---
+
 ## Action Routing Table
 
 Every `result.action` value maps to exactly one Orchestrator operation. All branching derives from this table.
