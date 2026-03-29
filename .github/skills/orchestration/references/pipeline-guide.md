@@ -84,7 +84,7 @@ Every `result.action` value maps to exactly one Orchestrator operation. All bran
 | 17 | `ask_gate_mode` | Human gate | Present the three gate mode options (`task`, `phase`, `autonomous`) to the operator. Wait for selection. | `gate_mode_set` with `{ "gate_mode": "<chosen>" }` |
 | 18 | `display_halted` | Terminal | Display `result.context.message` to the human. **Loop terminates.** | *(none — terminal action)* |
 | 19 | `display_complete` | Terminal | Display completion summary to the human. **Loop terminates.** | *(none — terminal action)* |
-| 20 | `invoke_source_control_commit` | Agent spawn | Spawn **Source Control Agent** in commit mode. Agent reads `pipeline.source_control` from state, constructs commit message, executes `git-commit.js`. | `task_committed` with `{ "commit_hash": "<hash>", "pushed": <bool>, "error": "<msg-or-null>" }` |
+| 20 | `invoke_source_control_commit` | Agent spawn | Spawn **Source Control Agent** in commit mode. Agent reads `pipeline.source_control` from state, constructs commit message, executes `git-commit.js`. | `task_committed` with `{ "commitHash": "<hash>", "pushed": <bool>, "error": "<msg-or-null>" }` |
 
 ## Event Signaling Reference
 
