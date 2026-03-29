@@ -76,6 +76,7 @@ When spawning agents via the VS Code `agent` tool, the `agent_type` value must b
 | Coder Senior | `coder-senior.agent.md` | `coder-senior` |
 | Coder Junior | `coder-junior.agent.md` | `coder-junior` |
 | Reviewer | `reviewer.agent.md` | `reviewer` |
+| Source Control | `source-control.agent.md` | `source-control` |
 
 ---
 
