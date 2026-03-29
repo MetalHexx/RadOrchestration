@@ -105,14 +105,14 @@ These are the exact event names passed to `--event`:
 | `master_plan_completed` | `{ "doc_path": "<path>" }` | After Architect finishes (master plan) |
 | `plan_approved` | `{}` | After human approves master plan |
 | `plan_rejected` | `{}` | After human rejects master plan |
-| `source_control_init` | `{ "branch": "<name>", "base_branch": "<name>", "worktree_path": "<path>", "auto_commit": "<always\|never>", "auto_pr": "<on_phase\|on_final\|never>" }` | After `rad-execute-parallel` creates the worktree. One-time initialization that persists source control context to `pipeline.source_control` in state. |
+| `source_control_init` | `{ "branch": "<name>", "base_branch": "<name>", "worktree_path": "<path>", "auto_commit": "<always\|never>", "auto_pr": "<always\|never>" }` | After `rad-execute-parallel` creates the worktree. One-time initialization that persists source control context to `pipeline.source_control` in state. |
 | `phase_planning_started` | `{}` | Before Tactical Planner spawn for fresh (non-corrective) phases only. Transitions phase from `not_started / planning` to `in_progress / planning`. See action #6 two-step protocol. |
 | `phase_plan_created` | `{ "doc_path": "<path>" }` | After Tactical Planner finishes phase plan |
 | `task_handoff_created` | `{ "doc_path": "<path>" }` | After Tactical Planner finishes task handoff |
 | `task_completed` | `{ "doc_path": "<path>" }` | After Coder finishes task |
 | `code_review_completed` | `{ "doc_path": "<path>" }` | After Reviewer finishes code review |
 | `task_commit_requested` | `{}` | Signaled internally after `code_review_completed` when `auto_commit: always` and review verdict is approved. Triggers Source Control Agent spawn. |
-| `task_committed` | `{ "commit_hash": "<hash>", "pushed": <bool>, "error": "<msg-or-null>" }` | After Source Control Agent completes commit (or reports failure). Commit hash is the short SHA; `pushed` indicates whether the commit was pushed to remote; `error` is null on success. |
+| `task_committed` | `{ "commitHash": "<hash>", "pushed": <bool>, "error": "<msg-or-null>" }` | After Source Control Agent completes commit (or reports failure). Commit hash is the short SHA; `pushed` indicates whether the commit was pushed to remote; `error` is null on success. |
 | `phase_report_created` | `{ "doc_path": "<path>" }` | After Tactical Planner finishes phase report |
 | `phase_review_completed` | `{ "doc_path": "<path>" }` | After Reviewer finishes phase review |
 | `gate_mode_set` | `{ "gate_mode": "<chosen>" }` | After operator selects gate mode |

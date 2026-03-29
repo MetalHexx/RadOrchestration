@@ -99,7 +99,7 @@ A single `orchestration.yml` controls everything: project storage, pipeline limi
 
 ### Source Control Automation
 
-Automatic git commits after each approved task. The Source Control Agent constructs conventional-format commit messages from task metadata and executes them — no manual git workflow needed. Configurable via `orchestration.yml` with `auto_commit: always | ask | never` (default `ask`, which prompts per project run and is resolved at runtime by `rad-execute-parallel`).
+Automatic git commits after each approved task. The Source Control Agent constructs conventional-format commit messages from task metadata and executes them — no manual git workflow needed. Configurable via `orchestration.yml` with `auto_commit: always | ask | never` (default `ask`, resolved at project start).
 
 [Learn more about source control →](docs/source-control.md)
 

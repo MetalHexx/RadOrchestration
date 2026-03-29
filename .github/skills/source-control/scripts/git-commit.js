@@ -1,6 +1,6 @@
 'use strict';
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 function parseArgs(argv) {
   let worktreePath = null;
@@ -32,9 +32,9 @@ if (!worktreePath || !message) {
 let commitHash = null;
 
 try {
-  execSync('git add -A', { cwd: worktreePath, encoding: 'utf8' });
-  execSync(`git commit -m ${JSON.stringify(message)}`, { cwd: worktreePath, encoding: 'utf8' });
-  commitHash = execSync('git rev-parse --short HEAD', { cwd: worktreePath, encoding: 'utf8' }).trim();
+  execFileSync('git', ['add', '-A'], { cwd: worktreePath, encoding: 'utf8' });
+  execFileSync('git', ['commit', '-m', message], { cwd: worktreePath, encoding: 'utf8' });
+  commitHash = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: worktreePath, encoding: 'utf8' }).trim();
 } catch (commitError) {
   const errText = (commitError.stderr || commitError.stdout || commitError.message || '');
   const isNothingToCommit =
@@ -53,7 +53,7 @@ try {
 }
 
 try {
-  execSync('git push', { cwd: worktreePath, encoding: 'utf8' });
+  execFileSync('git', ['push'], { cwd: worktreePath, encoding: 'utf8' });
 } catch (pushError) {
   const errText = (pushError.stderr || pushError.message || '');
   const result = {

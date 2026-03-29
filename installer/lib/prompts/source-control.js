@@ -47,12 +47,21 @@ export async function promptSourceControl() {
   if (autoPr === 'always') {
     try {
       execFileSync('gh', ['auth', 'status']);
-    } catch {
-      console.warn(
-        '⚠  gh CLI is not authenticated (gh auth status returned non-zero).\n' +
-        '   Auto-PR requires an authenticated gh CLI. Run: gh auth login\n' +
-        '   Installation will continue — configure gh authentication before running projects.'
-      );
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        console.warn(
+          '⚠  gh CLI not found in PATH.\n' +
+          '   Auto-PR requires the GitHub CLI (gh) to be installed and available.\n' +
+          '   Install from: https://cli.github.com\n' +
+          '   Installation will continue — install and authenticate gh before running projects.'
+        );
+      } else {
+        console.warn(
+          '⚠  gh CLI is not authenticated (gh auth status returned non-zero).\n' +
+          '   Auto-PR requires an authenticated gh CLI. Run: gh auth login\n' +
+          '   Installation will continue — configure gh authentication before running projects.'
+        );
+      }
     }
   }
 

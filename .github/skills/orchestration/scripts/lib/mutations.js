@@ -455,14 +455,16 @@ function handleCodeReviewCompleted(state, context, config) {
     mutations.push(`Set task.stage to "${TASK_STAGES.COMPLETE}"`);
 
     const effectiveGateMode = state.pipeline.gate_mode ?? config.human_gates.execution_mode;
-    const autoCommit = state.pipeline.source_control?.auto_commit
-                    ?? config.source_control?.auto_commit
-                    ?? 'never';
+    const pipelineSC = state.pipeline.source_control;
+    const canDeferForAutoCommit =
+      pipelineSC?.auto_commit === 'always' &&
+      pipelineSC.branch &&
+      pipelineSC.worktree_path;
 
     if (effectiveGateMode === 'task') {
       // Defer pointer advancement to handleGateApproved
       mutations.push(`Deferred phase.current_task advancement (gate mode: task)`);
-    } else if (autoCommit === 'always') {
+    } else if (canDeferForAutoCommit) {
       // Defer pointer advancement — Source Control Agent will commit, then task_committed bumps pointer
       mutations.push('Deferred phase.current_task advancement (auto_commit: always — awaiting commit)');
     } else {

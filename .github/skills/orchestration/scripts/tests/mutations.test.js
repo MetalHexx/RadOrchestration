@@ -1456,10 +1456,10 @@ describe('handleCodeReviewCompleted commit-defer path', () => {
     assert.ok(!result.mutations_applied.some(m => m.includes('auto_commit')));
   });
 
-  it('auto_commit resolved from config when absent in state', () => {
+  it('auto_commit from config only (no state source_control): bumps pointer (graceful skip)', () => {
     const state = makeExecutionState();
     state.pipeline.gate_mode = 'phase';
-    // No source_control in state
+    // No source_control in state — config fallback should NOT defer
     state.execution.phases[0].tasks[0].status = 'in_progress';
     const cfg = {
       limits: { max_retries_per_task: 2 },
@@ -1468,7 +1468,7 @@ describe('handleCodeReviewCompleted commit-defer path', () => {
     };
     const handler = getMutation('code_review_completed');
     const result = handler(state, { doc_path: 'r.md', verdict: 'approved' }, cfg);
-    assert.equal(result.state.execution.phases[0].current_task, 1); // deferred by config auto_commit
+    assert.equal(result.state.execution.phases[0].current_task, 2); // bumped — state lacks source_control metadata
   });
 });
 
