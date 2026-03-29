@@ -133,7 +133,7 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 | [Getting Started](docs/getting-started.md) | Installation, first project walkthrough, common commands |
 | [Agents](docs/agents.md) | All 10 agents — roles, access control, design constraints |
 | [Pipeline](docs/pipeline.md) | Planning and execution flow, human gates, error handling |
-| [Skills](docs/skills.md) | All 18 skills and how they compose with agents |
+| [Skills](docs/skills.md) | All 19 skills and how they compose with agents |
 | [Configuration](docs/configuration.md) | `orchestration.yml` reference — all options explained |
 | [Source Control](docs/source-control.md) | Auto-commit configuration, agent modes, commit format, pipeline events |
 | [Project Structure](docs/project-structure.md) | File layout, naming conventions, document types, state management |
