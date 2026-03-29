@@ -160,9 +160,8 @@ Before creating anything, check whether a worktree for this project already exis
 
 - If the user chose **"Use the existing worktree"**:
   - Set **`worktreePath`** = `existingWorktreePath` and **`branchName`** = `existingBranch`
-  - **Skip Step 3 entirely** — jump straight to Step 4 (Source Control Setup).
-    When you reach Step 5 (Launch Execution), treat the post-creation action
-    as if the user had chosen "Open terminal at worktree"
+  - **Skip Step 3 entirely** — jump straight to Step 4 (Launch Execution), treating the
+    post-creation action as if the user had chosen "Open terminal at worktree"
     (i.e. `cd "{worktreePath}"`) unless they indicate otherwise.
 - If the user chose **"Create a new worktree"**:
   - Continue to Step 3 as normal.
@@ -183,115 +182,10 @@ Before creating anything, check whether a worktree for this project already exis
 
 ---
 
-## Step 4 — Source Control Setup
+## Step 4 — Launch Execution
 
-After the worktree is created (or confirmed from Step 2), configure source control for
-this project run before launching execution.
-
-**a. Read source control config** from `orchestration.yml`
-(at `{orchRoot}/skills/orchestration/config/orchestration.yml`, where `{orchRoot}` is the
-workspace root + `system.orch_root` — typically `.github`):
-
-- `source_control.auto_commit` → store as **`configAutoCommit`** (`always`, `ask`, or `never`)
-- `source_control.auto_pr` → store as **`configAutoPr`** (`always`, `ask`, or `never`)
-
-If `orchestration.yml` is missing or the `source_control` block is absent, default both to `"ask"`.
-
-**b. Resolve `baseBranch`** for the pipeline call:
-
-- If Step 3 was executed: **`baseBranch`** = `branchFrom` (the branch origin selected in
-  `/rad-create-worktree` Step 5, Q3)
-- If the worktree was reused from Step 2 (Step 3 was skipped): detect the default remote
-  branch by running `git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null` from `worktreePath`
-  and extracting the trailing segment (e.g. `main` from `refs/remotes/origin/main`).
-  If detection fails, default to `"main"`.
-
-**c. Resolve `ask` values** — if either config value is `"ask"`, ask the user:
-
-- If **both** `configAutoCommit` and `configAutoPr` are already `always` or `never`:
-  set **`resolvedAutoCommit`** = `configAutoCommit` and **`resolvedAutoPr`** = `configAutoPr`.
-  Skip to step **e** — no questions needed.
-
-- If **at least one** is `"ask"`, call `askQuestions` with a single call containing only the
-  applicable questions. Include the `auto_commit` question only if `configAutoCommit === "ask"`;
-  include the `auto_pr` question only if `configAutoPr === "ask"`:
-
-```json
-{
-  "questions": [
-    {
-      "header": "auto_commit",
-      "question": "How should auto-commit behave for this project run?",
-      "options": [
-        {
-          "label": "always",
-          "recommended": true,
-          "description": "Commit and push automatically after every approved task"
-        },
-        {
-          "label": "never",
-          "description": "Skip commits — you'll handle git manually"
-        }
-      ],
-      "allowFreeformInput": false
-    },
-    {
-      "header": "auto_pr",
-      "question": "How should auto-PR behave for this project run?",
-      "options": [
-        {
-          "label": "always",
-          "recommended": true,
-          "description": "Create a pull request automatically when the project completes final review"
-        },
-        {
-          "label": "never",
-          "description": "Skip PR creation — you'll open a pull request manually"
-        }
-      ],
-      "allowFreeformInput": false
-    }
-  ]
-}
-```
-
-If only `auto_commit` is `"ask"` (and `auto_pr` is not), include only the first question.
-If only `auto_pr` is `"ask"` (and `auto_commit` is not), include only the second question.
-If both are `"ask"`, include both questions in the single call.
-
-**d. Store resolved values:**
-
-- For each question answered: **`resolvedAutoCommit`** / **`resolvedAutoPr`** = the user's
-  choice (`always` or `never`)
-- For each question NOT asked (config was already `always` or `never`): use the config value
-
-At this point both **`resolvedAutoCommit`** and **`resolvedAutoPr`** are `always` or `never`.
-The value `ask` is never passed to the pipeline.
-
-**e. Call `source_control_init`** to write source control metadata to state:
-
-```
-node {orchRoot}/skills/orchestration/scripts/pipeline.js --event source_control_init --project-dir {projectDir} --context '{"branch":"{branchName}","base_branch":"{baseBranch}","worktree_path":"{worktreePath}","auto_commit":"{resolvedAutoCommit}","auto_pr":"{resolvedAutoPr}"}'
-```
-
-Where:
-- **`{orchRoot}`** = workspace root + `system.orch_root` from `orchestration.yml` (e.g. `.github`)
-- **`{projectDir}`** = `projects.base_path` + `/{projectName}` from `orchestration.yml`
-- **`{branchName}`** = from Step 2 or Step 3
-- **`{baseBranch}`** = resolved in step **b**
-- **`{worktreePath}`** = from Step 2 or Step 3
-- **`{resolvedAutoCommit}`** = `always` or `never`
-- **`{resolvedAutoPr}`** = `always` or `never`
-
-The pipeline call returns JSON. Verify the response contains `"success": true`.
-If it fails, show the error to the user and do NOT proceed to Step 5.
-
----
-
-## Step 5 — Launch Execution
-
-After source control is configured (Step 4), execute the post-creation action the user
-chose in Step 6 (Q4) of the `/rad-create-worktree` prompt.
+After the worktree is successfully created (or confirmed from Step 2), execute the
+post-creation action the user chose in Step 6 (Q4) of the `/rad-create-worktree` prompt.
 (If the user reused an existing worktree and no Q4 was asked, default to "Open terminal at worktree".)
 
 Apply these rules, in priority order:

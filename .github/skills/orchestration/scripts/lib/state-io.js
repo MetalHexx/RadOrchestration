@@ -19,7 +19,6 @@ const DEFAULT_CONFIG = Object.freeze({
     max_consecutive_review_rejections: 3,
   },
   human_gates: { after_planning: true, execution_mode: 'ask', after_final_review: true },
-  source_control: { auto_commit: 'ask', auto_pr: 'ask', provider: 'github' },
 });
 
 // ─── readState ──────────────────────────────────────────────────────────────
@@ -63,7 +62,6 @@ function mergeConfig(parsed) {
     projects: { ...DEFAULT_CONFIG.projects, ...(parsed.projects || {}) },
     limits: { ...DEFAULT_CONFIG.limits, ...(parsed.limits || {}) },
     human_gates: { ...DEFAULT_CONFIG.human_gates, ...(parsed.human_gates || {}) },
-    source_control: { ...DEFAULT_CONFIG.source_control, ...(parsed.source_control || {}) },
   };
 }
 

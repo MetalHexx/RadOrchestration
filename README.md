@@ -6,7 +6,7 @@ Agents communicate through structured markdown documents. Routing, triage, and s
 
 ## What It Does
 
-Tell the Orchestrator your project idea, and it coordinates **10 specialized agents** through a structured pipeline — research, requirements, design, architecture, planning, coding, and review — producing working software with full traceability from idea to implementation.  It's automated spec-driven development!
+Tell the Orchestrator your project idea, and it coordinates **9 specialized agents** through a structured pipeline — research, requirements, design, architecture, planning, coding, and review — producing working software with full traceability from idea to implementation.  It's automated spec-driven development!
 
 ```mermaid
 flowchart TD
@@ -30,8 +30,7 @@ flowchart TD
         HANDOFF --> |handoff| CODE[Code]
         CODE --> |code, task report|REVIEW[Code Review]
         REVIEW -->|needs correction | HANDOFF
-        REVIEW -->|approved| COMMIT[🔀 Commit Code]
-        COMMIT --> MORETASKS{more tasks?}
+        REVIEW -->|approved| MORETASKS{more tasks?}
         MORETASKS -->|yes| HANDOFF
         MORETASKS -->|no| PHASEREVIEW[Phase Review]
         PHASEREVIEW -->|next phase| PHASE
@@ -63,7 +62,7 @@ build the UI in 1-shot.
 
 ### Specialized Agents
 
-Ten agents with strict separation of concerns. Each agent has a defined role, scoped tool access, and explicit write permissions. The Orchestrator coordinates but never writes. The Coder reads only its task handoff.
+Nine agents with strict separation of concerns. Each agent has a defined role, scoped tool access, and explicit write permissions. The Orchestrator coordinates but never writes. The Coder reads only its task handoff.
 
 [Learn more about agents →](docs/agents.md)
 
@@ -97,12 +96,6 @@ A single `orchestration.yml` controls everything: project storage, pipeline limi
 
 [Learn more about configuration →](docs/configuration.md)
 
-### Source Control Automation
-
-Automatic git commits after each approved task. The Source Control Agent constructs conventional-format commit messages from task metadata and executes them — no manual git workflow needed. Configurable via `orchestration.yml` with `auto_commit: always | ask | never` (default `ask`, resolved at project start).
-
-[Learn more about source control →](docs/source-control.md)
-
 ### Continuous Verification
 
 Every task produces a report. Every report is reviewed against the plan.  Code reviewers never fully trust the coder reports. :)  Minor issues trigger automatic corrective tasks. Critical issues halt the pipeline for human intervention. Plans don't drift unchecked. Pipeline failures are logged to a structured, append-only error log (`ERROR-LOG.md`) in each project folder.
@@ -131,11 +124,10 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 | Page | Description |
 |------|-------------|
 | [Getting Started](docs/getting-started.md) | Installation, first project walkthrough, common commands |
-| [Agents](docs/agents.md) | All 10 agents — roles, access control, design constraints |
+| [Agents](docs/agents.md) | All 9 agents — roles, access control, design constraints |
 | [Pipeline](docs/pipeline.md) | Planning and execution flow, human gates, error handling |
-| [Skills](docs/skills.md) | All 19 skills and how they compose with agents |
+| [Skills](docs/skills.md) | All 18 skills and how they compose with agents |
 | [Configuration](docs/configuration.md) | `orchestration.yml` reference — all options explained |
-| [Source Control](docs/source-control.md) | Auto-commit configuration, agent modes, commit format, pipeline events |
 | [Project Structure](docs/project-structure.md) | File layout, naming conventions, document types, state management |
 | [Pipeline Script](docs/scripts.md) | Unified event-driven CLI — routing, triage, state mutations, validation |
 | [Validation](docs/validation.md) | Zero-dependency validation CLI tool |

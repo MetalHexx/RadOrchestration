@@ -467,18 +467,9 @@ function handleCodeReviewCompleted(state, context, config) {
     mutations.push(`Set task.stage to "${TASK_STAGES.COMPLETE}"`);
 
     const effectiveGateMode = state.pipeline.gate_mode ?? config.human_gates.execution_mode;
-    const pipelineSC = state.pipeline.source_control;
-    const canDeferForAutoCommit =
-      pipelineSC?.auto_commit === 'always' &&
-      pipelineSC.branch &&
-      pipelineSC.worktree_path;
-
     if (effectiveGateMode === 'task') {
       // Defer pointer advancement to handleGateApproved
       mutations.push(`Deferred phase.current_task advancement (gate mode: task)`);
-    } else if (canDeferForAutoCommit) {
-      // Defer pointer advancement — Source Control Agent will commit, then task_committed bumps pointer
-      mutations.push('Deferred phase.current_task advancement (auto_commit: always — awaiting commit)');
     } else {
       phase.current_task += 1;
       mutations.push(`Bumped phase.current_task to ${phase.current_task}`);
@@ -696,97 +687,6 @@ function handleHalt(state, context, config) {
   };
 }
 
-// ─── Source Control Handlers ────────────────────────────────────────────────
-
-/**
- * source_control_init — Writes source control metadata to pipeline.source_control.
- * Full replacement (not merge) — idempotent. Validates all 5 required fields
- * before writing; throws Error on any missing field (caller is responsible for handling).
- *
- * @param {Object} state  - deep-cloned pipeline state
- * @param {Object} context - { branch, base_branch, worktree_path, auto_commit, auto_pr }
- * @param {Object} config  - merged orchestration config (unused)
- * @returns {{ state: Object, mutations_applied: string[] }}
- */
-function handleSourceControlInit(state, context, config) {
-  // Validate all required fields before writing (reject partial context)
-  const required = ['branch', 'base_branch', 'worktree_path', 'auto_commit', 'auto_pr'];
-  for (const field of required) {
-    if (!context[field]) throw new Error(`source_control_init: missing required field "${field}"`);
-  }
-  // Full replacement (not merge) — idempotent
-  state.pipeline.source_control = {
-    branch:        context.branch,
-    base_branch:   context.base_branch,
-    worktree_path: context.worktree_path,
-    auto_commit:   context.auto_commit,
-    auto_pr:       context.auto_pr,
-  };
-  return {
-    state,
-    mutations_applied: [
-      `Set pipeline.source_control.branch to "${context.branch}"`,
-      `Set pipeline.source_control.base_branch to "${context.base_branch}"`,
-      `Set pipeline.source_control.worktree_path to "${context.worktree_path}"`,
-      `Set pipeline.source_control.auto_commit to "${context.auto_commit}"`,
-      `Set pipeline.source_control.auto_pr to "${context.auto_pr}"`,
-    ],
-  };
-}
-
-/**
- * task_commit_requested — Validation checkpoint before spawning Source Control Agent.
- * If source_control metadata is absent or branch is falsy: graceful skip — advance
- * phase.current_task so pipeline resumes without a commit step.
- * If branch is present: validation passed, no state change — log success.
- *
- * @param {Object} state  - deep-cloned pipeline state
- * @param {Object} context - { task_id, phase_number, task_number }
- * @param {Object} config  - merged orchestration config (unused)
- * @returns {{ state: Object, mutations_applied: string[] }}
- */
-function handleTaskCommitRequested(state, context, config) {
-  const sc = state.pipeline.source_control;
-  const mutations = [];
-
-  if (!sc || !sc.branch) {
-    // Graceful skip: no branch metadata → advance pointer immediately
-    const phase = state.execution.phases[state.execution.current_phase - 1];
-    phase.current_task += 1;
-    mutations.push(
-      'source_control not initialized — skipping commit: ' +
-      `bumped phase.current_task to ${phase.current_task}`
-    );
-  } else {
-    // Branch metadata present — validation passed, no state change
-    mutations.push(`Commit request validated: branch = "${sc.branch}"`);
-  }
-
-  return { state, mutations_applied: mutations };
-}
-
-/**
- * task_committed — Finalizes the commit step by advancing the task pointer.
- * Always succeeds unconditionally — even on partial push failure — to prevent
- * pipeline stall. The Source Control Agent signals this event after commit
- * completes (success or partial failure).
- *
- * @param {Object} state  - deep-cloned pipeline state
- * @param {Object} context - { task_id, committed, pushed }
- * @param {Object} config  - merged orchestration config (unused)
- * @returns {{ state: Object, mutations_applied: string[] }}
- */
-function handleTaskCommitted(state, context, config) {
-  const phase = state.execution.phases[state.execution.current_phase - 1];
-  phase.current_task += 1;
-  return {
-    state,
-    mutations_applied: [
-      `Bumped phase.current_task to ${phase.current_task} (task committed)`,
-    ],
-  };
-}
-
 // ─── MUTATIONS Map ──────────────────────────────────────────────────────────
 
 const MUTATIONS = Object.freeze({
@@ -815,11 +715,6 @@ const MUTATIONS = Object.freeze({
   code_review_completed:    handleCodeReviewCompleted,
   phase_report_created:     handlePhaseReportCreated,
   phase_review_completed:   handlePhaseReviewCompleted,
-
-  // Source control (3)
-  source_control_init:        handleSourceControlInit,
-  task_commit_requested:      handleTaskCommitRequested,
-  task_committed:             handleTaskCommitted,
 
   // Gate events (3)
   gate_mode_set:            handleGateModeSet,
@@ -856,7 +751,4 @@ module.exports._test = {
   resolveTaskOutcome,
   resolvePhaseOutcome,
   checkRetryBudget,
-  handleSourceControlInit,
-  handleTaskCommitRequested,
-  handleTaskCommitted,
 };

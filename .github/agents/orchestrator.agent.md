@@ -10,13 +10,13 @@ tools:
   - vscode/askQuestions
 model: claude-sonnet-4.6
 agents:
-  - research
-  - product-manager
-  - ux-designer
-  - architect
-  - tactical-planner
-  - coder
-  - reviewer
+  - Research
+  - Product Manager
+  - UX Designer
+  - Architect
+  - Tactical Planner
+  - Coder
+  - Reviewer
 ---
 
 # Orchestrator
