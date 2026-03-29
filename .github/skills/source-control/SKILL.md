@@ -22,21 +22,21 @@ Orchestration pipeline skill for source control operations. Provides routing for
    - Received `invoke_source_control_pr` → **PR mode** (stub — see `pr-guide.md`)
 2. **Read all reference documents** for your mode before taking any action.
 3. **Execute the script** for your mode; parse the JSON result from stdout.
-4. **On any failure**, invoke the `log-error` skill before signaling the final event.
-5. **Always signal `task_committed`** — every code path ends here, no exceptions.
+4. **On any failure**, invoke the `log-error` skill before completing.
+5. **Output a structured commit result block** — the Orchestrator reads it and signals `task_committed`. Every code path ends with this output.
 
 ## Error Handling
 
-Every scenario ends with signaling `task_committed`. The pipeline must never stall.
+Every scenario ends with outputting a structured commit result block. The Orchestrator reads this block and signals `task_committed`.
 
-| Scenario | Action | Signal `task_committed`? |
-|----------|--------|--------------------------|
-| Full success (committed + pushed) | Display success feedback | ✅ Yes |
-| Partial failure (committed, push failed) | Invoke `log-error` skill; display partial failure feedback | ✅ Yes |
-| Full failure (commit failed) | Invoke `log-error` skill; display full failure feedback | ✅ Yes |
-| `pipeline.source_control` absent | Display `ℹ` notice; skip commit | ✅ Yes |
-| Worktree path inaccessible | Invoke `log-error` skill; display error | ✅ Yes |
-| Script execution error | Invoke `log-error` skill; display error | ✅ Yes |
+| Scenario | Action | Report to Orchestrator |
+|----------|--------|------------------------|
+| Full success (committed + pushed) | Display success feedback | ✅ Output result block |
+| Partial failure (committed, push failed) | Invoke `log-error` skill; display partial failure feedback | ✅ Output result block |
+| Full failure (commit failed) | Invoke `log-error` skill; display full failure feedback | ✅ Output result block |
+| `pipeline.source_control` absent | Display `ℹ` notice; skip commit | ✅ Output result block |
+| Worktree path inaccessible | Invoke `log-error` skill; display error | ✅ Output result block |
+| Script execution error | Invoke `log-error` skill; display error | ✅ Output result block |
 
 ## Contents
 

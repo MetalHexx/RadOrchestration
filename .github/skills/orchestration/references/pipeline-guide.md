@@ -84,7 +84,7 @@ Every `result.action` value maps to exactly one Orchestrator operation. All bran
 | 17 | `ask_gate_mode` | Human gate | Present the three gate mode options (`task`, `phase`, `autonomous`) to the operator. Wait for selection. | `gate_mode_set` with `{ "gate_mode": "<chosen>" }` |
 | 18 | `display_halted` | Terminal | Display `result.context.message` to the human. **Loop terminates.** | *(none — terminal action)* |
 | 19 | `display_complete` | Terminal | Display completion summary to the human. **Loop terminates.** | *(none — terminal action)* |
-| 20 | `invoke_source_control_commit` | Agent spawn | Spawn **Source Control Agent** in commit mode. Agent reads `pipeline.source_control` from state, constructs commit message, executes `git-commit.js`. | `task_committed` with `{ "commitHash": "<hash>", "pushed": <bool>, "error": "<msg-or-null>" }` |
+| 20 | `invoke_source_control_commit` | Agent spawn | Spawn **Source Control Agent** in commit mode. The agent reads `pipeline.source_control` from state, constructs the commit message, executes `git-commit.js`, and outputs a structured commit result block. Extract `commitHash`, `pushed`, and `error` from the agent’s `## Commit Result` JSON block in its output. | `task_committed` with `{ "commitHash": "<extracted>", "pushed": <extracted>, "error": "<extracted-or-null>" }` |
 
 ## Event Signaling Reference
 
@@ -112,7 +112,7 @@ These are the exact event names passed to `--event`:
 | `task_completed` | `{ "doc_path": "<path>" }` | After Coder finishes task |
 | `code_review_completed` | `{ "doc_path": "<path>" }` | After Reviewer finishes code review |
 | `task_commit_requested` | `{}` | Signaled internally after `code_review_completed` when `auto_commit: always` and review verdict is approved. Triggers Source Control Agent spawn. |
-| `task_committed` | `{ "commitHash": "<hash>", "pushed": <bool>, "error": "<msg-or-null>" }` | After Source Control Agent completes commit (or reports failure). Commit hash is the short SHA; `pushed` indicates whether the commit was pushed to remote; `error` is null on success. |
+| `task_committed` | `{ "commitHash": "<hash>", "pushed": <bool>, "error": "<msg-or-null>" }` | After Source Control Agent completes; extract `commitHash`, `pushed`, and `error` from the agent’s `## Commit Result` JSON block. `commitHash` is the short SHA (or null if commit failed); `pushed` is whether the push succeeded; `error` is null on full success. |
 | `phase_report_created` | `{ "doc_path": "<path>" }` | After Tactical Planner finishes phase report |
 | `phase_review_completed` | `{ "doc_path": "<path>" }` | After Reviewer finishes phase review |
 | `gate_mode_set` | `{ "gate_mode": "<chosen>" }` | After operator selects gate mode |

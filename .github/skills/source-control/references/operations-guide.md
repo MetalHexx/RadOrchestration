@@ -168,11 +168,11 @@ The `log-error` skill is invoked when the JSON result contains a non-null `error
 - Invoke `log-error` on **full failure** (exit code 2, `errorType: "commit_failed"` or `"nothing_to_commit"`) — log the commit failure
 - **Never** invoke `log-error` on **full success** (exit code 0, `error: null`)
 
-**Pipeline continuation rule:** After logging the error, **always signal `task_committed`** — the pipeline must never stall.
+**Completion rule:** After logging the error, **output your commit result block** — the Orchestrator reads it and signals `task_committed` with the extracted values.
 
-- On partial failure: log the error, then signal `task_committed` with the partial-failure context (commit hash IS available)
-- On full failure: log the error, then signal `task_committed` with the error context
-- The `task_committed` event is the mechanism that advances the pipeline — omitting it causes the pipeline to stall indefinitely
+- On partial failure: log the error, then output the partial-failure result block (commit hash IS available)
+- On full failure: log the error, then output the full-failure result block
+- Never call `pipeline.js` from within the Source Control Agent — the Orchestrator is the sole caller of the pipeline script
 
 ---
 
@@ -217,4 +217,57 @@ After parsing the JSON result from stdout, output one of these three patterns:
    Error logged to project error log.
    Pipeline will continue without committing {taskId}.
    To diagnose: run `git status` from the worktree at {worktreePath}
+```
+
+---
+
+## 9. Commit Result Block
+
+After outputting the human-readable feedback above, **always append a `## Commit Result` block** as the final output. The Orchestrator scans for this block to extract the values it passes to `task_committed`.
+
+**Format** (required for every code path):
+
+```
+## Commit Result
+```json
+{ "commitHash": "<hash-or-null>", "pushed": <true|false>, "error": "<message-or-null>" }
+```
+```
+
+**Values for each outcome:**
+
+| Outcome | `commitHash` | `pushed` | `error` |
+|---------|-------------|----------|---------|
+| Full success | short SHA | `true` | `null` |
+| Partial failure (push failed) | short SHA | `false` | push error message |
+| Full failure (commit failed) | `null` | `false` | commit error message |
+| `pipeline.source_control` absent | `null` | `false` | `"source_control context absent — commit skipped"` |
+| Worktree path inaccessible | `null` | `false` | error message |
+| Script execution error | `null` | `false` | error message |
+
+**Example — full success:**
+
+```
+## Commit Result
+```json
+{ "commitHash": "a1b2c3d", "pushed": true, "error": null }
+```
+```
+
+**Example — partial failure:**
+
+```
+## Commit Result
+```json
+{ "commitHash": "a1b2c3d", "pushed": false, "error": "fatal: unable to access remote" }
+```
+```
+
+**Example — full failure:**
+
+```
+## Commit Result
+```json
+{ "commitHash": null, "pushed": false, "error": "nothing to commit, working tree clean" }
+```
 ```

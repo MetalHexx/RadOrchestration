@@ -154,6 +154,7 @@ Every `result.action` value maps to exactly one Orchestrator operation. The Orch
 | 17 | `ask_gate_mode` | Human gate | Present the three gate mode options (`task`, `phase`, `autonomous`) to the operator. Wait for selection. | `gate_mode_set` with `{ "gate_mode": "<chosen>" }` |
 | 18 | `display_halted` | Terminal | Display `result.context.message` to the human. Ask how to proceed. **Loop terminates.** | *(none — terminal action)* |
 | 19 | `display_complete` | Terminal | Display completion summary to the human. **Loop terminates.** | *(none — terminal action)* |
+| 20 | `invoke_source_control_commit` | Agent spawn | Spawn **Source Control Agent** in commit mode. The agent reads `pipeline.source_control` from state, constructs the commit message, executes `git-commit.js`, and outputs a structured commit result block. Extract `commitHash`, `pushed`, and `error` from the agent’s `## Commit Result` JSON block in its output. | `task_committed` with `{ "commitHash": "<extracted>", "pushed": <extracted>, "error": "<extracted-or-null>" }` |
 
 > **IMPORTANT — `is_correction` guard for action #6 (`create_phase_plan`):** Only signal `phase_planning_started` when `result.context.is_correction` is falsy. For corrective re-planning (`is_correction: true`), the phase is already `in_progress / failed` — skip directly to spawning the Tactical Planner. Signaling `phase_planning_started` during a corrective cycle would be a harmless no-op but is semantically incorrect. The two-step protocol (signal `phase_planning_started` → receive `create_phase_plan` again → spawn Planner) applies ONLY to fresh phases.
 
@@ -186,6 +187,7 @@ These are the exact event names the Orchestrator passes to `--event`:
 | `task_handoff_created` | `{ "doc_path": "<path>" }` | After Tactical Planner finishes task handoff |
 | `task_completed` | `{ "doc_path": "<path>" }` | After Coder finishes task |
 | `code_review_completed` | `{ "doc_path": "<path>" }` | After Reviewer finishes code review |
+| `task_committed` | `{ "commitHash": "<hash>", "pushed": <bool>, "error": "<msg-or-null>" }` | After Source Control Agent completes; extract `commitHash`, `pushed`, and `error` from the agent’s `## Commit Result` JSON block. `commitHash` is the short SHA (or null if commit failed); `pushed` is whether the push succeeded; `error` is null on full success. |
 | `phase_report_created` | `{ "doc_path": "<path>" }` | After Tactical Planner finishes phase report |
 | `phase_review_completed` | `{ "doc_path": "<path>" }` | After Reviewer finishes phase review |
 | `gate_mode_set` | `{ "gate_mode": "<chosen>" }` | After operator selects gate mode (ask-mode resolution) |
