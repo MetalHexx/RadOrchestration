@@ -130,7 +130,7 @@ flowchart LR
     subgraph "Source"
         S1["state.json"]
         S2["Planning Docs<br/>PRD, Architecture,<br/>Master Plan, etc."]
-        S3["Execution Docs<br/>Task Reports,<br/>Phase Reports,<br/>Error Logs"]
+        S3["Execution Docs<br/>Phase Reports,<br/>Error Logs"]
     end
 
     subgraph "Extraction"
@@ -179,7 +179,7 @@ The extractor is a Node.js script — consistent with the pipeline engine, insta
 
 ### What Gets Extracted
 
-The system's templated documents have predictable structure. The extractor exploits this — it knows exactly where decisions live in an architecture doc, where requirements live in a PRD, and where outcomes live in task reports.
+The system's templated documents have predictable structure. The extractor exploits this — it knows exactly where decisions live in an architecture doc, where requirements live in a PRD, and where outcomes live in phase reports.
 
 | Source | Extracted Atoms |
 |--------|----------------|
@@ -188,7 +188,6 @@ The system's templated documents have predictable structure. The extractor explo
 | PRD | Functional requirements (ID, description, priority), non-functional requirements, user stories |
 | Architecture | Technical decisions, module map, technology choices, dependency graph |
 | Master Plan | Executive summary, key requirements, phase outlines with exit criteria |
-| Task Reports | Files changed (path, action, lines), tests written/passing, acceptance criteria results, deviations |
 | Phase Reports | Exit criteria assessment, carry-forward items, adjustment recommendations |
 | Error Logs | Structured entries: event, severity, root cause, workaround applied |
 | Final Reviews | Per-requirement coverage assessment, overall verdict |

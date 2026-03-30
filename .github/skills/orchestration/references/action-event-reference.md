@@ -15,7 +15,7 @@ Every `result.action` value maps to exactly one Orchestrator operation. All bran
 | 5 | `spawn_master_plan` | Agent spawn | **Two-step protocol:** (1) Signal `master_plan_started` with `{}` context → pipeline returns `spawn_master_plan` again; (2) Spawn **architect** agent with all planning docs. Output: {NAME}-MASTER-PLAN.md | `master_plan_completed --doc-path <output-path>` |
 | 6 | `create_phase_plan` | Agent spawn | **Two-step protocol — check `is_correction` first.** **Fresh phase** (`is_correction` is falsy): (1) Signal `phase_planning_started` with `{}` context → pipeline returns `create_phase_plan` again; (2) Spawn **tactical-planner** (phase plan mode). **Corrective** (`is_correction` is true): Skip `phase_planning_started`, spawn **tactical-planner** directly with `result.context.previous_review`. Output: phases/{NAME}-PHASE-{NN}-{TITLE}.md | `phase_plan_created --doc-path <output-path>` |
 | 7 | `create_task_handoff` | Agent spawn | **Two-step protocol — check `is_correction` first.** **Fresh task** (`is_correction` is falsy): (1) Signal `task_handoff_started` with `{}` context → pipeline returns `create_task_handoff` again; (2) Spawn **tactical-planner** (handoff mode). **Corrective** (`is_correction` is true): Skip `task_handoff_started`, spawn **tactical-planner** directly (corrective mode) with `result.context.previous_review`. Output: tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md | `task_handoff_created --doc-path <output-path>` |
-| 8 | `execute_task` | Agent spawn | Spawn **coder** agent with the task's handoff document. Output: reports/{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md | `task_completed --doc-path <output-path>` |
+| 8 | `execute_task` | Agent spawn | Spawn **coder** agent with the task's handoff document. Output: Source code + tests (no document produced) | `task_completed` |
 | 9 | `spawn_code_reviewer` | Agent spawn | Spawn **reviewer** agent for task-level code review. Output: reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md | `code_review_completed --doc-path <output-path>` |
 | 10 | `generate_phase_report` | Agent spawn | Spawn **tactical-planner** (report mode) for the phase. Output: reports/{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md | `phase_report_created --doc-path <output-path>` |
 | 11 | `spawn_phase_reviewer` | Agent spawn | Spawn **reviewer** agent for phase-level review. Output: reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md | `phase_review_completed --doc-path <output-path>` |
@@ -53,7 +53,7 @@ These are the exact event names passed to `--event`:
 | `phase_plan_created` | `--doc-path <path>` | After Tactical Planner finishes phase plan |
 | `task_handoff_started` | *(none)* | Before Tactical Planner spawn for fresh (non-corrective) tasks only. Transitions task from `not_started` to `in_progress` while leaving `task.stage` at `'planning'`. See action #7 two-step protocol. |
 | `task_handoff_created` | `--doc-path <path>` | After Tactical Planner finishes task handoff |
-| `task_completed` | `--doc-path <path>` | After Coder finishes task |
+| `task_completed` | *(none)* | After Coder finishes task |
 | `code_review_completed` | `--doc-path <path>` | After Reviewer finishes code review |
 | `task_commit_requested` | *(none)* | Signaled internally after `code_review_completed` when `auto_commit: always` and review verdict is approved. Triggers Source Control Agent spawn. |
 | `task_committed` | `--commit-hash <hash> --pushed <true\|false>` | After Source Control Agent completes. Extract `commitHash` and `pushed` from the agent's `## Commit Result` JSON block. |

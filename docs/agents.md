@@ -13,9 +13,9 @@ The orchestration system uses 12 specialized agents, each with a defined role, s
 | `@ux-designer` | Interface and interaction design | `DESIGN.md` |
 | `@architect` | System architecture and master planning | `ARCHITECTURE.md`, `MASTER-PLAN.md` |
 | `@tactical-planner` | Task breakdown and phase reporting | `PHASE-PLAN.md`, `TASK-HANDOFF.md`, `PHASE-REPORT.md` |
-| `@coder` | Code implementation | Code, tests, `TASK-REPORT.md` |
-| `@coder-junior` | Straightforward, lower-complexity coding tasks from task handoffs | Code, tests, `TASK-REPORT.md` |
-| `@coder-senior` | Complex or high-stakes coding tasks from task handoffs | Code, tests, `TASK-REPORT.md` |
+| `@coder` | Code implementation | Code, tests |
+| `@coder-junior` | Straightforward, lower-complexity coding tasks from task handoffs | Code, tests |
+| `@coder-senior` | Complex or high-stakes coding tasks from task handoffs | Code, tests |
 | `@reviewer` | Code and phase review | `CODE-REVIEW.md`, `PHASE-REVIEW.md` |
 | `@source-control` | Thin-router for git operations — commit and push (PR stubbed for AUTO-PR) | Code (via `git-commit.js` script only) |
 
@@ -120,7 +120,7 @@ The Tactical Planner is a pure planning agent that operates in 3 modes:
 2. **Task handoffs** — create self-contained coding instructions for the Coder
 3. **Phase reports** — aggregate task results and assess exit criteria
 
-**Input:** `ARCHITECTURE.md`, `PRD.md`, `MASTER-PLAN.md`, `DESIGN.md`, `CODE-REVIEW.md`, `TASK-REPORT.md`, `state.json`
+**Input:** `ARCHITECTURE.md`, `PRD.md`, `MASTER-PLAN.md`, `DESIGN.md`, `CODE-REVIEW.md`, `state.json`
 
 **Output:**`PHASE-PLAN.md`, `PHASE-REPORT.md`, `TASK-HANDOFF.md`
 
@@ -132,13 +132,13 @@ The Tactical Planner is a pure planning agent that operates in 3 modes:
 
 **Purpose:** Execute coding tasks from self-contained Task Handoff documents.
 
-Reads a single Task Handoff, implements the code changes, writes tests, runs the build, and produces a Task Report documenting what was done, what changed, and any deviations or discoveries.
+Reads a single Task Handoff, implements the code changes, writes tests, and runs the build.
 
 **Input:** `TASK-HANDOFF.md`
 
-**Output:** Source code, tests, `TASK-REPORT.md`
+**Output:** Source code, tests
 
-**Skills:** `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests`
+**Skills:** `orchestration`, `execute-coding-task`, `run-tests`
 
 ---
 
@@ -146,13 +146,13 @@ Reads a single Task Handoff, implements the code changes, writes tests, runs the
 
 **Purpose:** Execute straightforward, lower-complexity coding tasks from self-contained Task Handoff documents.
 
-The Junior Coder reads a single Task Handoff, implements well-defined code changes, writes tests, and produces a Task Report. Assigned to tasks where the implementation steps are explicit and the scope is narrow.
+The Junior Coder reads a single Task Handoff, implements well-defined code changes, writes tests, and runs the build. Assigned to tasks where the implementation steps are explicit and the scope is narrow.
 
 **Input:** `TASK-HANDOFF.md`
 
-**Output:** Source code, tests, `TASK-REPORT.md`
+**Output:** Source code, tests
 
-**Skills:** `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests`
+**Skills:** `orchestration`, `execute-coding-task`, `run-tests`
 
 ---
 
@@ -164,9 +164,9 @@ The Senior Coder handles architecturally significant, nuanced, or cross-cutting 
 
 **Input:** `TASK-HANDOFF.md`
 
-**Output:** Source code, tests, `TASK-REPORT.md`
+**Output:** Source code, tests
 
-**Skills:** `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests`
+**Skills:** `orchestration`, `execute-coding-task`, `run-tests`
 
 ---
 
@@ -181,7 +181,7 @@ The Reviewer operates at three levels:
 - **Phase review** — assesses cross-task integration, module consistency, and exit criteria
 - **Final review** — comprehensive project-level review before completion
 
-**Input:** Code changes, `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `PHASE-PLAN.md`, `TASK-REPORT.md`
+**Input:** Code changes, `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `PHASE-PLAN.md`
 
 **Output:** `CODE-REVIEW.md`, `PHASE-REVIEW.md`
 

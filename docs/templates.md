@@ -35,7 +35,6 @@ Each skill that produces a document bundles a template in its `templates/` subfo
 |----------|-------|-------------|
 | [`PHASE-PLAN.md`](../.github/skills/create-phase-plan/templates/PHASE-PLAN.md) | `create-phase-plan` | Phase-level task breakdown with dependencies and execution order |
 | [`TASK-HANDOFF.md`](../.github/skills/create-task-handoff/templates/TASK-HANDOFF.md) | `create-task-handoff` | Self-contained coding task assignment with contracts and acceptance criteria |
-| [`TASK-REPORT.md`](../.github/skills/generate-task-report/templates/TASK-REPORT.md) | `generate-task-report` | Task completion report with files changed, tests, and deviations |
 | [`PHASE-REPORT.md`](../.github/skills/generate-phase-report/templates/PHASE-REPORT.md) | `generate-phase-report` | Phase summary aggregating task results and exit criteria assessment |
 
 ## Review Templates

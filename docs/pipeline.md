@@ -53,8 +53,6 @@ flowchart LR
 | `complete` | Code review approved — terminal |
 | `failed` | Review verdict was `changes_requested` — Tactical Planner creates a corrective task handoff to re-enter at `coding` if retries remain; terminal if retries exhausted |
 
-> **Note:** `reporting` is a reserved enum value in the schema but is not set by any current mutation handler.
-
 Allowed task stage transitions:
 
 See [constants.js](../.github/skills/orchestration/scripts/lib/constants.js) for the full transition map.
@@ -169,7 +167,7 @@ sequenceDiagram
             Note over ORC: event task_handoff_created
 
             ORC->>COD: Execute task
-            COD-->>ORC: TASK-REPORT.md
+            COD-->>ORC: task_completed signal
             Note over ORC: event task_completed<br/>stage → reviewing, status stays in_progress
 
             ORC->>REV: Review code
@@ -207,11 +205,11 @@ sequenceDiagram
 Each task progresses through a deterministic lifecycle:
 
 1. **Handoff** — Tactical Planner creates a self-contained Task Handoff document; task `stage` advances to `coding`
-2. **Execution** — Coder implements the task and produces a Task Report; the `task_completed` event sets `stage → reviewing` while `status` **remains `in_progress`** — the task is not complete yet, it is waiting for review
+2. **Execution** — Coder implements the task (code + tests only); the `task_completed` event sets `stage → reviewing` while `status` **remains `in_progress`** — the task is not complete yet, it is waiting for review
 3. **Review** — Reviewer evaluates the code against PRD, architecture, and design
 4. **Resolution** — Pipeline script processes the `code_review_completed` event: if approved, `status → complete` and `stage → complete`; if `changes_requested` with retries remaining, `status → failed` and `stage → failed` (retries incremented) — the Tactical Planner then creates a corrective task handoff, which resets `status → in_progress` and `stage → coding`; if `changes_requested` with no retries remaining, `status → halted` and `stage → failed`
 
-> **Note:** `complete` is truly terminal for tasks. A task that reaches `status = complete` cannot be retried or failed. The retry path is corrective re-entry: on `changes_requested`, the task transitions to `status = failed`, `stage = failed` (retries incremented); the Tactical Planner then creates a corrective task handoff which resets `status → in_progress`, `stage → coding`, and clears the stale report and review docs.
+> **Note:** `complete` is truly terminal for tasks. A task that reaches `status = complete` cannot be retried or failed. The retry path is corrective re-entry: on `changes_requested`, the task transitions to `status = failed`, `stage = failed` (retries incremented); the Tactical Planner then creates a corrective task handoff which resets `status → in_progress`, `stage → coding`, and clears the stale review doc.
 
 ### Phase Lifecycle
 
@@ -289,23 +287,6 @@ The `handlePlanApproved` mutation then uses `context.total_phases` to initialize
 | `total_phases` missing from frontmatter | `"Missing required field"` (event=`plan_approved`, field=`total_phases`) |
 | `total_phases` not a positive integer | `"Invalid value: total_phases must be a positive integer"` (event=`plan_approved`, field=`total_phases`) |
 
-### Status Normalization
-
-When the engine processes the `task_completed` event, the existing task report pre-read step normalizes the report's `status` field from frontmatter before passing it to the mutation:
-
-| Raw Value | Normalized Value |
-|-----------|------------------|
-| `complete` | `complete` |
-| `pass` | `complete` |
-| `partial` | `complete` (legacy — mapped for backward compatibility) |
-| `failed` | `failed` |
-| `fail` | `failed` |
-| Anything else | **Hard error** (exit 1) |
-
-The canonical task report status values are `complete` and `failed`. The synonyms `pass` and `fail` are normalized to their canonical forms. The legacy value `partial` is mapped to `complete` for backward compatibility — under the current binary model, a task that met its acceptance criteria (even with pre-existing issues outside its scope) is `complete`. Any unrecognized status value produces a hard error (exit 1).
-
-The `generate-task-report` skill enforces the canonical values at the source. Coders document pre-existing or out-of-scope concerns in the Task Report's "Pre-existing Issues" section rather than using a middle-ground status.
-
 ### 20-Action Routing Table
 
 | # | Action | Category | Orchestrator Operation |
@@ -371,7 +352,6 @@ Key rules:
 |---------|--------------|
 | Active pipeline tier | `pipeline.current_tier` |
 | Task handoff document | `task.docs.handoff` |
-| Task report document | `task.docs.report` |
 | Task review document | `task.docs.review` |
 | Task review verdict | `task.review.verdict` |
 | Task review action | `task.review.action` |
