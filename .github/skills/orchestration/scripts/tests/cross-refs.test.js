@@ -411,7 +411,7 @@ describe('checkCrossRefs', () => {
       agents.set('coder.agent.md', makeAgentInfo({
         filename: 'coder.agent.md',
         frontmatter: { name: 'Coder' },
-        referencedSkills: ['generate-task-report', 'nonexistent-skill'],
+        referencedSkills: ['execute-coding-task', 'nonexistent-skill'],
       }));
 
       const skills = new Map();
@@ -419,8 +419,8 @@ describe('checkCrossRefs', () => {
         folderName: 'research-codebase',
         templateLinks: ['./templates/PRD.md'],
       }));
-      skills.set('generate-task-report', makeSkillInfo({
-        folderName: 'generate-task-report',
+      skills.set('execute-coding-task', makeSkillInfo({
+        folderName: 'execute-coding-task',
         templateLinks: ['./templates/MISSING.md'],
       }));
 
@@ -441,7 +441,7 @@ describe('checkCrossRefs', () => {
       assert.strictEqual(orchAgentFails.length, 1);
 
       // research.agent.md → research-codebase: pass
-      // coder.agent.md → generate-task-report: pass
+      // coder.agent.md → execute-coding-task: pass
       // coder.agent.md → nonexistent-skill: fail
       const skillRefPasses = results.filter(r => r.status === 'pass' && r.message.includes('skill'));
       const skillRefFails = results.filter(r => r.status === 'fail' && r.message.includes('unknown skill'));

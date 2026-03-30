@@ -82,7 +82,7 @@ describe('Scenarios 1-2: Task gate mode', () => {
   const documents = {
     's1-pp.md':  makeDoc({ tasks: ['T01'] }),
     's1-th.md':  makeDoc({}),
-    's1-tr.md':  makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    's1-tr.md':  makeDoc({ status: 'complete' }),
     's1-cr.md':  makeDoc({ verdict: 'approved' }),
   };
   const io = createMockIO({ state: makeGateTestState(1, 'task'), documents });
@@ -136,7 +136,7 @@ describe('Scenarios 3-4: Phase gate mode - pointer deferral and advance', () => 
   const documents = {
     's34-pp.md':  makeDoc({ tasks: ['T01'] }),
     's34-th.md':  makeDoc({}),
-    's34-tr.md':  makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    's34-tr.md':  makeDoc({ status: 'complete' }),
     's34-cr.md':  makeDoc({ verdict: 'approved' }),
     's34-pr.md':  makeDoc({}),
     's34-prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
@@ -203,7 +203,7 @@ describe('Scenario 5: Phase gate mode - last phase approval transitions to revie
   const documents = {
     's5-pp.md':  makeDoc({ tasks: ['T01'] }),
     's5-th.md':  makeDoc({}),
-    's5-tr.md':  makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    's5-tr.md':  makeDoc({ status: 'complete' }),
     's5-cr.md':  makeDoc({ verdict: 'approved' }),
     's5-pr.md':  makeDoc({}),
     's5-prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
@@ -265,7 +265,7 @@ describe('Scenario 6: Autonomous mode - no gate, immediate pointer advance', () 
   const documents = {
     's6-pp.md': makeDoc({ tasks: ['T01'] }),
     's6-th.md': makeDoc({}),
-    's6-tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    's6-tr.md': makeDoc({ status: 'complete' }),
     's6-cr.md': makeDoc({ verdict: 'approved' }),
   };
   const io = createMockIO({ state: makeGateTestState(1, 'autonomous'), documents });
@@ -307,7 +307,7 @@ describe('Scenario 7: Gate rejection halts pipeline', () => {
   const documents = {
     's7-pp.md': makeDoc({ tasks: ['T01'] }),
     's7-th.md': makeDoc({}),
-    's7-tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    's7-tr.md': makeDoc({ status: 'complete' }),
     's7-cr.md': makeDoc({ verdict: 'approved' }),
   };
   const io = createMockIO({ state: makeGateTestState(1, 'task'), documents });

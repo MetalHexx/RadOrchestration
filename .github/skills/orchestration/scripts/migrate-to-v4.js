@@ -113,7 +113,7 @@ function normalizePhaseAction(action) {
  * Infer v4 task stage from pre-v4 status + doc paths.
  * Called on field-normalized intermediate (flat handoff_doc, report_doc, etc.).
  * @param {Object} task - task with flat field names
- * @returns {'planning'|'coding'|'reporting'|'reviewing'|'complete'|'failed'}
+ * @returns {'planning'|'coding'|'reviewing'|'complete'|'failed'}
  */
 function inferTaskStage(task) {
   if (task.status === 'halted') return 'failed';
@@ -130,7 +130,7 @@ function inferTaskStage(task) {
  * Infer v4 phase stage from pre-v4 status + doc paths.
  * Called on field-normalized intermediate (flat phase_plan_doc, etc.).
  * @param {Object} phase - phase with flat field names
- * @returns {'planning'|'executing'|'reporting'|'reviewing'|'complete'|'failed'}
+ * @returns {'planning'|'executing'|'reviewing'|'complete'|'failed'}
  */
 function inferPhaseStage(phase) {
   if (phase.status === 'halted') return 'failed';
