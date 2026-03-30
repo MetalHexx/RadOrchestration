@@ -73,7 +73,7 @@ When spawned to create a task handoff:
 1. **Read the Phase Plan** — task outline, dependencies
 2. **Read the Architecture** — contracts, interfaces, file structure
 3. **Read the Design** — design tokens, component specs (if UI task)
-4. **Read previous Task Report(s)** — for each dependent completed task: path from `state.json → task.docs.report`
+4. **Read previous Code Review(s)** — for each dependent completed task: path from `state.json → task.docs.review`
 5. **Read the Code Review** (if present) — path from `state.json → task.docs.review` for the relevant completed task
 
 ### Prior Context Routing
@@ -82,7 +82,7 @@ Read `state.json → execution.phases[current].tasks[previous].review.action` an
 
 | `review.action` value | What to produce |
 |-----------------------|-----------------|
-| `null` (no review doc) | Normal Task Handoff; include Task Report Recommendations in context |
+| `null` (no review doc) | Normal Task Handoff |
 | `"advanced"` / `"advance"` | Normal Task Handoff; include carry-forward items in context |
 | `"corrective_task_issued"` | Corrective Task Handoff; inline all Issues from Code Review; include original acceptance criteria |
 | `"halted"` | DO NOT produce a Task Handoff — inform the Orchestrator the pipeline is halted |
@@ -108,27 +108,25 @@ When the Prior Context routing produces `review.action: "corrective_task_issued"
 
 1. **Read the original Task Handoff** — understand the original intent
 2. **Read the Code Review** — understand what issues were found
-3. **Read the Task Report** — understand what was built
-4. **Create a new handoff** focused ONLY on fixing the identified issues
-5. **Include the original acceptance criteria** plus any new ones from the review
-6. **Save** with the same task ID (overwrite or append `-fix` suffix as appropriate)
+3. **Create a new handoff** focused ONLY on fixing the identified issues
+4. **Include the original acceptance criteria** plus any new ones from the review
+5. **Save** with the same task ID (overwrite or append `-fix` suffix as appropriate)
 
 ## Mode 3: Generate Phase Report
 
 When spawned to generate a phase report after all tasks complete:
 
 1. **Read the Phase Plan** — task outline, exit criteria
-2. **Read ALL Task Reports** for this phase
-3. **Read ALL Code Reviews** for this phase
-4. **Read `state.json`** (read-only) — retry counts, error aggregation
-5. **Summarize** what was accomplished (2-3 sentences)
-6. **Aggregate task results**: Table with status, retries, key outcome per task
-7. **Assess exit criteria**: Each criterion from the Phase Plan → Met/Not Met
-8. **Aggregate files changed**: Total across all tasks
-9. **Document issues**: Compile from task reports with resolutions
-10. **Identify carry-forward items**: What the next phase must address
-11. **Use the `generate-phase-report` skill** to produce the document
-12. **Save** to `{PROJECT-DIR}/reports/{NAME}-PHASE-REPORT-P{NN}.md`
+2. **Read ALL Code Reviews** for this phase — per-task verdicts, issues, and outcomes
+3. **Read `state.json`** (read-only) — retry counts, error aggregation
+4. **Summarize** what was accomplished (2-3 sentences)
+5. **Aggregate task results**: Table with status, retries, key outcome per task
+6. **Assess exit criteria**: Each criterion from the Phase Plan → Met/Not Met
+7. **Aggregate files changed**: Total across all tasks
+8. **Document issues**: Compile from code reviews with resolutions
+9. **Identify carry-forward items**: What the next phase must address
+10. **Use the `generate-phase-report` skill** to produce the document
+11. **Save** to `{PROJECT-DIR}/reports/{NAME}-PHASE-REPORT-P{NN}.md`
 
 ## Skills
 - **`orchestration`**: System context and validation guide — agent roles, pipeline flow, validation workflow

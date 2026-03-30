@@ -204,7 +204,6 @@ function resolveTask(task, phase, phaseNumber, taskNumber, state, config) {
     return {
       action: NEXT_ACTIONS.SPAWN_CODE_REVIEWER,
       context: {
-        report_doc: task.docs.report,
         phase_number: phaseNumber,
         task_number: taskNumber,
         phase_id: formatPhaseId(phaseNumber),

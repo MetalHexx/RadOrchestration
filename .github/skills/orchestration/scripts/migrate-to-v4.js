@@ -113,7 +113,7 @@ function normalizePhaseAction(action) {
  * Infer v4 task stage from pre-v4 status + doc paths.
  * Called on field-normalized intermediate (flat handoff_doc, report_doc, etc.).
  * @param {Object} task - task with flat field names
- * @returns {'planning'|'coding'|'reporting'|'reviewing'|'complete'|'failed'}
+ * @returns {'planning'|'coding'|'reviewing'|'complete'|'failed'}
  */
 function inferTaskStage(task) {
   if (task.status === 'halted') return 'failed';
@@ -130,7 +130,7 @@ function inferTaskStage(task) {
  * Infer v4 phase stage from pre-v4 status + doc paths.
  * Called on field-normalized intermediate (flat phase_plan_doc, etc.).
  * @param {Object} phase - phase with flat field names
- * @returns {'planning'|'executing'|'reporting'|'reviewing'|'complete'|'failed'}
+ * @returns {'planning'|'executing'|'reviewing'|'complete'|'failed'}
  */
 function inferPhaseStage(phase) {
   if (phase.status === 'halted') return 'failed';
@@ -175,16 +175,12 @@ function migrateTask(rawTask) {
     stage: inferTaskStage(flat),
     docs: {
       handoff: handoff_doc,
-      report: report_doc,
       review: review_doc,
     },
     review: {
       verdict: review_verdict,
       action: review_action,
     },
-    report_status: rawTask.report_status !== undefined ? rawTask.report_status : null,
-    has_deviations: rawTask.has_deviations !== undefined ? rawTask.has_deviations : false,
-    deviation_type: rawTask.deviation_type !== undefined ? rawTask.deviation_type : null,
     retries: rawTask.retries !== undefined ? rawTask.retries : 0,
   };
 }

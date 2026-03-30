@@ -41,3 +41,15 @@ created: "{ISO-DATE}"
 ## Recommendations
 
 - {Recommendation for next task or Planner action}
+
+## Files Reviewed
+<!-- Optional. Omit this section entirely if not applicable. -->
+
+| File | Notes |
+|------|-------|
+| `{path/to/file}` | {brief phrase} |
+
+## Deviations Observed
+<!-- Optional. Omit this section entirely if no deviations were observed. Do NOT re-grade acceptance criteria here. Do NOT repeat Issues Found content. -->
+
+- {Brief bullet describing the deviation from the task handoff specification.}

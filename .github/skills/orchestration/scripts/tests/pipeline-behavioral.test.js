@@ -82,7 +82,6 @@ describe('Category 1: Full happy path', () => {
   const documents = {
     'mp.md': makeDoc({ total_phases: 1 }),
     'pp.md': makeDoc({ tasks: ['T01'] }),
-    'tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     'cr.md': makeDoc({ verdict: 'approved' }),
     'prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
   };
@@ -255,7 +254,7 @@ describe('Category 1: Full happy path', () => {
   });
 
   it('Step 10: task_completed → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'tr.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -316,13 +315,10 @@ describe('Category 1: Full happy path', () => {
 describe('Category 2: Multi-phase multi-task', () => {
   const documents = {
     'c2-pp1.md': makeDoc({ tasks: ['T01', 'T02'] }),
-    'c2-tr1.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     'c2-cr1.md': makeDoc({ verdict: 'approved' }),
-    'c2-tr2.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     'c2-cr2.md': makeDoc({ verdict: 'approved' }),
     'c2-prv1.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
     'c2-pp2.md': makeDoc({ tasks: ['T01'] }),
-    'c2-tr-p2.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     'c2-cr-p2.md': makeDoc({ verdict: 'approved' }),
     'c2-prv2.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
   };
@@ -373,7 +369,7 @@ describe('Category 2: Multi-phase multi-task', () => {
   });
 
   it('P1 Step 3: task_completed (T01) → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c2-tr1.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -414,7 +410,7 @@ describe('Category 2: Multi-phase multi-task', () => {
   });
 
   it('P1 Step 6: task_completed (T02) → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c2-tr2.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -500,7 +496,7 @@ describe('Category 2: Multi-phase multi-task', () => {
   });
 
   it('P2 Step 12: task_completed → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c2-tr-p2.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -650,19 +646,23 @@ describe('Category 4: Pre-read validation failures', () => {
     assert.equal(result.context.field, 'total_phases');
   });
 
-  it('task_completed — missing status', () => {
-    const state = createBaseState();
+  it('task_completed — pass-through pre-read succeeds (no document validation)', () => {
+    // task_completed is now a pass-through — no pre-read validation occurs.
+    // With a proper execution state, the mutation succeeds.
+    const state = createExecutionState();
     delete state.project.updated;
+    state.execution.phases[0].current_task = 1;
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    state.execution.phases[0].tasks[0].stage = 'coding';
+    state.execution.phases[0].tasks[0].docs.handoff = 'h.md';
     const io = createMockIO({
       state,
-      documents: { 'bad-tr.md': makeDoc({ has_deviations: false, deviation_type: null }) },
+      documents: {},
     });
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'bad-tr.md' }, io);
-    assert.equal(result.success, false);
-    assert.equal(result.action, null);
-    assert.equal(io.getWrites().length, 0);
-    assert.equal(result.context.event, 'task_completed');
-    assert.equal(result.context.field, 'status');
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, 1);
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'reviewing');
   });
 
   it('code_review_completed — missing verdict', () => {
@@ -719,7 +719,6 @@ describe('Category 4: Pre-read validation failures', () => {
 describe('Category 5: Phase lifecycle', () => {
   const documents = {
     'c5-pp.md': makeDoc({ tasks: ['T01'] }),
-    'c5-tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     'c5-cr.md': makeDoc({ verdict: 'approved' }),
     'c5-prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
   };
@@ -748,7 +747,7 @@ describe('Category 5: Phase lifecycle', () => {
   });
 
   it('task_completed → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c5-tr.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -804,10 +803,8 @@ describe('Category 6: Halt paths', () => {
           current_task: 1,
           tasks: [{
             name: 'T01', status: 'in_progress', stage: 'coding',
-            docs: { handoff: 'h.md', report: null, review: null },
+            docs: { handoff: 'h.md', review: null },
             review: { verdict: null, action: null },
-            report_status: null,
-            has_deviations: false, deviation_type: null,
             retries: 0,
           }],
           docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
@@ -817,14 +814,13 @@ describe('Category 6: Halt paths', () => {
     });
     delete state.project.updated;
     const documents = {
-      'c6a-tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
       'c6a-cr.md': makeDoc({ verdict: 'rejected' }),
     };
     const io = createMockIO({ state, documents });
     let writeCount = 0;
 
     it('task_completed → spawn_code_reviewer', () => {
-      const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c6a-tr.md' }, io);
+      const result = processEvent('task_completed', PROJECT_DIR, {}, io);
       writeCount++;
       assert.equal(result.success, true);
       assert.equal(result.action, 'spawn_code_reviewer');
@@ -856,10 +852,8 @@ describe('Category 6: Halt paths', () => {
           current_task: 1,
           tasks: [{
             name: 'T01', status: 'in_progress', stage: 'coding',
-            docs: { handoff: 'h.md', report: null, review: null },
+            docs: { handoff: 'h.md', review: null },
             review: { verdict: null, action: null },
-            report_status: null,
-            has_deviations: false, deviation_type: null,
             retries: 2,
           }],
           docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
@@ -869,14 +863,13 @@ describe('Category 6: Halt paths', () => {
     });
     delete state.project.updated;
     const documents = {
-      'c6b-tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
       'c6b-cr.md': makeDoc({ verdict: 'changes_requested' }),
     };
     const io = createMockIO({ state, documents });
     let writeCount = 0;
 
     it('task_completed → spawn_code_reviewer', () => {
-      const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c6b-tr.md' }, io);
+      const result = processEvent('task_completed', PROJECT_DIR, {}, io);
       writeCount++;
       assert.equal(result.success, true);
       assert.equal(result.action, 'spawn_code_reviewer');
@@ -907,10 +900,9 @@ describe('Category 6: Halt paths', () => {
           current_task: 1,
           tasks: [{
             name: 'T01', status: 'complete', stage: 'complete',
-            docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+            docs: { handoff: 'h.md', review: 'rv.md' },
             review: { verdict: 'approved', action: 'advanced' },
-            has_deviations: false, deviation_type: null,
-            retries: 0, report_status: 'complete',
+            retries: 0,
           }],
           docs: { phase_plan: 'pp.md', phase_report: 'pr.md', phase_review: null },
           review: { verdict: null, action: null },
@@ -939,7 +931,7 @@ describe('Category 6: Halt paths', () => {
 // ─── Category 7: Pre-read failure flows ─────────────────────────────────────
 
 describe('Category 7: Pre-read failure flows', () => {
-  it('(a) Missing document (readDocument returns null)', () => {
+  it('(a) task_completed pass-through succeeds even with missing document', () => {
     const state = createExecutionState();
     delete state.project.updated;
     // Set task to in_progress with handoff so we can fire task_completed
@@ -948,10 +940,11 @@ describe('Category 7: Pre-read failure flows', () => {
     state.execution.phases[0].tasks[0].docs.handoff = 'h.md';
     state.execution.phases[0].current_task = 1;
     const io = createMockIO({ state, documents: {} });
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'nonexistent.md' }, io);
-    assert.equal(result.success, false);
-    assert.equal(result.action, null);
-    assert.equal(io.getWrites().length, 0);
+    // task_completed is now a pass-through — no document needed
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, 1);
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'reviewing');
   });
 
   it('(b) Null frontmatter', () => {
@@ -1082,16 +1075,12 @@ describe('Category 11 — Corrective Task Flow', () => {
           stage: 'failed',
           docs: {
             handoff: 'c11-original-handoff.md',
-            report: 'c11-report.md',
             review: 'c11-review.md',
           },
           review: {
             verdict: 'changes_requested',
             action: 'corrective_task_issued',
           },
-          report_status: 'complete',
-          has_deviations: false,
-          deviation_type: null,
           retries: 1,
         }],
         docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
@@ -1102,7 +1091,7 @@ describe('Category 11 — Corrective Task Flow', () => {
   delete state.project.updated;
 
   const documents = {
-    'c11-corrective-report.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    'c11-corrective-report.md': makeDoc({}),
   };
 
   const io = createMockIO({ state, documents });
@@ -1121,9 +1110,7 @@ describe('Category 11 — Corrective Task Flow', () => {
     assert.equal(task.docs.handoff, 'c11-corrective-handoff.md');
     assert.equal(task.stage, 'coding');
 
-    // All five stale fields cleared to null
-    assert.equal(task.docs.report, null);
-    assert.equal(task.report_status, null);
+    // Stale fields cleared to null
     assert.equal(task.docs.review, null);
     assert.equal(task.review.verdict, null);
     assert.equal(task.review.action, null);
@@ -1145,7 +1132,7 @@ describe('Category 12: Commit-enabled happy path (auto_commit=always)', () => {
   const documents = {
     'c12-pp.md': makeDoc({ tasks: ['T01', 'T02'] }),
     'c12-th1.md': makeDoc({}),
-    'c12-tr1.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    'c12-tr1.md': makeDoc({}),
     'c12-cr1.md': makeDoc({ verdict: 'approved' }),
   };
 
@@ -1234,7 +1221,7 @@ describe('Category 13: Commit-disabled (auto_commit=never)', () => {
   const documents = {
     'c13-pp.md': makeDoc({ tasks: ['T01'] }),
     'c13-th1.md': makeDoc({}),
-    'c13-tr1.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    'c13-tr1.md': makeDoc({}),
     'c13-cr1.md': makeDoc({ verdict: 'approved' }),
   };
 

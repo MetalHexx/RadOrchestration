@@ -39,8 +39,7 @@ To customize the **output format** of documents a skill produces, modify the ski
 |-------|-------------|---------|
 | `create-phase-plan` | Break project phases into concrete tasks with dependencies, execution order, and acceptance criteria | tactical-planner |
 | `create-task-handoff` | Create self-contained task documents that inline all contracts, interfaces, and requirements | tactical-planner |
-| `execute-coding-task` | Full coding task execution loop — read handoff, implement code, run tests, verify acceptance criteria, write Task Report | coder, coder-junior, coder-senior |
-| `generate-task-report` | Document task completion — files changed, test results, deviations, discoveries | coder, coder-junior, coder-senior, tactical-planner |
+| `execute-coding-task` | Full coding task execution loop — read handoff, implement code, run tests, verify acceptance criteria | coder, coder-junior, coder-senior |
 | `generate-phase-report` | Summarize phase outcomes — aggregated task results, exit criteria assessment, carry-forward items | tactical-planner |
 | `run-tests` | Execute the project test suite and report structured results with pass/fail and error details | coder, coder-junior, coder-senior, tactical-planner |
 | `log-error` | Log pipeline errors to a structured, append-only per-project error log (`ERROR-LOG.md`) | orchestrator |
@@ -79,9 +78,9 @@ Each agent is explicitly assigned skills in its `.agent.md` frontmatter. This ta
 | ux-designer | `orchestration`, `create-design` |
 | architect | `orchestration`, `create-architecture`, `create-master-plan` |
 | tactical-planner | `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
-| coder | `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests` |
-| coder-junior | `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests` |
-| coder-senior | `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests` |
+| coder | `orchestration`, `execute-coding-task`, `run-tests` |
+| coder-junior | `orchestration`, `execute-coding-task`, `run-tests` |
+| coder-senior | `orchestration`, `execute-coding-task`, `run-tests` |
 | reviewer | `orchestration`, `review-task`, `review-phase` |
 | source-control | `orchestration`, `source-control` |
 

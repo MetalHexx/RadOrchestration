@@ -40,14 +40,10 @@ function makeState() {
               stage: 'complete',
               docs: {
                 handoff: 'tasks/HANDOFF-P01-T01.md',
-                report: 'tasks/REPORT-P01-T01.md',
                 review: 'tasks/REVIEW-P01-T01.md',
               },
               review: { verdict: 'approved', action: 'advanced' },
-              has_deviations: false,
-              deviation_type: null,
               retries: 0,
-              report_status: 'complete',
             },
           ],
           docs: {

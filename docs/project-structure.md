@@ -93,8 +93,6 @@ Each project gets its own subfolder under the configured `base_path` (default: `
 │   ├── {NAME}-TASK-P01-T02-{TITLE}.md
 │   └── ...
 └── reports/
-    ├── {NAME}-TASK-REPORT-P01-T01-{TITLE}.md
-    ├── {NAME}-TASK-REPORT-P01-T02-{TITLE}.md
     ├── {NAME}-CODE-REVIEW-P01-T01-{TITLE}.md
     ├── {NAME}-PHASE-REPORT-P01-{TITLE}.md
     └── {NAME}-PHASE-REVIEW-P01-{TITLE}.md
@@ -112,7 +110,6 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 | `{NAME}-DESIGN.md` | `MYAPP-DESIGN.md` |
 | `{NAME}-PHASE-{NN}-{TITLE}.md` | `MYAPP-PHASE-01-CORE-API.md` |
 | `{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-TASK-P01-T03-AUTH.md` |
-| `{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-TASK-REPORT-P01-T03-AUTH.md` |
 | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-CODE-REVIEW-P01-T03-AUTH.md` |
 | `{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REPORT-P01-CORE-API.md` |
 | `{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REVIEW-P01-CORE-API.md` |
@@ -146,7 +143,6 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 |----------|-------------|----------|
 | `PHASE-PLAN.md` | Tactical Planner | Task breakdown, dependencies, execution order, acceptance criteria |
 | `TASK-HANDOFF.md` | Tactical Planner | Self-contained coding instructions with inlined contracts and requirements |
-| `TASK-REPORT.md` | Coder | Changed files, test results, deviations, discoveries |
 | `PHASE-REPORT.md` | Tactical Planner | Aggregated results, exit criteria assessment, carry-forward items |
 | `CODE-REVIEW.md` | Reviewer | Verdict, checklist, issues, severity classification |
 | `PHASE-REVIEW.md` | Reviewer | Cross-task integration assessment, exit criteria verification |

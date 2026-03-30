@@ -227,15 +227,9 @@ describe('processEvent — standard event path', () => {
     state.execution.phases[0].tasks[0].stage = 'coding'; // V14: coding → reviewing
     state.execution.phases[0].tasks[0].docs.handoff = 'tasks/handoff.md';
 
-    const docPath = 'tasks/report.md';
-    const documents = {
-      [docPath]: {
-        frontmatter: { status: 'complete', has_deviations: false, deviation_type: null },
-        body: 'task report body',
-      },
-    };
+    const documents = {};  // task_completed is pass-through — no document needed
     const io = createMockIO({ state, documents });
-    const ctx = { doc_path: docPath };
+    const ctx = {};  // no doc_path needed
     const result = processEvent('task_completed', PROJECT_DIR, ctx, io);
     assertResultShape(result);
     assert.equal(result.success, true);
@@ -244,14 +238,12 @@ describe('processEvent — standard event path', () => {
   });
 
   it('code_review_completed with approved verdict → task advances, 1 write', () => {
-    // Set up execution state: task in_progress (stage=reviewing), report filed, needs review
+    // Set up execution state: task in_progress (stage=reviewing), needs review
     const state = stripTimestamp(createExecutionState());
     state.execution.phases[0].current_task = 1; // 1-based: T01 is active
     state.execution.phases[0].tasks[0].status = 'in_progress'; // v4: in_progress until code review
     state.execution.phases[0].tasks[0].stage = 'reviewing'; // V14: reviewing → complete
     state.execution.phases[0].tasks[0].docs.handoff = 'tasks/handoff.md';
-    state.execution.phases[0].tasks[0].docs.report = 'tasks/report.md';
-    state.execution.phases[0].tasks[0].report_status = 'complete';
 
     const docPath = 'reviews/review.md';
     const documents = {
@@ -277,19 +269,22 @@ describe('processEvent — standard event path', () => {
 // ─── processEvent — pre-read failure ────────────────────────────────────────
 
 describe('processEvent — pre-read failure', () => {
-  it('task_completed with missing document → success false, action null, 0 writes', () => {
-    const state = createExecutionState();
+  it('task_completed (pass-through) → success true, 1 write, stage becomes reviewing', () => {
+    const state = stripTimestamp(createExecutionState());
+    state.execution.phases[0].current_task = 1;
     state.execution.phases[0].tasks[0].status = 'in_progress';
+    state.execution.phases[0].tasks[0].stage = 'coding';
     state.execution.phases[0].tasks[0].docs.handoff = 'tasks/handoff.md';
 
     const io = createMockIO({ state, documents: {} });
-    const ctx = { doc_path: 'nonexistent/report.md' };
+    const ctx = {};  // no doc_path needed — task_completed is pass-through
     const result = processEvent('task_completed', PROJECT_DIR, ctx, io);
     assertResultShape(result);
-    assert.equal(result.success, false);
-    assert.equal(result.action, null);
-    assert.equal(io.getWrites().length, 0);
-    assert.ok(result.context.event === 'task_completed');
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, 1);
+    const written = io.getWrites()[0];
+    assert.equal(written.execution.phases[0].tasks[0].stage, 'reviewing');
+    assert.equal(written.execution.phases[0].tasks[0].status, 'in_progress');
   });
 
   it('plan_approved with document missing total_phases → success false, field total_phases', () => {
@@ -562,17 +557,15 @@ describe('processEvent — task_commit_requested', () => {
           tasks: [
             {
               name: 'T01', status: 'complete', stage: 'complete',
-              docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+              docs: { handoff: 'h.md', review: 'rv.md' },
               review: { verdict: 'approved', action: 'advanced' },
-              report_status: 'complete',
-              has_deviations: false, deviation_type: null, retries: 0,
+              retries: 0,
             },
             {
               name: 'T02', status: 'not_started', stage: 'planning',
-              docs: { handoff: null, report: null, review: null },
+              docs: { handoff: null, review: null },
               review: { verdict: null, action: null },
-              report_status: null,
-              has_deviations: false, deviation_type: null, retries: 0,
+              retries: 0,
             },
           ],
           docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
@@ -600,17 +593,15 @@ describe('processEvent — task_commit_requested', () => {
           tasks: [
             {
               name: 'T01', status: 'complete', stage: 'complete',
-              docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+              docs: { handoff: 'h.md', review: 'rv.md' },
               review: { verdict: 'approved', action: 'advanced' },
-              report_status: 'complete',
-              has_deviations: false, deviation_type: null, retries: 0,
+              retries: 0,
             },
             {
               name: 'T02', status: 'not_started', stage: 'planning',
-              docs: { handoff: null, report: null, review: null },
+              docs: { handoff: null, review: null },
               review: { verdict: null, action: null },
-              report_status: null,
-              has_deviations: false, deviation_type: null, retries: 0,
+              retries: 0,
             },
           ],
           docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
@@ -652,17 +643,15 @@ describe('processEvent — task_committed', () => {
           tasks: [
             {
               name: 'T01', status: 'complete', stage: 'complete',
-              docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+              docs: { handoff: 'h.md', review: 'rv.md' },
               review: { verdict: 'approved', action: 'advanced' },
-              report_status: 'complete',
-              has_deviations: false, deviation_type: null, retries: 0,
+              retries: 0,
             },
             {
               name: 'T02', status: 'not_started', stage: 'planning',
-              docs: { handoff: null, report: null, review: null },
+              docs: { handoff: null, review: null },
               review: { verdict: null, action: null },
-              report_status: null,
-              has_deviations: false, deviation_type: null, retries: 0,
+              retries: 0,
             },
           ],
           docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },

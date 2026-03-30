@@ -82,7 +82,6 @@ describe('Scenarios 1-2: Task gate mode', () => {
   const documents = {
     's1-pp.md':  makeDoc({ tasks: ['T01'] }),
     's1-th.md':  makeDoc({}),
-    's1-tr.md':  makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     's1-cr.md':  makeDoc({ verdict: 'approved' }),
   };
   const io = createMockIO({ state: makeGateTestState(1, 'task'), documents });
@@ -103,7 +102,7 @@ describe('Scenarios 1-2: Task gate mode', () => {
   });
 
   it('S1 setup: task_completed → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 's1-tr.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
     assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'reviewing');
@@ -136,7 +135,6 @@ describe('Scenarios 3-4: Phase gate mode - pointer deferral and advance', () => 
   const documents = {
     's34-pp.md':  makeDoc({ tasks: ['T01'] }),
     's34-th.md':  makeDoc({}),
-    's34-tr.md':  makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     's34-cr.md':  makeDoc({ verdict: 'approved' }),
     's34-pr.md':  makeDoc({}),
     's34-prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
@@ -156,7 +154,7 @@ describe('Scenarios 3-4: Phase gate mode - pointer deferral and advance', () => 
   });
 
   it('S3 setup: task_completed → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 's34-tr.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
   });
@@ -203,7 +201,6 @@ describe('Scenario 5: Phase gate mode - last phase approval transitions to revie
   const documents = {
     's5-pp.md':  makeDoc({ tasks: ['T01'] }),
     's5-th.md':  makeDoc({}),
-    's5-tr.md':  makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     's5-cr.md':  makeDoc({ verdict: 'approved' }),
     's5-pr.md':  makeDoc({}),
     's5-prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
@@ -223,7 +220,7 @@ describe('Scenario 5: Phase gate mode - last phase approval transitions to revie
   });
 
   it('S5 setup: task_completed → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 's5-tr.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
   });
@@ -265,7 +262,6 @@ describe('Scenario 6: Autonomous mode - no gate, immediate pointer advance', () 
   const documents = {
     's6-pp.md': makeDoc({ tasks: ['T01'] }),
     's6-th.md': makeDoc({}),
-    's6-tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     's6-cr.md': makeDoc({ verdict: 'approved' }),
   };
   const io = createMockIO({ state: makeGateTestState(1, 'autonomous'), documents });
@@ -283,7 +279,7 @@ describe('Scenario 6: Autonomous mode - no gate, immediate pointer advance', () 
   });
 
   it('S6 setup: task_completed → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 's6-tr.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
   });
@@ -307,7 +303,6 @@ describe('Scenario 7: Gate rejection halts pipeline', () => {
   const documents = {
     's7-pp.md': makeDoc({ tasks: ['T01'] }),
     's7-th.md': makeDoc({}),
-    's7-tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     's7-cr.md': makeDoc({ verdict: 'approved' }),
   };
   const io = createMockIO({ state: makeGateTestState(1, 'task'), documents });
@@ -323,7 +318,7 @@ describe('Scenario 7: Gate rejection halts pipeline', () => {
   });
 
   it('S7 setup: task_completed', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 's7-tr.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     assert.equal(result.success, true);
   });
 
@@ -539,10 +534,9 @@ describe('Scenarios 13-16: auto_commit × gate mode interactions', () => {
           current_task: 1,
           tasks: [{
             name: 'T01', status: 'complete', stage: 'complete',
-            docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+            docs: { handoff: 'h.md', review: 'rv.md' },
             review: { verdict: 'approved', action: 'advanced' },
-            report_status: 'complete',
-            has_deviations: false, deviation_type: null, retries: 0,
+            retries: 0,
           }],
           docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
           review: { verdict: null, action: null },
@@ -612,10 +606,9 @@ describe('Scenarios 13-16: auto_commit × gate mode interactions', () => {
           current_task: 2,  // pointer already bumped past 1 task
           tasks: [{
             name: 'T01', status: 'complete', stage: 'complete',
-            docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+            docs: { handoff: 'h.md', review: 'rv.md' },
             review: { verdict: 'approved', action: 'advanced' },
-            report_status: 'complete',
-            has_deviations: false, deviation_type: null, retries: 0,
+            retries: 0,
           }],
           docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
           review: { verdict: null, action: null },

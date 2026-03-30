@@ -3,16 +3,6 @@
 const path = require('path');
 const { readFile } = require('../validate/lib/utils/fs-helpers');
 
-// ─── Status Normalization ───────────────────────────────────────────────────
-
-const STATUS_MAP = Object.freeze({
-  'complete': 'complete',
-  'pass':     'complete',
-  'failed':   'failed',
-  'fail':     'failed',
-  'partial':  'complete',
-});
-
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function success(context) { return { context, error: undefined }; }
@@ -78,19 +68,6 @@ function handlePlanApproved(context, readDocument, projectDir) {
   return success({ ...context, total_phases: n });
 }
 
-function handleTaskCompleted(context, readDocument) {
-  const { ok, frontmatter, result } = readOrFail(readDocument, context.doc_path, 'task_completed');
-  if (!ok) return result;
-  const { status, has_deviations, deviation_type } = frontmatter;
-  if (status === undefined || status === null) return failure('Missing required field', 'task_completed', 'status');
-  if (has_deviations === undefined || has_deviations === null) return failure('Missing required field', 'task_completed', 'has_deviations');
-  if (deviation_type === undefined) return failure('Missing required field', 'task_completed', 'deviation_type');
-  const coerced_deviation_type = coerceNull(deviation_type);
-  const normalized = STATUS_MAP[status];
-  if (!normalized) return failure(`Unrecognized status value: '${status}'`, 'task_completed', 'status');
-  return success({ ...context, report_status: normalized, has_deviations: Boolean(has_deviations), deviation_type: coerced_deviation_type });
-}
-
 function handleCodeReviewCompleted(context, readDocument) {
   const { ok, frontmatter, result } = readOrFail(readDocument, context.doc_path, 'code_review_completed');
   if (!ok) return result;
@@ -128,7 +105,7 @@ function handlePhaseReviewCompleted(context, readDocument) {
 
 const PRE_READ_HANDLERS = {
   'plan_approved': handlePlanApproved,
-  'task_completed': handleTaskCompleted,
+  'task_completed': (context) => success(context),
   'code_review_completed': handleCodeReviewCompleted,
   'phase_plan_created': handlePhasePlanCreated,
   'phase_review_completed': handlePhaseReviewCompleted,

@@ -69,13 +69,12 @@ describe('SCHEMA_VERSION', () => {
 // ─── TASK_STAGES ─────────────────────────────────────────────────────────────
 
 describe('TASK_STAGES', () => {
-  it('has exactly 6 keys', () => {
-    assert.equal(Object.keys(TASK_STAGES).length, 6);
+  it('has exactly 5 keys', () => {
+    assert.equal(Object.keys(TASK_STAGES).length, 5);
   });
 
   it('PLANNING equals planning', () => { assert.equal(TASK_STAGES.PLANNING, 'planning'); });
   it('CODING equals coding', () => { assert.equal(TASK_STAGES.CODING, 'coding'); });
-  it('REPORTING equals reporting', () => { assert.equal(TASK_STAGES.REPORTING, 'reporting'); });
   it('REVIEWING equals reviewing', () => { assert.equal(TASK_STAGES.REVIEWING, 'reviewing'); });
   it('COMPLETE equals complete', () => { assert.equal(TASK_STAGES.COMPLETE, 'complete'); });
   it('FAILED equals failed', () => { assert.equal(TASK_STAGES.FAILED, 'failed'); });
@@ -88,13 +87,12 @@ describe('TASK_STAGES', () => {
 // ─── PHASE_STAGES ────────────────────────────────────────────────────────────
 
 describe('PHASE_STAGES', () => {
-  it('has exactly 6 keys', () => {
-    assert.equal(Object.keys(PHASE_STAGES).length, 6);
+  it('has exactly 5 keys', () => {
+    assert.equal(Object.keys(PHASE_STAGES).length, 5);
   });
 
   it('PLANNING equals planning', () => { assert.equal(PHASE_STAGES.PLANNING, 'planning'); });
   it('EXECUTING equals executing', () => { assert.equal(PHASE_STAGES.EXECUTING, 'executing'); });
-  it('REPORTING equals reporting', () => { assert.equal(PHASE_STAGES.REPORTING, 'reporting'); });
   it('REVIEWING equals reviewing', () => { assert.equal(PHASE_STAGES.REVIEWING, 'reviewing'); });
   it('COMPLETE equals complete', () => { assert.equal(PHASE_STAGES.COMPLETE, 'complete'); });
   it('FAILED equals failed', () => { assert.equal(PHASE_STAGES.FAILED, 'failed'); });
@@ -191,8 +189,8 @@ describe('ALLOWED_PHASE_STAGE_TRANSITIONS', () => {
 // ─── NEXT_ACTIONS ───────────────────────────────────────────────────────────
 
 describe('NEXT_ACTIONS', () => {
-  it('has exactly 19 entries', () => {
-    assert.equal(Object.keys(NEXT_ACTIONS).length, 19);
+  it('has exactly 20 entries', () => {
+    assert.equal(Object.keys(NEXT_ACTIONS).length, 20);
   });
 
   it('contains ASK_GATE_MODE with value ask_gate_mode', () => {

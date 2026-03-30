@@ -28,7 +28,7 @@ flowchart TD
         GATE1 --> PHASE[Plan Phase Tactical Planner]
         PHASE --> HANDOFF[Plan Task]
         HANDOFF --> |handoff| CODE[Code]
-        CODE --> |code, task report|REVIEW[Code Review]
+        CODE --> |code|REVIEW[Code Review]
         REVIEW -->|needs correction | HANDOFF
         REVIEW -->|approved| COMMIT[🔀 Commit Code]
         COMMIT --> MORETASKS{more tasks?}
@@ -105,7 +105,7 @@ Automatic git commits after each approved task. The Source Control Agent constru
 
 ### Continuous Verification
 
-Every task produces a report. Every report is reviewed against the plan.  Code reviewers never fully trust the coder reports. :)  Minor issues trigger automatic corrective tasks. Critical issues halt the pipeline for human intervention. Plans don't drift unchecked. Pipeline failures are logged to a structured, append-only error log (`ERROR-LOG.md`) in each project folder.
+Every task is reviewed against the plan. Code reviewers inspect source code directly.  Minor issues trigger automatic corrective tasks. Critical issues halt the pipeline for human intervention. Plans don't drift unchecked. Pipeline failures are logged to a structured, append-only error log (`ERROR-LOG.md`) in each project folder.
 
 ### Built-in Validation
 
