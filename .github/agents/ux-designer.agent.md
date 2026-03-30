@@ -7,7 +7,7 @@ tools:
   - edit
   - todo
   - vscode/askQuestions
-model: Claude Opus 4.6 (copilot)
+model: claude-opus-4.6
 ---
 
 # UX Designer Agent

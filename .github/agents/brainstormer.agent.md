@@ -9,7 +9,7 @@ tools:
   - vscode/askQuestions
   - agent
   - web
-model: Claude Sonnet 4.6 (copilot)
+model: claude-sonnet-4.6
 handoffs:
   - label: "Start Planning Pipeline Process"
     agent: Orchestrator

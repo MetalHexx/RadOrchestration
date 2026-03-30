@@ -8,7 +8,7 @@ tools:
   - execute
   - todo
   - vscode/askQuestions
-model: Claude Opus 4.5 (copilot)
+model: claude-opus-4.6
 ---
 
 # Senior Coder Agent

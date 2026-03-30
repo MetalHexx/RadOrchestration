@@ -8,7 +8,7 @@ tools:
   - web/fetch
   - todo
   - vscode/askQuestions
-model: Claude Sonnet 4.6 (copilot)
+model: claude-sonnet-4.6
 ---
 
 # Research Agent
