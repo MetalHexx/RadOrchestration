@@ -133,21 +133,21 @@ tools: ['codebase', 'readFile', 'editFiles']
 
 | Model | Vendor | Multiplier |
 |-------|--------|------------|
-| `Claude Haiku 4.5 (copilot)` | Anthropic | 0.33x |
-| `Claude Sonnet 4 (copilot)` | Anthropic | 1x |
-| `Claude Sonnet 4.5 (copilot)` | Anthropic | 1x |
-| `Claude Sonnet 4.6 (copilot)` | Anthropic | 1x |
-| `Claude Opus 4.5 (copilot)` | Anthropic | 3x |
-| `Claude Opus 4.6 (copilot)` | Anthropic | 3x |
-| `GPT-4.1 (copilot)` | OpenAI | 0x (free) |
-| `GPT-5 mini (copilot)` | OpenAI | 0x (free) |
-| `GPT-5.1 (copilot)` | OpenAI | 1x |
-| `GPT-5.1-Codex-Max (copilot)` | OpenAI | 1x |
-| `GPT-5.2 (copilot)` | OpenAI | 1x |
-| `GPT-5.2-Codex (copilot)` | OpenAI | 1x |
-| `GPT-5.3-Codex (copilot)` | OpenAI | 1x |
-| `Gemini 2.5 Pro (copilot)` | Google | 1x |
-| `Gemini 3 Flash (copilot)` | Google | 0.33x |
-| `Gemini 3 Pro (copilot)` | Google | 1x |
-| `Gemini 3.1 Pro (copilot)` | Google | 1x |
-| `Grok Code Fast 1 (copilot)` | Google | 0.25x |
+| `claude-haiku-4.5` | Anthropic | 0.33x |
+| `claude-sonnet-4` | Anthropic | 1x |
+| `claude-sonnet-4.5` | Anthropic | 1x |
+| `claude-sonnet-4.6` | Anthropic | 1x |
+| `claude-opus-4.5` | Anthropic | 3x |
+| `claude-opus-4.6` | Anthropic | 3x |
+| `gpt-4.1` | OpenAI | 0x (free) |
+| `gpt-5-mini` | OpenAI | 0x (free) |
+| `gpt-5.1` | OpenAI | 1x |
+| `gpt-5.1-codex-max` | OpenAI | 1x |
+| `gpt-5.2` | OpenAI | 1x |
+| `gpt-5.2-codex` | OpenAI | 1x |
+| `gpt-5.3-codex` | OpenAI | 1x |
+| `gemini-2.5-pro` | Google | 1x |
+| `gemini-3-flash` | Google | 0.33x |
+| `gemini-3-pro` | Google | 1x |
+| `gemini-3.1-pro` | Google | 1x |
+| `grok-code-fast-1` | Google | 0.25x |
