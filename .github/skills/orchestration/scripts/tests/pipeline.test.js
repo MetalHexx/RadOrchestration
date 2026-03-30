@@ -26,7 +26,9 @@ describe('parseArgs', () => {
       '--reason', 'ready-to-advance',
       '--gate-mode', 'autonomous',
       '--commit-hash', 'abc123def',
-      '--pushed', 'true'
+      '--pushed', 'true',
+      '--remote-url',  'https://github.com/org/repo',
+      '--compare-url', 'https://github.com/org/repo/compare/main...feat'
     ]);
     assert.deepStrictEqual(result, {
       event: 'task_completed',
@@ -42,11 +44,13 @@ describe('parseArgs', () => {
       reason: 'ready-to-advance',
       gateMode: 'autonomous',
       commitHash: 'abc123def',
-      pushed: 'true'
+      pushed: 'true',
+      remoteUrl:  'https://github.com/org/repo',
+      compareUrl: 'https://github.com/org/repo/compare/main...feat'
     });
   });
 
-  it('returns undefined for all 11 named flags when only required flags are provided', () => {
+  it('returns undefined for all 13 named flags when only required flags are provided', () => {
     const result = parseArgs(['--event', 'task_completed', '--project-dir', '/tmp/proj']);
     assert.deepStrictEqual(result, {
       event: 'task_completed',
@@ -62,7 +66,9 @@ describe('parseArgs', () => {
       reason: undefined,
       gateMode: undefined,
       commitHash: undefined,
-      pushed: undefined
+      pushed: undefined,
+      remoteUrl:  undefined,
+      compareUrl: undefined
     });
   });
 
@@ -144,6 +150,43 @@ describe('parseArgs', () => {
     assert.strictEqual(result.pushed, 'true');
   });
 
+  it('parses --remote-url flag correctly', () => {
+    const result = parseArgs([
+      '--event', 'start',
+      '--project-dir', '/tmp/proj',
+      '--remote-url', 'https://github.com/org/repo'
+    ]);
+    assert.strictEqual(result.remoteUrl, 'https://github.com/org/repo');
+  });
+
+  it('parses --compare-url flag correctly', () => {
+    const result = parseArgs([
+      '--event', 'start',
+      '--project-dir', '/tmp/proj',
+      '--compare-url', 'https://github.com/org/repo/compare/main...feat'
+    ]);
+    assert.strictEqual(result.compareUrl, 'https://github.com/org/repo/compare/main...feat');
+  });
+
+  it('parses both --remote-url and --compare-url together', () => {
+    const result = parseArgs([
+      '--event', 'start',
+      '--project-dir', '/tmp/proj',
+      '--remote-url',  'https://github.com/org/repo',
+      '--compare-url', 'https://github.com/org/repo/compare/main...feat'
+    ]);
+    assert.strictEqual(result.remoteUrl,  'https://github.com/org/repo');
+    assert.strictEqual(result.compareUrl, 'https://github.com/org/repo/compare/main...feat');
+  });
+
+  it('parses --remote-url with empty string value', () => {
+    const result = parseArgs([
+      '--event', 'start',
+      '--project-dir', '/tmp/proj',
+      '--remote-url', ''
+    ]);
+    assert.strictEqual(result.remoteUrl, '');
+  });
   it('unknown flags are silently ignored', () => {
     assert.doesNotThrow(() => {
       parseArgs([
@@ -326,6 +369,23 @@ describe('E2E: CLI-surface named-flag groups', () => {
     assert.strictEqual(state.pipeline.source_control.worktree_path, '/wt/test');
     assert.strictEqual(state.pipeline.source_control.auto_commit, 'always');
     assert.strictEqual(state.pipeline.source_control.auto_pr, 'never');
+  });
+
+  it('remote-url and compare-url flags are accepted by source_control_init without error', () => {
+    const stdout = execFileSync('node', [
+      pipelinePath,
+      '--event', 'source_control_init',
+      '--project-dir', flagsTmpDir,
+      '--branch', 'feat/test-branch',
+      '--base-branch', 'main',
+      '--worktree-path', '/wt/test',
+      '--auto-commit', 'always',
+      '--auto-pr', 'never',
+      '--remote-url',  'https://github.com/org/repo',
+      '--compare-url', 'https://github.com/org/repo/compare/main...feat'
+    ], { encoding: 'utf-8' });
+    const result = JSON.parse(stdout);
+    assert.strictEqual(result.success, true);
   });
 
   it('gate-group: --gate-type and --reason are propagated to mutations_applied', () => {

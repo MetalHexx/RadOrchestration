@@ -6,7 +6,8 @@ const stateIo = require('./lib/state-io');
 
 function parseArgs(argv) {
   let event, projectDir, configPath, docPath, branch, baseBranch, worktreePath,
-      autoCommit, autoPr, gateType, reason, gateMode, commitHash, pushed;
+      autoCommit, autoPr, gateType, reason, gateMode, commitHash, pushed,
+      remoteUrl, compareUrl;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--event' && i + 1 < argv.length) { event = argv[++i]; }
     else if (argv[i] === '--project-dir' && i + 1 < argv.length) { projectDir = argv[++i]; }
@@ -21,12 +22,15 @@ function parseArgs(argv) {
     else if (argv[i] === '--reason' && i + 1 < argv.length) { reason = argv[++i]; }
     else if (argv[i] === '--gate-mode' && i + 1 < argv.length) { gateMode = argv[++i]; }
     else if (argv[i] === '--commit-hash' && i + 1 < argv.length) { commitHash = argv[++i]; }
-    else if (argv[i] === '--pushed' && i + 1 < argv.length) { pushed = argv[++i]; }
+    else if (argv[i] === '--pushed'       && i + 1 < argv.length) { pushed      = argv[++i]; }
+    else if (argv[i] === '--remote-url'   && i + 1 < argv.length) { remoteUrl   = argv[++i]; }
+    else if (argv[i] === '--compare-url'  && i + 1 < argv.length) { compareUrl  = argv[++i]; }
   }
   if (!event) throw new Error('Missing required flag: --event');
   if (!projectDir) throw new Error('Missing required flag: --project-dir');
   return { event, projectDir, configPath, docPath, branch, baseBranch, worktreePath,
-           autoCommit, autoPr, gateType, reason, gateMode, commitHash, pushed };
+           autoCommit, autoPr, gateType, reason, gateMode, commitHash, pushed,
+           remoteUrl, compareUrl };
 }
 
 function main() {
@@ -50,6 +54,8 @@ function main() {
   if (args.gateMode !== undefined)     context.gate_mode     = args.gateMode;
   if (args.commitHash !== undefined)   context.commitHash    = args.commitHash;
   if (args.pushed !== undefined)       context.pushed        = args.pushed;
+  if (args.remoteUrl  !== undefined)   context.remote_url    = args.remoteUrl  || null;
+  if (args.compareUrl !== undefined)   context.compare_url   = args.compareUrl || null;
   const result = processEvent(args.event, args.projectDir, context, io, args.configPath);
   const orchRoot = stateIo.bootstrapOrchRoot();
   result.orchRoot = orchRoot;
