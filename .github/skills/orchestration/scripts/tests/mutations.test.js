@@ -358,11 +358,28 @@ describe('handlePlanApproved', () => {
 
   it('returns mutations_applied array', () => {
     assert.ok(Array.isArray(result.mutations_applied));
-    assert.equal(result.mutations_applied.length, 4);
+    assert.equal(result.mutations_applied.length, 5);
+
+    // Exactly one mutation should reference execution.status, and it must reset to not_started
+    const statusMutations = result.mutations_applied.filter(m => m.includes('execution.status'));
+    assert.equal(statusMutations.length, 1, 'exactly one mutation must reference execution.status');
     assert.ok(
-      !result.mutations_applied.some(m => m.includes('execution.status')),
-      'mutations_applied must not reference execution.status (guard against premature in_progress re-introduction)'
+      statusMutations[0].includes('not_started'),
+      'execution.status mutation must reset to "not_started"'
     );
+    // Guard against premature in_progress re-introduction
+    assert.ok(
+      !result.mutations_applied.some(m => m.includes('execution.status') && m.includes('in_progress')),
+      'mutations_applied must not set execution.status to "in_progress"'
+    );
+  });
+
+  it('resets execution.status to "not_started" even when previously in_progress', () => {
+    const s = makePlanningState();
+    s.execution.status = 'in_progress'; // simulate stale state from partial prior execution
+    const handler = getMutation('plan_approved');
+    const r = handler(s, { total_phases: 2 }, {});
+    assert.equal(r.state.execution.status, 'not_started');
   });
 });
 

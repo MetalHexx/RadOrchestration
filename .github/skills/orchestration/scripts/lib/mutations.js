@@ -237,6 +237,7 @@ function handleMasterPlanCompleted(state, context, config) {
 function handlePlanApproved(state, context, config) {
   state.planning.human_approved = true;
   state.pipeline.current_tier = PIPELINE_TIERS.EXECUTION;
+  state.execution.status = 'not_started'; // explicit reset — idempotent; guards against stale status on re-entry
   state.execution.current_phase = 1; // 1-based; first phase active
   state.execution.phases = [];
   for (let i = 0; i < context.total_phases; i++) {
@@ -262,6 +263,7 @@ function handlePlanApproved(state, context, config) {
     mutations_applied: [
       'Set planning.human_approved to true',
       `Set pipeline.current_tier to "${PIPELINE_TIERS.EXECUTION}"`,
+      'Set execution.status to "not_started"',
       'Set execution.current_phase to 1',
       `Initialized execution.phases with ${context.total_phases} phase(s)`,
     ],
