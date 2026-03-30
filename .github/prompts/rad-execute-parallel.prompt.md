@@ -268,7 +268,57 @@ If both are `"ask"`, include both questions in the single call.
 At this point both **`resolvedAutoCommit`** and **`resolvedAutoPr`** are `always` or `never`.
 The value `ask` is never passed to the pipeline.
 
-**e. Call `source_control_init`** to write source control metadata to state:
+**e. Publish the branch** to the remote with upstream tracking configured:
+
+Run from `{worktreePath}`:
+
+```
+git push -u origin {branchName}
+```
+
+If the push fails (non-zero exit code), log the error text and continue. Push failure is
+**non-blocking** — do not halt or prompt the user for this error.
+
+---
+
+**f. Detect the git remote URL**:
+
+Run from `{worktreePath}`:
+
+```
+git remote get-url origin
+```
+
+Capture stdout as **`rawRemoteUrl`**. If the command fails (non-zero exit code) or stdout is
+empty, set `rawRemoteUrl = ""`.
+
+---
+
+**g. Convert SSH remote to HTTPS** to derive **`remoteUrl`**:
+
+- If `rawRemoteUrl` matches the pattern `git@github.com:{ORG}/{REPO}.git`:
+  → `remoteUrl = "https://github.com/{ORG}/{REPO}"` (substitute the matched org and repo;
+  drop the trailing `.git`)
+- Else if `rawRemoteUrl` starts with `https://`:
+  → `remoteUrl = rawRemoteUrl` with trailing `.git` stripped if present
+- Else (empty string, SSH non-GitHub, or any unrecognised format):
+  → `remoteUrl = ""`
+
+Only the standard `git@github.com:ORG/REPO.git` SSH format is in scope.
+Unsupported formats produce `remoteUrl = ""`.
+
+---
+
+**h. Derive `compareUrl`**:
+
+- If `remoteUrl` is non-empty:
+  → `compareUrl = "{remoteUrl}/compare/{baseBranch}...{branchName}"`
+- Else:
+  → `compareUrl = ""`
+
+---
+
+**i. Call `source_control_init`** to write source control metadata to state:
 
 ```
 node {orchRoot}/skills/orchestration/scripts/pipeline.js --event source_control_init --project-dir {projectDir} \
@@ -276,7 +326,9 @@ node {orchRoot}/skills/orchestration/scripts/pipeline.js --event source_control_
   --base-branch "{baseBranch}" \
   --worktree-path "{worktreePath}" \
   --auto-commit "{resolvedAutoCommit}" \
-  --auto-pr "{resolvedAutoPr}"
+  --auto-pr "{resolvedAutoPr}" \
+  --remote-url "{remoteUrl}" \
+  --compare-url "{compareUrl}"
 ```
 
 Where:
@@ -287,6 +339,8 @@ Where:
 - **`{worktreePath}`** = from Step 2 or Step 3
 - **`{resolvedAutoCommit}`** = `always` or `never`
 - **`{resolvedAutoPr}`** = `always` or `never`
+- **`{remoteUrl}`** = from step **g** (empty string when detection failed or format unsupported)
+- **`{compareUrl}`** = from step **h** (empty string when `remoteUrl` is empty)
 
 The pipeline call returns JSON. Verify the response contains `"success": true`.
 If it fails, show the error to the user and do NOT proceed to Step 5.
