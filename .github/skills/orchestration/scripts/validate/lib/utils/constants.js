@@ -10,7 +10,8 @@ const VALID_NAMESPACED_TOOLS = [
   'web/fetch',
   'read/readFile', 'read/readDirectory', 'read/listDirectory',
   'edit/editFiles', 'edit/createFile', 'edit/deleteFile', 'edit/moveFile',
-  'execute/runInTerminal'
+  'execute/runInTerminal',
+  'vscode/askQuestions'
 ];
 
 /** Deprecated tool names that should not appear in tools arrays */

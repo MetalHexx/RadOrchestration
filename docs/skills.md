@@ -26,45 +26,45 @@ To customize the **output format** of documents a skill produces, modify the ski
 
 | Skill | Description | Used By |
 |-------|-------------|---------|
-| `brainstorm` | Collaboratively explore, refine, and converge on project ideas through structured ideation | Brainstormer |
-| `research-codebase` | Explore and analyze codebases, documentation, and external sources to gather technical context | Research |
-| `create-prd` | Generate Product Requirements Documents with numbered requirements (FR-/NFR-) from research findings | Product Manager |
-| `create-design` | Create UX Design documents with user flows, layouts, states, and accessibility specs from PRDs | UX Designer |
-| `create-architecture` | Define system architecture — layers, modules, contracts, APIs, schemas — from PRD + Design | Architect |
-| `create-master-plan` | Synthesize all planning documents into a Master Plan with phases, exit criteria, and risk register | Architect |
+| `brainstorm` | Collaboratively explore, refine, and converge on project ideas through structured ideation | brainstormer |
+| `research-codebase` | Explore and analyze codebases, documentation, and external sources to gather technical context | research |
+| `create-prd` | Generate Product Requirements Documents with numbered requirements (FR-/NFR-) from research findings | product-manager |
+| `create-design` | Create UX Design documents with user flows, layouts, states, and accessibility specs from PRDs | ux-designer |
+| `create-architecture` | Define system architecture — layers, modules, contracts, APIs, schemas — from PRD + Design | architect |
+| `create-master-plan` | Synthesize all planning documents into a Master Plan with phases, exit criteria, and risk register | architect |
 
 ### Execution Skills
 
 | Skill | Description | Used By |
 |-------|-------------|---------|
-| `create-phase-plan` | Break project phases into concrete tasks with dependencies, execution order, and acceptance criteria | Tactical Planner |
-| `create-task-handoff` | Create self-contained task documents that inline all contracts, interfaces, and requirements | Tactical Planner |
-| `execute-coding-task` | Full coding task execution loop — read handoff, implement code, run tests, verify acceptance criteria, write Task Report | Coder |
-| `generate-task-report` | Document task completion — files changed, test results, deviations, discoveries | Coder, Tactical Planner |
-| `generate-phase-report` | Summarize phase outcomes — aggregated task results, exit criteria assessment, carry-forward items | Tactical Planner |
-| `run-tests` | Execute the project test suite and report structured results with pass/fail and error details | Coder, Tactical Planner |
-| `log-error` | Log pipeline errors to a structured, append-only per-project error log (`ERROR-LOG.md`) | Orchestrator |
-| `source-control` | Source control automation — git commit and push via CLI wrapper; PR creation via GitHub CLI (AUTO-PR stub) | Source Control Agent |
+| `create-phase-plan` | Break project phases into concrete tasks with dependencies, execution order, and acceptance criteria | tactical-planner |
+| `create-task-handoff` | Create self-contained task documents that inline all contracts, interfaces, and requirements | tactical-planner |
+| `execute-coding-task` | Full coding task execution loop — read handoff, implement code, run tests, verify acceptance criteria, write Task Report | coder, coder-junior, coder-senior |
+| `generate-task-report` | Document task completion — files changed, test results, deviations, discoveries | coder, coder-junior, coder-senior, tactical-planner |
+| `generate-phase-report` | Summarize phase outcomes — aggregated task results, exit criteria assessment, carry-forward items | tactical-planner |
+| `run-tests` | Execute the project test suite and report structured results with pass/fail and error details | coder, coder-junior, coder-senior, tactical-planner |
+| `log-error` | Log pipeline errors to a structured, append-only per-project error log (`ERROR-LOG.md`) | orchestrator |
+| `source-control` | Source control automation — git commit and push via CLI wrapper; PR creation via GitHub CLI (AUTO-PR stub) | source-control |
 
 ### Review Skills
 
 | Skill | Description | Used By |
 |-------|-------------|---------|
-| `review-task` | Review task output against the task handoff, architecture, and design — produce verdicts with severity | Reviewer |
-| `review-phase` | Cross-task integration review for entire phases — module consistency, exit criteria, test coverage | Reviewer |
+| `review-task` | Review task output against the task handoff, architecture, and design — produce verdicts with severity | reviewer |
+| `review-phase` | Cross-task integration review for entire phases — module consistency, exit criteria, test coverage | reviewer |
 
 ### Meta Skills
 
 | Skill | Description | Used By |
 |-------|-------------|---------|
-| `create-agent` | Scaffold new agent definitions (`.agent.md`) with proper frontmatter and tool declarations | Any |
-| `create-skill` | Scaffold new skills with `SKILL.md`, directory structure, and optional scripts/references | Any |
+| `create-agent` | Scaffold new agent definitions (`.agent.md`) with proper frontmatter and tool declarations | any |
+| `create-skill` | Scaffold new skills with `SKILL.md`, directory structure, and optional scripts/references | any |
 
 ### System Skills
 
 | Skill | Description | Used By |
 |-------|-------------|---------|
-| `orchestration` | Orchestration system runtime, configuration, validation, and context. All pipeline agents load this skill for system context. The Orchestrator receives pipeline-specific guidance. Reviewers and Tactical Planners receive validation guidance. | All Agents |
+| `orchestration` | Orchestration system runtime, configuration, validation, and context. All pipeline agents load this skill for system context. The Orchestrator receives pipeline-specific guidance. Reviewers and Tactical Planners receive validation guidance. | all agents |
 
 ## Skill-Agent Composition
 
@@ -72,16 +72,18 @@ Each agent is explicitly assigned skills in its `.agent.md` frontmatter. This ta
 
 | Agent | Skills |
 |-------|--------|
-| Brainstormer | `orchestration`, `brainstorm` |
-| Orchestrator | `orchestration`, `log-error` |
-| Research | `orchestration`, `research-codebase` |
-| Product Manager | `orchestration`, `create-prd` |
-| UX Designer | `orchestration`, `create-design` |
-| Architect | `orchestration`, `create-architecture`, `create-master-plan` |
-| Tactical Planner | `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
-| Coder | `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests` |
-| Reviewer | `orchestration`, `review-task`, `review-phase` |
-| Source Control Agent | `orchestration`, `source-control` |
+| brainstormer | `orchestration`, `brainstorm` |
+| orchestrator | `orchestration`, `log-error` |
+| research | `orchestration`, `research-codebase` |
+| product-manager | `orchestration`, `create-prd` |
+| ux-designer | `orchestration`, `create-design` |
+| architect | `orchestration`, `create-architecture`, `create-master-plan` |
+| tactical-planner | `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
+| coder | `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests` |
+| coder-junior | `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests` |
+| coder-senior | `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests` |
+| reviewer | `orchestration`, `review-task`, `review-phase` |
+| source-control | `orchestration`, `source-control` |
 
 ## Skill Recommendation in Task Handoffs
 

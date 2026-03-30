@@ -238,20 +238,9 @@ function validateAgent(filePath, filename, context) {
     hasRequiredFieldErrors = true;
   }
 
-  // Validate required field: agents (presence check — empty array is valid)
+  // agents field is optional; treat missing or null as empty array
   let agents = frontmatter.agents;
-  if (agents === undefined) {
-    results.push({
-      category: 'agents',
-      name: filename,
-      status: 'fail',
-      message: 'Missing required field: agents',
-      detail: {
-        expected: 'agents field (may be empty array)',
-        found: 'undefined'
-      }
-    });
-    hasRequiredFieldErrors = true;
+  if (agents === undefined || agents === null) {
     agents = [];
   } else if (typeof agents === 'string') {
     agents = [agents];

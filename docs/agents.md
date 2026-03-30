@@ -1,21 +1,23 @@
 # Agents
 
-The orchestration system uses 10 specialized agents, each with a defined role, scoped tool access, and strict write permissions. Agents communicate through structured markdown documents — never through shared memory or message passing.
+The orchestration system uses 12 specialized agents, each with a defined role, scoped tool access, and strict write permissions. Agents communicate through structured markdown documents — never through shared memory or message passing.
 
 ## Agent Overview
 
 | Agent | Role | Writes |
 |-------|------|--------|
-| **Brainstormer** | Collaborative ideation with the human | `BRAINSTORMING.md` |
-| **Orchestrator** | Pipeline coordination — spawns agents, reads state | `ERROR-LOG.md` (via log-error skill) |
-| **Research** | Codebase and context exploration | `RESEARCH-FINDINGS.md` |
-| **Product Manager** | Requirements definition | `PRD.md` |
-| **UX Designer** | Interface and interaction design | `DESIGN.md` |
-| **Architect** | System architecture and master planning | `ARCHITECTURE.md`, `MASTER-PLAN.md` |
-| **Tactical Planner** | Task breakdown and phase reporting | `PHASE-PLAN.md`, `TASK-HANDOFF.md`, `PHASE-REPORT.md` |
-| **Coder** | Code implementation | Code, tests, `TASK-REPORT.md` |
-| **Reviewer** | Code and phase review | `CODE-REVIEW.md`, `PHASE-REVIEW.md` |
-| **Source Control Agent** | Thin-router for git operations — commit and push (PR stubbed for AUTO-PR) | Code (via `git-commit.js` script only) |
+| `@brainstormer` | Collaborative ideation with the human | `BRAINSTORMING.md` |
+| `@orchestrator` | Thin coordinator — loads orchestration skill, routes pipeline events via 20-action routing table | `ERROR-LOG.md` (via log-error skill) |
+| `@research` | Codebase and context exploration | `RESEARCH-FINDINGS.md` |
+| `@product-manager` | Requirements definition | `PRD.md` |
+| `@ux-designer` | Interface and interaction design | `DESIGN.md` |
+| `@architect` | System architecture and master planning | `ARCHITECTURE.md`, `MASTER-PLAN.md` |
+| `@tactical-planner` | Task breakdown and phase reporting | `PHASE-PLAN.md`, `TASK-HANDOFF.md`, `PHASE-REPORT.md` |
+| `@coder` | Code implementation | Code, tests, `TASK-REPORT.md` |
+| `@coder-junior` | Straightforward, lower-complexity coding tasks from task handoffs | Code, tests, `TASK-REPORT.md` |
+| `@coder-senior` | Complex or high-stakes coding tasks from task handoffs | Code, tests, `TASK-REPORT.md` |
+| `@reviewer` | Code and phase review | `CODE-REVIEW.md`, `PHASE-REVIEW.md` |
+| `@source-control` | Thin-router for git operations — commit and push (PR stubbed for AUTO-PR) | Code (via `git-commit.js` script only) |
 
 
 
@@ -23,7 +25,7 @@ The orchestration system uses 10 specialized agents, each with a defined role, s
 
 ## Agent Details
 
-### Brainstormer
+### @brainstormer
 
 **Purpose:** Collaboratively explore and refine project ideas before entering the pipeline.
 
@@ -37,7 +39,7 @@ The Brainstormer works directly with the human in a conversational loop — aski
 
 ---
 
-### Orchestrator
+### @orchestrator
 
 **Purpose:** Read project state and coordinate the pipeline by spawning the right agent at the right time.
 
@@ -50,7 +52,7 @@ The Orchestrator is the entry point for all project interactions. It signals eve
 
 ---
 
-### Research
+### @research
 
 **Purpose:** Explore the codebase, documentation, and external sources to gather technical context.
 
@@ -64,7 +66,7 @@ The Research agent analyzes the existing project structure, technology stack, pa
 
 ---
 
-### Product Manager
+### @product-manager
 
 **Purpose:** Create a Product Requirements Document from research findings to keep plans grounded in reality.
 
@@ -78,7 +80,7 @@ Translates technical research and brainstorming output into structured requireme
 
 ---
 
-### UX Designer
+### @ux-designer
 
 **Purpose:** Create a UX Design document from the PRD.
 
@@ -92,7 +94,7 @@ Defines user flows, component layouts, interaction states, responsive behavior, 
 
 ---
 
-### Architect
+### @architect
 
 **Purpose:** Define system architecture and synthesize all planning documents into a Master Plan.
 
@@ -106,7 +108,7 @@ The Architect reads Research, PRD, and Design to produce the technical architect
 
 ---
 
-### Tactical Planner
+### @tactical-planner
 
 **Purpose:** Builds individual phase plans, breaks phases into tasks, creates self-contained task handoffs, and generates phase reports.  All plans and tasks created reference the planning documents to keep the work grounded in the original plans.  
 
@@ -126,7 +128,7 @@ The Tactical Planner is a pure planning agent that operates in 3 modes:
 
 ---
 
-### Coder
+### @coder
 
 **Purpose:** Execute coding tasks from self-contained Task Handoff documents.
 
@@ -140,7 +142,35 @@ Reads a single Task Handoff, implements the code changes, writes tests, runs the
 
 ---
 
-### Reviewer
+### @coder-junior
+
+**Purpose:** Execute straightforward, lower-complexity coding tasks from self-contained Task Handoff documents.
+
+The Junior Coder reads a single Task Handoff, implements well-defined code changes, writes tests, and produces a Task Report. Assigned to tasks where the implementation steps are explicit and the scope is narrow.
+
+**Input:** `TASK-HANDOFF.md`
+
+**Output:** Source code, tests, `TASK-REPORT.md`
+
+**Skills:** `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests`
+
+---
+
+### @coder-senior
+
+**Purpose:** Execute complex or high-stakes coding tasks from self-contained Task Handoff documents.
+
+The Senior Coder handles architecturally significant, nuanced, or cross-cutting changes. Same input/output contract as `@coder` and `@coder-junior`; assigned when task complexity warrants deeper reasoning.
+
+**Input:** `TASK-HANDOFF.md`
+
+**Output:** Source code, tests, `TASK-REPORT.md`
+
+**Skills:** `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests`
+
+---
+
+### @reviewer
 
 **Purpose:** Review code changes and entire phases checking for code quality, bugs, etc.  It also checks the code against all the planning documents to ensure the code is meeting all expected requirements.
 
@@ -159,7 +189,7 @@ The Reviewer operates at three levels:
 
 ---
 
-### Source Control Agent
+### @source-control
 
 **Purpose:** Execute git commit and push operations after approved tasks, delegating all logic to the `source-control` skill.
 
