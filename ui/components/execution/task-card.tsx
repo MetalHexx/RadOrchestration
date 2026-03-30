@@ -35,8 +35,7 @@ export function TaskCard({ task, taskNumber, maxRetries, onDocClick }: TaskCardP
             <RetryBadge retries={task.retries} max={maxRetries} />
           )}
           <DocumentLink path={task.docs.handoff} label="Handoff" onDocClick={onDocClick} />
-          <DocumentLink path={task.docs.report} label="Report" onDocClick={onDocClick} />
-          <DocumentLink path={task.docs.review} label="Review" onDocClick={onDocClick} />
+          <DocumentLink path={task.docs.review}  label="Review"  onDocClick={onDocClick} />
         </div>
       </div>
     </div>
