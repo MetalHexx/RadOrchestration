@@ -358,7 +358,11 @@ describe('handlePlanApproved', () => {
 
   it('returns mutations_applied array', () => {
     assert.ok(Array.isArray(result.mutations_applied));
-    assert.ok(result.mutations_applied.length > 0);
+    assert.equal(result.mutations_applied.length, 4);
+    assert.ok(
+      !result.mutations_applied.some(m => m.includes('execution.status')),
+      'mutations_applied must not reference execution.status (guard against premature in_progress re-introduction)'
+    );
   });
 });
 

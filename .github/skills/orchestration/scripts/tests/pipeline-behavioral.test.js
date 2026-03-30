@@ -65,7 +65,7 @@ function makeExecutionStartState(totalPhases) {
       ],
     },
     execution: {
-      status: 'in_progress',
+      status: 'not_started',
       current_phase: 1,
       phases,
     },
