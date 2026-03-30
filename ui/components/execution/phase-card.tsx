@@ -87,17 +87,10 @@ export function PhaseCard({
                 />
               ))}
             </div>
-            {(phase.review.verdict || phase.docs.phase_report || phase.docs.phase_review) && (
+            {(phase.review.verdict || phase.docs.phase_review) && (
               <div className="flex items-center gap-2 mt-3 pt-2 border-t pl-2">
                 {phase.review.verdict && (
                   <ReviewVerdictBadge verdict={phase.review.verdict} />
-                )}
-                {phase.docs.phase_report && (
-                  <DocumentLink
-                    path={phase.docs.phase_report}
-                    label="Phase Report"
-                    onDocClick={onDocClick}
-                  />
                 )}
                 {phase.docs.phase_review && (
                   <DocumentLink
