@@ -1277,3 +1277,176 @@ describe('Category 13: Commit-disabled (auto_commit=never)', () => {
     assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'complete');
   });
 });
+
+// ─── Category 14: remote_url / compare_url and commit_hash end-to-end ─────────
+// Drives a single-phase, single-task pipeline from phase_plan_created through
+// task_committed using auto_commit=always. Verifies that remote_url and
+// compare_url land in pipeline.source_control on source_control_init, that
+// commit_hash is written to the task record before the pointer advances on
+// task_committed, and that remote_url/compare_url remain intact after
+// task_committed completes.
+
+describe('Category 14: remote_url / compare_url and commit_hash end-to-end', () => {
+  const documents = {
+    'c14-pp.md': makeDoc({ tasks: ['T01'] }),
+    'c14-th1.md': makeDoc({}),
+    'c14-cr1.md': makeDoc({ verdict: 'approved' }),
+  };
+
+  const state = makeExecutionStartState(1);
+  const io = createMockIO({ state, documents });
+  let writeCount = 0;
+
+  it('Step 1: phase_plan_created → create_task_handoff', () => {
+    const result = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c14-pp.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 2: source_control_init with remote_url + compare_url → create_task_handoff; both fields persisted in state', () => {
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/auto-commit-2',
+      base_branch: 'main',
+      worktree_path: '/wt/auto-commit-2',
+      auto_commit: 'always',
+      auto_pr: 'never',
+      remote_url: 'https://github.com/org/repo',
+      compare_url: 'https://github.com/org/repo/compare/main...feat/auto-commit-2',
+    }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    const sc = io.getState().pipeline.source_control;
+    assert.equal(sc.remote_url, 'https://github.com/org/repo');
+    assert.equal(sc.compare_url, 'https://github.com/org/repo/compare/main...feat/auto-commit-2');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 3: task_handoff_created → execute_task', () => {
+    const result = processEvent('task_handoff_created', PROJECT_DIR, { doc_path: 'c14-th1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'execute_task');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 4: task_completed → spawn_code_reviewer', () => {
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_code_reviewer');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 5: code_review_completed (auto_commit=always) → invoke_source_control_commit; pointer NOT bumped', () => {
+    const result = processEvent('code_review_completed', PROJECT_DIR, { doc_path: 'c14-cr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+    assert.equal(io.getState().execution.phases[0].current_task, 1); // deferred — pointer NOT bumped
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 6: task_commit_requested → invoke_source_control_commit (branch validation pass)', () => {
+    const result = processEvent('task_commit_requested', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 7: task_committed with commitHash → commit_hash on task[0]; pointer bumped; remote_url/compare_url intact', () => {
+    const result = processEvent('task_committed', PROJECT_DIR, {
+      task_id: 'P01-T01',
+      committed: true,
+      pushed: true,
+      commitHash: 'abc123f',
+    }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, writeCount);
+    // commit_hash written to the committed task before pointer advanced
+    assert.equal(io.getState().execution.phases[0].tasks[0].commit_hash, 'abc123f');
+    // pointer advanced past the single task (1 → 2)
+    assert.equal(io.getState().execution.phases[0].current_task, 2);
+    // remote_url and compare_url survive task_committed unchanged
+    const sc = io.getState().pipeline.source_control;
+    assert.equal(sc.remote_url, 'https://github.com/org/repo');
+    assert.equal(sc.compare_url, 'https://github.com/org/repo/compare/main...feat/auto-commit-2');
+  });
+});
+
+// ─── Category 15: null paths — remote_url, compare_url, commit_hash ──────────
+// Three isolated tests. Each builds its own io from scratch to verify the null
+// path for the three new fields without sharing state across sub-tests.
+
+describe('Category 15: null paths — remote_url, compare_url, commit_hash', () => {
+  it('(a) source_control_init without remote_url/compare_url context → both null in state', () => {
+    const state = makeExecutionStartState(1);
+    const documents = { 'c15a-pp.md': makeDoc({ tasks: ['T01'] }) };
+    const io = createMockIO({ state, documents });
+    processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c15a-pp.md' }, io);
+    backdateTimestamp(io.getState());
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/null-test',
+      base_branch: 'main',
+      worktree_path: '/wt/null-test',
+      auto_commit: 'always',
+      auto_pr: 'never',
+      // remote_url and compare_url intentionally omitted
+    }, io);
+    assert.equal(result.success, true);
+    const sc = io.getState().pipeline.source_control;
+    assert.strictEqual(sc.remote_url, null);
+    assert.strictEqual(sc.compare_url, null);
+  });
+
+  it('(b) source_control_init with explicit null remote_url/compare_url → both null in state', () => {
+    const state = makeExecutionStartState(1);
+    const documents = { 'c15b-pp.md': makeDoc({ tasks: ['T01'] }) };
+    const io = createMockIO({ state, documents });
+    processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c15b-pp.md' }, io);
+    backdateTimestamp(io.getState());
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/explicit-null',
+      base_branch: 'main',
+      worktree_path: '/wt/explicit-null',
+      auto_commit: 'always',
+      auto_pr: 'never',
+      remote_url: null,
+      compare_url: null,
+    }, io);
+    assert.equal(result.success, true);
+    const sc = io.getState().pipeline.source_control;
+    assert.strictEqual(sc.remote_url, null);
+    assert.strictEqual(sc.compare_url, null);
+  });
+
+  it('(c) task_committed with no commitHash → task.commit_hash null; pointer still advances', () => {
+    const state = createExecutionState();
+    delete state.project.updated;
+    state.pipeline.source_control = {
+      branch: 'feat/null-hash-test',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+      remote_url: null,
+      compare_url: null,
+    };
+    const io = createMockIO({ state });
+    const result = processEvent('task_committed', PROJECT_DIR, {
+      task_id: 'P01-T01',
+      committed: false,
+      pushed: false,
+      // commitHash intentionally absent
+    }, io);
+    assert.equal(result.success, true);
+    assert.strictEqual(io.getState().execution.phases[0].tasks[0].commit_hash, null);
+    assert.equal(io.getState().execution.phases[0].current_task, 2); // pointer advanced
+  });
+});
