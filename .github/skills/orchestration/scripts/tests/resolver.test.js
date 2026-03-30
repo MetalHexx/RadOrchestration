@@ -474,7 +474,7 @@ describe('resolver — gates', () => {
     });
   }
 
-  it('returns gate_task when task review.action is advanced and gate mode is task',() => {
+  it('returns gate_task when task review.action is advanced and gate mode is task', () => {
     const state = completedTaskState();
     const config = makeConfig({ human_gates: { execution_mode: 'task' } });
     const result = resolveNextAction(state, config);
@@ -679,7 +679,7 @@ describe('resolver — edge cases', () => {
     assert.equal(result.context.phase_number, 1);
   });
 
-  it('returns display_halted when no phase found at current_phase (out-of-bounds)',() => {
+  it('returns display_halted when no phase found at current_phase (out-of-bounds)', () => {
     const state = makeState({
       execution: {
         status: 'in_progress',

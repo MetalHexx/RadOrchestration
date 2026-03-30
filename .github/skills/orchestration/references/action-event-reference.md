@@ -53,7 +53,7 @@ These are the exact event names passed to `--event`:
 | `phase_plan_created` | `--doc-path <path>` | After Tactical Planner finishes phase plan |
 | `task_handoff_started` | *(none)* | Before Tactical Planner spawn for fresh (non-corrective) tasks only. Transitions task from `not_started` to `in_progress` while leaving `task.stage` at `'planning'`. See action #7 two-step protocol. |
 | `task_handoff_created` | `--doc-path <path>` | After Tactical Planner finishes task handoff |
-| `task_completed` | *(none)* | After Coder finishes task |
+| `task_completed` | `--doc-path <path>` *(optional, ignored)* | After Coder finishes task. The CLI accepts `--doc-path` for backward compatibility, but the pipeline ignores it. |
 | `code_review_completed` | `--doc-path <path>` | After Reviewer finishes code review |
 | `task_commit_requested` | *(none)* | Signaled internally after `code_review_completed` when `auto_commit: always` and review verdict is approved. Triggers Source Control Agent spawn. |
 | `task_committed` | `--commit-hash <hash> --pushed <true\|false>` | After Source Control Agent completes. Extract `commitHash` and `pushed` from the agent's `## Commit Result` JSON block. |

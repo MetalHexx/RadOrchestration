@@ -82,7 +82,6 @@ describe('Category 1: Full happy path', () => {
   const documents = {
     'mp.md': makeDoc({ total_phases: 1 }),
     'pp.md': makeDoc({ tasks: ['T01'] }),
-    'tr.md': makeDoc({}),
     'cr.md': makeDoc({ verdict: 'approved' }),
     'prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
   };
@@ -255,7 +254,7 @@ describe('Category 1: Full happy path', () => {
   });
 
   it('Step 10: task_completed → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'tr.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -316,13 +315,10 @@ describe('Category 1: Full happy path', () => {
 describe('Category 2: Multi-phase multi-task', () => {
   const documents = {
     'c2-pp1.md': makeDoc({ tasks: ['T01', 'T02'] }),
-    'c2-tr1.md': makeDoc({}),
     'c2-cr1.md': makeDoc({ verdict: 'approved' }),
-    'c2-tr2.md': makeDoc({}),
     'c2-cr2.md': makeDoc({ verdict: 'approved' }),
     'c2-prv1.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
     'c2-pp2.md': makeDoc({ tasks: ['T01'] }),
-    'c2-tr-p2.md': makeDoc({}),
     'c2-cr-p2.md': makeDoc({ verdict: 'approved' }),
     'c2-prv2.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
   };
@@ -373,7 +369,7 @@ describe('Category 2: Multi-phase multi-task', () => {
   });
 
   it('P1 Step 3: task_completed (T01) → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c2-tr1.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -414,7 +410,7 @@ describe('Category 2: Multi-phase multi-task', () => {
   });
 
   it('P1 Step 6: task_completed (T02) → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c2-tr2.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -500,7 +496,7 @@ describe('Category 2: Multi-phase multi-task', () => {
   });
 
   it('P2 Step 12: task_completed → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c2-tr-p2.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -723,7 +719,6 @@ describe('Category 4: Pre-read validation failures', () => {
 describe('Category 5: Phase lifecycle', () => {
   const documents = {
     'c5-pp.md': makeDoc({ tasks: ['T01'] }),
-    'c5-tr.md': makeDoc({}),
     'c5-cr.md': makeDoc({ verdict: 'approved' }),
     'c5-prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
   };
@@ -752,7 +747,7 @@ describe('Category 5: Phase lifecycle', () => {
   });
 
   it('task_completed → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c5-tr.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -819,14 +814,13 @@ describe('Category 6: Halt paths', () => {
     });
     delete state.project.updated;
     const documents = {
-      'c6a-tr.md': makeDoc({}),
       'c6a-cr.md': makeDoc({ verdict: 'rejected' }),
     };
     const io = createMockIO({ state, documents });
     let writeCount = 0;
 
     it('task_completed → spawn_code_reviewer', () => {
-      const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c6a-tr.md' }, io);
+      const result = processEvent('task_completed', PROJECT_DIR, {}, io);
       writeCount++;
       assert.equal(result.success, true);
       assert.equal(result.action, 'spawn_code_reviewer');
@@ -869,14 +863,13 @@ describe('Category 6: Halt paths', () => {
     });
     delete state.project.updated;
     const documents = {
-      'c6b-tr.md': makeDoc({}),
       'c6b-cr.md': makeDoc({ verdict: 'changes_requested' }),
     };
     const io = createMockIO({ state, documents });
     let writeCount = 0;
 
     it('task_completed → spawn_code_reviewer', () => {
-      const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c6b-tr.md' }, io);
+      const result = processEvent('task_completed', PROJECT_DIR, {}, io);
       writeCount++;
       assert.equal(result.success, true);
       assert.equal(result.action, 'spawn_code_reviewer');
