@@ -13,7 +13,7 @@ const STEP_TITLES: Record<PlanningStepName, string> = {
 /**
  * Derive the canonical document navigation order from project state.
  *
- * Order: planning docs → per-phase (plan → task handoffs → task reviews → phase review) →
+ * Order: planning docs → per-phase (plan → per-task: handoff → review → … → phase review) →
  *        final review → error log → other docs.
  *
  * Only non-null paths are included.
