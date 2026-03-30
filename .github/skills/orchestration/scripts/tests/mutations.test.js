@@ -1276,7 +1276,7 @@ describe('handleSourceControlInit', () => {
       auto_pr: 'never',
     };
     const result = handleSourceControlInit(state, context, defaultConfig);
-    assert.equal(result.mutations_applied.length, 5);
+    assert.equal(result.mutations_applied.length, 7);
   });
 
   it('throws on missing required field "branch"', () => {
@@ -1346,6 +1346,58 @@ describe('handleSourceControlInit', () => {
     assert.equal(state.pipeline.source_control.worktree_path, '/wt-b');
     assert.equal(state.pipeline.source_control.auto_commit, 'never');
     assert.equal(state.pipeline.source_control.auto_pr, 'always');
+  });
+
+  it('writes remote_url when provided as a non-null string', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x', base_branch: 'main', worktree_path: '/wt',
+      auto_commit: 'always', auto_pr: 'never',
+      remote_url: 'https://github.com/org/repo',
+      compare_url: 'https://github.com/org/repo/compare/main...feat/x',
+    };
+    const result = handleSourceControlInit(state, context, defaultConfig);
+    assert.equal(result.state.pipeline.source_control.remote_url, 'https://github.com/org/repo');
+    assert.equal(result.state.pipeline.source_control.compare_url, 'https://github.com/org/repo/compare/main...feat/x');
+  });
+
+  it('writes remote_url as null when context.remote_url is undefined', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x', base_branch: 'main', worktree_path: '/wt',
+      auto_commit: 'always', auto_pr: 'never',
+      // remote_url and compare_url absent (not provided by caller)
+    };
+    const result = handleSourceControlInit(state, context, defaultConfig);
+    assert.equal(result.state.pipeline.source_control.remote_url, null);
+    assert.equal(result.state.pipeline.source_control.compare_url, null);
+  });
+
+  it('writes remote_url as null when context.remote_url is explicitly null', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x', base_branch: 'main', worktree_path: '/wt',
+      auto_commit: 'always', auto_pr: 'never',
+      remote_url: null,
+      compare_url: null,
+    };
+    const result = handleSourceControlInit(state, context, defaultConfig);
+    assert.equal(result.state.pipeline.source_control.remote_url, null);
+    assert.equal(result.state.pipeline.source_control.compare_url, null);
+  });
+
+  it('mutations_applied includes remote_url and compare_url log entries (total 7)', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x', base_branch: 'main', worktree_path: '/wt',
+      auto_commit: 'always', auto_pr: 'never',
+      remote_url: 'https://github.com/org/repo',
+      compare_url: 'https://github.com/org/repo/compare/main...feat/x',
+    };
+    const result = handleSourceControlInit(state, context, defaultConfig);
+    assert.equal(result.mutations_applied.length, 7);
+    assert.ok(result.mutations_applied.some(m => m.includes('remote_url')));
+    assert.ok(result.mutations_applied.some(m => m.includes('compare_url')));
   });
 });
 
@@ -1508,7 +1560,7 @@ describe('handleTaskCommitted', () => {
   it('returns mutations_applied with descriptive entry', () => {
     const state = makeExecutionState();
     const result = handleTaskCommitted(state, {}, defaultConfig);
-    assert.ok(result.mutations_applied[0].toLowerCase().includes('task committed') || result.mutations_applied[0].toLowerCase().includes('current_task'));
+    assert.ok(result.mutations_applied.some(m => m.toLowerCase().includes('task committed') || m.toLowerCase().includes('current_task')));
   });
 
   it('context fields are accepted but do not affect behavior', () => {
@@ -1517,6 +1569,27 @@ describe('handleTaskCommitted', () => {
     const result1 = handleTaskCommitted(state1, {}, defaultConfig);
     const result2 = handleTaskCommitted(state2, { task_id: 'P01-T01', committed: true, pushed: false }, defaultConfig);
     assert.equal(state1.execution.phases[0].current_task, state2.execution.phases[0].current_task);
+  });
+
+  it('writes context.commitHash to task.commit_hash before pointer advances', () => {
+    const state = makeExecutionState();
+    // current_task starts at 1 (1-based), so taskIndex = 0
+    const result = handleTaskCommitted(state, { commitHash: 'abc123def456' }, defaultConfig);
+    assert.equal(state.execution.phases[0].tasks[0].commit_hash, 'abc123def456');
+    // pointer must still have advanced
+    assert.equal(state.execution.phases[0].current_task, 2);
+  });
+
+  it('writes null to task.commit_hash when context.commitHash is undefined', () => {
+    const state = makeExecutionState();
+    handleTaskCommitted(state, {}, defaultConfig);
+    assert.equal(state.execution.phases[0].tasks[0].commit_hash, null);
+  });
+
+  it('writes null to task.commit_hash when context.commitHash is null', () => {
+    const state = makeExecutionState();
+    handleTaskCommitted(state, { commitHash: null }, defaultConfig);
+    assert.equal(state.execution.phases[0].tasks[0].commit_hash, null);
   });
 });
 

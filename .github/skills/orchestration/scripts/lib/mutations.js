@@ -692,6 +692,8 @@ function handleSourceControlInit(state, context, config) {
     worktree_path: context.worktree_path,
     auto_commit:   context.auto_commit,
     auto_pr:       context.auto_pr,
+    remote_url:    context.remote_url  ?? null,   // new — nullable write
+    compare_url:   context.compare_url ?? null,   // new — nullable write
   };
   return {
     state,
@@ -701,6 +703,8 @@ function handleSourceControlInit(state, context, config) {
       `Set pipeline.source_control.worktree_path to "${context.worktree_path}"`,
       `Set pipeline.source_control.auto_commit to "${context.auto_commit}"`,
       `Set pipeline.source_control.auto_pr to "${context.auto_pr}"`,
+      `Set pipeline.source_control.remote_url to ${JSON.stringify(context.remote_url ?? null)}`,
+      `Set pipeline.source_control.compare_url to ${JSON.stringify(context.compare_url ?? null)}`,
     ],
   };
 }
@@ -749,12 +753,19 @@ function handleTaskCommitRequested(state, context, config) {
  */
 function handleTaskCommitted(state, context, config) {
   const phase = state.execution.phases[state.execution.current_phase - 1];
+  const taskIndex = phase.current_task - 1;   // capture BEFORE incrementing
+  const task = phase.tasks[taskIndex];
+  const mutations = [];
+  // Write commit_hash onto the current task BEFORE advancing the pointer
+  if (task) {
+    task.commit_hash = context.commitHash ?? null;
+    mutations.push(`Set task[${taskIndex}].commit_hash to ${JSON.stringify(task.commit_hash)}`);
+  }
   phase.current_task += 1;
+  mutations.push(`Bumped phase.current_task to ${phase.current_task} (task committed)`);
   return {
     state,
-    mutations_applied: [
-      `Bumped phase.current_task to ${phase.current_task} (task committed)`,
-    ],
+    mutations_applied: mutations,
   };
 }
 
