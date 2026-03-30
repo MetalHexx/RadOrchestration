@@ -66,7 +66,13 @@ The Orchestrator operates as an event-driven controller. The core loop:
 1. **Determine the event to signal** (see Event Signaling Reference below)
 2. **Call the pipeline script**:
    ```
-   node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--context <json>]
+   node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--config <path>]
+       [--doc-path <path>]
+       [--branch <name>] [--base-branch <name>] [--worktree-path <path>]
+       [--auto-commit <always|never>] [--auto-pr <always|never>]
+       [--gate-type <type>] [--reason <text>]
+       [--gate-mode <mode>]
+       [--commit-hash <hash>] [--pushed <true|false>]
    ```
 3. **Parse the JSON result** from stdout
 4. **Pattern-match `result.action`** against the Action Routing Table
@@ -135,26 +141,26 @@ Every `result.action` value maps to exactly one Orchestrator operation. The Orch
 
 | # | `result.action` | Category | Orchestrator Operation | Event to Signal on Completion |
 |---|-----------------|----------|----------------------|-------------------------------|
-| 1 | `spawn_research` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `research_started` with `{}` context → pipeline returns `spawn_research` again; (2) Spawn **Research** agent with project idea + brainstorming doc (if exists). Output: {NAME}-RESEARCH-FINDINGS.md | `research_completed` with `{ "doc_path": "<output-path>" }` |
-| 2 | `spawn_prd` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `prd_started` with `{}` context → pipeline returns `spawn_prd` again; (2) Spawn **Product Manager** agent with RESEARCH-FINDINGS.md (+ brainstorming doc if exists). Output: {NAME}-PRD.md | `prd_completed` with `{ "doc_path": "<output-path>" }` |
-| 3 | `spawn_design` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `design_started` with `{}` context → pipeline returns `spawn_design` again; (2) Spawn **UX Designer** agent with PRD.md + RESEARCH-FINDINGS.md. Output: {NAME}-DESIGN.md | `design_completed` with `{ "doc_path": "<output-path>" }` |
-| 4 | `spawn_architecture` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `architecture_started` with `{}` context → pipeline returns `spawn_architecture` again; (2) Spawn **Architect** agent with PRD.md + DESIGN.md + RESEARCH-FINDINGS.md. Output: {NAME}-ARCHITECTURE.md | `architecture_completed` with `{ "doc_path": "<output-path>" }` |
-| 5 | `spawn_master_plan` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `master_plan_started` with `{}` context → pipeline returns `spawn_master_plan` again; (2) Spawn **Architect** agent with all planning docs. Output: {NAME}-MASTER-PLAN.md | `master_plan_completed` with `{ "doc_path": "<output-path>" }` |
-| 6 | `create_phase_plan` | Agent spawn | **Two-step protocol — check `is_correction` first.** **Fresh phase** (`is_correction` is falsy): (1) Signal `phase_planning_started` with `{}` context → pipeline returns `create_phase_plan` again; (2) Spawn **Tactical Planner** (phase plan mode). **Corrective** (`is_correction` is true): Skip `phase_planning_started`, spawn **Tactical Planner** directly with `result.context.previous_review`. Output: phases/{NAME}-PHASE-{NN}-{TITLE}.md | `phase_plan_created` with `{ "doc_path": "<output-path>" }` |
-| 7 | `create_task_handoff` | Agent spawn | **Two-step protocol — check `is_correction` first.** **Fresh task** (`is_correction` is falsy): (1) Signal `task_handoff_started` with `{}` context → pipeline returns `create_task_handoff` again; (2) Spawn **Tactical Planner** (handoff mode). **Corrective** (`is_correction` is true): Skip `task_handoff_started`, spawn **Tactical Planner** directly (corrective mode) with `result.context.previous_review`. Output: tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md | `task_handoff_created` with `{ "doc_path": "<output-path>" }` |
-| 8 | `execute_task` | Agent spawn | Spawn **Coder** agent with the task's handoff document. Output: reports/{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md | `task_completed` with `{ "doc_path": "<output-path>" }` |
-| 9 | `spawn_code_reviewer` | Agent spawn | Spawn **Reviewer** agent for task-level code review. Output: reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md | `code_review_completed` with `{ "doc_path": "<output-path>" }` |
-| 10 | `generate_phase_report` | Agent spawn | Spawn **Tactical Planner** (report mode) for the phase. Output: reports/{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md | `phase_report_created` with `{ "doc_path": "<output-path>" }` |
-| 11 | `spawn_phase_reviewer` | Agent spawn | Spawn **Reviewer** agent for phase-level review. Output: reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md | `phase_review_completed` with `{ "doc_path": "<output-path>" }` |
-| 12 | `spawn_final_reviewer` | Agent spawn | Spawn **Reviewer** agent for final comprehensive review. Output: {NAME}-FINAL-REVIEW.md | `final_review_completed` with `{ "doc_path": "<output-path>" }` |
+| 1 | `spawn_research` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `research_started` with `{}` context → pipeline returns `spawn_research` again; (2) Spawn **Research** agent with project idea + brainstorming doc (if exists). Output: {NAME}-RESEARCH-FINDINGS.md | `research_completed --doc-path <output-path>` |
+| 2 | `spawn_prd` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `prd_started` with `{}` context → pipeline returns `spawn_prd` again; (2) Spawn **Product Manager** agent with RESEARCH-FINDINGS.md (+ brainstorming doc if exists). Output: {NAME}-PRD.md | `prd_completed --doc-path <output-path>` |
+| 3 | `spawn_design` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `design_started` with `{}` context → pipeline returns `spawn_design` again; (2) Spawn **UX Designer** agent with PRD.md + RESEARCH-FINDINGS.md. Output: {NAME}-DESIGN.md | `design_completed --doc-path <output-path>` |
+| 4 | `spawn_architecture` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `architecture_started` with `{}` context → pipeline returns `spawn_architecture` again; (2) Spawn **Architect** agent with PRD.md + DESIGN.md + RESEARCH-FINDINGS.md. Output: {NAME}-ARCHITECTURE.md | `architecture_completed --doc-path <output-path>` |
+| 5 | `spawn_master_plan` | Agent spawn | **Two-step protocol (planning steps are never corrective).** (1) Signal `master_plan_started` with `{}` context → pipeline returns `spawn_master_plan` again; (2) Spawn **Architect** agent with all planning docs. Output: {NAME}-MASTER-PLAN.md | `master_plan_completed --doc-path <output-path>` |
+| 6 | `create_phase_plan` | Agent spawn | **Two-step protocol — check `is_correction` first.** **Fresh phase** (`is_correction` is falsy): (1) Signal `phase_planning_started` with `{}` context → pipeline returns `create_phase_plan` again; (2) Spawn **Tactical Planner** (phase plan mode). **Corrective** (`is_correction` is true): Skip `phase_planning_started`, spawn **Tactical Planner** directly with `result.context.previous_review`. Output: phases/{NAME}-PHASE-{NN}-{TITLE}.md | `phase_plan_created --doc-path <output-path>` |
+| 7 | `create_task_handoff` | Agent spawn | **Two-step protocol — check `is_correction` first.** **Fresh task** (`is_correction` is falsy): (1) Signal `task_handoff_started` with `{}` context → pipeline returns `create_task_handoff` again; (2) Spawn **Tactical Planner** (handoff mode). **Corrective** (`is_correction` is true): Skip `task_handoff_started`, spawn **Tactical Planner** directly (corrective mode) with `result.context.previous_review`. Output: tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md | `task_handoff_created --doc-path <output-path>` |
+| 8 | `execute_task` | Agent spawn | Spawn **Coder** agent with the task's handoff document. Output: reports/{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md | `task_completed --doc-path <output-path>` |
+| 9 | `spawn_code_reviewer` | Agent spawn | Spawn **Reviewer** agent for task-level code review. Output: reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md | `code_review_completed --doc-path <output-path>` |
+| 10 | `generate_phase_report` | Agent spawn | Spawn **Tactical Planner** (report mode) for the phase. Output: reports/{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md | `phase_report_created --doc-path <output-path>` |
+| 11 | `spawn_phase_reviewer` | Agent spawn | Spawn **Reviewer** agent for phase-level review. Output: reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md | `phase_review_completed --doc-path <output-path>` |
+| 12 | `spawn_final_reviewer` | Agent spawn | Spawn **Reviewer** agent for final comprehensive review. Output: {NAME}-FINAL-REVIEW.md | `final_review_completed --doc-path <output-path>` |
 | 13 | `request_plan_approval` | Human gate | Display Master Plan summary to the human. Ask human to approve or reject. | `plan_approved` (if approved) or `plan_rejected` (if rejected) — no context payload |
 | 14 | `request_final_approval` | Human gate | Display final review to the human. Ask human to approve or request changes. | `final_approved` (if approved) or `final_rejected` (if rejected) — no context payload |
-| 15 | `gate_task` | Human gate | Show task results to the human. Wait for approval. | `gate_approved` with `{ "gate_type": "task" }` (if approved) or `gate_rejected` with `{ "gate_type": "task", "reason": "<reason>" }` (if rejected) |
-| 16 | `gate_phase` | Human gate | Show phase results to the human. Wait for approval. | `gate_approved` with `{ "gate_type": "phase" }` (if approved) or `gate_rejected` with `{ "gate_type": "phase", "reason": "<reason>" }` (if rejected) |
-| 17 | `ask_gate_mode` | Human gate | Present the three gate mode options (`task`, `phase`, `autonomous`) to the operator. Wait for selection. | `gate_mode_set` with `{ "gate_mode": "<chosen>" }` |
+| 15 | `gate_task` | Human gate | Show task results to the human. Wait for approval. | `gate_approved --gate-type task` (if approved) or `gate_rejected --gate-type task --reason "<reason>"` (if rejected) |
+| 16 | `gate_phase` | Human gate | Show phase results to the human. Wait for approval. | `gate_approved --gate-type phase` (if approved) or `gate_rejected --gate-type phase --reason "<reason>"` (if rejected) |
+| 17 | `ask_gate_mode` | Human gate | Present the three gate mode options (`task`, `phase`, `autonomous`) to the operator. Wait for selection. | `gate_mode_set --gate-mode <chosen>` |
 | 18 | `display_halted` | Terminal | Display `result.context.message` to the human. Ask how to proceed. **Loop terminates.** | *(none — terminal action)* |
 | 19 | `display_complete` | Terminal | Display completion summary to the human. **Loop terminates.** | *(none — terminal action)* |
-| 20 | `invoke_source_control_commit` | Agent spawn | Spawn **Source Control Agent** in commit mode. The agent reads `pipeline.source_control` from state, constructs the commit message, executes `git-commit.js`, and outputs a structured commit result block. Extract `commitHash`, `pushed`, and `error` from the agent’s `## Commit Result` JSON block in its output. | `task_committed` with `{ "commitHash": "<extracted>", "pushed": <extracted>, "error": "<extracted-or-null>" }` |
+| 20 | `invoke_source_control_commit` | Agent spawn | Spawn **Source Control Agent** in commit mode. The agent reads `pipeline.source_control` from state, constructs the commit message, executes `git-commit.js`, and outputs a structured commit result block. Extract `commitHash` and `pushed` from the agent's `## Commit Result` JSON block in its output. | `task_committed --commit-hash <hash> --pushed <true|false>` |
 
 > **IMPORTANT — `is_correction` guard for action #6 (`create_phase_plan`):** Only signal `phase_planning_started` when `result.context.is_correction` is falsy. For corrective re-planning (`is_correction: true`), the phase is already `in_progress / failed` — skip directly to spawning the Tactical Planner. Signaling `phase_planning_started` during a corrective cycle would be a harmless no-op but is semantically incorrect. The two-step protocol (signal `phase_planning_started` → receive `create_phase_plan` again → spawn Planner) applies ONLY to fresh phases.
 
@@ -166,37 +172,38 @@ Every `result.action` value maps to exactly one Orchestrator operation. The Orch
 
 These are the exact event names the Orchestrator passes to `--event`:
 
-| Event | Context Payload | When to Signal |
-|-------|----------------|----------------|
-| `start` | `{}` | First call (new project), cold start, or context compaction recovery |
-| `research_completed` | `{ "doc_path": "<path>" }` | After Research agent finishes |
-| `prd_completed` | `{ "doc_path": "<path>" }` | After Product Manager finishes |
-| `design_completed` | `{ "doc_path": "<path>" }` | After UX Designer finishes |
-| `architecture_completed` | `{ "doc_path": "<path>" }` | After Architect finishes (architecture doc) |
-| `master_plan_completed` | `{ "doc_path": "<path>" }` | After Architect finishes (master plan) |
-| `research_started` | `{}` | Before Research agent spawn (non-corrective). Transitions planning step to `in_progress`. See action #1 two-step protocol. |
-| `prd_started` | `{}` | Before Product Manager spawn (non-corrective). Transitions planning step to `in_progress`. See action #2 two-step protocol. |
-| `design_started` | `{}` | Before UX Designer spawn (non-corrective). Transitions planning step to `in_progress`. See action #3 two-step protocol. |
-| `architecture_started` | `{}` | Before Architect spawn for architecture doc (non-corrective). Transitions planning step to `in_progress`. See action #4 two-step protocol. |
-| `master_plan_started` | `{}` | Before Architect spawn for master plan (non-corrective). Transitions planning step to `in_progress`. See action #5 two-step protocol. |
-| `plan_approved` | `{}` | After human approves master plan |
-| `plan_rejected` | `{}` | After human rejects master plan |
-| `phase_planning_started` | `{}` | Before Tactical Planner spawn for fresh (non-corrective) phases only. Transitions phase from `not_started / planning` to `in_progress / planning`. See action #6 two-step protocol. |
-| `phase_plan_created` | `{ "doc_path": "<path>" }` | After Tactical Planner finishes phase plan |
-| `task_handoff_started` | `{}` | Before Tactical Planner spawn for fresh (non-corrective) tasks only. Transitions task from `not_started` to `in_progress` while leaving `task.stage` at `'planning'`. See action #7 two-step protocol. |
-| `task_handoff_created` | `{ "doc_path": "<path>" }` | After Tactical Planner finishes task handoff |
-| `task_completed` | `{ "doc_path": "<path>" }` | After Coder finishes task |
-| `code_review_completed` | `{ "doc_path": "<path>" }` | After Reviewer finishes code review |
-| `task_committed` | `{ "commitHash": "<hash>", "pushed": <bool>, "error": "<msg-or-null>" }` | After Source Control Agent completes; extract `commitHash`, `pushed`, and `error` from the agent’s `## Commit Result` JSON block. `commitHash` is the short SHA (or null if commit failed); `pushed` is whether the push succeeded; `error` is null on full success. |
-| `phase_report_created` | `{ "doc_path": "<path>" }` | After Tactical Planner finishes phase report |
-| `phase_review_completed` | `{ "doc_path": "<path>" }` | After Reviewer finishes phase review |
-| `gate_mode_set` | `{ "gate_mode": "<chosen>" }` | After operator selects gate mode (ask-mode resolution) |
-| `gate_approved` | `{ "gate_type": "task\|phase" }` | After human approves a gate |
-| `gate_rejected` | `{ "gate_type": "task\|phase", "reason": "<reason>" }` | After human rejects a gate |
-| `final_review_completed` | `{ "doc_path": "<path>" }` | After final reviewer finishes |
-| `final_approved` | `{}` | After human approves final review |
-| `final_rejected` | `{}` | After human rejects final review |
-| `halt` | `{}` | Emergency stop — signals the pipeline to halt immediately |
+| Event | Flags (besides `--event` and `--project-dir`) | When to Signal |
+|-------|-----------------------------------------------|----------------|
+| `start` | *(none)* | First call (new project), cold start, or context compaction recovery |
+| `research_completed` | `--doc-path <path>` | After Research agent finishes |
+| `prd_completed` | `--doc-path <path>` | After Product Manager finishes |
+| `design_completed` | `--doc-path <path>` | After UX Designer finishes |
+| `architecture_completed` | `--doc-path <path>` | After Architect finishes (architecture doc) |
+| `master_plan_completed` | `--doc-path <path>` | After Architect finishes (master plan) |
+| `research_started` | *(none)* | Before Research agent spawn (non-corrective). Transitions planning step to `in_progress`. See action #1 two-step protocol. |
+| `prd_started` | *(none)* | Before Product Manager spawn (non-corrective). Transitions planning step to `in_progress`. See action #2 two-step protocol. |
+| `design_started` | *(none)* | Before UX Designer spawn (non-corrective). Transitions planning step to `in_progress`. See action #3 two-step protocol. |
+| `architecture_started` | *(none)* | Before Architect spawn for architecture doc (non-corrective). Transitions planning step to `in_progress`. See action #4 two-step protocol. |
+| `master_plan_started` | *(none)* | Before Architect spawn for master plan (non-corrective). Transitions planning step to `in_progress`. See action #5 two-step protocol. |
+| `plan_approved` | *(none)* | After human approves master plan |
+| `plan_rejected` | *(none)* | After human rejects master plan |
+| `phase_planning_started` | *(none)* | Before Tactical Planner spawn for fresh (non-corrective) phases only. Transitions phase from `not_started / planning` to `in_progress / planning`. See action #6 two-step protocol. |
+| `phase_plan_created` | `--doc-path <path>` | After Tactical Planner finishes phase plan |
+| `task_handoff_started` | *(none)* | Before Tactical Planner spawn for fresh (non-corrective) tasks only. Transitions task from `not_started` to `in_progress` while leaving `task.stage` at `'planning'`. See action #7 two-step protocol. |
+| `task_handoff_created` | `--doc-path <path>` | After Tactical Planner finishes task handoff |
+| `task_completed` | `--doc-path <path>` | After Coder finishes task |
+| `code_review_completed` | `--doc-path <path>` | After Reviewer finishes code review |
+| `phase_report_created` | `--doc-path <path>` | After Tactical Planner finishes phase report |
+| `phase_review_completed` | `--doc-path <path>` | After Reviewer finishes phase review |
+| `source_control_init` | `--branch <name> --base-branch <name> --worktree-path <path> --auto-commit <always\|never> --auto-pr <always\|never>` | When the Source Control Agent should initialize the branch and worktree |
+| `task_committed` | `--commit-hash <hash> --pushed <true\|false>` | After Source Control Agent completes. Extract `commitHash` and `pushed` from the agent's `## Commit Result` JSON block. |
+| `gate_mode_set` | `--gate-mode task\|phase\|autonomous` | After operator selects gate mode (ask-mode resolution) |
+| `gate_approved` | `--gate-type task\|phase` | After human approves a gate |
+| `gate_rejected` | `--gate-type task\|phase --reason <text>` | After human rejects a gate |
+| `final_review_completed` | `--doc-path <path>` | After final reviewer finishes |
+| `final_approved` | *(none)* | After human approves final review |
+| `final_rejected` | *(none)* | After human rejects final review |
+| `halt` | *(none)* | Emergency stop — signals the pipeline to halt immediately |
 
 ## Recovery
 

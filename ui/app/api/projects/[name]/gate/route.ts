@@ -68,9 +68,11 @@ export async function POST(
 
     const relativeProjectDir = path.relative(root, projectDir);
 
-    // Build --context payload so the pipeline pre-read doesn't try to derive
-    // doc_path itself (which causes a doubled-path bug on workspace-relative paths).
-    const contextPayload: Record<string, string> = {};
+    const pipelineArgs = [
+      pipelineScript,
+      '--event', event,
+      '--project-dir', relativeProjectDir,
+    ];
     if (event === 'plan_approved') {
       const steps = state.planning?.steps;
       // steps is an array in v3 format; master_plan is the last entry (index 4)
@@ -78,19 +80,14 @@ export async function POST(
         ? steps.find((s) => s.name === 'master_plan')
         : (steps as Record<string, { doc_path?: string | null }>)?.['master_plan'];
       const docPath = masterPlanStep?.doc_path;
-      if (docPath) contextPayload.doc_path = docPath;
+      if (docPath) {
+        pipelineArgs.push('--doc-path', docPath);
+      }
     } else if (event === 'final_approved') {
       const docPath = state.final_review?.doc_path;
-      if (docPath) contextPayload.doc_path = docPath;
-    }
-
-    const pipelineArgs = [
-      pipelineScript,
-      '--event', event,
-      '--project-dir', relativeProjectDir,
-    ];
-    if (Object.keys(contextPayload).length > 0) {
-      pipelineArgs.push('--context', JSON.stringify(contextPayload));
+      if (docPath) {
+        pipelineArgs.push('--doc-path', docPath);
+      }
     }
 
     let stdout: string;
