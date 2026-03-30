@@ -2,6 +2,18 @@
 
 Reference document for the Orchestrator agent. Covers the pipeline event loop, action routing, CLI usage, and error handling.
 
+## Configuration
+
+### Orchestration Root {orchRoot}
+
+Before constructing any path, determine the orchestration root folder:
+1. Find `orchestration.yml` in the workspace.
+2. If found, use its directory as `orchRoot`.
+3. Every `pipeline.js` JSON result includes an `orchRoot` field. Use `result.orchRoot` for all path construction after the first pipeline call.
+4. {orchRoot} is the base for all file paths in the pipeline — planning docs, code files, logs, and even subsequent pipeline calls.
+- `projects.base_path`: Where project folders live
+- Use `base_path` to locate the project directory: `{base_path}/{PROJECT-NAME}/`.
+
 ## Pipeline Event Loop
 
 The Orchestrator operates as an event-driven controller:
@@ -200,3 +212,24 @@ node {orch_root}/skills/orchestration/scripts/pipeline.js --event start --projec
 ```
 
 The pipeline loads `state.json`, skips mutation, and resolves the next action from the current state. All state is persisted in `state.json` by the pipeline script, so no runtime memory is needed.
+
+## Spawning Subagents
+
+When spawning a subagent, always provide:
+
+1. **Clear task description**: What the agent should do
+2. **File paths**: Exact paths to input documents the agent needs to read
+3. **Project context**: Project name, current phase/task numbers from `result.context`
+4. **Output expectations**: Where to save the output document (derive from project naming conventions)
+
+Example spawn instruction:
+> "Create the PRD for the MYAPP project. Read the research findings at `{base_path}/MYAPP/MYAPP-RESEARCH-FINDINGS.md`. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that too. Save the PRD to `{base_path}/MYAPP/MYAPP-PRD.md`."
+
+## Status Reporting
+
+After every significant action, summarize to the human:
+- What was just completed
+- What the current state is
+- What happens next
+
+Keep status updates concise — 2-3 bullet points maximum.
