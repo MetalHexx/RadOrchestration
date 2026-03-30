@@ -48,7 +48,7 @@ These are the exact event names passed to `--event`:
 | `master_plan_completed` | `--doc-path <path>` | After Architect finishes (master plan) |
 | `plan_approved` | *(none)* | After human approves master plan |
 | `plan_rejected` | *(none)* | After human rejects master plan |
-| `source_control_init` | `--branch <name> --base-branch <name> --worktree-path <path> --auto-commit <always\|never> --auto-pr <always\|never>` | After `rad-execute-parallel` creates the worktree. One-time initialization that persists source control context to `pipeline.source_control` in state. |
+| `source_control_init` | `--branch <name> --base-branch <name> --worktree-path <path> --auto-commit <always\|never> --auto-pr <always\|never> --remote-url <url> --compare-url <url>` | After `rad-execute-parallel` creates the worktree. One-time initialization that persists source control context to `pipeline.source_control` in state. |
 | `phase_planning_started` | *(none)* | Before Tactical Planner spawn for fresh (non-corrective) phases only. Transitions phase from `not_started / planning` to `in_progress / planning`. See action #6 two-step protocol. |
 | `phase_plan_created` | `--doc-path <path>` | After Tactical Planner finishes phase plan |
 | `task_handoff_started` | *(none)* | Before Tactical Planner spawn for fresh (non-corrective) tasks only. Transitions task from `not_started` to `in_progress` while leaving `task.stage` at `'planning'`. See action #7 two-step protocol. |
