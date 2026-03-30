@@ -44,39 +44,26 @@ function checkRetryBudget(retries, maxRetries) {
 // ─── Decision Tables ────────────────────────────────────────────────────────
 
 /**
- * 9-row task decision table. First-match-wins.
+ * Task decision table. First-match-wins.
+ * Simplified: reportStatus, hasDeviations, deviationType removed — no row branched on them.
  * @param {string} verdict
- * @param {string} reportStatus
- * @param {boolean} hasDeviations
- * @param {string|null} deviationType
  * @param {number} retries
  * @param {number} maxRetries
  * @returns {{ taskStatus: string, reviewAction: string }}
  */
-function resolveTaskOutcome(verdict, reportStatus, hasDeviations, deviationType, retries, maxRetries) {
-  // Row 1-3: approved + complete → always complete/advanced regardless of deviations
-  if (verdict === REVIEW_VERDICTS.APPROVED && reportStatus === 'complete') {
+function resolveTaskOutcome(verdict, retries, maxRetries) {
+  // approved → always complete/advanced (reviewer approval is authoritative)
+  if (verdict === REVIEW_VERDICTS.APPROVED) {
     return { taskStatus: TASK_STATUSES.COMPLETE, reviewAction: REVIEW_ACTIONS.ADVANCED };
   }
-  // Row 4: approved + failed → complete/advanced (reviewer approval is authoritative)
-  if (verdict === REVIEW_VERDICTS.APPROVED && reportStatus === 'failed') {
-    return { taskStatus: TASK_STATUSES.COMPLETE, reviewAction: REVIEW_ACTIONS.ADVANCED };
-  }
-  // Row 5-6: changes_requested + complete
-  if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED && reportStatus === 'complete') {
+  // changes_requested → retry if budget allows, otherwise halt
+  if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED) {
     if (checkRetryBudget(retries, maxRetries)) {
       return { taskStatus: TASK_STATUSES.FAILED, reviewAction: REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED };
     }
     return { taskStatus: TASK_STATUSES.HALTED, reviewAction: REVIEW_ACTIONS.HALTED };
   }
-  // Row 7-8: changes_requested + failed
-  if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED && reportStatus === 'failed') {
-    if (checkRetryBudget(retries, maxRetries)) {
-      return { taskStatus: TASK_STATUSES.FAILED, reviewAction: REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED };
-    }
-    return { taskStatus: TASK_STATUSES.HALTED, reviewAction: REVIEW_ACTIONS.HALTED };
-  }
-  // Row 9: rejected
+  // rejected → always halt
   if (verdict === REVIEW_VERDICTS.REJECTED) {
     return { taskStatus: TASK_STATUSES.HALTED, reviewAction: REVIEW_ACTIONS.HALTED };
   }
@@ -345,16 +332,12 @@ function handlePhasePlanCreated(state, context, config) {
     stage: TASK_STAGES.PLANNING,
     docs: {
       handoff: null,
-      report: null,
       review: null,
     },
     review: {
       verdict: null,
       action: null,
     },
-    report_status: null,
-    has_deviations: false,
-    deviation_type: null,
     retries: 0,
   }));
   return {
@@ -395,12 +378,7 @@ function handleTaskHandoffCreated(state, context, config) {
   const task = currentTask(state);
   const mutations = [];
 
-  // Clear stale report/review from previous attempt (corrective re-execution)
-  if (task.docs.report) {
-    task.docs.report = null;
-    task.report_status = null;
-    mutations.push('Cleared task.docs.report and report_status (corrective re-execution)');
-  }
+  // Clear stale review from previous attempt (corrective re-execution)
   if (task.docs.review) {
     task.docs.review = null;
     task.review.verdict = null;
@@ -421,19 +399,11 @@ function handleTaskHandoffCreated(state, context, config) {
 /** @type {MutationHandler} */
 function handleTaskCompleted(state, context, config) {
   const task = currentTask(state);
-  task.docs.report = context.doc_path;
-  task.has_deviations = context.has_deviations;
-  task.deviation_type = context.deviation_type;
-  task.report_status = context.report_status || 'complete';
   task.stage = TASK_STAGES.REVIEWING;
-  // KEY v4 CHANGE: task.status stays in_progress — complete is truly terminal (set only after code review approves)
+  // task.status stays in_progress — complete is truly terminal (set only after code review approves)
   return {
     state,
     mutations_applied: [
-      `Set task.docs.report to "${context.doc_path}"`,
-      `Set task.has_deviations to ${context.has_deviations}`,
-      `Set task.deviation_type to ${context.deviation_type}`,
-      `Set task.report_status to "${task.report_status}"`,
       `Set task.stage to "${TASK_STAGES.REVIEWING}"`,
       `task.status stays "${TASK_STATUSES.IN_PROGRESS}" (awaiting code review)`,
     ],
@@ -449,9 +419,6 @@ function handleCodeReviewCompleted(state, context, config) {
 
   const { taskStatus, reviewAction } = resolveTaskOutcome(
     context.verdict,
-    task.report_status || 'complete',
-    task.has_deviations,
-    task.deviation_type,
     task.retries,
     config.limits.max_retries_per_task,
   );

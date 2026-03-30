@@ -108,43 +108,28 @@ describe('normalizeDocPath', () => {
 // ─── Task Decision Table ────────────────────────────────────────────────────
 
 describe('task decision table', () => {
-  it('task row 1: approved + complete + no deviations -> complete/advanced', () => {
-    const result = resolveTaskOutcome('approved', 'complete', false, null, 0, 3);
+  it('approved -> complete/advanced', () => {
+    const result = resolveTaskOutcome('approved', 0, 3);
     assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
   });
 
-  it('task row 2: approved + complete + minor deviations -> complete/advanced', () => {
-    const result = resolveTaskOutcome('approved', 'complete', true, 'minor', 0, 3);
+  it('approved with exhausted retries -> complete/advanced (retries irrelevant for approval)', () => {
+    const result = resolveTaskOutcome('approved', 3, 3);
     assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
   });
 
-  it('task row 3: approved + complete + critical deviations -> complete/advanced', () => {
-    const result = resolveTaskOutcome('approved', 'complete', true, 'critical', 0, 3);
-    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
-  });
-
-  it('task row 4: changes_requested + complete + retries left -> failed/corrective', () => {
-    const result = resolveTaskOutcome('changes_requested', 'complete', false, null, 0, 3);
+  it('changes_requested + retries left -> failed/corrective', () => {
+    const result = resolveTaskOutcome('changes_requested', 0, 3);
     assert.deepEqual(result, { taskStatus: 'failed', reviewAction: 'corrective_task_issued' });
   });
 
-  it('task row 5: changes_requested + complete + no retries -> halted/halted', () => {
-    const result = resolveTaskOutcome('changes_requested', 'complete', false, null, 3, 3);
+  it('changes_requested + no retries -> halted/halted', () => {
+    const result = resolveTaskOutcome('changes_requested', 3, 3);
     assert.deepEqual(result, { taskStatus: 'halted', reviewAction: 'halted' });
   });
 
-  it('task row 6: changes_requested + failed + retries left -> failed/corrective', () => {
-    const result = resolveTaskOutcome('changes_requested', 'failed', false, null, 1, 3);
-    assert.deepEqual(result, { taskStatus: 'failed', reviewAction: 'corrective_task_issued' });
-  });
-
-  it('task row 7: changes_requested + failed + no retries -> halted/halted', () => {
-    const result = resolveTaskOutcome('changes_requested', 'failed', false, null, 3, 3);
-    assert.deepEqual(result, { taskStatus: 'halted', reviewAction: 'halted' });
-  });
-
-  it('task row 8: rejected -> halted/halted', () => {
-    const result = resolveTaskOutcome('rejected', 'complete', false, null, 0, 3);
+  it('rejected -> halted/halted', () => {
+    const result = resolveTaskOutcome('rejected', 0, 3);
     assert.deepEqual(result, { taskStatus: 'halted', reviewAction: 'halted' });
   });
 });
@@ -453,17 +438,13 @@ function makeExecutionState(opts = {}) {
         stage: 'planning',
         docs: {
           handoff: null,
-          report: null,
           review: null,
         },
         review: {
           verdict: null,
           action: null,
         },
-        has_deviations: false,
-        deviation_type: null,
         retries: 0,
-        report_status: null,
       });
     }
     phases.push({
@@ -652,23 +633,17 @@ describe('handlePhasePlanCreated', () => {
       name: 'Setup',
       status: 'not_started',
       stage: 'planning',
-      docs: { handoff: null, report: null, review: null },
+      docs: { handoff: null, review: null },
       review: { verdict: null, action: null },
-      has_deviations: false,
-      deviation_type: null,
       retries: 0,
-      report_status: null,
     });
     assert.deepEqual(tasks[1], {
       name: 'Implement',
       status: 'not_started',
       stage: 'planning',
-      docs: { handoff: null, report: null, review: null },
+      docs: { handoff: null, review: null },
       review: { verdict: null, action: null },
-      has_deviations: false,
-      deviation_type: null,
       retries: 0,
-      report_status: null,
     });
   });
 
@@ -734,11 +709,9 @@ describe('handleTaskHandoffCreated', () => {
     assert.ok(result.mutations_applied.length > 0);
   });
 
-  it('clears stale report and review fields on corrective re-execution', () => {
+  it('clears stale review fields on corrective re-execution', () => {
     const state = makeExecutionState();
     const task = state.execution.phases[0].tasks[0];
-    task.docs.report = 'reports/TASK-REPORT-P01-T01.md';
-    task.report_status = 'complete';
     task.docs.review = 'reviews/CODE-REVIEW-P01-T01.md';
     task.review.verdict = 'changes_requested';
     task.review.action = 'corrective_task_issued';
@@ -746,8 +719,6 @@ describe('handleTaskHandoffCreated', () => {
     const handler = getMutation('task_handoff_created');
     const result = handler(state, { doc_path: 'tasks/CORRECTIVE-HANDOFF.md' }, defaultConfig);
 
-    assert.strictEqual(task.docs.report, null);
-    assert.strictEqual(task.report_status, null);
     assert.strictEqual(task.docs.review, null);
     assert.strictEqual(task.review.verdict, null);
     assert.strictEqual(task.review.action, null);
@@ -756,10 +727,6 @@ describe('handleTaskHandoffCreated', () => {
     assert.strictEqual(task.status, 'in_progress');
     assert.strictEqual(task.stage, 'coding');
 
-    assert.ok(
-      result.mutations_applied.some(m => m.includes('Cleared task.docs.report')),
-      'Expected clearing entry for docs.report',
-    );
     assert.ok(
       result.mutations_applied.some(m => m.includes('Cleared task.docs.review')),
       'Expected clearing entry for docs.review',
@@ -772,10 +739,6 @@ describe('handleTaskHandoffCreated', () => {
     const result = handler(state, { doc_path: 'tasks/HANDOFF-P01-T01.md' }, defaultConfig);
 
     assert.ok(
-      !result.mutations_applied.some(m => m.includes('Cleared task.docs.report')),
-      'Unexpected clearing entry for docs.report on first-time handoff',
-    );
-    assert.ok(
       !result.mutations_applied.some(m => m.includes('Cleared task.docs.review')),
       'Unexpected clearing entry for docs.review on first-time handoff',
     );
@@ -785,7 +748,6 @@ describe('handleTaskHandoffCreated', () => {
     const task = state.execution.phases[0].tasks[0];
     assert.strictEqual(task.docs.handoff, 'tasks/HANDOFF-P01-T01.md');
     assert.strictEqual(task.status, 'in_progress');
-    assert.strictEqual(task.docs.report, null);
     assert.strictEqual(task.docs.review, null);
   });
 });
@@ -799,27 +761,7 @@ describe('handleTaskCompleted', () => {
     state = makeExecutionState();
     state.execution.phases[0].tasks[0].status = 'in_progress';
     const handler = getMutation('task_completed');
-    result = handler(state, { doc_path: 'reports/TASK-REPORT-P01-T01.md', has_deviations: true, deviation_type: 'minor' }, defaultConfig);
-  });
-
-  it('sets task.docs.report to context.doc_path', () => {
-    const task = result.state.execution.phases[0].tasks[0];
-    assert.equal(task.docs.report, 'reports/TASK-REPORT-P01-T01.md');
-  });
-
-  it('does NOT set task.report_doc (v3 flat field absent)', () => {
-    const task = result.state.execution.phases[0].tasks[0];
-    assert.equal(task.report_doc, undefined);
-  });
-
-  it('sets task.has_deviations from context', () => {
-    const task = result.state.execution.phases[0].tasks[0];
-    assert.equal(task.has_deviations, true);
-  });
-
-  it('sets task.deviation_type from context', () => {
-    const task = result.state.execution.phases[0].tasks[0];
-    assert.equal(task.deviation_type, 'minor');
+    result = handler(state, {}, defaultConfig);
   });
 
   it('sets task.stage to "reviewing"', () => {
@@ -833,22 +775,12 @@ describe('handleTaskCompleted', () => {
     assert.notEqual(task.status, 'complete');
   });
 
-  it('sets task.report_status from context.report_status when provided', () => {
-    const state2 = makeExecutionState();
-    state2.execution.phases[0].tasks[0].status = 'in_progress';
-    const handler = getMutation('task_completed');
-    const result2 = handler(state2, { doc_path: 'reports/R.md', has_deviations: false, deviation_type: null, report_status: 'failed' }, defaultConfig);
-    const task = result2.state.execution.phases[0].tasks[0];
-    assert.equal(task.report_status, 'failed');
-  });
-
-  it('defaults task.report_status to complete when context.report_status is undefined', () => {
-    const state2 = makeExecutionState();
-    state2.execution.phases[0].tasks[0].status = 'in_progress';
-    const handler = getMutation('task_completed');
-    const result2 = handler(state2, { doc_path: 'reports/R.md', has_deviations: false, deviation_type: null }, defaultConfig);
-    const task = result2.state.execution.phases[0].tasks[0];
-    assert.equal(task.report_status, 'complete');
+  it('does not write report fields to task', () => {
+    const task = result.state.execution.phases[0].tasks[0];
+    assert.equal(task.docs.report, undefined);
+    assert.equal(task.report_status, undefined);
+    assert.equal(task.has_deviations, undefined);
+    assert.equal(task.deviation_type, undefined);
   });
 
   it('returns MutationResult with non-empty mutations_applied', () => {
@@ -1255,30 +1187,6 @@ describe('handlePhaseReviewCompleted corrective stage transition', () => {
   });
 });
 
-// ─── resolveTaskOutcome approved + failed ───────────────────────────────────
-
-describe('resolveTaskOutcome approved + failed', () => {
-  it('approved + failed → complete/advanced (reviewer approval is authoritative)', () => {
-    const result = resolveTaskOutcome('approved', 'failed', false, null, 0, 3);
-    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
-  });
-
-  it('approved + failed + deviations → complete/advanced', () => {
-    const result = resolveTaskOutcome('approved', 'failed', true, 'minor', 0, 3);
-    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
-  });
-
-  it('approved + failed + critical deviations → complete/advanced', () => {
-    const result = resolveTaskOutcome('approved', 'failed', true, 'critical', 0, 3);
-    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
-  });
-
-  it('approved + failed + exhausted retries → complete/advanced (retries are irrelevant for approval)', () => {
-    const result = resolveTaskOutcome('approved', 'failed', false, null, 3, 3);
-    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
-  });
-});
-
 // ─── handlePhasePlanCreated stale field clearing ─────────────────────────────
 
 describe('handlePhasePlanCreated stale field clearing', () => {
@@ -1646,17 +1554,13 @@ function makeReviewState() {
               stage: 'complete',
               docs: {
                 handoff: 'tasks/TASK-P01-T01.md',
-                report: 'reports/TASK-REPORT-P01-T01.md',
                 review: 'reviews/REVIEW-P01-T01.md',
               },
               review: {
                 verdict: 'approved',
                 action: 'advanced',
               },
-              has_deviations: false,
-              deviation_type: null,
               retries: 0,
-              report_status: 'complete',
             },
           ],
           docs: {

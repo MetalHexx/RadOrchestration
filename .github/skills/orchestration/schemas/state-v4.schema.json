@@ -124,7 +124,7 @@
               },
               "stage": {
                 "type": "string",
-                "enum": ["planning", "executing", "reporting", "reviewing", "complete", "failed"]
+                "enum": ["planning", "executing", "reviewing", "complete", "failed"]
               },
               "current_task": {
                 "type": "integer",
@@ -135,7 +135,7 @@
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": ["name", "status", "stage", "docs", "review", "report_status", "has_deviations", "deviation_type", "retries"],
+                  "required": ["name", "status", "stage", "docs", "review", "retries"],
                   "properties": {
                     "name": { "type": "string" },
                     "status": {
@@ -144,20 +144,14 @@
                     },
                     "stage": {
                       "type": "string",
-                      "enum": ["planning", "coding", "reporting", "reviewing", "complete", "failed"]
+                      "enum": ["planning", "coding", "reviewing", "complete", "failed"]
                     },
                     "docs": {
                       "type": "object",
                       "additionalProperties": false,
-                      "required": ["handoff", "report", "review"],
+                      "required": ["handoff", "review"],
                       "properties": {
                         "handoff": {
-                          "oneOf": [
-                            { "type": "string" },
-                            { "type": "null" }
-                          ]
-                        },
-                        "report": {
                           "oneOf": [
                             { "type": "string" },
                             { "type": "null" }
@@ -189,19 +183,6 @@
                           ]
                         }
                       }
-                    },
-                    "report_status": {
-                      "oneOf": [
-                        { "type": "string", "enum": ["complete", "failed"] },
-                        { "type": "null" }
-                      ]
-                    },
-                    "has_deviations": { "type": "boolean" },
-                    "deviation_type": {
-                      "oneOf": [
-                        { "type": "string" },
-                        { "type": "null" }
-                      ]
                     },
                     "retries": {
                       "type": "integer",
