@@ -237,7 +237,6 @@ function handleMasterPlanCompleted(state, context, config) {
 function handlePlanApproved(state, context, config) {
   state.planning.human_approved = true;
   state.pipeline.current_tier = PIPELINE_TIERS.EXECUTION;
-  state.execution.status = 'in_progress';
   state.execution.current_phase = 1; // 1-based; first phase active
   state.execution.phases = [];
   for (let i = 0; i < context.total_phases; i++) {
@@ -263,7 +262,6 @@ function handlePlanApproved(state, context, config) {
     mutations_applied: [
       'Set planning.human_approved to true',
       `Set pipeline.current_tier to "${PIPELINE_TIERS.EXECUTION}"`,
-      'Set execution.status to "in_progress"',
       'Set execution.current_phase to 1',
       `Initialized execution.phases with ${context.total_phases} phase(s)`,
     ],
@@ -305,11 +303,15 @@ function handlePlanRejected(state, context, config) {
  */
 function handlePhasePlanningStarted(state, context, config) {
   const phase = currentPhase(state);
+  state.execution.status = 'in_progress';   // transition execution to in_progress
   phase.status = PHASE_STATUSES.IN_PROGRESS;
   // Do NOT modify phase.stage — remains 'planning'
   return {
     state,
-    mutations_applied: ['Set phase.status to "in_progress"'],
+    mutations_applied: [
+      'Set execution.status to "in_progress"',
+      'Set phase.status to "in_progress"',
+    ],
   };
 }
 

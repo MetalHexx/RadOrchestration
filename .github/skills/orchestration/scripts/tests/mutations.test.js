@@ -324,8 +324,8 @@ describe('handlePlanApproved', () => {
     assert.equal(result.state.execution.current_tier, undefined);
   });
 
-  it('sets execution.status to "in_progress"', () => {
-    assert.equal(result.state.execution.status, 'in_progress');
+  it('sets execution.status to "not_started" (execution not yet begun)', () => {
+    assert.equal(result.state.execution.status, 'not_started');
   });
 
   it('does NOT set execution.total_phases (field removed in v4)', () => {
@@ -533,6 +533,16 @@ describe('handlePhasePlanningStarted', () => {
     const result = handler(state, {}, {});
     assert.equal(result.state.execution.phases[0].status, 'in_progress');
     assert.equal(result.state.execution.phases[0].stage, 'planning');
+  });
+
+  it('sets execution.status to "in_progress"', () => {
+    const state = makeExecutionState();
+    state.execution.status = 'not_started'; // simulate post-handlePlanApproved state
+    state.execution.phases[0].status = 'not_started';
+    state.execution.phases[0].stage = 'planning';
+    const handler = getMutation('phase_planning_started');
+    const result = handler(state, {}, {});
+    assert.equal(result.state.execution.status, 'in_progress');
   });
 });
 
