@@ -98,7 +98,6 @@ const NEXT_ACTIONS = Object.freeze({
 const TASK_STAGES = Object.freeze({
   PLANNING:  'planning',
   CODING:    'coding',
-  REPORTING: 'reporting',
   REVIEWING: 'reviewing',
   COMPLETE:  'complete',
   FAILED:    'failed',
@@ -107,7 +106,6 @@ const TASK_STAGES = Object.freeze({
 const PHASE_STAGES = Object.freeze({
   PLANNING:  'planning',
   EXECUTING: 'executing',
-  REPORTING: 'reporting',
   REVIEWING: 'reviewing',
   COMPLETE:  'complete',
   FAILED:    'failed',
@@ -233,7 +231,7 @@ const ALLOWED_PHASE_TRANSITIONS = Object.freeze({
  * @typedef {Object} Phase
  * @property {string} name
  * @property {string} status - one of PHASE_STATUSES
- * @property {string} stage - one of PHASE_STAGES: 'planning', 'executing', 'reporting', 'reviewing', 'complete', 'failed'
+ * @property {string} stage - one of PHASE_STAGES: 'planning', 'executing', 'reviewing', 'complete', 'failed'
  * @property {number} current_task - 1-based; 0 when no tasks exist
  * @property {Task[]} tasks
  * @property {PhaseDocs} docs
@@ -260,12 +258,9 @@ const ALLOWED_PHASE_TRANSITIONS = Object.freeze({
  * @typedef {Object} Task
  * @property {string} name
  * @property {string} status - one of TASK_STATUSES
- * @property {string} stage - one of TASK_STAGES: 'planning', 'coding', 'reporting', 'reviewing', 'complete', 'failed'
+ * @property {string} stage - one of TASK_STAGES: 'planning', 'coding', 'reviewing', 'complete', 'failed'
  * @property {TaskDocs} docs
  * @property {TaskReviewResult} review
- * @property {'complete' | 'failed' | null} report_status
- * @property {boolean} has_deviations
- * @property {string | null} deviation_type
  * @property {number} retries
  */
 
@@ -273,7 +268,6 @@ const ALLOWED_PHASE_TRANSITIONS = Object.freeze({
  * Grouped task document paths (was flat on Task in v3).
  * @typedef {Object} TaskDocs
  * @property {string | null} handoff
- * @property {string | null} report
  * @property {string | null} review
  */
 
