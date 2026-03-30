@@ -11,11 +11,8 @@ function makeTask(overrides = {}) {
     name: 'task',
     status: 'not_started',
     stage: 'planning',
-    docs: { handoff: null, report: null, review: null },
+    docs: { handoff: null, review: null },
     review: { verdict: null, action: null },
-    report_status: null,
-    has_deviations: false,
-    deviation_type: null,
     retries: 0,
     ...overrides,
   };

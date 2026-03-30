@@ -359,11 +359,8 @@ describe('E2E: CLI-surface named-flag groups', () => {
               name: 'T01',
               status: 'in_progress',
               stage: 'reviewing',
-              docs: { handoff: '/docs/h.md', report: '/docs/r.md', review: null },
+              docs: { handoff: '/docs/h.md', review: null },
               review: { verdict: null, action: null },
-              report_status: 'complete',
-              has_deviations: false,
-              deviation_type: null,
               retries: 0
             }],
             docs: { phase_plan: '/docs/plan.md', phase_report: null, phase_review: null },
