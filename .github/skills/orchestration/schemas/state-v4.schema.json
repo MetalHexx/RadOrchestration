@@ -4,7 +4,14 @@
   "description": "Canonical schema for the orchestration system's v4 state format.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["$schema", "project", "pipeline", "planning", "execution", "final_review"],
+  "required": [
+    "$schema",
+    "project",
+    "pipeline",
+    "planning",
+    "execution",
+    "final_review"
+  ],
   "properties": {
     "$schema": {
       "const": "orchestration-state-v4"
@@ -12,33 +19,66 @@
     "project": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "created", "updated"],
+      "required": [
+        "name",
+        "created",
+        "updated"
+      ],
       "properties": {
-        "name": { "type": "string" },
-        "created": { "type": "string" },
-        "updated": { "type": "string" }
+        "name": {
+          "type": "string"
+        },
+        "created": {
+          "type": "string"
+        },
+        "updated": {
+          "type": "string"
+        }
       }
     },
     "pipeline": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["current_tier"],
+      "required": [
+        "current_tier"
+      ],
       "properties": {
         "current_tier": {
           "type": "string",
-          "enum": ["planning", "execution", "review", "complete", "halted"]
+          "enum": [
+            "planning",
+            "execution",
+            "review",
+            "complete",
+            "halted"
+          ]
         },
         "gate_mode": {
           "oneOf": [
-            { "type": "string", "enum": ["task", "phase", "autonomous"] },
-            { "type": "null" }
+            {
+              "type": "string",
+              "enum": [
+                "task",
+                "phase",
+                "autonomous"
+              ]
+            },
+            {
+              "type": "null"
+            }
           ],
           "default": null
         },
         "source_control": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["branch", "base_branch", "worktree_path", "auto_commit", "auto_pr"],
+          "required": [
+            "branch",
+            "base_branch",
+            "worktree_path",
+            "auto_commit",
+            "auto_pr"
+          ],
           "properties": {
             "branch": {
               "type": "string"
@@ -51,11 +91,37 @@
             },
             "auto_commit": {
               "type": "string",
-              "enum": ["always", "never"]
+              "enum": [
+                "always",
+                "never"
+              ]
             },
             "auto_pr": {
               "type": "string",
-              "enum": ["always", "never"]
+              "enum": [
+                "always",
+                "never"
+              ]
+            },
+            "remote_url": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "compare_url": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           }
         }
@@ -64,32 +130,60 @@
     "planning": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "human_approved", "steps"],
+      "required": [
+        "status",
+        "human_approved",
+        "steps"
+      ],
       "properties": {
         "status": {
           "type": "string",
-          "enum": ["not_started", "in_progress", "complete"]
+          "enum": [
+            "not_started",
+            "in_progress",
+            "complete"
+          ]
         },
-        "human_approved": { "type": "boolean" },
+        "human_approved": {
+          "type": "boolean"
+        },
         "steps": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "status", "doc_path"],
+            "required": [
+              "name",
+              "status",
+              "doc_path"
+            ],
             "properties": {
               "name": {
                 "type": "string",
-                "enum": ["research", "prd", "design", "architecture", "master_plan"]
+                "enum": [
+                  "research",
+                  "prd",
+                  "design",
+                  "architecture",
+                  "master_plan"
+                ]
               },
               "status": {
                 "type": "string",
-                "enum": ["not_started", "in_progress", "complete"]
+                "enum": [
+                  "not_started",
+                  "in_progress",
+                  "complete"
+                ]
               },
               "doc_path": {
                 "oneOf": [
-                  { "type": "string" },
-                  { "type": "null" }
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               }
             }
@@ -100,11 +194,20 @@
     "execution": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "current_phase", "phases"],
+      "required": [
+        "status",
+        "current_phase",
+        "phases"
+      ],
       "properties": {
         "status": {
           "type": "string",
-          "enum": ["not_started", "in_progress", "complete", "halted"]
+          "enum": [
+            "not_started",
+            "in_progress",
+            "complete",
+            "halted"
+          ]
         },
         "current_phase": {
           "type": "integer",
@@ -115,16 +218,37 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "status", "stage", "current_task", "tasks", "docs", "review"],
+            "required": [
+              "name",
+              "status",
+              "stage",
+              "current_task",
+              "tasks",
+              "docs",
+              "review"
+            ],
             "properties": {
-              "name": { "type": "string" },
+              "name": {
+                "type": "string"
+              },
               "status": {
                 "type": "string",
-                "enum": ["not_started", "in_progress", "complete", "halted"]
+                "enum": [
+                  "not_started",
+                  "in_progress",
+                  "complete",
+                  "halted"
+                ]
               },
               "stage": {
                 "type": "string",
-                "enum": ["planning", "executing", "reviewing", "complete", "failed"]
+                "enum": [
+                  "planning",
+                  "executing",
+                  "reviewing",
+                  "complete",
+                  "failed"
+                ]
               },
               "current_task": {
                 "type": "integer",
@@ -135,32 +259,64 @@
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": ["name", "status", "stage", "docs", "review", "retries"],
+                  "required": [
+                    "name",
+                    "status",
+                    "stage",
+                    "docs",
+                    "review",
+                    "retries"
+                  ],
                   "properties": {
-                    "name": { "type": "string" },
+                    "name": {
+                      "type": "string"
+                    },
                     "status": {
                       "type": "string",
-                      "enum": ["not_started", "in_progress", "complete", "failed", "halted"]
+                      "enum": [
+                        "not_started",
+                        "in_progress",
+                        "complete",
+                        "failed",
+                        "halted"
+                      ]
                     },
                     "stage": {
                       "type": "string",
-                      "enum": ["planning", "coding", "reviewing", "complete", "failed"]
+                      "enum": [
+                        "planning",
+                        "coding",
+                        "reviewing",
+                        "complete",
+                        "failed"
+                      ]
                     },
                     "docs": {
                       "type": "object",
                       "additionalProperties": false,
-                      "required": ["handoff", "review"],
+                      "required": [
+                        "handoff",
+                        "review"
+                      ],
                       "properties": {
                         "handoff": {
                           "oneOf": [
-                            { "type": "string" },
-                            { "type": "null" }
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
                           ]
                         },
                         "review": {
                           "oneOf": [
-                            { "type": "string" },
-                            { "type": "null" }
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
                           ]
                         }
                       }
@@ -168,18 +324,39 @@
                     "review": {
                       "type": "object",
                       "additionalProperties": false,
-                      "required": ["verdict", "action"],
+                      "required": [
+                        "verdict",
+                        "action"
+                      ],
                       "properties": {
                         "verdict": {
                           "oneOf": [
-                            { "type": "string", "enum": ["approved", "changes_requested", "rejected"] },
-                            { "type": "null" }
+                            {
+                              "type": "string",
+                              "enum": [
+                                "approved",
+                                "changes_requested",
+                                "rejected"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
                           ]
                         },
                         "action": {
                           "oneOf": [
-                            { "type": "string", "enum": ["advanced", "corrective_task_issued", "halted"] },
-                            { "type": "null" }
+                            {
+                              "type": "string",
+                              "enum": [
+                                "advanced",
+                                "corrective_task_issued",
+                                "halted"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
                           ]
                         }
                       }
@@ -187,6 +364,16 @@
                     "retries": {
                       "type": "integer",
                       "minimum": 0
+                    },
+                    "commit_hash": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   }
                 }
@@ -194,24 +381,40 @@
               "docs": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["phase_plan", "phase_report", "phase_review"],
+                "required": [
+                  "phase_plan",
+                  "phase_report",
+                  "phase_review"
+                ],
                 "properties": {
                   "phase_plan": {
                     "oneOf": [
-                      { "type": "string" },
-                      { "type": "null" }
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
                     ]
                   },
                   "phase_report": {
                     "oneOf": [
-                      { "type": "string" },
-                      { "type": "null" }
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
                     ]
                   },
                   "phase_review": {
                     "oneOf": [
-                      { "type": "string" },
-                      { "type": "null" }
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
                     ]
                   }
                 }
@@ -219,18 +422,39 @@
               "review": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["verdict", "action"],
+                "required": [
+                  "verdict",
+                  "action"
+                ],
                 "properties": {
                   "verdict": {
                     "oneOf": [
-                      { "type": "string", "enum": ["approved", "changes_requested", "rejected"] },
-                      { "type": "null" }
+                      {
+                        "type": "string",
+                        "enum": [
+                          "approved",
+                          "changes_requested",
+                          "rejected"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
                     ]
                   },
                   "action": {
                     "oneOf": [
-                      { "type": "string", "enum": ["advanced", "corrective_tasks_issued", "halted"] },
-                      { "type": "null" }
+                      {
+                        "type": "string",
+                        "enum": [
+                          "advanced",
+                          "corrective_tasks_issued",
+                          "halted"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
                     ]
                   }
                 }
@@ -243,19 +467,33 @@
     "final_review": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "doc_path", "human_approved"],
+      "required": [
+        "status",
+        "doc_path",
+        "human_approved"
+      ],
       "properties": {
         "status": {
           "type": "string",
-          "enum": ["not_started", "in_progress", "complete"]
+          "enum": [
+            "not_started",
+            "in_progress",
+            "complete"
+          ]
         },
         "doc_path": {
           "oneOf": [
-            { "type": "string" },
-            { "type": "null" }
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "human_approved": { "type": "boolean" }
+        "human_approved": {
+          "type": "boolean"
+        }
       }
     }
   }
