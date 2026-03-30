@@ -8,6 +8,7 @@ tools:
   - web/fetch
   - todo
   - vscode/askQuestions
+  - context7/*
 model: claude-sonnet-4.6
 ---
 

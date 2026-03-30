@@ -9,6 +9,7 @@ tools:
   - vscode/askQuestions
   - agent
   - web
+  - context7/*
 model: claude-sonnet-4.6
 handoffs:
   - label: "Start Planning Pipeline Process"

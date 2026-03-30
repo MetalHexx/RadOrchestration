@@ -7,6 +7,7 @@ tools:
   - edit
   - todo
   - vscode/askQuestions
+  - context7/*
 model: claude-opus-4.6
 ---
 
