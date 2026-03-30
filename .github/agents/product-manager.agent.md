@@ -1,5 +1,5 @@
 ---
-name: Product Manager
+name: product-manager
 description: "Create Product Requirements Documents (PRDs) from research findings and brainstorming documents. Use when defining product requirements, writing user stories, specifying functional and non-functional requirements, or converting research into a structured PRD."
 tools:
   - read

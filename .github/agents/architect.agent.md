@@ -1,5 +1,5 @@
 ---
-name: Architect
+name: architect
 description: "Create Architecture documents and Master Plans from PRDs, Designs, and Research Findings. Use when defining system architecture, module structure, API contracts, interfaces, dependencies, file structure, or synthesizing all planning docs into a Master Plan."
 tools:
   - read

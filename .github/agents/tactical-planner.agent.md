@@ -1,5 +1,5 @@
 ---
-name: Tactical Planner
+name: tactical-planner
 description: "Plan phase execution, create task handoffs, and generate phase reports. Use when breaking phases into tasks, creating task handoffs for the Coder, or generating phase reports after task completion."
 tools:
   - read

@@ -1,5 +1,5 @@
 ---
-name: Source Control
+name: source-control
 description: "Thin router for source control operations. Loads the source-control skill
   and delegates commit and PR operations entirely to skill reference documents and scripts.
   Never writes project source files."

@@ -1,5 +1,5 @@
 ---
-name: UX Designer
+name: ux-designer
 description: "Create UX Design documents from Product Requirements Documents. Use when designing user interfaces, user flows, component layouts, interaction states, accessibility requirements, responsive behavior, or specifying design tokens."
 tools:
   - read

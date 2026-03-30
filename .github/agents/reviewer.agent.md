@@ -1,5 +1,5 @@
 ---
-name: Reviewer
+name: reviewer
 description: "Review code changes and entire phases against planning documents. Use when performing code review, evaluating code quality, checking architectural consistency, validating design adherence, assessing test coverage, reviewing security, performing phase-level integration review, or generating a final project review."
 tools:
   - read

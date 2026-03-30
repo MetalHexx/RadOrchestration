@@ -1,5 +1,5 @@
 ---
-name: Research
+name: research
 description: "Research and explore codebases, documentation, and external sources to gather technical context for a project. Use when starting a new project, analyzing existing code, discovering patterns, considering a new library, or gathering context before creating a PRD."
 tools:
   - read
