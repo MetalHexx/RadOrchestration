@@ -3,7 +3,6 @@ name: Source Control
 description: "Thin router for source control operations. Loads the source-control skill
   and delegates commit and PR operations entirely to skill reference documents and scripts.
   Never writes project source files."
-argument-hint: "Commit mode: provide task_id and task title. PR mode: provide project name."
 tools:
   - read
   - execute

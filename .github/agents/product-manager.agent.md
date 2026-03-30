@@ -1,7 +1,6 @@
 ---
 name: Product Manager
 description: "Create Product Requirements Documents (PRDs) from research findings and brainstorming documents. Use when defining product requirements, writing user stories, specifying functional and non-functional requirements, or converting research into a structured PRD."
-argument-hint: "Provide the project name and paths to the brainstorming document and research findings."
 tools:
   - read
   - search
@@ -9,7 +8,6 @@ tools:
   - todo
   - vscode/askQuestions
 model: Claude Opus 4.6 (copilot)
-agents: []
 ---
 
 # Product Manager Agent

@@ -1,7 +1,6 @@
 ---
 name: Tactical Planner
 description: "Plan phase execution, create task handoffs, and generate phase reports. Use when breaking phases into tasks, creating task handoffs for the Coder, or generating phase reports after task completion."
-argument-hint: "Provide the project name, current mode (phase-plan/task-handoff/phase-report), and relevant file paths."
 tools:
   - read
   - search
@@ -9,8 +8,6 @@ tools:
   - todo
   - vscode/askQuestions
 model: Claude Opus 4.6 (copilot)
-agents: []
-
 ---
 
 # Tactical Planner Agent

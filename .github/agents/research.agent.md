@@ -1,7 +1,6 @@
 ---
 name: Research
 description: "Research and explore codebases, documentation, and external sources to gather technical context for a project. Use when starting a new project, analyzing existing code, discovering patterns, considering a new library, or gathering context before creating a PRD."
-argument-hint: "Provide the project idea or topic to research."
 tools:
   - read
   - search
@@ -10,7 +9,6 @@ tools:
   - todo
   - vscode/askQuestions
 model: Claude Sonnet 4.6 (copilot)
-agents: []
 ---
 
 # Research Agent

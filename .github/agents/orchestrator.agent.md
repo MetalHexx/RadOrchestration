@@ -1,7 +1,6 @@
 ---
 name: Orchestrator
 description: "The main orchestration agent that coordinates the entire project pipeline."
-argument-hint: "Describe the project to start, or ask to continue an existing project."
 tools:
   - read
   - search
@@ -9,14 +8,6 @@ tools:
   - execute
   - vscode/askQuestions
 model: claude-sonnet-4.6
-agents:
-  - Research
-  - Product Manager
-  - UX Designer
-  - Architect
-  - Tactical Planner
-  - Coder
-  - Reviewer
 ---
 
 # Orchestrator
