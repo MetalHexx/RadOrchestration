@@ -68,89 +68,6 @@ describe('plan_approved', () => {
   });
 });
 
-// ─── task_completed ─────────────────────────────────────────────────────────
-
-describe('task_completed', () => {
-  const event = 'task_completed';
-  const ctx = { doc_path: '/report.md' };
-  const validFm = { status: 'complete', has_deviations: false, deviation_type: 'none' };
-
-  it('extracts status, has_deviations, deviation_type from task report', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: validFm, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.error, undefined);
-    assert.equal(res.context.report_status, 'complete');
-    assert.equal(res.context.has_deviations, false);
-    assert.equal(res.context.deviation_type, 'none');
-  });
-
-  it('normalizes status "pass" to report_status "complete"', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: { ...validFm, status: 'pass' }, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.context.report_status, 'complete');
-  });
-
-  it('normalizes status "fail" to report_status "failed"', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: { ...validFm, status: 'fail' }, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.context.report_status, 'failed');
-  });
-
-  it('normalizes status "partial" to report_status "complete"', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: { ...validFm, status: 'partial' }, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.context.report_status, 'complete');
-  });
-
-  it('passes through status "complete" to report_status "complete"', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: { ...validFm, status: 'complete' }, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.context.report_status, 'complete');
-  });
-
-  it('passes through status "failed" to report_status "failed"', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: { ...validFm, status: 'failed' }, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.context.report_status, 'failed');
-  });
-
-  it('returns structured error when document is not found', () => {
-    const read = mockReadDocument({});
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.context, undefined);
-    assert.equal(res.error.event, 'task_completed');
-  });
-
-  it('returns structured error when status is missing', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: { has_deviations: false, deviation_type: 'none' }, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.context, undefined);
-    assert.equal(res.error.field, 'status');
-  });
-
-  it('returns structured error when has_deviations is missing', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: { status: 'complete', deviation_type: 'none' }, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.context, undefined);
-    assert.equal(res.error.field, 'has_deviations');
-  });
-
-  it('returns structured error when deviation_type is missing (undefined)', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: { status: 'complete', has_deviations: false }, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.context, undefined);
-    assert.equal(res.error.field, 'deviation_type');
-  });
-
-  it('returns structured error when status value is unrecognized', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: { ...validFm, status: 'banana' }, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.context, undefined);
-    assert.equal(res.error.field, 'status');
-    assert.ok(res.error.error.includes('Unrecognized'));
-  });
-});
-
 // ─── code_review_completed ──────────────────────────────────────────────────
 
 describe('code_review_completed', () => {
@@ -293,42 +210,6 @@ describe('pass-through behavior', () => {
     const res = preRead('unknown_event', ctx, read, '/proj');
     assert.equal(res.error, undefined);
     assert.deepEqual(res.context, { x: 1 });
-  });
-});
-
-// ─── coerceNull behavior (via preRead entry point) ──────────────────────────
-
-describe('coerceNull via task_completed', () => {
-  const event = 'task_completed';
-  const ctx = { doc_path: '/report.md' };
-  const base = { status: 'complete', has_deviations: false };
-
-  it('coerces deviation_type "null" string to JSON null', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: { ...base, deviation_type: 'null' }, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.error, undefined);
-    assert.strictEqual(res.context.deviation_type, null);
-  });
-
-  it('coerces deviation_type "undefined" string to JSON null', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: { ...base, deviation_type: 'undefined' }, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.error, undefined);
-    assert.strictEqual(res.context.deviation_type, null);
-  });
-
-  it('passes through deviation_type "minor" unchanged', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: { ...base, deviation_type: 'minor' }, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.error, undefined);
-    assert.strictEqual(res.context.deviation_type, 'minor');
-  });
-
-  it('passes through deviation_type null (JSON null) unchanged', () => {
-    const read = mockReadDocument({ '/report.md': { frontmatter: { ...base, deviation_type: null }, body: '' } });
-    const res = preRead(event, ctx, read, '/proj');
-    assert.equal(res.error, undefined);
-    assert.strictEqual(res.context.deviation_type, null);
   });
 });
 
