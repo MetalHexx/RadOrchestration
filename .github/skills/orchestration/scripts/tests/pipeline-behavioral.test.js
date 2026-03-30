@@ -82,7 +82,7 @@ describe('Category 1: Full happy path', () => {
   const documents = {
     'mp.md': makeDoc({ total_phases: 1 }),
     'pp.md': makeDoc({ tasks: ['T01'] }),
-    'tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    'tr.md': makeDoc({}),
     'cr.md': makeDoc({ verdict: 'approved' }),
     'prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
   };
@@ -316,13 +316,13 @@ describe('Category 1: Full happy path', () => {
 describe('Category 2: Multi-phase multi-task', () => {
   const documents = {
     'c2-pp1.md': makeDoc({ tasks: ['T01', 'T02'] }),
-    'c2-tr1.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    'c2-tr1.md': makeDoc({}),
     'c2-cr1.md': makeDoc({ verdict: 'approved' }),
-    'c2-tr2.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    'c2-tr2.md': makeDoc({}),
     'c2-cr2.md': makeDoc({ verdict: 'approved' }),
     'c2-prv1.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
     'c2-pp2.md': makeDoc({ tasks: ['T01'] }),
-    'c2-tr-p2.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    'c2-tr-p2.md': makeDoc({}),
     'c2-cr-p2.md': makeDoc({ verdict: 'approved' }),
     'c2-prv2.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
   };
@@ -723,7 +723,7 @@ describe('Category 4: Pre-read validation failures', () => {
 describe('Category 5: Phase lifecycle', () => {
   const documents = {
     'c5-pp.md': makeDoc({ tasks: ['T01'] }),
-    'c5-tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    'c5-tr.md': makeDoc({}),
     'c5-cr.md': makeDoc({ verdict: 'approved' }),
     'c5-prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
   };
@@ -1139,7 +1139,7 @@ describe('Category 12: Commit-enabled happy path (auto_commit=always)', () => {
   const documents = {
     'c12-pp.md': makeDoc({ tasks: ['T01', 'T02'] }),
     'c12-th1.md': makeDoc({}),
-    'c12-tr1.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    'c12-tr1.md': makeDoc({}),
     'c12-cr1.md': makeDoc({ verdict: 'approved' }),
   };
 
@@ -1228,7 +1228,7 @@ describe('Category 13: Commit-disabled (auto_commit=never)', () => {
   const documents = {
     'c13-pp.md': makeDoc({ tasks: ['T01'] }),
     'c13-th1.md': makeDoc({}),
-    'c13-tr1.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    'c13-tr1.md': makeDoc({}),
     'c13-cr1.md': makeDoc({ verdict: 'approved' }),
   };
 

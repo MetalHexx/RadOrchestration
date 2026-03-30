@@ -175,16 +175,12 @@ function migrateTask(rawTask) {
     stage: inferTaskStage(flat),
     docs: {
       handoff: handoff_doc,
-      report: report_doc,
       review: review_doc,
     },
     review: {
       verdict: review_verdict,
       action: review_action,
     },
-    report_status: rawTask.report_status !== undefined ? rawTask.report_status : null,
-    has_deviations: rawTask.has_deviations !== undefined ? rawTask.has_deviations : false,
-    deviation_type: rawTask.deviation_type !== undefined ? rawTask.deviation_type : null,
     retries: rawTask.retries !== undefined ? rawTask.retries : 0,
   };
 }

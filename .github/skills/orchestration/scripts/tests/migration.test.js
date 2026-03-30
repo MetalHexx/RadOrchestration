@@ -80,8 +80,8 @@ const allFixtures = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const VALID_TIERS = new Set(['planning', 'execution', 'review', 'complete', 'halted']);
-const VALID_TASK_STAGES = new Set(['planning', 'coding', 'reporting', 'reviewing', 'complete', 'failed']);
-const VALID_PHASE_STAGES = new Set(['planning', 'executing', 'reporting', 'reviewing', 'complete', 'failed']);
+const VALID_TASK_STAGES = new Set(['planning', 'coding', 'reviewing', 'complete', 'failed']);
+const VALID_PHASE_STAGES = new Set(['planning', 'executing', 'reviewing', 'complete', 'failed']);
 const PLANNING_STEP_NAMES = ['research', 'prd', 'design', 'architecture', 'master_plan'];
 
 // ─── detectVersion ───────────────────────────────────────────────────────────
@@ -197,13 +197,13 @@ describe('migrateToV4 — structural assertions on all 20 fixtures', () => {
         }
       });
 
-      it('every task has docs object with handoff, report, review keys', () => {
+      it('every task has docs object with handoff and review keys (no report)', () => {
         const m = migrateToV4(data, version);
         for (const phase of m.execution.phases) {
           for (const task of phase.tasks) {
             assert.ok(typeof task.docs === 'object' && task.docs !== null, `task "${task.name}" missing docs`);
             assert.ok('handoff' in task.docs, `task "${task.name}" docs.handoff missing`);
-            assert.ok('report' in task.docs, `task "${task.name}" docs.report missing`);
+            assert.ok(!('report' in task.docs), `task "${task.name}" docs.report should not exist`);
             assert.ok('review' in task.docs, `task "${task.name}" docs.review missing`);
           }
         }
@@ -630,7 +630,7 @@ describe('dropped fields absent in all migrated output', () => {
     'description', 'human_gate_mode', 'triage_attempts', 'last_error', 'severity',
     'errors', 'limits'];
   const DROPPED_PHASE = ['phase_number', 'total_tasks', 'id'];
-  const DROPPED_TASK = ['task_number', 'last_error', 'severity', 'triage_attempts', 'id'];
+  const DROPPED_TASK = ['task_number', 'last_error', 'severity', 'triage_attempts', 'id', 'report_status', 'has_deviations', 'deviation_type'];
 
   for (const { name, data, version } of allFixtures) {
     it(`${name}: no dropped top-level fields in execution or planning`, () => {
