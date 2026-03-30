@@ -271,7 +271,12 @@ The value `ask` is never passed to the pipeline.
 **e. Call `source_control_init`** to write source control metadata to state:
 
 ```
-node {orchRoot}/skills/orchestration/scripts/pipeline.js --event source_control_init --project-dir {projectDir} --context '{"branch":"{branchName}","base_branch":"{baseBranch}","worktree_path":"{worktreePath}","auto_commit":"{resolvedAutoCommit}","auto_pr":"{resolvedAutoPr}"}'
+node {orchRoot}/skills/orchestration/scripts/pipeline.js --event source_control_init --project-dir {projectDir} \
+  --branch "{branchName}" \
+  --base-branch "{baseBranch}" \
+  --worktree-path "{worktreePath}" \
+  --auto-commit "{resolvedAutoCommit}" \
+  --auto-pr "{resolvedAutoPr}"
 ```
 
 Where:

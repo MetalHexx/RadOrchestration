@@ -5,19 +5,28 @@ const { processEvent, scaffoldInitialState } = require('./lib/pipeline-engine');
 const stateIo = require('./lib/state-io');
 
 function parseArgs(argv) {
-  let event, projectDir, configPath, context;
+  let event, projectDir, configPath, docPath, branch, baseBranch, worktreePath,
+      autoCommit, autoPr, gateType, reason, gateMode, commitHash, pushed;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--event' && i + 1 < argv.length) { event = argv[++i]; }
     else if (argv[i] === '--project-dir' && i + 1 < argv.length) { projectDir = argv[++i]; }
     else if (argv[i] === '--config' && i + 1 < argv.length) { configPath = argv[++i]; }
-    else if (argv[i] === '--context' && i + 1 < argv.length) {
-      try { context = JSON.parse(argv[++i]); }
-      catch (e) { throw new Error('Invalid --context JSON: ' + e.message); }
-    }
+    else if (argv[i] === '--doc-path' && i + 1 < argv.length) { docPath = argv[++i]; }
+    else if (argv[i] === '--branch' && i + 1 < argv.length) { branch = argv[++i]; }
+    else if (argv[i] === '--base-branch' && i + 1 < argv.length) { baseBranch = argv[++i]; }
+    else if (argv[i] === '--worktree-path' && i + 1 < argv.length) { worktreePath = argv[++i]; }
+    else if (argv[i] === '--auto-commit' && i + 1 < argv.length) { autoCommit = argv[++i]; }
+    else if (argv[i] === '--auto-pr' && i + 1 < argv.length) { autoPr = argv[++i]; }
+    else if (argv[i] === '--gate-type' && i + 1 < argv.length) { gateType = argv[++i]; }
+    else if (argv[i] === '--reason' && i + 1 < argv.length) { reason = argv[++i]; }
+    else if (argv[i] === '--gate-mode' && i + 1 < argv.length) { gateMode = argv[++i]; }
+    else if (argv[i] === '--commit-hash' && i + 1 < argv.length) { commitHash = argv[++i]; }
+    else if (argv[i] === '--pushed' && i + 1 < argv.length) { pushed = argv[++i]; }
   }
   if (!event) throw new Error('Missing required flag: --event');
   if (!projectDir) throw new Error('Missing required flag: --project-dir');
-  return { event, projectDir, configPath, context };
+  return { event, projectDir, configPath, docPath, branch, baseBranch, worktreePath,
+           autoCommit, autoPr, gateType, reason, gateMode, commitHash, pushed };
 }
 
 function main() {
@@ -29,7 +38,19 @@ function main() {
     readDocument: stateIo.readDocument,
     ensureDirectories: stateIo.ensureDirectories,
   };
-  const result = processEvent(args.event, args.projectDir, args.context || {}, io, args.configPath);
+  const context = {};
+  if (args.docPath !== undefined)      context.doc_path      = args.docPath;
+  if (args.branch !== undefined)       context.branch        = args.branch;
+  if (args.baseBranch !== undefined)   context.base_branch   = args.baseBranch;
+  if (args.worktreePath !== undefined) context.worktree_path = args.worktreePath;
+  if (args.autoCommit !== undefined)   context.auto_commit   = args.autoCommit;
+  if (args.autoPr !== undefined)       context.auto_pr       = args.autoPr;
+  if (args.gateType !== undefined)     context.gate_type     = args.gateType;
+  if (args.reason !== undefined)       context.reason        = args.reason;
+  if (args.gateMode !== undefined)     context.gate_mode     = args.gateMode;
+  if (args.commitHash !== undefined)   context.commitHash    = args.commitHash;
+  if (args.pushed !== undefined)       context.pushed        = args.pushed;
+  const result = processEvent(args.event, args.projectDir, context, io, args.configPath);
   const orchRoot = stateIo.bootstrapOrchRoot();
   result.orchRoot = orchRoot;
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');

@@ -18,15 +18,42 @@ node .github/skills/orchestration/scripts/pipeline.js \
   --event <event_name> \
   --project-dir <path> \
   [--config <path>] \
-  [--context '<json>']
+  [--doc-path <path>] \
+  [--branch <name>] [--base-branch <name>] [--worktree-path <path>] \
+  [--auto-commit <always|never>] [--auto-pr <always|never>] \
+  [--gate-type <type>] [--reason <text>] \
+  [--gate-mode <mode>] \
+  [--commit-hash <hash>] [--pushed <true|false>]
 ```
 
-| Flag | Required | Description |
-|------|----------|-------------|
-| `--event` | Yes | One of the 17 pipeline events |
-| `--project-dir` | Yes | Absolute path to the project directory containing `state.json` |
-| `--config` | No | Path to `orchestration.yml`; built-in defaults used if omitted |
-| `--context` | No | JSON string with event-specific context (e.g., `doc_path`, `verdict`) |
+**Required flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--event <name>` | The pipeline event to signal (required) |
+| `--project-dir <path>` | Path to the project directory (required) |
+
+**Optional flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--config <path>` | Path to orchestration config file |
+
+**Context flags (all optional at parse level):**
+
+| Flag | Context Key | Used By |
+|------|-------------|---------|
+| `--doc-path <path>` | `doc_path` | Document-completion events |
+| `--branch <name>` | `branch` | `source_control_init` |
+| `--base-branch <name>` | `base_branch` | `source_control_init` |
+| `--worktree-path <path>` | `worktree_path` | `source_control_init` |
+| `--auto-commit <always|never>` | `auto_commit` | `source_control_init` |
+| `--auto-pr <always|never>` | `auto_pr` | `source_control_init` |
+| `--gate-type <type>` | `gate_type` | `gate_approved`, `gate_rejected` |
+| `--reason <text>` | `reason` | `gate_rejected` |
+| `--gate-mode <mode>` | `gate_mode` | `gate_mode_set` |
+| `--commit-hash <hash>` | `commitHash` | `task_committed` |
+| `--pushed <true|false>` | `pushed` | `task_committed` |
 
 ### migrate-to-v4.js
 
