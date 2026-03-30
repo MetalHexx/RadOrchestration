@@ -32,8 +32,8 @@ function test(name: string, fn: () => void) {
 
 type PhaseStatus = "not_started" | "in_progress" | "complete" | "halted";
 type TaskStatus = "not_started" | "in_progress" | "complete" | "failed" | "halted";
-type TaskStage = "planning" | "coding" | "reporting" | "reviewing" | "complete" | "failed";
-type PhaseStage = "planning" | "executing" | "reporting" | "reviewing" | "complete" | "failed";
+type TaskStage = "planning" | "coding" | "reviewing" | "complete" | "failed";
+type PhaseStage = "planning" | "executing" | "reviewing" | "complete" | "failed";
 
 // ─── Simulation (mirrors stage-badge.tsx logic) ──────────────────────────────
 
@@ -41,7 +41,6 @@ const STAGE_CONFIG: Record<string, { label: string; cssVar: string }> = {
   planning:  { label: "Planning",  cssVar: "--tier-planning" },
   coding:    { label: "Coding",    cssVar: "--tier-execution" },
   executing: { label: "Executing", cssVar: "--tier-execution" },
-  reporting: { label: "Reporting", cssVar: "--chart-2" },
   reviewing: { label: "Reviewing", cssVar: "--tier-review" },
   complete:  { label: "Complete",  cssVar: "--status-complete" },
   failed:    { label: "Failed",    cssVar: "--status-failed" },
@@ -111,13 +110,6 @@ test("not_started + reviewing stage → shows 'Not Started'", () => {
   assert.strictEqual(result.isSpinning, false);
 });
 
-test("not_started + reporting stage → shows 'Not Started'", () => {
-  const result = simulateStageBadge("reporting", "not_started");
-
-  assert.strictEqual(result.label, "Not Started");
-  assert.strictEqual(result.isSpinning, false);
-});
-
 test("not_started + complete stage → shows 'Not Started' (status check runs before terminal guard)", () => {
   const result = simulateStageBadge("complete", "not_started");
 
@@ -148,12 +140,6 @@ test("in_progress + reviewing → shows 'Reviewing' with --tier-review", () => {
 
   assert.strictEqual(result.label, "Reviewing");
   assert.strictEqual(result.cssVar, "--tier-review");
-});
-
-test("in_progress + reporting → shows 'Reporting'", () => {
-  const result = simulateStageBadge("reporting", "in_progress");
-
-  assert.strictEqual(result.label, "Reporting");
 });
 
 test("in_progress + coding → shows 'Coding'", () => {
@@ -230,12 +216,6 @@ test("in_progress + coding → isSpinning=true", () => {
 
 test("in_progress + executing → isSpinning=true", () => {
   const result = simulateStageBadge("executing", "in_progress");
-
-  assert.strictEqual(result.isSpinning, true);
-});
-
-test("in_progress + reporting → isSpinning=true", () => {
-  const result = simulateStageBadge("reporting", "in_progress");
 
   assert.strictEqual(result.isSpinning, true);
 });
