@@ -128,8 +128,8 @@ Prompts (`.prompt.md` files) are slash-command shortcuts that invoke a specific 
 
 | Prompt | File | Agent | Description |
 |--------|------|-------|-------------|
-| `/rad-plan` | `.github/prompts/rad-plan.prompt.md` | Orchestrator | Start the full planning pipeline for a new project — Research through Master Plan |
-| `/rad-execute` | `.github/prompts/rad-execute.prompt.md` | Orchestrator | Continue a project through the orchestration pipeline |
+| `/rad-plan` | `.github/prompts/rad-plan.prompt.md` | orchestrator | Start the full planning pipeline for a new project — Research through Master Plan |
+| `/rad-execute` | `.github/prompts/rad-execute.prompt.md` | orchestrator | Continue a project through the orchestration pipeline |
 
 ### rad-plan
 

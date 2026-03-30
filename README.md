@@ -63,7 +63,7 @@ build the UI in 1-shot.
 
 ### Specialized Agents
 
-Twelve agents with strict separation of concerns. Each agent has a defined role, scoped tool access, and explicit write permissions. The Orchestrator is a thin skill-driven coordinator — it loads the `orchestration` skill, signals pipeline events, and routes on the 20-action routing table. Never writes files directly. The Coder reads only its task handoff.
+Twelve agents with strict separation of concerns. Each agent has a defined role, scoped tool access, and explicit write permissions. The Orchestrator is a thin skill-driven coordinator — it loads the `orchestration` skill, signals pipeline events, and routes via a compact action routing table. Never writes files directly. The Coder reads only its task handoff.
 
 [Learn more about agents →](docs/agents.md)
 
@@ -81,7 +81,7 @@ Configurable critical human checkpoints are reliably enforced.  Humans approve t
 
 ### Deterministic Routing & Triage
 
-Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes ~18 external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
+Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes 20 external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
 
 [Learn more about the scripts →](docs/scripts.md)
 

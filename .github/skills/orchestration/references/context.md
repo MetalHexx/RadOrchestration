@@ -1,6 +1,6 @@
 # Orchestration System Context
 
-This workspace contains a **document-driven agent orchestration system** built on Copilot's native primitives (custom agents, skills, prompt files, and instruction files). The system takes software projects from idea through planning, execution, and review using 11 specialized agents.
+This workspace contains a **document-driven agent orchestration system** built on Copilot's native primitives (custom agents, skills, prompt files, and instruction files). The system takes software projects from idea through planning, execution, and review using 12 specialized agents.
 
 ## How It Works
 

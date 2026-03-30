@@ -103,16 +103,16 @@ function validateAgentsArray(agents, tools, agentName, filename) {
     });
   }
 
-  if (agents.length > 0 && agentName !== 'Orchestrator') {
+  if (agents.length > 0 && agentName.toLowerCase() !== 'orchestrator') {
     results.push({
       category: 'agents',
       name: filename,
       status: 'fail',
-      message: 'Only the Orchestrator may have a non-empty agents array',
+      message: 'Only the orchestrator may have a non-empty agents array',
       detail: {
-        expected: 'Empty agents array for non-Orchestrator agents',
+        expected: 'Empty agents array for non-orchestrator agents',
         found: `Agent "${agentName}" has agents: [${agents.join(', ')}]`,
-        context: 'Only the Orchestrator agent may reference other agents'
+        context: 'Only the orchestrator agent may reference other agents'
       }
     });
   }
