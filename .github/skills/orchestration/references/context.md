@@ -13,17 +13,17 @@ This workspace contains a **document-driven agent orchestration system** built o
 
 | Agent | Purpose |
 |-------|---------|
-| `@Brainstormer` | Collaboratively brainstorms and refines project ideas — standalone, outside the pipeline |
-| `@Orchestrator` | Coordinates the pipeline — spawns agents, reads state, asks human questions. **Never writes files.** |
-| `@Research` | Explores codebase and external sources to gather context |
-| `@Product Manager` | Creates PRDs from research findings |
-| `@UX Designer` | Creates design documents from PRDs |
-| `@Architect` | Creates architecture docs and master plans |
-| `@Tactical Planner` | Breaks phases into tasks, creates task handoffs, generates phase reports |
-| `@Coder` | Executes coding tasks from self-contained task handoffs |
-| `@Coder Junior` | Executes simpler coding tasks with additional guardrails |
-| `@Coder Senior` | Executes complex coding tasks with expanded autonomy |
-| `@Reviewer` | Reviews code and phases against planning documents |
+| `@brainstormer` | Collaboratively brainstorms and refines project ideas — standalone, outside the pipeline |
+| `@orchestrator` | Coordinates the pipeline — spawns agents, reads state, asks human questions. **Never writes files.** |
+| `@research` | Explores codebase and external sources to gather context |
+| `@product-manager` | Creates PRDs from research findings |
+| `@ux-designer` | Creates design documents from PRDs |
+| `@architect` | Creates architecture docs and master plans |
+| `@tactical-planner` | Breaks phases into tasks, creates task handoffs, generates phase reports |
+| `@coder` | Executes coding tasks from self-contained task handoffs |
+| `@coder-junior` | Executes simpler coding tasks with additional guardrails |
+| `@coder-senior` | Executes complex coding tasks with expanded autonomy |
+| `@reviewer` | Reviews code and phases against planning documents |
 
 ## Pipeline
 
