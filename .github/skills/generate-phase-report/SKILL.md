@@ -18,18 +18,17 @@ Generate a Phase Report after all tasks in a phase are complete. Summarizes phas
 | Input | Source | Description |
 |-------|--------|-------------|
 | Phase Plan | `{NAME}-PHASE-{NN}-{TITLE}.md` | Task outline, exit criteria |
-| Task Reports | `{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md` (all) | Per-task results, files changed, issues |
-| Code Reviews | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` (all) | Per-task review verdicts |
+| Code Reviews | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` (all) | Per-task review verdicts, task-level outcome data |
 | State | `state.json` | Retry counts, error aggregation |
 
 ## Workflow
 
-1. **Read all inputs**: Load Phase Plan, all Task Reports, all Code Reviews, state.json
+1. **Read all inputs**: Load Phase Plan, all Code Reviews, state.json
 2. **Summarize**: 2-3 sentences on what was accomplished
 3. **Aggregate task results**: Table with task status, retry count, key outcome per task
 4. **Assess exit criteria**: Go through each criterion from the Phase Plan, mark as Met/Not Met
 5. **Aggregate files changed**: Total files created/modified across all tasks
-6. **Document issues**: Compile all issues from Task Reports with resolutions
+6. **Document issues**: Compile all issues from Code Reviews with resolutions
 7. **Identify carry-forward items**: Anything the next phase must address
 8. **Recommend adjustments**: If phase outcomes suggest the Master Plan needs adjustment
 9. **Write the Phase Report**: Use the bundled template at [templates/PHASE-REPORT.md](./templates/PHASE-REPORT.md)
@@ -37,7 +36,7 @@ Generate a Phase Report after all tasks in a phase are complete. Summarizes phas
 
 ## Key Rules
 
-- **Factual aggregation**: No opinions — compile data from task reports
+- **Factual aggregation**: No opinions — compile data from code reviews and pipeline state
 - **Every task accounted for**: All tasks from the Phase Plan appear in the results table
 - **Exit criteria are from the Phase Plan**: Mirror them exactly and verify each one
 - **Carry-forward items are concrete**: Specific things the next phase must handle, not vague concerns

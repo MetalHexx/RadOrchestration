@@ -18,7 +18,6 @@ Perform a holistic review of an entire phase after all tasks are complete. Asses
 | Input | Source | Description |
 |-------|--------|-------------|
 | Phase Plan | `{NAME}-PHASE-{NN}-{TITLE}.md` | Exit criteria, task outline |
-| Task Reports | `{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md` (all) | Per-task results |
 | Code Reviews | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` (all) | Per-task review verdicts |
 | Architecture | `{NAME}-ARCHITECTURE.md` | Contracts, module map |
 | Design | `{NAME}-DESIGN.md` | Component specs, design system |
@@ -27,7 +26,7 @@ Perform a holistic review of an entire phase after all tasks are complete. Asses
 
 ## Workflow
 
-1. **Read all task reports and reviews**: Understand what was built across the phase
+1. **Read all code reviews**: Understand what was built across the phase
 2. **Check integration**: Do modules work together? Are contracts honored across task boundaries?
 3. **Check for conflicts**: Conflicting patterns, duplicate code, inconsistent approaches across tasks
 4. **Verify exit criteria**: Go through each criterion from the Phase Plan
