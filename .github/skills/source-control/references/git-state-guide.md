@@ -17,8 +17,10 @@ The agent reads `state.json` from the project directory and locates the `pipelin
 | `worktree_path` | string | Absolute filesystem path | The absolute path to the git worktree directory |
 | `auto_commit` | string | `"always"` \| `"never"` | Whether to auto-commit after code review approval |
 | `auto_pr` | string | `"always"` \| `"never"` | Whether to auto-create a PR after all phases complete |
+| `remote_url` | `string \| null` | GitHub HTTPS URL or `null` | GitHub HTTPS remote URL; auto-detected at `source_control_init` time from `git remote get-url origin`; `null` when detection fails or `--remote-url` was omitted |
+| `compare_url` | `string \| null` | GitHub compare URL or `null` | Branch compare URL derived from `remote_url`; format: `{remote_url}/compare/{base_branch}...{branch}`; `null` when `remote_url` is `null` |
 
-All 5 fields are required when the `source_control` sub-object is present (schema-enforced). The schema also enforces `additionalProperties: false` on the `pipeline` object — no extra fields are permitted.
+The 5 required fields (`branch`, `base_branch`, `worktree_path`, `auto_commit`, `auto_pr`) are always present when the `source_control` sub-object exists (schema-enforced). `remote_url` and `compare_url` are optional nullable fields — either may be `null` when remote URL detection fails or the `--remote-url` flag was omitted at `source_control_init` time. The schema enforces `additionalProperties: false` on the `source_control` object — no extra fields are permitted.
 
 ### Key Rules
 
@@ -38,9 +40,34 @@ All 5 fields are required when the `source_control` sub-object is present (schem
     "base_branch": { "type": "string" },
     "worktree_path": { "type": "string" },
     "auto_commit": { "type": "string", "enum": ["always", "never"] },
-    "auto_pr": { "type": "string", "enum": ["always", "never"] }
+    "auto_pr": { "type": "string", "enum": ["always", "never"] },
+    "remote_url": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+    "compare_url": { "oneOf": [{ "type": "string" }, { "type": "null" }] }
   }
 }
+```
+
+### Task Commit Hash
+
+Each Task record in `execution.phases[n].tasks` gains an optional `commit_hash` field written by the `task_committed` pipeline event after a successful commit.
+
+| Field | Type | Null Condition | Purpose |
+|-------|------|----------------|---------|
+| `commit_hash` | `string \| null` | `null` when `auto_commit` is `"never"`, commit was skipped, or no hash was returned | Short git commit hash (7 chars) of the commit created for this task |
+
+The Source Control Agent does **not** write this field directly — it is written by `handleTaskCommitted` in `mutations.js` using the `commitHash` value returned by `git-commit.js` and passed through the Orchestrator via `--commit-hash`. The agent’s responsibility is to include `commitHash` in its output result block so the Orchestrator can pass it to `pipeline.js`.
+
+#### Schema Reference (Task item)
+
+```json
+// Task item in execution.phases[n].tasks
+"commit_hash": {
+  "oneOf": [
+    { "type": "string" },
+    { "type": "null" }
+  ]
+}
+// NOT in Task "required" array — backward compatible with pre-feature state files
 ```
 
 ---
