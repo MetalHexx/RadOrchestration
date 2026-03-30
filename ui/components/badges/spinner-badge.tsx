@@ -15,9 +15,11 @@ interface SpinnerBadgeProps {
   isComplete?: boolean;
   /** Accessible label override; defaults to label when omitted */
   ariaLabel?: string;
+  /** When true, suppresses visible label text; aria-label is unaffected. Defaults to false. */
+  hideLabel?: boolean;
 }
 
-export function SpinnerBadge({ label, cssVar, isSpinning, isComplete, ariaLabel }: SpinnerBadgeProps) {
+export function SpinnerBadge({ label, cssVar, isSpinning, isComplete, ariaLabel, hideLabel }: SpinnerBadgeProps) {
   return (
     <Badge
       variant="outline"
@@ -48,7 +50,7 @@ export function SpinnerBadge({ label, cssVar, isSpinning, isComplete, ariaLabel 
           aria-hidden="true"
         />
       )}
-      {label}
+      {!hideLabel && <span>{label}</span>}
     </Badge>
   );
 }

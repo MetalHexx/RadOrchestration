@@ -34,6 +34,7 @@ interface SpinnerBadgeProps {
   isSpinning: boolean;
   isComplete?: boolean;
   ariaLabel?: string;
+  hideLabel?: boolean;
 }
 
 interface RenderResult {
@@ -46,6 +47,7 @@ interface RenderResult {
   color: string;
   iconColor: string | null;
   dotBackgroundColor: string | null;
+  showsLabel: boolean;
 }
 
 function simulateSpinnerBadge(props: SpinnerBadgeProps): RenderResult {
@@ -64,6 +66,7 @@ function simulateSpinnerBadge(props: SpinnerBadgeProps): RenderResult {
     color,
     iconColor: (props.isSpinning || showsCheckmark) ? `var(${props.cssVar})` : null,
     dotBackgroundColor: (!props.isSpinning && !showsCheckmark) ? `var(${props.cssVar})` : null,
+    showsLabel: !props.hideLabel,
   };
 }
 
@@ -262,6 +265,51 @@ test("isComplete omitted (undefined) falls through to dot", () => {
   });
   assert.strictEqual(result.showsDot, true);
   assert.strictEqual(result.showsCheckmark, false);
+});
+
+console.log("\nhideLabel prop behavior");
+
+test("hideLabel=true suppresses visible label", () => {
+  const result = simulateSpinnerBadge({
+    label: "Complete",
+    cssVar: "--status-complete",
+    isSpinning: false,
+    isComplete: true,
+    hideLabel: true,
+  });
+  assert.strictEqual(result.showsLabel, false);
+});
+
+test("hideLabel=true does not affect ariaLabel", () => {
+  const result = simulateSpinnerBadge({
+    label: "Complete",
+    cssVar: "--status-complete",
+    isSpinning: false,
+    isComplete: true,
+    hideLabel: true,
+  });
+  assert.strictEqual(result.ariaLabel, "Complete");
+});
+
+test("hideLabel=false renders visible label (default behavior)", () => {
+  const result = simulateSpinnerBadge({
+    label: "Complete",
+    cssVar: "--status-complete",
+    isSpinning: false,
+    isComplete: true,
+    hideLabel: false,
+  });
+  assert.strictEqual(result.showsLabel, true);
+});
+
+test("hideLabel omitted renders visible label (default behavior)", () => {
+  const result = simulateSpinnerBadge({
+    label: "Complete",
+    cssVar: "--status-complete",
+    isSpinning: false,
+    isComplete: true,
+  });
+  assert.strictEqual(result.showsLabel, true);
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

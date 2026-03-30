@@ -42,6 +42,7 @@ export function StageBadge({ stage, status }: StageBadgeProps) {
         cssVar={config.cssVar}
         isSpinning={false}
         isComplete={true}
+        hideLabel={true}
         ariaLabel="Stage: Complete"
       />
     );
