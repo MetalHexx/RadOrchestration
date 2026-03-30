@@ -15,9 +15,9 @@ export type PhaseStatus = 'not_started' | 'in_progress' | 'complete' | 'halted';
 
 export type TaskStatus = 'not_started' | 'in_progress' | 'complete' | 'failed' | 'halted';
 
-export type TaskStage = 'planning' | 'coding' | 'reporting' | 'reviewing' | 'complete' | 'failed';
+export type TaskStage = 'planning' | 'coding' | 'reviewing' | 'complete' | 'failed';
 
-export type PhaseStage = 'planning' | 'executing' | 'reporting' | 'reviewing' | 'complete' | 'failed';
+export type PhaseStage = 'planning' | 'executing' | 'reviewing' | 'complete' | 'failed';
 
 export type FinalReviewStatus = 'not_started' | 'in_progress' | 'complete';
 
@@ -97,7 +97,6 @@ export interface Phase {
 
 export interface PhaseDocs {
   phase_plan: string | null;
-  phase_report: string | null;
   phase_review: string | null;
 }
 
@@ -114,15 +113,11 @@ export interface Task {
   stage: TaskStage;
   docs: TaskDocs;
   review: TaskReviewResult;
-  report_status: 'complete' | 'failed' | null;
-  has_deviations: boolean;
-  deviation_type: string | null;
   retries: number;
 }
 
 export interface TaskDocs {
   handoff: string | null;
-  report: string | null;
   review: string | null;
 }
 
