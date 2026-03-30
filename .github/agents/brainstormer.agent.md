@@ -1,5 +1,5 @@
 ---
-name: Brainstormer
+name: brainstormer
 description: "Brainstorm and refine project ideas through collaborative ideation. Use when starting a new project idea, exploring problem spaces, validating concepts, or building consensus on what to build. Produces a structured BRAINSTORMING.md that feeds into the Research and Product Manager agents."
 tools:
   - read
@@ -12,7 +12,7 @@ tools:
 model: claude-sonnet-4.6
 handoffs:
   - label: "Start Planning Pipeline Process"
-    agent: Orchestrator
+    agent: orchestrator
     prompt: "Brainstorming is complete. Read the project BRAINSTORMING.md and start planning."
     send: true 
 ---

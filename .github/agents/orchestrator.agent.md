@@ -1,5 +1,5 @@
 ---
-name: Orchestrator
+name: orchestrator
 description: "The main orchestration agent that coordinates the entire project pipeline."
 tools:
   - read
