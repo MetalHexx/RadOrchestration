@@ -75,19 +75,14 @@ test('returns planning + phase docs in canonical order', () => {
               stage: 'complete',
               docs: {
                 handoff: 'tasks/T01.md',
-                report: 'reports/T01-REPORT.md',
                 review: 'reviews/T01-REVIEW.md',
               },
               review: { verdict: 'approved', action: 'advanced' },
-              report_status: 'complete',
-              has_deviations: false,
-              deviation_type: null,
               retries: 0,
             },
           ],
           docs: {
             phase_plan: 'phases/P01-PLAN.md',
-            phase_report: 'reports/P01-REPORT.md',
             phase_review: 'reviews/P01-REVIEW.md',
           },
           review: { verdict: null, action: null },
@@ -104,16 +99,14 @@ test('returns planning + phase docs in canonical order', () => {
     'PRD',
     'Phase 1 Plan',
     'P1-T1: Setup',
-    'P1-T1 Report',
     'P1-T1 Review',
-    'Phase 1 Report',
     'Phase 1 Review',
   ]);
 
   assert.strictEqual(docs[0].category, 'planning');
   assert.strictEqual(docs[2].category, 'phase');
   assert.strictEqual(docs[3].category, 'task');
-  assert.strictEqual(docs[5].category, 'review');
+  assert.strictEqual(docs[4].category, 'review');
 });
 
 test('skips null paths', () => {
@@ -195,7 +188,6 @@ test('excludes phase plan docs from Other Documents when state paths differ in f
           tasks: [],
           docs: {
             phase_plan: 'C:/dev/projects/TEST/phases/TEST-PHASE-P01-PLAN.md',
-            phase_report: null,
             phase_review: null,
           },
           review: { verdict: null, action: null },
@@ -212,7 +204,7 @@ test('excludes phase plan docs from Other Documents when state paths differ in f
   assert.strictEqual(otherDocs[0].title, 'EXTRA');
 });
 
-test('excludes task handoff and report docs from Other Documents when paths differ in format', () => {
+test('excludes task handoff docs from Other Documents when paths differ in format', () => {
   const state = makeState({
     execution: {
       status: 'in_progress',
@@ -230,17 +222,13 @@ test('excludes task handoff and report docs from Other Documents when paths diff
               stage: 'complete',
               docs: {
                 handoff: 'C:/dev/projects/TEST/tasks/TEST-TASK-P01-T01-SETUP.md',
-                report: 'C:/dev/projects/TEST/reports/TEST-TASK-P01-T01-SETUP-REPORT.md',
                 review: null,
               },
               review: { verdict: 'approved', action: 'advanced' },
-              report_status: 'complete',
-              has_deviations: false,
-              deviation_type: null,
               retries: 0,
             },
           ],
-          docs: { phase_plan: null, phase_report: null, phase_review: null },
+          docs: { phase_plan: null, phase_review: null },
           review: { verdict: null, action: null },
         },
       ],
@@ -249,7 +237,6 @@ test('excludes task handoff and report docs from Other Documents when paths diff
 
   const allFiles = [
     'tasks/TEST-TASK-P01-T01-SETUP.md',
-    'reports/TEST-TASK-P01-T01-SETUP-REPORT.md',
     'NOTES.md',
   ];
   const docs = getOrderedDocs(state, 'TEST', allFiles);
