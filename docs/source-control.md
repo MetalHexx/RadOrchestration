@@ -36,6 +36,14 @@ The `rad-execute-parallel` script handles source control setup immediately after
 - The resolved values are persisted to state via `pipeline.js --event source_control_init` with context `{ branch, base_branch, worktree_path, auto_commit, auto_pr }`.
 - The `source_control_init` event is idempotent — safe to re-run without corrupting state.
 
+### Branch Publication
+
+`rad-execute-parallel` publishes the branch to the remote immediately after worktree creation, before calling `pipeline.js --event source_control_init`:
+
+- `git push -u origin {branch}` is run from the worktree path; push failure is non-blocking — the error is logged and the init continues.
+- The `source_control_init` event itself remains idempotent — safe to re-run without corrupting state.
+- If the branch was already pushed in a prior run, the upstream tracking is already set and the push is a no-op.
+
 ## Pipeline Events
 
 | Event | Triggered by | Action returned | Notes |
@@ -99,6 +107,25 @@ The prefix is resolved from the task type or keywords in the task title:
 - `test(TASK-5): Add integration tests for source_control_init event`
 - `chore(TASK-7): Extend orchestration.yml with source_control block`
 
+### Commit Message Body
+
+Commit messages optionally include a body — 3–6 plain-prose sentences or bullets drawn from the task handoff's description and goals:
+
+- Subject and body are separated by exactly one blank line, following the [Conventional Commits](https://www.conventionalcommits.org/) spec.
+- The multi-line message is passed using two `-m` flags: `git commit -m "{subject}" -m "{body}"`.
+- Body is omitted entirely when the handoff has no description or goals content.
+
+**Example:**
+
+```
+feat(P02-T03): Add remote_url detection to source_control_init
+
+Detects the GitHub HTTPS remote URL from git remote get-url origin.
+Converts SSH remotes (git@github.com:org/repo.git) to HTTPS.
+Stores remote_url and compare_url in pipeline.source_control.
+Enables branch compare links in the monitoring dashboard.
+```
+
 ## Error Handling
 
 The Source Control Agent produces structured feedback for every operation outcome:
@@ -145,13 +172,39 @@ Source control state is stored under `pipeline.source_control` in `state.json`:
       "base_branch": "main",
       "worktree_path": "/path/to/worktree",
       "auto_commit": "always",
-      "auto_pr": "never"
+      "auto_pr": "never",
+      "remote_url": "https://github.com/org/repo",
+      "compare_url": "https://github.com/org/repo/compare/main...feature/my-project-branch"
     }
   }
 }
 ```
 
 All 5 fields (`branch`, `base_branch`, `worktree_path`, `auto_commit`, `auto_pr`) are required when the sub-object is present. The sub-object itself is optional — its absence triggers graceful degradation: the pipeline skips commit steps and logs an informational notice. The `provider` field is hardcoded to `'github'` in the configuration layer (v1 constraint) and is not persisted to the state sub-object.
+
+`remote_url` and `compare_url` are written by `source_control_init` and may be `null` when GitHub remote detection fails. After each task commit, `commit_hash` is written onto the task entry:
+
+```json
+{
+  "execution": {
+    "phases": [{
+      "tasks": [{
+        "name": "P01-T01-EXAMPLE",
+        "status": "complete",
+        "commit_hash": "bb3c89e"
+      }]
+    }]
+  }
+}
+```
+
+### Field Reference
+
+| Field | Location | Type | Null condition |
+|-------|----------|------|----------------|
+| `remote_url` | `pipeline.source_control` | `string \| null` | `null` when the remote URL cannot be detected (non-GitHub remote, or `git remote get-url` fails) |
+| `compare_url` | `pipeline.source_control` | `string \| null` | `null` whenever `remote_url` is `null` |
+| `commit_hash` | `execution.phases[n].tasks[n]` | `string \| null` | `null` for tasks completed before this feature shipped, or when the commit step failed |
 
 ## What's Coming (AUTO-PR)
 
