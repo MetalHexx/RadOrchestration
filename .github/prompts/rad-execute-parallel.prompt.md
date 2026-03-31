@@ -210,7 +210,7 @@ If `orchestration.yml` is missing or the `source_control` block is absent, defau
 
 - If **both** `configAutoCommit` and `configAutoPr` are already `always` or `never`:
   set **`resolvedAutoCommit`** = `configAutoCommit` and **`resolvedAutoPr`** = `configAutoPr`.
-  Skip to step **e** — no questions needed.
+  Skip to step **4e** (branch publication) — no questions needed.
 
 - If **at least one** is `"ask"`, call `askQuestions` with a single call containing only the
   applicable questions. Include the `auto_commit` question only if `configAutoCommit === "ask"`;

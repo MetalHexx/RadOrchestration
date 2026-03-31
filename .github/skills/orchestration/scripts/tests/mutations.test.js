@@ -1249,7 +1249,7 @@ describe('handlePhasePlanCreated stale field clearing', () => {
 const { handleSourceControlInit, handleTaskCommitRequested, handleTaskCommitted } = _test;
 
 describe('handleSourceControlInit', () => {
-  it('writes all 5 fields to pipeline.source_control', () => {
+  it('writes all 7 fields to pipeline.source_control', () => {
     const state = makeExecutionState();
     const context = {
       branch: 'feat/x',
@@ -1264,9 +1264,11 @@ describe('handleSourceControlInit', () => {
     assert.equal(result.state.pipeline.source_control.worktree_path, '/wt');
     assert.equal(result.state.pipeline.source_control.auto_commit, 'always');
     assert.equal(result.state.pipeline.source_control.auto_pr, 'never');
+    assert.equal(result.state.pipeline.source_control.remote_url, null);
+    assert.equal(result.state.pipeline.source_control.compare_url, null);
   });
 
-  it('returns mutations_applied with 5 entries', () => {
+  it('returns mutations_applied with 7 entries', () => {
     const state = makeExecutionState();
     const context = {
       branch: 'feat/x',
@@ -1563,7 +1565,7 @@ describe('handleTaskCommitted', () => {
     assert.ok(result.mutations_applied.some(m => m.toLowerCase().includes('task committed') || m.toLowerCase().includes('current_task')));
   });
 
-  it('context fields are accepted but do not affect behavior', () => {
+  it('non-commitHash context fields (task_id, committed, pushed) do not affect pointer progression', () => {
     const state1 = makeExecutionState();
     const state2 = makeExecutionState();
     const result1 = handleTaskCommitted(state1, {}, defaultConfig);
