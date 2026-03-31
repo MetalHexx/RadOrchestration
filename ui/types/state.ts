@@ -46,6 +46,18 @@ export interface ProjectState {
   final_review: FinalReview;
 }
 
+// ─── Source Control ──────────────────────────────────────────────────────────
+
+export interface SourceControl {
+  branch: string;
+  base_branch: string;
+  worktree_path: string;
+  auto_commit: 'always' | 'never';
+  auto_pr: 'always' | 'never';
+  remote_url: string | null;
+  compare_url: string | null;
+}
+
 // ─── Top-Level Sections ──────────────────────────────────────────────────────
 
 export interface ProjectMeta {
@@ -56,7 +68,8 @@ export interface ProjectMeta {
 
 export interface Pipeline {
   current_tier: PipelineTier;
-  gate_mode: GateMode | null;   // null = fall back to global config
+  gate_mode: GateMode | null;         // null = fall back to global config
+  source_control?: SourceControl;     // optional — absent on pre-feature state files
 }
 
 export interface PlanningState {
@@ -114,6 +127,7 @@ export interface Task {
   docs: TaskDocs;
   review: TaskReviewResult;
   retries: number;
+  commit_hash: string | null;   // null for pre-feature state files
 }
 
 export interface TaskDocs {

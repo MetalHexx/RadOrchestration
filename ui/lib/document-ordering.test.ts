@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Tests for document-ordering utility.
  * Run with: npx tsx ui/lib/document-ordering.test.ts
  */
@@ -79,6 +79,7 @@ test('returns planning + phase docs in canonical order', () => {
               },
               review: { verdict: 'approved', action: 'advanced' },
               retries: 0,
+              commit_hash: null,
             },
           ],
           docs: {
@@ -226,6 +227,7 @@ test('excludes task handoff docs from Other Documents when paths differ in forma
               },
               review: { verdict: 'approved', action: 'advanced' },
               retries: 0,
+              commit_hash: null,
             },
           ],
           docs: { phase_plan: null, phase_review: null },
