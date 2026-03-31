@@ -19,6 +19,7 @@ interface PhaseCardProps {
   isActive: boolean;
   maxRetries: number;
   onDocClick: (path: string) => void;
+  remoteUrl: string | null;
 }
 
 export function PhaseCard({
@@ -27,6 +28,7 @@ export function PhaseCard({
   isActive,
   maxRetries,
   onDocClick,
+  remoteUrl,
 }: PhaseCardProps) {
   const completedTasks = phase.tasks.filter(
     (t) => t.status === "complete"
@@ -84,7 +86,7 @@ export function PhaseCard({
                   taskNumber={index + 1}
                   maxRetries={maxRetries}
                   onDocClick={onDocClick}
-                  remoteUrl={null}
+                  remoteUrl={remoteUrl}
                 />
               ))}
             </div>

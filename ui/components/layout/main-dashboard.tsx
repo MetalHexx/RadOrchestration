@@ -5,7 +5,7 @@ import { ProjectHeader } from "@/components/dashboard/project-header";
 import { PlanningSection } from "@/components/dashboard/planning-section";
 import { ExecutionSection } from "@/components/execution/execution-section";
 import { FinalReviewSection } from "@/components/dashboard/final-review-section";
-import { OtherDocsSection } from "@/components/dashboard";
+import { OtherDocsSection, SourceControlSection } from "@/components/dashboard";
 import { NotInitializedView } from "./not-initialized-view";
 import { MalformedStateView } from "./malformed-state-view";
 import type { ProjectState } from "@/types/state";
@@ -58,6 +58,8 @@ export function MainDashboard({
     );
   }
 
+  const remoteUrl = projectState.pipeline.source_control?.remote_url ?? null;
+
   return (
     <ScrollArea className="h-[calc(100vh-56px)]">
       <div className="space-y-6 p-6">
@@ -75,10 +77,15 @@ export function MainDashboard({
           onDocClick={onDocClick}
         />
 
+        {projectState.pipeline.source_control != null && (
+          <SourceControlSection sourceControl={projectState.pipeline.source_control} />
+        )}
+
         <ExecutionSection
           execution={projectState.execution}
           maxRetries={maxRetries}
           onDocClick={onDocClick}
+          remoteUrl={remoteUrl}
         />
 
         <FinalReviewSection

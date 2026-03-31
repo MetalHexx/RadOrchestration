@@ -9,12 +9,14 @@ interface ExecutionSectionProps {
   execution: ExecutionState;
   maxRetries: number;
   onDocClick: (path: string) => void;
+  remoteUrl: string | null;
 }
 
 export function ExecutionSection({
   execution,
   maxRetries,
   onDocClick,
+  remoteUrl,
 }: ExecutionSectionProps) {
   if (execution.status === "not_started") {
     return null;
@@ -35,6 +37,7 @@ export function ExecutionSection({
               isActive={(index + 1) === execution.current_phase}
               maxRetries={maxRetries}
               onDocClick={onDocClick}
+              remoteUrl={remoteUrl}
             />
           ))}
         </div>
