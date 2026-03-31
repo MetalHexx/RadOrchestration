@@ -84,6 +84,7 @@ export function PhaseCard({
                   taskNumber={index + 1}
                   maxRetries={maxRetries}
                   onDocClick={onDocClick}
+                  remoteUrl={null}
                 />
               ))}
             </div>

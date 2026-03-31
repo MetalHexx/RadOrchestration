@@ -5,7 +5,7 @@ import {
   ReviewVerdictBadge,
 } from "@/components/badges";
 import { StageBadge } from "@/components/badges/stage-badge";
-import { DocumentLink } from "@/components/documents";
+import { DocumentLink, ExternalLink } from "@/components/documents";
 import type { Task } from "@/types/state";
 
 interface TaskCardProps {
@@ -13,9 +13,15 @@ interface TaskCardProps {
   taskNumber: number;
   maxRetries: number;
   onDocClick: (path: string) => void;
+  /** Remote GitHub URL from pipeline.source_control.remote_url; null when absent */
+  remoteUrl?: string | null;
 }
 
-export function TaskCard({ task, taskNumber, maxRetries, onDocClick }: TaskCardProps) {
+export function TaskCard({ task, taskNumber, maxRetries, onDocClick, remoteUrl = null }: TaskCardProps) {
+  const commitUrl = remoteUrl && task.commit_hash
+    ? `${remoteUrl}/commit/${task.commit_hash}`
+    : null;
+
   return (
     <div className="space-y-1">
       <div
@@ -36,6 +42,7 @@ export function TaskCard({ task, taskNumber, maxRetries, onDocClick }: TaskCardP
           )}
           <DocumentLink path={task.docs.handoff} label="Handoff" onDocClick={onDocClick} />
           <DocumentLink path={task.docs.review}  label="Review"  onDocClick={onDocClick} />
+          <ExternalLink href={commitUrl} icon="github" label="Commit" />
         </div>
       </div>
     </div>
