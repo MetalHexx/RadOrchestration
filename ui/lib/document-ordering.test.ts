@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tests for document-ordering utility.
  * Run with: npx tsx ui/lib/document-ordering.test.ts
  */

@@ -1,4 +1,4 @@
-﻿# Monitoring Dashboard
+# Monitoring Dashboard
 
 The monitoring dashboard is a Next.js web application that provides real-time visualization of your orchestration pipeline. It displays project status, planning progress, execution phases, and task details in a unified interface, giving you instant insight into what your agents are doing without manually inspecting state files.
 
@@ -54,18 +54,18 @@ Appears in the Project Detail Panel below the Planning section and above the Exe
 
 The branch row displays the branch name from `pipeline.source_control` in `state.json`. When a compare URL is available, the branch name is rendered as a clickable external link that opens in a new tab. When no compare URL is present, the branch name is shown in plain monospace text.
 
-Auto-commit and auto-PR settings are each shown as a badge. When the value is `"always"`, an animated SpinnerBadge is used; for any other value, an outline badge is displayed instead. When `auto_pr` is `"always"`, a PR placeholder row is also rendered below the badge, indicating that a pull request will be created automatically.
+Auto-commit and auto-PR settings are each shown as a badge. When the value is `"always"`, a SpinnerBadge with a colored dot indicator is used; for any other value, an outline badge is displayed instead. When `auto_pr` is `"always"`, a PR placeholder row is also rendered below the badge, indicating that a pull request will be created automatically.
 
 | Badge | Value | Style |
 |-------|-------|-------|
-| `auto_commit` | `"always"` | SpinnerBadge (animated) |
+| `auto_commit` | `"always"` | SpinnerBadge (dot indicator) |
 | `auto_commit` | other | Outline badge |
-| `auto_pr` | `"always"` | SpinnerBadge (animated) + PR placeholder row |
+| `auto_pr` | `"always"` | SpinnerBadge (dot indicator) + PR placeholder row |
 | `auto_pr` | other | Outline badge |
 
-In the Execution Drill-Down view, each TaskCard shows a commit link when the task has a recorded commit hash. The link is constructed from the task's remote URL and commit hash, both stored in the task's state entry.
+In the Execution Drill-Down view, each TaskCard shows a commit link when the task has a recorded commit hash. The link is constructed from the repository remote URL in `pipeline.source_control` and the task's commit hash from its state entry.
 
-All Source Control Card data is read from `pipeline.source_control` in `state.json`. Per-task commit hashes and remote URLs come from each task's state entry in `execution.phases[n].tasks[n]`.
+All Source Control Card data (including `remote_url` and branch information) is read from `pipeline.source_control` in `state.json`. Per-task commit hashes come from each task's state entry in `execution.phases[n].tasks[n]`.
 
 ### Execution Drill-Down
 

@@ -54,8 +54,8 @@ export interface SourceControl {
   worktree_path: string;
   auto_commit: 'always' | 'never';
   auto_pr: 'always' | 'never';
-  remote_url: string | null;
-  compare_url: string | null;
+  remote_url?: string | null;
+  compare_url?: string | null;
 }
 
 // ─── Top-Level Sections ──────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ export interface Task {
   docs: TaskDocs;
   review: TaskReviewResult;
   retries: number;
-  commit_hash: string | null;   // null for pre-feature state files
+  commit_hash?: string | null;   // null or missing for pre-feature state files
 }
 
 export interface TaskDocs {

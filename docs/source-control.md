@@ -112,7 +112,7 @@ The prefix is resolved from the task type or keywords in the task title:
 Commit messages optionally include a body — 3–6 plain-prose sentences or bullets drawn from the task handoff's description and goals:
 
 - Subject and body are separated by exactly one blank line, following the [Conventional Commits](https://www.conventionalcommits.org/) spec.
-- The multi-line message is passed using two `-m` flags: `git commit -m "{subject}" -m "{body}"`.
+- The multi-line message is passed as a single `-m` argument with embedded newlines (for example: `git commit -m $'{subject}\n\n{body}'` or equivalent).
 - Body is omitted entirely when the handoff has no description or goals content.
 
 **Example:**

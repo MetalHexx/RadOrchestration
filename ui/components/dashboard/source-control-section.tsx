@@ -12,7 +12,8 @@ interface SourceControlSectionProps {
 }
 
 export function SourceControlSection({ sourceControl }: SourceControlSectionProps) {
-  const { branch, compare_url, auto_commit, auto_pr } = sourceControl;
+  const { branch, auto_commit, auto_pr } = sourceControl;
+  const compare_url = sourceControl.compare_url ?? null;
 
   return (
     <Card>
