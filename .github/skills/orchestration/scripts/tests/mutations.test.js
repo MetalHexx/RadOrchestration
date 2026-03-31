@@ -1935,3 +1935,179 @@ describe('getMutation (all 25 events)', () => {
     assert.equal(getMutation('phase_approved'), undefined);
   });
 });
+
+// ─── PR Mutation Handlers ───────────────────────────────────────────────────
+
+const { handlePrRequested, handlePrCreated } = _test;
+
+describe('handlePrRequested', () => {
+  it('happy path — auto_pr=always, branch present: no pr_url written, tier unchanged, mutations include "validated"', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const originalTier = state.pipeline.current_tier;
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.equal(state.pipeline.current_tier, originalTier);
+    assert.equal(state.pipeline.source_control.pr_url, undefined);
+    assert.ok(result.mutations_applied.some(m => m.includes('validated')));
+  });
+
+  it('skip path — auto_pr=never, branch present: pr_url set to null, tier to complete', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, null);
+    assert.equal(state.pipeline.current_tier, 'complete');
+    assert.ok(result.mutations_applied.some(m => m.includes('skipping')));
+  });
+
+  it('skip path — auto_pr absent/undefined: pr_url set to null, tier to complete', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+    };
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, null);
+    assert.equal(state.pipeline.current_tier, 'complete');
+    assert.ok(result.mutations_applied.some(m => m.includes('skipping')));
+  });
+
+  it('graceful absence — no source_control: tier to complete, no crash, no pr_url write', () => {
+    const state = makeExecutionState();
+    delete state.pipeline.source_control;
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.equal(state.pipeline.current_tier, 'complete');
+    assert.equal(state.pipeline.source_control, undefined);
+    assert.ok(result.mutations_applied.length > 0);
+  });
+
+  it('graceful absence — branch empty string: pr_url set to null, tier to complete', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: '',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, null);
+    assert.equal(state.pipeline.current_tier, 'complete');
+  });
+
+  it('mutations_applied verification — happy path returns exactly 1 entry containing "validated"', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.equal(result.mutations_applied.length, 1);
+    assert.ok(result.mutations_applied[0].includes('validated'));
+  });
+
+  it('mutations_applied verification — skip path returns exactly 1 entry containing "skipping"', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.equal(result.mutations_applied.length, 1);
+    assert.ok(result.mutations_applied[0].includes('skipping'));
+  });
+});
+
+describe('handlePrCreated', () => {
+  it('with URL string: persists pr_url, tier to complete', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/42' }, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, 'https://github.com/org/repo/pull/42');
+    assert.equal(state.pipeline.current_tier, 'complete');
+  });
+
+  it('with null: persists pr_url as null, tier to complete', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, { pr_url: null }, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, null);
+    assert.equal(state.pipeline.current_tier, 'complete');
+  });
+
+  it('overwrite existing — second call overwrites first pr_url', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/1' }, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, 'https://github.com/org/repo/pull/1');
+    handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/2' }, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, 'https://github.com/org/repo/pull/2');
+  });
+
+  it('mutations_applied verification — returns exactly 2 entries', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/42' }, defaultConfig);
+    assert.equal(result.mutations_applied.length, 2);
+    assert.ok(result.mutations_applied.some(m => m.includes('pr_url')));
+    assert.ok(result.mutations_applied.some(m => m.includes('current_tier')));
+  });
+
+  it('undefined context.pr_url: persists pr_url as null via ?? coalescing', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, {}, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, null);
+    assert.equal(state.pipeline.current_tier, 'complete');
+  });
+});

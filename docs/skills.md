@@ -43,7 +43,7 @@ To customize the **output format** of documents a skill produces, modify the ski
 | `generate-phase-report` | Summarize phase outcomes — aggregated task results, exit criteria assessment, carry-forward items | tactical-planner |
 | `run-tests` | Execute the project test suite and report structured results with pass/fail and error details | coder, coder-junior, coder-senior, tactical-planner |
 | `log-error` | Log pipeline errors to a structured, append-only per-project error log (`ERROR-LOG.md`) | orchestrator |
-| `source-control` | Source control automation — git commit and push via CLI wrapper; PR creation via GitHub CLI (AUTO-PR stub) | source-control |
+| `source-control` | Source control automation — git commit and push via CLI wrapper; PR creation via GitHub CLI | source-control |
 
 ### Review Skills
 

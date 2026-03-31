@@ -54,13 +54,13 @@ Appears in the Project Detail Panel below the Planning section and above the Exe
 
 The branch row displays the branch name from `pipeline.source_control` in `state.json`. When a compare URL is available, the branch name is rendered as a clickable external link that opens in a new tab. When no compare URL is present, the branch name is shown in plain monospace text.
 
-Auto-commit and auto-PR settings are each shown as a badge. When the value is `"always"`, a SpinnerBadge with a colored dot indicator is used; for any other value, an outline badge is displayed instead. When `auto_pr` is `"always"`, a PR placeholder row is also rendered below the badge, indicating that a pull request will be created automatically.
+Auto-commit and auto-PR settings are each shown as a badge. When the value is `"always"`, a SpinnerBadge with a colored dot indicator is used; for any other value, an outline badge is displayed instead. When `auto_pr` is `"always"`, a PR row is rendered below the badge: if `pr_url` is present in state, a clickable external link to the pull request is shown; otherwise, a placeholder with a Clock icon and "PR not yet created" text is displayed.
 
 | Badge | Value | Style |
 |-------|-------|-------|
 | `auto_commit` | `"always"` | SpinnerBadge (dot indicator) |
 | `auto_commit` | other | Outline badge |
-| `auto_pr` | `"always"` | SpinnerBadge (dot indicator) + PR placeholder row |
+| `auto_pr` | `"always"` | SpinnerBadge (dot indicator) + PR link (or placeholder if `pr_url` absent) |
 | `auto_pr` | other | Outline badge |
 
 In the Execution Drill-Down view, each TaskCard shows a commit link when the task has a recorded commit hash. The link is constructed from the repository remote URL in `pipeline.source_control` and the task's commit hash from its state entry.

@@ -1,62 +1,252 @@
-# PR Operations — AUTO-PR Stub
+# PR Operations Guide
 
-> **This reference is reserved for the AUTO-PR project.**
-> PR creation functionality has not yet been implemented. This file is a scaffold that will be populated when the AUTO-PR project is delivered.
-
----
-
-## Current Status
-
-PR mode is **not available**. The Source Control Agent may be invoked in PR mode (via `invoke_source_control_pr`), but no PR creation logic exists in this skill yet. All PR requests must return the stub result below and gracefully continue the pipeline.
+This document is the primary reference for the Source Control Agent when creating a pull request. It covers reading source control state, constructing PR parameters, invoking the `gh-pr.js` script, parsing results, handling failures, and reporting outcomes.
 
 ---
 
-## Agent Instructions — PR Mode
+## 1. State Reading
 
-When the Source Control Agent is operating in PR mode, follow these steps **exactly**:
+The Source Control Agent reads the `pipeline.source_control` object from `state.json` to obtain the values needed for PR creation.
 
-### Step 1: Return the Stub Result
+| Field | Type | Usage |
+|-------|------|-------|
+| `worktree_path` | string | Passed as `--worktree-path` flag |
+| `branch` | string | Passed as `--head` flag |
+| `base_branch` | string | Passed as `--base` flag |
 
-Return this structured JSON result — all 5 fields are required, in this exact shape:
+Key rules:
 
+- All three fields must be present in `pipeline.source_control`
+- If `pipeline.source_control` is absent from `state.json`, the agent performs a **graceful skip** — no PR is created, and the agent outputs the skip feedback (see Section 7)
+- The agent also reads `project.name` from `state.json` to construct the PR title
+
+---
+
+## 2. PR Parameter Construction
+
+The agent constructs two parameters before invoking the script: the PR title and the body file path.
+
+### PR Title
+
+The PR title format is:
+
+```
+{PROJECT-NAME}: Pipeline delivery
+```
+
+Where `{PROJECT-NAME}` is the project name from `state.json → project.name`.
+
+### PR Body File
+
+The agent attempts to locate a body file for the PR:
+
+1. Check if a phase report or final review document exists for the project
+2. If a body file exists → pass its path as `--body-file`
+3. If no body file exists → omit `--body-file` (the script defaults the body to `"Pipeline delivery"`)
+
+---
+
+## 3. Script Invocation
+
+The Source Control Agent invokes `gh-pr.js` to create the pull request.
+
+**Script invocation:**
+```
+node gh-pr.js --worktree-path <path> --title <title> --body-file <path> --base <branch> --head <branch>
+```
+
+The script performs a single operation: create a PR via the `gh` CLI (or return an existing PR if one already exists on the same head branch).
+
+The agent constructs the title and resolves the body file BEFORE invoking the script — these are pre-built arguments. The script returns a structured JSON result on stdout which the agent MUST parse.
+
+**Script arguments:**
+
+| Argument | Type | Required | Description |
+|----------|------|----------|-------------|
+| `--worktree-path` | string | Yes | Absolute path to the git worktree (used as `cwd` for `gh` commands) |
+| `--title` | string | Yes | PR title |
+| `--body-file` | string | No | Path to a file containing the PR body; if omitted, body defaults to `"Pipeline delivery"` |
+| `--base` | string | Yes | Base branch (merge target) |
+| `--head` | string | Yes | Head branch (source branch with changes) |
+
+**Exit codes:**
+
+| Exit Code | Meaning |
+|-----------|---------|
+| `0` | PR created successfully OR existing PR found and returned (idempotent) |
+| `2` | Failure (missing args, auth error, `gh` CLI error) |
+
+---
+
+## 4. Structured Result Patterns
+
+The `gh-pr.js` script returns one of three JSON result shapes on stdout. The agent MUST handle all three.
+
+**Success — new PR created** (exit code 0):
 ```json
 {
-  "committed": false,
-  "pushed": false,
-  "pr_created": false,
-  "error": "pr_mode_not_implemented",
-  "message": "AUTO-PR not yet delivered"
+  "pr_created": true,
+  "pr_url": "https://github.com/org/repo/pull/42",
+  "error": null,
+  "errorType": null
 }
 ```
 
-### Step 2: Log the Error
+**Success — existing PR found (idempotent)** (exit code 0):
+```json
+{
+  "pr_created": false,
+  "pr_url": "https://github.com/org/repo/pull/42",
+  "error": null,
+  "errorType": null
+}
+```
 
-Invoke the `log-error` skill with the following parameters:
+**Failure** (exit code 2):
+```json
+{
+  "pr_created": false,
+  "pr_url": null,
+  "error": "<error message>",
+  "errorType": "<error-type>"
+}
+```
 
-- **Severity**: `"minor"`
-- **Source**: `"source-control-agent"`
-- **Message**: `"PR mode invoked but AUTO-PR not yet delivered. Returning stub result."`
+**Result field reference:**
 
-This is a **minor** severity because the stub is an expected, non-breaking response — the pipeline will continue normally.
+| Field | Type | Description |
+|-------|------|-------------|
+| `pr_created` | boolean | Whether a **new** PR was created (false on idempotent hit or failure) |
+| `pr_url` | string \| null | PR URL on success or idempotent hit; null on failure |
+| `error` | string \| null | Sanitized error message on failure; null on success |
+| `errorType` | `"missing_args"` \| `"auth_failed"` \| `"create_failed"` \| null | Typed failure category; null on success |
 
-### Step 3: Signal the Pipeline Event
-
-After returning the stub result and logging, signal `task_committed` to advance the pipeline. **Never leave the pipeline stalled** — always signal `task_committed` regardless of mode.
-
-Provide the stub result JSON as the event context so the pipeline has visibility into what happened.
+The `errorType` values:
+- `"missing_args"` — one or more required flags were not provided
+- `"auth_failed"` — `gh` CLI is not authenticated or credentials are invalid
+- `"create_failed"` — PR creation failed for any other reason (network, permissions, etc.)
 
 ---
 
-## What AUTO-PR Will Populate
+## 5. When to Invoke the `log-error` Skill
 
-When the AUTO-PR project is delivered, this file will be replaced with full PR creation documentation covering:
+The `log-error` skill is invoked when the JSON result contains a non-null `error` field. The simple rule: **invoke `log-error` whenever `error` is non-null**.
 
-- **PR creation workflow** — branch validation, title/body construction, label assignment
-- **`gh` CLI usage** — `gh pr create` invocation, authentication prerequisites, error handling
-- **PR template integration** — mapping task context to PR template fields
-- **Base branch resolution** — reading `base_branch` from `pipeline.source_control` state
-- **Draft vs. ready PR** — configuration-driven PR status on creation
-- **Duplicate PR detection** — checking for existing open PRs on the same branch
-- **PR result shape** — the full structured JSON with `pr_url`, `pr_number`, and status fields
+- Invoke `log-error` on **failure** (exit code 2, any `errorType`) — log the PR creation failure
+- **Never** invoke `log-error` on **success** (exit code 0, `error: null`) — whether a new PR was created or an existing one was found
+- **Never** invoke `log-error` on **graceful skip** (`pipeline.source_control` absent) — this is expected, not an error
 
-Until then, this file serves only as a routing target to ensure the skill's routing table resolves without error.
+**Error logging parameters:**
+
+- **Severity**: `"minor"` — PR failure is non-blocking; the pipeline always completes
+- **Source**: `"source-control-agent"`
+- **Message**: The `error` field value from the script result
+
+**Completion rule:** After logging the error, **output your PR result block** — the Orchestrator reads it and signals `pr_created` with the extracted values. Never call `pipeline.js` from within the Source Control Agent — the Orchestrator is the sole caller of the pipeline script.
+
+---
+
+## 6. Agent Feedback Symbols
+
+The Source Control Agent uses these symbols when reporting outcomes:
+
+| Symbol | Meaning |
+|--------|---------|
+| `✓` | Success — PR created or existing PR found |
+| `✗` | Failure — PR creation failed |
+| `ℹ` | Informational — source control state absent (graceful skip) or existing PR found |
+
+Usage:
+- `✓` — after a new PR is created successfully
+- `ℹ` — when an existing PR is found (idempotent), or when source control state is absent (graceful skip)
+- `✗` — after any failure (missing args, auth error, creation error)
+
+---
+
+## 7. Feedback Output Patterns
+
+After parsing the JSON result from stdout, output one of these patterns:
+
+**New PR created** (exit code 0, `pr_created: true`):
+```
+✓  PR created: {pr_url}
+```
+
+**Existing PR found — idempotent** (exit code 0, `pr_created: false`, `pr_url` non-null):
+```
+ℹ  Existing PR found: {pr_url}
+```
+
+**Failure** (exit code 2):
+```
+✗  PR creation failed: {error}
+   Error logged to project error log.
+   Pipeline will continue without a pull request.
+```
+
+**Source control state absent** (graceful skip — no `pipeline.source_control`):
+```
+ℹ  Source control context absent — PR creation skipped.
+```
+
+---
+
+## 8. PR Result Block
+
+After outputting the human-readable feedback above, **always append a `## PR Result` block** as the final output. The Orchestrator scans for this block to extract the `pr_url` value it passes to `pr_created`.
+
+**Format** (required on every code path):
+
+````
+## PR Result
+```json
+{ "pr_url": "<url-or-null>" }
+```
+````
+
+**Values for each outcome:**
+
+| Outcome | `pr_url` |
+|---------|----------|
+| New PR created | PR URL string |
+| Existing PR found (idempotent) | Existing PR URL string |
+| Failure (any) | `null` |
+| Source control state absent | `null` |
+
+**Example — new PR created:**
+
+````
+## PR Result
+```json
+{ "pr_url": "https://github.com/org/repo/pull/42" }
+```
+````
+
+**Example — existing PR found:**
+
+````
+## PR Result
+```json
+{ "pr_url": "https://github.com/org/repo/pull/42" }
+```
+````
+
+**Example — failure:**
+
+````
+## PR Result
+```json
+{ "pr_url": null }
+```
+````
+
+**Example — source control state absent:**
+
+````
+## PR Result
+```json
+{ "pr_url": null }
+```
+````
+
+**Never leave the pipeline stalled** — always output the `## PR Result` block regardless of outcome. The Orchestrator reads it and signals `pr_created` with the `pr_url` value. The agent does NOT call `pipeline.js` directly — the Orchestrator is the sole caller of the pipeline script.

@@ -769,6 +769,70 @@ function handleTaskCommitted(state, context, config) {
   };
 }
 
+/**
+ * pr_requested — Validation checkpoint before spawning Source Control Agent in PR mode.
+ *
+ * Graceful-absence rules (mirrors handleTaskCommitRequested):
+ *   - If source_control absent or branch falsy → skip: write pr_url null (when sc exists),
+ *     set tier to complete
+ *   - If auto_pr !== 'always' → skip: write pr_url null, set tier to complete
+ *   - Otherwise → validation passed, no state change (resolver routes to invoke_source_control_pr)
+ *
+ * @param {Object} state   - deep-cloned pipeline state
+ * @param {Object} context - {} (no fields required)
+ * @param {Object} config  - merged orchestration config (unused)
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handlePrRequested(state, context, config) {
+  const sc = state.pipeline.source_control;
+  const mutations = [];
+
+  if (!sc || !sc.branch) {
+    // Graceful skip: no source_control metadata or no branch → skip PR
+    if (sc) sc.pr_url = null;
+    state.pipeline.current_tier = PIPELINE_TIERS.COMPLETE;
+    mutations.push(
+      'source_control not initialized or branch absent — skipping PR: ' +
+      `set tier to "${PIPELINE_TIERS.COMPLETE}"`
+    );
+  } else if (sc.auto_pr !== 'always') {
+    // auto_pr not enabled → skip PR creation
+    sc.pr_url = null;
+    state.pipeline.current_tier = PIPELINE_TIERS.COMPLETE;
+    mutations.push(
+      `auto_pr is "${sc.auto_pr}" (not "always") — skipping PR: ` +
+      `set pr_url to null, tier to "${PIPELINE_TIERS.COMPLETE}"`
+    );
+  } else {
+    // Validation passed: branch present, auto_pr is 'always'
+    mutations.push(`PR request validated: branch = "${sc.branch}", auto_pr = "always"`);
+  }
+
+  return { state, mutations_applied: mutations };
+}
+
+/**
+ * pr_created — Finalizes the PR step.
+ * Always succeeds unconditionally — even on PR creation failure — to prevent pipeline stall.
+ * Persists pr_url (or null on failure) and transitions to COMPLETE.
+ *
+ * @param {Object} state   - deep-cloned pipeline state
+ * @param {Object} context - { pr_url: string|null }
+ * @param {Object} config  - merged orchestration config (unused)
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handlePrCreated(state, context, config) {
+  state.pipeline.source_control.pr_url = context.pr_url ?? null;
+  state.pipeline.current_tier = PIPELINE_TIERS.COMPLETE;
+  return {
+    state,
+    mutations_applied: [
+      `Set pipeline.source_control.pr_url to ${JSON.stringify(context.pr_url ?? null)}`,
+      `Set pipeline.current_tier to "${PIPELINE_TIERS.COMPLETE}"`,
+    ],
+  };
+}
+
 // ─── MUTATIONS Map ──────────────────────────────────────────────────────────
 
 const MUTATIONS = Object.freeze({
@@ -798,10 +862,12 @@ const MUTATIONS = Object.freeze({
   phase_report_created:     handlePhaseReportCreated,
   phase_review_completed:   handlePhaseReviewCompleted,
 
-  // Source control (3)
+  // Source control (5)
   source_control_init:        handleSourceControlInit,
   task_commit_requested:      handleTaskCommitRequested,
   task_committed:             handleTaskCommitted,
+  pr_requested:               handlePrRequested,
+  pr_created:                 handlePrCreated,
 
   // Gate events (3)
   gate_mode_set:            handleGateModeSet,
@@ -841,4 +907,6 @@ module.exports._test = {
   handleSourceControlInit,
   handleTaskCommitRequested,
   handleTaskCommitted,
+  handlePrRequested,
+  handlePrCreated,
 };

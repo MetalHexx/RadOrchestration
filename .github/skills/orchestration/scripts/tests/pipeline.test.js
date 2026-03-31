@@ -28,7 +28,8 @@ describe('parseArgs', () => {
       '--commit-hash', 'abc123def',
       '--pushed', 'true',
       '--remote-url',  'https://github.com/org/repo',
-      '--compare-url', 'https://github.com/org/repo/compare/main...feat'
+      '--compare-url', 'https://github.com/org/repo/compare/main...feat',
+      '--pr-url', 'https://github.com/org/repo/pull/42'
     ]);
     assert.deepStrictEqual(result, {
       event: 'task_completed',
@@ -46,11 +47,12 @@ describe('parseArgs', () => {
       commitHash: 'abc123def',
       pushed: 'true',
       remoteUrl:  'https://github.com/org/repo',
-      compareUrl: 'https://github.com/org/repo/compare/main...feat'
+      compareUrl: 'https://github.com/org/repo/compare/main...feat',
+      prUrl: 'https://github.com/org/repo/pull/42'
     });
   });
 
-  it('returns undefined for all 13 named flags when only required flags are provided', () => {
+  it('returns undefined for all 14 named flags when only required flags are provided', () => {
     const result = parseArgs(['--event', 'task_completed', '--project-dir', '/tmp/proj']);
     assert.deepStrictEqual(result, {
       event: 'task_completed',
@@ -68,7 +70,8 @@ describe('parseArgs', () => {
       commitHash: undefined,
       pushed: undefined,
       remoteUrl:  undefined,
-      compareUrl: undefined
+      compareUrl: undefined,
+      prUrl: undefined
     });
   });
 

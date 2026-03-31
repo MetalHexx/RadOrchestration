@@ -1450,3 +1450,337 @@ describe('Category 15: null paths — remote_url, compare_url, commit_hash', () 
     assert.equal(io.getState().execution.phases[0].current_task, 2); // pointer advanced
   });
 });
+
+// ─── Category 16: PR-enabled happy path (auto_pr=always) ───────────────────
+// Chains a single-phase, single-task project from phase_plan_created through
+// the full commit + PR flow to display_complete. Verifies the resolver intercepts
+// at the COMPLETE tier when auto_pr=always and pr_url is absent, and that
+// pr_created persists the URL and completes the pipeline.
+
+describe('Category 16: PR-enabled happy path (auto_pr=always)', () => {
+  const documents = {
+    'c16-pp.md': makeDoc({ tasks: ['T01'] }),
+    'c16-cr.md': makeDoc({ verdict: 'approved' }),
+    'c16-prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
+  };
+
+  const state = makeExecutionStartState(1);
+  const io = createMockIO({ state, documents });
+  let writeCount = 0;
+
+  it('Step 1: phase_plan_created → create_task_handoff', () => {
+    const result = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c16-pp.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.ok(io.getState().execution.phases[0].tasks.length > 0);
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 2: source_control_init (auto_pr=always) → create_task_handoff', () => {
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/pr-test',
+      base_branch: 'main',
+      worktree_path: '/wt/pr',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getState().pipeline.source_control.auto_pr, 'always');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 3: task_handoff_created → execute_task', () => {
+    const result = processEvent('task_handoff_created', PROJECT_DIR, { doc_path: 'c16-th.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'execute_task');
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'coding');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 4: task_completed → spawn_code_reviewer', () => {
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_code_reviewer');
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'reviewing');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 5: code_review_completed → invoke_source_control_commit (auto_commit=always)', () => {
+    const result = processEvent('code_review_completed', PROJECT_DIR, { doc_path: 'c16-cr.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 6: task_commit_requested → invoke_source_control_commit', () => {
+    const result = processEvent('task_commit_requested', PROJECT_DIR, { task_id: 'P01-T01' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 7: task_committed → generate_phase_report (single-task phase, pointer advances)', () => {
+    const result = processEvent('task_committed', PROJECT_DIR, { task_id: 'P01-T01', committed: true, pushed: true }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'generate_phase_report');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 8: phase_report_created → spawn_phase_reviewer', () => {
+    const result = processEvent('phase_report_created', PROJECT_DIR, { doc_path: 'c16-pr.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_phase_reviewer');
+    assert.equal(io.getState().execution.phases[0].stage, 'reviewing');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 9: phase_review_completed → spawn_final_reviewer; tier transitions to review', () => {
+    const result = processEvent('phase_review_completed', PROJECT_DIR, { doc_path: 'c16-prv.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_final_reviewer');
+    assert.equal(io.getState().pipeline.current_tier, 'review');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 10: final_review_completed → request_final_approval', () => {
+    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: 'c16-fr.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'request_final_approval');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 11: final_approved → invoke_source_control_pr (resolver intercept: tier=complete, auto_pr=always, pr_url absent)', () => {
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_pr');
+    assert.equal(io.getState().pipeline.current_tier, 'complete');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 12: pr_requested → invoke_source_control_pr (validation passed)', () => {
+    const result = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_pr');
+    // pr_url should NOT be in source_control yet (validation passed, no state change)
+    assert.equal('pr_url' in io.getState().pipeline.source_control, false);
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 13: pr_created (with URL) → display_complete; pr_url persisted', () => {
+    const result = processEvent('pr_created', PROJECT_DIR, { pr_url: 'https://github.com/org/repo/pull/42' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'display_complete');
+    assert.equal(io.getState().pipeline.source_control.pr_url, 'https://github.com/org/repo/pull/42');
+    assert.equal(io.getState().pipeline.current_tier, 'complete');
+  });
+});
+
+// ─── Category 17: PR-disabled skip (auto_pr=never) ─────────────────────────
+// Full lifecycle with auto_pr: never. After final_approved, resolver goes
+// directly to display_complete (no pr_requested event at all). Verifies no
+// pr_url field is written to state.
+
+describe('Category 17: PR-disabled skip (auto_pr=never)', () => {
+  const documents = {
+    'c17-pp.md': makeDoc({ tasks: ['T01'] }),
+    'c17-cr.md': makeDoc({ verdict: 'approved' }),
+    'c17-prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
+  };
+
+  const state = makeExecutionStartState(1);
+  const io = createMockIO({ state, documents });
+  let writeCount = 0;
+
+  it('Step 1: phase_plan_created → create_task_handoff', () => {
+    const result = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c17-pp.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 2: source_control_init (auto_pr=never) → create_task_handoff', () => {
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/pr-skip',
+      base_branch: 'main',
+      worktree_path: '/wt/pr-skip',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(io.getState().pipeline.source_control.auto_pr, 'never');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 3: task_handoff_created → execute_task', () => {
+    const result = processEvent('task_handoff_created', PROJECT_DIR, { doc_path: 'c17-th.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'execute_task');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 4: task_completed → spawn_code_reviewer', () => {
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_code_reviewer');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 5: code_review_completed → invoke_source_control_commit (auto_commit=always)', () => {
+    const result = processEvent('code_review_completed', PROJECT_DIR, { doc_path: 'c17-cr.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 6: task_commit_requested → invoke_source_control_commit', () => {
+    const result = processEvent('task_commit_requested', PROJECT_DIR, { task_id: 'P01-T01' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 7: task_committed → generate_phase_report', () => {
+    const result = processEvent('task_committed', PROJECT_DIR, { task_id: 'P01-T01', committed: true, pushed: true }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'generate_phase_report');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 8: phase_report_created → spawn_phase_reviewer', () => {
+    const result = processEvent('phase_report_created', PROJECT_DIR, { doc_path: 'c17-pr.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_phase_reviewer');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 9: phase_review_completed → spawn_final_reviewer', () => {
+    const result = processEvent('phase_review_completed', PROJECT_DIR, { doc_path: 'c17-prv.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_final_reviewer');
+    assert.equal(io.getState().pipeline.current_tier, 'review');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 10: final_review_completed → request_final_approval', () => {
+    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: 'c17-fr.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'request_final_approval');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 11: final_approved → display_complete (no PR intercept; auto_pr=never)', () => {
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'display_complete');
+    assert.equal(io.getState().pipeline.current_tier, 'complete');
+    // No pr_url field should exist — the PR path was never entered
+    assert.equal('pr_url' in io.getState().pipeline.source_control, false);
+  });
+});
+
+// ─── Category 18: PR failure path (pr_url: null) ───────────────────────────
+// Starts from the point of final_approved (simulating only the PR-relevant
+// tail) to prove the failure path. pr_created with pr_url: null should still
+// reach display_complete (non-blocking failure).
+
+describe('Category 18: PR failure path (pr_url: null)', () => {
+  const state = createReviewState({
+    pipeline: {
+      source_control: {
+        branch: 'feat/pr-fail',
+        base_branch: 'main',
+        worktree_path: '/wt/pr-fail',
+        auto_commit: 'always',
+        auto_pr: 'always',
+      },
+    },
+    final_review: {
+      doc_path: 'fr.md',
+      status: 'complete',
+      human_approved: false,
+    },
+  });
+  delete state.project.updated;
+
+  const io = createMockIO({ state });
+  let writeCount = 0;
+
+  it('Step 1: final_approved → invoke_source_control_pr (resolver intercept)', () => {
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_pr');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 2: pr_requested → invoke_source_control_pr (validation pass)', () => {
+    const result = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_pr');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 3: pr_created (pr_url: null) → display_complete; pr_url is null (non-blocking)', () => {
+    const result = processEvent('pr_created', PROJECT_DIR, { pr_url: null }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'display_complete');
+    assert.strictEqual(io.getState().pipeline.source_control.pr_url, null);
+    assert.equal(io.getState().pipeline.current_tier, 'complete');
+  });
+});
+
+// ─── Category 19: PR graceful absence (no source_control) ──────────────────
+// Tests that the pipeline completes cleanly when there is no source_control
+// object on the pipeline. The resolver's PR intercept checks
+// sc?.auto_pr === 'always' — when sc is undefined, this is falsy, so it
+// falls through to display_complete.
+
+describe('Category 19: PR graceful absence (no source_control)', () => {
+  const state = createReviewState({
+    final_review: {
+      doc_path: 'fr.md',
+      status: 'complete',
+      human_approved: false,
+    },
+  });
+  delete state.project.updated;
+  // Ensure no source_control on pipeline
+  delete state.pipeline.source_control;
+
+  const io = createMockIO({ state });
+
+  it('Step 1: final_approved → display_complete (no source_control, no PR intercept)', () => {
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'display_complete');
+    assert.equal(io.getState().pipeline.current_tier, 'complete');
+  });
+});

@@ -4,6 +4,7 @@ import { Github, Clock } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SpinnerBadge } from "@/components/badges";
+import { ExternalLink } from "@/components/documents/external-link";
 import type { SourceControl } from "@/types/state";
 
 interface SourceControlSectionProps {
@@ -14,6 +15,7 @@ interface SourceControlSectionProps {
 export function SourceControlSection({ sourceControl }: SourceControlSectionProps) {
   const { branch, auto_commit, auto_pr } = sourceControl;
   const compare_url = sourceControl.compare_url ?? null;
+  const pr_url = sourceControl.pr_url ?? null;
 
   return (
     <Card>
@@ -67,17 +69,25 @@ export function SourceControlSection({ sourceControl }: SourceControlSectionProp
           )}
         </div>
 
-        {/* PR placeholder row — rendered only when auto_pr === "always" */}
+        {/* PR row — rendered only when auto_pr === "always" */}
         {auto_pr === 'always' && (
-          <div aria-label="Pull request not yet created">
-            <Clock
-              size={12}
-              className="inline mr-1"
-              style={{ color: 'var(--status-not-started)' }}
-              aria-hidden="true"
+          pr_url ? (
+            <ExternalLink
+              href={pr_url}
+              label="Pull Request"
+              icon="github"
             />
-            <span className="text-xs text-muted-foreground italic">PR not yet created</span>
-          </div>
+          ) : (
+            <div aria-label="Pull request not yet created">
+              <Clock
+                size={12}
+                className="inline mr-1"
+                style={{ color: 'var(--status-not-started)' }}
+                aria-hidden="true"
+              />
+              <span className="text-xs text-muted-foreground italic">PR not yet created</span>
+            </div>
+          )
         )}
       </CardContent>
     </Card>

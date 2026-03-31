@@ -56,6 +56,7 @@ export interface SourceControl {
   auto_pr: 'always' | 'never';
   remote_url?: string | null;
   compare_url?: string | null;
+  pr_url?: string | null;
 }
 
 // ─── Top-Level Sections ──────────────────────────────────────────────────────

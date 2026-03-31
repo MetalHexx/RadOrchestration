@@ -669,3 +669,383 @@ describe('processEvent — task_committed', () => {
     assert.equal(result.action, 'create_task_handoff');
   });
 });
+
+// ─── processEvent — pr_requested ────────────────────────────────────────────
+
+describe('processEvent — pr_requested', () => {
+  it('happy path: auto_pr=always, branch present → success, invoke_source_control_pr', () => {
+    const state = createExecutionState({
+      pipeline: {
+        current_tier: 'complete',
+        source_control: {
+          branch: 'feat/x',
+          base_branch: 'main',
+          worktree_path: '/wt',
+          auto_commit: 'always',
+          auto_pr: 'always',
+        },
+      },
+      execution: {
+        status: 'complete',
+        current_phase: 1,
+        phases: [{
+          name: 'Phase 1',
+          status: 'complete',
+          stage: 'complete',
+          current_task: 1,
+          tasks: [{
+            name: 'T01', status: 'complete', stage: 'complete',
+            docs: { handoff: 'h.md', review: 'rv.md' },
+            review: { verdict: 'approved', action: 'advanced' },
+            retries: 0,
+          }],
+          docs: { phase_plan: 'pp.md', phase_report: 'pr.md', phase_review: 'prv.md' },
+          review: { verdict: 'approved', action: 'advanced' },
+        }],
+      },
+      final_review: {
+        status: 'complete',
+        doc_path: 'fr.md',
+        human_approved: true,
+      },
+    });
+    delete state.project.updated;
+    const io = createMockIO({ state });
+    const result = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    assertResultShape(result);
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, 1);
+    assert.ok(result.mutations_applied.length > 0);
+    assert.equal(result.action, 'invoke_source_control_pr');
+  });
+
+  it('skip path: auto_pr=never → success, pr_url=null, display_complete', () => {
+    const state = createExecutionState({
+      pipeline: {
+        current_tier: 'complete',
+        source_control: {
+          branch: 'feat/x',
+          base_branch: 'main',
+          worktree_path: '/wt',
+          auto_commit: 'always',
+          auto_pr: 'never',
+        },
+      },
+      execution: {
+        status: 'complete',
+        current_phase: 1,
+        phases: [{
+          name: 'Phase 1',
+          status: 'complete',
+          stage: 'complete',
+          current_task: 1,
+          tasks: [{
+            name: 'T01', status: 'complete', stage: 'complete',
+            docs: { handoff: 'h.md', review: 'rv.md' },
+            review: { verdict: 'approved', action: 'advanced' },
+            retries: 0,
+          }],
+          docs: { phase_plan: 'pp.md', phase_report: 'pr.md', phase_review: 'prv.md' },
+          review: { verdict: 'approved', action: 'advanced' },
+        }],
+      },
+      final_review: {
+        status: 'complete',
+        doc_path: 'fr.md',
+        human_approved: true,
+      },
+    });
+    delete state.project.updated;
+    const io = createMockIO({ state });
+    const result = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    assertResultShape(result);
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, 1);
+    const written = io.getWrites()[0];
+    assert.equal(written.pipeline.source_control.pr_url, null);
+    assert.equal(written.pipeline.current_tier, 'complete');
+    assert.equal(result.action, 'display_complete');
+  });
+
+  it('graceful-absence: no source_control on pipeline → success, display_complete', () => {
+    const state = createExecutionState({
+      pipeline: {
+        current_tier: 'complete',
+      },
+      execution: {
+        status: 'complete',
+        current_phase: 1,
+        phases: [{
+          name: 'Phase 1',
+          status: 'complete',
+          stage: 'complete',
+          current_task: 1,
+          tasks: [{
+            name: 'T01', status: 'complete', stage: 'complete',
+            docs: { handoff: 'h.md', review: 'rv.md' },
+            review: { verdict: 'approved', action: 'advanced' },
+            retries: 0,
+          }],
+          docs: { phase_plan: 'pp.md', phase_report: 'pr.md', phase_review: 'prv.md' },
+          review: { verdict: 'approved', action: 'advanced' },
+        }],
+      },
+      final_review: {
+        status: 'complete',
+        doc_path: 'fr.md',
+        human_approved: true,
+      },
+    });
+    delete state.project.updated;
+    const io = createMockIO({ state });
+    const result = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    assertResultShape(result);
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, 1);
+    assert.equal(result.action, 'display_complete');
+  });
+
+  it('mutations_applied: happy path contains descriptive string', () => {
+    const state = createExecutionState({
+      pipeline: {
+        current_tier: 'complete',
+        source_control: {
+          branch: 'feat/x',
+          base_branch: 'main',
+          worktree_path: '/wt',
+          auto_commit: 'always',
+          auto_pr: 'always',
+        },
+      },
+      execution: {
+        status: 'complete',
+        current_phase: 1,
+        phases: [{
+          name: 'Phase 1',
+          status: 'complete',
+          stage: 'complete',
+          current_task: 1,
+          tasks: [{
+            name: 'T01', status: 'complete', stage: 'complete',
+            docs: { handoff: 'h.md', review: 'rv.md' },
+            review: { verdict: 'approved', action: 'advanced' },
+            retries: 0,
+          }],
+          docs: { phase_plan: 'pp.md', phase_report: 'pr.md', phase_review: 'prv.md' },
+          review: { verdict: 'approved', action: 'advanced' },
+        }],
+      },
+      final_review: {
+        status: 'complete',
+        doc_path: 'fr.md',
+        human_approved: true,
+      },
+    });
+    delete state.project.updated;
+    const io = createMockIO({ state });
+    const result = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    assert.ok(result.mutations_applied.length > 0, 'mutations_applied should be non-empty');
+    assert.ok(result.mutations_applied.some(m => typeof m === 'string' && m.length > 0));
+  });
+
+  it('mutations_applied: skip path contains descriptive string', () => {
+    const state = createExecutionState({
+      pipeline: {
+        current_tier: 'complete',
+        source_control: {
+          branch: 'feat/x',
+          base_branch: 'main',
+          worktree_path: '/wt',
+          auto_commit: 'always',
+          auto_pr: 'never',
+        },
+      },
+      execution: {
+        status: 'complete',
+        current_phase: 1,
+        phases: [{
+          name: 'Phase 1',
+          status: 'complete',
+          stage: 'complete',
+          current_task: 1,
+          tasks: [{
+            name: 'T01', status: 'complete', stage: 'complete',
+            docs: { handoff: 'h.md', review: 'rv.md' },
+            review: { verdict: 'approved', action: 'advanced' },
+            retries: 0,
+          }],
+          docs: { phase_plan: 'pp.md', phase_report: 'pr.md', phase_review: 'prv.md' },
+          review: { verdict: 'approved', action: 'advanced' },
+        }],
+      },
+      final_review: {
+        status: 'complete',
+        doc_path: 'fr.md',
+        human_approved: true,
+      },
+    });
+    delete state.project.updated;
+    const io = createMockIO({ state });
+    const result = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    assert.ok(result.mutations_applied.length > 0, 'mutations_applied should be non-empty');
+    assert.ok(result.mutations_applied.some(m => typeof m === 'string' && m.length > 0));
+  });
+});
+
+// ─── processEvent — pr_created ──────────────────────────────────────────────
+
+describe('processEvent — pr_created', () => {
+  it('with URL string → success, pr_url stored, display_complete', () => {
+    const state = createExecutionState({
+      pipeline: {
+        current_tier: 'complete',
+        source_control: {
+          branch: 'feat/x',
+          base_branch: 'main',
+          worktree_path: '/wt',
+          auto_commit: 'always',
+          auto_pr: 'always',
+        },
+      },
+      execution: {
+        status: 'complete',
+        current_phase: 1,
+        phases: [{
+          name: 'Phase 1',
+          status: 'complete',
+          stage: 'complete',
+          current_task: 1,
+          tasks: [{
+            name: 'T01', status: 'complete', stage: 'complete',
+            docs: { handoff: 'h.md', review: 'rv.md' },
+            review: { verdict: 'approved', action: 'advanced' },
+            retries: 0,
+          }],
+          docs: { phase_plan: 'pp.md', phase_report: 'pr.md', phase_review: 'prv.md' },
+          review: { verdict: 'approved', action: 'advanced' },
+        }],
+      },
+      final_review: {
+        status: 'complete',
+        doc_path: 'fr.md',
+        human_approved: true,
+      },
+    });
+    delete state.project.updated;
+    const io = createMockIO({ state });
+    const result = processEvent('pr_created', PROJECT_DIR, { pr_url: 'https://github.com/org/repo/pull/42' }, io);
+    assertResultShape(result);
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, 1);
+    const written = io.getWrites()[0];
+    assert.equal(written.pipeline.source_control.pr_url, 'https://github.com/org/repo/pull/42');
+    assert.equal(result.action, 'display_complete');
+  });
+
+  it('with null URL → success, pr_url=null, display_complete', () => {
+    const state = createExecutionState({
+      pipeline: {
+        current_tier: 'complete',
+        source_control: {
+          branch: 'feat/x',
+          base_branch: 'main',
+          worktree_path: '/wt',
+          auto_commit: 'always',
+          auto_pr: 'always',
+        },
+      },
+      execution: {
+        status: 'complete',
+        current_phase: 1,
+        phases: [{
+          name: 'Phase 1',
+          status: 'complete',
+          stage: 'complete',
+          current_task: 1,
+          tasks: [{
+            name: 'T01', status: 'complete', stage: 'complete',
+            docs: { handoff: 'h.md', review: 'rv.md' },
+            review: { verdict: 'approved', action: 'advanced' },
+            retries: 0,
+          }],
+          docs: { phase_plan: 'pp.md', phase_report: 'pr.md', phase_review: 'prv.md' },
+          review: { verdict: 'approved', action: 'advanced' },
+        }],
+      },
+      final_review: {
+        status: 'complete',
+        doc_path: 'fr.md',
+        human_approved: true,
+      },
+    });
+    delete state.project.updated;
+    const io = createMockIO({ state });
+    const result = processEvent('pr_created', PROJECT_DIR, { pr_url: null }, io);
+    assertResultShape(result);
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, 1);
+    const written = io.getWrites()[0];
+    assert.equal(written.pipeline.source_control.pr_url, null);
+    assert.equal(result.action, 'display_complete');
+  });
+});
+
+// ─── processEvent — resolver PR intercept ───────────────────────────────────
+
+describe('processEvent — resolver PR intercept', () => {
+  it('pr_requested validation pass → invoke_source_control_pr; pr_created with URL → display_complete', () => {
+    const state = createExecutionState({
+      pipeline: {
+        current_tier: 'complete',
+        source_control: {
+          branch: 'feat/x',
+          base_branch: 'main',
+          worktree_path: '/wt',
+          auto_commit: 'always',
+          auto_pr: 'always',
+        },
+      },
+      execution: {
+        status: 'complete',
+        current_phase: 1,
+        phases: [{
+          name: 'Phase 1',
+          status: 'complete',
+          stage: 'complete',
+          current_task: 1,
+          tasks: [{
+            name: 'T01', status: 'complete', stage: 'complete',
+            docs: { handoff: 'h.md', review: 'rv.md' },
+            review: { verdict: 'approved', action: 'advanced' },
+            retries: 0,
+          }],
+          docs: { phase_plan: 'pp.md', phase_report: 'pr.md', phase_review: 'prv.md' },
+          review: { verdict: 'approved', action: 'advanced' },
+        }],
+      },
+      final_review: {
+        status: 'complete',
+        doc_path: 'fr.md',
+        human_approved: true,
+      },
+    });
+    delete state.project.updated;
+
+    // Step 1: pr_requested with auto_pr='always' and no pr_url → resolver returns invoke_source_control_pr
+    const io1 = createMockIO({ state });
+    const result1 = processEvent('pr_requested', PROJECT_DIR, {}, io1);
+    assertResultShape(result1);
+    assert.equal(result1.success, true);
+    assert.equal(result1.action, 'invoke_source_control_pr');
+
+    // Step 2: pr_created with URL on the written state → resolver returns display_complete
+    const writtenState = io1.getWrites()[0];
+    delete writtenState.project.updated;
+    const io2 = createMockIO({ state: writtenState });
+    const result2 = processEvent('pr_created', PROJECT_DIR, { pr_url: 'https://github.com/org/repo/pull/42' }, io2);
+    assertResultShape(result2);
+    assert.equal(result2.success, true);
+    assert.equal(result2.action, 'display_complete');
+    assert.equal(io2.getWrites()[0].pipeline.source_control.pr_url, 'https://github.com/org/repo/pull/42');
+  });
+});

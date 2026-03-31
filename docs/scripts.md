@@ -23,7 +23,8 @@ node .github/skills/orchestration/scripts/pipeline.js \
   [--auto-commit <always|never>] [--auto-pr <always|never>] \
   [--gate-type <type>] [--reason <text>] \
   [--gate-mode <mode>] \
-  [--commit-hash <hash>] [--pushed <true|false>]
+  [--commit-hash <hash>] [--pushed <true|false>] \
+  [--pr-url <url>]
 ```
 
 **Required flags:**
@@ -54,6 +55,7 @@ node .github/skills/orchestration/scripts/pipeline.js \
 | `--gate-mode <mode>` | `gate_mode` | `gate_mode_set` |
 | `--commit-hash <hash>` | `commitHash` | `task_committed` |
 | `--pushed <true|false>` | `pushed` | `task_committed` |
+| `--pr-url <url>` | `pr_url` | `pr_created` |
 
 ### migrate-to-v4.js
 
@@ -69,7 +71,51 @@ node .github/skills/orchestration/scripts/migrate-to-v4.js <project-dir>
 Migrates a project’s `state.json` from an older schema version (v1–v3) to v4 format. Creates a backup of the original file (e.g., `state.3.json.bak`) before migrating and validates the result against the v4 JSON Schema.
 
 ---
+### gh-pr.js
 
+```bash
+# Located in .github/skills/source-control/scripts/
+node .github/skills/source-control/scripts/gh-pr.js \
+  --worktree-path <path> \
+  --title <title> \
+  --base <branch> \
+  --head <branch> \
+  [--body-file <path>]
+```
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--worktree-path <path>` | Yes | Absolute path to the git worktree |
+| `--title <title>` | Yes | PR title |
+| `--base <branch>` | Yes | Target branch for the PR |
+| `--head <branch>` | Yes | Source branch for the PR |
+| `--body-file <path>` | No | Path to a file containing the PR body. Falls back to `"Pipeline delivery"` if omitted. |
+
+Creates a GitHub pull request via the `gh` CLI. Performs an idempotency check first — if an open PR already exists for the same head/base branch pair, returns the existing PR URL without creating a duplicate.
+
+**Exit codes:**
+
+| Code | Meaning |
+|------|----------|
+| `0` | Success — PR created or existing PR found |
+| `2` | Failure — auth error, missing args, or `gh` CLI error |
+
+**Stdout** (single-line JSON):
+
+```json
+{ "pr_created": true, "pr_url": "https://github.com/org/repo/pull/42", "error": null, "errorType": null }
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pr_created` | `boolean` | `true` if a new PR was created, `false` if existing PR found or on failure |
+| `pr_url` | `string \| null` | URL of the created or existing PR; `null` on failure |
+| `error` | `string \| null` | Error message on failure; `null` on success |
+| `errorType` | `string \| null` | `'auth_failed'`, `'create_failed'`, `'missing_args'`, or `null` |
+
+> `gh-pr.js` is called by the Source Control Agent during PR creation. It is not intended for manual use.
+
+---
 ## Event Vocabulary
 
 The pipeline accepts exactly 22 events. Each maps to a mutation handler in the `MUTATIONS` lookup table.

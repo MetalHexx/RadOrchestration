@@ -328,6 +328,23 @@ function resolveNextAction(state, config) {
   }
 
   if (tier === PIPELINE_TIERS.COMPLETE) {
+    // ── PR intercept ──────────────────────────────────────────────
+    // If auto_pr is 'always' and pr_url has NOT been written yet,
+    // the PR step is still pending → route to invoke_source_control_pr.
+    // Once pr_url is set (even to null on failure), fall through to display_complete.
+    const sc = state.pipeline.source_control;
+    if (sc?.auto_pr === 'always' && !('pr_url' in sc)) {
+      return {
+        action: NEXT_ACTIONS.INVOKE_SOURCE_CONTROL_PR,
+        context: {
+          branch: sc.branch,
+          base_branch: sc.base_branch,
+          worktree_path: sc.worktree_path,
+        },
+      };
+    }
+    // ── END PR intercept ──────────────────────────────────────────
+
     return { action: NEXT_ACTIONS.DISPLAY_COMPLETE, context: {} };
   }
 

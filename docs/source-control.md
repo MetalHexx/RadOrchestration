@@ -1,6 +1,6 @@
 # Source Control Automation
 
-The orchestration pipeline's source control automation feature enables automatic git commit and push after every approved task. It is configured via `orchestration.yml` using an `always | ask | never` convention that applies to both commit and pull request automation. Pull request automation is scaffolded but delivered by the follow-on AUTO-PR project.
+The orchestration pipeline's source control automation feature enables automatic git commit and push after every approved task, and automatic pull request creation on final project approval. It is configured via `orchestration.yml` using an `always | ask | never` convention that applies to both commit and pull request automation.
 
 ## Quick Start
 
@@ -51,8 +51,8 @@ The `rad-execute-parallel` script handles source control setup immediately after
 | `source_control_init` | `rad-execute-parallel` after worktree creation | *(state write only)* | Idempotent; safe to re-run |
 | `task_commit_requested` | Resolver after task approved (when `auto_commit: always`) | `invoke_source_control_commit` | Skipped when `auto_commit: never` or absent |
 | `task_committed` | Orchestrator after agent completes commit | *(next-task action)* | Resumes normal pipeline flow |
-| `pr_requested` *(AUTO-PR)* | Resolver after final approval (when `auto_pr: always`) | `invoke_source_control_pr` | Placeholder — delivered by AUTO-PR |
-| `pr_created` *(AUTO-PR)* | Orchestrator after agent creates PR | `display_complete` | Placeholder — delivered by AUTO-PR |
+| `pr_requested` | Resolver after final approval (when `auto_pr: always`) | `invoke_source_control_pr` | Skipped when `auto_pr: never` or absent |
+| `pr_created` | Orchestrator after agent creates PR | `display_complete` | Writes `pr_url` to state; transitions to complete |
 
 ## Source Control Agent
 
@@ -61,7 +61,7 @@ The Source Control Agent is a thin router — it loads the `source-control` skil
 | Mode | Trigger | Skill reference | Script |
 |------|---------|----------------|--------|
 | commit | `invoke_source_control_commit` action | `references/operations-guide.md` | `scripts/git-commit.js` |
-| PR *(AUTO-PR)* | `invoke_source_control_pr` action | `references/pr-guide.md` *(stub)* | `scripts/gh-pr.js` *(stub)* |
+| PR | `invoke_source_control_pr` action | `references/pr-guide.md` | `scripts/gh-pr.js` |
 
 The agent has access to `read`, `execute`, and `todo` tools only. It never uses `edit` — source files are the Coder's domain only.
 
@@ -73,16 +73,16 @@ The agent has access to `read`, `execute`, and `todo` tools only. It never uses 
 ├── references/
 │   ├── operations-guide.md            ← commit operations: staging, message construction, commit+push, errors
 │   ├── git-state-guide.md             ← branch/worktree context: read from state, fallback, pre-op checks
-│   └── pr-guide.md                    ← PR placeholder (AUTO-PR stub)
+│   └── pr-guide.md                    ← PR operations: title construction, body file, gh-pr.js invocation, errors
 └── scripts/
     ├── git-commit.js                  ← stage + commit + push CLI wrapper → structured JSON result
-    └── gh-pr.js                       ← PR script stub → structured not-implemented JSON result
+    └── gh-pr.js                       ← idempotency check + PR creation via gh CLI → structured JSON result
 ```
 
 | Mode | Reference Document | Script | Status |
 |------|-------------------|--------|--------|
 | commit | `references/operations-guide.md` | `scripts/git-commit.js` | Functional |
-| PR | `references/pr-guide.md` | `scripts/gh-pr.js` | AUTO-PR stub |
+| PR | `references/pr-guide.md` | `scripts/gh-pr.js` | Functional |
 
 ## Commit Message Format
 
@@ -174,7 +174,8 @@ Source control state is stored under `pipeline.source_control` in `state.json`:
       "auto_commit": "always",
       "auto_pr": "never",
       "remote_url": "https://github.com/org/repo",
-      "compare_url": "https://github.com/org/repo/compare/main...feature/my-project-branch"
+      "compare_url": "https://github.com/org/repo/compare/main...feature/my-project-branch",
+      "pr_url": null
     }
   }
 }
@@ -205,9 +206,17 @@ All 5 fields (`branch`, `base_branch`, `worktree_path`, `auto_commit`, `auto_pr`
 | `remote_url` | `pipeline.source_control` | `string \| null` | `null` when the remote URL cannot be detected (non-GitHub remote, or `git remote get-url` fails) |
 | `compare_url` | `pipeline.source_control` | `string \| null` | `null` whenever `remote_url` is `null` |
 | `commit_hash` | `execution.phases[n].tasks[n]` | `string \| null` | `null` for tasks completed before this feature shipped, or when the commit step failed |
+| `pr_url` | `pipeline.source_control` | `string \| null` | `null` until a PR is created; set by `pr_created` mutation |
 
-## What's Coming (AUTO-PR)
+## Pull Request Automation
 
-The AUTO-PR project will deliver full pull request automation on top of the scaffolding included here. AUTO-PR will add: PR pipeline events (`pr_requested`, `pr_created`), `gh` CLI integration for PR creation, and full content for `pr-guide.md`.
+When `auto_pr` is set to `"always"`, the pipeline automatically creates a GitHub pull request after the final review is approved. The flow is:
 
-> Sections marked with *(AUTO-PR)* in the tables above will be filled in when AUTO-PR is delivered. No changes to this page's structure, the `orchestration.yml` schema, or the `rad-execute-parallel` prompt will be required.
+1. **Final approval** triggers `handleFinalApproved`, which defers completion when `auto_pr: always`.
+2. **Resolver** routes to `invoke_source_control_pr`, spawning the Source Control Agent in PR mode.
+3. **Source Control Agent** executes `gh-pr.js` — checks for an existing PR (idempotent), creates one if needed, returns the PR URL.
+4. **Orchestrator** signals `pr_created` with the PR URL — the mutation writes `pr_url` to state and transitions the pipeline to `complete`.
+
+If PR creation fails, the error is logged via `log-error` and the pipeline still transitions to `complete` — PR failures are non-blocking, following the same convention as commit failures.
+
+The PR title follows the format: `{project-name}: Pipeline delivery`. The PR body is sourced from the project's final review document when available, with a minimal fallback.

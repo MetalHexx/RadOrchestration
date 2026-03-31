@@ -33,6 +33,7 @@ interface SourceControlInput {
   auto_pr: string;
   remote_url: string | null;
   compare_url: string | null;
+  pr_url?: string | null;
 }
 
 function makeInput(overrides: Partial<SourceControlInput> = {}): SourceControlInput {
@@ -56,7 +57,14 @@ function simulateSourceControlSection(input: SourceControlInput) {
   const autoCommitLabel = `auto-commit: ${input.auto_commit === 'always' ? 'always' : 'never'}`;
   const autoPrIsSpinner = input.auto_pr === 'always';
   const autoPrLabel = `auto-pr: ${input.auto_pr === 'always' ? 'always' : 'never'}`;
-  const showsPrPlaceholder = input.auto_pr === 'always';
+  const pr_url = input.pr_url ?? null;
+  const showsPrRow = input.auto_pr === 'always';
+  const showsPrLink = showsPrRow && !!pr_url;
+  const showsPrPlaceholder = showsPrRow && !pr_url;
+  const prLinkHref = showsPrLink ? pr_url : null;
+  const prLinkTarget = showsPrLink ? '_blank' : null;
+  const prLinkRel = showsPrLink ? 'noopener noreferrer' : null;
+  const prLinkAriaLabel = showsPrLink ? 'Pull Request' : null;
 
   return {
     branchIsLink,
@@ -66,7 +74,13 @@ function simulateSourceControlSection(input: SourceControlInput) {
     autoCommitLabel,
     autoPrIsSpinner,
     autoPrLabel,
+    showsPrRow,
+    showsPrLink,
     showsPrPlaceholder,
+    prLinkHref,
+    prLinkTarget,
+    prLinkRel,
+    prLinkAriaLabel,
   };
 }
 
@@ -111,14 +125,45 @@ test("Outline Badge for auto_pr 'never'", () => {
   assert.strictEqual(result.autoPrLabel, 'auto-pr: never');
 });
 
-test("PR placeholder row visible when auto_pr is 'always'", () => {
-  const result = simulateSourceControlSection(makeInput({ auto_pr: 'always' }));
+test("PR placeholder row visible when auto_pr is 'always' and pr_url is null", () => {
+  const result = simulateSourceControlSection(makeInput({ auto_pr: 'always', pr_url: null }));
   assert.strictEqual(result.showsPrPlaceholder, true);
+  assert.strictEqual(result.showsPrLink, false);
 });
 
-test("PR placeholder row hidden when auto_pr is 'never'", () => {
+test("PR placeholder row visible when auto_pr is 'always' and pr_url is undefined", () => {
+  const result = simulateSourceControlSection(makeInput({ auto_pr: 'always' }));
+  assert.strictEqual(result.showsPrPlaceholder, true);
+  assert.strictEqual(result.showsPrLink, false);
+});
+
+test("PR row hidden when auto_pr is 'never'", () => {
   const result = simulateSourceControlSection(makeInput({ auto_pr: 'never' }));
+  assert.strictEqual(result.showsPrRow, false);
   assert.strictEqual(result.showsPrPlaceholder, false);
+  assert.strictEqual(result.showsPrLink, false);
+});
+
+test("PR link renders when auto_pr is 'always' and pr_url is a string", () => {
+  const url = 'https://github.com/org/repo/pull/42';
+  const result = simulateSourceControlSection(makeInput({ auto_pr: 'always', pr_url: url }));
+  assert.strictEqual(result.showsPrLink, true);
+  assert.strictEqual(result.showsPrPlaceholder, false);
+  assert.strictEqual(result.prLinkHref, url);
+  assert.strictEqual(result.prLinkTarget, '_blank');
+  assert.strictEqual(result.prLinkRel, 'noopener noreferrer');
+});
+
+test("PR link has aria-label 'Pull Request'", () => {
+  const url = 'https://github.com/org/repo/pull/42';
+  const result = simulateSourceControlSection(makeInput({ auto_pr: 'always', pr_url: url }));
+  assert.strictEqual(result.prLinkAriaLabel, 'Pull Request');
+});
+
+test("No PR row when auto_pr is 'never' even with pr_url present", () => {
+  const result = simulateSourceControlSection(makeInput({ auto_pr: 'never', pr_url: 'https://github.com/org/repo/pull/42' }));
+  assert.strictEqual(result.showsPrRow, false);
+  assert.strictEqual(result.showsPrLink, false);
 });
 
 console.log(`\n  ${passed} passed, ${failed} failed\n`);

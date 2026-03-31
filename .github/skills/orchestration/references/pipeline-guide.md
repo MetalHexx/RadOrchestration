@@ -29,6 +29,7 @@ The Orchestrator operates as an event-driven controller:
        [--gate-type <type>] [--reason <text>]
        [--gate-mode <mode>]
        [--commit-hash <hash>] [--pushed <true|false>]
+       [--pr-url <url>]
    ```
 3. **Parse the JSON result** from stdout
 4. **Pattern-match `result.action`** against the Action Routing Table
@@ -57,6 +58,7 @@ node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --proje
     [--gate-type <type>] [--reason <text>]
     [--gate-mode <mode>]
     [--commit-hash <hash>] [--pushed <true|false>]
+    [--pr-url <url>]
 ```
 
 The `--config` flag overrides the default config path:
