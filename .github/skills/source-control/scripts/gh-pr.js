@@ -47,12 +47,13 @@ if (!worktreePath || !title || !base || !head) {
 
 try {
   // Idempotency check — look for an existing PR with the same head/base
+  // Use jq's `// empty` operator so null entries produce no output (empty string)
   const existing = execFileSync('gh', [
     'pr', 'list', '--head', head, '--base', base,
-    '--json', 'url', '--jq', '.[0].url'
+    '--json', 'url', '--jq', '.[0].url // empty'
   ], { cwd: worktreePath, encoding: 'utf8' }).trim();
 
-  if (existing) {
+  if (existing && existing !== 'null') {
     const result = {
       pr_created: false,
       pr_url: existing,
@@ -82,7 +83,8 @@ try {
   console.log(JSON.stringify(result));
   process.exit(0);
 } catch (err) {
-  const errText = sanitize((err.stderr || err.stdout || err.message || '').trim() || err.message.trim());
+  const raw = String(err.stderr || err.stdout || err.message || 'Unknown error');
+  const errText = sanitize(raw.trim());
   const isAuth = /auth|credentials|login/i.test(errText);
   const result = {
     pr_created: false,

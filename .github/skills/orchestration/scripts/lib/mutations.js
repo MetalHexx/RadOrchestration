@@ -822,7 +822,17 @@ function handlePrRequested(state, context, config) {
  * @returns {{ state: Object, mutations_applied: string[] }}
  */
 function handlePrCreated(state, context, config) {
-  state.pipeline.source_control.pr_url = context.pr_url ?? null;
+  const sc = state.pipeline.source_control;
+  if (!sc) {
+    state.pipeline.current_tier = PIPELINE_TIERS.COMPLETE;
+    return {
+      state,
+      mutations_applied: [
+        'source_control absent — skipping pr_url write, set tier to "' + PIPELINE_TIERS.COMPLETE + '"',
+      ],
+    };
+  }
+  sc.pr_url = context.pr_url ?? null;
   state.pipeline.current_tier = PIPELINE_TIERS.COMPLETE;
   return {
     state,
