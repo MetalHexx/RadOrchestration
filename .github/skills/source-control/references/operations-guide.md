@@ -57,7 +57,7 @@ Where:
 Body construction rules:
 - Separate subject from body with exactly one blank line (standard conventional-commit spec)
 - Body is 3–6 lines drawn from the task handoff’s **description** and/or **goals** fields
-- Each line is a plain prose sentence or bullet; no trailing whitespace
+- Each line is a plain prose sentence with bullet; no trailing whitespace
 - Multi-line string is passed as a single `--message` argument (newlines embedded as `\n`)
 - Body is **omitted** if the handoff has no description or goals content
 
@@ -65,10 +65,10 @@ Example (with body):
 ```
 feat(P02-T03): Add remote_url detection to source_control_init
 
-Detects the GitHub HTTPS remote URL from git remote get-url origin.
-Converts SSH remotes (git@github.com:org/repo.git) to HTTPS.
-Stores remote_url and compare_url in pipeline.source_control.
-Enables branch compare links in the monitoring dashboard.
+- Detects the GitHub HTTPS remote URL from git remote get-url origin.
+- Converts SSH remotes (git@github.com:org/repo.git) to HTTPS.
+- Stores remote_url and compare_url in pipeline.source_control.
+- Enables branch compare links in the monitoring dashboard.
 ```
 
 Example (title-only, no body):
