@@ -77,10 +77,6 @@ export function MainDashboard({
           onDocClick={onDocClick}
         />
 
-        {projectState.pipeline.source_control != null && (
-          <SourceControlSection sourceControl={projectState.pipeline.source_control} />
-        )}
-
         <ExecutionSection
           execution={projectState.execution}
           maxRetries={maxRetries}
@@ -94,6 +90,10 @@ export function MainDashboard({
           pipelineTier={projectState.pipeline.current_tier}
           onDocClick={onDocClick}
         />
+
+        {projectState.pipeline.source_control != null && (
+          <SourceControlSection sourceControl={projectState.pipeline.source_control} />
+        )}
 
         <OtherDocsSection files={otherDocs ?? []} onDocClick={onDocClick} />
       </div>

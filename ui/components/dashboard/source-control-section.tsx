@@ -2,7 +2,6 @@
 
 import { Github, Clock } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { SpinnerBadge } from "@/components/badges";
 import type { SourceControl } from "@/types/state";
 
@@ -21,8 +20,9 @@ export function SourceControlSection({ sourceControl }: SourceControlSectionProp
         <CardTitle>Source Control</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
-        {/* Branch row */}
-        <div>
+        {/* Branch + badges row */}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm text-muted-foreground">Branch Name:</span>
           {compare_url !== null ? (
             <a
               href={compare_url}
@@ -37,34 +37,23 @@ export function SourceControlSection({ sourceControl }: SourceControlSectionProp
           ) : (
             <span className="text-muted-foreground font-mono text-sm">{branch}</span>
           )}
-        </div>
 
-        {/* Badges row */}
-        <div className="flex flex-wrap gap-2">
-          {auto_commit === 'always' ? (
-            <SpinnerBadge
-              label="auto-commit: always"
-              cssVar="--tier-execution"
-              isSpinning={false}
-              ariaLabel="Auto-commit: always"
-            />
-          ) : (
-            <Badge variant="outline" className="text-muted-foreground">
-              auto-commit: never
-            </Badge>
-          )}
-          {auto_pr === 'always' ? (
-            <SpinnerBadge
-              label="auto-pr: always"
-              cssVar="--tier-review"
-              isSpinning={false}
-              ariaLabel="Auto-PR: always"
-            />
-          ) : (
-            <Badge variant="outline" className="text-muted-foreground">
-              auto-pr: never
-            </Badge>
-          )}
+          <SpinnerBadge
+            label="Auto-Commit"
+            cssVar={auto_commit === 'always' ? '--status-complete' : '--status-failed'}
+            isSpinning={false}
+            isComplete={auto_commit === 'always'}
+            isRejected={auto_commit !== 'always'}
+            ariaLabel={`Auto-Commit: ${auto_commit}`}
+          />
+          <SpinnerBadge
+            label="Auto-PR"
+            cssVar={auto_pr === 'always' ? '--status-complete' : '--status-failed'}
+            isSpinning={false}
+            isComplete={auto_pr === 'always'}
+            isRejected={auto_pr !== 'always'}
+            ariaLabel={`Auto-PR: ${auto_pr}`}
+          />
         </div>
 
         {/* PR placeholder row — rendered only when auto_pr === "always" */}

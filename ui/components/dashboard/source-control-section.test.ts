@@ -1,6 +1,6 @@
 /**
  * Tests for SourceControlSection component logic.
- * Run with: npx tsx ui/components/dashboard/source-control-section.test.ts
+ * Run with: npx tsx components/dashboard/source-control-section.test.ts
  *
  * Since no React testing library is installed, these tests verify the
  * prop contracts and conditional rendering logic by simulating what
@@ -35,6 +35,15 @@ interface SourceControlInput {
   compare_url: string | null;
 }
 
+interface BadgeProps {
+  label: string;
+  cssVar: string;
+  isSpinning: boolean;
+  isComplete: boolean;
+  isRejected: boolean;
+  ariaLabel: string;
+}
+
 function makeInput(overrides: Partial<SourceControlInput> = {}): SourceControlInput {
   return {
     branch: 'feat/test-branch',
@@ -52,20 +61,35 @@ function simulateSourceControlSection(input: SourceControlInput) {
   const branchIsLink = input.compare_url !== null;
   const branchText = input.branch;
   const branchHref = input.compare_url;
-  const autoCommitIsSpinner = input.auto_commit === 'always';
-  const autoCommitLabel = `auto-commit: ${input.auto_commit === 'always' ? 'always' : 'never'}`;
-  const autoPrIsSpinner = input.auto_pr === 'always';
-  const autoPrLabel = `auto-pr: ${input.auto_pr === 'always' ? 'always' : 'never'}`;
+  const branchLabel = 'Branch Name:';
+
+  const autoCommitBadge: BadgeProps = {
+    label: 'Auto-Commit',
+    cssVar: input.auto_commit === 'always' ? '--status-complete' : '--status-failed',
+    isSpinning: false,
+    isComplete: input.auto_commit === 'always',
+    isRejected: input.auto_commit !== 'always',
+    ariaLabel: `Auto-Commit: ${input.auto_commit}`,
+  };
+
+  const autoPrBadge: BadgeProps = {
+    label: 'Auto-PR',
+    cssVar: input.auto_pr === 'always' ? '--status-complete' : '--status-failed',
+    isSpinning: false,
+    isComplete: input.auto_pr === 'always',
+    isRejected: input.auto_pr !== 'always',
+    ariaLabel: `Auto-PR: ${input.auto_pr}`,
+  };
+
   const showsPrPlaceholder = input.auto_pr === 'always';
 
   return {
     branchIsLink,
     branchText,
     branchHref,
-    autoCommitIsSpinner,
-    autoCommitLabel,
-    autoPrIsSpinner,
-    autoPrLabel,
+    branchLabel,
+    autoCommitBadge,
+    autoPrBadge,
     showsPrPlaceholder,
   };
 }
@@ -73,6 +97,11 @@ function simulateSourceControlSection(input: SourceControlInput) {
 // ==================== SourceControlSection Tests ====================
 
 console.log("SourceControlSection");
+
+test("Branch label is always 'Branch Name:'", () => {
+  const result = simulateSourceControlSection(makeInput());
+  assert.strictEqual(result.branchLabel, 'Branch Name:');
+});
 
 test("Branch as plain text when compare_url is null", () => {
   const result = simulateSourceControlSection(makeInput({ compare_url: null }));
@@ -87,28 +116,40 @@ test("Branch as clickable link when compare_url is non-null", () => {
   assert.strictEqual(result.branchHref, url);
 });
 
-test("SpinnerBadge for auto_commit 'always'", () => {
+test("Auto-Commit badge: green check (isComplete) when 'always'", () => {
   const result = simulateSourceControlSection(makeInput({ auto_commit: 'always' }));
-  assert.strictEqual(result.autoCommitIsSpinner, true);
-  assert.strictEqual(result.autoCommitLabel, 'auto-commit: always');
+  assert.strictEqual(result.autoCommitBadge.label, 'Auto-Commit');
+  assert.strictEqual(result.autoCommitBadge.cssVar, '--status-complete');
+  assert.strictEqual(result.autoCommitBadge.isComplete, true);
+  assert.strictEqual(result.autoCommitBadge.isRejected, false);
+  assert.strictEqual(result.autoCommitBadge.isSpinning, false);
 });
 
-test("Outline Badge for auto_commit 'never'", () => {
+test("Auto-Commit badge: red X (isRejected) when 'never'", () => {
   const result = simulateSourceControlSection(makeInput({ auto_commit: 'never' }));
-  assert.strictEqual(result.autoCommitIsSpinner, false);
-  assert.strictEqual(result.autoCommitLabel, 'auto-commit: never');
+  assert.strictEqual(result.autoCommitBadge.label, 'Auto-Commit');
+  assert.strictEqual(result.autoCommitBadge.cssVar, '--status-failed');
+  assert.strictEqual(result.autoCommitBadge.isComplete, false);
+  assert.strictEqual(result.autoCommitBadge.isRejected, true);
+  assert.strictEqual(result.autoCommitBadge.isSpinning, false);
 });
 
-test("SpinnerBadge for auto_pr 'always'", () => {
+test("Auto-PR badge: green check (isComplete) when 'always'", () => {
   const result = simulateSourceControlSection(makeInput({ auto_pr: 'always' }));
-  assert.strictEqual(result.autoPrIsSpinner, true);
-  assert.strictEqual(result.autoPrLabel, 'auto-pr: always');
+  assert.strictEqual(result.autoPrBadge.label, 'Auto-PR');
+  assert.strictEqual(result.autoPrBadge.cssVar, '--status-complete');
+  assert.strictEqual(result.autoPrBadge.isComplete, true);
+  assert.strictEqual(result.autoPrBadge.isRejected, false);
+  assert.strictEqual(result.autoPrBadge.isSpinning, false);
 });
 
-test("Outline Badge for auto_pr 'never'", () => {
+test("Auto-PR badge: red X (isRejected) when 'never'", () => {
   const result = simulateSourceControlSection(makeInput({ auto_pr: 'never' }));
-  assert.strictEqual(result.autoPrIsSpinner, false);
-  assert.strictEqual(result.autoPrLabel, 'auto-pr: never');
+  assert.strictEqual(result.autoPrBadge.label, 'Auto-PR');
+  assert.strictEqual(result.autoPrBadge.cssVar, '--status-failed');
+  assert.strictEqual(result.autoPrBadge.isComplete, false);
+  assert.strictEqual(result.autoPrBadge.isRejected, true);
+  assert.strictEqual(result.autoPrBadge.isSpinning, false);
 });
 
 test("PR placeholder row visible when auto_pr is 'always'", () => {
