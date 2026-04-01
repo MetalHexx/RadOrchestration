@@ -30,7 +30,7 @@ This workspace contains a **document-driven agent orchestration system** built o
 ```
 Planning:  Brainstorming (optional) → Research → PRD → Design → Architecture → Master Plan → Human Approval
 Execution: Phase Plan → Task Handoffs → Code → Review → (correction loop) → Phase Review → (next / correction loop)
-Final:     Comprehensive Review → Human Approval → Complete
+Final:     Comprehensive Review → PR Creation (if auto_pr) → Human Approval → Complete
 ```
 
 ## Key Rules
@@ -40,6 +40,7 @@ Final:     Comprehensive Review → Human Approval → Complete
 3. **No agent directly writes `state.json`** — all state mutations performed by the `@orchestrator` agent via the (`pipeline.js`) script.
 4. **Human gates** are enforced after planning (Master Plan review) and after final review.
 5. **Documents are the interface** — agents communicate through structured markdown files, never through shared state or memory.
+6. **PR creation is non-blocking** — when `auto_pr === 'always'`, the pipeline creates a GitHub PR after the comprehensive review and before the human gate. If PR creation fails, the human gate fires without a PR URL. PR failure never blocks the pipeline.
 
 > **Note:** `{orch_root}` is your orchestration root folder — `.github` by default. Set via `system.orch_root` in `orchestration.yml`. See [Configuration](docs/configuration.md).
 

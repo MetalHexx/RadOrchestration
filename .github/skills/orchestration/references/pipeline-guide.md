@@ -29,6 +29,7 @@ The Orchestrator operates as an event-driven controller:
        [--gate-type <type>] [--reason <text>]
        [--gate-mode <mode>]
        [--commit-hash <hash>] [--pushed <true|false>]
+       [--pr-url <url>]
    ```
 3. **Parse the JSON result** from stdout
 4. **Pattern-match `result.action`** against the Action Routing Table
@@ -57,6 +58,7 @@ node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --proje
     [--gate-type <type>] [--reason <text>]
     [--gate-mode <mode>]
     [--commit-hash <hash>] [--pushed <true|false>]
+    [--pr-url <url>]
 ```
 
 The `--config` flag overrides the default config path:
@@ -173,6 +175,17 @@ When spawning a subagent, always provide:
 
 Example spawn instruction:
 > "Create the PRD for the MYAPP project. Read the research findings at `{base_path}/MYAPP/MYAPP-RESEARCH-FINDINGS.md`. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that too. Save the PRD to `{base_path}/MYAPP/MYAPP-PRD.md`."
+
+### Source Control — PR Mode
+
+When `result.action` is `invoke_source_control_pr`, spawn **source-control** in PR mode:
+
+1. The agent reads `pipeline.source_control` from state for `branch`, `base_branch`, and `worktree_path`
+2. The agent reads `final_review.doc_path` from state for the PR body file
+3. The agent executes `gh-pr.js` with the resolved flags
+4. The agent outputs a `## PR Result` JSON block containing `pr_url` and `pr_number`
+5. Extract `pr_url` from the agent's `## PR Result` JSON block
+6. Signal `pr_created --pr-url <url>` to the pipeline
 
 ## Status Reporting
 
