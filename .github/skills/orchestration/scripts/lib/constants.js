@@ -91,6 +91,7 @@ const NEXT_ACTIONS = Object.freeze({
   DISPLAY_HALTED: 'display_halted',
   DISPLAY_COMPLETE: 'display_complete',
   INVOKE_SOURCE_CONTROL_COMMIT: 'invoke_source_control_commit',
+  INVOKE_SOURCE_CONTROL_PR: 'invoke_source_control_pr',
 });
 
 // ─── Stage Enums (v4) ──────────────────────────────────────────────────────

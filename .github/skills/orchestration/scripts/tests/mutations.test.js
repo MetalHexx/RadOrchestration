@@ -1246,7 +1246,7 @@ describe('handlePhasePlanCreated stale field clearing', () => {
 
 // ─── handleSourceControlInit ────────────────────────────────────────────────
 
-const { handleSourceControlInit, handleTaskCommitRequested, handleTaskCommitted } = _test;
+const { handleSourceControlInit, handleTaskCommitRequested, handleTaskCommitted, handlePrRequested, handlePrCreated } = _test;
 
 describe('handleSourceControlInit', () => {
   it('writes all 7 fields to pipeline.source_control', () => {
@@ -1595,6 +1595,203 @@ describe('handleTaskCommitted', () => {
   });
 });
 
+// ─── handlePrRequested ──────────────────────────────────────────────────────
+
+describe('handlePrRequested', () => {
+  it('validation passes when branch is present', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.ok(result.mutations_applied.some(m => m.includes('PR request validated')));
+    // State unchanged — no new fields, no mutations to source_control
+    assert.equal(state.pipeline.source_control.branch, 'feat/x');
+    assert.equal(state.pipeline.source_control.base_branch, 'main');
+    assert.equal(state.pipeline.source_control.worktree_path, '/wt');
+    assert.equal(state.pipeline.source_control.auto_commit, 'always');
+    assert.equal(state.pipeline.source_control.auto_pr, 'always');
+  });
+
+  it('graceful skip when source_control is absent', () => {
+    const state = makeExecutionState();
+    // No pipeline.source_control
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.ok(result.mutations_applied.some(m => m.includes('skipping PR creation')));
+    assert.equal(state.pipeline.source_control, undefined);
+  });
+
+  it('graceful skip when branch is falsy (empty string)', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: '',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.ok(result.mutations_applied.some(m => m.includes('skipping PR creation')));
+  });
+
+  it('graceful skip when branch is null', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: null,
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.ok(result.mutations_applied.some(m => m.includes('skipping PR creation')));
+  });
+
+  it('returns mutations_applied array in both paths', () => {
+    const stateWithBranch = makeExecutionState();
+    stateWithBranch.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result1 = handlePrRequested(stateWithBranch, {}, defaultConfig);
+    assert.ok(Array.isArray(result1.mutations_applied));
+    assert.ok(result1.mutations_applied.length > 0);
+
+    const stateWithoutBranch = makeExecutionState();
+    const result2 = handlePrRequested(stateWithoutBranch, {}, defaultConfig);
+    assert.ok(Array.isArray(result2.mutations_applied));
+    assert.ok(result2.mutations_applied.length > 0);
+  });
+
+  it('does NOT advance phase.current_task in either path', () => {
+    const stateWithBranch = makeExecutionState();
+    stateWithBranch.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const originalTask1 = stateWithBranch.execution.phases[0].current_task;
+    handlePrRequested(stateWithBranch, {}, defaultConfig);
+    assert.equal(stateWithBranch.execution.phases[0].current_task, originalTask1);
+
+    const stateWithoutBranch = makeExecutionState();
+    const originalTask2 = stateWithoutBranch.execution.phases[0].current_task;
+    handlePrRequested(stateWithoutBranch, {}, defaultConfig);
+    assert.equal(stateWithoutBranch.execution.phases[0].current_task, originalTask2);
+  });
+});
+
+// ─── handlePrCreated ────────────────────────────────────────────────────────
+
+describe('handlePrCreated', () => {
+  it('writes pr_url to state when context.pr_url is provided', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/42' }, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, 'https://github.com/org/repo/pull/42');
+  });
+
+  it('writes null when context.pr_url is undefined', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, {}, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, null);
+  });
+
+  it('writes null when context.pr_url is explicitly null', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, { pr_url: null }, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, null);
+  });
+
+  it('always succeeds unconditionally (does not throw)', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/42' }, defaultConfig);
+    assert.ok(result.state);
+    assert.ok(Array.isArray(result.mutations_applied));
+  });
+
+  it('mutations_applied includes exactly 1 entry containing pr_url', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/42' }, defaultConfig);
+    assert.equal(result.mutations_applied.length, 1);
+    assert.ok(result.mutations_applied[0].includes('pr_url'));
+  });
+
+  it('does not add extra fields to source_control', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/42' }, defaultConfig);
+    const keys = Object.keys(state.pipeline.source_control).sort();
+    assert.deepEqual(keys, ['auto_commit', 'auto_pr', 'base_branch', 'branch', 'pr_url', 'worktree_path']);
+  });
+
+  it('does not modify other source_control fields', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/42' }, defaultConfig);
+    assert.equal(state.pipeline.source_control.branch, 'feat/x');
+    assert.equal(state.pipeline.source_control.base_branch, 'main');
+    assert.equal(state.pipeline.source_control.worktree_path, '/wt');
+    assert.equal(state.pipeline.source_control.auto_commit, 'always');
+    assert.equal(state.pipeline.source_control.auto_pr, 'always');
+  });
+});
+
 // ─── Review State Helper ────────────────────────────────────────────────────
 
 function makeReviewState() {
@@ -1882,9 +2079,9 @@ describe('handleFinalRejected', () => {
   });
 });
 
-// ─── getMutation dispatch for all 25 events ─────────────────────────────────
+// ─── getMutation dispatch for all 27 events ─────────────────────────────────
 
-describe('getMutation (all 25 events)', () => {
+describe('getMutation (all 27 events)', () => {
   const allEvents = [
     'research_completed',
     'prd_completed',
@@ -1904,6 +2101,8 @@ describe('getMutation (all 25 events)', () => {
     'source_control_init',
     'task_commit_requested',
     'task_committed',
+    'pr_requested',
+    'pr_created',
     'gate_mode_set',
     'gate_approved',
     'gate_rejected',
@@ -1919,12 +2118,12 @@ describe('getMutation (all 25 events)', () => {
     });
   }
 
-  it('has exactly 25 registered events', () => {
+  it('has exactly 27 registered events', () => {
     let count = 0;
     for (const event of allEvents) {
       if (getMutation(event)) count++;
     }
-    assert.equal(count, 25);
+    assert.equal(count, 27);
   });
 
   it('does NOT contain task_approved', () => {

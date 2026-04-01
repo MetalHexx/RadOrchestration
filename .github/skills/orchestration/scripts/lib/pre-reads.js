@@ -112,6 +112,8 @@ const PRE_READ_HANDLERS = {
   'source_control_init': (context) => success(context),
   'task_commit_requested': (context) => success(context),
   'task_committed': (context) => success(context),
+  'pr_requested': (context) => success(context),
+  'pr_created':   (context) => success(context),
 };
 
 // ─── Entry Point ────────────────────────────────────────────────────────────

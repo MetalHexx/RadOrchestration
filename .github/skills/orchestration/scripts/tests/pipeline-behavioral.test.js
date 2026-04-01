@@ -1450,3 +1450,190 @@ describe('Category 15: null paths — remote_url, compare_url, commit_hash', () 
     assert.equal(io.getState().execution.phases[0].current_task, 2); // pointer advanced
   });
 });
+
+// ─── Category 16: PR-enabled happy path (auto_pr=always) ───────────────────
+// Drives a single-phase, single-task project through the full PR cycle.
+// After final_review_completed, the resolver returns invoke_source_control_pr
+// instead of request_final_approval because auto_pr=always and pr_url is absent.
+// Then pr_requested validates, pr_created writes pr_url, and final_approved
+// transitions to display_complete.
+
+describe('Category 16: PR-enabled happy path (auto_pr=always)', () => {
+  const documents = {
+    'c16-pp.md': makeDoc({ tasks: ['T01'] }),
+    'c16-th1.md': makeDoc({}),
+    'c16-tr1.md': makeDoc({}),
+    'c16-cr1.md': makeDoc({ verdict: 'approved' }),
+    'c16-prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
+  };
+
+  const state = makeExecutionStartState(1);
+  const io = createMockIO({ state, documents });
+  let writeCount = 0;
+
+  it('Step 1: phase_plan_created → create_task_handoff', () => {
+    const result = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c16-pp.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 2: source_control_init (auto_pr=always) → create_task_handoff', () => {
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/pr-test',
+      base_branch: 'main',
+      worktree_path: '/wt/pr-test',
+      auto_commit: 'never',
+      auto_pr: 'always',
+    }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getState().pipeline.source_control.auto_pr, 'always');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 3: task_handoff_created → execute_task', () => {
+    const result = processEvent('task_handoff_created', PROJECT_DIR, { doc_path: 'c16-th1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'execute_task');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 4: task_completed → spawn_code_reviewer', () => {
+    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c16-tr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_code_reviewer');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 5: code_review_completed → generate_phase_report', () => {
+    const result = processEvent('code_review_completed', PROJECT_DIR, { doc_path: 'c16-cr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'generate_phase_report');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 6: phase_report_created → spawn_phase_reviewer', () => {
+    const result = processEvent('phase_report_created', PROJECT_DIR, { doc_path: 'c16-pr.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_phase_reviewer');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 7: phase_review_completed → spawn_final_reviewer', () => {
+    const result = processEvent('phase_review_completed', PROJECT_DIR, { doc_path: 'c16-prv.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_final_reviewer');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 8: final_review_completed → invoke_source_control_pr (NOT request_final_approval)', () => {
+    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: 'c16-fr.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_pr');
+    assert.notEqual(result.action, 'request_final_approval');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 9: pr_requested → invoke_source_control_pr (validation pass)', () => {
+    const result = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_pr');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 10: pr_created → request_final_approval (pr_url written)', () => {
+    const result = processEvent('pr_created', PROJECT_DIR, { pr_url: 'https://github.com/example/repo/pull/1' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.strictEqual(io.getState().pipeline.source_control.pr_url, 'https://github.com/example/repo/pull/1');
+    // After pr_created, resolver should return request_final_approval (pr_url now exists)
+    assert.equal(result.action, 'request_final_approval');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 11: final_approved → display_complete', () => {
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'display_complete');
+    assert.equal(io.getState().pipeline.current_tier, 'complete');
+  });
+});
+
+// ─── Category 17: PR-disabled path (auto_pr=never) ─────────────────────────
+// Isolated test verifying that final_review_completed routes directly to
+// request_final_approval when auto_pr=never — no invoke_source_control_pr.
+
+describe('Category 17: PR-disabled path (auto_pr=never)', () => {
+  it('final_review_completed → request_final_approval (no PR routing)', () => {
+    const state = createReviewState();
+    delete state.project.updated;
+    state.pipeline.source_control = {
+      branch: 'feat/no-pr',
+      base_branch: 'main',
+      worktree_path: '/wt/no-pr',
+      auto_commit: 'never',
+      auto_pr: 'never',
+    };
+    state.final_review.doc_path = 'c17-fr.md';
+    const io = createMockIO({ state });
+    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: 'c17-fr.md' }, io);
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'request_final_approval');
+    assert.notEqual(result.action, 'invoke_source_control_pr');
+  });
+});
+
+// ─── Category 18: pr_url persistence ────────────────────────────────────────
+// Verifies that pr_url written by pr_created survives through the
+// final_approved tier transition to complete.
+
+describe('Category 18: pr_url persistence', () => {
+  it('pr_url persists through pr_created → final_approved transition', () => {
+    const state = createReviewState();
+    delete state.project.updated;
+    state.pipeline.source_control = {
+      branch: 'feat/persist-test',
+      base_branch: 'main',
+      worktree_path: '/wt/persist',
+      auto_commit: 'never',
+      auto_pr: 'always',
+    };
+    state.final_review.doc_path = 'c18-fr.md';
+    const io = createMockIO({ state });
+
+    // final_review_completed → invoke_source_control_pr (auto_pr=always, no pr_url)
+    const r1 = processEvent('final_review_completed', PROJECT_DIR, { doc_path: 'c18-fr.md' }, io);
+    assert.equal(r1.success, true);
+    assert.equal(r1.action, 'invoke_source_control_pr');
+    backdateTimestamp(io.getState());
+
+    // pr_requested → validation pass
+    const r2 = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    assert.equal(r2.success, true);
+    backdateTimestamp(io.getState());
+
+    // pr_created → writes pr_url
+    const r3 = processEvent('pr_created', PROJECT_DIR, { pr_url: 'https://github.com/test/repo/pull/99' }, io);
+    assert.equal(r3.success, true);
+    assert.strictEqual(io.getState().pipeline.source_control.pr_url, 'https://github.com/test/repo/pull/99');
+    backdateTimestamp(io.getState());
+
+    // final_approved → display_complete; pr_url survives tier transition
+    const r4 = processEvent('final_approved', PROJECT_DIR, {}, io);
+    assert.equal(r4.success, true);
+    assert.equal(r4.action, 'display_complete');
+    assert.strictEqual(io.getState().pipeline.source_control.pr_url, 'https://github.com/test/repo/pull/99');
+  });
+});

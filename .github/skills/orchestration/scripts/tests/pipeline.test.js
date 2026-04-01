@@ -46,7 +46,8 @@ describe('parseArgs', () => {
       commitHash: 'abc123def',
       pushed: 'true',
       remoteUrl:  'https://github.com/org/repo',
-      compareUrl: 'https://github.com/org/repo/compare/main...feat'
+      compareUrl: 'https://github.com/org/repo/compare/main...feat',
+      prUrl: undefined
     });
   });
 
@@ -68,7 +69,8 @@ describe('parseArgs', () => {
       commitHash: undefined,
       pushed: undefined,
       remoteUrl:  undefined,
-      compareUrl: undefined
+      compareUrl: undefined,
+      prUrl: undefined
     });
   });
 
@@ -187,6 +189,16 @@ describe('parseArgs', () => {
     ]);
     assert.strictEqual(result.remoteUrl, '');
   });
+
+  it('parses --pr-url flag correctly', () => {
+    const result = parseArgs([
+      '--event', 'start',
+      '--project-dir', '/tmp/proj',
+      '--pr-url', 'https://github.com/org/repo/pull/42'
+    ]);
+    assert.strictEqual(result.prUrl, 'https://github.com/org/repo/pull/42');
+  });
+
   it('unknown flags are silently ignored', () => {
     assert.doesNotThrow(() => {
       parseArgs([

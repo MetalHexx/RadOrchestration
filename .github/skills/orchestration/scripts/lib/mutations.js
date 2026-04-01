@@ -769,6 +769,52 @@ function handleTaskCommitted(state, context, config) {
   };
 }
 
+// ─── PR Handlers ────────────────────────────────────────────────────────────
+
+/**
+ * pr_requested — Validation checkpoint before spawning Source Control Agent in PR mode.
+ * If source_control metadata is absent or branch is falsy: graceful skip — no state change,
+ * resolver will fall through to request_final_approval.
+ * If branch is present: validation passed, no state change.
+ *
+ * @param {Object} state   - deep-cloned pipeline state
+ * @param {Object} context - {} (no fields required)
+ * @param {Object} config  - merged orchestration config (unused)
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handlePrRequested(state, context, config) {
+  const sc = state.pipeline.source_control;
+  const mutations = [];
+
+  if (!sc || !sc.branch) {
+    mutations.push('source_control not initialized or branch absent — skipping PR creation');
+  } else {
+    mutations.push(`PR request validated: branch = "${sc.branch}"`);
+  }
+
+  return { state, mutations_applied: mutations };
+}
+
+/**
+ * pr_created — Writes pr_url to state.pipeline.source_control and resolves to human gate.
+ * Always succeeds unconditionally to prevent pipeline stall.
+ *
+ * @param {Object} state   - deep-cloned pipeline state
+ * @param {Object} context - { pr_url?: string }
+ * @param {Object} config  - merged orchestration config (unused)
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handlePrCreated(state, context, config) {
+  const prUrl = context.pr_url ?? null;
+  state.pipeline.source_control.pr_url = prUrl;
+  return {
+    state,
+    mutations_applied: [
+      `Set pipeline.source_control.pr_url to ${JSON.stringify(prUrl)}`,
+    ],
+  };
+}
+
 // ─── MUTATIONS Map ──────────────────────────────────────────────────────────
 
 const MUTATIONS = Object.freeze({
@@ -798,10 +844,12 @@ const MUTATIONS = Object.freeze({
   phase_report_created:     handlePhaseReportCreated,
   phase_review_completed:   handlePhaseReviewCompleted,
 
-  // Source control (3)
+  // Source control (5)
   source_control_init:        handleSourceControlInit,
   task_commit_requested:      handleTaskCommitRequested,
   task_committed:             handleTaskCommitted,
+  pr_requested:               handlePrRequested,
+  pr_created:                 handlePrCreated,
 
   // Gate events (3)
   gate_mode_set:            handleGateModeSet,
@@ -841,4 +889,6 @@ module.exports._test = {
   handleSourceControlInit,
   handleTaskCommitRequested,
   handleTaskCommitted,
+  handlePrRequested,
+  handlePrCreated,
 };

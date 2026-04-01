@@ -299,6 +299,18 @@ function resolveReview(state) {
   }
 
   if (!final_review.human_approved) {
+    // PR routing: after final review complete, before human gate
+    const sc = state.pipeline.source_control;
+    if (sc?.auto_pr === 'always' && !sc?.pr_url) {
+      return {
+        action: NEXT_ACTIONS.INVOKE_SOURCE_CONTROL_PR,
+        context: {
+          branch: sc.branch,
+          base_branch: sc.base_branch,
+          worktree_path: sc.worktree_path,
+        },
+      };
+    }
     return { action: NEXT_ACTIONS.REQUEST_FINAL_APPROVAL, context: {} };
   }
 

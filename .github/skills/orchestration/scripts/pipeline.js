@@ -7,7 +7,7 @@ const stateIo = require('./lib/state-io');
 function parseArgs(argv) {
   let event, projectDir, configPath, docPath, branch, baseBranch, worktreePath,
       autoCommit, autoPr, gateType, reason, gateMode, commitHash, pushed,
-      remoteUrl, compareUrl;
+      remoteUrl, compareUrl, prUrl;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--event' && i + 1 < argv.length) { event = argv[++i]; }
     else if (argv[i] === '--project-dir' && i + 1 < argv.length) { projectDir = argv[++i]; }
@@ -25,12 +25,13 @@ function parseArgs(argv) {
     else if (argv[i] === '--pushed'       && i + 1 < argv.length) { pushed      = argv[++i]; }
     else if (argv[i] === '--remote-url'   && i + 1 < argv.length) { remoteUrl   = argv[++i]; }
     else if (argv[i] === '--compare-url'  && i + 1 < argv.length) { compareUrl  = argv[++i]; }
+    else if (argv[i] === '--pr-url'       && i + 1 < argv.length) { prUrl       = argv[++i]; }
   }
   if (!event) throw new Error('Missing required flag: --event');
   if (!projectDir) throw new Error('Missing required flag: --project-dir');
   return { event, projectDir, configPath, docPath, branch, baseBranch, worktreePath,
            autoCommit, autoPr, gateType, reason, gateMode, commitHash, pushed,
-           remoteUrl, compareUrl };
+           remoteUrl, compareUrl, prUrl };
 }
 
 function main() {
@@ -56,6 +57,7 @@ function main() {
   if (args.pushed !== undefined)       context.pushed        = args.pushed;
   if (args.remoteUrl  !== undefined)   context.remote_url    = args.remoteUrl  || null;
   if (args.compareUrl !== undefined)   context.compare_url   = args.compareUrl || null;
+  if (args.prUrl !== undefined)        context.pr_url        = args.prUrl      || null;
   const result = processEvent(args.event, args.projectDir, context, io, args.configPath);
   const orchRoot = stateIo.bootstrapOrchRoot();
   result.orchRoot = orchRoot;
