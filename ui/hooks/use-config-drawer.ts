@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { ParsedConfig } from "@/types/config";
+import type { OrchestrationConfig } from "@/types/config";
 
 interface UseConfigDrawerReturn {
   isOpen: boolean;
   loading: boolean;
   error: string | null;
-  config: ParsedConfig | null;
+  config: OrchestrationConfig | null;
   open: () => void;
   close: () => void;
 }
@@ -16,7 +16,7 @@ export function useConfigDrawer(): UseConfigDrawerReturn {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [config, setConfig] = useState<ParsedConfig | null>(null);
+  const [config, setConfig] = useState<OrchestrationConfig | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -52,7 +52,7 @@ export function useConfigDrawer(): UseConfigDrawerReturn {
             .catch(() => ({ error: "Failed to load config" }));
           throw new Error(body.error || `HTTP ${res.status}`);
         }
-        return res.json() as Promise<{ config: ParsedConfig }>;
+        return res.json() as Promise<{ config: OrchestrationConfig; rawYaml: string }>;
       })
       .then((json) => {
         if (!controller.signal.aborted) {

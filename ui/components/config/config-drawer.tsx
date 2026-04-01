@@ -12,20 +12,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion } from "@/components/ui/accordion";
 import { LockBadge } from "@/components/badges";
 import { ConfigSection } from "./config-section";
-import type { ParsedConfig } from "@/types/config";
+import type { OrchestrationConfig } from "@/types/config";
 
 interface ConfigDrawerProps {
   open: boolean;
-  config: ParsedConfig | null;
+  config: OrchestrationConfig | null;
   loading: boolean;
   error: string | null;
   onClose: () => void;
 }
 
 const SECTION_KEYS = [
-  "project-storage",
-  "pipeline-limits",
+  "projects",
+  "limits",
   "human-gates",
+  "source-control",
 ];
 
 function ConfigRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -106,42 +107,48 @@ export function ConfigDrawer({
 
           {config && !loading && !error && (
             <Accordion multiple defaultValue={SECTION_KEYS}>
-              <ConfigSection value="project-storage" title="Project Storage">
-                <ConfigRow label="Base Path" value={config.projectStorage.basePath} />
-                <ConfigRow label="Naming" value={config.projectStorage.naming} />
+              <ConfigSection value="projects" title="Project Storage">
+                <ConfigRow label="Base Path" value={config.projects.base_path} />
+                <ConfigRow label="Naming" value={config.projects.naming} />
               </ConfigSection>
 
-              <ConfigSection value="pipeline-limits" title="Pipeline Limits">
-                <ConfigRow label="Max Phases" value={config.pipelineLimits.maxPhases} />
+              <ConfigSection value="limits" title="Pipeline Limits">
+                <ConfigRow label="Max Phases" value={config.limits.max_phases} />
                 <ConfigRow
                   label="Max Tasks per Phase"
-                  value={config.pipelineLimits.maxTasksPerPhase}
+                  value={config.limits.max_tasks_per_phase}
                 />
                 <ConfigRow
                   label="Max Retries per Task"
-                  value={config.pipelineLimits.maxRetriesPerTask}
+                  value={config.limits.max_retries_per_task}
                 />
                 <ConfigRow
                   label="Max Consecutive Review Rejections"
-                  value={config.pipelineLimits.maxConsecutiveReviewRejections}
+                  value={config.limits.max_consecutive_review_rejections}
                 />
               </ConfigSection>
 
               <ConfigSection value="human-gates" title="Human Gates">
                 <GateRow
                   label="After Planning"
-                  value={config.humanGates.afterPlanning.value}
-                  locked={config.humanGates.afterPlanning.locked}
+                  value={config.human_gates.after_planning}
+                  locked={true}
                 />
                 <ConfigRow
                   label="Execution Mode"
-                  value={config.humanGates.executionMode}
+                  value={config.human_gates.execution_mode}
                 />
                 <GateRow
                   label="After Final Review"
-                  value={config.humanGates.afterFinalReview.value}
-                  locked={config.humanGates.afterFinalReview.locked}
+                  value={config.human_gates.after_final_review}
+                  locked={true}
                 />
+              </ConfigSection>
+
+              <ConfigSection value="source-control" title="Source Control">
+                <ConfigRow label="Auto Commit" value={config.source_control.auto_commit} />
+                <ConfigRow label="Auto PR" value={config.source_control.auto_pr} />
+                <ConfigRow label="Provider" value={config.source_control.provider} />
               </ConfigSection>
             </Accordion>
           )}

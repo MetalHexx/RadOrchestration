@@ -84,6 +84,7 @@ test('projects.base_path empty string returns error', () => {
 
 test('projects.naming invalid value returns error', () => {
   const cfg = makeValidConfig();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (cfg.projects as any).naming = 'invalid';
   const result = validateConfig(cfg);
   assert.strictEqual(result['projects.naming'], 'Invalid naming convention');
@@ -160,6 +161,7 @@ test('limits.max_retries_per_task -1 returns error', () => {
 
 test('human_gates.after_planning non-boolean returns error', () => {
   const cfg = makeValidConfig();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (cfg.human_gates as any).after_planning = 'true';
   const result = validateConfig(cfg);
   assert.strictEqual(result['human_gates.after_planning'], 'Must be true or false');
@@ -183,6 +185,7 @@ test('human_gates.after_planning false is valid', () => {
 
 test('human_gates.execution_mode invalid returns error', () => {
   const cfg = makeValidConfig();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (cfg.human_gates as any).execution_mode = 'invalid';
   const result = validateConfig(cfg);
   assert.strictEqual(result['human_gates.execution_mode'], 'Invalid execution mode');
@@ -201,6 +204,7 @@ for (const mode of ['ask', 'phase', 'task', 'autonomous'] as const) {
 
 test('source_control.auto_commit invalid returns error', () => {
   const cfg = makeValidConfig();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (cfg.source_control as any).auto_commit = 'invalid';
   const result = validateConfig(cfg);
   assert.strictEqual(result['source_control.auto_commit'], 'Invalid auto commit setting');
@@ -219,6 +223,7 @@ for (const val of ['always', 'ask', 'never'] as const) {
 
 test('source_control.auto_pr invalid returns error', () => {
   const cfg = makeValidConfig();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (cfg.source_control as any).auto_pr = 'invalid';
   const result = validateConfig(cfg);
   assert.strictEqual(result['source_control.auto_pr'], 'Invalid auto PR setting');
