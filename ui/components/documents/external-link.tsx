@@ -2,8 +2,16 @@
 
 import { ExternalLink as ExternalLinkIcon, Github } from "lucide-react";
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 interface ExternalLinkProps {
-  /** Full URL to navigate to; component renders null when href is null */
+  /** Full URL to navigate to. When null, renders a visible disabled state
+   *  (greyed-out span with tooltip) instead of removing the element from the DOM. */
   href: string | null;
   /** Visible and/or accessible label text */
   label: string;
@@ -15,12 +23,29 @@ export function ExternalLink({
   href,
   label,
   icon = 'external-link',
-}: ExternalLinkProps): JSX.Element | null {
-  if (href === null) {
-    return null;
-  }
-
+}: ExternalLinkProps): JSX.Element {
   const Icon = icon === 'github' ? Github : ExternalLinkIcon;
+
+  if (href === null) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span
+                className="inline-flex items-center gap-1.5 text-muted-foreground cursor-not-allowed"
+                aria-disabled="true"
+              />
+            }
+          >
+            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="sr-only sm:not-sr-only">{label}</span>
+          </TooltipTrigger>
+          <TooltipContent>Not available</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
 
   return (
     <a
