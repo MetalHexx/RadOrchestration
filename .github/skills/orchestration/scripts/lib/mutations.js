@@ -800,7 +800,7 @@ function handlePrRequested(state, context, config) {
  * Always succeeds unconditionally to prevent pipeline stall.
  *
  * @param {Object} state   - deep-cloned pipeline state
- * @param {Object} context - { pr_url?: string }
+ * @param {Object} context - { pr_url?: (string|null) }
  * @param {Object} config  - merged orchestration config (unused)
  * @returns {{ state: Object, mutations_applied: string[] }}
  */

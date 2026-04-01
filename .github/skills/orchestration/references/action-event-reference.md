@@ -28,7 +28,7 @@ Every `result.action` value maps to exactly one Orchestrator operation. All bran
 | 18 | `display_halted` | Terminal | Display `result.context.message` to the human. **Loop terminates.** | *(none — terminal action)* |
 | 19 | `display_complete` | Terminal | Display completion summary to the human. **Loop terminates.** | *(none — terminal action)* |
 | 20 | `invoke_source_control_commit` | Agent spawn | Spawn **source-control** in commit mode. The agent reads `pipeline.source_control` from state, constructs the commit message, executes `git-commit.js`, and outputs a structured commit result block. Extract `commitHash` and `pushed` from the agent's `## Commit Result` JSON block in its output. | `task_committed --commit-hash <hash> --pushed <true|false>` |
-| 21 | `invoke_source_control_pr` | Agent spawn | Spawn **source-control** in PR mode. The agent reads `pipeline.source_control` and `final_review.doc_path` from state, executes `gh-pr.js`, and outputs a structured PR result block. Extract `pr_url` and `pr_number` from the agent's `## PR Result` JSON block in its output. | `pr_created --pr-url <url>` |
+| 21 | `invoke_source_control_pr` | Agent spawn | Spawn **source-control** in PR mode. The agent reads `pipeline.source_control` and `final_review.doc_path` from state, executes `gh-pr.js`, and outputs a structured PR result block. Extract `pr_url` and `pr_number` from the agent's `## PR Result` JSON block in its output. | `pr_created [--pr-url <url>]` |
 
 ## Event Signaling Reference
 
