@@ -3,12 +3,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { useProjects } from "@/hooks/use-projects";
 import { useDocumentDrawer } from "@/hooks/use-document-drawer";
-import { useConfigDrawer } from "@/hooks/use-config-drawer";
+import { useConfigEditor } from "@/hooks/use-config-editor";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
 import { AppHeader, MainDashboard } from "@/components/layout";
 import { DocumentDrawer } from "@/components/documents";
-import { ConfigDrawer } from "@/components/config";
+import { ConfigEditorPanel } from "@/components/config";
 import { getOrderedDocs } from "@/lib/document-ordering";
 import type { ProjectSummary } from "@/types/components";
 
@@ -36,7 +36,7 @@ export default function Home() {
     scrollAreaRef,
   } = useDocumentDrawer({ projectName: selectedProject });
 
-  const configDrawer = useConfigDrawer();
+  const configEditor = useConfigEditor();
 
   const [fileList, setFileList] = useState<string[]>([]);
 
@@ -80,7 +80,7 @@ export default function Home() {
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      <AppHeader sseStatus={sseStatus} onReconnect={reconnect} onConfigClick={configDrawer.open} />
+      <AppHeader sseStatus={sseStatus} onReconnect={reconnect} onConfigClick={configEditor.open} />
 
       <SidebarProvider>
         <ProjectSidebar
@@ -140,14 +140,7 @@ export default function Home() {
         onNavigate={navigateTo}
       />
 
-      <ConfigDrawer
-        open={configDrawer.isOpen}
-        config={configDrawer.config}
-        loading={configDrawer.loading}
-        error={configDrawer.error}
-        onClose={configDrawer.close}
-      />
+      <ConfigEditorPanel editor={configEditor} />
     </div>
   );
 }
-
