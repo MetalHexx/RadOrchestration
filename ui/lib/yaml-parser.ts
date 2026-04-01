@@ -1,4 +1,4 @@
-import { parse } from 'yaml';
+import { parse, stringify } from 'yaml';
 
 /**
  * Parse a YAML string into a typed object.
@@ -8,4 +8,14 @@ import { parse } from 'yaml';
  */
 export function parseYaml<T>(content: string): T {
   return parse(content) as T;
+}
+
+/**
+ * Serialize a JavaScript object to a YAML string.
+ *
+ * @param value - The value to serialize
+ * @returns YAML string representation
+ */
+export function stringifyYaml(value: unknown): string {
+  return stringify(value);
 }

@@ -1,5 +1,6 @@
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { readFile, readdir, stat, writeFile, rename, unlink } from 'node:fs/promises';
 import path from 'node:path';
+import { randomBytes } from 'node:crypto';
 
 import type { ProjectState } from '@/types/state';
 import type { OrchestrationConfig } from '@/types/config';
@@ -7,6 +8,18 @@ import type { ProjectSummary } from '@/types/components';
 
 import { resolveBasePath, resolveProjectDir } from '@/lib/path-resolver';
 import { parseYaml } from '@/lib/yaml-parser';
+
+/**
+ * Resolve the absolute path to orchestration.yml.
+ * Extracted from readConfig() so the write path uses the same logic.
+ *
+ * @param workspaceRoot - Absolute path to workspace root
+ * @returns Absolute path to orchestration.yml
+ */
+export function getConfigPath(workspaceRoot: string): string {
+  const bootstrapRoot = process.env.ORCH_ROOT || '.github';
+  return path.join(workspaceRoot, bootstrapRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
+}
 
 /**
  * Read and parse orchestration.yml from the workspace root.
@@ -22,10 +35,54 @@ import { parseYaml } from '@/lib/yaml-parser';
  * @throws If orchestration.yml does not exist or is invalid YAML
  */
 export async function readConfig(workspaceRoot: string): Promise<OrchestrationConfig> {
-  const bootstrapRoot = process.env.ORCH_ROOT || '.github';
-  const configPath = path.join(workspaceRoot, bootstrapRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
+  const configPath = getConfigPath(workspaceRoot);
   const content = await readFile(configPath, 'utf-8');
   return parseYaml<OrchestrationConfig>(content);
+}
+
+/**
+ * Read orchestration.yml and return both parsed config and raw YAML string.
+ *
+ * @param workspaceRoot - Absolute path to workspace root
+ * @returns Object with parsed config and raw YAML string
+ * @throws If orchestration.yml does not exist or is invalid YAML
+ */
+export async function readConfigWithRaw(workspaceRoot: string): Promise<{
+  config: OrchestrationConfig;
+  rawYaml: string;
+}> {
+  const configPath = getConfigPath(workspaceRoot);
+  const rawYaml = await readFile(configPath, 'utf-8');
+  const config = parseYaml<OrchestrationConfig>(rawYaml);
+  return { config, rawYaml };
+}
+
+/**
+ * Write content to orchestration.yml atomically (write to temp file, then rename).
+ * The temp file is created in the same directory as orchestration.yml to ensure
+ * same-filesystem rename semantics.
+ *
+ * @param workspaceRoot - Absolute path to workspace root
+ * @param content - YAML string to write
+ * @throws If the write or rename operation fails (e.g., permission denied, disk full)
+ */
+export async function writeConfig(workspaceRoot: string, content: string): Promise<void> {
+  const configPath = getConfigPath(workspaceRoot);
+  const configDir = path.dirname(configPath);
+  const suffix = randomBytes(8).toString('hex');
+  const tmpPath = path.join(configDir, `.orchestration.yml.tmp.${suffix}`);
+
+  await writeFile(tmpPath, content, 'utf-8');
+  try {
+    await rename(tmpPath, configPath);
+  } catch (renameErr) {
+    try {
+      await unlink(tmpPath);
+    } catch {
+      // best-effort cleanup
+    }
+    throw renameErr;
+  }
 }
 
 /**
