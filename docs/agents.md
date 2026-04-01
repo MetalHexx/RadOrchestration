@@ -17,7 +17,7 @@ The orchestration system uses 12 specialized agents, each with a defined role, s
 | `@coder-junior` | Straightforward, lower-complexity coding tasks from task handoffs | Code, tests |
 | `@coder-senior` | Complex or high-stakes coding tasks from task handoffs | Code, tests |
 | `@reviewer` | Code and phase review | `CODE-REVIEW.md`, `PHASE-REVIEW.md` |
-| `@source-control` | Thin-router for git operations — commit and push (PR stubbed for AUTO-PR) | Code (via `git-commit.js` script only) |
+| `@source-control` | Thin-router for git operations — commit, push, and PR creation | Code (via `git-commit.js` and `gh-pr.js` scripts) |
 
 
 
@@ -193,14 +193,14 @@ The Reviewer operates at three levels:
 
 **Purpose:** Execute git commit and push operations after approved tasks, delegating all logic to the `source-control` skill.
 
-The Source Control Agent is a thin router — it loads the `source-control` skill and delegates entirely to the skill's routing table. In commit mode, it reads `pipeline.source_control` from state, constructs a conventional commit message, and runs `git-commit.js` to stage, commit, and push. In PR mode (AUTO-PR), it will delegate to `pr-guide.md` and `gh-pr.js` — both are currently stubs.
+The Source Control Agent is a thin router — it loads the `source-control` skill and delegates entirely to the skill's routing table. In commit mode, it reads `pipeline.source_control` from state, constructs a conventional commit message, and runs `git-commit.js` to stage, commit, and push. In PR mode, it reads `pr-guide.md` and runs `gh-pr.js` to detect or create a pull request on GitHub.
 
 **Modes:**
 
 | Mode | Trigger Action | Skill Reference | Script |
 |------|---------------|-----------------|--------|
 | commit | `invoke_source_control_commit` | `references/operations-guide.md` | `scripts/git-commit.js` |
-| PR *(AUTO-PR)* | `invoke_source_control_pr` | `references/pr-guide.md` *(stub)* | `scripts/gh-pr.js` *(stub)* |
+| PR | `invoke_source_control_pr` | `references/pr-guide.md` | `scripts/gh-pr.js` |
 
 **Tool restrictions:** `read`, `execute`, `todo` only — no `edit` tool. Source files are the Coder's domain.
 

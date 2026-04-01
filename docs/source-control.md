@@ -1,6 +1,6 @@
 # Source Control Automation
 
-The orchestration pipeline's source control automation feature enables automatic git commit and push after every approved task. It is configured via `orchestration.yml` using an `always | ask | never` convention that applies to both commit and pull request automation. Pull request automation is scaffolded but delivered by the follow-on AUTO-PR project.
+The orchestration pipeline's source control automation feature enables automatic git commit and push after every approved task. It is configured via `orchestration.yml` using an `always | ask | never` convention that applies to both commit and pull request automation. Pull request automation creates a GitHub PR via the `gh` CLI on final approval when `auto_pr: always`.
 
 ## Quick Start
 
@@ -51,8 +51,8 @@ The `rad-execute-parallel` script handles source control setup immediately after
 | `source_control_init` | `rad-execute-parallel` after worktree creation | *(state write only)* | Idempotent; safe to re-run |
 | `task_commit_requested` | Resolver after task approved (when `auto_commit: always`) | `invoke_source_control_commit` | Skipped when `auto_commit: never` or absent |
 | `task_committed` | Orchestrator after agent completes commit | *(next-task action)* | Resumes normal pipeline flow |
-| `pr_requested` *(AUTO-PR)* | Resolver after final approval (when `auto_pr: always`) | `invoke_source_control_pr` | Placeholder — delivered by AUTO-PR |
-| `pr_created` *(AUTO-PR)* | Orchestrator after agent creates PR | `display_complete` | Placeholder — delivered by AUTO-PR |
+| `pr_requested` | Resolver after final approval (when `auto_pr: always`) | `invoke_source_control_pr` | Triggers PR creation via `gh` CLI |
+| `pr_created` | Orchestrator after agent creates PR | `display_complete` | Stores `pr_url` in state; pipeline complete |
 
 ## Source Control Agent
 
@@ -61,7 +61,7 @@ The Source Control Agent is a thin router — it loads the `source-control` skil
 | Mode | Trigger | Skill reference | Script |
 |------|---------|----------------|--------|
 | commit | `invoke_source_control_commit` action | `references/operations-guide.md` | `scripts/git-commit.js` |
-| PR *(AUTO-PR)* | `invoke_source_control_pr` action | `references/pr-guide.md` *(stub)* | `scripts/gh-pr.js` *(stub)* |
+| PR | `invoke_source_control_pr` action | `references/pr-guide.md` | `scripts/gh-pr.js` |
 
 The agent has access to `read`, `execute`, and `todo` tools only. It never uses `edit` — source files are the Coder's domain only.
 
@@ -73,16 +73,16 @@ The agent has access to `read`, `execute`, and `todo` tools only. It never uses 
 ├── references/
 │   ├── operations-guide.md            ← commit operations: staging, message construction, commit+push, errors
 │   ├── git-state-guide.md             ← branch/worktree context: read from state, fallback, pre-op checks
-│   └── pr-guide.md                    ← PR placeholder (AUTO-PR stub)
+│   └── pr-guide.md                    ← PR operations: workflow, CLI usage, result shapes, error patterns
 └── scripts/
     ├── git-commit.js                  ← stage + commit + push CLI wrapper → structured JSON result
-    └── gh-pr.js                       ← PR script stub → structured not-implemented JSON result
+    └── gh-pr.js                       ← PR script: detect existing PR, create if absent → structured JSON result
 ```
 
 | Mode | Reference Document | Script | Status |
 |------|-------------------|--------|--------|
 | commit | `references/operations-guide.md` | `scripts/git-commit.js` | Functional |
-| PR | `references/pr-guide.md` | `scripts/gh-pr.js` | AUTO-PR stub |
+| PR | `references/pr-guide.md` | `scripts/gh-pr.js` | Functional |
 
 ## Commit Message Format
 
@@ -206,8 +206,3 @@ All 5 fields (`branch`, `base_branch`, `worktree_path`, `auto_commit`, `auto_pr`
 | `compare_url` | `pipeline.source_control` | `string \| null` | `null` whenever `remote_url` is `null` |
 | `commit_hash` | `execution.phases[n].tasks[n]` | `string \| null` | `null` for tasks completed before this feature shipped, or when the commit step failed |
 
-## What's Coming (AUTO-PR)
-
-The AUTO-PR project will deliver full pull request automation on top of the scaffolding included here. AUTO-PR will add: PR pipeline events (`pr_requested`, `pr_created`), `gh` CLI integration for PR creation, and full content for `pr-guide.md`.
-
-> Sections marked with *(AUTO-PR)* in the tables above will be filled in when AUTO-PR is delivered. No changes to this page's structure, the `orchestration.yml` schema, or the `rad-execute-parallel` prompt will be required.

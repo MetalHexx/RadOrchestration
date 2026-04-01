@@ -20,7 +20,7 @@ Orchestration pipeline skill for source control operations. Provides routing for
 
 1. **Determine your mode** from the Orchestrator context:
    - Received `invoke_source_control_commit` → **commit mode**
-   - Received `invoke_source_control_pr` → **PR mode** (stub — see `pr-guide.md`)
+   - Received `invoke_source_control_pr` → **PR mode**
    - Received `invoke_source_control_pr_corrections` → **pr-corrections mode** (see `pr-corrections-guide.md`)
 2. **Read all reference documents** for your mode before taking any action.
 3. **Execute the script** for your mode; parse the JSON result from stdout.
