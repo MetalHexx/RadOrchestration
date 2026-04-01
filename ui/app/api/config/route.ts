@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+import { access, constants } from 'node:fs/promises';
 import { getWorkspaceRoot } from '@/lib/path-resolver';
-import { readConfigWithRaw, writeConfig } from '@/lib/fs-reader';
+import { getConfigPath, readConfigWithRaw, writeConfig } from '@/lib/fs-reader';
 import { parseYaml, stringifyYaml } from '@/lib/yaml-parser';
 import { validateConfig } from '@/lib/config-validator';
 import type { ConfigPutRequest } from '@/types/config';
@@ -74,6 +75,17 @@ export async function PUT(request: Request) {
     }
 
     yamlString = body.rawYaml;
+  }
+
+  // Pre-check: verify config file is writable
+  const configPath = getConfigPath(root);
+  try {
+    await access(configPath, constants.W_OK);
+  } catch {
+    return NextResponse.json(
+      { error: 'Configuration file is not writable — check file permissions or volume mount' },
+      { status: 500 },
+    );
   }
 
   try {
