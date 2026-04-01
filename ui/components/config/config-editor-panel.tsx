@@ -77,7 +77,11 @@ export function ConfigEditorPanel({ editor }: ConfigEditorPanelProps) {
             <ConfigRawEditor
               value={editor.rawYaml}
               onChange={editor.setRawYaml}
-              bannerMessage="Editing raw YAML. No validation is applied — save writes the content as-is."
+              bannerMessage={
+                editor.formDirtyOnSwitch
+                  ? "Form changes serialized to YAML. Comments from the original file are not preserved."
+                  : "Editing raw YAML. No validation is applied \u2014 save writes the content as-is."
+              }
             />
           )}
         </ScrollArea>
@@ -88,6 +92,7 @@ export function ConfigEditorPanel({ editor }: ConfigEditorPanelProps) {
             saveState={editor.saveState}
             errorMessage={editor.saveError ?? undefined}
             disabled={!editor.isDirty || (editor.mode === "form" && Object.keys(editor.errors).length > 0)}
+            onDismissError={editor.dismissSaveError}
           />
         )}
       </SheetContent>

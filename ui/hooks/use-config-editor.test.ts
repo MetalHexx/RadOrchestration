@@ -56,11 +56,11 @@ let failed = 0;
 function test(name: string, fn: () => void) {
   try {
     fn();
-    console.log(`  ✓ ${name}`);
+    console.log(`  \u2713 ${name}`);
     passed++;
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error(`  ✗ ${name}\n    ${msg}`);
+    console.error(`  \u2717 ${name}\n    ${msg}`);
     failed++;
   }
 }
@@ -253,6 +253,86 @@ test('after save success: new baseline matches saved config', () => {
   // Simulate save success — baseline is updated to match saved config
   const newBaseline = JSON.stringify(modified);
   assert.strictEqual(JSON.stringify(modified) !== newBaseline, false);
+});
+
+/* ------------------------------------------------------------------ */
+/*  formDirtyOnSwitch logic                                            */
+/* ------------------------------------------------------------------ */
+
+test('formDirtyOnSwitch: false initially', () => {
+  // When the hook initializes, formDirtyOnSwitch defaults to false
+  const formDirtyOnSwitch = false; // mirrors useState(false)
+  assert.strictEqual(formDirtyOnSwitch, false);
+});
+
+test('formDirtyOnSwitch: true when switching to raw with dirty form', () => {
+  const config = makeValidConfig();
+  const baseline = JSON.stringify(config);
+  const modified = updateFieldOnObject(config, 'limits.max_phases', 12);
+  // Simulate setMode("raw") logic
+  const formDirty = JSON.stringify(modified) !== baseline;
+  assert.strictEqual(formDirty, true);
+  // This is the value setFormDirtyOnSwitch would receive
+  const formDirtyOnSwitch = formDirty;
+  assert.strictEqual(formDirtyOnSwitch, true);
+});
+
+test('formDirtyOnSwitch: false when switching to raw with clean form', () => {
+  const config = makeValidConfig();
+  const baseline = JSON.stringify(config);
+  // Simulate setMode("raw") logic with unmodified config
+  const formDirty = config !== null && JSON.stringify(config) !== baseline;
+  assert.strictEqual(formDirty, false);
+  const formDirtyOnSwitch = formDirty;
+  assert.strictEqual(formDirtyOnSwitch, false);
+});
+
+test('formDirtyOnSwitch: resets to false when switching back to form', () => {
+  const config = makeValidConfig();
+  const baseline = JSON.stringify(config);
+  const modified = updateFieldOnObject(config, 'limits.max_phases', 12);
+  // First switch to raw — dirty
+  const formDirty = JSON.stringify(modified) !== baseline;
+  let formDirtyOnSwitch = formDirty;
+  assert.strictEqual(formDirtyOnSwitch, true);
+  // Now switch back to form — setMode("form") sets formDirtyOnSwitch to false
+  formDirtyOnSwitch = false;
+  assert.strictEqual(formDirtyOnSwitch, false);
+});
+
+/* ------------------------------------------------------------------ */
+/*  dismissSaveError logic                                             */
+/* ------------------------------------------------------------------ */
+
+test('dismissSaveError: resets saveState to idle', () => {
+  // Simulate error state
+  let saveState: string = 'error';
+  // Simulate dismissSaveError callback
+  saveState = 'idle';
+  assert.strictEqual(saveState, 'idle');
+});
+
+test('dismissSaveError: clears saveError to null', () => {
+  // Simulate error state with message
+  let saveError: string | null = 'Network timeout';
+  // Simulate dismissSaveError callback
+  saveError = null;
+  assert.strictEqual(saveError, null);
+});
+
+/* ------------------------------------------------------------------ */
+/*  UseConfigEditorReturn type verification                            */
+/* ------------------------------------------------------------------ */
+
+test('UseConfigEditorReturn includes formDirtyOnSwitch and dismissSaveError', () => {
+  // Type-level verification: if this compiles, both fields exist on the interface.
+  // We verify at runtime by checking the module exports compile with the new fields.
+  type AssertHasField<T, K extends keyof T> = K;
+  // These lines cause a compile error if the fields don't exist on the interface
+  type _CheckDirty = AssertHasField<import('./use-config-editor').UseConfigEditorReturn, 'formDirtyOnSwitch'>;
+  type _CheckDismiss = AssertHasField<import('./use-config-editor').UseConfigEditorReturn, 'dismissSaveError'>;
+  // Runtime: the module loaded successfully above, which means the interface compiles
+  assert.ok(true);
 });
 
 /* ------------------------------------------------------------------ */

@@ -42,10 +42,16 @@ export interface UseConfigEditorReturn {
   /** Dirty tracking */
   isDirty: boolean;
 
+  /** Whether the form was dirty when the user last switched to raw mode */
+  formDirtyOnSwitch: boolean;
+
   /** Save */
   saveState: ConfigSaveState;
   saveError: string | null;
   save: () => Promise<void>;
+
+  /** Dismiss save error — resets saveState to idle and saveError to null */
+  dismissSaveError: () => void;
 }
 
 export function useConfigEditor(): UseConfigEditorReturn {
@@ -58,6 +64,7 @@ export function useConfigEditor(): UseConfigEditorReturn {
   const [saveState, setSaveState] = useState<ConfigSaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [errors, setErrors] = useState<ConfigValidationErrors>({});
+  const [formDirtyOnSwitch, setFormDirtyOnSwitch] = useState(false);
 
   // Baseline refs for dirty tracking
   const baselineConfigRef = useRef<string>("");
@@ -126,12 +133,14 @@ export function useConfigEditor(): UseConfigEditorReturn {
     setLoadError(null);
     setSaveState("idle");
     setSaveError(null);
+    setFormDirtyOnSwitch(false);
     setLoading(true);
     fetchConfig();
   }, [fetchConfig]);
 
   const close = useCallback(() => {
     setIsOpen(false);
+    setFormDirtyOnSwitch(false);
     if (successTimeoutRef.current) {
       clearTimeout(successTimeoutRef.current);
       successTimeoutRef.current = null;
@@ -156,7 +165,11 @@ export function useConfigEditor(): UseConfigEditorReturn {
         if (formDirty) {
           setRawYaml(stringifyYaml(config));
         }
+        setFormDirtyOnSwitch(formDirty);
         // If not dirty, leave rawYaml as the original loaded value
+      }
+      if (newMode === "form") {
+        setFormDirtyOnSwitch(false);
       }
       // If switching to 'form': just change mode — do NOT parse raw YAML back
       setModeState(newMode);
@@ -182,6 +195,11 @@ export function useConfigEditor(): UseConfigEditorReturn {
     },
     [config]
   );
+
+  const dismissSaveError = useCallback(() => {
+    setSaveState("idle");
+    setSaveError(null);
+  }, []);
 
   const save = useCallback(async () => {
     if (successTimeoutRef.current) {
@@ -261,8 +279,10 @@ export function useConfigEditor(): UseConfigEditorReturn {
     setRawYaml,
     errors,
     isDirty,
+    formDirtyOnSwitch,
     saveState,
     saveError,
     save,
+    dismissSaveError,
   };
 }
