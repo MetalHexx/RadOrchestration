@@ -1,6 +1,6 @@
 # Source Control Automation
 
-The orchestration pipeline's source control automation feature enables automatic git commit and push after every approved task. It is configured via `orchestration.yml` using an `always | ask | never` convention that applies to both commit and pull request automation. Pull request automation creates a GitHub PR via the `gh` CLI on final approval when `auto_pr: always`.
+The orchestration pipeline's source control automation feature enables automatic git commit and push after every approved task. It is configured via `orchestration.yml` using an `always | ask | never` convention that applies to both commit and pull request automation. Pull request automation creates a GitHub PR via the `gh` CLI after the comprehensive final review completes, before the final human approval gate, when `auto_pr: always`.
 
 ## Quick Start
 
@@ -51,8 +51,8 @@ The `rad-execute-parallel` script handles source control setup immediately after
 | `source_control_init` | `rad-execute-parallel` after worktree creation | *(state write only)* | Idempotent; safe to re-run |
 | `task_commit_requested` | Resolver after task approved (when `auto_commit: always`) | `invoke_source_control_commit` | Skipped when `auto_commit: never` or absent |
 | `task_committed` | Orchestrator after agent completes commit | *(next-task action)* | Resumes normal pipeline flow |
-| `pr_requested` | Resolver after final approval (when `auto_pr: always`) | `invoke_source_control_pr` | Triggers PR creation via `gh` CLI |
-| `pr_created` | Orchestrator after agent creates PR | `display_complete` | Stores `pr_url` in state; pipeline complete |
+| `pr_requested` | Resolver after final review completed (when `auto_pr: always`) | `invoke_source_control_pr` | Triggers PR creation via `gh` CLI |
+| `pr_created` | Orchestrator after agent creates PR | `request_final_approval` | Stores `pr_url` in state; proceeds to human gate |
 
 ## Source Control Agent
 

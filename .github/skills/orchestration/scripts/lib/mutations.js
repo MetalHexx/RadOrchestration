@@ -806,13 +806,20 @@ function handlePrRequested(state, context, config) {
  */
 function handlePrCreated(state, context, config) {
   const prUrl = context.pr_url ?? null;
-  state.pipeline.source_control.pr_url = prUrl;
-  return {
-    state,
-    mutations_applied: [
-      `Set pipeline.source_control.pr_url to ${JSON.stringify(prUrl)}`,
-    ],
-  };
+  const mutations = [];
+
+  if (state?.pipeline?.source_control) {
+    state.pipeline.source_control.pr_url = prUrl;
+    mutations.push(
+      `Set pipeline.source_control.pr_url to ${JSON.stringify(prUrl)}`
+    );
+  } else {
+    mutations.push(
+      'source_control not initialized — skipping pr_url update'
+    );
+  }
+
+  return { state, mutations_applied: mutations };
 }
 
 // ─── MUTATIONS Map ──────────────────────────────────────────────────────────

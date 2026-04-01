@@ -301,7 +301,7 @@ function resolveReview(state) {
   if (!final_review.human_approved) {
     // PR routing: after final review complete, before human gate
     const sc = state.pipeline.source_control;
-    if (sc?.auto_pr === 'always' && !sc?.pr_url) {
+    if (sc?.auto_pr === 'always' && sc?.pr_url === undefined) {
       return {
         action: NEXT_ACTIONS.INVOKE_SOURCE_CONTROL_PR,
         context: {
