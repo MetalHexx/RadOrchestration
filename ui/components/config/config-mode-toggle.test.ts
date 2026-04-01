@@ -7,6 +7,8 @@
  * - Active/inactive state derivation
  * - aria-selected correctness
  * - onModeChange callback contract
+ * - Keyboard navigation (ArrowLeft/ArrowRight with wrapping)
+ * - Roving tabIndex management
  */
 import assert from "node:assert";
 
@@ -46,6 +48,32 @@ function isActive(current: ConfigEditorMode, value: ConfigEditorMode): boolean {
 
 function getAriaSelected(current: ConfigEditorMode, value: ConfigEditorMode): boolean {
   return current === value;
+}
+
+function getTabIndex(current: ConfigEditorMode, value: ConfigEditorMode): number {
+  return current === value ? 0 : -1;
+}
+
+/**
+ * Simulate the handleKeyDown arrow-key logic from the component.
+ * Returns the new mode after the key press, or null if unhandled.
+ */
+function simulateArrowKey(
+  key: string,
+  currentIndex: number
+): ConfigEditorMode | null {
+  let nextIndex: number | null = null;
+
+  if (key === "ArrowRight") {
+    nextIndex = (currentIndex + 1) % MODES.length;
+  } else if (key === "ArrowLeft") {
+    nextIndex = (currentIndex - 1 + MODES.length) % MODES.length;
+  }
+
+  if (nextIndex !== null) {
+    return MODES[nextIndex].value;
+  }
+  return null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -130,6 +158,45 @@ test("container has role='tablist' and aria-label='Editor mode' (contract)", () 
 test("each segment has role='tab' (contract)", () => {
   // Structural guarantee: each button has role="tab"
   assert.strictEqual(MODES.length, 2, "exactly 2 tab segments");
+});
+
+// --- Roving tabIndex ---
+
+test("active tab has tabIndex 0, inactive tab has tabIndex -1 (mode=form)", () => {
+  assert.strictEqual(getTabIndex("form", "form"), 0);
+  assert.strictEqual(getTabIndex("form", "raw"), -1);
+});
+
+test("active tab has tabIndex 0, inactive tab has tabIndex -1 (mode=raw)", () => {
+  assert.strictEqual(getTabIndex("raw", "raw"), 0);
+  assert.strictEqual(getTabIndex("raw", "form"), -1);
+});
+
+// --- Arrow key navigation ---
+
+test('ArrowRight from "Form" (index 0) switches to "Raw YAML"', () => {
+  const result = simulateArrowKey("ArrowRight", 0);
+  assert.strictEqual(result, "raw");
+});
+
+test('ArrowLeft from "Raw YAML" (index 1) switches to "Form"', () => {
+  const result = simulateArrowKey("ArrowLeft", 1);
+  assert.strictEqual(result, "form");
+});
+
+test('ArrowLeft from "Form" (index 0) wraps to "Raw YAML"', () => {
+  const result = simulateArrowKey("ArrowLeft", 0);
+  assert.strictEqual(result, "raw");
+});
+
+test('ArrowRight from "Raw YAML" (index 1) wraps to "Form"', () => {
+  const result = simulateArrowKey("ArrowRight", 1);
+  assert.strictEqual(result, "form");
+});
+
+test("non-arrow keys are not handled", () => {
+  const result = simulateArrowKey("Enter", 0);
+  assert.strictEqual(result, null);
 });
 
 /* ------------------------------------------------------------------ */
