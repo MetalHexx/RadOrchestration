@@ -37,7 +37,7 @@ export function ConfigFooter({ onSave, saveState, errorMessage, disabled, onDism
         <Button
           onClick={onSave}
           disabled={disabled || isSaving}
-          className="min-w-[100px]"
+          className="w-full sm:w-auto sm:min-w-[100px]"
           aria-live="polite"
         >
           {isSaving && <Loader2 className="size-4 animate-spin mr-2" />}
