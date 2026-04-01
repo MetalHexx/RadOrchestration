@@ -1,6 +1,6 @@
 "use client";
 
-import { Github, Clock } from "lucide-react";
+import { Github, Clock, ExternalLink } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { SpinnerBadge } from "@/components/badges";
 import type { SourceControl } from "@/types/state";
@@ -13,6 +13,7 @@ interface SourceControlSectionProps {
 export function SourceControlSection({ sourceControl }: SourceControlSectionProps) {
   const { branch, auto_commit, auto_pr } = sourceControl;
   const compare_url = sourceControl.compare_url ?? null;
+  const pr_url = sourceControl.pr_url ?? null;
 
   return (
     <Card>
@@ -58,15 +59,30 @@ export function SourceControlSection({ sourceControl }: SourceControlSectionProp
 
         {/* PR placeholder row — rendered only when auto_pr === "always" */}
         {auto_pr === 'always' && (
-          <div aria-label="Pull request not yet created">
-            <Clock
-              size={12}
-              className="inline mr-1"
-              style={{ color: 'var(--status-not-started)' }}
-              aria-hidden="true"
-            />
-            <span className="text-xs text-muted-foreground italic">PR not yet created</span>
-          </div>
+          pr_url !== null ? (
+            <div>
+              <a
+                href={pr_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-primary hover:underline font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+                aria-label="View pull request on GitHub"
+              >
+                <ExternalLink size={12} aria-hidden="true" />
+                Pull Request
+              </a>
+            </div>
+          ) : (
+            <div aria-label="Pull request not yet created">
+              <Clock
+                size={12}
+                className="inline mr-1"
+                style={{ color: 'var(--status-not-started)' }}
+                aria-hidden="true"
+              />
+              <span className="text-xs text-muted-foreground italic">PR not yet created</span>
+            </div>
+          )
         )}
       </CardContent>
     </Card>
