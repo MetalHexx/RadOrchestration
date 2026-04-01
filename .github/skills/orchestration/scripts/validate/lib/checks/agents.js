@@ -108,7 +108,7 @@ function validateAgentsArray(agents, tools, agentName, filename) {
       category: 'agents',
       name: filename,
       status: 'fail',
-      message: 'Only the orchestrator may have a non-empty agents array',
+      message: 'Only the Orchestrator may have a non-empty agents array',
       detail: {
         expected: 'Empty agents array for non-orchestrator agents',
         found: `Agent "${agentName}" has agents: [${agents.join(', ')}]`,

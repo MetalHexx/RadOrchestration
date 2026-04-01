@@ -58,8 +58,8 @@ These are the exact event names passed to `--event`:
 | `code_review_completed` | `--doc-path <path>` | After Reviewer finishes code review |
 | `task_commit_requested` | *(none)* | Signaled internally after `code_review_completed` when `auto_commit: always` and review verdict is approved. Triggers Source Control Agent spawn. |
 | `task_committed` | `--commit-hash <hash> --pushed <true\|false>` | After Source Control Agent completes. Extract `commitHash` and `pushed` from the agent's `## Commit Result` JSON block. |
-| `pr_requested` | *(none)* | Signaled internally after `final_review_completed` when `auto_pr: always` and `pr_url` is null. Validation checkpoint before Source Control Agent spawn in PR mode. |
-| `pr_created` | `--pr-url <url>` | After Source Control Agent completes PR creation. Extract `pr_url` and `pr_number` from the agent's `## PR Result` JSON block. Writes `pr_url` to `state.pipeline.source_control`. |
+| `pr_requested` | *(none)* | Signaled internally after `final_review_completed` when `auto_pr: always` and `pr_url` is **undefined** (absent from state — not yet attempted). A `null` value means PR creation was attempted but no URL is available; `null` does **not** re-trigger `pr_requested`. Validation checkpoint before Source Control Agent spawn in PR mode. |
+| `pr_created` | `--pr-url <url>` *(optional)* | After Source Control Agent completes PR creation. Extract `pr_url` and `pr_number` from the agent's `## PR Result` JSON block. On success, signal with `--pr-url <url>`. On failure (`pr_url` is `null` in the result), signal `pr_created` **without** the `--pr-url` flag — the pipeline CLI will omit `pr_url` from context and the mutation handler will coalesce it to `null`. Writes `pr_url` to `state.pipeline.source_control`. |
 | `phase_report_created` | `--doc-path <path>` | After Tactical Planner finishes phase report |
 | `phase_review_completed` | `--doc-path <path>` | After Reviewer finishes phase review |
 | `gate_mode_set` | `--gate-mode task\|phase\|autonomous` | After operator selects gate mode |

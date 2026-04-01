@@ -183,9 +183,9 @@ When `result.action` is `invoke_source_control_pr`, spawn **source-control** in 
 1. The agent reads `pipeline.source_control` from state for `branch`, `base_branch`, and `worktree_path`
 2. The agent reads `final_review.doc_path` from state for the PR body file
 3. The agent executes `gh-pr.js` with the resolved flags
-4. The agent outputs a `## PR Result` JSON block containing `pr_url` and `pr_number`
+4. The agent outputs a `## PR Result` JSON block containing `pr_url` (which may be `null` on failure) and `pr_number`
 5. Extract `pr_url` from the agent's `## PR Result` JSON block
-6. Signal `pr_created --pr-url <url>` to the pipeline
+6. If `pr_url` is non-null, signal `pr_created --pr-url <url>` to the pipeline; if `pr_url` is `null` (creation failed or pre-condition failure), signal `pr_created` **without** the `--pr-url` flag so the pipeline records the attempt as `null` and proceeds to the human gate
 
 ## Status Reporting
 

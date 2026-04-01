@@ -59,7 +59,7 @@ export function SourceControlSection({ sourceControl }: SourceControlSectionProp
 
         {/* PR placeholder row — rendered only when auto_pr === "always" */}
         {auto_pr === 'always' && (
-          pr_url !== null ? (
+          pr_url !== null && /^https?:\/\//i.test(pr_url) ? (
             <div>
               <a
                 href={pr_url}
