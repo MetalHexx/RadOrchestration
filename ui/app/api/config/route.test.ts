@@ -242,7 +242,7 @@ async function run() {
   const res = await PUT(req);
   assert.strictEqual(res.status, 500);
   const json = await res.json();
-  assert.ok(json.error.includes('Failed to write config'), `Expected "Failed to write config": ${json.error}`);
+  assert.ok(json.error.includes('not writable'), `Expected writable error: ${json.error}`);
   await rm(badDir, { recursive: true, force: true });
 });
 
