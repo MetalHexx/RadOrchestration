@@ -505,6 +505,82 @@
           "type": "boolean"
         }
       }
+    },
+    "config": {
+      "title": "Config Snapshot",
+      "description": "Runtime configuration captured at project initialization.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["limits", "human_gates"],
+      "properties": {
+        "limits": {
+          "title": "Limits",
+          "description": "Pipeline scope guards snapshotted from orchestration.yml.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "max_phases",
+            "max_tasks_per_phase",
+            "max_retries_per_task",
+            "max_consecutive_review_rejections"
+          ],
+          "properties": {
+            "max_phases": {
+              "title": "Max Phases",
+              "description": "Maximum number of phases allowed per project. Minimum: 1.",
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_tasks_per_phase": {
+              "title": "Max Tasks per Phase",
+              "description": "Maximum number of tasks allowed per phase. Minimum: 1.",
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_retries_per_task": {
+              "title": "Max Retries per Task",
+              "description": "Auto-retries before escalation to human. Minimum: 0.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "max_consecutive_review_rejections": {
+              "title": "Max Consecutive Review Rejections",
+              "description": "Consecutive reviewer rejections before human escalation. Minimum: 1.",
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "human_gates": {
+          "title": "Human Gates",
+          "description": "Human gate defaults snapshotted from orchestration.yml.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "after_planning",
+            "execution_mode",
+            "after_final_review"
+          ],
+          "properties": {
+            "after_planning": {
+              "title": "Gate After Planning",
+              "description": "When true, a human gate is required after planning completes.",
+              "type": "boolean"
+            },
+            "execution_mode": {
+              "title": "Execution Mode",
+              "description": "Human gate frequency during execution. Values: ask, phase, task, autonomous.",
+              "type": "string",
+              "enum": ["ask", "phase", "task", "autonomous"]
+            },
+            "after_final_review": {
+              "title": "Gate After Final Review",
+              "description": "When true, a human gate is required after final review completes.",
+              "type": "boolean"
+            }
+          }
+        }
+      }
     }
   }
 }
