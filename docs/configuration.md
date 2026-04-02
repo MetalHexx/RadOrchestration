@@ -125,7 +125,7 @@ Human approval checkpoints during pipeline execution.
 | `task` | Require human approval before each task begins |
 | `autonomous` | No gates during execution — all phases and tasks run without human approval |
 
-> **Note — V5 validator diagnostic behavior:** The State Transition Validator's V5 check reads limit values from the state snapshot (`state.config.limits`) when present. However, V5 error messages always display the global `orchestration.yml` values for diagnostics — this is intentional, as error messages describe the configured system limits rather than the per-project snapshot values.
+> **Note — V5 validator diagnostic behavior:** The State Transition Validator's V5 check reports the limit that was actually enforced in its error messages. When `state.config.limits.*` is present in the state snapshot, those snapshot values are used for diagnostics; otherwise, the validator falls back to the global `{orch_root}/orchestration.yml` limits.
 
 ### `source_control`
 
