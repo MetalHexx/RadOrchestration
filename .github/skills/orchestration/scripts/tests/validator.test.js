@@ -595,3 +595,46 @@ describe('Init path (current = null)', () => {
     assert.ok(!errors.some(e => ['V11', 'V12', 'V13'].includes(e.invariant)));
   });
 });
+
+// ─── V16 schema validation — config section ─────────────────────────────────
+
+describe('V16 schema validation — config section', () => {
+  const validConfig = {
+    limits: {
+      max_phases: 5,
+      max_tasks_per_phase: 8,
+      max_retries_per_task: 2,
+      max_consecutive_review_rejections: 3,
+    },
+    human_gates: {
+      after_planning: true,
+      execution_mode: 'autonomous',
+      after_final_review: true,
+    },
+  };
+
+  it('state with fully valid config section produces no V16 errors', () => {
+    const proposed = { ...makeState(), config: validConfig };
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V16'),
+      `Expected no V16 errors, got: ${JSON.stringify(errors.filter(e => e.invariant === 'V16'))}`);
+  });
+
+  it('state with config omitted produces no V16 errors (backward compatibility)', () => {
+    const proposed = makeState();
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V16'),
+      `Expected no V16 errors for config-absent state, got: ${JSON.stringify(errors.filter(e => e.invariant === 'V16'))}`);
+  });
+
+  it('state with config.limits.max_phases set to "ten" (string) produces a V16 error', () => {
+    const badConfig = {
+      ...validConfig,
+      limits: { ...validConfig.limits, max_phases: 'ten' },
+    };
+    const proposed = { ...makeState(), config: badConfig };
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(errors.some(e => e.invariant === 'V16'),
+      `Expected a V16 type error for max_phases:"ten", got: ${JSON.stringify(errors)}`);
+  });
+});

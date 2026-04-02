@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { processEvent } = require('../lib/pipeline-engine');
+const { processEvent, scaffoldInitialState } = require('../lib/pipeline-engine');
 const {
   createMockIO,
   createBaseState,
@@ -1635,5 +1635,57 @@ describe('Category 18: pr_url persistence', () => {
     assert.equal(r4.success, true);
     assert.equal(r4.action, 'display_complete');
     assert.strictEqual(io.getState().pipeline.source_control.pr_url, 'https://github.com/test/repo/pull/99');
+  });
+});
+
+// ─── scaffoldInitialState config snapshot ──────────────────────────────────
+
+const CONFIG_FIXTURE = {
+  limits: {
+    max_phases:                        3,
+    max_tasks_per_phase:               5,
+    max_retries_per_task:              1,
+    max_consecutive_review_rejections: 2,
+  },
+  human_gates: {
+    after_planning:     false,
+    execution_mode:     'phase',
+    after_final_review: true,
+  },
+};
+
+describe('scaffoldInitialState config snapshot', () => {
+  const s = scaffoldInitialState(CONFIG_FIXTURE, '/test/snapshot-test');
+
+  it('state.config exists', () => {
+    assert.ok(s.config !== undefined, 'config property must exist on scaffolded state');
+  });
+
+  it('config.limits.max_phases matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.limits.max_phases, CONFIG_FIXTURE.limits.max_phases);
+  });
+
+  it('config.limits.max_tasks_per_phase matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.limits.max_tasks_per_phase, CONFIG_FIXTURE.limits.max_tasks_per_phase);
+  });
+
+  it('config.limits.max_retries_per_task matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.limits.max_retries_per_task, CONFIG_FIXTURE.limits.max_retries_per_task);
+  });
+
+  it('config.limits.max_consecutive_review_rejections matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.limits.max_consecutive_review_rejections, CONFIG_FIXTURE.limits.max_consecutive_review_rejections);
+  });
+
+  it('config.human_gates.after_planning matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.human_gates.after_planning, CONFIG_FIXTURE.human_gates.after_planning);
+  });
+
+  it('config.human_gates.execution_mode matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.human_gates.execution_mode, CONFIG_FIXTURE.human_gates.execution_mode);
+  });
+
+  it('config.human_gates.after_final_review matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.human_gates.after_final_review, CONFIG_FIXTURE.human_gates.after_final_review);
   });
 });
