@@ -23,7 +23,7 @@ export const CONFIG_FIELDS: FieldMeta[] = [
     key: 'system.orch_root',
     label: 'Orchestration Root',
     tooltip:
-      'Root folder for orchestration files relative to workspace. Usually .github.',
+      'Root folder for orchestration files relative to workspace.',
     section: 'system',
     controlType: 'text',
   },
