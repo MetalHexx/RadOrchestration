@@ -175,19 +175,19 @@ Changes to `orchestration.yml` limits do not affect projects that are already ru
 
 ### Gate Mode Resolution in `resolveGateMode()`
 
-`resolveGateMode()` in `resolver.js` uses a two-tier chain:
+`resolveGateMode()` in `resolver.js` uses the same three-tier chain as `mutations.js`:
 
 ```javascript
-state.pipeline.gate_mode ?? config.human_gates.execution_mode
+state.pipeline.gate_mode ?? state.config?.human_gates?.execution_mode ?? config.human_gates.execution_mode
 ```
 
-This differs from the three-tier pattern used in `mutations.js` — and this asymmetry is intentional. `gate_mode` is an explicit operator override set during execution; when it is set, it always takes precedence. When it is `null`, the global config default applies. Inserting the state snapshot as a mid-tier is not necessary because the snapshot value would only matter on new projects where `gate_mode` is `null`, and in that case the global config default and snapshot value are identical (the snapshot was captured from the same config at init).
+`gate_mode` is an explicit operator override set during execution; when it is set, it always takes precedence. When it is `null`, the state snapshot captures the `execution_mode` value from `orchestration.yml` at project initialization — protecting the running project from mid-execution config changes. Legacy projects without `state.config` fall through to the global config default.
 
 See [state-v4.schema.json](../.github/skills/orchestration/schemas/state-v4.schema.json) for the full initial state shape and schema definition.
 
 ## Changing Configuration
 
-Changes to `orchestration.yml` affect all projects on the next pipeline invocation, since limits are read at runtime rather than copied into `state.json`.
+Changes to `orchestration.yml` limits and human gates only affect **new** projects — existing projects read from the snapshot captured at initialization. Structural settings (`system.orch_root`, `projects.*`) are always read directly from `orchestration.yml`.
 
 If you change `projects.base_path`, run `/configure-system` — it automatically scans the `{orch_root}/` directory for hardcoded path references and updates them. It also updates the `applyTo` glob in `{orch_root}/instructions/project-docs.instructions.md` to match the new path. If you skip this step, run the [validation tool](validation.md) — it warns if `applyTo` and `base_path` are out of sync.
 

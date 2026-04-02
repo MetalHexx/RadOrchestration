@@ -514,6 +514,22 @@ describe('resolver — gates', () => {
     assert.notEqual(result.action, 'gate_task');
     assert.notEqual(result.action, 'gate_phase');
   });
+
+  it('uses state.config snapshot execution_mode over global config (snapshot-present)', () => {
+    const state = completedTaskState();
+    state.config = makeConfig({ human_gates: { execution_mode: 'task' } });
+    const config = makeConfig({ human_gates: { execution_mode: 'autonomous' } });
+    const result = resolveNextAction(state, config);
+    assert.equal(result.action, 'gate_task', 'snapshot execution_mode=task should win over config=autonomous');
+  });
+
+  it('falls through to global config when state.config is absent (legacy project)', () => {
+    const state = completedTaskState();
+    delete state.config;
+    const config = makeConfig({ human_gates: { execution_mode: 'task' } });
+    const result = resolveNextAction(state, config);
+    assert.equal(result.action, 'gate_task', 'legacy project without snapshot should fall through to config');
+  });
 });
 
 // ─── Review Tier Tests ──────────────────────────────────────────────────────
