@@ -183,12 +183,24 @@ export function useConfigEditor(): UseConfigEditorReturn {
       const clone = JSON.parse(
         JSON.stringify(config)
       ) as Record<string, unknown>;
-      const keys = path.split(".");
+      const keys = path.split(".").filter(Boolean);
+      if (keys.length === 0) return;
       let current: Record<string, unknown> = clone;
       for (let i = 0; i < keys.length - 1; i++) {
-        current = current[keys[i]] as Record<string, unknown>;
+        const key = keys[i] as string;
+        let next = current[key];
+        if (
+          next === undefined ||
+          next === null ||
+          typeof next !== "object" ||
+          Array.isArray(next)
+        ) {
+          next = {};
+          current[key] = next;
+        }
+        current = next as Record<string, unknown>;
       }
-      current[keys[keys.length - 1]] = value;
+      current[keys[keys.length - 1] as string] = value;
       const updatedConfig = clone as unknown as OrchestrationConfig;
       setConfig(updatedConfig);
       setErrors(validateConfig(updatedConfig));

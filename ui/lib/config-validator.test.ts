@@ -250,6 +250,61 @@ test('does not mutate input config', () => {
   assert.strictEqual(JSON.stringify(cfg), snapshot);
 });
 
+// --- Missing sections ---
+
+test('missing system section returns section-level error', () => {
+  const cfg = makeValidConfig();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (cfg as any).system;
+  const result = validateConfig(cfg);
+  assert.strictEqual(result['system'], 'Missing system section');
+  assert.strictEqual(result['system.orch_root'], undefined);
+});
+
+test('missing projects section returns section-level error', () => {
+  const cfg = makeValidConfig();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (cfg as any).projects;
+  const result = validateConfig(cfg);
+  assert.strictEqual(result['projects'], 'Missing projects section');
+});
+
+test('missing limits section returns section-level error', () => {
+  const cfg = makeValidConfig();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (cfg as any).limits;
+  const result = validateConfig(cfg);
+  assert.strictEqual(result['limits'], 'Missing limits section');
+});
+
+test('missing human_gates section returns section-level error', () => {
+  const cfg = makeValidConfig();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (cfg as any).human_gates;
+  const result = validateConfig(cfg);
+  assert.strictEqual(result['human_gates'], 'Missing human_gates section');
+});
+
+test('missing source_control section returns section-level error', () => {
+  const cfg = makeValidConfig();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (cfg as any).source_control;
+  const result = validateConfig(cfg);
+  assert.strictEqual(result['source_control'], 'Missing source_control section');
+});
+
+test('all sections missing returns all section-level errors', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cfg = { version: '4' } as any;
+  const result = validateConfig(cfg);
+  assert.strictEqual(result['system'], 'Missing system section');
+  assert.strictEqual(result['projects'], 'Missing projects section');
+  assert.strictEqual(result['limits'], 'Missing limits section');
+  assert.strictEqual(result['human_gates'], 'Missing human_gates section');
+  assert.strictEqual(result['source_control'], 'Missing source_control section');
+  assert.strictEqual(Object.keys(result).length, 5);
+});
+
 // --- Summary ---
 
 console.log(`\n  ${passed} passed, ${failed} failed\n`);

@@ -47,7 +47,15 @@ export async function PUT(request: Request) {
       );
     }
 
-    const errors = validateConfig(body.config);
+    let errors;
+    try {
+      errors = validateConfig(body.config);
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid config structure' },
+        { status: 400 },
+      );
+    }
     if (Object.keys(errors).length > 0) {
       return NextResponse.json(
         { error: 'Validation failed', details: errors },
@@ -84,7 +92,7 @@ export async function PUT(request: Request) {
   } catch {
     return NextResponse.json(
       { error: 'Configuration file is not writable — check file permissions or volume mount' },
-      { status: 500 },
+      { status: 403 },
     );
   }
 

@@ -234,13 +234,13 @@ async function run() {
 });
 
   // --- File-system error (write to non-existent dir) ---
-  await test('file-system error returns 500', async () => {
+  await test('non-writable config returns 403', async () => {
   // Point to a workspace that doesn't have the config dir
   const badDir = await mkdtemp(path.join(os.tmpdir(), 'route-test-bad-'));
   process.env.WORKSPACE_ROOT = badDir;
   const req = makePutRequest({ mode: 'form', config: VALID_CONFIG });
   const res = await PUT(req);
-  assert.strictEqual(res.status, 500);
+  assert.strictEqual(res.status, 403);
   const json = await res.json();
   assert.ok(json.error.includes('not writable'), `Expected writable error: ${json.error}`);
   await rm(badDir, { recursive: true, force: true });
