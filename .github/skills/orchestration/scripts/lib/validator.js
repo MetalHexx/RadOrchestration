@@ -77,11 +77,11 @@ function checkV2(proposed) {
 function checkV5(proposed, config) {
   const errors = [];
   const { phases } = proposed.execution;
-  if (phases.length > config.limits.max_phases) {
+  if (phases.length > (proposed.config?.limits?.max_phases ?? config.limits.max_phases)) {
     errors.push(makeError('V5', `phases.length ${phases.length} exceeds max_phases ${config.limits.max_phases}`, 'execution.phases.length'));
   }
   for (let i = 0; i < phases.length; i++) {
-    if (phases[i].tasks.length > config.limits.max_tasks_per_phase) {
+    if (phases[i].tasks.length > (proposed.config?.limits?.max_tasks_per_phase ?? config.limits.max_tasks_per_phase)) {
       errors.push(makeError('V5', `phase[${i}].tasks.length ${phases[i].tasks.length} exceeds max_tasks_per_phase ${config.limits.max_tasks_per_phase}`, `execution.phases[${i}].tasks.length`));
     }
   }
@@ -102,7 +102,7 @@ function checkV6(proposed) {
 function checkV7(proposed, config) {
   if (
     proposed.pipeline.current_tier === PIPELINE_TIERS.COMPLETE &&
-    config.human_gates.after_final_review === true &&
+    (proposed.config?.human_gates?.after_final_review ?? config.human_gates.after_final_review) === true &&
     !proposed.final_review.human_approved
   ) {
     return [makeError('V7', 'complete tier with after_final_review gate requires final_review.human_approved', 'final_review.human_approved')];
