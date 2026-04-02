@@ -420,7 +420,7 @@ function handleCodeReviewCompleted(state, context, config) {
   const { taskStatus, reviewAction } = resolveTaskOutcome(
     context.verdict,
     task.retries,
-    config.limits.max_retries_per_task,
+    state.config?.limits?.max_retries_per_task ?? config.limits.max_retries_per_task,
   );
 
   task.status = taskStatus;
@@ -437,7 +437,7 @@ function handleCodeReviewCompleted(state, context, config) {
     task.stage = TASK_STAGES.COMPLETE;
     mutations.push(`Set task.stage to "${TASK_STAGES.COMPLETE}"`);
 
-    const effectiveGateMode = state.pipeline.gate_mode ?? config.human_gates.execution_mode;
+    const effectiveGateMode = state.pipeline.gate_mode ?? state.config?.human_gates?.execution_mode ?? config.human_gates.execution_mode;
     const pipelineSC = state.pipeline.source_control;
     const canDeferForAutoCommit =
       pipelineSC?.auto_commit === 'always' &&
@@ -509,7 +509,7 @@ function handlePhaseReviewCompleted(state, context, config) {
     phase.stage = PHASE_STAGES.COMPLETE;
     mutations.push(`Set phase.stage to "${PHASE_STAGES.COMPLETE}"`);
 
-    const effectiveGateMode = state.pipeline.gate_mode ?? config.human_gates.execution_mode;
+    const effectiveGateMode = state.pipeline.gate_mode ?? state.config?.human_gates?.execution_mode ?? config.human_gates.execution_mode;
     if (effectiveGateMode === 'phase' || effectiveGateMode === 'task') {
       // Defer pointer advancement to handleGateApproved
       mutations.push(`Deferred execution.current_phase advancement (gate mode: ${effectiveGateMode})`);
