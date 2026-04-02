@@ -77,12 +77,14 @@ function checkV2(proposed) {
 function checkV5(proposed, config) {
   const errors = [];
   const { phases } = proposed.execution;
-  if (phases.length > (proposed.config?.limits?.max_phases ?? config.limits.max_phases)) {
-    errors.push(makeError('V5', `phases.length ${phases.length} exceeds max_phases ${config.limits.max_phases}`, 'execution.phases.length'));
+  const effectiveMaxPhases = proposed.config?.limits?.max_phases ?? config.limits.max_phases;
+  const effectiveMaxTasksPerPhase = proposed.config?.limits?.max_tasks_per_phase ?? config.limits.max_tasks_per_phase;
+  if (phases.length > effectiveMaxPhases) {
+    errors.push(makeError('V5', `phases.length ${phases.length} exceeds max_phases ${effectiveMaxPhases}`, 'execution.phases.length'));
   }
   for (let i = 0; i < phases.length; i++) {
-    if (phases[i].tasks.length > (proposed.config?.limits?.max_tasks_per_phase ?? config.limits.max_tasks_per_phase)) {
-      errors.push(makeError('V5', `phase[${i}].tasks.length ${phases[i].tasks.length} exceeds max_tasks_per_phase ${config.limits.max_tasks_per_phase}`, `execution.phases[${i}].tasks.length`));
+    if (phases[i].tasks.length > effectiveMaxTasksPerPhase) {
+      errors.push(makeError('V5', `phase[${i}].tasks.length ${phases[i].tasks.length} exceeds max_tasks_per_phase ${effectiveMaxTasksPerPhase}`, `execution.phases[${i}].tasks.length`));
     }
   }
   return errors;
