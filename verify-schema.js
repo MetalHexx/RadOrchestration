@@ -35,7 +35,6 @@ function walk(obj, path) {
   if (obj.items) walk(obj.items, path + '[]');
 }
 
-if (schema.title) all.push({ path: 'root', title: schema.title, desc: schema.description });
 walk(schema, 'root');
 
 console.log('Total nodes with title/description:', all.length);

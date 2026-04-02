@@ -75,9 +75,13 @@ function makeConfig(overrides = {}) {
     limits: {
       max_phases: 10,
       max_tasks_per_phase: 10,
+      max_retries_per_task: 3,
+      max_consecutive_review_rejections: 3,
       ...(overrides.limits || {}),
     },
     human_gates: {
+      after_planning: true,
+      execution_mode: 'autonomous',
       after_final_review: true,
       ...(overrides.human_gates || {}),
     },
@@ -645,10 +649,11 @@ describe('V5 — state-first: snapshot-present path (max_phases)', () => {
   it('uses state.config.limits.max_phases when snapshot is stricter than config', () => {
     const phases = Array.from({ length: 3 }, () => makePhase());
     const proposed = makeState({ execution: { current_phase: 0, phases, status: 'not_started' } });
-    proposed.config = { limits: { max_phases: 2, max_tasks_per_phase: 10 } };
+    proposed.config = makeConfig({ limits: { max_phases: 2 } });
     const cfg = makeConfig(); // limits.max_phases: 10
     const errors = validateTransition(null, proposed, cfg);
     assert.ok(errors.some(e => e.invariant === 'V5'), 'V5 should fire — snapshot max_phases(2) exceeded by 3 phases');
+    assert.ok(!errors.some(e => e.invariant === 'V16'), 'V16 should not fire — fixture must be schema-valid');
   });
 });
 
@@ -668,10 +673,11 @@ describe('V5 — state-first: snapshot-present path (max_tasks_per_phase)', () =
     const tasks = Array.from({ length: 3 }, () => makeTask());
     const phase = makePhase({ current_task: 0, tasks });
     const proposed = makeState({ execution: { current_phase: 0, phases: [phase], status: 'not_started' } });
-    proposed.config = { limits: { max_phases: 10, max_tasks_per_phase: 2 } };
+    proposed.config = makeConfig({ limits: { max_tasks_per_phase: 2 } });
     const cfg = makeConfig(); // limits.max_tasks_per_phase: 10
     const errors = validateTransition(null, proposed, cfg);
     assert.ok(errors.some(e => e.invariant === 'V5'), 'V5 should fire — snapshot max_tasks_per_phase(2) exceeded by 3 tasks');
+    assert.ok(!errors.some(e => e.invariant === 'V16'), 'V16 should not fire — fixture must be schema-valid');
   });
 });
 
@@ -697,10 +703,11 @@ describe('V7 — state-first: snapshot-present path (after_final_review = false)
       planning: { status: 'complete', human_approved: true, steps: [] },
       execution: { current_phase: 1, phases: [phase], status: 'complete' },
     });
-    proposed.config = { human_gates: { after_final_review: false } };
+    proposed.config = makeConfig({ human_gates: { after_final_review: false } });
     const cfg = makeConfig({ human_gates: { after_final_review: true } });
     const errors = validateTransition(null, proposed, cfg);
     assert.ok(!errors.some(e => e.invariant === 'V7'), 'V7 should not fire — snapshot sets after_final_review to false (must use ?? not ||)');
+    assert.ok(!errors.some(e => e.invariant === 'V16'), 'V16 should not fire — fixture must be schema-valid');
   });
 });
 

@@ -278,7 +278,7 @@
           "minimum": 0
         },
         "phases": {
-          "title": "Phases",
+          "title": "Execution Phases",
           "description": "Ordered list of execution phases.",
           "type": "array",
           "items": {
@@ -627,7 +627,7 @@
       ],
       "properties": {
         "limits": {
-          "title": "Limits",
+          "title": "Config Limits",
           "description": "Pipeline scope guards snapshotted from orchestration.yml.",
           "type": "object",
           "additionalProperties": false,
