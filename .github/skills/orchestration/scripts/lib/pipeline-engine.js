@@ -57,6 +57,19 @@ function scaffoldInitialState(config, projectDir) {
       doc_path: null,
       human_approved: false,
     },
+    config: {
+      limits: {
+        max_phases:                        config.limits.max_phases,
+        max_tasks_per_phase:               config.limits.max_tasks_per_phase,
+        max_retries_per_task:              config.limits.max_retries_per_task,
+        max_consecutive_review_rejections: config.limits.max_consecutive_review_rejections,
+      },
+      human_gates: {
+        after_planning:     config.human_gates.after_planning,
+        execution_mode:     config.human_gates.execution_mode,
+        after_final_review: config.human_gates.after_final_review,
+      },
+    },
   };
 }
 

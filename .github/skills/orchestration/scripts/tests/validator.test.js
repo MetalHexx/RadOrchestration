@@ -75,9 +75,13 @@ function makeConfig(overrides = {}) {
     limits: {
       max_phases: 10,
       max_tasks_per_phase: 10,
+      max_retries_per_task: 3,
+      max_consecutive_review_rejections: 3,
       ...(overrides.limits || {}),
     },
     human_gates: {
+      after_planning: true,
+      execution_mode: 'autonomous',
       after_final_review: true,
       ...(overrides.human_gates || {}),
     },
@@ -593,5 +597,131 @@ describe('Init path (current = null)', () => {
     assert.ok(errors.some(e => e.invariant === 'V1'));
     // Should NOT have any V11–V13 errors
     assert.ok(!errors.some(e => ['V11', 'V12', 'V13'].includes(e.invariant)));
+  });
+});
+
+// ─── V16 schema validation — config section ─────────────────────────────────
+
+describe('V16 schema validation — config section', () => {
+  const validConfig = {
+    limits: {
+      max_phases: 5,
+      max_tasks_per_phase: 8,
+      max_retries_per_task: 2,
+      max_consecutive_review_rejections: 3,
+    },
+    human_gates: {
+      after_planning: true,
+      execution_mode: 'autonomous',
+      after_final_review: true,
+    },
+  };
+
+  it('state with fully valid config section produces no V16 errors', () => {
+    const proposed = { ...makeState(), config: validConfig };
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V16'),
+      `Expected no V16 errors, got: ${JSON.stringify(errors.filter(e => e.invariant === 'V16'))}`);
+  });
+
+  it('state with config omitted produces no V16 errors (backward compatibility)', () => {
+    const proposed = makeState();
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V16'),
+      `Expected no V16 errors for config-absent state, got: ${JSON.stringify(errors.filter(e => e.invariant === 'V16'))}`);
+  });
+
+  it('state with config.limits.max_phases set to "ten" (string) produces a V16 error', () => {
+    const badConfig = {
+      ...validConfig,
+      limits: { ...validConfig.limits, max_phases: 'ten' },
+    };
+    const proposed = { ...makeState(), config: badConfig };
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(errors.some(e => e.invariant === 'V16'),
+      `Expected a V16 type error for max_phases:"ten", got: ${JSON.stringify(errors)}`);
+  });
+});
+
+// ─── V5 — state-first config snapshot ───────────────────────────────────────
+
+describe('V5 — state-first: snapshot-present path (max_phases)', () => {
+  it('uses state.config.limits.max_phases when snapshot is stricter than config', () => {
+    const phases = Array.from({ length: 3 }, () => makePhase());
+    const proposed = makeState({ execution: { current_phase: 0, phases, status: 'not_started' } });
+    proposed.config = makeConfig({ limits: { max_phases: 2 } });
+    const cfg = makeConfig(); // limits.max_phases: 10
+    const errors = validateTransition(null, proposed, cfg);
+    assert.ok(errors.some(e => e.invariant === 'V5'), 'V5 should fire — snapshot max_phases(2) exceeded by 3 phases');
+    assert.ok(!errors.some(e => e.invariant === 'V16'), 'V16 should not fire — fixture must be schema-valid');
+  });
+});
+
+describe('V5 — state-first: snapshot-absent path (max_phases)', () => {
+  it('falls back to config.limits.max_phases when state.config is absent', () => {
+    const phases = Array.from({ length: 3 }, () => makePhase());
+    const proposed = makeState({ execution: { current_phase: 0, phases, status: 'not_started' } });
+    // No proposed.config — snapshot absent; config fallback (max_phases: 10) applies
+    const cfg = makeConfig(); // limits.max_phases: 10
+    const errors = validateTransition(null, proposed, cfg);
+    assert.ok(!errors.some(e => e.invariant === 'V5'), 'V5 should not fire — config max_phases(10) allows 3 phases');
+  });
+});
+
+describe('V5 — state-first: snapshot-present path (max_tasks_per_phase)', () => {
+  it('uses state.config.limits.max_tasks_per_phase when snapshot is stricter than config', () => {
+    const tasks = Array.from({ length: 3 }, () => makeTask());
+    const phase = makePhase({ current_task: 0, tasks });
+    const proposed = makeState({ execution: { current_phase: 0, phases: [phase], status: 'not_started' } });
+    proposed.config = makeConfig({ limits: { max_tasks_per_phase: 2 } });
+    const cfg = makeConfig(); // limits.max_tasks_per_phase: 10
+    const errors = validateTransition(null, proposed, cfg);
+    assert.ok(errors.some(e => e.invariant === 'V5'), 'V5 should fire — snapshot max_tasks_per_phase(2) exceeded by 3 tasks');
+    assert.ok(!errors.some(e => e.invariant === 'V16'), 'V16 should not fire — fixture must be schema-valid');
+  });
+});
+
+describe('V5 — state-first: snapshot-absent path (max_tasks_per_phase)', () => {
+  it('falls back to config.limits.max_tasks_per_phase when state.config is absent', () => {
+    const tasks = Array.from({ length: 3 }, () => makeTask());
+    const phase = makePhase({ current_task: 0, tasks });
+    const proposed = makeState({ execution: { current_phase: 0, phases: [phase], status: 'not_started' } });
+    // No proposed.config — snapshot absent; config fallback (max_tasks_per_phase: 10) applies
+    const cfg = makeConfig(); // limits.max_tasks_per_phase: 10
+    const errors = validateTransition(null, proposed, cfg);
+    assert.ok(!errors.some(e => e.invariant === 'V5'), 'V5 should not fire — config max_tasks_per_phase(10) allows 3 tasks');
+  });
+});
+
+// ─── V7 — state-first config snapshot ───────────────────────────────────────
+
+describe('V7 — state-first: snapshot-present path (after_final_review = false)', () => {
+  it('uses state.config.human_gates.after_final_review = false to skip gate (false is valid — ?? does not fall through)', () => {
+    const phase = makePhase({ status: 'complete', current_task: 1, tasks: [makeTask({ status: 'complete' })] });
+    const proposed = makeState({
+      pipeline: { current_tier: 'complete' },
+      planning: { status: 'complete', human_approved: true, steps: [] },
+      execution: { current_phase: 1, phases: [phase], status: 'complete' },
+    });
+    proposed.config = makeConfig({ human_gates: { after_final_review: false } });
+    const cfg = makeConfig({ human_gates: { after_final_review: true } });
+    const errors = validateTransition(null, proposed, cfg);
+    assert.ok(!errors.some(e => e.invariant === 'V7'), 'V7 should not fire — snapshot sets after_final_review to false (must use ?? not ||)');
+    assert.ok(!errors.some(e => e.invariant === 'V16'), 'V16 should not fire — fixture must be schema-valid');
+  });
+});
+
+describe('V7 — state-first: snapshot-absent path (after_final_review)', () => {
+  it('falls back to config.human_gates.after_final_review when state.config is absent', () => {
+    const phase = makePhase({ status: 'complete', current_task: 1, tasks: [makeTask({ status: 'complete' })] });
+    const proposed = makeState({
+      pipeline: { current_tier: 'complete' },
+      planning: { status: 'complete', human_approved: true, steps: [] },
+      execution: { current_phase: 1, phases: [phase], status: 'complete' },
+    });
+    // No proposed.config — snapshot absent; config fallback (after_final_review: true) applies
+    const cfg = makeConfig({ human_gates: { after_final_review: true } });
+    const errors = validateTransition(null, proposed, cfg);
+    assert.ok(errors.some(e => e.invariant === 'V7'), 'V7 should fire — config after_final_review = true and final_review.human_approved is false');
   });
 });

@@ -42,7 +42,7 @@ function halted(details) {
  * @returns {'task' | 'phase' | 'autonomous' | 'ask'}
  */
 function resolveGateMode(state, config) {
-  return state.pipeline.gate_mode ?? config.human_gates.execution_mode;
+  return state.pipeline.gate_mode ?? state.config?.human_gates?.execution_mode ?? config.human_gates.execution_mode;
 }
 
 // ─── Planning Tier ──────────────────────────────────────────────────────────

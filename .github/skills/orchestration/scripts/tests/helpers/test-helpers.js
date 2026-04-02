@@ -64,7 +64,7 @@ function createMockIO({ state = null, documents = {}, config = null } = {}) {
 
 // ─── State Factories ────────────────────────────────────────────────────────
 
-function createBaseState(overrides) {
+function createBaseState(overrides = {}) {
   const now = new Date().toISOString();
   const base = {
     $schema: 'orchestration-state-v4',
@@ -92,13 +92,15 @@ function createBaseState(overrides) {
       human_approved: false,
     },
   };
-  if (overrides) {
-    return deepMerge(base, overrides);
+  const { config, ...rest } = overrides;
+  const state = Object.keys(rest).length > 0 ? deepMerge(base, rest) : base;
+  if (config !== undefined) {
+    state.config = deepClone(config);
   }
-  return base;
+  return state;
 }
 
-function createExecutionState(overrides) {
+function createExecutionState(overrides = {}) {
   const now = new Date().toISOString();
   const base = {
     $schema: 'orchestration-state-v4',
@@ -151,13 +153,15 @@ function createExecutionState(overrides) {
       human_approved: false,
     },
   };
-  if (overrides) {
-    return deepMerge(base, overrides);
+  const { config, ...rest } = overrides;
+  const state = Object.keys(rest).length > 0 ? deepMerge(base, rest) : base;
+  if (config !== undefined) {
+    state.config = deepClone(config);
   }
-  return base;
+  return state;
 }
 
-function createReviewState(overrides) {
+function createReviewState(overrides = {}) {
   const now = new Date().toISOString();
   const base = {
     $schema: 'orchestration-state-v4',
@@ -200,10 +204,12 @@ function createReviewState(overrides) {
       human_approved: false,
     },
   };
-  if (overrides) {
-    return deepMerge(base, overrides);
+  const { config, ...rest } = overrides;
+  const state = Object.keys(rest).length > 0 ? deepMerge(base, rest) : base;
+  if (config !== undefined) {
+    state.config = deepClone(config);
   }
-  return base;
+  return state;
 }
 
 // ─── Process And Assert ─────────────────────────────────────────────────────

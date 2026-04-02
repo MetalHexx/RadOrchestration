@@ -495,6 +495,24 @@ function makeExecutionState(opts = {}) {
 
 const defaultConfig = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
 
+function makeConfig(overrides = {}) {
+  return {
+    limits: {
+      max_phases: 10,
+      max_tasks_per_phase: 10,
+      max_retries_per_task: 2,
+      max_consecutive_review_rejections: 3,
+      ...(overrides.limits || {}),
+    },
+    human_gates: {
+      after_planning: true,
+      execution_mode: 'autonomous',
+      after_final_review: true,
+      ...(overrides.human_gates || {}),
+    },
+  };
+}
+
 // ─── handlePhasePlanningStarted ─────────────────────────────────────────────
 
 describe('handlePhasePlanningStarted', () => {
@@ -2132,5 +2150,104 @@ describe('getMutation (all 27 events)', () => {
 
   it('does NOT contain phase_approved', () => {
     assert.equal(getMutation('phase_approved'), undefined);
+  });
+});
+
+// ─── handleCodeReviewCompleted — state-first max_retries_per_task ────────────
+
+describe('handleCodeReviewCompleted — state-first max_retries_per_task (snapshot-present)', () => {
+  it('uses state.config.limits.max_retries_per_task = 0 as valid falsy value (not falling through ?? to config)', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = null;
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    state.execution.phases[0].tasks[0].retries = 0;
+    state.config = makeConfig({ limits: { max_retries_per_task: 0 } });
+    const cfg = makeConfig();
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'reviews/R.md', verdict: 'changes_requested' }, cfg);
+    const task = result.state.execution.phases[0].tasks[0];
+    // snapshot max_retries = 0: checkRetryBudget(0, 0) = false → halted
+    // With || instead of ??: 0 is falsy → falls to config max=2 → corrective_task_issued (wrong)
+    assert.equal(task.status, 'halted', 'snapshot max_retries=0 exhausts budget immediately; if || were used, config max=2 would give corrective instead');
+    assert.equal(task.review.action, 'halted');
+  });
+});
+
+describe('handleCodeReviewCompleted — state-first max_retries_per_task (snapshot-absent)', () => {
+  it('falls back to config.limits.max_retries_per_task when state.config is absent', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = null;
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    state.execution.phases[0].tasks[0].retries = 0;
+    // No state.config — snapshot absent; config fallback (max_retries_per_task: 2) applies
+    const cfg = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'reviews/R.md', verdict: 'changes_requested' }, cfg);
+    const task = result.state.execution.phases[0].tasks[0];
+    // config max_retries = 2: checkRetryBudget(0, 2) = true → corrective_task_issued
+    assert.equal(task.status, 'failed', 'config max_retries=2 allows retry; task fails with corrective action');
+    assert.equal(task.review.action, 'corrective_task_issued');
+  });
+});
+
+// ─── handleCodeReviewCompleted — state-first execution_mode ──────────────────
+
+describe('handleCodeReviewCompleted — state-first execution_mode (snapshot-present)', () => {
+  it('uses state.config.human_gates.execution_mode = "task" to defer phase.current_task advancement', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = null; // null ?? "task" = "task"
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    state.config = makeConfig({ human_gates: { execution_mode: 'task' } });
+    const cfg = makeConfig();
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'reviews/R.md', verdict: 'approved' }, cfg);
+    const phase = result.state.execution.phases[0];
+    // effectiveGateMode = null ?? 'task' = 'task' → pointer deferred to handleGateApproved
+    assert.equal(phase.current_task, 1, 'current_task must NOT advance when snapshot execution_mode is "task"');
+  });
+});
+
+describe('handleCodeReviewCompleted — state-first execution_mode (snapshot-absent)', () => {
+  it('falls back to config.human_gates.execution_mode = "autonomous" to advance phase.current_task', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = null; // null ?? undefined ?? "autonomous" = "autonomous"
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    // No state.config — snapshot absent; config fallback (execution_mode: 'autonomous') applies
+    const cfg = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'reviews/R.md', verdict: 'approved' }, cfg);
+    const phase = result.state.execution.phases[0];
+    // effectiveGateMode = null ?? undefined ?? 'autonomous' = 'autonomous' → pointer advances
+    assert.equal(phase.current_task, 2, 'current_task must advance when no snapshot and config execution_mode is "autonomous"');
+  });
+});
+
+// ─── handlePhaseReviewCompleted — state-first execution_mode ─────────────────
+
+describe('handlePhaseReviewCompleted — state-first execution_mode (snapshot-present)', () => {
+  it('uses state.config.human_gates.execution_mode = "phase" to defer execution.current_phase advancement', () => {
+    const state = makeExecutionState({ totalPhases: 2 });
+    state.pipeline.gate_mode = null; // null ?? "phase" = "phase"
+    state.config = makeConfig({ human_gates: { execution_mode: 'phase' } });
+    const cfg = makeConfig();
+    const handler = getMutation('phase_review_completed');
+    const result = handler(state, { doc_path: 'reviews/PHASE-REVIEW-P01.md', verdict: 'approved', exit_criteria_met: true }, cfg);
+    const execution = result.state.execution;
+    // effectiveGateMode = null ?? 'phase' = 'phase' → pointer deferred to handleGateApproved
+    assert.equal(execution.current_phase, 1, 'current_phase must NOT advance when snapshot execution_mode is "phase"');
+  });
+});
+
+describe('handlePhaseReviewCompleted — state-first execution_mode (snapshot-absent)', () => {
+  it('falls back to config.human_gates.execution_mode = "autonomous" to advance execution.current_phase', () => {
+    const state = makeExecutionState({ totalPhases: 2 });
+    state.pipeline.gate_mode = null; // null ?? undefined ?? "autonomous" = "autonomous"
+    // No state.config — snapshot absent; config fallback (execution_mode: 'autonomous') applies
+    const cfg = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
+    const handler = getMutation('phase_review_completed');
+    const result = handler(state, { doc_path: 'reviews/PHASE-REVIEW-P01.md', verdict: 'approved', exit_criteria_met: true }, cfg);
+    const execution = result.state.execution;
+    // effectiveGateMode = null ?? undefined ?? 'autonomous' = 'autonomous' → pointer advances
+    assert.equal(execution.current_phase, 2, 'current_phase must advance when no snapshot and config execution_mode is "autonomous"');
   });
 });

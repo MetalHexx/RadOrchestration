@@ -103,7 +103,7 @@ Pipeline scope guards that prevent runaway execution.
 | `max_retries_per_task` | number | `2` | Auto-retries per task before escalation to human |
 | `max_consecutive_review_rejections` | number | `3` | Consecutive reviewer rejections before human escalation |
 
-These limits are read from `orchestration.yml` at runtime by the pipeline engine — they are not copied into `state.json` at project initialization. The [State Transition Validator](scripts.md) enforces them on every state write by reading from the configuration file directly.
+At project initialization, these limits are snapshotted into `state.json` under `state.config.limits`. The pipeline engine and State Transition Validator read limit values from this snapshot first, falling back to `orchestration.yml` only when the snapshot is absent (legacy projects). This protects running projects from limit changes to `orchestration.yml` mid-execution.
 
 
 ### `human_gates`
@@ -124,6 +124,8 @@ Human approval checkpoints during pipeline execution.
 | `phase` | Require human approval before each phase begins |
 | `task` | Require human approval before each task begins |
 | `autonomous` | No gates during execution — all phases and tasks run without human approval |
+
+> **Note — V5 validator diagnostic behavior:** The State Transition Validator's V5 check reports the limit that was actually enforced in its error messages. When `state.config.limits.*` is present in the state snapshot, those snapshot values are used for diagnostics; otherwise, the validator falls back to the global `{orch_root}/orchestration.yml` limits.
 
 ### `source_control`
 
@@ -146,13 +148,46 @@ source_control:
 
 ## Configuration at Runtime
 
-The pipeline engine reads limits and human gate settings directly from `orchestration.yml` at runtime. These values are not copied into `state.json` at project initialization — `state.json` holds only pipeline state, not configuration. This means changes to `orchestration.yml` limits take effect for all projects on the next pipeline invocation.
+### Snapshot-on-Init for Limits and Human Gates
+
+At project initialization, the pipeline snapshots `limits` and `human_gates` from `orchestration.yml` into `state.json` under `state.config`. All pipeline modules (`mutations.js`, `validator.js`) read these values from the snapshot first, falling back to `orchestration.yml` only for legacy projects that predate the snapshot feature:
+
+```javascript
+// Canonical access pattern — state snapshot first, config fallback
+state.config?.limits?.max_phases           ?? config.limits.max_phases
+state.config?.limits?.max_tasks_per_phase  ?? config.limits.max_tasks_per_phase
+state.config?.limits?.max_retries_per_task ?? config.limits.max_retries_per_task
+state.config?.human_gates?.execution_mode  ?? config.human_gates.execution_mode
+state.config?.human_gates?.after_final_review ?? config.human_gates.after_final_review
+```
+
+**Why `??` not `||`**: `0` (valid for `max_retries_per_task`) and `false` (valid for boolean gates) must not trigger the config fallback.
+
+Changes to `orchestration.yml` limits do not affect projects that are already running — only new projects pick up changed limits at initialization.
+
+### Source Control Settings
+
+`source_control` settings (`auto_commit`, `auto_pr`, `remote_url`, etc.) are captured separately into `pipeline.source_control` during source control initialization. They are not part of `state.config`.
+
+### Structural Settings Are Never Snapshotted
+
+`system.orch_root` and `projects.*` are structural settings used to locate files. They are never snapshotted into `state.json` and are always read directly from `orchestration.yml`.
+
+### Gate Mode Resolution in `resolveGateMode()`
+
+`resolveGateMode()` in `resolver.js` uses the same three-tier chain as `mutations.js`:
+
+```javascript
+state.pipeline.gate_mode ?? state.config?.human_gates?.execution_mode ?? config.human_gates.execution_mode
+```
+
+`gate_mode` is an explicit operator override set during execution; when it is set, it always takes precedence. When it is `null`, the state snapshot captures the `execution_mode` value from `orchestration.yml` at project initialization — protecting the running project from mid-execution config changes. Legacy projects without `state.config` fall through to the global config default.
 
 See [state-v4.schema.json](../.github/skills/orchestration/schemas/state-v4.schema.json) for the full initial state shape and schema definition.
 
 ## Changing Configuration
 
-Changes to `orchestration.yml` affect all projects on the next pipeline invocation, since limits are read at runtime rather than copied into `state.json`.
+Changes to `orchestration.yml` limits and human gates only affect **new** projects — existing projects read from the snapshot captured at initialization. Structural settings (`system.orch_root`, `projects.*`) are always read directly from `orchestration.yml`.
 
 If you change `projects.base_path`, run `/configure-system` — it automatically scans the `{orch_root}/` directory for hardcoded path references and updates them. It also updates the `applyTo` glob in `{orch_root}/instructions/project-docs.instructions.md` to match the new path. If you skip this step, run the [validation tool](validation.md) — it warns if `applyTo` and `base_path` are out of sync.
 
