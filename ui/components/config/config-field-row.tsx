@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidElement, cloneElement } from "react";
 import { HelpCircle } from "lucide-react";
 import {
   Tooltip,
@@ -17,7 +18,7 @@ interface ConfigFieldRowProps {
   /** Validation error message — shown below control when present */
   error?: string;
   /** The form control (Input, Switch, ToggleGroup, etc.) */
-  children: React.ReactNode;
+  children: React.ReactElement;
 }
 
 export function ConfigFieldRow({
@@ -36,6 +37,14 @@ export function ConfigFieldRow({
   ]
     .filter(Boolean)
     .join(" ");
+
+  // Inject aria attributes directly onto the form control element
+  const enhancedChild = isValidElement(children)
+    ? cloneElement(children, {
+        "aria-describedby": describedBy || undefined,
+        "aria-invalid": error ? "true" : undefined,
+      } as React.HTMLAttributes<HTMLElement>)
+    : children;
 
   return (
     <div data-slot="config-field-row" className="space-y-1.5 py-3">
@@ -58,12 +67,7 @@ export function ConfigFieldRow({
         </Tooltip>
       </div>
 
-      <div
-        aria-describedby={describedBy || undefined}
-        aria-invalid={error ? "true" : undefined}
-      >
-        {children}
-      </div>
+      {enhancedChild}
 
       {error && (
         <div aria-live="polite">

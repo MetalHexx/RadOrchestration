@@ -237,11 +237,12 @@ export function useConfigEditor(): UseConfigEditorReturn {
       }
 
       const json = (await res.json()) as ConfigPutResponse;
-      setConfig(json.config);
-      baselineConfigRef.current = JSON.stringify(json.config);
-      if (mode === "raw") {
-        baselineRawYamlRef.current = rawYaml;
-      }
+      const updatedConfig = json.config;
+      setConfig(updatedConfig);
+      baselineConfigRef.current = JSON.stringify(updatedConfig);
+      const updatedRawYaml = mode === "raw" ? rawYaml : stringifyYaml(updatedConfig);
+      setRawYaml(updatedRawYaml);
+      baselineRawYamlRef.current = updatedRawYaml;
 
       setSaveState("success");
       successTimeoutRef.current = setTimeout(() => {

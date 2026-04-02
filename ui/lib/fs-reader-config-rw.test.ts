@@ -166,10 +166,10 @@ async function run() {
       assert.ok(files.includes('orchestration.yml'));
     });
 
-    await test('cleans up temp file on rename failure', async () => {
+    await test('rejects when workspace directory does not exist', async () => {
       delete process.env.ORCH_ROOT;
-      // We simulate rename failure by pointing to a nonexistent workspace
-      // where the config dir doesn't exist — writeFile will fail before rename
+      // Point to a nonexistent workspace where the config dir doesn't exist
+      // — writeFile will fail because the target directory is missing
       const badDir = path.join(tmpDir, 'no-such-workspace');
       await assert.rejects(
         () => writeConfig(badDir, 'version: "3"\n'),

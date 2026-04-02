@@ -70,5 +70,10 @@ export function validateConfig(config: OrchestrationConfig): ConfigValidationErr
     errors['source_control.auto_pr'] = 'Invalid auto PR setting';
   }
 
+  // 13. source_control.provider — must be "github"
+  if (config.source_control.provider !== 'github') {
+    errors['source_control.provider'] = 'Unsupported provider';
+  }
+
   return errors;
 }

@@ -109,7 +109,7 @@ test('all four number fields have correct min values', () => {
 
 // --- Toggle-group option values ---
 
-test('all five toggle-group fields have correct options', () => {
+test('all four toggle-group fields have correct options', () => {
   const expected: Record<string, string[]> = {
     'projects.naming': ['SCREAMING_CASE', 'lowercase', 'numbered'],
     'human_gates.execution_mode': ['ask', 'phase', 'task', 'autonomous'],

@@ -8,14 +8,7 @@ import { cn } from "@/lib/utils"
 function Switch({
   className,
   ...props
-}: {
-  checked?: boolean
-  onCheckedChange?: (checked: boolean) => void
-  disabled?: boolean
-  id?: string
-  name?: string
-  className?: string
-}) {
+}: React.ComponentProps<typeof SwitchPrimitive.Root>) {
   return (
     <SwitchPrimitive.Root
       data-slot="switch"
