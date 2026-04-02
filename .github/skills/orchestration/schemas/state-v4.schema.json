@@ -31,7 +31,7 @@
       "properties": {
         "name": {
           "title": "Project Name",
-          "description": "Unique project identifier in SCREAMING_CASE format.",
+          "description": "Unique project identifier derived from the project directory name.",
           "type": "string"
         },
         "created": {

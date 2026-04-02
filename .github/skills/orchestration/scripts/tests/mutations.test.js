@@ -495,6 +495,24 @@ function makeExecutionState(opts = {}) {
 
 const defaultConfig = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
 
+function makeConfig(overrides = {}) {
+  return {
+    limits: {
+      max_phases: 10,
+      max_tasks_per_phase: 10,
+      max_retries_per_task: 2,
+      max_consecutive_review_rejections: 3,
+      ...(overrides.limits || {}),
+    },
+    human_gates: {
+      after_planning: true,
+      execution_mode: 'autonomous',
+      after_final_review: true,
+      ...(overrides.human_gates || {}),
+    },
+  };
+}
+
 // ─── handlePhasePlanningStarted ─────────────────────────────────────────────
 
 describe('handlePhasePlanningStarted', () => {
@@ -2143,8 +2161,8 @@ describe('handleCodeReviewCompleted — state-first max_retries_per_task (snapsh
     state.pipeline.gate_mode = null;
     state.execution.phases[0].tasks[0].status = 'in_progress';
     state.execution.phases[0].tasks[0].retries = 0;
-    state.config = { limits: { max_retries_per_task: 0 } };
-    const cfg = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
+    state.config = makeConfig({ limits: { max_retries_per_task: 0 } });
+    const cfg = makeConfig();
     const handler = getMutation('code_review_completed');
     const result = handler(state, { doc_path: 'reviews/R.md', verdict: 'changes_requested' }, cfg);
     const task = result.state.execution.phases[0].tasks[0];
@@ -2179,8 +2197,8 @@ describe('handleCodeReviewCompleted — state-first execution_mode (snapshot-pre
     const state = makeExecutionState();
     state.pipeline.gate_mode = null; // null ?? "task" = "task"
     state.execution.phases[0].tasks[0].status = 'in_progress';
-    state.config = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'task' } };
-    const cfg = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
+    state.config = makeConfig({ human_gates: { execution_mode: 'task' } });
+    const cfg = makeConfig();
     const handler = getMutation('code_review_completed');
     const result = handler(state, { doc_path: 'reviews/R.md', verdict: 'approved' }, cfg);
     const phase = result.state.execution.phases[0];
@@ -2210,8 +2228,8 @@ describe('handlePhaseReviewCompleted — state-first execution_mode (snapshot-pr
   it('uses state.config.human_gates.execution_mode = "phase" to defer execution.current_phase advancement', () => {
     const state = makeExecutionState({ totalPhases: 2 });
     state.pipeline.gate_mode = null; // null ?? "phase" = "phase"
-    state.config = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'phase' } };
-    const cfg = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
+    state.config = makeConfig({ human_gates: { execution_mode: 'phase' } });
+    const cfg = makeConfig();
     const handler = getMutation('phase_review_completed');
     const result = handler(state, { doc_path: 'reviews/PHASE-REVIEW-P01.md', verdict: 'approved', exit_criteria_met: true }, cfg);
     const execution = result.state.execution;
