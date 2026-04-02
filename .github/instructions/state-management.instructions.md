@@ -19,7 +19,7 @@ All v4 state files carry `$schema: 'orchestration-state-v4'` as the first field.
 
 ## Top-Level Structure
 
-v4 state has exactly 5 top-level sections:
+v4 state has 5 required top-level sections, plus an optional `config` section added at project initialization:
 
 ```
 {
@@ -28,7 +28,8 @@ v4 state has exactly 5 top-level sections:
   "pipeline": { ... },
   "planning": { ... },
   "execution": { ... },
-  "final_review": { ... }
+  "final_review": { ... },
+  "config": { ... }    // optional — present on projects initialized after the snapshot feature
 }
 ```
 
@@ -39,6 +40,49 @@ v4 state has exactly 5 top-level sections:
 | `planning` | Planning phase status, human approval flag, and step records |
 | `execution` | Execution status, current phase pointer, and phases array |
 | `final_review` | Final review status, doc path, and human approval flag |
+| `config` _(optional)_ | Runtime snapshot of `limits` and `human_gates` from `orchestration.yml`, captured at project init |
+
+## Config Snapshot
+
+`state.config` is written **once** at project initialization by `scaffoldInitialState()` in `pipeline-engine.js`. It is immutable — no mutation handler may modify it after init.
+
+### Shape
+
+```javascript
+state.config = {
+  limits: {
+    max_phases:                        /* integer, ≥ 1 */,
+    max_tasks_per_phase:               /* integer, ≥ 1 */,
+    max_retries_per_task:              /* integer, ≥ 0 */,
+    max_consecutive_review_rejections: /* integer, ≥ 1 */,
+  },
+  human_gates: {
+    after_planning:     /* boolean */,
+    execution_mode:     /* "ask" | "phase" | "task" | "autonomous" */,
+    after_final_review: /* boolean */,
+  },
+};
+```
+
+`state.config.limits.*` and `state.config.human_gates.*` mirror the `orchestration.yml` `limits` and `human_gates` sections exactly.
+
+### Access Pattern
+
+All pipeline modules that read a snapshotted config value must use the double optional-chain + `??` pattern:
+
+```javascript
+state.config?.limits?.max_phases           ?? config.limits.max_phases
+state.config?.limits?.max_tasks_per_phase  ?? config.limits.max_tasks_per_phase
+state.config?.limits?.max_retries_per_task ?? config.limits.max_retries_per_task
+state.config?.human_gates?.execution_mode  ?? config.human_gates.execution_mode
+state.config?.human_gates?.after_final_review ?? config.human_gates.after_final_review
+```
+
+**Why double optional-chain**: `state.config` is `undefined` on old projects; `state.config?.limits` guards against malformed state.
+
+**Why `??` not `||`**: `0` (valid for `max_retries_per_task`) and `false` (valid for boolean gates) must not trigger the fallback.
+
+Old projects that have no `state.config` produce identical behavior to new projects through the config fallback — no migration is required.
 
 ## `pipeline` Section
 
@@ -162,7 +206,7 @@ Before advancing to a new phase or task, the pipeline validates counts against c
 - `phase.tasks.length <= config.limits.max_tasks_per_phase`
 - `task.retries <= config.limits.max_retries_per_task`
 
-Limits come from `orchestration.yml` config — they are not stored in `state.json`.
+Limits are read from the state snapshot first (`state.config?.limits?.X`), falling back to `orchestration.yml` only for legacy projects where `state.config` is absent.
 
 ## Pre-Write Validation
 
