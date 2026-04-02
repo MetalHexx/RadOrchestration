@@ -4,6 +4,7 @@ import {
   Sheet,
   SheetContent,
   SheetHeader,
+  SheetScrollBody,
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
@@ -58,19 +59,31 @@ export function ConfigEditorPanel({ editor }: ConfigEditorPanelProps) {
           )}
         </SheetHeader>
 
-        <ScrollArea className="flex-1 px-4 pb-4">
-          {editor.loading && <LoadingSkeleton />}
+        <SheetScrollBody>
+          {(editor.loading || editor.loadError || (isReady && editor.mode === "form")) && (
+            <ScrollArea className="h-full">
+              {editor.loading && (
+                <div className="px-4 pb-4">
+                  <LoadingSkeleton />
+                </div>
+              )}
 
-          {editor.loadError && (
-            <ConfigErrorState message={editor.loadError} onRetry={editor.retry} />
-          )}
+              {editor.loadError && (
+                <div className="px-4 pb-4">
+                  <ConfigErrorState message={editor.loadError} onRetry={editor.retry} />
+                </div>
+              )}
 
-          {isReady && editor.mode === "form" && editor.config && (
-            <ConfigForm
-              config={editor.config}
-              onChange={editor.updateField}
-              errors={editor.errors}
-            />
+              {isReady && editor.mode === "form" && editor.config && (
+                <div className="px-4 pb-4">
+                  <ConfigForm
+                    config={editor.config}
+                    onChange={editor.updateField}
+                    errors={editor.errors}
+                  />
+                </div>
+              )}
+            </ScrollArea>
           )}
 
           {isReady && editor.mode === "raw" && (
@@ -84,7 +97,7 @@ export function ConfigEditorPanel({ editor }: ConfigEditorPanelProps) {
               }
             />
           )}
-        </ScrollArea>
+        </SheetScrollBody>
 
         {isReady && (
           <ConfigFooter

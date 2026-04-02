@@ -5,6 +5,7 @@ import {
   Sheet,
   SheetContent,
   SheetHeader,
+  SheetScrollBody,
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
@@ -65,7 +66,7 @@ export function DocumentDrawer({
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="right"
-        className="!w-full md:!w-[80vw] md:!max-w-[80vw] overflow-hidden"
+        className="!w-full md:!w-[80vw] md:!max-w-[80vw]"
         aria-label={`Document viewer: ${title}`}
       >
         <SheetHeader className="border-b border-border px-6 py-4">
@@ -75,7 +76,7 @@ export function DocumentDrawer({
           </SheetDescription>
         </SheetHeader>
 
-        <div ref={scrollAreaRef} className="flex-1 min-h-0">
+        <SheetScrollBody ref={scrollAreaRef}>
           <ScrollArea className="h-full">
             <div className="px-6 py-4">
               {loading && <LoadingSkeleton />}
@@ -95,7 +96,7 @@ export function DocumentDrawer({
               )}
             </div>
           </ScrollArea>
-        </div>
+        </SheetScrollBody>
 
         {data && !loading && !error && docPath && docs && docs.length > 0 && onNavigate && (
           <DocumentNavFooter
