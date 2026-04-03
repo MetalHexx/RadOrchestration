@@ -149,5 +149,5 @@ Prompts (`.prompt.md` files) are slash-command shortcuts that invoke a specific 
 
 ## Next Steps
 
-- [Templates](templates.md) — Customize the 17 output templates that skills produce
+- [Templates](templates.md) — Customize the 16 output templates that skills produce
 - [Agents](agents.md) — See which agents use which skills
