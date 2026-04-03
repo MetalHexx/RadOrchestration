@@ -87,7 +87,7 @@ Pipeline routing, triage, and state validation are handled by a unified pipeline
 
 ### Composable Skills
 
-Nineteen reusable skills bundle domain knowledge, templates, and instructions. Agents are composed with the skills they need — the system can be extended with new agents, capabilities, or adapted to new workflows by remixing skills.
+Eighteen reusable skills bundle domain knowledge, templates, and instructions. Agents are composed with the skills they need — the system can be extended with new agents, capabilities, or adapted to new workflows by remixing skills.
 
 [Learn more about skills →](docs/skills.md)
 
