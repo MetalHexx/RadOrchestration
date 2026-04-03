@@ -18,7 +18,7 @@ Skills can be modified to adjust agent behavior — for example, changing the nu
 
 > **Warning**: Core instructions within skills — such as output format requirements, frontmatter schemas, and self-containment rules — should be preserved. Other parts of the pipeline depend on these contracts, and changing them can cause downstream agents to produce incompatible output.
 
-To customize the **output format** of documents a skill produces, modify the skill's template files. See [Templates](templates.md) for details on the 17 output templates and their customization rules.
+To customize the **output format** of documents a skill produces, modify the skill's template files. See [Templates](templates.md) for details on the available output templates and their customization rules.
 
 ## Skill Inventory
 
