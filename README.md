@@ -83,7 +83,7 @@ Configurable critical human checkpoints are reliably enforced.  Humans approve t
 
 Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes 20 external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
 
-[Learn more about the scripts →](docs/scripts.md)
+[Learn more about the scripts →](docs/internals/scripts.md)
 
 ### Composable Skills
 
@@ -111,7 +111,7 @@ Every task is reviewed against the plan. Code reviewers inspect source code dire
 
 A zero-dependency Node.js CLI validates the entire orchestration ecosystem — agents, skills, instructions, configuration, cross-references, and file structure. CI-friendly with structured exit codes.
 
-[Learn more about validation →](docs/validation.md)
+[Learn more about validation →](docs/internals/validation.md)
 
 ## Getting Started
 
@@ -137,8 +137,8 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 | [Configuration](docs/configuration.md) | `orchestration.yml` reference — all options explained |
 | [Source Control](docs/source-control.md) | Auto-commit configuration, agent modes, commit format, pipeline events |
 | [Project Structure](docs/project-structure.md) | File layout, naming conventions, document types, state management |
-| [Pipeline Script](docs/scripts.md) | Unified event-driven CLI — routing, triage, state mutations, validation |
-| [Validation](docs/validation.md) | Zero-dependency validation CLI tool |
+| [Pipeline Script](docs/internals/scripts.md) | Unified event-driven CLI — routing, triage, state mutations, validation |
+| [Validation](docs/internals/validation.md) | Zero-dependency validation CLI tool |
 | [Monitoring Dashboard](docs/dashboard.md) | Dashboard startup, features, data sources, real-time updates |
 
 ## Design Principles
