@@ -144,4 +144,4 @@ The document-driven architecture is inherently portable. Agents communicate thro
 
 ## License
 
-See [LICENSE](LICENSE) for details.
+See LICENSE for details.

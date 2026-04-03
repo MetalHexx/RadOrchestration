@@ -21,7 +21,7 @@ If you have a rough idea but want to explore it first:
 If you already know what you want to build:
 
 1. Open Copilot Chat and type `/rad-plan` with a description of your project:
-   ```
+   ```text
    /rad-plan Build a REST API for managing inventory with auth, CRUD operations, and a React dashboard
    ```
 2. You can include additional documents, images, or code references alongside your description for extra context
@@ -52,13 +52,13 @@ You control how much oversight to apply — gate at task completion, phase compl
 
 Use `/rad-execute` to resume a project that is already in progress:
 
-```
+```text
 /rad-execute
 ```
 
 Or use the `Orchestrator` agent directly:
 
-```
+```text
 @orchestrator continue the project
 ```
 
@@ -68,7 +68,7 @@ The orchestrator reads the current project state and picks up from wherever you 
 
 Ask the orchestrator for a status update at any time:
 
-```
+```text
 @orchestrator what's the current status?
 ```
 

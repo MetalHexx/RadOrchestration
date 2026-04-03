@@ -6,7 +6,7 @@ This page documents the file layout, naming conventions, and document types.
 
 > **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
 
-```
+```text
 .github/
 ├── agents/                    # Agent definitions
 │   └── ...
@@ -76,7 +76,7 @@ ui/                            # Monitoring dashboard (Next.js)
 
 Each project gets its own subfolder under the configured `base_path` (default: `.github/projects/` — configurable via `orchestration.yml`). The `base_path` supports both relative paths (resolved from workspace root) and absolute paths (used as-is, useful for git worktree setups):
 
-```
+```text
 {PROJECT-NAME}/
 ├── state.json                 # Pipeline state (sole writer: pipeline script)
 ├── BRAINSTORMING.md           # Optional ideation output

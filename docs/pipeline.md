@@ -288,4 +288,6 @@ Key rules:
 - [Configuration](configuration.md) — System settings, limits, and human gate configuration
 - [Scripts Reference](internals/scripts.md) — Full event vocabulary, action definitions, and CLI interface
 - [Dependency Model](internals/dependency-model.md) — Dependency scheduling between tasks
+- [System Architecture](internals/system-architecture.md) — Runtime architecture, services, data flows, and integration points
+- [Planning Pipeline Overhaul](internals/planning-pipeline-overhaul.md) — Analysis and reform plan for the planning pipeline
 - [Project Structure](project-structure.md) — File layout, naming conventions, and document types

@@ -6,7 +6,7 @@ All system behavior is controlled by a single file: `{orch_root}/orchestration.y
 
 ## Quick Setup
 
-Run the `/configure-system` prompt in Copilot to create or update the configuration interactively. See the [default configuration]({orch_root}/skills/orchestration/config/orchestration.yml) for a complete annotated example. You can also edit configuration from the dashboard UI (gear icon).
+Run the `/configure-system` prompt in Copilot to create or update the configuration interactively. See the [default configuration](../.github/skills/orchestration/config/orchestration.yml) for a complete annotated example. You can also edit configuration from the dashboard UI (gear icon).
 
 ## Reference
 
