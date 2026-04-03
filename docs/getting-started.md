@@ -12,9 +12,9 @@ This guide walks you through setting up the orchestration system and running you
 
 ## Installation
 
-There are two ways to install the orchestration system. The interactive installer is recommended — it walks you through all configuration options and sets everything up in one step. Manual installation is available as an alternative.
+The interactive installer walks you through all configuration options and sets everything up in one step.
 
-### Using the Installer (Recommended)
+### Using the Installer
 
 Run the installer directly — no clone or repository setup required:
 
@@ -90,20 +90,7 @@ Optionally install the real-time monitoring dashboard.
 
 When enabled, the installer copies the dashboard source files, runs `npm install`, and builds the application. If the build fails, core orchestration installation still succeeds — the installer shows the specific retry command to run manually.
 
-### Alternative: Manual Installation
-
-1. **Copy the orchestration files into your project**
-
-   Copy the `.github/` directory _(or your [configured root](configuration.md))_ into the root of your target project. It contains all agents, skills, instructions, configuration, and orchestration scripts.
-
-2. **Open in VS Code** with GitHub Copilot enabled
-
-3. **Configure the system**
-
-   Run the `/configure-system` prompt in Copilot. This creates or updates `.github/skills/orchestration/config/orchestration.yml` _(or your [configured root](configuration.md))_ with your preferences — project storage path, pipeline limits, and human gate settings.
-
-   Or manually edit `.github/skills/orchestration/config/orchestration.yml` — see [Configuration](configuration.md) for all options.
-
+<!-- PHASE-3-EXTRACT: BEGIN — Move sections below to docs/guides.md -->
 ## Your First Project
 
 ### Option A: Start with Brainstorming
@@ -171,14 +158,14 @@ Just ask the orchestrator. :)
 ```
 
 > Recommended:  Check out the [UI Status Dashboard](dashboard.md) — it surfaces the current status, recent activity, and next steps based in a human-friendly format and in realtime.
-
+<!-- PHASE-3-EXTRACT: END — Everything above moves to docs/guides.md -->
 
 ## Next Steps
 
-- [Agents](agents.md) — understand the 9 specialized agents and their roles
+- [Agents](agents.md) — understand the 12 specialized agents and their roles
 - [Pipeline](pipeline.md) — learn how the planning and execution pipeline works
 - [Configuration](configuration.md) — customize pipeline behavior via `orchestration.yml`
 - [Project Structure](project-structure.md) — understand the file layout and naming conventions
-- [Skills](skills.md) — explore the 18 skill bundles agents use to produce artifacts
+- [Skills](skills.md) — explore the 19 skills agents use to produce artifacts
 - [Templates](templates.md) — discover the 16 output templates and how to customize them
 - [Dashboard](dashboard.md) — monitor project status and manage human gates in the UI
