@@ -212,6 +212,6 @@ The Source Control Agent is a thin router — it loads the `source-control` skil
 
 ## Next Steps
 
-- [Skills](skills.md) — Explore the 19 skills agents use
+- [Skills](skills.md) — Explore the 18 skills agents use
 - [Templates](templates.md) — See the 16 output templates skills produce
 
