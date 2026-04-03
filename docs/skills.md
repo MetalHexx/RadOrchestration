@@ -18,7 +18,7 @@ Skills can be modified to adjust agent behavior — for example, changing the nu
 
 > **Warning**: Core instructions within skills — such as output format requirements, frontmatter schemas, and self-containment rules — should be preserved. Other parts of the pipeline depend on these contracts, and changing them can cause downstream agents to produce incompatible output.
 
-To customize the **output format** of documents a skill produces, modify the skill's template files. See [Templates](templates.md) for details on the 16 output templates and their customization rules.
+To customize the **output format** of documents a skill produces, modify the skill's template files. See [Templates](templates.md) for details on the 17 output templates and their customization rules.
 
 ## Skill Inventory
 
@@ -49,8 +49,7 @@ To customize the **output format** of documents a skill produces, modify the ski
 
 | Skill | Description | Used By |
 |-------|-------------|---------|
-| `review-task` | Review task output against the task handoff, architecture, and design — produce verdicts with severity | reviewer |
-| `review-phase` | Cross-task integration review for entire phases — module consistency, exit criteria, test coverage | reviewer |
+| `code-review` | Review code, phases, and projects for quality, correctness, and conformance — supports task review, phase review, and final review modes with dual-pass approach | reviewer |
 
 ### Meta Skills
 
@@ -87,7 +86,7 @@ Each agent is explicitly assigned skills in its `.agent.md` frontmatter. This ta
 | coder | `orchestration`, `execute-coding-task`, `run-tests` |
 | coder-junior | `orchestration`, `execute-coding-task`, `run-tests` |
 | coder-senior | `orchestration`, `execute-coding-task`, `run-tests` |
-| reviewer | `orchestration`, `review-task`, `review-phase` |
+| reviewer | `orchestration`, `code-review` |
 | source-control | `orchestration`, `source-control` |
 
 ## Skill Recommendation in Task Handoffs
@@ -150,5 +149,5 @@ Prompts (`.prompt.md` files) are slash-command shortcuts that invoke a specific 
 
 ## Next Steps
 
-- [Templates](templates.md) — Customize the 16 output templates that skills produce
+- [Templates](templates.md) — Customize the 17 output templates that skills produce
 - [Agents](agents.md) — See which agents use which skills

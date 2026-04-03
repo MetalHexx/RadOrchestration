@@ -2,7 +2,7 @@
 
 ## Overview
 
-Templates are structured markdown files bundled inside skill folders that control the format and structure of each skill's output. There are 16 templates across 14 skills, organized into four groups: Planning, Execution, Review, and Meta. They define the sections, headings, and frontmatter that agents produce when executing a skill.
+Templates are structured markdown files bundled inside skill folders that control the format and structure of each skill's output. There are 17 templates across 14 skills, organized into four groups: Planning, Execution, Review, and Meta. They define the sections, headings, and frontmatter that agents produce when executing a skill.
 
 ## How Skills and Templates Relate
 
@@ -41,8 +41,9 @@ Each skill that produces a document bundles a template in its `templates/` subfo
 
 | Template | Skill | Description |
 |----------|-------|-------------|
-| [`CODE-REVIEW.md`](../.github/skills/review-task/templates/CODE-REVIEW.md) | `review-task` | Task-level code review with verdict, checklist, and issues |
-| [`PHASE-REVIEW.md`](../.github/skills/review-phase/templates/PHASE-REVIEW.md) | `review-phase` | Phase-level integration review with cross-task assessment |
+| [`CODE-REVIEW.md`](../.github/skills/code-review/templates/CODE-REVIEW.md) | `code-review` | Task-level code review with verdict, checklist, and issues |
+| [`PHASE-REVIEW.md`](../.github/skills/code-review/templates/PHASE-REVIEW.md) | `code-review` | Phase-level integration review with cross-task assessment |
+| [`FINAL-REVIEW.md`](../.github/skills/code-review/templates/FINAL-REVIEW.md) | `code-review` | Project-level final review with architectural integrity and P0 requirement coverage |
 
 ## Meta Templates
 

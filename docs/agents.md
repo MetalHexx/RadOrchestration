@@ -185,7 +185,7 @@ The Reviewer operates at three levels:
 
 **Output:** `CODE-REVIEW.md`, `PHASE-REVIEW.md`
 
-**Skills:** `orchestration`, `review-task`, `review-phase`
+**Skills:** `orchestration`, `code-review`
 
 ---
 
