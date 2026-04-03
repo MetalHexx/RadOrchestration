@@ -51,7 +51,7 @@ archive/                       # Historical design artifacts -- the plan that st
     └── ...
 assets/                        # Static assets
 └── dashboard-screenshot.png
-docs/                          # Documentation (10 pages)
+docs/                          # Documentation
 ├── getting-started.md
 ├── agents.md
 ├── pipeline.md
@@ -59,9 +59,13 @@ docs/                          # Documentation (10 pages)
 ├── templates.md
 ├── configuration.md
 ├── project-structure.md
-├── scripts.md
-├── validation.md
-└── dashboard.md
+├── dashboard.md
+└── internals/
+    ├── dependency-model.md
+    ├── planning-pipeline-overhaul.md
+    ├── scripts.md
+    ├── system-architecture.md
+    └── validation.md
 ui/                            # Monitoring dashboard (Next.js)
 └── components/
     └── badges/
@@ -166,7 +170,7 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 
 ### Invariants
 
-The pipeline engine (`pipeline-engine.js`) runs all 12 invariant checks (V1–V2, V5–V7, V10–V16) on every state transition — see [Validation](validation.md) for the full invariant catalog. Only the pipeline script (`pipeline.js`) writes `state.json`; no agent touches it directly.
+The pipeline engine (`pipeline-engine.js`) runs all 12 invariant checks (V1–V2, V5–V7, V10–V16) on every state transition — see [Validation](internals/validation.md) for the full invariant catalog. Only the pipeline script (`pipeline.js`) writes `state.json`; no agent touches it directly.
 
 ## Scoped Instructions
 
@@ -191,4 +195,4 @@ Prompt files provide utility workflows accessible via `/` commands in Copilot:
 ## Next Steps
 
 - [Templates](templates.md) — customization rules and the full template inventory
-- [Validation](validation.md) — how to validate your project structure and state
+- [Validation](internals/validation.md) — how to validate your project structure and state

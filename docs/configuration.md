@@ -90,7 +90,7 @@ When you change `base_path`, the `applyTo` glob in `{orch_root}/instructions/pro
 1. Update `applyTo` manually to `{new_base_path}/**`
 2. Run `/configure-system`, which updates it automatically
 
-The [validation tool](validation.md) warns if `applyTo` and `base_path` fall out of sync.
+The [validation tool](internals/validation.md) warns if `applyTo` and `base_path` fall out of sync.
 
 ### `limits`
 
@@ -120,7 +120,7 @@ Human approval checkpoints during pipeline execution.
 
 | Mode | Behavior |
 |------|----------|
-| `ask` | Prompt the human for their preferred gate level. When the pipeline encounters a gate and no mode has been resolved, it returns the [`ask_gate_mode`](scripts.md#gate-actions-3) action, and the Orchestrator asks the human which mode to use for the remainder of execution. |
+| `ask` | Prompt the human for their preferred gate level. When the pipeline encounters a gate and no mode has been resolved, it returns the [`ask_gate_mode`](internals/scripts.md#gate-actions-3) action, and the Orchestrator asks the human which mode to use for the remainder of execution. |
 | `phase` | Require human approval before each phase begins |
 | `task` | Require human approval before each task begins |
 | `autonomous` | No gates during execution — all phases and tasks run without human approval |
@@ -189,11 +189,11 @@ See [state-v4.schema.json](../.github/skills/orchestration/schemas/state-v4.sche
 
 Changes to `orchestration.yml` limits and human gates only affect **new** projects — existing projects read from the snapshot captured at initialization. Structural settings (`system.orch_root`, `projects.*`) are always read directly from `orchestration.yml`.
 
-If you change `projects.base_path`, run `/configure-system` — it automatically scans the `{orch_root}/` directory for hardcoded path references and updates them. It also updates the `applyTo` glob in `{orch_root}/instructions/project-docs.instructions.md` to match the new path. If you skip this step, run the [validation tool](validation.md) — it warns if `applyTo` and `base_path` are out of sync.
+If you change `projects.base_path`, run `/configure-system` — it automatically scans the `{orch_root}/` directory for hardcoded path references and updates them. It also updates the `applyTo` glob in `{orch_root}/instructions/project-docs.instructions.md` to match the new path. If you skip this step, run the [validation tool](internals/validation.md) — it warns if `applyTo` and `base_path` are out of sync.
 
 ## Validation
 
-Run the [validation tool](validation.md) to check your configuration:
+Run the [validation tool](internals/validation.md) to check your configuration:
 
 ```bash
 node {orch_root}/skills/orchestration/scripts/validate/validate-orchestration.js --category config
@@ -207,5 +207,5 @@ This checks:
 
 ## Next Steps
 
-- [Validation](validation.md) — Run the validator to check your configuration
-- [Scripts](scripts.md) — Pipeline scripts reference: actions, events, and CLI interface
+- [Validation](internals/validation.md) — Run the validator to check your configuration
+- [Scripts](internals/scripts.md) — Pipeline scripts reference: actions, events, and CLI interface

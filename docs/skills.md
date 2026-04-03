@@ -106,7 +106,7 @@ Use the `create-skill` meta-skill to scaffold a new skill:
    - `references/` — optional background material
    - `assets/` — optional static assets
 3. Assign the skill to an agent by adding it to the agent's `.agent.md`
-4. Run the [validation tool](validation.md) to verify cross-references
+4. Run the [validation tool](internals/validation.md) to verify cross-references
 
 ## Skill File Structure
 

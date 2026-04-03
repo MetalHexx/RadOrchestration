@@ -264,7 +264,7 @@ Pipeline routing is event-driven. The Orchestrator signals events to `pipeline.j
 
 The Orchestrator calls `pipeline.js`, reads `result.action`, and performs the corresponding operation (spawn an agent, present a human gate, or terminate the loop).
 
-See [Deterministic Scripts](scripts.md) for the full event vocabulary and CLI reference.
+See [Deterministic Scripts](internals/scripts.md) for the full event vocabulary and CLI reference.
 
 ### Master Plan Pre-Read
 
@@ -366,5 +366,5 @@ Key rules:
 
 ## Next Steps
 
-- [Scripts Reference](scripts.md) — Full event vocabulary, action definitions, and CLI interface
+- [Scripts Reference](internals/scripts.md) — Full event vocabulary, action definitions, and CLI interface
 - [Project Structure](project-structure.md) — State schema, file layout, and project directory conventions

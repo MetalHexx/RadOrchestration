@@ -153,6 +153,6 @@ The dashboard stays current without manual refreshing:
 
 - [Getting Started](getting-started.md) — set up the orchestration system
 - [Configuration](configuration.md) — customize `orchestration.yml`
-- [Scripts](scripts.md) — CLI scripts the dashboard monitors
+- [Scripts](internals/scripts.md) — CLI scripts the dashboard monitors
 - [Pipeline](pipeline.md) — understand the pipeline the dashboard visualizes
 - [Project Structure](project-structure.md) — workspace layout overview
