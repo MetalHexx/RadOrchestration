@@ -13,7 +13,7 @@ Consolidated review skill supporting three modes: task, phase, and final. The re
 |------|---------|----------|-----------|
 | Task | Action #9 (`spawn_code_reviewer`) | [templates/CODE-REVIEW.md](./templates/CODE-REVIEW.md) | `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` |
 | Phase | Action #11 (`spawn_phase_reviewer`) | [templates/PHASE-REVIEW.md](./templates/PHASE-REVIEW.md) | `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` |
-| Final | Action #12 (`spawn_final_reviewer`) | [templates/FINAL-REVIEW.md](./templates/FINAL-REVIEW.md) | `{PROJECT-DIR}/reports/{NAME}-FINAL-REVIEW.md` |
+| Final | Action #12 (`spawn_final_reviewer`) | [templates/FINAL-REVIEW.md](./templates/FINAL-REVIEW.md) | `{PROJECT-DIR}/{NAME}-FINAL-REVIEW.md` |
 
 ## Loading Instructions
 
