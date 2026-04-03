@@ -4,7 +4,7 @@ The orchestration system uses a single unified pipeline script (`pipeline.js`) f
 
 > `pipeline.js` is called by the Orchestrator agent during pipeline execution. It is not intended for manual use — users do not need to run it directly.
 
-> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
+> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](../configuration.md), adjust paths accordingly.
 
 ---
 
@@ -196,6 +196,6 @@ The resolver is a pure function that returns one of 19 values based solely on th
 
 ## Next Steps
 
-- [Pipeline](pipeline.md) — Understand the pipeline stages and flow diagrams
-- [Configuration](configuration.md) — Configure pipeline settings and human gates
+- [Pipeline](../pipeline.md) — Understand the pipeline stages and flow diagrams
+- [Configuration](../configuration.md) — Configure pipeline settings and human gates
 - [Validation](validation.md) — Run the validator and interpret results
