@@ -1,6 +1,6 @@
 # Skills
 
-The orchestration system includes 19 reusable skills — self-contained capability bundles that give agents domain-specific knowledge, templates, and instructions. Agents are composed with the skills they need, and GitHub Copilot matches requests to skills through description-based matching.
+The orchestration system includes 18 reusable skills — self-contained capability bundles that give agents domain-specific knowledge, templates, and instructions. Agents are composed with the skills they need, and GitHub Copilot matches requests to skills through description-based matching.
 
 ## Skill Inventory
 
