@@ -1,6 +1,6 @@
 # Pipeline
 
-The orchestration pipeline takes a project from idea through planning, execution, and review. The Orchestrator operates as an event-driven controller: it signals events to `pipeline.js`, parses JSON results, and routes on a 20-action table. The pipeline script (`pipeline.js`) is the sole state-mutation authority — it internalizes all state transitions, validation, and next-action resolution to maximize determinism in your agentic SDLC.
+The orchestration pipeline takes a project from idea through planning, execution, and review. The Orchestrator coordinates each step — spawning specialized agents, enforcing human gates, and managing state transitions automatically. A pipeline script handles all state mutations, ensuring every run is deterministic and reproducible.
 
 ```mermaid
 flowchart LR
@@ -53,10 +53,6 @@ flowchart LR
 | `complete` | Code review approved — terminal |
 | `failed` | Review verdict was `changes_requested` — Tactical Planner creates a corrective task handoff to re-enter at `coding` if retries remain; terminal if retries exhausted |
 
-Allowed task stage transitions:
-
-See [constants.js](../.github/skills/orchestration/scripts/lib/constants.js) for the full transition map.
-
 ### Phase Stage Lifecycle
 
 ```mermaid
@@ -73,10 +69,6 @@ flowchart LR
 | `reviewing` | Phase report/review is in progress |
 | `complete` | Phase review approved — terminal |
 | `failed` | Phase review verdict was `changes_requested` — Tactical Planner creates a corrective Phase Plan re-entering execution; or phase review was `rejected` — pipeline halts |
-
-Allowed phase stage transitions:
-
-See [constants.js](../.github/skills/orchestration/scripts/lib/constants.js) for the full transition map.
 
 ## Planning Pipeline
 
@@ -260,76 +252,20 @@ The pipeline script encodes this logic in a deterministic decision table — the
 
 ## Pipeline Routing
 
-Pipeline routing is event-driven. The Orchestrator signals events to `pipeline.js` and receives one of 20 possible actions in the JSON result. All routing is deterministic: the same event combined with the same `state.json` always produces the same result.
+Pipeline routing is event-driven. The Orchestrator signals events and receives actions in response. All routing is deterministic: the same event with the same project state always produces the same result.
 
-The Orchestrator calls `pipeline.js`, reads `result.action`, and performs the corresponding operation (spawn an agent, present a human gate, or terminate the loop).
+The Orchestrator reads the returned action and performs the corresponding operation — spawning an agent, presenting a human gate, or terminating the loop.
 
 See [Deterministic Scripts](internals/scripts.md) for the full event vocabulary and CLI reference.
 
-### Master Plan Pre-Read
-
-When the engine processes the `plan_approved` event, it performs a pre-read of the master plan document before applying the mutation:
-
-1. Reads the master plan path from the `planning.steps` array (the step with `name: 'master_plan'`, index 4) → `doc_path`
-2. Loads the document via `io.readDocument()`
-3. Extracts `total_phases` from the document's YAML frontmatter
-4. Validates that `total_phases` is a positive integer
-5. Injects the value into the mutation context as `context.total_phases`
-
-The `handlePlanApproved` mutation then uses `context.total_phases` to initialize `execution.phases[]` with the correct number of phase entries (each starting as `not_started` with empty tasks). **`total_phases` is not stored in `state.json`** — it is derived from `phases.length` at runtime when needed.
-
-**Error conditions** — all produce a hard error (exit 1, no state written):
-
-| Condition | Error |
-|-----------|-------|
-| Master plan `doc_path` not in context and not derivable from state | `"Cannot derive master plan path: state.planning.steps[4].doc_path is not set"` |
-| Document not found at the resolved path | `"Document not found at '{path}'"` |
-| `total_phases` missing from frontmatter | `"Missing required field"` (event=`plan_approved`, field=`total_phases`) |
-| `total_phases` not a positive integer | `"Invalid value: total_phases must be a positive integer"` (event=`plan_approved`, field=`total_phases`) |
-
-### 20-Action Routing Table
-
-| # | Action | Category | Orchestrator Operation |
-|---|--------|----------|----------------------|
-| 1 | `spawn_research` | Agent spawn | Spawn Research agent |
-| 2 | `spawn_prd` | Agent spawn | Spawn Product Manager |
-| 3 | `spawn_design` | Agent spawn | Spawn UX Designer |
-| 4 | `spawn_architecture` | Agent spawn | Spawn Architect |
-| 5 | `spawn_master_plan` | Agent spawn | Spawn Architect (master plan) |
-| 6 | `create_phase_plan` | Agent spawn | Spawn Tactical Planner (phase plan mode) |
-| 7 | `create_task_handoff` | Agent spawn | Spawn Tactical Planner (handoff mode) |
-| 8 | `execute_task` | Agent spawn | Spawn Coder |
-| 9 | `spawn_code_reviewer` | Agent spawn | Spawn Reviewer (task review) |
-| 10 | `spawn_phase_reviewer` | Agent spawn | Spawn Reviewer (phase review) |
-| 11 | `generate_phase_report` | Agent spawn | Spawn Tactical Planner (report mode) |
-| 12 | `spawn_final_reviewer` | Agent spawn | Spawn Reviewer (final review) |
-| 13 | `request_plan_approval` | Human gate | Present master plan for approval |
-| 14 | `request_final_approval` | Human gate | Present final review for approval |
-| 15 | `gate_task` | Human gate | Present task results for approval |
-| 16 | `gate_phase` | Human gate | Present phase results for approval |
-| 17 | `ask_gate_mode` | Human gate | Prompt human for execution gate mode preference |
-| 18 | `display_halted` | Terminal | Display halt message — loop terminates |
-| 19 | `display_complete` | Terminal | Display completion — loop terminates |
-| 20 | `invoke_source_control_commit` | Agent spawn | Spawn **Source Control Agent** in commit mode. Agent reads `pipeline.source_control` from state, constructs commit message, executes `git-commit.js`. On completion, signal `task_committed`. |
-
-### Source Control Events
-
-Three new events support source control automation. See [Source Control Automation](source-control.md) for full feature documentation.
-
-| Event | Triggered By | Context Shape | Mutation |
-|-------|-------------|---------------|----------|
-| `source_control_init` | `execute-parallel` skill after worktree creation | `{ branch, base_branch, worktree_path, auto_commit, auto_pr }` | Writes `pipeline.source_control` (idempotent full-replacement) |
-| `task_commit_requested` | Resolver after task approved when `auto_commit: always` | `{}` | No state change; returns `invoke_source_control_commit` action |
-| `task_committed` | Orchestrator after Source Control Agent completes | `{ commitHash, pushed, error }` | Advances task pointer; resumes normal pipeline flow |
-
-The `invoke_source_control_commit` action (action #20 in the routing table) spawns the Source Control Agent in commit mode.
+For dependency scheduling and task ordering, see [Dependency Model](internals/dependency-model.md).
 
 ## State Management
 
-Pipeline state is tracked in `state.json` — see [Project Structure](project-structure.md) for the full state schema and invariants, and [`state-v4.schema.json`](../.github/skills/orchestration/schemas/state-v4.schema.json) for the formal v4 JSON Schema.
+Pipeline state is tracked in `state.json` — see [Project Structure](project-structure.md) for the file layout and naming conventions.
 
 Key rules:
-- Only the pipeline script (`pipeline.js`) writes `state.json`
+- Only the pipeline script writes `state.json`
 - Every state mutation is validated against invariants before being written to disk. Invalid state never reaches disk.
 - Task `status` transitions follow a strict map — `complete` is **terminal** (no `complete → failed` path exists):
   ```mermaid
@@ -344,27 +280,12 @@ Key rules:
   ```
 - Task `stage` tracks precise work focus within `in_progress` — the resolver matches on `stage` to determine the next action
 - All index references (phases, tasks) are **1-based**: `current_phase = 1` means the first phase; `current_task = 1` means the first task within the current phase
-- Only one task can be `in_progress` at a time across the entire project (for now — parallel execution is a future enhancement)
-
-### Key Field Paths
-
-| Concept | v4 Field Path |
-|---------|--------------|
-| Active pipeline tier | `pipeline.current_tier` |
-| Task handoff document | `task.docs.handoff` |
-| Task review document | `task.docs.review` |
-| Task review verdict | `task.review.verdict` |
-| Task review action | `task.review.action` |
-| Phase plan document | `phase.docs.phase_plan` |
-| Phase report document | `phase.docs.phase_report` |
-| Phase review document | `phase.docs.phase_review` |
-| Phase review verdict | `phase.review.verdict` |
-| Phase review action | `phase.review.action` |
-| Final review document | `final_review.doc_path` |
-| Final review status | `final_review.status` |
-| Final review human approval | `final_review.human_approved` |
+- Only one task is active at a time across the entire project.
 
 ## Next Steps
 
+- [Agents](agents.md) — The 12 specialized agents and their roles in the pipeline
+- [Configuration](configuration.md) — System settings, limits, and human gate configuration
 - [Scripts Reference](internals/scripts.md) — Full event vocabulary, action definitions, and CLI interface
-- [Project Structure](project-structure.md) — State schema, file layout, and project directory conventions
+- [Dependency Model](internals/dependency-model.md) — Dependency scheduling between tasks
+- [Project Structure](project-structure.md) — File layout, naming conventions, and document types
