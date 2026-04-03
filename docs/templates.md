@@ -64,6 +64,6 @@ The `create-design` skill selects one of three template variants based on the pr
 
 ## Next Steps
 
-- [Skills](skills.md) — Explore the 19 skills and their capabilities
+- [Skills](skills.md) — Explore the 18 skills and their capabilities
 - [Agents](agents.md) — Learn about the 12 agents that use these templates
 - [Configuration](configuration.md) — Configure pipeline behavior and project settings
