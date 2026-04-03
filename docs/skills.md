@@ -39,7 +39,6 @@ The orchestration system includes 18 reusable skills — self-contained capabili
 |-------|-------------|---------|
 | `create-agent` | Scaffold new agent definitions (`.agent.md`) with proper frontmatter and tool declarations | any |
 | `create-skill` | Scaffold new skills with `SKILL.md`, directory structure, and optional scripts/references | any |
-| `agent-customization` | Create, update, review, fix, or debug VS Code agent customization files | any |
 
 ### System Skills
 
