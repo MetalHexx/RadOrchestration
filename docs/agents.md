@@ -16,7 +16,7 @@ The orchestration system uses 12 specialized agents, each with a defined role, s
 | `@coder` | Code implementation | Code, tests |
 | `@coder-junior` | Straightforward, lower-complexity coding tasks from task handoffs | Code, tests |
 | `@coder-senior` | Complex or high-stakes coding tasks from task handoffs | Code, tests |
-| `@reviewer` | Code and phase review | `CODE-REVIEW.md`, `PHASE-REVIEW.md` |
+| `@reviewer` | Code and phase review | `CODE-REVIEW.md`, `PHASE-REVIEW.md`, `FINAL-REVIEW.md` |
 | `@source-control` | Thin-router for git operations — commit, push, and PR creation | Code (via `git-commit.js` and `gh-pr.js` scripts) |
 
 
@@ -183,7 +183,7 @@ The Reviewer operates at three levels:
 
 **Input:** Code changes, `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `PHASE-PLAN.md`
 
-**Output:** `CODE-REVIEW.md`, `PHASE-REVIEW.md`
+**Output:** `CODE-REVIEW.md`, `PHASE-REVIEW.md`, `FINAL-REVIEW.md`
 
 **Skills:** `orchestration`, `code-review`
 
@@ -213,5 +213,5 @@ The Source Control Agent is a thin router — it loads the `source-control` skil
 ## Next Steps
 
 - [Skills](skills.md) — Explore the 19 skill bundles agents use
-- [Templates](templates.md) — See the 16 output templates skills produce
+- [Templates](templates.md) — See the 17 output templates skills produce
 
