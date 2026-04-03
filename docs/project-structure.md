@@ -1,6 +1,6 @@
 ﻿# Project Structure
 
-This page documents the file layout, naming conventions, document types, and state management model.
+This page documents the file layout, naming conventions, and document types.
 
 ## Workspace Layout
 
@@ -15,8 +15,6 @@ This page documents the file layout, naming conventions, document types, and sta
 │   │   ├── SKILL.md           # Role-based router
 │   │   ├── config/
 │   │   │   └── orchestration.yml  # System configuration
-│   │   ├── schemas/
-│   │   │   └── state-v4.schema.json  # Canonical v4 state JSON Schema
 │   │   ├── references/
 │   │   │   ├── context.md     # System context (all agents)
 │   │   │   ├── document-conventions.md  # Document naming & placement (all agents)
@@ -24,7 +22,6 @@ This page documents the file layout, naming conventions, document types, and sta
 │   │   │   └── validation-guide.md  # Validation guide (Reviewer, Tactical Planner)
 │   │   └── scripts/
 │   │       ├── pipeline.js    # Unified pipeline CLI (sole state writer)
-│   │       ├── migrate-to-v4.js  # Migration CLI tool
 │   │       ├── lib/           # Pipeline library modules
 │   │       │   └── ...
 │   │       ├── tests/         # Pipeline test files
@@ -158,19 +155,7 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 |------|-------------|---------|
 | `state.json` | Pipeline Script (`pipeline.js`) | Machine-readable pipeline state |
 
-## State Management
-
-### `state.json` Schema
-
-- The `state.json` file is the single source of truth for pipeline state.  
-- Each project folder contains its own `state.json` that tracks the current phase, task, agent, and other relevant metadata. 
-- The pipeline script (`pipeline.js`) is the sole writer of `state.json` — no agent directly modifies it. 
-- Agents read `state.json` for context but never write to it.
-- The schema identifier is `orchestration-state-v4`. The full JSON Schema is defined in [`.github/skills/orchestration/schemas/state-v4.schema.json`](../.github/skills/orchestration/schemas/state-v4.schema.json).
-
-### Invariants
-
-The pipeline engine (`pipeline-engine.js`) runs all 12 invariant checks (V1–V2, V5–V7, V10–V16) on every state transition — see [Validation](internals/validation.md) for the full invariant catalog. Only the pipeline script (`pipeline.js`) writes `state.json`; no agent touches it directly.
+For state schema details and validation, see [Validation](internals/validation.md).
 
 ## Scoped Instructions
 
