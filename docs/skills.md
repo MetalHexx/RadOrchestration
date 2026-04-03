@@ -57,6 +57,7 @@ To customize the **output format** of documents a skill produces, modify the ski
 |-------|-------------|---------|
 | `create-agent` | Scaffold new agent definitions (`.agent.md`) with proper frontmatter and tool declarations | any |
 | `create-skill` | Scaffold new skills with `SKILL.md`, directory structure, and optional scripts/references | any |
+| `agent-customization` | Create, update, review, fix, or debug VS Code agent customization files | any |
 
 ### Infrastructure Skills
 
@@ -92,37 +93,6 @@ Each agent is explicitly assigned skills in its `.agent.md` frontmatter. This ta
 ## Skill Recommendation in Task Handoffs
 
 When creating task handoffs, the Tactical Planner enumerates the agent skills directory and evaluates each skill's description against the task being prepared. Skills that would help the Coder complete the task are listed in the handoff's `skills` field.
-
-## Creating New Skills
-
-> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
-
-Use the `create-skill` meta-skill to scaffold a new skill:
-
-1. Invoke Copilot with a description of what the skill should do
-2. The skill is created under `.github/skills/{skill-name}/` _(or your [configured root](configuration.md))_ with:
-   - `SKILL.md` — the main skill file with frontmatter and instructions
-   - `scripts/` — optional CLI tools
-   - `references/` — optional background material
-   - `assets/` — optional static assets
-3. Assign the skill to an agent by adding it to the agent's `.agent.md`
-4. Run the [validation tool](internals/validation.md) to verify cross-references
-
-## Skill File Structure
-
-```
-.github/skills/{skill-name}/
-├── SKILL.md              # Main skill definition (required)
-├── scripts/              # CLI tools used by the skill
-├── references/           # Background material, examples
-└── assets/               # Static assets
-```
-
-The `SKILL.md` file contains:
-- **Frontmatter** — description for auto-discovery matching
-- **Instructions** — step-by-step procedures
-- **Templates** — output document schemas
-- **Rules** — constraints and quality standards
 
 ## Prompts
 
