@@ -31,6 +31,16 @@ created: "{ISO-DATE}"
 |---|-----------|----------|
 | 1 | {From phase plan} | ✅/❌ |
 
+## Independent Quality Assessment
+
+<!-- Findings from the skeptical pass — evaluating correctness independent of planning documents. -->
+
+| Finding | Severity | Evidence | Suggestion |
+|---------|----------|----------|------------|
+| {What was found} | low/medium/high | {Concrete evidence from code} | {Specific fix or improvement} |
+
+<!-- If no independent findings, replace the table with: "No issues found beyond conformance check." -->
+
 ## Cross-Task Issues
 
 | # | Scope | Severity | Issue | Recommendation |

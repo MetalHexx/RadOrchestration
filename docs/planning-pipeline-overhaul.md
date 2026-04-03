@@ -478,7 +478,7 @@ flowchart TD
 - Task Handoff template — self-containment preserved
 - Pipeline engine (`pipeline.js`, `mutations.js`, etc.) — no state schema changes
 - `state.json` schema — no structural changes
-- Review skills (`review-task`, `review-phase`) — separate concern
+- Review skill (`code-review`) — consolidated, three modes
 - Coder agents — they only read handoffs, unaffected
 - Source Control agent/skill — already follows the target pattern
 - `orchestration.yml` — no configuration changes needed
@@ -523,7 +523,7 @@ All reforms in one `PLANNING-OVERHAUL` project with phases aligning to the split
 
 2. **Anchor granularity**: Section-level links in the Master Plan (e.g., `PRD.md#functional-requirements`) are coarse. Should we support finer-grained links (e.g., individual FR anchors)? This affects template structure.
 
-3. **Reviewer impact**: The Reviewer currently validates against PRD, Architecture, and Design. If these templates change, the review skills (`review-task`, `review-phase`) may need updates to match new section structures. Should this be in-scope or a follow-up?
+3. **Reviewer impact**: The Reviewer currently validates against PRD, Architecture, and Design. If these templates change, the review skill (`code-review`) may need updates to match new section structures. Should this be in-scope or a follow-up?
 
 4. **Validation script**: The orchestration validator checks document frontmatter and structure. Template changes may require validator updates. Scope this in or defer?
 

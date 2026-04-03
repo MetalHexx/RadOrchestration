@@ -16,7 +16,7 @@ created: "{ISO-DATE}"
 
 {2-3 sentences. Overall assessment.}
 
-## Checklist
+## Conformance Checklist
 
 | Category | Status | Notes |
 |----------|--------|-------|
@@ -27,6 +27,16 @@ created: "{ISO-DATE}"
 | Error handling | ✅/⚠️/❌ | {Brief note} |
 | Accessibility | ✅/⚠️/❌ | {Brief note} |
 | Security | ✅/⚠️/❌ | {Brief note} |
+
+## Independent Quality Assessment
+
+<!-- Findings from the skeptical pass — evaluating correctness independent of planning documents. -->
+
+| Finding | Severity | Evidence | Suggestion |
+|---------|----------|----------|------------|
+| {What was found} | low/medium/high | {Concrete evidence from code} | {Specific fix or improvement} |
+
+<!-- If no independent findings, replace the table with: "No issues found beyond conformance check." -->
 
 ## Issues Found
 
