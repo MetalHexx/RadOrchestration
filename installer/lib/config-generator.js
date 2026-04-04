@@ -41,6 +41,21 @@ human_gates:
   execution_mode: "${config.executionMode}"                  # ask | phase | task | autonomous
   after_final_review: true               # Always gate after final review (hard default)
 
+# ─── RAG (Optional) ───────────────────────────────────────────────
+# Retrieval-Augmented Generation for project knowledge and context.
+# Requires: docker compose up -d (for Postgres+pgvector)
+# Requires: AWS credentials with Bedrock access
+rag:
+  enabled: false                         # Set to true after running docker compose up -d
+  db_host: localhost
+  db_port: 5432
+  db_name: radorch_rag
+  db_user: radorch
+  db_password: radorch_dev
+  bedrock_region: us-east-1
+  bedrock_model: "cohere.embed-v4:0"
+  embedding_dimensions: 1024
+
 # ─── Notes ─────────────────────────────────────────────────────────
 # Model selection is configured per-agent in .agent.md frontmatter.
 # See ${config.orchRoot}/agents/*.agent.md → \`model\` field.
