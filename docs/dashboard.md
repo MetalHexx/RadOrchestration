@@ -5,7 +5,7 @@ pipeline status, and task details in a unified web interface. It gives you
 instant insight into what your agents are doing across all projects in the
 workspace.
 
-![Monitoring Dashboard](../assets/dashboard-screenshot.png)
+<img width="1557" height="1188" alt="image" src="https://github.com/user-attachments/assets/462d76eb-8a61-4822-9d8d-30f58d52b1b8" />
 
 ## Getting Started
 
@@ -46,7 +46,9 @@ Each project displays its current branch, commit history, and pull request
 status at a glance. During active execution, the dashboard shows a per-task
 commit trail so you can track exactly which changes each task introduced.
 Auto-commit and auto-PR settings are visible alongside the branch
-information.
+information.  Full branch diffs can be seen by clicking on the branch name.
+Once the project execution completes, a link to the opened PR becomes available
+for each access.
 
 ### Configuration
 
