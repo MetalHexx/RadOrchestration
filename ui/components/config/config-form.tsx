@@ -97,6 +97,7 @@ export function ConfigForm({ config, errors, onChange }: ConfigFormProps) {
       case "toggle-group":
         return (
           <ToggleGroup
+            id={field.key}
             value={typeof value === 'string' ? [value] : []}
             onValueChange={(newVal) => { if (newVal.length > 0) onChange(field.key, newVal[0]); }}
           >
@@ -110,7 +111,7 @@ export function ConfigForm({ config, errors, onChange }: ConfigFormProps) {
 
       case "readonly":
         return (
-          <span className="text-sm text-muted-foreground">
+          <span id={field.key} className="text-sm text-muted-foreground">
             {String(value ?? "")}
           </span>
         );

@@ -72,12 +72,20 @@ export async function PUT(request: Request) {
       );
     }
 
+    let parsed: unknown;
     try {
-      parseYaml(body.rawYaml);
+      parsed = parseYaml(body.rawYaml);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return NextResponse.json(
         { error: `Invalid YAML: ${message}` },
+        { status: 400 },
+      );
+    }
+
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return NextResponse.json(
+        { error: 'YAML must be a mapping (object), not a scalar or array' },
         { status: 400 },
       );
     }

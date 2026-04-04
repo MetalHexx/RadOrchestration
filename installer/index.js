@@ -97,15 +97,15 @@ export async function main() {
         excludeFiles: [...(category.excludeFiles || []), ...manifest.globalExcludes],
       };
 
+      const spinner = ora({ text: `Copying ${category.name}...`, color: THEME.spinner }).start();
       const result = copyCategory(mergedCategory, repoRoot, targetBase);
 
-      if (!result.skipped) {
-        const spinner = ora({ text: `Copying ${category.name}...`, color: THEME.spinner }).start();
-        if (result.success) {
-          spinner.succeed(`Copied ${category.name}  (${result.fileCount} files)`);
-        } else {
-          spinner.fail(`Failed to copy ${category.name}: ${result.error}`);
-        }
+      if (result.skipped) {
+        spinner.stop();
+      } else if (result.success) {
+        spinner.succeed(`Copied ${category.name}  (${result.fileCount} files)`);
+      } else {
+        spinner.fail(`Failed to copy ${category.name}: ${result.error}`);
       }
 
       results.push(result);

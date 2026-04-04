@@ -199,6 +199,24 @@ async function run() {
   assert.strictEqual(json.error, 'Missing rawYaml string for raw mode');
 });
 
+  // --- Raw mode: YAML scalar (not an object) ---
+  await test('raw mode — YAML scalar returns 400', async () => {
+  const req = makePutRequest({ mode: 'raw', rawYaml: 'just a string' });
+  const res = await PUT(req);
+  assert.strictEqual(res.status, 400);
+  const json = await res.json();
+  assert.ok(json.error.includes('mapping'), `Expected mapping error: ${json.error}`);
+});
+
+  // --- Raw mode: YAML array (not an object) ---
+  await test('raw mode — YAML array returns 400', async () => {
+  const req = makePutRequest({ mode: 'raw', rawYaml: '- item1\n- item2\n' });
+  const res = await PUT(req);
+  assert.strictEqual(res.status, 400);
+  const json = await res.json();
+  assert.ok(json.error.includes('mapping'), `Expected mapping error: ${json.error}`);
+});
+
   // --- Invalid mode ---
   await test('invalid mode returns 400', async () => {
   const req = makePutRequest({ mode: 'invalid' });
