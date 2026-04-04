@@ -76,7 +76,28 @@ For real-time monitoring, use the [UI Status Dashboard](dashboard.md) — it sur
 
 ## Advanced Usage
 
-> **Coming Soon** — Advanced topics like parallel execution, custom pipelines, and project chaining.
+### Parallel Execution
+
+Once planning is complete and the Master Plan is approved, you can execute the project in an isolated git worktree — keeping your main branch clean and enabling multiple projects to run simultaneously.
+
+Run `/rad-execute-parallel` in Copilot Chat. The skill walks you through a short setup: selecting the project, choosing a base branch, and picking how to open the worktree.
+
+**GitHub Copilot CLI** — The fastest path. The skill spawns an external terminal, launches the Copilot CLI with the orchestrator agent, and starts project execution automatically. No extra steps needed.
+
+**VS Code** — Opens a new VS Code window at the worktree. Once it loads, switch to the `Orchestrator` agent and run:
+```text
+/rad-execute <project-name>
+```
+Or drag the Master Plan document into the chat context and ask the orchestrator to begin execution.
+
+#### Auto-Commit and Auto-PR
+
+During setup, you can enable two source control automations:
+
+- **Auto-commit** — After each approved task, the pipeline commits and pushes the changes automatically.
+- **Auto-PR** — When the final review passes, the pipeline opens a pull request against the base branch automatically.
+
+These can be set globally in your [configuration](configuration.md) or toggled per-project during the `/rad-execute-parallel` setup flow.
 
 ## Next Steps
 
