@@ -138,6 +138,21 @@ When spawned to generate a phase report after all tasks complete:
 - **`create-task-handoff`**: Guides task handoff creation and provides template
 - **`generate-phase-report`**: Guides phase report generation and provides template
 
+## RAG Context Query (Optional)
+
+When available, you can query the project's embedded context:
+
+```
+node {orchRoot}/skills/orchestration/scripts/rag.js query \
+  --text "<your question>" \
+  --table context \
+  --project-dir {projectDir} \
+  [--doc-type architecture,design,prd,task-report,code-review] \
+  --limit 5
+```
+
+Returns JSON with ranked results from the current project's embedded documents. Use this to look up specific contracts, requirements, or prior task outcomes without reading full documents. If the tool returns empty results or errors, proceed without it — read the documents from disk as you normally would.
+
 ## Output Contract
 
 | Document | Path | Format |

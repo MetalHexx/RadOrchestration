@@ -102,6 +102,21 @@ Save to `{PROJECT-DIR}/reports/{NAME}-FINAL-REVIEW.md`
 - **`review-task`**: Guides task-level review and provides template
 - **`review-phase`**: Guides phase-level integration review and provides template
 
+## RAG Context Query (Optional)
+
+When available, you can query the project's embedded context:
+
+```
+node {orchRoot}/skills/orchestration/scripts/rag.js query \
+  --text "<your question>" \
+  --table context \
+  --project-dir {projectDir} \
+  [--doc-type architecture,design,prd,task-report,code-review] \
+  --limit 5
+```
+
+Returns JSON with ranked results from the current project's embedded documents. Use this to look up specific contracts, requirements, or prior task outcomes without reading full documents. If the tool returns empty results or errors, proceed without it — read the documents from disk as you normally would.
+
 ## Output Contract
 
 | Document | Path | Format |
