@@ -1,5 +1,5 @@
 ---
-name: 'execute-parallel'
+name: 'rad-execute-parallel'
 description: 'Set up a parallel git worktree for a project and launch orchestration execution in it. Use when asked to "run in parallel", "create a worktree", "execute in a worktree", or when launching a project in an isolated branch for parallel development. Handles git worktree creation, branch setup, source control initialization, and opening the worktree in VS Code, Copilot CLI, Claude Code, or a terminal.'
 ---
 
