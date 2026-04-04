@@ -81,9 +81,7 @@ Configurable critical human checkpoints are reliably enforced.  Humans approve t
 
 ### Deterministic Routing & Triage
 
-Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes 20 external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
-
-[Learn more about the scripts →](docs/scripts.md)
+Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
 
 ### Composable Skills
 
@@ -107,38 +105,23 @@ Automatic git commits after each approved task. The Source Control Agent constru
 
 Every task is reviewed against the plan. Code reviewers inspect source code directly.  Minor issues trigger automatic corrective tasks. Critical issues halt the pipeline for human intervention. Plans don't drift unchecked. Pipeline failures are logged to a structured, append-only error log (`ERROR-LOG.md`) in each project folder.
 
-### Built-in Validation
-
-A zero-dependency Node.js CLI validates the entire orchestration ecosystem — agents, skills, instructions, configuration, cross-references, and file structure. CI-friendly with structured exit codes.
-
-[Learn more about validation →](docs/validation.md)
-
 ## Getting Started
 
 [Full getting started guide →](docs/getting-started.md)
-
-### Alternative: Manual Installation
-
-1. Clone the repo and open in VS Code with GitHub Copilot
-2. Copy the `.github/` directory _(or your [configured root](docs/configuration.md))_ into the root of your target project
-3. Run `/configure-system` to set up `orchestration.yml`
-4. Use `Orchestrator` agent with your project goals to start the pipeline
-
-> **Migrating an existing project?** Run `node .github/skills/orchestration/scripts/migrate-to-v4.js` to upgrade `state.json` files from earlier schema versions. The script creates `.backup` copies before writing.
 
 ## Documentation
 
 | Page | Description |
 |------|-------------|
 | [Getting Started](docs/getting-started.md) | Installation, first project walkthrough, common commands |
-| [Agents](docs/agents.md) | All 10 agents — roles, access control, design constraints |
+| [Guides](docs/guides.md) | First-project walkthroughs, continuing projects, checking status |
 | [Pipeline](docs/pipeline.md) | Planning and execution flow, human gates, error handling |
-| [Skills](docs/skills.md) | All 19 skills and how they compose with agents |
+| [Agents](docs/agents.md) | All 12 agents — roles, access control, design constraints |
+| [Skills](docs/skills.md) | All 18 skills and how they compose with agents |
+| [Templates](docs/templates.md) | All 16 templates — purpose, producing agent, consuming agent |
 | [Configuration](docs/configuration.md) | `orchestration.yml` reference — all options explained |
 | [Source Control](docs/source-control.md) | Auto-commit configuration, agent modes, commit format, pipeline events |
 | [Project Structure](docs/project-structure.md) | File layout, naming conventions, document types, state management |
-| [Pipeline Script](docs/scripts.md) | Unified event-driven CLI — routing, triage, state mutations, validation |
-| [Validation](docs/validation.md) | Zero-dependency validation CLI tool |
 | [Monitoring Dashboard](docs/dashboard.md) | Dashboard startup, features, data sources, real-time updates |
 
 ## Design Principles
@@ -159,4 +142,4 @@ The document-driven architecture is inherently portable. Agents communicate thro
 
 ## License
 
-See [LICENSE](LICENSE) for details.
+See LICENSE for details.

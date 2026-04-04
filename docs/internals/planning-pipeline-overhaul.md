@@ -311,11 +311,13 @@ Both agents already have `context7/*` in their tools list. The reform is in the 
 
 **New task outline format**:
 
+```markdown
 | # | Task | Source Doc Refs | Dependencies | Handoff |
 |---|------|----------------|-------------|---------|
 | T1 | Domain types | [ARCH#types](ARCHITECTURE.md#domain-types) | — | [Link]() |
 | T2 | API client | [ARCH#api-client](ARCHITECTURE.md#api-client), [FR-3..FR-5](PRD.md#functional-requirements) | T1 | [Link]() |
 | T3 | Login UI | [DESIGN#login-flow](DESIGN.md#login-flow), [ARCH#login-component](ARCHITECTURE.md#login) | T1 | [Link]() |
+```
 
 The "Source Doc Refs" column tells the Tactical Planner exactly which sections to inline when creating the Task Handoff for that task. No guesswork.
 

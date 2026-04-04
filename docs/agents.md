@@ -7,7 +7,7 @@ The orchestration system uses 12 specialized agents, each with a defined role, s
 | Agent | Role | Writes |
 |-------|------|--------|
 | `@brainstormer` | Collaborative ideation with the human | `BRAINSTORMING.md` |
-| `@orchestrator` | Thin coordinator — loads orchestration skill, routes pipeline events via 20-action routing table | `ERROR-LOG.md` (via log-error skill) |
+| `@orchestrator` | Thin coordinator — loads orchestration skill, routes pipeline events to the appropriate agent | `ERROR-LOG.md` (via log-error skill) |
 | `@research` | Codebase and context exploration | `RESEARCH-FINDINGS.md` |
 | `@product-manager` | Requirements definition | `PRD.md` |
 | `@ux-designer` | Interface and interaction design | `DESIGN.md` |
@@ -43,7 +43,7 @@ The Brainstormer works directly with the human in a conversational loop — aski
 
 **Purpose:** Read project state and coordinate the pipeline by spawning the right agent at the right time.
 
-The Orchestrator is the entry point for all project interactions. It signals events to `pipeline.js`, parses the JSON result, and routes on a 20-action table to spawn the appropriate agent, present human gates, or display terminal messages. When the pipeline returns a failure result, the Orchestrator invokes the log-error skill to append a structured entry to the project's ERROR-LOG.md.
+The Orchestrator is the entry point for all project interactions. It signals events to `pipeline.js`, parses the JSON result, and routes to the appropriate agent, presents human gates, or displays terminal messages. When the pipeline returns a failure result, the Orchestrator invokes the log-error skill to append a structured entry to the project's ERROR-LOG.md.
 
 **Input:** Human prompts, `state.json`, pipeline script results
 **Output:** None — strictly read-only, prompts agents to do work.
@@ -212,6 +212,6 @@ The Source Control Agent is a thin router — it loads the `source-control` skil
 
 ## Next Steps
 
-- [Skills](skills.md) — Explore the 18 skill bundles agents use
+- [Skills](skills.md) — Explore the 18 skills agents use
 - [Templates](templates.md) — See the 16 output templates skills produce
 

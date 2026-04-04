@@ -1,24 +1,6 @@
 # Skills
 
-Skills are reusable capability bundles that give agents domain-specific knowledge, templates, and instructions. Each skill is a self-contained folder with a `SKILL.md` file that defines what the skill does and how to use it. Agents are composed with the skills they need — the system can be extended by adding new skills or remixing existing ones.
-
-## How Skills Work
-
-Skills are discovered by GitHub Copilot through description-based matching. When an agent needs a capability, Copilot matches the request to the most appropriate skill based on its description. Each agent explicitly declares which skills it has access to in its `.agent.md` frontmatter.
-
-Skills can include:
-- **Instructions** — step-by-step procedures and rules
-- **Templates** — document schemas the skill produces
-- **References** — background material and examples
-- **Scripts** — CLI tools the skill uses
-
-## Customizing Skills
-
-Skills can be modified to adjust agent behavior — for example, changing the number of steps in a procedure, adjusting quality thresholds, or tailoring instructions to match a team's specific workflow and conventions.
-
-> **Warning**: Core instructions within skills — such as output format requirements, frontmatter schemas, and self-containment rules — should be preserved. Other parts of the pipeline depend on these contracts, and changing them can cause downstream agents to produce incompatible output.
-
-To customize the **output format** of documents a skill produces, modify the skill's template files. See [Templates](templates.md) for details on the available output templates and their customization rules.
+The orchestration system includes 18 reusable skills — self-contained capability bundles that give agents domain-specific knowledge, templates, and instructions. Agents are composed with the skills they need, and GitHub Copilot matches requests to skills through description-based matching.
 
 ## Skill Inventory
 
@@ -41,8 +23,8 @@ To customize the **output format** of documents a skill produces, modify the ski
 | `create-task-handoff` | Create self-contained task documents that inline all contracts, interfaces, and requirements | tactical-planner |
 | `execute-coding-task` | Full coding task execution loop — read handoff, implement code, run tests, verify acceptance criteria | coder, coder-junior, coder-senior |
 | `generate-phase-report` | Summarize phase outcomes — aggregated task results, exit criteria assessment, carry-forward items | tactical-planner |
-| `run-tests` | Execute the project test suite and report structured results with pass/fail and error details | coder, coder-junior, coder-senior, tactical-planner |
-| `log-error` | Log pipeline errors to a structured, append-only per-project error log (`ERROR-LOG.md`) | orchestrator |
+| `run-tests` | Execute the project test suite and report structured results with pass/fail and error details | coder, coder-junior, coder-senior |
+| `log-error` | Log pipeline errors to a structured, append-only per-project error log | orchestrator, source-control |
 | `source-control` | Source control automation — git commit and push via CLI wrapper; PR creation via GitHub CLI | source-control |
 
 ### Review Skills
@@ -58,12 +40,6 @@ To customize the **output format** of documents a skill produces, modify the ski
 | `create-agent` | Scaffold new agent definitions (`.agent.md`) with proper frontmatter and tool declarations | any |
 | `create-skill` | Scaffold new skills with `SKILL.md`, directory structure, and optional scripts/references | any |
 
-### Infrastructure Skills
-
-| Skill | Description | Used By |
-|-------|-------------|---------|
-| `execute-parallel` | Set up a parallel git worktree for a project and launch orchestration execution in it | any |
-
 ### System Skills
 
 | Skill | Description | Used By |
@@ -72,7 +48,7 @@ To customize the **output format** of documents a skill produces, modify the ski
 
 ## Skill-Agent Composition
 
-Each agent is explicitly assigned skills in its `.agent.md` frontmatter. This table shows the full mapping:
+Each agent is assigned skills in its `.agent.md` definition. This table shows the full mapping:
 
 | Agent | Skills |
 |-------|--------|
@@ -87,67 +63,44 @@ Each agent is explicitly assigned skills in its `.agent.md` frontmatter. This ta
 | coder-junior | `orchestration`, `execute-coding-task`, `run-tests` |
 | coder-senior | `orchestration`, `execute-coding-task`, `run-tests` |
 | reviewer | `orchestration`, `code-review` |
-| source-control | `orchestration`, `source-control` |
+| source-control | `orchestration`, `source-control`, `log-error` |
 
-## Skill Recommendation in Task Handoffs
+## Human-Facing Entry Points
 
-When creating task handoffs, the Tactical Planner enumerates the agent skills directory and evaluates each skill's description against the task being prepared. Skills that would help the Coder complete the task are listed in the handoff's `skills` field.
+These skills and prompts are invoked directly by humans rather than by the pipeline.
 
-## Creating New Skills
-
-> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
-
-Use the `create-skill` meta-skill to scaffold a new skill:
-
-1. Invoke Copilot with a description of what the skill should do
-2. The skill is created under `.github/skills/{skill-name}/` _(or your [configured root](configuration.md))_ with:
-   - `SKILL.md` — the main skill file with frontmatter and instructions
-   - `scripts/` — optional CLI tools
-   - `references/` — optional background material
-   - `assets/` — optional static assets
-3. Assign the skill to an agent by adding it to the agent's `.agent.md`
-4. Run the [validation tool](validation.md) to verify cross-references
-
-## Skill File Structure
-
-```
-.github/skills/{skill-name}/
-├── SKILL.md              # Main skill definition (required)
-├── scripts/              # CLI tools used by the skill
-├── references/           # Background material, examples
-└── assets/               # Static assets
-```
-
-The `SKILL.md` file contains:
-- **Frontmatter** — description for auto-discovery matching
-- **Instructions** — step-by-step procedures
-- **Templates** — output document schemas
-- **Rules** — constraints and quality standards
-
-## Prompts
-
-Prompts (`.prompt.md` files) are slash-command shortcuts that invoke a specific agent with a predefined instruction. They differ from skills — skills provide knowledge bundles that agents load, while prompts trigger a workflow by sending a ready-made instruction directly to a target agent.
+| Skill | Description | Used By |
+|-------|-------------|---------|
+| `rad-execute-parallel` | Set up a parallel git worktree for a project and launch orchestration execution in it | any |
 
 ### Prompt Inventory
 
+Prompts (`.prompt.md` files) are slash-command shortcuts that invoke a specific agent with a predefined instruction.
+
 | Prompt | File | Agent | Description |
 |--------|------|-------|-------------|
-| `/rad-plan` | `.github/prompts/rad-plan.prompt.md` | orchestrator | Start the full planning pipeline for a new project — Research through Master Plan |
+| `/rad-plan` | `.github/prompts/rad-plan.prompt.md` | orchestrator | Start the full planning pipeline — Research through Master Plan |
 | `/rad-execute` | `.github/prompts/rad-execute.prompt.md` | orchestrator | Continue a project through the orchestration pipeline |
+| `/configure-system` | `.github/prompts/configure-system.prompt.md` | agent | Configure the orchestration system using a structured questionnaire |
 
 ### rad-plan
 
-- **Purpose**: Kicks off the complete planning pipeline: Research → PRD → Design → Architecture → Master Plan.
-- **When to use**: When you have a project idea (either a free-text description or an existing `BRAINSTORMING.md` document) and want to produce a full planning suite in one shot.
-- **Behavior**: If a `BRAINSTORMING.md` exists for the project, it is used as the starting input. Otherwise, the user's description in the conversation is used. The Orchestrator presents the Master Plan for human approval when complete.
+Kicks off the complete planning pipeline: Research → PRD → Design → Architecture → Master Plan. Use when you have a project idea and want to produce a full planning suite in one shot.
 
 ### rad-execute
 
-- **Purpose**: Continues a project through the execution pipeline after the Master Plan has been approved.
-- **When to use**: After the planning pipeline completes and the Master Plan is approved, use this prompt to begin or resume phase execution.
-- **Behavior**: Instructs the Orchestrator to mark the plan as approved (if not already) and execute the project according to the Master Plan using the proper execution pipeline.
+Continues a project through the execution pipeline after the Master Plan is approved. Use after planning completes to begin or resume phase execution.
+
+### configure-system
+
+Walks through orchestration system configuration using a structured questionnaire — system root, project storage, pipeline limits, gate behavior, and source control settings — then generates `orchestration.yml`.
+
+## Customizing Skills
+
+Skills can be modified to adjust agent behavior, but core instructions (format requirements, frontmatter schemas, self-containment rules) must be preserved — other pipeline agents depend on these contracts. To customize document output format, modify the skill's template files; see [Templates](templates.md) for details.
 
 ## Next Steps
 
-- [Templates](templates.md) — Customize the 16 output templates that skills produce
+- [Templates](templates.md) — Customize the output templates that skills produce
 - [Agents](agents.md) — See which agents use which skills
+- [Configuration](configuration.md) — Configure pipeline settings

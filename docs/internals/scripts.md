@@ -4,7 +4,7 @@ The orchestration system uses a single unified pipeline script (`pipeline.js`) f
 
 > `pipeline.js` is called by the Orchestrator agent during pipeline execution. It is not intended for manual use — users do not need to run it directly.
 
-> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
+> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](../configuration.md), adjust paths accordingly.
 
 ---
 
@@ -72,7 +72,7 @@ Migrates a project’s `state.json` from an older schema version (v1–v3) to v4
 
 ## Event Vocabulary
 
-The pipeline accepts exactly 22 events. Each maps to a mutation handler in the `MUTATIONS` lookup table.
+The pipeline accepts exactly 32 events. Each maps to a mutation handler in the `MUTATIONS` lookup table.
 
 | # | Event | Tier | Description |
 |---|-------|------|-------------|
@@ -87,23 +87,33 @@ The pipeline accepts exactly 22 events. Each maps to a mutation handler in the `
 | 9 | `master_plan_started` | Planning | Master plan step begun; sets `planning.steps[4].status` → in_progress |
 | 10 | `master_plan_completed` | Planning | Master plan created; sets `planning.steps[4].status` → complete, `planning.status` → complete |
 | 11 | `plan_approved` | Planning | Human approved; sets `planning.human_approved`, transitions `pipeline.current_tier` → execution |
-| 12 | `phase_plan_created` | Execution | Phase plan saved; sets `phase.docs.phase_plan`, `phase.status` → in_progress, `phase.stage` → executing |
-| 13 | `task_handoff_created` | Execution | Task handoff saved; sets `task.docs.handoff`, `task.status` → in_progress, `task.stage` → coding |
-| 14 | `task_completed` | Execution | Coder finished; sets `task.stage` → reviewing (`status` stays in_progress) |
-| 15 | `code_review_completed` | Execution | Review finished; sets `task.docs.review`, `task.review.verdict`, `task.review.action`; resolves task outcome |
-| 16 | `phase_report_created` | Execution | Phase report saved; sets `phase.docs.phase_report`, `phase.stage` → reviewing |
-| 17 | `phase_review_completed` | Execution | Phase review finished; sets `phase.docs.phase_review`, `phase.review.verdict`, `phase.review.action`; resolves phase outcome |
-| 18 | `task_approved` | Execution | Human approved task gate |
-| 19 | `phase_approved` | Execution | Human approved phase gate |
-| 20 | `final_review_completed` | Review | Final review saved; sets `final_review.doc_path`, `final_review.status` → complete |
-| 21 | `final_approved` | Review | Human approved final review; sets `final_review.human_approved`, transitions `pipeline.current_tier` → complete |
-| 22 | `halt` | Any | Halt the pipeline with a reason |
+| 12 | `plan_rejected` | Planning | Human rejected master plan; resets `planning.status` for revision |
+| 13 | `phase_planning_started` | Execution | Phase planning begun; transitions phase `stage` → planning, `status` → in_progress |
+| 14 | `phase_plan_created` | Execution | Phase plan saved; sets `phase.docs.phase_plan`, `phase.status` → in_progress, `phase.stage` → executing |
+| 15 | `task_handoff_started` | Execution | Task handoff begun; transitions task `status` → in_progress, `stage` stays planning |
+| 16 | `task_handoff_created` | Execution | Task handoff saved; sets `task.docs.handoff`, `task.status` → in_progress, `task.stage` → coding |
+| 17 | `task_completed` | Execution | Coder finished; sets `task.stage` → reviewing (`status` stays in_progress) |
+| 18 | `code_review_completed` | Execution | Review finished; sets `task.docs.review`, `task.review.verdict`, `task.review.action`; resolves task outcome |
+| 19 | `phase_report_created` | Execution | Phase report saved; sets `phase.docs.phase_report`, `phase.stage` → reviewing |
+| 20 | `phase_review_completed` | Execution | Phase review finished; sets `phase.docs.phase_review`, `phase.review.verdict`, `phase.review.action`; resolves phase outcome |
+| 21 | `source_control_init` | Execution | One-time initialization; persists branch, base_branch, worktree_path, auto_commit, auto_pr to `pipeline.source_control` |
+| 22 | `task_commit_requested` | Execution | Signaled internally after approved code review when `auto_commit: always`; triggers Source Control Agent spawn |
+| 23 | `task_committed` | Execution | Source Control Agent completed commit; sets `task.commit_hash` from `--commit-hash` flag |
+| 24 | `pr_requested` | Execution | Signaled internally after `final_review_completed` when `auto_pr: always` and `pr_url` is undefined |
+| 25 | `pr_created` | Execution | Source Control Agent completed PR; sets `pipeline.source_control.pr_url` from `--pr-url` flag |
+| 26 | `gate_mode_set` | Gate | Operator selected gate mode; sets `pipeline.gate_mode` |
+| 27 | `gate_approved` | Gate | Human approved gate; advances task or phase depending on `--gate-type` flag |
+| 28 | `gate_rejected` | Gate | Human rejected gate; halts task or phase depending on `--gate-type` flag with `--reason` |
+| 29 | `final_review_completed` | Review | Final review saved; sets `final_review.doc_path`, `final_review.status` → complete |
+| 30 | `final_approved` | Review | Human approved final review; sets `final_review.human_approved`, transitions `pipeline.current_tier` → complete |
+| 31 | `final_rejected` | Review | Human rejected final review; resets for revision |
+| 32 | `halt` | Any | Halt the pipeline with a reason |
 
 ---
 
 ## Action Vocabulary
 
-The resolver is a pure function that returns one of 19 values based solely on the current `state.json` and config. All actions are returned to the Orchestrator for agent routing — the script performs no agent spawning itself.
+The resolver is a pure function that returns one of 21 values based solely on the current `state.json` and config. All actions are returned to the Orchestrator for agent routing — the script performs no agent spawning itself.
 
 ### Planning Tier (6)
 
@@ -154,6 +164,13 @@ The resolver is a pure function that returns one of 19 values based solely on th
 | `display_halted` | Project is halted — display status |
 | `display_complete` | Project is complete — display status |
 
+### Source Control (2)
+
+| Action | Meaning |
+|--------|---------|
+| `invoke_source_control_commit` | Spawn Source Control Agent in commit mode |
+| `invoke_source_control_pr` | Spawn Source Control Agent in PR mode |
+
 ---
 
 ## Result Shapes
@@ -196,6 +213,6 @@ The resolver is a pure function that returns one of 19 values based solely on th
 
 ## Next Steps
 
-- [Pipeline](pipeline.md) — Understand the pipeline stages and flow diagrams
-- [Configuration](configuration.md) — Configure pipeline settings and human gates
+- [Pipeline](../pipeline.md) — Understand the pipeline stages and flow diagrams
+- [Configuration](../configuration.md) — Configure pipeline settings and human gates
 - [Validation](validation.md) — Run the validator and interpret results

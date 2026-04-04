@@ -2,7 +2,7 @@
 
 A high-level view of the orchestration system's runtime architecture — the services, protocols, data flows, and integration points that connect project execution, agent intelligence, and human interaction into a single working system.
 
-This document complements [pipeline.md](pipeline.md) (how projects move through tiers) and [dependency-model.md](dependency-model.md) (how dependencies work across levels). Where those are depth-focused, this is breadth-focused: how every major subsystem relates to every other.
+This document complements [pipeline.md](../pipeline.md) (how projects move through tiers) and [dependency-model.md](dependency-model.md) (how dependencies work across levels). Where those are depth-focused, this is breadth-focused: how every major subsystem relates to every other.
 
 ---
 
