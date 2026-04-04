@@ -118,10 +118,12 @@ export async function main() {
     configSpinner.succeed('Generated orchestration.yml');
 
     // Create the project storage directory so the dashboard and agents can scan it immediately
+    const projectsSpinner = ora({ text: 'Creating projects directory...', color: THEME.spinner }).start();
     const resolvedProjectsPath = path.isAbsolute(config.projectsBasePath)
       ? config.projectsBasePath
       : path.join(config.workspaceDir, config.projectsBasePath);
     fs.mkdirSync(resolvedProjectsPath, { recursive: true });
+    projectsSpinner.succeed('Created projects directory');
 
     const configPath = path.join(resolvedRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
 

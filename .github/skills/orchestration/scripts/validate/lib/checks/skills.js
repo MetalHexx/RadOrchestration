@@ -9,7 +9,7 @@ const { extractFrontmatter } = require('../utils/frontmatter');
 const CATEGORY = 'skills';
 
 /** Skills that don't require a templates/ subdirectory */
-const TEMPLATES_EXEMPT = ['run-tests', 'validate-orchestration', 'create-skill', 'execute-coding-task', 'orchestration'];
+const TEMPLATES_EXEMPT = ['run-tests', 'create-skill', 'execute-coding-task', 'orchestration', 'rad-execute-parallel', 'source-control'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
