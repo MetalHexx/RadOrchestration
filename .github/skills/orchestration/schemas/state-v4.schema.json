@@ -252,6 +252,23 @@
         },
         "human_approved": { "type": "boolean" }
       }
+    },
+    "knowledge_compilation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "doc_path"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["not_started", "in_progress", "complete", "skipped"]
+        },
+        "doc_path": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      }
     }
   }
 }
