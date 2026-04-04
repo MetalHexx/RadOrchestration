@@ -81,7 +81,7 @@ Configurable critical human checkpoints are reliably enforced.  Humans approve t
 
 ### Deterministic Routing & Triage
 
-Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes 20 external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
+Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
 
 [Learn more about the scripts →](docs/internals/scripts.md)
 
