@@ -85,3 +85,26 @@ describe('gate_mode schema — backward compatibility', () => {
     assert.equal(errs.length, 0, `Expected zero errors, got: ${JSON.stringify(errs)}`);
   });
 });
+
+describe('config section — schema compatibility', () => {
+  it('accepts state with fully valid config section (zero errors)', () => {
+    const stateWithConfig = {
+      ...makeState(),
+      config: {
+        limits: {
+          max_phases: 5,
+          max_tasks_per_phase: 8,
+          max_retries_per_task: 2,
+          max_consecutive_review_rejections: 3,
+        },
+        human_gates: {
+          after_planning: true,
+          execution_mode: 'autonomous',
+          after_final_review: true,
+        },
+      },
+    };
+    const errs = validateTransition(null, stateWithConfig, config);
+    assert.equal(errs.length, 0, `Expected zero errors, got: ${JSON.stringify(errs)}`);
+  });
+});

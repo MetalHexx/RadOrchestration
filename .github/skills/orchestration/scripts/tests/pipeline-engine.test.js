@@ -227,15 +227,9 @@ describe('processEvent — standard event path', () => {
     state.execution.phases[0].tasks[0].stage = 'coding'; // V14: coding → reviewing
     state.execution.phases[0].tasks[0].docs.handoff = 'tasks/handoff.md';
 
-    const docPath = 'tasks/report.md';
-    const documents = {
-      [docPath]: {
-        frontmatter: { status: 'complete', has_deviations: false, deviation_type: null },
-        body: 'task report body',
-      },
-    };
+    const documents = {};  // task_completed is pass-through — no document needed
     const io = createMockIO({ state, documents });
-    const ctx = { doc_path: docPath };
+    const ctx = {};  // no doc_path needed
     const result = processEvent('task_completed', PROJECT_DIR, ctx, io);
     assertResultShape(result);
     assert.equal(result.success, true);
@@ -244,14 +238,12 @@ describe('processEvent — standard event path', () => {
   });
 
   it('code_review_completed with approved verdict → task advances, 1 write', () => {
-    // Set up execution state: task in_progress (stage=reviewing), report filed, needs review
+    // Set up execution state: task in_progress (stage=reviewing), needs review
     const state = stripTimestamp(createExecutionState());
     state.execution.phases[0].current_task = 1; // 1-based: T01 is active
     state.execution.phases[0].tasks[0].status = 'in_progress'; // v4: in_progress until code review
     state.execution.phases[0].tasks[0].stage = 'reviewing'; // V14: reviewing → complete
     state.execution.phases[0].tasks[0].docs.handoff = 'tasks/handoff.md';
-    state.execution.phases[0].tasks[0].docs.report = 'tasks/report.md';
-    state.execution.phases[0].tasks[0].report_status = 'complete';
 
     const docPath = 'reviews/review.md';
     const documents = {
@@ -277,19 +269,22 @@ describe('processEvent — standard event path', () => {
 // ─── processEvent — pre-read failure ────────────────────────────────────────
 
 describe('processEvent — pre-read failure', () => {
-  it('task_completed with missing document → success false, action null, 0 writes', () => {
-    const state = createExecutionState();
+  it('task_completed (pass-through) → success true, 1 write, stage becomes reviewing', () => {
+    const state = stripTimestamp(createExecutionState());
+    state.execution.phases[0].current_task = 1;
     state.execution.phases[0].tasks[0].status = 'in_progress';
+    state.execution.phases[0].tasks[0].stage = 'coding';
     state.execution.phases[0].tasks[0].docs.handoff = 'tasks/handoff.md';
 
     const io = createMockIO({ state, documents: {} });
-    const ctx = { doc_path: 'nonexistent/report.md' };
+    const ctx = {};  // no doc_path needed — task_completed is pass-through
     const result = processEvent('task_completed', PROJECT_DIR, ctx, io);
     assertResultShape(result);
-    assert.equal(result.success, false);
-    assert.equal(result.action, null);
-    assert.equal(io.getWrites().length, 0);
-    assert.ok(result.context.event === 'task_completed');
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, 1);
+    const written = io.getWrites()[0];
+    assert.equal(written.execution.phases[0].tasks[0].stage, 'reviewing');
+    assert.equal(written.execution.phases[0].tasks[0].status, 'in_progress');
   });
 
   it('plan_approved with document missing total_phases → success false, field total_phases', () => {
@@ -477,5 +472,200 @@ describe('halted tier — validateTransition passthrough (CF-5)', () => {
     assertResultShape(result);
     assert.equal(result.success, true);
     assert.equal(result.action, 'display_halted');
+  });
+});
+
+// ─── processEvent — source_control_init ─────────────────────────────────────
+
+describe('processEvent — source_control_init', () => {
+  it('valid context → success true, writes state with source_control', () => {
+    const state = createExecutionState();
+    delete state.project.updated;
+    const io = createMockIO({ state });
+    const context = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const result = processEvent('source_control_init', PROJECT_DIR, context, io);
+    assertResultShape(result);
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, 1);
+    assert.equal(io.getWrites()[0].pipeline.source_control.branch, 'feat/x');
+  });
+
+  it('missing required field → throws Error', () => {
+    const state = createExecutionState();
+    delete state.project.updated;
+    const io = createMockIO({ state });
+    const context = {
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    assert.throws(
+      () => processEvent('source_control_init', PROJECT_DIR, context, io),
+      (err) => err.message.includes('missing required field')
+    );
+    assert.equal(io.getWrites().length, 0);
+  });
+
+  it('idempotent — calling twice with same context produces same state', () => {
+    const state = createExecutionState();
+    delete state.project.updated;
+    const io = createMockIO({ state });
+    const context = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    processEvent('source_control_init', PROJECT_DIR, context, io);
+    delete io.getState().project.updated;
+    processEvent('source_control_init', PROJECT_DIR, context, io);
+    assert.equal(io.getWrites().length, 2);
+    const first = io.getWrites()[0].pipeline.source_control;
+    const second = io.getWrites()[1].pipeline.source_control;
+    assert.deepStrictEqual(first, second);
+  });
+});
+
+// ─── processEvent — task_commit_requested ───────────────────────────────────
+
+describe('processEvent — task_commit_requested', () => {
+  it('branch present → success true, pointer unchanged', () => {
+    const state = createExecutionState({
+      pipeline: {
+        source_control: {
+          branch: 'feat/x',
+          base_branch: 'main',
+          worktree_path: '/wt',
+          auto_commit: 'always',
+          auto_pr: 'never',
+        },
+      },
+      execution: {
+        phases: [{
+          name: 'Phase 1',
+          status: 'in_progress',
+          stage: 'executing',
+          current_task: 1,
+          tasks: [
+            {
+              name: 'T01', status: 'complete', stage: 'complete',
+              docs: { handoff: 'h.md', review: 'rv.md' },
+              review: { verdict: 'approved', action: 'advanced' },
+              retries: 0,
+            },
+            {
+              name: 'T02', status: 'not_started', stage: 'planning',
+              docs: { handoff: null, review: null },
+              review: { verdict: null, action: null },
+              retries: 0,
+            },
+          ],
+          docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
+          review: { verdict: null, action: null },
+        }],
+      },
+    });
+    delete state.project.updated;
+    const io = createMockIO({ state });
+    const result = processEvent('task_commit_requested', PROJECT_DIR, { task_id: 'P01-T01' }, io);
+    assertResultShape(result);
+    assert.equal(result.success, true);
+    // Pointer should not have been bumped by task_commit_requested (branch present)
+    assert.equal(io.getState().execution.phases[0].current_task, 1);
+  });
+
+  it('source_control absent → success true, pointer bumped (graceful skip)', () => {
+    const state = createExecutionState({
+      execution: {
+        phases: [{
+          name: 'Phase 1',
+          status: 'in_progress',
+          stage: 'executing',
+          current_task: 1,
+          tasks: [
+            {
+              name: 'T01', status: 'complete', stage: 'complete',
+              docs: { handoff: 'h.md', review: 'rv.md' },
+              review: { verdict: 'approved', action: 'advanced' },
+              retries: 0,
+            },
+            {
+              name: 'T02', status: 'not_started', stage: 'planning',
+              docs: { handoff: null, review: null },
+              review: { verdict: null, action: null },
+              retries: 0,
+            },
+          ],
+          docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
+          review: { verdict: null, action: null },
+        }],
+      },
+    });
+    delete state.project.updated;
+    // No source_control in state
+    const io = createMockIO({ state });
+    const result = processEvent('task_commit_requested', PROJECT_DIR, { task_id: 'P01-T01' }, io);
+    assertResultShape(result);
+    assert.equal(result.success, true);
+    // Pointer should have been bumped (graceful skip)
+    assert.equal(io.getState().execution.phases[0].current_task, 2);
+  });
+});
+
+// ─── processEvent — task_committed ──────────────────────────────────────────
+
+describe('processEvent — task_committed', () => {
+  it('bumps pointer and succeeds', () => {
+    const state = createExecutionState({
+      pipeline: {
+        source_control: {
+          branch: 'feat/x',
+          base_branch: 'main',
+          worktree_path: '/wt',
+          auto_commit: 'always',
+          auto_pr: 'never',
+        },
+      },
+      execution: {
+        phases: [{
+          name: 'Phase 1',
+          status: 'in_progress',
+          stage: 'executing',
+          current_task: 1,
+          tasks: [
+            {
+              name: 'T01', status: 'complete', stage: 'complete',
+              docs: { handoff: 'h.md', review: 'rv.md' },
+              review: { verdict: 'approved', action: 'advanced' },
+              retries: 0,
+            },
+            {
+              name: 'T02', status: 'not_started', stage: 'planning',
+              docs: { handoff: null, review: null },
+              review: { verdict: null, action: null },
+              retries: 0,
+            },
+          ],
+          docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
+          review: { verdict: null, action: null },
+        }],
+      },
+    });
+    delete state.project.updated;
+    const io = createMockIO({ state });
+    const result = processEvent('task_committed', PROJECT_DIR, { task_id: 'P01-T01', committed: true, pushed: true }, io);
+    assertResultShape(result);
+    assert.equal(result.success, true);
+    assert.equal(io.getState().execution.phases[0].current_task, 2);
+    // T02 is at planning stage, so action should be create_task_handoff
+    assert.equal(result.action, 'create_task_handoff');
   });
 });

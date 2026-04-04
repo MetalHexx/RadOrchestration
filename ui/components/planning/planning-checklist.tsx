@@ -18,10 +18,10 @@ const STEP_DISPLAY_NAMES: Record<PlanningStepName, string> = {
   master_plan: "Master Plan",
 };
 
-const STEP_STATUS_BADGE: Record<PlanningStepStatus, { label: string; cssVar: string; isSpinning: boolean; isComplete?: boolean }> = {
+const STEP_STATUS_BADGE: Record<PlanningStepStatus, { label: string; cssVar: string; isSpinning: boolean; isComplete?: boolean; hideLabel?: boolean }> = {
   not_started: { label: "Not Started", cssVar: "--status-not-started", isSpinning: false },
   in_progress: { label: "In Progress", cssVar: "--status-in-progress", isSpinning: true  },
-  complete:    { label: "Complete",    cssVar: "--status-complete",     isSpinning: false, isComplete: true },
+  complete:    { label: "Complete",    cssVar: "--status-complete",     isSpinning: false, isComplete: true, hideLabel: true },
 };
 
 export function PlanningChecklist({
@@ -64,7 +64,7 @@ export function PlanningChecklist({
       <div className="flex items-center gap-2 py-2">
         <SpinnerBadge
           {...(humanApproved
-            ? { label: "Complete",    cssVar: "--status-complete",    isSpinning: false, isComplete: true }
+            ? { label: "Complete",    cssVar: "--status-complete",    isSpinning: false, isComplete: true, hideLabel: true }
             : { label: "Not Started", cssVar: "--status-not-started", isSpinning: false }
           )}
         />

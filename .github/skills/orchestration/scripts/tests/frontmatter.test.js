@@ -73,10 +73,10 @@ test('Standard frontmatter: empty array [] parsed as empty JavaScript array', ()
 // ─── Fenced Code Block Frontmatter Tests ────────────────────────────────────
 
 test('Fenced ```chatagent frontmatter: extracts frontmatter and body', () => {
-  const input = '```chatagent\n---\nname: Orchestrator\ndescription: "Main agent"\n---\n\n# Orchestrator\n\nYou are the coordinator.\n```\n';
+  const input = '```chatagent\n---\nname: orchestrator\ndescription: "Main agent"\n---\n\n# Orchestrator\n\nYou are the coordinator.\n```\n';
   const result = extractFrontmatter(input);
   assert.deepStrictEqual(result.frontmatter, {
-    name: 'Orchestrator',
+    name: 'orchestrator',
     description: 'Main agent'
   });
   assert.strictEqual(result.body, '\n# Orchestrator\n\nYou are the coordinator.');
@@ -113,7 +113,7 @@ test('Fenced ```prompt frontmatter: extracts frontmatter and body', () => {
 });
 
 test('Fenced frontmatter with list values parsed as arrays', () => {
-  const input = '```chatagent\n---\nname: Orchestrator\ntools:\n  - read\n  - search\n  - agent\nagents:\n  - Research\n  - "Product Manager"\n---\n\n# Body\n```\n';
+  const input = '```chatagent\n---\nname: orchestrator\ntools:\n  - read\n  - search\n  - agent\nagents:\n  - Research\n  - "Product Manager"\n---\n\n# Body\n```\n';
   const result = extractFrontmatter(input);
   assert.deepStrictEqual(result.frontmatter.tools, ['read', 'search', 'agent']);
   assert.deepStrictEqual(result.frontmatter.agents, ['Research', 'Product Manager']);

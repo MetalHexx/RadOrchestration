@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "build-and-start": "next build && next start",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --test --import tsx \"lib/**/*.test.ts\" \"hooks/**/*.test.ts\" \"components/**/*.test.ts\" \"app/**/*.test.ts\""
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",

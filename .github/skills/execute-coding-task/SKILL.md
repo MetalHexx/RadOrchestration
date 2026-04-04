@@ -1,11 +1,11 @@
 ---
 name: execute-coding-task
-description: 'Execute any coding or testing task end-to-end from a Task Handoff document. Covers reading the handoff, implementing code, creating / running tests, and builds, verifying acceptance criteria, and writing the Task Report.'
+description: 'Execute any coding or testing task end-to-end from a Task Handoff document. Covers reading the handoff, implementing code, creating / running tests, and builds, and verifying acceptance criteria.'
 ---
 
 # Execute Coding Task
 
-Implement the coding task fully and correctly from a self-contained Task Handoff document. This skill governs the complete execution loop — from reading the handoff through delivering working code and a Task Report.
+Implement the coding task fully and correctly from a self-contained Task Handoff document. This skill governs the complete execution loop — from reading the handoff through delivering working code.
 
 ## Role & Constraints
 
@@ -17,7 +17,6 @@ Implement the coding task fully and correctly from a self-contained Task Handoff
 - Conform to the inlined contracts and interfaces exactly
 - Write tests as specified in the Test Requirements section
 - Run the test suite and build to verify your work
-- Produce a structured Task Report documenting results
 
 ### What you do NOT do:
 - Read any planning documents (PRD, Design, Architecture, Master Plan) — everything you need is in the handoff
@@ -26,7 +25,7 @@ Implement the coding task fully and correctly from a self-contained Task Handoff
 - Deviate from the handoff without documenting the deviation
 - Skip running tests — you must run them and report actual results
 
-### Write access: Source code + tests + Task Report only
+### Write access: Source code + tests only
 
 ## Workflow
 
@@ -45,15 +44,13 @@ Implement the coding task fully and correctly from a self-contained Task Handoff
     ```
     Failure to restore CWD will slow down the project.
 11. **Check acceptance criteria**: Go through each criterion and verify it's met
-12. **Produce the Task Report** using the `generate-task-report` skill
-13. **Save the Task Report** to the path specified (typically `{PROJECT-DIR}/reports/{NAME}-TASK-REPORT-P{NN}-T{NN}.md`)
 
 ## Handling Issues
 
 - **If a step is unclear**: Make the most reasonable interpretation and document it as a deviation
 - **If a test fails**: Debug and fix if possible; if not, document the failure with details
 - **If the build breaks**: Fix build errors before reporting; if you can't fix them, document them
-- **If you deviate from the handoff**: Always document what you changed and why in the Task Report
+- **If you deviate from the handoff**: Always document what you changed and why
 
 ## Output Contract
 
@@ -61,13 +58,10 @@ Implement the coding task fully and correctly from a self-contained Task Handoff
 |----------|------|--------|
 | Source Code | Paths from Task Handoff File Targets | Language-specific |
 | Tests | Paths from Task Handoff Test Requirements | Language-specific |
-| Task Report | `{PROJECT-DIR}/reports/{NAME}-TASK-REPORT-P{NN}-T{NN}.md` | Markdown per template |
 
 ## Quality Standards
 
 - **Follow the handoff exactly**: The handoff is your contract — implement what it says
 - **Test results are actual**: Run the tests and record real output — never assume they pass
 - **Build status is actual**: Run the build and record real output — never assume it passes
-- **Every file target accounted for**: Each file from the handoff's File Targets appears in the report
-- **Every acceptance criterion assessed**: Each criterion has a Met / Partial / Not Met result
 - **Deviations are documented**: If you did something differently, explain what and why

@@ -1,5 +1,5 @@
 ---
-description: "Configure the orchestration system using a structured questionnaire. Walks through system root, project storage, pipeline limits, and gate behavior settings using askQuestions, then generates orchestration.yml."
+description: "Configure the orchestration system using a structured questionnaire. Walks through system root, project storage, pipeline limits, gate behavior, and source control settings using askQuestions, then generates orchestration.yml."
 agent: agent
 tools:
   - read
@@ -9,7 +9,7 @@ tools:
 
 # Configure Orchestration System
 
-You are configuring the orchestration system for this workspace. Follow these steps precisely. Use the `askQuestions` tool to interview the user through 4 structured groups.
+You are configuring the orchestration system for this workspace. Follow these steps precisely. Use the `askQuestions` tool to interview the user through 5 structured groups.
 
 ---
 
@@ -80,6 +80,12 @@ human_gates:
   after_planning: true                   # Always gate after master plan (hard default)
   execution_mode: "ask"                  # ask | phase | task | autonomous
   after_final_review: true               # Always gate after final review (hard default)
+
+# ─── Source Control ────────────────────────────────────────────────
+source_control:
+  auto_commit: "ask"                   # always | ask | never
+  auto_pr: "ask"                       # always | ask | never
+  provider: "github"                   # reserved: github only in v1
 
 # ─── Notes ─────────────────────────────────────────────────────────
 # Model selection is configured per-agent in .agent.md frontmatter.
@@ -205,9 +211,42 @@ Call `askQuestions` with 1 question:
 
 ---
 
+## Group 5 — Source Control
+
+Call `askQuestions` with 2 questions:
+
+```json
+{
+  "questions": [
+    {
+      "header": "auto_commit",
+      "question": "How should auto-commit behave for this system?",
+      "options": [
+        { "label": "always", "description": "Commit and push automatically after every approved task" },
+        { "label": "ask",    "recommended": true, "description": "Ask at the start of each project run" },
+        { "label": "never",  "description": "Never commit automatically" }
+      ],
+      "allowFreeformInput": false
+    },
+    {
+      "header": "auto_pr",
+      "question": "How should auto-PR behave for this system?",
+      "options": [
+        { "label": "always", "description": "Create a pull request automatically on final approval" },
+        { "label": "ask",    "recommended": true, "description": "Ask at the start of each project run" },
+        { "label": "never",  "description": "Never create pull requests automatically" }
+      ],
+      "allowFreeformInput": false
+    }
+  ]
+}
+```
+
+---
+
 ## YAML Generation
 
-After completing all 4 groups (Groups 2–4 for existing config), assemble and write `{orch_root}/skills/orchestration/config/orchestration.yml` with the collected values (create intermediate directories if needed):
+After completing all 5 groups (Groups 2–5 for existing config), assemble and write `{orch_root}/skills/orchestration/config/orchestration.yml` with the collected values (create intermediate directories if needed):
 
 ```yaml
 # {orch_root}/skills/orchestration/config/orchestration.yml
@@ -237,6 +276,12 @@ human_gates:
   after_planning: true                   # Always gate after master plan (hard default)
   execution_mode: "{execution_mode}"     # ask | phase | task | autonomous
   after_final_review: true               # Always gate after final review (hard default)
+
+# ─── Source Control ────────────────────────────────────────────────
+source_control:
+  auto_commit: "{auto_commit}"          # always | ask | never
+  auto_pr: "{auto_pr}"                  # always | ask | never
+  provider: "github"                    # reserved: github only in v1
 
 # ─── Notes ─────────────────────────────────────────────────────────
 # Model selection is configured per-agent in .agent.md frontmatter.

@@ -11,11 +11,8 @@ function makeTask(overrides = {}) {
     name: 'task',
     status: 'not_started',
     stage: 'planning',
-    docs: { handoff: null, report: null, review: null },
+    docs: { handoff: null, review: null },
     review: { verdict: null, action: null },
-    report_status: null,
-    has_deviations: false,
-    deviation_type: null,
     retries: 0,
     ...overrides,
   };
@@ -348,7 +345,7 @@ describe('resolver — execution tier — task stage routing', () => {
     const state = executingPhaseState({
       stage: 'coding',
       status: 'in_progress',
-      docs: { handoff: 'tasks/handoff.md', report: null, review: null },
+      docs: { handoff: 'tasks/handoff.md', review: null },
     });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'execute_task');
@@ -363,11 +360,10 @@ describe('resolver — execution tier — task stage routing', () => {
     const state = executingPhaseState({
       stage: 'reviewing',
       status: 'complete',
-      docs: { handoff: 'tasks/handoff.md', report: 'reports/report.md', review: null },
+      docs: { handoff: 'tasks/handoff.md', review: null },
     });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'spawn_code_reviewer');
-    assert.equal(result.context.report_doc, 'reports/report.md');
     assert.equal(result.context.phase_number, 1);
     assert.equal(result.context.task_number, 1);
     assert.equal(result.context.phase_id, 'P01');
@@ -378,7 +374,7 @@ describe('resolver — execution tier — task stage routing', () => {
     const state = executingPhaseState({
       stage: 'complete',
       status: 'complete',
-      docs: { handoff: 'tasks/handoff.md', report: 'reports/report.md', review: 'reviews/rv.md' },
+      docs: { handoff: 'tasks/handoff.md', review: 'reviews/rv.md' },
       review: { verdict: 'approved', action: 'advanced' },
     });
     const config = makeConfig({ human_gates: { execution_mode: 'task' } });
@@ -394,7 +390,7 @@ describe('resolver — execution tier — task stage routing', () => {
     const state = executingPhaseState({
       stage: 'failed',
       status: 'failed',
-      docs: { handoff: 'tasks/handoff.md', report: 'reports/report.md', review: 'reviews/rv.md' },
+      docs: { handoff: 'tasks/handoff.md', review: 'reviews/rv.md' },
       review: { verdict: 'changes_requested', action: 'corrective_task_issued' },
     });
     const result = resolveNextAction(state, makeConfig());
@@ -424,7 +420,7 @@ describe('resolver — execution tier — phase completion', () => {
         }, [{
           stage: 'complete',
           status: 'complete',
-          docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+          docs: { handoff: 'h.md', review: 'rv.md' },
           review: { verdict: 'approved', action: 'advanced' },
         }])],
       },
@@ -449,7 +445,7 @@ describe('resolver — gates', () => {
           [{
             stage: 'complete',
             status: 'complete',
-            docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+            docs: { handoff: 'h.md', review: 'rv.md' },
             review: { verdict: 'approved', action: 'advanced' },
           }]
         )],
@@ -471,7 +467,7 @@ describe('resolver — gates', () => {
         }, [{
           stage: 'complete',
           status: 'complete',
-          docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+          docs: { handoff: 'h.md', review: 'rv.md' },
           review: { verdict: 'approved', action: 'advanced' },
         }])],
       },
@@ -517,6 +513,22 @@ describe('resolver — gates', () => {
     const result = resolveNextAction(state, config);
     assert.notEqual(result.action, 'gate_task');
     assert.notEqual(result.action, 'gate_phase');
+  });
+
+  it('uses state.config snapshot execution_mode over global config (snapshot-present)', () => {
+    const state = completedTaskState();
+    state.config = makeConfig({ human_gates: { execution_mode: 'task' } });
+    const config = makeConfig({ human_gates: { execution_mode: 'autonomous' } });
+    const result = resolveNextAction(state, config);
+    assert.equal(result.action, 'gate_task', 'snapshot execution_mode=task should win over config=autonomous');
+  });
+
+  it('falls through to global config when state.config is absent (legacy project)', () => {
+    const state = completedTaskState();
+    delete state.config;
+    const config = makeConfig({ human_gates: { execution_mode: 'task' } });
+    const result = resolveNextAction(state, config);
+    assert.equal(result.action, 'gate_task', 'legacy project without snapshot should fall through to config');
   });
 });
 
@@ -673,7 +685,7 @@ describe('resolver — edge cases', () => {
         }, [{
           stage: 'complete',
           status: 'complete',
-          docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+          docs: { handoff: 'h.md', review: 'rv.md' },
           review: { verdict: 'approved', action: 'advanced' },
         }])],
       },
@@ -712,8 +724,8 @@ describe('resolver — edge cases', () => {
 
   it('formatTaskId produces 1-based IDs: phase 2 task 3 => P02-T03', () => {
     const tasks = [
-      makeTask({ stage: 'complete', status: 'complete', docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' }, review: { verdict: 'approved', action: 'advanced' } }),
-      makeTask({ stage: 'complete', status: 'complete', docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' }, review: { verdict: 'approved', action: 'advanced' } }),
+      makeTask({ stage: 'complete', status: 'complete', docs: { handoff: 'h.md', review: 'rv.md' }, review: { verdict: 'approved', action: 'advanced' } }),
+      makeTask({ stage: 'complete', status: 'complete', docs: { handoff: 'h.md', review: 'rv.md' }, review: { verdict: 'approved', action: 'advanced' } }),
       makeTask({ stage: 'planning' }),
     ];
     const state = makeState({

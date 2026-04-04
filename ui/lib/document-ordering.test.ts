@@ -75,19 +75,16 @@ test('returns planning + phase docs in canonical order', () => {
               stage: 'complete',
               docs: {
                 handoff: 'tasks/T01.md',
-                report: 'reports/T01-REPORT.md',
                 review: 'reviews/T01-REVIEW.md',
               },
               review: { verdict: 'approved', action: 'advanced' },
-              report_status: 'complete',
-              has_deviations: false,
-              deviation_type: null,
               retries: 0,
+              commit_hash: null,
             },
           ],
           docs: {
             phase_plan: 'phases/P01-PLAN.md',
-            phase_report: 'reports/P01-REPORT.md',
+            phase_report: null,
             phase_review: 'reviews/P01-REVIEW.md',
           },
           review: { verdict: null, action: null },
@@ -104,16 +101,14 @@ test('returns planning + phase docs in canonical order', () => {
     'PRD',
     'Phase 1 Plan',
     'P1-T1: Setup',
-    'P1-T1 Report',
     'P1-T1 Review',
-    'Phase 1 Report',
     'Phase 1 Review',
   ]);
 
   assert.strictEqual(docs[0].category, 'planning');
   assert.strictEqual(docs[2].category, 'phase');
   assert.strictEqual(docs[3].category, 'task');
-  assert.strictEqual(docs[5].category, 'review');
+  assert.strictEqual(docs[4].category, 'review');
 });
 
 test('skips null paths', () => {
@@ -146,6 +141,111 @@ test('appends error log from allFiles after final review', () => {
 
   assert.deepStrictEqual(docs.map((d) => d.title), ['Final Review', 'Error Log']);
   assert.strictEqual(docs[1].category, 'error-log');
+});
+
+test('includes phase_report between task reviews and phase_review', () => {
+  const state = makeState({
+    execution: {
+      status: 'in_progress',
+      current_phase: 1,
+      phases: [
+        {
+          name: 'Phase One',
+          status: 'in_progress',
+          stage: 'reviewing',
+          current_task: 1,
+          tasks: [
+            {
+              name: 'Setup',
+              status: 'complete',
+              stage: 'complete',
+              docs: { handoff: 'tasks/T01.md', review: 'reviews/T01-REVIEW.md' },
+              review: { verdict: 'approved', action: 'advanced' },
+              retries: 0,
+              commit_hash: null,
+            },
+          ],
+          docs: {
+            phase_plan: 'phases/P01-PLAN.md',
+            phase_report: 'reports/P01-REPORT.md',
+            phase_review: 'reviews/P01-REVIEW.md',
+          },
+          review: { verdict: null, action: null },
+        },
+      ],
+    },
+  });
+
+  const docs = getOrderedDocs(state, 'TEST');
+  const titles = docs.map((d) => d.title);
+
+  assert.deepStrictEqual(titles, [
+    'Phase 1 Plan',
+    'P1-T1: Setup',
+    'P1-T1 Review',
+    'Phase 1 Report',
+    'Phase 1 Review',
+  ]);
+
+  const reportDoc = docs.find((d) => d.title === 'Phase 1 Report')!;
+  assert.strictEqual(reportDoc.category, 'phase');
+  assert.strictEqual(reportDoc.path, 'reports/P01-REPORT.md');
+});
+
+test('skips null phase_report path', () => {
+  const state = makeState({
+    execution: {
+      status: 'in_progress',
+      current_phase: 1,
+      phases: [
+        {
+          name: 'Phase One',
+          status: 'in_progress',
+          stage: 'executing',
+          current_task: 0,
+          tasks: [],
+          docs: { phase_plan: 'phases/P01-PLAN.md', phase_report: null, phase_review: 'reviews/P01-REVIEW.md' },
+          review: { verdict: null, action: null },
+        },
+      ],
+    },
+  });
+
+  const docs = getOrderedDocs(state, 'TEST');
+  const titles = docs.map((d) => d.title);
+  assert.deepStrictEqual(titles, ['Phase 1 Plan', 'Phase 1 Review']);
+  assert.strictEqual(docs.find((d) => d.title === 'Phase 1 Report'), undefined);
+});
+
+test('excludes phase_report from Other Documents', () => {
+  const state = makeState({
+    execution: {
+      status: 'in_progress',
+      current_phase: 1,
+      phases: [
+        {
+          name: 'Phase One',
+          status: 'in_progress',
+          stage: 'reviewing',
+          current_task: 0,
+          tasks: [],
+          docs: {
+            phase_plan: null,
+            phase_report: 'C:/dev/projects/TEST/TEST-PHASE-P01-REPORT.md',
+            phase_review: null,
+          },
+          review: { verdict: null, action: null },
+        },
+      ],
+    },
+  });
+
+  const allFiles = ['TEST-PHASE-P01-REPORT.md', 'EXTRA.md'];
+  const docs = getOrderedDocs(state, 'TEST', allFiles);
+
+  const otherDocs = docs.filter((d) => d.category === 'other');
+  assert.strictEqual(otherDocs.length, 1, 'Only EXTRA.md should be other');
+  assert.strictEqual(otherDocs[0].title, 'EXTRA');
 });
 
 test('appends other docs sorted alphabetically', () => {
@@ -212,7 +312,7 @@ test('excludes phase plan docs from Other Documents when state paths differ in f
   assert.strictEqual(otherDocs[0].title, 'EXTRA');
 });
 
-test('excludes task handoff and report docs from Other Documents when paths differ in format', () => {
+test('excludes task handoff docs from Other Documents when paths differ in format', () => {
   const state = makeState({
     execution: {
       status: 'in_progress',
@@ -230,14 +330,11 @@ test('excludes task handoff and report docs from Other Documents when paths diff
               stage: 'complete',
               docs: {
                 handoff: 'C:/dev/projects/TEST/tasks/TEST-TASK-P01-T01-SETUP.md',
-                report: 'C:/dev/projects/TEST/reports/TEST-TASK-P01-T01-SETUP-REPORT.md',
                 review: null,
               },
               review: { verdict: 'approved', action: 'advanced' },
-              report_status: 'complete',
-              has_deviations: false,
-              deviation_type: null,
               retries: 0,
+              commit_hash: null,
             },
           ],
           docs: { phase_plan: null, phase_report: null, phase_review: null },
@@ -249,7 +346,6 @@ test('excludes task handoff and report docs from Other Documents when paths diff
 
   const allFiles = [
     'tasks/TEST-TASK-P01-T01-SETUP.md',
-    'reports/TEST-TASK-P01-T01-SETUP-REPORT.md',
     'NOTES.md',
   ];
   const docs = getOrderedDocs(state, 'TEST', allFiles);

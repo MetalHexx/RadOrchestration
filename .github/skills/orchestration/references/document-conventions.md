@@ -2,7 +2,7 @@
 
 Canonical reference for all pipeline-produced document naming, placement, and frontmatter values.
 
-Covers all documents produced during pipeline execution. Planning documents (PRD, Design, Architecture, Master Plan, Research Findings, Brainstorming) and execution documents (Phase Plan, Task Handoff, Task Report, Code Review, Phase Report, Phase Review).
+Covers all documents produced during pipeline execution. Planning documents (PRD, Design, Architecture, Master Plan, Research Findings, Brainstorming) and execution documents (Phase Plan, Task Handoff, Code Review, Phase Report, Phase Review).
 
 ## Filename Patterns & Placement
 
@@ -17,7 +17,6 @@ Covers all documents produced during pipeline execution. Planning documents (PRD
 | Error Log | — (root) | `{NAME}-ERROR-LOG.md` | `MYAPP-ERROR-LOG.md` |
 | Phase Plan | phases/ | `{NAME}-PHASE-{NN}-{TITLE}.md` | `MYAPP-PHASE-01-SETUP.md` |
 | Task Handoff | tasks/ | `{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-TASK-P01-T02-AUTH.md` |
-| Task Report | reports/ | `{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-TASK-REPORT-P01-T02-AUTH.md` |
 | Code Review | reports/ | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-CODE-REVIEW-P01-T02-AUTH.md` |
 | Phase Report | reports/ | `{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REPORT-P01-SETUP.md` |
 | Phase Review | reports/ | `{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REVIEW-P01-SETUP.md` |
@@ -28,9 +27,9 @@ Covers all documents produced during pipeline execution. Planning documents (PRD
 |---|---|---|---|
 | project | string | Project name in SCREAMING-CASE (e.g., `"MYAPP"`) | All templates |
 | phase | integer | Phase number, 1-based (e.g., `1`) | All templates |
-| task | integer | Task number, 1-based (e.g., `2`) | Task Handoff, Task Report, Code Review |
-| title | string | Human-readable title (e.g., `"Setup Auth"`) | Task Handoff, Phase Plan, Task Report, Phase Report |
-| status | string | Varies by document — see below | Task Handoff, Phase Plan, Task Report, Phase Report |
+| task | integer | Task number, 1-based (e.g., `2`) | Task Handoff, Code Review |
+| title | string | Human-readable title (e.g., `"Setup Auth"`) | Task Handoff, Phase Plan, Phase Report |
+| status | string | Varies by document — see below | Task Handoff, Phase Plan, Phase Report |
 | skills | array | Skill folder names from `.github/skills/` | Task Handoff |
 | estimated_files | integer | Estimated file count (e.g., `3`) | Task Handoff |
 | tasks | array | List of `{id, title}` objects | Phase Plan |
@@ -39,12 +38,6 @@ Covers all documents produced during pipeline execution. Planning documents (PRD
 | verdict | string | `"approved"` \| `"changes_requested"` \| `"rejected"` | Code Review, Phase Review |
 | severity | string | `"none"` \| `"minor"` \| `"critical"` | Code Review, Phase Review |
 | exit_criteria_met | boolean | `true` \| `false` | Phase Review |
-| files_changed | integer | Number of files changed (e.g., `5`) | Task Report |
-| tests_written | integer | Number of tests written (e.g., `3`) | Task Report |
-| tests_passing | integer | Number of tests passing (e.g., `3`) | Task Report |
-| build_status | string | `"pass"` \| `"fail"` | Task Report |
-| has_deviations | boolean | `true` \| `false` | Task Report |
-| deviation_type | string | `"additive"` \| `"reductive"` \| `"alternative"` \| `null` | Task Report |
 | tasks_completed | integer | Number of completed tasks (e.g., `3`) | Phase Report |
 | tasks_total | integer | Total tasks in phase (e.g., `4`) | Phase Report |
 
@@ -52,7 +45,6 @@ Covers all documents produced during pipeline execution. Planning documents (PRD
 
 - Task Handoff: `"pending"`
 - Phase Plan: `"active"` | `"complete"` | `"halted"`
-- Task Report: `"complete"`
 - Phase Report: `"complete"` | `"partial"` | `"failed"`
 
 ## Placeholder Token Convention

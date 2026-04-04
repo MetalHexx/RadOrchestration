@@ -8,3 +8,4 @@ export { LimitsSection } from "./limits-section";
 export { ApproveGateButton } from "./approve-gate-button";
 export { ConfirmApprovalDialog } from "./confirm-approval-dialog";
 export { GateErrorBanner } from "./gate-error-banner";
+export { SourceControlSection } from "./source-control-section";

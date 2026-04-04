@@ -10,10 +10,9 @@ system:
 
 # ─── Project Storage ───────────────────────────────────────────────
 projects:
-  # base_path accepts both relative paths (resolved from workspace root)
-  # and absolute paths (e.g., /shared/projects for git worktree setups).
-  base_path: "C:\\dev\\orchestration-projects"          # Where project folders are created
-  naming: "SCREAMING_CASE"               # SCREAMING_CASE | lowercase | numbered
+
+  base_path: "C:\\dev\\orchestration-projects"    # Location of project files.   Relative paths from workspace root or absolute paths are valid.
+  naming: "SCREAMING_CASE"                        # SCREAMING_CASE | lowercase | numbered
 
 # ─── Pipeline Limits (Scope Guards) ───────────────────────────────
 limits:
@@ -28,6 +27,8 @@ human_gates:
   execution_mode: "ask"                  # ask | phase | task | autonomous
   after_final_review: true               # Always gate after final review (hard default)
 
-# ─── Notes ─────────────────────────────────────────────────────────
-# Model selection is configured per-agent in .agent.md frontmatter.
-# See .github/agents/*.agent.md → `model` field.
+# ─── Source Control ────────────────────────────────────────────────────────────
+source_control:
+  auto_commit: "ask"          # always | ask | never
+  auto_pr: "ask"              # always | ask | never
+  provider: "github"          # reserved: github only in v1

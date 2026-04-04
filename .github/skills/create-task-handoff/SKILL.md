@@ -20,12 +20,12 @@ Generate a self-contained Task Handoff document that is the sole input a Coding 
 | Phase Plan | `{NAME}-PHASE-{NN}-{TITLE}.md` | Task outline, dependencies, execution order |
 | Architecture | `{NAME}-ARCHITECTURE.md` | Contracts, interfaces, file structure |
 | Design | `{NAME}-DESIGN.md` | Design tokens, component specs (if UI task) |
-| Previous Task Report | `{NAME}-TASK-REPORT-P{NN}-T{NN}.md` | Output from prior task (if dependency exists) |
+| Previous Code Review | `{NAME}-CODE-REVIEW-P{NN}-T{NN}.md` | Review from prior task (if dependency exists) |
 | State | `state.json` | Current project state, review actions, mutation handler outcomes |
 
 ## Workflow
 
-1. **Read inputs**: Load Phase Plan, Architecture, Design (if relevant), and any prior task reports
+1. **Read inputs**: Load Phase Plan, Architecture, Design (if relevant), and any prior code reviews
 2. **Discover available skills**: Discover agent skills in the skills directory to recommend relevant ones for the task handoff
 3. **Write objective**: 1-3 sentences as a completion statement ("Create...", "Implement...", "Configure...")
 4. **Write context**: Minimal immediate technical context (max 5 sentences) — NOT project history
@@ -48,7 +48,7 @@ Before creating the task handoff, check for corrective routing:
 
 | `review.action` value | What to produce |
 |-----------------------|------------------|
-| `null` (no review doc) | Normal Task Handoff; include Task Report Recommendations in context |
+| `null` (no review doc) | Normal Task Handoff |
 | `"advanced"` / `"advance"` | Normal Task Handoff; include carry-forward items in context |
 | `"corrective_task_issued"` | Corrective Task Handoff; inline all Issues from Code Review; include original acceptance criteria |
 | `"halted"` | DO NOT produce a Task Handoff — inform the Orchestrator the pipeline is halted |

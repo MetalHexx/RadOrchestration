@@ -8,10 +8,9 @@ tools:
   # - edit          # Uncomment if agent writes files
   # - execute       # Uncomment if agent runs terminal commands / tests
   # - web/fetch     # Uncomment if agent needs external web access
-  # - agent         # REQUIRED if agents array below is non-empty
+  # - agent         # Uncomment only for advanced routing; see orchestration docs
   # - todo          # Uncomment for progress tracking on multi-step work
-agents: []            # Set to ['*'] for all, or list specific agent names
-# model: Claude Sonnet 4.6 (copilot)    # Optional: override default model
+# model: claude-sonnet-4.6    # Optional: override default model
 # user-invocable: true                   # Set false to hide from agents dropdown
 # disable-model-invocation: false        # Set true to prevent auto-invocation as subagent
 ---

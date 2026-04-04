@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Kill port 9229",
+      "type": "shell",
+      "command": "$p = (Get-NetTCPConnection -LocalPort 9229 -ErrorAction SilentlyContinue).OwningProcess; if ($p) { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue }",
+      "presentation": { "reveal": "never" }
+    }
+  ]
+}

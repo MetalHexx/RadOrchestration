@@ -6,7 +6,7 @@ Agents communicate through structured markdown documents. Routing, triage, and s
 
 ## What It Does
 
-Tell the Orchestrator your project idea, and it coordinates **9 specialized agents** through a structured pipeline — research, requirements, design, architecture, planning, coding, and review — producing working software with full traceability from idea to implementation.  It's automated spec-driven development!
+Tell the Orchestrator your project idea, and it coordinates **12 specialized agents** through a structured pipeline — research, requirements, design, architecture, planning, coding, and review — producing working software with full traceability from idea to implementation.  It's automated spec-driven development!
 
 ```mermaid
 flowchart TD
@@ -28,9 +28,10 @@ flowchart TD
         GATE1 --> PHASE[Plan Phase Tactical Planner]
         PHASE --> HANDOFF[Plan Task]
         HANDOFF --> |handoff| CODE[Code]
-        CODE --> |code, task report|REVIEW[Code Review]
+        CODE --> |code|REVIEW[Code Review]
         REVIEW -->|needs correction | HANDOFF
-        REVIEW -->|approved| MORETASKS{more tasks?}
+        REVIEW -->|approved| COMMIT[🔀 Commit Code]
+        COMMIT --> MORETASKS{more tasks?}
         MORETASKS -->|yes| HANDOFF
         MORETASKS -->|no| PHASEREVIEW[Phase Review]
         PHASEREVIEW -->|next phase| PHASE
@@ -62,7 +63,7 @@ build the UI in 1-shot.
 
 ### Specialized Agents
 
-Nine agents with strict separation of concerns. Each agent has a defined role, scoped tool access, and explicit write permissions. The Orchestrator coordinates but never writes. The Coder reads only its task handoff.
+Twelve agents with strict separation of concerns. Each agent has a defined role, scoped tool access, and explicit write permissions. The Orchestrator is a thin skill-driven coordinator — it loads the `orchestration` skill, signals pipeline events, and routes via a compact action routing table. Never writes files directly. The Coder reads only its task handoff.
 
 [Learn more about agents →](docs/agents.md)
 
@@ -80,9 +81,7 @@ Configurable critical human checkpoints are reliably enforced.  Humans approve t
 
 ### Deterministic Routing & Triage
 
-Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes ~18 external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
-
-[Learn more about the scripts →](docs/scripts.md)
+Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
 
 ### Composable Skills
 
@@ -96,41 +95,33 @@ A single `orchestration.yml` controls everything: project storage, pipeline limi
 
 [Learn more about configuration →](docs/configuration.md)
 
+### Source Control Automation
+
+Automatic git commits after each approved task. The Source Control Agent constructs conventional-format commit messages from task metadata and executes them — no manual git workflow needed. Configurable via `orchestration.yml` with `auto_commit: always | ask | never` (default `ask`, resolved at project start).
+
+[Learn more about source control →](docs/source-control.md)
+
 ### Continuous Verification
 
-Every task produces a report. Every report is reviewed against the plan.  Code reviewers never fully trust the coder reports. :)  Minor issues trigger automatic corrective tasks. Critical issues halt the pipeline for human intervention. Plans don't drift unchecked. Pipeline failures are logged to a structured, append-only error log (`ERROR-LOG.md`) in each project folder.
-
-### Built-in Validation
-
-A zero-dependency Node.js CLI validates the entire orchestration ecosystem — agents, skills, instructions, configuration, cross-references, and file structure. CI-friendly with structured exit codes.
-
-[Learn more about validation →](docs/validation.md)
+Every task is reviewed against the plan. Code reviewers inspect source code directly.  Minor issues trigger automatic corrective tasks. Critical issues halt the pipeline for human intervention. Plans don't drift unchecked. Pipeline failures are logged to a structured, append-only error log (`ERROR-LOG.md`) in each project folder.
 
 ## Getting Started
 
 [Full getting started guide →](docs/getting-started.md)
-
-### Alternative: Manual Installation
-
-1. Clone the repo and open in VS Code with GitHub Copilot
-2. Copy the `.github/` directory _(or your [configured root](docs/configuration.md))_ into the root of your target project
-3. Run `/configure-system` to set up `orchestration.yml`
-4. Use `Orchestrator` agent with your project goals to start the pipeline
-
-> **Migrating an existing project?** Run `node .github/skills/orchestration/scripts/migrate-to-v4.js` to upgrade `state.json` files from earlier schema versions. The script creates `.backup` copies before writing.
 
 ## Documentation
 
 | Page | Description |
 |------|-------------|
 | [Getting Started](docs/getting-started.md) | Installation, first project walkthrough, common commands |
-| [Agents](docs/agents.md) | All 9 agents — roles, access control, design constraints |
+| [Guides](docs/guides.md) | First-project walkthroughs, continuing projects, checking status |
 | [Pipeline](docs/pipeline.md) | Planning and execution flow, human gates, error handling |
+| [Agents](docs/agents.md) | All 12 agents — roles, access control, design constraints |
 | [Skills](docs/skills.md) | All 18 skills and how they compose with agents |
+| [Templates](docs/templates.md) | All 16 templates — purpose, producing agent, consuming agent |
 | [Configuration](docs/configuration.md) | `orchestration.yml` reference — all options explained |
+| [Source Control](docs/source-control.md) | Auto-commit configuration, agent modes, commit format, pipeline events |
 | [Project Structure](docs/project-structure.md) | File layout, naming conventions, document types, state management |
-| [Pipeline Script](docs/scripts.md) | Unified event-driven CLI — routing, triage, state mutations, validation |
-| [Validation](docs/validation.md) | Zero-dependency validation CLI tool |
 | [Monitoring Dashboard](docs/dashboard.md) | Dashboard startup, features, data sources, real-time updates |
 
 ## Design Principles
@@ -151,4 +142,4 @@ The document-driven architecture is inherently portable. Agents communicate thro
 
 ## License
 
-See [LICENSE](LICENSE) for details.
+See LICENSE for details.

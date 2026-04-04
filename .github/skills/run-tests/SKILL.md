@@ -11,7 +11,7 @@ Execute the project's test suite and report structured results. This is an instr
 
 - After implementing code changes that need validation
 - When a task's acceptance criteria include "all tests pass"
-- When the Coder Agent needs to verify test results before producing a Task Report
+- When the Coder Agent needs to verify test results before completing a task
 - When checking if prior test failures have been resolved after a corrective task
 
 ## Workflow
@@ -55,7 +55,7 @@ If the task handoff specifies particular test files:
 
 ### Step 5: Report Structured Results
 
-Format results for inclusion in a Task Report:
+Format results for inclusion in task output:
 
 ```
 Tests: {passing}/{total} passing
@@ -78,6 +78,6 @@ Build: {pass/fail}
 | Issue | Resolution |
 |-------|------------|
 | No test runner found | Check project root for config files; ask human if unclear |
-| Tests timeout | Increase timeout or note as an issue in the Task Report |
+| Tests timeout | Increase timeout or note as an issue |
 | Missing dependencies | Run install command (`npm install`, `pip install`, etc.) first |
 | Environment issues | Check for required env vars, database connections, or services |

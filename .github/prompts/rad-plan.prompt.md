@@ -1,6 +1,6 @@
 ---
 description: "Start the full planning pipeline for a new project — Research through Master Plan"
-agent: Orchestrator
+agent: orchestrator
 ---
 
 # Rad Plan

@@ -44,39 +44,26 @@ function checkRetryBudget(retries, maxRetries) {
 // ─── Decision Tables ────────────────────────────────────────────────────────
 
 /**
- * 9-row task decision table. First-match-wins.
+ * Task decision table. First-match-wins.
+ * Simplified: reportStatus, hasDeviations, deviationType removed — no row branched on them.
  * @param {string} verdict
- * @param {string} reportStatus
- * @param {boolean} hasDeviations
- * @param {string|null} deviationType
  * @param {number} retries
  * @param {number} maxRetries
  * @returns {{ taskStatus: string, reviewAction: string }}
  */
-function resolveTaskOutcome(verdict, reportStatus, hasDeviations, deviationType, retries, maxRetries) {
-  // Row 1-3: approved + complete → always complete/advanced regardless of deviations
-  if (verdict === REVIEW_VERDICTS.APPROVED && reportStatus === 'complete') {
+function resolveTaskOutcome(verdict, retries, maxRetries) {
+  // approved → always complete/advanced (reviewer approval is authoritative)
+  if (verdict === REVIEW_VERDICTS.APPROVED) {
     return { taskStatus: TASK_STATUSES.COMPLETE, reviewAction: REVIEW_ACTIONS.ADVANCED };
   }
-  // Row 4: approved + failed → complete/advanced (reviewer approval is authoritative)
-  if (verdict === REVIEW_VERDICTS.APPROVED && reportStatus === 'failed') {
-    return { taskStatus: TASK_STATUSES.COMPLETE, reviewAction: REVIEW_ACTIONS.ADVANCED };
-  }
-  // Row 5-6: changes_requested + complete
-  if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED && reportStatus === 'complete') {
+  // changes_requested → retry if budget allows, otherwise halt
+  if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED) {
     if (checkRetryBudget(retries, maxRetries)) {
       return { taskStatus: TASK_STATUSES.FAILED, reviewAction: REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED };
     }
     return { taskStatus: TASK_STATUSES.HALTED, reviewAction: REVIEW_ACTIONS.HALTED };
   }
-  // Row 7-8: changes_requested + failed
-  if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED && reportStatus === 'failed') {
-    if (checkRetryBudget(retries, maxRetries)) {
-      return { taskStatus: TASK_STATUSES.FAILED, reviewAction: REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED };
-    }
-    return { taskStatus: TASK_STATUSES.HALTED, reviewAction: REVIEW_ACTIONS.HALTED };
-  }
-  // Row 9: rejected
+  // rejected → always halt
   if (verdict === REVIEW_VERDICTS.REJECTED) {
     return { taskStatus: TASK_STATUSES.HALTED, reviewAction: REVIEW_ACTIONS.HALTED };
   }
@@ -237,7 +224,7 @@ function handleMasterPlanCompleted(state, context, config) {
 function handlePlanApproved(state, context, config) {
   state.planning.human_approved = true;
   state.pipeline.current_tier = PIPELINE_TIERS.EXECUTION;
-  state.execution.status = 'in_progress';
+  state.execution.status = 'not_started'; // explicit reset — idempotent; guards against stale status on re-entry
   state.execution.current_phase = 1; // 1-based; first phase active
   state.execution.phases = [];
   for (let i = 0; i < context.total_phases; i++) {
@@ -263,7 +250,7 @@ function handlePlanApproved(state, context, config) {
     mutations_applied: [
       'Set planning.human_approved to true',
       `Set pipeline.current_tier to "${PIPELINE_TIERS.EXECUTION}"`,
-      'Set execution.status to "in_progress"',
+      'Set execution.status to "not_started"',
       'Set execution.current_phase to 1',
       `Initialized execution.phases with ${context.total_phases} phase(s)`,
     ],
@@ -305,11 +292,15 @@ function handlePlanRejected(state, context, config) {
  */
 function handlePhasePlanningStarted(state, context, config) {
   const phase = currentPhase(state);
+  state.execution.status = 'in_progress';   // transition execution to in_progress
   phase.status = PHASE_STATUSES.IN_PROGRESS;
   // Do NOT modify phase.stage — remains 'planning'
   return {
     state,
-    mutations_applied: ['Set phase.status to "in_progress"'],
+    mutations_applied: [
+      'Set execution.status to "in_progress"',
+      'Set phase.status to "in_progress"',
+    ],
   };
 }
 
@@ -341,16 +332,12 @@ function handlePhasePlanCreated(state, context, config) {
     stage: TASK_STAGES.PLANNING,
     docs: {
       handoff: null,
-      report: null,
       review: null,
     },
     review: {
       verdict: null,
       action: null,
     },
-    report_status: null,
-    has_deviations: false,
-    deviation_type: null,
     retries: 0,
   }));
   return {
@@ -391,12 +378,7 @@ function handleTaskHandoffCreated(state, context, config) {
   const task = currentTask(state);
   const mutations = [];
 
-  // Clear stale report/review from previous attempt (corrective re-execution)
-  if (task.docs.report) {
-    task.docs.report = null;
-    task.report_status = null;
-    mutations.push('Cleared task.docs.report and report_status (corrective re-execution)');
-  }
+  // Clear stale review from previous attempt (corrective re-execution)
   if (task.docs.review) {
     task.docs.review = null;
     task.review.verdict = null;
@@ -417,19 +399,11 @@ function handleTaskHandoffCreated(state, context, config) {
 /** @type {MutationHandler} */
 function handleTaskCompleted(state, context, config) {
   const task = currentTask(state);
-  task.docs.report = context.doc_path;
-  task.has_deviations = context.has_deviations;
-  task.deviation_type = context.deviation_type;
-  task.report_status = context.report_status || 'complete';
   task.stage = TASK_STAGES.REVIEWING;
-  // KEY v4 CHANGE: task.status stays in_progress — complete is truly terminal (set only after code review approves)
+  // task.status stays in_progress — complete is truly terminal (set only after code review approves)
   return {
     state,
     mutations_applied: [
-      `Set task.docs.report to "${context.doc_path}"`,
-      `Set task.has_deviations to ${context.has_deviations}`,
-      `Set task.deviation_type to ${context.deviation_type}`,
-      `Set task.report_status to "${task.report_status}"`,
       `Set task.stage to "${TASK_STAGES.REVIEWING}"`,
       `task.status stays "${TASK_STATUSES.IN_PROGRESS}" (awaiting code review)`,
     ],
@@ -445,11 +419,8 @@ function handleCodeReviewCompleted(state, context, config) {
 
   const { taskStatus, reviewAction } = resolveTaskOutcome(
     context.verdict,
-    task.report_status || 'complete',
-    task.has_deviations,
-    task.deviation_type,
     task.retries,
-    config.limits.max_retries_per_task,
+    state.config?.limits?.max_retries_per_task ?? config.limits.max_retries_per_task,
   );
 
   task.status = taskStatus;
@@ -466,10 +437,19 @@ function handleCodeReviewCompleted(state, context, config) {
     task.stage = TASK_STAGES.COMPLETE;
     mutations.push(`Set task.stage to "${TASK_STAGES.COMPLETE}"`);
 
-    const effectiveGateMode = state.pipeline.gate_mode ?? config.human_gates.execution_mode;
+    const effectiveGateMode = state.pipeline.gate_mode ?? state.config?.human_gates?.execution_mode ?? config.human_gates.execution_mode;
+    const pipelineSC = state.pipeline.source_control;
+    const canDeferForAutoCommit =
+      pipelineSC?.auto_commit === 'always' &&
+      pipelineSC.branch &&
+      pipelineSC.worktree_path;
+
     if (effectiveGateMode === 'task') {
       // Defer pointer advancement to handleGateApproved
       mutations.push(`Deferred phase.current_task advancement (gate mode: task)`);
+    } else if (canDeferForAutoCommit) {
+      // Defer pointer advancement — Source Control Agent will commit, then task_committed bumps pointer
+      mutations.push('Deferred phase.current_task advancement (auto_commit: always — awaiting commit)');
     } else {
       phase.current_task += 1;
       mutations.push(`Bumped phase.current_task to ${phase.current_task}`);
@@ -529,7 +509,7 @@ function handlePhaseReviewCompleted(state, context, config) {
     phase.stage = PHASE_STAGES.COMPLETE;
     mutations.push(`Set phase.stage to "${PHASE_STAGES.COMPLETE}"`);
 
-    const effectiveGateMode = state.pipeline.gate_mode ?? config.human_gates.execution_mode;
+    const effectiveGateMode = state.pipeline.gate_mode ?? state.config?.human_gates?.execution_mode ?? config.human_gates.execution_mode;
     if (effectiveGateMode === 'phase' || effectiveGateMode === 'task') {
       // Defer pointer advancement to handleGateApproved
       mutations.push(`Deferred execution.current_phase advancement (gate mode: ${effectiveGateMode})`);
@@ -687,6 +667,161 @@ function handleHalt(state, context, config) {
   };
 }
 
+// ─── Source Control Handlers ────────────────────────────────────────────────
+
+/**
+ * source_control_init — Writes source control metadata to pipeline.source_control.
+ * Full replacement (not merge) — idempotent. Validates all 5 required fields
+ * before writing; throws Error on any missing field (caller is responsible for handling).
+ *
+ * @param {Object} state  - deep-cloned pipeline state
+ * @param {Object} context - { branch, base_branch, worktree_path, auto_commit, auto_pr }
+ * @param {Object} config  - merged orchestration config (unused)
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleSourceControlInit(state, context, config) {
+  // Validate all required fields before writing (reject partial context)
+  const required = ['branch', 'base_branch', 'worktree_path', 'auto_commit', 'auto_pr'];
+  for (const field of required) {
+    if (!context[field]) throw new Error(`source_control_init: missing required field "${field}"`);
+  }
+  // Full replacement (not merge) — idempotent
+  state.pipeline.source_control = {
+    branch:        context.branch,
+    base_branch:   context.base_branch,
+    worktree_path: context.worktree_path,
+    auto_commit:   context.auto_commit,
+    auto_pr:       context.auto_pr,
+    remote_url:    context.remote_url  ?? null,   // new — nullable write
+    compare_url:   context.compare_url ?? null,   // new — nullable write
+  };
+  return {
+    state,
+    mutations_applied: [
+      `Set pipeline.source_control.branch to "${context.branch}"`,
+      `Set pipeline.source_control.base_branch to "${context.base_branch}"`,
+      `Set pipeline.source_control.worktree_path to "${context.worktree_path}"`,
+      `Set pipeline.source_control.auto_commit to "${context.auto_commit}"`,
+      `Set pipeline.source_control.auto_pr to "${context.auto_pr}"`,
+      `Set pipeline.source_control.remote_url to ${JSON.stringify(context.remote_url ?? null)}`,
+      `Set pipeline.source_control.compare_url to ${JSON.stringify(context.compare_url ?? null)}`,
+    ],
+  };
+}
+
+/**
+ * task_commit_requested — Validation checkpoint before spawning Source Control Agent.
+ * If source_control metadata is absent or branch is falsy: graceful skip — advance
+ * phase.current_task so pipeline resumes without a commit step.
+ * If branch is present: validation passed, no state change — log success.
+ *
+ * @param {Object} state  - deep-cloned pipeline state
+ * @param {Object} context - { task_id, phase_number, task_number }
+ * @param {Object} config  - merged orchestration config (unused)
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleTaskCommitRequested(state, context, config) {
+  const sc = state.pipeline.source_control;
+  const mutations = [];
+
+  if (!sc || !sc.branch) {
+    // Graceful skip: no branch metadata → advance pointer immediately
+    const phase = state.execution.phases[state.execution.current_phase - 1];
+    phase.current_task += 1;
+    mutations.push(
+      'source_control not initialized — skipping commit: ' +
+      `bumped phase.current_task to ${phase.current_task}`
+    );
+  } else {
+    // Branch metadata present — validation passed, no state change
+    mutations.push(`Commit request validated: branch = "${sc.branch}"`);
+  }
+
+  return { state, mutations_applied: mutations };
+}
+
+/**
+ * task_committed — Finalizes the commit step by advancing the task pointer.
+ * Always succeeds unconditionally — even on partial push failure — to prevent
+ * pipeline stall. The Source Control Agent signals this event after commit
+ * completes (success or partial failure).
+ *
+ * @param {Object} state  - deep-cloned pipeline state
+ * @param {Object} context - { task_id, committed, pushed }
+ * @param {Object} config  - merged orchestration config (unused)
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleTaskCommitted(state, context, config) {
+  const phase = state.execution.phases[state.execution.current_phase - 1];
+  const taskIndex = phase.current_task - 1;   // capture BEFORE incrementing
+  const task = phase.tasks[taskIndex];
+  const mutations = [];
+  // Write commit_hash onto the current task BEFORE advancing the pointer
+  if (task) {
+    task.commit_hash = context.commitHash ?? null;
+    mutations.push(`Set task[${taskIndex}].commit_hash to ${JSON.stringify(task.commit_hash)}`);
+  }
+  phase.current_task += 1;
+  mutations.push(`Bumped phase.current_task to ${phase.current_task} (task committed)`);
+  return {
+    state,
+    mutations_applied: mutations,
+  };
+}
+
+// ─── PR Handlers ────────────────────────────────────────────────────────────
+
+/**
+ * pr_requested — Validation checkpoint before spawning Source Control Agent in PR mode.
+ * If source_control metadata is absent or branch is falsy: graceful skip — no state change,
+ * resolver will fall through to request_final_approval.
+ * If branch is present: validation passed, no state change.
+ *
+ * @param {Object} state   - deep-cloned pipeline state
+ * @param {Object} context - {} (no fields required)
+ * @param {Object} config  - merged orchestration config (unused)
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handlePrRequested(state, context, config) {
+  const sc = state.pipeline.source_control;
+  const mutations = [];
+
+  if (!sc || !sc.branch) {
+    mutations.push('source_control not initialized or branch absent — skipping PR creation');
+  } else {
+    mutations.push(`PR request validated: branch = "${sc.branch}"`);
+  }
+
+  return { state, mutations_applied: mutations };
+}
+
+/**
+ * pr_created — Writes pr_url to state.pipeline.source_control and resolves to human gate.
+ * Always succeeds unconditionally to prevent pipeline stall.
+ *
+ * @param {Object} state   - deep-cloned pipeline state
+ * @param {Object} context - { pr_url?: (string|null) }
+ * @param {Object} config  - merged orchestration config (unused)
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handlePrCreated(state, context, config) {
+  const prUrl = context.pr_url ?? null;
+  const mutations = [];
+
+  if (state?.pipeline?.source_control) {
+    state.pipeline.source_control.pr_url = prUrl;
+    mutations.push(
+      `Set pipeline.source_control.pr_url to ${JSON.stringify(prUrl)}`
+    );
+  } else {
+    mutations.push(
+      'source_control not initialized — skipping pr_url update'
+    );
+  }
+
+  return { state, mutations_applied: mutations };
+}
+
 // ─── MUTATIONS Map ──────────────────────────────────────────────────────────
 
 const MUTATIONS = Object.freeze({
@@ -715,6 +850,13 @@ const MUTATIONS = Object.freeze({
   code_review_completed:    handleCodeReviewCompleted,
   phase_report_created:     handlePhaseReportCreated,
   phase_review_completed:   handlePhaseReviewCompleted,
+
+  // Source control (5)
+  source_control_init:        handleSourceControlInit,
+  task_commit_requested:      handleTaskCommitRequested,
+  task_committed:             handleTaskCommitted,
+  pr_requested:               handlePrRequested,
+  pr_created:                 handlePrCreated,
 
   // Gate events (3)
   gate_mode_set:            handleGateModeSet,
@@ -751,4 +893,9 @@ module.exports._test = {
   resolveTaskOutcome,
   resolvePhaseOutcome,
   checkRetryBudget,
+  handleSourceControlInit,
+  handleTaskCommitRequested,
+  handleTaskCommitted,
+  handlePrRequested,
+  handlePrCreated,
 };

@@ -100,7 +100,9 @@ export async function main() {
       const spinner = ora({ text: `Copying ${category.name}...`, color: THEME.spinner }).start();
       const result = copyCategory(mergedCategory, repoRoot, targetBase);
 
-      if (result.success) {
+      if (result.skipped) {
+        spinner.stop();
+      } else if (result.success) {
         spinner.succeed(`Copied ${category.name}  (${result.fileCount} files)`);
       } else {
         spinner.fail(`Failed to copy ${category.name}: ${result.error}`);

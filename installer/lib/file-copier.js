@@ -18,6 +18,10 @@ export function copyCategory(category, repoRoot, targetBase) {
   const dest = path.join(targetBase, category.targetDir);
   let fileCount = 0;
 
+  if (!fs.existsSync(src)) {
+    return { category: category.name, fileCount: 0, success: true, skipped: true };
+  }
+
   try {
     fs.mkdirSync(dest, { recursive: true });
 

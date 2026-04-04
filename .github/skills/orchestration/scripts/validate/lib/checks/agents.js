@@ -103,16 +103,16 @@ function validateAgentsArray(agents, tools, agentName, filename) {
     });
   }
 
-  if (agents.length > 0 && agentName !== 'Orchestrator') {
+  if (agents.length > 0 && agentName.toLowerCase() !== 'orchestrator') {
     results.push({
       category: 'agents',
       name: filename,
       status: 'fail',
       message: 'Only the Orchestrator may have a non-empty agents array',
       detail: {
-        expected: 'Empty agents array for non-Orchestrator agents',
+        expected: 'Empty agents array for non-orchestrator agents',
         found: `Agent "${agentName}" has agents: [${agents.join(', ')}]`,
-        context: 'Only the Orchestrator agent may reference other agents'
+        context: 'Only the orchestrator agent may reference other agents'
       }
     });
   }
@@ -238,20 +238,9 @@ function validateAgent(filePath, filename, context) {
     hasRequiredFieldErrors = true;
   }
 
-  // Validate required field: agents (presence check — empty array is valid)
+  // agents field is optional; treat missing or null as empty array
   let agents = frontmatter.agents;
-  if (agents === undefined) {
-    results.push({
-      category: 'agents',
-      name: filename,
-      status: 'fail',
-      message: 'Missing required field: agents',
-      detail: {
-        expected: 'agents field (may be empty array)',
-        found: 'undefined'
-      }
-    });
-    hasRequiredFieldErrors = true;
+  if (agents === undefined || agents === null) {
     agents = [];
   } else if (typeof agents === 'string') {
     agents = [agents];

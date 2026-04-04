@@ -18,6 +18,7 @@ function createDefaultConfig() {
       max_consecutive_review_rejections: 3,
     },
     human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
+    source_control: { auto_commit: 'ask', auto_pr: 'ask', provider: 'github' },
   };
 }
 
@@ -63,7 +64,7 @@ function createMockIO({ state = null, documents = {}, config = null } = {}) {
 
 // ─── State Factories ────────────────────────────────────────────────────────
 
-function createBaseState(overrides) {
+function createBaseState(overrides = {}) {
   const now = new Date().toISOString();
   const base = {
     $schema: 'orchestration-state-v4',
@@ -91,13 +92,15 @@ function createBaseState(overrides) {
       human_approved: false,
     },
   };
-  if (overrides) {
-    return deepMerge(base, overrides);
+  const { config, ...rest } = overrides;
+  const state = Object.keys(rest).length > 0 ? deepMerge(base, rest) : base;
+  if (config !== undefined) {
+    state.config = deepClone(config);
   }
-  return base;
+  return state;
 }
 
-function createExecutionState(overrides) {
+function createExecutionState(overrides = {}) {
   const now = new Date().toISOString();
   const base = {
     $schema: 'orchestration-state-v4',
@@ -127,22 +130,16 @@ function createExecutionState(overrides) {
             name: 'T01',
             status: 'not_started',
             stage: 'planning',
-            docs: { handoff: null, report: null, review: null },
+            docs: { handoff: null, review: null },
             review: { verdict: null, action: null },
-            report_status: null,
-            has_deviations: false,
-            deviation_type: null,
             retries: 0,
           },
           {
             name: 'T02',
             status: 'not_started',
             stage: 'planning',
-            docs: { handoff: null, report: null, review: null },
+            docs: { handoff: null, review: null },
             review: { verdict: null, action: null },
-            report_status: null,
-            has_deviations: false,
-            deviation_type: null,
             retries: 0,
           },
         ],
@@ -156,13 +153,15 @@ function createExecutionState(overrides) {
       human_approved: false,
     },
   };
-  if (overrides) {
-    return deepMerge(base, overrides);
+  const { config, ...rest } = overrides;
+  const state = Object.keys(rest).length > 0 ? deepMerge(base, rest) : base;
+  if (config !== undefined) {
+    state.config = deepClone(config);
   }
-  return base;
+  return state;
 }
 
-function createReviewState(overrides) {
+function createReviewState(overrides = {}) {
   const now = new Date().toISOString();
   const base = {
     $schema: 'orchestration-state-v4',
@@ -191,11 +190,8 @@ function createReviewState(overrides) {
           name: 'T01',
           status: 'complete',
           stage: 'complete',
-          docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+          docs: { handoff: 'h.md', review: 'rv.md' },
           review: { verdict: 'approved', action: 'advanced' },
-          report_status: 'complete',
-          has_deviations: false,
-          deviation_type: null,
           retries: 0,
         }],
         docs: { phase_plan: 'pp.md', phase_report: 'pr.md', phase_review: 'prv.md' },
@@ -208,10 +204,12 @@ function createReviewState(overrides) {
       human_approved: false,
     },
   };
-  if (overrides) {
-    return deepMerge(base, overrides);
+  const { config, ...rest } = overrides;
+  const state = Object.keys(rest).length > 0 ? deepMerge(base, rest) : base;
+  if (config !== undefined) {
+    state.config = deepClone(config);
   }
-  return base;
+  return state;
 }
 
 // ─── Process And Assert ─────────────────────────────────────────────────────

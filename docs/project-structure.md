@@ -1,12 +1,12 @@
 ﻿# Project Structure
 
-This page documents the file layout, naming conventions, document types, and state management model.
+This page documents the file layout, naming conventions, and document types.
 
 ## Workspace Layout
 
 > **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
 
-```
+```text
 .github/
 ├── agents/                    # Agent definitions
 │   └── ...
@@ -15,8 +15,6 @@ This page documents the file layout, naming conventions, document types, and sta
 │   │   ├── SKILL.md           # Role-based router
 │   │   ├── config/
 │   │   │   └── orchestration.yml  # System configuration
-│   │   ├── schemas/
-│   │   │   └── state-v4.schema.json  # Canonical v4 state JSON Schema
 │   │   ├── references/
 │   │   │   ├── context.md     # System context (all agents)
 │   │   │   ├── document-conventions.md  # Document naming & placement (all agents)
@@ -24,7 +22,6 @@ This page documents the file layout, naming conventions, document types, and sta
 │   │   │   └── validation-guide.md  # Validation guide (Reviewer, Tactical Planner)
 │   │   └── scripts/
 │   │       ├── pipeline.js    # Unified pipeline CLI (sole state writer)
-│   │       ├── migrate-to-v4.js  # Migration CLI tool
 │   │       ├── lib/           # Pipeline library modules
 │   │       │   └── ...
 │   │       ├── tests/         # Pipeline test files
@@ -51,7 +48,7 @@ archive/                       # Historical design artifacts -- the plan that st
     └── ...
 assets/                        # Static assets
 └── dashboard-screenshot.png
-docs/                          # Documentation (10 pages)
+docs/                          # Documentation
 ├── getting-started.md
 ├── agents.md
 ├── pipeline.md
@@ -59,9 +56,13 @@ docs/                          # Documentation (10 pages)
 ├── templates.md
 ├── configuration.md
 ├── project-structure.md
-├── scripts.md
-├── validation.md
-└── dashboard.md
+├── dashboard.md
+└── internals/
+    ├── dependency-model.md
+    ├── planning-pipeline-overhaul.md
+    ├── scripts.md
+    ├── system-architecture.md
+    └── validation.md
 ui/                            # Monitoring dashboard (Next.js)
 └── components/
     └── badges/
@@ -75,7 +76,7 @@ ui/                            # Monitoring dashboard (Next.js)
 
 Each project gets its own subfolder under the configured `base_path` (default: `.github/projects/` — configurable via `orchestration.yml`). The `base_path` supports both relative paths (resolved from workspace root) and absolute paths (used as-is, useful for git worktree setups):
 
-```
+```text
 {PROJECT-NAME}/
 ├── state.json                 # Pipeline state (sole writer: pipeline script)
 ├── BRAINSTORMING.md           # Optional ideation output
@@ -93,8 +94,6 @@ Each project gets its own subfolder under the configured `base_path` (default: `
 │   ├── {NAME}-TASK-P01-T02-{TITLE}.md
 │   └── ...
 └── reports/
-    ├── {NAME}-TASK-REPORT-P01-T01-{TITLE}.md
-    ├── {NAME}-TASK-REPORT-P01-T02-{TITLE}.md
     ├── {NAME}-CODE-REVIEW-P01-T01-{TITLE}.md
     ├── {NAME}-PHASE-REPORT-P01-{TITLE}.md
     └── {NAME}-PHASE-REVIEW-P01-{TITLE}.md
@@ -112,7 +111,6 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 | `{NAME}-DESIGN.md` | `MYAPP-DESIGN.md` |
 | `{NAME}-PHASE-{NN}-{TITLE}.md` | `MYAPP-PHASE-01-CORE-API.md` |
 | `{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-TASK-P01-T03-AUTH.md` |
-| `{NAME}-TASK-REPORT-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-TASK-REPORT-P01-T03-AUTH.md` |
 | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-CODE-REVIEW-P01-T03-AUTH.md` |
 | `{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REPORT-P01-CORE-API.md` |
 | `{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REVIEW-P01-CORE-API.md` |
@@ -146,7 +144,6 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 |----------|-------------|----------|
 | `PHASE-PLAN.md` | Tactical Planner | Task breakdown, dependencies, execution order, acceptance criteria |
 | `TASK-HANDOFF.md` | Tactical Planner | Self-contained coding instructions with inlined contracts and requirements |
-| `TASK-REPORT.md` | Coder | Changed files, test results, deviations, discoveries |
 | `PHASE-REPORT.md` | Tactical Planner | Aggregated results, exit criteria assessment, carry-forward items |
 | `CODE-REVIEW.md` | Reviewer | Verdict, checklist, issues, severity classification |
 | `PHASE-REVIEW.md` | Reviewer | Cross-task integration assessment, exit criteria verification |
@@ -158,19 +155,7 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 |------|-------------|---------|
 | `state.json` | Pipeline Script (`pipeline.js`) | Machine-readable pipeline state |
 
-## State Management
-
-### `state.json` Schema
-
-- The `state.json` file is the single source of truth for pipeline state.  
-- Each project folder contains its own `state.json` that tracks the current phase, task, agent, and other relevant metadata. 
-- The pipeline script (`pipeline.js`) is the sole writer of `state.json` — no agent directly modifies it. 
-- Agents read `state.json` for context but never write to it.
-- The schema identifier is `orchestration-state-v4`. The full JSON Schema is defined in [`.github/skills/orchestration/schemas/state-v4.schema.json`](../.github/skills/orchestration/schemas/state-v4.schema.json).
-
-### Invariants
-
-The pipeline engine (`pipeline-engine.js`) runs all 12 invariant checks (V1–V2, V5–V7, V10–V16) on every state transition — see [Validation](validation.md) for the full invariant catalog. Only the pipeline script (`pipeline.js`) writes `state.json`; no agent touches it directly.
+For state schema details and validation, see [Validation](internals/validation.md).
 
 ## Scoped Instructions
 
@@ -195,4 +180,4 @@ Prompt files provide utility workflows accessible via `/` commands in Copilot:
 ## Next Steps
 
 - [Templates](templates.md) — customization rules and the full template inventory
-- [Validation](validation.md) — how to validate your project structure and state
+- [Validation](internals/validation.md) — how to validate your project structure and state

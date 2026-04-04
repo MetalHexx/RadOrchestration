@@ -6,3 +6,4 @@ export { MarkdownRenderer } from "./markdown-renderer";
 export { MermaidBlock } from "./mermaid-block";
 export { SyntaxHighlighter } from "./syntax-highlighter";
 export { DocumentLink } from "./document-link";
+export { ExternalLink } from "./external-link";

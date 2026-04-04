@@ -108,43 +108,28 @@ describe('normalizeDocPath', () => {
 // ─── Task Decision Table ────────────────────────────────────────────────────
 
 describe('task decision table', () => {
-  it('task row 1: approved + complete + no deviations -> complete/advanced', () => {
-    const result = resolveTaskOutcome('approved', 'complete', false, null, 0, 3);
+  it('approved -> complete/advanced', () => {
+    const result = resolveTaskOutcome('approved', 0, 3);
     assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
   });
 
-  it('task row 2: approved + complete + minor deviations -> complete/advanced', () => {
-    const result = resolveTaskOutcome('approved', 'complete', true, 'minor', 0, 3);
+  it('approved with exhausted retries -> complete/advanced (retries irrelevant for approval)', () => {
+    const result = resolveTaskOutcome('approved', 3, 3);
     assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
   });
 
-  it('task row 3: approved + complete + critical deviations -> complete/advanced', () => {
-    const result = resolveTaskOutcome('approved', 'complete', true, 'critical', 0, 3);
-    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
-  });
-
-  it('task row 4: changes_requested + complete + retries left -> failed/corrective', () => {
-    const result = resolveTaskOutcome('changes_requested', 'complete', false, null, 0, 3);
+  it('changes_requested + retries left -> failed/corrective', () => {
+    const result = resolveTaskOutcome('changes_requested', 0, 3);
     assert.deepEqual(result, { taskStatus: 'failed', reviewAction: 'corrective_task_issued' });
   });
 
-  it('task row 5: changes_requested + complete + no retries -> halted/halted', () => {
-    const result = resolveTaskOutcome('changes_requested', 'complete', false, null, 3, 3);
+  it('changes_requested + no retries -> halted/halted', () => {
+    const result = resolveTaskOutcome('changes_requested', 3, 3);
     assert.deepEqual(result, { taskStatus: 'halted', reviewAction: 'halted' });
   });
 
-  it('task row 6: changes_requested + failed + retries left -> failed/corrective', () => {
-    const result = resolveTaskOutcome('changes_requested', 'failed', false, null, 1, 3);
-    assert.deepEqual(result, { taskStatus: 'failed', reviewAction: 'corrective_task_issued' });
-  });
-
-  it('task row 7: changes_requested + failed + no retries -> halted/halted', () => {
-    const result = resolveTaskOutcome('changes_requested', 'failed', false, null, 3, 3);
-    assert.deepEqual(result, { taskStatus: 'halted', reviewAction: 'halted' });
-  });
-
-  it('task row 8: rejected -> halted/halted', () => {
-    const result = resolveTaskOutcome('rejected', 'complete', false, null, 0, 3);
+  it('rejected -> halted/halted', () => {
+    const result = resolveTaskOutcome('rejected', 0, 3);
     assert.deepEqual(result, { taskStatus: 'halted', reviewAction: 'halted' });
   });
 });
@@ -324,8 +309,8 @@ describe('handlePlanApproved', () => {
     assert.equal(result.state.execution.current_tier, undefined);
   });
 
-  it('sets execution.status to "in_progress"', () => {
-    assert.equal(result.state.execution.status, 'in_progress');
+  it('sets execution.status to "not_started" (execution not yet begun)', () => {
+    assert.equal(result.state.execution.status, 'not_started');
   });
 
   it('does NOT set execution.total_phases (field removed in v4)', () => {
@@ -358,7 +343,28 @@ describe('handlePlanApproved', () => {
 
   it('returns mutations_applied array', () => {
     assert.ok(Array.isArray(result.mutations_applied));
-    assert.ok(result.mutations_applied.length > 0);
+    assert.equal(result.mutations_applied.length, 5);
+
+    // Exactly one mutation should reference execution.status, and it must reset to not_started
+    const statusMutations = result.mutations_applied.filter(m => m.includes('execution.status'));
+    assert.equal(statusMutations.length, 1, 'exactly one mutation must reference execution.status');
+    assert.ok(
+      statusMutations[0].includes('not_started'),
+      'execution.status mutation must reset to "not_started"'
+    );
+    // Guard against premature in_progress re-introduction
+    assert.ok(
+      !result.mutations_applied.some(m => m.includes('execution.status') && m.includes('in_progress')),
+      'mutations_applied must not set execution.status to "in_progress"'
+    );
+  });
+
+  it('resets execution.status to "not_started" even when previously in_progress', () => {
+    const s = makePlanningState();
+    s.execution.status = 'in_progress'; // simulate stale state from partial prior execution
+    const handler = getMutation('plan_approved');
+    const r = handler(s, { total_phases: 2 }, {});
+    assert.equal(r.state.execution.status, 'not_started');
   });
 });
 
@@ -432,17 +438,13 @@ function makeExecutionState(opts = {}) {
         stage: 'planning',
         docs: {
           handoff: null,
-          report: null,
           review: null,
         },
         review: {
           verdict: null,
           action: null,
         },
-        has_deviations: false,
-        deviation_type: null,
         retries: 0,
-        report_status: null,
       });
     }
     phases.push({
@@ -493,6 +495,24 @@ function makeExecutionState(opts = {}) {
 
 const defaultConfig = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
 
+function makeConfig(overrides = {}) {
+  return {
+    limits: {
+      max_phases: 10,
+      max_tasks_per_phase: 10,
+      max_retries_per_task: 2,
+      max_consecutive_review_rejections: 3,
+      ...(overrides.limits || {}),
+    },
+    human_gates: {
+      after_planning: true,
+      execution_mode: 'autonomous',
+      after_final_review: true,
+      ...(overrides.human_gates || {}),
+    },
+  };
+}
+
 // ─── handlePhasePlanningStarted ─────────────────────────────────────────────
 
 describe('handlePhasePlanningStarted', () => {
@@ -533,6 +553,16 @@ describe('handlePhasePlanningStarted', () => {
     const result = handler(state, {}, {});
     assert.equal(result.state.execution.phases[0].status, 'in_progress');
     assert.equal(result.state.execution.phases[0].stage, 'planning');
+  });
+
+  it('sets execution.status to "in_progress"', () => {
+    const state = makeExecutionState();
+    state.execution.status = 'not_started'; // simulate post-handlePlanApproved state
+    state.execution.phases[0].status = 'not_started';
+    state.execution.phases[0].stage = 'planning';
+    const handler = getMutation('phase_planning_started');
+    const result = handler(state, {}, {});
+    assert.equal(result.state.execution.status, 'in_progress');
   });
 });
 
@@ -621,23 +651,17 @@ describe('handlePhasePlanCreated', () => {
       name: 'Setup',
       status: 'not_started',
       stage: 'planning',
-      docs: { handoff: null, report: null, review: null },
+      docs: { handoff: null, review: null },
       review: { verdict: null, action: null },
-      has_deviations: false,
-      deviation_type: null,
       retries: 0,
-      report_status: null,
     });
     assert.deepEqual(tasks[1], {
       name: 'Implement',
       status: 'not_started',
       stage: 'planning',
-      docs: { handoff: null, report: null, review: null },
+      docs: { handoff: null, review: null },
       review: { verdict: null, action: null },
-      has_deviations: false,
-      deviation_type: null,
       retries: 0,
-      report_status: null,
     });
   });
 
@@ -703,11 +727,9 @@ describe('handleTaskHandoffCreated', () => {
     assert.ok(result.mutations_applied.length > 0);
   });
 
-  it('clears stale report and review fields on corrective re-execution', () => {
+  it('clears stale review fields on corrective re-execution', () => {
     const state = makeExecutionState();
     const task = state.execution.phases[0].tasks[0];
-    task.docs.report = 'reports/TASK-REPORT-P01-T01.md';
-    task.report_status = 'complete';
     task.docs.review = 'reviews/CODE-REVIEW-P01-T01.md';
     task.review.verdict = 'changes_requested';
     task.review.action = 'corrective_task_issued';
@@ -715,8 +737,6 @@ describe('handleTaskHandoffCreated', () => {
     const handler = getMutation('task_handoff_created');
     const result = handler(state, { doc_path: 'tasks/CORRECTIVE-HANDOFF.md' }, defaultConfig);
 
-    assert.strictEqual(task.docs.report, null);
-    assert.strictEqual(task.report_status, null);
     assert.strictEqual(task.docs.review, null);
     assert.strictEqual(task.review.verdict, null);
     assert.strictEqual(task.review.action, null);
@@ -725,10 +745,6 @@ describe('handleTaskHandoffCreated', () => {
     assert.strictEqual(task.status, 'in_progress');
     assert.strictEqual(task.stage, 'coding');
 
-    assert.ok(
-      result.mutations_applied.some(m => m.includes('Cleared task.docs.report')),
-      'Expected clearing entry for docs.report',
-    );
     assert.ok(
       result.mutations_applied.some(m => m.includes('Cleared task.docs.review')),
       'Expected clearing entry for docs.review',
@@ -741,10 +757,6 @@ describe('handleTaskHandoffCreated', () => {
     const result = handler(state, { doc_path: 'tasks/HANDOFF-P01-T01.md' }, defaultConfig);
 
     assert.ok(
-      !result.mutations_applied.some(m => m.includes('Cleared task.docs.report')),
-      'Unexpected clearing entry for docs.report on first-time handoff',
-    );
-    assert.ok(
       !result.mutations_applied.some(m => m.includes('Cleared task.docs.review')),
       'Unexpected clearing entry for docs.review on first-time handoff',
     );
@@ -754,7 +766,6 @@ describe('handleTaskHandoffCreated', () => {
     const task = state.execution.phases[0].tasks[0];
     assert.strictEqual(task.docs.handoff, 'tasks/HANDOFF-P01-T01.md');
     assert.strictEqual(task.status, 'in_progress');
-    assert.strictEqual(task.docs.report, null);
     assert.strictEqual(task.docs.review, null);
   });
 });
@@ -768,27 +779,7 @@ describe('handleTaskCompleted', () => {
     state = makeExecutionState();
     state.execution.phases[0].tasks[0].status = 'in_progress';
     const handler = getMutation('task_completed');
-    result = handler(state, { doc_path: 'reports/TASK-REPORT-P01-T01.md', has_deviations: true, deviation_type: 'minor' }, defaultConfig);
-  });
-
-  it('sets task.docs.report to context.doc_path', () => {
-    const task = result.state.execution.phases[0].tasks[0];
-    assert.equal(task.docs.report, 'reports/TASK-REPORT-P01-T01.md');
-  });
-
-  it('does NOT set task.report_doc (v3 flat field absent)', () => {
-    const task = result.state.execution.phases[0].tasks[0];
-    assert.equal(task.report_doc, undefined);
-  });
-
-  it('sets task.has_deviations from context', () => {
-    const task = result.state.execution.phases[0].tasks[0];
-    assert.equal(task.has_deviations, true);
-  });
-
-  it('sets task.deviation_type from context', () => {
-    const task = result.state.execution.phases[0].tasks[0];
-    assert.equal(task.deviation_type, 'minor');
+    result = handler(state, {}, defaultConfig);
   });
 
   it('sets task.stage to "reviewing"', () => {
@@ -802,22 +793,12 @@ describe('handleTaskCompleted', () => {
     assert.notEqual(task.status, 'complete');
   });
 
-  it('sets task.report_status from context.report_status when provided', () => {
-    const state2 = makeExecutionState();
-    state2.execution.phases[0].tasks[0].status = 'in_progress';
-    const handler = getMutation('task_completed');
-    const result2 = handler(state2, { doc_path: 'reports/R.md', has_deviations: false, deviation_type: null, report_status: 'failed' }, defaultConfig);
-    const task = result2.state.execution.phases[0].tasks[0];
-    assert.equal(task.report_status, 'failed');
-  });
-
-  it('defaults task.report_status to complete when context.report_status is undefined', () => {
-    const state2 = makeExecutionState();
-    state2.execution.phases[0].tasks[0].status = 'in_progress';
-    const handler = getMutation('task_completed');
-    const result2 = handler(state2, { doc_path: 'reports/R.md', has_deviations: false, deviation_type: null }, defaultConfig);
-    const task = result2.state.execution.phases[0].tasks[0];
-    assert.equal(task.report_status, 'complete');
+  it('does not write report fields to task', () => {
+    const task = result.state.execution.phases[0].tasks[0];
+    assert.equal(task.docs.report, undefined);
+    assert.equal(task.report_status, undefined);
+    assert.equal(task.has_deviations, undefined);
+    assert.equal(task.deviation_type, undefined);
   });
 
   it('returns MutationResult with non-empty mutations_applied', () => {
@@ -1224,30 +1205,6 @@ describe('handlePhaseReviewCompleted corrective stage transition', () => {
   });
 });
 
-// ─── resolveTaskOutcome approved + failed ───────────────────────────────────
-
-describe('resolveTaskOutcome approved + failed', () => {
-  it('approved + failed → complete/advanced (reviewer approval is authoritative)', () => {
-    const result = resolveTaskOutcome('approved', 'failed', false, null, 0, 3);
-    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
-  });
-
-  it('approved + failed + deviations → complete/advanced', () => {
-    const result = resolveTaskOutcome('approved', 'failed', true, 'minor', 0, 3);
-    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
-  });
-
-  it('approved + failed + critical deviations → complete/advanced', () => {
-    const result = resolveTaskOutcome('approved', 'failed', true, 'critical', 0, 3);
-    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
-  });
-
-  it('approved + failed + exhausted retries → complete/advanced (retries are irrelevant for approval)', () => {
-    const result = resolveTaskOutcome('approved', 'failed', false, null, 3, 3);
-    assert.deepEqual(result, { taskStatus: 'complete', reviewAction: 'advanced' });
-  });
-});
-
 // ─── handlePhasePlanCreated stale field clearing ─────────────────────────────
 
 describe('handlePhasePlanCreated stale field clearing', () => {
@@ -1305,6 +1262,554 @@ describe('handlePhasePlanCreated stale field clearing', () => {
   });
 });
 
+// ─── handleSourceControlInit ────────────────────────────────────────────────
+
+const { handleSourceControlInit, handleTaskCommitRequested, handleTaskCommitted, handlePrRequested, handlePrCreated } = _test;
+
+describe('handleSourceControlInit', () => {
+  it('writes all 7 fields to pipeline.source_control', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const result = handleSourceControlInit(state, context, defaultConfig);
+    assert.equal(result.state.pipeline.source_control.branch, 'feat/x');
+    assert.equal(result.state.pipeline.source_control.base_branch, 'main');
+    assert.equal(result.state.pipeline.source_control.worktree_path, '/wt');
+    assert.equal(result.state.pipeline.source_control.auto_commit, 'always');
+    assert.equal(result.state.pipeline.source_control.auto_pr, 'never');
+    assert.equal(result.state.pipeline.source_control.remote_url, null);
+    assert.equal(result.state.pipeline.source_control.compare_url, null);
+  });
+
+  it('returns mutations_applied with 7 entries', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const result = handleSourceControlInit(state, context, defaultConfig);
+    assert.equal(result.mutations_applied.length, 7);
+  });
+
+  it('throws on missing required field "branch"', () => {
+    const state = makeExecutionState();
+    const context = {
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    assert.throws(
+      () => handleSourceControlInit(state, context, defaultConfig),
+      (err) => err.message.includes('missing required field "branch"')
+    );
+  });
+
+  it('throws on missing required field "auto_commit"', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_pr: 'never',
+    };
+    assert.throws(
+      () => handleSourceControlInit(state, context, defaultConfig),
+      (err) => err.message.includes('missing required field "auto_commit"')
+    );
+  });
+
+  it('idempotent — second call with same context produces same state', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    handleSourceControlInit(state, context, defaultConfig);
+    const firstSC = JSON.stringify(state.pipeline.source_control);
+    handleSourceControlInit(state, context, defaultConfig);
+    const secondSC = JSON.stringify(state.pipeline.source_control);
+    assert.equal(firstSC, secondSC);
+  });
+
+  it('full replacement — second call with different context overwrites', () => {
+    const state = makeExecutionState();
+    const contextA = {
+      branch: 'feat/a',
+      base_branch: 'main',
+      worktree_path: '/wt-a',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const contextB = {
+      branch: 'feat/b',
+      base_branch: 'develop',
+      worktree_path: '/wt-b',
+      auto_commit: 'never',
+      auto_pr: 'always',
+    };
+    handleSourceControlInit(state, contextA, defaultConfig);
+    handleSourceControlInit(state, contextB, defaultConfig);
+    assert.equal(state.pipeline.source_control.branch, 'feat/b');
+    assert.equal(state.pipeline.source_control.base_branch, 'develop');
+    assert.equal(state.pipeline.source_control.worktree_path, '/wt-b');
+    assert.equal(state.pipeline.source_control.auto_commit, 'never');
+    assert.equal(state.pipeline.source_control.auto_pr, 'always');
+  });
+
+  it('writes remote_url when provided as a non-null string', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x', base_branch: 'main', worktree_path: '/wt',
+      auto_commit: 'always', auto_pr: 'never',
+      remote_url: 'https://github.com/org/repo',
+      compare_url: 'https://github.com/org/repo/compare/main...feat/x',
+    };
+    const result = handleSourceControlInit(state, context, defaultConfig);
+    assert.equal(result.state.pipeline.source_control.remote_url, 'https://github.com/org/repo');
+    assert.equal(result.state.pipeline.source_control.compare_url, 'https://github.com/org/repo/compare/main...feat/x');
+  });
+
+  it('writes remote_url as null when context.remote_url is undefined', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x', base_branch: 'main', worktree_path: '/wt',
+      auto_commit: 'always', auto_pr: 'never',
+      // remote_url and compare_url absent (not provided by caller)
+    };
+    const result = handleSourceControlInit(state, context, defaultConfig);
+    assert.equal(result.state.pipeline.source_control.remote_url, null);
+    assert.equal(result.state.pipeline.source_control.compare_url, null);
+  });
+
+  it('writes remote_url as null when context.remote_url is explicitly null', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x', base_branch: 'main', worktree_path: '/wt',
+      auto_commit: 'always', auto_pr: 'never',
+      remote_url: null,
+      compare_url: null,
+    };
+    const result = handleSourceControlInit(state, context, defaultConfig);
+    assert.equal(result.state.pipeline.source_control.remote_url, null);
+    assert.equal(result.state.pipeline.source_control.compare_url, null);
+  });
+
+  it('mutations_applied includes remote_url and compare_url log entries (total 7)', () => {
+    const state = makeExecutionState();
+    const context = {
+      branch: 'feat/x', base_branch: 'main', worktree_path: '/wt',
+      auto_commit: 'always', auto_pr: 'never',
+      remote_url: 'https://github.com/org/repo',
+      compare_url: 'https://github.com/org/repo/compare/main...feat/x',
+    };
+    const result = handleSourceControlInit(state, context, defaultConfig);
+    assert.equal(result.mutations_applied.length, 7);
+    assert.ok(result.mutations_applied.some(m => m.includes('remote_url')));
+    assert.ok(result.mutations_applied.some(m => m.includes('compare_url')));
+  });
+});
+
+// ─── handleCodeReviewCompleted commit-defer path ────────────────────────────
+
+describe('handleCodeReviewCompleted commit-defer path', () => {
+  it('auto_commit=always with non-task gate: pointer NOT bumped', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = 'phase';
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'r.md', verdict: 'approved' }, defaultConfig);
+    assert.equal(result.state.execution.phases[0].current_task, 1); // NOT bumped
+    assert.equal(result.state.execution.phases[0].tasks[0].stage, 'complete');
+    assert.ok(result.mutations_applied.some(m => m.includes('Deferred')));
+    assert.ok(result.mutations_applied.some(m => m.includes('auto_commit')));
+  });
+
+  it('auto_commit=never: pointer bumped immediately', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = 'phase';
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'never',
+      auto_pr: 'never',
+    };
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'r.md', verdict: 'approved' }, defaultConfig);
+    assert.equal(result.state.execution.phases[0].current_task, 2); // bumped
+  });
+
+  it('auto_commit absent (no source_control): pointer bumped immediately', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = 'phase';
+    // No source_control set
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    const handler = getMutation('code_review_completed');
+    // Config also has no source_control to test full fallback
+    const cfg = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
+    const result = handler(state, { doc_path: 'r.md', verdict: 'approved' }, cfg);
+    assert.equal(result.state.execution.phases[0].current_task, 2); // bumped (fallback to never)
+  });
+
+  it('task-gate takes precedence over auto_commit=always', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = 'task';
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'r.md', verdict: 'approved' }, defaultConfig);
+    assert.equal(result.state.execution.phases[0].current_task, 1); // NOT bumped
+    assert.ok(result.mutations_applied.some(m => m.includes('Deferred')));
+    assert.ok(result.mutations_applied.some(m => m.includes('task')));
+    assert.ok(!result.mutations_applied.some(m => m.includes('auto_commit')));
+  });
+
+  it('auto_commit from config only (no state source_control): bumps pointer (graceful skip)', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = 'phase';
+    // No source_control in state — config fallback should NOT defer
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    const cfg = {
+      limits: { max_retries_per_task: 2 },
+      human_gates: { execution_mode: 'autonomous' },
+      source_control: { auto_commit: 'always' },
+    };
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'r.md', verdict: 'approved' }, cfg);
+    assert.equal(result.state.execution.phases[0].current_task, 2); // bumped — state lacks source_control metadata
+  });
+});
+
+// ─── handleTaskCommitRequested ──────────────────────────────────────────────
+
+describe('handleTaskCommitRequested', () => {
+  it('branch present: no state change, logs validation success', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const originalCurrentTask = state.execution.phases[0].current_task;
+    const result = handleTaskCommitRequested(state, {}, defaultConfig);
+    assert.equal(state.execution.phases[0].current_task, originalCurrentTask);
+    assert.ok(result.mutations_applied.some(m => m.includes('Commit request validated')));
+  });
+
+  it('source_control absent: bumps pointer (graceful skip)', () => {
+    const state = makeExecutionState();
+    // No source_control set
+    const originalCurrentTask = state.execution.phases[0].current_task;
+    const result = handleTaskCommitRequested(state, {}, defaultConfig);
+    assert.equal(state.execution.phases[0].current_task, originalCurrentTask + 1);
+    assert.ok(result.mutations_applied.some(m => m.includes('skipping commit')));
+  });
+
+  it('source_control.branch empty string: bumps pointer', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: '',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const originalCurrentTask = state.execution.phases[0].current_task;
+    const result = handleTaskCommitRequested(state, {}, defaultConfig);
+    assert.equal(state.execution.phases[0].current_task, originalCurrentTask + 1);
+  });
+
+  it('returns mutations_applied array in both paths', () => {
+    const stateWithBranch = makeExecutionState();
+    stateWithBranch.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    const result1 = handleTaskCommitRequested(stateWithBranch, {}, defaultConfig);
+    assert.ok(Array.isArray(result1.mutations_applied));
+    assert.ok(result1.mutations_applied.length > 0);
+
+    const stateWithoutBranch = makeExecutionState();
+    const result2 = handleTaskCommitRequested(stateWithoutBranch, {}, defaultConfig);
+    assert.ok(Array.isArray(result2.mutations_applied));
+    assert.ok(result2.mutations_applied.length > 0);
+  });
+});
+
+// ─── handleTaskCommitted ────────────────────────────────────────────────────
+
+describe('handleTaskCommitted', () => {
+  it('always bumps phase.current_task by 1', () => {
+    const state = makeExecutionState();
+    const originalCurrentTask = state.execution.phases[0].current_task;
+    const result = handleTaskCommitted(state, {}, defaultConfig);
+    assert.equal(state.execution.phases[0].current_task, originalCurrentTask + 1);
+  });
+
+  it('returns mutations_applied with descriptive entry', () => {
+    const state = makeExecutionState();
+    const result = handleTaskCommitted(state, {}, defaultConfig);
+    assert.ok(result.mutations_applied.some(m => m.toLowerCase().includes('task committed') || m.toLowerCase().includes('current_task')));
+  });
+
+  it('non-commitHash context fields (task_id, committed, pushed) do not affect pointer progression', () => {
+    const state1 = makeExecutionState();
+    const state2 = makeExecutionState();
+    const result1 = handleTaskCommitted(state1, {}, defaultConfig);
+    const result2 = handleTaskCommitted(state2, { task_id: 'P01-T01', committed: true, pushed: false }, defaultConfig);
+    assert.equal(state1.execution.phases[0].current_task, state2.execution.phases[0].current_task);
+  });
+
+  it('writes context.commitHash to task.commit_hash before pointer advances', () => {
+    const state = makeExecutionState();
+    // current_task starts at 1 (1-based), so taskIndex = 0
+    const result = handleTaskCommitted(state, { commitHash: 'abc123def456' }, defaultConfig);
+    assert.equal(state.execution.phases[0].tasks[0].commit_hash, 'abc123def456');
+    // pointer must still have advanced
+    assert.equal(state.execution.phases[0].current_task, 2);
+  });
+
+  it('writes null to task.commit_hash when context.commitHash is undefined', () => {
+    const state = makeExecutionState();
+    handleTaskCommitted(state, {}, defaultConfig);
+    assert.equal(state.execution.phases[0].tasks[0].commit_hash, null);
+  });
+
+  it('writes null to task.commit_hash when context.commitHash is null', () => {
+    const state = makeExecutionState();
+    handleTaskCommitted(state, { commitHash: null }, defaultConfig);
+    assert.equal(state.execution.phases[0].tasks[0].commit_hash, null);
+  });
+});
+
+// ─── handlePrRequested ──────────────────────────────────────────────────────
+
+describe('handlePrRequested', () => {
+  it('validation passes when branch is present', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.ok(result.mutations_applied.some(m => m.includes('PR request validated')));
+    // State unchanged — no new fields, no mutations to source_control
+    assert.equal(state.pipeline.source_control.branch, 'feat/x');
+    assert.equal(state.pipeline.source_control.base_branch, 'main');
+    assert.equal(state.pipeline.source_control.worktree_path, '/wt');
+    assert.equal(state.pipeline.source_control.auto_commit, 'always');
+    assert.equal(state.pipeline.source_control.auto_pr, 'always');
+  });
+
+  it('graceful skip when source_control is absent', () => {
+    const state = makeExecutionState();
+    // No pipeline.source_control
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.ok(result.mutations_applied.some(m => m.includes('skipping PR creation')));
+    assert.equal(state.pipeline.source_control, undefined);
+  });
+
+  it('graceful skip when branch is falsy (empty string)', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: '',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.ok(result.mutations_applied.some(m => m.includes('skipping PR creation')));
+  });
+
+  it('graceful skip when branch is null', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: null,
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrRequested(state, {}, defaultConfig);
+    assert.ok(result.mutations_applied.some(m => m.includes('skipping PR creation')));
+  });
+
+  it('returns mutations_applied array in both paths', () => {
+    const stateWithBranch = makeExecutionState();
+    stateWithBranch.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result1 = handlePrRequested(stateWithBranch, {}, defaultConfig);
+    assert.ok(Array.isArray(result1.mutations_applied));
+    assert.ok(result1.mutations_applied.length > 0);
+
+    const stateWithoutBranch = makeExecutionState();
+    const result2 = handlePrRequested(stateWithoutBranch, {}, defaultConfig);
+    assert.ok(Array.isArray(result2.mutations_applied));
+    assert.ok(result2.mutations_applied.length > 0);
+  });
+
+  it('does NOT advance phase.current_task in either path', () => {
+    const stateWithBranch = makeExecutionState();
+    stateWithBranch.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const originalTask1 = stateWithBranch.execution.phases[0].current_task;
+    handlePrRequested(stateWithBranch, {}, defaultConfig);
+    assert.equal(stateWithBranch.execution.phases[0].current_task, originalTask1);
+
+    const stateWithoutBranch = makeExecutionState();
+    const originalTask2 = stateWithoutBranch.execution.phases[0].current_task;
+    handlePrRequested(stateWithoutBranch, {}, defaultConfig);
+    assert.equal(stateWithoutBranch.execution.phases[0].current_task, originalTask2);
+  });
+});
+
+// ─── handlePrCreated ────────────────────────────────────────────────────────
+
+describe('handlePrCreated', () => {
+  it('writes pr_url to state when context.pr_url is provided', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/42' }, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, 'https://github.com/org/repo/pull/42');
+  });
+
+  it('writes null when context.pr_url is undefined', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, {}, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, null);
+  });
+
+  it('writes null when context.pr_url is explicitly null', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, { pr_url: null }, defaultConfig);
+    assert.equal(state.pipeline.source_control.pr_url, null);
+  });
+
+  it('always succeeds unconditionally (does not throw)', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/42' }, defaultConfig);
+    assert.ok(result.state);
+    assert.ok(Array.isArray(result.mutations_applied));
+  });
+
+  it('mutations_applied includes exactly 1 entry containing pr_url', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    const result = handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/42' }, defaultConfig);
+    assert.equal(result.mutations_applied.length, 1);
+    assert.ok(result.mutations_applied[0].includes('pr_url'));
+  });
+
+  it('does not add extra fields to source_control', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/42' }, defaultConfig);
+    const keys = Object.keys(state.pipeline.source_control).sort();
+    assert.deepEqual(keys, ['auto_commit', 'auto_pr', 'base_branch', 'branch', 'pr_url', 'worktree_path']);
+  });
+
+  it('does not modify other source_control fields', () => {
+    const state = makeExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'always',
+    };
+    handlePrCreated(state, { pr_url: 'https://github.com/org/repo/pull/42' }, defaultConfig);
+    assert.equal(state.pipeline.source_control.branch, 'feat/x');
+    assert.equal(state.pipeline.source_control.base_branch, 'main');
+    assert.equal(state.pipeline.source_control.worktree_path, '/wt');
+    assert.equal(state.pipeline.source_control.auto_commit, 'always');
+    assert.equal(state.pipeline.source_control.auto_pr, 'always');
+  });
+});
+
 // ─── Review State Helper ────────────────────────────────────────────────────
 
 function makeReviewState() {
@@ -1339,17 +1844,13 @@ function makeReviewState() {
               stage: 'complete',
               docs: {
                 handoff: 'tasks/TASK-P01-T01.md',
-                report: 'reports/TASK-REPORT-P01-T01.md',
                 review: 'reviews/REVIEW-P01-T01.md',
               },
               review: {
                 verdict: 'approved',
                 action: 'advanced',
               },
-              has_deviations: false,
-              deviation_type: null,
               retries: 0,
-              report_status: 'complete',
             },
           ],
           docs: {
@@ -1596,9 +2097,9 @@ describe('handleFinalRejected', () => {
   });
 });
 
-// ─── getMutation dispatch for all 22 events ─────────────────────────────────
+// ─── getMutation dispatch for all 27 events ─────────────────────────────────
 
-describe('getMutation (all 22 events)', () => {
+describe('getMutation (all 27 events)', () => {
   const allEvents = [
     'research_completed',
     'prd_completed',
@@ -1615,6 +2116,11 @@ describe('getMutation (all 22 events)', () => {
     'code_review_completed',
     'phase_report_created',
     'phase_review_completed',
+    'source_control_init',
+    'task_commit_requested',
+    'task_committed',
+    'pr_requested',
+    'pr_created',
     'gate_mode_set',
     'gate_approved',
     'gate_rejected',
@@ -1630,12 +2136,12 @@ describe('getMutation (all 22 events)', () => {
     });
   }
 
-  it('has exactly 22 registered events', () => {
+  it('has exactly 27 registered events', () => {
     let count = 0;
     for (const event of allEvents) {
       if (getMutation(event)) count++;
     }
-    assert.equal(count, 22);
+    assert.equal(count, 27);
   });
 
   it('does NOT contain task_approved', () => {
@@ -1644,5 +2150,104 @@ describe('getMutation (all 22 events)', () => {
 
   it('does NOT contain phase_approved', () => {
     assert.equal(getMutation('phase_approved'), undefined);
+  });
+});
+
+// ─── handleCodeReviewCompleted — state-first max_retries_per_task ────────────
+
+describe('handleCodeReviewCompleted — state-first max_retries_per_task (snapshot-present)', () => {
+  it('uses state.config.limits.max_retries_per_task = 0 as valid falsy value (not falling through ?? to config)', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = null;
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    state.execution.phases[0].tasks[0].retries = 0;
+    state.config = makeConfig({ limits: { max_retries_per_task: 0 } });
+    const cfg = makeConfig();
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'reviews/R.md', verdict: 'changes_requested' }, cfg);
+    const task = result.state.execution.phases[0].tasks[0];
+    // snapshot max_retries = 0: checkRetryBudget(0, 0) = false → halted
+    // With || instead of ??: 0 is falsy → falls to config max=2 → corrective_task_issued (wrong)
+    assert.equal(task.status, 'halted', 'snapshot max_retries=0 exhausts budget immediately; if || were used, config max=2 would give corrective instead');
+    assert.equal(task.review.action, 'halted');
+  });
+});
+
+describe('handleCodeReviewCompleted — state-first max_retries_per_task (snapshot-absent)', () => {
+  it('falls back to config.limits.max_retries_per_task when state.config is absent', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = null;
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    state.execution.phases[0].tasks[0].retries = 0;
+    // No state.config — snapshot absent; config fallback (max_retries_per_task: 2) applies
+    const cfg = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'reviews/R.md', verdict: 'changes_requested' }, cfg);
+    const task = result.state.execution.phases[0].tasks[0];
+    // config max_retries = 2: checkRetryBudget(0, 2) = true → corrective_task_issued
+    assert.equal(task.status, 'failed', 'config max_retries=2 allows retry; task fails with corrective action');
+    assert.equal(task.review.action, 'corrective_task_issued');
+  });
+});
+
+// ─── handleCodeReviewCompleted — state-first execution_mode ──────────────────
+
+describe('handleCodeReviewCompleted — state-first execution_mode (snapshot-present)', () => {
+  it('uses state.config.human_gates.execution_mode = "task" to defer phase.current_task advancement', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = null; // null ?? "task" = "task"
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    state.config = makeConfig({ human_gates: { execution_mode: 'task' } });
+    const cfg = makeConfig();
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'reviews/R.md', verdict: 'approved' }, cfg);
+    const phase = result.state.execution.phases[0];
+    // effectiveGateMode = null ?? 'task' = 'task' → pointer deferred to handleGateApproved
+    assert.equal(phase.current_task, 1, 'current_task must NOT advance when snapshot execution_mode is "task"');
+  });
+});
+
+describe('handleCodeReviewCompleted — state-first execution_mode (snapshot-absent)', () => {
+  it('falls back to config.human_gates.execution_mode = "autonomous" to advance phase.current_task', () => {
+    const state = makeExecutionState();
+    state.pipeline.gate_mode = null; // null ?? undefined ?? "autonomous" = "autonomous"
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    // No state.config — snapshot absent; config fallback (execution_mode: 'autonomous') applies
+    const cfg = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'reviews/R.md', verdict: 'approved' }, cfg);
+    const phase = result.state.execution.phases[0];
+    // effectiveGateMode = null ?? undefined ?? 'autonomous' = 'autonomous' → pointer advances
+    assert.equal(phase.current_task, 2, 'current_task must advance when no snapshot and config execution_mode is "autonomous"');
+  });
+});
+
+// ─── handlePhaseReviewCompleted — state-first execution_mode ─────────────────
+
+describe('handlePhaseReviewCompleted — state-first execution_mode (snapshot-present)', () => {
+  it('uses state.config.human_gates.execution_mode = "phase" to defer execution.current_phase advancement', () => {
+    const state = makeExecutionState({ totalPhases: 2 });
+    state.pipeline.gate_mode = null; // null ?? "phase" = "phase"
+    state.config = makeConfig({ human_gates: { execution_mode: 'phase' } });
+    const cfg = makeConfig();
+    const handler = getMutation('phase_review_completed');
+    const result = handler(state, { doc_path: 'reviews/PHASE-REVIEW-P01.md', verdict: 'approved', exit_criteria_met: true }, cfg);
+    const execution = result.state.execution;
+    // effectiveGateMode = null ?? 'phase' = 'phase' → pointer deferred to handleGateApproved
+    assert.equal(execution.current_phase, 1, 'current_phase must NOT advance when snapshot execution_mode is "phase"');
+  });
+});
+
+describe('handlePhaseReviewCompleted — state-first execution_mode (snapshot-absent)', () => {
+  it('falls back to config.human_gates.execution_mode = "autonomous" to advance execution.current_phase', () => {
+    const state = makeExecutionState({ totalPhases: 2 });
+    state.pipeline.gate_mode = null; // null ?? undefined ?? "autonomous" = "autonomous"
+    // No state.config — snapshot absent; config fallback (execution_mode: 'autonomous') applies
+    const cfg = { limits: { max_retries_per_task: 2 }, human_gates: { execution_mode: 'autonomous' } };
+    const handler = getMutation('phase_review_completed');
+    const result = handler(state, { doc_path: 'reviews/PHASE-REVIEW-P01.md', verdict: 'approved', exit_criteria_met: true }, cfg);
+    const execution = result.state.execution;
+    // effectiveGateMode = null ?? undefined ?? 'autonomous' = 'autonomous' → pointer advances
+    assert.equal(execution.current_phase, 2, 'current_phase must advance when no snapshot and config execution_mode is "autonomous"');
   });
 });

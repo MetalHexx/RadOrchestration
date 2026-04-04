@@ -15,9 +15,9 @@ export type PhaseStatus = 'not_started' | 'in_progress' | 'complete' | 'halted';
 
 export type TaskStatus = 'not_started' | 'in_progress' | 'complete' | 'failed' | 'halted';
 
-export type TaskStage = 'planning' | 'coding' | 'reporting' | 'reviewing' | 'complete' | 'failed';
+export type TaskStage = 'planning' | 'coding' | 'reviewing' | 'complete' | 'failed';
 
-export type PhaseStage = 'planning' | 'executing' | 'reporting' | 'reviewing' | 'complete' | 'failed';
+export type PhaseStage = 'planning' | 'executing' | 'reviewing' | 'complete' | 'failed';
 
 export type FinalReviewStatus = 'not_started' | 'in_progress' | 'complete';
 
@@ -46,6 +46,19 @@ export interface ProjectState {
   final_review: FinalReview;
 }
 
+// ─── Source Control ──────────────────────────────────────────────────────────
+
+export interface SourceControl {
+  branch: string;
+  base_branch: string;
+  worktree_path: string;
+  auto_commit: 'always' | 'never';
+  auto_pr: 'always' | 'never';
+  remote_url?: string | null;
+  compare_url?: string | null;
+  pr_url?: string | null;
+}
+
 // ─── Top-Level Sections ──────────────────────────────────────────────────────
 
 export interface ProjectMeta {
@@ -56,7 +69,8 @@ export interface ProjectMeta {
 
 export interface Pipeline {
   current_tier: PipelineTier;
-  gate_mode: GateMode | null;   // null = fall back to global config
+  gate_mode: GateMode | null;         // null = fall back to global config
+  source_control?: SourceControl;     // optional — absent on pre-feature state files
 }
 
 export interface PlanningState {
@@ -114,15 +128,12 @@ export interface Task {
   stage: TaskStage;
   docs: TaskDocs;
   review: TaskReviewResult;
-  report_status: 'complete' | 'failed' | null;
-  has_deviations: boolean;
-  deviation_type: string | null;
   retries: number;
+  commit_hash?: string | null;   // null or missing for pre-feature state files
 }
 
 export interface TaskDocs {
   handoff: string | null;
-  report: string | null;
   review: string | null;
 }
 

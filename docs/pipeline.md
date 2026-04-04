@@ -1,6 +1,6 @@
 # Pipeline
 
-The orchestration pipeline takes a project from idea through planning, execution, and review. The Orchestrator operates as an event-driven controller: it signals events to `pipeline.js`, parses JSON results, and routes on a 19-action table. The pipeline script (`pipeline.js`) is the sole state-mutation authority — it internalizes all state transitions, validation, and next-action resolution to maximize determinism in your agentic SDLC.
+The orchestration pipeline takes a project from idea through planning, execution, and review. The Orchestrator coordinates each step — spawning specialized agents, enforcing human gates, and managing state transitions automatically. A pipeline script handles all state mutations, ensuring every run is deterministic and reproducible.
 
 ```mermaid
 flowchart LR
@@ -53,12 +53,6 @@ flowchart LR
 | `complete` | Code review approved — terminal |
 | `failed` | Review verdict was `changes_requested` — Tactical Planner creates a corrective task handoff to re-enter at `coding` if retries remain; terminal if retries exhausted |
 
-> **Note:** `reporting` is a reserved enum value in the schema but is not set by any current mutation handler.
-
-Allowed task stage transitions:
-
-See [constants.js](../.github/skills/orchestration/scripts/lib/constants.js) for the full transition map.
-
 ### Phase Stage Lifecycle
 
 ```mermaid
@@ -75,10 +69,6 @@ flowchart LR
 | `reviewing` | Phase report/review is in progress |
 | `complete` | Phase review approved — terminal |
 | `failed` | Phase review verdict was `changes_requested` — Tactical Planner creates a corrective Phase Plan re-entering execution; or phase review was `rejected` — pipeline halts |
-
-Allowed phase stage transitions:
-
-See [constants.js](../.github/skills/orchestration/scripts/lib/constants.js) for the full transition map.
 
 ## Planning Pipeline
 
@@ -141,6 +131,8 @@ Each planning step runs sequentially in fixed order:
 | 4. Architecture | Architect | `ARCHITECTURE.md` |
 | 5. Master Plan | Architect | `MASTER-PLAN.md` |
 
+Each planning step receives all outputs from preceding steps: the Product Manager reads the Research Findings; the UX Designer reads the PRD; the Architect reads the PRD and Design; and the Master Plan synthesizes all four. This chain ensures every document is grounded in the decisions before it.
+
 After all steps complete, the system transitions to a **human gate** — the Master Plan must be reviewed and approved before execution begins.
 
 ## Execution Pipeline
@@ -169,7 +161,7 @@ sequenceDiagram
             Note over ORC: event task_handoff_created
 
             ORC->>COD: Execute task
-            COD-->>ORC: TASK-REPORT.md
+            COD-->>ORC: task_completed signal
             Note over ORC: event task_completed<br/>stage → reviewing, status stays in_progress
 
             ORC->>REV: Review code
@@ -207,11 +199,11 @@ sequenceDiagram
 Each task progresses through a deterministic lifecycle:
 
 1. **Handoff** — Tactical Planner creates a self-contained Task Handoff document; task `stage` advances to `coding`
-2. **Execution** — Coder implements the task and produces a Task Report; the `task_completed` event sets `stage → reviewing` while `status` **remains `in_progress`** — the task is not complete yet, it is waiting for review
-3. **Review** — Reviewer evaluates the code against PRD, architecture, and design
+2. **Execution** — Coder implements the task (code + tests only); the `task_completed` event sets `stage → reviewing` while `status` **remains `in_progress`** — the task is not complete yet, it is waiting for review
+3. **Review** — Reviewer evaluates the code in two passes: conformance against the planning documents (PRD, architecture, design), then an independent assessment of code quality (correctness, security, test coverage, and general best practices)
 4. **Resolution** — Pipeline script processes the `code_review_completed` event: if approved, `status → complete` and `stage → complete`; if `changes_requested` with retries remaining, `status → failed` and `stage → failed` (retries incremented) — the Tactical Planner then creates a corrective task handoff, which resets `status → in_progress` and `stage → coding`; if `changes_requested` with no retries remaining, `status → halted` and `stage → failed`
 
-> **Note:** `complete` is truly terminal for tasks. A task that reaches `status = complete` cannot be retried or failed. The retry path is corrective re-entry: on `changes_requested`, the task transitions to `status = failed`, `stage = failed` (retries incremented); the Tactical Planner then creates a corrective task handoff which resets `status → in_progress`, `stage → coding`, and clears the stale report and review docs.
+> **Note:** `complete` is truly terminal for tasks. A task that reaches `status = complete` cannot be retried or failed. The retry path is corrective re-entry: on `changes_requested`, the task transitions to `status = failed`, `stage = failed` (retries incremented); the Tactical Planner then creates a corrective task handoff which resets `status → in_progress`, `stage → coding`, and clears the stale review doc.
 
 ### Phase Lifecycle
 
@@ -262,80 +254,20 @@ The pipeline script encodes this logic in a deterministic decision table — the
 
 ## Pipeline Routing
 
-Pipeline routing is event-driven. The Orchestrator signals events to `pipeline.js` and receives one of 19 possible actions in the JSON result. All routing is deterministic: the same event combined with the same `state.json` always produces the same result.
+Pipeline routing is event-driven. The Orchestrator signals events and receives actions in response. All routing is deterministic: the same event with the same project state always produces the same result.
 
-The Orchestrator calls `pipeline.js`, reads `result.action`, and performs the corresponding operation (spawn an agent, present a human gate, or terminate the loop).
+The Orchestrator reads the returned action and performs the corresponding operation — spawning an agent, presenting a human gate, or terminating the loop.
 
-See [Deterministic Scripts](scripts.md) for the full event vocabulary and CLI reference.
+See [Deterministic Scripts](internals/scripts.md) for the full event vocabulary and CLI reference.
 
-### Master Plan Pre-Read
-
-When the engine processes the `plan_approved` event, it performs a pre-read of the master plan document before applying the mutation:
-
-1. Reads the master plan path from the `planning.steps` array (the step with `name: 'master_plan'`, index 4) → `doc_path`
-2. Loads the document via `io.readDocument()`
-3. Extracts `total_phases` from the document's YAML frontmatter
-4. Validates that `total_phases` is a positive integer
-5. Injects the value into the mutation context as `context.total_phases`
-
-The `handlePlanApproved` mutation then uses `context.total_phases` to initialize `execution.phases[]` with the correct number of phase entries (each starting as `not_started` with empty tasks). **`total_phases` is not stored in `state.json`** — it is derived from `phases.length` at runtime when needed.
-
-**Error conditions** — all produce a hard error (exit 1, no state written):
-
-| Condition | Error |
-|-----------|-------|
-| Master plan `doc_path` not in context and not derivable from state | `"Cannot derive master plan path: state.planning.steps[4].doc_path is not set"` |
-| Document not found at the resolved path | `"Document not found at '{path}'"` |
-| `total_phases` missing from frontmatter | `"Missing required field"` (event=`plan_approved`, field=`total_phases`) |
-| `total_phases` not a positive integer | `"Invalid value: total_phases must be a positive integer"` (event=`plan_approved`, field=`total_phases`) |
-
-### Status Normalization
-
-When the engine processes the `task_completed` event, the existing task report pre-read step normalizes the report's `status` field from frontmatter before passing it to the mutation:
-
-| Raw Value | Normalized Value |
-|-----------|------------------|
-| `complete` | `complete` |
-| `pass` | `complete` |
-| `partial` | `complete` (legacy — mapped for backward compatibility) |
-| `failed` | `failed` |
-| `fail` | `failed` |
-| Anything else | **Hard error** (exit 1) |
-
-The canonical task report status values are `complete` and `failed`. The synonyms `pass` and `fail` are normalized to their canonical forms. The legacy value `partial` is mapped to `complete` for backward compatibility — under the current binary model, a task that met its acceptance criteria (even with pre-existing issues outside its scope) is `complete`. Any unrecognized status value produces a hard error (exit 1).
-
-The `generate-task-report` skill enforces the canonical values at the source. Coders document pre-existing or out-of-scope concerns in the Task Report's "Pre-existing Issues" section rather than using a middle-ground status.
-
-### 19-Action Routing Table
-
-| # | Action | Category | Orchestrator Operation |
-|---|--------|----------|----------------------|
-| 1 | `spawn_research` | Agent spawn | Spawn Research agent |
-| 2 | `spawn_prd` | Agent spawn | Spawn Product Manager |
-| 3 | `spawn_design` | Agent spawn | Spawn UX Designer |
-| 4 | `spawn_architecture` | Agent spawn | Spawn Architect |
-| 5 | `spawn_master_plan` | Agent spawn | Spawn Architect (master plan) |
-| 6 | `create_phase_plan` | Agent spawn | Spawn Tactical Planner (phase plan mode) |
-| 7 | `create_task_handoff` | Agent spawn | Spawn Tactical Planner (handoff mode) |
-| 8 | `execute_task` | Agent spawn | Spawn Coder |
-| 9 | `spawn_code_reviewer` | Agent spawn | Spawn Reviewer (task review) |
-| 10 | `spawn_phase_reviewer` | Agent spawn | Spawn Reviewer (phase review) |
-| 11 | `generate_phase_report` | Agent spawn | Spawn Tactical Planner (report mode) |
-| 12 | `spawn_final_reviewer` | Agent spawn | Spawn Reviewer (final review) |
-| 13 | `request_plan_approval` | Human gate | Present master plan for approval |
-| 14 | `request_final_approval` | Human gate | Present final review for approval |
-| 15 | `gate_task` | Human gate | Present task results for approval |
-| 16 | `gate_phase` | Human gate | Present phase results for approval |
-| 17 | `ask_gate_mode` | Human gate | Prompt human for execution gate mode preference |
-| 18 | `display_halted` | Terminal | Display halt message — loop terminates |
-| 19 | `display_complete` | Terminal | Display completion — loop terminates |
+For dependency scheduling and task ordering, see [Dependency Model](internals/dependency-model.md).
 
 ## State Management
 
-Pipeline state is tracked in `state.json` — see [Project Structure](project-structure.md) for the full state schema and invariants, and [`state-v4.schema.json`](../.github/skills/orchestration/schemas/state-v4.schema.json) for the formal v4 JSON Schema.
+Pipeline state is tracked in `state.json` — see [Project Structure](project-structure.md) for the file layout and naming conventions.
 
 Key rules:
-- Only the pipeline script (`pipeline.js`) writes `state.json`
+- Only the pipeline script writes `state.json`
 - Every state mutation is validated against invariants before being written to disk. Invalid state never reaches disk.
 - Task `status` transitions follow a strict map — `complete` is **terminal** (no `complete → failed` path exists):
   ```mermaid
@@ -350,28 +282,14 @@ Key rules:
   ```
 - Task `stage` tracks precise work focus within `in_progress` — the resolver matches on `stage` to determine the next action
 - All index references (phases, tasks) are **1-based**: `current_phase = 1` means the first phase; `current_task = 1` means the first task within the current phase
-- Only one task can be `in_progress` at a time across the entire project (for now — parallel execution is a future enhancement)
-
-### Key Field Paths
-
-| Concept | v4 Field Path |
-|---------|--------------|
-| Active pipeline tier | `pipeline.current_tier` |
-| Task handoff document | `task.docs.handoff` |
-| Task report document | `task.docs.report` |
-| Task review document | `task.docs.review` |
-| Task review verdict | `task.review.verdict` |
-| Task review action | `task.review.action` |
-| Phase plan document | `phase.docs.phase_plan` |
-| Phase report document | `phase.docs.phase_report` |
-| Phase review document | `phase.docs.phase_review` |
-| Phase review verdict | `phase.review.verdict` |
-| Phase review action | `phase.review.action` |
-| Final review document | `final_review.doc_path` |
-| Final review status | `final_review.status` |
-| Final review human approval | `final_review.human_approved` |
+- Only one task is active at a time across the entire project.
 
 ## Next Steps
 
-- [Scripts Reference](scripts.md) — Full event vocabulary, action definitions, and CLI interface
-- [Project Structure](project-structure.md) — State schema, file layout, and project directory conventions
+- [Agents](agents.md) — The 12 specialized agents and their roles in the pipeline
+- [Configuration](configuration.md) — System settings, limits, and human gate configuration
+- [Scripts Reference](internals/scripts.md) — Full event vocabulary, action definitions, and CLI interface
+- [Dependency Model](internals/dependency-model.md) — Dependency scheduling between tasks
+- [System Architecture](internals/system-architecture.md) — Runtime architecture, services, data flows, and integration points
+- [Planning Pipeline Overhaul](internals/planning-pipeline-overhaul.md) — Analysis and reform plan for the planning pipeline
+- [Project Structure](project-structure.md) — File layout, naming conventions, and document types

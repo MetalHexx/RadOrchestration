@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { processEvent } = require('../lib/pipeline-engine');
+const { processEvent, scaffoldInitialState } = require('../lib/pipeline-engine');
 const {
   createMockIO,
   createBaseState,
@@ -65,7 +65,7 @@ function makeExecutionStartState(totalPhases) {
       ],
     },
     execution: {
-      status: 'in_progress',
+      status: 'not_started',
       current_phase: 1,
       phases,
     },
@@ -82,7 +82,6 @@ describe('Category 1: Full happy path', () => {
   const documents = {
     'mp.md': makeDoc({ total_phases: 1 }),
     'pp.md': makeDoc({ tasks: ['T01'] }),
-    'tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     'cr.md': makeDoc({ verdict: 'approved' }),
     'prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
   };
@@ -255,7 +254,7 @@ describe('Category 1: Full happy path', () => {
   });
 
   it('Step 10: task_completed → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'tr.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -316,13 +315,10 @@ describe('Category 1: Full happy path', () => {
 describe('Category 2: Multi-phase multi-task', () => {
   const documents = {
     'c2-pp1.md': makeDoc({ tasks: ['T01', 'T02'] }),
-    'c2-tr1.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     'c2-cr1.md': makeDoc({ verdict: 'approved' }),
-    'c2-tr2.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     'c2-cr2.md': makeDoc({ verdict: 'approved' }),
     'c2-prv1.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
     'c2-pp2.md': makeDoc({ tasks: ['T01'] }),
-    'c2-tr-p2.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     'c2-cr-p2.md': makeDoc({ verdict: 'approved' }),
     'c2-prv2.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
   };
@@ -373,7 +369,7 @@ describe('Category 2: Multi-phase multi-task', () => {
   });
 
   it('P1 Step 3: task_completed (T01) → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c2-tr1.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -414,7 +410,7 @@ describe('Category 2: Multi-phase multi-task', () => {
   });
 
   it('P1 Step 6: task_completed (T02) → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c2-tr2.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -500,7 +496,7 @@ describe('Category 2: Multi-phase multi-task', () => {
   });
 
   it('P2 Step 12: task_completed → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c2-tr-p2.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -650,19 +646,23 @@ describe('Category 4: Pre-read validation failures', () => {
     assert.equal(result.context.field, 'total_phases');
   });
 
-  it('task_completed — missing status', () => {
-    const state = createBaseState();
+  it('task_completed — pass-through pre-read succeeds (no document validation)', () => {
+    // task_completed is now a pass-through — no pre-read validation occurs.
+    // With a proper execution state, the mutation succeeds.
+    const state = createExecutionState();
     delete state.project.updated;
+    state.execution.phases[0].current_task = 1;
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    state.execution.phases[0].tasks[0].stage = 'coding';
+    state.execution.phases[0].tasks[0].docs.handoff = 'h.md';
     const io = createMockIO({
       state,
-      documents: { 'bad-tr.md': makeDoc({ has_deviations: false, deviation_type: null }) },
+      documents: {},
     });
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'bad-tr.md' }, io);
-    assert.equal(result.success, false);
-    assert.equal(result.action, null);
-    assert.equal(io.getWrites().length, 0);
-    assert.equal(result.context.event, 'task_completed');
-    assert.equal(result.context.field, 'status');
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, 1);
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'reviewing');
   });
 
   it('code_review_completed — missing verdict', () => {
@@ -719,7 +719,6 @@ describe('Category 4: Pre-read validation failures', () => {
 describe('Category 5: Phase lifecycle', () => {
   const documents = {
     'c5-pp.md': makeDoc({ tasks: ['T01'] }),
-    'c5-tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
     'c5-cr.md': makeDoc({ verdict: 'approved' }),
     'c5-prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
   };
@@ -748,7 +747,7 @@ describe('Category 5: Phase lifecycle', () => {
   });
 
   it('task_completed → spawn_code_reviewer', () => {
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c5-tr.md' }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'spawn_code_reviewer');
@@ -804,10 +803,8 @@ describe('Category 6: Halt paths', () => {
           current_task: 1,
           tasks: [{
             name: 'T01', status: 'in_progress', stage: 'coding',
-            docs: { handoff: 'h.md', report: null, review: null },
+            docs: { handoff: 'h.md', review: null },
             review: { verdict: null, action: null },
-            report_status: null,
-            has_deviations: false, deviation_type: null,
             retries: 0,
           }],
           docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
@@ -817,14 +814,13 @@ describe('Category 6: Halt paths', () => {
     });
     delete state.project.updated;
     const documents = {
-      'c6a-tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
       'c6a-cr.md': makeDoc({ verdict: 'rejected' }),
     };
     const io = createMockIO({ state, documents });
     let writeCount = 0;
 
     it('task_completed → spawn_code_reviewer', () => {
-      const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c6a-tr.md' }, io);
+      const result = processEvent('task_completed', PROJECT_DIR, {}, io);
       writeCount++;
       assert.equal(result.success, true);
       assert.equal(result.action, 'spawn_code_reviewer');
@@ -856,10 +852,8 @@ describe('Category 6: Halt paths', () => {
           current_task: 1,
           tasks: [{
             name: 'T01', status: 'in_progress', stage: 'coding',
-            docs: { handoff: 'h.md', report: null, review: null },
+            docs: { handoff: 'h.md', review: null },
             review: { verdict: null, action: null },
-            report_status: null,
-            has_deviations: false, deviation_type: null,
             retries: 2,
           }],
           docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
@@ -869,14 +863,13 @@ describe('Category 6: Halt paths', () => {
     });
     delete state.project.updated;
     const documents = {
-      'c6b-tr.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
       'c6b-cr.md': makeDoc({ verdict: 'changes_requested' }),
     };
     const io = createMockIO({ state, documents });
     let writeCount = 0;
 
     it('task_completed → spawn_code_reviewer', () => {
-      const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c6b-tr.md' }, io);
+      const result = processEvent('task_completed', PROJECT_DIR, {}, io);
       writeCount++;
       assert.equal(result.success, true);
       assert.equal(result.action, 'spawn_code_reviewer');
@@ -907,10 +900,9 @@ describe('Category 6: Halt paths', () => {
           current_task: 1,
           tasks: [{
             name: 'T01', status: 'complete', stage: 'complete',
-            docs: { handoff: 'h.md', report: 'r.md', review: 'rv.md' },
+            docs: { handoff: 'h.md', review: 'rv.md' },
             review: { verdict: 'approved', action: 'advanced' },
-            has_deviations: false, deviation_type: null,
-            retries: 0, report_status: 'complete',
+            retries: 0,
           }],
           docs: { phase_plan: 'pp.md', phase_report: 'pr.md', phase_review: null },
           review: { verdict: null, action: null },
@@ -939,7 +931,7 @@ describe('Category 6: Halt paths', () => {
 // ─── Category 7: Pre-read failure flows ─────────────────────────────────────
 
 describe('Category 7: Pre-read failure flows', () => {
-  it('(a) Missing document (readDocument returns null)', () => {
+  it('(a) task_completed pass-through succeeds even with missing document', () => {
     const state = createExecutionState();
     delete state.project.updated;
     // Set task to in_progress with handoff so we can fire task_completed
@@ -948,10 +940,11 @@ describe('Category 7: Pre-read failure flows', () => {
     state.execution.phases[0].tasks[0].docs.handoff = 'h.md';
     state.execution.phases[0].current_task = 1;
     const io = createMockIO({ state, documents: {} });
-    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'nonexistent.md' }, io);
-    assert.equal(result.success, false);
-    assert.equal(result.action, null);
-    assert.equal(io.getWrites().length, 0);
+    // task_completed is now a pass-through — no document needed
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, 1);
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'reviewing');
   });
 
   it('(b) Null frontmatter', () => {
@@ -1082,16 +1075,12 @@ describe('Category 11 — Corrective Task Flow', () => {
           stage: 'failed',
           docs: {
             handoff: 'c11-original-handoff.md',
-            report: 'c11-report.md',
             review: 'c11-review.md',
           },
           review: {
             verdict: 'changes_requested',
             action: 'corrective_task_issued',
           },
-          report_status: 'complete',
-          has_deviations: false,
-          deviation_type: null,
           retries: 1,
         }],
         docs: { phase_plan: 'pp.md', phase_report: null, phase_review: null },
@@ -1102,7 +1091,7 @@ describe('Category 11 — Corrective Task Flow', () => {
   delete state.project.updated;
 
   const documents = {
-    'c11-corrective-report.md': makeDoc({ status: 'complete', has_deviations: false, deviation_type: null }),
+    'c11-corrective-report.md': makeDoc({}),
   };
 
   const io = createMockIO({ state, documents });
@@ -1121,9 +1110,7 @@ describe('Category 11 — Corrective Task Flow', () => {
     assert.equal(task.docs.handoff, 'c11-corrective-handoff.md');
     assert.equal(task.stage, 'coding');
 
-    // All five stale fields cleared to null
-    assert.equal(task.docs.report, null);
-    assert.equal(task.report_status, null);
+    // Stale fields cleared to null
     assert.equal(task.docs.review, null);
     assert.equal(task.review.verdict, null);
     assert.equal(task.review.action, null);
@@ -1136,5 +1123,569 @@ describe('Category 11 — Corrective Task Flow', () => {
     assert.equal(result.action, 'spawn_code_reviewer');
     assert.equal(io.getWrites().length, writeCount);
     assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'reviewing');
+  });
+});
+
+// ─── Category 12: Commit-enabled happy path (auto_commit=always) ────────────
+
+describe('Category 12: Commit-enabled happy path (auto_commit=always)', () => {
+  const documents = {
+    'c12-pp.md': makeDoc({ tasks: ['T01', 'T02'] }),
+    'c12-th1.md': makeDoc({}),
+    'c12-tr1.md': makeDoc({}),
+    'c12-cr1.md': makeDoc({ verdict: 'approved' }),
+  };
+
+  const state = makeExecutionStartState(1);
+  const io = createMockIO({ state, documents });
+  let writeCount = 0;
+
+  it('Step 1: phase_plan_created → create_task_handoff', () => {
+    const result = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c12-pp.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getState().execution.phases[0].tasks.length, 2);
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 2: source_control_init → create_task_handoff', () => {
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/x',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getState().pipeline.source_control.auto_commit, 'always');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 3: task_handoff_created → execute_task', () => {
+    const result = processEvent('task_handoff_created', PROJECT_DIR, { doc_path: 'c12-th1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'execute_task');
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'coding');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 4: task_completed → spawn_code_reviewer', () => {
+    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c12-tr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_code_reviewer');
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'reviewing');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 5: code_review_completed → invoke_source_control_commit (pointer NOT bumped)', () => {
+    const result = processEvent('code_review_completed', PROJECT_DIR, { doc_path: 'c12-cr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+    assert.equal(io.getState().execution.phases[0].current_task, 1); // NOT bumped
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'complete');
+    assert.ok(result.mutations_applied.some(m => m.includes('Deferred')));
+    assert.ok(result.mutations_applied.some(m => m.includes('auto_commit')));
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 6: task_commit_requested → invoke_source_control_commit (validation pass)', () => {
+    const result = processEvent('task_commit_requested', PROJECT_DIR, { task_id: 'P01-T01' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+    assert.equal(io.getState().execution.phases[0].current_task, 1); // still 1
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 7: task_committed → create_task_handoff (pointer bumped to T02)', () => {
+    const result = processEvent('task_committed', PROJECT_DIR, { task_id: 'P01-T01', committed: true, pushed: true }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getState().execution.phases[0].current_task, 2); // bumped
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'complete');
+    assert.equal(io.getState().execution.phases[0].tasks[1].stage, 'planning');
+  });
+});
+
+// ─── Category 13: Commit-disabled (auto_commit=never) ───────────────────────
+
+describe('Category 13: Commit-disabled (auto_commit=never)', () => {
+  const documents = {
+    'c13-pp.md': makeDoc({ tasks: ['T01'] }),
+    'c13-th1.md': makeDoc({}),
+    'c13-tr1.md': makeDoc({}),
+    'c13-cr1.md': makeDoc({ verdict: 'approved' }),
+  };
+
+  const state = makeExecutionStartState(1);
+  const io = createMockIO({ state, documents });
+  let writeCount = 0;
+
+  it('Step 1: phase_plan_created → create_task_handoff', () => {
+    const result = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c13-pp.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 2: source_control_init (auto_commit=never) → create_task_handoff', () => {
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/y',
+      base_branch: 'main',
+      worktree_path: '/wt2',
+      auto_commit: 'never',
+      auto_pr: 'never',
+    }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(io.getState().pipeline.source_control.auto_commit, 'never');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 3: task_handoff_created → execute_task', () => {
+    const result = processEvent('task_handoff_created', PROJECT_DIR, { doc_path: 'c13-th1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'execute_task');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 4: task_completed → spawn_code_reviewer', () => {
+    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c13-tr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_code_reviewer');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 5: code_review_completed → generate_phase_report (pointer bumped immediately, no commit step)', () => {
+    const result = processEvent('code_review_completed', PROJECT_DIR, { doc_path: 'c13-cr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    // Pointer should be bumped immediately and phase report generated (single task phase)
+    assert.equal(result.action, 'generate_phase_report');
+    assert.equal(io.getState().execution.phases[0].current_task, 2); // bumped past last task
+    assert.equal(io.getState().execution.phases[0].tasks[0].stage, 'complete');
+  });
+});
+
+// ─── Category 14: remote_url / compare_url and commit_hash end-to-end ─────────
+// Drives a single-phase, single-task pipeline from phase_plan_created through
+// task_committed using auto_commit=always. Verifies that remote_url and
+// compare_url land in pipeline.source_control on source_control_init, that
+// commit_hash is written to the task record before the pointer advances on
+// task_committed, and that remote_url/compare_url remain intact after
+// task_committed completes.
+
+describe('Category 14: remote_url / compare_url and commit_hash end-to-end', () => {
+  const documents = {
+    'c14-pp.md': makeDoc({ tasks: ['T01'] }),
+    'c14-th1.md': makeDoc({}),
+    'c14-cr1.md': makeDoc({ verdict: 'approved' }),
+  };
+
+  const state = makeExecutionStartState(1);
+  const io = createMockIO({ state, documents });
+  let writeCount = 0;
+
+  it('Step 1: phase_plan_created → create_task_handoff', () => {
+    const result = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c14-pp.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 2: source_control_init with remote_url + compare_url → create_task_handoff; both fields persisted in state', () => {
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/auto-commit-2',
+      base_branch: 'main',
+      worktree_path: '/wt/auto-commit-2',
+      auto_commit: 'always',
+      auto_pr: 'never',
+      remote_url: 'https://github.com/org/repo',
+      compare_url: 'https://github.com/org/repo/compare/main...feat/auto-commit-2',
+    }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    const sc = io.getState().pipeline.source_control;
+    assert.equal(sc.remote_url, 'https://github.com/org/repo');
+    assert.equal(sc.compare_url, 'https://github.com/org/repo/compare/main...feat/auto-commit-2');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 3: task_handoff_created → execute_task', () => {
+    const result = processEvent('task_handoff_created', PROJECT_DIR, { doc_path: 'c14-th1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'execute_task');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 4: task_completed → spawn_code_reviewer', () => {
+    const result = processEvent('task_completed', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_code_reviewer');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 5: code_review_completed (auto_commit=always) → invoke_source_control_commit; pointer NOT bumped', () => {
+    const result = processEvent('code_review_completed', PROJECT_DIR, { doc_path: 'c14-cr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+    assert.equal(io.getState().execution.phases[0].current_task, 1); // deferred — pointer NOT bumped
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 6: task_commit_requested → invoke_source_control_commit (branch validation pass)', () => {
+    const result = processEvent('task_commit_requested', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_commit');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 7: task_committed with commitHash → commit_hash on task[0]; pointer bumped; remote_url/compare_url intact', () => {
+    const result = processEvent('task_committed', PROJECT_DIR, {
+      task_id: 'P01-T01',
+      committed: true,
+      pushed: true,
+      commitHash: 'abc123f',
+    }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(io.getWrites().length, writeCount);
+    // commit_hash written to the committed task before pointer advanced
+    assert.equal(io.getState().execution.phases[0].tasks[0].commit_hash, 'abc123f');
+    // pointer advanced past the single task (1 → 2)
+    assert.equal(io.getState().execution.phases[0].current_task, 2);
+    // remote_url and compare_url survive task_committed unchanged
+    const sc = io.getState().pipeline.source_control;
+    assert.equal(sc.remote_url, 'https://github.com/org/repo');
+    assert.equal(sc.compare_url, 'https://github.com/org/repo/compare/main...feat/auto-commit-2');
+  });
+});
+
+// ─── Category 15: null paths — remote_url, compare_url, commit_hash ──────────
+// Three isolated tests. Each builds its own io from scratch to verify the null
+// path for the three new fields without sharing state across sub-tests.
+
+describe('Category 15: null paths — remote_url, compare_url, commit_hash', () => {
+  it('(a) source_control_init without remote_url/compare_url context → both null in state', () => {
+    const state = makeExecutionStartState(1);
+    const documents = { 'c15a-pp.md': makeDoc({ tasks: ['T01'] }) };
+    const io = createMockIO({ state, documents });
+    processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c15a-pp.md' }, io);
+    backdateTimestamp(io.getState());
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/null-test',
+      base_branch: 'main',
+      worktree_path: '/wt/null-test',
+      auto_commit: 'always',
+      auto_pr: 'never',
+      // remote_url and compare_url intentionally omitted
+    }, io);
+    assert.equal(result.success, true);
+    const sc = io.getState().pipeline.source_control;
+    assert.strictEqual(sc.remote_url, null);
+    assert.strictEqual(sc.compare_url, null);
+  });
+
+  it('(b) source_control_init with explicit null remote_url/compare_url → both null in state', () => {
+    const state = makeExecutionStartState(1);
+    const documents = { 'c15b-pp.md': makeDoc({ tasks: ['T01'] }) };
+    const io = createMockIO({ state, documents });
+    processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c15b-pp.md' }, io);
+    backdateTimestamp(io.getState());
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/explicit-null',
+      base_branch: 'main',
+      worktree_path: '/wt/explicit-null',
+      auto_commit: 'always',
+      auto_pr: 'never',
+      remote_url: null,
+      compare_url: null,
+    }, io);
+    assert.equal(result.success, true);
+    const sc = io.getState().pipeline.source_control;
+    assert.strictEqual(sc.remote_url, null);
+    assert.strictEqual(sc.compare_url, null);
+  });
+
+  it('(c) task_committed with no commitHash → task.commit_hash null; pointer still advances', () => {
+    const state = createExecutionState();
+    delete state.project.updated;
+    state.pipeline.source_control = {
+      branch: 'feat/null-hash-test',
+      base_branch: 'main',
+      worktree_path: '/wt',
+      auto_commit: 'always',
+      auto_pr: 'never',
+      remote_url: null,
+      compare_url: null,
+    };
+    const io = createMockIO({ state });
+    const result = processEvent('task_committed', PROJECT_DIR, {
+      task_id: 'P01-T01',
+      committed: false,
+      pushed: false,
+      // commitHash intentionally absent
+    }, io);
+    assert.equal(result.success, true);
+    assert.strictEqual(io.getState().execution.phases[0].tasks[0].commit_hash, null);
+    assert.equal(io.getState().execution.phases[0].current_task, 2); // pointer advanced
+  });
+});
+
+// ─── Category 16: PR-enabled happy path (auto_pr=always) ───────────────────
+// Drives a single-phase, single-task project through the full PR cycle.
+// After final_review_completed, the resolver returns invoke_source_control_pr
+// instead of request_final_approval because auto_pr=always and pr_url is absent.
+// Then pr_requested validates, pr_created writes pr_url, and final_approved
+// transitions to display_complete.
+
+describe('Category 16: PR-enabled happy path (auto_pr=always)', () => {
+  const documents = {
+    'c16-pp.md': makeDoc({ tasks: ['T01'] }),
+    'c16-th1.md': makeDoc({}),
+    'c16-tr1.md': makeDoc({}),
+    'c16-cr1.md': makeDoc({ verdict: 'approved' }),
+    'c16-prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
+  };
+
+  const state = makeExecutionStartState(1);
+  const io = createMockIO({ state, documents });
+  let writeCount = 0;
+
+  it('Step 1: phase_plan_created → create_task_handoff', () => {
+    const result = processEvent('phase_plan_created', PROJECT_DIR, { doc_path: 'c16-pp.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getWrites().length, writeCount);
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 2: source_control_init (auto_pr=always) → create_task_handoff', () => {
+    const result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feat/pr-test',
+      base_branch: 'main',
+      worktree_path: '/wt/pr-test',
+      auto_commit: 'never',
+      auto_pr: 'always',
+    }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'create_task_handoff');
+    assert.equal(io.getState().pipeline.source_control.auto_pr, 'always');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 3: task_handoff_created → execute_task', () => {
+    const result = processEvent('task_handoff_created', PROJECT_DIR, { doc_path: 'c16-th1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'execute_task');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 4: task_completed → spawn_code_reviewer', () => {
+    const result = processEvent('task_completed', PROJECT_DIR, { doc_path: 'c16-tr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_code_reviewer');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 5: code_review_completed → generate_phase_report', () => {
+    const result = processEvent('code_review_completed', PROJECT_DIR, { doc_path: 'c16-cr1.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'generate_phase_report');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 6: phase_report_created → spawn_phase_reviewer', () => {
+    const result = processEvent('phase_report_created', PROJECT_DIR, { doc_path: 'c16-pr.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_phase_reviewer');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 7: phase_review_completed → spawn_final_reviewer', () => {
+    const result = processEvent('phase_review_completed', PROJECT_DIR, { doc_path: 'c16-prv.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'spawn_final_reviewer');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 8: final_review_completed → invoke_source_control_pr (NOT request_final_approval)', () => {
+    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: 'c16-fr.md' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_pr');
+    assert.notEqual(result.action, 'request_final_approval');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 9: pr_requested → invoke_source_control_pr (validation pass)', () => {
+    const result = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_source_control_pr');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 10: pr_created → request_final_approval (pr_url written)', () => {
+    const result = processEvent('pr_created', PROJECT_DIR, { pr_url: 'https://github.com/example/repo/pull/1' }, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.strictEqual(io.getState().pipeline.source_control.pr_url, 'https://github.com/example/repo/pull/1');
+    // After pr_created, resolver should return request_final_approval (pr_url now exists)
+    assert.equal(result.action, 'request_final_approval');
+    backdateTimestamp(io.getState());
+  });
+
+  it('Step 11: final_approved → display_complete', () => {
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'display_complete');
+    assert.equal(io.getState().pipeline.current_tier, 'complete');
+  });
+});
+
+// ─── Category 17: PR-disabled path (auto_pr=never) ─────────────────────────
+// Isolated test verifying that final_review_completed routes directly to
+// request_final_approval when auto_pr=never — no invoke_source_control_pr.
+
+describe('Category 17: PR-disabled path (auto_pr=never)', () => {
+  it('final_review_completed → request_final_approval (no PR routing)', () => {
+    const state = createReviewState();
+    delete state.project.updated;
+    state.pipeline.source_control = {
+      branch: 'feat/no-pr',
+      base_branch: 'main',
+      worktree_path: '/wt/no-pr',
+      auto_commit: 'never',
+      auto_pr: 'never',
+    };
+    state.final_review.doc_path = 'c17-fr.md';
+    const io = createMockIO({ state });
+    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: 'c17-fr.md' }, io);
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'request_final_approval');
+    assert.notEqual(result.action, 'invoke_source_control_pr');
+  });
+});
+
+// ─── Category 18: pr_url persistence ────────────────────────────────────────
+// Verifies that pr_url written by pr_created survives through the
+// final_approved tier transition to complete.
+
+describe('Category 18: pr_url persistence', () => {
+  it('pr_url persists through pr_created → final_approved transition', () => {
+    const state = createReviewState();
+    delete state.project.updated;
+    state.pipeline.source_control = {
+      branch: 'feat/persist-test',
+      base_branch: 'main',
+      worktree_path: '/wt/persist',
+      auto_commit: 'never',
+      auto_pr: 'always',
+    };
+    state.final_review.doc_path = 'c18-fr.md';
+    const io = createMockIO({ state });
+
+    // final_review_completed → invoke_source_control_pr (auto_pr=always, no pr_url)
+    const r1 = processEvent('final_review_completed', PROJECT_DIR, { doc_path: 'c18-fr.md' }, io);
+    assert.equal(r1.success, true);
+    assert.equal(r1.action, 'invoke_source_control_pr');
+    backdateTimestamp(io.getState());
+
+    // pr_requested → validation pass
+    const r2 = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    assert.equal(r2.success, true);
+    backdateTimestamp(io.getState());
+
+    // pr_created → writes pr_url
+    const r3 = processEvent('pr_created', PROJECT_DIR, { pr_url: 'https://github.com/test/repo/pull/99' }, io);
+    assert.equal(r3.success, true);
+    assert.strictEqual(io.getState().pipeline.source_control.pr_url, 'https://github.com/test/repo/pull/99');
+    backdateTimestamp(io.getState());
+
+    // final_approved → display_complete; pr_url survives tier transition
+    const r4 = processEvent('final_approved', PROJECT_DIR, {}, io);
+    assert.equal(r4.success, true);
+    assert.equal(r4.action, 'display_complete');
+    assert.strictEqual(io.getState().pipeline.source_control.pr_url, 'https://github.com/test/repo/pull/99');
+  });
+});
+
+// ─── scaffoldInitialState config snapshot ──────────────────────────────────
+
+const CONFIG_FIXTURE = {
+  limits: {
+    max_phases:                        3,
+    max_tasks_per_phase:               5,
+    max_retries_per_task:              1,
+    max_consecutive_review_rejections: 2,
+  },
+  human_gates: {
+    after_planning:     false,
+    execution_mode:     'phase',
+    after_final_review: true,
+  },
+};
+
+describe('scaffoldInitialState config snapshot', () => {
+  const s = scaffoldInitialState(CONFIG_FIXTURE, '/test/snapshot-test');
+
+  it('state.config exists', () => {
+    assert.ok(s.config !== undefined, 'config property must exist on scaffolded state');
+  });
+
+  it('config.limits.max_phases matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.limits.max_phases, CONFIG_FIXTURE.limits.max_phases);
+  });
+
+  it('config.limits.max_tasks_per_phase matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.limits.max_tasks_per_phase, CONFIG_FIXTURE.limits.max_tasks_per_phase);
+  });
+
+  it('config.limits.max_retries_per_task matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.limits.max_retries_per_task, CONFIG_FIXTURE.limits.max_retries_per_task);
+  });
+
+  it('config.limits.max_consecutive_review_rejections matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.limits.max_consecutive_review_rejections, CONFIG_FIXTURE.limits.max_consecutive_review_rejections);
+  });
+
+  it('config.human_gates.after_planning matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.human_gates.after_planning, CONFIG_FIXTURE.human_gates.after_planning);
+  });
+
+  it('config.human_gates.execution_mode matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.human_gates.execution_mode, CONFIG_FIXTURE.human_gates.execution_mode);
+  });
+
+  it('config.human_gates.after_final_review matches CONFIG_FIXTURE', () => {
+    assert.equal(s.config.human_gates.after_final_review, CONFIG_FIXTURE.human_gates.after_final_review);
   });
 });

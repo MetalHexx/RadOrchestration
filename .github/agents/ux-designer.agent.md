@@ -1,15 +1,14 @@
 ---
-name: UX Designer
+name: ux-designer
 description: "Create UX Design documents from Product Requirements Documents. Use when designing user interfaces, user flows, component layouts, interaction states, accessibility requirements, responsive behavior, or specifying design tokens."
-argument-hint: "Provide the project name and paths to the PRD and research findings."
 tools:
   - read
   - search
   - edit
   - todo
   - vscode/askQuestions
-model: Claude Opus 4.6 (copilot)
-agents: []
+  - context7/*
+model: claude-opus-4.6
 ---
 
 # UX Designer Agent

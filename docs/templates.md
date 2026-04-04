@@ -2,11 +2,11 @@
 
 ## Overview
 
-Templates are structured markdown files bundled inside skill folders that control the format and structure of each skill's output. There are 16 templates across 14 skills, organized into four groups: Planning, Execution, Review, and Meta. They define the sections, headings, and frontmatter that agents produce when executing a skill.
+Templates are structured markdown files bundled inside skill folders that control the format and structure of each skill's output. There are 16 templates across 12 skills, organized into four groups: Planning, Execution, Review, and Meta. They define the sections, headings, and frontmatter that agents produce when executing a skill.
 
 ## How Skills and Templates Relate
 
-Each skill that produces a document bundles a template in its `templates/` subfolder. The agent reads the template when executing the skill and produces output matching its structure. Four of the 18 skills have no template — `execute-coding-task`, `run-tests`, `create-skill`, and `orchestration` — because they don't produce structured documents. One skill, `create-design`, has three template variants to accommodate different project types.
+Each skill that produces a document bundles one or more templates in its `templates/` subfolder. The agent reads the template when executing the skill and produces output matching its structure. 
 
 ## Customization
 
@@ -35,15 +35,15 @@ Each skill that produces a document bundles a template in its `templates/` subfo
 |----------|-------|-------------|
 | [`PHASE-PLAN.md`](../.github/skills/create-phase-plan/templates/PHASE-PLAN.md) | `create-phase-plan` | Phase-level task breakdown with dependencies and execution order |
 | [`TASK-HANDOFF.md`](../.github/skills/create-task-handoff/templates/TASK-HANDOFF.md) | `create-task-handoff` | Self-contained coding task assignment with contracts and acceptance criteria |
-| [`TASK-REPORT.md`](../.github/skills/generate-task-report/templates/TASK-REPORT.md) | `generate-task-report` | Task completion report with files changed, tests, and deviations |
 | [`PHASE-REPORT.md`](../.github/skills/generate-phase-report/templates/PHASE-REPORT.md) | `generate-phase-report` | Phase summary aggregating task results and exit criteria assessment |
 
 ## Review Templates
 
 | Template | Skill | Description |
 |----------|-------|-------------|
-| [`CODE-REVIEW.md`](../.github/skills/review-task/templates/CODE-REVIEW.md) | `review-task` | Task-level code review with verdict, checklist, and issues |
-| [`PHASE-REVIEW.md`](../.github/skills/review-phase/templates/PHASE-REVIEW.md) | `review-phase` | Phase-level integration review with cross-task assessment |
+| [`CODE-REVIEW.md`](../.github/skills/code-review/templates/CODE-REVIEW.md) | `code-review` | Task-level code review with verdict, checklist, and issues |
+| [`PHASE-REVIEW.md`](../.github/skills/code-review/templates/PHASE-REVIEW.md) | `code-review` | Phase-level integration review with cross-task assessment |
+| [`FINAL-REVIEW.md`](../.github/skills/code-review/templates/FINAL-REVIEW.md) | `code-review` | Project-level final review with architectural integrity and P0 requirement coverage |
 
 ## Meta Templates
 
@@ -64,6 +64,6 @@ The `create-design` skill selects one of three template variants based on the pr
 
 ## Next Steps
 
-- [Skills](skills.md) — Explore the 18 skill bundles and their capabilities
-- [Agents](agents.md) — Learn about the 9 specialized agents that use these templates
+- [Skills](skills.md) — Explore the 18 skills and their capabilities
+- [Agents](agents.md) — Learn about the 12 agents that use these templates
 - [Configuration](configuration.md) — Configure pipeline behavior and project settings

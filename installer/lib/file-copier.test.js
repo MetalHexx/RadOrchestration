@@ -174,15 +174,33 @@ test('copyCategory returns fileCount matching the actual number of files copied'
 
 // ── copyCategory — error handling ────────────────────────────────────────────
 
-test('copyCategory returns { success: false, error } when source directory does not exist', () => {
+test('copyCategory returns { success: true, fileCount: 0, skipped: true } when source directory does not exist', () => {
   const { repo, target, cleanup } = makeDirs();
   try {
     const cat = { name: 'Missing', sourceDir: 'nonexistent', targetDir: 'out', recursive: false };
     const result = copyCategory(cat, repo, target);
-    assert.equal(result.success, false);
+    assert.equal(result.success, true);
     assert.equal(result.category, 'Missing');
     assert.equal(result.fileCount, 0);
-    assert.ok(typeof result.error === 'string' && result.error.length > 0);
+    assert.equal(result.skipped, true);
+    assert.equal(result.error, undefined);
+  } finally {
+    cleanup();
+  }
+});
+
+// ── copyCategory — skipped vs zero-file success ───────────────────────────────
+
+test('copyCategory with existing empty source dir returns success: true, skipped: undefined', () => {
+  const { repo, target, cleanup } = makeDirs();
+  try {
+    // Create source dir but put no files in it
+    fs.mkdirSync(path.join(repo, 'empty-src'), { recursive: true });
+    const cat = { name: 'Empty', sourceDir: 'empty-src', targetDir: 'out', recursive: false };
+    const result = copyCategory(cat, repo, target);
+    assert.equal(result.success, true);
+    assert.equal(result.fileCount, 0);
+    assert.equal(result.skipped, undefined);
   } finally {
     cleanup();
   }
@@ -238,7 +256,7 @@ test('copyAll merges globalExcludes into each category exclude lists', () => {
 
 // ── copyAll — error isolation ─────────────────────────────────────────────────
 
-test('copyAll continues copying remaining categories when one category fails', () => {
+test('copyAll silently skips missing categories and continues copying present ones', () => {
   const { repo, target, cleanup } = makeDirs();
   try {
     writeFile(repo, 'exists/file.md');
@@ -251,8 +269,11 @@ test('copyAll continues copying remaining categories when one category fails', (
     };
     const results = copyAll(manifest, repo, target);
     assert.equal(results.length, 2);
-    assert.equal(results[0].success, false);
+    assert.equal(results[0].success, true);
+    assert.equal(results[0].skipped, true);
+    assert.equal(results[0].fileCount, 0);
     assert.equal(results[1].success, true);
+    assert.equal(results[1].skipped, undefined);
     assert.ok(fs.existsSync(path.join(target, 'out2', 'file.md')));
   } finally {
     cleanup();

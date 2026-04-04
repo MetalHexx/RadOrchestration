@@ -22,7 +22,7 @@ function checkOrchestratorAgentRefs(agents) {
   let orchestrator = null;
   let orchestratorFilename = null;
   for (const [filename, info] of agents) {
-    if (info.frontmatter && info.frontmatter.name === 'Orchestrator') {
+    if (info.frontmatter && typeof info.frontmatter.name === 'string' && info.frontmatter.name.toLowerCase() === 'orchestrator') {
       orchestrator = info;
       orchestratorFilename = filename;
       break;

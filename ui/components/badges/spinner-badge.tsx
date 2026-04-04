@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface SpinnerBadgeProps {
@@ -13,11 +13,16 @@ interface SpinnerBadgeProps {
   /** When true (and isSpinning is false), renders a static Check icon.
    *  Defaults to false when omitted. isSpinning=true takes unconditional precedence. */
   isComplete?: boolean;
+  /** When true (and isSpinning & isComplete are false), renders a static X icon.
+   *  Defaults to false when omitted. Priority: isSpinning → isComplete → isRejected → dot. */
+  isRejected?: boolean;
   /** Accessible label override; defaults to label when omitted */
   ariaLabel?: string;
+  /** When true, suppresses visible label text; aria-label is unaffected. Defaults to false. */
+  hideLabel?: boolean;
 }
 
-export function SpinnerBadge({ label, cssVar, isSpinning, isComplete, ariaLabel }: SpinnerBadgeProps) {
+export function SpinnerBadge({ label, cssVar, isSpinning, isComplete, isRejected, ariaLabel, hideLabel }: SpinnerBadgeProps) {
   return (
     <Badge
       variant="outline"
@@ -41,6 +46,12 @@ export function SpinnerBadge({ label, cssVar, isSpinning, isComplete, ariaLabel 
           style={{ color: `var(${cssVar})` }}
           aria-hidden="true"
         />
+      ) : isRejected ? (
+        <X
+          size={12}
+          style={{ color: `var(${cssVar})` }}
+          aria-hidden="true"
+        />
       ) : (
         <span
           className="inline-block h-1.5 w-1.5 rounded-full"
@@ -48,7 +59,7 @@ export function SpinnerBadge({ label, cssVar, isSpinning, isComplete, ariaLabel 
           aria-hidden="true"
         />
       )}
-      {label}
+      {!hideLabel && <span>{label}</span>}
     </Badge>
   );
 }

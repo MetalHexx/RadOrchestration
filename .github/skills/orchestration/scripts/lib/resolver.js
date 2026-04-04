@@ -42,7 +42,7 @@ function halted(details) {
  * @returns {'task' | 'phase' | 'autonomous' | 'ask'}
  */
 function resolveGateMode(state, config) {
-  return state.pipeline.gate_mode ?? config.human_gates.execution_mode;
+  return state.pipeline.gate_mode ?? state.config?.human_gates?.execution_mode ?? config.human_gates.execution_mode;
 }
 
 // ─── Planning Tier ──────────────────────────────────────────────────────────
@@ -204,7 +204,6 @@ function resolveTask(task, phase, phaseNumber, taskNumber, state, config) {
     return {
       action: NEXT_ACTIONS.SPAWN_CODE_REVIEWER,
       context: {
-        report_doc: task.docs.report,
         phase_number: phaseNumber,
         task_number: taskNumber,
         phase_id: formatPhaseId(phaseNumber),
@@ -237,6 +236,8 @@ function resolveTask(task, phase, phaseNumber, taskNumber, state, config) {
 
 function resolveTaskGate(phaseNumber, taskNumber, state, config) {
   const mode = resolveGateMode(state, config);
+
+  // Task-gate check first (takes precedence over auto_commit)
   if (mode === HUMAN_GATE_MODES.TASK) {
     return {
       action: NEXT_ACTIONS.GATE_TASK,
@@ -248,8 +249,29 @@ function resolveTaskGate(phaseNumber, taskNumber, state, config) {
       },
     };
   }
-  // ask/autonomous/phase modes at task level: no gate — mutations should advance pointer
-  return halted(`Task ${formatTaskId(phaseNumber, taskNumber)} is advanced but no gate required — expected mutation to advance pointer`);
+
+  // Commit-defer check (non-task-gate modes only)
+  // State must have been left with deferred pointer by handleCodeReviewCompleted
+  if (state.pipeline.source_control?.auto_commit === 'always') {
+    return {
+      action: NEXT_ACTIONS.INVOKE_SOURCE_CONTROL_COMMIT,
+      context: {
+        phase_number: phaseNumber,
+        task_number: taskNumber,
+        phase_id: formatPhaseId(phaseNumber),
+        task_id: formatTaskId(phaseNumber, taskNumber),
+        branch: state.pipeline.source_control.branch,
+        worktree_path: state.pipeline.source_control.worktree_path,
+      },
+    };
+  }
+
+  // Fallback — should not be reached: mutation should have bumped pointer
+  return halted(
+    `Task ${formatTaskId(phaseNumber, taskNumber)} is advanced but ` +
+    `no gate required and auto_commit is not 'always' — ` +
+    `expected mutation to advance pointer`
+  );
 }
 
 function resolvePhaseGate(phaseNumber, state, config) {
@@ -277,6 +299,18 @@ function resolveReview(state) {
   }
 
   if (!final_review.human_approved) {
+    // PR routing: after final review complete, before human gate
+    const sc = state.pipeline.source_control;
+    if (sc?.auto_pr === 'always' && sc?.pr_url === undefined) {
+      return {
+        action: NEXT_ACTIONS.INVOKE_SOURCE_CONTROL_PR,
+        context: {
+          branch: sc.branch,
+          base_branch: sc.base_branch,
+          worktree_path: sc.worktree_path,
+        },
+      };
+    }
     return { action: NEXT_ACTIONS.REQUEST_FINAL_APPROVAL, context: {} };
   }
 

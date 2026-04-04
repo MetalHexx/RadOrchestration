@@ -36,6 +36,11 @@ const promptGateBehaviorMock = mock.fn(async () => {
   return { executionMode: 'ask' };
 });
 
+const promptSourceControlMock = mock.fn(async () => {
+  callOrder.push('promptSourceControl');
+  return { autoCommit: 'ask', autoPr: 'ask', provider: 'github' };
+});
+
 const promptUiInstallMock = mock.fn(async () => {
   callOrder.push('promptUiInstall');
   return { installUi: false };
@@ -43,7 +48,7 @@ const promptUiInstallMock = mock.fn(async () => {
 
 // Register module mocks BEFORE importing the module under test
 mock.module('./theme.js', {
-  namedExports: { THEME: { hint: (s) => s }, sectionHeader: sectionHeaderMock },
+  namedExports: { THEME: { hint: (s) => s }, sectionHeader: sectionHeaderMock, INQUIRER_THEME: {} },
 });
 mock.module('./prompts/getting-started.js', {
   namedExports: { promptGettingStarted: promptGettingStartedMock },
@@ -59,6 +64,9 @@ mock.module('./prompts/pipeline-limits.js', {
 });
 mock.module('./prompts/gate-behavior.js', {
   namedExports: { promptGateBehavior: promptGateBehaviorMock },
+});
+mock.module('./prompts/source-control.js', {
+  namedExports: { promptSourceControl: promptSourceControlMock },
 });
 mock.module('./prompts/ui-install.js', {
   namedExports: { promptUiInstall: promptUiInstallMock },
@@ -79,13 +87,14 @@ describe('runWizard({ skipConfirmation: false })', () => {
     promptProjectStorageMock.mock.resetCalls();
     promptPipelineLimitsMock.mock.resetCalls();
     promptGateBehaviorMock.mock.resetCalls();
+    promptSourceControlMock.mock.resetCalls();
     promptUiInstallMock.mock.resetCalls();
 
     result = await runWizard({ skipConfirmation: false });
   });
 
-  it('calls sectionHeader exactly 6 times', () => {
-    assert.equal(sectionHeaderMock.mock.calls.length, 6);
+  it('calls sectionHeader exactly 7 times', () => {
+    assert.equal(sectionHeaderMock.mock.calls.length, 7);
   });
 
   it('calls sectionHeader with correct marker+title pairs in order', () => {
@@ -95,7 +104,8 @@ describe('runWizard({ skipConfirmation: false })', () => {
     assert.deepEqual(calls[2], ['::', 'Project Storage']);
     assert.deepEqual(calls[3], ['::', 'Pipeline Limits']);
     assert.deepEqual(calls[4], ['::', 'Gate Behavior']);
-    assert.deepEqual(calls[5], ['::', 'Dashboard UI']);
+    assert.deepEqual(calls[5], ['::', 'Source Control']);
+    assert.deepEqual(calls[6], ['::', 'Dashboard UI']);
   });
 
   it('calls promptGettingStarted exactly once', () => {
@@ -118,6 +128,10 @@ describe('runWizard({ skipConfirmation: false })', () => {
     assert.equal(promptGateBehaviorMock.mock.calls.length, 1);
   });
 
+  it('calls promptSourceControl exactly once', () => {
+    assert.equal(promptSourceControlMock.mock.calls.length, 1);
+  });
+
   it('calls promptUiInstall exactly once', () => {
     assert.equal(promptUiInstallMock.mock.calls.length, 1);
   });
@@ -127,19 +141,21 @@ describe('runWizard({ skipConfirmation: false })', () => {
     assert.equal(args[0], '/home/user/workspace');
   });
 
-  it('calls prompts in the correct order: Getting Started → Orch Root → Project Storage → Pipeline Limits → Gate Behavior → UI Install', () => {
+  it('calls prompts in the correct order: Getting Started → Orch Root → Project Storage → Pipeline Limits → Gate Behavior → Source Control → UI Install', () => {
     const gsIdx = callOrder.indexOf('promptGettingStarted');
     const orIdx = callOrder.indexOf('promptOrchRoot');
     const psIdx = callOrder.indexOf('promptProjectStorage');
     const plIdx = callOrder.indexOf('promptPipelineLimits');
     const gbIdx = callOrder.indexOf('promptGateBehavior');
+    const scIdx = callOrder.indexOf('promptSourceControl');
     const uiIdx = callOrder.indexOf('promptUiInstall');
 
     assert.ok(gsIdx < orIdx, 'Getting Started runs before Orch Root');
     assert.ok(orIdx < psIdx, 'Orch Root runs before Project Storage');
     assert.ok(psIdx < plIdx, 'Project Storage runs before Pipeline Limits');
     assert.ok(plIdx < gbIdx, 'Pipeline Limits runs before Gate Behavior');
-    assert.ok(gbIdx < uiIdx, 'Gate Behavior runs before UI Install');
+    assert.ok(gbIdx < scIdx, 'Gate Behavior runs before Source Control');
+    assert.ok(scIdx < uiIdx, 'Source Control runs before UI Install');
   });
 
   it('returns tool and workspaceDir from promptGettingStarted', () => {
@@ -179,7 +195,7 @@ describe('runWizard({ skipConfirmation: false })', () => {
     const expectedKeys = [
       'tool', 'workspaceDir', 'orchRoot', 'projectsBasePath', 'projectsNaming',
       'maxPhases', 'maxTasksPerPhase', 'maxRetriesPerTask', 'maxConsecutiveReviewRejections',
-      'executionMode', 'installUi', 'skipConfirmation',
+      'executionMode', 'autoCommit', 'autoPr', 'provider', 'installUi', 'skipConfirmation',
     ];
     for (const key of expectedKeys) {
       assert.ok(Object.hasOwn(result, key), `result has '${key}' property`);
@@ -199,6 +215,7 @@ describe('runWizard({ skipConfirmation: true })', () => {
     promptProjectStorageMock.mock.resetCalls();
     promptPipelineLimitsMock.mock.resetCalls();
     promptGateBehaviorMock.mock.resetCalls();
+    promptSourceControlMock.mock.resetCalls();
     promptUiInstallMock.mock.resetCalls();
 
     result = await runWizard({ skipConfirmation: true });

@@ -1,7 +1,6 @@
 ---
-name: Brainstormer
+name: brainstormer
 description: "Brainstorm and refine project ideas through collaborative ideation. Use when starting a new project idea, exploring problem spaces, validating concepts, or building consensus on what to build. Produces a structured BRAINSTORMING.md that feeds into the Research and Product Manager agents."
-argument-hint: "Describe the idea or problem space you want to brainstorm about."
 tools:
   - read
   - search
@@ -10,12 +9,12 @@ tools:
   - vscode/askQuestions
   - agent
   - web
-model: Claude Sonnet 4.6 (copilot)
-agents:
-  - Research
+  - context7/*
+  - github/*
+model: claude-sonnet-4.6
 handoffs:
   - label: "Start Planning Pipeline Process"
-    agent: Orchestrator
+    agent: orchestrator
     prompt: "Brainstorming is complete. Read the project BRAINSTORMING.md and start planning."
     send: true 
 ---

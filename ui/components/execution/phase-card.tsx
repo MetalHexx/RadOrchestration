@@ -19,6 +19,7 @@ interface PhaseCardProps {
   isActive: boolean;
   maxRetries: number;
   onDocClick: (path: string) => void;
+  remoteUrl: string | null;
 }
 
 export function PhaseCard({
@@ -27,6 +28,7 @@ export function PhaseCard({
   isActive,
   maxRetries,
   onDocClick,
+  remoteUrl,
 }: PhaseCardProps) {
   const completedTasks = phase.tasks.filter(
     (t) => t.status === "complete"
@@ -84,10 +86,11 @@ export function PhaseCard({
                   taskNumber={index + 1}
                   maxRetries={maxRetries}
                   onDocClick={onDocClick}
+                  remoteUrl={remoteUrl}
                 />
               ))}
             </div>
-            {(phase.review.verdict || phase.docs.phase_report || phase.docs.phase_review) && (
+            {(phase.review.verdict || phase.docs.phase_review || phase.docs.phase_report) && (
               <div className="flex items-center gap-2 mt-3 pt-2 border-t pl-2">
                 {phase.review.verdict && (
                   <ReviewVerdictBadge verdict={phase.review.verdict} />

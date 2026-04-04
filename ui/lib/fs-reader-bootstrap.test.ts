@@ -15,7 +15,7 @@ let failed = 0;
 const MINIMAL_CONFIG_YAML = `version: "1"
 projects:
   base_path: "../orchestration-projects"
-  naming: SCREAMING-CASE
+  naming: SCREAMING_CASE
 limits:
   max_phases: 10
   max_tasks_per_phase: 20
@@ -23,8 +23,12 @@ limits:
   max_consecutive_review_rejections: 3
 human_gates:
   after_planning: true
-  execution_mode: auto
+  execution_mode: autonomous
   after_final_review: true
+source_control:
+  auto_commit: always
+  auto_pr: never
+  provider: github
 `;
 
 
@@ -90,31 +94,34 @@ async function run() {
       const config: OrchestrationConfig = {
         version: '1',
         system: { orch_root: '.agents' },
-        projects: { base_path: '../projects', naming: 'SCREAMING-CASE' },
+        projects: { base_path: '../projects', naming: 'SCREAMING_CASE' },
         limits: { max_phases: 10, max_tasks_per_phase: 20, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
-        human_gates: { after_planning: true, execution_mode: 'auto', after_final_review: true },
+        human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
+        source_control: { auto_commit: 'always', auto_pr: 'never', provider: 'github' },
       };
       assert.strictEqual(resolveOrchRoot(config), '.agents');
     });
 
     await test('returns .github when system.orch_root is undefined', async () => {
-      const config: OrchestrationConfig = {
+      const config = {
         version: '1',
         system: {},
-        projects: { base_path: '../projects', naming: 'SCREAMING-CASE' },
+        projects: { base_path: '../projects', naming: 'SCREAMING_CASE' },
         limits: { max_phases: 10, max_tasks_per_phase: 20, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
-        human_gates: { after_planning: true, execution_mode: 'auto', after_final_review: true },
-      };
+        human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
+        source_control: { auto_commit: 'always', auto_pr: 'never', provider: 'github' },
+      } as OrchestrationConfig;
       assert.strictEqual(resolveOrchRoot(config), '.github');
     });
 
     await test('returns .github when system property is absent', async () => {
-      const config: OrchestrationConfig = {
+      const config = {
         version: '1',
-        projects: { base_path: '../projects', naming: 'SCREAMING-CASE' },
+        projects: { base_path: '../projects', naming: 'SCREAMING_CASE' },
         limits: { max_phases: 10, max_tasks_per_phase: 20, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
-        human_gates: { after_planning: true, execution_mode: 'auto', after_final_review: true },
-      };
+        human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
+        source_control: { auto_commit: 'always', auto_pr: 'never', provider: 'github' },
+      } as OrchestrationConfig;
       assert.strictEqual(resolveOrchRoot(config), '.github');
     });
 

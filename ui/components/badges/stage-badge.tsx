@@ -12,7 +12,6 @@ const STAGE_CONFIG: Record<string, { label: string; cssVar: string }> = {
   planning:  { label: "Planning",  cssVar: "--tier-planning" },
   coding:    { label: "Coding",    cssVar: "--tier-execution" },
   executing: { label: "Executing", cssVar: "--tier-execution" },
-  reporting: { label: "Reporting", cssVar: "--chart-2" },
   reviewing: { label: "Reviewing", cssVar: "--tier-review" },
   complete:  { label: "Complete",  cssVar: "--status-complete" },
   failed:    { label: "Failed",    cssVar: "--status-failed" },
@@ -42,6 +41,7 @@ export function StageBadge({ stage, status }: StageBadgeProps) {
         cssVar={config.cssVar}
         isSpinning={false}
         isComplete={true}
+        hideLabel={true}
         ariaLabel="Stage: Complete"
       />
     );

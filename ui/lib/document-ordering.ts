@@ -13,7 +13,7 @@ const STEP_TITLES: Record<PlanningStepName, string> = {
 /**
  * Derive the canonical document navigation order from project state.
  *
- * Order: planning docs → per-phase (plan → tasks → report → review) →
+ * Order: planning docs → per-phase (plan → per-task: handoff → review → … → phase review) →
  *        final review → error log → other docs.
  *
  * Only non-null paths are included.
@@ -59,9 +59,6 @@ export function getOrderedDocs(
       if (task.docs.handoff != null) {
         push(task.docs.handoff, `P${n}-T${m}: ${task.name}`, 'task');
       }
-      if (task.docs.report != null) {
-        push(task.docs.report, `P${n}-T${m} Report`, 'task');
-      }
       if (task.docs.review != null) {
         push(task.docs.review, `P${n}-T${m} Review`, 'review');
       }
@@ -70,6 +67,7 @@ export function getOrderedDocs(
     if (phase.docs.phase_report != null) {
       push(phase.docs.phase_report, `Phase ${n} Report`, 'phase');
     }
+
     if (phase.docs.phase_review != null) {
       push(phase.docs.phase_review, `Phase ${n} Review`, 'review');
     }

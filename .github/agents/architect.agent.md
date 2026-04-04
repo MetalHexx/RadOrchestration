@@ -1,15 +1,14 @@
 ---
-name: Architect
+name: architect
 description: "Create Architecture documents and Master Plans from PRDs, Designs, and Research Findings. Use when defining system architecture, module structure, API contracts, interfaces, dependencies, file structure, or synthesizing all planning docs into a Master Plan."
-argument-hint: "Provide the project name and paths to the PRD, design, and research findings."
 tools:
   - read
   - search
   - edit
   - todo
   - vscode/askQuestions
-agents: []
-model: Claude Opus 4.6 (copilot)
+  - context7/*
+model: claude-opus-4.6
 ---
 
 # Architect Agent
