@@ -117,6 +117,12 @@ export async function main() {
     writeConfig(config.workspaceDir, config.orchRoot, yamlContent);
     configSpinner.succeed('Generated orchestration.yml');
 
+    // Create the project storage directory so the dashboard and agents can scan it immediately
+    const resolvedProjectsPath = path.isAbsolute(config.projectsBasePath)
+      ? config.projectsBasePath
+      : path.join(config.workspaceDir, config.projectsBasePath);
+    fs.mkdirSync(resolvedProjectsPath, { recursive: true });
+
     const configPath = path.join(resolvedRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
 
     if (config.installUi) {
