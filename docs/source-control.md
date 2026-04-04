@@ -5,7 +5,7 @@ The orchestration pipeline's source control automation feature enables automatic
 ## Quick Start
 
 1. **Configure once**: Run `configure-system` or the installer to set `auto_commit` in `orchestration.yml`.
-2. **Set up per project**: The `execute-parallel` skill asks (or applies) your source control preference before launching execution.
+2. **Set up per project**: The `rad-execute-parallel` skill asks (or applies) your source control preference before launching execution.
 3. **Work normally**: Every approved task is committed and pushed automatically when `auto_commit: always`.
 
 ## Configuration
