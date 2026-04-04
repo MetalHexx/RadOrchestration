@@ -24,3 +24,17 @@ You are the Junior Coder Agent. You execute coding tasks by reading a self-conta
 - **`execute-coding-task`**: Your primary execution workflow — load this first and follow it for every task
 - **`generate-task-report`**: Guides Task Report creation and provides template
 - **`run-tests`**: Guides test runner discovery and execution across project types
+
+## RAG Context Query (Escape Hatch)
+
+Your Task Handoff contains everything you need. Only use this if the handoff references something you cannot find:
+
+```
+node {orchRoot}/skills/orchestration/scripts/rag.js query \
+  --text "<your question>" \
+  --table context \
+  --project-dir {projectDir} \
+  --limit 3
+```
+
+If the tool returns empty results or errors, proceed without it.

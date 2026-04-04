@@ -687,6 +687,39 @@ function handleHalt(state, context, config) {
   };
 }
 
+// ─── Knowledge Compilation Handlers ────────────────────────────────────────
+
+/** @type {MutationHandler} */
+function handleKnowledgeCompilationStarted(state, context, config) {
+  state.knowledge_compilation.status = 'in_progress';
+  return {
+    state,
+    mutations_applied: ['Set knowledge_compilation.status to "in_progress"'],
+  };
+}
+
+/** @type {MutationHandler} */
+function handleKnowledgeCompilationCompleted(state, context, config) {
+  state.knowledge_compilation.status = 'complete';
+  state.knowledge_compilation.doc_path = context.doc_path;
+  return {
+    state,
+    mutations_applied: [
+      'Set knowledge_compilation.status to "complete"',
+      `Set knowledge_compilation.doc_path to "${context.doc_path}"`,
+    ],
+  };
+}
+
+/** @type {MutationHandler} */
+function handleKnowledgeCompilationSkipped(state, context, config) {
+  state.knowledge_compilation.status = 'skipped';
+  return {
+    state,
+    mutations_applied: ['Set knowledge_compilation.status to "skipped"'],
+  };
+}
+
 // ─── MUTATIONS Map ──────────────────────────────────────────────────────────
 
 const MUTATIONS = Object.freeze({
@@ -725,6 +758,11 @@ const MUTATIONS = Object.freeze({
   final_review_completed:   handleFinalReviewCompleted,
   final_approved:           handleFinalApproved,
   final_rejected:           handleFinalRejected,
+
+  // Knowledge Compilation (3)
+  knowledge_compilation_started:   handleKnowledgeCompilationStarted,
+  knowledge_compilation_completed: handleKnowledgeCompilationCompleted,
+  knowledge_compilation_skipped:   handleKnowledgeCompilationSkipped,
 
   // Utility (1)
   halt:                     handleHalt,

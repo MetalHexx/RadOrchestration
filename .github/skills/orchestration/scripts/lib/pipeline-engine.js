@@ -14,6 +14,25 @@ function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
+/**
+ * Fire-and-forget RAG embedding. Never blocks pipeline. Logs to stderr.
+ * @param {string[]} ragArgs - arguments for rag.js
+ * @param {string} orchRoot - path to .github root
+ */
+function triggerEmbedding(ragArgs, orchRoot) {
+  try {
+    const { execFileSync } = require('child_process');
+    const ragScript = path.join(orchRoot, 'skills', 'orchestration', 'scripts', 'rag.js');
+    execFileSync('node', [ragScript, ...ragArgs], {
+      stdio: ['pipe', 'pipe', 'inherit'], // stderr → parent stderr for warnings
+      timeout: 120000, // 2 min max
+    });
+  } catch (err) {
+    // RAG is optional — log and continue
+    process.stderr.write(`[pipeline] RAG embedding failed (non-blocking): ${err.message}\n`);
+  }
+}
+
 // ─── scaffoldInitialState ───────────────────────────────────────────────────
 
 /**
@@ -56,6 +75,10 @@ function scaffoldInitialState(config, projectDir) {
       status: 'not_started',
       doc_path: null,
       human_approved: false,
+    },
+    knowledge_compilation: {
+      status: 'not_started',
+      doc_path: null,
     },
   };
 }
@@ -176,6 +199,44 @@ function processEvent(event, projectDir, context, io, configPath) {
   }
 
   io.writeState(projectDir, proposed.state);
+
+  // ── RAG embedding triggers (fire-and-forget) ─────────────────────────
+  const ragEnabled = config.rag && config.rag.enabled;
+  if (ragEnabled) {
+    const orchRoot = path.resolve(__dirname, '..', '..');
+
+    // Trigger 1: Planning complete — embed all planning docs
+    if (event === 'master_plan_completed') {
+      const { discoverPlanningArtifacts } = require('./rag/phase-discovery');
+      const artifacts = discoverPlanningArtifacts(proposed.state);
+      for (const a of artifacts) {
+        triggerEmbedding(['embed', '--doc', a.doc_path, '--project-dir', projectDir, '--table', 'context', '--doc-type', a.doc_type], orchRoot);
+      }
+      process.stderr.write(`[pipeline] RAG: embedded ${artifacts.length} planning docs\n`);
+    }
+
+    // Trigger 2: Phase complete — embed all phase artifacts
+    if (event === 'phase_review_completed' && proposed.state.execution) {
+      const phaseIdx = currentState.execution.current_phase; // 1-based
+      const phase = proposed.state.execution.phases[phaseIdx - 1];
+      if (phase && phase.stage === 'complete') {
+        triggerEmbedding(['embed-phase', '--project-dir', projectDir, '--phase', String(phaseIdx)], orchRoot);
+        process.stderr.write(`[pipeline] RAG: embedded phase ${phaseIdx} artifacts\n`);
+      }
+    }
+
+    // Trigger 3: Knowledge compilation complete — embed knowledge doc into knowledge table
+    if (event === 'knowledge_compilation_completed' && normalizedContext.doc_path) {
+      triggerEmbedding([
+        'embed',
+        '--doc', normalizedContext.doc_path,
+        '--project-dir', projectDir,
+        '--table', 'knowledge',
+        '--doc-type', 'project-knowledge',
+      ], orchRoot);
+      process.stderr.write(`[pipeline] RAG: embedded project knowledge doc\n`);
+    }
+  }
 
   const next = resolveNextAction(proposed.state, config);
 

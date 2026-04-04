@@ -154,6 +154,7 @@ Every `result.action` value maps to exactly one Orchestrator operation. The Orch
 | 17 | `ask_gate_mode` | Human gate | Present the three gate mode options (`task`, `phase`, `autonomous`) to the operator. Wait for selection. | `gate_mode_set` with `{ "gate_mode": "<chosen>" }` |
 | 18 | `display_halted` | Terminal | Display `result.context.message` to the human. Ask how to proceed. **Loop terminates.** | *(none — terminal action)* |
 | 19 | `display_complete` | Terminal | Display completion summary to the human. **Loop terminates.** | *(none — terminal action)* |
+| 20 | `spawn_knowledge_compiler` | Agent spawn | **Two-step protocol.** (1) Signal `knowledge_compilation_started` with `{}` context → pipeline returns `spawn_knowledge_compiler` again; (2) Spawn **Knowledge Compiler** agent. If RAG is unavailable (rag.js returns disabled/unavailable), signal `knowledge_compilation_skipped` with `{}` context instead. Output: reports/{NAME}-PROJECT-KNOWLEDGE.md | `knowledge_compilation_completed` with `{ "doc_path": "<output-path>" }` |
 
 > **IMPORTANT — `is_correction` guard for action #6 (`create_phase_plan`):** Only signal `phase_planning_started` when `result.context.is_correction` is falsy. For corrective re-planning (`is_correction: true`), the phase is already `in_progress / failed` — skip directly to spawning the Tactical Planner. Signaling `phase_planning_started` during a corrective cycle would be a harmless no-op but is semantically incorrect. The two-step protocol (signal `phase_planning_started` → receive `create_phase_plan` again → spawn Planner) applies ONLY to fresh phases.
 
@@ -194,6 +195,9 @@ These are the exact event names the Orchestrator passes to `--event`:
 | `final_review_completed` | `{ "doc_path": "<path>" }` | After final reviewer finishes |
 | `final_approved` | `{}` | After human approves final review |
 | `final_rejected` | `{}` | After human rejects final review |
+| `knowledge_compilation_started` | `{}` | Before Knowledge Compiler spawn. Transitions knowledge_compilation to in_progress. |
+| `knowledge_compilation_completed` | `{ "doc_path": "<path>" }` | After Knowledge Compiler finishes |
+| `knowledge_compilation_skipped` | `{}` | When RAG is disabled or unavailable at completion time |
 | `halt` | `{}` | Emergency stop — signals the pipeline to halt immediately |
 
 ## Recovery

@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    ports:
+      - "${RAG_DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: radorch_rag
+      POSTGRES_USER: radorch
+      POSTGRES_PASSWORD: ${RAG_DB_PASSWORD:-radorch_dev}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./.github/skills/orchestration/scripts/rag/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radorch"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

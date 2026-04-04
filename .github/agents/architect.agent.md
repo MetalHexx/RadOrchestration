@@ -78,6 +78,19 @@ When spawned by the Orchestrator to create a Master Plan:
 - **`create-architecture`**: Guides Architecture creation workflow and provides template
 - **`create-master-plan`**: Guides Master Plan creation workflow and provides template
 
+## RAG Knowledge Query (Optional)
+
+When available, you can query past project knowledge to inform your work:
+
+```
+node {orchRoot}/skills/orchestration/scripts/rag.js query \
+  --text "<your question>" \
+  --table knowledge \
+  --limit 10
+```
+
+Returns JSON with ranked results from past completed projects. Use this to learn from prior decisions, lessons, and patterns. If the tool returns empty results or errors, proceed without it — RAG supplements your work, it does not gate it.
+
 ## Output Contract
 
 | Document | Path | Format |

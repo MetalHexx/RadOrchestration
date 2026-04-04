@@ -191,8 +191,8 @@ describe('ALLOWED_PHASE_STAGE_TRANSITIONS', () => {
 // ─── NEXT_ACTIONS ───────────────────────────────────────────────────────────
 
 describe('NEXT_ACTIONS', () => {
-  it('has exactly 19 entries', () => {
-    assert.equal(Object.keys(NEXT_ACTIONS).length, 19);
+  it('has exactly 20 entries', () => {
+    assert.equal(Object.keys(NEXT_ACTIONS).length, 20);
   });
 
   it('contains ASK_GATE_MODE with value ask_gate_mode', () => {
