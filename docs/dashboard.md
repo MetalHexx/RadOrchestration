@@ -50,11 +50,10 @@ information.
 
 ### Configuration
 
-Open the configuration viewer from the gear icon in the header to review
-system settings organized by section. Settings cover project paths,
-pipeline limits, human gates, and git strategy. See
-[Configuration](configuration.md) for details on available options and
-how to customize pipeline behavior.
+Open the configuration viewer from the gear icon in the header to review and edit
+system settings. Settings cover project paths,pipeline limits, human gates, and git 
+strategy. See [Configuration](configuration.md) for details on available options for
+customizing the pipeline behaviors.
 
 ### Real-Time Updates
 
