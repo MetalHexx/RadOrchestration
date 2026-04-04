@@ -71,7 +71,7 @@ These skills and prompts are invoked directly by humans rather than by the pipel
 
 | Skill | Description | Used By |
 |-------|-------------|---------|
-| `execute-parallel` | Set up a parallel git worktree for a project and launch orchestration execution in it | any |
+| `rad-execute-parallel` | Set up a parallel git worktree for a project and launch orchestration execution in it | any |
 
 ### Prompt Inventory
 
