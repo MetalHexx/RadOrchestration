@@ -7,7 +7,9 @@ Workflow for reviewing inbound PR comments, deciding on fixes, implementing them
 - Read all PR comments and form a repair plan.
 - **Validate independently** — do not treat reviewer comments as ground truth.
 - Read docs like the PRD, Architecture, Design, and Master Plan to ground yourself in the project's scope.
+- Project docs could make mistakes, so keep that in mind and seek the truth. 
 - Read the affected code and its surroundings to assess blast radius.
+- Read through the repo commit history to better understand the the intent and evolution of the affected code.
 
 ## Step 2: Implement
 
