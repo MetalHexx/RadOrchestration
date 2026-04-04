@@ -20,7 +20,7 @@ Per-project values take precedence over these defaults at runtime.
 
 ## Setup
 
-The `execute-parallel` skill handles source control setup immediately after worktree creation:
+The `rad-execute-parallel` skill handles source control setup immediately after worktree creation:
 
 - After worktree creation, the setup step reads `auto_commit` and `auto_pr` from `orchestration.yml`.
 - If either is `ask`, the operator is prompted to choose `always` or `never` for this project run.
@@ -30,7 +30,7 @@ The `execute-parallel` skill handles source control setup immediately after work
 
 ### Branch Publication
 
-The `execute-parallel` skill publishes the branch to the remote immediately after worktree creation, before calling `pipeline.js --event source_control_init`:
+The `rad-execute-parallel` skill publishes the branch to the remote immediately after worktree creation, before calling `pipeline.js --event source_control_init`:
 
 - `git push -u origin {branch}` is run from the worktree path; push failure is non-blocking — the error is logged and the init continues.
 - The `source_control_init` event itself remains idempotent — safe to re-run without corrupting state.
