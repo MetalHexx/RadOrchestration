@@ -90,6 +90,7 @@ const NEXT_ACTIONS = Object.freeze({
   REQUEST_FINAL_APPROVAL: 'request_final_approval',
   DISPLAY_HALTED: 'display_halted',
   DISPLAY_COMPLETE: 'display_complete',
+  SPAWN_KNOWLEDGE_COMPILER: 'spawn_knowledge_compiler',
 });
 
 // ─── Stage Enums (v4) ──────────────────────────────────────────────────────
@@ -187,6 +188,7 @@ const ALLOWED_PHASE_TRANSITIONS = Object.freeze({
  * @property {Planning} planning
  * @property {Execution} execution
  * @property {FinalReview} final_review
+ * @property {KnowledgeCompilation} knowledge_compilation
  */
 
 /**
@@ -289,6 +291,12 @@ const ALLOWED_PHASE_TRANSITIONS = Object.freeze({
  * @property {string} status - one of: 'not_started', 'in_progress', 'complete'
  * @property {string | null} doc_path
  * @property {boolean} human_approved
+ */
+
+/**
+ * @typedef {Object} KnowledgeCompilation
+ * @property {string} status - 'not_started' | 'in_progress' | 'complete' | 'skipped'
+ * @property {string | null} doc_path
  */
 
 /**

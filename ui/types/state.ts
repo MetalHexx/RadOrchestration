@@ -21,6 +21,8 @@ export type PhaseStage = 'planning' | 'executing' | 'reporting' | 'reviewing' | 
 
 export type FinalReviewStatus = 'not_started' | 'in_progress' | 'complete';
 
+export type KnowledgeCompilationStatus = 'not_started' | 'in_progress' | 'complete' | 'skipped';
+
 export type ReviewVerdict = 'approved' | 'changes_requested' | 'rejected';
 
 export type GateMode = 'task' | 'phase' | 'autonomous';
@@ -44,6 +46,7 @@ export interface ProjectState {
   planning: PlanningState;
   execution: ExecutionState;
   final_review: FinalReview;
+  knowledge_compilation: KnowledgeCompilation;
 }
 
 // ─── Top-Level Sections ──────────────────────────────────────────────────────
@@ -81,6 +84,11 @@ export interface FinalReview {
   status: FinalReviewStatus;
   doc_path: string | null;
   human_approved: boolean;
+}
+
+export interface KnowledgeCompilation {
+  status: KnowledgeCompilationStatus;
+  doc_path: string | null;
 }
 
 // ─── Phase ───────────────────────────────────────────────────────────────────

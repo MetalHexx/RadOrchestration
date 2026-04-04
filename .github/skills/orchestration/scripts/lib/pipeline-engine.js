@@ -57,6 +57,10 @@ function scaffoldInitialState(config, projectDir) {
       doc_path: null,
       human_approved: false,
     },
+    knowledge_compilation: {
+      status: 'not_started',
+      doc_path: null,
+    },
   };
 }
 

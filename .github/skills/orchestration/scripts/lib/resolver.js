@@ -284,6 +284,22 @@ function resolveReview(state) {
   return halted('Final review approved but tier still in review — expected mutation to transition');
 }
 
+// ─── Complete Tier ─────────────────────────────────────────────────────────
+
+function resolveComplete(state, config) {
+  const ragEnabled = config.rag && config.rag.enabled;
+
+  if (ragEnabled && state.knowledge_compilation) {
+    const kc = state.knowledge_compilation;
+    if (kc.status === 'not_started' || kc.status === 'in_progress') {
+      return { action: NEXT_ACTIONS.SPAWN_KNOWLEDGE_COMPILER, context: {} };
+    }
+    // 'complete' or 'skipped' → fall through to display_complete
+  }
+
+  return { action: NEXT_ACTIONS.DISPLAY_COMPLETE, context: {} };
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
@@ -306,7 +322,7 @@ function resolveNextAction(state, config) {
   }
 
   if (tier === PIPELINE_TIERS.COMPLETE) {
-    return { action: NEXT_ACTIONS.DISPLAY_COMPLETE, context: {} };
+    return resolveComplete(state, config);
   }
 
   // Active tiers
