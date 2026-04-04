@@ -83,8 +83,6 @@ Configurable critical human checkpoints are reliably enforced.  Humans approve t
 
 Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
 
-[Learn more about the scripts →](docs/internals/scripts.md)
-
 ### Composable Skills
 
 Eighteen reusable skills bundle domain knowledge, templates, and instructions. Agents are composed with the skills they need — the system can be extended with new agents, capabilities, or adapted to new workflows by remixing skills.
