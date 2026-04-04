@@ -79,6 +79,7 @@ const resolveOrchRootMock = mock.fn((workspaceDir, orchRoot) => `${workspaceDir}
 const existsSyncMock = mock.fn((p) =>
   state.existsSyncResponse ? state.existsSyncResponse(p) : false
 );
+const mkdirSyncMock = mock.fn();
 
 // UI module mocks — mutable state drives behavior
 const checkNodeNpmMock = mock.fn(() => ({ available: true }));
@@ -121,8 +122,9 @@ await mock.module('./lib/ui-builder.js', {
 });
 await mock.module('@inquirer/prompts', { namedExports: { confirm: confirmMock } });
 await mock.module('ora', { defaultExport: oraMock });
-// Patch fs.existsSync on the shared default-export object
+// Patch fs methods on the shared default-export object
 mock.method(fs, 'existsSync', existsSyncMock);
+mock.method(fs, 'mkdirSync', mkdirSyncMock);
 
 // ── Single import of index.js (uses live bindings above) ─────────────────────
 
@@ -134,7 +136,7 @@ const ALL_MOCKS = [
   renderBannerMock, sectionHeaderMock, renderPreInstallSummaryMock, renderPostInstallSummaryMock,
   renderPartialSuccessSummaryMock,
   runWizardMock, getManifestMock, confirmMock, copyCategoryMock,
-  generateConfigMock, writeConfigMock, resolveOrchRootMock, existsSyncMock, oraMock,
+  generateConfigMock, writeConfigMock, resolveOrchRootMock, existsSyncMock, mkdirSyncMock, oraMock,
   checkNodeNpmMock, installUiMock,
 ];
 
@@ -377,6 +379,43 @@ test('config generation: generateConfig and writeConfig called with a spinner', 
     configSpinner.succeed.mock.callCount() + configSpinner.fail.mock.callCount() >= 1,
     'config spinner settles'
   );
+});
+
+// ── Projects base path directory creation ────────────────────────────────────
+
+test('projects base path: mkdirSync called with resolved absolute path after config is written', async () => {
+  resetMocks();
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.ok(mkdirSyncMock.mock.callCount() >= 1, 'mkdirSync called at least once');
+  const calls = mkdirSyncMock.mock.calls.map((c) => c.arguments[0]);
+  // config has workspaceDir='/workspace', projectsBasePath='projects' → resolves to '/workspace/projects'
+  assert.ok(calls.some((p) => String(p).includes('projects')), 'mkdirSync called with a path containing projects');
+  const opts = mkdirSyncMock.mock.calls[0].arguments[1];
+  assert.deepEqual(opts, { recursive: true }, 'mkdirSync called with recursive: true');
+});
+
+test('projects base path: mkdirSync called after writeConfig', async () => {
+  resetMocks();
+  const callOrder = [];
+  writeConfigMock.mock.mockImplementationOnce(() => callOrder.push('writeConfig'));
+  mkdirSyncMock.mock.mockImplementationOnce(() => callOrder.push('mkdirSync'));
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.ok(callOrder.indexOf('writeConfig') < callOrder.indexOf('mkdirSync'), 'mkdirSync called after writeConfig');
 });
 
 // ── Top-level error handling ──────────────────────────────────────────────────
