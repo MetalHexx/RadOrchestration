@@ -162,12 +162,7 @@ export async function runWizard({ skipConfirmation, cliOverrides = {} }) {
     console.log(THEME.hint('  decisions and patterns from past projects.'));
     console.log('');
 
-    if (has('installMemory') && cliOverrides.installMemory) {
-      // --memory passed without --auto-ingest: skip confirm, run rest of prompt for auto-ingest
-      memorySystem = await promptMemoryInstall(gettingStarted.workspaceDir);
-    } else {
-      memorySystem = await promptMemoryInstall(gettingStarted.workspaceDir);
-    }
+    memorySystem = await promptMemoryInstall(gettingStarted.workspaceDir);
   }
 
   // ── Dashboard UI ─────────────────────────────────────────────────────────

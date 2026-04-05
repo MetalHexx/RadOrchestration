@@ -41,6 +41,7 @@
  * @property {string} [uiDir] - Absolute path to UI installation directory (when installUi is true)
  * @property {boolean} installMemory - Whether to install the memory system
  * @property {'always'|'ask'|'never'} autoIngest - Auto-ingest policy for completed projects
+ * @property {boolean} [memoryInstallFailed] - Whether memory MCP registration failed and user continued without
  * @property {boolean} skipConfirmation - Whether --yes flag was passed
  */
 

@@ -343,7 +343,7 @@ function resolveNextAction(state, config) {
     if (state.pipeline.memory_ingested === false) {
       return {
         action: NEXT_ACTIONS.INVOKE_MEMORY_INGEST,
-        context: { project_dir: state.project.name },
+        context: { project_name: state.project.name },
       };
     }
     return { action: NEXT_ACTIONS.DISPLAY_COMPLETE, context: {} };

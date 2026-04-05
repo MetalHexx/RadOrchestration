@@ -29,7 +29,7 @@ The orchestration system uses 12 specialized agents, each with a defined role, s
 
 **Purpose:** Collaboratively explore and refine project ideas before entering the pipeline.
 
-The Brainstormer works directly with the human in a conversational loop — asking probing questions, exploring trade-offs, identifying scope boundaries, and converging on a well-defined goals. It operates outside the main pipeline and is entirely optional. When memory is enabled, the Brainstormer recalls past project ideas and scope decisions to inform the current exploration.
+The Brainstormer works directly with the human in a conversational loop — asking probing questions, exploring trade-offs, identifying scope boundaries, and converging on a well-defined goal. It operates outside the main pipeline and is entirely optional. When memory is enabled, the Brainstormer recalls past project ideas and scope decisions to inform the current exploration.
 
 **Input:** Human prompts and whatever you want.
 

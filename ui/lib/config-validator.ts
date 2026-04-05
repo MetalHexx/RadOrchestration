@@ -87,12 +87,16 @@ export function validateConfig(config: OrchestrationConfig): ConfigValidationErr
   }
 
   // 14–15. memory (optional section — skip if missing)
-  if (isSection(config.memory)) {
-    if (typeof config.memory.enabled !== 'boolean') {
-      errors['memory.enabled'] = 'Must be true or false';
-    }
-    if (!VALID_AUTO_INGEST.includes(config.memory.auto_ingest as string)) {
-      errors['memory.auto_ingest'] = 'Invalid auto-ingest setting';
+  if (config.memory !== undefined && config.memory !== null) {
+    if (typeof config.memory !== 'object' || Array.isArray(config.memory)) {
+      errors['memory'] = 'Must be a configuration section';
+    } else if (isSection(config.memory)) {
+      if (typeof config.memory.enabled !== 'boolean') {
+        errors['memory.enabled'] = 'Must be true or false';
+      }
+      if (!VALID_AUTO_INGEST.includes(config.memory.auto_ingest as string)) {
+        errors['memory.auto_ingest'] = 'Invalid auto-ingest setting';
+      }
     }
   }
 

@@ -757,7 +757,7 @@ describe('resolver — complete tier — memory routing', () => {
     });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'invoke_memory_ingest');
-    assert.equal(result.context.project_dir, 'TEST');
+    assert.equal(result.context.project_name, 'TEST');
   });
 
   it('returns display_complete when memory_ingested is true', () => {

@@ -117,7 +117,7 @@ Every task is reviewed against the plan. Code reviewers inspect source code dire
 | [Guides](docs/guides.md) | First-project walkthroughs, continuing projects, checking status |
 | [Pipeline](docs/pipeline.md) | Planning and execution flow, human gates, error handling |
 | [Agents](docs/agents.md) | All 12 agents — roles, access control, design constraints |
-| [Skills](docs/skills.md) | All 18 skills and how they compose with agents |
+| [Skills](docs/skills.md) | All 20 skills and how they compose with agents |
 | [Templates](docs/templates.md) | All 16 templates — purpose, producing agent, consuming agent |
 | [Configuration](docs/configuration.md) | `orchestration.yml` reference — all options explained |
 | [Memory](docs/memory.md) | Memory system setup, agent recall, knowledge base management |
