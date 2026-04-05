@@ -52,6 +52,7 @@ When spawned by the Orchestrator:
 ## Skills
 - **`orchestration`**: System context — agent roles, pipeline flow, naming conventions, key rules
 - **`create-prd`**: Primary skill — guides PRD creation workflow and provides the PRD template
+- **`recall-memory`**: Query past project knowledge from the memory system (read-only, silent no-op when disabled)
 
 ## Output Contract
 

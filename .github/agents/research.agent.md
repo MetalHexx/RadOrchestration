@@ -66,6 +66,7 @@ When spawned by the Orchestrator (pipeline mode):
 ## Skills
 - **`orchestration`**: System context — agent roles, pipeline flow, naming conventions, key rules
 - **`research-codebase`**: Primary skill — guides research workflow and provides the Research Findings template
+- **`recall-memory`**: Query past project knowledge from the memory system (read-only, silent no-op when disabled)
 
 ## Output Contract
 
