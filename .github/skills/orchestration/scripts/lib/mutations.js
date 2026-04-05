@@ -822,6 +822,63 @@ function handlePrCreated(state, context, config) {
   return { state, mutations_applied: mutations };
 }
 
+// ─── Memory Ingest Handlers ─────────────────────────────────────────────
+
+/**
+ * memory_ingest_requested — Validation checkpoint before spawning memory ingest subagent.
+ * Checks memory.enabled and auto_ingest policy in config.
+ * If disabled or auto_ingest="never": sets pipeline.memory_ingested=true (skip).
+ * If auto_ingest is "always" or "ask": no state change (resolver will route accordingly).
+ *
+ * @param {Object} state   - deep-cloned pipeline state
+ * @param {Object} context - {} (no fields required)
+ * @param {Object} config  - merged orchestration config
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleMemoryIngestRequested(state, context, config) {
+  const mutations = [];
+
+  if (config.memory?.enabled !== true) {
+    state.pipeline.memory_ingested = true;
+    mutations.push('Memory disabled (config.memory.enabled !== true) — skipping ingest: set pipeline.memory_ingested to true');
+    return { state, mutations_applied: mutations };
+  }
+
+  if (config.memory?.auto_ingest === 'never') {
+    state.pipeline.memory_ingested = true;
+    mutations.push('auto_ingest is "never" — skipping ingest: set pipeline.memory_ingested to true');
+    return { state, mutations_applied: mutations };
+  }
+
+  mutations.push(`Memory ingest requested (auto_ingest: "${config.memory.auto_ingest}") — no state change`);
+  return { state, mutations_applied: mutations };
+}
+
+/**
+ * memory_ingest_completed — Marks memory ingestion as done, regardless of success/failure.
+ * Sets pipeline.memory_ingested = true so resolver advances to display_complete.
+ * Always succeeds unconditionally — memory failures never block pipeline.
+ *
+ * @param {Object} state   - deep-cloned pipeline state
+ * @param {Object} context - { success: boolean, error?: string }
+ * @param {Object} config  - merged orchestration config
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleMemoryIngestCompleted(state, context, config) {
+  state.pipeline.memory_ingested = true;
+  const mutations = ['Set pipeline.memory_ingested to true'];
+
+  if (context?.success === false && context?.error) {
+    mutations.push(`Memory ingest failed (non-blocking): ${context.error}`);
+  } else if (context?.success === false) {
+    mutations.push('Memory ingest failed (non-blocking)');
+  } else if (context?.success === true) {
+    mutations.push('Memory ingest completed successfully');
+  }
+
+  return { state, mutations_applied: mutations };
+}
+
 // ─── MUTATIONS Map ──────────────────────────────────────────────────────────
 
 const MUTATIONS = Object.freeze({
@@ -857,6 +914,10 @@ const MUTATIONS = Object.freeze({
   task_committed:             handleTaskCommitted,
   pr_requested:               handlePrRequested,
   pr_created:                 handlePrCreated,
+
+  // Memory ingest (2)
+  memory_ingest_requested:   handleMemoryIngestRequested,
+  memory_ingest_completed:   handleMemoryIngestCompleted,
 
   // Gate events (3)
   gate_mode_set:            handleGateModeSet,
@@ -898,4 +959,6 @@ module.exports._test = {
   handleTaskCommitted,
   handlePrRequested,
   handlePrCreated,
+  handleMemoryIngestRequested,
+  handleMemoryIngestCompleted,
 };
