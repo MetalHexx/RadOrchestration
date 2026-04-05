@@ -81,6 +81,7 @@ const resolveOrchRootMock = mock.fn((workspaceDir, orchRoot) => `${workspaceDir}
 const existsSyncMock = mock.fn((p) =>
   state.existsSyncResponse ? state.existsSyncResponse(p) : false
 );
+const mkdirSyncMock = mock.fn();
 
 // UI module mocks — mutable state drives behavior
 const checkNodeNpmMock = mock.fn(() => ({ available: true }));
@@ -135,9 +136,9 @@ await mock.module('./lib/ui-builder.js', {
 });
 await mock.module('@inquirer/prompts', { namedExports: { confirm: confirmMock } });
 await mock.module('ora', { defaultExport: oraMock });
-// Patch fs.existsSync and fs.mkdirSync on the shared default-export object
+// Patch fs methods on the shared default-export object
 mock.method(fs, 'existsSync', existsSyncMock);
-const mkdirSyncMock = mock.method(fs, 'mkdirSync', () => {});
+mock.method(fs, 'mkdirSync', mkdirSyncMock);
 
 // ── Single import of index.js (uses live bindings above) ─────────────────────
 
@@ -150,8 +151,8 @@ const ALL_MOCKS = [
   renderPartialSuccessSummaryMock,
   parseArgsMock, renderHelpMock,
   runWizardMock, getManifestMock, confirmMock, copyCategoryMock,
-  generateConfigMock, writeConfigMock, resolveOrchRootMock, existsSyncMock, oraMock,
-  checkNodeNpmMock, installUiMock, mkdirSyncMock,
+  generateConfigMock, writeConfigMock, resolveOrchRootMock, existsSyncMock, mkdirSyncMock, oraMock,
+  checkNodeNpmMock, installUiMock,
 ];
 
 function resetMocks() {
@@ -395,9 +396,9 @@ test('config generation: generateConfig and writeConfig called with a spinner', 
   );
 });
 
-// ── Project storage directory creation ───────────────────────────────────────
+// ── Projects base path directory creation ────────────────────────────────────
 
-test('projects directory: fs.mkdirSync called with resolved projects path', async () => {
+test('projects base path: mkdirSync called with resolved absolute path after config is written', async () => {
   resetMocks();
   const originalArgv = process.argv;
   process.argv = ['node', 'installer/index.js', '--yes'];
@@ -407,22 +408,37 @@ test('projects directory: fs.mkdirSync called with resolved projects path', asyn
     process.argv = originalArgv;
   }
 
-  const mkdirCalls = mkdirSyncMock.mock.calls;
-  assert.ok(mkdirCalls.length >= 1, 'mkdirSync called at least once');
-  // The projects directory call uses workspaceDir + projectsBasePath ('/workspace/projects')
-  const projectsDirCall = mkdirCalls.find(
-    (c) => typeof c.arguments[0] === 'string' && c.arguments[0].includes('projects')
-  );
-  assert.ok(projectsDirCall, 'mkdirSync called for projects directory');
-  assert.deepEqual(projectsDirCall.arguments[1], { recursive: true }, 'recursive: true passed');
+  assert.ok(mkdirSyncMock.mock.callCount() >= 1, 'mkdirSync called at least once');
+  const calls = mkdirSyncMock.mock.calls.map((c) => c.arguments[0]);
+  // config has workspaceDir='/workspace', projectsBasePath='projects' → resolves to '/workspace/projects'
+  assert.ok(calls.some((p) => String(p).includes('projects')), 'mkdirSync called with a path containing projects');
+  const opts = mkdirSyncMock.mock.calls[0].arguments[1];
+  assert.deepEqual(opts, { recursive: true }, 'mkdirSync called with recursive: true');
 });
 
-test('projects directory: absolute projectsBasePath used as-is', async () => {
+test('projects base path: mkdirSync called after writeConfig', async () => {
+  resetMocks();
+  const callOrder = [];
+  writeConfigMock.mock.mockImplementationOnce(() => callOrder.push('writeConfig'));
+  mkdirSyncMock.mock.mockImplementationOnce(() => callOrder.push('mkdirSync'));
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.ok(callOrder.indexOf('writeConfig') < callOrder.indexOf('mkdirSync'), 'mkdirSync called after writeConfig');
+});
+
+test('projects base path: absolute projectsBasePath used as-is', async () => {
   resetMocks();
   runWizardMock.mock.mockImplementationOnce(async () => ({
     ...makeDefaultConfig(),
     projectsBasePath: '/abs/path/to/projects',
   }));
+
   const originalArgv = process.argv;
   process.argv = ['node', 'installer/index.js', '--yes'];
   try {
