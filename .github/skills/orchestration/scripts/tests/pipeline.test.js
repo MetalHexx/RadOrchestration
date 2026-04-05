@@ -47,7 +47,9 @@ describe('parseArgs', () => {
       pushed: 'true',
       remoteUrl:  'https://github.com/org/repo',
       compareUrl: 'https://github.com/org/repo/compare/main...feat',
-      prUrl: undefined
+      prUrl: undefined,
+      success: undefined,
+      error: undefined
     });
   });
 
@@ -70,7 +72,9 @@ describe('parseArgs', () => {
       pushed: undefined,
       remoteUrl:  undefined,
       compareUrl: undefined,
-      prUrl: undefined
+      prUrl: undefined,
+      success: undefined,
+      error: undefined
     });
   });
 

@@ -76,7 +76,7 @@ function makeExecutionStartState(totalPhases) {
 
 // ─── Category 1: Full happy path ────────────────────────────────────────────
 // Drives a single-phase, single-task project from init through display_complete.
-// 15 sequential events, one per it block, shared io.
+// 16 sequential events, one per it block, shared io.
 
 describe('Category 1: Full happy path', () => {
   const documents = {
@@ -299,12 +299,21 @@ describe('Category 1: Full happy path', () => {
     assert.equal(io.getWrites().length, writeCount);
   });
 
-  it('Step 15: final_approved → display_complete', () => {
+  it('Step 15: final_approved → invoke_memory_ingest', () => {
     const result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    writeCount++;
+    assert.equal(result.success, true);
+    assert.equal(result.action, 'invoke_memory_ingest');
+    assert.equal(io.getWrites().length, writeCount);
+  });
+
+  it('Step 16: memory_ingest_requested → display_complete', () => {
+    const result = processEvent('memory_ingest_requested', PROJECT_DIR, {}, io);
     writeCount++;
     assert.equal(result.success, true);
     assert.equal(result.action, 'display_complete');
     assert.equal(io.getWrites().length, writeCount);
+    assert.equal(io.getState().pipeline.memory_ingested, true);
   });
 });
 
