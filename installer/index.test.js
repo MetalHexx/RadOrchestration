@@ -90,6 +90,11 @@ const installUiMock = mock.fn(async () => ({
 }));
 const renderPartialSuccessSummaryMock = mock.fn();
 
+// Memory install mocks
+const isTotalRecallInstalledMock = mock.fn(async () => false);
+const installTotalRecallMock = mock.fn(async () => ({ success: true }));
+const registerMcpServerMock = mock.fn(() => ({ success: true, merged: false }));
+
 // CLI module mocks
 const parseArgsMock = mock.fn((argv) => {
   if (state.parseArgsResult) return state.parseArgsResult;
@@ -100,7 +105,7 @@ const parseArgsMock = mock.fn((argv) => {
 });
 const renderHelpMock = mock.fn();
 
-const THEME = { banner: (s) => s, warning: (s) => s, error: (s) => s, spinner: 'cyan' };
+const THEME = { banner: (s) => s, warning: (s) => s, error: (s) => s, spinner: 'cyan', success: (s) => s, errorDetail: (s) => s, body: (s) => s, command: (s) => s, hint: (s) => s };
 
 // Spinner factory - instances collected into array, cleared between tests
 const spinnerInstances = [];
@@ -134,6 +139,13 @@ await mock.module('./lib/file-copier.js', { namedExports: { copyCategory: copyCa
 await mock.module('./lib/ui-builder.js', {
   namedExports: { checkNodeNpm: checkNodeNpmMock, installUi: installUiMock },
 });
+await mock.module('./lib/prompts/memory-install.js', {
+  namedExports: {
+    isTotalRecallInstalled: isTotalRecallInstalledMock,
+    installTotalRecall: installTotalRecallMock,
+    registerMcpServer: registerMcpServerMock,
+  },
+});
 await mock.module('@inquirer/prompts', { namedExports: { confirm: confirmMock } });
 await mock.module('ora', { defaultExport: oraMock });
 // Patch fs methods on the shared default-export object
@@ -153,6 +165,7 @@ const ALL_MOCKS = [
   runWizardMock, getManifestMock, confirmMock, copyCategoryMock,
   generateConfigMock, writeConfigMock, resolveOrchRootMock, existsSyncMock, mkdirSyncMock, oraMock,
   checkNodeNpmMock, installUiMock,
+  isTotalRecallInstalledMock, installTotalRecallMock, registerMcpServerMock,
 ];
 
 function resetMocks() {
@@ -827,4 +840,212 @@ test('runWizard receives cliOverrides from parseArgs options', async () => {
   const wizardArgs = runWizardMock.mock.calls[0].arguments[0];
   assert.equal(wizardArgs.skipConfirmation, true, 'skipConfirmation passed');
   assert.deepEqual(wizardArgs.cliOverrides, { skipConfirmation: true, orchRoot: '.rad' }, 'cliOverrides passed');
+});
+
+// ── Memory install step ───────────────────────────────────────────────────────
+
+function makeMemoryConfig(overrides = {}) {
+  return { ...makeDefaultConfig(), installMemory: true, autoIngest: 'ask', ...overrides };
+}
+
+test('memory step skipped when installMemory is false', async () => {
+  resetMocks();
+  // Default config has no installMemory — should skip
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.equal(isTotalRecallInstalledMock.mock.callCount(), 0, 'isTotalRecallInstalled not called');
+  assert.equal(installTotalRecallMock.mock.callCount(), 0, 'installTotalRecall not called');
+  assert.equal(registerMcpServerMock.mock.callCount(), 0, 'registerMcpServer not called');
+});
+
+test('memory step executes when installMemory is true', async () => {
+  resetMocks();
+  runWizardMock.mock.mockImplementationOnce(async ({ skipConfirmation }) =>
+    ({ ...makeMemoryConfig(), skipConfirmation })
+  );
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.ok(isTotalRecallInstalledMock.mock.callCount() >= 1, 'isTotalRecallInstalled called');
+});
+
+test('binary already installed: install skipped, MCP registered', async () => {
+  resetMocks();
+  runWizardMock.mock.mockImplementationOnce(async ({ skipConfirmation }) =>
+    ({ ...makeMemoryConfig(), skipConfirmation })
+  );
+  isTotalRecallInstalledMock.mock.mockImplementationOnce(async () => true);
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.equal(installTotalRecallMock.mock.callCount(), 0, 'installTotalRecall NOT called when already installed');
+  assert.equal(registerMcpServerMock.mock.callCount(), 1, 'registerMcpServer called');
+  assert.equal(registerMcpServerMock.mock.calls[0].arguments[0], '/workspace', 'registerMcpServer receives workspaceDir');
+});
+
+test('binary not installed: install called, MCP registered', async () => {
+  resetMocks();
+  runWizardMock.mock.mockImplementationOnce(async ({ skipConfirmation }) =>
+    ({ ...makeMemoryConfig(), skipConfirmation })
+  );
+  isTotalRecallInstalledMock.mock.mockImplementationOnce(async () => false);
+  installTotalRecallMock.mock.mockImplementationOnce(async () => ({ success: true }));
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.equal(installTotalRecallMock.mock.callCount(), 1, 'installTotalRecall called');
+  assert.equal(registerMcpServerMock.mock.callCount(), 1, 'registerMcpServer called after successful install');
+});
+
+test('install failure + continue without: config updated, MCP not called', async () => {
+  resetMocks();
+  runWizardMock.mock.mockImplementationOnce(async ({ skipConfirmation }) =>
+    ({ ...makeMemoryConfig(), skipConfirmation })
+  );
+  isTotalRecallInstalledMock.mock.mockImplementationOnce(async () => false);
+  installTotalRecallMock.mock.mockImplementationOnce(async () => ({ success: false, error: 'EACCES' }));
+  state.confirmResponse = true; // continue without memory
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.equal(registerMcpServerMock.mock.callCount(), 0, 'registerMcpServer NOT called after install failure');
+  assert.equal(renderPostInstallSummaryMock.mock.callCount(), 1, 'renderPostInstallSummary still called');
+});
+
+test('install failure + decline continue: exits with code 1', async () => {
+  resetMocks();
+  runWizardMock.mock.mockImplementationOnce(async ({ skipConfirmation }) =>
+    ({ ...makeMemoryConfig(), skipConfirmation })
+  );
+  isTotalRecallInstalledMock.mock.mockImplementationOnce(async () => false);
+  installTotalRecallMock.mock.mockImplementationOnce(async () => ({ success: false, error: 'EACCES' }));
+  state.confirmResponse = false; // decline continue
+
+  const exitCodes = [];
+  const origExit = process.exit;
+  const origConsoleError = console.error;
+  process.exit = (code) => { exitCodes.push(code); throw new Error(`process.exit(${code})`); };
+  console.error = () => {};
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } catch (_) {
+    // expected
+  } finally {
+    process.argv = originalArgv;
+    process.exit = origExit;
+    console.error = origConsoleError;
+  }
+
+  assert.ok(exitCodes.includes(1), 'process.exit(1) called on decline');
+});
+
+test('MCP failure + continue without: execution proceeds to summary', async () => {
+  resetMocks();
+  runWizardMock.mock.mockImplementationOnce(async ({ skipConfirmation }) =>
+    ({ ...makeMemoryConfig(), skipConfirmation })
+  );
+  isTotalRecallInstalledMock.mock.mockImplementationOnce(async () => true);
+  registerMcpServerMock.mock.mockImplementationOnce(() => ({ success: false, merged: false, error: 'EPERM' }));
+  state.confirmResponse = true; // continue without memory
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.equal(renderPostInstallSummaryMock.mock.callCount(), 1, 'renderPostInstallSummary called after MCP failure + continue');
+});
+
+test('MCP failure + decline continue: exits with code 1', async () => {
+  resetMocks();
+  runWizardMock.mock.mockImplementationOnce(async ({ skipConfirmation }) =>
+    ({ ...makeMemoryConfig(), skipConfirmation })
+  );
+  isTotalRecallInstalledMock.mock.mockImplementationOnce(async () => true);
+  registerMcpServerMock.mock.mockImplementationOnce(() => ({ success: false, merged: false, error: 'EPERM' }));
+  state.confirmResponse = false; // decline continue
+
+  const exitCodes = [];
+  const origExit = process.exit;
+  const origConsoleError = console.error;
+  process.exit = (code) => { exitCodes.push(code); throw new Error(`process.exit(${code})`); };
+  console.error = () => {};
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } catch (_) {
+    // expected
+  } finally {
+    process.argv = originalArgv;
+    process.exit = origExit;
+    console.error = origConsoleError;
+  }
+
+  assert.ok(exitCodes.includes(1), 'process.exit(1) called when user declines after MCP failure');
+});
+
+test('memory step runs after config generation and before Dashboard UI', async () => {
+  resetMocks();
+  const callOrder = [];
+  runWizardMock.mock.mockImplementationOnce(async ({ skipConfirmation }) => {
+    callOrder.push('runWizard');
+    return { ...makeMemoryConfig({ installUi: true, uiDir: '/workspace/ui' }), skipConfirmation };
+  });
+  generateConfigMock.mock.mockImplementationOnce(() => { callOrder.push('generateConfig'); return 'yaml'; });
+  writeConfigMock.mock.mockImplementationOnce(() => callOrder.push('writeConfig'));
+  isTotalRecallInstalledMock.mock.mockImplementationOnce(async () => { callOrder.push('isTotalRecallInstalled'); return true; });
+  registerMcpServerMock.mock.mockImplementationOnce(() => { callOrder.push('registerMcpServer'); return { success: true, merged: false }; });
+  checkNodeNpmMock.mock.mockImplementationOnce(() => { callOrder.push('checkNodeNpm'); return { available: true }; });
+  installUiMock.mock.mockImplementationOnce(async () => { callOrder.push('installUi'); return { copySuccess: true, installSuccess: true, buildSuccess: true, fileCount: 42 }; });
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.ok(callOrder.indexOf('writeConfig') < callOrder.indexOf('isTotalRecallInstalled'), 'writeConfig before isTotalRecallInstalled');
+  assert.ok(callOrder.indexOf('registerMcpServer') < callOrder.indexOf('checkNodeNpm'), 'registerMcpServer before checkNodeNpm');
+  assert.ok(callOrder.indexOf('registerMcpServer') < callOrder.indexOf('installUi'), 'registerMcpServer before installUi');
 });

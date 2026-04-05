@@ -22,6 +22,7 @@ import { renderHelp } from './lib/help.js';
 
 // Application
 import { runWizard } from './lib/wizard.js';
+import { isTotalRecallInstalled, installTotalRecall, registerMcpServer } from './lib/prompts/memory-install.js';
 import { checkNodeNpm, installUi } from './lib/ui-builder.js';
 
 // Domain
@@ -154,6 +155,71 @@ export async function main() {
       : path.join(config.workspaceDir, config.projectsBasePath);
     fs.mkdirSync(resolvedProjectsPath, { recursive: true });
     projectsSpinner.succeed('Created projects directory');
+
+    // ── Memory System ────────────────────────────────────────────────────
+    if (config.installMemory) {
+      console.log('');
+      sectionHeader('::', 'Memory System');
+      console.log('');
+
+      const alreadyInstalled = await isTotalRecallInstalled();
+
+      if (alreadyInstalled) {
+        console.log(THEME.success('✓ total-recall is already installed'));
+      }
+
+      if (!alreadyInstalled) {
+        const installSpinner = ora({ text: 'Installing total-recall...', color: THEME.spinner }).start();
+        const installResult = await installTotalRecall();
+
+        if (installResult.success) {
+          installSpinner.succeed('total-recall installed');
+        } else {
+          installSpinner.fail('Installation failed');
+          console.log(THEME.errorDetail(installResult.error));
+          console.log(THEME.body('To install manually:'));
+          console.log(THEME.command('  npm install -g @strvmarv/total-recall'));
+
+          const continueWithout = await confirm({
+            message: 'Continue without memory?',
+            default: true,
+          });
+
+          if (continueWithout) {
+            config.installMemory = false;
+            config.memoryInstallFailed = true;
+          } else {
+            process.exit(1);
+          }
+        }
+      }
+
+      if (config.installMemory) {
+        const mcpSpinner = ora({ text: 'Registering MCP server...', color: THEME.spinner }).start();
+        const mcpResult = registerMcpServer(config.workspaceDir);
+
+        if (mcpResult.success) {
+          mcpSpinner.succeed('MCP server registered (.vscode/mcp.json)');
+          if (mcpResult.merged) {
+            console.log(THEME.hint('  Merged into existing .vscode/mcp.json'));
+          }
+        } else {
+          mcpSpinner.fail('MCP registration failed');
+          console.log(THEME.errorDetail(mcpResult.error));
+          console.log(THEME.body('To configure manually, add to .vscode/mcp.json:'));
+          console.log(THEME.command('  { "servers": { "total-recall": { "command": "total-recall" } } }'));
+
+          const continueWithout = await confirm({
+            message: 'Continue without memory?',
+            default: true,
+          });
+
+          if (!continueWithout) {
+            process.exit(1);
+          }
+        }
+      }
+    }
 
     const configPath = path.join(resolvedRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
 
