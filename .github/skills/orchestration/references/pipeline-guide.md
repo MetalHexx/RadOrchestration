@@ -67,6 +67,24 @@ The `--config` flag overrides the default config path:
 node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --project-dir <dir> --config <path-to-orchestration.yml>
 ```
 
+### Memory Ingestion
+
+After final approval and before `display_complete`, the pipeline routes through a memory ingestion step:
+
+1. The resolver returns `invoke_memory_ingest` when `pipeline.memory_ingested` is `false` in the COMPLETE tier
+2. The Orchestrator checks `memory.enabled` and `auto_ingest` in the orchestration config:
+   - `memory.enabled = false` or `auto_ingest = never` → signal `memory_ingest_completed --success false` (silent skip)
+   - `auto_ingest = ask` → present human gate "Ingest project into knowledge base?" — if declined, signal `memory_ingest_completed --success false`; if approved, spawn subagent
+   - `auto_ingest = always` → spawn subagent directly
+3. The subagent is a generic agent loaded with the `manage-memory` skill in **pipeline** mode. It ingests the project directory via the `kb_ingest_dir` MCP tool
+4. On completion (success or failure), signal `memory_ingest_completed --success <true|false> [--error <message>]`
+5. The mutation sets `pipeline.memory_ingested = true` unconditionally — memory failures never block the pipeline
+6. The resolver then returns `display_complete`
+
+**Events**:
+- `memory_ingest_requested` — validation checkpoint (no flags)
+- `memory_ingest_completed` — completion signal (`--success <true|false> [--error <message>]`)
+
 ### Loop Termination
 
 The loop terminates when `result.action` is `display_halted` or `display_complete`. These are terminal actions with no follow-up event.
@@ -84,6 +102,7 @@ Only these `result.action` values should pause execution for human input or stop
 | `gate_task` | Pause — wait for human approval |
 | `gate_phase` | Pause — wait for human approval |
 | `ask_gate_mode` | Pause — wait for operator gate mode selection |
+| `invoke_memory_ingest` | Conditional pause — if `auto_ingest = ask`, present human gate; otherwise execute immediately |
 
 All other actions must be executed immediately without asking the human.
 

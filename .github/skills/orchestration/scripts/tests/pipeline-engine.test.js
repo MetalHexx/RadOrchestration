@@ -422,10 +422,10 @@ describe('scaffoldInitialState', () => {
     assert.equal(s.pipeline.current_tier, 'planning', 'current_tier must remain planning');
   });
 
-  it('pipeline has exactly two keys: current_tier and gate_mode', () => {
+  it('pipeline has exactly three keys: current_tier, gate_mode, and memory_ingested', () => {
     const s = scaffoldInitialState(config, dir);
     const keys = Object.keys(s.pipeline).sort();
-    assert.deepEqual(keys, ['current_tier', 'gate_mode']);
+    assert.deepEqual(keys, ['current_tier', 'gate_mode', 'memory_ingested']);
   });
 
   it('scaffolded state passes validateTransition with zero errors', () => {

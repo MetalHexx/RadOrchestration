@@ -133,6 +133,7 @@ When spawned to generate a phase report after all tasks complete:
 - **`create-phase-plan`**: Guides phase planning and provides template
 - **`create-task-handoff`**: Guides task handoff creation and provides template
 - **`generate-phase-report`**: Guides phase report generation and provides template
+- **`recall-memory`**: Query past project knowledge from the memory system (read-only, silent no-op when disabled)
 
 ## Output Contract
 

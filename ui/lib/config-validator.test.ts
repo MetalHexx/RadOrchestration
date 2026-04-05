@@ -27,6 +27,10 @@ function makeValidConfig(): OrchestrationConfig {
       auto_pr: 'ask',
       provider: 'github',
     },
+    memory: {
+      enabled: false,
+      auto_ingest: 'never',
+    },
   };
 }
 
@@ -304,6 +308,63 @@ test('all sections missing returns all section-level errors', () => {
   assert.strictEqual(result['source_control'], 'Missing source_control section');
   assert.strictEqual(Object.keys(result).length, 5);
 });
+
+// --- memory section (optional) ---
+
+test('valid config with memory section returns empty errors', () => {
+  const cfg = makeValidConfig();
+  const result = validateConfig(cfg);
+  assert.deepStrictEqual(result, {});
+});
+
+test('config with missing memory section returns no errors', () => {
+  const cfg = makeValidConfig();
+  delete cfg.memory;
+  const result = validateConfig(cfg);
+  assert.strictEqual(result['memory'], undefined);
+  assert.strictEqual(result['memory.enabled'], undefined);
+  assert.strictEqual(result['memory.auto_ingest'], undefined);
+  assert.deepStrictEqual(result, {});
+});
+
+test('memory.enabled string "true" returns error', () => {
+  const cfg = makeValidConfig();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (cfg.memory as any).enabled = 'true';
+  const result = validateConfig(cfg);
+  assert.strictEqual(result['memory.enabled'], 'Must be true or false');
+});
+
+test('memory.enabled true is valid', () => {
+  const cfg = makeValidConfig();
+  cfg.memory!.enabled = true;
+  const result = validateConfig(cfg);
+  assert.strictEqual(result['memory.enabled'], undefined);
+});
+
+test('memory.enabled false is valid', () => {
+  const cfg = makeValidConfig();
+  cfg.memory!.enabled = false;
+  const result = validateConfig(cfg);
+  assert.strictEqual(result['memory.enabled'], undefined);
+});
+
+test('memory.auto_ingest invalid value returns error', () => {
+  const cfg = makeValidConfig();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (cfg.memory as any).auto_ingest = 'invalid';
+  const result = validateConfig(cfg);
+  assert.strictEqual(result['memory.auto_ingest'], 'Invalid auto-ingest setting');
+});
+
+for (const val of ['always', 'ask', 'never'] as const) {
+  test(`memory.auto_ingest "${val}" is valid`, () => {
+    const cfg = makeValidConfig();
+    cfg.memory!.auto_ingest = val;
+    const result = validateConfig(cfg);
+    assert.strictEqual(result['memory.auto_ingest'], undefined);
+  });
+}
 
 // --- Summary ---
 

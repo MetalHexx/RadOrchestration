@@ -368,6 +368,91 @@ describe('handlePlanApproved', () => {
   });
 });
 
+// ─── Memory Ingest Handlers ─────────────────────────────────────────────────
+
+describe('memory ingest handlers', () => {
+  function makeMemoryState() {
+    return {
+      pipeline: {
+        current_tier: 'complete',
+        gate_mode: null,
+        memory_ingested: false,
+      },
+      planning: { status: 'complete', human_approved: true, steps: [] },
+      execution: { status: 'complete', current_phase: 0, phases: [] },
+      final_review: { status: 'not_started', doc_path: null, human_approved: false },
+    };
+  }
+
+  describe('handleMemoryIngestRequested', () => {
+    it('when config.memory.enabled is false → sets memory_ingested to true (skip)', () => {
+      const state = makeMemoryState();
+      const handler = getMutation('memory_ingest_requested');
+      const result = handler(state, {}, { memory: { enabled: false, auto_ingest: 'always' } });
+      assert.equal(result.state.pipeline.memory_ingested, true);
+      assert.ok(result.mutations_applied.length > 0);
+    });
+
+    it('when config.memory section is missing entirely → sets memory_ingested to true (skip)', () => {
+      const state = makeMemoryState();
+      const handler = getMutation('memory_ingest_requested');
+      const result = handler(state, {}, {});
+      assert.equal(result.state.pipeline.memory_ingested, true);
+      assert.ok(result.mutations_applied.length > 0);
+    });
+
+    it('when memory enabled but auto_ingest is "never" → sets memory_ingested to true (skip)', () => {
+      const state = makeMemoryState();
+      const handler = getMutation('memory_ingest_requested');
+      const result = handler(state, {}, { memory: { enabled: true, auto_ingest: 'never' } });
+      assert.equal(result.state.pipeline.memory_ingested, true);
+      assert.ok(result.mutations_applied.length > 0);
+    });
+
+    it('when memory enabled and auto_ingest is "always" → does NOT change memory_ingested (remains false)', () => {
+      const state = makeMemoryState();
+      const handler = getMutation('memory_ingest_requested');
+      const result = handler(state, {}, { memory: { enabled: true, auto_ingest: 'always' } });
+      assert.equal(result.state.pipeline.memory_ingested, false);
+      assert.ok(result.mutations_applied.length > 0);
+    });
+
+    it('when memory enabled and auto_ingest is "ask" → does NOT change memory_ingested (remains false)', () => {
+      const state = makeMemoryState();
+      const handler = getMutation('memory_ingest_requested');
+      const result = handler(state, {}, { memory: { enabled: true, auto_ingest: 'ask' } });
+      assert.equal(result.state.pipeline.memory_ingested, false);
+      assert.ok(result.mutations_applied.length > 0);
+    });
+  });
+
+  describe('handleMemoryIngestCompleted', () => {
+    it('with context.success = true → sets memory_ingested to true', () => {
+      const state = makeMemoryState();
+      const handler = getMutation('memory_ingest_completed');
+      const result = handler(state, { success: true }, {});
+      assert.equal(result.state.pipeline.memory_ingested, true);
+      assert.ok(result.mutations_applied.some(m => m.includes('successfully')));
+    });
+
+    it('with context.success = false → sets memory_ingested to true (failure does NOT block)', () => {
+      const state = makeMemoryState();
+      const handler = getMutation('memory_ingest_completed');
+      const result = handler(state, { success: false }, {});
+      assert.equal(result.state.pipeline.memory_ingested, true);
+      assert.ok(result.mutations_applied.some(m => m.includes('failed')));
+    });
+
+    it('with no context ({}) → sets memory_ingested to true', () => {
+      const state = makeMemoryState();
+      const handler = getMutation('memory_ingest_completed');
+      const result = handler(state, {}, {});
+      assert.equal(result.state.pipeline.memory_ingested, true);
+      assert.ok(result.mutations_applied.length > 0);
+    });
+  });
+});
+
 // ─── handlePlanRejected ─────────────────────────────────────────────────────
 
 describe('handlePlanRejected', () => {

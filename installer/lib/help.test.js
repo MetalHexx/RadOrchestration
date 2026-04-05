@@ -70,6 +70,23 @@ describe('renderHelp', () => {
     assert.ok(output.includes('--execution-mode'), 'includes --execution-mode');
   });
 
+  it('includes memory flags in OPTIONAL FEATURES section', () => {
+    const logs = [];
+    const origLog = console.log;
+    console.log = (...args) => logs.push(args.join(' '));
+    try {
+      renderHelp();
+    } finally {
+      console.log = origLog;
+    }
+    const output = logs.join('\n');
+
+    assert.ok(output.includes('OPTIONAL FEATURES'), 'includes OPTIONAL FEATURES section');
+    assert.ok(output.includes('--memory'), 'includes --memory');
+    assert.ok(output.includes('--no-memory'), 'includes --no-memory');
+    assert.ok(output.includes('--auto-ingest'), 'includes --auto-ingest');
+  });
+
   it('includes version from package.json', () => {
     const logs = [];
     const origLog = console.log;

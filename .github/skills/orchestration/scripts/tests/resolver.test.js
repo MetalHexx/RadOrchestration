@@ -746,3 +746,35 @@ describe('resolver — edge cases', () => {
     assert.equal(result.context.task_number, 3);
   });
 });
+
+// ─── Complete Tier — Memory Routing ─────────────────────────────────────────
+
+describe('resolver — complete tier — memory routing', () => {
+  it('returns invoke_memory_ingest when memory_ingested is false', () => {
+    const state = makeState({
+      pipeline: { current_tier: 'complete', memory_ingested: false },
+      execution: { status: 'complete', current_phase: 0, phases: [] },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'invoke_memory_ingest');
+    assert.equal(result.context.project_name, 'TEST');
+  });
+
+  it('returns display_complete when memory_ingested is true', () => {
+    const state = makeState({
+      pipeline: { current_tier: 'complete', memory_ingested: true },
+      execution: { status: 'complete', current_phase: 0, phases: [] },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'display_complete');
+  });
+
+  it('returns display_complete when memory_ingested is absent/undefined (backward compat)', () => {
+    const state = makeState({
+      pipeline: { current_tier: 'complete' },
+      execution: { status: 'complete', current_phase: 0, phases: [] },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'display_complete');
+  });
+});

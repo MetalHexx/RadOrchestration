@@ -23,6 +23,8 @@ const sampleConfig = {
   autoPr: 'never',
   provider: 'github',
   installUi: false,
+  installMemory: false,
+  autoIngest: 'never',
   skipConfirmation: false,
 };
 
@@ -170,6 +172,56 @@ test('writeConfig - uses absolute orchRoot directly when path.isAbsolute() is tr
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
+});
+
+// ── Windows path normalization (cross-platform regression) ────────────────────
+
+// ── memory block tests ────────────────────────────────────────────────────────
+
+test('generateConfig - output contains memory: section with enabled and auto_ingest fields', () => {
+  const yaml = generateConfig(sampleConfig);
+  assert.ok(yaml.includes('memory:'));
+  assert.ok(yaml.includes('enabled:'));
+  assert.ok(yaml.includes('auto_ingest:'));
+});
+
+test('generateConfig - memory block appears after source_control', () => {
+  const yaml = generateConfig(sampleConfig);
+  const sourceControlIndex = yaml.indexOf('source_control:');
+  const memoryIndex = yaml.indexOf('memory:');
+  assert.ok(memoryIndex > sourceControlIndex, 'memory: should appear after source_control:');
+});
+
+test('generateConfig - memory block appears before Notes', () => {
+  const yaml = generateConfig(sampleConfig);
+  const memoryIndex = yaml.indexOf('memory:');
+  const notesIndex = yaml.indexOf('Notes');
+  assert.ok(memoryIndex < notesIndex, 'memory: should appear before Notes');
+});
+
+test('generateConfig - memory enabled is true when installMemory is true', () => {
+  const yaml = generateConfig({ ...sampleConfig, installMemory: true });
+  assert.ok(yaml.includes('enabled: true'));
+});
+
+test('generateConfig - memory enabled is false when installMemory is false', () => {
+  const yaml = generateConfig({ ...sampleConfig, installMemory: false });
+  assert.ok(yaml.includes('enabled: false'));
+});
+
+test('generateConfig - auto_ingest reflects config.autoIngest value', () => {
+  const yaml = generateConfig({ ...sampleConfig, autoIngest: 'always' });
+  assert.ok(yaml.includes('auto_ingest: "always"'));
+});
+
+test('generateConfig - auto_ingest defaults to "never" when autoIngest is undefined', () => {
+  const yaml = generateConfig({ ...sampleConfig, autoIngest: undefined });
+  assert.ok(yaml.includes('auto_ingest: "never"'));
+});
+
+test('generateConfig - memory block has section header comment with ─── pattern', () => {
+  const yaml = generateConfig(sampleConfig);
+  assert.ok(yaml.includes('─── Memory'));
 });
 
 // ── Windows path normalization (cross-platform regression) ────────────────────

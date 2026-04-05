@@ -104,3 +104,4 @@ These can be set globally in your [configuration](configuration.md) or toggled p
 - [Pipeline](pipeline.md) — understand the pipeline stages and flow
 - [Agents](agents.md) — learn what each agent does
 - [Configuration](configuration.md) — customize system behavior
+- [Memory](memory.md) — set up the optional knowledge base for cross-project recall

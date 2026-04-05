@@ -47,7 +47,9 @@ describe('parseArgs', () => {
       pushed: 'true',
       remoteUrl:  'https://github.com/org/repo',
       compareUrl: 'https://github.com/org/repo/compare/main...feat',
-      prUrl: undefined
+      prUrl: undefined,
+      success: undefined,
+      error: undefined
     });
   });
 
@@ -70,7 +72,9 @@ describe('parseArgs', () => {
       pushed: undefined,
       remoteUrl:  undefined,
       compareUrl: undefined,
-      prUrl: undefined
+      prUrl: undefined,
+      success: undefined,
+      error: undefined
     });
   });
 
@@ -208,6 +212,36 @@ describe('parseArgs', () => {
         '--another-unknown', 'another-value'
       ]);
     });
+  });
+});
+
+// ─── parseArgs — Memory Event Flags ─────────────────────────────────────────
+
+describe('parseArgs — memory event flags', () => {
+  it('memory_ingest_requested event parses without error', () => {
+    const result = parseArgs(['--event', 'memory_ingest_requested', '--project-dir', '/tmp/proj']);
+    assert.equal(result.event, 'memory_ingest_requested');
+    assert.equal(result.projectDir, '/tmp/proj');
+  });
+
+  it('memory_ingest_completed with --success true → result.success is string "true"', () => {
+    const result = parseArgs([
+      '--event', 'memory_ingest_completed',
+      '--project-dir', '/tmp/proj',
+      '--success', 'true'
+    ]);
+    assert.equal(result.success, 'true');
+  });
+
+  it('memory_ingest_completed with --success false --error "ingest failed" → result.success is "false" and result.error is "ingest failed"', () => {
+    const result = parseArgs([
+      '--event', 'memory_ingest_completed',
+      '--project-dir', '/tmp/proj',
+      '--success', 'false',
+      '--error', 'ingest failed'
+    ]);
+    assert.equal(result.success, 'false');
+    assert.equal(result.error, 'ingest failed');
   });
 });
 

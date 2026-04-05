@@ -28,6 +28,7 @@ You are the Brainstormer Agent. You are an active collaborative ideation partner
 ## Skills
 - **`orchestration`**: System context — agent roles, pipeline flow, naming conventions, key rules
 - **`brainstorm`**: Guides brainstorming document creation and provides the BRAINSTORMING.md template
+- **`recall-memory`**: Query past project knowledge from the memory system (read-only, silent no-op when disabled)
 
 ## Role & Constraints
 

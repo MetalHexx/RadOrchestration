@@ -135,6 +135,25 @@ export const CONFIG_FIELDS: FieldMeta[] = [
     section: 'source-control',
     controlType: 'readonly',
   },
+
+  // 15–16. Memory Section
+  {
+    key: 'memory.enabled',
+    label: 'Enabled',
+    tooltip:
+      'Enable the memory system to let planning agents recall past project context. Requires total-recall to be installed.',
+    section: 'memory',
+    controlType: 'switch',
+  },
+  {
+    key: 'memory.auto_ingest',
+    label: 'Auto-Ingest',
+    tooltip:
+      "Controls automatic ingestion of completed projects into the knowledge base. 'always' = ingest automatically, 'ask' = prompt before ingestion, 'never' = never ingest automatically.",
+    section: 'memory',
+    controlType: 'toggle-group',
+    options: ['always', 'ask', 'never'],
+  },
 ];
 
 export const CONFIG_FIELD_MAP: Record<string, FieldMeta> =

@@ -45,6 +45,11 @@ source_control:
   auto_commit: "ask"            # always | ask | never
   auto_pr: "ask"                # always | ask | never
   provider: "github"            # GitHub only
+
+# ─── Memory ──────────────────────────────────────────────
+memory:
+  enabled: false                # Enable memory system for planning agents
+  auto_ingest: "never"          # always | ask | never
 ```
 
 ### What Each Section Controls
@@ -65,6 +70,8 @@ source_control:
 | `autonomous` | No gates — phases and tasks execute without human approval |
 
 **`source_control`** — Controls automatic git commits after task approval and automatic PR creation on final approval. See [Source Control](source-control.md) for full details.
+
+**`memory`** — Controls the optional memory system that enables planning agents to recall decisions and context from past projects. `enabled` toggles the feature on or off. `auto_ingest` sets the policy for ingesting completed projects into the knowledge base after final approval: `always` (automatic, no prompt), `ask` (prompt for confirmation), or `never` (skip ingestion). Memory is disabled by default. See [Memory](memory.md) for full documentation.
 
 ## state.json
 
@@ -202,3 +209,4 @@ Run the [validation tool](internals/validation.md) to check your `orchestration.
 - [Pipeline](pipeline.md) — How the orchestration pipeline executes projects
 - [Validation](internals/validation.md) — Validate your configuration
 - [Scripts](internals/scripts.md) — Pipeline scripts reference
+- [Memory](memory.md) — Optional knowledge base for planning agents

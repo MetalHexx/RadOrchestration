@@ -29,13 +29,13 @@ The orchestration system uses 12 specialized agents, each with a defined role, s
 
 **Purpose:** Collaboratively explore and refine project ideas before entering the pipeline.
 
-The Brainstormer works directly with the human in a conversational loop — asking probing questions, exploring trade-offs, identifying scope boundaries, and converging on a well-defined goals. It operates outside the main pipeline and is entirely optional.
+The Brainstormer works directly with the human in a conversational loop — asking probing questions, exploring trade-offs, identifying scope boundaries, and converging on a well-defined goal. It operates outside the main pipeline and is entirely optional. When memory is enabled, the Brainstormer recalls past project ideas and scope decisions to inform the current exploration.
 
 **Input:** Human prompts and whatever you want.
 
 **Output:** `BRAINSTORMING.md` — validated ideas, scope boundaries, target users, and problem statements.
 
-**Skills:** `orchestration`, `brainstorm`
+**Skills:** `orchestration`, `brainstorm`, `recall-memory`
 
 ---
 
@@ -56,13 +56,13 @@ The Orchestrator is the entry point for all project interactions. It signals eve
 
 **Purpose:** Explore the codebase, documentation, and external sources to gather technical context.
 
-The Research agent analyzes the existing project structure, technology stack, patterns, and constraints. If a `BRAINSTORMING.md` exists, it uses that as input context.
+The Research agent analyzes the existing project structure, technology stack, patterns, and constraints. If a `BRAINSTORMING.md` exists, it uses that as input context. When memory is enabled, the Research agent recalls past technical findings and codebase patterns from previous projects.
 
 **Input:** Codebase, documentation, `BRAINSTORMING.md` (if exists)
 
 **Output:** `RESEARCH-FINDINGS.md` — codebase analysis, technology inventory, patterns discovered, constraints, and recommendations.
 
-**Skills:** `orchestration`, `research-codebase`
+**Skills:** `orchestration`, `research-codebase`, `recall-memory`
 
 ---
 
@@ -70,13 +70,13 @@ The Research agent analyzes the existing project structure, technology stack, pa
 
 **Purpose:** Create a Product Requirements Document from research findings to keep plans grounded in reality.
 
-Translates technical research and brainstorming output into structured requirements with numbered items (FR-1, NFR-1) for cross-referencing throughout the pipeline.
+Translates technical research and brainstorming output into structured requirements with numbered items (FR-1, NFR-1) for cross-referencing throughout the pipeline. When memory is enabled, the Product Manager recalls past requirements and user stories from previous projects.
 
 **Input:** `RESEARCH-FINDINGS.md`, `BRAINSTORMING.md`
 
 **Output:** `PRD.md` — functional requirements, non-functional requirements, user stories, etc.
 
-**Skills:** `orchestration`, `create-prd`
+**Skills:** `orchestration`, `create-prd`, `recall-memory`
 
 ---
 
@@ -98,13 +98,13 @@ Defines user flows, component layouts, interaction states, responsive behavior, 
 
 **Purpose:** Define system architecture and synthesize all planning documents into a Master Plan.
 
-The Architect reads Research, PRD, and Design to produce the technical architecture — system layers, module map, API contracts, database schemas, interfaces, and dependency graphs. It then synthesizes all planning documents into a Master Plan with high level a phased execution plan.
+The Architect reads Research, PRD, and Design to produce the technical architecture — system layers, module map, API contracts, database schemas, interfaces, and dependency graphs. It then synthesizes all planning documents into a Master Plan with high level a phased execution plan. When memory is enabled, the Architect recalls past architecture decisions and technical trade-offs from previous projects.
 
 **Input:** `RESEARCH-FINDINGS.md`, `PRD.md`, `DESIGN.md`
 
 **Output:** `ARCHITECTURE.md`, `MASTER-PLAN.md`
 
-**Skills:** `orchestration`, `create-architecture`, `create-master-plan`
+**Skills:** `orchestration`, `create-architecture`, `create-master-plan`, `recall-memory`
 
 ---
 
@@ -120,11 +120,13 @@ The Tactical Planner is a pure planning agent that operates in 3 modes:
 2. **Task handoffs** — create self-contained coding instructions for the Coder
 3. **Phase reports** — aggregate task results and assess exit criteria
 
+When memory is enabled, the Tactical Planner recalls past task breakdowns and execution patterns from previous projects.
+
 **Input:** `ARCHITECTURE.md`, `PRD.md`, `MASTER-PLAN.md`, `DESIGN.md`, `CODE-REVIEW.md`, `state.json`
 
 **Output:**`PHASE-PLAN.md`, `PHASE-REPORT.md`, `TASK-HANDOFF.md`
 
-**Skills:** `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report`
+**Skills:** `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report`, `recall-memory`
 
 ---
 
@@ -212,6 +214,6 @@ The Source Control Agent is a thin router — it loads the `source-control` skil
 
 ## Next Steps
 
-- [Skills](skills.md) — Explore the 18 skills agents use
+- [Skills](skills.md) — Explore the 20 skills agents use
 - [Templates](templates.md) — See the 16 output templates skills produce
 

@@ -76,6 +76,7 @@ When spawned by the Orchestrator to create a Master Plan:
 - **`orchestration`**: System context — agent roles, pipeline flow, naming conventions, key rules
 - **`create-architecture`**: Guides Architecture creation workflow and provides template
 - **`create-master-plan`**: Guides Master Plan creation workflow and provides template
+- **`recall-memory`**: Query past project knowledge from the memory system (read-only, silent no-op when disabled)
 
 ## Output Contract
 

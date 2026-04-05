@@ -50,6 +50,8 @@ const configBase = {
   maxConsecutiveReviewRejections: 2,
   executionMode: 'ask',
   installUi: false,
+  installMemory: false,
+  autoIngest: 'never',
   skipConfirmation: false,
 };
 
@@ -58,6 +60,13 @@ const configWithUi = {
   ...configBase,
   installUi: true,
   uiDir: '/home/user/my-project/.github/ui',
+};
+
+/** @type {import('./types.js').InstallerConfig} */
+const configWithMemory = {
+  ...configBase,
+  installMemory: true,
+  autoIngest: 'ask',
 };
 
 /** @type {import('./types.js').CopyResult[]} */
@@ -146,6 +155,24 @@ describe('renderPostInstallSummary', () => {
     const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
     assert.ok(output.includes('2.'), 'output should contain step "2."');
   });
+
+  it('with installMemory: true output contains "Memory" and "enabled" and "auto-ingest"', () => {
+    const output = capture(() => renderPostInstallSummary(configWithMemory, copyResults, configPath));
+    assert.ok(output.includes('Memory'), 'output should contain "Memory"');
+    assert.ok(output.includes('enabled'), 'output should contain "enabled"');
+    assert.ok(output.includes('auto-ingest'), 'output should contain "auto-ingest"');
+  });
+
+  it('with installMemory: false output contains "Memory" and "disabled"', () => {
+    const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
+    assert.ok(output.includes('Memory'), 'output should contain "Memory"');
+    assert.ok(output.includes('disabled'), 'output should contain "disabled"');
+  });
+
+  it('with memoryInstallFailed: true output contains "install failed"', () => {
+    const output = capture(() => renderPostInstallSummary({ ...configBase, memoryInstallFailed: true }, copyResults, configPath));
+    assert.ok(output.includes('install failed'), 'output should contain "install failed"');
+  });
 });
 
 // --- renderPartialSuccessSummary tests ---
@@ -205,5 +232,28 @@ describe('renderPartialSuccessSummary', () => {
       renderPartialSuccessSummary(configWithUi, copyResults, configPath, errorMsg)
     );
     assert.ok(output.includes('Retry'), 'output should contain "Retry"');
+  });
+
+  it('with installMemory: true output contains "Memory" and "enabled"', () => {
+    const output = capture(() =>
+      renderPartialSuccessSummary({ ...configWithMemory, installUi: true, uiDir: configWithUi.uiDir }, copyResults, configPath, errorMsg)
+    );
+    assert.ok(output.includes('Memory'), 'output should contain "Memory"');
+    assert.ok(output.includes('enabled'), 'output should contain "enabled"');
+  });
+
+  it('with installMemory: false output contains "Memory" and "disabled"', () => {
+    const output = capture(() =>
+      renderPartialSuccessSummary(configWithUi, copyResults, configPath, errorMsg)
+    );
+    assert.ok(output.includes('Memory'), 'output should contain "Memory"');
+    assert.ok(output.includes('disabled'), 'output should contain "disabled"');
+  });
+
+  it('with memoryInstallFailed: true output contains "install failed"', () => {
+    const output = capture(() =>
+      renderPartialSuccessSummary({ ...configWithUi, memoryInstallFailed: true }, copyResults, configPath, errorMsg)
+    );
+    assert.ok(output.includes('install failed'), 'output should contain "install failed"');
   });
 });

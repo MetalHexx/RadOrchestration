@@ -174,4 +174,76 @@ describe('parseArgs', () => {
       assert.strictEqual(options.maxPhases, 5);
     });
   });
+
+  describe('memory boolean flags', () => {
+    it('--memory sets installMemory to true', () => {
+      const { options } = parseArgs(['--memory']);
+      assert.strictEqual(options.installMemory, true);
+    });
+
+    it('--no-memory sets installMemory to false', () => {
+      const { options } = parseArgs(['--no-memory']);
+      assert.strictEqual(options.installMemory, false);
+    });
+  });
+
+  describe('--auto-ingest key-value flag', () => {
+    it('--auto-ingest always sets autoIngest to always', () => {
+      const { options } = parseArgs(['--auto-ingest', 'always']);
+      assert.strictEqual(options.autoIngest, 'always');
+    });
+
+    it('--auto-ingest ask sets autoIngest to ask', () => {
+      const { options } = parseArgs(['--auto-ingest', 'ask']);
+      assert.strictEqual(options.autoIngest, 'ask');
+    });
+
+    it('--auto-ingest never sets autoIngest to never', () => {
+      const { options } = parseArgs(['--auto-ingest', 'never']);
+      assert.strictEqual(options.autoIngest, 'never');
+    });
+  });
+
+  describe('auto-ingest enum validation', () => {
+    it('--auto-ingest invalid throws', () => {
+      assert.throws(() => parseArgs(['--auto-ingest', 'invalid']), /Invalid value/);
+    });
+  });
+
+  describe('memory conflict handling', () => {
+    it('--no-memory --auto-ingest always deletes autoIngest', () => {
+      const origError = console.error;
+      console.error = () => {};
+      try {
+        const { options } = parseArgs(['--no-memory', '--auto-ingest', 'always']);
+        assert.strictEqual(options.installMemory, false);
+        assert.strictEqual(options.autoIngest, undefined);
+      } finally {
+        console.error = origError;
+      }
+    });
+
+    it('--no-memory --auto-ingest always emits warning to stderr', () => {
+      const errors = [];
+      const origError = console.error;
+      console.error = (...args) => errors.push(args.join(' '));
+      try {
+        parseArgs(['--no-memory', '--auto-ingest', 'always']);
+      } finally {
+        console.error = origError;
+      }
+      const output = errors.join('\n');
+      assert.ok(output.includes('--auto-ingest ignored'), 'emits conflict warning');
+    });
+  });
+
+  describe('memory combined with other flags', () => {
+    it('--yes --memory --auto-ingest always parses all fields', () => {
+      const { command, options } = parseArgs(['--yes', '--memory', '--auto-ingest', 'always']);
+      assert.strictEqual(command, 'run');
+      assert.strictEqual(options.skipConfirmation, true);
+      assert.strictEqual(options.installMemory, true);
+      assert.strictEqual(options.autoIngest, 'always');
+    });
+  });
 });

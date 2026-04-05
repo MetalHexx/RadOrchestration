@@ -12,6 +12,9 @@ export type SourceControlAction = 'always' | 'ask' | 'never';
 /** Source control provider (currently fixed) */
 export type SourceControlProvider = 'github';
 
+/** Auto-ingest policy for completed projects */
+export type AutoIngestPolicy = 'always' | 'ask' | 'never';
+
 /** Complete orchestration.yml schema — all sections required for the editor */
 export interface OrchestrationConfig {
   version: string;
@@ -37,6 +40,10 @@ export interface OrchestrationConfig {
     auto_commit: SourceControlAction;
     auto_pr: SourceControlAction;
     provider: SourceControlProvider;
+  };
+  memory?: {
+    enabled: boolean;
+    auto_ingest: AutoIngestPolicy;
   };
 }
 
