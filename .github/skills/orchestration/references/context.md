@@ -51,6 +51,21 @@ System configuration lives in `{orch_root}/skills/orchestration/config/orchestra
 - Pipeline limits (max phases, tasks, retries)
 - Human gate defaults
 
+## Memory System
+
+The orchestration system optionally integrates with a local memory and knowledge base (total-recall). When enabled, planning agents can recall past project decisions and context.
+
+- **Configuration**: The `memory:` section in `orchestration.yml` controls the feature:
+  ```yaml
+  memory:
+    enabled: false          # Enable memory for planning agents
+    auto_ingest: "never"    # always | ask | never
+  ```
+- **Planning agent recall**: All five planning agents (`@brainstormer`, `@research`, `@product-manager`, `@architect`, `@tactical-planner`) load the `recall-memory` skill, which queries warm-tier (semantic memory via `memory_search`) and cold-tier (indexed project documents via `kb_search`) knowledge.
+- **Post-completion ingestion**: After final approval, the pipeline can automatically ingest project documents into the knowledge base via the `manage-memory` skill in pipeline mode (controlled by `auto_ingest` policy).
+- **When disabled**: All memory features are silent no-ops. The `recall-memory` skill returns without output. The pipeline skips ingestion. No errors, no warnings. The system behaves identically to a non-memory installation.
+- **Memory management**: Use `@orchestrator` with the `manage-memory` skill for manual operations: ingest, bulk-ingest, search, status, refresh, remove.
+
 ## Project Files
 
 Project artifacts are stored in a configurable location set by `orchestration.yml` → `projects.base_path` (supports both relative and absolute paths). Each project gets a subfolder: `{base_path}/{PROJECT-NAME}/`.
