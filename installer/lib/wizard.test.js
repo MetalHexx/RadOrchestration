@@ -224,4 +224,131 @@ describe('runWizard({ skipConfirmation: true })', () => {
   it('returns skipConfirmation: true when called with { skipConfirmation: true }', () => {
     assert.equal(result.skipConfirmation, true);
   });
+
+  it('skips all prompts when skipConfirmation is true (uses defaults)', () => {
+    assert.equal(promptGettingStartedMock.mock.calls.length, 0, 'promptGettingStarted not called');
+    assert.equal(promptOrchRootMock.mock.calls.length, 0, 'promptOrchRoot not called');
+    assert.equal(promptProjectStorageMock.mock.calls.length, 0, 'promptProjectStorage not called');
+    assert.equal(promptPipelineLimitsMock.mock.calls.length, 0, 'promptPipelineLimits not called');
+    assert.equal(promptGateBehaviorMock.mock.calls.length, 0, 'promptGateBehavior not called');
+    assert.equal(promptSourceControlMock.mock.calls.length, 0, 'promptSourceControl not called');
+    assert.equal(promptUiInstallMock.mock.calls.length, 0, 'promptUiInstall not called');
+  });
+
+  it('no section headers printed when all prompts skipped', () => {
+    assert.equal(sectionHeaderMock.mock.calls.length, 0);
+  });
+
+  it('returns default values when skipConfirmation is true', () => {
+    assert.equal(result.tool, 'copilot');
+    assert.equal(result.orchRoot, '.github');
+    assert.equal(result.projectsBasePath, 'orchestration-projects');
+    assert.equal(result.projectsNaming, 'SCREAMING_CASE');
+    assert.equal(result.maxPhases, 10);
+    assert.equal(result.maxTasksPerPhase, 8);
+    assert.equal(result.maxRetriesPerTask, 2);
+    assert.equal(result.maxConsecutiveReviewRejections, 3);
+    assert.equal(result.executionMode, 'ask');
+    assert.equal(result.autoCommit, 'ask');
+    assert.equal(result.autoPr, 'ask');
+    assert.equal(result.installUi, true);
+  });
+});
+
+describe('runWizard with cliOverrides', () => {
+  it('uses cliOverrides values and skips the covered prompt', async () => {
+    callOrder.length = 0;
+    sectionHeaderMock.mock.resetCalls();
+    promptGettingStartedMock.mock.resetCalls();
+    promptOrchRootMock.mock.resetCalls();
+    promptProjectStorageMock.mock.resetCalls();
+    promptPipelineLimitsMock.mock.resetCalls();
+    promptGateBehaviorMock.mock.resetCalls();
+    promptSourceControlMock.mock.resetCalls();
+    promptUiInstallMock.mock.resetCalls();
+
+    const result = await runWizard({
+      skipConfirmation: true,
+      cliOverrides: { orchRoot: '.rad', executionMode: 'autonomous' },
+    });
+
+    assert.equal(result.orchRoot, '.rad', 'orchRoot from cliOverrides');
+    assert.equal(result.executionMode, 'autonomous', 'executionMode from cliOverrides');
+    // Other values should be defaults since skipConfirmation is true
+    assert.equal(result.tool, 'copilot');
+    assert.equal(result.maxPhases, 10);
+  });
+
+  it('skips orchRoot prompt when orchRoot override provided and skipConfirmation true', async () => {
+    callOrder.length = 0;
+    promptOrchRootMock.mock.resetCalls();
+
+    await runWizard({
+      skipConfirmation: true,
+      cliOverrides: { orchRoot: '.rad' },
+    });
+
+    assert.equal(promptOrchRootMock.mock.calls.length, 0, 'promptOrchRoot not called');
+  });
+
+  it('still runs prompts for sections without overrides when skipConfirmation is false', async () => {
+    callOrder.length = 0;
+    sectionHeaderMock.mock.resetCalls();
+    promptGettingStartedMock.mock.resetCalls();
+    promptOrchRootMock.mock.resetCalls();
+    promptProjectStorageMock.mock.resetCalls();
+    promptPipelineLimitsMock.mock.resetCalls();
+    promptGateBehaviorMock.mock.resetCalls();
+    promptSourceControlMock.mock.resetCalls();
+    promptUiInstallMock.mock.resetCalls();
+
+    // Only orchRoot provided, skipConfirmation false → other prompts still run
+    const result = await runWizard({
+      skipConfirmation: false,
+      cliOverrides: { orchRoot: '.rad' },
+    });
+
+    assert.equal(promptOrchRootMock.mock.calls.length, 0, 'promptOrchRoot skipped');
+    assert.equal(promptGettingStartedMock.mock.calls.length, 1, 'promptGettingStarted called');
+    assert.equal(promptProjectStorageMock.mock.calls.length, 1, 'promptProjectStorage called');
+    assert.equal(promptPipelineLimitsMock.mock.calls.length, 1, 'promptPipelineLimits called');
+    assert.equal(promptGateBehaviorMock.mock.calls.length, 1, 'promptGateBehavior called');
+    assert.equal(promptSourceControlMock.mock.calls.length, 1, 'promptSourceControl called');
+    assert.equal(promptUiInstallMock.mock.calls.length, 1, 'promptUiInstall called');
+    assert.equal(result.orchRoot, '.rad');
+  });
+
+  it('skips getting-started when both tool and workspaceDir provided', async () => {
+    promptGettingStartedMock.mock.resetCalls();
+
+    await runWizard({
+      skipConfirmation: false,
+      cliOverrides: { tool: 'copilot', workspaceDir: '/custom/path' },
+    });
+
+    assert.equal(promptGettingStartedMock.mock.calls.length, 0, 'promptGettingStarted skipped');
+  });
+
+  it('skips project-storage when both projectsBasePath and projectsNaming provided', async () => {
+    promptProjectStorageMock.mock.resetCalls();
+
+    await runWizard({
+      skipConfirmation: false,
+      cliOverrides: { projectsBasePath: 'my-projects', projectsNaming: 'lowercase' },
+    });
+
+    assert.equal(promptProjectStorageMock.mock.calls.length, 0, 'promptProjectStorage skipped');
+  });
+
+  it('skips ui-install when installUi provided in overrides', async () => {
+    promptUiInstallMock.mock.resetCalls();
+
+    const result = await runWizard({
+      skipConfirmation: false,
+      cliOverrides: { installUi: false },
+    });
+
+    assert.equal(promptUiInstallMock.mock.calls.length, 0, 'promptUiInstall skipped');
+    assert.equal(result.installUi, false);
+  });
 });

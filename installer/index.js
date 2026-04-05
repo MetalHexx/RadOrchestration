@@ -5,6 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { confirm } from '@inquirer/prompts';
 import ora from 'ora';
+import { createRequire } from 'node:module';
 
 // Presentation
 import { renderBanner } from './lib/banner.js';
@@ -14,6 +15,10 @@ import {
   renderPostInstallSummary,
   renderPartialSuccessSummary,
 } from './lib/summary.js';
+
+// CLI
+import { parseArgs } from './lib/cli.js';
+import { renderHelp } from './lib/help.js';
 
 // Application
 import { runWizard } from './lib/wizard.js';
@@ -37,12 +42,29 @@ const repoRoot = __dirname;
  */
 export async function main() {
   const args = process.argv.slice(2);
-  const skipConfirmation = args.includes('--yes') || args.includes('-y');
+  const { command, options } = parseArgs(args);
+
+  // --help → render and exit
+  if (command === 'help') {
+    renderHelp();
+    return;
+  }
+
+  // --version → print and exit
+  if (command === 'version') {
+    const require = createRequire(import.meta.url);
+    const { version } = require('./package.json');
+    console.log(version);
+    return;
+  }
+
+  const skipConfirmation = options.skipConfirmation ?? false;
+  const forceOverwrite = options.overwrite ?? false;
 
   try {
     renderBanner();
 
-    const config = await runWizard({ skipConfirmation });
+    const config = await runWizard({ skipConfirmation, cliOverrides: options });
 
     // Existing-file detection
     const resolvedRoot = resolveOrchRoot(config.workspaceDir, config.orchRoot);
@@ -50,19 +72,27 @@ export async function main() {
     const skillsPath = path.join(resolvedRoot, 'skills');
 
     if (fs.existsSync(agentsPath) || fs.existsSync(skillsPath)) {
-      console.log(
-        THEME.warning(
-          `⚠ Existing orchestration files detected at ${resolvedRoot}. Continuing will overwrite them.`
-        )
-      );
-      // Safety gate — NEVER skipped by --yes
-      const overwrite = await confirm({
-        message: 'Overwrite existing files?',
-        default: false,
-      });
-      if (!overwrite) {
-        console.log('Installation cancelled.');
-        process.exit(0);
+      if (forceOverwrite) {
+        console.log(
+          THEME.warning(
+            `⚠ Existing orchestration files detected at ${resolvedRoot}. Overwriting (--overwrite).`
+          )
+        );
+      } else {
+        console.log(
+          THEME.warning(
+            `⚠ Existing orchestration files detected at ${resolvedRoot}. Continuing will overwrite them.`
+          )
+        );
+        // Safety gate — NEVER skipped by --yes alone
+        const overwrite = await confirm({
+          message: 'Overwrite existing files?',
+          default: false,
+        });
+        if (!overwrite) {
+          console.log('Installation cancelled.');
+          process.exit(0);
+        }
       }
     }
 
@@ -116,6 +146,12 @@ export async function main() {
     const yamlContent = generateConfig(config);
     writeConfig(config.workspaceDir, config.orchRoot, yamlContent);
     configSpinner.succeed('Generated orchestration.yml');
+
+    // Create project storage directory if it doesn't exist
+    const resolvedProjectsDir = path.isAbsolute(config.projectsBasePath)
+      ? config.projectsBasePath
+      : path.join(config.workspaceDir, config.projectsBasePath);
+    fs.mkdirSync(resolvedProjectsDir, { recursive: true });
 
     const configPath = path.join(resolvedRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
 

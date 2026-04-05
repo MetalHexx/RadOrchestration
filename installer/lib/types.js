@@ -1,6 +1,26 @@
 // installer/lib/types.js — JSDoc type definitions (no runtime code)
 
 /**
+ * @typedef {Object} CliOptions
+ * @property {boolean} [skipConfirmation] - --yes / -y flag
+ * @property {boolean} [overwrite] - --overwrite / --force flag
+ * @property {string}  [workspaceDir] - --workspace <path>
+ * @property {string}  [tool] - --tool <tool>
+ * @property {string}  [orchRoot] - --orch-root <folder>
+ * @property {string}  [projectsBasePath] - --projects-path <path>
+ * @property {string}  [projectsNaming] - --naming <convention>
+ * @property {number}  [maxPhases] - --max-phases <n>
+ * @property {number}  [maxTasksPerPhase] - --max-tasks <n>
+ * @property {number}  [maxRetriesPerTask] - --max-retries <n>
+ * @property {number}  [maxConsecutiveReviewRejections] - --max-rejections <n>
+ * @property {string}  [executionMode] - --execution-mode <mode>
+ * @property {string}  [autoCommit] - --auto-commit <mode>
+ * @property {string}  [autoPr] - --auto-pr <mode>
+ * @property {boolean} [installUi] - --dashboard / --no-dashboard
+ * @property {string}  [uiDir] - --dashboard-dir <path>
+ */
+
+/**
  * @typedef {Object} InstallerConfig
  * @property {'copilot'} tool - Selected AI tool (v1: copilot only)
  * @property {string} workspaceDir - Absolute path to target workspace

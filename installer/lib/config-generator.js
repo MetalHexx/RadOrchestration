@@ -2,6 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { normalizePath } from './path-utils.js';
 
 /** @import { InstallerConfig } from './types.js' */
 
@@ -19,13 +20,13 @@ version: "1.0"
 
 # ─── System ────────────────────────────────────────────────────────
 system:
-  orch_root: "${config.orchRoot}"                   # Orchestration root folder (relative name or absolute path)
+  orch_root: "${normalizePath(config.orchRoot)}"                   # Orchestration root folder (relative name or absolute path)
 
 # ─── Project Storage ───────────────────────────────────────────────
 projects:
   # base_path accepts both relative paths (resolved from workspace root)
   # and absolute paths (e.g., /shared/projects for git worktree setups).
-  base_path: "${config.projectsBasePath}"          # Where project folders are created
+  base_path: "${normalizePath(config.projectsBasePath)}"          # Where project folders are created
   naming: "${config.projectsNaming}"               # SCREAMING_CASE | lowercase | numbered
 
 # ─── Pipeline Limits (Scope Guards) ───────────────────────────────

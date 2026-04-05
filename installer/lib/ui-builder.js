@@ -44,6 +44,9 @@ function runNpmCommand(args, cwd, label) {
     const child = spawn(`npm ${args.join(' ')}`, { cwd, stdio: 'pipe', shell: true });
     let stderr = '';
 
+    // Drain stdout to prevent pipe buffer deadlock on large outputs (e.g. Next.js cold build)
+    child.stdout.on('data', () => {});
+
     child.stderr.on('data', (chunk) => {
       stderr += chunk.toString();
     });

@@ -5,7 +5,7 @@
 // we set up all persistent mocks BEFORE importing index.js, then adjust
 // per-test behaviour via mutable state + mock.resetCalls().
 
-import { test, mock } from 'node:test';
+import { test, describe, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
@@ -37,12 +37,14 @@ const state = {
   wizardError: null,         // if set, runWizard throws this
   confirmResponse: true,     // boolean returned by confirm
   existsSyncResponse: null,  // fn(path) => boolean; null = always false
+  parseArgsResult: null,     // if set, parseArgs returns this instead of default
 };
 
 function resetState() {
   state.wizardError = null;
   state.confirmResponse = true;
   state.existsSyncResponse = null;
+  state.parseArgsResult = null;
 }
 
 // ── Persistent mock functions (set up ONCE before index.js is imported) ──────
@@ -52,7 +54,7 @@ const sectionHeaderMock = mock.fn();
 const renderPreInstallSummaryMock = mock.fn();
 const renderPostInstallSummaryMock = mock.fn();
 
-const runWizardMock = mock.fn(async ({ skipConfirmation }) => {
+const runWizardMock = mock.fn(async ({ skipConfirmation, cliOverrides }) => {
   if (state.wizardError) throw state.wizardError;
   return { ...makeDefaultConfig(), skipConfirmation };
 });
@@ -87,6 +89,16 @@ const installUiMock = mock.fn(async () => ({
 }));
 const renderPartialSuccessSummaryMock = mock.fn();
 
+// CLI module mocks
+const parseArgsMock = mock.fn((argv) => {
+  if (state.parseArgsResult) return state.parseArgsResult;
+  const options = {};
+  if (argv.includes('--yes') || argv.includes('-y')) options.skipConfirmation = true;
+  if (argv.includes('--overwrite') || argv.includes('--force')) options.overwrite = true;
+  return { command: 'run', options };
+});
+const renderHelpMock = mock.fn();
+
 const THEME = { banner: (s) => s, warning: (s) => s, error: (s) => s, spinner: 'cyan' };
 
 // Spinner factory - instances collected into array, cleared between tests
@@ -109,6 +121,8 @@ await mock.module('./lib/summary.js', {
     renderPartialSuccessSummary: renderPartialSuccessSummaryMock,
   },
 });
+await mock.module('./lib/cli.js', { namedExports: { parseArgs: parseArgsMock } });
+await mock.module('./lib/help.js', { namedExports: { renderHelp: renderHelpMock } });
 await mock.module('./lib/wizard.js', { namedExports: { runWizard: runWizardMock } });
 await mock.module('./lib/manifest.js', { namedExports: { getManifest: getManifestMock } });
 await mock.module('./lib/config-generator.js', {
@@ -121,8 +135,9 @@ await mock.module('./lib/ui-builder.js', {
 });
 await mock.module('@inquirer/prompts', { namedExports: { confirm: confirmMock } });
 await mock.module('ora', { defaultExport: oraMock });
-// Patch fs.existsSync on the shared default-export object
+// Patch fs.existsSync and fs.mkdirSync on the shared default-export object
 mock.method(fs, 'existsSync', existsSyncMock);
+const mkdirSyncMock = mock.method(fs, 'mkdirSync', () => {});
 
 // ── Single import of index.js (uses live bindings above) ─────────────────────
 
@@ -133,9 +148,10 @@ const { main } = await import('./index.js');
 const ALL_MOCKS = [
   renderBannerMock, sectionHeaderMock, renderPreInstallSummaryMock, renderPostInstallSummaryMock,
   renderPartialSuccessSummaryMock,
+  parseArgsMock, renderHelpMock,
   runWizardMock, getManifestMock, confirmMock, copyCategoryMock,
   generateConfigMock, writeConfigMock, resolveOrchRootMock, existsSyncMock, oraMock,
-  checkNodeNpmMock, installUiMock,
+  checkNodeNpmMock, installUiMock, mkdirSyncMock,
 ];
 
 function resetMocks() {
@@ -222,7 +238,7 @@ test('happy path: modules called in correct order with --yes', async () => {
   assert.ok(callOrder.indexOf('renderPreInstallSummary') < callOrder.indexOf('copyCategory'), 'renderPreInstallSummary before copyCategory');
   assert.ok(callOrder.indexOf('copyCategory') < callOrder.indexOf('generateConfig'), 'copyCategory before generateConfig');
   assert.ok(callOrder.indexOf('generateConfig') < callOrder.indexOf('renderPostInstallSummary'), 'generateConfig before renderPostInstallSummary');
-  assert.deepEqual(runWizardMock.mock.calls[0].arguments[0], { skipConfirmation: true });
+  assert.deepEqual(runWizardMock.mock.calls[0].arguments[0], { skipConfirmation: true, cliOverrides: { skipConfirmation: true } });
   assert.equal(renderPostInstallSummaryMock.mock.callCount(), 1);
 });
 
@@ -377,6 +393,49 @@ test('config generation: generateConfig and writeConfig called with a spinner', 
     configSpinner.succeed.mock.callCount() + configSpinner.fail.mock.callCount() >= 1,
     'config spinner settles'
   );
+});
+
+// ── Project storage directory creation ───────────────────────────────────────
+
+test('projects directory: fs.mkdirSync called with resolved projects path', async () => {
+  resetMocks();
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  const mkdirCalls = mkdirSyncMock.mock.calls;
+  assert.ok(mkdirCalls.length >= 1, 'mkdirSync called at least once');
+  // The projects directory call uses workspaceDir + projectsBasePath ('/workspace/projects')
+  const projectsDirCall = mkdirCalls.find(
+    (c) => typeof c.arguments[0] === 'string' && c.arguments[0].includes('projects')
+  );
+  assert.ok(projectsDirCall, 'mkdirSync called for projects directory');
+  assert.deepEqual(projectsDirCall.arguments[1], { recursive: true }, 'recursive: true passed');
+});
+
+test('projects directory: absolute projectsBasePath used as-is', async () => {
+  resetMocks();
+  runWizardMock.mock.mockImplementationOnce(async () => ({
+    ...makeDefaultConfig(),
+    projectsBasePath: '/abs/path/to/projects',
+  }));
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  const mkdirCalls = mkdirSyncMock.mock.calls;
+  const absDirCall = mkdirCalls.find(
+    (c) => c.arguments[0] === '/abs/path/to/projects'
+  );
+  assert.ok(absDirCall, 'mkdirSync called with absolute path unchanged');
 });
 
 // ── Top-level error handling ──────────────────────────────────────────────────
@@ -620,4 +679,136 @@ test('installUi receives correct arguments: repoRoot, uiDir, workspaceDir, orchR
   assert.equal(args.orchRoot, '.github', 'orchRoot from config');
   assert.equal(args.projectsBasePath, 'projects', 'projectsBasePath from config');
   assert.ok(typeof args.repoRoot === 'string' && args.repoRoot.length > 0, 'repoRoot is a non-empty string');
+});
+
+// ── --help command ────────────────────────────────────────────────────────────
+
+test('--help: renders help and does NOT call renderBanner or runWizard', async () => {
+  resetMocks();
+  state.parseArgsResult = { command: 'help', options: {} };
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--help'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.equal(renderHelpMock.mock.callCount(), 1, 'renderHelp called');
+  assert.equal(renderBannerMock.mock.callCount(), 0, 'renderBanner not called');
+  assert.equal(runWizardMock.mock.callCount(), 0, 'runWizard not called');
+});
+
+// ── --version command ─────────────────────────────────────────────────────────
+
+test('--version: prints version and does NOT call renderBanner or runWizard', async () => {
+  resetMocks();
+  state.parseArgsResult = { command: 'version', options: {} };
+
+  const logMessages = [];
+  const origLog = console.log;
+  console.log = (...args) => logMessages.push(args.join(' '));
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--version'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+    console.log = origLog;
+  }
+
+  assert.ok(logMessages.length >= 1, 'something printed to stdout');
+  assert.equal(renderBannerMock.mock.callCount(), 0, 'renderBanner not called');
+  assert.equal(runWizardMock.mock.callCount(), 0, 'runWizard not called');
+});
+
+// ── --overwrite flag ──────────────────────────────────────────────────────────
+
+test('--overwrite: skips overwrite confirmation when existing files detected', async () => {
+  resetMocks();
+  state.existsSyncResponse = (p) => String(p).includes('agents');
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes', '--overwrite'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  // confirm should NOT be called — --overwrite bypasses the safety gate
+  assert.equal(confirmMock.mock.callCount(), 0, 'confirm not called when --overwrite is passed');
+  // Installation should proceed
+  assert.ok(copyCategoryMock.mock.callCount() >= 1, 'copyCategory called (installation proceeded)');
+});
+
+test('--force: alias for --overwrite, skips overwrite confirmation', async () => {
+  resetMocks();
+  state.existsSyncResponse = (p) => String(p).includes('agents');
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes', '--force'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.equal(confirmMock.mock.callCount(), 0, 'confirm not called when --force is passed');
+  assert.ok(copyCategoryMock.mock.callCount() >= 1, 'copyCategory called');
+});
+
+test('without --overwrite: overwrite confirmation still shown when files exist', async () => {
+  resetMocks();
+  state.existsSyncResponse = (p) => String(p).includes('agents');
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.ok(confirmMock.mock.callCount() >= 1, 'confirm called for overwrite when no --overwrite');
+});
+
+// ── parseArgs integration ─────────────────────────────────────────────────────
+
+test('parseArgs is called with process.argv.slice(2)', async () => {
+  resetMocks();
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes', '--orch-root', '.rad'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.equal(parseArgsMock.mock.callCount(), 1, 'parseArgs called once');
+  const parsedArgs = parseArgsMock.mock.calls[0].arguments[0];
+  assert.ok(parsedArgs.includes('--yes'), 'argv includes --yes');
+  assert.ok(parsedArgs.includes('--orch-root'), 'argv includes --orch-root');
+  assert.ok(parsedArgs.includes('.rad'), 'argv includes .rad');
+});
+
+test('runWizard receives cliOverrides from parseArgs options', async () => {
+  resetMocks();
+  state.parseArgsResult = { command: 'run', options: { skipConfirmation: true, orchRoot: '.rad' } };
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes', '--orch-root', '.rad'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  assert.equal(runWizardMock.mock.callCount(), 1, 'runWizard called');
+  const wizardArgs = runWizardMock.mock.calls[0].arguments[0];
+  assert.equal(wizardArgs.skipConfirmation, true, 'skipConfirmation passed');
+  assert.deepEqual(wizardArgs.cliOverrides, { skipConfirmation: true, orchRoot: '.rad' }, 'cliOverrides passed');
 });

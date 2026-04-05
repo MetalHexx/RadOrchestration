@@ -171,3 +171,21 @@ test('writeConfig - uses absolute orchRoot directly when path.isAbsolute() is tr
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+// ── Windows path normalization (cross-platform regression) ────────────────────
+
+test('generateConfig - normalizes Windows backslash paths to forward slashes in YAML output', () => {
+  /** @type {import('./types.js').InstallerConfig} */
+  const windowsConfig = {
+    ...sampleConfig,
+    orchRoot: 'C:\\dev\\orchroot',
+    projectsBasePath: 'C:\\dev\\my-projects',
+  };
+  const yaml = generateConfig(windowsConfig);
+  assert.ok(yaml.includes('orch_root: "C:/dev/orchroot"'), 'orchRoot should use forward slashes');
+  assert.ok(yaml.includes('base_path: "C:/dev/my-projects"'), 'projectsBasePath should use forward slashes');
+  // No raw backslashes should appear in the YAML output (except in comments if any)
+  const lines = yaml.split('\n').filter(l => !l.trimStart().startsWith('#'));
+  const hasBackslash = lines.some(l => l.includes('\\'));
+  assert.ok(!hasBackslash, 'YAML output must not contain raw backslashes in value lines');
+});

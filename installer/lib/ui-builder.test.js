@@ -42,6 +42,7 @@ const spawnMock = mock.fn((cmd, _opts) => {
   callOrder.push(`spawn:${cmdArgs}`);
   const { exitCode = 0, stderr = '', error = null } = state.spawnResults.shift() ?? {};
   const child = new EventEmitter();
+  child.stdout = new EventEmitter();
   child.stderr = new EventEmitter();
   setImmediate(() => {
     if (error) {
