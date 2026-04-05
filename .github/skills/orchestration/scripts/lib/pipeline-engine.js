@@ -35,6 +35,7 @@ function scaffoldInitialState(config, projectDir) {
     pipeline: {
       current_tier: 'planning',
       gate_mode: null,
+      memory_ingested: false,
     },
     planning: {
       status: 'not_started',

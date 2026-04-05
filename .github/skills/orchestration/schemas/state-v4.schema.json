@@ -85,6 +85,12 @@
           ],
           "default": null
         },
+        "memory_ingested": {
+          "title": "Memory Ingested",
+          "description": "Whether memory ingestion has been attempted. Initialized false.",
+          "type": "boolean",
+          "default": false
+        },
         "source_control": {
           "title": "Source Control Settings",
           "description": "Source control configuration for this project, set during initialization.",
