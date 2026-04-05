@@ -50,7 +50,7 @@ export function renderHelp() {
     `  ${THEME.heading('OPTIONAL FEATURES')}`,
     `    ${flag('--memory')}                    Install the memory system (total-recall)`,
     `    ${flag('--no-memory')}                 Skip memory system installation (default with --yes)`,
-    `    ${flag('--auto-ingest')} ${meta('<mode>')}       Set auto-ingest policy: always, ask, never (default: ask)`,
+    `    ${flag('--auto-ingest')} ${meta('<mode>')}       Set auto-ingest policy: always, ask, never (default: never)`,
     '',
     `  ${THEME.heading('FLAGS')}`,
     `    ${flag('--overwrite')}, ${flag('--force')}            Overwrite existing orchestration files`,

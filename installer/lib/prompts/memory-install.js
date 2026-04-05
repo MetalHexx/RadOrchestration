@@ -155,7 +155,7 @@ export async function promptMemoryInstall(workspaceDir) {
     });
 
     if (continueWithout) {
-      return { installMemory: true, autoIngest: 'never' };
+      return { installMemory: false, autoIngest: 'never' };
     }
     process.exit(1);
   }

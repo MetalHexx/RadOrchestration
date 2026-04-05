@@ -218,6 +218,7 @@ export async function main() {
             process.exit(1);
           }
           config.memoryInstallFailed = true;
+          config.installMemory = false;
         }
       }
     }
