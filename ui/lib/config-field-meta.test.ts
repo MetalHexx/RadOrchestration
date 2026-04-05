@@ -24,9 +24,9 @@ console.log('\nconfig-field-meta tests\n');
 
 // --- CONFIG_FIELDS array ---
 
-test('CONFIG_FIELDS is an array of exactly 14 entries', () => {
+test('CONFIG_FIELDS is an array of exactly 16 entries', () => {
   assert.ok(Array.isArray(CONFIG_FIELDS));
-  assert.strictEqual(CONFIG_FIELDS.length, 14);
+  assert.strictEqual(CONFIG_FIELDS.length, 16);
 });
 
 test('every entry conforms to FieldMeta interface', () => {
@@ -44,9 +44,9 @@ test('every entry conforms to FieldMeta interface', () => {
 
 // --- CONFIG_FIELD_MAP ---
 
-test('CONFIG_FIELD_MAP contains exactly 14 keys matching CONFIG_FIELDS', () => {
+test('CONFIG_FIELD_MAP contains exactly 16 keys matching CONFIG_FIELDS', () => {
   const keys = Object.keys(CONFIG_FIELD_MAP);
-  assert.strictEqual(keys.length, 14);
+  assert.strictEqual(keys.length, 16);
   for (const field of CONFIG_FIELDS) {
     assert.ok(keys.includes(field.key), `missing key in map: ${field.key}`);
   }
@@ -91,6 +91,23 @@ test('source_control.provider is readonly with section "source-control"', () => 
   assert.strictEqual(f.section, 'source-control');
 });
 
+test('memory.enabled is switch with section "memory", no options, no min', () => {
+  const f = CONFIG_FIELD_MAP['memory.enabled'];
+  assert.ok(f);
+  assert.strictEqual(f.controlType, 'switch');
+  assert.strictEqual(f.section, 'memory');
+  assert.strictEqual(f.options, undefined);
+  assert.strictEqual(f.min, undefined);
+});
+
+test('memory.auto_ingest is toggle-group with section "memory" and correct options', () => {
+  const f = CONFIG_FIELD_MAP['memory.auto_ingest'];
+  assert.ok(f);
+  assert.strictEqual(f.controlType, 'toggle-group');
+  assert.strictEqual(f.section, 'memory');
+  assert.deepStrictEqual(f.options, ['always', 'ask', 'never']);
+});
+
 // --- Number field min values ---
 
 test('all four number fields have correct min values', () => {
@@ -109,12 +126,13 @@ test('all four number fields have correct min values', () => {
 
 // --- Toggle-group option values ---
 
-test('all four toggle-group fields have correct options', () => {
+test('all five toggle-group fields have correct options', () => {
   const expected: Record<string, string[]> = {
     'projects.naming': ['SCREAMING_CASE', 'lowercase', 'numbered'],
     'human_gates.execution_mode': ['ask', 'phase', 'task', 'autonomous'],
     'source_control.auto_commit': ['always', 'ask', 'never'],
     'source_control.auto_pr': ['always', 'ask', 'never'],
+    'memory.auto_ingest': ['always', 'ask', 'never'],
   };
   for (const [key, opts] of Object.entries(expected)) {
     const f = CONFIG_FIELD_MAP[key];

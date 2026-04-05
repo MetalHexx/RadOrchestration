@@ -6,6 +6,7 @@ import type {
 const VALID_NAMING: readonly string[] = ['SCREAMING_CASE', 'lowercase', 'numbered'];
 const VALID_EXECUTION_MODE: readonly string[] = ['ask', 'phase', 'task', 'autonomous'];
 const VALID_SOURCE_CONTROL_ACTION: readonly string[] = ['always', 'ask', 'never'];
+const VALID_AUTO_INGEST: readonly string[] = ['always', 'ask', 'never'];
 
 function isSection(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -82,6 +83,16 @@ export function validateConfig(config: OrchestrationConfig): ConfigValidationErr
     }
     if (config.source_control.provider !== 'github') {
       errors['source_control.provider'] = 'Unsupported provider';
+    }
+  }
+
+  // 14–15. memory (optional section — skip if missing)
+  if (isSection(config.memory)) {
+    if (typeof config.memory.enabled !== 'boolean') {
+      errors['memory.enabled'] = 'Must be true or false';
+    }
+    if (!VALID_AUTO_INGEST.includes(config.memory.auto_ingest as string)) {
+      errors['memory.auto_ingest'] = 'Invalid auto-ingest setting';
     }
   }
 
