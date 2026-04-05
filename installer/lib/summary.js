@@ -44,6 +44,14 @@ export function renderPostInstallSummary(config, copyResults, configPath) {
     console.log('  ' + THEME.secondary('–') + ' ' + THEME.secondary('Dashboard UI: skipped'));
   }
 
+  if (config.installMemory) {
+    console.log('  ' + THEME.success('✔') + ' ' + THEME.body('Memory: ') + THEME.success(`enabled · auto-ingest: ${config.autoIngest}`));
+  } else if (config.memoryInstallFailed) {
+    console.log('  ' + THEME.error('✖') + ' ' + THEME.error('Memory: disabled (install failed — see manual steps above)'));
+  } else {
+    console.log('  ' + THEME.secondary('–') + ' ' + THEME.secondary('Memory: disabled'));
+  }
+
   console.log('');
   sectionHeader('::', "What's Next");
   console.log('');
@@ -85,6 +93,15 @@ export function renderPartialSuccessSummary(config, copyResults, configPath, err
   console.log('  ' + THEME.success('✔') + ' ' + THEME.body(`${totalFiles} files installed`));
   console.log('  ' + THEME.success('✔') + ' ' + THEME.body('Configuration: ') + THEME.secondary(configPath));
   console.log('  ' + THEME.error('✖') + ' ' + THEME.error('Dashboard UI: build failed'));
+
+  if (config.installMemory) {
+    console.log('  ' + THEME.success('✔') + ' ' + THEME.body('Memory: ') + THEME.success(`enabled · auto-ingest: ${config.autoIngest}`));
+  } else if (config.memoryInstallFailed) {
+    console.log('  ' + THEME.error('✖') + ' ' + THEME.error('Memory: disabled (install failed — see manual steps above)'));
+  } else {
+    console.log('  ' + THEME.secondary('–') + ' ' + THEME.secondary('Memory: disabled'));
+  }
+
   console.log('');
   console.log('     ' + THEME.errorDetail(error));
   const copyMsg = error.includes('ENOENT') && error.includes('src')

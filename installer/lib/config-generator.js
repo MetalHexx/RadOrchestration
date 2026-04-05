@@ -48,6 +48,11 @@ source_control:
   auto_pr: "${config.autoPr || 'ask'}"                  # always | ask | never
   provider: "${config.provider || 'github'}"               # reserved: github only in v1
 
+# ─── Memory ────────────────────────────────────────────────────────
+memory:
+  enabled: ${config.installMemory}             # Enable memory system for planning agents
+  auto_ingest: "${config.autoIngest || 'never'}"     # always | ask | never
+
 # ─── Notes ─────────────────────────────────────────────────────────
 # Model selection is configured per-agent in .agent.md frontmatter.
 # See ${config.orchRoot}/agents/*.agent.md → \`model\` field.
