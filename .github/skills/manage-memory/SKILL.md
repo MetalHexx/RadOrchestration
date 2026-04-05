@@ -11,15 +11,15 @@ Read-write skill for managing the total-recall knowledge base. Supports ingestin
 
 ## Routing Table
 
-| Mode         | Reference Document                                                      | Script   |
-|--------------|-------------------------------------------------------------------------|----------|
-| ingest       | [references/operations-guide.md](./references/operations-guide.md)      | *(none)* |
-| bulk-ingest  | [references/operations-guide.md](./references/operations-guide.md)      | *(none)* |
-| search       | [references/operations-guide.md](./references/operations-guide.md)      | *(none)* |
-| status       | [references/operations-guide.md](./references/operations-guide.md)      | *(none)* |
-| refresh      | [references/operations-guide.md](./references/operations-guide.md)      | *(none)* |
-| remove       | [references/operations-guide.md](./references/operations-guide.md)      | *(none)* |
-| pipeline     | [references/pipeline-guide.md](./references/pipeline-guide.md)          | *(none)* |
+| Mode         | Reference Document                                                                            | Script   |
+|--------------|-----------------------------------------------------------------------------------------------|----------|
+| ingest       | [operations-guide.md#ingest](./references/operations-guide.md#ingest)                        | *(none)* |
+| bulk-ingest  | [operations-guide.md#bulk-ingest](./references/operations-guide.md#bulk-ingest)              | *(none)* |
+| search       | [operations-guide.md#search](./references/operations-guide.md#search)                        | *(none)* |
+| status       | [operations-guide.md#status](./references/operations-guide.md#status)                        | *(none)* |
+| refresh      | [operations-guide.md#refresh](./references/operations-guide.md#refresh)                      | *(none)* |
+| remove       | [operations-guide.md#remove](./references/operations-guide.md#remove)                        | *(none)* |
+| pipeline     | [pipeline-guide.md#workflow](./references/pipeline-guide.md#workflow)                        | *(none)* |
 
 ## Loading Instructions
 
