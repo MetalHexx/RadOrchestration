@@ -1,6 +1,6 @@
 {
   "name": "rad-orchestration",
-  "version": "1.0.0-alpha.4",
+  "version": "1.0.0-alpha.5",
   "description": "Interactive CLI installer for the RadOrchestration system",
   "type": "module",
   "scripts": {
