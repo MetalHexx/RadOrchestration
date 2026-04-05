@@ -429,7 +429,7 @@ test('projects base path: mkdirSync called with resolved absolute path after con
   assert.deepEqual(opts, { recursive: true }, 'mkdirSync called with recursive: true');
 });
 
-test('projects base path: mkdirSync called after writeConfig', async () => {
+test('projects base path: mkdirSync called before writeConfig', async () => {
   resetMocks();
   const callOrder = [];
   writeConfigMock.mock.mockImplementationOnce(() => callOrder.push('writeConfig'));
@@ -442,7 +442,7 @@ test('projects base path: mkdirSync called after writeConfig', async () => {
     process.argv = originalArgv;
   }
 
-  assert.ok(callOrder.indexOf('writeConfig') < callOrder.indexOf('mkdirSync'), 'mkdirSync called after writeConfig');
+  assert.ok(callOrder.indexOf('mkdirSync') < callOrder.indexOf('writeConfig'), 'mkdirSync called before writeConfig');
 });
 
 test('projects base path: absolute projectsBasePath used as-is', async () => {
@@ -1023,7 +1023,7 @@ test('MCP failure + decline continue: exits with code 1', async () => {
   assert.ok(exitCodes.includes(1), 'process.exit(1) called when user declines after MCP failure');
 });
 
-test('memory step runs after config generation and before Dashboard UI', async () => {
+test('memory step runs before config generation and before Dashboard UI', async () => {
   resetMocks();
   const callOrder = [];
   runWizardMock.mock.mockImplementationOnce(async ({ skipConfirmation }) => {
@@ -1045,7 +1045,7 @@ test('memory step runs after config generation and before Dashboard UI', async (
     process.argv = originalArgv;
   }
 
-  assert.ok(callOrder.indexOf('writeConfig') < callOrder.indexOf('isTotalRecallInstalled'), 'writeConfig before isTotalRecallInstalled');
+  assert.ok(callOrder.indexOf('isTotalRecallInstalled') < callOrder.indexOf('writeConfig'), 'isTotalRecallInstalled before writeConfig');
   assert.ok(callOrder.indexOf('registerMcpServer') < callOrder.indexOf('checkNodeNpm'), 'registerMcpServer before checkNodeNpm');
   assert.ok(callOrder.indexOf('registerMcpServer') < callOrder.indexOf('installUi'), 'registerMcpServer before installUi');
 });

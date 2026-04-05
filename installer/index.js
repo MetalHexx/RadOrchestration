@@ -142,12 +142,6 @@ export async function main() {
       results.push(result);
     }
 
-    // Generate and write config
-    const configSpinner = ora({ text: 'Generating orchestration.yml...', color: THEME.spinner }).start();
-    const yamlContent = generateConfig(config);
-    writeConfig(config.workspaceDir, config.orchRoot, yamlContent);
-    configSpinner.succeed('Generated orchestration.yml');
-
     // Create the project storage directory so the dashboard and agents can scan it immediately
     const projectsSpinner = ora({ text: 'Creating projects directory...', color: THEME.spinner }).start();
     const resolvedProjectsPath = path.isAbsolute(config.projectsBasePath)
@@ -222,6 +216,12 @@ export async function main() {
         }
       }
     }
+
+    // Generate and write config — must happen after Memory System so config reflects final installMemory state
+    const configSpinner = ora({ text: 'Generating orchestration.yml...', color: THEME.spinner }).start();
+    const yamlContent = generateConfig(config);
+    writeConfig(config.workspaceDir, config.orchRoot, yamlContent);
+    configSpinner.succeed('Generated orchestration.yml');
 
     const configPath = path.join(resolvedRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
 

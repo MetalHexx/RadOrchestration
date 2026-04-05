@@ -164,7 +164,7 @@ export async function promptMemoryInstall(workspaceDir) {
   const autoIngest = await select({
     message: 'Auto-ingest completed projects?',
     theme: INQUIRER_THEME,
-    default: 'ask',
+    default: 'never',
     choices: [
       { name: 'always — Ingest automatically',          value: 'always' },
       { name: 'ask — Prompt before each ingestion',     value: 'ask' },

@@ -352,7 +352,7 @@ describe('promptMemoryInstall', () => {
     });
 
     const result = await promptMemoryInstall(WORKSPACE_DIR);
-    assert.deepEqual(result, { installMemory: true, autoIngest: 'never' });
+    assert.deepEqual(result, { installMemory: false, autoIngest: 'never' });
   });
 
   it('passes theme: INQUIRER_THEME to confirm prompt', async () => {
@@ -388,16 +388,16 @@ describe('promptMemoryInstall', () => {
     assert.deepEqual(args.choices.map(c => c.value), ['always', 'ask', 'never']);
   });
 
-  it('select prompt default is "ask"', async () => {
+  it('select prompt default is "never"', async () => {
     confirmMock.mock.mockImplementation(async () => true);
     execFileMock.mock.mockImplementation((cmd, args, cb) => {
       cb(null, 'v1.0.0', '');
     });
     existsSyncMock.mock.mockImplementation(() => false);
-    selectMock.mock.mockImplementation(async () => 'ask');
+    selectMock.mock.mockImplementation(async () => 'never');
 
     await promptMemoryInstall(WORKSPACE_DIR);
     const args = selectMock.mock.calls[0].arguments[0];
-    assert.equal(args.default, 'ask');
+    assert.equal(args.default, 'never');
   });
 });
