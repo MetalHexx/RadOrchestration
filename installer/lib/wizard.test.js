@@ -41,6 +41,11 @@ const promptSourceControlMock = mock.fn(async () => {
   return { autoCommit: 'ask', autoPr: 'ask', provider: 'github' };
 });
 
+const promptMemoryInstallMock = mock.fn(async () => {
+  callOrder.push('promptMemoryInstall');
+  return { installMemory: true, autoIngest: 'ask' };
+});
+
 const promptUiInstallMock = mock.fn(async () => {
   callOrder.push('promptUiInstall');
   return { installUi: false };
@@ -68,6 +73,9 @@ mock.module('./prompts/gate-behavior.js', {
 mock.module('./prompts/source-control.js', {
   namedExports: { promptSourceControl: promptSourceControlMock },
 });
+mock.module('./prompts/memory-install.js', {
+  namedExports: { promptMemoryInstall: promptMemoryInstallMock },
+});
 mock.module('./prompts/ui-install.js', {
   namedExports: { promptUiInstall: promptUiInstallMock },
 });
@@ -88,13 +96,14 @@ describe('runWizard({ skipConfirmation: false })', () => {
     promptPipelineLimitsMock.mock.resetCalls();
     promptGateBehaviorMock.mock.resetCalls();
     promptSourceControlMock.mock.resetCalls();
+    promptMemoryInstallMock.mock.resetCalls();
     promptUiInstallMock.mock.resetCalls();
 
     result = await runWizard({ skipConfirmation: false });
   });
 
-  it('calls sectionHeader exactly 7 times', () => {
-    assert.equal(sectionHeaderMock.mock.calls.length, 7);
+  it('calls sectionHeader exactly 8 times', () => {
+    assert.equal(sectionHeaderMock.mock.calls.length, 8);
   });
 
   it('calls sectionHeader with correct marker+title pairs in order', () => {
@@ -105,7 +114,8 @@ describe('runWizard({ skipConfirmation: false })', () => {
     assert.deepEqual(calls[3], ['::', 'Pipeline Limits']);
     assert.deepEqual(calls[4], ['::', 'Gate Behavior']);
     assert.deepEqual(calls[5], ['::', 'Source Control']);
-    assert.deepEqual(calls[6], ['::', 'Dashboard UI']);
+    assert.deepEqual(calls[6], ['::', 'Memory System']);
+    assert.deepEqual(calls[7], ['::', 'Dashboard UI']);
   });
 
   it('calls promptGettingStarted exactly once', () => {
@@ -132,6 +142,10 @@ describe('runWizard({ skipConfirmation: false })', () => {
     assert.equal(promptSourceControlMock.mock.calls.length, 1);
   });
 
+  it('calls promptMemoryInstall exactly once', () => {
+    assert.equal(promptMemoryInstallMock.mock.calls.length, 1);
+  });
+
   it('calls promptUiInstall exactly once', () => {
     assert.equal(promptUiInstallMock.mock.calls.length, 1);
   });
@@ -141,13 +155,19 @@ describe('runWizard({ skipConfirmation: false })', () => {
     assert.equal(args[0], '/home/user/workspace');
   });
 
-  it('calls prompts in the correct order: Getting Started → Orch Root → Project Storage → Pipeline Limits → Gate Behavior → Source Control → UI Install', () => {
+  it('calls promptMemoryInstall with gettingStarted.workspaceDir', () => {
+    const args = promptMemoryInstallMock.mock.calls[0].arguments;
+    assert.equal(args[0], '/home/user/workspace');
+  });
+
+  it('calls prompts in the correct order: Getting Started → Orch Root → Project Storage → Pipeline Limits → Gate Behavior → Source Control → Memory System → UI Install', () => {
     const gsIdx = callOrder.indexOf('promptGettingStarted');
     const orIdx = callOrder.indexOf('promptOrchRoot');
     const psIdx = callOrder.indexOf('promptProjectStorage');
     const plIdx = callOrder.indexOf('promptPipelineLimits');
     const gbIdx = callOrder.indexOf('promptGateBehavior');
     const scIdx = callOrder.indexOf('promptSourceControl');
+    const msIdx = callOrder.indexOf('promptMemoryInstall');
     const uiIdx = callOrder.indexOf('promptUiInstall');
 
     assert.ok(gsIdx < orIdx, 'Getting Started runs before Orch Root');
@@ -155,7 +175,8 @@ describe('runWizard({ skipConfirmation: false })', () => {
     assert.ok(psIdx < plIdx, 'Project Storage runs before Pipeline Limits');
     assert.ok(plIdx < gbIdx, 'Pipeline Limits runs before Gate Behavior');
     assert.ok(gbIdx < scIdx, 'Gate Behavior runs before Source Control');
-    assert.ok(scIdx < uiIdx, 'Source Control runs before UI Install');
+    assert.ok(scIdx < msIdx, 'Source Control runs before Memory System');
+    assert.ok(msIdx < uiIdx, 'Memory System runs before UI Install');
   });
 
   it('returns tool and workspaceDir from promptGettingStarted', () => {
@@ -191,11 +212,17 @@ describe('runWizard({ skipConfirmation: false })', () => {
     assert.equal(result.skipConfirmation, false);
   });
 
+  it('returns installMemory and autoIngest from promptMemoryInstall', () => {
+    assert.equal(result.installMemory, true);
+    assert.equal(result.autoIngest, 'ask');
+  });
+
   it('returned object has all expected InstallerConfig keys', () => {
     const expectedKeys = [
       'tool', 'workspaceDir', 'orchRoot', 'projectsBasePath', 'projectsNaming',
       'maxPhases', 'maxTasksPerPhase', 'maxRetriesPerTask', 'maxConsecutiveReviewRejections',
-      'executionMode', 'autoCommit', 'autoPr', 'provider', 'installUi', 'skipConfirmation',
+      'executionMode', 'autoCommit', 'autoPr', 'provider', 'installUi',
+      'installMemory', 'autoIngest', 'skipConfirmation',
     ];
     for (const key of expectedKeys) {
       assert.ok(Object.hasOwn(result, key), `result has '${key}' property`);
@@ -216,6 +243,7 @@ describe('runWizard({ skipConfirmation: true })', () => {
     promptPipelineLimitsMock.mock.resetCalls();
     promptGateBehaviorMock.mock.resetCalls();
     promptSourceControlMock.mock.resetCalls();
+    promptMemoryInstallMock.mock.resetCalls();
     promptUiInstallMock.mock.resetCalls();
 
     result = await runWizard({ skipConfirmation: true });
@@ -232,6 +260,7 @@ describe('runWizard({ skipConfirmation: true })', () => {
     assert.equal(promptPipelineLimitsMock.mock.calls.length, 0, 'promptPipelineLimits not called');
     assert.equal(promptGateBehaviorMock.mock.calls.length, 0, 'promptGateBehavior not called');
     assert.equal(promptSourceControlMock.mock.calls.length, 0, 'promptSourceControl not called');
+    assert.equal(promptMemoryInstallMock.mock.calls.length, 0, 'promptMemoryInstall not called');
     assert.equal(promptUiInstallMock.mock.calls.length, 0, 'promptUiInstall not called');
   });
 
@@ -253,6 +282,11 @@ describe('runWizard({ skipConfirmation: true })', () => {
     assert.equal(result.autoPr, 'ask');
     assert.equal(result.installUi, true);
   });
+
+  it('--yes defaults memory off', () => {
+    assert.equal(result.installMemory, false);
+    assert.equal(result.autoIngest, 'never');
+  });
 });
 
 describe('runWizard with cliOverrides', () => {
@@ -265,6 +299,7 @@ describe('runWizard with cliOverrides', () => {
     promptPipelineLimitsMock.mock.resetCalls();
     promptGateBehaviorMock.mock.resetCalls();
     promptSourceControlMock.mock.resetCalls();
+    promptMemoryInstallMock.mock.resetCalls();
     promptUiInstallMock.mock.resetCalls();
 
     const result = await runWizard({
@@ -300,6 +335,7 @@ describe('runWizard with cliOverrides', () => {
     promptPipelineLimitsMock.mock.resetCalls();
     promptGateBehaviorMock.mock.resetCalls();
     promptSourceControlMock.mock.resetCalls();
+    promptMemoryInstallMock.mock.resetCalls();
     promptUiInstallMock.mock.resetCalls();
 
     // Only orchRoot provided, skipConfirmation false → other prompts still run
@@ -314,6 +350,7 @@ describe('runWizard with cliOverrides', () => {
     assert.equal(promptPipelineLimitsMock.mock.calls.length, 1, 'promptPipelineLimits called');
     assert.equal(promptGateBehaviorMock.mock.calls.length, 1, 'promptGateBehavior called');
     assert.equal(promptSourceControlMock.mock.calls.length, 1, 'promptSourceControl called');
+    assert.equal(promptMemoryInstallMock.mock.calls.length, 1, 'promptMemoryInstall called');
     assert.equal(promptUiInstallMock.mock.calls.length, 1, 'promptUiInstall called');
     assert.equal(result.orchRoot, '.rad');
   });
@@ -350,5 +387,59 @@ describe('runWizard with cliOverrides', () => {
 
     assert.equal(promptUiInstallMock.mock.calls.length, 0, 'promptUiInstall skipped');
     assert.equal(result.installUi, false);
+  });
+});
+
+describe('runWizard memory system', () => {
+  it('CLI override --memory + --auto-ingest skips prompt', async () => {
+    promptMemoryInstallMock.mock.resetCalls();
+
+    const result = await runWizard({
+      skipConfirmation: true,
+      cliOverrides: { installMemory: true, autoIngest: 'always' },
+    });
+
+    assert.equal(promptMemoryInstallMock.mock.calls.length, 0, 'promptMemoryInstall not called');
+    assert.equal(result.installMemory, true);
+    assert.equal(result.autoIngest, 'always');
+  });
+
+  it('CLI override --no-memory skips prompt and sets autoIngest to never', async () => {
+    promptMemoryInstallMock.mock.resetCalls();
+
+    const result = await runWizard({
+      skipConfirmation: false,
+      cliOverrides: { installMemory: false },
+    });
+
+    assert.equal(promptMemoryInstallMock.mock.calls.length, 0, 'promptMemoryInstall not called');
+    assert.equal(result.installMemory, false);
+    assert.equal(result.autoIngest, 'never');
+  });
+
+  it('interactive mode calls promptMemoryInstall when no overrides', async () => {
+    callOrder.length = 0;
+    sectionHeaderMock.mock.resetCalls();
+    promptMemoryInstallMock.mock.resetCalls();
+
+    await runWizard({ skipConfirmation: false });
+
+    assert.equal(promptMemoryInstallMock.mock.calls.length, 1, 'promptMemoryInstall called once');
+  });
+
+  it('interactive mode shows Memory System section header', async () => {
+    sectionHeaderMock.mock.resetCalls();
+
+    await runWizard({ skipConfirmation: false });
+
+    const headers = sectionHeaderMock.mock.calls.map(c => c.arguments);
+    const memoryHeader = headers.find(h => h[1] === 'Memory System');
+    assert.deepEqual(memoryHeader, ['::', 'Memory System']);
+  });
+
+  it('returned config always includes installMemory and autoIngest keys', async () => {
+    const result = await runWizard({ skipConfirmation: true });
+    assert.ok(Object.hasOwn(result, 'installMemory'), 'result has installMemory');
+    assert.ok(Object.hasOwn(result, 'autoIngest'), 'result has autoIngest');
   });
 });

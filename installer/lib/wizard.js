@@ -8,6 +8,7 @@ import { promptProjectStorage } from './prompts/project-storage.js';
 import { promptPipelineLimits } from './prompts/pipeline-limits.js';
 import { promptGateBehavior } from './prompts/gate-behavior.js';
 import { promptSourceControl } from './prompts/source-control.js';
+import { promptMemoryInstall } from './prompts/memory-install.js';
 import { promptUiInstall } from './prompts/ui-install.js';
 
 /**
@@ -30,6 +31,8 @@ const DEFAULTS = {
   provider: 'github',
   installUi: true,
   skipConfirmation: false,
+  installMemory: false,
+  autoIngest: 'never',
 };
 
 /**
@@ -131,6 +134,42 @@ export async function runWizard({ skipConfirmation, cliOverrides = {} }) {
     sourceControl = await promptSourceControl();
   }
 
+  // ── Memory System ─────────────────────────────────────────────────────
+  let memorySystem;
+  if (useDefaults && !has('installMemory')) {
+    // --yes without --memory: default to off
+    memorySystem = {
+      installMemory: DEFAULTS.installMemory,
+      autoIngest: DEFAULTS.autoIngest,
+    };
+  } else if (has('installMemory') && !cliOverrides.installMemory) {
+    // --no-memory explicitly passed
+    memorySystem = {
+      installMemory: false,
+      autoIngest: 'never',
+    };
+  } else if (has('installMemory') && cliOverrides.installMemory && has('autoIngest')) {
+    // --memory + --auto-ingest: fully covered by CLI
+    memorySystem = {
+      installMemory: true,
+      autoIngest: cliOverrides.autoIngest,
+    };
+  } else {
+    console.log('');
+    sectionHeader('::', 'Memory System');
+    console.log('');
+    console.log(THEME.hint('  Enable project memory to let planning agents recall'));
+    console.log(THEME.hint('  decisions and patterns from past projects.'));
+    console.log('');
+
+    if (has('installMemory') && cliOverrides.installMemory) {
+      // --memory passed without --auto-ingest: skip confirm, run rest of prompt for auto-ingest
+      memorySystem = await promptMemoryInstall(gettingStarted.workspaceDir);
+    } else {
+      memorySystem = await promptMemoryInstall(gettingStarted.workspaceDir);
+    }
+  }
+
   // ── Dashboard UI ─────────────────────────────────────────────────────────
   let uiInstall;
   if (useDefaults || has('installUi')) {
@@ -153,6 +192,7 @@ export async function runWizard({ skipConfirmation, cliOverrides = {} }) {
     ...pipelineLimits,
     ...gateBehavior,
     ...sourceControl,
+    ...memorySystem,
     ...uiInstall,
     skipConfirmation,
   };
