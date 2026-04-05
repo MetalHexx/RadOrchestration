@@ -23,6 +23,7 @@ const FLAG_MAP = {
   '--auto-commit':    'autoCommit',
   '--auto-pr':        'autoPr',
   '--dashboard-dir':  'uiDir',
+  '--auto-ingest':  'autoIngest',
 };
 
 /** Fields that must be parsed as integers */
@@ -37,6 +38,7 @@ const ENUM_VALUES = {
   executionMode:   ['ask', 'phase', 'task', 'autonomous'],
   autoCommit:      ['always', 'ask', 'never'],
   autoPr:          ['always', 'ask', 'never'],
+  autoIngest:      ['always', 'ask', 'never'],
 };
 
 /**
@@ -70,6 +72,12 @@ export function parseArgs(argv) {
   }
   if (argv.includes('--dashboard')) {
     options.installUi = true;
+  }
+  if (argv.includes('--no-memory')) {
+    options.installMemory = false;
+  }
+  if (argv.includes('--memory')) {
+    options.installMemory = true;
   }
 
   // Key-value flags
@@ -106,6 +114,12 @@ export function parseArgs(argv) {
         `Allowed: ${allowed.join(', ')}`
       );
     }
+  }
+
+  // Conflict: --no-memory + --auto-ingest
+  if (options.installMemory === false && options.autoIngest !== undefined) {
+    console.error('⚠  --auto-ingest ignored because --no-memory was specified.');
+    delete options.autoIngest;
   }
 
   // Validate integer fields
