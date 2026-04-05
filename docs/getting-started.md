@@ -37,4 +37,5 @@ Once installed, explore these resources to start building:
 - [Pipeline](pipeline.md) — learn how the planning and execution pipeline works
 - [Agents](agents.md) — understand the specialized agents and their roles
 - [Configuration](configuration.md) — customize pipeline behavior via `orchestration.yml`
+- [Memory](memory.md) — set up the optional knowledge base for cross-project recall
 

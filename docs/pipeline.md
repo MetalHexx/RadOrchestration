@@ -191,7 +191,14 @@ sequenceDiagram
     REV-->>ORC: Final verdict
     ORC->>Human: Review final results
     Human->>ORC: Approved
-    Note over ORC: event final_approved, transitions to complete
+    Note over ORC: event final_approved
+
+    opt Memory enabled & auto_ingest != never
+        ORC->>COD: Ingest project into knowledge base
+        COD-->>ORC: memory_ingest_completed
+    end
+
+    Note over ORC: transitions to complete
 ```
 
 ### Task Lifecycle
@@ -293,3 +300,4 @@ Key rules:
 - [System Architecture](internals/system-architecture.md) — Runtime architecture, services, data flows, and integration points
 - [Planning Pipeline Overhaul](internals/planning-pipeline-overhaul.md) — Analysis and reform plan for the planning pipeline
 - [Project Structure](project-structure.md) — File layout, naming conventions, and document types
+- [Memory](memory.md) — Optional knowledge base and post-completion ingestion

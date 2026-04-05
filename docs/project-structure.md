@@ -56,6 +56,7 @@ docs/                          # Documentation
 ├── templates.md
 ├── configuration.md
 ├── project-structure.md
+├── memory.md
 ├── dashboard.md
 └── internals/
     ├── dependency-model.md

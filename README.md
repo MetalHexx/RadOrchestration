@@ -85,7 +85,7 @@ Pipeline routing, triage, and state validation are handled by a unified pipeline
 
 ### Composable Skills
 
-Eighteen reusable skills bundle domain knowledge, templates, and instructions. Agents are composed with the skills they need — the system can be extended with new agents, capabilities, or adapted to new workflows by remixing skills.
+Twenty reusable skills bundle domain knowledge, templates, and instructions. Agents are composed with the skills they need — the system can be extended with new agents, capabilities, or adapted to new workflows by remixing skills.
 
 [Learn more about skills →](docs/skills.md)
 
@@ -120,6 +120,7 @@ Every task is reviewed against the plan. Code reviewers inspect source code dire
 | [Skills](docs/skills.md) | All 18 skills and how they compose with agents |
 | [Templates](docs/templates.md) | All 16 templates — purpose, producing agent, consuming agent |
 | [Configuration](docs/configuration.md) | `orchestration.yml` reference — all options explained |
+| [Memory](docs/memory.md) | Memory system setup, agent recall, knowledge base management |
 | [Source Control](docs/source-control.md) | Auto-commit configuration, agent modes, commit format, pipeline events |
 | [Project Structure](docs/project-structure.md) | File layout, naming conventions, document types, state management |
 | [Monitoring Dashboard](docs/dashboard.md) | Dashboard startup, features, data sources, real-time updates |

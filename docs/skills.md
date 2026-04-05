@@ -1,6 +1,6 @@
 # Skills
 
-The orchestration system includes 18 reusable skills — self-contained capability bundles that give agents domain-specific knowledge, templates, and instructions. Agents are composed with the skills they need, and GitHub Copilot matches requests to skills through description-based matching.
+The orchestration system includes 20 reusable skills — self-contained capability bundles that give agents domain-specific knowledge, templates, and instructions. Agents are composed with the skills they need, and GitHub Copilot matches requests to skills through description-based matching.
 
 ## Skill Inventory
 
@@ -14,6 +14,7 @@ The orchestration system includes 18 reusable skills — self-contained capabili
 | `create-design` | Create UX Design documents with user flows, layouts, states, and accessibility specs from PRDs | ux-designer |
 | `create-architecture` | Define system architecture — layers, modules, contracts, APIs, schemas — from PRD + Design | architect |
 | `create-master-plan` | Synthesize all planning documents into a Master Plan with phases, exit criteria, and risk register | architect |
+| `recall-memory` | Query past project knowledge from the memory system — read-only access to warm tier (semantic) and cold tier (indexed documents) | brainstormer, research, product-manager, architect, tactical-planner |
 
 ### Execution Skills
 
@@ -26,6 +27,7 @@ The orchestration system includes 18 reusable skills — self-contained capabili
 | `run-tests` | Execute the project test suite and report structured results with pass/fail and error details | coder, coder-junior, coder-senior |
 | `log-error` | Log pipeline errors to a structured, append-only per-project error log | orchestrator, source-control |
 | `source-control` | Source control automation — git commit and push via CLI wrapper; PR creation via GitHub CLI | source-control |
+| `manage-memory` | Manage the memory knowledge base — ingest, bulk-ingest, search, status, refresh, remove, and pipeline ingestion | orchestrator (via pipeline subagent) |
 
 ### Review Skills
 
@@ -52,13 +54,13 @@ Each agent is assigned skills in its `.agent.md` definition. This table shows th
 
 | Agent | Skills |
 |-------|--------|
-| brainstormer | `orchestration`, `brainstorm` |
+| brainstormer | `orchestration`, `brainstorm`, `recall-memory` |
 | orchestrator | `orchestration`, `log-error` |
-| research | `orchestration`, `research-codebase` |
-| product-manager | `orchestration`, `create-prd` |
+| research | `orchestration`, `research-codebase`, `recall-memory` |
+| product-manager | `orchestration`, `create-prd`, `recall-memory` |
 | ux-designer | `orchestration`, `create-design` |
-| architect | `orchestration`, `create-architecture`, `create-master-plan` |
-| tactical-planner | `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
+| architect | `orchestration`, `create-architecture`, `create-master-plan`, `recall-memory` |
+| tactical-planner | `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report`, `recall-memory` |
 | coder | `orchestration`, `execute-coding-task`, `run-tests` |
 | coder-junior | `orchestration`, `execute-coding-task`, `run-tests` |
 | coder-senior | `orchestration`, `execute-coding-task`, `run-tests` |
@@ -104,3 +106,4 @@ Skills can be modified to adjust agent behavior, but core instructions (format r
 - [Templates](templates.md) — Customize the output templates that skills produce
 - [Agents](agents.md) — See which agents use which skills
 - [Configuration](configuration.md) — Configure pipeline settings
+- [Memory](memory.md) — Memory system setup, recall behavior, and knowledge base management

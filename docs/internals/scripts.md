@@ -72,7 +72,7 @@ Migrates a project’s `state.json` from an older schema version (v1–v3) to v4
 
 ## Event Vocabulary
 
-The pipeline accepts exactly 32 events. Each maps to a mutation handler in the `MUTATIONS` lookup table.
+The pipeline accepts exactly 34 events. Each maps to a mutation handler in the `MUTATIONS` lookup table.
 
 | # | Event | Tier | Description |
 |---|-------|------|-------------|
@@ -108,12 +108,14 @@ The pipeline accepts exactly 32 events. Each maps to a mutation handler in the `
 | 30 | `final_approved` | Review | Human approved final review; sets `final_review.human_approved`, transitions `pipeline.current_tier` → complete |
 | 31 | `final_rejected` | Review | Human rejected final review; resets for revision |
 | 32 | `halt` | Any | Halt the pipeline with a reason |
+| 33 | `memory_ingest_requested` | Review | Memory ingest checkpoint; checks `memory.enabled` and `auto_ingest` policy — skips if disabled or `never`, presents gate if `ask`, proceeds if `always` |
+| 34 | `memory_ingest_completed` | Review | Memory ingest finished; sets `pipeline.memory_ingested = true` unconditionally — failures never block completion |
 
 ---
 
 ## Action Vocabulary
 
-The resolver is a pure function that returns one of 21 values based solely on the current `state.json` and config. All actions are returned to the Orchestrator for agent routing — the script performs no agent spawning itself.
+The resolver is a pure function that returns one of 22 values based solely on the current `state.json` and config. All actions are returned to the Orchestrator for agent routing — the script performs no agent spawning itself.
 
 ### Planning Tier (6)
 
@@ -170,6 +172,12 @@ The resolver is a pure function that returns one of 21 values based solely on th
 |--------|---------|
 | `invoke_source_control_commit` | Spawn Source Control Agent in commit mode |
 | `invoke_source_control_pr` | Spawn Source Control Agent in PR mode |
+
+### Memory (1)
+
+| Action | Meaning |
+|--------|--------|
+| `invoke_memory_ingest` | Spawn memory ingestion subagent to ingest project into knowledge base |
 
 ---
 
