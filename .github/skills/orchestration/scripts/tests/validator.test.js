@@ -725,3 +725,178 @@ describe('V7 — state-first: snapshot-absent path (after_final_review)', () => 
     assert.ok(errors.some(e => e.invariant === 'V7'), 'V7 should fire — config after_final_review = true and final_review.human_approved is false');
   });
 });
+
+// ─── V16 — v5 schema validation ─────────────────────────────────────────────
+
+function makeDagNode(overrides = {}) {
+  return {
+    id: 'research',
+    type: 'step',
+    status: 'not_started',
+    depends_on: [],
+    template_node_id: 'research',
+    action: 'create_research',
+    events: { completed: 'research_created' },
+    ...overrides,
+  };
+}
+
+function makeV5State(overrides = {}) {
+  const base = {
+    $schema: 'orchestration-state-v5',
+    project: {
+      name: 'TEST',
+      created: '2026-01-01T00:00:00.000Z',
+      updated: '2026-01-01T00:00:01.000Z',
+    },
+    pipeline: {
+      current_tier: 'planning',
+    },
+    planning: {
+      status: 'not_started',
+      human_approved: false,
+      steps: [],
+    },
+    execution: {
+      status: 'not_started',
+      current_phase: 0,
+      phases: [],
+    },
+    final_review: {
+      status: 'not_started',
+      doc_path: null,
+      human_approved: false,
+    },
+    dag: {
+      template_name: 'full',
+      nodes: {
+        research: makeDagNode(),
+      },
+      execution_order: ['research'],
+    },
+    config: {
+      limits: {
+        max_phases: 10,
+        max_tasks_per_phase: 10,
+        max_retries_per_task: 3,
+        max_consecutive_review_rejections: 3,
+      },
+      human_gates: {
+        after_planning: true,
+        execution_mode: 'autonomous',
+        after_final_review: true,
+      },
+    },
+  };
+
+  const result = { ...base };
+  if (overrides.project) result.project = { ...base.project, ...overrides.project };
+  if (overrides.pipeline) result.pipeline = { ...base.pipeline, ...overrides.pipeline };
+  if (overrides.planning) result.planning = { ...base.planning, ...overrides.planning };
+  if (overrides.execution) result.execution = { ...base.execution, ...overrides.execution };
+  if (overrides.final_review) result.final_review = { ...base.final_review, ...overrides.final_review };
+  if (overrides.dag) result.dag = { ...base.dag, ...overrides.dag };
+  if (overrides.config) result.config = { ...base.config, ...overrides.config };
+  if (overrides.$schema !== undefined) result.$schema = overrides.$schema;
+  return result;
+}
+
+describe('V16 — v5 schema validation', () => {
+  it('well-formed v5 state passes validateTransition with zero errors', () => {
+    const proposed = makeV5State();
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.deepEqual(errors, [], `Expected no errors, got: ${JSON.stringify(errors)}`);
+  });
+
+  it('v5 state with extra top-level property is rejected by V16', () => {
+    const proposed = { ...makeV5State(), unknown_field: true };
+    const errors = validateTransition(null, proposed, defaultConfig);
+    const v16 = errors.filter(e => e.invariant === 'V16');
+    assert.ok(v16.some(e => e.field.includes('unknown_field')),
+      `Expected V16 error for unknown_field, got: ${JSON.stringify(v16)}`);
+  });
+
+  it('v5 state missing required dag section is rejected by V16', () => {
+    const proposed = makeV5State();
+    delete proposed.dag;
+    const errors = validateTransition(null, proposed, defaultConfig);
+    const v16 = errors.filter(e => e.invariant === 'V16');
+    assert.ok(v16.some(e => e.field.includes('dag')),
+      `Expected V16 error for missing dag, got: ${JSON.stringify(v16)}`);
+  });
+
+  it('v5 state missing config section is rejected by V16', () => {
+    const proposed = makeV5State();
+    delete proposed.config;
+    const errors = validateTransition(null, proposed, defaultConfig);
+    const v16 = errors.filter(e => e.invariant === 'V16');
+    assert.ok(v16.some(e => e.field.includes('config')),
+      `Expected V16 error for missing config, got: ${JSON.stringify(v16)}`);
+  });
+
+  it('v5 state with malformed DagNode (missing required id) is rejected by V16', () => {
+    const badNode = makeDagNode();
+    delete badNode.id;
+    const proposed = makeV5State({ dag: { template_name: 'full', nodes: { research: badNode }, execution_order: ['research'] } });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    const v16 = errors.filter(e => e.invariant === 'V16');
+    assert.ok(v16.some(e => e.field.includes('id')),
+      `Expected V16 error for missing DagNode id, got: ${JSON.stringify(v16)}`);
+  });
+
+  it('v5 state with invalid DagNode status enum value is rejected by V16', () => {
+    const badNode = makeDagNode({ status: 'running' });
+    const proposed = makeV5State({ dag: { template_name: 'full', nodes: { research: badNode }, execution_order: ['research'] } });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    const v16 = errors.filter(e => e.invariant === 'V16');
+    assert.ok(v16.some(e => e.field.includes('status') && e.message.includes('running')),
+      `Expected V16 error for invalid status 'running', got: ${JSON.stringify(v16)}`);
+  });
+
+  it('v5 state with $schema const mismatch is rejected by V16', () => {
+    const proposed = makeV5State({ $schema: 'orchestration-state-v99' });
+    // v99 falls into the v4 path which will reject the dag section etc., but
+    // let's specifically test that putting v99 in a v5-shaped state produces errors
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(errors.some(e => e.invariant === 'V16'),
+      `Expected V16 errors for schema mismatch, got: ${JSON.stringify(errors)}`);
+  });
+
+  it('v4 state continues to pass schema validation (regression)', () => {
+    const proposed = makeState();
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V16'),
+      `Expected no V16 errors for v4 state, got: ${JSON.stringify(errors.filter(e => e.invariant === 'V16'))}`);
+  });
+
+  it('v5 state with valid DagNode featuring all optional fields passes validation', () => {
+    const fullNode = makeDagNode({
+      action: 'create_task_handoff',
+      events: { started: 'task_handoff_started', completed: 'task_handoff_created' },
+      context: { doc_path: 'tasks/foo.md' },
+      gate_type: 'planning',
+      planning_step: 'research',
+      phase_number: 1,
+      task_number: 2,
+      phase_name: 'Phase 1',
+      task_name: 'Task 2',
+      retries: 0,
+      docs: { handoff: 'tasks/foo.md' },
+      review: { verdict: 'approved', action: 'advanced' },
+    });
+    const proposed = makeV5State({ dag: { template_name: 'full', nodes: { 'P01.T02.code': fullNode }, execution_order: ['P01.T02.code'] } });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    const v16 = errors.filter(e => e.invariant === 'V16');
+    assert.deepEqual(v16, [], `Expected no V16 errors for full DagNode, got: ${JSON.stringify(v16)}`);
+  });
+
+  it('DagNode $ref resolution works — nodes in dag.nodes are validated against DagNode definition', () => {
+    // A node with an invalid type enum value — should be caught via $ref resolution
+    const badNode = makeDagNode({ type: 'invalid_type' });
+    const proposed = makeV5State({ dag: { template_name: 'full', nodes: { n1: badNode }, execution_order: ['n1'] } });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    const v16 = errors.filter(e => e.invariant === 'V16');
+    assert.ok(v16.some(e => e.field.includes('type') && e.message.includes('invalid_type')),
+      `Expected V16 error for invalid DagNode type via $ref, got: ${JSON.stringify(v16)}`);
+  });
+});

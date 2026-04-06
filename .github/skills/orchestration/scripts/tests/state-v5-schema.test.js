@@ -45,6 +45,19 @@ function makeValidState(overrides = {}) {
       doc_path: null,
       human_approved: false,
     },
+    config: {
+      limits: {
+        max_phases: 10,
+        max_tasks_per_phase: 10,
+        max_retries_per_task: 3,
+        max_consecutive_review_rejections: 3,
+      },
+      human_gates: {
+        after_planning: true,
+        execution_mode: 'autonomous',
+        after_final_review: true,
+      },
+    },
     dag: {
       template_name: 'full',
       nodes: {},

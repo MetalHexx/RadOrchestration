@@ -11,6 +11,7 @@
     "planning",
     "execution",
     "final_review",
+    "config",
     "dag"
   ],
   "definitions": {
@@ -145,6 +146,22 @@
               ]
             }
           }
+        },
+        "body": {
+          "title": "Body Nodes",
+          "description": "Template body node definitions for container nodes (for_each_phase, for_each_task, parallel).",
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "condition": {
+          "title": "Condition",
+          "description": "Condition expression for conditional nodes.",
+          "type": "string"
+        },
+        "branches": {
+          "title": "Branches",
+          "description": "Branch definitions for conditional or parallel nodes.",
+          "type": "object"
         }
       }
     }

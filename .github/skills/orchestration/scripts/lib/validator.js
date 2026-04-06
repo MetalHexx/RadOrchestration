@@ -12,8 +12,9 @@ const {
   ALLOWED_PHASE_STAGE_TRANSITIONS,
 } = require('./constants.js');
 
-// Load the v4 JSON Schema once at module initialization
+// Load the v4 and v5 JSON Schemas once at module initialization
 const v4Schema = require(path.resolve(__dirname, '../../schemas/state-v4.schema.json'));
+const v5Schema = require(path.resolve(__dirname, '../../schemas/state-v5.schema.json'));
 
 // ─── Helper ─────────────────────────────────────────────────────────────────
 
@@ -264,13 +265,20 @@ function checkV15(current, proposed) {
 
 /**
  * Validate a value against a schema node, appending ValidationError entries to errors[].
- * This is a purpose-built validator for the patterns used in state-v4.schema.json only.
  * @param {Object} schema - JSON Schema node
  * @param {*} value - value to validate
  * @param {string} fieldPath - dotpath for error reporting
  * @param {ValidationError[]} errors - accumulator
+ * @param {Object} [defs] - schema definitions for $ref resolution
  */
-function validateNode(schema, value, fieldPath, errors) {
+function validateNode(schema, value, fieldPath, errors, defs) {
+  // Resolve $ref if present
+  if (schema.$ref && defs) {
+    const refPath = schema.$ref.replace('#/definitions/', '');
+    schema = defs[refPath];
+    if (!schema) return; // unknown ref
+  }
+
   if (value === undefined || value === null) {
     // null is only valid if explicitly allowed (oneOf with null type)
     // If no oneOf, and value is null, check type constraints below
@@ -290,7 +298,7 @@ function validateNode(schema, value, fieldPath, errors) {
   if (schema.oneOf) {
     const matchesAny = schema.oneOf.some(sub => {
       const subErrors = [];
-      validateNode(sub, value, fieldPath, subErrors);
+      validateNode(sub, value, fieldPath, subErrors, defs);
       return subErrors.length === 0;
     });
     if (!matchesAny) {
@@ -361,6 +369,13 @@ function validateNode(schema, value, fieldPath, errors) {
           errors.push(makeError('V16', `field '${fieldPath}' has additional property '${key}' which is not allowed`, `${fieldPath}.${key}`));
         }
       }
+    } else if (typeof schema.additionalProperties === 'object' && schema.additionalProperties !== null) {
+      // validate each value against the additionalProperties schema
+      for (const [key, val] of Object.entries(value)) {
+        if (!schema.properties || !(key in schema.properties)) {
+          validateNode(schema.additionalProperties, val, `${fieldPath}.${key}`, errors, defs);
+        }
+      }
     }
 
     // Recurse into properties
@@ -368,7 +383,7 @@ function validateNode(schema, value, fieldPath, errors) {
       for (const [propName, propSchema] of Object.entries(schema.properties)) {
         if (propName in value) {
           const childPath = fieldPath ? `${fieldPath}.${propName}` : propName;
-          validateNode(propSchema, value[propName], childPath, errors);
+          validateNode(propSchema, value[propName], childPath, errors, defs);
         }
       }
     }
@@ -377,17 +392,20 @@ function validateNode(schema, value, fieldPath, errors) {
   // Array-specific checks
   if (schema.type === 'array' && schema.items && Array.isArray(value)) {
     for (let i = 0; i < value.length; i++) {
-      validateNode(schema.items, value[i], `${fieldPath}[${i}]`, errors);
+      validateNode(schema.items, value[i], `${fieldPath}[${i}]`, errors, defs);
     }
   }
 }
 
-/** V16 — JSON Schema structural validation against state-v4.schema.json */
+/** V16 — JSON Schema structural validation against the appropriate schema */
 function checkV16(proposed) {
-  // v5 state uses a different structure (dag section, $schema v5) — skip v4 schema check
-  if (proposed.$schema && proposed.$schema !== 'orchestration-state-v4') return [];
   const errors = [];
-  validateNode(v4Schema, proposed, '', errors);
+  if (proposed.$schema === 'orchestration-state-v5') {
+    validateNode(v5Schema, proposed, '', errors, v5Schema.definitions);
+  } else {
+    // existing v4 path (also covers missing/unknown $schema → v4 validation)
+    validateNode(v4Schema, proposed, '', errors);
+  }
   return errors;
 }
 
