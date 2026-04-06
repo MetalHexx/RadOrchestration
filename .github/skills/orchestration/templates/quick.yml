@@ -1,0 +1,92 @@
+name: quick
+description: >-
+  Quick pipeline template — reduced-ceremony workflow that omits design,
+  code review, source control commits, phase reports, phase review, and
+  PR creation for faster iteration.
+
+nodes:
+  # ── Planning Steps ───────────────────────────────────────────────────────
+  - id: research
+    type: step
+    action: spawn_research
+    events:
+      started: research_started
+      completed: research_completed
+    planning_step: research
+
+  - id: create_prd
+    type: step
+    depends_on:
+      - research
+    action: spawn_prd
+    events:
+      started: prd_started
+      completed: prd_completed
+    planning_step: prd
+
+  - id: create_architecture
+    type: step
+    depends_on:
+      - create_prd
+    action: spawn_architecture
+    events:
+      started: architecture_started
+      completed: architecture_completed
+    planning_step: architecture
+
+  # ── Planning Gate ────────────────────────────────────────────────────────
+  - id: request_plan_approval
+    type: gate
+    depends_on:
+      - create_architecture
+    gate_type: planning
+    gate_action: request_plan_approval
+
+  # ── Phase Loop ───────────────────────────────────────────────────────────
+  - id: for_each_phase
+    type: for_each_phase
+    depends_on:
+      - request_plan_approval
+    body:
+      - id: create_phase_plan
+        type: step
+        action: create_phase_plan
+        events:
+          started: phase_planning_started
+          completed: phase_plan_created
+
+      - id: for_each_task
+        type: for_each_task
+        depends_on:
+          - create_phase_plan
+        body:
+          - id: create_task_handoff
+            type: step
+            action: create_task_handoff
+            events:
+              started: task_handoff_started
+              completed: task_handoff_created
+
+          - id: execute_coding_task
+            type: step
+            depends_on:
+              - create_task_handoff
+            action: execute_task
+            events:
+              completed: task_completed
+
+  # ── Final Review ─────────────────────────────────────────────────────────
+  - id: create_final_review
+    type: step
+    depends_on:
+      - for_each_phase
+    action: spawn_final_reviewer
+    events:
+      completed: final_review_completed
+
+  - id: request_final_approval
+    type: gate
+    depends_on:
+      - create_final_review
+    gate_type: final
+    gate_action: request_final_approval
