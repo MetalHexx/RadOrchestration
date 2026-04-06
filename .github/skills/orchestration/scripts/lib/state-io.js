@@ -5,7 +5,8 @@ const path = require('path');
 const { readFile, exists } = require('../validate/lib/utils/fs-helpers');
 const { parseYaml } = require('../validate/lib/utils/yaml-parser');
 const { extractFrontmatter } = require('../validate/lib/utils/frontmatter');
-const { SCHEMA_VERSION } = require('./constants');
+const { SCHEMA_VERSION, SCHEMA_VERSION_V5 } = require('./constants');
+const { computeNestedView, deriveTier } = require('./dag-adapter');
 
 // ─── Default Configuration ──────────────────────────────────────────────────
 
@@ -36,9 +37,9 @@ function readState(projectDir) {
     throw new Error('Failed to parse state.json: ' + err.message);
   }
 
-  if (parsed.$schema !== SCHEMA_VERSION) {
+  if (parsed.$schema !== SCHEMA_VERSION && parsed.$schema !== SCHEMA_VERSION_V5) {
     throw new Error(
-      'Schema version mismatch: expected ' + SCHEMA_VERSION + ', got ' + parsed.$schema
+      'Schema version mismatch: expected ' + SCHEMA_VERSION + ' or ' + SCHEMA_VERSION_V5 + ', got ' + parsed.$schema
     );
   }
 
@@ -49,6 +50,13 @@ function readState(projectDir) {
 
 function writeState(projectDir, state) {
   state.project.updated = new Date().toISOString();
+  if (state.dag) {
+    const nested = computeNestedView(state.dag);
+    state.planning = nested.planning;
+    state.execution = nested.execution;
+    state.final_review = nested.final_review;
+    state.pipeline.current_tier = deriveTier(state.dag.nodes, state.dag.execution_order);
+  }
   const statePath = path.join(projectDir, 'state.json');
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n', 'utf-8');
 }

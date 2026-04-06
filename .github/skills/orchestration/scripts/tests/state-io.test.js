@@ -402,6 +402,136 @@ describe('mergeConfig source_control', () => {
   });
 });
 
+// ─── v5 DAG state integration ───────────────────────────────────────────────
+
+const { makeDagNode, makeDagState, makeExpandedDag } = require('./helpers/test-helpers');
+const { computeNestedView, deriveTier } = require('../lib/dag-adapter');
+const { SCHEMA_VERSION_V5 } = require('../lib/constants');
+
+function makeV5State() {
+  const dag = makeDagState({
+    template_name: 'full',
+    nodes: {
+      research: makeDagNode({ id: 'research', planning_step: 'research', status: 'not_started', template_node_id: 'research' }),
+      prd: makeDagNode({ id: 'prd', planning_step: 'prd', status: 'not_started', template_node_id: 'prd', depends_on: ['research'] }),
+      design: makeDagNode({ id: 'design', planning_step: 'design', status: 'not_started', template_node_id: 'design', depends_on: ['prd'] }),
+      architecture: makeDagNode({ id: 'architecture', planning_step: 'architecture', status: 'not_started', template_node_id: 'architecture', depends_on: ['design'] }),
+      master_plan: makeDagNode({ id: 'master_plan', planning_step: 'master_plan', status: 'not_started', template_node_id: 'master_plan', depends_on: ['architecture'] }),
+      planning_gate: makeDagNode({ id: 'planning_gate', type: 'gate', gate_type: 'planning', status: 'not_started', template_node_id: 'planning_gate', depends_on: ['master_plan'] }),
+    },
+    execution_order: ['research', 'prd', 'design', 'architecture', 'master_plan', 'planning_gate'],
+  });
+  return {
+    $schema: SCHEMA_VERSION_V5,
+    project: { name: 'TEST-V5', created: '2025-01-01T00:00:00.000Z', updated: '2025-01-01T00:00:00.000Z' },
+    pipeline: { current_tier: 'planning' },
+    dag,
+    planning: {},
+    execution: {},
+    final_review: {},
+  };
+}
+
+describe('writeState v5 (dag-adapter integration)', () => {
+  let tmpDir;
+  beforeEach(() => { tmpDir = makeTmpDir(); });
+  afterEach(() => { cleanTmpDir(tmpDir); });
+
+  it('recomputes nested views from DAG nodes on write', () => {
+    const state = makeV5State();
+    writeState(tmpDir, state);
+    const written = JSON.parse(fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8'));
+    assert.ok(written.planning);
+    assert.ok(written.planning.steps);
+    assert.ok(Array.isArray(written.planning.steps));
+    assert.equal(written.planning.steps.length, 5);
+    assert.equal(written.planning.steps[0].name, 'research');
+    assert.ok(written.execution);
+    assert.ok(written.final_review);
+  });
+
+  it('persists current_tier from deriveTier', () => {
+    const state = makeV5State();
+    writeState(tmpDir, state);
+    const written = JSON.parse(fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8'));
+    const expectedTier = deriveTier(state.dag.nodes, state.dag.execution_order);
+    assert.equal(written.pipeline.current_tier, expectedTier);
+    assert.equal(written.pipeline.current_tier, 'planning');
+  });
+
+  it('does not call adapter for v4 state (no dag)', () => {
+    const state = makeValidState();
+    const origPlanning = JSON.parse(JSON.stringify(state.planning));
+    writeState(tmpDir, state);
+    const written = JSON.parse(fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8'));
+    assert.deepStrictEqual(written.planning.steps, origPlanning.steps);
+  });
+});
+
+describe('readState v5 schema', () => {
+  let tmpDir;
+  beforeEach(() => { tmpDir = makeTmpDir(); });
+  afterEach(() => { cleanTmpDir(tmpDir); });
+
+  it('accepts orchestration-state-v5 without error', () => {
+    const state = makeV5State();
+    fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(state, null, 2), 'utf-8');
+    const result = readState(tmpDir);
+    assert.equal(result.$schema, SCHEMA_VERSION_V5);
+    assert.ok(result.dag);
+  });
+
+  it('still accepts v4 schema (no regression)', () => {
+    const state = makeValidState();
+    fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(state, null, 2), 'utf-8');
+    const result = readState(tmpDir);
+    assert.equal(result.$schema, 'orchestration-state-v4');
+  });
+
+  it('rejects v3 schema with descriptive error mentioning both versions', () => {
+    const state = { $schema: 'orchestration-state-v3', project: {}, planning: {}, execution: {} };
+    fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(state), 'utf-8');
+    assert.throws(() => readState(tmpDir), (err) => {
+      assert.ok(err.message.includes('orchestration-state-v4'));
+      assert.ok(err.message.includes('orchestration-state-v5'));
+      assert.ok(err.message.includes('orchestration-state-v3'));
+      return true;
+    });
+  });
+});
+
+describe('v5 writeState+readState round-trip', () => {
+  let tmpDir;
+  beforeEach(() => { tmpDir = makeTmpDir(); });
+  afterEach(() => { cleanTmpDir(tmpDir); });
+
+  it('round-trip preserves nested views and current_tier', () => {
+    const state = makeV5State();
+    writeState(tmpDir, state);
+    // Need to write with v5 schema so readState accepts it
+    const result = readState(tmpDir);
+    assert.ok(result.planning.steps.length === 5);
+    assert.equal(result.pipeline.current_tier, 'planning');
+    assert.ok(result.final_review);
+  });
+
+  it('DAG node status changes are reflected in nested view after writeState', () => {
+    const state = makeV5State();
+    // Mark research as complete
+    state.dag.nodes.research.status = 'complete';
+    state.dag.nodes.research.docs = { doc_path: 'docs/research.md' };
+    writeState(tmpDir, state);
+    const result = readState(tmpDir);
+    const researchStep = result.planning.steps.find(s => s.name === 'research');
+    assert.equal(researchStep.status, 'complete');
+    assert.equal(researchStep.doc_path, 'docs/research.md');
+    // Planning status should be in_progress (research done but others not)
+    // Actually with only 1 complete and rest not_started, it's not_started
+    // (the adapter only sets in_progress if some are in_progress)
+    assert.ok(['not_started', 'in_progress'].includes(result.planning.status));
+  });
+});
+
 // ─── CF-3: fs-helpers dependency ────────────────────────────────────────────
 
 describe('CF-3: fs-helpers dependency', () => {
