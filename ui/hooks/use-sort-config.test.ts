@@ -76,7 +76,9 @@ function compareField(
   if (aUndef && bUndef) return 0;
   if (aUndef) return 1;
   if (bUndef) return -1;
-  const result = a.lastUpdated!.localeCompare(b.lastUpdated!);
+  let result = 0;
+  if (a.lastUpdated! < b.lastUpdated!) result = -1;
+  else if (a.lastUpdated! > b.lastUpdated!) result = 1;
   return dir === 'desc' ? result * -1 : result;
 }
 
