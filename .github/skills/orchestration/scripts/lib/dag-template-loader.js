@@ -341,16 +341,142 @@ function validateNodeShapes(nodes, templateName) {
 }
 
 /**
- * Apply per-project overrides to a base template.
- * STUB — returns the template unchanged. Full implementation in Phase 4.
+ * Collect all node IDs from a template's node tree (top-level + nested body/branches).
+ * @param {Object[]} nodes - array of template nodes
+ * @param {Set<string>} [ids] - accumulator set
+ * @returns {Set<string>}
+ */
+function collectAllNodeIds(nodes, ids = new Set()) {
+  for (const node of nodes) {
+    if (node.id) ids.add(node.id);
+    if (Array.isArray(node.body)) collectAllNodeIds(node.body, ids);
+    if (Array.isArray(node.branches)) collectAllNodeIds(node.branches, ids);
+  }
+  return ids;
+}
+
+/**
+ * Find a node by ID in a template node tree (top-level + nested body/branches).
+ * @param {Object[]} nodes - array of template nodes
+ * @param {string} nodeId - target node ID
+ * @returns {Object|null}
+ */
+function findNodeById(nodes, nodeId) {
+  for (const node of nodes) {
+    if (node.id === nodeId) return node;
+    if (Array.isArray(node.body)) {
+      const found = findNodeById(node.body, nodeId);
+      if (found) return found;
+    }
+    if (Array.isArray(node.branches)) {
+      const found = findNodeById(node.branches, nodeId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * Check each node scope for orphaned nodes after a set of nodes is disabled.
+ * A node is orphaned if it is not disabled but ALL of its depends_on entries
+ * are disabled (i.e. no alternative dependency path remains).
+ * @param {Object[]} nodes - array of (cloned) template nodes
+ * @param {Set<string>} disabledIds - node IDs disabled by the override
+ * @returns {string[]} error messages
+ */
+function detectOrphansInScope(nodes, disabledIds) {
+  const errors = [];
+  for (const node of nodes) {
+    if (node.enabled !== false && Array.isArray(node.depends_on) && node.depends_on.length > 0) {
+      const disabledDeps = node.depends_on.filter(dep => disabledIds.has(dep));
+      if (disabledDeps.length === node.depends_on.length) {
+        errors.push(
+          `Disabling node "${disabledDeps[0]}" would orphan downstream node "${node.id}" which has no alternative dependency path`
+        );
+      }
+    }
+    if (Array.isArray(node.body)) {
+      errors.push(...detectOrphansInScope(node.body, disabledIds));
+    }
+    if (Array.isArray(node.branches)) {
+      errors.push(...detectOrphansInScope(node.branches, disabledIds));
+    }
+  }
+  return errors;
+}
+
+/**
+ * Apply per-project overrides to a base template. Overrides can:
+ * - Disable nodes by ID: { nodes: { node_id: { enabled: false } } }
+ * - Set conditional flags: { flags: { flag_name: value } }
+ * - Change gate mode: { nodes: { node_id: { mode: 'auto' } } }
  *
- * @param {Object} template - parsed base template
- * @param {Object} overrides - per-project overrides from config
+ * Validates that all override targets exist in the base template.
+ * Validates that disabling nodes does not orphan downstream dependents.
+ *
+ * @param {Object} template - parsed base template (from loadTemplate)
+ * @param {Object} overrides - per-project overrides from config.pipeline.overrides
+ * @param {Object} [overrides.nodes] - per-node overrides keyed by template node ID
+ * @param {boolean} [overrides.nodes.<id>.enabled] - false to disable the node
+ * @param {string} [overrides.nodes.<id>.mode] - gate mode override ('auto', 'ask', etc.)
+ * @param {Object} [overrides.flags] - conditional flags for conditional node evaluation
  * @returns {{ template: Object, errors: string[] }}
  */
 function applyOverrides(template, overrides) {
-  // Stub — full implementation deferred to Phase 4
-  return { template, errors: [] };
+  // Same-reference optimization for empty/null/undefined overrides
+  if (overrides == null || Object.keys(overrides).length === 0) {
+    return { template, errors: [] };
+  }
+
+  const errors = [];
+
+  // Validate that all override node targets exist in the template
+  if (overrides.nodes) {
+    const allIds = collectAllNodeIds(template.nodes || []);
+    for (const nodeId of Object.keys(overrides.nodes)) {
+      if (!allIds.has(nodeId)) {
+        errors.push(`Override target "${nodeId}" does not exist in template "${template.name}"`);
+      }
+    }
+    if (errors.length > 0) {
+      return { template, errors };
+    }
+  }
+
+  // Deep-clone the template before mutation
+  const cloned = JSON.parse(JSON.stringify(template));
+
+  // Apply per-node overrides (enabled, mode, etc.)
+  if (overrides.nodes) {
+    for (const [nodeId, props] of Object.entries(overrides.nodes)) {
+      const node = findNodeById(cloned.nodes, nodeId);
+      if (node) {
+        Object.assign(node, props);
+      }
+    }
+  }
+
+  // Apply flags overrides
+  if (overrides.flags) {
+    cloned.flags = { ...overrides.flags };
+  }
+
+  // Orphan detection: ensure no non-disabled node loses all its dependencies
+  if (overrides.nodes) {
+    const disabledIds = new Set(
+      Object.entries(overrides.nodes)
+        .filter(([, props]) => props.enabled === false)
+        .map(([nodeId]) => nodeId)
+    );
+    if (disabledIds.size > 0) {
+      const orphanErrors = detectOrphansInScope(cloned.nodes, disabledIds);
+      if (orphanErrors.length > 0) {
+        return { template, errors: orphanErrors };
+      }
+    }
+  }
+
+  return { template: cloned, errors: [] };
 }
 
 module.exports = { loadTemplate, validateTemplate, applyOverrides };

@@ -190,4 +190,164 @@ describe('applyOverrides()', () => {
     assert.strictEqual(result.template, template, 'should return the same template reference');
     assert.deepEqual(result.errors, []);
   });
+
+  it('returns template unchanged when overrides is null', () => {
+    const { template } = loadTemplate('full', orchRoot);
+    const result = applyOverrides(template, null);
+    assert.strictEqual(result.template, template);
+    assert.deepEqual(result.errors, []);
+  });
+
+  it('returns template unchanged when overrides is undefined', () => {
+    const { template } = loadTemplate('full', orchRoot);
+    const result = applyOverrides(template, undefined);
+    assert.strictEqual(result.template, template);
+    assert.deepEqual(result.errors, []);
+  });
+
+  it('disables a top-level node', () => {
+    // create_design is a leaf here (nothing depends on it), so no orphan fires
+    const tmpl = {
+      name: 'test-top-level',
+      nodes: [
+        { id: 'research', type: 'step', action: 'spawn_research', events: { completed: 'done' } },
+        { id: 'create_design', type: 'step', depends_on: ['research'], action: 'spawn_design', events: { completed: 'done' } },
+      ],
+    };
+    const result = applyOverrides(tmpl, { nodes: { create_design: { enabled: false } } });
+    assert.deepEqual(result.errors, []);
+    const node = result.template.nodes.find(n => n.id === 'create_design');
+    assert.strictEqual(node.enabled, false);
+  });
+
+  it('disables a body-level node', () => {
+    // code_review is a leaf inside for_each_task body (nothing depends on it)
+    const tmpl = {
+      name: 'test-body-level',
+      nodes: [
+        {
+          id: 'for_each_phase',
+          type: 'for_each_phase',
+          body: [
+            {
+              id: 'for_each_task',
+              type: 'for_each_task',
+              body: [
+                { id: 'execute_coding_task', type: 'step', action: 'execute_task', events: { completed: 'done' } },
+                { id: 'code_review', type: 'step', depends_on: ['execute_coding_task'], action: 'spawn_code_reviewer', events: { completed: 'done' } },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const result = applyOverrides(tmpl, { nodes: { code_review: { enabled: false } } });
+    assert.deepEqual(result.errors, []);
+    const forEachPhase = result.template.nodes.find(n => n.id === 'for_each_phase');
+    const forEachTask = forEachPhase.body.find(n => n.id === 'for_each_task');
+    const codeReview = forEachTask.body.find(n => n.id === 'code_review');
+    assert.strictEqual(codeReview.enabled, false);
+  });
+
+  it('does not mutate the original template', () => {
+    // request_final_approval is a terminal gate in full.yml — nothing depends on it
+    const { template } = loadTemplate('full', orchRoot);
+    applyOverrides(template, { nodes: { request_final_approval: { enabled: false } } });
+    const node = template.nodes.find(n => n.id === 'request_final_approval');
+    assert.strictEqual(node.enabled, undefined);
+  });
+
+  it('toggles a conditional flag', () => {
+    const { template } = loadTemplate('full', orchRoot);
+    const result = applyOverrides(template, { flags: { code_review_enabled: false } });
+    assert.deepEqual(result.errors, []);
+    assert.strictEqual(result.template.flags.code_review_enabled, false);
+  });
+
+  it('changes gate mode', () => {
+    const tmpl = {
+      name: 'test-gate',
+      nodes: [
+        { id: 'create_master_plan', type: 'step', action: 'spawn_master_plan', events: { completed: 'done' } },
+        { id: 'request_plan_approval', type: 'gate', depends_on: ['create_master_plan'], gate_type: 'planning', gate_action: 'request_plan_approval' },
+      ],
+    };
+    const result = applyOverrides(tmpl, { nodes: { request_plan_approval: { mode: 'auto' } } });
+    assert.deepEqual(result.errors, []);
+    const gate = result.template.nodes.find(n => n.id === 'request_plan_approval');
+    assert.strictEqual(gate.mode, 'auto');
+  });
+
+  it('rejects unknown override target', () => {
+    const { template } = loadTemplate('full', orchRoot);
+    const result = applyOverrides(template, { nodes: { nonexistent_node: { enabled: false } } });
+    assert.ok(result.errors.length > 0);
+    assert.ok(result.errors.some(e => e.includes('nonexistent_node')));
+    assert.strictEqual(result.template, template);
+  });
+
+  it('rejects orphan-creating override', () => {
+    const tmpl = {
+      name: 'test-orphan',
+      nodes: [
+        { id: 'step_a', type: 'step', action: 'spawn_research', events: { completed: 'done' } },
+        { id: 'step_b', type: 'step', depends_on: ['step_a'], action: 'spawn_prd', events: { completed: 'done' } },
+      ],
+    };
+    const result = applyOverrides(tmpl, { nodes: { step_a: { enabled: false } } });
+    assert.ok(result.errors.length > 0);
+    assert.ok(result.errors.some(e => e.includes('step_a')));
+    assert.ok(result.errors.some(e => e.includes('step_b')));
+    assert.strictEqual(result.template, tmpl);
+  });
+
+  it('allows disabling a node when downstream has alternative dependencies', () => {
+    // C depends on [A, B]; disabling A leaves C with B — no orphan
+    const tmpl = {
+      name: 'test-alt-deps',
+      nodes: [
+        { id: 'node_a', type: 'step', action: 'spawn_research', events: { completed: 'done' } },
+        { id: 'node_b', type: 'step', action: 'spawn_prd', events: { completed: 'done' } },
+        { id: 'node_c', type: 'step', depends_on: ['node_a', 'node_b'], action: 'spawn_design', events: { completed: 'done' } },
+      ],
+    };
+    const result = applyOverrides(tmpl, { nodes: { node_a: { enabled: false } } });
+    assert.deepEqual(result.errors, []);
+    const node = result.template.nodes.find(n => n.id === 'node_a');
+    assert.strictEqual(node.enabled, false);
+  });
+
+  it('applies multiple overrides combined', () => {
+    const tmpl = {
+      name: 'test-multi',
+      nodes: [
+        { id: 'research', type: 'step', action: 'spawn_research', events: { completed: 'done' } },
+        { id: 'create_design', type: 'step', depends_on: ['research'], action: 'spawn_design', events: { completed: 'done' } },
+        { id: 'request_plan_approval', type: 'gate', depends_on: ['research'], gate_type: 'planning', gate_action: 'request_plan_approval' },
+      ],
+    };
+    const result = applyOverrides(tmpl, {
+      nodes: {
+        create_design: { enabled: false },
+        request_plan_approval: { mode: 'auto' },
+      },
+      flags: { code_review_enabled: false },
+    });
+    assert.deepEqual(result.errors, []);
+    const designNode = result.template.nodes.find(n => n.id === 'create_design');
+    const gateNode = result.template.nodes.find(n => n.id === 'request_plan_approval');
+    assert.strictEqual(designNode.enabled, false);
+    assert.strictEqual(gateNode.mode, 'auto');
+    assert.strictEqual(result.template.flags.code_review_enabled, false);
+  });
+
+  it('returns errors array and never throws for validation failures', () => {
+    const { template } = loadTemplate('full', orchRoot);
+    let result;
+    assert.doesNotThrow(() => {
+      result = applyOverrides(template, { nodes: { nonexistent_node: { enabled: false } } });
+    });
+    assert.ok(Array.isArray(result.errors));
+    assert.ok(result.errors.length > 0);
+  });
 });
