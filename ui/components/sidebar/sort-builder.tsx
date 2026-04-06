@@ -123,19 +123,25 @@ function SortBuilder({ config, onChange }: SortBuilderProps): JSX.Element {
               >
                 None
               </Button>
-              {SORT_FIELDS.map((field) => (
-                <Button
-                  key={field}
-                  variant={config.secondary === field ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => {
-                    if (field === config.primary) return
-                    onChange({ ...config, secondary: field })
-                  }}
-                >
-                  {FIELD_LABELS[field]}
-                </Button>
-              ))}
+              {SORT_FIELDS.map((field) => {
+                const isDisabled = field === config.primary
+                return (
+                  <Button
+                    key={field}
+                    variant={config.secondary === field ? "secondary" : "ghost"}
+                    size="sm"
+                    disabled={isDisabled}
+                    aria-disabled={isDisabled}
+                    className={isDisabled ? "opacity-50 cursor-not-allowed" : undefined}
+                    onClick={() => {
+                      if (field === config.primary) return
+                      onChange({ ...config, secondary: field })
+                    }}
+                  >
+                    {FIELD_LABELS[field]}
+                  </Button>
+                )
+              })}
             </div>
             {config.secondary !== "none" && (
               <ToggleGroup

@@ -5,9 +5,9 @@
 import assert from 'node:assert';
 
 // Inline types matching ui/types/components.ts and ui/types/state.ts
-type PipelineTier = 'planning' | 'execution' | 'complete';
+type PipelineTier = 'planning' | 'execution' | 'review' | 'complete' | 'halted';
 type PlanningStatus = 'not_started' | 'in_progress' | 'complete';
-type ExecutionStatus = 'not_started' | 'in_progress' | 'complete';
+type ExecutionStatus = 'not_started' | 'in_progress' | 'complete' | 'halted';
 
 interface ProjectSummary {
   name: string;

@@ -71,34 +71,37 @@ async function test(name: string, fn: () => Promise<void>) {
 }
 
 async function run() {
-  tmpDir = await setup();
-  const projects = await discoverProjects(tmpDir, '.');
+  try {
+    tmpDir = await setup();
+    const projects = await discoverProjects(tmpDir, '.');
 
-  console.log('discoverProjects — lastUpdated behavior');
+    console.log('discoverProjects — lastUpdated behavior');
 
-  await test('(a) initialized project — lastUpdated equals state.project.updated', async () => {
-    const p = projects.find(x => x.name === 'initialized-project');
-    assert.ok(p, 'initialized-project should be in results');
-    assert.strictEqual(p!.lastUpdated, '2026-04-06T12:00:00.000Z');
-  });
+    await test('(a) initialized project — lastUpdated equals state.project.updated', async () => {
+      const p = projects.find(x => x.name === 'initialized-project');
+      assert.ok(p, 'initialized-project should be in results');
+      assert.strictEqual(p!.lastUpdated, '2026-04-06T12:00:00.000Z');
+    });
 
-  await test('(b) not-initialized project — lastUpdated is undefined', async () => {
-    const p = projects.find(x => x.name === 'no-state-project');
-    assert.ok(p, 'no-state-project should be in results');
-    assert.strictEqual(p!.lastUpdated, undefined);
-  });
+    await test('(b) not-initialized project — lastUpdated is undefined', async () => {
+      const p = projects.find(x => x.name === 'no-state-project');
+      assert.ok(p, 'no-state-project should be in results');
+      assert.strictEqual(p!.lastUpdated, undefined);
+    });
 
-  await test('(c) malformed-state project — lastUpdated is undefined', async () => {
-    const p = projects.find(x => x.name === 'malformed-project');
-    assert.ok(p, 'malformed-project should be in results');
-    assert.strictEqual(p!.lastUpdated, undefined);
-  });
+    await test('(c) malformed-state project — lastUpdated is undefined', async () => {
+      const p = projects.find(x => x.name === 'malformed-project');
+      assert.ok(p, 'malformed-project should be in results');
+      assert.strictEqual(p!.lastUpdated, undefined);
+    });
 
-  // Cleanup
-  await rm(tmpDir, { recursive: true });
-
-  console.log(`\n${passed} passed, ${failed} failed`);
-  if (failed > 0) process.exit(1);
+    console.log(`\n${passed} passed, ${failed} failed`);
+    if (failed > 0) process.exitCode = 1;
+  } finally {
+    if (tmpDir) {
+      await rm(tmpDir, { recursive: true, force: true });
+    }
+  }
 }
 
 run();

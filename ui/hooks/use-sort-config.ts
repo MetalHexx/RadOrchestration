@@ -89,7 +89,10 @@ function compareField(
   if (bUndef) return -1;  // b goes to bottom
 
   // Both defined — compare ISO 8601 strings (lexicographically sortable)
-  const result = a.lastUpdated!.localeCompare(b.lastUpdated!);
+  const result =
+    a.lastUpdated! < b.lastUpdated! ? -1 :
+    a.lastUpdated! > b.lastUpdated! ? 1 :
+    0;
   return dir === 'desc' ? result * -1 : result;
 }
 
@@ -123,8 +126,19 @@ export function useSortConfig(): UseSortConfigReturn {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as SortConfig;
-        setConfigState(parsed);
+        const parsed = JSON.parse(stored);
+        if (
+          parsed &&
+          typeof parsed === 'object' &&
+          (parsed.primary === 'status' || parsed.primary === 'name' || parsed.primary === 'updated') &&
+          (parsed.primaryDir === 'asc' || parsed.primaryDir === 'desc') &&
+          (parsed.secondary === 'none' || parsed.secondary === 'status' || parsed.secondary === 'name' || parsed.secondary === 'updated') &&
+          (parsed.secondaryDir === 'asc' || parsed.secondaryDir === 'desc')
+        ) {
+          setConfigState(parsed as SortConfig);
+        } else {
+          setConfigState(DEFAULT_SORT_CONFIG);
+        }
       }
     } catch {
       // Missing, malformed, or localStorage unavailable — use default
