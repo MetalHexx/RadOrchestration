@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const { expandTemplate, computeExecutionOrder, expandPhases, expandTasks, injectCorrectiveTask } = require('../lib/dag-expander.js');
 const { loadTemplate } = require('../lib/dag-template-loader.js');
+const { makeExpandedDag } = require('./helpers/test-helpers.js');
 
 // orchRoot = .github directory
 const orchRoot = path.resolve(__dirname, '..', '..', '..', '..');
@@ -145,54 +146,367 @@ describe('computeExecutionOrder()', () => {
   });
 });
 
-// ─── Stub functions ─────────────────────────────────────────────────────────
+// ─── expandPhases() ─────────────────────────────────────────────────────────
 
-describe('Stub functions', () => {
-  it('expandPhases is exported as a function with length 4', () => {
-    assert.equal(typeof expandPhases, 'function');
-    assert.equal(expandPhases.length, 4);
+describe('expandPhases()', () => {
+  function createPhaseGraph() {
+    return {
+      gate: {
+        id: 'gate', type: 'gate', status: 'not_started',
+        depends_on: [], template_node_id: 'gate',
+        gate_type: 'planning', action: 'request_plan_approval',
+      },
+      for_each_phase: {
+        id: 'for_each_phase', type: 'for_each_phase', status: 'not_started',
+        depends_on: ['gate'], template_node_id: 'for_each_phase',
+        body: [
+          { id: 'plan', type: 'step', action: 'create_phase_plan', events: { completed: 'phase_plan_created' } },
+          { id: 'review', type: 'step', depends_on: ['plan'], action: 'spawn_phase_reviewer', events: { completed: 'phase_review_completed' } },
+        ],
+      },
+      final: {
+        id: 'final', type: 'step', status: 'not_started',
+        depends_on: ['for_each_phase'], template_node_id: 'final',
+        action: 'spawn_final_reviewer', events: { completed: 'final_review_completed' },
+      },
+    };
+  }
+
+  it('expands for_each_phase container with 3 phases into correct scoped IDs', () => {
+    const nodes = createPhaseGraph();
+    const phases = [{ name: 'Phase 1' }, { name: 'Phase 2' }, { name: 'Phase 3' }];
+    const newIds = expandPhases(nodes, 'for_each_phase', 3, phases);
+    assert.deepEqual(newIds, [
+      'P01.plan', 'P01.review',
+      'P02.plan', 'P02.review',
+      'P03.plan', 'P03.review',
+    ]);
   });
 
-  it('expandTasks is exported as a function with length 4', () => {
-    assert.equal(typeof expandTasks, 'function');
-    assert.equal(expandTasks.length, 4);
+  it('P01 entry nodes inherit the container external depends_on', () => {
+    const nodes = createPhaseGraph();
+    expandPhases(nodes, 'for_each_phase', 2, [{ name: 'P1' }, { name: 'P2' }]);
+    assert.deepEqual(nodes['P01.plan'].depends_on, ['gate']);
   });
 
-  it('injectCorrectiveTask is exported as a function with length 5', () => {
-    assert.equal(typeof injectCorrectiveTask, 'function');
-    assert.equal(injectCorrectiveTask.length, 5);
+  it('P02+ entry nodes depend on the last node of the previous phase', () => {
+    const nodes = createPhaseGraph();
+    expandPhases(nodes, 'for_each_phase', 3, [{ name: 'P1' }, { name: 'P2' }, { name: 'P3' }]);
+    assert.deepEqual(nodes['P02.plan'].depends_on, ['P01.review']);
+    assert.deepEqual(nodes['P03.plan'].depends_on, ['P02.review']);
   });
 
-  it('expandPhases throws with message containing "not implemented"', () => {
-    assert.throws(
-      () => expandPhases({}, 'x', 1, []),
-      (err) => {
-        assert.ok(err instanceof Error);
-        assert.ok(err.message.toLowerCase().includes('not implemented'));
-        return true;
+  it('intra-phase depends_on are scoped correctly', () => {
+    const nodes = createPhaseGraph();
+    expandPhases(nodes, 'for_each_phase', 2, [{ name: 'P1' }, { name: 'P2' }]);
+    assert.deepEqual(nodes['P01.review'].depends_on, ['P01.plan']);
+    assert.deepEqual(nodes['P02.review'].depends_on, ['P02.plan']);
+  });
+
+  it('downstream nodes rewired from container to last phase exit', () => {
+    const nodes = createPhaseGraph();
+    expandPhases(nodes, 'for_each_phase', 2, [{ name: 'P1' }, { name: 'P2' }]);
+    assert.deepEqual(nodes['final'].depends_on, ['P02.review']);
+  });
+
+  it('container node is removed from the map', () => {
+    const nodes = createPhaseGraph();
+    expandPhases(nodes, 'for_each_phase', 1, [{ name: 'P1' }]);
+    assert.equal(nodes['for_each_phase'], undefined);
+  });
+
+  it('computeExecutionOrder succeeds after expansion (no cycles)', () => {
+    const nodes = createPhaseGraph();
+    expandPhases(nodes, 'for_each_phase', 3, [{ name: 'P1' }, { name: 'P2' }, { name: 'P3' }]);
+    const order = computeExecutionOrder(nodes);
+    assert.ok(order.length > 0);
+  });
+
+  it('single phase (phaseCount=1) works correctly', () => {
+    const nodes = createPhaseGraph();
+    const newIds = expandPhases(nodes, 'for_each_phase', 1, [{ name: 'Solo' }]);
+    assert.deepEqual(newIds, ['P01.plan', 'P01.review']);
+    assert.deepEqual(nodes['P01.plan'].depends_on, ['gate']);
+    assert.deepEqual(nodes['final'].depends_on, ['P01.review']);
+  });
+
+  it('phase_number and phase_name are set on expanded nodes', () => {
+    const nodes = createPhaseGraph();
+    expandPhases(nodes, 'for_each_phase', 2, [{ name: 'Alpha' }, { name: 'Beta' }]);
+    assert.equal(nodes['P01.plan'].phase_number, 1);
+    assert.equal(nodes['P01.plan'].phase_name, 'Alpha');
+    assert.equal(nodes['P02.review'].phase_number, 2);
+    assert.equal(nodes['P02.review'].phase_name, 'Beta');
+  });
+
+  it('nested for_each_task body arrays are preserved on expanded container nodes', () => {
+    const taskBody = [
+      { id: 'handoff', type: 'step', action: 'create_task_handoff', events: { completed: 'hc' } },
+      { id: 'code', type: 'step', depends_on: ['handoff'], action: 'execute_task', events: { completed: 'tc' } },
+    ];
+    const nodes = {
+      gate: {
+        id: 'gate', type: 'gate', status: 'not_started',
+        depends_on: [], template_node_id: 'gate',
+        gate_type: 'planning', action: 'request_plan_approval',
+      },
+      for_each_phase: {
+        id: 'for_each_phase', type: 'for_each_phase', status: 'not_started',
+        depends_on: ['gate'], template_node_id: 'for_each_phase',
+        body: [
+          { id: 'plan', type: 'step', action: 'create_phase_plan', events: { completed: 'pc' } },
+          { id: 'tasks', type: 'for_each_task', depends_on: ['plan'], body: taskBody },
+          { id: 'review', type: 'step', depends_on: ['tasks'], action: 'spawn_phase_reviewer', events: { completed: 'rc' } },
+        ],
+      },
+      final: {
+        id: 'final', type: 'step', status: 'not_started',
+        depends_on: ['for_each_phase'], template_node_id: 'final',
+        action: 'spawn_final_reviewer', events: { completed: 'fc' },
+      },
+    };
+    expandPhases(nodes, 'for_each_phase', 1, [{ name: 'P1' }]);
+    assert.ok(Array.isArray(nodes['P01.tasks'].body), 'expanded for_each_task should preserve body');
+    assert.equal(nodes['P01.tasks'].body.length, 2);
+    assert.equal(nodes['P01.tasks'].type, 'for_each_task');
+  });
+});
+
+// ─── expandTasks() ──────────────────────────────────────────────────────────
+
+describe('expandTasks()', () => {
+  function createTaskGraph() {
+    return {
+      'P01.plan': {
+        id: 'P01.plan', type: 'step', status: 'not_started',
+        depends_on: [], template_node_id: 'plan',
+        action: 'create_phase_plan', events: { completed: 'pc' },
+        phase_number: 1,
+      },
+      'P01.for_each_task': {
+        id: 'P01.for_each_task', type: 'for_each_task', status: 'not_started',
+        depends_on: ['P01.plan'], template_node_id: 'for_each_task',
+        phase_number: 1,
+        body: [
+          { id: 'handoff', type: 'step', action: 'create_task_handoff', events: { started: 'hs', completed: 'hc' } },
+          { id: 'code', type: 'step', depends_on: ['handoff'], action: 'execute_task', events: { completed: 'tc' } },
+          { id: 'review', type: 'step', depends_on: ['code'], action: 'spawn_code_reviewer', events: { completed: 'rc' } },
+        ],
+      },
+      'P01.report': {
+        id: 'P01.report', type: 'step', status: 'not_started',
+        depends_on: ['P01.for_each_task'], template_node_id: 'report',
+        action: 'generate_phase_report', events: { completed: 'prc' },
+        phase_number: 1,
+      },
+    };
+  }
+
+  it('expands for_each_task with 3 tasks into correct scoped IDs', () => {
+    const nodes = createTaskGraph();
+    const tasks = [{ name: 'T1' }, { name: 'T2' }, { name: 'T3' }];
+    const newIds = expandTasks(nodes, 'P01.for_each_task', 1, tasks);
+    assert.deepEqual(newIds, [
+      'P01.T01.handoff', 'P01.T01.code', 'P01.T01.review',
+      'P01.T02.handoff', 'P01.T02.code', 'P01.T02.review',
+      'P01.T03.handoff', 'P01.T03.code', 'P01.T03.review',
+    ]);
+  });
+
+  it('T01 entry nodes inherit the container external depends_on', () => {
+    const nodes = createTaskGraph();
+    expandTasks(nodes, 'P01.for_each_task', 1, [{ name: 'T1' }]);
+    assert.deepEqual(nodes['P01.T01.handoff'].depends_on, ['P01.plan']);
+  });
+
+  it('T02+ entry nodes depend on last node of previous task', () => {
+    const nodes = createTaskGraph();
+    expandTasks(nodes, 'P01.for_each_task', 1, [{ name: 'T1' }, { name: 'T2' }, { name: 'T3' }]);
+    assert.deepEqual(nodes['P01.T02.handoff'].depends_on, ['P01.T01.review']);
+    assert.deepEqual(nodes['P01.T03.handoff'].depends_on, ['P01.T02.review']);
+  });
+
+  it('intra-task depends_on scoped correctly', () => {
+    const nodes = createTaskGraph();
+    expandTasks(nodes, 'P01.for_each_task', 1, [{ name: 'T1' }]);
+    assert.deepEqual(nodes['P01.T01.code'].depends_on, ['P01.T01.handoff']);
+    assert.deepEqual(nodes['P01.T01.review'].depends_on, ['P01.T01.code']);
+  });
+
+  it('downstream nodes rewired from container to last task exit', () => {
+    const nodes = createTaskGraph();
+    expandTasks(nodes, 'P01.for_each_task', 1, [{ name: 'T1' }, { name: 'T2' }]);
+    assert.deepEqual(nodes['P01.report'].depends_on, ['P01.T02.review']);
+  });
+
+  it('container node is removed from the map', () => {
+    const nodes = createTaskGraph();
+    expandTasks(nodes, 'P01.for_each_task', 1, [{ name: 'T1' }]);
+    assert.equal(nodes['P01.for_each_task'], undefined);
+  });
+
+  it('computeExecutionOrder succeeds after expansion', () => {
+    const nodes = createTaskGraph();
+    expandTasks(nodes, 'P01.for_each_task', 1, [{ name: 'T1' }, { name: 'T2' }]);
+    const order = computeExecutionOrder(nodes);
+    assert.ok(order.length > 0);
+  });
+
+  it('single task edge case works correctly', () => {
+    const nodes = createTaskGraph();
+    const newIds = expandTasks(nodes, 'P01.for_each_task', 1, [{ name: 'Solo' }]);
+    assert.deepEqual(newIds, ['P01.T01.handoff', 'P01.T01.code', 'P01.T01.review']);
+    assert.deepEqual(nodes['P01.T01.handoff'].depends_on, ['P01.plan']);
+    assert.deepEqual(nodes['P01.report'].depends_on, ['P01.T01.review']);
+  });
+
+  it('phase_number, task_number, and task_name are set on expanded nodes', () => {
+    const nodes = createTaskGraph();
+    expandTasks(nodes, 'P01.for_each_task', 1, [{ name: 'Alpha' }, { name: 'Beta' }]);
+    assert.equal(nodes['P01.T01.handoff'].phase_number, 1);
+    assert.equal(nodes['P01.T01.handoff'].task_number, 1);
+    assert.equal(nodes['P01.T01.handoff'].task_name, 'Alpha');
+    assert.equal(nodes['P01.T02.code'].phase_number, 1);
+    assert.equal(nodes['P01.T02.code'].task_number, 2);
+    assert.equal(nodes['P01.T02.code'].task_name, 'Beta');
+  });
+});
+
+// ─── injectCorrectiveTask() ─────────────────────────────────────────────────
+
+describe('injectCorrectiveTask()', () => {
+  function createReviewGraph() {
+    return {
+      'P01.T01.handoff': {
+        id: 'P01.T01.handoff', type: 'step', status: 'complete',
+        depends_on: [], template_node_id: 'create_task_handoff',
+        action: 'create_task_handoff', events: { completed: 'hc' },
+        phase_number: 1, task_number: 1,
+      },
+      'P01.T01.code': {
+        id: 'P01.T01.code', type: 'step', status: 'complete',
+        depends_on: ['P01.T01.handoff'], template_node_id: 'execute_coding_task',
+        action: 'execute_task', events: { completed: 'tc' },
+        phase_number: 1, task_number: 1,
+      },
+      'P01.T01.review': {
+        id: 'P01.T01.review', type: 'step', status: 'failed',
+        depends_on: ['P01.T01.code'], template_node_id: 'code_review',
+        action: 'spawn_code_reviewer', events: { completed: 'rc' },
+        phase_number: 1, task_number: 1,
+      },
+      'P01.T01.commit': {
+        id: 'P01.T01.commit', type: 'step', status: 'not_started',
+        depends_on: ['P01.T01.review'], template_node_id: 'source_control_commit',
+        action: 'invoke_source_control_commit', events: { completed: 'cc' },
+        phase_number: 1, task_number: 1,
+      },
+    };
+  }
+
+  it('injects three nodes with correct retry-scoped IDs', () => {
+    const nodes = createReviewGraph();
+    const newIds = injectCorrectiveTask(nodes, 'P01.T01.review', 1, 1, 1);
+    assert.deepEqual(newIds, [
+      'P01.T01.create_task_handoff_r1',
+      'P01.T01.execute_coding_task_r1',
+      'P01.T01.code_review_r1',
+    ]);
+    assert.ok(nodes['P01.T01.create_task_handoff_r1']);
+    assert.ok(nodes['P01.T01.execute_coding_task_r1']);
+    assert.ok(nodes['P01.T01.code_review_r1']);
+  });
+
+  it('new handoff node depends on failedReviewNodeId', () => {
+    const nodes = createReviewGraph();
+    injectCorrectiveTask(nodes, 'P01.T01.review', 1, 1, 1);
+    assert.deepEqual(nodes['P01.T01.create_task_handoff_r1'].depends_on, ['P01.T01.review']);
+  });
+
+  it('downstream nodes rewired to new review node', () => {
+    const nodes = createReviewGraph();
+    injectCorrectiveTask(nodes, 'P01.T01.review', 1, 1, 1);
+    assert.deepEqual(nodes['P01.T01.commit'].depends_on, ['P01.T01.code_review_r1']);
+  });
+
+  it('failed review node is NOT deleted', () => {
+    const nodes = createReviewGraph();
+    injectCorrectiveTask(nodes, 'P01.T01.review', 1, 1, 1);
+    assert.ok(nodes['P01.T01.review'], 'failed review node should still exist');
+    assert.equal(nodes['P01.T01.review'].status, 'failed');
+  });
+
+  it('phase_number, task_number, and retries set on injected nodes', () => {
+    const nodes = createReviewGraph();
+    injectCorrectiveTask(nodes, 'P01.T01.review', 1, 1, 1);
+    for (const id of ['P01.T01.create_task_handoff_r1', 'P01.T01.execute_coding_task_r1', 'P01.T01.code_review_r1']) {
+      assert.equal(nodes[id].phase_number, 1);
+      assert.equal(nodes[id].task_number, 1);
+      assert.equal(nodes[id].retries, 1);
+    }
+  });
+
+  it('computeExecutionOrder succeeds after injection', () => {
+    const nodes = createReviewGraph();
+    injectCorrectiveTask(nodes, 'P01.T01.review', 1, 1, 1);
+    const order = computeExecutionOrder(nodes);
+    assert.ok(order.length > 0);
+  });
+
+  it('two sequential injections (r1 then r2) produce valid graph', () => {
+    const nodes = createReviewGraph();
+    injectCorrectiveTask(nodes, 'P01.T01.review', 1, 1, 1);
+    // Simulate r1 review also failed
+    nodes['P01.T01.code_review_r1'].status = 'failed';
+    injectCorrectiveTask(nodes, 'P01.T01.code_review_r1', 1, 1, 2);
+
+    // Verify r2 nodes exist
+    assert.ok(nodes['P01.T01.create_task_handoff_r2']);
+    assert.ok(nodes['P01.T01.execute_coding_task_r2']);
+    assert.ok(nodes['P01.T01.code_review_r2']);
+
+    // r2 handoff depends on r1 review
+    assert.deepEqual(nodes['P01.T01.create_task_handoff_r2'].depends_on, ['P01.T01.code_review_r1']);
+
+    // commit now depends on r2 review
+    assert.deepEqual(nodes['P01.T01.commit'].depends_on, ['P01.T01.code_review_r2']);
+
+    // No cycles
+    const order = computeExecutionOrder(nodes);
+    assert.ok(order.length > 0);
+  });
+});
+
+// ─── End-to-end expansion ───────────────────────────────────────────────────
+
+describe('End-to-end expansion', () => {
+  it('expandTemplate → expandPhases(2) → expandTasks(3 each) produces valid DAG', () => {
+    const { nodes } = makeExpandedDag('full');
+
+    // Expand phases
+    expandPhases(nodes, 'for_each_phase', 2, [{ name: 'Phase 1' }, { name: 'Phase 2' }]);
+
+    // Expand tasks for each phase
+    expandTasks(nodes, 'P01.for_each_task', 1, [{ name: 'T1' }, { name: 'T2' }, { name: 'T3' }]);
+    expandTasks(nodes, 'P02.for_each_task', 2, [{ name: 'T1' }, { name: 'T2' }, { name: 'T3' }]);
+
+    // Verify node count: 6 planning + 3 final + 2×(3 phase-only + 3×4 task) = 6+3+2×15 = 39
+    assert.equal(Object.keys(nodes).length, 39);
+
+    // computeExecutionOrder succeeds
+    const order = computeExecutionOrder(nodes);
+    assert.equal(order.length, 39);
+
+    // Dependency order is respected
+    const positionMap = new Map();
+    order.forEach((id, idx) => positionMap.set(id, idx));
+    for (const [id, node] of Object.entries(nodes)) {
+      for (const dep of node.depends_on) {
+        assert.ok(
+          positionMap.get(dep) < positionMap.get(id),
+          `dependency "${dep}" should appear before "${id}" in execution_order`
+        );
       }
-    );
-  });
-
-  it('expandTasks throws with message containing "not implemented"', () => {
-    assert.throws(
-      () => expandTasks({}, 'x', 1, []),
-      (err) => {
-        assert.ok(err instanceof Error);
-        assert.ok(err.message.toLowerCase().includes('not implemented'));
-        return true;
-      }
-    );
-  });
-
-  it('injectCorrectiveTask throws with message containing "not implemented"', () => {
-    assert.throws(
-      () => injectCorrectiveTask({}, 'x', 1, 1, 1),
-      (err) => {
-        assert.ok(err instanceof Error);
-        assert.ok(err.message.toLowerCase().includes('not implemented'));
-        return true;
-      }
-    );
+    }
   });
 });
