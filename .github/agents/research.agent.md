@@ -9,7 +9,7 @@ tools:
   - todo
   - vscode/askQuestions
   - context7/*
-model: claude-sonnet-4.6
+model: Claude Haiku 4.5 (copilot)
 ---
 
 # Research Agent
