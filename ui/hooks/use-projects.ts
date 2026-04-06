@@ -67,6 +67,7 @@ export function useProjects(): UseProjectsReturn {
                     tier: payload.state.pipeline.current_tier,
                     planningStatus: payload.state.planning?.status,
                     executionStatus: payload.state.execution?.status,
+                    lastUpdated: payload.state.project?.updated,
                   }
                 : p
             )

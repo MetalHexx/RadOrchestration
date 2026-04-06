@@ -10,6 +10,7 @@ export interface ProjectSummary {
   brainstormingDoc?: string | null;
   planningStatus?: PlanningStatus;
   executionStatus?: ExecutionStatus;
+  lastUpdated?: string;   // ISO 8601; from state.project.updated; undefined for uninitialized projects
 }
 
 /** Gate history entry for the timeline */
