@@ -69,7 +69,6 @@ function parseYaml(yamlString) {
             const rawValue = itemContent.slice(colonIdx + 1).trim();
             obj[key] = parseScalar(rawValue);
             // Consume continuation lines (indented deeper than the `- ` prefix)
-            const itemIndent = indent + 2; // indent of content after `- `
             while (i + 1 < lines.length) {
               const nextLine = lines[i + 1];
               const nextIndent = getIndent(nextLine);
@@ -79,9 +78,36 @@ function parseYaml(yamlString) {
               if (contColonIdx !== -1) {
                 const contKey = nextTrimmed.slice(0, contColonIdx).trim();
                 const contRawValue = nextTrimmed.slice(contColonIdx + 1).trim();
-                obj[contKey] = parseScalar(contRawValue);
+                if (contRawValue === '') {
+                  // Empty value — check for nested children
+                  if (i + 2 < lines.length) {
+                    const childLine = lines[i + 2];
+                    const childIndent = getIndent(childLine);
+                    if (childIndent > nextIndent) {
+                      i++;
+                      // Parse nested structure at deeper indent
+                      obj[contKey] = parseNestedFromLines(lines, i, nextIndent);
+                      // Advance past all consumed nested lines
+                      while (i + 1 < lines.length) {
+                        const peekIndent = getIndent(lines[i + 1]);
+                        if (peekIndent <= nextIndent) break;
+                        i++;
+                      }
+                    } else {
+                      obj[contKey] = '';
+                      i++;
+                    }
+                  } else {
+                    obj[contKey] = '';
+                    i++;
+                  }
+                } else {
+                  obj[contKey] = parseScalar(contRawValue);
+                  i++;
+                }
+              } else {
+                i++;
               }
-              i++;
             }
             current.push(obj);
           } else {
@@ -150,6 +176,134 @@ function parseYaml(yamlString) {
     return root;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Parse nested structures (objects or arrays) from continuation lines within a list-item object.
+ * Called when a continuation key has an empty value and deeper-indented children follow.
+ * @param {string[]} lines - pre-processed lines array
+ * @param {number} parentLineIdx - index of the parent key line (the key with empty value)
+ * @param {number} parentIndent - indent level of the parent key
+ * @returns {Array|Object} parsed nested structure
+ */
+function parseNestedFromLines(lines, parentLineIdx, parentIndent) {
+  // Collect all child lines (indented deeper than parentIndent)
+  const childStartIdx = parentLineIdx + 1;
+  if (childStartIdx >= lines.length) return '';
+
+  const firstChildLine = lines[childStartIdx];
+  const firstChildTrimmed = firstChildLine.trim();
+  const firstChildIndent = getIndent(firstChildLine);
+
+  if (firstChildIndent <= parentIndent) return '';
+
+  if (firstChildTrimmed.startsWith('- ')) {
+    // Children are list items → array
+    const arr = [];
+    let ci = childStartIdx;
+    while (ci < lines.length) {
+      const cLine = lines[ci];
+      const cIndent = getIndent(cLine);
+      const cTrimmed = cLine.trim();
+      if (cIndent <= parentIndent) break;
+
+      if (cTrimmed.startsWith('- ')) {
+        const itemContent = cTrimmed.slice(2).trim();
+        const colonIdx = findKeyColon(itemContent);
+        if (colonIdx !== -1) {
+          // Key-value pair → object item
+          const obj = {};
+          const key = itemContent.slice(0, colonIdx).trim();
+          const rawValue = itemContent.slice(colonIdx + 1).trim();
+          obj[key] = parseScalar(rawValue);
+          // Consume continuation lines for this sub-list-item object
+          while (ci + 1 < lines.length) {
+            const nextLine = lines[ci + 1];
+            const nextIndent = getIndent(nextLine);
+            if (nextIndent <= cIndent) break;
+            const nextTrimmed = nextLine.trim();
+            const contColonIdx = findKeyColon(nextTrimmed);
+            if (contColonIdx !== -1) {
+              const contKey = nextTrimmed.slice(0, contColonIdx).trim();
+              const contRawValue = nextTrimmed.slice(contColonIdx + 1).trim();
+              if (contRawValue === '') {
+                // Nested structure within sub-list-item
+                if (ci + 2 < lines.length) {
+                  const deepChildIndent = getIndent(lines[ci + 2]);
+                  if (deepChildIndent > nextIndent) {
+                    ci++;
+                    obj[contKey] = parseNestedFromLines(lines, ci, nextIndent);
+                    // Advance past consumed nested lines
+                    while (ci + 1 < lines.length) {
+                      const peekIndent = getIndent(lines[ci + 1]);
+                      if (peekIndent <= nextIndent) break;
+                      ci++;
+                    }
+                  } else {
+                    obj[contKey] = '';
+                    ci++;
+                  }
+                } else {
+                  obj[contKey] = '';
+                  ci++;
+                }
+              } else {
+                obj[contKey] = parseScalar(contRawValue);
+                ci++;
+              }
+            } else {
+              ci++;
+            }
+          }
+          arr.push(obj);
+        } else {
+          // Scalar list item
+          arr.push(parseScalar(itemContent));
+        }
+      }
+      ci++;
+    }
+    return arr;
+  } else {
+    // Children are key-value pairs → object
+    const obj = {};
+    let ci = childStartIdx;
+    while (ci < lines.length) {
+      const cLine = lines[ci];
+      const cIndent = getIndent(cLine);
+      const cTrimmed = cLine.trim();
+      if (cIndent <= parentIndent) break;
+
+      const colonIdx = findKeyColon(cTrimmed);
+      if (colonIdx !== -1) {
+        const key = cTrimmed.slice(0, colonIdx).trim();
+        const rawValue = cTrimmed.slice(colonIdx + 1).trim();
+        if (rawValue === '') {
+          // Nested structure within sub-object
+          if (ci + 1 < lines.length) {
+            const deepChildIndent = getIndent(lines[ci + 1]);
+            if (deepChildIndent > cIndent) {
+              obj[key] = parseNestedFromLines(lines, ci, cIndent);
+              // Advance past consumed nested lines
+              while (ci + 1 < lines.length) {
+                const peekIndent = getIndent(lines[ci + 1]);
+                if (peekIndent <= cIndent) break;
+                ci++;
+              }
+            } else {
+              obj[key] = '';
+            }
+          } else {
+            obj[key] = '';
+          }
+        } else {
+          obj[key] = parseScalar(rawValue);
+        }
+      }
+      ci++;
+    }
+    return obj;
   }
 }
 
