@@ -1,5 +1,9 @@
 'use strict';
 
+const path = require('node:path');
+const { loadTemplate } = require('../../lib/dag-template-loader.js');
+const { expandTemplate } = require('../../lib/dag-expander.js');
+
 // ─── Deep Clone ─────────────────────────────────────────────────────────────
 
 function deepClone(obj) {
@@ -255,6 +259,54 @@ function deepMerge(target, source) {
   return result;
 }
 
+// ─── DAG Test Helpers ───────────────────────────────────────────────────────
+
+/**
+ * Create a single well-formed DagNode with sensible defaults, merged with overrides.
+ * @param {Object} [overrides]
+ * @returns {Object} DagNode
+ */
+function makeDagNode(overrides = {}) {
+  const defaults = {
+    id: 'test_node',
+    type: 'step',
+    status: 'not_started',
+    depends_on: [],
+    template_node_id: 'test_node',
+    action: 'spawn_research',
+    events: { completed: 'research_completed' },
+  };
+  return Object.assign({}, defaults, overrides);
+}
+
+/**
+ * Create a minimal v5 state.dag object, shallow-merged with overrides.
+ * @param {Object} [overrides]
+ * @returns {{ template_name: string, nodes: Object, execution_order: string[] }}
+ */
+function makeDagState(overrides = {}) {
+  const defaults = {
+    template_name: 'test',
+    nodes: {},
+    execution_order: [],
+  };
+  return Object.assign({}, defaults, overrides);
+}
+
+/**
+ * Load a real template and expand it, returning { nodes, execution_order }.
+ * orchRoot is .github (5 levels up from this file's helpers/ directory).
+ * @param {string} templateName - e.g. 'full' or 'quick'
+ * @returns {{ nodes: Object, execution_order: string[] }}
+ */
+function makeExpandedDag(templateName) {
+  // __dirname = scripts/tests/helpers/ → 5 levels up = .github/
+  const orchRoot = path.resolve(__dirname, '..', '..', '..', '..', '..');
+  const { template, error } = loadTemplate(templateName, orchRoot);
+  if (error) throw new Error('makeExpandedDag: ' + error);
+  return expandTemplate(template);
+}
+
 // ─── Exports ────────────────────────────────────────────────────────────────
 
 module.exports = {
@@ -265,4 +317,7 @@ module.exports = {
   createReviewState,
   processAndAssert,
   deepClone,
+  makeDagNode,
+  makeDagState,
+  makeExpandedDag,
 };
