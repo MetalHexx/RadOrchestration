@@ -8,7 +8,7 @@ tools:
   - execute
   - todo
   - vscode/askQuestions
-model: claude-haiku-4.5
+model: Claude Haiku 4.5 (copilot)
 ---
 
 # Junior Coder Agent

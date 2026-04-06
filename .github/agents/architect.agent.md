@@ -8,7 +8,7 @@ tools:
   - todo
   - vscode/askQuestions
   - context7/*
-model: claude-opus-4.6
+model: Claude Opus 4.6 (copilot)
 ---
 
 # Architect Agent

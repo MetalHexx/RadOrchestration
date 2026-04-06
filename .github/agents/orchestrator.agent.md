@@ -7,7 +7,7 @@ tools:
   - agent
   - execute
   - vscode/askQuestions
-model: claude-sonnet-4.6
+model: Claude Opus 4.6 (copilot)
 ---
 
 # Orchestrator

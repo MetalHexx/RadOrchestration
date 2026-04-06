@@ -8,7 +8,7 @@ tools:
   - execute
   - todo
   - github/*
-model: claude-sonnet-4.6
+model: Claude Haiku 4.5 (copilot)
 ---
 
 # Source Control Agent
