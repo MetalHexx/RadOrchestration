@@ -1,6 +1,7 @@
 'use strict';
 
 const SCHEMA_VERSION = 'orchestration-state-v4';
+const SCHEMA_VERSION_V5 = 'orchestration-state-v5';
 
 // ─── Frozen Enums ───────────────────────────────────────────────────────────
 
@@ -67,6 +68,24 @@ const HUMAN_GATE_MODES = Object.freeze({
   PHASE: 'phase',
   TASK: 'task',
   AUTONOMOUS: 'autonomous',
+});
+
+const DAG_NODE_TYPES = Object.freeze({
+  STEP:           'step',
+  GATE:           'gate',
+  FOR_EACH_PHASE: 'for_each_phase',
+  FOR_EACH_TASK:  'for_each_task',
+  CONDITIONAL:    'conditional',
+  PARALLEL:       'parallel',
+});
+
+const DAG_NODE_STATUSES = Object.freeze({
+  NOT_STARTED: 'not_started',
+  IN_PROGRESS: 'in_progress',
+  COMPLETE:    'complete',
+  FAILED:      'failed',
+  HALTED:      'halted',
+  SKIPPED:     'skipped',
 });
 
 const NEXT_ACTIONS = Object.freeze({
@@ -157,6 +176,32 @@ const ALLOWED_PHASE_TRANSITIONS = Object.freeze({
  * @property {string | null} action - one of NEXT_ACTIONS values when success; null on failure
  * @property {Object} context - action-specific routing data, or structured error info on failure
  * @property {string[]} mutations_applied - human-readable mutation descriptions; empty on failure
+ */
+
+/**
+ * A single node in the expanded DAG stored in state.dag.nodes.
+ *
+ * @typedef {Object} DagNode
+ * @property {string} id            - Unique node ID. Template-level IDs for
+ *                                    static nodes (e.g., "research"). Scoped IDs
+ *                                    for expanded nodes (e.g., "P01.phase_plan",
+ *                                    "P01.T02.code").
+ * @property {string} type          - DAG_NODE_TYPES value
+ * @property {string} status        - DAG_NODE_STATUSES value
+ * @property {string[]} depends_on  - IDs of predecessor nodes (expanded IDs)
+ * @property {string} [action]      - NEXT_ACTIONS value (step and gate nodes)
+ * @property {Object} [events]      - { started?: string, completed: string }
+ * @property {Object} [context]     - Action-specific context fields
+ * @property {string} [gate_type]   - Gate type (gate nodes only)
+ * @property {string} [planning_step] - Planning step name for adapter mapping
+ * @property {number} [phase_number]  - 1-based phase number (phase-scoped nodes)
+ * @property {number} [task_number]   - 1-based task number (task-scoped nodes)
+ * @property {string} [phase_name]    - Phase name (phase-scoped nodes)
+ * @property {string} [task_name]     - Task name (task-scoped nodes)
+ * @property {string} template_node_id - Original template node ID before expansion
+ * @property {number} [retries]       - Retry count (task code/review nodes)
+ * @property {Object} [docs]          - Document paths (populated by mutations)
+ * @property {Object} [review]        - Review outcome (populated by mutations)
  */
 
 /**
@@ -302,6 +347,7 @@ const ALLOWED_PHASE_TRANSITIONS = Object.freeze({
 
 module.exports = {
   SCHEMA_VERSION,
+  SCHEMA_VERSION_V5,
   PIPELINE_TIERS,
   PLANNING_STATUSES,
   PLANNING_STEP_STATUSES,
@@ -314,6 +360,8 @@ module.exports = {
   PHASE_REVIEW_ACTIONS,
   SEVERITY_LEVELS,
   HUMAN_GATE_MODES,
+  DAG_NODE_TYPES,
+  DAG_NODE_STATUSES,
   NEXT_ACTIONS,
   ALLOWED_TASK_TRANSITIONS,
   ALLOWED_PHASE_TRANSITIONS,
