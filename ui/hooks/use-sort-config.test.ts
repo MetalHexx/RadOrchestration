@@ -67,7 +67,7 @@ function compareField(
     return dir === 'desc' ? result * -1 : result;
   }
   if (field === 'name') {
-    const result = a.name.localeCompare(b.name);
+    const result = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     return dir === 'desc' ? result * -1 : result;
   }
   // field === 'updated'
@@ -149,7 +149,7 @@ async function run() {
   await test('Default sort equivalence — all 10 priority levels', async () => {
     const sorted = [...allPriorities].sort((a, b) => compareSortConfig(a, b, DEFAULT_SORT_CONFIG));
     const expected = [...allPriorities].sort(
-      (a, b) => getStatusPriority(a) - getStatusPriority(b) || a.name.localeCompare(b.name)
+      (a, b) => getStatusPriority(a) - getStatusPriority(b) || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
     );
     assert.deepStrictEqual(
       sorted.map(p => p.name),
@@ -162,7 +162,7 @@ async function run() {
     const fixtures = [...allPriorities, p0b_halted_exec];
     const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, DEFAULT_SORT_CONFIG));
     const expected = [...fixtures].sort(
-      (a, b) => getStatusPriority(a) - getStatusPriority(b) || a.name.localeCompare(b.name)
+      (a, b) => getStatusPriority(a) - getStatusPriority(b) || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
     );
     assert.deepStrictEqual(sorted.map(p => p.name), expected.map(p => p.name));
   });
@@ -179,6 +179,13 @@ async function run() {
     const fixtures = [makeProject('Charlie'), makeProject('Alpha'), makeProject('Bravo')];
     const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, config));
     assert.deepStrictEqual(sorted.map(p => p.name), ['Charlie', 'Bravo', 'Alpha']);
+  });
+
+  await test('Name ascending — mixed case treated as case-insensitive', async () => {
+    const config: SortConfig = { primary: 'name', primaryDir: 'asc', secondary: 'none', secondaryDir: 'asc' };
+    const fixtures = [makeProject('charlie'), makeProject('ALPHA'), makeProject('Bravo')];
+    const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, config));
+    assert.deepStrictEqual(sorted.map(p => p.name), ['ALPHA', 'Bravo', 'charlie']);
   });
 
   await test('Updated descending — newest first', async () => {

@@ -75,7 +75,7 @@ function compareField(
   }
 
   if (field === 'name') {
-    const result = a.name.localeCompare(b.name);
+    const result = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     return dir === 'desc' ? result * -1 : result;
   }
 
