@@ -1655,7 +1655,7 @@ const CONFIG_FIXTURE = {
 };
 
 describe('scaffoldInitialState config snapshot', () => {
-  const s = scaffoldInitialState(CONFIG_FIXTURE, '/test/snapshot-test');
+  const { state: s } = scaffoldInitialState(CONFIG_FIXTURE, '/test/snapshot-test', '/unused');
 
   it('state.config exists', () => {
     assert.ok(s.config !== undefined, 'config property must exist on scaffolded state');

@@ -366,9 +366,11 @@ describe('processEvent — unknown event', () => {
 describe('scaffoldInitialState', () => {
   const config = createDefaultConfig();
   const dir = '/test/my-project';
+  const orchRoot = '/unused';
 
   it('has $schema orchestration-state-v4', () => {
-    const s = scaffoldInitialState(config, dir);
+    const { state: s, error } = scaffoldInitialState(config, dir, orchRoot);
+    assert.equal(error, null);
     assert.equal(s.$schema, 'orchestration-state-v4');
     assert.ok(s.final_review !== undefined, 'top-level final_review should exist');
     assert.equal(s.final_review.status, 'not_started');
@@ -379,12 +381,12 @@ describe('scaffoldInitialState', () => {
   });
 
   it('project.name matches path.basename(projectDir)', () => {
-    const s = scaffoldInitialState(config, dir);
+    const { state: s } = scaffoldInitialState(config, dir, orchRoot);
     assert.equal(s.project.name, 'my-project');
   });
 
   it('has 5 planning steps, all not_started', () => {
-    const s = scaffoldInitialState(config, dir);
+    const { state: s } = scaffoldInitialState(config, dir, orchRoot);
     assert.equal(s.planning.steps.length, 5);
     for (const step of s.planning.steps) {
       assert.equal(step.status, 'not_started');
@@ -392,20 +394,20 @@ describe('scaffoldInitialState', () => {
   });
 
   it('planning.current_step is removed in v4 (field does not exist)', () => {
-    const s = scaffoldInitialState(config, dir);
+    const { state: s } = scaffoldInitialState(config, dir, orchRoot);
     assert.equal(s.planning.current_step, undefined);
     assert.ok(s.pipeline !== undefined, 'pipeline should exist as top-level section');
     assert.equal(s.pipeline.current_tier, 'planning');
   });
 
   it('has pipeline.current_tier set to planning', () => {
-    const s = scaffoldInitialState(config, dir);
+    const { state: s } = scaffoldInitialState(config, dir, orchRoot);
     assert.equal(s.pipeline.current_tier, 'planning');
     assert.equal(s.execution.current_tier, undefined);
   });
 
   it('has no triage_attempts at any level', () => {
-    const s = scaffoldInitialState(config, dir);
+    const { state: s } = scaffoldInitialState(config, dir, orchRoot);
     assert.equal(s.execution.triage_attempts, undefined);
     for (const phase of s.execution.phases) {
       assert.equal(phase.triage_attempts, undefined);
@@ -413,24 +415,24 @@ describe('scaffoldInitialState', () => {
   });
 
   it('pipeline.gate_mode is null', () => {
-    const s = scaffoldInitialState(config, dir);
+    const { state: s } = scaffoldInitialState(config, dir, orchRoot);
     assert.equal(s.pipeline.gate_mode, null, 'gate_mode must be null on initial scaffold');
   });
 
   it('pipeline.current_tier is still planning (no regression)', () => {
-    const s = scaffoldInitialState(config, dir);
+    const { state: s } = scaffoldInitialState(config, dir, orchRoot);
     assert.equal(s.pipeline.current_tier, 'planning', 'current_tier must remain planning');
   });
 
   it('pipeline has exactly two keys: current_tier and gate_mode', () => {
-    const s = scaffoldInitialState(config, dir);
+    const { state: s } = scaffoldInitialState(config, dir, orchRoot);
     const keys = Object.keys(s.pipeline).sort();
     assert.deepEqual(keys, ['current_tier', 'gate_mode']);
   });
 
   it('scaffolded state passes validateTransition with zero errors', () => {
     const { validateTransition } = require('../lib/validator');
-    const s = scaffoldInitialState(config, dir);
+    const { state: s } = scaffoldInitialState(config, dir, orchRoot);
     const errs = validateTransition(null, s, config);
     assert.deepEqual(errs, [], `Expected zero errors, got: ${JSON.stringify(errs)}`);
   });
@@ -667,5 +669,97 @@ describe('processEvent — task_committed', () => {
     assert.equal(io.getState().execution.phases[0].current_task, 2);
     // T02 is at planning stage, so action should be create_task_handoff
     assert.equal(result.action, 'create_task_handoff');
+  });
+});
+
+// ─── scaffoldInitialState v5 ────────────────────────────────────────────────
+
+describe('scaffoldInitialState v5', () => {
+  const config = createDefaultConfig();
+  const dir = '/test/my-project';
+  const orchRoot = path.resolve(__dirname, '..', '..', '..', '..');
+
+  it('scaffold with pipeline.template full returns v5 state', () => {
+    const cfg = { ...config, pipeline: { template: 'full' } };
+    const { state, error } = scaffoldInitialState(cfg, dir, orchRoot);
+    assert.equal(error, null);
+    assert.equal(state.$schema, 'orchestration-state-v5');
+    assert.ok(typeof state.dag === 'object' && state.dag !== null);
+    assert.equal(state.dag.template_name, 'full');
+    assert.ok(typeof state.dag.nodes === 'object');
+    assert.ok(Object.keys(state.dag.nodes).length > 0);
+    assert.ok(Array.isArray(state.dag.execution_order));
+    assert.ok(state.dag.execution_order.length > 0);
+  });
+
+  it('scaffold with pipeline.template quick returns v5 state', () => {
+    const cfg = { ...config, pipeline: { template: 'quick' } };
+    const { state, error } = scaffoldInitialState(cfg, dir, orchRoot);
+    assert.equal(error, null);
+    assert.equal(state.$schema, 'orchestration-state-v5');
+    assert.equal(state.dag.template_name, 'quick');
+    assert.ok(Object.keys(state.dag.nodes).length > 0);
+
+    // Quick should have fewer nodes than full
+    const fullCfg = { ...config, pipeline: { template: 'full' } };
+    const { state: fullState } = scaffoldInitialState(fullCfg, dir, orchRoot);
+    assert.ok(
+      Object.keys(state.dag.nodes).length !== Object.keys(fullState.dag.nodes).length,
+      'quick and full should have different node counts'
+    );
+  });
+
+  it('v5 scaffold sets pipeline.template to template name', () => {
+    const cfg = { ...config, pipeline: { template: 'full' } };
+    const { state } = scaffoldInitialState(cfg, dir, orchRoot);
+    assert.equal(state.pipeline.template, 'full');
+  });
+
+  it('v5 scaffold retains nested planning/execution/final_review sections', () => {
+    const cfg = { ...config, pipeline: { template: 'full' } };
+    const { state } = scaffoldInitialState(cfg, dir, orchRoot);
+    assert.equal(state.planning.steps.length, 5);
+    assert.equal(state.execution.current_phase, 0);
+    assert.equal(state.final_review.status, 'not_started');
+  });
+
+  it('v5 scaffold retains config snapshot', () => {
+    const cfg = { ...config, pipeline: { template: 'full' } };
+    const { state } = scaffoldInitialState(cfg, dir, orchRoot);
+    assert.equal(state.config.limits.max_phases, config.limits.max_phases);
+  });
+
+  it('scaffold without template returns v4 state (backward compat)', () => {
+    const { state, error } = scaffoldInitialState(config, dir, orchRoot);
+    assert.equal(error, null);
+    assert.equal(state.$schema, 'orchestration-state-v4');
+    assert.equal(state.dag, undefined);
+  });
+
+  it('scaffold with invalid template name returns error', () => {
+    const cfg = { ...config, pipeline: { template: 'nonexistent' } };
+    const { state, error } = scaffoldInitialState(cfg, dir, orchRoot);
+    assert.ok(typeof error === 'string');
+    assert.ok(error.includes('nonexistent'));
+    assert.equal(state, null);
+  });
+
+  it('project.name matches path.basename(projectDir) for v5', () => {
+    const cfg = { ...config, pipeline: { template: 'full' } };
+    const { state } = scaffoldInitialState(cfg, dir, orchRoot);
+    assert.equal(state.project.name, 'my-project');
+  });
+});
+
+// ─── handleInit error propagation ───────────────────────────────────────────
+
+describe('handleInit error propagation', () => {
+  it('processEvent start with invalid template returns success false with error', () => {
+    const io = createMockIO({ state: null, config: { ...createDefaultConfig(), pipeline: { template: 'nonexistent' } } });
+    const result = processEvent('start', PROJECT_DIR, {}, io);
+    assertResultShape(result);
+    assert.equal(result.success, false);
+    assert.ok(typeof result.context.error === 'string');
+    assert.ok(result.context.error.includes('nonexistent'));
   });
 });

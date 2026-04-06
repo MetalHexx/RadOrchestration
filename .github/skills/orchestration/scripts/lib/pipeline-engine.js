@@ -6,7 +6,10 @@ const { preRead }             = require('./pre-reads');
 const { getMutation, normalizeDocPath } = require('./mutations');
 const { validateTransition }  = require('./validator');
 const { resolveNextAction }   = require('./resolver');
-const { SCHEMA_VERSION }      = require('./constants');
+const { SCHEMA_VERSION, SCHEMA_VERSION_V5 } = require('./constants');
+const { loadTemplate }        = require('./dag-template-loader');
+const { expandTemplate }      = require('./dag-expander');
+const { bootstrapOrchRoot }   = require('./state-io');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -17,15 +20,83 @@ function deepClone(obj) {
 // ─── scaffoldInitialState ───────────────────────────────────────────────────
 
 /**
- * Create initial state for a new project.
+ * Create initial state for a new project. When config.pipeline.template
+ * is set, loads and expands the template into a v5 state with DAG section.
+ * When template is not set, produces a v4 state (backward compat).
  *
  * @param {Object} config - parsed orchestration config
  * @param {string} projectDir - absolute path to project directory
- * @returns {Object} fresh v4 state object
+ * @param {string} orchRoot - absolute path to orchestration root (e.g., '.github')
+ * @returns {{ state: Object|null, error: string|null }}
  */
-function scaffoldInitialState(config, projectDir) {
+function scaffoldInitialState(config, projectDir, orchRoot) {
   const now = new Date().toISOString();
-  return {
+  const templateName = config.pipeline?.template;
+
+  // v5 path: template configured
+  if (templateName) {
+    const { template, error: loadError } = loadTemplate(templateName, orchRoot);
+    if (loadError) {
+      return { state: null, error: loadError };
+    }
+    const { nodes, execution_order } = expandTemplate(template);
+    const state = {
+      $schema: SCHEMA_VERSION_V5,
+      project: {
+        name: path.basename(projectDir),
+        created: now,
+        updated: now,
+      },
+      pipeline: {
+        current_tier: 'planning',
+        gate_mode: null,
+        template: templateName,
+      },
+      dag: {
+        template_name: templateName,
+        nodes,
+        execution_order,
+      },
+      planning: {
+        status: 'not_started',
+        human_approved: false,
+        steps: [
+          { name: 'research',      status: 'not_started', doc_path: null },
+          { name: 'prd',           status: 'not_started', doc_path: null },
+          { name: 'design',        status: 'not_started', doc_path: null },
+          { name: 'architecture',  status: 'not_started', doc_path: null },
+          { name: 'master_plan',   status: 'not_started', doc_path: null },
+        ],
+      },
+      execution: {
+        status: 'not_started',
+        current_phase: 0,
+        phases: [],
+      },
+      final_review: {
+        status: 'not_started',
+        doc_path: null,
+        human_approved: false,
+      },
+      config: {
+        limits: {
+          max_phases:                        config.limits.max_phases,
+          max_tasks_per_phase:               config.limits.max_tasks_per_phase,
+          max_retries_per_task:              config.limits.max_retries_per_task,
+          max_consecutive_review_rejections: config.limits.max_consecutive_review_rejections,
+        },
+        human_gates: {
+          after_planning:     config.human_gates.after_planning,
+          execution_mode:     config.human_gates.execution_mode,
+          after_final_review: config.human_gates.after_final_review,
+        },
+      },
+    };
+    return { state, error: null };
+  }
+
+  // v4 fallback: no template
+  const state = {
     $schema: SCHEMA_VERSION,
     project: {
       name: path.basename(projectDir),
@@ -71,15 +142,25 @@ function scaffoldInitialState(config, projectDir) {
       },
     },
   };
+  return { state, error: null };
 }
 
 // ─── handleInit ─────────────────────────────────────────────────────────────
 
 function handleInit(config, projectDir, io) {
   io.ensureDirectories(projectDir);
-  const initialState = scaffoldInitialState(config, projectDir);
-  io.writeState(projectDir, initialState);
-  const next = resolveNextAction(initialState, config);
+  const orchRoot = bootstrapOrchRoot();
+  const { state, error } = scaffoldInitialState(config, projectDir, orchRoot);
+  if (error) {
+    return {
+      success: false,
+      action: null,
+      context: { error },
+      mutations_applied: [],
+    };
+  }
+  io.writeState(projectDir, state);
+  const next = resolveNextAction(state, config);
   return {
     success: true,
     action: next.action,
