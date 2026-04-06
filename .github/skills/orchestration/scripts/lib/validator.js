@@ -10,6 +10,8 @@ const {
   ALLOWED_PHASE_TRANSITIONS,
   ALLOWED_TASK_STAGE_TRANSITIONS,
   ALLOWED_PHASE_STAGE_TRANSITIONS,
+  SCHEMA_VERSION_V5,
+  DAG_NODE_TYPES,
 } = require('./constants.js');
 
 // Load the v4 and v5 JSON Schemas once at module initialization
@@ -409,10 +411,105 @@ function checkV16(proposed) {
   return errors;
 }
 
+// ─── DAG-Aware Structural Checks (v5 only) ─────────────────────────────────
+
+const ALLOWED_DAG_NODE_TRANSITIONS = {
+  'not_started': ['in_progress', 'skipped', 'complete'],
+  'in_progress': ['complete', 'failed', 'halted'],
+  'failed':      ['in_progress'],   // corrective retry
+  'complete':    [],                 // terminal
+  'halted':      [],                 // terminal
+  'skipped':     [],                 // terminal
+};
+
+/** V1_dag — every depends_on reference resolves to an existing node */
+function checkV1_dag(proposed) {
+  const errors = [];
+  const nodes = proposed.dag?.nodes;
+  if (!nodes) return errors;
+  for (const [nodeId, node] of Object.entries(nodes)) {
+    for (const depId of node.depends_on) {
+      if (!(depId in nodes)) {
+        errors.push(makeError('V1', `node '${nodeId}' depends_on '${depId}' which does not exist in dag.nodes`, `dag.nodes.${nodeId}.depends_on`));
+      }
+    }
+  }
+  return errors;
+}
+
+/** V2_dag — DAG node status transitions must follow allowed map */
+function checkV2_dag(current, proposed) {
+  const errors = [];
+  const curNodes = current.dag?.nodes;
+  const propNodes = proposed.dag?.nodes;
+  if (!curNodes || !propNodes) return errors;
+  for (const nodeId of Object.keys(propNodes)) {
+    if (!(nodeId in curNodes)) continue;
+    const fromStatus = curNodes[nodeId].status;
+    const toStatus = propNodes[nodeId].status;
+    if (fromStatus === toStatus) continue;
+    const allowed = ALLOWED_DAG_NODE_TRANSITIONS[fromStatus];
+    if (!allowed || !allowed.includes(toStatus)) {
+      errors.push(makeError('V2', `node '${nodeId}' transition '${fromStatus}' → '${toStatus}' not allowed`, `dag.nodes.${nodeId}.status`, fromStatus, toStatus));
+    }
+  }
+  return errors;
+}
+
+/** V10_dag — container nodes marked complete must have all children terminal */
+function checkV10_dag(proposed) {
+  const errors = [];
+  const nodes = proposed.dag?.nodes;
+  if (!nodes) return errors;
+  for (const [nodeId, node] of Object.entries(nodes)) {
+    if (node.type !== DAG_NODE_TYPES.FOR_EACH_PHASE && node.type !== DAG_NODE_TYPES.FOR_EACH_TASK) continue;
+    if (node.status !== 'complete') continue;
+    // Find children: nodes whose ID starts with a prefix derived from this container's expansions
+    // Use phase_number/task_number matching or ID prefix
+    const prefix = nodeId + '.';
+    for (const [childId, childNode] of Object.entries(nodes)) {
+      if (!childId.startsWith(prefix)) continue;
+      if (childNode.status !== 'complete' && childNode.status !== 'skipped') {
+        errors.push(makeError('V10', `container '${nodeId}' is complete but child '${childId}' has status '${childNode.status}'`, `dag.nodes.${childId}.status`));
+      }
+    }
+  }
+  return errors;
+}
+
+/** V17 — active/complete nodes must have all dependencies satisfied */
+function checkV17(proposed) {
+  const errors = [];
+  const nodes = proposed.dag?.nodes;
+  if (!nodes) return errors;
+  for (const [nodeId, node] of Object.entries(nodes)) {
+    if (node.status !== 'in_progress' && node.status !== 'complete') continue;
+    for (const depId of node.depends_on) {
+      const dep = nodes[depId];
+      if (dep && (dep.status === 'not_started' || dep.status === 'in_progress')) {
+        errors.push(makeError('V17', `node '${nodeId}' is '${node.status}' but dependency '${depId}' has status '${dep.status}'`, `dag.nodes.${nodeId}.depends_on`));
+      }
+    }
+  }
+  return errors;
+}
+
+/** V18 — at most one node may be in_progress at a time */
+function checkV18(proposed) {
+  const nodes = proposed.dag?.nodes;
+  if (!nodes) return [];
+  const inProgress = Object.keys(nodes).filter(id => nodes[id].status === 'in_progress');
+  if (inProgress.length > 1) {
+    return [makeError('V18', `${inProgress.length} nodes are in_progress (max 1): ${inProgress.join(', ')}`, 'dag.nodes')];
+  }
+  return [];
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
- * Validate a v4 state transition. Runs structural, gate, and transition guards.
+ * Validate a state transition. Runs structural, gate, and transition guards.
+ * Routes V1/V2/V10 to DAG-aware versions for v5 state.
  * Returns empty array if valid.
  *
  * @param {import('./constants.js').StateJson | null} current - state before mutation (null on init)
@@ -421,16 +518,34 @@ function checkV16(proposed) {
  * @returns {ValidationError[]}
  */
 function validateTransition(current, proposed, config) {
-  const errors = [
-    ...checkV1(proposed),
-    ...checkV2(proposed),
+  const v5 = proposed.$schema === SCHEMA_VERSION_V5;
+  const errors = [];
+
+  // Version-branched structural checks
+  if (v5) {
+    errors.push(...checkV1_dag(proposed));
+    errors.push(...checkV10_dag(proposed));
+    errors.push(...checkV17(proposed));
+    errors.push(...checkV18(proposed));
+  } else {
+    errors.push(...checkV1(proposed));
+    errors.push(...checkV2(proposed));
+    errors.push(...checkV10(proposed));
+  }
+
+  // Universal checks (work on nested views present in both v4 and v5)
+  errors.push(
     ...checkV5(proposed, config),
     ...checkV6(proposed),
     ...checkV7(proposed, config),
-    ...checkV10(proposed),
     ...checkV16(proposed),
-  ];
+  );
+
+  // Transition checks (require current state)
   if (current !== null) {
+    if (v5) {
+      errors.push(...checkV2_dag(current, proposed));
+    }
     errors.push(
       ...checkV11(current, proposed),
       ...checkV12(current, proposed),
@@ -439,6 +554,7 @@ function validateTransition(current, proposed, config) {
       ...checkV15(current, proposed),
     );
   }
+
   return errors;
 }
 

@@ -900,3 +900,412 @@ describe('V16 — v5 schema validation', () => {
       `Expected V16 error for invalid DagNode type via $ref, got: ${JSON.stringify(v16)}`);
   });
 });
+
+// ─── V1_dag — depends_on reference integrity ───────────────────────────────
+
+describe('V1_dag — depends_on reference integrity (v5)', () => {
+  it('valid depends_on references produce no V1 errors', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          research: makeDagNode({ id: 'research', depends_on: [] }),
+          prd: makeDagNode({ id: 'prd', depends_on: ['research'] }),
+        },
+        execution_order: ['research', 'prd'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V1'));
+  });
+
+  it('broken depends_on reference produces a V1 error', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          research: makeDagNode({ id: 'research', depends_on: ['nonexistent'] }),
+        },
+        execution_order: ['research'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    const v1 = errors.filter(e => e.invariant === 'V1');
+    assert.ok(v1.length > 0);
+    assert.ok(v1[0].field.includes('research'));
+  });
+
+  it('empty depends_on produces no V1 errors', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          research: makeDagNode({ id: 'research', depends_on: [] }),
+        },
+        execution_order: ['research'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V1'));
+  });
+
+  it('v4 state still uses legacy V1 check (current_phase bounds)', () => {
+    const proposed = makeState({ execution: { current_phase: 5, phases: [makePhase()], status: 'not_started' } });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(errors.some(e => e.invariant === 'V1'));
+  });
+});
+
+// ─── V2_dag — DAG node status transitions ──────────────────────────────────
+
+describe('V2_dag — DAG node status transitions (v5)', () => {
+  it('not_started → in_progress produces no V2 errors', () => {
+    const current = makeV5State({
+      dag: { template_name: 'full', nodes: { research: makeDagNode({ status: 'not_started' }) }, execution_order: ['research'] },
+    });
+    const proposed = makeV5State({
+      project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
+      dag: { template_name: 'full', nodes: { research: makeDagNode({ status: 'in_progress' }) }, execution_order: ['research'] },
+    });
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V2'));
+  });
+
+  it('in_progress → complete produces no V2 errors', () => {
+    const current = makeV5State({
+      dag: { template_name: 'full', nodes: { research: makeDagNode({ status: 'in_progress' }) }, execution_order: ['research'] },
+    });
+    const proposed = makeV5State({
+      project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
+      dag: { template_name: 'full', nodes: { research: makeDagNode({ status: 'complete' }) }, execution_order: ['research'] },
+    });
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V2'));
+  });
+
+  it('complete → in_progress (backward) produces a V2 error', () => {
+    const current = makeV5State({
+      dag: { template_name: 'full', nodes: { research: makeDagNode({ status: 'complete' }) }, execution_order: ['research'] },
+    });
+    const proposed = makeV5State({
+      project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
+      dag: { template_name: 'full', nodes: { research: makeDagNode({ status: 'in_progress' }) }, execution_order: ['research'] },
+    });
+    const errors = validateTransition(current, proposed, defaultConfig);
+    const v2 = errors.filter(e => e.invariant === 'V2');
+    assert.ok(v2.length > 0);
+    assert.equal(v2[0].current, 'complete');
+    assert.equal(v2[0].proposed, 'in_progress');
+  });
+
+  it('failed → in_progress (corrective retry) produces no V2 errors', () => {
+    const current = makeV5State({
+      dag: { template_name: 'full', nodes: { research: makeDagNode({ status: 'failed' }) }, execution_order: ['research'] },
+    });
+    const proposed = makeV5State({
+      project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
+      dag: { template_name: 'full', nodes: { research: makeDagNode({ status: 'in_progress' }) }, execution_order: ['research'] },
+    });
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V2'));
+  });
+
+  it('not_started → skipped produces no V2 errors', () => {
+    const current = makeV5State({
+      dag: { template_name: 'full', nodes: { research: makeDagNode({ status: 'not_started' }) }, execution_order: ['research'] },
+    });
+    const proposed = makeV5State({
+      project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
+      dag: { template_name: 'full', nodes: { research: makeDagNode({ status: 'skipped' }) }, execution_order: ['research'] },
+    });
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V2'));
+  });
+
+  it('V2_dag is skipped when current is null (init path)', () => {
+    const proposed = makeV5State();
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V2'));
+  });
+
+  it('v4 state still uses legacy V2 check (current_task bounds)', () => {
+    const phase = makePhase({ current_task: -1 });
+    const proposed = makeState({ execution: { current_phase: 1, phases: [phase], status: 'not_started' } });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(errors.some(e => e.invariant === 'V2'));
+  });
+});
+
+// ─── V10_dag — container completeness ───────────────────────────────────────
+
+describe('V10_dag — container completeness (v5)', () => {
+  it('container complete with all children complete produces no V10 errors', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          phases: makeDagNode({ id: 'phases', type: 'for_each_phase', status: 'complete', depends_on: [] }),
+          'phases.P01': makeDagNode({ id: 'phases.P01', type: 'step', status: 'complete', depends_on: ['phases'] }),
+          'phases.P02': makeDagNode({ id: 'phases.P02', type: 'step', status: 'complete', depends_on: ['phases'] }),
+        },
+        execution_order: ['phases', 'phases.P01', 'phases.P02'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V10'));
+  });
+
+  it('container complete with a child in_progress produces a V10 error', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          phases: makeDagNode({ id: 'phases', type: 'for_each_phase', status: 'complete', depends_on: [] }),
+          'phases.P01': makeDagNode({ id: 'phases.P01', type: 'step', status: 'in_progress', depends_on: ['phases'] }),
+        },
+        execution_order: ['phases', 'phases.P01'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    const v10 = errors.filter(e => e.invariant === 'V10');
+    assert.ok(v10.length > 0);
+  });
+
+  it('container complete with children all complete or skipped produces no V10 errors', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          phases: makeDagNode({ id: 'phases', type: 'for_each_phase', status: 'complete', depends_on: [] }),
+          'phases.P01': makeDagNode({ id: 'phases.P01', type: 'step', status: 'complete', depends_on: ['phases'] }),
+          'phases.P02': makeDagNode({ id: 'phases.P02', type: 'step', status: 'skipped', depends_on: ['phases'] }),
+        },
+        execution_order: ['phases', 'phases.P01', 'phases.P02'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V10'));
+  });
+
+  it('v4 state still uses legacy V10 check (phase status vs tier)', () => {
+    const phase = makePhase({ status: 'in_progress' });
+    const proposed = makeState({
+      execution: { current_phase: 0, phases: [phase], status: 'not_started' },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(errors.some(e => e.invariant === 'V10'));
+  });
+});
+
+// ─── V17 — dependency satisfaction ──────────────────────────────────────────
+
+describe('V17 — dependency satisfaction (v5)', () => {
+  it('all active nodes have satisfied dependencies — no V17 errors', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          research: makeDagNode({ id: 'research', status: 'complete', depends_on: [] }),
+          prd: makeDagNode({ id: 'prd', status: 'in_progress', depends_on: ['research'] }),
+        },
+        execution_order: ['research', 'prd'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V17'));
+  });
+
+  it('node in_progress with not_started dependency produces V17 error', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          research: makeDagNode({ id: 'research', status: 'not_started', depends_on: [] }),
+          prd: makeDagNode({ id: 'prd', status: 'in_progress', depends_on: ['research'] }),
+        },
+        execution_order: ['research', 'prd'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    const v17 = errors.filter(e => e.invariant === 'V17');
+    assert.ok(v17.length > 0);
+  });
+
+  it('node complete with not_started dependency produces V17 error', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          research: makeDagNode({ id: 'research', status: 'not_started', depends_on: [] }),
+          prd: makeDagNode({ id: 'prd', status: 'complete', depends_on: ['research'] }),
+        },
+        execution_order: ['research', 'prd'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    const v17 = errors.filter(e => e.invariant === 'V17');
+    assert.ok(v17.length > 0);
+  });
+
+  it('node in_progress with dependency complete produces no V17 errors', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          research: makeDagNode({ id: 'research', status: 'complete', depends_on: [] }),
+          prd: makeDagNode({ id: 'prd', status: 'in_progress', depends_on: ['research'] }),
+        },
+        execution_order: ['research', 'prd'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V17'));
+  });
+
+  it('node in_progress with dependency skipped produces no V17 errors', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          research: makeDagNode({ id: 'research', status: 'skipped', depends_on: [] }),
+          prd: makeDagNode({ id: 'prd', status: 'in_progress', depends_on: ['research'] }),
+        },
+        execution_order: ['research', 'prd'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V17'));
+  });
+
+  it('node in_progress with dependency failed produces no V17 errors (corrective flow)', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          review: makeDagNode({ id: 'review', status: 'failed', depends_on: [] }),
+          retry: makeDagNode({ id: 'retry', status: 'in_progress', depends_on: ['review'] }),
+        },
+        execution_order: ['review', 'retry'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V17'));
+  });
+
+  it('node in_progress with dependency in_progress produces V17 error', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          research: makeDagNode({ id: 'research', status: 'in_progress', depends_on: [] }),
+          prd: makeDagNode({ id: 'prd', status: 'in_progress', depends_on: ['research'] }),
+        },
+        execution_order: ['research', 'prd'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    const v17 = errors.filter(e => e.invariant === 'V17');
+    assert.ok(v17.length > 0);
+  });
+
+  it('V17 is not checked for v4 state', () => {
+    const proposed = makeState();
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V17'));
+  });
+});
+
+// ─── V18 — single in_progress constraint ───────────────────────────────────
+
+describe('V18 — single in_progress constraint (v5)', () => {
+  it('exactly one in_progress node produces no V18 errors', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          research: makeDagNode({ id: 'research', status: 'in_progress', depends_on: [] }),
+          prd: makeDagNode({ id: 'prd', status: 'not_started', depends_on: ['research'] }),
+        },
+        execution_order: ['research', 'prd'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V18'));
+  });
+
+  it('zero in_progress nodes produces no V18 errors', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          research: makeDagNode({ id: 'research', status: 'not_started', depends_on: [] }),
+        },
+        execution_order: ['research'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V18'));
+  });
+
+  it('two in_progress nodes produces a V18 error', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          research: makeDagNode({ id: 'research', status: 'in_progress', depends_on: [] }),
+          prd: makeDagNode({ id: 'prd', status: 'in_progress', depends_on: [] }),
+        },
+        execution_order: ['research', 'prd'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    const v18 = errors.filter(e => e.invariant === 'V18');
+    assert.ok(v18.length > 0);
+  });
+
+  it('V18 is not checked for v4 state', () => {
+    const proposed = makeState();
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V18'));
+  });
+});
+
+// ─── Adaptation verification — v5 nested views ─────────────────────────────
+
+describe('Adaptation verification — v5 state with nested views', () => {
+  it('v5 state passes V5 check (phases and tasks within config limits via nested view)', () => {
+    const proposed = makeV5State();
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V5'));
+  });
+
+  it('v5 state passes V6 check (planning gate via nested view)', () => {
+    const proposed = makeV5State();
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V6'));
+  });
+
+  it('v5 state passes V7 check (final review gate via nested view)', () => {
+    const proposed = makeV5State();
+    const errors = validateTransition(null, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V7'));
+  });
+
+  it('v5 state transitions pass V11–V15 checks via nested views', () => {
+    const current = makeV5State();
+    const proposed = makeV5State({
+      project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
+    });
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => ['V11', 'V12', 'V13', 'V14', 'V15'].includes(e.invariant)));
+  });
+
+  it('well-formed v5 state with valid transition produces zero total errors', () => {
+    const current = makeV5State();
+    const proposed = makeV5State({
+      project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
+    });
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.deepEqual(errors, [], `Expected zero errors, got: ${JSON.stringify(errors)}`);
+  });
+});
