@@ -826,8 +826,8 @@ describe('resolver — v5 DAG delegation', () => {
       pipeline: { current_tier: 'execution', gate_mode: 'autonomous' },
     });
     const result = resolveNextAction(state, makeConfig());
-    // Gate should have been skipped (marked complete in-memory)
-    assert.equal(nodes['gate-exec'].status, DAG_NODE_STATUSES.COMPLETE);
+    // Gate should have been skipped but original nodes are NOT mutated
+    assert.equal(nodes['gate-exec'].status, DAG_NODE_STATUSES.NOT_STARTED);
     assert.equal(result.action, NEXT_ACTIONS.CREATE_TASK_HANDOFF);
   });
 
@@ -856,9 +856,9 @@ describe('resolver — v5 DAG delegation', () => {
     });
     const result = resolveNextAction(state, makeConfig());
     assert.equal(result.action, 'display_halted');
-    // Both gates should have been marked complete in-memory
-    assert.equal(nodes['gate-1'].status, DAG_NODE_STATUSES.COMPLETE);
-    assert.equal(nodes['gate-2'].status, DAG_NODE_STATUSES.COMPLETE);
+    // Original nodes are NOT mutated — resolveV5 operates on a copy
+    assert.equal(nodes['gate-1'].status, DAG_NODE_STATUSES.NOT_STARTED);
+    assert.equal(nodes['gate-2'].status, DAG_NODE_STATUSES.NOT_STARTED);
   });
 
   it('module exports only resolveNextAction', () => {

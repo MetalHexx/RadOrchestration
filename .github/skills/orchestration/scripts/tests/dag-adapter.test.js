@@ -585,7 +585,7 @@ describe('deriveTier()', () => {
     const nodes = {
       research: makeDagNode({ id: 'research', planning_step: 'research', status: 'not_started' }),
     };
-    const result = deriveTier(nodes, ['research']);
+    const result = deriveTier(nodes);
     assert.equal(result, PIPELINE_TIERS.PLANNING);
   });
 
@@ -593,7 +593,7 @@ describe('deriveTier()', () => {
     const nodes = {
       research: makeDagNode({ id: 'research', planning_step: 'research', status: 'in_progress' }),
     };
-    const result = deriveTier(nodes, ['research']);
+    const result = deriveTier(nodes);
     assert.equal(result, PIPELINE_TIERS.PLANNING);
   });
 
@@ -603,7 +603,7 @@ describe('deriveTier()', () => {
       prd: makeDagNode({ id: 'prd', planning_step: 'prd', status: 'complete' }),
       planning_gate: makeDagNode({ id: 'planning_gate', gate_type: 'planning', status: 'not_started' }),
     };
-    const result = deriveTier(nodes, ['research', 'prd', 'planning_gate']);
+    const result = deriveTier(nodes);
     assert.equal(result, PIPELINE_TIERS.PLANNING);
   });
 
@@ -612,7 +612,7 @@ describe('deriveTier()', () => {
       planning_gate: makeDagNode({ id: 'planning_gate', gate_type: 'planning', status: 'complete' }),
       phase_node: makeDagNode({ id: 'phase_node', phase_number: 1, status: 'in_progress' }),
     };
-    const result = deriveTier(nodes, ['planning_gate', 'phase_node']);
+    const result = deriveTier(nodes);
     assert.equal(result, PIPELINE_TIERS.EXECUTION);
   });
 
@@ -621,7 +621,7 @@ describe('deriveTier()', () => {
       planning_gate: makeDagNode({ id: 'planning_gate', gate_type: 'planning', status: 'complete' }),
       phase_node: makeDagNode({ id: 'phase_node', phase_number: 1, status: 'not_started' }),
     };
-    const result = deriveTier(nodes, ['planning_gate', 'phase_node']);
+    const result = deriveTier(nodes);
     assert.equal(result, PIPELINE_TIERS.EXECUTION);
   });
 
@@ -632,7 +632,7 @@ describe('deriveTier()', () => {
       final_review: makeDagNode({ id: 'final_review', template_node_id: 'create_final_review', status: 'in_progress' }),
       final_gate: makeDagNode({ id: 'final_gate', gate_type: 'final', status: 'not_started' }),
     };
-    const result = deriveTier(nodes, ['planning_gate', 'phase_node', 'final_review', 'final_gate']);
+    const result = deriveTier(nodes);
     assert.equal(result, PIPELINE_TIERS.REVIEW);
   });
 
@@ -643,7 +643,7 @@ describe('deriveTier()', () => {
       final_review: makeDagNode({ id: 'final_review', template_node_id: 'create_final_review', status: 'complete' }),
       final_gate: makeDagNode({ id: 'final_gate', gate_type: 'final', status: 'not_started' }),
     };
-    const result = deriveTier(nodes, ['planning_gate', 'phase_node', 'final_review', 'final_gate']);
+    const result = deriveTier(nodes);
     assert.equal(result, PIPELINE_TIERS.REVIEW);
   });
 
@@ -655,7 +655,7 @@ describe('deriveTier()', () => {
       final_review: makeDagNode({ id: 'final_review', template_node_id: 'create_final_review', status: 'complete' }),
       final_gate: makeDagNode({ id: 'final_gate', gate_type: 'final', status: 'complete' }),
     };
-    const result = deriveTier(nodes, Object.keys(nodes));
+    const result = deriveTier(nodes);
     assert.equal(result, PIPELINE_TIERS.COMPLETE);
   });
 
@@ -664,7 +664,7 @@ describe('deriveTier()', () => {
       a: makeDagNode({ id: 'a', status: 'skipped' }),
       b: makeDagNode({ id: 'b', status: 'skipped' }),
     };
-    const result = deriveTier(nodes, ['a', 'b']);
+    const result = deriveTier(nodes);
     assert.equal(result, PIPELINE_TIERS.COMPLETE);
   });
 
@@ -673,7 +673,7 @@ describe('deriveTier()', () => {
       research: makeDagNode({ id: 'research', planning_step: 'research', status: 'complete' }),
       phase_node: makeDagNode({ id: 'phase_node', phase_number: 1, status: 'halted' }),
     };
-    const result = deriveTier(nodes, ['research', 'phase_node']);
+    const result = deriveTier(nodes);
     assert.equal(result, PIPELINE_TIERS.HALTED);
   });
 
@@ -682,7 +682,7 @@ describe('deriveTier()', () => {
       research: makeDagNode({ id: 'research', planning_step: 'research', status: 'complete' }),
       phase_node: makeDagNode({ id: 'phase_node', phase_number: 1, status: 'failed' }),
     };
-    const result = deriveTier(nodes, ['research', 'phase_node']);
+    const result = deriveTier(nodes);
     assert.equal(result, PIPELINE_TIERS.HALTED);
   });
 });

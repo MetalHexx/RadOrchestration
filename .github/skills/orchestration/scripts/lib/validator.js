@@ -414,7 +414,7 @@ function checkV16(proposed) {
 // ─── DAG-Aware Structural Checks (v5 only) ─────────────────────────────────
 
 const ALLOWED_DAG_NODE_TRANSITIONS = {
-  'not_started': ['in_progress', 'skipped', 'complete'],
+  'not_started': ['in_progress', 'skipped', 'complete'], // 'complete' for autonomous gate auto-approval (resolver.js resolveV5)
   'in_progress': ['complete', 'failed', 'halted'],
   'failed':      ['in_progress'],   // corrective retry
   'complete':    [],                 // terminal

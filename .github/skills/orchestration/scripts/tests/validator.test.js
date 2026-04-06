@@ -1022,6 +1022,18 @@ describe('V2_dag — DAG node status transitions (v5)', () => {
     assert.ok(!errors.some(e => e.invariant === 'V2'));
   });
 
+  it('not_started → complete produces no V2 errors (autonomous gate skip)', () => {
+    const current = makeV5State({
+      dag: { template_name: 'full', nodes: { gate: makeDagNode({ status: 'not_started' }) }, execution_order: ['gate'] },
+    });
+    const proposed = makeV5State({
+      project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
+      dag: { template_name: 'full', nodes: { gate: makeDagNode({ status: 'complete' }) }, execution_order: ['gate'] },
+    });
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => e.invariant === 'V2'));
+  });
+
   it('V2_dag is skipped when current is null (init path)', () => {
     const proposed = makeV5State();
     const errors = validateTransition(null, proposed, defaultConfig);
@@ -1213,6 +1225,22 @@ describe('V17 — dependency satisfaction (v5)', () => {
     const errors = validateTransition(null, proposed, defaultConfig);
     assert.ok(!errors.some(e => e.invariant === 'V17'));
   });
+
+  it('node complete with halted dependency produces no V17 error (halted is terminal)', () => {
+    const proposed = makeV5State({
+      dag: {
+        template_name: 'full',
+        nodes: {
+          dep: makeDagNode({ id: 'dep', status: 'halted', depends_on: [] }),
+          downstream: makeDagNode({ id: 'downstream', status: 'complete', depends_on: ['dep'] }),
+        },
+        execution_order: ['dep', 'downstream'],
+      },
+    });
+    const errors = validateTransition(null, proposed, defaultConfig);
+    // halted is terminal — treated as satisfied for dependency purposes
+    assert.ok(!errors.some(e => e.invariant === 'V17'));
+  });
 });
 
 // ─── V18 — single in_progress constraint ───────────────────────────────────
@@ -1307,5 +1335,25 @@ describe('Adaptation verification — v5 state with nested views', () => {
     });
     const errors = validateTransition(current, proposed, defaultConfig);
     assert.deepEqual(errors, [], `Expected zero errors, got: ${JSON.stringify(errors)}`);
+  });
+
+  it('v5 state with populated execution phases passes V11–V15', () => {
+    const phaseDag = {
+      'P01.plan': makeDagNode({ id: 'P01.plan', status: 'complete', phase_number: 1, action: 'spawn_phase_planner' }),
+      'P01.T01.handoff': makeDagNode({ id: 'P01.T01.handoff', status: 'complete', phase_number: 1, task_number: 1, depends_on: ['P01.plan'] }),
+      'P01.T01.code': makeDagNode({ id: 'P01.T01.code', status: 'in_progress', phase_number: 1, task_number: 1, depends_on: ['P01.T01.handoff'] }),
+    };
+    const baseDag = makeV5State().dag;
+    const mergedNodes = { ...baseDag.nodes, ...phaseDag };
+    const current = makeV5State({
+      dag: { ...baseDag, nodes: mergedNodes, execution_order: [...baseDag.execution_order, 'P01.plan', 'P01.T01.handoff', 'P01.T01.code'] },
+    });
+    const proposed = makeV5State({
+      project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:02.000Z' },
+      dag: { ...baseDag, nodes: { ...mergedNodes, 'P01.T01.code': { ...mergedNodes['P01.T01.code'], status: 'complete' } }, execution_order: [...baseDag.execution_order, 'P01.plan', 'P01.T01.handoff', 'P01.T01.code'] },
+    });
+    const errors = validateTransition(current, proposed, defaultConfig);
+    assert.ok(!errors.some(e => ['V11', 'V12', 'V13', 'V14', 'V15'].includes(e.invariant)),
+      `Expected no V11–V15 errors, got: ${JSON.stringify(errors.filter(e => ['V11','V12','V13','V14','V15'].includes(e.invariant)))}`);
   });
 });

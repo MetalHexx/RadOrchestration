@@ -415,6 +415,9 @@ describe('injectCorrectiveTask()', () => {
     assert.ok(nodes['P01.T01.create_task_handoff_r1']);
     assert.ok(nodes['P01.T01.execute_coding_task_r1']);
     assert.ok(nodes['P01.T01.code_review_r1']);
+    assert.equal(nodes['P01.T01.create_task_handoff_r1'].template_node_id, 'create_task_handoff');
+    assert.equal(nodes['P01.T01.execute_coding_task_r1'].template_node_id, 'execute_coding_task');
+    assert.equal(nodes['P01.T01.code_review_r1'].template_node_id, 'code_review');
   });
 
   it('new handoff node depends on failedReviewNodeId', () => {

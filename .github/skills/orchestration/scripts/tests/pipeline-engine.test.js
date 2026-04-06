@@ -704,8 +704,8 @@ describe('scaffoldInitialState v5', () => {
     const fullCfg = { ...config, pipeline: { template: 'full' } };
     const { state: fullState } = scaffoldInitialState(fullCfg, dir, orchRoot);
     assert.ok(
-      Object.keys(state.dag.nodes).length !== Object.keys(fullState.dag.nodes).length,
-      'quick and full should have different node counts'
+      Object.keys(state.dag.nodes).length < Object.keys(fullState.dag.nodes).length,
+      'quick should have fewer nodes than full'
     );
   });
 

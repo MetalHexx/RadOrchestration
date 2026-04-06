@@ -454,7 +454,7 @@ describe('writeState v5 (dag-adapter integration)', () => {
     const state = makeV5State();
     writeState(tmpDir, state);
     const written = JSON.parse(fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8'));
-    const expectedTier = deriveTier(state.dag.nodes, state.dag.execution_order);
+    const expectedTier = deriveTier(state.dag.nodes);
     assert.equal(written.pipeline.current_tier, expectedTier);
     assert.equal(written.pipeline.current_tier, 'planning');
   });

@@ -269,10 +269,9 @@ function _deriveCurrentPhase(phases, sortedPhaseNumbers) {
  * Inspect DAG node statuses to determine the active pipeline tier.
  *
  * @param {Object.<string, DagNode>} nodes
- * @param {string[]} executionOrder
  * @returns {'planning' | 'execution' | 'review' | 'complete' | 'halted'}
  */
-function deriveTier(nodes, executionOrder) {
+function deriveTier(nodes) {
   const allNodes = Object.values(nodes);
 
   // All complete/skipped → complete
@@ -325,10 +324,9 @@ function deriveTier(nodes, executionOrder) {
  * nested view consumed by the dashboard.
  *
  * @param {DagState} dagState - state.dag from the v5 state object
- * @param {Object} [pipeline] - state.pipeline (optional, reserved for future use)
  * @returns {{ planning: Object, execution: Object, final_review: Object }}
  */
-function computeNestedView(dagState, pipeline) {
+function computeNestedView(dagState) {
   const nodes = dagState.nodes;
   const steps = mapPlanningSteps(nodes);
   const execution = mapExecution(nodes);

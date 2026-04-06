@@ -55,7 +55,7 @@ function writeState(projectDir, state) {
     state.planning = nested.planning;
     state.execution = nested.execution;
     state.final_review = nested.final_review;
-    state.pipeline.current_tier = deriveTier(state.dag.nodes, state.dag.execution_order);
+    state.pipeline.current_tier = deriveTier(state.dag.nodes);
   }
   const statePath = path.join(projectDir, 'state.json');
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2) + '\n', 'utf-8');

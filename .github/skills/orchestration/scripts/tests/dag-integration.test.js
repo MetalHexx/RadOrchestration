@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 
 const { processEvent } = require('../lib/pipeline-engine');
 const { resolveNextAction } = require('../lib/resolver');
+const { computeNestedView } = require('../lib/dag-adapter');
 const {
   createMockIO,
   createBaseState,
@@ -520,8 +521,8 @@ describe('Category 5: autonomous gate auto-advance', () => {
     const result = resolveNextAction(state, config);
     // Execution gate is transparently skipped (auto-advanced)
     assert.equal(result.action, 'create_phase_plan');
-    // Gate node was marked complete by the null-guard loop
-    assert.equal(state.dag.nodes.exec_gate.status, 'complete');
+    // Original nodes are NOT mutated — resolveV5 operates on a copy
+    assert.equal(state.dag.nodes.exec_gate.status, 'not_started');
   });
 
   it('multiple consecutive execution gates are all auto-advanced', () => {
@@ -559,8 +560,9 @@ describe('Category 5: autonomous gate auto-advance', () => {
     const config = createDefaultConfig();
     const result = resolveNextAction(state, config);
     assert.equal(result.action, 'execute_task');
-    assert.equal(state.dag.nodes.gate_1.status, 'complete');
-    assert.equal(state.dag.nodes.gate_2.status, 'complete');
+    // Original nodes are NOT mutated — resolveV5 operates on a copy
+    assert.equal(state.dag.nodes.gate_1.status, 'not_started');
+    assert.equal(state.dag.nodes.gate_2.status, 'not_started');
   });
 });
 
@@ -699,5 +701,35 @@ describe('Category 7: v4 regression smoke test', () => {
     const s = io.getState();
     assert.equal(s.dag, undefined);
     assert.equal(s.execution.phases.length, 1);
+  });
+});
+
+// ─── Category 8: Adapter Parity ─────────────────────────────────────────────
+
+describe('Category 8: adapter parity — mutation-applied state matches computeNestedView', () => {
+  it('nested state matches computeNestedView output after task execution', () => {
+    const documents = {
+      'mp.md': makeDoc({ total_phases: 1 }),
+      'pp.md': makeDoc({ tasks: ['T01'], title: 'Phase 1' }),
+      'cr.md': makeDoc({ verdict: 'approved' }),
+      'prv.md': makeDoc({ verdict: 'approved', exit_criteria_met: true }),
+      'pr.md': makeDoc({}),
+      'th.md': makeDoc({}),
+    };
+    const io = driveToTaskReady(1, ['T01']);
+    // Drive task through handoff and coding
+    for (const [event, ctx] of [
+      ['task_handoff_started', {}],
+      ['task_handoff_created', { doc_path: 'th.md' }],
+      ['task_completed', {}],
+    ]) {
+      const r = processEvent(event, PROJECT_DIR, ctx, io);
+      if (!r.success) throw new Error(`Setup failed at ${event}: ${JSON.stringify(r.context)}`);
+    }
+    const s = io.getState();
+    const nested = computeNestedView(s.dag);
+    assert.deepEqual(s.planning.status, nested.planning.status, 'adapter parity: planning.status');
+    assert.deepEqual(s.execution.status, nested.execution.status, 'adapter parity: execution.status');
+    assert.deepEqual(s.execution.current_phase, nested.execution.current_phase, 'adapter parity: current_phase');
   });
 });
