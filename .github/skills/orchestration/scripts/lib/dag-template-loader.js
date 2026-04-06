@@ -220,9 +220,16 @@ function validateNodeByType(node, prefix, errors, parentId) {
       if (!Array.isArray(node.branches) || node.branches.length === 0) {
         errors.push(`${prefix}: parallel node missing required field "branches"`);
       } else {
-        const branchIds = new Set();
-        validateNodeList(node.branches, branchIds, errors, node.id);
-        validateDependencyRefs(node.branches, branchIds, errors, node.id);
+        for (let bi = 0; bi < node.branches.length; bi++) {
+          const branch = node.branches[bi];
+          if (!Array.isArray(branch) || branch.length === 0) {
+            errors.push(`${prefix}: branch at index ${bi} must be a non-empty array of nodes`);
+            continue;
+          }
+          const branchIds = new Set();
+          validateNodeList(branch, branchIds, errors, node.id);
+          validateDependencyRefs(branch, branchIds, errors, node.id);
+        }
       }
       break;
   }
@@ -333,8 +340,18 @@ function validateNodeShapes(nodes, templateName) {
       if (bodyError) return bodyError;
     }
     if (Array.isArray(node.branches)) {
-      const branchError = validateNodeShapes(node.branches, templateName);
-      if (branchError) return branchError;
+      // Parallel nodes: branches is array-of-arrays
+      if (node.type === 'parallel') {
+        for (const branch of node.branches) {
+          if (Array.isArray(branch)) {
+            const branchError = validateNodeShapes(branch, templateName);
+            if (branchError) return branchError;
+          }
+        }
+      } else {
+        const branchError = validateNodeShapes(node.branches, templateName);
+        if (branchError) return branchError;
+      }
     }
   }
   return null;
@@ -350,7 +367,11 @@ function collectAllNodeIds(nodes, ids = new Set()) {
   for (const node of nodes) {
     if (node.id) ids.add(node.id);
     if (Array.isArray(node.body)) collectAllNodeIds(node.body, ids);
-    if (Array.isArray(node.branches)) collectAllNodeIds(node.branches, ids);
+    if (Array.isArray(node.branches)) {
+      for (const branch of node.branches) {
+        if (Array.isArray(branch)) collectAllNodeIds(branch, ids);
+      }
+    }
   }
   return ids;
 }

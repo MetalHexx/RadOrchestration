@@ -4,7 +4,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
-const { expandTemplate, computeExecutionOrder, expandPhases, expandTasks, injectCorrectiveTask } = require('../lib/dag-expander.js');
+const { expandTemplate, computeExecutionOrder, expandPhases, expandTasks, injectCorrectiveTask, expandConditional, expandParallel } = require('../lib/dag-expander.js');
 const { loadTemplate } = require('../lib/dag-template-loader.js');
 const { makeExpandedDag } = require('./helpers/test-helpers.js');
 
@@ -508,5 +508,150 @@ describe('End-to-end expansion', () => {
         );
       }
     }
+  });
+});
+
+// ─── expandConditional() ────────────────────────────────────────────────────
+
+describe('expandConditional()', () => {
+  function createConditionalGraph() {
+    return {
+      start: {
+        id: 'start', type: 'step', status: 'complete',
+        depends_on: [], template_node_id: 'start',
+        action: 'spawn_research', events: { completed: 'rc' },
+      },
+      cond: {
+        id: 'cond', type: 'conditional', status: 'not_started',
+        depends_on: ['start'], template_node_id: 'cond',
+        condition: 'config.code_review_enabled',
+        body: [
+          { id: 'review', type: 'step', action: 'spawn_code_reviewer', events: { completed: 'review_done' } },
+          { id: 'commit', type: 'step', depends_on: ['review'], action: 'invoke_source_control_commit', events: { completed: 'commit_done' } },
+        ],
+      },
+      finish: {
+        id: 'finish', type: 'step', status: 'not_started',
+        depends_on: ['cond'], template_node_id: 'finish',
+        action: 'display_complete', events: { completed: 'fc' },
+      },
+    };
+  }
+
+  it('creates body nodes with scoped IDs', () => {
+    const nodes = createConditionalGraph();
+    const newIds = expandConditional(nodes, 'cond');
+    assert.deepEqual(newIds, ['cond.review', 'cond.commit']);
+    assert.ok(nodes['cond.review']);
+    assert.ok(nodes['cond.commit']);
+  });
+
+  it('wires entry nodes to container depends_on', () => {
+    const nodes = createConditionalGraph();
+    expandConditional(nodes, 'cond');
+    assert.deepEqual(nodes['cond.review'].depends_on, ['start']);
+  });
+
+  it('wires intra-body dependencies with scoped prefix', () => {
+    const nodes = createConditionalGraph();
+    expandConditional(nodes, 'cond');
+    assert.deepEqual(nodes['cond.commit'].depends_on, ['cond.review']);
+  });
+
+  it('rewires downstream nodes to body exit', () => {
+    const nodes = createConditionalGraph();
+    expandConditional(nodes, 'cond');
+    assert.deepEqual(nodes['finish'].depends_on, ['cond.commit']);
+  });
+
+  it('deletes the container node', () => {
+    const nodes = createConditionalGraph();
+    expandConditional(nodes, 'cond');
+    assert.equal(nodes['cond'], undefined);
+  });
+
+  it('produces valid topological order (no cycles)', () => {
+    const nodes = createConditionalGraph();
+    expandConditional(nodes, 'cond');
+    const order = computeExecutionOrder(nodes);
+    assert.ok(order.length > 0);
+  });
+});
+
+// ─── expandParallel() ───────────────────────────────────────────────────────
+
+describe('expandParallel()', () => {
+  function createParallelGraph() {
+    return {
+      start: {
+        id: 'start', type: 'step', status: 'complete',
+        depends_on: [], template_node_id: 'start',
+        action: 'spawn_research', events: { completed: 'rc' },
+      },
+      par: {
+        id: 'par', type: 'parallel', status: 'not_started',
+        depends_on: ['start'], template_node_id: 'par',
+        branches: [
+          [
+            { id: 'a1', type: 'step', action: 'spawn_research', events: { completed: 'a1d' } },
+            { id: 'a2', type: 'step', depends_on: ['a1'], action: 'spawn_prd', events: { completed: 'a2d' } },
+          ],
+          [
+            { id: 'b1', type: 'step', action: 'spawn_design', events: { completed: 'b1d' } },
+          ],
+        ],
+      },
+      finish: {
+        id: 'finish', type: 'step', status: 'not_started',
+        depends_on: ['par'], template_node_id: 'finish',
+        action: 'display_complete', events: { completed: 'fc' },
+      },
+    };
+  }
+
+  it('creates branch nodes with scoped IDs', () => {
+    const nodes = createParallelGraph();
+    const newIds = expandParallel(nodes, 'par');
+    assert.deepEqual(newIds, ['par.B01.a1', 'par.B01.a2', 'par.B02.b1']);
+    assert.ok(nodes['par.B01.a1']);
+    assert.ok(nodes['par.B01.a2']);
+    assert.ok(nodes['par.B02.b1']);
+  });
+
+  it('wires first branch entry to container depends_on', () => {
+    const nodes = createParallelGraph();
+    expandParallel(nodes, 'par');
+    assert.deepEqual(nodes['par.B01.a1'].depends_on, ['start']);
+  });
+
+  it('wires branches sequentially — branch 2 entry depends on branch 1 exit', () => {
+    const nodes = createParallelGraph();
+    expandParallel(nodes, 'par');
+    assert.deepEqual(nodes['par.B02.b1'].depends_on, ['par.B01.a2']);
+  });
+
+  it('wires intra-branch dependencies with branch-scoped prefix', () => {
+    const nodes = createParallelGraph();
+    expandParallel(nodes, 'par');
+    assert.deepEqual(nodes['par.B01.a2'].depends_on, ['par.B01.a1']);
+  });
+
+  it('rewires downstream nodes to last branch exit', () => {
+    const nodes = createParallelGraph();
+    expandParallel(nodes, 'par');
+    assert.deepEqual(nodes['finish'].depends_on, ['par.B02.b1']);
+  });
+
+  it('deletes the container node', () => {
+    const nodes = createParallelGraph();
+    expandParallel(nodes, 'par');
+    assert.equal(nodes['par'], undefined);
+  });
+
+  it('produces valid topological order (no cycles)', () => {
+    const nodes = createParallelGraph();
+    expandParallel(nodes, 'par');
+    const order = computeExecutionOrder(nodes);
+    assert.ok(order.length > 0);
   });
 });

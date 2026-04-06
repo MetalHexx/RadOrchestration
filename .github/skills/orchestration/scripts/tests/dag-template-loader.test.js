@@ -351,3 +351,63 @@ describe('applyOverrides()', () => {
     assert.ok(result.errors.length > 0);
   });
 });
+
+// ─── validateTemplate() — parallel branches format ──────────────────────────
+
+describe('validateTemplate() — parallel branches validation', () => {
+  it('accepts parallel node with valid array-of-arrays branches', () => {
+    const template = {
+      name: 'test-parallel',
+      nodes: [
+        { id: 'start', type: 'step', action: 'spawn_research', events: { completed: 'done' } },
+        {
+          id: 'par', type: 'parallel', depends_on: ['start'],
+          branches: [
+            [
+              { id: 'a1', type: 'step', action: 'spawn_research', events: { completed: 'a1d' } },
+            ],
+            [
+              { id: 'b1', type: 'step', action: 'spawn_prd', events: { completed: 'b1d' } },
+            ],
+          ],
+        },
+      ],
+    };
+    const errors = validateTemplate(template);
+    assert.deepEqual(errors, []);
+  });
+
+  it('rejects parallel node with empty branches array', () => {
+    const template = {
+      name: 'test-parallel-empty',
+      nodes: [
+        { id: 'start', type: 'step', action: 'spawn_research', events: { completed: 'done' } },
+        {
+          id: 'par', type: 'parallel', depends_on: ['start'],
+          branches: [],
+        },
+      ],
+    };
+    const errors = validateTemplate(template);
+    assert.ok(errors.length > 0);
+    assert.ok(errors.some(e => e.includes('branches')));
+  });
+
+  it('rejects parallel node with non-array branch entry', () => {
+    const template = {
+      name: 'test-parallel-bad-branch',
+      nodes: [
+        { id: 'start', type: 'step', action: 'spawn_research', events: { completed: 'done' } },
+        {
+          id: 'par', type: 'parallel', depends_on: ['start'],
+          branches: [
+            'not-an-array',
+          ],
+        },
+      ],
+    };
+    const errors = validateTemplate(template);
+    assert.ok(errors.length > 0);
+    assert.ok(errors.some(e => e.includes('branch at index 0')));
+  });
+});

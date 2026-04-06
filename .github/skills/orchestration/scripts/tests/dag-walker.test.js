@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { findNextReadyNode, mapNodeToAction, resolveNextAction } = require('../lib/dag-walker.js');
+const { findNextReadyNode, mapNodeToAction, resolveNextAction, evaluateCondition } = require('../lib/dag-walker.js');
 const { makeDagNode, makeDagState } = require('./helpers/test-helpers.js');
 const {
   DAG_NODE_STATUSES,
@@ -447,5 +447,205 @@ describe('resolveNextAction()', () => {
     const state = makeStateWithDag(nodes, ['solo']);
     const result = resolveNextAction(state, DEFAULT_CONFIG);
     assert.equal(result.action, 'spawn_prd');
+  });
+});
+
+// ─── evaluateCondition() ────────────────────────────────────────────────────
+
+describe('evaluateCondition()', () => {
+  it('resolves a dot-path to the value at state.config.code_review_enabled', () => {
+    const state = { config: { code_review_enabled: true } };
+    assert.equal(evaluateCondition('config.code_review_enabled', state), true);
+  });
+
+  it('returns undefined for a non-existent path', () => {
+    const state = { config: {} };
+    assert.equal(evaluateCondition('config.flags.missing', state), undefined);
+  });
+
+  it('handles null intermediate path segments without throwing', () => {
+    const state = { config: null };
+    assert.equal(evaluateCondition('config.flags.value', state), undefined);
+  });
+
+  it('handles undefined intermediate path segments without throwing', () => {
+    const state = {};
+    assert.equal(evaluateCondition('config.flags.value', state), undefined);
+  });
+
+  it('returns falsy value (false) correctly', () => {
+    const state = { config: { enabled: false } };
+    assert.equal(evaluateCondition('config.enabled', state), false);
+  });
+
+  it('returns numeric value', () => {
+    const state = { config: { count: 42 } };
+    assert.equal(evaluateCondition('config.count', state), 42);
+  });
+
+  it('returns undefined for null or undefined conditionPath', () => {
+    const state = { config: { flag: true } };
+    assert.strictEqual(evaluateCondition(null, state), undefined);
+    assert.strictEqual(evaluateCondition(undefined, state), undefined);
+  });
+});
+
+// ─── resolveNextAction() — conditional nodes ────────────────────────────────
+
+describe('resolveNextAction() — conditional nodes', () => {
+  it('expands body nodes when condition is truthy and returns first body step action', () => {
+    const nodes = {
+      start: makeDagNode({ id: 'start', status: 'complete', depends_on: [], action: 'spawn_research' }),
+      cond: makeDagNode({
+        id: 'cond',
+        type: 'conditional',
+        status: 'not_started',
+        depends_on: ['start'],
+        condition: 'config.code_review_enabled',
+        body: [
+          { id: 'review', type: 'step', action: 'spawn_code_reviewer', events: { completed: 'review_done' } },
+        ],
+      }),
+      finish: makeDagNode({ id: 'finish', status: 'not_started', depends_on: ['cond'], action: 'display_complete' }),
+    };
+    const state = makeStateWithDag(nodes, ['start', 'cond', 'finish']);
+    state.config = { code_review_enabled: true };
+    const result = resolveNextAction(state, DEFAULT_CONFIG);
+    assert.equal(result.action, 'spawn_code_reviewer');
+    // Body node should exist with scoped ID
+    assert.ok(state.dag.nodes['cond.review'], 'body node should be expanded with scoped ID');
+    // Container should be removed
+    assert.equal(state.dag.nodes['cond'], undefined, 'conditional container should be deleted');
+  });
+
+  it('marks conditional as skipped when condition is falsy and proceeds to next node', () => {
+    const nodes = {
+      start: makeDagNode({ id: 'start', status: 'complete', depends_on: [], action: 'spawn_research' }),
+      cond: makeDagNode({
+        id: 'cond',
+        type: 'conditional',
+        status: 'not_started',
+        depends_on: ['start'],
+        condition: 'config.code_review_enabled',
+        body: [
+          { id: 'review', type: 'step', action: 'spawn_code_reviewer', events: { completed: 'review_done' } },
+        ],
+      }),
+      finish: makeDagNode({ id: 'finish', status: 'not_started', depends_on: ['cond'], action: 'spawn_prd' }),
+    };
+    const state = makeStateWithDag(nodes, ['start', 'cond', 'finish']);
+    state.config = { code_review_enabled: false };
+    const result = resolveNextAction(state, DEFAULT_CONFIG);
+    assert.equal(result.action, 'spawn_prd');
+    assert.equal(state.dag.nodes['cond'].status, 'skipped');
+  });
+
+  it('body nodes get scoped IDs and correct depends_on wiring', () => {
+    const nodes = {
+      start: makeDagNode({ id: 'start', status: 'complete', depends_on: [] }),
+      cond: makeDagNode({
+        id: 'cond',
+        type: 'conditional',
+        status: 'not_started',
+        depends_on: ['start'],
+        condition: 'config.enabled',
+        body: [
+          { id: 'step_a', type: 'step', action: 'spawn_research', events: { completed: 'a_done' } },
+          { id: 'step_b', type: 'step', depends_on: ['step_a'], action: 'spawn_prd', events: { completed: 'b_done' } },
+        ],
+      }),
+      finish: makeDagNode({ id: 'finish', status: 'not_started', depends_on: ['cond'], action: 'display_complete' }),
+    };
+    const state = makeStateWithDag(nodes, ['start', 'cond', 'finish']);
+    state.config = { enabled: true };
+    resolveNextAction(state, DEFAULT_CONFIG);
+
+    assert.ok(state.dag.nodes['cond.step_a']);
+    assert.ok(state.dag.nodes['cond.step_b']);
+    assert.deepStrictEqual(state.dag.nodes['cond.step_a'].depends_on, ['start']);
+    assert.deepStrictEqual(state.dag.nodes['cond.step_b'].depends_on, ['cond.step_a']);
+    assert.deepStrictEqual(state.dag.nodes['finish'].depends_on, ['cond.step_b']);
+  });
+});
+
+// ─── resolveNextAction() — parallel nodes ───────────────────────────────────
+
+describe('resolveNextAction() — parallel nodes', () => {
+  it('expands 2 branches into sequential nodes; branch 2 entry depends on branch 1 exit', () => {
+    const nodes = {
+      start: makeDagNode({ id: 'start', status: 'complete', depends_on: [] }),
+      par: makeDagNode({
+        id: 'par',
+        type: 'parallel',
+        status: 'not_started',
+        depends_on: ['start'],
+        branches: [
+          [{ id: 'a', type: 'step', action: 'spawn_research', events: { completed: 'a_done' } }],
+          [{ id: 'b', type: 'step', action: 'spawn_prd', events: { completed: 'b_done' } }],
+        ],
+      }),
+      finish: makeDagNode({ id: 'finish', status: 'not_started', depends_on: ['par'], action: 'display_complete' }),
+    };
+    const state = makeStateWithDag(nodes, ['start', 'par', 'finish']);
+    const result = resolveNextAction(state, DEFAULT_CONFIG);
+
+    // First branch's first node should be the action
+    assert.equal(result.action, 'spawn_research');
+
+    // Branch 2 entry depends on branch 1 exit
+    assert.deepStrictEqual(state.dag.nodes['par.B02.b'].depends_on, ['par.B01.a']);
+    // Downstream depends on last branch exit
+    assert.deepStrictEqual(state.dag.nodes['finish'].depends_on, ['par.B02.b']);
+    // Container removed
+    assert.equal(state.dag.nodes['par'], undefined);
+  });
+
+  it('branch nodes get scoped IDs with B{NN} prefix', () => {
+    const nodes = {
+      start: makeDagNode({ id: 'start', status: 'complete', depends_on: [] }),
+      par: makeDagNode({
+        id: 'par',
+        type: 'parallel',
+        status: 'not_started',
+        depends_on: ['start'],
+        branches: [
+          [
+            { id: 's1', type: 'step', action: 'spawn_research', events: { completed: 'd1' } },
+            { id: 's2', type: 'step', depends_on: ['s1'], action: 'spawn_prd', events: { completed: 'd2' } },
+          ],
+          [
+            { id: 's3', type: 'step', action: 'spawn_design', events: { completed: 'd3' } },
+          ],
+        ],
+      }),
+      finish: makeDagNode({ id: 'finish', status: 'not_started', depends_on: ['par'], action: 'display_complete' }),
+    };
+    const state = makeStateWithDag(nodes, ['start', 'par', 'finish']);
+    resolveNextAction(state, DEFAULT_CONFIG);
+
+    assert.ok(state.dag.nodes['par.B01.s1']);
+    assert.ok(state.dag.nodes['par.B01.s2']);
+    assert.ok(state.dag.nodes['par.B02.s3']);
+    // Intra-branch dep
+    assert.deepStrictEqual(state.dag.nodes['par.B01.s2'].depends_on, ['par.B01.s1']);
+    // Branch 2 entry depends on branch 1 exit (s2)
+    assert.deepStrictEqual(state.dag.nodes['par.B02.s3'].depends_on, ['par.B01.s2']);
+    // Downstream depends on last branch exit
+    assert.deepStrictEqual(state.dag.nodes['finish'].depends_on, ['par.B02.s3']);
+  });
+});
+
+// ─── resolveNextAction() — depth guard ──────────────────────────────────────
+
+describe('resolveNextAction() — depth guard', () => {
+  it('returns display_halted if expansion depth exceeds MAX_EXPANSION_DEPTH', () => {
+    // Use _depth parameter directly to simulate deep recursion
+    const nodes = {
+      a: makeDagNode({ id: 'a', status: 'not_started', depends_on: [], action: 'spawn_research' }),
+    };
+    const state = makeStateWithDag(nodes, ['a']);
+    const result = resolveNextAction(state, DEFAULT_CONFIG, 21);
+    assert.equal(result.action, NEXT_ACTIONS.DISPLAY_HALTED);
+    assert.ok(result.context.details.includes('depth'));
   });
 });

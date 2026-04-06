@@ -7,6 +7,14 @@ const {
   HUMAN_GATE_MODES,
 } = require('./constants');
 
+const {
+  expandConditional,
+  expandParallel,
+  computeExecutionOrder,
+} = require('./dag-expander');
+
+const MAX_EXPANSION_DEPTH = 20;
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function formatPhaseId(phaseNumber) {
@@ -31,6 +39,30 @@ function resolveGateMode(state, config) {
     ?? state.config?.human_gates?.execution_mode
     ?? config.human_gates?.execution_mode
     ?? 'ask';
+}
+
+// ─── Condition Evaluation ───────────────────────────────────────────────────
+
+/**
+ * Resolve a dot-delimited path against a state object.
+ * e.g., evaluateCondition("config.code_review_enabled", state)
+ *       → state.config.code_review_enabled
+ *
+ * @param {string} conditionPath - dot-delimited path (e.g., "config.flags.code_review_enabled")
+ * @param {Object} state - full v5 state object
+ * @returns {*} resolved value (evaluated as truthy/falsy by caller)
+ */
+function evaluateCondition(conditionPath, state) {
+  if (typeof conditionPath !== 'string') return undefined;
+  const parts = conditionPath.split('.');
+  let current = state;
+  for (const part of parts) {
+    if (current == null || typeof current !== 'object') {
+      return undefined;
+    }
+    current = current[part];
+  }
+  return current;
 }
 
 // ─── Core Walker Functions ──────────────────────────────────────────────────
@@ -161,19 +193,23 @@ function mapGateNode(node, state, config) {
 // ─── Top-Level Entry Point ──────────────────────────────────────────────────
 
 /**
- * Pure state inspector. Given post-mutation v5 state and config, traverses
- * the expanded DAG to find the next ready node and returns the corresponding
- * action and context.
- *
- * Same contract as the current resolver: deterministic, side-effect-free,
- * state-in → action-out.
+ * Traverses the expanded DAG to find the next ready node and returns the
+ * corresponding action and context. Mutates `state.dag.nodes` and
+ * `state.dag.execution_order` in place when conditional or parallel
+ * expansion occurs.
  *
  * @param {Object} state - post-mutation v5 state (must have state.dag)
  * @param {Object} config - merged orchestration config
+ * @param {number} [_depth=0] - recursion depth (internal, do not pass externally)
  * @returns {{ action: string, context: Object }}
  */
-function resolveNextAction(state, config) {
+function resolveNextAction(state, config, _depth = 0) {
   const { nodes, execution_order: executionOrder } = state.dag;
+
+  // Depth guard against infinite expansion loops
+  if (_depth > MAX_EXPANSION_DEPTH) {
+    return { action: NEXT_ACTIONS.DISPLAY_HALTED, context: { details: 'Expansion depth exceeded maximum (' + MAX_EXPANSION_DEPTH + ')' } };
+  }
 
   // Check halted
   if (state.pipeline.current_tier === 'halted') {
@@ -198,9 +234,28 @@ function resolveNextAction(state, config) {
     };
   }
 
+  // Handle conditional nodes inline
+  if (readyNode.type === DAG_NODE_TYPES.CONDITIONAL) {
+    const conditionValue = evaluateCondition(readyNode.condition, state);
+    if (conditionValue) {
+      expandConditional(nodes, readyNode.id);
+      state.dag.execution_order = computeExecutionOrder(nodes);
+    } else {
+      readyNode.status = DAG_NODE_STATUSES.SKIPPED;
+    }
+    return resolveNextAction(state, config, _depth + 1);
+  }
+
+  // Handle parallel nodes inline
+  if (readyNode.type === DAG_NODE_TYPES.PARALLEL) {
+    expandParallel(nodes, readyNode.id);
+    state.dag.execution_order = computeExecutionOrder(nodes);
+    return resolveNextAction(state, config, _depth + 1);
+  }
+
   return mapNodeToAction(readyNode, state, config);
 }
 
 // ─── Exports ────────────────────────────────────────────────────────────────
 
-module.exports = { resolveNextAction, findNextReadyNode, mapNodeToAction };
+module.exports = { resolveNextAction, findNextReadyNode, mapNodeToAction, evaluateCondition };

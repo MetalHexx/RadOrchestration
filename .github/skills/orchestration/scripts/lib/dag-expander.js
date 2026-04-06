@@ -382,10 +382,164 @@ function injectCorrectiveTask(nodes, failedReviewNodeId, phaseNumber, taskNumber
   return [handoffId, codeId, reviewId];
 }
 
+/**
+ * Expand a conditional container's body into the live DAG.
+ * Called when the condition evaluates to truthy.
+ *
+ * Creates scoped IDs: "{containerNodeId}.{bodyNodeId}"
+ * Entry nodes inherit the container's depends_on.
+ * Downstream nodes are rewired to the body's exit node.
+ * Container is deleted from the node map.
+ *
+ * @param {Object.<string, DagNode>} nodes - Mutated in place
+ * @param {string} containerNodeId - ID of the conditional node to expand
+ * @returns {string[]} newNodeIds - IDs of all created body nodes
+ */
+function expandConditional(nodes, containerNodeId) {
+  const container = nodes[containerNodeId];
+  const body = container.body;
+  const externalDeps = [...container.depends_on];
+  const newIds = [];
+
+  // Find downstream nodes that depend on the container
+  const downstream = [];
+  for (const [id, node] of Object.entries(nodes)) {
+    if (node.depends_on.includes(containerNodeId)) {
+      downstream.push(id);
+    }
+  }
+
+  // Compute body topology
+  const bodyOrder = computeBodyOrder(body);
+  const bodyExitId = bodyOrder[bodyOrder.length - 1];
+  const bodyIdSet = new Set(body.map(b => b.id));
+
+  for (const bodyDef of body) {
+    const scopedId = `${containerNodeId}.${bodyDef.id}`;
+    const node = buildNode(bodyDef);
+    node.id = scopedId;
+    node.template_node_id = bodyDef.id;
+
+    // Rewire depends_on
+    const isEntryNode = !Array.isArray(bodyDef.depends_on) || bodyDef.depends_on.length === 0;
+    if (isEntryNode) {
+      node.depends_on = [...externalDeps];
+    } else {
+      node.depends_on = bodyDef.depends_on.map(dep =>
+        bodyIdSet.has(dep) ? `${containerNodeId}.${dep}` : dep
+      );
+    }
+
+    nodes[scopedId] = node;
+    newIds.push(scopedId);
+  }
+
+  // Rewire downstream nodes
+  const lastExitId = `${containerNodeId}.${bodyExitId}`;
+  for (const id of downstream) {
+    nodes[id].depends_on = nodes[id].depends_on.map(d =>
+      d === containerNodeId ? lastExitId : d
+    );
+  }
+
+  // Delete container
+  delete nodes[containerNodeId];
+
+  // Verify validity
+  computeExecutionOrder(nodes);
+
+  return newIds;
+}
+
+/**
+ * Expand a parallel container's branches into the live DAG.
+ * Branches execute sequentially (serialized): branch N+1
+ * entry depends on branch N exit.
+ *
+ * Creates scoped IDs: "{containerNodeId}.B{NN}.{branchNodeId}"
+ * First branch entry inherits container's depends_on.
+ * Downstream nodes rewired to last branch exit.
+ * Container is deleted from the node map.
+ *
+ * @param {Object.<string, DagNode>} nodes - Mutated in place
+ * @param {string} containerNodeId - ID of the parallel node to expand
+ * @returns {string[]} newNodeIds - IDs of all created branch nodes
+ */
+function expandParallel(nodes, containerNodeId) {
+  const container = nodes[containerNodeId];
+  const branches = container.branches;
+  const externalDeps = [...container.depends_on];
+  const newIds = [];
+
+  // Find downstream nodes that depend on the container
+  const downstream = [];
+  for (const [id, node] of Object.entries(nodes)) {
+    if (node.depends_on.includes(containerNodeId)) {
+      downstream.push(id);
+    }
+  }
+
+  let prevBranchExitId = null;
+
+  for (let b = 0; b < branches.length; b++) {
+    const branch = branches[b];
+    const branchLabel = `B${pad2(b + 1)}`;
+    const branchPrefix = `${containerNodeId}.${branchLabel}`;
+
+    // Compute branch topology
+    const branchOrder = computeBodyOrder(branch);
+    const branchExitId = branchOrder[branchOrder.length - 1];
+    const branchIdSet = new Set(branch.map(n => n.id));
+
+    for (const nodeDef of branch) {
+      const scopedId = `${branchPrefix}.${nodeDef.id}`;
+      const node = buildNode(nodeDef);
+      node.id = scopedId;
+      node.template_node_id = nodeDef.id;
+
+      // Rewire depends_on
+      const isEntryNode = !Array.isArray(nodeDef.depends_on) || nodeDef.depends_on.length === 0;
+      if (isEntryNode) {
+        if (b === 0) {
+          node.depends_on = [...externalDeps];
+        } else {
+          node.depends_on = [prevBranchExitId];
+        }
+      } else {
+        node.depends_on = nodeDef.depends_on.map(dep =>
+          branchIdSet.has(dep) ? `${branchPrefix}.${dep}` : dep
+        );
+      }
+
+      nodes[scopedId] = node;
+      newIds.push(scopedId);
+    }
+
+    prevBranchExitId = `${branchPrefix}.${branchExitId}`;
+  }
+
+  // Rewire downstream nodes to last branch's exit
+  for (const id of downstream) {
+    nodes[id].depends_on = nodes[id].depends_on.map(d =>
+      d === containerNodeId ? prevBranchExitId : d
+    );
+  }
+
+  // Delete container
+  delete nodes[containerNodeId];
+
+  // Verify validity
+  computeExecutionOrder(nodes);
+
+  return newIds;
+}
+
 module.exports = {
   expandTemplate,
   computeExecutionOrder,
   expandPhases,
   expandTasks,
   injectCorrectiveTask,
+  expandConditional,
+  expandParallel,
 };
