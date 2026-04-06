@@ -644,6 +644,11 @@ function handleCodeReviewCompleted(state, context, config) {
       pipelineSC?.auto_commit === 'always' &&
       pipelineSC.branch &&
       pipelineSC.worktree_path;
+    // v5: defer if an SC commit DAG node is pending for this task (no retry suffix — node is reused across retries)
+    const scCommitNode = isV5(state)
+      ? findTaskNode(state, 'source_control_commit', state.execution.current_phase, dagTaskNum, 0)
+      : null;
+    const hasV5ScCommitStep = scCommitNode && scCommitNode.status === DAG_NODE_STATUSES.NOT_STARTED;
 
     if (effectiveGateMode === 'task') {
       // Defer pointer advancement to handleGateApproved
@@ -651,6 +656,9 @@ function handleCodeReviewCompleted(state, context, config) {
     } else if (canDeferForAutoCommit) {
       // Defer pointer advancement — Source Control Agent will commit, then task_committed bumps pointer
       mutations.push('Deferred phase.current_task advancement (auto_commit: always — awaiting commit)');
+    } else if (hasV5ScCommitStep) {
+      // v5: defer — task_commit_requested will advance the pointer after the SC commit step
+      mutations.push('Deferred phase.current_task advancement (v5 SC commit step pending)');
     } else {
       phase.current_task += 1;
       mutations.push(`Bumped phase.current_task to ${phase.current_task}`);
@@ -1033,6 +1041,11 @@ function handleTaskCommitRequested(state, context, config) {
   const sc = state.pipeline.source_control;
   const mutations = [];
 
+  // Capture pre-bump phase/task values for v5 DAG node lookup (source_control_commit has no retry suffix)
+  const preBumpPhaseNum = state.execution.current_phase;
+  const preBumpPhase = state.execution.phases[preBumpPhaseNum - 1];
+  const preBumpTaskNum = preBumpPhase ? preBumpPhase.current_task : 1;
+
   if (!sc || !sc.branch) {
     // Graceful skip: no branch metadata → advance pointer immediately
     const phase = state.execution.phases[state.execution.current_phase - 1];
@@ -1047,10 +1060,7 @@ function handleTaskCommitRequested(state, context, config) {
   }
 
   if (isV5(state)) {
-    const phaseNum = state.execution.current_phase;
-    const phase = currentPhase(state);
-    const task = currentTask(state);
-    const node = findTaskNode(state, 'source_control_commit', phaseNum, phase.current_task, task.retries);
+    const node = findTaskNode(state, 'source_control_commit', preBumpPhaseNum, preBumpTaskNum, 0);
     if (node) {
       if (!sc || !sc.branch) {
         node.status = DAG_NODE_STATUSES.SKIPPED;

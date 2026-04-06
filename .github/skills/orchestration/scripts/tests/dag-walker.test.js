@@ -83,13 +83,14 @@ describe('findNextReadyNode()', () => {
     assert.equal(result, null);
   });
 
-  it('returns null when incomplete nodes exist but none are ready (deps not met)', () => {
+  it('returns in_progress node when it has all deps met (active work item)', () => {
     const nodes = {
       a: makeDagNode({ id: 'a', status: 'in_progress', depends_on: [] }),
       b: makeDagNode({ id: 'b', status: 'not_started', depends_on: ['a'] }),
     };
     const result = findNextReadyNode(nodes, ['a', 'b']);
-    assert.equal(result, null);
+    assert.ok(result, 'should return the in_progress node');
+    assert.equal(result.id, 'a');
   });
 
   it('treats skipped deps as satisfied (like complete)', () => {
@@ -102,14 +103,14 @@ describe('findNextReadyNode()', () => {
     assert.equal(result.id, 'b');
   });
 
-  it('skips nodes with in_progress status', () => {
+  it('returns in_progress node before not_started when both have deps met', () => {
     const nodes = {
       a: makeDagNode({ id: 'a', status: 'in_progress', depends_on: [] }),
       b: makeDagNode({ id: 'b', status: 'not_started', depends_on: [] }),
     };
     const result = findNextReadyNode(nodes, ['a', 'b']);
     assert.ok(result, 'should find a ready node');
-    assert.equal(result.id, 'b');
+    assert.equal(result.id, 'a');
   });
 
   it('returns correct node in multi-node linear chain where middle node is ready', () => {
@@ -392,15 +393,14 @@ describe('resolveNextAction()', () => {
     assert.ok(result.context.details);
   });
 
-  it('returns display_halted when no ready nodes but incomplete nodes remain (stuck)', () => {
+  it('returns in_progress node action when node has deps met (active work)', () => {
     const nodes = {
-      a: makeDagNode({ id: 'a', status: 'in_progress', depends_on: [] }),
+      a: makeDagNode({ id: 'a', status: 'in_progress', depends_on: [], action: 'spawn_research' }),
       b: makeDagNode({ id: 'b', status: 'not_started', depends_on: ['a'] }),
     };
     const state = makeStateWithDag(nodes, ['a', 'b']);
     const result = resolveNextAction(state, DEFAULT_CONFIG);
-    assert.equal(result.action, NEXT_ACTIONS.DISPLAY_HALTED);
-    assert.ok(result.context.details);
+    assert.equal(result.action, 'spawn_research');
   });
 
   it('returns correct action for first ready node in normal traversal', () => {

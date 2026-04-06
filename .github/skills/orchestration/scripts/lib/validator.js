@@ -384,6 +384,8 @@ function validateNode(schema, value, fieldPath, errors) {
 
 /** V16 — JSON Schema structural validation against state-v4.schema.json */
 function checkV16(proposed) {
+  // v5 state uses a different structure (dag section, $schema v5) — skip v4 schema check
+  if (proposed.$schema && proposed.$schema !== 'orchestration-state-v4') return [];
   const errors = [];
   validateNode(v4Schema, proposed, '', errors);
   return errors;

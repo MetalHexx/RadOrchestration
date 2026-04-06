@@ -38,7 +38,7 @@ function resolveGateMode(state, config) {
 /**
  * Find the next ready node in the DAG. A node is "ready" when:
  * 1. Its status is 'not_started'
- * 2. All nodes in its depends_on list have status 'complete' or 'skipped'
+ * 2. All nodes in its depends_on list have status 'complete', 'skipped', or 'failed' (corrective successors)
  *
  * Returns the first ready node in execution_order (topological) sequence.
  * Returns null when no ready node exists.
@@ -50,11 +50,11 @@ function resolveGateMode(state, config) {
 function findNextReadyNode(nodes, executionOrder) {
   for (const nodeId of executionOrder) {
     const node = nodes[nodeId];
-    if (!node || node.status !== DAG_NODE_STATUSES.NOT_STARTED) continue;
+    if (!node || (node.status !== DAG_NODE_STATUSES.NOT_STARTED && node.status !== DAG_NODE_STATUSES.IN_PROGRESS)) continue;
 
     const depsReady = node.depends_on.every(depId => {
       const dep = nodes[depId];
-      return dep && (dep.status === DAG_NODE_STATUSES.COMPLETE || dep.status === DAG_NODE_STATUSES.SKIPPED);
+      return dep && (dep.status === DAG_NODE_STATUSES.COMPLETE || dep.status === DAG_NODE_STATUSES.SKIPPED || dep.status === DAG_NODE_STATUSES.FAILED);
     });
 
     if (depsReady) return node;
