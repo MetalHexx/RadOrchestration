@@ -8,7 +8,7 @@ tools:
   - execute
   - todo
   - vscode/askQuestions
-model: claude-opus-4.6
+model: Claude Sonnet 4.6 (copilot)
 ---
 
 # Reviewer Agent

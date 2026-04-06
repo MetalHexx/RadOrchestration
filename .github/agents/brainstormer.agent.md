@@ -11,7 +11,7 @@ tools:
   - web
   - context7/*
   - github/*
-model: claude-sonnet-4.6
+model: Claude Sonnet 4.6 (copilot)
 handoffs:
   - label: "Start Planning Pipeline Process"
     agent: orchestrator
