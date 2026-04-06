@@ -11,7 +11,9 @@ const {
   REVIEW_VERDICTS,
   REVIEW_ACTIONS,
   PHASE_REVIEW_ACTIONS,
+  DAG_NODE_STATUSES,
 } = require('./constants');
+const { expandPhases, expandTasks, injectCorrectiveTask, computeExecutionOrder } = require('./dag-expander');
 
 // ─── Internal Helpers ───────────────────────────────────────────────────────
 
@@ -39,6 +41,54 @@ function currentTask(state) {
  */
 function checkRetryBudget(retries, maxRetries) {
   return retries < maxRetries;
+}
+
+// ─── V5 / DAG Helpers ───────────────────────────────────────────────────────
+
+function isV5(state) {
+  return state.dag != null;
+}
+
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+/**
+ * Find a DAG node by planning_step field.
+ * @param {Object} state
+ * @param {string} stepName - e.g., 'research', 'prd'
+ * @returns {Object|undefined}
+ */
+function findPlanningNode(state, stepName) {
+  return Object.values(state.dag.nodes).find(n => n.planning_step === stepName);
+}
+
+/**
+ * Find a phase-level DAG node by template_node_id and phase number.
+ * @param {Object} state
+ * @param {string} templateNodeId - e.g., 'create_phase_plan'
+ * @param {number} phaseNumber - 1-based
+ * @returns {Object|undefined}
+ */
+function findPhaseNode(state, templateNodeId, phaseNumber) {
+  const id = `P${pad2(phaseNumber)}.${templateNodeId}`;
+  return state.dag.nodes[id];
+}
+
+/**
+ * Find a task-level DAG node by template_node_id, phase, task, and retry.
+ * @param {Object} state
+ * @param {string} templateNodeId - e.g., 'create_task_handoff'
+ * @param {number} phaseNumber - 1-based
+ * @param {number} taskNumber - 1-based
+ * @param {number} [retries=0] - retry count; 0 = original, 1+ = corrective
+ * @returns {Object|undefined}
+ */
+function findTaskNode(state, templateNodeId, phaseNumber, taskNumber, retries) {
+  const prefix = `P${pad2(phaseNumber)}.T${pad2(taskNumber)}`;
+  const suffix = retries > 0 ? `_r${retries}` : '';
+  const id = `${prefix}.${templateNodeId}${suffix}`;
+  return state.dag.nodes[id];
 }
 
 // ─── Decision Tables ────────────────────────────────────────────────────────
@@ -127,12 +177,26 @@ function completePlanningStep(state, stepName, docPath) {
   const step = state.planning.steps.find(s => s.name === stepName);
   step.status = PLANNING_STEP_STATUSES.COMPLETE;
   step.doc_path = docPath;
+
+  const mutations_applied = [
+    `Set planning step "${stepName}" status to complete`,
+    `Set planning step "${stepName}" doc_path to "${docPath}"`,
+  ];
+
+  if (isV5(state)) {
+    const node = findPlanningNode(state, stepName);
+    if (node) {
+      node.status = DAG_NODE_STATUSES.COMPLETE;
+      if (!node.docs) node.docs = {};
+      node.docs.doc_path = docPath;
+      mutations_applied.push(`DAG: Set node "${node.id}" status to complete`);
+      mutations_applied.push(`DAG: Set node "${node.id}" docs.doc_path to "${docPath}"`);
+    }
+  }
+
   return {
     state,
-    mutations_applied: [
-      `Set planning step "${stepName}" status to complete`,
-      `Set planning step "${stepName}" doc_path to "${docPath}"`,
-    ],
+    mutations_applied,
   };
 }
 
@@ -157,6 +221,14 @@ function startPlanningStep(state, stepName) {
   if (state.planning.status === PLANNING_STATUSES.NOT_STARTED) {
     state.planning.status = PLANNING_STATUSES.IN_PROGRESS;
     mutations_applied.push('Set planning.status to "in_progress" from "not_started"');
+  }
+
+  if (isV5(state)) {
+    const node = findPlanningNode(state, stepName);
+    if (node) {
+      node.status = DAG_NODE_STATUSES.IN_PROGRESS;
+      mutations_applied.push(`DAG: Set node "${node.id}" status to in_progress`);
+    }
   }
 
   return {
@@ -245,15 +317,34 @@ function handlePlanApproved(state, context, config) {
       },
     });
   }
+
+  const mutations = [
+    'Set planning.human_approved to true',
+    `Set pipeline.current_tier to "${PIPELINE_TIERS.EXECUTION}"`,
+    'Set execution.status to "not_started"',
+    'Set execution.current_phase to 1',
+    `Initialized execution.phases with ${context.total_phases} phase(s)`,
+  ];
+
+  if (isV5(state)) {
+    // Mark planning gate node as complete
+    const gateNode = state.dag.nodes['request_plan_approval'];
+    if (gateNode) {
+      gateNode.status = DAG_NODE_STATUSES.COMPLETE;
+      mutations.push('DAG: Set gate node "request_plan_approval" status to complete');
+    }
+
+    // Expand for_each_phase container
+    const phases = state.execution.phases.map((p, i) => ({ name: p.name }));
+    expandPhases(state.dag.nodes, 'for_each_phase', context.total_phases, phases);
+    state.dag.execution_order = computeExecutionOrder(state.dag.nodes);
+    mutations.push(`DAG: Expanded for_each_phase into ${context.total_phases} phase(s)`);
+    mutations.push('DAG: Recomputed execution_order');
+  }
+
   return {
     state,
-    mutations_applied: [
-      'Set planning.human_approved to true',
-      `Set pipeline.current_tier to "${PIPELINE_TIERS.EXECUTION}"`,
-      'Set execution.status to "not_started"',
-      'Set execution.current_phase to 1',
-      `Initialized execution.phases with ${context.total_phases} phase(s)`,
-    ],
+    mutations_applied: mutations,
   };
 }
 
@@ -270,12 +361,30 @@ function handlePlanRejected(state, context, config) {
   state.planning.human_approved = false;
   const masterPlanStep = state.planning.steps.find(s => s.name === 'master_plan');
   masterPlanStep.status = PLANNING_STEP_STATUSES.IN_PROGRESS;
+
+  const mutations_applied = [
+    'Set planning.human_approved to false',
+    `Set planning step "master_plan" status to "${PLANNING_STEP_STATUSES.IN_PROGRESS}"`,
+  ];
+
+  if (isV5(state)) {
+    // Reset master_plan node to in_progress for re-editing
+    const masterPlanNode = findPlanningNode(state, 'master_plan');
+    if (masterPlanNode) {
+      masterPlanNode.status = DAG_NODE_STATUSES.IN_PROGRESS;
+      mutations_applied.push(`DAG: Reset node "${masterPlanNode.id}" status to in_progress`);
+    }
+    // Reset planning gate to not_started
+    const gateNode = state.dag.nodes['request_plan_approval'];
+    if (gateNode) {
+      gateNode.status = DAG_NODE_STATUSES.NOT_STARTED;
+      mutations_applied.push('DAG: Reset gate node "request_plan_approval" status to not_started');
+    }
+  }
+
   return {
     state,
-    mutations_applied: [
-      'Set planning.human_approved to false',
-      `Set planning step "master_plan" status to "${PLANNING_STEP_STATUSES.IN_PROGRESS}"`,
-    ],
+    mutations_applied,
   };
 }
 
@@ -295,12 +404,24 @@ function handlePhasePlanningStarted(state, context, config) {
   state.execution.status = 'in_progress';   // transition execution to in_progress
   phase.status = PHASE_STATUSES.IN_PROGRESS;
   // Do NOT modify phase.stage — remains 'planning'
+
+  const mutations = [
+    'Set execution.status to "in_progress"',
+    'Set phase.status to "in_progress"',
+  ];
+
+  if (isV5(state)) {
+    const phaseNum = state.execution.current_phase;
+    const node = findPhaseNode(state, 'create_phase_plan', phaseNum);
+    if (node) {
+      node.status = DAG_NODE_STATUSES.IN_PROGRESS;
+      mutations.push(`DAG: Set node "${node.id}" status to in_progress`);
+    }
+  }
+
   return {
     state,
-    mutations_applied: [
-      'Set execution.status to "in_progress"',
-      'Set phase.status to "in_progress"',
-    ],
+    mutations_applied: mutations,
   };
 }
 
@@ -340,17 +461,44 @@ function handlePhasePlanCreated(state, context, config) {
     },
     retries: 0,
   }));
+
+  const allMutations = [
+    ...mutations,
+    `Set phase.status to "${PHASE_STATUSES.IN_PROGRESS}"`,
+    `Set phase.stage to "${PHASE_STAGES.EXECUTING}"`,
+    `Set phase.docs.phase_plan to "${context.doc_path}"`,
+    ...(context.title ? [`Updated phase.name to "${context.title}"`] : []),
+    'Set phase.current_task to 1',
+    `Populated phase.tasks with ${context.tasks.length} task(s)`,
+  ];
+
+  if (isV5(state)) {
+    const phaseNum = state.execution.current_phase;
+    const planNode = findPhaseNode(state, 'create_phase_plan', phaseNum);
+    if (planNode) {
+      planNode.status = DAG_NODE_STATUSES.COMPLETE;
+      if (!planNode.docs) planNode.docs = {};
+      planNode.docs.doc_path = context.doc_path;
+      allMutations.push(`DAG: Set node "${planNode.id}" status to complete`);
+    }
+
+    // Expand for_each_task container for this phase
+    const containerNodeId = `P${pad2(phaseNum)}.for_each_task`;
+    if (state.dag.nodes[containerNodeId]) {
+      const taskMeta = context.tasks.map(t => {
+        const name = typeof t === 'object' && t !== null ? (t.title ?? t.id ?? String(t)) : t;
+        return { name };
+      });
+      expandTasks(state.dag.nodes, containerNodeId, phaseNum, taskMeta);
+      state.dag.execution_order = computeExecutionOrder(state.dag.nodes);
+      allMutations.push(`DAG: Expanded ${containerNodeId} into ${context.tasks.length} task(s)`);
+      allMutations.push('DAG: Recomputed execution_order');
+    }
+  }
+
   return {
     state,
-    mutations_applied: [
-      ...mutations,
-      `Set phase.status to "${PHASE_STATUSES.IN_PROGRESS}"`,
-      `Set phase.stage to "${PHASE_STAGES.EXECUTING}"`,
-      `Set phase.docs.phase_plan to "${context.doc_path}"`,
-      ...(context.title ? [`Updated phase.name to "${context.title}"`] : []),
-      'Set phase.current_task to 1',
-      `Populated phase.tasks with ${context.tasks.length} task(s)`,
-    ],
+    mutations_applied: allMutations,
   };
 }
 
@@ -367,9 +515,22 @@ function handleTaskHandoffStarted(state, context, config) {
   const task = currentTask(state);
   task.status = TASK_STATUSES.IN_PROGRESS;
   // Do NOT modify task.stage — remains 'planning'
+
+  const mutations = ['Set task.status to "in_progress"'];
+
+  if (isV5(state)) {
+    const phase = currentPhase(state);
+    const node = findTaskNode(state, 'create_task_handoff',
+      state.execution.current_phase, phase.current_task, task.retries);
+    if (node) {
+      node.status = DAG_NODE_STATUSES.IN_PROGRESS;
+      mutations.push(`DAG: Set node "${node.id}" status to in_progress`);
+    }
+  }
+
   return {
     state,
-    mutations_applied: ['Set task.status to "in_progress"'],
+    mutations_applied: mutations,
   };
 }
 
@@ -393,6 +554,25 @@ function handleTaskHandoffCreated(state, context, config) {
   mutations.push(`Set task.status to "${TASK_STATUSES.IN_PROGRESS}"`);
   mutations.push(`Set task.stage to "${TASK_STAGES.CODING}"`);
 
+  if (isV5(state)) {
+    const phase = currentPhase(state);
+    const node = findTaskNode(state, 'create_task_handoff',
+      state.execution.current_phase, phase.current_task, task.retries);
+    if (node) {
+      node.status = DAG_NODE_STATUSES.COMPLETE;
+      if (!node.docs) node.docs = {};
+      node.docs.doc_path = context.doc_path;
+      mutations.push(`DAG: Set node "${node.id}" status to complete`);
+    }
+    // Also mark execute_coding_task as in_progress (handoff triggers coding start)
+    const codeNode = findTaskNode(state, 'execute_coding_task',
+      state.execution.current_phase, phase.current_task, task.retries);
+    if (codeNode) {
+      codeNode.status = DAG_NODE_STATUSES.IN_PROGRESS;
+      mutations.push(`DAG: Set node "${codeNode.id}" status to in_progress`);
+    }
+  }
+
   return { state, mutations_applied: mutations };
 }
 
@@ -401,12 +581,32 @@ function handleTaskCompleted(state, context, config) {
   const task = currentTask(state);
   task.stage = TASK_STAGES.REVIEWING;
   // task.status stays in_progress — complete is truly terminal (set only after code review approves)
+
+  const mutations = [
+    `Set task.stage to "${TASK_STAGES.REVIEWING}"`,
+    `task.status stays "${TASK_STATUSES.IN_PROGRESS}" (awaiting code review)`,
+  ];
+
+  if (isV5(state)) {
+    const phase = currentPhase(state);
+    const node = findTaskNode(state, 'execute_coding_task',
+      state.execution.current_phase, phase.current_task, task.retries);
+    if (node) {
+      node.status = DAG_NODE_STATUSES.COMPLETE;
+      mutations.push(`DAG: Set node "${node.id}" status to complete`);
+    }
+    // Also mark code_review as in_progress (task complete triggers review)
+    const reviewNode = findTaskNode(state, 'code_review',
+      state.execution.current_phase, phase.current_task, task.retries);
+    if (reviewNode) {
+      reviewNode.status = DAG_NODE_STATUSES.IN_PROGRESS;
+      mutations.push(`DAG: Set node "${reviewNode.id}" status to in_progress`);
+    }
+  }
+
   return {
     state,
-    mutations_applied: [
-      `Set task.stage to "${TASK_STAGES.REVIEWING}"`,
-      `task.status stays "${TASK_STATUSES.IN_PROGRESS}" (awaiting code review)`,
-    ],
+    mutations_applied: mutations,
   };
 }
 
@@ -414,6 +614,7 @@ function handleTaskCompleted(state, context, config) {
 function handleCodeReviewCompleted(state, context, config) {
   const task = currentTask(state);
   const phase = currentPhase(state);
+  const dagTaskNum = phase.current_task; // capture BEFORE any pointer advancement
   task.docs.review = context.doc_path;
   task.review.verdict = context.verdict;
 
@@ -467,6 +668,41 @@ function handleCodeReviewCompleted(state, context, config) {
     mutations.push('Set task.status to halted (explicit)');
   }
 
+  if (isV5(state)) {
+    const phaseNum = state.execution.current_phase;
+    const taskNum = dagTaskNum;
+    // retries was already incremented for corrective, so use retries-1 to find current review node
+    const currentRetries = reviewAction === REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED
+      ? task.retries - 1 : task.retries;
+    const reviewNode = findTaskNode(state, 'code_review', phaseNum, taskNum, currentRetries);
+
+    if (reviewNode) {
+      if (!reviewNode.docs) reviewNode.docs = {};
+      reviewNode.docs.doc_path = context.doc_path;
+      if (!reviewNode.review) reviewNode.review = {};
+      reviewNode.review.verdict = context.verdict;
+      reviewNode.review.action = reviewAction;
+
+      if (reviewAction === REVIEW_ACTIONS.ADVANCED) {
+        reviewNode.status = DAG_NODE_STATUSES.COMPLETE;
+        mutations.push(`DAG: Set node "${reviewNode.id}" status to complete`);
+      } else if (reviewAction === REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED) {
+        reviewNode.status = DAG_NODE_STATUSES.FAILED;
+        mutations.push(`DAG: Set node "${reviewNode.id}" status to failed`);
+        // Inject corrective task nodes
+        const newNodeIds = injectCorrectiveTask(
+          state.dag.nodes, reviewNode.id, phaseNum, taskNum, task.retries
+        );
+        state.dag.execution_order = computeExecutionOrder(state.dag.nodes);
+        mutations.push(`DAG: Injected corrective nodes: ${newNodeIds.join(', ')}`);
+        mutations.push('DAG: Recomputed execution_order');
+      } else if (reviewAction === REVIEW_ACTIONS.HALTED) {
+        reviewNode.status = DAG_NODE_STATUSES.HALTED;
+        mutations.push(`DAG: Set node "${reviewNode.id}" status to halted`);
+      }
+    }
+  }
+
   return { state, mutations_applied: mutations };
 }
 
@@ -475,18 +711,33 @@ function handlePhaseReportCreated(state, context, config) {
   const phase = currentPhase(state);
   phase.docs.phase_report = context.doc_path;
   phase.stage = PHASE_STAGES.REVIEWING;
+
+  const mutations = [
+    `Set phase.docs.phase_report to "${context.doc_path}"`,
+    `Set phase.stage to "${PHASE_STAGES.REVIEWING}"`,
+  ];
+
+  if (isV5(state)) {
+    const phaseNum = state.execution.current_phase;
+    const node = findPhaseNode(state, 'generate_phase_report', phaseNum);
+    if (node) {
+      node.status = DAG_NODE_STATUSES.COMPLETE;
+      if (!node.docs) node.docs = {};
+      node.docs.doc_path = context.doc_path;
+      mutations.push(`DAG: Set node "${node.id}" status to complete`);
+    }
+  }
+
   return {
     state,
-    mutations_applied: [
-      `Set phase.docs.phase_report to "${context.doc_path}"`,
-      `Set phase.stage to "${PHASE_STAGES.REVIEWING}"`,
-    ],
+    mutations_applied: mutations,
   };
 }
 
 /** @type {MutationHandler} */
 function handlePhaseReviewCompleted(state, context, config) {
   const phase = currentPhase(state);
+  const dagPhaseNum = state.execution.current_phase; // capture BEFORE pointer advancement
   phase.docs.phase_review = context.doc_path;
   phase.review.verdict = context.verdict;
 
@@ -533,6 +784,24 @@ function handlePhaseReviewCompleted(state, context, config) {
     state.pipeline.current_tier = PIPELINE_TIERS.HALTED;
     mutations.push(`Set phase.stage to "${PHASE_STAGES.FAILED}"`);
     mutations.push(`Set pipeline.current_tier to "${PIPELINE_TIERS.HALTED}"`);
+  }
+
+  if (isV5(state)) {
+    const phaseNum = dagPhaseNum;
+    const node = findPhaseNode(state, 'phase_review', phaseNum);
+    if (node) {
+      if (!node.review) node.review = {};
+      node.review.verdict = context.verdict;
+      node.review.action = phaseReviewAction;
+      if (phaseReviewAction === PHASE_REVIEW_ACTIONS.ADVANCED) {
+        node.status = DAG_NODE_STATUSES.COMPLETE;
+      } else if (phaseReviewAction === PHASE_REVIEW_ACTIONS.CORRECTIVE_TASKS_ISSUED) {
+        node.status = DAG_NODE_STATUSES.FAILED;
+      } else {
+        node.status = DAG_NODE_STATUSES.HALTED;
+      }
+      mutations.push(`DAG: Set node "${node.id}" status to ${node.status}`);
+    }
   }
 
   return { state, mutations_applied: mutations };
@@ -615,12 +884,25 @@ function handleGateModeSet(state, context, config) {
 function handleFinalReviewCompleted(state, context, config) {
   state.final_review.doc_path = context.doc_path;
   state.final_review.status = 'complete';
+
+  const mutations = [
+    `Set final_review.doc_path to "${context.doc_path}"`,
+    'Set final_review.status to "complete"',
+  ];
+
+  if (isV5(state)) {
+    const node = state.dag.nodes['create_final_review'];
+    if (node) {
+      node.status = DAG_NODE_STATUSES.COMPLETE;
+      if (!node.docs) node.docs = {};
+      node.docs.doc_path = context.doc_path;
+      mutations.push('DAG: Set node "create_final_review" status to complete');
+    }
+  }
+
   return {
     state,
-    mutations_applied: [
-      `Set final_review.doc_path to "${context.doc_path}"`,
-      'Set final_review.status to "complete"',
-    ],
+    mutations_applied: mutations,
   };
 }
 
@@ -628,12 +910,23 @@ function handleFinalReviewCompleted(state, context, config) {
 function handleFinalApproved(state, context, config) {
   state.final_review.human_approved = true;
   state.pipeline.current_tier = PIPELINE_TIERS.COMPLETE;
+
+  const mutations = [
+    'Set final_review.human_approved to true',
+    `Set pipeline.current_tier to "${PIPELINE_TIERS.COMPLETE}"`,
+  ];
+
+  if (isV5(state)) {
+    const node = state.dag.nodes['request_final_approval'];
+    if (node) {
+      node.status = DAG_NODE_STATUSES.COMPLETE;
+      mutations.push('DAG: Set gate node "request_final_approval" status to complete');
+    }
+  }
+
   return {
     state,
-    mutations_applied: [
-      'Set final_review.human_approved to true',
-      `Set pipeline.current_tier to "${PIPELINE_TIERS.COMPLETE}"`,
-    ],
+    mutations_applied: mutations,
   };
 }
 
@@ -647,12 +940,28 @@ function handleFinalApproved(state, context, config) {
 function handleFinalRejected(state, context, config) {
   state.final_review.doc_path = null;
   state.final_review.status = 'not_started';
+
+  const mutations = [
+    'Set final_review.doc_path to null',
+    'Set final_review.status to "not_started"',
+  ];
+
+  if (isV5(state)) {
+    const reviewNode = state.dag.nodes['create_final_review'];
+    if (reviewNode) {
+      reviewNode.status = DAG_NODE_STATUSES.NOT_STARTED;
+      mutations.push('DAG: Reset node "create_final_review" status to not_started');
+    }
+    const gateNode = state.dag.nodes['request_final_approval'];
+    if (gateNode) {
+      gateNode.status = DAG_NODE_STATUSES.NOT_STARTED;
+      mutations.push('DAG: Reset gate node "request_final_approval" status to not_started');
+    }
+  }
+
   return {
     state,
-    mutations_applied: [
-      'Set final_review.doc_path to null',
-      'Set final_review.status to "not_started"',
-    ],
+    mutations_applied: mutations,
   };
 }
 
@@ -737,6 +1046,22 @@ function handleTaskCommitRequested(state, context, config) {
     mutations.push(`Commit request validated: branch = "${sc.branch}"`);
   }
 
+  if (isV5(state)) {
+    const phaseNum = state.execution.current_phase;
+    const phase = currentPhase(state);
+    const task = currentTask(state);
+    const node = findTaskNode(state, 'source_control_commit', phaseNum, phase.current_task, task.retries);
+    if (node) {
+      if (!sc || !sc.branch) {
+        node.status = DAG_NODE_STATUSES.SKIPPED;
+        mutations.push(`DAG: Set node "${node.id}" status to skipped (no branch)`);
+      } else {
+        node.status = DAG_NODE_STATUSES.IN_PROGRESS;
+        mutations.push(`DAG: Set node "${node.id}" status to in_progress`);
+      }
+    }
+  }
+
   return { state, mutations_applied: mutations };
 }
 
@@ -761,6 +1086,22 @@ function handleTaskCommitted(state, context, config) {
     task.commit_hash = context.commitHash ?? null;
     mutations.push(`Set task[${taskIndex}].commit_hash to ${JSON.stringify(task.commit_hash)}`);
   }
+
+  if (isV5(state)) {
+    const phaseNum = state.execution.current_phase;
+    const taskNum = phase.current_task; // current_task is still pre-increment at this point
+    const retries = task?.retries ?? 0;
+    const node = findTaskNode(state, 'source_control_commit', phaseNum, taskNum, retries);
+    if (node) {
+      node.status = DAG_NODE_STATUSES.COMPLETE;
+      if (context.commitHash) {
+        if (!node.docs) node.docs = {};
+        node.docs.commit_hash = context.commitHash;
+      }
+      mutations.push(`DAG: Set node "${node.id}" status to complete`);
+    }
+  }
+
   phase.current_task += 1;
   mutations.push(`Bumped phase.current_task to ${phase.current_task} (task committed)`);
   return {
@@ -792,18 +1133,22 @@ function handlePrRequested(state, context, config) {
     mutations.push(`PR request validated: branch = "${sc.branch}"`);
   }
 
+  if (isV5(state)) {
+    const node = state.dag.nodes['invoke_source_control_pr'];
+    if (node) {
+      if (!sc || !sc.branch) {
+        node.status = DAG_NODE_STATUSES.SKIPPED;
+        mutations.push('DAG: Set node "invoke_source_control_pr" status to skipped');
+      } else {
+        node.status = DAG_NODE_STATUSES.IN_PROGRESS;
+        mutations.push('DAG: Set node "invoke_source_control_pr" status to in_progress');
+      }
+    }
+  }
+
   return { state, mutations_applied: mutations };
 }
 
-/**
- * pr_created — Writes pr_url to state.pipeline.source_control and resolves to human gate.
- * Always succeeds unconditionally to prevent pipeline stall.
- *
- * @param {Object} state   - deep-cloned pipeline state
- * @param {Object} context - { pr_url?: (string|null) }
- * @param {Object} config  - merged orchestration config (unused)
- * @returns {{ state: Object, mutations_applied: string[] }}
- */
 function handlePrCreated(state, context, config) {
   const prUrl = context.pr_url ?? null;
   const mutations = [];
@@ -817,6 +1162,14 @@ function handlePrCreated(state, context, config) {
     mutations.push(
       'source_control not initialized — skipping pr_url update'
     );
+  }
+
+  if (isV5(state)) {
+    const node = state.dag.nodes['invoke_source_control_pr'];
+    if (node) {
+      node.status = DAG_NODE_STATUSES.COMPLETE;
+      mutations.push('DAG: Set node "invoke_source_control_pr" status to complete');
+    }
   }
 
   return { state, mutations_applied: mutations };
@@ -898,4 +1251,8 @@ module.exports._test = {
   handleTaskCommitted,
   handlePrRequested,
   handlePrCreated,
+  isV5,
+  findPlanningNode,
+  findPhaseNode,
+  findTaskNode,
 };

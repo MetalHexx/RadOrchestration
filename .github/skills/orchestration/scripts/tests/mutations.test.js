@@ -2,8 +2,11 @@
 
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('node:path');
 const { getMutation, normalizeDocPath, _test } = require('../lib/mutations');
 const { resolveTaskOutcome, resolvePhaseOutcome, checkRetryBudget } = _test;
+const { expandTemplate, computeExecutionOrder, expandPhases, expandTasks } = require('../lib/dag-expander');
+const { loadTemplate } = require('../lib/dag-template-loader');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -2249,5 +2252,435 @@ describe('handlePhaseReviewCompleted — state-first execution_mode (snapshot-ab
     const execution = result.state.execution;
     // effectiveGateMode = null ?? undefined ?? 'autonomous' = 'autonomous' → pointer advances
     assert.equal(execution.current_phase, 2, 'current_phase must advance when no snapshot and config execution_mode is "autonomous"');
+  });
+});
+
+// ─── V5 DAG State Factories ────────────────────────────────────────────────
+
+function makeV5PlanningState() {
+  const orchRoot = path.resolve(__dirname, '..', '..', '..', '..');
+  const { template } = loadTemplate('full', orchRoot);
+  const { nodes, execution_order } = expandTemplate(template);
+  const state = makePlanningState();
+  state.$schema = 'orchestration-state-v5';
+  state.dag = { template_name: 'full', nodes, execution_order };
+  return state;
+}
+
+function makeV5ExecutionState(phaseCount = 1, tasksPerPhase = 2) {
+  const state = makeV5PlanningState();
+  // Complete all planning steps
+  for (const node of Object.values(state.dag.nodes)) {
+    if (node.planning_step) node.status = 'complete';
+  }
+  state.dag.nodes['request_plan_approval'].status = 'complete';
+  // Expand phases
+  const phases = [];
+  for (let i = 0; i < phaseCount; i++) phases.push({ name: `Phase ${i + 1}` });
+  expandPhases(state.dag.nodes, 'for_each_phase', phaseCount, phases);
+  state.dag.execution_order = computeExecutionOrder(state.dag.nodes);
+  // Expand tasks for phase 1
+  const tasks = [];
+  for (let i = 0; i < tasksPerPhase; i++) tasks.push({ name: `Task ${i + 1}` });
+  expandTasks(state.dag.nodes, 'P01.for_each_task', 1, tasks);
+  state.dag.execution_order = computeExecutionOrder(state.dag.nodes);
+  // Set nested state to match
+  state.planning.status = 'complete';
+  state.planning.human_approved = true;
+  for (const step of state.planning.steps) {
+    step.status = 'complete';
+    step.doc_path = `${step.name}-doc.md`;
+  }
+  state.pipeline.current_tier = 'execution';
+  state.pipeline.gate_mode = 'autonomous';
+  state.execution.status = 'in_progress';
+  state.execution.current_phase = 1;
+  state.execution.phases = [{
+    name: 'Phase 1', status: 'in_progress', stage: 'executing',
+    current_task: 1,
+    tasks: tasks.map(t => ({
+      name: t.name, status: 'not_started', stage: 'planning',
+      docs: { handoff: null, review: null },
+      review: { verdict: null, action: null }, retries: 0,
+    })),
+    docs: { phase_plan: 'phases/PP.md', phase_report: null, phase_review: null },
+    review: { verdict: null, action: null },
+  }];
+  return state;
+}
+
+// ─── DAG Planning Mutations ────────────────────────────────────────────────
+
+describe('DAG planning mutations', () => {
+  it('research_started on v5 state sets DAG node to in_progress', () => {
+    const state = makeV5PlanningState();
+    const handler = getMutation('research_started');
+    const result = handler(state, {}, {});
+    const node = Object.values(state.dag.nodes).find(n => n.planning_step === 'research');
+    assert.equal(node.status, 'in_progress');
+    assert.ok(result.mutations_applied.some(m => m.startsWith('DAG:')));
+  });
+
+  it('research_completed on v5 state sets DAG node to complete with docs.doc_path', () => {
+    const state = makeV5PlanningState();
+    const handler = getMutation('research_completed');
+    const result = handler(state, { doc_path: 'RESEARCH.md' }, {});
+    const node = Object.values(state.dag.nodes).find(n => n.planning_step === 'research');
+    assert.equal(node.status, 'complete');
+    assert.equal(node.docs.doc_path, 'RESEARCH.md');
+    assert.ok(result.mutations_applied.some(m => m.includes('DAG:') && m.includes('complete')));
+  });
+
+  it('all planning started/completed handlers set DAG nodes on v5 state', () => {
+    const steps = ['research', 'prd', 'design', 'architecture', 'master_plan'];
+    for (const stepName of steps) {
+      const state = makeV5PlanningState();
+      const startHandler = getMutation(`${stepName}_started`);
+      startHandler(state, {}, {});
+      const node = Object.values(state.dag.nodes).find(n => n.planning_step === stepName);
+      assert.equal(node.status, 'in_progress', `${stepName}_started should set in_progress`);
+
+      const completeHandler = getMutation(`${stepName}_completed`);
+      completeHandler(state, { doc_path: `${stepName}.md` }, {});
+      assert.equal(node.status, 'complete', `${stepName}_completed should set complete`);
+      assert.equal(node.docs.doc_path, `${stepName}.md`);
+    }
+  });
+});
+
+// ─── DAG Plan Approved ─────────────────────────────────────────────────────
+
+describe('DAG plan_approved', () => {
+  it('sets request_plan_approval gate to complete, expands for_each_phase, updates execution_order', () => {
+    const state = makeV5PlanningState();
+    // Complete all planning steps in nested state
+    state.planning.status = 'complete';
+    state.planning.human_approved = false;
+    for (const step of state.planning.steps) {
+      step.status = 'complete';
+      step.doc_path = `${step.name}-doc.md`;
+    }
+    // Complete planning DAG nodes
+    for (const node of Object.values(state.dag.nodes)) {
+      if (node.planning_step) node.status = 'complete';
+    }
+
+    const handler = getMutation('plan_approved');
+    const result = handler(state, { total_phases: 2 }, {});
+
+    assert.equal(state.dag.nodes['request_plan_approval'].status, 'complete');
+    // for_each_phase should be deleted (expanded)
+    assert.equal(state.dag.nodes['for_each_phase'], undefined);
+    // Phase nodes should exist
+    assert.ok(state.dag.nodes['P01.create_phase_plan']);
+    assert.ok(state.dag.nodes['P02.create_phase_plan']);
+    // execution_order should be updated
+    assert.ok(Array.isArray(state.dag.execution_order));
+    assert.ok(state.dag.execution_order.length > 0);
+    assert.ok(result.mutations_applied.some(m => m.includes('DAG: Expanded for_each_phase')));
+    assert.ok(result.mutations_applied.some(m => m.includes('DAG: Recomputed execution_order')));
+  });
+});
+
+// ─── DAG Plan Rejected ─────────────────────────────────────────────────────
+
+describe('DAG plan_rejected', () => {
+  it('resets master_plan node to in_progress and gate to not_started', () => {
+    const state = makeV5PlanningState();
+    // Complete planning
+    for (const node of Object.values(state.dag.nodes)) {
+      if (node.planning_step) node.status = 'complete';
+    }
+    state.dag.nodes['request_plan_approval'].status = 'complete';
+    state.planning.human_approved = true;
+    state.planning.steps.find(s => s.name === 'master_plan').status = 'complete';
+
+    const handler = getMutation('plan_rejected');
+    const result = handler(state, {}, {});
+
+    const masterNode = Object.values(state.dag.nodes).find(n => n.planning_step === 'master_plan');
+    assert.equal(masterNode.status, 'in_progress');
+    assert.equal(state.dag.nodes['request_plan_approval'].status, 'not_started');
+    assert.ok(result.mutations_applied.some(m => m.includes('DAG: Reset node')));
+    assert.ok(result.mutations_applied.some(m => m.includes('DAG: Reset gate')));
+  });
+});
+
+// ─── DAG Phase Plan Created ─────────────────────────────────────────────────
+
+describe('DAG phase_plan_created', () => {
+  it('sets phase plan node to complete, expands for_each_task, updates execution_order', () => {
+    const state = makeV5PlanningState();
+    // Complete all planning
+    for (const node of Object.values(state.dag.nodes)) {
+      if (node.planning_step) node.status = 'complete';
+    }
+    state.dag.nodes['request_plan_approval'].status = 'complete';
+    // Expand phases first
+    expandPhases(state.dag.nodes, 'for_each_phase', 1, [{ name: 'Phase 1' }]);
+    state.dag.execution_order = computeExecutionOrder(state.dag.nodes);
+    // Set nested state
+    state.planning.status = 'complete';
+    state.planning.human_approved = true;
+    for (const step of state.planning.steps) {
+      step.status = 'complete';
+      step.doc_path = `${step.name}-doc.md`;
+    }
+    state.pipeline.current_tier = 'execution';
+    state.execution.status = 'in_progress';
+    state.execution.current_phase = 1;
+    state.execution.phases = [{
+      name: 'Phase 1', status: 'in_progress', stage: 'planning',
+      current_task: 0, tasks: [],
+      docs: { phase_plan: null, phase_report: null, phase_review: null },
+      review: { verdict: null, action: null },
+    }];
+
+    const handler = getMutation('phase_plan_created');
+    const result = handler(state, { doc_path: 'phases/PP.md', tasks: ['T1', 'T2'] }, defaultConfig);
+
+    // Phase plan node complete
+    assert.equal(state.dag.nodes['P01.create_phase_plan'].status, 'complete');
+    assert.equal(state.dag.nodes['P01.create_phase_plan'].docs.doc_path, 'phases/PP.md');
+    // for_each_task expanded
+    assert.equal(state.dag.nodes['P01.for_each_task'], undefined);
+    assert.ok(state.dag.nodes['P01.T01.create_task_handoff']);
+    assert.ok(state.dag.nodes['P01.T02.create_task_handoff']);
+    // execution_order updated
+    assert.ok(state.dag.execution_order.length > 0);
+    assert.ok(result.mutations_applied.some(m => m.includes('DAG: Expanded')));
+    assert.ok(result.mutations_applied.some(m => m.includes('DAG: Recomputed execution_order')));
+  });
+});
+
+// ─── DAG Task Lifecycle ────────────────────────────────────────────────────
+
+describe('DAG task lifecycle', () => {
+  it('task_handoff_started sets the handoff node to in_progress', () => {
+    const state = makeV5ExecutionState();
+    const handler = getMutation('task_handoff_started');
+    handler(state, {}, defaultConfig);
+    assert.equal(state.dag.nodes['P01.T01.create_task_handoff'].status, 'in_progress');
+  });
+
+  it('task_handoff_created sets handoff node to complete and coding node to in_progress', () => {
+    const state = makeV5ExecutionState();
+    const handler = getMutation('task_handoff_created');
+    handler(state, { doc_path: 'tasks/T01.md' }, defaultConfig);
+    assert.equal(state.dag.nodes['P01.T01.create_task_handoff'].status, 'complete');
+    assert.equal(state.dag.nodes['P01.T01.create_task_handoff'].docs.doc_path, 'tasks/T01.md');
+    assert.equal(state.dag.nodes['P01.T01.execute_coding_task'].status, 'in_progress');
+  });
+
+  it('task_completed sets coding node to complete and review node to in_progress', () => {
+    const state = makeV5ExecutionState();
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    const handler = getMutation('task_completed');
+    handler(state, {}, defaultConfig);
+    assert.equal(state.dag.nodes['P01.T01.execute_coding_task'].status, 'complete');
+    assert.equal(state.dag.nodes['P01.T01.code_review'].status, 'in_progress');
+  });
+});
+
+// ─── DAG Code Review Completed ──────────────────────────────────────────────
+
+describe('DAG code_review_completed', () => {
+  it('approved verdict sets review node to complete', () => {
+    const state = makeV5ExecutionState();
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'reviews/R.md', verdict: 'approved' }, defaultConfig);
+    assert.equal(state.dag.nodes['P01.T01.code_review'].status, 'complete');
+    assert.ok(result.mutations_applied.some(m => m.includes('DAG:') && m.includes('complete')));
+  });
+
+  it('changes_requested with retry budget sets review node to failed and injects corrective nodes', () => {
+    const state = makeV5ExecutionState();
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    state.execution.phases[0].tasks[0].retries = 0;
+    const handler = getMutation('code_review_completed');
+    const result = handler(state, { doc_path: 'reviews/R.md', verdict: 'changes_requested' }, defaultConfig);
+    assert.equal(state.dag.nodes['P01.T01.code_review'].status, 'failed');
+    // Corrective nodes injected
+    assert.ok(state.dag.nodes['P01.T01.create_task_handoff_r1']);
+    assert.ok(state.dag.nodes['P01.T01.execute_coding_task_r1']);
+    assert.ok(state.dag.nodes['P01.T01.code_review_r1']);
+    // execution_order updated
+    assert.ok(state.dag.execution_order.includes('P01.T01.code_review_r1'));
+    assert.ok(result.mutations_applied.some(m => m.includes('DAG: Injected corrective nodes')));
+    assert.ok(result.mutations_applied.some(m => m.includes('DAG: Recomputed execution_order')));
+  });
+
+  it('changes_requested with exhausted retries sets review node to halted', () => {
+    const state = makeV5ExecutionState();
+    state.execution.phases[0].tasks[0].status = 'in_progress';
+    state.execution.phases[0].tasks[0].retries = 0;
+    const cfg = { limits: { max_retries_per_task: 0 }, human_gates: { execution_mode: 'autonomous' } };
+    const handler = getMutation('code_review_completed');
+    handler(state, { doc_path: 'reviews/R.md', verdict: 'changes_requested' }, cfg);
+    assert.equal(state.dag.nodes['P01.T01.code_review'].status, 'halted');
+  });
+});
+
+// ─── DAG Phase Report & Review ──────────────────────────────────────────────
+
+describe('DAG phase_report_created', () => {
+  it('sets generate_phase_report node to complete', () => {
+    const state = makeV5ExecutionState();
+    const handler = getMutation('phase_report_created');
+    handler(state, { doc_path: 'reports/PR.md' }, defaultConfig);
+    assert.equal(state.dag.nodes['P01.generate_phase_report'].status, 'complete');
+    assert.equal(state.dag.nodes['P01.generate_phase_report'].docs.doc_path, 'reports/PR.md');
+  });
+});
+
+describe('DAG phase_review_completed', () => {
+  it('approved verdict sets phase_review node to complete', () => {
+    const state = makeV5ExecutionState();
+    const handler = getMutation('phase_review_completed');
+    handler(state, { doc_path: 'reviews/PR.md', verdict: 'approved', exit_criteria_met: true }, defaultConfig);
+    assert.equal(state.dag.nodes['P01.phase_review'].status, 'complete');
+  });
+
+  it('changes_requested verdict sets phase_review node to failed', () => {
+    const state = makeV5ExecutionState();
+    const handler = getMutation('phase_review_completed');
+    handler(state, { doc_path: 'reviews/PR.md', verdict: 'changes_requested', exit_criteria_met: false }, defaultConfig);
+    assert.equal(state.dag.nodes['P01.phase_review'].status, 'failed');
+  });
+
+  it('rejected verdict sets phase_review node to halted', () => {
+    const state = makeV5ExecutionState();
+    const handler = getMutation('phase_review_completed');
+    handler(state, { doc_path: 'reviews/PR.md', verdict: 'rejected', exit_criteria_met: true }, defaultConfig);
+    assert.equal(state.dag.nodes['P01.phase_review'].status, 'halted');
+  });
+
+  it('phase_review_completed approved on 2-phase v5 autonomous state marks P01.phase_review complete (not P02)', () => {
+    const state = makeV5ExecutionState(2, 2);
+    // Set up phase 1 as fully executed (all tasks complete, report done)
+    state.execution.phases = [
+      {
+        name: 'Phase 1', status: 'in_progress', stage: 'reviewing',
+        current_task: 3, // past last task
+        tasks: [
+          { name: 'Task 1', status: 'complete', stage: 'complete',
+            docs: { handoff: 'h1.md', review: 'r1.md' },
+            review: { verdict: 'approved', action: 'advanced' }, retries: 0 },
+          { name: 'Task 2', status: 'complete', stage: 'complete',
+            docs: { handoff: 'h2.md', review: 'r2.md' },
+            review: { verdict: 'approved', action: 'advanced' }, retries: 0 },
+        ],
+        docs: { phase_plan: 'pp1.md', phase_report: 'pr1.md', phase_review: null },
+        review: { verdict: null, action: null },
+      },
+      {
+        name: 'Phase 2', status: 'not_started', stage: 'planning',
+        current_task: 0,
+        tasks: [],
+        docs: { phase_plan: null, phase_report: null, phase_review: null },
+        review: { verdict: null, action: null },
+      },
+    ];
+    state.pipeline.gate_mode = 'autonomous';
+    // Mark P01 task DAG nodes as complete so phase_review is the focus
+    const p01Nodes = Object.keys(state.dag.nodes).filter(id => id.startsWith('P01.T'));
+    for (const id of p01Nodes) {
+      state.dag.nodes[id].status = 'complete';
+    }
+    state.dag.nodes['P01.create_phase_plan'].status = 'complete';
+    state.dag.nodes['P01.generate_phase_report'].status = 'complete';
+
+    const result = getMutation('phase_review_completed')(state, {
+      doc_path: 'review-p1.md',
+      verdict: 'approved',
+      exit_criteria_met: true,
+    }, defaultConfig);
+
+    // P01.phase_review should be complete
+    assert.equal(state.dag.nodes['P01.phase_review'].status, 'complete',
+      'P01.phase_review should be complete');
+    // P02.phase_review should still be not_started
+    assert.equal(state.dag.nodes['P02.phase_review'].status, 'not_started',
+      'P02.phase_review should still be not_started');
+    // current_phase should have been bumped to 2 (autonomous advance)
+    assert.equal(state.execution.current_phase, 2);
+  });
+});
+
+// ─── DAG Final Review ───────────────────────────────────────────────────────
+
+describe('DAG final_review_completed', () => {
+  it('sets create_final_review node to complete', () => {
+    const state = makeV5ExecutionState();
+    state.pipeline.current_tier = 'review';
+    state.final_review = { status: 'not_started', doc_path: null, human_approved: false };
+    const handler = getMutation('final_review_completed');
+    handler(state, { doc_path: 'reviews/FR.md' }, defaultConfig);
+    assert.equal(state.dag.nodes['create_final_review'].status, 'complete');
+    assert.equal(state.dag.nodes['create_final_review'].docs.doc_path, 'reviews/FR.md');
+  });
+});
+
+describe('DAG final_approved', () => {
+  it('sets request_final_approval gate to complete', () => {
+    const state = makeV5ExecutionState();
+    state.pipeline.current_tier = 'review';
+    state.final_review = { status: 'complete', doc_path: 'reviews/FR.md', human_approved: false };
+    const handler = getMutation('final_approved');
+    handler(state, {}, defaultConfig);
+    assert.equal(state.dag.nodes['request_final_approval'].status, 'complete');
+  });
+});
+
+describe('DAG final_rejected', () => {
+  it('resets create_final_review and request_final_approval to not_started', () => {
+    const state = makeV5ExecutionState();
+    state.pipeline.current_tier = 'review';
+    state.final_review = { status: 'complete', doc_path: 'reviews/FR.md', human_approved: false };
+    state.dag.nodes['create_final_review'].status = 'complete';
+    state.dag.nodes['request_final_approval'].status = 'complete';
+    const handler = getMutation('final_rejected');
+    handler(state, {}, defaultConfig);
+    assert.equal(state.dag.nodes['create_final_review'].status, 'not_started');
+    assert.equal(state.dag.nodes['request_final_approval'].status, 'not_started');
+  });
+});
+
+// ─── DAG Source Control ─────────────────────────────────────────────────────
+
+describe('DAG task_committed', () => {
+  it('sets source_control_commit node to complete', () => {
+    const state = makeV5ExecutionState();
+    state.pipeline.source_control = {
+      branch: 'feat/x', base_branch: 'main', worktree_path: '/wt',
+      auto_commit: 'always', auto_pr: 'never',
+    };
+    state.execution.phases[0].tasks[0].status = 'complete';
+    state.execution.phases[0].tasks[0].stage = 'complete';
+    const handler = getMutation('task_committed');
+    handler(state, { commitHash: 'abc123' }, defaultConfig);
+    assert.equal(state.dag.nodes['P01.T01.source_control_commit'].status, 'complete');
+    assert.equal(state.dag.nodes['P01.T01.source_control_commit'].docs.commit_hash, 'abc123');
+  });
+});
+
+// ─── V4 state produces zero DAG mutations ───────────────────────────────────
+
+describe('V4 state produces zero DAG mutations', () => {
+  it('planning handler on v4 state triggers no DAG mutations', () => {
+    const state = makePlanningState();
+    const handler = getMutation('research_started');
+    const result = handler(state, {}, {});
+    assert.ok(!result.mutations_applied.some(m => m.startsWith('DAG:')));
+    assert.equal(state.dag, undefined);
+  });
+
+  it('execution handler on v4 state triggers no DAG mutations', () => {
+    const state = makeExecutionState();
+    const handler = getMutation('task_handoff_started');
+    const result = handler(state, {}, defaultConfig);
+    assert.ok(!result.mutations_applied.some(m => m.startsWith('DAG:')));
+    assert.equal(state.dag, undefined);
   });
 });
