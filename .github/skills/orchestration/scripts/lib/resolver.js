@@ -6,7 +6,9 @@ const {
   PHASE_STAGES, TASK_STAGES,
   REVIEW_ACTIONS, PHASE_REVIEW_ACTIONS,
   HUMAN_GATE_MODES, NEXT_ACTIONS,
+  DAG_NODE_STATUSES,
 } = require('./constants');
+const dagWalker = require('./dag-walker');
 
 // ─── Planning Step → Action Map ─────────────────────────────────────────────
 
@@ -318,20 +320,48 @@ function resolveReview(state) {
   return halted('Final review approved but tier still in review — expected mutation to transition');
 }
 
+// ─── v5 DAG Delegation ──────────────────────────────────────────────────────
+
+const MAX_GATE_LOOP_ITERATIONS = 100;
+
+function resolveV5(state, config) {
+  let result = dagWalker.resolveNextAction(state, config);
+  if (result !== null) return result;
+
+  // Autonomous gate null-guard loop
+  for (let i = 0; i < MAX_GATE_LOOP_ITERATIONS; i++) {
+    const readyNode = dagWalker.findNextReadyNode(state.dag.nodes, state.dag.execution_order);
+    if (!readyNode) {
+      return halted('No ready nodes after autonomous gate skip');
+    }
+    readyNode.status = DAG_NODE_STATUSES.COMPLETE;
+    result = dagWalker.resolveNextAction(state, config);
+    if (result !== null) return result;
+  }
+
+  return halted('Autonomous gate loop exceeded max iterations');
+}
+
 // ─── Main Entry Point ───────────────────────────────────────────────────────
 
 /**
  * Pure state inspector. Given post-mutation state and config, returns the
  * next external action the Orchestrator should execute.
  *
- * v4: Uses task.stage and phase.stage for resolution instead of
- * inferring work focus from null doc paths.
+ * v5 state (state.dag present): delegates to dag-walker.resolveNextAction().
+ *   Handles null returns from autonomous gates via a bounded re-invoke loop.
+ * v4 state: uses the existing if/else resolution tree.
  *
  * @param {import('./constants').StateJson} state - post-mutation, post-validation state
  * @param {import('./constants').Config} config - parsed orchestration config
  * @returns {{ action: string, context: Object }}
  */
 function resolveNextAction(state, config) {
+  // v5 state → DAG walker
+  if (state.dag) {
+    return resolveV5(state, config);
+  }
+  // v4 state → legacy if/else resolver (below)
   const tier = state.pipeline.current_tier;
 
   // Terminal tiers first

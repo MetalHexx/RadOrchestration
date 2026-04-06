@@ -161,6 +161,14 @@ function handleInit(config, projectDir, io) {
   }
   io.writeState(projectDir, state);
   const next = resolveNextAction(state, config);
+  if (!next) {
+    return {
+      success: false,
+      action: null,
+      context: { error: 'Resolver returned null — no action available' },
+      mutations_applied: [],
+    };
+  }
   return {
     success: true,
     action: next.action,
@@ -173,6 +181,14 @@ function handleInit(config, projectDir, io) {
 
 function handleColdStart(currentState, config) {
   const next = resolveNextAction(currentState, config);
+  if (!next) {
+    return {
+      success: false,
+      action: null,
+      context: { error: 'Resolver returned null — no action available' },
+      mutations_applied: [],
+    };
+  }
   return {
     success: true,
     action: next.action,
@@ -272,6 +288,14 @@ function processEvent(event, projectDir, context, io, configPath) {
   io.writeState(projectDir, proposed.state);
 
   const next = resolveNextAction(proposed.state, config);
+  if (!next) {
+    return {
+      success: false,
+      action: null,
+      context: { error: 'Resolver returned null — no action available' },
+      mutations_applied: [],
+    };
+  }
 
   return {
     success: true,

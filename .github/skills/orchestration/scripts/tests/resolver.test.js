@@ -3,6 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { resolveNextAction } = require('../lib/resolver.js');
+const { DAG_NODE_STATUSES, DAG_NODE_TYPES, NEXT_ACTIONS } = require('../lib/constants.js');
 
 // ─── Factories ──────────────────────────────────────────────────────────────
 
@@ -744,5 +745,124 @@ describe('resolver — edge cases', () => {
     assert.equal(result.context.task_id, 'P02-T03');
     assert.equal(result.context.phase_number, 2);
     assert.equal(result.context.task_number, 3);
+  });
+});
+
+// ─── v5 DAG Delegation Tests ────────────────────────────────────────────────
+
+function makeV5State(dagNodes, executionOrder, overrides = {}) {
+  return {
+    $schema: 'orchestration-state-v5',
+    project: { name: 'TEST', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:01.000Z' },
+    pipeline: { current_tier: 'planning', gate_mode: null, ...overrides.pipeline },
+    dag: { template_name: 'test', nodes: dagNodes, execution_order: executionOrder },
+    planning: {
+      status: 'not_started', human_approved: false,
+      steps: [
+        { name: 'research', status: 'not_started', doc_path: null },
+        { name: 'prd', status: 'not_started', doc_path: null },
+        { name: 'design', status: 'not_started', doc_path: null },
+        { name: 'architecture', status: 'not_started', doc_path: null },
+        { name: 'master_plan', status: 'not_started', doc_path: null },
+      ],
+    },
+    execution: { status: 'not_started', current_phase: 0, phases: [] },
+    final_review: { status: 'not_started', doc_path: null, human_approved: false },
+    config: {
+      limits: { max_phases: 10, max_tasks_per_phase: 15, max_retries_per_task: 2, max_consecutive_review_rejections: 3 },
+      human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
+    },
+  };
+}
+
+describe('resolver — v5 DAG delegation', () => {
+  it('v5 state with state.dag delegates to DAG walker and returns valid { action, context }', () => {
+    const nodes = {
+      'step-research': {
+        id: 'step-research', type: DAG_NODE_TYPES.STEP, action: NEXT_ACTIONS.SPAWN_RESEARCH,
+        status: DAG_NODE_STATUSES.NOT_STARTED, depends_on: [], context: { step: 'research' },
+      },
+    };
+    const state = makeV5State(nodes, ['step-research']);
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, NEXT_ACTIONS.SPAWN_RESEARCH);
+    assert.equal(typeof result.context, 'object');
+    assert.notEqual(result.context, null);
+  });
+
+  it('v4 state (no state.dag) uses legacy if/else path', () => {
+    const state = makeState({
+      pipeline: { current_tier: 'planning' },
+      planning: {
+        status: 'not_started', human_approved: false,
+        steps: [
+          makePlanningStep('research', 'not_started'),
+          makePlanningStep('prd', 'not_started'),
+          makePlanningStep('design', 'not_started'),
+          makePlanningStep('architecture', 'not_started'),
+          makePlanningStep('master_plan', 'not_started'),
+        ],
+      },
+    });
+    assert.equal(state.dag, undefined);
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'spawn_research');
+  });
+
+  it('autonomous gate null-guard loop: skips gate and returns next non-gate action', () => {
+    const nodes = {
+      'gate-exec': {
+        id: 'gate-exec', type: DAG_NODE_TYPES.GATE, action: NEXT_ACTIONS.GATE_TASK,
+        gate_type: 'execution',
+        status: DAG_NODE_STATUSES.NOT_STARTED, depends_on: [],
+      },
+      'step-next': {
+        id: 'step-next', type: DAG_NODE_TYPES.STEP, action: NEXT_ACTIONS.CREATE_TASK_HANDOFF,
+        status: DAG_NODE_STATUSES.NOT_STARTED, depends_on: ['gate-exec'],
+        context: { phase_number: 1 },
+      },
+    };
+    const state = makeV5State(nodes, ['gate-exec', 'step-next'], {
+      pipeline: { current_tier: 'execution', gate_mode: 'autonomous' },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    // Gate should have been skipped (marked complete in-memory)
+    assert.equal(nodes['gate-exec'].status, DAG_NODE_STATUSES.COMPLETE);
+    assert.equal(result.action, NEXT_ACTIONS.CREATE_TASK_HANDOFF);
+  });
+
+  it('bounded loop guard: returns display_halted when gates exhausted but pipeline stuck', () => {
+    // Two autonomous gates followed by a step with unmet dependency — after gates
+    // are auto-advanced, the step can't proceed, so walker returns halted.
+    const nodes = {
+      'gate-1': {
+        id: 'gate-1', type: DAG_NODE_TYPES.GATE, action: NEXT_ACTIONS.GATE_TASK,
+        gate_type: 'execution',
+        status: DAG_NODE_STATUSES.NOT_STARTED, depends_on: [],
+      },
+      'gate-2': {
+        id: 'gate-2', type: DAG_NODE_TYPES.GATE, action: NEXT_ACTIONS.GATE_PHASE,
+        gate_type: 'execution',
+        status: DAG_NODE_STATUSES.NOT_STARTED, depends_on: ['gate-1'],
+      },
+      'step-stuck': {
+        id: 'step-stuck', type: DAG_NODE_TYPES.STEP, action: NEXT_ACTIONS.CREATE_TASK_HANDOFF,
+        status: DAG_NODE_STATUSES.NOT_STARTED, depends_on: ['gate-2', 'unmet-dep'],
+        context: {},
+      },
+    };
+    const state = makeV5State(nodes, ['gate-1', 'gate-2', 'step-stuck'], {
+      pipeline: { current_tier: 'execution', gate_mode: 'autonomous' },
+    });
+    const result = resolveNextAction(state, makeConfig());
+    assert.equal(result.action, 'display_halted');
+    // Both gates should have been marked complete in-memory
+    assert.equal(nodes['gate-1'].status, DAG_NODE_STATUSES.COMPLETE);
+    assert.equal(nodes['gate-2'].status, DAG_NODE_STATUSES.COMPLETE);
+  });
+
+  it('module exports only resolveNextAction', () => {
+    const mod = require('../lib/resolver.js');
+    assert.deepEqual(Object.keys(mod), ['resolveNextAction']);
   });
 });

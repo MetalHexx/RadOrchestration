@@ -763,3 +763,60 @@ describe('handleInit error propagation', () => {
     assert.ok(result.context.error.includes('nonexistent'));
   });
 });
+
+// ─── pipeline-engine — resolver null-guard ───────────────────────────────────
+
+describe('pipeline-engine — resolver null-guard', () => {
+  it('handleInit returns { success: false } when resolver returns null', () => {
+    const resolverPath = require.resolve('../lib/resolver');
+    const enginePath = require.resolve('../lib/pipeline-engine');
+    const resolverMod = require.cache[resolverPath];
+    const originalFn = resolverMod.exports.resolveNextAction;
+    const originalEngineMod = require.cache[enginePath];
+
+    resolverMod.exports.resolveNextAction = () => null;
+    delete require.cache[enginePath];
+
+    try {
+      const { processEvent: pEvent } = require('../lib/pipeline-engine');
+      const io = createMockIO({ state: null });
+      const result = pEvent('start', PROJECT_DIR, {}, io);
+      assertResultShape(result);
+      assert.equal(result.success, false);
+      assert.equal(result.action, null);
+      assert.equal(result.context.error, 'Resolver returned null — no action available');
+      assert.ok(Array.isArray(result.mutations_applied));
+    } finally {
+      resolverMod.exports.resolveNextAction = originalFn;
+      delete require.cache[enginePath];
+      require.cache[enginePath] = originalEngineMod;
+    }
+  });
+
+  it('handleColdStart returns { success: false } when resolver returns null', () => {
+    const resolverPath = require.resolve('../lib/resolver');
+    const enginePath = require.resolve('../lib/pipeline-engine');
+    const resolverMod = require.cache[resolverPath];
+    const originalFn = resolverMod.exports.resolveNextAction;
+    const originalEngineMod = require.cache[enginePath];
+
+    resolverMod.exports.resolveNextAction = () => null;
+    delete require.cache[enginePath];
+
+    try {
+      const { processEvent: pEvent } = require('../lib/pipeline-engine');
+      const state = createBaseState();
+      const io = createMockIO({ state });
+      const result = pEvent('start', PROJECT_DIR, {}, io);
+      assertResultShape(result);
+      assert.equal(result.success, false);
+      assert.equal(result.action, null);
+      assert.equal(result.context.error, 'Resolver returned null — no action available');
+      assert.ok(Array.isArray(result.mutations_applied));
+    } finally {
+      resolverMod.exports.resolveNextAction = originalFn;
+      delete require.cache[enginePath];
+      require.cache[enginePath] = originalEngineMod;
+    }
+  });
+});
