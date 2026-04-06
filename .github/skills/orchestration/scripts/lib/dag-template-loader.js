@@ -56,6 +56,15 @@ function loadTemplate(templateName, orchRoot) {
     }
   }
 
+  // Full structural & graph validation (required fields, depends_on refs, cycles)
+  const validationErrors = validateTemplate(parsed);
+  if (validationErrors.length > 0) {
+    return {
+      template: null,
+      error: `Failed to validate template "${templateName}":\n - ${validationErrors.join('\n - ')}`
+    };
+  }
+
   return { template: parsed, error: null };
 }
 

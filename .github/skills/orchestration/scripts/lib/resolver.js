@@ -325,22 +325,19 @@ function resolveReview(state) {
 const MAX_GATE_LOOP_ITERATIONS = 100;
 
 function resolveV5(state, config) {
-  // Shallow-copy nodes so gate auto-advance mutations don't leak to callers
-  const originalNodes = state.dag.nodes;
-  const nodesCopy = {};
-  for (const [k, v] of Object.entries(originalNodes)) nodesCopy[k] = { ...v };
-  state.dag.nodes = nodesCopy;
+  let result = dagWalker.resolveNextAction(state, config);
+  if (result !== null) return result;
+
+  // Autonomous gate null-guard loop — track gate status changes to revert
+  const gateReverts = [];
 
   try {
-    let result = dagWalker.resolveNextAction(state, config);
-    if (result !== null) return result;
-
-    // Autonomous gate null-guard loop
     for (let i = 0; i < MAX_GATE_LOOP_ITERATIONS; i++) {
       const readyNode = dagWalker.findNextReadyNode(state.dag.nodes, state.dag.execution_order);
       if (!readyNode) {
         return halted('No ready nodes after autonomous gate skip');
       }
+      gateReverts.push({ node: readyNode, originalStatus: readyNode.status });
       readyNode.status = DAG_NODE_STATUSES.COMPLETE;
       result = dagWalker.resolveNextAction(state, config);
       if (result !== null) return result;
@@ -348,8 +345,11 @@ function resolveV5(state, config) {
 
     return halted('Autonomous gate loop exceeded max iterations');
   } finally {
-    // Restore original nodes — caller's state is never mutated
-    state.dag.nodes = originalNodes;
+    // Revert only gate auto-advance status mutations;
+    // structural expansions (conditional/parallel) are preserved
+    for (const { node, originalStatus } of gateReverts) {
+      node.status = originalStatus;
+    }
   }
 }
 

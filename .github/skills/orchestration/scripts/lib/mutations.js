@@ -1100,8 +1100,7 @@ function handleTaskCommitted(state, context, config) {
   if (isV5(state)) {
     const phaseNum = state.execution.current_phase;
     const taskNum = phase.current_task; // current_task is still pre-increment at this point
-    const retries = task?.retries ?? 0;
-    const node = findTaskNode(state, 'source_control_commit', phaseNum, taskNum, retries);
+    const node = findTaskNode(state, 'source_control_commit', phaseNum, taskNum, 0);
     if (node) {
       node.status = DAG_NODE_STATUSES.COMPLETE;
       if (context.commitHash) {
