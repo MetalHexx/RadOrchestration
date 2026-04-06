@@ -98,7 +98,7 @@ function SortBuilder({ config, onChange }: SortBuilderProps): JSX.Element {
               ))}
             </div>
             <ToggleGroup
-              aria-label="Sort direction"
+              aria-label="Primary sort direction"
               value={[config.primaryDir]}
               onValueChange={handlePrimaryDirChange}
               size="sm"
@@ -139,7 +139,7 @@ function SortBuilder({ config, onChange }: SortBuilderProps): JSX.Element {
             </div>
             {config.secondary !== "none" && (
               <ToggleGroup
-                aria-label="Sort direction"
+                aria-label="Secondary sort direction"
                 value={[config.secondaryDir]}
                 onValueChange={handleSecondaryDirChange}
                 size="sm"
