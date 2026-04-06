@@ -140,6 +140,7 @@ export async function discoverProjects(
         brainstormingDoc: hasBrainstorming ? brainstormingFile : null,
         planningStatus: state.planning?.status,
         executionStatus: state.execution?.status,
+        lastUpdated: state.project?.updated,
       });
     } catch (err) {
       // Determine if the file is missing or malformed
