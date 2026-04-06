@@ -1,0 +1,872 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Orchestration State v5",
+  "description": "Canonical schema for the orchestration system's v5 state format with DAG section.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "project",
+    "pipeline",
+    "planning",
+    "execution",
+    "final_review",
+    "dag"
+  ],
+  "definitions": {
+    "DagNode": {
+      "title": "DAG Node",
+      "description": "A single node in the expanded DAG stored in state.dag.nodes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "status", "depends_on", "template_node_id"],
+      "properties": {
+        "id": {
+          "title": "Node ID",
+          "description": "Unique node identifier. Template-level IDs for static nodes (e.g., 'research'). Scoped IDs for expanded nodes (e.g., 'P01.phase_plan', 'P01.T02.code').",
+          "type": "string"
+        },
+        "type": {
+          "title": "Node Type",
+          "description": "DAG node type. One of the DAG_NODE_TYPES values.",
+          "type": "string",
+          "enum": ["step", "gate", "for_each_phase", "for_each_task", "conditional", "parallel"]
+        },
+        "status": {
+          "title": "Node Status",
+          "description": "Current execution status of this node.",
+          "type": "string",
+          "enum": ["not_started", "in_progress", "complete", "failed", "halted", "skipped"]
+        },
+        "depends_on": {
+          "title": "Dependencies",
+          "description": "IDs of predecessor nodes that must be complete or skipped before this node can start.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "template_node_id": {
+          "title": "Template Node ID",
+          "description": "Original template node ID before expansion.",
+          "type": "string"
+        },
+        "action": {
+          "title": "Action",
+          "description": "NEXT_ACTIONS value for step and gate nodes.",
+          "type": "string"
+        },
+        "events": {
+          "title": "Events",
+          "description": "Event names for step nodes.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "started": {
+              "title": "Started Event",
+              "description": "Event name emitted when this node starts. Optional — omit for single-event steps.",
+              "type": "string"
+            },
+            "completed": {
+              "title": "Completed Event",
+              "description": "Event name emitted when this node completes.",
+              "type": "string"
+            }
+          },
+          "required": ["completed"]
+        },
+        "context": {
+          "title": "Context",
+          "description": "Action-specific context fields populated during execution.",
+          "type": "object"
+        },
+        "gate_type": {
+          "title": "Gate Type",
+          "description": "Gate type for gate nodes. Values: planning, final.",
+          "type": "string",
+          "enum": ["planning", "final"]
+        },
+        "planning_step": {
+          "title": "Planning Step",
+          "description": "Planning step name for adapter mapping (e.g., 'research', 'prd').",
+          "type": "string"
+        },
+        "phase_number": {
+          "title": "Phase Number",
+          "description": "1-based phase number for phase-scoped nodes.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "task_number": {
+          "title": "Task Number",
+          "description": "1-based task number for task-scoped nodes.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "phase_name": {
+          "title": "Phase Name",
+          "description": "Phase name for phase-scoped nodes.",
+          "type": "string"
+        },
+        "task_name": {
+          "title": "Task Name",
+          "description": "Task name for task-scoped nodes.",
+          "type": "string"
+        },
+        "retries": {
+          "title": "Retry Count",
+          "description": "Number of retries for task code/review nodes.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "docs": {
+          "title": "Document Paths",
+          "description": "Paths to documents associated with this node, populated by mutations.",
+          "type": "object"
+        },
+        "review": {
+          "title": "Review Outcome",
+          "description": "Review outcome for review nodes, populated by mutations.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "verdict": {
+              "title": "Review Verdict",
+              "description": "Review outcome value.",
+              "oneOf": [
+                { "type": "string", "enum": ["approved", "changes_requested", "rejected"] },
+                { "type": "null" }
+              ]
+            },
+            "action": {
+              "title": "Review Action",
+              "description": "Pipeline action after review.",
+              "oneOf": [
+                { "type": "string", "enum": ["advanced", "corrective_task_issued", "halted"] },
+                { "type": "null" }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "$schema": {
+      "title": "Schema Version",
+      "description": "Schema version identifier. Must be orchestration-state-v5.",
+      "const": "orchestration-state-v5"
+    },
+    "project": {
+      "title": "Project Metadata",
+      "description": "Core project identity and timestamps.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "created",
+        "updated"
+      ],
+      "properties": {
+        "name": {
+          "title": "Project Name",
+          "description": "Unique project identifier derived from the project directory name.",
+          "type": "string"
+        },
+        "created": {
+          "title": "Created Timestamp",
+          "description": "ISO 8601 timestamp when the project was initialized.",
+          "type": "string"
+        },
+        "updated": {
+          "title": "Updated Timestamp",
+          "description": "ISO 8601 timestamp of the last state mutation.",
+          "type": "string"
+        }
+      }
+    },
+    "pipeline": {
+      "title": "Pipeline State",
+      "description": "Current pipeline execution state and configuration.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current_tier"
+      ],
+      "properties": {
+        "current_tier": {
+          "title": "Current Tier",
+          "description": "Active pipeline tier. Values: planning, execution, review, complete, halted.",
+          "type": "string",
+          "enum": [
+            "planning",
+            "execution",
+            "review",
+            "complete",
+            "halted"
+          ]
+        },
+        "gate_mode": {
+          "title": "Gate Mode",
+          "description": "Human gate frequency override, or null to use config default. Values: task, phase, autonomous.",
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "task",
+                "phase",
+                "autonomous"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source_control": {
+          "title": "Source Control Settings",
+          "description": "Source control configuration for this project, set during initialization.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "branch",
+            "base_branch",
+            "worktree_path",
+            "auto_commit",
+            "auto_pr"
+          ],
+          "properties": {
+            "branch": {
+              "title": "Feature Branch",
+              "description": "Git branch name used for the project's code changes.",
+              "type": "string"
+            },
+            "base_branch": {
+              "title": "Base Branch",
+              "description": "Git branch to merge into when the pull request is created.",
+              "type": "string"
+            },
+            "worktree_path": {
+              "title": "Worktree Path",
+              "description": "Absolute path to the git worktree directory for this project.",
+              "type": "string"
+            },
+            "auto_commit": {
+              "title": "Auto Commit Mode",
+              "description": "Controls when commits are made automatically. Values: always, never.",
+              "type": "string",
+              "enum": [
+                "always",
+                "never"
+              ]
+            },
+            "auto_pr": {
+              "title": "Auto PR Mode",
+              "description": "Controls when pull requests are created automatically. Values: always, never.",
+              "type": "string",
+              "enum": [
+                "always",
+                "never"
+              ]
+            },
+            "remote_url": {
+              "title": "Remote URL",
+              "description": "URL of the remote repository, or null if not configured.",
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "compare_url": {
+              "title": "Compare URL",
+              "description": "URL to compare the feature branch against base branch, or null.",
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pr_url": {
+              "title": "Pull Request URL",
+              "description": "URL of the created pull request, or null if not yet created.",
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "template": {
+          "title": "Pipeline Template",
+          "description": "Name of the pipeline template used for this project (e.g., 'full', 'quick').",
+          "type": "string"
+        }
+      }
+    },
+    "planning": {
+      "title": "Planning State",
+      "description": "Planning pipeline tier state and document tracking.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "human_approved",
+        "steps"
+      ],
+      "properties": {
+        "status": {
+          "title": "Planning Status",
+          "description": "Current status of the planning tier. Values: not_started, in_progress, complete.",
+          "type": "string",
+          "enum": [
+            "not_started",
+            "in_progress",
+            "complete"
+          ]
+        },
+        "human_approved": {
+          "title": "Planning Human Approved",
+          "description": "When true, a human has approved the planning output.",
+          "type": "boolean"
+        },
+        "steps": {
+          "title": "Planning Steps",
+          "description": "Ordered list of planning document steps.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "status",
+              "doc_path"
+            ],
+            "properties": {
+              "name": {
+                "title": "Step Name",
+                "description": "Planning step identifier. Values: research, prd, design, architecture, master_plan.",
+                "type": "string",
+                "enum": [
+                  "research",
+                  "prd",
+                  "design",
+                  "architecture",
+                  "master_plan"
+                ]
+              },
+              "status": {
+                "title": "Step Status",
+                "description": "Current status of this planning step. Values: not_started, in_progress, complete.",
+                "type": "string",
+                "enum": [
+                  "not_started",
+                  "in_progress",
+                  "complete"
+                ]
+              },
+              "doc_path": {
+                "title": "Step Document Path",
+                "description": "Relative path to the planning step document, or null if not yet created.",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "execution": {
+      "title": "Execution State",
+      "description": "Execution pipeline tier state, phases, and task tracking.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "current_phase",
+        "phases"
+      ],
+      "properties": {
+        "status": {
+          "title": "Execution Status",
+          "description": "Current status of the execution tier. Values: not_started, in_progress, complete, halted.",
+          "type": "string",
+          "enum": [
+            "not_started",
+            "in_progress",
+            "complete",
+            "halted"
+          ]
+        },
+        "current_phase": {
+          "title": "Current Phase Index",
+          "description": "1-based index of the active phase. Zero means no phase is active.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "phases": {
+          "title": "Execution Phases",
+          "description": "Ordered list of execution phases.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "status",
+              "stage",
+              "current_task",
+              "tasks",
+              "docs",
+              "review"
+            ],
+            "properties": {
+              "name": {
+                "title": "Phase Name",
+                "description": "Human-readable phase identifier.",
+                "type": "string"
+              },
+              "status": {
+                "title": "Phase Status",
+                "description": "Current status of this phase. Values: not_started, in_progress, complete, halted.",
+                "type": "string",
+                "enum": [
+                  "not_started",
+                  "in_progress",
+                  "complete",
+                  "halted"
+                ]
+              },
+              "stage": {
+                "title": "Phase Stage",
+                "description": "Active workflow stage for this phase. Values: planning, executing, reviewing, complete, failed.",
+                "type": "string",
+                "enum": [
+                  "planning",
+                  "executing",
+                  "reviewing",
+                  "complete",
+                  "failed"
+                ]
+              },
+              "current_task": {
+                "title": "Current Task Index",
+                "description": "1-based index of the active task in this phase. Zero means no task is active.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "tasks": {
+                "title": "Phase Tasks",
+                "description": "Ordered list of tasks in this phase.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "name",
+                    "status",
+                    "stage",
+                    "docs",
+                    "review",
+                    "retries"
+                  ],
+                  "properties": {
+                    "name": {
+                      "title": "Task Name",
+                      "description": "Human-readable task identifier.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Task Status",
+                      "description": "Current status of this task. Values: not_started, in_progress, complete, failed, halted.",
+                      "type": "string",
+                      "enum": [
+                        "not_started",
+                        "in_progress",
+                        "complete",
+                        "failed",
+                        "halted"
+                      ]
+                    },
+                    "stage": {
+                      "title": "Task Stage",
+                      "description": "Active workflow stage for this task. Values: planning, coding, reviewing, complete, failed.",
+                      "type": "string",
+                      "enum": [
+                        "planning",
+                        "coding",
+                        "reviewing",
+                        "complete",
+                        "failed"
+                      ]
+                    },
+                    "docs": {
+                      "title": "Task Documents",
+                      "description": "Paths to the task handoff and code review documents.",
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "handoff",
+                        "review"
+                      ],
+                      "properties": {
+                        "handoff": {
+                          "title": "Task Handoff Path",
+                          "description": "Relative path to the task handoff document, or null if not yet created.",
+                          "oneOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "review": {
+                          "title": "Task Review Path",
+                          "description": "Relative path to the code review document, or null if not yet created.",
+                          "oneOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "review": {
+                      "title": "Task Review",
+                      "description": "Code review verdict and resulting action for this task.",
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "verdict",
+                        "action"
+                      ],
+                      "properties": {
+                        "verdict": {
+                          "title": "Task Review Verdict",
+                          "description": "Code review outcome. Values: approved, changes_requested, rejected, or null.",
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "approved",
+                                "changes_requested",
+                                "rejected"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "action": {
+                          "title": "Task Review Action",
+                          "description": "Pipeline action after code review. Values: advanced, corrective_task_issued, halted, or null.",
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "advanced",
+                                "corrective_task_issued",
+                                "halted"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "retries": {
+                      "title": "Task Retry Count",
+                      "description": "Number of times this task has been retried. Minimum: 0.",
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "commit_hash": {
+                      "title": "Task Commit Hash",
+                      "description": "Git commit hash for this task's code, or null if not yet committed.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "docs": {
+                "title": "Phase Documents",
+                "description": "Paths to the phase plan, report, and review documents.",
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "phase_plan",
+                  "phase_report",
+                  "phase_review"
+                ],
+                "properties": {
+                  "phase_plan": {
+                    "title": "Phase Plan Path",
+                    "description": "Relative path to the phase plan document, or null if not yet created.",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "phase_report": {
+                    "title": "Phase Report Path",
+                    "description": "Relative path to the phase report document, or null if not yet created.",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "phase_review": {
+                    "title": "Phase Review Path",
+                    "description": "Relative path to the phase review document, or null if not yet created.",
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              },
+              "review": {
+                "title": "Phase Review",
+                "description": "Phase review verdict and resulting action for this phase.",
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "verdict",
+                  "action"
+                ],
+                "properties": {
+                  "verdict": {
+                    "title": "Phase Review Verdict",
+                    "description": "Phase review outcome. Values: approved, changes_requested, rejected, or null.",
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "approved",
+                          "changes_requested",
+                          "rejected"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "action": {
+                    "title": "Phase Review Action",
+                    "description": "Pipeline action after phase review. Values: advanced, corrective_tasks_issued, halted, or null.",
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "advanced",
+                          "corrective_tasks_issued",
+                          "halted"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "final_review": {
+      "title": "Final Review State",
+      "description": "Final review tier state and approval tracking.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "doc_path",
+        "human_approved"
+      ],
+      "properties": {
+        "status": {
+          "title": "Final Review Status",
+          "description": "Current status of the final review. Values: not_started, in_progress, complete.",
+          "type": "string",
+          "enum": [
+            "not_started",
+            "in_progress",
+            "complete"
+          ]
+        },
+        "doc_path": {
+          "title": "Review Document Path",
+          "description": "Relative path to the final review document, or null if not yet created.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "human_approved": {
+          "title": "Final Review Human Approved",
+          "description": "When true, a human has approved the final review.",
+          "type": "boolean"
+        }
+      }
+    },
+    "config": {
+      "title": "Config Snapshot",
+      "description": "Runtime configuration captured at project initialization.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "limits",
+        "human_gates"
+      ],
+      "properties": {
+        "limits": {
+          "title": "Config Limits",
+          "description": "Pipeline scope guards snapshotted from orchestration.yml.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "max_phases",
+            "max_tasks_per_phase",
+            "max_retries_per_task",
+            "max_consecutive_review_rejections"
+          ],
+          "properties": {
+            "max_phases": {
+              "title": "Max Phases",
+              "description": "Maximum number of phases allowed per project. Minimum: 1.",
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_tasks_per_phase": {
+              "title": "Max Tasks per Phase",
+              "description": "Maximum number of tasks allowed per phase. Minimum: 1.",
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_retries_per_task": {
+              "title": "Max Retries per Task",
+              "description": "Auto-retries before escalation to human. Minimum: 0.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "max_consecutive_review_rejections": {
+              "title": "Max Consecutive Review Rejections",
+              "description": "Consecutive reviewer rejections before human escalation. Minimum: 1.",
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "human_gates": {
+          "title": "Human Gates",
+          "description": "Human gate defaults snapshotted from orchestration.yml.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "after_planning",
+            "execution_mode",
+            "after_final_review"
+          ],
+          "properties": {
+            "after_planning": {
+              "title": "Gate After Planning",
+              "description": "When true, a human gate is required after planning completes.",
+              "type": "boolean"
+            },
+            "execution_mode": {
+              "title": "Execution Mode",
+              "description": "Human gate frequency during execution. Values: ask, phase, task, autonomous.",
+              "type": "string",
+              "enum": [
+                "ask",
+                "phase",
+                "task",
+                "autonomous"
+              ]
+            },
+            "after_final_review": {
+              "title": "Gate After Final Review",
+              "description": "When true, a human gate is required after final review completes.",
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "dag": {
+      "title": "DAG State",
+      "description": "Canonical DAG execution state. Contains the expanded node graph and topological execution order.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template_name", "nodes", "execution_order"],
+      "properties": {
+        "template_name": {
+          "title": "Template Name",
+          "description": "Name of the pipeline template that generated this DAG.",
+          "type": "string"
+        },
+        "nodes": {
+          "title": "DAG Nodes",
+          "description": "Map of node ID to DagNode object. Keys are unique node identifiers.",
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/DagNode" }
+        },
+        "execution_order": {
+          "title": "Execution Order",
+          "description": "Topologically sorted array of node IDs. Recomputed on expansion or injection.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

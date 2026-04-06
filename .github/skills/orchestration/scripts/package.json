@@ -1,1 +1,1 @@
-{"type":"commonjs"}
+{"type":"commonjs","devDependencies":{"ajv":"^8.18.0"}}
