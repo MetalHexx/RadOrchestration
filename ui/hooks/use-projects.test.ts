@@ -87,7 +87,7 @@ async function run() {
     assert.strictEqual(result.lastUpdated, '2026-04-06T14:30:00.000Z');
   });
 
-  await test('(d) non-matching project — original object returned unchanged', async () => {
+  await test('(e) non-matching project — original object returned unchanged', async () => {
     const p: ProjectSummary = {
       name: 'other-project',
       tier: 'planning',
