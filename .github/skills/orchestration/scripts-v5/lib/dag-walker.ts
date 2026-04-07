@@ -133,6 +133,44 @@ function walkForEachIterations(
     if (iteration.status === NODE_STATUSES.NOT_STARTED) {
       iteration.status = NODE_STATUSES.IN_PROGRESS;
     }
+
+    // Corrective path routing: walk corrective task nodes instead of body nodes
+    if (iteration.corrective_tasks.length > 0) {
+      const latestCorrective = iteration.corrective_tasks[iteration.corrective_tasks.length - 1];
+
+      if (latestCorrective.status === NODE_STATUSES.HALTED) {
+        return { action: NEXT_ACTIONS.DISPLAY_HALTED, context: {} };
+      }
+
+      if (latestCorrective.status === NODE_STATUSES.COMPLETED) {
+        iteration.status = NODE_STATUSES.COMPLETED;
+        continue;
+      }
+
+      if (latestCorrective.status === NODE_STATUSES.NOT_STARTED) {
+        latestCorrective.status = NODE_STATUSES.IN_PROGRESS;
+      }
+
+      const correctiveResult = walkNodes(fepDef.body, latestCorrective.nodes, config, state, readDocument);
+      if (correctiveResult !== null) {
+        return correctiveResult;
+      }
+      const allCorrectiveDone = fepDef.body.every((bn) => {
+        const bnState = latestCorrective.nodes[bn.id];
+        return (
+          bnState !== undefined &&
+          (bnState.status === NODE_STATUSES.COMPLETED ||
+            bnState.status === NODE_STATUSES.SKIPPED)
+        );
+      });
+      if (allCorrectiveDone) {
+        latestCorrective.status = NODE_STATUSES.COMPLETED;
+        iteration.status = NODE_STATUSES.COMPLETED;
+        continue;
+      }
+      return null;
+    }
+
     const bodyResult = walkNodes(fepDef.body, iteration.nodes, config, state, readDocument);
     if (bodyResult !== null) {
       return bodyResult;
