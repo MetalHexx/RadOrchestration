@@ -149,6 +149,216 @@ mutationRegistry.set(EVENTS.FINAL_REVIEW_APPROVED, (state, _context, _config, _t
   return { state: cloned, mutations_applied };
 });
 
+// ── Phase execution _started mutations ───────────────────────────────────────
+
+const phaseExecStartedSteps: Array<[string, string]> = [
+  [EVENTS.PHASE_PLANNING_STARTED, 'phase_planning'],
+  [EVENTS.PHASE_REPORT_STARTED, 'phase_report'],
+  [EVENTS.PHASE_REVIEW_STARTED, 'phase_review'],
+];
+
+for (const [eventName, nodeId] of phaseExecStartedSteps) {
+  mutationRegistry.set(eventName, (state, context, _config, _template): MutationResult => {
+    const cloned = structuredClone(state);
+    const mutations_applied: string[] = [];
+
+    const node = resolveNodeState(cloned, nodeId, 'phase', context.phase);
+    node.status = 'in_progress';
+    mutations_applied.push(`set ${nodeId}.status = in_progress`);
+
+    return { state: cloned, mutations_applied };
+  });
+}
+
+// ── Phase execution _completed mutations (store doc_path) ─────────────────────
+
+const phaseExecDocSteps: Array<[string, string]> = [
+  [EVENTS.PHASE_PLAN_CREATED, 'phase_planning'],
+  [EVENTS.PHASE_REPORT_COMPLETED, 'phase_report'],
+];
+
+for (const [eventName, nodeId] of phaseExecDocSteps) {
+  mutationRegistry.set(eventName, (state, context, _config, _template): MutationResult => {
+    const cloned = structuredClone(state);
+    const mutations_applied: string[] = [];
+
+    const node = resolveNodeState(cloned, nodeId, 'phase', context.phase);
+    node.status = 'completed';
+    mutations_applied.push(`set ${nodeId}.status = completed`);
+
+    const docPath = context.doc_path ?? null;
+    (node as StepNodeState).doc_path = docPath;
+    mutations_applied.push(`set ${nodeId}.doc_path = ${docPath ?? 'null'}`);
+
+    return { state: cloned, mutations_applied };
+  });
+}
+
+// ── phase_review_completed (stores doc_path + verdict) ───────────────────────
+
+mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const node = resolveNodeState(cloned, 'phase_review', 'phase', context.phase);
+  node.status = 'completed';
+  mutations_applied.push('set phase_review.status = completed');
+
+  const docPath = context.doc_path ?? null;
+  (node as StepNodeState).doc_path = docPath;
+  mutations_applied.push(`set phase_review.doc_path = ${docPath ?? 'null'}`);
+
+  const verdict = context.verdict ?? null;
+  (node as StepNodeState).verdict = verdict;
+  mutations_applied.push(`set phase_review.verdict = ${verdict ?? 'null'}`);
+
+  return { state: cloned, mutations_applied };
+});
+
+// ── Task execution _started mutations ────────────────────────────────────────
+
+const taskStartedSteps: Array<[string, string]> = [
+  [EVENTS.TASK_HANDOFF_STARTED, 'task_handoff'],
+  [EVENTS.EXECUTION_STARTED, 'task_executor'],
+  [EVENTS.CODE_REVIEW_STARTED, 'code_review'],
+];
+
+for (const [eventName, nodeId] of taskStartedSteps) {
+  mutationRegistry.set(eventName, (state, context, _config, _template): MutationResult => {
+    const cloned = structuredClone(state);
+    const mutations_applied: string[] = [];
+
+    const node = resolveNodeState(cloned, nodeId, 'task', context.phase, context.task);
+    node.status = 'in_progress';
+    mutations_applied.push(`set ${nodeId}.status = in_progress`);
+
+    return { state: cloned, mutations_applied };
+  });
+}
+
+// ── task_handoff_created (stores doc_path) ────────────────────────────────────
+
+mutationRegistry.set(EVENTS.TASK_HANDOFF_CREATED, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const node = resolveNodeState(cloned, 'task_handoff', 'task', context.phase, context.task);
+  node.status = 'completed';
+  mutations_applied.push('set task_handoff.status = completed');
+
+  const docPath = context.doc_path ?? null;
+  (node as StepNodeState).doc_path = docPath;
+  mutations_applied.push(`set task_handoff.doc_path = ${docPath ?? 'null'}`);
+
+  return { state: cloned, mutations_applied };
+});
+
+// ── execution_completed ───────────────────────────────────────────────────────
+
+mutationRegistry.set(EVENTS.EXECUTION_COMPLETED, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const node = resolveNodeState(cloned, 'task_executor', 'task', context.phase, context.task);
+  node.status = 'completed';
+  mutations_applied.push('set task_executor.status = completed');
+
+  return { state: cloned, mutations_applied };
+});
+
+// ── code_review_completed (stores doc_path + verdict) ────────────────────────
+
+mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const node = resolveNodeState(cloned, 'code_review', 'task', context.phase, context.task);
+  node.status = 'completed';
+  mutations_applied.push('set code_review.status = completed');
+
+  const docPath = context.doc_path ?? null;
+  (node as StepNodeState).doc_path = docPath;
+  mutations_applied.push(`set code_review.doc_path = ${docPath ?? 'null'}`);
+
+  const verdict = context.verdict ?? null;
+  (node as StepNodeState).verdict = verdict;
+  mutations_applied.push(`set code_review.verdict = ${verdict ?? 'null'}`);
+
+  return { state: cloned, mutations_applied };
+});
+
+// ── Final review mutations ────────────────────────────────────────────────────
+
+mutationRegistry.set(EVENTS.FINAL_REVIEW_STARTED, (state, _context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const node = resolveNodeState(cloned, 'final_review', 'top');
+  node.status = 'in_progress';
+  mutations_applied.push('set final_review.status = in_progress');
+
+  return { state: cloned, mutations_applied };
+});
+
+mutationRegistry.set(EVENTS.FINAL_REVIEW_COMPLETED, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const node = resolveNodeState(cloned, 'final_review', 'top');
+  node.status = 'completed';
+  mutations_applied.push('set final_review.status = completed');
+
+  const docPath = context.doc_path ?? null;
+  (node as StepNodeState).doc_path = docPath;
+  mutations_applied.push(`set final_review.doc_path = ${docPath ?? 'null'}`);
+
+  const verdict = context.verdict ?? null;
+  (node as StepNodeState).verdict = verdict;
+  mutations_applied.push(`set final_review.verdict = ${verdict ?? 'null'}`);
+
+  return { state: cloned, mutations_applied };
+});
+
+// ── Source control commit mutations (phase_commit as phase-scoped sibling) ────
+
+const sourceControlCommitSteps: Array<[string, 'in_progress' | 'completed']> = [
+  [EVENTS.SOURCE_CONTROL_COMMIT_STARTED, 'in_progress'],
+  [EVENTS.SOURCE_CONTROL_COMMIT_COMPLETED, 'completed'],
+];
+
+for (const [eventName, newStatus] of sourceControlCommitSteps) {
+  mutationRegistry.set(eventName, (state, context, _config, _template): MutationResult => {
+    const cloned = structuredClone(state);
+    const mutations_applied: string[] = [];
+
+    const node = resolveNodeState(cloned, 'phase_commit', 'phase', context.phase);
+    node.status = newStatus;
+    mutations_applied.push(`set phase_commit.status = ${newStatus}`);
+
+    return { state: cloned, mutations_applied };
+  });
+}
+
+// ── Source control PR mutations (final_pr as top-scoped sibling) ──────────────
+
+const sourceControlPrSteps: Array<[string, 'in_progress' | 'completed']> = [
+  [EVENTS.SOURCE_CONTROL_PR_STARTED, 'in_progress'],
+  [EVENTS.SOURCE_CONTROL_PR_COMPLETED, 'completed'],
+];
+
+for (const [eventName, newStatus] of sourceControlPrSteps) {
+  mutationRegistry.set(eventName, (state, _context, _config, _template): MutationResult => {
+    const cloned = structuredClone(state);
+    const mutations_applied: string[] = [];
+
+    const node = resolveNodeState(cloned, 'final_pr', 'top');
+    node.status = newStatus;
+    mutations_applied.push(`set final_pr.status = ${newStatus}`);
+
+    return { state: cloned, mutations_applied };
+  });
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export function getMutation(event: string): MutationFn | undefined {

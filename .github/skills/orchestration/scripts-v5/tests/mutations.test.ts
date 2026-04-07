@@ -8,6 +8,22 @@ import type {
   GateNodeState,
 } from '../lib/types.js';
 
+// ── Navigation helpers ────────────────────────────────────────────────────────
+
+function getPhaseNode(state: PipelineState, nodeId: string) {
+  const phaseLoop = state.graph.nodes['phase_loop'];
+  if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+  return phaseLoop.iterations[0].nodes[nodeId];
+}
+
+function getTaskNode(state: PipelineState, nodeId: string) {
+  const phaseLoop = state.graph.nodes['phase_loop'];
+  if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+  const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+  if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
+  return taskLoop.iterations[0].nodes[nodeId];
+}
+
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 function makeState(): PipelineState {
@@ -36,6 +52,9 @@ function makeState(): PipelineState {
         master_plan: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
         plan_approval_gate: { kind: 'gate', status: 'not_started', gate_active: false },
         final_approval_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+        final_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+        pr_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
+        final_pr: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
         phase_loop: {
           kind: 'for_each_phase',
           status: 'not_started',
@@ -45,6 +64,11 @@ function makeState(): PipelineState {
               status: 'not_started',
               nodes: {
                 phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+                phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+                phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+                phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+                phase_commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
+                phase_commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 task_loop: {
                   kind: 'for_each_task',
                   status: 'not_started',
@@ -54,6 +78,9 @@ function makeState(): PipelineState {
                       status: 'not_started',
                       nodes: {
                         task_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+                        task_handoff: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+                        task_executor: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+                        code_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                       },
                       corrective_tasks: [],
                     },
@@ -438,3 +465,469 @@ describe('resolveNodeState', () => {
     expect(() => resolveNodeState(state, 'task_gate', 'task', 1, 1)).toThrow();
   });
 });
+
+// ── getMutation — new execution/review/source-control events ─────────────────
+
+describe('getMutation — new T03 events', () => {
+  const newEvents = [
+    'phase_planning_started',
+    'phase_plan_created',
+    'task_handoff_started',
+    'task_handoff_created',
+    'execution_started',
+    'execution_completed',
+    'code_review_started',
+    'code_review_completed',
+    'phase_report_started',
+    'phase_report_completed',
+    'phase_review_started',
+    'phase_review_completed',
+    'final_review_started',
+    'final_review_completed',
+    'source_control_commit_started',
+    'source_control_commit_completed',
+    'source_control_pr_started',
+    'source_control_pr_completed',
+  ];
+
+  for (const eventName of newEvents) {
+    it(`returns a function for '${eventName}'`, () => {
+      expect(getMutation(eventName)).toBeTypeOf('function');
+    });
+  }
+});
+
+// ── phase execution _started mutations ───────────────────────────────────────
+
+describe('phase execution _started mutations', () => {
+  const cases: Array<[string, string]> = [
+    ['phase_planning_started', 'phase_planning'],
+    ['phase_report_started', 'phase_report'],
+    ['phase_review_started', 'phase_review'],
+  ];
+
+  for (const [eventName, nodeId] of cases) {
+    it(`${eventName} sets ${nodeId}.status to in_progress at phase scope`, () => {
+      const state = makeState();
+      const mutation = getMutation(eventName)!;
+      const result = mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+      expect(getPhaseNode(result.state, nodeId).status).toBe('in_progress');
+    });
+
+    it(`${eventName} does not mutate original state`, () => {
+      const state = makeState();
+      const mutation = getMutation(eventName)!;
+      mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+      expect(getPhaseNode(state, nodeId).status).toBe('not_started');
+    });
+
+    it(`${eventName} returns non-empty mutations_applied`, () => {
+      const state = makeState();
+      const mutation = getMutation(eventName)!;
+      const result = mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+      expect(result.mutations_applied.length).toBeGreaterThan(0);
+    });
+  }
+});
+
+// ── phase_plan_created mutation ───────────────────────────────────────────────
+
+describe('phase_plan_created mutation', () => {
+  it('sets phase_planning.status to completed at phase scope', () => {
+    const state = makeState();
+    const mutation = getMutation('phase_plan_created')!;
+    const result = mutation(state, { phase: 1, doc_path: '/path/plan.md' }, baseConfig, baseTemplate);
+    expect(getPhaseNode(result.state, 'phase_planning').status).toBe('completed');
+  });
+
+  it('stores doc_path from context', () => {
+    const state = makeState();
+    const mutation = getMutation('phase_plan_created')!;
+    const result = mutation(state, { phase: 1, doc_path: '/path/plan.md' }, baseConfig, baseTemplate);
+    const node = getPhaseNode(result.state, 'phase_planning') as StepNodeState;
+    expect(node.doc_path).toBe('/path/plan.md');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('phase_plan_created')!;
+    mutation(state, { phase: 1, doc_path: '/path/plan.md' }, baseConfig, baseTemplate);
+    expect(getPhaseNode(state, 'phase_planning').status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('phase_plan_created')!;
+    const result = mutation(state, { phase: 1, doc_path: '/path/plan.md' }, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── phase_report_completed mutation ──────────────────────────────────────────
+
+describe('phase_report_completed mutation', () => {
+  it('sets phase_report.status to completed at phase scope', () => {
+    const state = makeState();
+    const mutation = getMutation('phase_report_completed')!;
+    const result = mutation(state, { phase: 1, doc_path: '/path/report.md' }, baseConfig, baseTemplate);
+    expect(getPhaseNode(result.state, 'phase_report').status).toBe('completed');
+  });
+
+  it('stores doc_path from context', () => {
+    const state = makeState();
+    const mutation = getMutation('phase_report_completed')!;
+    const result = mutation(state, { phase: 1, doc_path: '/path/report.md' }, baseConfig, baseTemplate);
+    const node = getPhaseNode(result.state, 'phase_report') as StepNodeState;
+    expect(node.doc_path).toBe('/path/report.md');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('phase_report_completed')!;
+    mutation(state, { phase: 1, doc_path: '/path/report.md' }, baseConfig, baseTemplate);
+    expect(getPhaseNode(state, 'phase_report').status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('phase_report_completed')!;
+    const result = mutation(state, { phase: 1, doc_path: '/path/report.md' }, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── phase_review_completed mutation ──────────────────────────────────────────
+
+describe('phase_review_completed mutation', () => {
+  it('sets phase_review.status to completed at phase scope', () => {
+    const state = makeState();
+    const mutation = getMutation('phase_review_completed')!;
+    const result = mutation(state, { phase: 1, doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    expect(getPhaseNode(result.state, 'phase_review').status).toBe('completed');
+  });
+
+  it('stores doc_path from context', () => {
+    const state = makeState();
+    const mutation = getMutation('phase_review_completed')!;
+    const result = mutation(state, { phase: 1, doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    const node = getPhaseNode(result.state, 'phase_review') as StepNodeState;
+    expect(node.doc_path).toBe('/path/review.md');
+  });
+
+  it('stores verdict from context', () => {
+    const state = makeState();
+    const mutation = getMutation('phase_review_completed')!;
+    const result = mutation(state, { phase: 1, doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    const node = getPhaseNode(result.state, 'phase_review') as StepNodeState;
+    expect(node.verdict).toBe('approved');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('phase_review_completed')!;
+    mutation(state, { phase: 1, doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    expect(getPhaseNode(state, 'phase_review').status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('phase_review_completed')!;
+    const result = mutation(state, { phase: 1, doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── task execution _started mutations ────────────────────────────────────────
+
+describe('task execution _started mutations', () => {
+  const cases: Array<[string, string]> = [
+    ['task_handoff_started', 'task_handoff'],
+    ['execution_started', 'task_executor'],
+    ['code_review_started', 'code_review'],
+  ];
+
+  for (const [eventName, nodeId] of cases) {
+    it(`${eventName} sets ${nodeId}.status to in_progress at task scope`, () => {
+      const state = makeState();
+      const mutation = getMutation(eventName)!;
+      const result = mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
+      expect(getTaskNode(result.state, nodeId).status).toBe('in_progress');
+    });
+
+    it(`${eventName} does not mutate original state`, () => {
+      const state = makeState();
+      const mutation = getMutation(eventName)!;
+      mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
+      expect(getTaskNode(state, nodeId).status).toBe('not_started');
+    });
+
+    it(`${eventName} returns non-empty mutations_applied`, () => {
+      const state = makeState();
+      const mutation = getMutation(eventName)!;
+      const result = mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
+      expect(result.mutations_applied.length).toBeGreaterThan(0);
+    });
+  }
+});
+
+// ── task_handoff_created mutation ─────────────────────────────────────────────
+
+describe('task_handoff_created mutation', () => {
+  it('sets task_handoff.status to completed at task scope', () => {
+    const state = makeState();
+    const mutation = getMutation('task_handoff_created')!;
+    const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
+    expect(getTaskNode(result.state, 'task_handoff').status).toBe('completed');
+  });
+
+  it('stores doc_path from context', () => {
+    const state = makeState();
+    const mutation = getMutation('task_handoff_created')!;
+    const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
+    const node = getTaskNode(result.state, 'task_handoff') as StepNodeState;
+    expect(node.doc_path).toBe('/path/handoff.md');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('task_handoff_created')!;
+    mutation(state, { phase: 1, task: 1, doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
+    expect(getTaskNode(state, 'task_handoff').status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('task_handoff_created')!;
+    const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── execution_completed mutation ──────────────────────────────────────────────
+
+describe('execution_completed mutation', () => {
+  it('sets task_executor.status to completed at task scope', () => {
+    const state = makeState();
+    const mutation = getMutation('execution_completed')!;
+    const result = mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
+    expect(getTaskNode(result.state, 'task_executor').status).toBe('completed');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('execution_completed')!;
+    mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
+    expect(getTaskNode(state, 'task_executor').status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('execution_completed')!;
+    const result = mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── code_review_completed mutation ────────────────────────────────────────────
+
+describe('code_review_completed mutation', () => {
+  it('sets code_review.status to completed at task scope', () => {
+    const state = makeState();
+    const mutation = getMutation('code_review_completed')!;
+    const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    expect(getTaskNode(result.state, 'code_review').status).toBe('completed');
+  });
+
+  it('stores doc_path from context', () => {
+    const state = makeState();
+    const mutation = getMutation('code_review_completed')!;
+    const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    const node = getTaskNode(result.state, 'code_review') as StepNodeState;
+    expect(node.doc_path).toBe('/path/review.md');
+  });
+
+  it('stores verdict from context', () => {
+    const state = makeState();
+    const mutation = getMutation('code_review_completed')!;
+    const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    const node = getTaskNode(result.state, 'code_review') as StepNodeState;
+    expect(node.verdict).toBe('approved');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('code_review_completed')!;
+    mutation(state, { phase: 1, task: 1, doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    expect(getTaskNode(state, 'code_review').status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('code_review_completed')!;
+    const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── final_review_started mutation ────────────────────────────────────────────
+
+describe('final_review_started mutation', () => {
+  it('sets final_review.status to in_progress at top scope', () => {
+    const state = makeState();
+    const mutation = getMutation('final_review_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.graph.nodes['final_review'].status).toBe('in_progress');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('final_review_started')!;
+    mutation(state, {}, baseConfig, baseTemplate);
+    expect(state.graph.nodes['final_review'].status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('final_review_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── final_review_completed mutation ──────────────────────────────────────────
+
+describe('final_review_completed mutation', () => {
+  it('sets final_review.status to completed at top scope', () => {
+    const state = makeState();
+    const mutation = getMutation('final_review_completed')!;
+    const result = mutation(state, { doc_path: '/path/final.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    expect(result.state.graph.nodes['final_review'].status).toBe('completed');
+  });
+
+  it('stores doc_path from context', () => {
+    const state = makeState();
+    const mutation = getMutation('final_review_completed')!;
+    const result = mutation(state, { doc_path: '/path/final.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    const node = result.state.graph.nodes['final_review'] as StepNodeState;
+    expect(node.doc_path).toBe('/path/final.md');
+  });
+
+  it('stores verdict from context', () => {
+    const state = makeState();
+    const mutation = getMutation('final_review_completed')!;
+    const result = mutation(state, { doc_path: '/path/final.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    const node = result.state.graph.nodes['final_review'] as StepNodeState;
+    expect(node.verdict).toBe('approved');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('final_review_completed')!;
+    mutation(state, { doc_path: '/path/final.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    expect(state.graph.nodes['final_review'].status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('final_review_completed')!;
+    const result = mutation(state, { doc_path: '/path/final.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── source_control_commit mutations ──────────────────────────────────────────
+
+describe('source_control_commit_started mutation', () => {
+  it('sets phase_commit.status to in_progress at phase scope', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_commit_started')!;
+    const result = mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+    expect(getPhaseNode(result.state, 'phase_commit').status).toBe('in_progress');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_commit_started')!;
+    mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+    expect(getPhaseNode(state, 'phase_commit').status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_commit_started')!;
+    const result = mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+describe('source_control_commit_completed mutation', () => {
+  it('sets phase_commit.status to completed at phase scope', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_commit_completed')!;
+    const result = mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+    expect(getPhaseNode(result.state, 'phase_commit').status).toBe('completed');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_commit_completed')!;
+    mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+    expect(getPhaseNode(state, 'phase_commit').status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_commit_completed')!;
+    const result = mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── source_control_pr mutations ───────────────────────────────────────────────
+
+describe('source_control_pr_started mutation', () => {
+  it('sets final_pr.status to in_progress at top scope', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_pr_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.graph.nodes['final_pr'].status).toBe('in_progress');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_pr_started')!;
+    mutation(state, {}, baseConfig, baseTemplate);
+    expect(state.graph.nodes['final_pr'].status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_pr_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+describe('source_control_pr_completed mutation', () => {
+  it('sets final_pr.status to completed at top scope', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_pr_completed')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.graph.nodes['final_pr'].status).toBe('completed');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_pr_completed')!;
+    mutation(state, {}, baseConfig, baseTemplate);
+    expect(state.graph.nodes['final_pr'].status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_pr_completed')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
