@@ -13,6 +13,9 @@ import type {
   ParallelNodeDef,
   ConditionalNodeState,
   ParallelNodeState,
+  ForEachPhaseNodeDef,
+  ForEachPhaseNodeState,
+  GraphState,
 } from './types.js';
 import { NODE_STATUSES, NEXT_ACTIONS } from './constants.js';
 import { evaluateCondition } from './condition-evaluator.js';
@@ -98,6 +101,64 @@ function scaffoldNodeState(nodeDef: NodeDef): NodeState {
 }
 
 /**
+ * Resolves a JSON-path reference (e.g., "$.nodes.master_plan.doc_path") against
+ * the graph state. Strips leading "$." prefix, splits by ".", and navigates
+ * the state.graph object segment by segment.
+ */
+function resolveStateRef(ref: string, graphState: GraphState): unknown {
+  const path = ref.startsWith('$.') ? ref.slice(2) : ref;
+  const segments = path.split('.');
+  let current: unknown = graphState;
+  for (const segment of segments) {
+    if (current === null || current === undefined || typeof current !== 'object') {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+}
+
+/**
+ * Walks the iterations of a for_each_phase node sequentially, advancing
+ * statuses and returning the first actionable result. Returns 'all_completed'
+ * when every iteration has been completed or skipped.
+ */
+function walkForEachIterations(
+  fepDef: ForEachPhaseNodeDef,
+  fepState: ForEachPhaseNodeState,
+  config: OrchestrationConfig,
+  state: PipelineState,
+  readDocument?: (docPath: string) => { frontmatter: Record<string, unknown> } | null,
+): WalkerResult | null | 'all_completed' {
+  for (const iteration of fepState.iterations) {
+    if (iteration.status === NODE_STATUSES.COMPLETED || iteration.status === NODE_STATUSES.SKIPPED) {
+      continue;
+    }
+    if (iteration.status === NODE_STATUSES.NOT_STARTED) {
+      iteration.status = NODE_STATUSES.IN_PROGRESS;
+    }
+    const bodyResult = walkNodes(fepDef.body, iteration.nodes, config, state, readDocument);
+    if (bodyResult !== null) {
+      return bodyResult;
+    }
+    const allBodyDone = fepDef.body.every((bn) => {
+      const bnState = iteration.nodes[bn.id];
+      return (
+        bnState !== undefined &&
+        (bnState.status === NODE_STATUSES.COMPLETED ||
+          bnState.status === NODE_STATUSES.SKIPPED)
+      );
+    });
+    if (allBodyDone) {
+      iteration.status = NODE_STATUSES.COMPLETED;
+      continue;
+    }
+    return null;
+  }
+  return 'all_completed';
+}
+
+/**
  * Recursive helper that walks an array of node definitions against their
  * corresponding state entries. Returns the first actionable WalkerResult,
  * or null if no action is available at this level.
@@ -107,6 +168,7 @@ function walkNodes(
   nodes: Record<string, NodeState>,
   config: OrchestrationConfig,
   state: PipelineState,
+  readDocument?: (docPath: string) => { frontmatter: Record<string, unknown> } | null,
 ): WalkerResult | null {
   for (const nodeDef of nodeDefs) {
     const nodeState = nodes[nodeDef.id];
@@ -155,7 +217,7 @@ function walkNodes(
           condState.status = NODE_STATUSES.COMPLETED;
           continue;
         }
-        return walkNodes(branchNodes, nodes, config, state);
+        return walkNodes(branchNodes, nodes, config, state, readDocument);
       }
 
       // Parallel in_progress: walk children sequentially
@@ -174,7 +236,20 @@ function walkNodes(
           parallelState.status = NODE_STATUSES.COMPLETED;
           continue;
         }
-        return walkNodes(parallelDef.children, parallelState.nodes, config, state);
+        return walkNodes(parallelDef.children, parallelState.nodes, config, state, readDocument);
+      }
+
+      // for_each_phase in_progress: walk iterations sequentially
+      if (nodeDef.kind === 'for_each_phase') {
+        const fepDef = nodeDef as ForEachPhaseNodeDef;
+        const fepState = nodeState as ForEachPhaseNodeState;
+
+        const iterResult = walkForEachIterations(fepDef, fepState, config, state, readDocument);
+        if (iterResult === 'all_completed') {
+          fepState.status = NODE_STATUSES.COMPLETED;
+          continue;
+        }
+        return iterResult;
       }
 
       // Step/gate in_progress → return null (waiting for completed event)
@@ -243,7 +318,7 @@ function walkNodes(
             nodes[branchNode.id] = scaffoldNodeState(branchNode);
           }
         }
-        return walkNodes(branchNodes, nodes, config, state);
+        return walkNodes(branchNodes, nodes, config, state, readDocument);
       }
 
       // Parallel node
@@ -256,10 +331,64 @@ function walkNodes(
             parallelState.nodes[child.id] = scaffoldNodeState(child);
           }
         }
-        return walkNodes(parallelDef.children, parallelState.nodes, config, state);
+        return walkNodes(parallelDef.children, parallelState.nodes, config, state, readDocument);
       }
 
-      // Unsupported kinds (for_each_phase, for_each_task)
+      // for_each_phase node
+      if (nodeDef.kind === 'for_each_phase') {
+        const fepDef = nodeDef as ForEachPhaseNodeDef;
+        const fepState = nodeState as ForEachPhaseNodeState;
+
+        if (fepState.iterations.length === 0) {
+          // Needs expansion — requires readDocument callback
+          if (!readDocument) {
+            return null;
+          }
+
+          // Resolve source_doc_ref to get the document path
+          const docPath = resolveStateRef(fepDef.source_doc_ref, state.graph);
+          if (typeof docPath !== 'string') {
+            return null;
+          }
+
+          // Read the document to get total_field from frontmatter
+          const doc = readDocument(docPath);
+          if (!doc) {
+            return null;
+          }
+
+          const totalValue = doc.frontmatter[fepDef.total_field];
+          if (typeof totalValue !== 'number' || !Number.isInteger(totalValue) || totalValue <= 0) {
+            return null;
+          }
+
+          // Create iterations with scaffolded body nodes
+          for (let i = 0; i < totalValue; i++) {
+            const iterationNodes: Record<string, NodeState> = {};
+            for (const bodyDef of fepDef.body) {
+              iterationNodes[bodyDef.id] = scaffoldNodeState(bodyDef);
+            }
+            fepState.iterations.push({
+              index: i,
+              status: NODE_STATUSES.NOT_STARTED,
+              nodes: iterationNodes,
+              corrective_tasks: [],
+            });
+          }
+
+          fepState.status = NODE_STATUSES.IN_PROGRESS;
+        }
+
+        // Walk into first iteration (fall through to in_progress logic)
+        const iterResult = walkForEachIterations(fepDef, fepState, config, state, readDocument);
+        if (iterResult === 'all_completed') {
+          fepState.status = NODE_STATUSES.COMPLETED;
+          continue;
+        }
+        return iterResult;
+      }
+
+      // for_each_task handled in T04
       return null;
     }
   }
@@ -271,15 +400,16 @@ function walkNodes(
  * Core DAG traversal function. Walks template nodes in order using a recursive
  * helper, checking dependencies and node status to determine the next action.
  *
- * Handles `step`, `gate`, `conditional`, and `parallel` node kinds.
- * Returns null for unsupported kinds (for_each_*) — those are added in later tasks.
+ * Handles `step`, `gate`, `conditional`, `parallel`, and `for_each_phase` node kinds.
+ * Returns null for unsupported kinds (for_each_task) — added in later tasks.
  */
 export function walkDAG(
   state: PipelineState,
   template: PipelineTemplate,
   config: OrchestrationConfig,
+  readDocument?: (docPath: string) => { frontmatter: Record<string, unknown> } | null,
 ): WalkerResult | null {
-  const result = walkNodes(template.nodes, state.graph.nodes, config, state);
+  const result = walkNodes(template.nodes, state.graph.nodes, config, state, readDocument);
   if (result !== null) {
     return result;
   }

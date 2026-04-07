@@ -17,6 +17,7 @@ import type {
   ParallelNodeDef,
   ParallelNodeState,
   ConditionExpression,
+  IterationEntry,
 } from '../lib/types.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -356,13 +357,13 @@ describe('walkDAG', () => {
     expect(result).toEqual({ action: 'display_halted', context: {} });
   });
 
-  it('returns null for unsupported node kind (for_each_phase)', () => {
+  it('returns null for for_each_phase with not_started and empty iterations when no readDocument callback', () => {
     const forEachDef: ForEachPhaseNodeDef = {
       id: 'phase_loop',
       kind: 'for_each_phase',
-      source_doc_ref: 'master_plan',
+      source_doc_ref: '$.nodes.master_plan.doc_path',
       total_field: 'total_phases',
-      body: [],
+      body: [stepDef('plan_phase', 'create_phase_plan')],
     };
     const forEachState: ForEachPhaseNodeState = {
       kind: 'for_each_phase',
@@ -582,6 +583,299 @@ describe('walkDAG', () => {
 
     const result = walkDAG(state, template, config);
     expect(result).toBe(null);
+  });
+});
+
+// ── for_each_phase tests ──────────────────────────────────────────────────────
+
+describe('for_each_phase handling', () => {
+
+  function forEachPhaseDef(
+    id: string,
+    body: NodeDef[],
+    opts?: { depends_on?: string[]; source_doc_ref?: string; total_field?: string },
+  ): ForEachPhaseNodeDef {
+    return {
+      id,
+      kind: 'for_each_phase',
+      source_doc_ref: opts?.source_doc_ref ?? '$.nodes.master_plan.doc_path',
+      total_field: opts?.total_field ?? 'total_phases',
+      body,
+      depends_on: opts?.depends_on,
+    };
+  }
+
+  function forEachPhaseState(
+    status: 'not_started' | 'in_progress' | 'completed',
+    iterations: IterationEntry[] = [],
+  ): ForEachPhaseNodeState {
+    return { kind: 'for_each_phase', status, iterations };
+  }
+
+  function makeIteration(
+    index: number,
+    status: 'not_started' | 'in_progress' | 'completed' | 'skipped',
+    nodes: Record<string, NodeState>,
+  ): IterationEntry {
+    return { index, status, nodes, corrective_tasks: [] };
+  }
+
+  const mockReadDocument = (totalPhases: number) =>
+    (_docPath: string) => ({ frontmatter: { total_phases: totalPhases } });
+
+  it('expands iterations from frontmatter and returns first body node action', () => {
+    const body = [stepDef('plan_phase', 'create_phase_plan')];
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', body),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('not_started'),
+      master_plan: stepState('completed'),
+    });
+    // Set up the doc_path in the master_plan node state
+    (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/projects/TEST/master-plan.md';
+
+    const config = makeConfig();
+    const result = walkDAG(state, template, config, mockReadDocument(3));
+
+    expect(result).toEqual({ action: 'create_phase_plan', context: {} });
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    expect(fepState.status).toBe('in_progress');
+    expect(fepState.iterations).toHaveLength(3);
+    expect(fepState.iterations[0].index).toBe(0);
+    expect(fepState.iterations[0].status).toBe('in_progress');
+    expect(fepState.iterations[0].nodes['plan_phase']).toBeDefined();
+    expect(fepState.iterations[1].index).toBe(1);
+    expect(fepState.iterations[1].status).toBe('not_started');
+    expect(fepState.iterations[2].index).toBe(2);
+    expect(fepState.iterations[2].status).toBe('not_started');
+  });
+
+  it('resolves source_doc_ref via resolveStateRef to get document path', () => {
+    const body = [stepDef('plan_phase', 'create_phase_plan')];
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', body, { source_doc_ref: '$.nodes.master_plan.doc_path' }),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('not_started'),
+      master_plan: stepState('completed'),
+    });
+    (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/projects/TEST/custom-path.md';
+
+    const readDoc = (docPath: string) => {
+      expect(docPath).toBe('/projects/TEST/custom-path.md');
+      return { frontmatter: { total_phases: 2 } };
+    };
+
+    const config = makeConfig();
+    const result = walkDAG(state, template, config, readDoc);
+
+    expect(result).toEqual({ action: 'create_phase_plan', context: {} });
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    expect(fepState.iterations).toHaveLength(2);
+  });
+
+  it('walks into in_progress iteration and returns first actionable body node', () => {
+    const body = [
+      stepDef('plan_phase', 'create_phase_plan'),
+      stepDef('execute_task', 'execute_task', { depends_on: ['plan_phase'] }),
+    ];
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', body),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'in_progress', {
+          plan_phase: stepState('not_started'),
+          execute_task: stepState('not_started'),
+        }),
+        makeIteration(1, 'not_started', {
+          plan_phase: stepState('not_started'),
+          execute_task: stepState('not_started'),
+        }),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'create_phase_plan', context: {} });
+  });
+
+  it('advances to next iteration when all body nodes in current iteration complete', () => {
+    const body = [stepDef('plan_phase', 'create_phase_plan')];
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', body),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'in_progress', {
+          plan_phase: stepState('completed'),
+        }),
+        makeIteration(1, 'not_started', {
+          plan_phase: stepState('not_started'),
+        }),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'create_phase_plan', context: {} });
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    expect(fepState.iterations[0].status).toBe('completed');
+    expect(fepState.iterations[1].status).toBe('in_progress');
+  });
+
+  it('completes loop and continues to next sibling when all iterations complete', () => {
+    const body = [stepDef('plan_phase', 'create_phase_plan')];
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', body),
+      stepDef('final_review', 'spawn_final_reviewer'),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'completed', {
+          plan_phase: stepState('completed'),
+        }),
+        makeIteration(1, 'in_progress', {
+          plan_phase: stepState('completed'),
+        }),
+      ]),
+      final_review: stepState('not_started'),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'spawn_final_reviewer', context: {} });
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    expect(fepState.status).toBe('completed');
+    expect(fepState.iterations[1].status).toBe('completed');
+  });
+
+  it('returns display_complete when loop is only node and all iterations complete', () => {
+    const body = [stepDef('plan_phase', 'create_phase_plan')];
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', body),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'completed', {
+          plan_phase: stepState('completed'),
+        }),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'display_complete', context: {} });
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    expect(fepState.status).toBe('completed');
+  });
+
+  it('returns null when a body node inside an iteration is in_progress', () => {
+    const body = [stepDef('plan_phase', 'create_phase_plan')];
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', body),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'in_progress', {
+          plan_phase: stepState('in_progress'),
+        }),
+        makeIteration(1, 'not_started', {
+          plan_phase: stepState('not_started'),
+        }),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+    expect(result).toBe(null);
+  });
+
+  it('walks pre-expanded state without needing readDocument callback', () => {
+    const body = [stepDef('plan_phase', 'create_phase_plan')];
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', body),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'not_started', {
+          plan_phase: stepState('not_started'),
+        }),
+        makeIteration(1, 'not_started', {
+          plan_phase: stepState('not_started'),
+        }),
+      ]),
+    });
+    const config = makeConfig();
+
+    // No readDocument callback provided — should still walk correctly
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'create_phase_plan', context: {} });
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    expect(fepState.iterations[0].status).toBe('in_progress');
+  });
+
+  it('returns null when readDocument is not provided and expansion is needed', () => {
+    const body = [stepDef('plan_phase', 'create_phase_plan')];
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', body),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('not_started'),
+      master_plan: stepState('completed'),
+    });
+    (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/projects/TEST/master-plan.md';
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+    expect(result).toBe(null);
+  });
+
+  it('returns null when readDocument returns null during expansion', () => {
+    const body = [stepDef('plan_phase', 'create_phase_plan')];
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', body),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('not_started'),
+      master_plan: stepState('completed'),
+    });
+    (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/projects/TEST/master-plan.md';
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config, (_docPath: string) => null);
+    expect(result).toBe(null);
+    // Verify iterations were NOT created
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    expect(fepState.iterations).toHaveLength(0);
+    expect(fepState.status).toBe('not_started');
+  });
+
+  it('returns null when total_field is a non-integer number', () => {
+    const body = [stepDef('plan_phase', 'create_phase_plan')];
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', body),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('not_started'),
+      master_plan: stepState('completed'),
+    });
+    (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/projects/TEST/master-plan.md';
+    const config = makeConfig();
+
+    const readDoc = (_docPath: string) => ({ frontmatter: { total_phases: 2.5 } });
+    const result = walkDAG(state, template, config, readDoc);
+    expect(result).toBe(null);
+    // Verify iterations were NOT created
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    expect(fepState.iterations).toHaveLength(0);
+    expect(fepState.status).toBe('not_started');
   });
 });
 
