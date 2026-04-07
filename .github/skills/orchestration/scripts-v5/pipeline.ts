@@ -23,13 +23,13 @@ function parseArgs(argv: string[]): Record<string, string> {
   return args;
 }
 
-function makeErrorResult(message: string, event: string): PipelineResult {
+function makeErrorResult(message: string, event: string, orchRoot: string = '.github'): PipelineResult {
   return {
     success: false,
     action: null,
     context: {},
     mutations_applied: [],
-    orchRoot: '.github',
+    orchRoot,
     error: { message, event },
   };
 }
@@ -37,10 +37,10 @@ function makeErrorResult(message: string, event: string): PipelineResult {
 // ── CLI Entry ─────────────────────────────────────────────────────────────────
 
 export function run(argv: string[]): void {
-  try {
-    const args = parseArgs(argv);
+  const args = parseArgs(argv);
+  const event = args['event'];
 
-    const event = args['event'];
+  try {
     const projectDir = args['project-dir'];
     const configPath = args['config'];
 
@@ -66,7 +66,7 @@ export function run(argv: string[]): void {
 
     if (phaseStr !== undefined) {
       phase = Number(phaseStr);
-      if (!Number.isFinite(phase)) {
+      if (!Number.isFinite(phase) || phase < 1) {
         process.stdout.write(JSON.stringify(makeErrorResult(`Invalid value for --phase: ${phaseStr}`, event)));
         return;
       }
@@ -74,7 +74,7 @@ export function run(argv: string[]): void {
 
     if (taskStr !== undefined) {
       task = Number(taskStr);
-      if (!Number.isFinite(task)) {
+      if (!Number.isFinite(task) || task < 1) {
         process.stdout.write(JSON.stringify(makeErrorResult(`Invalid value for --task: ${taskStr}`, event)));
         return;
       }
@@ -109,7 +109,7 @@ export function run(argv: string[]): void {
       context: {},
       mutations_applied: [],
       orchRoot: '.github',
-      error: { message, event: 'unknown' },
+      error: { message, event: event ?? 'unknown' },
     };
     process.stdout.write(JSON.stringify(fallback));
   }
