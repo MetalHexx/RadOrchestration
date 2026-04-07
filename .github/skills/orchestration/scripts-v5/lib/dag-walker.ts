@@ -471,8 +471,14 @@ function walkNodes(
           }
 
           const tasksValue = doc.frontmatter[fetDef.tasks_field];
-          if (!Array.isArray(tasksValue) || tasksValue.length === 0) {
+          if (!Array.isArray(tasksValue)) {
             return null;
+          }
+
+          if (tasksValue.length === 0) {
+            // Zero tasks — complete immediately (v4 parity: resolvePhaseExecuting → generate_phase_report)
+            fetState.status = NODE_STATUSES.COMPLETED;
+            continue;
           }
 
           // Create one iteration per array element

@@ -1178,7 +1178,7 @@ describe('for_each_task handling', () => {
     expect(fetState.status).toBe('not_started');
   });
 
-  it('returns null when tasks array is empty', () => {
+  it('completes task loop immediately and returns display_complete when tasks array is empty', () => {
     const body = [stepDef('task_handoff', 'create_task_handoff')];
     const template = makeTemplate([
       forEachTaskDef('task_loop', body, { source_doc_ref: '$.nodes.phase_plan.doc_path' }),
@@ -1192,10 +1192,11 @@ describe('for_each_task handling', () => {
 
     const readDoc = (_docPath: string) => ({ frontmatter: { tasks: [] } });
     const result = walkDAG(state, template, config, readDoc);
-    expect(result).toBe(null);
+    expect(result).not.toBeNull();
+    expect(result!.action).toBe('display_complete');
     const fetState = state.graph.nodes['task_loop'] as ForEachTaskNodeState;
     expect(fetState.iterations).toHaveLength(0);
-    expect(fetState.status).toBe('not_started');
+    expect(fetState.status).toBe('completed');
   });
 });
 
