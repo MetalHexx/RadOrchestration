@@ -15,6 +15,7 @@ import type {
   StepNodeDef,
 } from './types.js';
 import { scaffoldNodeState } from './scaffold.js';
+import { validateState } from './validator.js';
 
 // ── scaffoldState ─────────────────────────────────────────────────────────────
 
@@ -145,8 +146,20 @@ export function processEvent(
     const mutationResult = mutation(state, preReadResult.context, config, template);
     const mutatedState = mutationResult.state;
 
-    // Validate stub — always returns empty array
-    // const validationErrors = validate(mutatedState);
+    const validationErrors = validateState(state, mutatedState, config, template);
+    if (validationErrors.length > 0) {
+      return {
+        success: false,
+        action: null,
+        context: {},
+        mutations_applied: [],
+        orchRoot,
+        error: {
+          message: validationErrors[0],
+          event,
+        },
+      };
+    }
 
     mutatedState.project.updated = new Date().toISOString();
     mutatedState.graph.current_node_path = entry.templatePath;
