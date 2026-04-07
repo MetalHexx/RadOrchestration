@@ -1,0 +1,267 @@
+import * as path from 'node:path';
+import { loadTemplate } from './template-loader.js';
+import { preRead } from './pre-reads.js';
+import { getMutation } from './mutations.js';
+import type {
+  PipelineState,
+  PipelineResult,
+  PipelineTemplate,
+  OrchestrationConfig,
+  EventContext,
+  EventPhase,
+  EventIndexEntry,
+  IOAdapter,
+  WalkerResult,
+  NodeDef,
+  NodeState,
+  StepNodeDef,
+  GateNodeDef,
+  ParallelNodeDef,
+} from './types.js';
+
+// ── scaffoldNodeState ─────────────────────────────────────────────────────────
+
+function scaffoldNodeState(node: NodeDef): NodeState {
+  switch (node.kind) {
+    case 'step':
+      return { kind: 'step', status: 'not_started', doc_path: null, retries: 0 };
+    case 'gate':
+      return { kind: 'gate', status: 'not_started', gate_active: false };
+    case 'for_each_phase':
+      return { kind: 'for_each_phase', status: 'not_started', iterations: [] };
+    case 'for_each_task':
+      return { kind: 'for_each_task', status: 'not_started', iterations: [] };
+    case 'conditional':
+      return { kind: 'conditional', status: 'not_started', branch_taken: null };
+    case 'parallel': {
+      const parallelNode = node as ParallelNodeDef;
+      const childNodes: Record<string, NodeState> = {};
+      for (const child of parallelNode.children) {
+        childNodes[child.id] = scaffoldNodeState(child);
+      }
+      return { kind: 'parallel', status: 'not_started', nodes: childNodes };
+    }
+  }
+}
+
+// ── scaffoldState ─────────────────────────────────────────────────────────────
+
+function scaffoldState(
+  template: PipelineTemplate,
+  projectName: string,
+  config: OrchestrationConfig,
+): PipelineState {
+  const now = new Date().toISOString();
+  const nodes: Record<string, NodeState> = {};
+
+  for (const node of template.nodes) {
+    nodes[node.id] = scaffoldNodeState(node);
+  }
+
+  return {
+    $schema: 'orchestration-state-v5',
+    project: {
+      name: projectName,
+      created: now,
+      updated: now,
+    },
+    config: {
+      gate_mode: config.human_gates.execution_mode,
+      limits: {
+        max_phases: config.limits.max_phases,
+        max_tasks_per_phase: config.limits.max_tasks_per_phase,
+        max_retries_per_task: config.limits.max_retries_per_task,
+        max_consecutive_review_rejections: config.limits.max_consecutive_review_rejections,
+      },
+      source_control: {
+        auto_commit: config.source_control.auto_commit,
+        auto_pr: config.source_control.auto_pr,
+      },
+    },
+    graph: {
+      template_id: template.template.id,
+      status: 'not_started',
+      current_node_path: null,
+      nodes,
+    },
+  };
+}
+
+// ── resolveNextAction (simplified stub — Phase 3 replaces with DAG walker) ───
+
+function resolveNextAction(
+  state: PipelineState,
+  template: PipelineTemplate,
+  eventPhase: EventPhase,
+  eventEntry: EventIndexEntry,
+): WalkerResult | null {
+  if (eventPhase === 'started') {
+    const stepNode = eventEntry.nodeDef as StepNodeDef;
+    return { action: stepNode.action, context: stepNode.context ?? {} };
+  }
+
+  // completed or approved — find next actionable sibling
+  return findNextActionableSibling(state, template);
+}
+
+function findNextActionableSibling(
+  state: PipelineState,
+  template: PipelineTemplate,
+): WalkerResult | null {
+  const nodes = template.nodes;
+  const stateNodes = state.graph.nodes;
+
+  for (const node of nodes) {
+    const nodeState = stateNodes[node.id];
+    if (!nodeState || nodeState.status !== 'not_started') continue;
+
+    const depsCompleted = (node.depends_on ?? []).every((depId) => {
+      const depState = stateNodes[depId];
+      return depState && depState.status === 'completed';
+    });
+
+    if (!depsCompleted) continue;
+
+    if (node.kind === 'step') {
+      const stepNode = node as StepNodeDef;
+      return { action: stepNode.action, context: stepNode.context ?? {} };
+    }
+
+    if (node.kind === 'gate') {
+      const gateNode = node as GateNodeDef;
+      return { action: gateNode.action_if_needed, context: {} };
+    }
+  }
+
+  // Check if all top-level nodes are completed
+  const allCompleted = nodes.every((node) => {
+    const nodeState = stateNodes[node.id];
+    return nodeState && nodeState.status === 'completed';
+  });
+
+  if (allCompleted) {
+    return { action: 'display_complete', context: {} };
+  }
+
+  return null;
+}
+
+// ── processEvent (main engine entry point) ────────────────────────────────────
+
+export function processEvent(
+  event: string,
+  projectDir: string,
+  context: Partial<EventContext>,
+  io: IOAdapter,
+  configPath?: string,
+): PipelineResult {
+  let orchRoot = '.github';
+
+  try {
+    const config = io.readConfig(configPath);
+    orchRoot = config.system.orch_root;
+
+    const state = io.readState(projectDir);
+
+    const templatePath = path.join(orchRoot, 'skills/orchestration/scripts-v5/templates/full.yml');
+    const loadedTemplate = loadTemplate(templatePath);
+    const { template, eventIndex } = loadedTemplate;
+
+    const entry = eventIndex.get(event);
+    if (!entry) {
+      return {
+        success: false,
+        action: null,
+        context: {},
+        mutations_applied: [],
+        orchRoot,
+        error: {
+          message: `Unknown event: ${event}`,
+          event,
+        },
+      };
+    }
+
+    // ── Init route (state is null) ──────────────────────────────────────
+    if (state === null) {
+      const projectName = path.basename(projectDir);
+      const scaffolded = scaffoldState(template, projectName, config);
+      scaffolded.project.updated = new Date().toISOString();
+
+      io.ensureDirectories(projectDir);
+      io.writeState(projectDir, scaffolded);
+
+      const nextAction = findNextActionableSibling(scaffolded, template);
+
+      return {
+        success: true,
+        action: nextAction?.action ?? null,
+        context: nextAction?.context ?? {},
+        mutations_applied: ['scaffold_initial_state'],
+        orchRoot,
+      };
+    }
+
+    // ── Standard route (state exists) ───────────────────────────────────
+    const preReadResult = preRead(event, context, io.readDocument, projectDir, entry);
+    if (preReadResult.error) {
+      return {
+        success: false,
+        action: null,
+        context: {},
+        mutations_applied: [],
+        orchRoot,
+        error: preReadResult.error,
+      };
+    }
+
+    const mutation = getMutation(event);
+    if (!mutation) {
+      return {
+        success: false,
+        action: null,
+        context: {},
+        mutations_applied: [],
+        orchRoot,
+        error: {
+          message: `No mutation registered for event: ${event}`,
+          event,
+        },
+      };
+    }
+
+    const mutationResult = mutation(state, preReadResult.context, config, template);
+    const mutatedState = mutationResult.state;
+
+    // Validate stub — always returns empty array
+    // const validationErrors = validate(mutatedState);
+
+    mutatedState.project.updated = new Date().toISOString();
+    mutatedState.graph.current_node_path = entry.templatePath;
+
+    io.writeState(projectDir, mutatedState);
+
+    const nextAction = resolveNextAction(mutatedState, template, entry.eventPhase, entry);
+
+    return {
+      success: true,
+      action: nextAction?.action ?? null,
+      context: nextAction?.context ?? {},
+      mutations_applied: mutationResult.mutations_applied,
+      orchRoot,
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      action: null,
+      context: {},
+      mutations_applied: [],
+      orchRoot,
+      error: {
+        message,
+        event,
+      },
+    };
+  }
+}
