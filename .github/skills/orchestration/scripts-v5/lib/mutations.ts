@@ -5,8 +5,15 @@ import type {
   GateNodeState,
   MutationFn,
   MutationResult,
+  IterationEntry,
+  CorrectiveTaskEntry,
+  NodeDef,
+  ForEachPhaseNodeDef,
+  ForEachTaskNodeDef,
+  PipelineTemplate,
 } from './types.js';
 import { EVENTS } from './constants.js';
+import { scaffoldNodeState } from './scaffold.js';
 
 // ── Resolution scope ──────────────────────────────────────────────────────────
 
@@ -266,12 +273,41 @@ mutationRegistry.set(EVENTS.EXECUTION_COMPLETED, (state, context, _config, _temp
   return { state: cloned, mutations_applied };
 });
 
-// ── code_review_completed (stores doc_path + verdict) ────────────────────────
+// ── Private helpers for corrective injection ─────────────────────────────────
 
-mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, _config, _template): MutationResult => {
+function resolveTaskIteration(state: PipelineState, phase: number, task: number): IterationEntry {
+  const phaseLoopNode = state.graph.nodes['phase_loop'];
+  if (phaseLoopNode.kind !== 'for_each_phase') {
+    throw new Error(`Expected phase_loop to be a for_each_phase node, got ${phaseLoopNode.kind}`);
+  }
+  const phaseIteration = phaseLoopNode.iterations[phase - 1];
+  const taskLoopNode = phaseIteration.nodes['task_loop'];
+  if (taskLoopNode.kind !== 'for_each_task') {
+    throw new Error(`Expected task_loop to be a for_each_task node, got ${taskLoopNode.kind}`);
+  }
+  return taskLoopNode.iterations[task - 1];
+}
+
+function findTaskLoopBodyDefs(template: PipelineTemplate): NodeDef[] {
+  for (const nodeDef of template.nodes) {
+    if (nodeDef.kind === 'for_each_phase') {
+      for (const bodyNode of (nodeDef as ForEachPhaseNodeDef).body) {
+        if (bodyNode.kind === 'for_each_task') {
+          return (bodyNode as ForEachTaskNodeDef).body;
+        }
+      }
+    }
+  }
+  return [];
+}
+
+// ── code_review_completed (stores doc_path + verdict, routes on verdict) ──────
+
+mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, template): MutationResult => {
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
+  // Base behavior: always mark code_review completed with doc_path and verdict
   const node = resolveNodeState(cloned, 'code_review', 'task', context.phase, context.task);
   node.status = 'completed';
   mutations_applied.push('set code_review.status = completed');
@@ -283,6 +319,45 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, _config, _te
   const verdict = context.verdict ?? null;
   (node as StepNodeState).verdict = verdict;
   mutations_applied.push(`set code_review.verdict = ${verdict ?? 'null'}`);
+
+  // Verdict routing
+  if (verdict === 'changes_requested') {
+    const iteration = resolveTaskIteration(cloned, context.phase ?? 1, context.task ?? 1);
+    const correctiveCount = iteration.corrective_tasks.length;
+    const maxRetries = config.limits.max_retries_per_task;
+
+    if (correctiveCount < maxRetries) {
+      const bodyDefs = findTaskLoopBodyDefs(template);
+      if (bodyDefs.length === 0) {
+        throw new Error('findTaskLoopBodyDefs: no for_each_task body found in template');
+      }
+      const nodes: Record<string, NodeState> = {};
+      for (const bodyDef of bodyDefs) {
+        nodes[bodyDef.id] = scaffoldNodeState(bodyDef);
+      }
+      const entry: CorrectiveTaskEntry = {
+        index: correctiveCount + 1,
+        reason: 'Code review requested changes',
+        injected_after: 'code_review',
+        status: 'not_started',
+        nodes,
+      };
+      iteration.corrective_tasks.push(entry);
+      mutations_applied.push(`injected corrective task ${entry.index} (changes_requested)`);
+      mutations_applied.push(`corrective_tasks.length = ${iteration.corrective_tasks.length}`);
+    } else {
+      iteration.status = 'halted';
+      cloned.graph.status = 'halted';
+      mutations_applied.push('set task_iteration.status = halted (retry budget exhausted)');
+      mutations_applied.push('set graph.status = halted');
+    }
+  } else if (verdict === 'rejected') {
+    const iteration = resolveTaskIteration(cloned, context.phase ?? 1, context.task ?? 1);
+    iteration.status = 'halted';
+    cloned.graph.status = 'halted';
+    mutations_applied.push('set task_iteration.status = halted (rejected verdict)');
+    mutations_applied.push('set graph.status = halted');
+  }
 
   return { state: cloned, mutations_applied };
 });

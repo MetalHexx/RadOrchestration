@@ -6,6 +6,8 @@ import type {
   PipelineTemplate,
   StepNodeState,
   GateNodeState,
+  IterationEntry,
+  CorrectiveTaskEntry,
 } from '../lib/types.js';
 
 // ── Navigation helpers ────────────────────────────────────────────────────────
@@ -766,6 +768,167 @@ describe('code_review_completed mutation', () => {
     const mutation = getMutation('code_review_completed')!;
     const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
     expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── code_review_completed — corrective injection ──────────────────────────────
+
+// Template fixture with for_each_phase → for_each_task body containing the 4 task body nodes
+function makeTemplateWithTaskBody(): PipelineTemplate {
+  return {
+    template: { id: 'full', version: '1.0', description: 'Full pipeline' },
+    nodes: [
+      {
+        kind: 'for_each_phase',
+        id: 'phase_loop',
+        source_doc_ref: 'master_plan',
+        total_field: 'phase_count',
+        body: [
+          {
+            kind: 'for_each_task',
+            id: 'task_loop',
+            source_doc_ref: 'phase_plan',
+            tasks_field: 'tasks',
+            body: [
+              { kind: 'step', id: 'task_handoff', action: 'create_task_handoff', events: { started: 'task_handoff_started', completed: 'task_handoff_created' } },
+              { kind: 'step', id: 'task_executor', action: 'execute_task', events: { started: 'execution_started', completed: 'execution_completed' } },
+              { kind: 'step', id: 'code_review', action: 'spawn_code_reviewer', events: { started: 'code_review_started', completed: 'code_review_completed' } },
+              { kind: 'gate', id: 'task_gate', mode_ref: 'gate_mode', action_if_needed: 'gate_task', approved_event: 'task_gate_approved' },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+// Navigation helper: returns the task IterationEntry for phase 1, task 1
+function getTaskIteration(state: PipelineState): IterationEntry {
+  const phaseLoop = state.graph.nodes['phase_loop'];
+  if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+  const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+  if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
+  return taskLoop.iterations[0];
+}
+
+describe('code_review_completed — corrective injection', () => {
+  const mutation = getMutation('code_review_completed')!;
+
+  it('changes_requested with budget available injects one CorrectiveTaskEntry with correct shape', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    const result = mutation(state, { phase: 1, task: 1, doc_path: '/r.md', verdict: 'changes_requested' }, baseConfig, template);
+    const iteration = getTaskIteration(result.state);
+    expect(iteration.corrective_tasks).toHaveLength(1);
+    const entry = iteration.corrective_tasks[0] as CorrectiveTaskEntry;
+    expect(entry.index).toBe(1);
+    expect(entry.status).toBe('not_started');
+    expect(entry.reason).toBe('Code review requested changes');
+    expect(entry.injected_after).toBe('code_review');
+    expect(Object.keys(entry.nodes)).toHaveLength(4);
+  });
+
+  it('scaffolded nodes have correct shape — task_handoff is step, task_gate is gate', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    const result = mutation(state, { phase: 1, task: 1, doc_path: '/r.md', verdict: 'changes_requested' }, baseConfig, template);
+    const entry = getTaskIteration(result.state).corrective_tasks[0] as CorrectiveTaskEntry;
+    expect(entry.nodes['task_handoff']).toEqual({ kind: 'step', status: 'not_started', doc_path: null, retries: 0 });
+    expect(entry.nodes['task_gate']).toEqual({ kind: 'gate', status: 'not_started', gate_active: false });
+  });
+
+  it('changes_requested with budget exhausted halts iteration and graph, no new entry added', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    // Pre-fill corrective_tasks to max (3)
+    const iteration = getTaskIteration(state);
+    for (let i = 0; i < 3; i++) {
+      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {} });
+    }
+    const result = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const resultIteration = getTaskIteration(result.state);
+    expect(resultIteration.corrective_tasks).toHaveLength(3);
+    expect(resultIteration.status).toBe('halted');
+    expect(result.state.graph.status).toBe('halted');
+  });
+
+  it('budget boundary — retries = max - 1 still injects a corrective entry', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    // Pre-fill to max - 1 (2 entries)
+    const iteration = getTaskIteration(state);
+    for (let i = 0; i < 2; i++) {
+      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {} });
+    }
+    const result = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const resultIteration = getTaskIteration(result.state);
+    expect(resultIteration.corrective_tasks).toHaveLength(3);
+    expect(resultIteration.status).not.toBe('halted');
+    expect(result.state.graph.status).not.toBe('halted');
+  });
+
+  it('rejected verdict halts iteration and graph, adds no corrective entry', () => {
+    const state = makeState();
+    const result = mutation(state, { phase: 1, task: 1, verdict: 'rejected' }, baseConfig, baseTemplate);
+    const iteration = getTaskIteration(result.state);
+    expect(iteration.corrective_tasks).toHaveLength(0);
+    expect(iteration.status).toBe('halted');
+    expect(result.state.graph.status).toBe('halted');
+  });
+
+  it('approved verdict sets code_review completed, no corrective entry, iteration and graph status unchanged', () => {
+    const state = makeState();
+    const result = mutation(state, { phase: 1, task: 1, doc_path: '/r.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    const iteration = getTaskIteration(result.state);
+    expect(iteration.corrective_tasks).toHaveLength(0);
+    expect(iteration.status).toBe('not_started');
+    expect(result.state.graph.status).toBe('not_started');
+    expect(getTaskNode(result.state, 'code_review').status).toBe('completed');
+  });
+
+  it('multiple corrections on same task produce entries with consecutive indices', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    const result1 = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const result2 = mutation(result1.state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const iteration = getTaskIteration(result2.state);
+    expect(iteration.corrective_tasks).toHaveLength(2);
+    expect(iteration.corrective_tasks[0].index).toBe(1);
+    expect(iteration.corrective_tasks[1].index).toBe(2);
+  });
+
+  it('original iteration nodes are untouched after corrective injection', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    const originalNodeKeys = Object.keys(getTaskIteration(state).nodes);
+    const result = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const resultNodeKeys = Object.keys(getTaskIteration(result.state).nodes);
+    expect(resultNodeKeys).toEqual(originalNodeKeys);
+  });
+
+  it('immutability — original state is never modified', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    const originalCorLen = getTaskIteration(state).corrective_tasks.length;
+    mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    expect(getTaskIteration(state).corrective_tasks.length).toBe(originalCorLen);
+    expect(state.graph.status).toBe('not_started');
+  });
+
+  it('all verdict paths return non-empty mutations_applied', () => {
+    const verdicts = ['approved', 'changes_requested', 'rejected'];
+    for (const verdict of verdicts) {
+      const state = makeState();
+      const result = mutation(state, { phase: 1, task: 1, verdict }, baseConfig, makeTemplateWithTaskBody());
+      expect(result.mutations_applied.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('throws when template has no for_each_task body', () => {
+    const emptyTemplate = { ...makeTemplateWithTaskBody(), nodes: [] };
+    const state = makeState();
+    expect(() => mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, emptyTemplate))
+      .toThrow('findTaskLoopBodyDefs: no for_each_task body found in template');
   });
 });
 
