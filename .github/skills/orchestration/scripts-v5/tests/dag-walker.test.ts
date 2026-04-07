@@ -1734,4 +1734,14 @@ describe('resolveNodeStatePath', () => {
     const result = resolveNodeStatePath('phase_loop.body.task_loop.body.task_handoff', { phase: 3 });
     expect(result).toBe('phase_loop[2].task_loop.body.task_handoff');
   });
+
+  it('replaces all occurrences of phase_loop.body. when path contains multiple', () => {
+    const result = resolveNodeStatePath('phase_loop.body.nested.phase_loop.body.inner', { phase: 2 });
+    expect(result).toBe('phase_loop[1].nested.phase_loop[1].inner');
+  });
+
+  it('replaces all occurrences of task_loop.body. when path contains multiple', () => {
+    const result = resolveNodeStatePath('phase_loop.body.task_loop.body.sub.task_loop.body.deep', { phase: 1, task: 3 });
+    expect(result).toBe('phase_loop[0].task_loop[2].sub.task_loop[2].deep');
+  });
 });

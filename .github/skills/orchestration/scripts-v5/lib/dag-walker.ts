@@ -39,10 +39,10 @@ export function resolveNodeStatePath(
 ): string {
   let result = templatePath;
   if (_context.phase !== undefined) {
-    result = result.replace('phase_loop.body.', `phase_loop[${_context.phase - 1}].`);
+    result = result.replaceAll('phase_loop.body.', `phase_loop[${_context.phase - 1}].`);
   }
   if (_context.task !== undefined) {
-    result = result.replace('task_loop.body.', `task_loop[${_context.task - 1}].`);
+    result = result.replaceAll('task_loop.body.', `task_loop[${_context.task - 1}].`);
   }
   return result;
 }
@@ -111,6 +111,12 @@ function resolveStateRef(ref: string, graphState: GraphState): unknown {
  * Resolves a source_doc_ref within a scope's node map. Handles
  * "$.current_phase.{field}" by reading from the sibling "phase_planning" node
  * in scopeNodes; falls back to resolveStateRef for all other patterns.
+ */
+/**
+ * Resolves a source_doc_ref within a scope's node map. Handles
+ * "$.current_phase.{field}" by reading from the sibling "phase_planning" node.
+ * NOTE: {field} must be a single-level key (e.g., "doc_path"). Nested dot-paths
+ * like "metadata.doc_path" are treated as a single key, not navigated.
  */
 function resolveDocRefInScope(
   ref: string,
@@ -433,8 +439,11 @@ function walkNodes(
             return null;
           }
 
+          // Cap at configured limit to avoid unbounded expansion
+          const cappedTotal = Math.min(totalValue, config.limits.max_phases);
+
           // Create iterations with scaffolded body nodes
-          for (let i = 0; i < totalValue; i++) {
+          for (let i = 0; i < cappedTotal; i++) {
             const iterationNodes: Record<string, NodeState> = {};
             for (const bodyDef of fepDef.body) {
               iterationNodes[bodyDef.id] = scaffoldNodeState(bodyDef);
@@ -493,8 +502,11 @@ function walkNodes(
             continue;
           }
 
+          // Cap at configured limit to avoid unbounded expansion
+          const cappedLength = Math.min(tasksValue.length, config.limits.max_tasks_per_phase);
+
           // Create one iteration per array element
-          for (let i = 0; i < tasksValue.length; i++) {
+          for (let i = 0; i < cappedLength; i++) {
             const iterationNodes: Record<string, NodeState> = {};
             for (const bodyDef of fetDef.body) {
               iterationNodes[bodyDef.id] = scaffoldNodeState(bodyDef);
