@@ -85,8 +85,13 @@ export function writeState(projectDir: string, state: PipelineState): void {
   fs.mkdirSync(projectDir, { recursive: true });
   const statePath = path.join(projectDir, 'state.json');
   const tmpPath = path.join(projectDir, 'state.json.tmp');
-  fs.writeFileSync(tmpPath, JSON.stringify(state, null, 2), 'utf-8');
-  fs.renameSync(tmpPath, statePath);
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(state, null, 2), 'utf-8');
+    fs.renameSync(tmpPath, statePath);
+  } catch (err) {
+    fs.rmSync(tmpPath, { force: true });
+    throw err;
+  }
 }
 
 export function readConfig(configPath?: string): OrchestrationConfig {
