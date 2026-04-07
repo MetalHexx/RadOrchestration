@@ -470,5 +470,15 @@ describe('evaluateCondition', () => {
         )
       ).toThrow('Cannot resolve path');
     });
+
+    it('error message blames the segment that resolved to undefined, not the next segment', () => {
+      expect(() =>
+        evaluateCondition(
+          { config_ref: 'source_control.missing.deep', operator: 'eq', value: 'x' },
+          baseConfig,
+          baseState
+        )
+      ).toThrow("segment 'missing'");
+    });
   });
 });

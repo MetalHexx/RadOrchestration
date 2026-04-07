@@ -3,13 +3,14 @@ import type { ConditionExpression, OrchestrationConfig, PipelineState } from './
 function resolveDotPath(obj: unknown, path: string): unknown {
   const segments = path.split('.');
   let current: unknown = obj;
-  for (const segment of segments) {
+  for (let i = 0; i < segments.length; i++) {
     if (current === undefined || current === null) {
+      const blame = i === 0 ? '<root>' : segments[i - 1];
       throw new Error(
-        `Cannot resolve path '${path}': segment '${segment}' is ${typeof current}`
+        `Cannot resolve path '${path}': segment '${blame}' resolved to ${typeof current}`
       );
     }
-    current = (current as Record<string, unknown>)[segment];
+    current = (current as Record<string, unknown>)[segments[i]];
   }
   return current;
 }
