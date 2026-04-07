@@ -130,6 +130,9 @@ function walkForEachIterations(
     if (iteration.status === NODE_STATUSES.COMPLETED || iteration.status === NODE_STATUSES.SKIPPED) {
       continue;
     }
+    if (iteration.status === NODE_STATUSES.HALTED) {
+      return { action: NEXT_ACTIONS.DISPLAY_HALTED, context: {} };
+    }
     if (iteration.status === NODE_STATUSES.NOT_STARTED) {
       iteration.status = NODE_STATUSES.IN_PROGRESS;
     }

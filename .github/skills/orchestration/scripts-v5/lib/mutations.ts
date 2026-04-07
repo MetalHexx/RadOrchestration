@@ -43,11 +43,28 @@ export function resolveNodeState(
   }
 
   // scope === 'task'
+  // Phase-level corrective tasks contain task body nodes; check before task loop resolution
+  if (phaseIteration.corrective_tasks.length > 0) {
+    const latest = phaseIteration.corrective_tasks[phaseIteration.corrective_tasks.length - 1];
+    if ((latest.status === 'in_progress' || latest.status === 'not_started') && nodeId in latest.nodes) {
+      return latest.nodes[nodeId];
+    }
+  }
+
   const taskLoopNode = phaseIteration.nodes['task_loop'];
   if (taskLoopNode.kind !== 'for_each_task') {
     throw new Error(`Expected task_loop to be a for_each_task node, got ${taskLoopNode.kind}`);
   }
   const taskIteration = taskLoopNode.iterations[(task ?? 1) - 1];
+
+  // Task-level corrective tasks: route mutations to the latest active corrective entry's nodes
+  if (taskIteration.corrective_tasks.length > 0) {
+    const latest = taskIteration.corrective_tasks[taskIteration.corrective_tasks.length - 1];
+    if ((latest.status === 'in_progress' || latest.status === 'not_started') && nodeId in latest.nodes) {
+      return latest.nodes[nodeId];
+    }
+  }
+
   return taskIteration.nodes[nodeId];
 }
 
