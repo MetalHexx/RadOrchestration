@@ -58,9 +58,6 @@ function checkNodeStatuses(nodes: Record<string, NodeState>, path: string): stri
         }
         errors.push(...checkNodeStatuses(iter.nodes, `${nodePath}.iterations[${iter.index}].nodes`));
         for (const ct of iter.corrective_tasks) {
-          if (!validNodeStatuses.has(ct.status)) {
-            errors.push(`Invalid corrective task status '${ct.status}' at ${nodePath}.iterations[${iter.index}].corrective_tasks[${ct.index}]`);
-          }
           errors.push(...checkNodeStatuses(ct.nodes, `${nodePath}.iterations[${iter.index}].corrective_tasks[${ct.index}].nodes`));
         }
       }

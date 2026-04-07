@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as path from 'node:path';
+import * as fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
+import { EVENTS } from '../lib/constants.js';
 import {
   createScaffoldedState,
   createMockIO,
@@ -1657,5 +1660,71 @@ describe('[PARITY] v4:resolveReview', () => {
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');
     expect(io.currentState!.graph.status).toBe('completed');
+  });
+});
+
+// ── [PARITY] coverage and audit ───────────────────────────────────────────────
+
+describe('[PARITY] coverage and audit', () => {
+  it('every EVENTS value appears in at least one test file', () => {
+    const testDir = path.dirname(fileURLToPath(import.meta.url));
+    const testFileNames = [
+      'parity.test.ts',
+      'pipeline.test.ts',
+      'execution-integration.test.ts',
+      'planning-integration.test.ts',
+      'corrective-integration.test.ts',
+      'engine.test.ts',
+      'mutations.test.ts',
+    ];
+
+    const testContents = testFileNames.map((f: string) =>
+      fs.readFileSync(path.join(testDir, f), 'utf-8') as string,
+    );
+    const combined = testContents.join('\n');
+
+    for (const eventValue of Object.values(EVENTS)) {
+      expect(
+        combined.includes(eventValue),
+        `Event '${eventValue}' not found in any test file`,
+      ).toBe(true);
+    }
+  });
+
+  it('zero any usage in core engine modules', () => {
+    const libDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'lib');
+    const sourceFiles = [
+      'types.ts',
+      'engine.ts',
+      'dag-walker.ts',
+      'mutations.ts',
+      'validator.ts',
+      'condition-evaluator.ts',
+    ];
+
+    const anyPattern = /:\s*any\b|<any>|as\s+any\b/;
+
+    for (const file of sourceFiles) {
+      const content = fs.readFileSync(path.join(libDir, file), 'utf-8');
+      const lines = content.split('\n');
+      const violations: string[] = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Skip comment lines
+        const trimmed = line.trimStart();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) {
+          continue;
+        }
+        if (anyPattern.test(line)) {
+          violations.push(`${file}:${i + 1}: ${line.trim()}`);
+        }
+      }
+
+      expect(
+        violations,
+        `Found 'any' usage in ${file}:\n${violations.join('\n')}`,
+      ).toHaveLength(0);
+    }
   });
 });

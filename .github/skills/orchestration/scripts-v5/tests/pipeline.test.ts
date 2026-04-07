@@ -227,4 +227,80 @@ describe('pipeline CLI — run()', () => {
 
     exitSpy.mockRestore();
   });
+
+  // ── CLI Contract Schema Validation ──────────────────────────────────────────
+
+  it('success response contains exactly the required fields', () => {
+    const successResult: PipelineResult = {
+      success: true,
+      action: 'spawn_research',
+      context: { step: 'research' },
+      mutations_applied: ['set research.status = in_progress'],
+      orchRoot: '.github',
+    };
+    mockProcessEvent.mockReturnValue(successResult);
+
+    run(BASE_ARGS);
+
+    const result = capturedJson();
+    expect(result).toHaveProperty('success');
+    expect(typeof result.success).toBe('boolean');
+    expect(result).toHaveProperty('action');
+    expect(result).toHaveProperty('context');
+    expect(typeof result.context).toBe('object');
+    expect(result).toHaveProperty('mutations_applied');
+    expect(Array.isArray(result.mutations_applied)).toBe(true);
+    expect(result).toHaveProperty('orchRoot');
+    expect(typeof result.orchRoot).toBe('string');
+
+    // Only allowed top-level keys
+    const keys = Object.keys(result);
+    const allowed = new Set(['success', 'action', 'context', 'mutations_applied', 'orchRoot', 'error']);
+    for (const key of keys) {
+      expect(allowed.has(key)).toBe(true);
+    }
+  });
+
+  it('error response contains success: false, action: null, and error object with message and event', () => {
+    mockProcessEvent.mockImplementation(() => {
+      throw new Error('engine exploded');
+    });
+
+    run(BASE_ARGS);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(result.action).toBeNull();
+    expect(result).toHaveProperty('context');
+    expect(typeof result.context).toBe('object');
+    expect(result).toHaveProperty('mutations_applied');
+    expect(Array.isArray(result.mutations_applied)).toBe(true);
+    expect(result).toHaveProperty('orchRoot');
+    expect(typeof result.orchRoot).toBe('string');
+    expect(result.error).toBeDefined();
+    expect(typeof result.error!.message).toBe('string');
+    expect(typeof result.error!.event).toBe('string');
+  });
+
+  it('invalid --phase returns success: false with structured error mentioning --phase', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    run([...BASE_ARGS, '--phase', 'abc']);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
+    expect(result.error!.message).toContain('--phase');
+  });
+
+  it('invalid --task returns success: false with structured error mentioning --task', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    run([...BASE_ARGS, '--task', 'xyz']);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
+    expect(result.error!.message).toContain('--task');
+  });
 });

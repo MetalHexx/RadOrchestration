@@ -25,14 +25,26 @@ import { scaffoldNodeState } from './scaffold.js';
 
 /**
  * Resolves a template path to a state path by substituting iteration indices.
- * For this task, returns the templatePath unchanged (pass-through).
- * Iteration indexing is added in a later task.
+ * Template paths use ".body." to represent iteration body contents.
+ * This function replaces those segments with "[index]." using the event context.
+ *
+ * Examples:
+ *   ("phase_loop.body.task_loop.body.code_review", {phase:1, task:2}) → "phase_loop[0].task_loop[1].code_review"
+ *   ("phase_loop.body.phase_planning", {phase:2}) → "phase_loop[1].phase_planning"
+ *   ("research", {}) → "research"
  */
 export function resolveNodeStatePath(
   templatePath: string,
   _context: Partial<EventContext>,
 ): string {
-  return templatePath;
+  let result = templatePath;
+  if (_context.phase !== undefined) {
+    result = result.replace('phase_loop.body.', `phase_loop[${_context.phase - 1}].`);
+  }
+  if (_context.task !== undefined) {
+    result = result.replace('task_loop.body.', `task_loop[${_context.task - 1}].`);
+  }
+  return result;
 }
 
 /**

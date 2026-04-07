@@ -526,7 +526,7 @@ describe('Execution-tier integration — gate mode variations', () => {
     expect(result.action).toBe('invoke_source_control_commit');
   });
 
-  it('execution_mode=task activates task gates but auto-approves phase gates', () => {
+  it('execution_mode=task auto-approves both task gates and phase gates', () => {
     const config = makeConfig({ execution_mode: 'task' });
     const io = createMockIO(null, config);
     let result: PipelineResult;

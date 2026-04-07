@@ -1715,8 +1715,23 @@ describe('phase-level corrective task walking', () => {
 });
 
 describe('resolveNodeStatePath', () => {
-  it('returns the templatePath unchanged (pass-through)', () => {
-    const result = resolveNodeStatePath('phase_loop.body.task_loop.body.code_review', { phase: 1 });
-    expect(result).toBe('phase_loop.body.task_loop.body.code_review');
+  it('substitutes both phase and task indices', () => {
+    const result = resolveNodeStatePath('phase_loop.body.task_loop.body.code_review', { phase: 1, task: 2 });
+    expect(result).toBe('phase_loop[0].task_loop[1].code_review');
+  });
+
+  it('substitutes phase index only', () => {
+    const result = resolveNodeStatePath('phase_loop.body.phase_planning', { phase: 2 });
+    expect(result).toBe('phase_loop[1].phase_planning');
+  });
+
+  it('returns top-level paths unchanged when no iteration context', () => {
+    const result = resolveNodeStatePath('research', {});
+    expect(result).toBe('research');
+  });
+
+  it('leaves task_loop.body. unchanged when only phase is provided', () => {
+    const result = resolveNodeStatePath('phase_loop.body.task_loop.body.task_handoff', { phase: 3 });
+    expect(result).toBe('phase_loop[2].task_loop.body.task_handoff');
   });
 });

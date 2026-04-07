@@ -2,7 +2,7 @@ import * as path from 'node:path';
 import { loadTemplate } from './template-loader.js';
 import { preRead } from './pre-reads.js';
 import { getMutation } from './mutations.js';
-import { walkDAG } from './dag-walker.js';
+import { walkDAG, resolveNodeStatePath } from './dag-walker.js';
 import type {
   PipelineState,
   PipelineResult,
@@ -162,7 +162,7 @@ export function processEvent(
     }
 
     mutatedState.project.updated = new Date().toISOString();
-    mutatedState.graph.current_node_path = entry.templatePath;
+    mutatedState.graph.current_node_path = resolveNodeStatePath(entry.templatePath, context);
 
     let nextAction;
     if (entry.eventPhase === 'started') {
