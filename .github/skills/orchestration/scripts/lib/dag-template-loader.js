@@ -486,9 +486,9 @@ function applyOverrides(template, overrides) {
     }
   }
 
-  // Apply flags overrides
+  // Apply flags overrides (merge with existing template flags)
   if (overrides.flags) {
-    cloned.flags = { ...overrides.flags };
+    cloned.flags = { ...(cloned.flags || {}), ...overrides.flags };
   }
 
   // Orphan detection: ensure no non-disabled node loses all its dependencies

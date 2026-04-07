@@ -677,13 +677,24 @@ describe('deriveTier()', () => {
     assert.equal(result, PIPELINE_TIERS.HALTED);
   });
 
-  it('returns halted when any node is failed', () => {
+  it('returns halted when any node is failed and no pending work remains', () => {
     const nodes = {
       research: makeDagNode({ id: 'research', planning_step: 'research', status: 'complete' }),
       phase_node: makeDagNode({ id: 'phase_node', phase_number: 1, status: 'failed' }),
     };
     const result = deriveTier(nodes);
     assert.equal(result, PIPELINE_TIERS.HALTED);
+  });
+
+  it('does not return halted when a node is failed but pending work exists (corrective flow)', () => {
+    const nodes = {
+      review: makeDagNode({ id: 'P01.T01.code_review', status: 'failed' }),
+      corrective_handoff: makeDagNode({ id: 'P01.T01.handoff_r1', status: 'not_started' }),
+      corrective_code: makeDagNode({ id: 'P01.T01.implement_r1', status: 'not_started' }),
+      corrective_review: makeDagNode({ id: 'P01.T01.code_review_r1', status: 'not_started' }),
+    };
+    const result = deriveTier(nodes);
+    assert.notEqual(result, PIPELINE_TIERS.HALTED);
   });
 });
 

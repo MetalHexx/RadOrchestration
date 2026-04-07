@@ -261,6 +261,50 @@ test('Reference orchestration.yml parses into expected structure', () => {
   assert.deepStrictEqual(result, EXPECTED);
 });
 
+// ─── Nested Continuation in List Items ──────────────────────────────────────
+
+test('Array of objects with nested child maps', () => {
+  const yaml = [
+    'nodes:',
+    '  - id: "step_a"',
+    '    type: "step"',
+    '    events:',
+    '      started: "step_a_started"',
+    '      completed: "step_a_completed"',
+    '  - id: "step_b"',
+    '    type: "gate"',
+  ].join('\n') + '\n';
+  const result = parseYaml(yaml);
+  assert.ok(result !== null);
+  assert.strictEqual(result.nodes.length, 2);
+  assert.strictEqual(result.nodes[0].id, 'step_a');
+  assert.strictEqual(result.nodes[0].type, 'step');
+  assert.deepStrictEqual(result.nodes[0].events, {
+    started: 'step_a_started',
+    completed: 'step_a_completed',
+  });
+  assert.strictEqual(result.nodes[1].id, 'step_b');
+  assert.strictEqual(result.nodes[1].type, 'gate');
+});
+
+test('Array item with empty nested key followed by deeper children', () => {
+  const yaml = [
+    'items:',
+    '  - name: "widget"',
+    '    config:',
+    '      enabled: true',
+    '      retries: 3',
+  ].join('\n') + '\n';
+  const result = parseYaml(yaml);
+  assert.ok(result !== null);
+  assert.strictEqual(result.items.length, 1);
+  assert.strictEqual(result.items[0].name, 'widget');
+  assert.deepStrictEqual(result.items[0].config, {
+    enabled: true,
+    retries: 3,
+  });
+});
+
 // ─── Report ─────────────────────────────────────────────────────────────────
 
 console.log(`\n  Results: ${passed} passed, ${failed} failed, ${passed + failed} total\n`);

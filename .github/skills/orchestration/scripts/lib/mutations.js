@@ -360,12 +360,22 @@ function handlePlanApproved(state, context, config) {
 function handlePlanRejected(state, context, config) {
   state.planning.human_approved = false;
   const masterPlanStep = state.planning.steps.find(s => s.name === 'master_plan');
-  masterPlanStep.status = PLANNING_STEP_STATUSES.IN_PROGRESS;
 
   const mutations_applied = [
     'Set planning.human_approved to false',
-    `Set planning step "master_plan" status to "${PLANNING_STEP_STATUSES.IN_PROGRESS}"`,
   ];
+
+  if (masterPlanStep) {
+    masterPlanStep.status = PLANNING_STEP_STATUSES.IN_PROGRESS;
+    mutations_applied.push(`Set planning step "master_plan" status to "${PLANNING_STEP_STATUSES.IN_PROGRESS}"`);
+  } else {
+    // Quick template or custom template without master_plan: reset the last planning step
+    const lastStep = state.planning.steps[state.planning.steps.length - 1];
+    if (lastStep) {
+      lastStep.status = PLANNING_STEP_STATUSES.IN_PROGRESS;
+      mutations_applied.push(`Set planning step "${lastStep.name}" status to "${PLANNING_STEP_STATUSES.IN_PROGRESS}"`);
+    }
+  }
 
   if (isV5(state)) {
     // Reset master_plan node to in_progress for re-editing
@@ -373,6 +383,14 @@ function handlePlanRejected(state, context, config) {
     if (masterPlanNode) {
       masterPlanNode.status = DAG_NODE_STATUSES.IN_PROGRESS;
       mutations_applied.push(`DAG: Reset node "${masterPlanNode.id}" status to in_progress`);
+    } else {
+      // Quick template or custom: find the last planning step node and reset it
+      const planningNodes = Object.values(state.dag.nodes).filter(n => n.planning_step);
+      const lastPlanningNode = planningNodes.length > 0 ? planningNodes[planningNodes.length - 1] : null;
+      if (lastPlanningNode) {
+        lastPlanningNode.status = DAG_NODE_STATUSES.IN_PROGRESS;
+        mutations_applied.push(`DAG: Reset node "${lastPlanningNode.id}" status to in_progress`);
+      }
     }
     // Reset planning gate to not_started
     const gateNode = state.dag.nodes['request_plan_approval'];

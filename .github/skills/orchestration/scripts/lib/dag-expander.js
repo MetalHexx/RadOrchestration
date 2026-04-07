@@ -225,9 +225,6 @@ function expandPhases(nodes, containerNodeId, phaseCount, phases) {
   // Delete container
   delete nodes[containerNodeId];
 
-  // Recompute execution order
-  computeExecutionOrder(nodes);
-
   return newIds;
 }
 
@@ -305,9 +302,6 @@ function expandTasks(nodes, containerNodeId, phaseNumber, tasks) {
 
   // Delete container
   delete nodes[containerNodeId];
-
-  // Recompute execution order
-  computeExecutionOrder(nodes);
 
   return newIds;
 }

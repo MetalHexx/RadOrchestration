@@ -279,9 +279,22 @@ function deriveTier(nodes) {
     return PIPELINE_TIERS.COMPLETE;
   }
 
-  // Any halted/failed → halted
-  if (allNodes.some(n => n.status === DAG_NODE_STATUSES.HALTED || n.status === DAG_NODE_STATUSES.FAILED)) {
+  // Any halted → halted (always terminal)
+  if (allNodes.some(n => n.status === DAG_NODE_STATUSES.HALTED)) {
     return PIPELINE_TIERS.HALTED;
+  }
+
+  // Failed nodes are only terminal when there is no remaining pending work.
+  // Corrective task injection sets review nodes to FAILED while adding new
+  // NOT_STARTED corrective nodes; the pipeline must continue in that case.
+  const hasFailedNode = allNodes.some(n => n.status === DAG_NODE_STATUSES.FAILED);
+  if (hasFailedNode) {
+    const hasPendingWork = allNodes.some(
+      n => n.status === DAG_NODE_STATUSES.NOT_STARTED || n.status === DAG_NODE_STATUSES.IN_PROGRESS
+    );
+    if (!hasPendingWork) {
+      return PIPELINE_TIERS.HALTED;
+    }
   }
 
   // Planning tier: any planning step node active, or planning gate not yet complete
