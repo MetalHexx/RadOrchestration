@@ -931,3 +931,99 @@ describe('source_control_pr_completed mutation', () => {
   });
 });
 
+// ── Multi-iteration tests (Phase 2 carry-forward) ─────────────────────────────
+
+function makeIterationNodes() {
+  return {
+    phase_gate: { kind: 'gate' as const, status: 'not_started' as const, gate_active: false },
+    phase_planning: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
+    phase_report: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
+    phase_review: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
+    phase_commit_gate: { kind: 'conditional' as const, status: 'not_started' as const, branch_taken: null },
+    phase_commit: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
+    task_loop: {
+      kind: 'for_each_task' as const,
+      status: 'not_started' as const,
+      iterations: [
+        {
+          index: 0,
+          status: 'not_started' as const,
+          nodes: {
+            task_gate: { kind: 'gate' as const, status: 'not_started' as const, gate_active: false },
+            task_handoff: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
+            task_executor: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
+            code_review: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
+          },
+          corrective_tasks: [],
+        },
+        {
+          index: 1,
+          status: 'not_started' as const,
+          nodes: {
+            task_gate: { kind: 'gate' as const, status: 'not_started' as const, gate_active: false },
+            task_handoff: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
+            task_executor: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
+            code_review: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
+          },
+          corrective_tasks: [],
+        },
+      ],
+    },
+  };
+}
+
+function makeMultiIterationState(): PipelineState {
+  const base = makeState();
+  const phaseLoop = base.graph.nodes['phase_loop'];
+  if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
+  phaseLoop.iterations = [
+    { index: 0, status: 'not_started', nodes: makeIterationNodes(), corrective_tasks: [] },
+    { index: 1, status: 'not_started', nodes: makeIterationNodes(), corrective_tasks: [] },
+  ];
+  return base;
+}
+
+describe('multi-iteration phase mutation (phase ≥ 2)', () => {
+  it('phase_planning_started with { phase: 2 } sets iterations[1].nodes.phase_planning.status to in_progress', () => {
+    const state = makeMultiIterationState();
+    const mutation = getMutation('phase_planning_started')!;
+    const result = mutation(state, { phase: 2 }, baseConfig, baseTemplate);
+    const phaseLoop = result.state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    expect(phaseLoop.iterations[1].nodes['phase_planning'].status).toBe('in_progress');
+  });
+
+  it('does not affect iteration[0] when phase: 2', () => {
+    const state = makeMultiIterationState();
+    const mutation = getMutation('phase_planning_started')!;
+    const result = mutation(state, { phase: 2 }, baseConfig, baseTemplate);
+    const phaseLoop = result.state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    expect(phaseLoop.iterations[0].nodes['phase_planning'].status).toBe('not_started');
+  });
+});
+
+describe('multi-iteration task mutation (task ≥ 2)', () => {
+  it('task_handoff_started with { phase: 1, task: 2 } sets iterations[0].task_loop.iterations[1].task_handoff to in_progress', () => {
+    const state = makeMultiIterationState();
+    const mutation = getMutation('task_handoff_started')!;
+    const result = mutation(state, { phase: 1, task: 2 }, baseConfig, baseTemplate);
+    const phaseLoop = result.state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+    if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
+    expect(taskLoop.iterations[1].nodes['task_handoff'].status).toBe('in_progress');
+  });
+
+  it('does not affect task iteration[0] when task: 2', () => {
+    const state = makeMultiIterationState();
+    const mutation = getMutation('task_handoff_started')!;
+    const result = mutation(state, { phase: 1, task: 2 }, baseConfig, baseTemplate);
+    const phaseLoop = result.state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+    if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
+    expect(taskLoop.iterations[0].nodes['task_handoff'].status).toBe('not_started');
+  });
+});
+

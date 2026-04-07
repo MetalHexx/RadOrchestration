@@ -101,6 +101,27 @@ describe('pipeline CLI — run()', () => {
     expect(typeof context.task).toBe('number');
   });
 
+  it('invalid --phase "abc" results in NaN or graceful handling without crashing', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    run([...BASE_ARGS, '--phase', 'abc']);
+
+    const result = capturedJson();
+    // Pipeline either passes NaN to engine or returns a structured error — no crash
+    expect(result).toHaveProperty('success');
+    expect(typeof result.success).toBe('boolean');
+  });
+
+  it('invalid --task "xyz" results in NaN or graceful handling without crashing', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    run([...BASE_ARGS, '--task', 'xyz']);
+
+    const result = capturedJson();
+    expect(result).toHaveProperty('success');
+    expect(typeof result.success).toBe('boolean');
+  });
+
   // ── Required Argument Validation ────────────────────────────────────────────
 
   it('missing --event produces { success: false } JSON with error mentioning --event', () => {

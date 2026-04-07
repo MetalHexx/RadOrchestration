@@ -2,20 +2,17 @@ import * as path from 'node:path';
 import { loadTemplate } from './template-loader.js';
 import { preRead } from './pre-reads.js';
 import { getMutation } from './mutations.js';
+import { walkDAG } from './dag-walker.js';
 import type {
   PipelineState,
   PipelineResult,
   PipelineTemplate,
   OrchestrationConfig,
   EventContext,
-  EventPhase,
-  EventIndexEntry,
   IOAdapter,
-  WalkerResult,
   NodeDef,
   NodeState,
   StepNodeDef,
-  GateNodeDef,
   ParallelNodeDef,
 } from './types.js';
 
@@ -87,65 +84,6 @@ function scaffoldState(
   };
 }
 
-// ── resolveNextAction (simplified stub — Phase 3 replaces with DAG walker) ───
-
-function resolveNextAction(
-  state: PipelineState,
-  template: PipelineTemplate,
-  eventPhase: EventPhase,
-  eventEntry: EventIndexEntry,
-): WalkerResult | null {
-  if (eventPhase === 'started') {
-    const stepNode = eventEntry.nodeDef as StepNodeDef;
-    return { action: stepNode.action, context: stepNode.context ?? {} };
-  }
-
-  // completed or approved — find next actionable sibling
-  return findNextActionableSibling(state, template);
-}
-
-function findNextActionableSibling(
-  state: PipelineState,
-  template: PipelineTemplate,
-): WalkerResult | null {
-  const nodes = template.nodes;
-  const stateNodes = state.graph.nodes;
-
-  for (const node of nodes) {
-    const nodeState = stateNodes[node.id];
-    if (!nodeState || nodeState.status !== 'not_started') continue;
-
-    const depsCompleted = (node.depends_on ?? []).every((depId) => {
-      const depState = stateNodes[depId];
-      return depState && depState.status === 'completed';
-    });
-
-    if (!depsCompleted) continue;
-
-    if (node.kind === 'step') {
-      const stepNode = node as StepNodeDef;
-      return { action: stepNode.action, context: stepNode.context ?? {} };
-    }
-
-    if (node.kind === 'gate') {
-      const gateNode = node as GateNodeDef;
-      return { action: gateNode.action_if_needed, context: {} };
-    }
-  }
-
-  // Check if all top-level nodes are completed
-  const allCompleted = nodes.every((node) => {
-    const nodeState = stateNodes[node.id];
-    return nodeState && nodeState.status === 'completed';
-  });
-
-  if (allCompleted) {
-    return { action: 'display_complete', context: {} };
-  }
-
-  return null;
-}
-
 // ── processEvent (main engine entry point) ────────────────────────────────────
 
 export function processEvent(
@@ -189,9 +127,8 @@ export function processEvent(
       scaffolded.project.updated = new Date().toISOString();
 
       io.ensureDirectories(projectDir);
+      const nextAction = walkDAG(scaffolded, template, config, io.readDocument);
       io.writeState(projectDir, scaffolded);
-
-      const nextAction = findNextActionableSibling(scaffolded, template);
 
       return {
         success: true,
@@ -239,9 +176,16 @@ export function processEvent(
     mutatedState.project.updated = new Date().toISOString();
     mutatedState.graph.current_node_path = entry.templatePath;
 
-    io.writeState(projectDir, mutatedState);
-
-    const nextAction = resolveNextAction(mutatedState, template, entry.eventPhase, entry);
+    let nextAction;
+    if (entry.eventPhase === 'started') {
+      const stepNode = entry.nodeDef as StepNodeDef;
+      nextAction = { action: stepNode.action, context: stepNode.context ?? {} };
+      io.writeState(projectDir, mutatedState);
+    } else {
+      const walkerResult = walkDAG(mutatedState, template, config, io.readDocument);
+      io.writeState(projectDir, mutatedState);
+      nextAction = walkerResult;
+    }
 
     return {
       success: true,

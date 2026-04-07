@@ -228,7 +228,7 @@ describe('engine – processEvent', () => {
     });
   });
 
-  describe('Simplified resolver', () => {
+  describe('Standard route – started event', () => {
     it('finds next sibling step whose depends_on are all completed', () => {
       const state = makeScaffoldedState();
       // Mark research as completed
@@ -255,6 +255,40 @@ describe('engine – processEvent', () => {
 
       const designNode = io.currentState!.graph.nodes['design'] as StepNodeState;
       expect(designNode.status).toBe('in_progress');
+    });
+  });
+
+  describe('Standard route – approved event (gate traversal)', () => {
+    it('plan_approved flows through walkDAG gate, returns null action, persists state', () => {
+      const state = makeScaffoldedState();
+
+      // Mark all planning steps as completed
+      (state.graph.nodes['research'] as StepNodeState).status = 'completed';
+      (state.graph.nodes['research'] as StepNodeState).doc_path = '/tmp/research.md';
+      (state.graph.nodes['prd'] as StepNodeState).status = 'completed';
+      (state.graph.nodes['prd'] as StepNodeState).doc_path = '/tmp/prd.md';
+      (state.graph.nodes['design'] as StepNodeState).status = 'completed';
+      (state.graph.nodes['design'] as StepNodeState).doc_path = '/tmp/design.md';
+      (state.graph.nodes['architecture'] as StepNodeState).status = 'completed';
+      (state.graph.nodes['architecture'] as StepNodeState).doc_path = '/tmp/arch.md';
+      (state.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
+      (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/tmp/master-plan.md';
+
+      // plan_approval_gate ready to be approved
+      (state.graph.nodes['plan_approval_gate'] as GateNodeState).status = 'not_started';
+      (state.graph.nodes['plan_approval_gate'] as GateNodeState).gate_active = false;
+
+      const io = createMockIO(state);
+      const result = processEvent('plan_approved', PROJECT_DIR, {}, io);
+
+      expect(result.success).toBe(true);
+      // readDocument returns null for master plan doc path → phase_loop can't expand → walker returns null
+      expect(result.action).toBeNull();
+      // State was persisted after walkDAG
+      expect(io.writeCalls.length).toBeGreaterThanOrEqual(1);
+      // Mutation applied: plan_approval_gate status is 'completed' (gate_active = true)
+      const gate = io.currentState!.graph.nodes['plan_approval_gate'] as GateNodeState;
+      expect(gate.status).toBe('completed');
     });
   });
 
