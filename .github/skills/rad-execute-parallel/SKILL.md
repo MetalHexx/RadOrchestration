@@ -17,6 +17,7 @@ Set up a dedicated git worktree for a project and launch orchestration execution
 | `scripts/find-projects.js` | `--projects-base-path <path> --repo-root <path>` | `{ projects: [{ name, masterPlanPath, currentTier, existingWorktreePath, existingBranch, worktreeExists }] }` | Scan for execution-ready projects and check existing worktrees |
 | `scripts/find-projects.js` | `--projects-base-path <path> --repo-root <path> --project-name <name>` | Same shape, single-project lookup | Look up one project by name (worktree + master plan info) |
 | `scripts/create-worktree.js` | `--repo-root <path> --branch <name> --worktree-path <path> --base-branch <ref>` | `{ created, worktreePath, branch, baseBranch, pushed, remoteUrl, compareUrl, error, errorType }` | Create worktree, push branch, detect remote URL |
+| `scripts/inject-theme.js` | `--worktree-path <path>` | `{ theme, settingsPath, gitignorePath, error }` | Pick a random built-in VS Code theme, write `.vscode/settings.json`, add entry to `.gitignore` |
 
 All scripts output JSON to stdout. Exit codes: `0` = success, `1` = partial (created but push failed), `2` = failure.
 
@@ -44,3 +45,4 @@ Follow these steps in order. Run steps 1–2 silently — do not narrate or disp
 - **`scripts/gather-context.js`** — Git environment detection + orchestration config reader (standalone, no external dependencies)
 - **`scripts/find-projects.js`** — Project scanner: finds execution-ready projects, checks worktree status (standalone)
 - **`scripts/create-worktree.js`** — Worktree creation: git worktree add, branch push, remote URL detection (standalone)
+- **`scripts/inject-theme.js`** — Random VS Code theme injection: writes `.vscode/settings.json`, protects it with `.gitignore` (standalone)

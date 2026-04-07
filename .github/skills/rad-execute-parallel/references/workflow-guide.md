@@ -189,9 +189,14 @@ Execute the `post_action` chosen by the user. Prefer `masterPlanPath` as the arg
 
 ### Open in new VS Code window
 
+Before opening VS Code, run `inject-theme.js` to write a random built-in theme to `.vscode/settings.json` and protect it with `.gitignore`. Theme injection is non-blocking — if it fails, log the error and continue.
+
 ```
+node {skillRoot}/scripts/inject-theme.js --worktree-path "{worktreePath}"
 code "{worktreePath}"
 ```
+
+`{skillRoot}` is the absolute path to the `rad-execute-parallel` skill folder (the directory containing `SKILL.md`).
 
 Display:
 ```
