@@ -13,33 +13,8 @@ import type {
   NodeDef,
   NodeState,
   StepNodeDef,
-  ParallelNodeDef,
 } from './types.js';
-
-// ── scaffoldNodeState ─────────────────────────────────────────────────────────
-
-function scaffoldNodeState(node: NodeDef): NodeState {
-  switch (node.kind) {
-    case 'step':
-      return { kind: 'step', status: 'not_started', doc_path: null, retries: 0 };
-    case 'gate':
-      return { kind: 'gate', status: 'not_started', gate_active: false };
-    case 'for_each_phase':
-      return { kind: 'for_each_phase', status: 'not_started', iterations: [] };
-    case 'for_each_task':
-      return { kind: 'for_each_task', status: 'not_started', iterations: [] };
-    case 'conditional':
-      return { kind: 'conditional', status: 'not_started', branch_taken: null };
-    case 'parallel': {
-      const parallelNode = node as ParallelNodeDef;
-      const childNodes: Record<string, NodeState> = {};
-      for (const child of parallelNode.children) {
-        childNodes[child.id] = scaffoldNodeState(child);
-      }
-      return { kind: 'parallel', status: 'not_started', nodes: childNodes };
-    }
-  }
-}
+import { scaffoldNodeState } from './scaffold.js';
 
 // ── scaffoldState ─────────────────────────────────────────────────────────────
 

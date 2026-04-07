@@ -21,6 +21,7 @@ import type {
 } from './types.js';
 import { NODE_STATUSES, NEXT_ACTIONS, GRAPH_STATUSES } from './constants.js';
 import { evaluateCondition } from './condition-evaluator.js';
+import { scaffoldNodeState } from './scaffold.js';
 
 /**
  * Resolves a template path to a state path by substituting iteration indices.
@@ -74,32 +75,6 @@ function checkDependencies(
         depState.status === NODE_STATUSES.SKIPPED)
     );
   });
-}
-
-/**
- * Creates an initial NodeState for a given NodeDef based on its kind.
- */
-function scaffoldNodeState(nodeDef: NodeDef): NodeState {
-  switch (nodeDef.kind) {
-    case 'step':
-      return { kind: 'step', status: NODE_STATUSES.NOT_STARTED, doc_path: null, retries: 0 };
-    case 'gate':
-      return { kind: 'gate', status: NODE_STATUSES.NOT_STARTED, gate_active: false };
-    case 'conditional':
-      return { kind: 'conditional', status: NODE_STATUSES.NOT_STARTED, branch_taken: null };
-    case 'parallel': {
-      const pState: ParallelNodeState = { kind: 'parallel', status: NODE_STATUSES.NOT_STARTED, nodes: {} };
-      const pDef = nodeDef as ParallelNodeDef;
-      for (const child of pDef.children) {
-        pState.nodes[child.id] = scaffoldNodeState(child);
-      }
-      return pState;
-    }
-    case 'for_each_phase':
-      return { kind: 'for_each_phase', status: NODE_STATUSES.NOT_STARTED, iterations: [] };
-    case 'for_each_task':
-      return { kind: 'for_each_task', status: NODE_STATUSES.NOT_STARTED, iterations: [] };
-  }
 }
 
 /**
