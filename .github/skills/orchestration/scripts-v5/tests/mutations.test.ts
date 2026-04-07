@@ -466,6 +466,20 @@ describe('resolveNodeState', () => {
     };
     expect(() => resolveNodeState(state, 'task_gate', 'task', 1, 1)).toThrow();
   });
+
+  it('throws when scope is "phase" but phase is undefined', () => {
+    const state = makeState();
+    expect(() => resolveNodeState(state, 'phase_gate', 'phase')).toThrow(
+      "scope is 'phase' but phase is undefined"
+    );
+  });
+
+  it('throws when scope is "task" but phase is undefined', () => {
+    const state = makeState();
+    expect(() => resolveNodeState(state, 'task_gate', 'task')).toThrow(
+      "scope is 'task' but phase is undefined"
+    );
+  });
 });
 
 // ── getMutation — new execution/review/source-control events ─────────────────

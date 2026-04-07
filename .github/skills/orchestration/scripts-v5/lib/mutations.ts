@@ -32,11 +32,15 @@ export function resolveNodeState(
     return state.graph.nodes[nodeId];
   }
 
+  if (phase === undefined) {
+    throw new Error(`resolveNodeState: scope is '${scope}' but phase is undefined`);
+  }
+
   const phaseLoopNode = state.graph.nodes['phase_loop'];
   if (phaseLoopNode.kind !== 'for_each_phase') {
     throw new Error(`Expected phase_loop to be a for_each_phase node, got ${phaseLoopNode.kind}`);
   }
-  const phaseIteration = phaseLoopNode.iterations[(phase ?? 1) - 1];
+  const phaseIteration = phaseLoopNode.iterations[phase - 1];
 
   if (scope === 'phase') {
     return phaseIteration.nodes[nodeId];
