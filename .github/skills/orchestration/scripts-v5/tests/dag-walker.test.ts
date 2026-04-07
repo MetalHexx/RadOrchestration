@@ -1503,6 +1503,216 @@ describe('corrective task walking', () => {
   });
 });
 
+// ── phase-level corrective task walking tests ─────────────────────────────────
+
+describe('phase-level corrective task walking', () => {
+
+  function forEachTaskDef(
+    id: string,
+    body: NodeDef[],
+    opts?: { depends_on?: string[]; source_doc_ref?: string; tasks_field?: string },
+  ): ForEachTaskNodeDef {
+    return {
+      id,
+      kind: 'for_each_task',
+      source_doc_ref: opts?.source_doc_ref ?? '$.current_phase.doc_path',
+      tasks_field: opts?.tasks_field ?? 'tasks',
+      body,
+      depends_on: opts?.depends_on,
+    };
+  }
+
+  function forEachPhaseDef(
+    id: string,
+    body: NodeDef[],
+    opts?: { depends_on?: string[]; source_doc_ref?: string; total_field?: string },
+  ): ForEachPhaseNodeDef {
+    return {
+      id,
+      kind: 'for_each_phase',
+      source_doc_ref: opts?.source_doc_ref ?? '$.nodes.master_plan.doc_path',
+      total_field: opts?.total_field ?? 'total_phases',
+      body,
+      depends_on: opts?.depends_on,
+    };
+  }
+
+  function forEachPhaseState(
+    status: 'not_started' | 'in_progress' | 'completed',
+    iterations: IterationEntry[] = [],
+  ): ForEachPhaseNodeState {
+    return { kind: 'for_each_phase', status, iterations };
+  }
+
+  function makeIteration(
+    index: number,
+    status: 'not_started' | 'in_progress' | 'completed' | 'skipped',
+    nodes: Record<string, NodeState>,
+    corrective_tasks: CorrectiveTaskEntry[] = [],
+  ): IterationEntry {
+    return { index, status, nodes, corrective_tasks };
+  }
+
+  function makeCorrectiveEntry(
+    index: number,
+    status: CorrectiveTaskEntry['status'],
+    nodes: Record<string, NodeState>,
+  ): CorrectiveTaskEntry {
+    return {
+      index,
+      reason: `Phase corrective attempt ${index}`,
+      injected_after: 'phase_review',
+      status,
+      nodes,
+    };
+  }
+
+  const taskBodyDefs: NodeDef[] = [
+    stepDef('task_handoff', 'create_task_handoff'),
+    stepDef('task_executor', 'execute_task', { depends_on: ['task_handoff'] }),
+    stepDef('code_review', 'spawn_code_reviewer', { depends_on: ['task_executor'] }),
+    gateDef('task_gate', 'human_gates.execution_mode', 'gate_task', ['auto'], { depends_on: ['code_review'] }),
+  ];
+
+  it('phase-level corrective with task body nodes: walker returns first task body action', () => {
+    const phaseBody: NodeDef[] = [
+      stepDef('phase_planning', 'create_phase_plan'),
+      forEachTaskDef('task_loop', taskBodyDefs, { depends_on: ['phase_planning'] }),
+      stepDef('phase_review', 'create_phase_review', { depends_on: ['task_loop'] }),
+    ];
+    const correctiveEntry = makeCorrectiveEntry(1, 'not_started', {
+      task_handoff: stepState('not_started'),
+      task_executor: stepState('not_started'),
+      code_review: stepState('not_started'),
+      task_gate: gateState('not_started', false),
+    });
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', phaseBody),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'in_progress', {
+          phase_planning: stepState('completed'),
+          task_loop: { kind: 'for_each_task', status: 'completed', iterations: [] },
+          phase_review: stepState('completed'),
+        }, [correctiveEntry]),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'create_task_handoff', context: {} });
+    expect(correctiveEntry.status).toBe('in_progress');
+  });
+
+  it('phase-level corrective completion: advances iteration when all corrective body nodes done', () => {
+    const phaseBody: NodeDef[] = [
+      stepDef('phase_planning', 'create_phase_plan'),
+      forEachTaskDef('task_loop', taskBodyDefs, { depends_on: ['phase_planning'] }),
+      stepDef('phase_review', 'create_phase_review', { depends_on: ['task_loop'] }),
+    ];
+    const correctiveEntry = makeCorrectiveEntry(1, 'in_progress', {
+      task_handoff: stepState('completed'),
+      task_executor: stepState('completed'),
+      code_review: stepState('completed'),
+      task_gate: gateState('completed', true),
+    });
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', phaseBody),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'in_progress', {
+          phase_planning: stepState('completed'),
+          task_loop: { kind: 'for_each_task', status: 'completed', iterations: [] },
+          phase_review: stepState('completed'),
+        }, [correctiveEntry]),
+        makeIteration(1, 'not_started', {
+          phase_planning: stepState('not_started'),
+          task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
+          phase_review: stepState('not_started'),
+        }),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    expect(correctiveEntry.status).toBe('completed');
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    expect(fepState.iterations[0].status).toBe('completed');
+    // Should advance to next iteration
+    expect(fepState.iterations[1].status).toBe('in_progress');
+    expect(result).toEqual({ action: 'create_phase_plan', context: {} });
+  });
+
+  it('phase-level halted corrective returns display_halted', () => {
+    const phaseBody: NodeDef[] = [
+      stepDef('phase_planning', 'create_phase_plan'),
+      forEachTaskDef('task_loop', taskBodyDefs, { depends_on: ['phase_planning'] }),
+      stepDef('phase_review', 'create_phase_review', { depends_on: ['task_loop'] }),
+    ];
+    const correctiveEntry = makeCorrectiveEntry(1, 'halted', {
+      task_handoff: stepState('not_started'),
+      task_executor: stepState('not_started'),
+      code_review: stepState('not_started'),
+      task_gate: gateState('not_started', false),
+    });
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', phaseBody),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'in_progress', {
+          phase_planning: stepState('completed'),
+          task_loop: { kind: 'for_each_task', status: 'completed', iterations: [] },
+          phase_review: stepState('completed'),
+        }, [correctiveEntry]),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'display_halted', context: {} });
+  });
+
+  it('corrective nodes use task body defs derived from for_each_task within phase body', () => {
+    // Verify that when for_each_phase contains for_each_task, corrective walking
+    // uses task body defs, not phase body defs
+    const phaseBody: NodeDef[] = [
+      stepDef('phase_planning', 'create_phase_plan'),
+      forEachTaskDef('task_loop', taskBodyDefs, { depends_on: ['phase_planning'] }),
+      stepDef('phase_review', 'create_phase_review', { depends_on: ['task_loop'] }),
+    ];
+    const correctiveEntry = makeCorrectiveEntry(1, 'in_progress', {
+      task_handoff: stepState('completed'),
+      task_executor: stepState('not_started'),
+      code_review: stepState('not_started'),
+      task_gate: gateState('not_started', false),
+    });
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', phaseBody),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'in_progress', {
+          phase_planning: stepState('completed'),
+          task_loop: { kind: 'for_each_task', status: 'completed', iterations: [] },
+          phase_review: stepState('completed'),
+        }, [correctiveEntry]),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    // Should walk task_executor (the next task body node), NOT phase_planning or task_loop
+    expect(result).toEqual({ action: 'execute_task', context: {} });
+  });
+});
+
 describe('resolveNodeStatePath', () => {
   it('returns the templatePath unchanged (pass-through)', () => {
     const result = resolveNodeStatePath('phase_loop.body.task_loop.body.code_review', { phase: 1 });

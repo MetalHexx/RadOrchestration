@@ -203,7 +203,7 @@ for (const [eventName, nodeId] of phaseExecDocSteps) {
 
 // ── phase_review_completed (stores doc_path + verdict) ───────────────────────
 
-mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, _config, _template): MutationResult => {
+mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, template): MutationResult => {
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
@@ -218,6 +218,34 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, _config, _t
   const verdict = context.verdict ?? null;
   (node as StepNodeState).verdict = verdict;
   mutations_applied.push(`set phase_review.verdict = ${verdict ?? 'null'}`);
+
+  if (verdict === 'changes_requested') {
+    const iteration = resolvePhaseIteration(cloned, context.phase ?? 1);
+    const bodyDefs = findTaskLoopBodyDefs(template);
+    if (bodyDefs.length === 0) {
+      throw new Error('findTaskLoopBodyDefs: no for_each_task body found in template');
+    }
+    const nodes: Record<string, NodeState> = {};
+    for (const bodyDef of bodyDefs) {
+      nodes[bodyDef.id] = scaffoldNodeState(bodyDef);
+    }
+    const entry: CorrectiveTaskEntry = {
+      index: iteration.corrective_tasks.length + 1,
+      reason: 'Phase review requested changes',
+      injected_after: 'phase_review',
+      status: 'not_started',
+      nodes,
+    };
+    iteration.corrective_tasks.push(entry);
+    mutations_applied.push(`injected phase corrective task ${entry.index} (changes_requested)`);
+    mutations_applied.push(`corrective_tasks.length = ${iteration.corrective_tasks.length}`);
+  } else if (verdict === 'rejected') {
+    const iteration = resolvePhaseIteration(cloned, context.phase ?? 1);
+    iteration.status = 'halted';
+    cloned.graph.status = 'halted';
+    mutations_applied.push('set phase_iteration.status = halted (rejected verdict)');
+    mutations_applied.push('set graph.status = halted');
+  }
 
   return { state: cloned, mutations_applied };
 });
@@ -274,6 +302,14 @@ mutationRegistry.set(EVENTS.EXECUTION_COMPLETED, (state, context, _config, _temp
 });
 
 // ── Private helpers for corrective injection ─────────────────────────────────
+
+function resolvePhaseIteration(state: PipelineState, phase: number): IterationEntry {
+  const phaseLoopNode = state.graph.nodes['phase_loop'];
+  if (phaseLoopNode.kind !== 'for_each_phase') {
+    throw new Error(`Expected phase_loop to be a for_each_phase node, got ${phaseLoopNode.kind}`);
+  }
+  return phaseLoopNode.iterations[phase - 1];
+}
 
 function resolveTaskIteration(state: PipelineState, phase: number, task: number): IterationEntry {
   const phaseLoopNode = state.graph.nodes['phase_loop'];

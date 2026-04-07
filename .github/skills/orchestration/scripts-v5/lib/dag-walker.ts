@@ -151,11 +151,20 @@ function walkForEachIterations(
         latestCorrective.status = NODE_STATUSES.IN_PROGRESS;
       }
 
-      const correctiveResult = walkNodes(fepDef.body, latestCorrective.nodes, config, state, readDocument);
+      // Derive correct body defs for corrective walking
+      let correctiveBodyDefs: NodeDef[];
+      if (fepDef.kind === 'for_each_phase') {
+        const fetDef = fepDef.body.find((n) => n.kind === 'for_each_task') as ForEachTaskNodeDef | undefined;
+        correctiveBodyDefs = fetDef ? fetDef.body : fepDef.body;
+      } else {
+        correctiveBodyDefs = fepDef.body;
+      }
+
+      const correctiveResult = walkNodes(correctiveBodyDefs, latestCorrective.nodes, config, state, readDocument);
       if (correctiveResult !== null) {
         return correctiveResult;
       }
-      const allCorrectiveDone = fepDef.body.every((bn) => {
+      const allCorrectiveDone = correctiveBodyDefs.every((bn) => {
         const bnState = latestCorrective.nodes[bn.id];
         return (
           bnState !== undefined &&
