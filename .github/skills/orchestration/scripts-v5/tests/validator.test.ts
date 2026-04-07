@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { validateState } from '../lib/validator.js';
 import { processEvent } from '../lib/engine.js';
 import { loadTemplate } from '../lib/template-loader.js';
@@ -20,6 +21,7 @@ import type {
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.resolve(__dirname, '../templates/full.yml');
 const PROJECT_DIR = '/tmp/test-project/VALIDATOR-TEST';
 const ORCH_ROOT = path.resolve(__dirname, '../../../..');
@@ -308,6 +310,8 @@ describe('validator – validateState', () => {
   describe('iteration count limits', () => {
     it('detects for_each_phase iterations exceeding max_phases', () => {
       const state = makeMinimalState();
+      const configWithLowLimit = structuredClone(DEFAULT_CONFIG);
+      configWithLowLimit.limits.max_phases = 2;
       state.config.limits.max_phases = 2;
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       phaseLoop.iterations.push(
@@ -315,12 +319,14 @@ describe('validator – validateState', () => {
         makeIterationEntry(1),
         makeIterationEntry(2),  // 3 exceeds limit of 2
       );
-      const errors = validateState(null, state, DEFAULT_CONFIG, TEMPLATE);
+      const errors = validateState(null, state, configWithLowLimit, TEMPLATE);
       expect(errors.some(e => e.includes('max_phases'))).toBe(true);
     });
 
     it('detects for_each_task iterations exceeding max_tasks_per_phase', () => {
       const state = makeMinimalState();
+      const configWithLowLimit = structuredClone(DEFAULT_CONFIG);
+      configWithLowLimit.limits.max_tasks_per_phase = 1;
       state.config.limits.max_tasks_per_phase = 1;
       // Create a for_each_task node inside a phase iteration
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -335,7 +341,7 @@ describe('validator – validateState', () => {
       phaseLoop.iterations.push(makeIterationEntry(0, {
         nodes: { task_loop: taskLoop },
       }));
-      const errors = validateState(null, state, DEFAULT_CONFIG, TEMPLATE);
+      const errors = validateState(null, state, configWithLowLimit, TEMPLATE);
       expect(errors.some(e => e.includes('max_tasks_per_phase'))).toBe(true);
     });
   });
@@ -347,6 +353,40 @@ describe('validator – validateState', () => {
       (state.graph.nodes['research'] as any).kind = 'gate';
       const errors = validateState(null, state, DEFAULT_CONFIG, TEMPLATE);
       expect(errors.some(e => e.includes('research') && e.includes('gate') && e.includes('step'))).toBe(true);
+    });
+  });
+
+  describe('config parameter authority', () => {
+    it('uses passed config.limits over state.config.limits for iteration checks', () => {
+      const state = makeMinimalState();
+      // State says max_phases=10 (permissive)
+      state.config.limits.max_phases = 10;
+      // Config says max_phases=1 (restrictive)
+      const restrictiveConfig = structuredClone(DEFAULT_CONFIG);
+      restrictiveConfig.limits.max_phases = 1;
+
+      const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+      phaseLoop.iterations.push(
+        makeIterationEntry(0),
+        makeIterationEntry(1), // 2 iterations > config's max_phases=1
+      );
+      const errors = validateState(null, state, restrictiveConfig, TEMPLATE);
+      expect(errors.some(e => e.includes('max_phases'))).toBe(true);
+    });
+
+    it('does not flag when state.config.limits is low but passed config is permissive', () => {
+      const state = makeMinimalState();
+      // State says max_phases=1 (would trigger if read from state)
+      state.config.limits.max_phases = 1;
+
+      const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+      phaseLoop.iterations.push(
+        makeIterationEntry(0),
+        makeIterationEntry(1), // 2 iterations — state says too many, config says fine
+      );
+      // DEFAULT_CONFIG has max_phases=10 (permissive)
+      const errors = validateState(null, state, DEFAULT_CONFIG, TEMPLATE);
+      expect(errors.some(e => e.includes('max_phases'))).toBe(false);
     });
   });
 });

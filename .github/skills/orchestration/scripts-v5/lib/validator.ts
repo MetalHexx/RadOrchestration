@@ -24,10 +24,10 @@ export function validateState(
 ): string[] {
   return [
     ...checkGraphStatus(proposedState),
+    ...checkCorrectiveTaskStructure(proposedState.graph.nodes, 'graph.nodes'),
     ...checkNodeStatuses(proposedState.graph.nodes, 'graph.nodes'),
     ...checkIterationIndices(proposedState.graph.nodes, 'graph.nodes'),
     ...checkCompletedParentChildren(proposedState.graph.nodes, 'graph.nodes'),
-    ...checkCorrectiveTaskStructure(proposedState.graph.nodes, 'graph.nodes'),
     ...checkIterationLimits(proposedState, config),
     ...checkNodeKindMatchesTemplate(proposedState, template),
   ];
@@ -190,7 +190,7 @@ function validateCorrectiveEntry(ct: CorrectiveTaskEntry, path: string): string[
 
 function checkIterationLimits(state: PipelineState, config: OrchestrationConfig): string[] {
   const errors: string[] = [];
-  const limits = state.config.limits;
+  const limits = config.limits;
 
   function walk(nodes: Record<string, NodeState>, path: string): void {
     for (const [id, node] of Object.entries(nodes)) {
