@@ -19,7 +19,7 @@ import type {
   ForEachTaskNodeState,
   GraphState,
 } from './types.js';
-import { NODE_STATUSES, NEXT_ACTIONS } from './constants.js';
+import { NODE_STATUSES, NEXT_ACTIONS, GRAPH_STATUSES } from './constants.js';
 import { evaluateCondition } from './condition-evaluator.js';
 
 /**
@@ -512,6 +512,7 @@ export function walkDAG(
   });
 
   if (allDone) {
+    state.graph.status = GRAPH_STATUSES.COMPLETED;
     return { action: NEXT_ACTIONS.DISPLAY_COMPLETE, context: {} };
   }
 
