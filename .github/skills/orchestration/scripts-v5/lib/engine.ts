@@ -104,6 +104,22 @@ export function processEvent(
 
       io.ensureDirectories(projectDir);
       const nextAction = walkDAG(scaffolded, template, config, io.readDocument);
+
+      const postWalkErrors = validateState(null, scaffolded, config, template);
+      if (postWalkErrors.length > 0) {
+        return {
+          success: false,
+          action: null,
+          context: {},
+          mutations_applied: [],
+          orchRoot,
+          error: {
+            message: postWalkErrors[0],
+            event,
+          },
+        };
+      }
+
       io.writeState(projectDir, scaffolded);
 
       return {
@@ -171,6 +187,22 @@ export function processEvent(
       io.writeState(projectDir, mutatedState);
     } else {
       const walkerResult = walkDAG(mutatedState, template, config, io.readDocument);
+
+      const postWalkErrors = validateState(state, mutatedState, config, template);
+      if (postWalkErrors.length > 0) {
+        return {
+          success: false,
+          action: null,
+          context: {},
+          mutations_applied: [],
+          orchRoot,
+          error: {
+            message: postWalkErrors[0],
+            event,
+          },
+        };
+      }
+
       io.writeState(projectDir, mutatedState);
       nextAction = walkerResult;
     }
