@@ -12,6 +12,8 @@ import type {
   NodeDef,
   ForEachPhaseNodeDef,
   ForEachPhaseNodeState,
+  ForEachTaskNodeDef,
+  ForEachTaskNodeState,
   ConditionalNodeDef,
   ConditionalNodeState,
   ParallelNodeDef,
@@ -876,6 +878,323 @@ describe('for_each_phase handling', () => {
     const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     expect(fepState.iterations).toHaveLength(0);
     expect(fepState.status).toBe('not_started');
+  });
+});
+
+// ── for_each_task tests ─────────────────────────────────────────────────────────────────────────────
+
+describe('for_each_task handling', () => {
+
+  function forEachTaskDef(
+    id: string,
+    body: NodeDef[],
+    opts?: { depends_on?: string[]; source_doc_ref?: string; tasks_field?: string },
+  ): ForEachTaskNodeDef {
+    return {
+      id,
+      kind: 'for_each_task',
+      source_doc_ref: opts?.source_doc_ref ?? '$.current_phase.doc_path',
+      tasks_field: opts?.tasks_field ?? 'tasks',
+      body,
+      depends_on: opts?.depends_on,
+    };
+  }
+
+  function forEachTaskState(
+    status: 'not_started' | 'in_progress' | 'completed',
+    iterations: IterationEntry[] = [],
+  ): ForEachTaskNodeState {
+    return { kind: 'for_each_task', status, iterations };
+  }
+
+  function makeIteration(
+    index: number,
+    status: 'not_started' | 'in_progress' | 'completed' | 'skipped',
+    nodes: Record<string, NodeState>,
+  ): IterationEntry {
+    return { index, status, nodes, corrective_tasks: [] };
+  }
+
+  // Helpers for nesting for_each_task inside for_each_phase in scope tests
+  function forEachPhaseDef(
+    id: string,
+    body: NodeDef[],
+    opts?: { depends_on?: string[]; source_doc_ref?: string; total_field?: string },
+  ): ForEachPhaseNodeDef {
+    return {
+      id,
+      kind: 'for_each_phase',
+      source_doc_ref: opts?.source_doc_ref ?? '$.nodes.master_plan.doc_path',
+      total_field: opts?.total_field ?? 'total_phases',
+      body,
+      depends_on: opts?.depends_on,
+    };
+  }
+
+  function forEachPhaseState(
+    status: 'not_started' | 'in_progress' | 'completed',
+    iterations: IterationEntry[] = [],
+  ): ForEachPhaseNodeState {
+    return { kind: 'for_each_phase', status, iterations };
+  }
+
+  it('expands iterations from tasks array and returns first body node action', () => {
+    const body = [stepDef('task_handoff', 'create_task_handoff')];
+    const template = makeTemplate([
+      forEachTaskDef('task_loop', body, { source_doc_ref: '$.nodes.phase_plan.doc_path' }),
+    ]);
+    const state = makeState({
+      task_loop: forEachTaskState('not_started'),
+      phase_plan: stepState('completed'),
+    });
+    (state.graph.nodes['phase_plan'] as StepNodeState).doc_path = '/projects/TEST/phase-plan.md';
+
+    const config = makeConfig();
+    const tasks = [{ id: 'T01', title: 'First' }, { id: 'T02', title: 'Second' }];
+    const result = walkDAG(
+      state,
+      template,
+      config,
+      (_docPath: string) => ({ frontmatter: { tasks } }),
+    );
+
+    expect(result).toEqual({ action: 'create_task_handoff', context: {} });
+    const fetState = state.graph.nodes['task_loop'] as ForEachTaskNodeState;
+    expect(fetState.status).toBe('in_progress');
+    expect(fetState.iterations).toHaveLength(2);
+    expect(fetState.iterations[0].index).toBe(0);
+    expect(fetState.iterations[0].status).toBe('in_progress');
+    expect(fetState.iterations[0].nodes['task_handoff']).toBeDefined();
+    expect(fetState.iterations[1].index).toBe(1);
+    expect(fetState.iterations[1].status).toBe('not_started');
+  });
+
+  it('resolves source_doc_ref via phase_planning sibling when ref is $.current_phase.doc_path', () => {
+    const phaseBody = [
+      stepDef('phase_planning', 'create_phase_plan'),
+      forEachTaskDef('task_loop', [stepDef('task_handoff', 'create_task_handoff')]),
+    ];
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', phaseBody),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'in_progress', {
+          phase_planning: { kind: 'step', status: 'completed', doc_path: '/projects/TEST/phase-plan.md', retries: 0 },
+          task_loop: forEachTaskState('not_started'),
+        }),
+      ]),
+    });
+
+    const config = makeConfig();
+    const readDoc = (docPath: string) => {
+      expect(docPath).toBe('/projects/TEST/phase-plan.md');
+      return { frontmatter: { tasks: [{ id: 'T01' }, { id: 'T02' }] } };
+    };
+
+    const result = walkDAG(state, template, config, readDoc);
+
+    expect(result).toEqual({ action: 'create_task_handoff', context: {} });
+    const phaseIter = (state.graph.nodes['phase_loop'] as ForEachPhaseNodeState).iterations[0];
+    const fetState = phaseIter.nodes['task_loop'] as ForEachTaskNodeState;
+    expect(fetState.iterations).toHaveLength(2);
+  });
+
+  it('walks into in_progress iteration and returns first actionable body node', () => {
+    const body = [
+      stepDef('task_handoff', 'create_task_handoff'),
+      stepDef('task_executor', 'execute_task', { depends_on: ['task_handoff'] }),
+    ];
+    const template = makeTemplate([
+      forEachTaskDef('task_loop', body, { source_doc_ref: '$.nodes.phase_plan.doc_path' }),
+    ]);
+    const state = makeState({
+      task_loop: forEachTaskState('in_progress', [
+        makeIteration(0, 'in_progress', {
+          task_handoff: stepState('not_started'),
+          task_executor: stepState('not_started'),
+        }),
+        makeIteration(1, 'not_started', {
+          task_handoff: stepState('not_started'),
+          task_executor: stepState('not_started'),
+        }),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'create_task_handoff', context: {} });
+  });
+
+  it('advances to next iteration when all body nodes in current iteration complete', () => {
+    const body = [stepDef('task_handoff', 'create_task_handoff')];
+    const template = makeTemplate([
+      forEachTaskDef('task_loop', body, { source_doc_ref: '$.nodes.phase_plan.doc_path' }),
+    ]);
+    const state = makeState({
+      task_loop: forEachTaskState('in_progress', [
+        makeIteration(0, 'in_progress', {
+          task_handoff: stepState('completed'),
+        }),
+        makeIteration(1, 'not_started', {
+          task_handoff: stepState('not_started'),
+        }),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'create_task_handoff', context: {} });
+    const fetState = state.graph.nodes['task_loop'] as ForEachTaskNodeState;
+    expect(fetState.iterations[0].status).toBe('completed');
+    expect(fetState.iterations[1].status).toBe('in_progress');
+  });
+
+  it('completes task loop and continues to next sibling when all iterations complete', () => {
+    const body = [stepDef('task_handoff', 'create_task_handoff')];
+    const template = makeTemplate([
+      forEachTaskDef('task_loop', body, { source_doc_ref: '$.nodes.phase_plan.doc_path' }),
+      stepDef('phase_report', 'create_phase_report'),
+    ]);
+    const state = makeState({
+      task_loop: forEachTaskState('in_progress', [
+        makeIteration(0, 'completed', {
+          task_handoff: stepState('completed'),
+        }),
+        makeIteration(1, 'in_progress', {
+          task_handoff: stepState('completed'),
+        }),
+      ]),
+      phase_report: stepState('not_started'),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'create_phase_report', context: {} });
+    const fetState = state.graph.nodes['task_loop'] as ForEachTaskNodeState;
+    expect(fetState.status).toBe('completed');
+    expect(fetState.iterations[1].status).toBe('completed');
+  });
+
+  it('returns null when a body node inside a task iteration is in_progress', () => {
+    const body = [stepDef('task_handoff', 'create_task_handoff')];
+    const template = makeTemplate([
+      forEachTaskDef('task_loop', body, { source_doc_ref: '$.nodes.phase_plan.doc_path' }),
+    ]);
+    const state = makeState({
+      task_loop: forEachTaskState('in_progress', [
+        makeIteration(0, 'in_progress', {
+          task_handoff: stepState('in_progress'),
+        }),
+        makeIteration(1, 'not_started', {
+          task_handoff: stepState('not_started'),
+        }),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+    expect(result).toBe(null);
+  });
+
+  it('walks pre-expanded state without readDocument callback', () => {
+    const body = [stepDef('task_handoff', 'create_task_handoff')];
+    const template = makeTemplate([
+      forEachTaskDef('task_loop', body, { source_doc_ref: '$.nodes.phase_plan.doc_path' }),
+    ]);
+    const state = makeState({
+      task_loop: forEachTaskState('in_progress', [
+        makeIteration(0, 'not_started', {
+          task_handoff: stepState('not_started'),
+        }),
+      ]),
+    });
+    const config = makeConfig();
+
+    // No readDocument callback — should still walk correctly since iterations are populated
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'create_task_handoff', context: {} });
+    const fetState = state.graph.nodes['task_loop'] as ForEachTaskNodeState;
+    expect(fetState.iterations[0].status).toBe('in_progress');
+  });
+
+  it('returns null when readDocument is not provided and expansion is needed', () => {
+    const body = [stepDef('task_handoff', 'create_task_handoff')];
+    const template = makeTemplate([
+      forEachTaskDef('task_loop', body, { source_doc_ref: '$.nodes.phase_plan.doc_path' }),
+    ]);
+    const state = makeState({
+      task_loop: forEachTaskState('not_started'),
+      phase_plan: stepState('completed'),
+    });
+    (state.graph.nodes['phase_plan'] as StepNodeState).doc_path = '/projects/TEST/phase-plan.md';
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+    expect(result).toBe(null);
+  });
+
+  it('returns null when readDocument returns null during expansion', () => {
+    const body = [stepDef('task_handoff', 'create_task_handoff')];
+    const template = makeTemplate([
+      forEachTaskDef('task_loop', body, { source_doc_ref: '$.nodes.phase_plan.doc_path' }),
+    ]);
+    const state = makeState({
+      task_loop: forEachTaskState('not_started'),
+      phase_plan: stepState('completed'),
+    });
+    (state.graph.nodes['phase_plan'] as StepNodeState).doc_path = '/projects/TEST/phase-plan.md';
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config, (_docPath: string) => null);
+    expect(result).toBe(null);
+    const fetState = state.graph.nodes['task_loop'] as ForEachTaskNodeState;
+    expect(fetState.iterations).toHaveLength(0);
+    expect(fetState.status).toBe('not_started');
+  });
+
+  it('returns null when tasks_field value is not an array', () => {
+    const body = [stepDef('task_handoff', 'create_task_handoff')];
+    const template = makeTemplate([
+      forEachTaskDef('task_loop', body, { source_doc_ref: '$.nodes.phase_plan.doc_path' }),
+    ]);
+    const state = makeState({
+      task_loop: forEachTaskState('not_started'),
+      phase_plan: stepState('completed'),
+    });
+    (state.graph.nodes['phase_plan'] as StepNodeState).doc_path = '/projects/TEST/phase-plan.md';
+    const config = makeConfig();
+
+    const readDoc = (_docPath: string) => ({ frontmatter: { tasks: 3 } });
+    const result = walkDAG(state, template, config, readDoc);
+    expect(result).toBe(null);
+    const fetState = state.graph.nodes['task_loop'] as ForEachTaskNodeState;
+    expect(fetState.iterations).toHaveLength(0);
+    expect(fetState.status).toBe('not_started');
+  });
+
+  it('returns null when tasks array is empty', () => {
+    const body = [stepDef('task_handoff', 'create_task_handoff')];
+    const template = makeTemplate([
+      forEachTaskDef('task_loop', body, { source_doc_ref: '$.nodes.phase_plan.doc_path' }),
+    ]);
+    const state = makeState({
+      task_loop: forEachTaskState('not_started'),
+      phase_plan: stepState('completed'),
+    });
+    (state.graph.nodes['phase_plan'] as StepNodeState).doc_path = '/projects/TEST/phase-plan.md';
+    const config = makeConfig();
+
+    const readDoc = (_docPath: string) => ({ frontmatter: { tasks: [] } });
+    const result = walkDAG(state, template, config, readDoc);
+    expect(result).toBe(null);
+    const fetState = state.graph.nodes['task_loop'] as ForEachTaskNodeState;
+    expect(fetState.iterations).toHaveLength(0);
+    expect(fetState.status).toBe('not_started');
   });
 });
 

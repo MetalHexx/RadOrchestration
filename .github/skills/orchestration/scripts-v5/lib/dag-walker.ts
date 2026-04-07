@@ -15,6 +15,8 @@ import type {
   ParallelNodeState,
   ForEachPhaseNodeDef,
   ForEachPhaseNodeState,
+  ForEachTaskNodeDef,
+  ForEachTaskNodeState,
   GraphState,
 } from './types.js';
 import { NODE_STATUSES, NEXT_ACTIONS } from './constants.js';
@@ -119,13 +121,32 @@ function resolveStateRef(ref: string, graphState: GraphState): unknown {
 }
 
 /**
- * Walks the iterations of a for_each_phase node sequentially, advancing
- * statuses and returning the first actionable result. Returns 'all_completed'
- * when every iteration has been completed or skipped.
+ * Resolves a source_doc_ref within a scope's node map. Handles
+ * "$.current_phase.{field}" by reading from the sibling "phase_planning" node
+ * in scopeNodes; falls back to resolveStateRef for all other patterns.
+ */
+function resolveDocRefInScope(
+  ref: string,
+  scopeNodes: Record<string, NodeState>,
+  graphState: GraphState,
+): unknown {
+  if (ref.startsWith('$.current_phase.')) {
+    const field = ref.slice('$.current_phase.'.length);
+    const phaseNode = scopeNodes['phase_planning'];
+    if (!phaseNode) return undefined;
+    return (phaseNode as unknown as Record<string, unknown>)[field];
+  }
+  return resolveStateRef(ref, graphState);
+}
+
+/**
+ * Walks the iterations of a for_each_phase or for_each_task node sequentially,
+ * advancing statuses and returning the first actionable result. Returns
+ * 'all_completed' when every iteration has been completed or skipped.
  */
 function walkForEachIterations(
-  fepDef: ForEachPhaseNodeDef,
-  fepState: ForEachPhaseNodeState,
+  fepDef: ForEachPhaseNodeDef | ForEachTaskNodeDef,
+  fepState: ForEachPhaseNodeState | ForEachTaskNodeState,
   config: OrchestrationConfig,
   state: PipelineState,
   readDocument?: (docPath: string) => { frontmatter: Record<string, unknown> } | null,
@@ -247,6 +268,19 @@ function walkNodes(
         const iterResult = walkForEachIterations(fepDef, fepState, config, state, readDocument);
         if (iterResult === 'all_completed') {
           fepState.status = NODE_STATUSES.COMPLETED;
+          continue;
+        }
+        return iterResult;
+      }
+
+      // for_each_task in_progress: walk iterations sequentially
+      if (nodeDef.kind === 'for_each_task') {
+        const fetDef = nodeDef as ForEachTaskNodeDef;
+        const fetState = nodeState as ForEachTaskNodeState;
+
+        const iterResult = walkForEachIterations(fetDef, fetState, config, state, readDocument);
+        if (iterResult === 'all_completed') {
+          fetState.status = NODE_STATUSES.COMPLETED;
           continue;
         }
         return iterResult;
@@ -388,7 +422,60 @@ function walkNodes(
         return iterResult;
       }
 
-      // for_each_task handled in T04
+      // for_each_task node
+      if (nodeDef.kind === 'for_each_task') {
+        const fetDef = nodeDef as ForEachTaskNodeDef;
+        const fetState = nodeState as ForEachTaskNodeState;
+
+        if (fetState.iterations.length === 0) {
+          // Needs expansion — requires readDocument callback
+          if (!readDocument) {
+            return null;
+          }
+
+          // Resolve source_doc_ref within the current scope
+          const docPath = resolveDocRefInScope(fetDef.source_doc_ref, nodes, state.graph);
+          if (typeof docPath !== 'string') {
+            return null;
+          }
+
+          // Read the document to get the tasks array from frontmatter
+          const doc = readDocument(docPath);
+          if (!doc) {
+            return null;
+          }
+
+          const tasksValue = doc.frontmatter[fetDef.tasks_field];
+          if (!Array.isArray(tasksValue) || tasksValue.length === 0) {
+            return null;
+          }
+
+          // Create one iteration per array element
+          for (let i = 0; i < tasksValue.length; i++) {
+            const iterationNodes: Record<string, NodeState> = {};
+            for (const bodyDef of fetDef.body) {
+              iterationNodes[bodyDef.id] = scaffoldNodeState(bodyDef);
+            }
+            fetState.iterations.push({
+              index: i,
+              status: NODE_STATUSES.NOT_STARTED,
+              nodes: iterationNodes,
+              corrective_tasks: [],
+            });
+          }
+
+          fetState.status = NODE_STATUSES.IN_PROGRESS;
+        }
+
+        // Walk into iterations
+        const iterResult = walkForEachIterations(fetDef, fetState, config, state, readDocument);
+        if (iterResult === 'all_completed') {
+          fetState.status = NODE_STATUSES.COMPLETED;
+          continue;
+        }
+        return iterResult;
+      }
+
       return null;
     }
   }
@@ -400,8 +487,8 @@ function walkNodes(
  * Core DAG traversal function. Walks template nodes in order using a recursive
  * helper, checking dependencies and node status to determine the next action.
  *
- * Handles `step`, `gate`, `conditional`, `parallel`, and `for_each_phase` node kinds.
- * Returns null for unsupported kinds (for_each_task) — added in later tasks.
+ * Handles `step`, `gate`, `conditional`, `parallel`, `for_each_phase`, and
+ * `for_each_task` node kinds.
  */
 export function walkDAG(
   state: PipelineState,
