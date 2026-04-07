@@ -291,7 +291,7 @@ export type MutationFn = (
 ) => MutationResult;
 
 export interface PreReadResult {
-  context: Partial<EventContext>;
+  context: Partial<EventContext> & Record<string, unknown>;
   error?: {
     message: string;
     event: string;
