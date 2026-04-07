@@ -109,11 +109,6 @@ function resolveStateRef(ref: string, graphState: GraphState): unknown {
 
 /**
  * Resolves a source_doc_ref within a scope's node map. Handles
- * "$.current_phase.{field}" by reading from the sibling "phase_planning" node
- * in scopeNodes; falls back to resolveStateRef for all other patterns.
- */
-/**
- * Resolves a source_doc_ref within a scope's node map. Handles
  * "$.current_phase.{field}" by reading from the sibling "phase_planning" node.
  * NOTE: {field} must be a single-level key (e.g., "doc_path"). Nested dot-paths
  * like "metadata.doc_path" are treated as a single key, not navigated.

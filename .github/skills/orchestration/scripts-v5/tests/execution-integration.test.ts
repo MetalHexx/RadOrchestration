@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
 import type {
   PipelineState,
@@ -16,6 +17,7 @@ import type {
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const PROJECT_DIR = '/tmp/test-project/EXEC-INTEGRATION';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ORCH_ROOT = path.resolve(__dirname, '../../../..'); // points to .github
 
 function makeConfig(overrides: {

@@ -133,9 +133,13 @@ export function readDocument(
 
   const frontmatterText = match[1] ?? '';
   const content = match[2] ?? '';
-  const parsed = yaml.load(frontmatterText) as Record<string, unknown> | null;
+  const parsed = yaml.load(frontmatterText);
+  const frontmatter =
+    parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
   return {
-    frontmatter: parsed ?? {},
+    frontmatter,
     content,
   };
 }
