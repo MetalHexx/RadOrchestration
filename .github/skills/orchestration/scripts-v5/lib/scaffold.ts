@@ -21,5 +21,9 @@ export function scaffoldNodeState(nodeDef: NodeDef): NodeState {
       return { kind: 'for_each_phase', status: NODE_STATUSES.NOT_STARTED, iterations: [] };
     case 'for_each_task':
       return { kind: 'for_each_task', status: NODE_STATUSES.NOT_STARTED, iterations: [] };
+    default: {
+      const _exhaustive: never = nodeDef;
+      throw new Error(`Unexpected node kind: ${(_exhaustive as NodeDef).kind}`);
+    }
   }
 }
