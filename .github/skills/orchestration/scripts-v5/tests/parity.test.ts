@@ -4,6 +4,9 @@ import { processEvent } from '../lib/engine.js';
 import {
   createScaffoldedState,
   createMockIO,
+  createConfig,
+  createMockIOWithConfig,
+  driveToReviewTier,
   seedDoc,
   completePlanningSteps,
   DOC_STORE,
@@ -15,6 +18,7 @@ import type {
   PipelineState,
   StepNodeState,
   GateNodeState,
+  ConditionalNodeState,
   ForEachPhaseNodeState,
   ForEachTaskNodeState,
   PipelineResult,
@@ -740,5 +744,691 @@ describe('[PARITY] v4:resolveExecution', () => {
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('generate_phase_report');
+  });
+});
+
+// ── [PARITY] v4:resolveExecution — gate modes ────────────────────────────────
+
+describe('[PARITY] v4:resolveExecution — gate modes', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(DOC_STORE)) {
+      delete DOC_STORE[key];
+    }
+  });
+
+  const TASKS_2 = [
+    { id: 'T01', title: 'Task 1' },
+    { id: 'T02', title: 'Task 2' },
+  ];
+
+  /** Drive planning through to execution tier with a given config. */
+  function driveToExecutionWithConfig(config: OrchestrationConfig, totalPhases = 1): MockIO {
+    const io = createMockIOWithConfig(null, config);
+    processEvent('research_started', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    completePlanningSteps(state, 'master_plan');
+    const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
+    seedDoc(mpDoc, { total_phases: totalPhases });
+    processEvent('plan_approved', PROJECT_DIR, {}, io);
+    return io;
+  }
+
+  const phasePlanDoc = (phase: number) =>
+    path.join(PROJECT_DIR, 'phases', `phase-${phase}-plan.md`);
+  const taskHandoffDoc = (phase: number, task: number) =>
+    path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`);
+  const codeReviewDoc = (phase: number, task: number) =>
+    path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`);
+  const phaseReportDoc = (phase: number) =>
+    path.join(PROJECT_DIR, 'phases', `phase-${phase}-report.md`);
+  const phaseReviewDoc = (phase: number) =>
+    path.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`);
+
+  /** Drive a single task through started → handoff → execute → review (approve). */
+  function driveTaskWith(io: MockIO, phase: number, task: number): PipelineResult {
+    const ctx = { phase, task };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    const handoffDoc = taskHandoffDoc(phase, task);
+    seedDoc(handoffDoc);
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    const reviewDoc = codeReviewDoc(phase, task);
+    seedDoc(reviewDoc);
+    return processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: reviewDoc,
+      verdict: 'approve',
+    }, io);
+  }
+
+  // ── autonomous mode ─────────────────────────────────────────────────────
+
+  it('[PARITY] v4:resolveTaskGate — execution_mode=autonomous auto-approves task gate (gate_active: false)', () => {
+    // v4: resolveTaskGate() — autonomous mode → no gate_task emitted; pointer advanced directly
+    // v5: task_gate.auto_approve_modes includes 'autonomous' → gate auto-approved
+    const config = createConfig({ human_gates: { execution_mode: 'autonomous' } });
+    const io = driveToExecutionWithConfig(config);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+
+    const result = driveTaskWith(io, 1, 1);
+
+    expect(result.success).toBe(true);
+    // Task gate auto-approves → advances to task 2
+    expect(result.action).toBe('create_task_handoff');
+
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
+    expect(gate.status).toBe('completed');
+    expect(gate.gate_active).toBe(false);
+  });
+
+  it('[PARITY] v4:resolvePhaseGate — execution_mode=autonomous auto-approves phase gate (gate_active: false)', () => {
+    // v4: resolvePhaseGate() — autonomous mode → no gate_phase emitted
+    // v5: phase_gate.auto_approve_modes includes 'autonomous' → gate auto-approved
+    const config = createConfig({
+      human_gates: { execution_mode: 'autonomous' },
+      source_control: { auto_commit: 'never' },
+    });
+    const io = driveToExecutionWithConfig(config);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReviewDoc(1));
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve',
+    }, io);
+
+    expect(result.success).toBe(true);
+    // Phase gate auto-approves, auto_commit='never' → commit skipped → spawn_final_reviewer
+    expect(result.action).toBe('spawn_final_reviewer');
+
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const gate = phaseLoop.iterations[0].nodes['phase_gate'] as GateNodeState;
+    expect(gate.status).toBe('completed');
+    expect(gate.gate_active).toBe(false);
+  });
+
+  // ── task mode ───────────────────────────────────────────────────────────
+
+  it('[PARITY] v4:resolveTaskGate — execution_mode=task auto-approves task gate in v5 (v5 divergence: v4 emits gate_task)', () => {
+    // v4: resolveTaskGate() — mode === 'task' → { action: 'gate_task' }
+    // v5 DIVERGENCE: task_gate.auto_approve_modes = [autonomous, phase, task] includes 'task',
+    // so v5 auto-approves the task gate instead of firing gate_task.
+    // This is caused by the template definition, not the engine.
+    const config = createConfig({
+      human_gates: { execution_mode: 'task' },
+      source_control: { auto_commit: 'never' },
+    });
+    const io = driveToExecutionWithConfig(config);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+
+    const result = driveTaskWith(io, 1, 1);
+
+    expect(result.success).toBe(true);
+    // v5: task gate auto-approves (task in auto_approve_modes) → advances directly
+    expect(result.action).toBe('create_task_handoff');
+
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
+    expect(gate.status).toBe('completed');
+    expect(gate.gate_active).toBe(false);
+  });
+
+  it('[PARITY] v4:resolvePhaseGate — execution_mode=task auto-approves phase gate in v5 (v5 divergence: v4 emits gate_phase)', () => {
+    // v4: resolvePhaseGate() — mode === 'task' → { action: 'gate_phase' }
+    // v5 DIVERGENCE: phase_gate.auto_approve_modes = [autonomous, task] includes 'task',
+    // so v5 auto-approves the phase gate. This is caused by the template definition.
+    const config = createConfig({
+      human_gates: { execution_mode: 'task' },
+      source_control: { auto_commit: 'never' },
+    });
+    const io = driveToExecutionWithConfig(config);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReviewDoc(1));
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve',
+    }, io);
+
+    expect(result.success).toBe(true);
+    // v5: phase gate auto-approves, auto_commit='never' → commit skipped → spawn_final_reviewer
+    expect(result.action).toBe('spawn_final_reviewer');
+
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const gate = phaseLoop.iterations[0].nodes['phase_gate'] as GateNodeState;
+    expect(gate.status).toBe('completed');
+    expect(gate.gate_active).toBe(false);
+  });
+
+  // ── phase mode ──────────────────────────────────────────────────────────
+
+  it('[PARITY] v4:resolveTaskGate — execution_mode=phase auto-approves task gate', () => {
+    // v4: resolveTaskGate() — mode === 'phase' → no gate_task (auto-approve)
+    // v5: task_gate.auto_approve_modes = [autonomous, phase, task] includes 'phase' → auto-approved
+    const config = createConfig({
+      human_gates: { execution_mode: 'phase' },
+      source_control: { auto_commit: 'never' },
+    });
+    const io = driveToExecutionWithConfig(config);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+
+    const result = driveTaskWith(io, 1, 1);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('create_task_handoff');
+
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
+    expect(gate.status).toBe('completed');
+    expect(gate.gate_active).toBe(false);
+  });
+
+  it('[PARITY] v4:resolvePhaseGate — execution_mode=phase emits gate_phase (gate_active: true)', () => {
+    // v4: resolvePhaseGate() — mode === 'phase' → { action: 'gate_phase' }
+    // v5: phase_gate.auto_approve_modes = [autonomous, task] does NOT include 'phase' → gate fires
+    const config = createConfig({
+      human_gates: { execution_mode: 'phase' },
+      source_control: { auto_commit: 'never' },
+    });
+    const io = driveToExecutionWithConfig(config);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReviewDoc(1));
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve',
+    }, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('gate_phase');
+
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const gate = phaseLoop.iterations[0].nodes['phase_gate'] as GateNodeState;
+    expect(gate.gate_active).toBe(true);
+  });
+
+  // ── ask mode ────────────────────────────────────────────────────────────
+
+  it('[PARITY] v4:resolveExecution — execution_mode=ask emits gate_task at task gate (v5 divergence: v4 emits ask_gate_mode first)', () => {
+    // v4: resolveExecution() — effectiveMode === 'ask' && gate_mode == null → ask_gate_mode
+    // v5 DIVERGENCE: v5 has no ask_gate_mode mechanism. gate_mode is always set at scaffold time.
+    // In v5, 'ask' is NOT in task_gate.auto_approve_modes [autonomous, phase, task], so the
+    // task gate fires with gate_task instead. The v4 ask_gate_mode prompt is not replicated.
+    const config = createConfig({
+      human_gates: { execution_mode: 'ask' },
+      source_control: { auto_commit: 'never' },
+    });
+    const io = driveToExecutionWithConfig(config);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+
+    const result = driveTaskWith(io, 1, 1);
+
+    expect(result.success).toBe(true);
+    // v5: 'ask' not in auto_approve_modes → task gate fires
+    expect(result.action).toBe('gate_task');
+
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
+    expect(gate.gate_active).toBe(true);
+  });
+});
+
+// ── [PARITY] v4:resolveExecution — source control conditionals ───────────────
+
+describe('[PARITY] v4:resolveExecution — source control conditionals', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(DOC_STORE)) {
+      delete DOC_STORE[key];
+    }
+  });
+
+  const TASKS_2 = [
+    { id: 'T01', title: 'Task 1' },
+    { id: 'T02', title: 'Task 2' },
+  ];
+
+  /** Drive planning through to execution tier with a given config. */
+  function driveToExecutionWithConfig(config: OrchestrationConfig, totalPhases = 1): MockIO {
+    const io = createMockIOWithConfig(null, config);
+    processEvent('research_started', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    completePlanningSteps(state, 'master_plan');
+    const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
+    seedDoc(mpDoc, { total_phases: totalPhases });
+    processEvent('plan_approved', PROJECT_DIR, {}, io);
+    return io;
+  }
+
+  const phasePlanDoc = (phase: number) =>
+    path.join(PROJECT_DIR, 'phases', `phase-${phase}-plan.md`);
+  const taskHandoffDoc = (phase: number, task: number) =>
+    path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`);
+  const codeReviewDoc = (phase: number, task: number) =>
+    path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`);
+  const phaseReportDoc = (phase: number) =>
+    path.join(PROJECT_DIR, 'phases', `phase-${phase}-report.md`);
+  const phaseReviewDoc = (phase: number) =>
+    path.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`);
+
+  /** Drive a single task through started → handoff → execute → review (approve). */
+  function driveTaskWith(io: MockIO, phase: number, task: number): PipelineResult {
+    const ctx = { phase, task };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    const handoffDoc = taskHandoffDoc(phase, task);
+    seedDoc(handoffDoc);
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    const reviewDoc = codeReviewDoc(phase, task);
+    seedDoc(reviewDoc);
+    return processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: reviewDoc,
+      verdict: 'approve',
+    }, io);
+  }
+
+  /** Drive through phase report + review + phase gate (if fires) to commit conditional. */
+  function drivePhaseReviewApproval(io: MockIO, phase: number): PipelineResult {
+    processEvent('phase_report_started', PROJECT_DIR, { phase }, io);
+    seedDoc(phaseReportDoc(phase));
+    processEvent('phase_report_completed', PROJECT_DIR, { phase, doc_path: phaseReportDoc(phase) }, io);
+
+    processEvent('phase_review_started', PROJECT_DIR, { phase }, io);
+    seedDoc(phaseReviewDoc(phase));
+    let result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase, doc_path: phaseReviewDoc(phase), verdict: 'approve',
+    }, io);
+
+    // If phase gate fires, approve it to reach commit conditional
+    if (result.action === 'gate_phase') {
+      result = processEvent('phase_gate_approved', PROJECT_DIR, { phase }, io);
+    }
+
+    return result;
+  }
+
+  it('[PARITY] v4:resolveTaskGate — auto_commit=always + autonomous emits invoke_source_control_commit after phase gate', () => {
+    // v4: resolveTaskGate() — auto_commit === 'always' → invoke_source_control_commit after task
+    // v5: commit is at phase level via phase_commit_gate conditional, not per-task.
+    // auto_commit='always' neq 'never' → true branch → invoke_source_control_commit
+    const config = createConfig({
+      human_gates: { execution_mode: 'autonomous' },
+      source_control: { auto_commit: 'always' },
+    });
+    const io = driveToExecutionWithConfig(config);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    const result = drivePhaseReviewApproval(io, 1);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('invoke_source_control_commit');
+
+    // Verify branch_taken on commit conditional
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const commitGate = phaseLoop.iterations[0].nodes['phase_commit_gate'] as ConditionalNodeState;
+    expect(commitGate.branch_taken).toBe('true');
+  });
+
+  it('[PARITY] v4:resolveTaskGate — auto_commit=always + task mode — commit at phase level not per-task', () => {
+    // v4: resolveTaskGate() — mode === 'task' + auto_commit === 'always' → invoke_source_control_commit per task
+    // v5 DIVERGENCE: v5 commit is always at phase level (phase_commit_gate), never per-task.
+    // Additionally, task_gate auto-approves in v5 (task in auto_approve_modes), so pointer advances directly.
+    const config = createConfig({
+      human_gates: { execution_mode: 'task' },
+      source_control: { auto_commit: 'always' },
+    });
+    const io = driveToExecutionWithConfig(config);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+
+    // Task 1 completes — no per-task commit in v5
+    const t1Result = driveTaskWith(io, 1, 1);
+    expect(t1Result.success).toBe(true);
+    // v5: task gate auto-approves → advances to task 2 (not invoke_source_control_commit)
+    expect(t1Result.action).toBe('create_task_handoff');
+
+    driveTaskWith(io, 1, 2);
+
+    // After all tasks + phase review, commit happens at phase level
+    const result = drivePhaseReviewApproval(io, 1);
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('invoke_source_control_commit');
+  });
+
+  it('[PARITY] v4:resolveExecution — auto_commit=never skips phase commit conditional (branch_taken: false)', () => {
+    // v4: auto_commit='never' → no commit step anywhere
+    // v5: phase_commit_gate condition auto_commit neq 'never' → false → false branch (empty) → skipped
+    const config = createConfig({
+      human_gates: { execution_mode: 'autonomous' },
+      source_control: { auto_commit: 'never' },
+    });
+    const io = driveToExecutionWithConfig(config);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    const result = drivePhaseReviewApproval(io, 1);
+
+    expect(result.success).toBe(true);
+    // Phase gate auto-approves (autonomous), commit conditional false → skip → spawn_final_reviewer
+    expect(result.action).toBe('spawn_final_reviewer');
+
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const commitGate = phaseLoop.iterations[0].nodes['phase_commit_gate'] as ConditionalNodeState;
+    expect(commitGate.branch_taken).toBe('false');
+    expect(commitGate.status).toBe('completed');
+  });
+
+  it('[PARITY] v4:resolveExecution — auto_commit=ask takes true branch (neq never) and emits invoke_source_control_commit', () => {
+    // v4: auto_commit='ask' → invoke source control commit (with prompt)
+    // v5: phase_commit_gate condition auto_commit neq 'never' → true ('ask' != 'never') → commit
+    const config = createConfig({
+      human_gates: { execution_mode: 'autonomous' },
+      source_control: { auto_commit: 'ask' },
+    });
+    const io = driveToExecutionWithConfig(config);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    const result = drivePhaseReviewApproval(io, 1);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('invoke_source_control_commit');
+
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const commitGate = phaseLoop.iterations[0].nodes['phase_commit_gate'] as ConditionalNodeState;
+    expect(commitGate.branch_taken).toBe('true');
+  });
+});
+
+// ── [PARITY] v4:resolveReview ─────────────────────────────────────────────────
+
+describe('[PARITY] v4:resolveReview', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(DOC_STORE)) {
+      delete DOC_STORE[key];
+    }
+  });
+
+  it('[PARITY] v4:resolveReview — no final review doc emits spawn_final_reviewer', () => {
+    // v4: resolveReview() — !final_review.doc_path → spawn_final_reviewer
+    // v5: final_review step is not_started → action: spawn_final_reviewer
+    const config = createConfig({
+      human_gates: { execution_mode: 'autonomous' },
+      source_control: { auto_commit: 'never', auto_pr: 'never' },
+    });
+    const io = driveToReviewTier(config);
+
+    // After driveToReviewTier, the next action should be spawn_final_reviewer
+    // Verify by re-processing the state
+    const result = processEvent('final_review_started', PROJECT_DIR, {}, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('spawn_final_reviewer');
+
+    const finalReview = io.currentState!.graph.nodes['final_review'] as StepNodeState;
+    expect(finalReview.status).toBe('in_progress');
+  });
+
+  it('[PARITY] v4:resolveReview — auto_pr=always emits invoke_source_control_pr after final approval', () => {
+    // v4: resolveReview() — !human_approved + auto_pr=always → invoke_source_control_pr (before approval)
+    // v5 DIVERGENCE: v5 template has pr_gate AFTER final_approval_gate, so PR happens after approval.
+    // In v4, PR is invoked before requesting final approval; in v5, approval comes first.
+    const config = createConfig({
+      human_gates: { execution_mode: 'autonomous' },
+      source_control: { auto_commit: 'never', auto_pr: 'always' },
+    });
+    const io = driveToReviewTier(config);
+
+    // Drive final review
+    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const frDoc = path.join(PROJECT_DIR, 'final-review.md');
+    seedDoc(frDoc);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDoc }, io);
+
+    // final_approval_gate fires (mode_ref: human_gates.after_final_review = true, auto_approve_modes: [])
+    const approvalResult = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+
+    expect(approvalResult.success).toBe(true);
+    // After approval, pr_gate: auto_pr='always' neq 'never' → true → invoke_source_control_pr
+    expect(approvalResult.action).toBe('invoke_source_control_pr');
+
+    const prGate = io.currentState!.graph.nodes['pr_gate'] as ConditionalNodeState;
+    expect(prGate.branch_taken).toBe('true');
+  });
+
+  it('[PARITY] v4:resolveReview — auto_pr=never skips PR and completes pipeline (display_complete)', () => {
+    // v4: resolveReview() — !human_approved + auto_pr != 'always' → request_final_approval
+    // v5: final_approval_gate fires → after approved, pr_gate: auto_pr='never' neq 'never' → false → skip
+    const config = createConfig({
+      human_gates: { execution_mode: 'autonomous' },
+      source_control: { auto_commit: 'never', auto_pr: 'never' },
+    });
+    const io = driveToReviewTier(config);
+
+    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const frDoc = path.join(PROJECT_DIR, 'final-review.md');
+    seedDoc(frDoc);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDoc }, io);
+
+    const result = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+
+    expect(result.success).toBe(true);
+    // pr_gate false branch (empty) → all nodes complete → display_complete
+    expect(result.action).toBe('display_complete');
+
+    const prGate = io.currentState!.graph.nodes['pr_gate'] as ConditionalNodeState;
+    expect(prGate.branch_taken).toBe('false');
+    expect(prGate.status).toBe('completed');
+  });
+
+  it('[PARITY] v4:resolveReview — auto_pr=ask emits invoke_source_control_pr (neq never evaluates true)', () => {
+    // v4: resolveReview() — auto_pr='ask' does not match auto_pr==='always' check → request_final_approval
+    // v5 DIVERGENCE: v5 uses neq 'never' conditional, so 'ask' (neq 'never' → true) invokes PR.
+    // In v4, only auto_pr='always' triggers PR before approval request.
+    const config = createConfig({
+      human_gates: { execution_mode: 'autonomous' },
+      source_control: { auto_commit: 'never', auto_pr: 'ask' },
+    });
+    const io = driveToReviewTier(config);
+
+    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const frDoc = path.join(PROJECT_DIR, 'final-review.md');
+    seedDoc(frDoc);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDoc }, io);
+
+    const result = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('invoke_source_control_pr');
+
+    const prGate = io.currentState!.graph.nodes['pr_gate'] as ConditionalNodeState;
+    expect(prGate.branch_taken).toBe('true');
+  });
+
+  it('[PARITY] v4:resolveReview — final_review_approved then PR completed reaches display_complete', () => {
+    // v4: resolveReview() — human_approved → terminal (halted in v4 — should have transitioned)
+    // v5: after final_approval_gate + pr_gate + PR step complete → all nodes done → display_complete
+    const config = createConfig({
+      human_gates: { execution_mode: 'autonomous' },
+      source_control: { auto_commit: 'never', auto_pr: 'always' },
+    });
+    const io = driveToReviewTier(config);
+
+    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const frDoc = path.join(PROJECT_DIR, 'final-review.md');
+    seedDoc(frDoc);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDoc }, io);
+    processEvent('final_review_approved', PROJECT_DIR, {}, io);
+
+    // Drive PR step
+    processEvent('source_control_pr_started', PROJECT_DIR, {}, io);
+    const result = processEvent('source_control_pr_completed', PROJECT_DIR, {}, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('display_complete');
+    expect(io.currentState!.graph.status).toBe('completed');
+  });
+
+  it('[PARITY] v4:resolveReview — request_final_approval gate fires with gate_active: true', () => {
+    // v4: resolveReview() — !human_approved → request_final_approval
+    // v5: final_approval_gate (mode_ref: human_gates.after_final_review, auto_approve_modes: [])
+    //   after_final_review=true → not in [] → gate fires with action request_final_approval
+    const config = createConfig({
+      human_gates: { execution_mode: 'autonomous', after_final_review: true },
+      source_control: { auto_commit: 'never', auto_pr: 'never' },
+    });
+    const io = driveToReviewTier(config);
+
+    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const frDoc = path.join(PROJECT_DIR, 'final-review.md');
+    seedDoc(frDoc);
+    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDoc }, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('request_final_approval');
+
+    const approvalGate = io.currentState!.graph.nodes['final_approval_gate'] as GateNodeState;
+    expect(approvalGate.gate_active).toBe(true);
+  });
+
+  it('[PARITY] v4:resolveNextAction — halted graph returns display_halted', () => {
+    // v4: resolveNextAction() — tier === 'halted' → display_halted
+    // v5: phase_review verdict='rejected' → iteration + graph halted → walkDAG returns display_halted
+    const config = createConfig({
+      human_gates: { execution_mode: 'autonomous' },
+      source_control: { auto_commit: 'never', auto_pr: 'never' },
+    });
+    const io = createMockIOWithConfig(null, config);
+    processEvent('research_started', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    completePlanningSteps(state, 'master_plan');
+    const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
+    seedDoc(mpDoc, { total_phases: 1 });
+    processEvent('plan_approved', PROJECT_DIR, {}, io);
+
+    // Phase 1 with one task
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    const ppDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-plan.md');
+    seedDoc(ppDoc, { tasks: [{ id: 'T01', title: 'Task 1' }] });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: ppDoc }, io);
+
+    const ctx = { phase: 1, task: 1 };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    const thDoc = path.join(PROJECT_DIR, 'tasks', 'p1-t1-handoff.md');
+    seedDoc(thDoc);
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: thDoc }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    const crDoc = path.join(PROJECT_DIR, 'tasks', 'p1-t1-review.md');
+    seedDoc(crDoc);
+    processEvent('code_review_completed', PROJECT_DIR, { ...ctx, doc_path: crDoc, verdict: 'approve' }, io);
+
+    // Phase report + review with rejected verdict → halted
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    const prDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-report.md');
+    seedDoc(prDoc);
+    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: prDoc }, io);
+
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    const prvDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-review.md');
+    seedDoc(prvDoc);
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1, doc_path: prvDoc, verdict: 'rejected',
+    }, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('display_halted');
+    expect(io.currentState!.graph.status).toBe('halted');
+  });
+
+  it('[PARITY] v4:resolveNextAction — completed graph returns display_complete', () => {
+    // v4: resolveNextAction() — tier === 'complete' → display_complete
+    // v5: all nodes completed → walkDAG returns display_complete
+    const config = createConfig({
+      human_gates: { execution_mode: 'autonomous' },
+      source_control: { auto_commit: 'never', auto_pr: 'never' },
+    });
+    const io = driveToReviewTier(config);
+
+    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const frDoc = path.join(PROJECT_DIR, 'final-review.md');
+    seedDoc(frDoc);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDoc }, io);
+    const result = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+
+    // auto_pr='never' → pr_gate false → all done → display_complete
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('display_complete');
+    expect(io.currentState!.graph.status).toBe('completed');
   });
 });

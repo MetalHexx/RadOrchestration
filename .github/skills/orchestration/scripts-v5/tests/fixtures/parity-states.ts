@@ -4,6 +4,7 @@ import type {
   PipelineState,
   OrchestrationConfig,
   IOAdapter,
+  PipelineResult,
   StepNodeState,
 } from '../../lib/types.js';
 
@@ -110,4 +111,130 @@ export function completePlanningSteps(state: PipelineState, through: string): vo
     node.status = 'completed';
     node.doc_path = `/tmp/${step}.md`;
   }
+}
+
+// ── Config factory ────────────────────────────────────────────────────────────
+
+export function createConfig(overrides: {
+  human_gates?: Partial<OrchestrationConfig['human_gates']>;
+  source_control?: Partial<OrchestrationConfig['source_control']>;
+  system?: Partial<OrchestrationConfig['system']>;
+  projects?: Partial<OrchestrationConfig['projects']>;
+  limits?: Partial<OrchestrationConfig['limits']>;
+}): OrchestrationConfig {
+  return {
+    system: { ...DEFAULT_CONFIG.system, ...overrides.system },
+    projects: { ...DEFAULT_CONFIG.projects, ...overrides.projects },
+    limits: { ...DEFAULT_CONFIG.limits, ...overrides.limits },
+    human_gates: { ...DEFAULT_CONFIG.human_gates, ...overrides.human_gates },
+    source_control: { ...DEFAULT_CONFIG.source_control, ...overrides.source_control },
+  };
+}
+
+// ── Mock IOAdapter with config override ───────────────────────────────────────
+
+export function createMockIOWithConfig(
+  initialState: PipelineState | null,
+  config: OrchestrationConfig,
+): MockIO {
+  let currentState = initialState ? structuredClone(initialState) : null;
+  const writeCalls: Array<{ projectDir: string; state: PipelineState }> = [];
+  const ensureDirCalls: string[] = [];
+
+  return {
+    get currentState() {
+      return currentState;
+    },
+    writeCalls,
+    ensureDirCalls,
+    readState(_projectDir: string): PipelineState | null {
+      return currentState ? structuredClone(currentState) : null;
+    },
+    writeState(_projectDir: string, state: PipelineState): void {
+      currentState = structuredClone(state);
+      writeCalls.push({ projectDir: _projectDir, state: structuredClone(state) });
+    },
+    readConfig(_configPath?: string): OrchestrationConfig {
+      return structuredClone(config);
+    },
+    readDocument(docPath: string): { frontmatter: Record<string, unknown>; content: string } | null {
+      return DOC_STORE[docPath] ?? null;
+    },
+    ensureDirectories(projectDir: string): void {
+      ensureDirCalls.push(projectDir);
+    },
+  };
+}
+
+// ── Drive to review tier helper ───────────────────────────────────────────────
+
+/**
+ * Drives the pipeline from scaffold through one phase (two tasks) to the review
+ * tier. Handles gate approvals and commit steps based on the provided config.
+ * Returns MockIO positioned at the review tier (ready for final_review tests).
+ */
+export function driveToReviewTier(config: OrchestrationConfig): MockIO {
+  const io = createMockIOWithConfig(null, config);
+  processEvent('research_started', PROJECT_DIR, {}, io);
+
+  const state = io.currentState!;
+  completePlanningSteps(state, 'master_plan');
+  const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
+  seedDoc(mpDoc, { total_phases: 1 });
+
+  processEvent('plan_approved', PROJECT_DIR, {}, io);
+
+  // Phase 1 planning
+  processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+  const ppDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-plan.md');
+  seedDoc(ppDoc, { tasks: [{ id: 'T01', title: 'Task 1' }, { id: 'T02', title: 'Task 2' }] });
+  processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: ppDoc }, io);
+
+  // Drive two tasks
+  for (const t of [1, 2]) {
+    const ctx = { phase: 1, task: t };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    const thDoc = path.join(PROJECT_DIR, 'tasks', `p1-t${t}-handoff.md`);
+    seedDoc(thDoc);
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: thDoc }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    const crDoc = path.join(PROJECT_DIR, 'tasks', `p1-t${t}-review.md`);
+    seedDoc(crDoc);
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx, doc_path: crDoc, verdict: 'approve',
+    }, io);
+
+    // If task gate fires (e.g., ask mode), approve it
+    if (result.action === 'gate_task') {
+      processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+    }
+  }
+
+  // Phase report + review
+  processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+  const prDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-report.md');
+  seedDoc(prDoc);
+  processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: prDoc }, io);
+
+  processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+  const prvDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-review.md');
+  seedDoc(prvDoc);
+  let result: PipelineResult = processEvent('phase_review_completed', PROJECT_DIR, {
+    phase: 1, doc_path: prvDoc, verdict: 'approve',
+  }, io);
+
+  // If phase gate fires, approve it
+  if (result.action === 'gate_phase') {
+    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
+  }
+
+  // If commit fires, drive it
+  if (result.action === 'invoke_source_control_commit') {
+    processEvent('source_control_commit_started', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('source_control_commit_completed', PROJECT_DIR, { phase: 1 }, io);
+  }
+
+  return io;
 }
