@@ -166,6 +166,88 @@ export function createMockIOWithConfig(
   };
 }
 
+// ── Shared task/doc-path helpers ───────────────────────────────────────────────
+
+export const TASKS_2 = [
+  { id: 'T01', title: 'Task 1' },
+  { id: 'T02', title: 'Task 2' },
+];
+
+export const phasePlanDoc = (phase: number): string =>
+  path.join(PROJECT_DIR, 'phases', `phase-${phase}-plan.md`);
+export const taskHandoffDoc = (phase: number, task: number): string =>
+  path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`);
+export const codeReviewDoc = (phase: number, task: number): string =>
+  path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`);
+export const phaseReportDoc = (phase: number): string =>
+  path.join(PROJECT_DIR, 'phases', `phase-${phase}-report.md`);
+export const phaseReviewDoc = (phase: number): string =>
+  path.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`);
+
+// ── Drive to execution tier helper ────────────────────────────────────────────
+
+/**
+ * Scaffolds state, completes planning, seeds master plan, approves plan.
+ * Returns MockIO positioned at the execution tier.
+ */
+export function driveToExecutionWithConfig(config: OrchestrationConfig, totalPhases = 1): MockIO {
+  const io = createMockIOWithConfig(null, config);
+  processEvent('research_started', PROJECT_DIR, {}, io);
+  const state = io.currentState!;
+  completePlanningSteps(state, 'master_plan');
+  const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
+  seedDoc(mpDoc, { total_phases: totalPhases });
+  processEvent('plan_approved', PROJECT_DIR, {}, io);
+  return io;
+}
+
+// ── Drive single task helper ──────────────────────────────────────────────────
+
+/**
+ * Drives a single task through handoff→execute→review(approve).
+ */
+export function driveTaskWith(io: MockIO, phase: number, task: number): PipelineResult {
+  const ctx = { phase, task };
+  processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+  const handoffDoc = taskHandoffDoc(phase, task);
+  seedDoc(handoffDoc);
+  processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
+  processEvent('execution_started', PROJECT_DIR, ctx, io);
+  processEvent('execution_completed', PROJECT_DIR, ctx, io);
+  processEvent('code_review_started', PROJECT_DIR, ctx, io);
+  const reviewDoc = codeReviewDoc(phase, task);
+  seedDoc(reviewDoc);
+  return processEvent('code_review_completed', PROJECT_DIR, {
+    ...ctx,
+    doc_path: reviewDoc,
+    verdict: 'approve',
+  }, io);
+}
+
+// ── Drive phase review approval helper ────────────────────────────────────────
+
+/**
+ * Drives phase report + review + gate approval to the commit conditional.
+ */
+export function drivePhaseReviewApproval(io: MockIO, phase: number): PipelineResult {
+  processEvent('phase_report_started', PROJECT_DIR, { phase }, io);
+  seedDoc(phaseReportDoc(phase));
+  processEvent('phase_report_completed', PROJECT_DIR, { phase, doc_path: phaseReportDoc(phase) }, io);
+
+  processEvent('phase_review_started', PROJECT_DIR, { phase }, io);
+  seedDoc(phaseReviewDoc(phase));
+  let result = processEvent('phase_review_completed', PROJECT_DIR, {
+    phase, doc_path: phaseReviewDoc(phase), verdict: 'approve',
+  }, io);
+
+  // If phase gate fires, approve it to reach commit conditional
+  if (result.action === 'gate_phase') {
+    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase }, io);
+  }
+
+  return result;
+}
+
 // ── Drive to review tier helper ───────────────────────────────────────────────
 
 /**

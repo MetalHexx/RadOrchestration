@@ -7,11 +7,20 @@ import {
   createConfig,
   createMockIOWithConfig,
   driveToReviewTier,
+  driveToExecutionWithConfig,
+  driveTaskWith,
+  drivePhaseReviewApproval,
   seedDoc,
   completePlanningSteps,
   DOC_STORE,
   PROJECT_DIR,
   ORCH_ROOT,
+  TASKS_2,
+  phasePlanDoc,
+  taskHandoffDoc,
+  codeReviewDoc,
+  phaseReportDoc,
+  phaseReviewDoc,
 } from './fixtures/parity-states.js';
 import type { MockIO } from './fixtures/parity-states.js';
 import type {
@@ -382,24 +391,6 @@ describe('[PARITY] v4:resolveExecution', () => {
     };
   }
 
-  // ── Doc path helpers ──────────────────────────────────────────────────────
-
-  const phasePlanDoc = (phase: number) =>
-    path.join(PROJECT_DIR, 'phases', `phase-${phase}-plan.md`);
-  const taskHandoffDoc = (phase: number, task: number) =>
-    path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`);
-  const codeReviewDoc = (phase: number, task: number) =>
-    path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`);
-  const phaseReportDoc = (phase: number) =>
-    path.join(PROJECT_DIR, 'phases', `phase-${phase}-report.md`);
-  const phaseReviewDoc = (phase: number) =>
-    path.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`);
-
-  const TASKS_2 = [
-    { id: 'T01', title: 'Task 1' },
-    { id: 'T02', title: 'Task 2' },
-  ];
-
   // ── Shared helper: drive planning through to execution tier ───────────────
 
   function driveToExecution(totalPhases = 2): MockIO {
@@ -410,25 +401,6 @@ describe('[PARITY] v4:resolveExecution', () => {
     const io = createExecMockIO(state);
     processEvent('plan_approved', PROJECT_DIR, {}, io);
     return io;
-  }
-
-  /** Drive a single task through started → handoff → execute → review (approve). */
-  function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
-    const ctx = { phase, task };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    const handoffDoc = taskHandoffDoc(phase, task);
-    seedDoc(handoffDoc);
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
-    const reviewDoc = codeReviewDoc(phase, task);
-    seedDoc(reviewDoc);
-    return processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx,
-      doc_path: reviewDoc,
-      verdict: 'approve',
-    }, io);
   }
 
   // ── Phase stage: planning → create_phase_plan ─────────────────────────────
@@ -551,7 +523,7 @@ describe('[PARITY] v4:resolveExecution', () => {
     }, io);
 
     // Complete task 1 through full cycle
-    const result = driveTask(io, 1, 1);
+    const result = driveTaskWith(io, 1, 1);
 
     expect(result.success).toBe(true);
     // Task gate auto-approves (autonomous) → advance to task 2
@@ -578,9 +550,9 @@ describe('[PARITY] v4:resolveExecution', () => {
     }, io);
 
     // Complete task 1
-    driveTask(io, 1, 1);
+    driveTaskWith(io, 1, 1);
     // Complete task 2
-    const result = driveTask(io, 1, 2);
+    const result = driveTaskWith(io, 1, 2);
 
     expect(result.success).toBe(true);
     // Task gate auto-approves → task_loop completes → phase_report
@@ -599,8 +571,8 @@ describe('[PARITY] v4:resolveExecution', () => {
       doc_path: phasePlanDoc(1),
     }, io);
 
-    driveTask(io, 1, 1);
-    driveTask(io, 1, 2);
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
 
     // Drive to phase review
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
@@ -627,8 +599,8 @@ describe('[PARITY] v4:resolveExecution', () => {
       doc_path: phasePlanDoc(1),
     }, io);
 
-    driveTask(io, 1, 1);
-    driveTask(io, 1, 2);
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
 
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
@@ -676,8 +648,8 @@ describe('[PARITY] v4:resolveExecution', () => {
       phase: 1,
       doc_path: phasePlanDoc(1),
     }, io);
-    driveTask(io, 1, 1);
-    driveTask(io, 1, 2);
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
     processEvent('phase_report_completed', PROJECT_DIR, {
@@ -702,8 +674,8 @@ describe('[PARITY] v4:resolveExecution', () => {
       phase: 2,
       doc_path: phasePlanDoc(2),
     }, io);
-    driveTask(io, 2, 1);
-    driveTask(io, 2, 2);
+    driveTaskWith(io, 2, 1);
+    driveTaskWith(io, 2, 2);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 2 }, io);
     seedDoc(phaseReportDoc(2));
     processEvent('phase_report_completed', PROJECT_DIR, {
@@ -755,53 +727,6 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
       delete DOC_STORE[key];
     }
   });
-
-  const TASKS_2 = [
-    { id: 'T01', title: 'Task 1' },
-    { id: 'T02', title: 'Task 2' },
-  ];
-
-  /** Drive planning through to execution tier with a given config. */
-  function driveToExecutionWithConfig(config: OrchestrationConfig, totalPhases = 1): MockIO {
-    const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
-    const state = io.currentState!;
-    completePlanningSteps(state, 'master_plan');
-    const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-    seedDoc(mpDoc, { total_phases: totalPhases });
-    processEvent('plan_approved', PROJECT_DIR, {}, io);
-    return io;
-  }
-
-  const phasePlanDoc = (phase: number) =>
-    path.join(PROJECT_DIR, 'phases', `phase-${phase}-plan.md`);
-  const taskHandoffDoc = (phase: number, task: number) =>
-    path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`);
-  const codeReviewDoc = (phase: number, task: number) =>
-    path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`);
-  const phaseReportDoc = (phase: number) =>
-    path.join(PROJECT_DIR, 'phases', `phase-${phase}-report.md`);
-  const phaseReviewDoc = (phase: number) =>
-    path.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`);
-
-  /** Drive a single task through started → handoff → execute → review (approve). */
-  function driveTaskWith(io: MockIO, phase: number, task: number): PipelineResult {
-    const ctx = { phase, task };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    const handoffDoc = taskHandoffDoc(phase, task);
-    seedDoc(handoffDoc);
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
-    const reviewDoc = codeReviewDoc(phase, task);
-    seedDoc(reviewDoc);
-    return processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx,
-      doc_path: reviewDoc,
-      verdict: 'approve',
-    }, io);
-  }
 
   // ── autonomous mode ─────────────────────────────────────────────────────
 
@@ -1031,73 +956,6 @@ describe('[PARITY] v4:resolveExecution — source control conditionals', () => {
     }
   });
 
-  const TASKS_2 = [
-    { id: 'T01', title: 'Task 1' },
-    { id: 'T02', title: 'Task 2' },
-  ];
-
-  /** Drive planning through to execution tier with a given config. */
-  function driveToExecutionWithConfig(config: OrchestrationConfig, totalPhases = 1): MockIO {
-    const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
-    const state = io.currentState!;
-    completePlanningSteps(state, 'master_plan');
-    const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-    seedDoc(mpDoc, { total_phases: totalPhases });
-    processEvent('plan_approved', PROJECT_DIR, {}, io);
-    return io;
-  }
-
-  const phasePlanDoc = (phase: number) =>
-    path.join(PROJECT_DIR, 'phases', `phase-${phase}-plan.md`);
-  const taskHandoffDoc = (phase: number, task: number) =>
-    path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`);
-  const codeReviewDoc = (phase: number, task: number) =>
-    path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`);
-  const phaseReportDoc = (phase: number) =>
-    path.join(PROJECT_DIR, 'phases', `phase-${phase}-report.md`);
-  const phaseReviewDoc = (phase: number) =>
-    path.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`);
-
-  /** Drive a single task through started → handoff → execute → review (approve). */
-  function driveTaskWith(io: MockIO, phase: number, task: number): PipelineResult {
-    const ctx = { phase, task };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    const handoffDoc = taskHandoffDoc(phase, task);
-    seedDoc(handoffDoc);
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
-    const reviewDoc = codeReviewDoc(phase, task);
-    seedDoc(reviewDoc);
-    return processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx,
-      doc_path: reviewDoc,
-      verdict: 'approve',
-    }, io);
-  }
-
-  /** Drive through phase report + review + phase gate (if fires) to commit conditional. */
-  function drivePhaseReviewApproval(io: MockIO, phase: number): PipelineResult {
-    processEvent('phase_report_started', PROJECT_DIR, { phase }, io);
-    seedDoc(phaseReportDoc(phase));
-    processEvent('phase_report_completed', PROJECT_DIR, { phase, doc_path: phaseReportDoc(phase) }, io);
-
-    processEvent('phase_review_started', PROJECT_DIR, { phase }, io);
-    seedDoc(phaseReviewDoc(phase));
-    let result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase, doc_path: phaseReviewDoc(phase), verdict: 'approve',
-    }, io);
-
-    // If phase gate fires, approve it to reach commit conditional
-    if (result.action === 'gate_phase') {
-      result = processEvent('phase_gate_approved', PROJECT_DIR, { phase }, io);
-    }
-
-    return result;
-  }
-
   it('[PARITY] v4:resolveTaskGate — auto_commit=always + autonomous emits invoke_source_control_commit after phase gate', () => {
     // v4: resolveTaskGate() — auto_commit === 'always' → invoke_source_control_commit after task
     // v5: commit is at phase level via phase_commit_gate conditional, not per-task.
@@ -1206,6 +1064,375 @@ describe('[PARITY] v4:resolveExecution — source control conditionals', () => {
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const commitGate = phaseLoop.iterations[0].nodes['phase_commit_gate'] as ConditionalNodeState;
     expect(commitGate.branch_taken).toBe('true');
+  });
+});
+
+// ── [PARITY] v4:resolveExecution — corrective loops and halts ─────────────────
+
+describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(DOC_STORE)) {
+      delete DOC_STORE[key];
+    }
+  });
+
+  // Config: autonomous gates, ask commit (same as source-control tests)
+  const CORRECTIVE_CONFIG = createConfig({
+    human_gates: { execution_mode: 'autonomous' },
+    source_control: { auto_commit: 'never' },
+  });
+
+  /**
+   * Helper: drive to execution with phase plan seeded, ready for tasks.
+   */
+  function setupPhaseWithTasks(tasks = TASKS_2, totalPhases = 1): MockIO {
+    const io = driveToExecutionWithConfig(CORRECTIVE_CONFIG, totalPhases);
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks });
+    processEvent('phase_plan_created', PROJECT_DIR, {
+      phase: 1,
+      doc_path: phasePlanDoc(1),
+    }, io);
+    return io;
+  }
+
+  /**
+   * Helper: drive a task through handoff → execute → code_review with a given verdict.
+   */
+  function driveTaskToReview(
+    io: MockIO,
+    phase: number,
+    task: number,
+    verdict: string,
+  ): PipelineResult {
+    const ctx = { phase, task };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    const handoffDoc = taskHandoffDoc(phase, task);
+    seedDoc(handoffDoc);
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    const reviewDoc = codeReviewDoc(phase, task);
+    seedDoc(reviewDoc);
+    return processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: reviewDoc,
+      verdict,
+    }, io);
+  }
+
+  // ── Task-level corrective injection ─────────────────────────────────────
+
+  it('[PARITY] v4:resolveExecution — code_review changes_requested injects corrective task and routes to create_task_handoff', () => {
+    const io = setupPhaseWithTasks();
+
+    // Complete task 1 normally
+    driveTaskWith(io, 1, 1);
+
+    // Drive task 2 through code review with changes_requested
+    const result = driveTaskToReview(io, 1, 2, 'changes_requested');
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('create_task_handoff');
+
+    // Verify corrective task injected on task iteration
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const taskIter = taskLoop.iterations[1]; // task 2 (0-indexed)
+    expect(taskIter.corrective_tasks).toHaveLength(1);
+    expect(taskIter.corrective_tasks[0].status).toBe('in_progress');
+    expect(taskIter.corrective_tasks[0].index).toBe(1);
+    expect(taskIter.corrective_tasks[0].injected_after).toBe('code_review');
+    expect(taskIter.corrective_tasks[0].nodes).toHaveProperty('task_handoff');
+    expect(taskIter.corrective_tasks[0].nodes).toHaveProperty('task_executor');
+    expect(taskIter.corrective_tasks[0].nodes).toHaveProperty('code_review');
+    expect(taskIter.corrective_tasks[0].nodes).toHaveProperty('task_gate');
+  });
+
+  it('[PARITY] v4:resolveExecution — corrective task completion resumes normal flow (next task or phase_report)', () => {
+    const io = setupPhaseWithTasks();
+
+    // Complete task 1 normally
+    driveTaskWith(io, 1, 1);
+
+    // Inject corrective on task 2
+    driveTaskToReview(io, 1, 2, 'changes_requested');
+
+    // Drive corrective task through full cycle (handoff→execute→review approve)
+    // The corrective task uses the same phase/task context
+    const ctx = { phase: 1, task: 2 };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    const corrHandoff = taskHandoffDoc(1, 2);
+    seedDoc(corrHandoff);
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: corrHandoff }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    const corrReview = codeReviewDoc(1, 2);
+    seedDoc(corrReview);
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: corrReview,
+      verdict: 'approve',
+    }, io);
+
+    expect(result.success).toBe(true);
+    // All tasks done → generate_phase_report
+    expect(result.action).toBe('generate_phase_report');
+
+    // Verify corrective entry completed
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const taskIter = taskLoop.iterations[1];
+    expect(taskIter.corrective_tasks[0].status).toBe('completed');
+  });
+
+  // ── Phase-level corrective injection ────────────────────────────────────
+
+  it('[PARITY] v4:resolveExecution — phase_review changes_requested injects phase corrective task', () => {
+    const io = setupPhaseWithTasks();
+
+    // Complete both tasks
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    // Phase report
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+
+    // Phase review with changes_requested
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReviewDoc(1));
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'changes_requested',
+    }, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('create_task_handoff');
+
+    // Verify corrective task injected on phase iteration
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const phaseIter = phaseLoop.iterations[0];
+    expect(phaseIter.corrective_tasks).toHaveLength(1);
+    expect(phaseIter.corrective_tasks[0].status).toBe('in_progress');
+    expect(phaseIter.corrective_tasks[0].index).toBe(1);
+    expect(phaseIter.corrective_tasks[0].injected_after).toBe('phase_review');
+    expect(phaseIter.corrective_tasks[0].nodes).toHaveProperty('task_handoff');
+  });
+
+  // ── Retry budget exhaustion ─────────────────────────────────────────────
+
+  it('[PARITY] v4:resolveExecution — retry budget exhaustion halts pipeline (max_retries_per_task=2)', () => {
+    const io = setupPhaseWithTasks();
+
+    // Complete task 1 normally
+    driveTaskWith(io, 1, 1);
+
+    // Inject corrective 1 on task 2
+    driveTaskToReview(io, 1, 2, 'changes_requested');
+
+    // Drive corrective 1 through full cycle, end with changes_requested again
+    const ctx = { phase: 1, task: 2 };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    seedDoc(taskHandoffDoc(1, 2));
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 2) }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    seedDoc(codeReviewDoc(1, 2));
+    processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx, doc_path: codeReviewDoc(1, 2), verdict: 'changes_requested',
+    }, io);
+
+    // Now corrective_tasks.length == 2 (== max_retries_per_task)
+    // Drive corrective 2 through to review with changes_requested → should halt
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    seedDoc(taskHandoffDoc(1, 2));
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 2) }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    seedDoc(codeReviewDoc(1, 2));
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx, doc_path: codeReviewDoc(1, 2), verdict: 'changes_requested',
+    }, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('display_halted');
+    expect(io.currentState!.graph.status).toBe('halted');
+
+    // Verify task iteration halted
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const taskIter = taskLoop.iterations[1];
+    expect(taskIter.status).toBe('halted');
+  });
+
+  // ── Review rejected ─────────────────────────────────────────────────────
+
+  it('[PARITY] v4:resolveExecution — code_review rejected halts pipeline', () => {
+    const io = setupPhaseWithTasks();
+
+    // Complete task 1 normally
+    driveTaskWith(io, 1, 1);
+
+    // Drive task 2 to review with rejected verdict
+    const result = driveTaskToReview(io, 1, 2, 'rejected');
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('display_halted');
+    expect(io.currentState!.graph.status).toBe('halted');
+
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const taskIter = taskLoop.iterations[1];
+    expect(taskIter.status).toBe('halted');
+  });
+
+  it('[PARITY] v4:resolveExecution — phase_review rejected halts pipeline', () => {
+    const io = setupPhaseWithTasks();
+
+    // Complete both tasks
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    // Phase report
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+
+    // Phase review with rejected verdict
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReviewDoc(1));
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'rejected',
+    }, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('display_halted');
+    expect(io.currentState!.graph.status).toBe('halted');
+
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const phaseIter = phaseLoop.iterations[0];
+    expect(phaseIter.status).toBe('halted');
+  });
+
+  // ── Edge cases ──────────────────────────────────────────────────────────
+
+  it('[PARITY] v4:resolveExecution — single-task phase corrective cycle completes to phase_report', () => {
+    const singleTask = [{ id: 'T01', title: 'Task 1' }];
+    const io = setupPhaseWithTasks(singleTask);
+
+    // Drive the only task with changes_requested
+    driveTaskToReview(io, 1, 1, 'changes_requested');
+
+    // Drive corrective task through full cycle with approve
+    const ctx = { phase: 1, task: 1 };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    seedDoc(taskHandoffDoc(1, 1));
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    seedDoc(codeReviewDoc(1, 1));
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approve',
+    }, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('generate_phase_report');
+
+    // Verify corrective entry completed
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    expect(taskLoop.iterations[0].corrective_tasks[0].status).toBe('completed');
+  });
+
+  it('[PARITY] v4:resolveExecution — phase-level corrective with subsequent task execution', () => {
+    const io = setupPhaseWithTasks();
+
+    // Complete both tasks
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    // Phase report + review with changes_requested (phase-level corrective)
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReviewDoc(1));
+    processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'changes_requested',
+    }, io);
+
+    // Drive phase-level corrective task through full cycle
+    // Phase corrective task uses phase context, task context routes to corrective's body
+    const ctx = { phase: 1, task: 1 };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    seedDoc(taskHandoffDoc(1, 1));
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    seedDoc(codeReviewDoc(1, 1));
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approve',
+    }, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('spawn_final_reviewer');
+
+    // After phase corrective completes, phase iteration completes → advance
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const phaseIter = phaseLoop.iterations[0];
+    expect(phaseIter.corrective_tasks[0].status).toBe('completed');
+    expect(phaseIter.status).toBe('completed');
+  });
+
+  it('[PARITY] v4:resolveExecution — max retries on first task halts before second task starts', () => {
+    const io = setupPhaseWithTasks();
+
+    // Drive task 1 with changes_requested → injects corrective 1
+    driveTaskToReview(io, 1, 1, 'changes_requested');
+
+    // Drive corrective 1 through, end with changes_requested → injects corrective 2
+    const ctx = { phase: 1, task: 1 };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    seedDoc(taskHandoffDoc(1, 1));
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    seedDoc(codeReviewDoc(1, 1));
+    processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'changes_requested',
+    }, io);
+
+    // corrective_tasks.length == 2 == max_retries_per_task
+    // Drive corrective 2 through, end with changes_requested → should halt
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    seedDoc(taskHandoffDoc(1, 1));
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    seedDoc(codeReviewDoc(1, 1));
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'changes_requested',
+    }, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('display_halted');
+    expect(io.currentState!.graph.status).toBe('halted');
+
+    // Task 2 never reached
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    expect(taskLoop.iterations[0].status).toBe('halted');
+    expect(taskLoop.iterations[1].status).toBe('not_started');
   });
 });
 
