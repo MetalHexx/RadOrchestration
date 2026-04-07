@@ -39,6 +39,7 @@ function makeErrorResult(message: string, event: string, orchRoot: string = '.gi
 export function run(argv: string[]): void {
   const args = parseArgs(argv);
   const event = args['event'];
+  let orchRoot = '.github'; // fallback until config is read
 
   try {
     const projectDir = args['project-dir'];
@@ -57,6 +58,11 @@ export function run(argv: string[]): void {
       return;
     }
 
+    // Resolve orchRoot from config early so validation errors report the correct value
+    try {
+      orchRoot = readConfig(configPath).system.orch_root;
+    } catch { /* config unreadable — orchRoot stays as default */ }
+
     // Parse --phase and --task as numbers
     const phaseStr = args['phase'];
     const taskStr = args['task'];
@@ -67,7 +73,7 @@ export function run(argv: string[]): void {
     if (phaseStr !== undefined) {
       phase = Number(phaseStr);
       if (!Number.isFinite(phase) || phase < 1) {
-        process.stdout.write(JSON.stringify(makeErrorResult(`Invalid value for --phase: ${phaseStr}`, event)));
+        process.stdout.write(JSON.stringify(makeErrorResult(`Invalid value for --phase: ${phaseStr}`, event, orchRoot)));
         return;
       }
     }
@@ -75,7 +81,7 @@ export function run(argv: string[]): void {
     if (taskStr !== undefined) {
       task = Number(taskStr);
       if (!Number.isFinite(task) || task < 1) {
-        process.stdout.write(JSON.stringify(makeErrorResult(`Invalid value for --task: ${taskStr}`, event)));
+        process.stdout.write(JSON.stringify(makeErrorResult(`Invalid value for --task: ${taskStr}`, event, orchRoot)));
         return;
       }
     }
@@ -108,7 +114,7 @@ export function run(argv: string[]): void {
       action: null,
       context: {},
       mutations_applied: [],
-      orchRoot: '.github',
+      orchRoot,
       error: { message, event: event ?? 'unknown' },
     };
     process.stdout.write(JSON.stringify(fallback));
