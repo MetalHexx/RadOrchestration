@@ -8,6 +8,7 @@ import type {
   ParallelNodeState,
   CorrectiveTaskEntry,
   IterationEntry,
+  NodeDef,
 } from './types.js';
 import { NODE_STATUSES, GRAPH_STATUSES } from './constants.js';
 
@@ -108,11 +109,17 @@ function checkCompletedParentChildren(nodes: Record<string, NodeState>, path: st
       if (node.status === 'completed') {
         for (const iter of node.iterations) {
           errors.push(...findInProgressNodes(iter.nodes, `${nodePath}.iterations[${iter.index}].nodes`, nodePath));
+          for (const ct of iter.corrective_tasks) {
+            errors.push(...findInProgressNodes(ct.nodes, `${nodePath}.iterations[${iter.index}].corrective_tasks[${ct.index}].nodes`, nodePath));
+          }
         }
       }
       // Recurse even when not completed to check nested for_each / parallel nodes
       for (const iter of node.iterations) {
         errors.push(...checkCompletedParentChildren(iter.nodes, `${nodePath}.iterations[${iter.index}].nodes`));
+        for (const ct of iter.corrective_tasks) {
+          errors.push(...checkCompletedParentChildren(ct.nodes, `${nodePath}.iterations[${iter.index}].corrective_tasks[${ct.index}].nodes`));
+        }
       }
     }
     if (node.kind === 'parallel') {
@@ -136,6 +143,9 @@ function findInProgressNodes(nodes: Record<string, NodeState>, path: string, par
     if (node.kind === 'for_each_phase' || node.kind === 'for_each_task') {
       for (const iter of node.iterations) {
         errors.push(...findInProgressNodes(iter.nodes, `${path}.${id}.iterations[${iter.index}].nodes`, parentPath));
+        for (const ct of iter.corrective_tasks) {
+          errors.push(...findInProgressNodes(ct.nodes, `${path}.${id}.iterations[${iter.index}].corrective_tasks[${ct.index}].nodes`, parentPath));
+        }
       }
     }
     if (node.kind === 'parallel') {
@@ -223,18 +233,48 @@ function checkIterationLimits(state: PipelineState, config: OrchestrationConfig)
 
 // ── Check: node kind matches template ─────────────────────────────────────────
 
+function collectNodeDefKinds(nodes: NodeDef[], map: Map<string, string>): void {
+  for (const nodeDef of nodes) {
+    map.set(nodeDef.id, nodeDef.kind);
+    if (nodeDef.kind === 'for_each_phase' || nodeDef.kind === 'for_each_task') {
+      collectNodeDefKinds(nodeDef.body, map);
+    }
+    if (nodeDef.kind === 'conditional') {
+      collectNodeDefKinds(nodeDef.branches.true, map);
+      collectNodeDefKinds(nodeDef.branches.false, map);
+    }
+    if (nodeDef.kind === 'parallel') {
+      collectNodeDefKinds(nodeDef.children, map);
+    }
+  }
+}
+
 function checkNodeKindMatchesTemplate(state: PipelineState, template: PipelineTemplate): string[] {
   const errors: string[] = [];
   const templateKindMap = new Map<string, string>();
-  for (const nodeDef of template.nodes) {
-    templateKindMap.set(nodeDef.id, nodeDef.kind);
-  }
+  collectNodeDefKinds(template.nodes, templateKindMap);
 
-  for (const [id, node] of Object.entries(state.graph.nodes)) {
-    const templateKind = templateKindMap.get(id);
-    if (templateKind !== undefined && node.kind !== templateKind) {
-      errors.push(`Node '${id}' has kind '${node.kind}' but template defines kind '${templateKind}'`);
+  function walkStateNodes(nodes: Record<string, NodeState>, path: string): void {
+    for (const [id, node] of Object.entries(nodes)) {
+      const nodePath = `${path}.${id}`;
+      const templateKind = templateKindMap.get(id);
+      if (templateKind !== undefined && node.kind !== templateKind) {
+        errors.push(`Node '${id}' has kind '${node.kind}' but template defines kind '${templateKind}'`);
+      }
+      if (node.kind === 'for_each_phase' || node.kind === 'for_each_task') {
+        for (const iter of node.iterations) {
+          walkStateNodes(iter.nodes, `${nodePath}.iterations[${iter.index}].nodes`);
+          for (const ct of iter.corrective_tasks) {
+            walkStateNodes(ct.nodes, `${nodePath}.iterations[${iter.index}].corrective_tasks[${ct.index}].nodes`);
+          }
+        }
+      }
+      if (node.kind === 'parallel') {
+        walkStateNodes(node.nodes, `${nodePath}.nodes`);
+      }
     }
   }
+
+  walkStateNodes(state.graph.nodes, 'graph.nodes');
   return errors;
 }
