@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
 import { loadTemplate } from '../lib/template-loader.js';
 import type {
@@ -13,7 +14,7 @@ import type {
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-// Used to verify template loads correctly from this path
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.resolve(__dirname, '../templates/full.yml');
 const PROJECT_DIR = '/tmp/test-project/INTEGRATION-TEST';
 const ORCH_ROOT = path.resolve(__dirname, '../../../..'); // points to .github

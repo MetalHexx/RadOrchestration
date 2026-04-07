@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { processEvent } from '../../lib/engine.js';
 import type {
   PipelineState,
@@ -10,6 +11,7 @@ import type {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const PROJECT_DIR = '/tmp/test-project/PARITY-TEST';
 export const ORCH_ROOT = path.resolve(__dirname, '../../../../..'); // points to .github
 
