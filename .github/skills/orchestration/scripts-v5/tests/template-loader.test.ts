@@ -75,6 +75,19 @@ describe('loadTemplate', () => {
       expect(() => loadTemplate('/non/existent/path/to/template.yml')).toThrowError(/not found/);
     });
 
+    it('re-throws original error for non-ENOENT filesystem errors (e.g. reading a directory)', () => {
+      // Passing a directory path should NOT produce "not found" — it should
+      // propagate the original EISDIR / EPERM / EACCES error
+      const dirPath = os.tmpdir();
+      expect(() => loadTemplate(dirPath)).toThrow();
+      try {
+        loadTemplate(dirPath);
+      } catch (e) {
+        // Error message should NOT say "not found" — the directory exists
+        expect((e as Error).message).not.toMatch(/not found/);
+      }
+    });
+
     it('throws containing "Invalid YAML" for invalid YAML content', () => {
       const tmpFile = path.join(os.tmpdir(), `invalid-yaml-${Date.now()}.yml`);
       fs.writeFileSync(tmpFile, 'key: [unclosed bracket\n  bad: {{{{', 'utf-8');

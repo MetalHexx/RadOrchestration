@@ -6,12 +6,6 @@ import type {
   EventIndex,
   EventIndexEntry,
   LoadedTemplate,
-  StepNodeDef,
-  GateNodeDef,
-  ForEachPhaseNodeDef,
-  ForEachTaskNodeDef,
-  ConditionalNodeDef,
-  ParallelNodeDef,
 } from './types.js';
 
 function buildEventIndex(nodes: NodeDef[], parentPath: string): EventIndex {
@@ -21,9 +15,8 @@ function buildEventIndex(nodes: NodeDef[], parentPath: string): EventIndex {
     const templatePath = parentPath === '' ? node.id : `${parentPath}.${node.id}`;
 
     if (node.kind === 'step') {
-      const stepNode = node as StepNodeDef;
-      const startedEvent = stepNode.events.started;
-      const completedEvent = stepNode.events.completed;
+      const startedEvent = node.events.started;
+      const completedEvent = node.events.completed;
 
       if (index.has(startedEvent)) {
         throw new Error(`Duplicate event name in template: ${startedEvent}`);
@@ -35,8 +28,7 @@ function buildEventIndex(nodes: NodeDef[], parentPath: string): EventIndex {
       index.set(startedEvent, { nodeDef: node, eventPhase: 'started', templatePath });
       index.set(completedEvent, { nodeDef: node, eventPhase: 'completed', templatePath });
     } else if (node.kind === 'gate') {
-      const gateNode = node as GateNodeDef;
-      const approvedEvent = gateNode.approved_event;
+      const approvedEvent = node.approved_event;
 
       if (index.has(approvedEvent)) {
         throw new Error(`Duplicate event name in template: ${approvedEvent}`);
@@ -44,8 +36,7 @@ function buildEventIndex(nodes: NodeDef[], parentPath: string): EventIndex {
 
       index.set(approvedEvent, { nodeDef: node, eventPhase: 'approved', templatePath });
     } else if (node.kind === 'for_each_phase') {
-      const forEachPhaseNode = node as ForEachPhaseNodeDef;
-      const childIndex = buildEventIndex(forEachPhaseNode.body, `${templatePath}.body`);
+      const childIndex = buildEventIndex(node.body, `${templatePath}.body`);
       for (const [eventName, entry] of childIndex) {
         if (index.has(eventName)) {
           throw new Error(`Duplicate event name in template: ${eventName}`);
@@ -53,8 +44,7 @@ function buildEventIndex(nodes: NodeDef[], parentPath: string): EventIndex {
         index.set(eventName, entry);
       }
     } else if (node.kind === 'for_each_task') {
-      const forEachTaskNode = node as ForEachTaskNodeDef;
-      const childIndex = buildEventIndex(forEachTaskNode.body, `${templatePath}.body`);
+      const childIndex = buildEventIndex(node.body, `${templatePath}.body`);
       for (const [eventName, entry] of childIndex) {
         if (index.has(eventName)) {
           throw new Error(`Duplicate event name in template: ${eventName}`);
@@ -62,15 +52,14 @@ function buildEventIndex(nodes: NodeDef[], parentPath: string): EventIndex {
         index.set(eventName, entry);
       }
     } else if (node.kind === 'conditional') {
-      const conditionalNode = node as ConditionalNodeDef;
-      const trueIndex = buildEventIndex(conditionalNode.branches.true, `${templatePath}.branches.true`);
+      const trueIndex = buildEventIndex(node.branches.true, `${templatePath}.branches.true`);
       for (const [eventName, entry] of trueIndex) {
         if (index.has(eventName)) {
           throw new Error(`Duplicate event name in template: ${eventName}`);
         }
         index.set(eventName, entry);
       }
-      const falseIndex = buildEventIndex(conditionalNode.branches.false, `${templatePath}.branches.false`);
+      const falseIndex = buildEventIndex(node.branches.false, `${templatePath}.branches.false`);
       for (const [eventName, entry] of falseIndex) {
         if (index.has(eventName)) {
           throw new Error(`Duplicate event name in template: ${eventName}`);
@@ -78,14 +67,16 @@ function buildEventIndex(nodes: NodeDef[], parentPath: string): EventIndex {
         index.set(eventName, entry);
       }
     } else if (node.kind === 'parallel') {
-      const parallelNode = node as ParallelNodeDef;
-      const childIndex = buildEventIndex(parallelNode.children, `${templatePath}.children`);
+      const childIndex = buildEventIndex(node.children, `${templatePath}.children`);
       for (const [eventName, entry] of childIndex) {
         if (index.has(eventName)) {
           throw new Error(`Duplicate event name in template: ${eventName}`);
         }
         index.set(eventName, entry);
       }
+    } else {
+      const _exhaustive: never = node;
+      throw new Error(`Unexpected node kind in template: ${(_exhaustive as NodeDef).kind}`);
     }
   }
 
@@ -96,8 +87,11 @@ export function loadTemplate(templatePath: string): LoadedTemplate {
   let raw: string;
   try {
     raw = fs.readFileSync(templatePath, 'utf-8');
-  } catch {
-    throw new Error(`Template file not found: ${templatePath}`);
+  } catch (err) {
+    if (err !== null && typeof err === 'object' && (err as { code?: unknown }).code === 'ENOENT') {
+      throw new Error(`Template file not found: ${templatePath}`);
+    }
+    throw err;
   }
 
   let parsed: unknown;
