@@ -1,0 +1,203 @@
+template:
+  id: full
+  version: "1.0.0"
+  description: "Complete orchestration pipeline — planning, execution, review, source control"
+
+nodes:
+
+  # ── Planning Steps ────────────────────────────────────────────────────────
+
+  - id: research
+    kind: step
+    label: "Research"
+    action: spawn_research
+    events: { started: research_started, completed: research_completed }
+    context: { step: research }
+    doc_output_field: doc_path
+    depends_on: []
+
+  - id: prd
+    kind: step
+    label: "PRD"
+    action: spawn_prd
+    events: { started: prd_started, completed: prd_completed }
+    context: { step: prd }
+    doc_output_field: doc_path
+    depends_on: [research]
+
+  - id: design
+    kind: step
+    label: "Design"
+    action: spawn_design
+    events: { started: design_started, completed: design_completed }
+    context: { step: design }
+    doc_output_field: doc_path
+    depends_on: [prd]
+
+  - id: architecture
+    kind: step
+    label: "Architecture"
+    action: spawn_architecture
+    events: { started: architecture_started, completed: architecture_completed }
+    context: { step: architecture }
+    doc_output_field: doc_path
+    depends_on: [design]
+
+  - id: master_plan
+    kind: step
+    label: "Master Plan"
+    action: spawn_master_plan
+    events: { started: master_plan_started, completed: master_plan_completed }
+    context: { step: master_plan }
+    doc_output_field: doc_path
+    depends_on: [architecture]
+
+  # ── Plan Approval Gate ────────────────────────────────────────────────────
+
+  - id: plan_approval_gate
+    kind: gate
+    label: "Plan Approval Gate"
+    mode_ref: human_gates.after_planning
+    action_if_needed: request_plan_approval
+    approved_event: plan_approved
+    auto_approve_modes: []
+    depends_on: [master_plan]
+
+  # ── Phase Execution Loop ──────────────────────────────────────────────────
+
+  - id: phase_loop
+    kind: for_each_phase
+    label: "Phase Execution Loop"
+    source_doc_ref: "$.nodes.master_plan.doc_path"
+    total_field: total_phases
+    depends_on: [plan_approval_gate]
+    body:
+
+      - id: phase_planning
+        kind: step
+        label: "Phase Planning"
+        action: create_phase_plan
+        events: { started: phase_planning_started, completed: phase_plan_created }
+        doc_output_field: doc_path
+        depends_on: []
+
+      - id: task_loop
+        kind: for_each_task
+        label: "Task Execution Loop"
+        source_doc_ref: "$.current_phase.doc_path"
+        tasks_field: tasks
+        depends_on: [phase_planning]
+        body:
+
+          - id: task_handoff
+            kind: step
+            label: "Task Handoff"
+            action: create_task_handoff
+            events: { started: task_handoff_started, completed: task_handoff_created }
+            doc_output_field: doc_path
+            retries_ref: limits.max_retries_per_task
+            depends_on: []
+
+          - id: task_executor
+            kind: step
+            label: "Execute Task"
+            action: execute_task
+            events: { started: execution_started, completed: execution_completed }
+            depends_on: [task_handoff]
+
+          - id: code_review
+            kind: step
+            label: "Code Review"
+            action: spawn_code_reviewer
+            events: { started: code_review_started, completed: code_review_completed }
+            doc_output_field: doc_path
+            depends_on: [task_executor]
+
+          - id: task_gate
+            kind: gate
+            label: "Task Review Gate"
+            mode_ref: human_gates.execution_mode
+            action_if_needed: gate_task
+            approved_event: task_gate_approved
+            auto_approve_modes: [autonomous, phase, task]
+            depends_on: [code_review]
+
+      - id: phase_report
+        kind: step
+        label: "Phase Report"
+        action: generate_phase_report
+        events: { started: phase_report_started, completed: phase_report_completed }
+        doc_output_field: doc_path
+        depends_on: [task_loop]
+
+      - id: phase_review
+        kind: step
+        label: "Phase Review"
+        action: spawn_phase_reviewer
+        events: { started: phase_review_started, completed: phase_review_completed }
+        doc_output_field: doc_path
+        depends_on: [phase_report]
+
+      - id: phase_gate
+        kind: gate
+        label: "Phase Review Gate"
+        mode_ref: human_gates.execution_mode
+        action_if_needed: gate_phase
+        approved_event: phase_gate_approved
+        auto_approve_modes: [autonomous, task]
+        depends_on: [phase_review]
+
+      - id: phase_commit_gate
+        kind: conditional
+        label: "Phase Auto-Commit"
+        condition:
+          config_ref: source_control.auto_commit
+          operator: neq
+          value: never
+        branches:
+          true:
+            - id: phase_commit
+              kind: step
+              label: "Source Control Commit"
+              action: invoke_source_control_commit
+              events: { started: source_control_commit_started, completed: source_control_commit_completed }
+              depends_on: []
+          false: []
+        depends_on: [phase_gate]
+
+  # ── Final Review ──────────────────────────────────────────────────────────
+
+  - id: final_review
+    kind: step
+    label: "Final Review"
+    action: spawn_final_reviewer
+    events: { started: final_review_started, completed: final_review_completed }
+    doc_output_field: doc_path
+    depends_on: [phase_loop]
+
+  - id: final_approval_gate
+    kind: gate
+    label: "Final Approval Gate"
+    mode_ref: human_gates.after_final_review
+    action_if_needed: request_final_approval
+    approved_event: final_review_approved
+    auto_approve_modes: []
+    depends_on: [final_review]
+
+  - id: pr_gate
+    kind: conditional
+    label: "Auto-PR Gate"
+    condition:
+      config_ref: source_control.auto_pr
+      operator: neq
+      value: never
+    branches:
+      true:
+        - id: final_pr
+          kind: step
+          label: "Source Control PR"
+          action: invoke_source_control_pr
+          events: { started: source_control_pr_started, completed: source_control_pr_completed }
+          depends_on: []
+      false: []
+    depends_on: [final_approval_gate]
