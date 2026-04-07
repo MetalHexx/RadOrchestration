@@ -5,11 +5,17 @@ import type {
   WalkerResult,
   EventContext,
   NodeState,
+  NodeDef,
   GateNodeDef,
   StepNodeDef,
   GateNodeState,
+  ConditionalNodeDef,
+  ParallelNodeDef,
+  ConditionalNodeState,
+  ParallelNodeState,
 } from './types.js';
 import { NODE_STATUSES, NEXT_ACTIONS } from './constants.js';
+import { evaluateCondition } from './condition-evaluator.js';
 
 /**
  * Resolves a template path to a state path by substituting iteration indices.
@@ -66,23 +72,43 @@ function checkDependencies(
 }
 
 /**
- * Core DAG traversal function. Walks top-level template nodes in order,
- * checking dependencies and node status to determine the next action.
- *
- * Handles `step` and `gate` node kinds. Returns null for unsupported kinds
- * (conditional, parallel, for_each_*) — those are added in later tasks.
- *
- * Pure function except for mutating gate node state on auto-approval.
+ * Creates an initial NodeState for a given NodeDef based on its kind.
  */
-export function walkDAG(
-  state: PipelineState,
-  template: PipelineTemplate,
-  config: OrchestrationConfig,
-): WalkerResult | null {
-  const nodes = state.graph.nodes;
-  const templateNodes = template.nodes;
+function scaffoldNodeState(nodeDef: NodeDef): NodeState {
+  switch (nodeDef.kind) {
+    case 'step':
+      return { kind: 'step', status: NODE_STATUSES.NOT_STARTED, doc_path: null, retries: 0 };
+    case 'gate':
+      return { kind: 'gate', status: NODE_STATUSES.NOT_STARTED, gate_active: false };
+    case 'conditional':
+      return { kind: 'conditional', status: NODE_STATUSES.NOT_STARTED, branch_taken: null };
+    case 'parallel': {
+      const pState: ParallelNodeState = { kind: 'parallel', status: NODE_STATUSES.NOT_STARTED, nodes: {} };
+      const pDef = nodeDef as ParallelNodeDef;
+      for (const child of pDef.children) {
+        pState.nodes[child.id] = scaffoldNodeState(child);
+      }
+      return pState;
+    }
+    case 'for_each_phase':
+      return { kind: 'for_each_phase', status: NODE_STATUSES.NOT_STARTED, iterations: [] };
+    case 'for_each_task':
+      return { kind: 'for_each_task', status: NODE_STATUSES.NOT_STARTED, iterations: [] };
+  }
+}
 
-  for (const nodeDef of templateNodes) {
+/**
+ * Recursive helper that walks an array of node definitions against their
+ * corresponding state entries. Returns the first actionable WalkerResult,
+ * or null if no action is available at this level.
+ */
+function walkNodes(
+  nodeDefs: NodeDef[],
+  nodes: Record<string, NodeState>,
+  config: OrchestrationConfig,
+  state: PipelineState,
+): WalkerResult | null {
+  for (const nodeDef of nodeDefs) {
     const nodeState = nodes[nodeDef.id];
     if (!nodeState) {
       continue;
@@ -106,8 +132,52 @@ export function walkDAG(
       continue;
     }
 
-    // Status: in_progress → return null (waiting for completed event)
+    // Status: in_progress
     if (nodeState.status === NODE_STATUSES.IN_PROGRESS) {
+      // Conditional in_progress: walk taken branch
+      if (nodeDef.kind === 'conditional') {
+        const condDef = nodeDef as ConditionalNodeDef;
+        const condState = nodeState as ConditionalNodeState;
+        const branchKey = condState.branch_taken;
+        if (branchKey === null) {
+          return null;
+        }
+        const branchNodes = condDef.branches[branchKey];
+        const allBranchDone = branchNodes.every((bn) => {
+          const bnState = nodes[bn.id];
+          return (
+            bnState !== undefined &&
+            (bnState.status === NODE_STATUSES.COMPLETED ||
+              bnState.status === NODE_STATUSES.SKIPPED)
+          );
+        });
+        if (allBranchDone) {
+          condState.status = NODE_STATUSES.COMPLETED;
+          continue;
+        }
+        return walkNodes(branchNodes, nodes, config, state);
+      }
+
+      // Parallel in_progress: walk children sequentially
+      if (nodeDef.kind === 'parallel') {
+        const parallelDef = nodeDef as ParallelNodeDef;
+        const parallelState = nodeState as ParallelNodeState;
+        const allChildrenDone = parallelDef.children.every((child) => {
+          const childState = parallelState.nodes[child.id];
+          return (
+            childState !== undefined &&
+            (childState.status === NODE_STATUSES.COMPLETED ||
+              childState.status === NODE_STATUSES.SKIPPED)
+          );
+        });
+        if (allChildrenDone) {
+          parallelState.status = NODE_STATUSES.COMPLETED;
+          continue;
+        }
+        return walkNodes(parallelDef.children, parallelState.nodes, config, state);
+      }
+
+      // Step/gate in_progress → return null (waiting for completed event)
       return null;
     }
 
@@ -134,7 +204,6 @@ export function walkDAG(
           gateDef.auto_approve_modes &&
           gateDef.auto_approve_modes.includes(configValue)
         ) {
-          // Auto-approve the gate
           gateState.status = NODE_STATUSES.COMPLETED;
           gateState.gate_active = false;
           continue;
@@ -155,14 +224,69 @@ export function walkDAG(
         };
       }
 
-      // Unsupported kinds (conditional, parallel, for_each_*)
+      // Conditional node
+      if (nodeDef.kind === 'conditional') {
+        const condDef = nodeDef as ConditionalNodeDef;
+        const condState = nodeState as ConditionalNodeState;
+        const condResult = evaluateCondition(condDef.condition, config, state);
+        condState.branch_taken = condResult ? 'true' : 'false';
+        const branchNodes = condDef.branches[condState.branch_taken];
+
+        if (branchNodes.length === 0) {
+          condState.status = NODE_STATUSES.COMPLETED;
+          continue;
+        }
+
+        condState.status = NODE_STATUSES.IN_PROGRESS;
+        for (const branchNode of branchNodes) {
+          if (!(branchNode.id in nodes)) {
+            nodes[branchNode.id] = scaffoldNodeState(branchNode);
+          }
+        }
+        return walkNodes(branchNodes, nodes, config, state);
+      }
+
+      // Parallel node
+      if (nodeDef.kind === 'parallel') {
+        const parallelDef = nodeDef as ParallelNodeDef;
+        const parallelState = nodeState as ParallelNodeState;
+        parallelState.status = NODE_STATUSES.IN_PROGRESS;
+        for (const child of parallelDef.children) {
+          if (!(child.id in parallelState.nodes)) {
+            parallelState.nodes[child.id] = scaffoldNodeState(child);
+          }
+        }
+        return walkNodes(parallelDef.children, parallelState.nodes, config, state);
+      }
+
+      // Unsupported kinds (for_each_phase, for_each_task)
       return null;
     }
   }
 
+  return null;
+}
+
+/**
+ * Core DAG traversal function. Walks template nodes in order using a recursive
+ * helper, checking dependencies and node status to determine the next action.
+ *
+ * Handles `step`, `gate`, `conditional`, and `parallel` node kinds.
+ * Returns null for unsupported kinds (for_each_*) — those are added in later tasks.
+ */
+export function walkDAG(
+  state: PipelineState,
+  template: PipelineTemplate,
+  config: OrchestrationConfig,
+): WalkerResult | null {
+  const result = walkNodes(template.nodes, state.graph.nodes, config, state);
+  if (result !== null) {
+    return result;
+  }
+
   // After iterating all nodes: check if all completed/skipped
-  const allDone = templateNodes.every((nodeDef) => {
-    const ns = nodes[nodeDef.id];
+  const allDone = template.nodes.every((nodeDef) => {
+    const ns = state.graph.nodes[nodeDef.id];
     return (
       ns !== undefined &&
       (ns.status === NODE_STATUSES.COMPLETED ||

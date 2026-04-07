@@ -12,6 +12,11 @@ import type {
   NodeDef,
   ForEachPhaseNodeDef,
   ForEachPhaseNodeState,
+  ConditionalNodeDef,
+  ConditionalNodeState,
+  ParallelNodeDef,
+  ParallelNodeState,
+  ConditionExpression,
 } from '../lib/types.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -107,6 +112,49 @@ function gateState(status: 'not_started' | 'completed' | 'halted' | 'skipped', g
   return { kind: 'gate', status, gate_active: gateActive };
 }
 
+function condDef(
+  id: string,
+  condition: ConditionExpression,
+  branches: { true: NodeDef[]; false: NodeDef[] },
+  opts?: { depends_on?: string[] },
+): ConditionalNodeDef {
+  return {
+    id,
+    kind: 'conditional',
+    condition,
+    branches,
+    depends_on: opts?.depends_on,
+  };
+}
+
+function condState(
+  status: 'not_started' | 'in_progress' | 'completed',
+  branchTaken: 'true' | 'false' | null,
+): ConditionalNodeState {
+  return { kind: 'conditional', status, branch_taken: branchTaken };
+}
+
+function parallelDef(
+  id: string,
+  children: NodeDef[],
+  opts?: { depends_on?: string[] },
+): ParallelNodeDef {
+  return {
+    id,
+    kind: 'parallel',
+    serialize: true,
+    children,
+    depends_on: opts?.depends_on,
+  };
+}
+
+function pState(
+  status: 'not_started' | 'in_progress' | 'completed',
+  nodes: Record<string, NodeState> = {},
+): ParallelNodeState {
+  return { kind: 'parallel', status, nodes };
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('walkDAG', () => {
@@ -131,7 +179,7 @@ describe('walkDAG', () => {
     expect(result).toEqual({ action: 'execute_task', context: { phase: 1, task: 2 } });
   });
 
-  it('skips a step whose dependency is not_started and returns null', () => {
+  it('returns first eligible step when a later step has unmet dependency', () => {
     const template = makeTemplate([
       stepDef('research', 'spawn_research'),
       stepDef('prd', 'spawn_prd', { depends_on: ['research'] }),
@@ -323,6 +371,213 @@ describe('walkDAG', () => {
     };
     const template = makeTemplate([forEachDef]);
     const state = makeState({ phase_loop: forEachState });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+    expect(result).toBe(null);
+  });
+
+  // ── T01 carry-forward ───────────────────────────────────────────────────────
+
+  it('returns null when the only node has an unsatisfied dependency', () => {
+    const template = makeTemplate([
+      stepDef('prd', 'spawn_prd', { depends_on: ['missing'] }),
+    ]);
+    const state = makeState({
+      missing: stepState('not_started'),
+      prd: stepState('not_started'),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+    expect(result).toBe(null);
+  });
+
+  // ── Conditional node tests ──────────────────────────────────────────────────
+
+  it('walks into branches.true when condition evaluates to true', () => {
+    const template = makeTemplate([
+      condDef('cond1', {
+        config_ref: 'human_gates.after_planning',
+        operator: 'eq',
+        value: true,
+      }, {
+        true: [stepDef('branch_step', 'spawn_research')],
+        false: [stepDef('alt_step', 'spawn_prd')],
+      }),
+    ]);
+    const state = makeState({
+      cond1: condState('not_started', null),
+    });
+    const config = makeConfig({ after_planning: true });
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'spawn_research', context: {} });
+    const cs = state.graph.nodes['cond1'] as ConditionalNodeState;
+    expect(cs.branch_taken).toBe('true');
+    expect(cs.status).toBe('in_progress');
+    expect(state.graph.nodes['branch_step']).toBeDefined();
+  });
+
+  it('walks into branches.false when condition evaluates to false', () => {
+    const template = makeTemplate([
+      condDef('cond1', {
+        config_ref: 'human_gates.after_planning',
+        operator: 'eq',
+        value: true,
+      }, {
+        true: [stepDef('branch_step', 'spawn_research')],
+        false: [stepDef('alt_step', 'spawn_prd')],
+      }),
+    ]);
+    const state = makeState({
+      cond1: condState('not_started', null),
+    });
+    const config = makeConfig({ after_planning: false });
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'spawn_prd', context: {} });
+    const cs = state.graph.nodes['cond1'] as ConditionalNodeState;
+    expect(cs.branch_taken).toBe('false');
+    expect(cs.status).toBe('in_progress');
+    expect(state.graph.nodes['alt_step']).toBeDefined();
+  });
+
+  it('completes conditional and continues when taken branch is empty', () => {
+    const template = makeTemplate([
+      condDef('cond1', {
+        config_ref: 'human_gates.after_planning',
+        operator: 'eq',
+        value: true,
+      }, {
+        true: [],
+        false: [stepDef('alt_step', 'spawn_prd')],
+      }),
+      stepDef('next_step', 'spawn_architecture'),
+    ]);
+    const state = makeState({
+      cond1: condState('not_started', null),
+      next_step: stepState('not_started'),
+    });
+    const config = makeConfig({ after_planning: true });
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'spawn_architecture', context: {} });
+    const cs = state.graph.nodes['cond1'] as ConditionalNodeState;
+    expect(cs.status).toBe('completed');
+    expect(cs.branch_taken).toBe('true');
+  });
+
+  it('returns null when branch node is in_progress', () => {
+    const template = makeTemplate([
+      condDef('cond1', {
+        config_ref: 'human_gates.after_planning',
+        operator: 'eq',
+        value: true,
+      }, {
+        true: [stepDef('branch_step', 'spawn_research')],
+        false: [],
+      }),
+    ]);
+    const state = makeState({
+      cond1: condState('in_progress', 'true'),
+      branch_step: stepState('in_progress'),
+    });
+    const config = makeConfig({ after_planning: true });
+
+    const result = walkDAG(state, template, config);
+    expect(result).toBe(null);
+  });
+
+  it('completes conditional when all branch nodes are completed', () => {
+    const template = makeTemplate([
+      condDef('cond1', {
+        config_ref: 'human_gates.after_planning',
+        operator: 'eq',
+        value: true,
+      }, {
+        true: [stepDef('branch_step', 'spawn_research')],
+        false: [],
+      }),
+      stepDef('next_step', 'spawn_architecture'),
+    ]);
+    const state = makeState({
+      cond1: condState('in_progress', 'true'),
+      branch_step: stepState('completed'),
+      next_step: stepState('not_started'),
+    });
+    const config = makeConfig({ after_planning: true });
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'spawn_architecture', context: {} });
+    const cs = state.graph.nodes['cond1'] as ConditionalNodeState;
+    expect(cs.status).toBe('completed');
+  });
+
+  // ── Parallel node tests ─────────────────────────────────────────────────────
+
+  it('returns action for first not_started parallel child', () => {
+    const template = makeTemplate([
+      parallelDef('par1', [
+        stepDef('child1', 'spawn_research'),
+        stepDef('child2', 'spawn_prd'),
+      ]),
+    ]);
+    const state = makeState({
+      par1: pState('not_started'),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'spawn_research', context: {} });
+    const ps = state.graph.nodes['par1'] as ParallelNodeState;
+    expect(ps.status).toBe('in_progress');
+    expect(ps.nodes['child1']).toBeDefined();
+    expect(ps.nodes['child2']).toBeDefined();
+  });
+
+  it('completes parallel and continues when all children are completed', () => {
+    const template = makeTemplate([
+      parallelDef('par1', [
+        stepDef('child1', 'spawn_research'),
+        stepDef('child2', 'spawn_prd'),
+      ]),
+      stepDef('next_step', 'spawn_architecture'),
+    ]);
+    const state = makeState({
+      par1: pState('in_progress', {
+        child1: stepState('completed'),
+        child2: stepState('completed'),
+      }),
+      next_step: stepState('not_started'),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'spawn_architecture', context: {} });
+    const ps = state.graph.nodes['par1'] as ParallelNodeState;
+    expect(ps.status).toBe('completed');
+  });
+
+  it('returns null when a parallel child is in_progress', () => {
+    const template = makeTemplate([
+      parallelDef('par1', [
+        stepDef('child1', 'spawn_research'),
+        stepDef('child2', 'spawn_prd'),
+      ]),
+    ]);
+    const state = makeState({
+      par1: pState('in_progress', {
+        child1: stepState('in_progress'),
+        child2: stepState('not_started'),
+      }),
+    });
     const config = makeConfig();
 
     const result = walkDAG(state, template, config);
