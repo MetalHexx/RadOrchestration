@@ -210,9 +210,11 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
     return { ...walkerContext };
   }
 
-  // display_halted — passthrough (details already in walkerContext)
   if (action === 'display_halted') {
-    return { ...walkerContext };
+    return {
+      ...walkerContext,
+      details: walkerContext.details ?? `Pipeline halted at node: ${state.graph.current_node_path ?? 'unknown'}`,
+    };
   }
 
   // Unknown action — passthrough unchanged

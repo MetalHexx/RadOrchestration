@@ -372,3 +372,28 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
     'gate_mode is set at scaffold time; "ask" mode fires gate_task via task_gate instead',
   );
 });
+
+// ── [CONTRACT] Action Contexts — display_halted ───────────────────────────────
+
+describe('[CONTRACT] Action Contexts — display_halted', () => {
+  it('display_halted context includes details as a string', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+    processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    seedDoc(taskHandoffDoc(1, 1));
+    processEvent('task_handoff_created', PROJECT_DIR, { phase: 1, task: 1, doc_path: taskHandoffDoc(1, 1) }, io);
+    processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    processEvent('execution_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    seedDoc(codeReviewDoc(1, 1), { verdict: 'rejected' });
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      phase: 1, task: 1, doc_path: codeReviewDoc(1, 1), verdict: 'rejected',
+    }, io);
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('display_halted');
+    expect(typeof result.context.details).toBe('string');
+    expect((result.context.details as string).length).toBeGreaterThan(0);
+  });
+});

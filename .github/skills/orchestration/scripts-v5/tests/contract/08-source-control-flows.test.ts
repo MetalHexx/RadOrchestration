@@ -137,9 +137,8 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
       phase_number: 1,
       phase_id: 'P01',
     }));
-    expect(typeof result.context.task_number).toBe('number');
-    expect(typeof result.context.task_id).toBe('string');
-    expect((result.context.task_id as string).length).toBeGreaterThan(0);
+    expect(result.context.task_number).toBe(1);
+    expect(result.context.task_id).toBe('P01-T01');
   });
 });
 

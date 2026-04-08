@@ -254,3 +254,50 @@ describe('[CONTRACT] Frontmatter — total_phases (plan_approved)', () => {
     expect(result.action).toBeNull();
   });
 });
+
+// ── Group 6: total_phases validation error shape (plan_approved) ──────────────
+
+describe('[CONTRACT] Frontmatter — total_phases validation error shape (plan_approved)', () => {
+  function scaffoldForPlanApprovedValidation() {
+    const io = createMockIOWithConfig(null, config);
+    processEvent('research_started', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    completePlanningSteps(state, 'master_plan');
+    const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
+    return { io, mpDoc };
+  }
+
+  it('valid total_phases: 1 → success: true', () => {
+    const { io, mpDoc } = scaffoldForPlanApprovedValidation();
+    seedDoc(mpDoc, { total_phases: 1 });
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    expect(result.success).toBe(true);
+  });
+
+  it('missing total_phases → success: false, structured error', () => {
+    const { io, mpDoc } = scaffoldForPlanApprovedValidation();
+    seedDoc(mpDoc, {});
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Missing required field');
+    expect(result.error?.field).toBe('total_phases');
+    expect(result.error?.event).toBe('plan_approved');
+  });
+
+  it('total_phases: 0 → success: false, invalid value error', () => {
+    const { io, mpDoc } = scaffoldForPlanApprovedValidation();
+    seedDoc(mpDoc, { total_phases: 0 });
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Invalid value: total_phases must be a positive integer');
+    expect(result.error?.field).toBe('total_phases');
+  });
+
+  it('total_phases: "three" → success: false, validation error', () => {
+    const { io, mpDoc } = scaffoldForPlanApprovedValidation();
+    seedDoc(mpDoc, { total_phases: 'three' });
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('total_phases');
+  });
+});

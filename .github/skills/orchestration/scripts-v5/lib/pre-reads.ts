@@ -54,6 +54,31 @@ export function preRead(
     context = { ...context, doc_path: isAbsolute(derived) ? derived : join(projectDir, derived) };
   }
 
+  // Validate total_phases for plan_approved before early return
+  if (event === 'plan_approved' && context.doc_path) {
+    const resolvedPath = isAbsolute(context.doc_path)
+      ? context.doc_path
+      : join(projectDir, context.doc_path);
+
+    const doc = readDocument(resolvedPath);
+    if (doc) {
+      const enrichedContext = { ...doc.frontmatter, ...context } as Record<string, unknown>;
+      const validationError = validateFrontmatter(event, enrichedContext, resolvedPath);
+      if (validationError) {
+        return {
+          context: enrichedContext as Partial<EventContext>,
+          error: {
+            message: validationError.error,
+            event: validationError.event,
+            field: validationError.field,
+          },
+        };
+      }
+      // Merge frontmatter into context for downstream consumption
+      context = enrichedContext as Partial<EventContext>;
+    }
+  }
+
   if (entry.eventPhase === 'started' || entry.eventPhase === 'approved') {
     return { context };
   }

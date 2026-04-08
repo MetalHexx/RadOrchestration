@@ -89,9 +89,9 @@ function makeScaffoldedState(): PipelineState {
 }
 
 // Helper: seed a document into DOC_STORE for readDocument lookups
-function seedDoc(docPath: string): void {
+function seedDoc(docPath: string, extraFrontmatter: Record<string, unknown> = {}): void {
   DOC_STORE[docPath] = {
-    frontmatter: { title: path.basename(docPath, path.extname(docPath)), status: 'completed' },
+    frontmatter: { title: path.basename(docPath, path.extname(docPath)), status: 'completed', ...extraFrontmatter },
     content: `# ${path.basename(docPath)}`,
   };
 }
@@ -226,7 +226,7 @@ describe('Planning-tier integration — full sequence', () => {
 
     // ── Step 11: master_plan_completed ────────────────────────────────────
     const mpDoc = path.join(PROJECT_DIR, 'docs', 'master-plan.md');
-    seedDoc(mpDoc);
+    seedDoc(mpDoc, { total_phases: 1 });
     result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: mpDoc }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('request_plan_approval');
@@ -239,11 +239,11 @@ describe('Planning-tier integration — full sequence', () => {
     }
 
     // ── Step 12: plan_approved ────────────────────────────────────────────
-    // phase_loop is for_each_phase — the simplified stub resolver cannot
-    // expand it, so findNextActionableSibling returns null
+    // With total_phases: 1, the walker expands the phase_loop and returns
+    // the first phase action (create_phase_plan)
     result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
     expect(result.success).toBe(true);
-    expect(result.action).toBeNull();
+    expect(result.action).toBe('create_phase_plan');
     {
       const g = io.currentState!.graph.nodes['plan_approval_gate'] as GateNodeState;
       expect(g.status).toBe('completed');
