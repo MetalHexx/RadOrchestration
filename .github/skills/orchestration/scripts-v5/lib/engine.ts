@@ -3,6 +3,7 @@ import { loadTemplate } from './template-loader.js';
 import { preRead } from './pre-reads.js';
 import { getMutation } from './mutations.js';
 import { walkDAG, resolveNodeStatePath } from './dag-walker.js';
+import { enrichActionContext } from './context-enrichment.js';
 import type {
   PipelineState,
   PipelineResult,
@@ -122,10 +123,20 @@ export function processEvent(
 
       io.writeState(projectDir, scaffolded);
 
+      const enrichedContext = nextAction
+        ? enrichActionContext({
+            action: nextAction.action,
+            walkerContext: nextAction.context,
+            state: scaffolded,
+            config,
+            cliContext: context,
+          })
+        : {};
+
       return {
         success: true,
         action: nextAction?.action ?? null,
-        context: nextAction?.context ?? {},
+        context: enrichedContext,
         mutations_applied: ['scaffold_initial_state'],
         orchRoot,
       };
@@ -183,7 +194,15 @@ export function processEvent(
     let nextAction;
     if (entry.eventPhase === 'started') {
       const stepNode = entry.nodeDef as StepNodeDef;
-      nextAction = { action: stepNode.action, context: stepNode.context ?? {} };
+      const rawContext = stepNode.context ?? {};
+      const enrichedCtx = enrichActionContext({
+        action: stepNode.action,
+        walkerContext: rawContext,
+        state: mutatedState,
+        config,
+        cliContext: context,
+      });
+      nextAction = { action: stepNode.action, context: enrichedCtx };
       io.writeState(projectDir, mutatedState);
     } else {
       const walkerResult = walkDAG(mutatedState, template, config, io.readDocument);
@@ -204,7 +223,21 @@ export function processEvent(
       }
 
       io.writeState(projectDir, mutatedState);
-      nextAction = walkerResult;
+
+      if (walkerResult) {
+        nextAction = {
+          action: walkerResult.action,
+          context: enrichActionContext({
+            action: walkerResult.action,
+            walkerContext: walkerResult.context,
+            state: mutatedState,
+            config,
+            cliContext: context,
+          }),
+        };
+      } else {
+        nextAction = walkerResult;
+      }
     }
 
     return {

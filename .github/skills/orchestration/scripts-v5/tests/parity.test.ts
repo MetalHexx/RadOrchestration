@@ -315,8 +315,8 @@ describe('[PARITY] v4:resolvePlanning', () => {
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('create_phase_plan');
-    // v5 step context comes from template definition (no phase_number field defined on plan_phase step)
-    expect(result.context).toEqual({});
+    // v5 enriches context with phase_number and phase_id for phase planning steps
+    expect(result.context).toEqual({ phase_number: 1, phase_id: 'P01' });
   });
 
   // ── Unknown event → error ─────────────────────────────────────────────────
