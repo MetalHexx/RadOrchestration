@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { processEvent } from '../../lib/engine.js';
 import {
   createMockIO,
-  createMockIOWithConfig,
   createConfig,
   DOC_STORE,
   PROJECT_DIR,

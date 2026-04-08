@@ -9,8 +9,6 @@ import {
   seedDoc,
   driveToExecutionWithConfig,
   phasePlanDoc,
-  taskHandoffDoc,
-  codeReviewDoc,
 } from '../fixtures/parity-states.js';
 import { StepNodeState } from '../../lib/types.js';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';

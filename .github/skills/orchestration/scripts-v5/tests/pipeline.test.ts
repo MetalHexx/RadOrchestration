@@ -50,7 +50,7 @@ describe('pipeline CLI — run()', () => {
 
   // ── Argument Parsing ────────────────────────────────────────────────────────
 
-  it('parses all 10 CLI arguments correctly', () => {
+  it('parses core CLI arguments correctly', () => {
     mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
 
     run([
