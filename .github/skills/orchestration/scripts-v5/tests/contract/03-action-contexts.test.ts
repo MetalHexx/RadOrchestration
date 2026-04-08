@@ -159,19 +159,16 @@ describe('[CONTRACT] Action Contexts — phase-level execution actions', () => {
     expect((result.context.phase_report_doc as string).length).toBeGreaterThan(0);
   });
 
-  it('gate_phase returns { phase_number: 1, phase_id: "P01" } (execution_mode=phase)', () => {
-    // DEVIATION: handoff says use "task" mode, but v5 divergence: phase_gate.auto_approve_modes
-    // = [autonomous, task] includes "task", so "task" mode auto-approves the phase gate.
-    // Switching to "phase" mode as it is NOT in auto_approve_modes, causing gate_phase to fire.
-    const phaseConfig = createConfig({
+  it('gate_phase returns { phase_number: 1, phase_id: "P01" } (execution_mode=task)', () => {
+    const taskConfig = createConfig({
       human_gates: {
         after_planning: true,
-        execution_mode: 'phase',
+        execution_mode: 'task',
         after_final_review: true,
       },
       source_control: { auto_commit: 'never' },
     });
-    const io = driveToExecutionWithConfig(phaseConfig, 1);
+    const io = driveToExecutionWithConfig(taskConfig, 1);
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
@@ -260,23 +257,33 @@ describe('[CONTRACT] Action Contexts — task-level execution actions', () => {
     }));
   });
 
-  it('gate_task returns { phase_number: 1, phase_id: "P01", task_number: 1, task_id: "P01-T01" } (execution_mode=ask)', () => {
-    // DEVIATION: handoff says use "task" mode, but v5 divergence: task_gate.auto_approve_modes
-    // = [autonomous, phase, task] includes "task", so "task" mode auto-approves the task gate.
-    // Switching to "ask" mode as it is NOT in auto_approve_modes, causing gate_task to fire.
-    const askConfig = createConfig({
+  it('gate_task returns { phase_number: 1, phase_id: "P01", task_number: 1, task_id: "P01-T01" } (execution_mode=task)', () => {
+    const taskConfig = createConfig({
       human_gates: {
         after_planning: true,
-        execution_mode: 'ask',
+        execution_mode: 'task',
         after_final_review: true,
       },
       source_control: { auto_commit: 'never' },
     });
-    const io = driveToExecutionWithConfig(askConfig, 1);
+    const io = driveToExecutionWithConfig(taskConfig, 1);
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    const result = driveTaskWith(io, 1, 1);
+    // Drive manually to code_review_completed without approving the gate
+    const ctx = { phase: 1, task: 1 };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    const handoffDoc = taskHandoffDoc(1, 1);
+    seedDoc(handoffDoc);
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    const reviewDoc = codeReviewDoc(1, 1);
+    seedDoc(reviewDoc);
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx, doc_path: reviewDoc, verdict: 'approve',
+    }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('gate_task');
     expect(result.context).toEqual(expect.objectContaining({

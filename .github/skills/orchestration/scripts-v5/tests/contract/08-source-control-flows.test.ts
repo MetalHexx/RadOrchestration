@@ -54,11 +54,19 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
-    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+    let result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1,
       doc_path: phaseReviewDoc(1),
       verdict: 'approve',
       exit_criteria_met: true,
+      branch: 'feature/my-branch',
+      worktree_path: '/tmp/worktree',
+    }, io);
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('gate_phase');
+    // Approve phase gate, forwarding branch/worktree_path as CLI context
+    result = processEvent('phase_gate_approved', PROJECT_DIR, {
+      phase: 1,
       branch: 'feature/my-branch',
       worktree_path: '/tmp/worktree',
     }, io);
@@ -85,12 +93,15 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
-    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+    let result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1,
       doc_path: phaseReviewDoc(1),
       verdict: 'approve',
       exit_criteria_met: true,
     }, io);
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('gate_phase');
+    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_commit');
     expect(result.context).toEqual(expect.objectContaining({
@@ -111,12 +122,15 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
-    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+    let result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1,
       doc_path: phaseReviewDoc(1),
       verdict: 'approve',
       exit_criteria_met: true,
     }, io);
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('gate_phase');
+    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_commit');
     expect(result.context).toEqual(expect.objectContaining({

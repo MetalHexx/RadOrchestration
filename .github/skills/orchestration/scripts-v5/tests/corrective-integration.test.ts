@@ -186,11 +186,18 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
 
   const reviewDoc = DOC_PATHS.codeReview(phase, task);
   seedDoc(reviewDoc);
-  return processEvent('code_review_completed', PROJECT_DIR, {
+  let result = processEvent('code_review_completed', PROJECT_DIR, {
     ...ctx,
     doc_path: reviewDoc,
     verdict: 'approve',
   }, io);
+
+  // If task gate fires, approve it to continue
+  if (result.action === 'gate_task') {
+    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+  }
+
+  return result;
 }
 
 /**
@@ -252,11 +259,18 @@ function driveCorrectiveTask(
 
   const reviewDoc = DOC_PATHS.codeReview(phase, task);
   seedDoc(reviewDoc);
-  return processEvent('code_review_completed', PROJECT_DIR, {
+  let result = processEvent('code_review_completed', PROJECT_DIR, {
     ...ctx,
     doc_path: reviewDoc,
     verdict,
   }, io);
+
+  // If task gate fires (verdict='approve' path), approve it to continue
+  if (result.action === 'gate_task') {
+    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+  }
+
+  return result;
 }
 
 /**
@@ -274,12 +288,17 @@ function drivePhasePostTasks(io: MockIO, phase: number, expectCommit: boolean): 
   processEvent('phase_review_started', PROJECT_DIR, ctx, io);
   const reviewDoc = DOC_PATHS.phaseReview(phase);
   seedDoc(reviewDoc);
-  const reviewResult = processEvent('phase_review_completed', PROJECT_DIR, {
+  let reviewResult = processEvent('phase_review_completed', PROJECT_DIR, {
     ...ctx,
     doc_path: reviewDoc,
     verdict: 'approve',
     exit_criteria_met: true,
   }, io);
+
+  // If phase gate fires, approve it to continue
+  if (reviewResult.action === 'gate_phase') {
+    reviewResult = processEvent('phase_gate_approved', PROJECT_DIR, ctx, io);
+  }
 
   if (!expectCommit) {
     return reviewResult;

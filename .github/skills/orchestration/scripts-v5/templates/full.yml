@@ -119,7 +119,7 @@ nodes:
             mode_ref: human_gates.execution_mode
             action_if_needed: gate_task
             approved_event: task_gate_approved
-            auto_approve_modes: [autonomous, phase, task]
+            auto_approve_modes: [phase]
             depends_on: [code_review]
 
       - id: phase_report
@@ -144,7 +144,7 @@ nodes:
         mode_ref: human_gates.execution_mode
         action_if_needed: gate_phase
         approved_event: phase_gate_approved
-        auto_approve_modes: [autonomous, task]
+        auto_approve_modes: []
         depends_on: [phase_review]
 
       - id: phase_commit_gate

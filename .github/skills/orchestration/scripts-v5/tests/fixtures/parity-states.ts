@@ -219,11 +219,18 @@ export function driveTaskWith(io: MockIO, phase: number, task: number): Pipeline
   processEvent('code_review_started', PROJECT_DIR, ctx, io);
   const reviewDoc = codeReviewDoc(phase, task);
   seedDoc(reviewDoc);
-  return processEvent('code_review_completed', PROJECT_DIR, {
+  let result = processEvent('code_review_completed', PROJECT_DIR, {
     ...ctx,
     doc_path: reviewDoc,
     verdict: 'approve',
   }, io);
+
+  // If task gate fires, approve it to continue (matches drivePhaseReviewApproval pattern)
+  if (result.action === 'gate_task') {
+    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+  }
+
+  return result;
 }
 
 // ── Drive phase review approval helper ────────────────────────────────────────
