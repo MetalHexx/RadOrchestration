@@ -366,11 +366,10 @@ function walkNodes(
           (typeof configValue === 'string' ? configValue : undefined) ||
           'ask';
 
-        // Unconditional auto-approve: config value in auto_approve_modes
+        // Unconditional auto-approve: effective mode in auto_approve_modes
         if (
-          typeof configValue === 'string' &&
           gateDef.auto_approve_modes &&
-          gateDef.auto_approve_modes.includes(configValue)
+          gateDef.auto_approve_modes.includes(effectiveMode)
         ) {
           gateState.status = NODE_STATUSES.COMPLETED;
           gateState.gate_active = false;

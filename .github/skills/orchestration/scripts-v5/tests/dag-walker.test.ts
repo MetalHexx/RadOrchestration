@@ -253,7 +253,9 @@ describe('walkDAG', () => {
     expect(result).toBe(null);
   });
 
-  it('auto-approves gate when config value is a string in auto_approve_modes', () => {
+  it('auto-approves gate when effectiveMode is a string in auto_approve_modes', () => {
+    // F-01 fix: auto-approve uses effectiveMode (state.config.gate_mode → configValue → 'ask'),
+    // not configValue directly. state.config.gate_mode must be in auto_approve_modes to auto-approve.
     const template = makeTemplate([
       gateDef('plan_gate', 'human_gates.execution_mode', 'request_plan_approval', ['autonomous']),
       stepDef('next_step', 'spawn_prd'),
@@ -262,6 +264,7 @@ describe('walkDAG', () => {
       plan_gate: gateState('not_started', false),
       next_step: stepState('not_started'),
     });
+    state.config.gate_mode = 'autonomous'; // effectiveMode = 'autonomous' (state override wins)
     const config = makeConfig({ execution_mode: 'autonomous' });
 
     const result = walkDAG(state, template, config);
