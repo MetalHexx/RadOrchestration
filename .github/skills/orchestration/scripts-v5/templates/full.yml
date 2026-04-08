@@ -3,6 +3,21 @@ template:
   version: "1.0.0"
   description: "Complete orchestration pipeline — planning, execution, review, source control"
 
+# ── Display & Routing Fields ─────────────────────────────────────────────────
+# Informational field (not consumed by the v5 DAG engine at runtime):
+#
+#   label            - Human-readable display name for each node. The engine
+#                      uses the `id` field for node identity and routing.
+#
+# Consumed field (read by the v5 DAG engine at runtime):
+#
+#   action_if_needed - On gate nodes, specifies the action to dispatch when
+#                      the gate is active. This field IS consumed by the v5
+#                      DAG engine: dag-walker.ts reads gateDef.action_if_needed
+#                      in gate evaluation paths and returns it as the action to
+#                      dispatch for gate routing.
+# ─────────────────────────────────────────────────────────────────────────────
+
 nodes:
 
   # ── Planning Steps ────────────────────────────────────────────────────────
