@@ -9,6 +9,7 @@ import type {
   GateNodeDef,
   StepNodeDef,
   GateNodeState,
+  StepNodeState,
   ConditionalNodeDef,
   ParallelNodeDef,
   ConditionalNodeState,
@@ -345,7 +346,27 @@ function walkNodes(
         const gateState = nodeState as GateNodeState;
         const configValue = resolveConfigValue(gateDef.mode_ref, config);
 
-        // Check auto-approve: string mode
+        // Boolean path: human gates (plan_approval_gate, final_approval_gate)
+        if (typeof configValue === 'boolean') {
+          if (!configValue) {
+            gateState.status = NODE_STATUSES.COMPLETED;
+            gateState.gate_active = false;
+            continue;
+          }
+          gateState.gate_active = true;
+          return {
+            action: gateDef.action_if_needed,
+            context: {},
+          };
+        }
+
+        // Resolve effective mode: state override → config → 'ask' fallback
+        const effectiveMode: string =
+          state.config.gate_mode ||
+          (typeof configValue === 'string' ? configValue : undefined) ||
+          'ask';
+
+        // Unconditional auto-approve: config value in auto_approve_modes
         if (
           typeof configValue === 'string' &&
           gateDef.auto_approve_modes &&
@@ -356,14 +377,25 @@ function walkNodes(
           continue;
         }
 
-        // Check auto-approve: boolean mode (falsy = auto-approve)
-        if (typeof configValue === 'boolean' && !configValue) {
-          gateState.status = NODE_STATUSES.COMPLETED;
-          gateState.gate_active = false;
-          continue;
+        // Autonomous verdict check
+        if (effectiveMode === 'autonomous') {
+          const depId = gateDef.depends_on?.[0];
+          if (depId && nodes[depId]) {
+            const reviewState = nodes[depId] as StepNodeState;
+            if (reviewState.verdict === 'approved') {
+              gateState.status = NODE_STATUSES.COMPLETED;
+              gateState.gate_active = false;
+              continue;
+            }
+          }
+          gateState.gate_active = true;
+          return {
+            action: gateDef.action_if_needed,
+            context: {},
+          };
         }
 
-        // Gate is active
+        // Default: show gate
         gateState.gate_active = true;
         return {
           action: gateDef.action_if_needed,
