@@ -1,4 +1,6 @@
 import { fileURLToPath } from 'node:url';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import process from 'node:process';
 import { processEvent } from './lib/engine.js';
 import {
@@ -42,8 +44,16 @@ export function run(argv: string[]): void {
   let orchRoot = '.github'; // fallback until config is read
 
   try {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const projectDir = args['project-dir'];
-    const configPath = args['config'];
+    let configPath = args['config'];
+
+    if (!configPath) {
+      const discovered = path.resolve(__dirname, '../config/orchestration.yml');
+      if (fs.existsSync(discovered)) {
+        configPath = discovered;
+      }
+    }
 
     if (!event) {
       process.stdout.write(JSON.stringify(makeErrorResult('Missing required argument: --event', 'unknown')));
@@ -51,10 +61,6 @@ export function run(argv: string[]): void {
     }
     if (!projectDir) {
       process.stdout.write(JSON.stringify(makeErrorResult('Missing required argument: --project-dir', 'unknown')));
-      return;
-    }
-    if (!configPath) {
-      process.stdout.write(JSON.stringify(makeErrorResult('Missing required argument: --config', 'unknown')));
       return;
     }
 
@@ -95,6 +101,17 @@ export function run(argv: string[]): void {
     if (phase !== undefined) context.phase = phase;
     if (task !== undefined) context.task = task;
     if (args['verdict'] !== undefined) context.verdict = args['verdict'];
+    if (args['base-branch'] !== undefined) context.base_branch = args['base-branch'];
+    if (args['worktree-path'] !== undefined) context.worktree_path = args['worktree-path'];
+    if (args['auto-commit'] !== undefined) context.auto_commit = args['auto-commit'];
+    if (args['auto-pr'] !== undefined) context.auto_pr = args['auto-pr'];
+    if (args['gate-type'] !== undefined) context.gate_type = args['gate-type'];
+    if (args['reason'] !== undefined) context.reason = args['reason'];
+    if (args['commit-hash'] !== undefined) context.commit_hash = args['commit-hash'];
+    if (args['pushed'] !== undefined) context.pushed = args['pushed'];
+    if (args['remote-url'] !== undefined) context.remote_url = args['remote-url'];
+    if (args['compare-url'] !== undefined) context.compare_url = args['compare-url'];
+    if (args['pr-url'] !== undefined) context.pr_url = args['pr-url'];
 
     // Build IOAdapter from state-io named exports
     const io: IOAdapter = {

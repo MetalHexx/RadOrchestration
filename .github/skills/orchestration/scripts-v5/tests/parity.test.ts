@@ -286,9 +286,10 @@ describe('[PARITY] v4:resolvePlanning', () => {
     // v4: resolver.js resolvePlanning() — plan_approved → gate completes, tier transition to execution
     const state = createScaffoldedState();
     completePlanningSteps(state, 'master_plan');
+    const masterPlanDocPath = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
     const io = createMockIO(state);
 
-    const result = processEvent('plan_approved', PROJECT_DIR, {}, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: masterPlanDocPath }, io);
 
     expect(result.success).toBe(true);
     const g = io.currentState!.graph.nodes['plan_approval_gate'] as GateNodeState;
@@ -310,7 +311,7 @@ describe('[PARITY] v4:resolvePlanning', () => {
     seedDoc(masterPlanDocPath, { total_phases: 2 });
     const io = createMockIO(state);
 
-    const result = processEvent('plan_approved', PROJECT_DIR, {}, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: masterPlanDocPath }, io);
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('create_phase_plan');
@@ -402,7 +403,7 @@ describe('[PARITY] v4:resolveExecution', () => {
     const masterPlanDocPath = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
     seedDoc(masterPlanDocPath, { total_phases: totalPhases });
     const io = createExecMockIO(state);
-    processEvent('plan_approved', PROJECT_DIR, {}, io);
+    processEvent('plan_approved', PROJECT_DIR, { doc_path: masterPlanDocPath }, io);
     return io;
   }
 
@@ -618,6 +619,7 @@ describe('[PARITY] v4:resolveExecution', () => {
       phase: 1,
       doc_path: phaseReviewDoc(1),
       verdict: 'approve',
+      exit_criteria_met: true,
     }, io);
 
     expect(result.success).toBe(true);
@@ -665,6 +667,7 @@ describe('[PARITY] v4:resolveExecution', () => {
       phase: 1,
       doc_path: phaseReviewDoc(1),
       verdict: 'approve',
+      exit_criteria_met: true,
     }, io);
     // Drive phase 1 commit (auto_commit='ask')
     processEvent('source_control_commit_started', PROJECT_DIR, { phase: 1 }, io);
@@ -691,6 +694,7 @@ describe('[PARITY] v4:resolveExecution', () => {
       phase: 2,
       doc_path: phaseReviewDoc(2),
       verdict: 'approve',
+      exit_criteria_met: true,
     }, io);
     // Drive phase 2 commit → phase_loop completes → spawn_final_reviewer
     processEvent('source_control_commit_started', PROJECT_DIR, { phase: 2 }, io);
@@ -709,6 +713,7 @@ describe('[PARITY] v4:resolveExecution', () => {
 
   it('[PARITY] v4:resolveExecution — empty phase with zero tasks advances to generate_phase_report', () => {
     // v4: resolvePhaseExecuting() → current_task === 0 && tasks.length === 0 → generate_phase_report
+    // v5 DIVERGENCE: frontmatter validation rejects tasks: [] (must be non-empty array)
     const io = driveToExecution(1);
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: [] });
@@ -717,8 +722,8 @@ describe('[PARITY] v4:resolveExecution', () => {
       doc_path: phasePlanDoc(1),
     }, io);
 
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('generate_phase_report');
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('tasks');
   });
 });
 
@@ -779,7 +784,7 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve',
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
     }, io);
 
     expect(result.success).toBe(true);
@@ -846,7 +851,7 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve',
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
     }, io);
 
     expect(result.success).toBe(true);
@@ -909,7 +914,7 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve',
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
     }, io);
 
     expect(result.success).toBe(true);
@@ -1209,7 +1214,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'changes_requested',
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'changes_requested', exit_criteria_met: true,
     }, io);
 
     expect(result.success).toBe(true);
@@ -1310,7 +1315,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'rejected',
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'rejected', exit_criteria_met: true,
     }, io);
 
     expect(result.success).toBe(true);
@@ -1368,7 +1373,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'changes_requested',
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'changes_requested', exit_criteria_met: true,
     }, io);
 
     // Drive phase-level corrective task through full cycle
@@ -1603,7 +1608,7 @@ describe('[PARITY] v4:resolveReview', () => {
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
     seedDoc(mpDoc, { total_phases: 1 });
-    processEvent('plan_approved', PROJECT_DIR, {}, io);
+    processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
 
     // Phase 1 with one task
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
@@ -1633,7 +1638,7 @@ describe('[PARITY] v4:resolveReview', () => {
     const prvDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-review.md');
     seedDoc(prvDoc);
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: prvDoc, verdict: 'rejected',
+      phase: 1, doc_path: prvDoc, verdict: 'rejected', exit_criteria_met: true,
     }, io);
 
     expect(result.success).toBe(true);

@@ -241,7 +241,7 @@ describe('Planning-tier integration — full sequence', () => {
     // ── Step 12: plan_approved ────────────────────────────────────────────
     // phase_loop is for_each_phase — the simplified stub resolver cannot
     // expand it, so findNextActionableSibling returns null
-    result = processEvent('plan_approved', PROJECT_DIR, {}, io);
+    result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBeNull();
     {
@@ -425,7 +425,7 @@ describe('Planning-tier — individual step checks', () => {
     }
     const io = createMockIO(state);
 
-    const result = processEvent('plan_approved', PROJECT_DIR, {}, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master_plan.md' }, io);
 
     expect(result.success).toBe(true);
     const g = io.currentState!.graph.nodes['plan_approval_gate'] as GateNodeState;
@@ -600,7 +600,7 @@ describe('Planning-tier — state invariants', () => {
     }
     const io = createMockIO(state);
 
-    processEvent('plan_approved', PROJECT_DIR, {}, io);
+    processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master_plan.md' }, io);
 
     expect(io.currentState!.graph.current_node_path).toBe('plan_approval_gate');
   });

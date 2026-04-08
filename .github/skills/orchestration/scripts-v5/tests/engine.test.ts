@@ -282,7 +282,7 @@ describe('engine – processEvent', () => {
       (state.graph.nodes['plan_approval_gate'] as GateNodeState).gate_active = false;
 
       const io = createMockIO(state);
-      const result = processEvent('plan_approved', PROJECT_DIR, {}, io);
+      const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master-plan.md' }, io);
 
       expect(result.success).toBe(true);
       // readDocument returns null for master plan doc path → phase_loop can't expand → walker returns null
@@ -483,7 +483,7 @@ describe('engine – processEvent', () => {
       const io = createMockIO(state);
       io.readConfig = () => structuredClone(lowLimitConfig);
 
-      const result = processEvent('plan_approved', PROJECT_DIR, {}, io);
+      const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master-plan.md' }, io);
 
       // walkDAG caps expansion at max_phases=1, so only 1 iteration created
       expect(result.success).toBe(true);

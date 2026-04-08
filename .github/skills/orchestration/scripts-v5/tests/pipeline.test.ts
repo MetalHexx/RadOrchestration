@@ -139,12 +139,15 @@ describe('pipeline CLI — run()', () => {
     expect(result.error?.message).toContain('--project-dir');
   });
 
-  it('missing --config produces { success: false } JSON with error mentioning --config', () => {
+  it('missing --config does NOT produce an error — processEvent is called without the --config arg', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
     run(['--event', 'task_started', '--project-dir', '/tmp/test-project']);
 
+    expect(mockProcessEvent).toHaveBeenCalledOnce();
     const result = capturedJson();
-    expect(result.success).toBe(false);
-    expect(result.error?.message).toContain('--config');
+    expect(result.success).toBe(true);
+    expect(result.error).toBeUndefined();
   });
 
   // ── Engine Integration ──────────────────────────────────────────────────────

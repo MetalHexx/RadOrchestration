@@ -163,7 +163,7 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   processEvent('master_plan_completed', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 
   // plan_approved → triggers phase_loop expansion
-  return processEvent('plan_approved', PROJECT_DIR, {}, io);
+  return processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 }
 
 /**
@@ -278,6 +278,7 @@ function drivePhasePostTasks(io: MockIO, phase: number, expectCommit: boolean): 
     ...ctx,
     doc_path: reviewDoc,
     verdict: 'approve',
+    exit_criteria_met: true,
   }, io);
 
   if (!expectCommit) {
@@ -311,6 +312,7 @@ function drivePhasePostTasksWithVerdict(
     ...ctx,
     doc_path: reviewDoc,
     verdict,
+    exit_criteria_met: true,
   }, io);
 }
 

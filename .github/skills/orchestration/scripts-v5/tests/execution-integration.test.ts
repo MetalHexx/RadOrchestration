@@ -161,7 +161,7 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   processEvent('master_plan_completed', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 
   // plan_approved → triggers phase_loop expansion
-  return processEvent('plan_approved', PROJECT_DIR, {}, io);
+  return processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 }
 
 /**
@@ -210,6 +210,7 @@ function drivePhasePostTasks(io: MockIO, phase: number, expectCommit: boolean): 
     ...ctx,
     doc_path: reviewDoc,
     verdict: 'approve',
+    exit_criteria_met: true,
   }, io);
 
   if (!expectCommit) {
@@ -508,6 +509,7 @@ describe('Execution-tier integration — gate mode variations', () => {
       phase: 1,
       doc_path: reviewDoc,
       verdict: 'approve',
+      exit_criteria_met: true,
     }, io);
     expect(result.success).toBe(true);
     // phase_gate is active in 'ask' mode → returns gate_phase
@@ -579,6 +581,7 @@ describe('Execution-tier integration — gate mode variations', () => {
       phase: 1,
       doc_path: reviewDoc,
       verdict: 'approve',
+      exit_criteria_met: true,
     }, io);
     expect(result.success).toBe(true);
     // phase_gate auto_approve_modes includes 'task' → auto-approves → commit conditional
@@ -709,6 +712,7 @@ describe('Execution-tier integration — conditional branch variations', () => {
       phase: 1,
       doc_path: reviewDoc,
       verdict: 'approve',
+      exit_criteria_met: true,
     }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_commit');

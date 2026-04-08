@@ -1,5 +1,7 @@
 import { join, isAbsolute } from 'node:path';
+import { readFileSync } from 'node:fs';
 import type { PreReadResult, EventContext, EventIndexEntry, IOAdapter } from './types.js';
+import { validateFrontmatter } from './frontmatter-validators.js';
 
 export function preRead(
   event: string,
@@ -8,6 +10,50 @@ export function preRead(
   projectDir: string,
   entry: EventIndexEntry
 ): PreReadResult {
+  if (event === 'plan_approved' && (!context.doc_path || context.doc_path.trim() === '')) {
+    let stateRaw: string;
+    try {
+      stateRaw = readFileSync(join(projectDir, 'state.json'), 'utf-8');
+    } catch {
+      return {
+        context,
+        error: {
+          message: `Cannot derive master plan path: state.json unreadable at '${projectDir}'`,
+          event: 'plan_approved',
+          field: 'doc_path',
+        },
+      };
+    }
+
+    let state: unknown;
+    try {
+      state = JSON.parse(stateRaw);
+    } catch {
+      return {
+        context,
+        error: {
+          message: 'Cannot derive master plan path: state.json is not valid JSON',
+          event: 'plan_approved',
+          field: 'doc_path',
+        },
+      };
+    }
+
+    const derived = (state as any)?.planning?.steps?.[4]?.doc_path;
+    if (!derived) {
+      return {
+        context,
+        error: {
+          message: 'Cannot derive master plan path: state.planning.steps[4].doc_path is not set',
+          event: 'plan_approved',
+          field: 'doc_path',
+        },
+      };
+    }
+
+    context = { ...context, doc_path: isAbsolute(derived) ? derived : join(projectDir, derived) };
+  }
+
   if (entry.eventPhase === 'started' || entry.eventPhase === 'approved') {
     return { context };
   }
@@ -45,5 +91,18 @@ export function preRead(
   }
 
   const enrichedContext = { ...doc.frontmatter, ...context } as Partial<EventContext>;
+
+  const validationError = validateFrontmatter(event, enrichedContext as Record<string, unknown>, resolvedPath);
+  if (validationError) {
+    return {
+      context: enrichedContext,
+      error: {
+        message: validationError.error,
+        event: validationError.event,
+        field: validationError.field,
+      },
+    };
+  }
+
   return { context: enrichedContext };
 }

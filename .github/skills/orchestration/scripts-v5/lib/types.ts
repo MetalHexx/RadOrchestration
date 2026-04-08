@@ -208,16 +208,37 @@ export interface PipelineResult {
 // Event Context (parsed from CLI arguments)
 
 export interface EventContext {
+  // ── Required ──
   event: string;
   project_dir: string;
   config_path: string;
+
+  // ── Optional CLI-mapped fields (v4 parity) ──
   doc_path?: string;
   branch?: string;
+  base_branch?: string;
+  worktree_path?: string;
+  auto_commit?: string;
+  auto_pr?: string;
+  gate_type?: string;
   gate_mode?: string;
+  reason?: string;
+  commit_hash?: string;
+  pushed?: string;
+  remote_url?: string;
+  compare_url?: string;
+  pr_url?: string;
+
+  // ── Internal fields (v5 DAG walker; NOT required from callers) ──
   step?: string;
   phase?: number;
   task?: number;
   verdict?: string;
+
+  // ── Frontmatter-derived fields (populated by pre-read) ──
+  total_phases?: number;
+  tasks?: unknown[];
+  exit_criteria_met?: boolean;
 }
 
 // Orchestration Config (from orchestration.yml)

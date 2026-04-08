@@ -199,7 +199,7 @@ export function driveToExecutionWithConfig(config: OrchestrationConfig, totalPha
   completePlanningSteps(state, 'master_plan');
   const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
   seedDoc(mpDoc, { total_phases: totalPhases });
-  processEvent('plan_approved', PROJECT_DIR, {}, io);
+  processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
   return io;
 }
 
@@ -239,7 +239,7 @@ export function drivePhaseReviewApproval(io: MockIO, phase: number): PipelineRes
   processEvent('phase_review_started', PROJECT_DIR, { phase }, io);
   seedDoc(phaseReviewDoc(phase));
   let result = processEvent('phase_review_completed', PROJECT_DIR, {
-    phase, doc_path: phaseReviewDoc(phase), verdict: 'approve',
+    phase, doc_path: phaseReviewDoc(phase), verdict: 'approve', exit_criteria_met: true,
   }, io);
 
   // If phase gate fires, approve it to reach commit conditional
@@ -266,7 +266,7 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
   const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
   seedDoc(mpDoc, { total_phases: 1 });
 
-  processEvent('plan_approved', PROJECT_DIR, {}, io);
+  processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
 
   // Phase 1 planning
   processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
@@ -306,7 +306,7 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
   const prvDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-review.md');
   seedDoc(prvDoc);
   let result: PipelineResult = processEvent('phase_review_completed', PROJECT_DIR, {
-    phase: 1, doc_path: prvDoc, verdict: 'approve',
+    phase: 1, doc_path: prvDoc, verdict: 'approve', exit_criteria_met: true,
   }, io);
 
   // If phase gate fires, approve it
