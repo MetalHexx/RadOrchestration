@@ -581,4 +581,13 @@ describe('normalizeDocPath', () => {
     // 'base\\path/PROJECT/file.md' → convert → 'base/path/PROJECT/file.md' → prefix matches → 'file.md'
     expect(normalizeDocPath('base\\path/PROJECT/file.md', 'base/path', 'PROJECT')).toBe('file.md');
   });
+
+  it('strips prefix when basePath contains backslashes', () => {
+    const result = normalizeDocPath(
+      'C:/dev/orchestration-projects/MY-PROJECT/tasks/T01.md',
+      'C:\\dev\\orchestration-projects',
+      'MY-PROJECT'
+    );
+    expect(result).toBe('tasks/T01.md');
+  });
 });

@@ -72,7 +72,8 @@ function scaffoldState(
 export function normalizeDocPath(docPath: string, basePath: string, projectName: string): string {
   if (!docPath) return docPath;
   const normalized = docPath.replace(/\\/g, '/');
-  const prefix = basePath + '/' + projectName + '/';
+  const normalizedBase = basePath.replace(/\\/g, '/');
+  const prefix = normalizedBase + '/' + projectName + '/';
   if (normalized.startsWith(prefix)) return normalized.slice(prefix.length);
   return normalized;
 }
