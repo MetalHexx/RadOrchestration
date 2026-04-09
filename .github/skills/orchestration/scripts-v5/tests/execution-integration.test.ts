@@ -187,7 +187,7 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
   let result = processEvent('code_review_completed', PROJECT_DIR, {
     ...ctx,
     doc_path: reviewDoc,
-    verdict: 'approve',
+    verdict: 'approved',
   }, io);
 
   // If task gate fires, approve it to continue
@@ -216,7 +216,7 @@ function drivePhasePostTasks(io: MockIO, phase: number, expectCommit: boolean): 
   let reviewResult = processEvent('phase_review_completed', PROJECT_DIR, {
     ...ctx,
     doc_path: reviewDoc,
-    verdict: 'approve',
+    verdict: 'approved',
     exit_criteria_met: true,
   }, io);
 
@@ -290,31 +290,31 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // ── Phase 1, Task 1 ──────────────────────────────────────────────────
     result = driveTask(io, 1, 1);
     expect(result.success).toBe(true);
-    // task_gate fires in autonomous mode → driveTask approves it → advance to task 2
+    // task_gate auto-approves in autonomous mode (verdict=approved) → advance to task 2
     expect(result.action).toBe('create_task_handoff');
 
-    // Verify task_gate fired and was approved (gate_active = true)
+    // Verify task_gate auto-approved (gate_active = false, gate did not fire)
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
       const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
       expect(gate.status).toBe('completed');
-      expect(gate.gate_active).toBe(true);
+      expect(gate.gate_active).toBe(false);
     }
 
     // ── Phase 1, Task 2 ──────────────────────────────────────────────────
     result = driveTask(io, 1, 2);
     expect(result.success).toBe(true);
-    // task_gate fires → driveTask approves it → task_loop completes → phase_report
+    // task_gate auto-approves → task_loop completes → phase_report
     expect(result.action).toBe('generate_phase_report');
 
-    // Verify task_gate for task 2 fired and was approved (gate_active = true)
+    // Verify task_gate for task 2 auto-approved (gate_active = false)
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
       const gate = taskLoop.iterations[1].nodes['task_gate'] as GateNodeState;
       expect(gate.status).toBe('completed');
-      expect(gate.gate_active).toBe(true);
+      expect(gate.gate_active).toBe(false);
     }
 
     // ── Phase 1 post-task steps ──────────────────────────────────────────
@@ -328,7 +328,7 @@ describe('Execution-tier integration — complete pipeline run', () => {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       const gate = phaseLoop.iterations[0].nodes['phase_gate'] as GateNodeState;
       expect(gate.status).toBe('completed');
-      expect(gate.gate_active).toBe(true);
+      expect(gate.gate_active).toBe(false);
     }
 
     // Verify commit conditional branch_taken
@@ -407,7 +407,7 @@ describe('Execution-tier integration — complete pipeline run', () => {
     seedDoc(DOC_PATHS.finalReview);
     result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: DOC_PATHS.finalReview,
-      verdict: 'approve',
+      verdict: 'approved',
     }, io);
     expect(result.success).toBe(true);
     // final_approval_gate active (after_final_review = true)
@@ -486,7 +486,7 @@ describe('Execution-tier integration — gate mode variations', () => {
       processEvent('task_completed', PROJECT_DIR, ctx, io);
       processEvent('code_review_started', PROJECT_DIR, ctx, io);
       const r = DOC_PATHS.codeReview(1, 1); seedDoc(r);
-      result = processEvent('code_review_completed', PROJECT_DIR, { ...ctx, doc_path: r, verdict: 'approve' }, io);
+      result = processEvent('code_review_completed', PROJECT_DIR, { ...ctx, doc_path: r, verdict: 'approved' }, io);
     }
     expect(result.success).toBe(true);
     // pipeline.gate_mode is null and execution_mode='ask' → walker returns ask_gate_mode
@@ -553,7 +553,7 @@ describe('Execution-tier integration — gate mode variations', () => {
     result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1,
       doc_path: reviewDoc,
-      verdict: 'approve',
+      verdict: 'approved',
       exit_criteria_met: true,
     }, io);
     expect(result.success).toBe(true);
@@ -644,7 +644,7 @@ describe('Execution-tier integration — conditional branch variations', () => {
     seedDoc(DOC_PATHS.finalReview);
     processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: DOC_PATHS.finalReview,
-      verdict: 'approve',
+      verdict: 'approved',
     }, io);
 
     // final_approved → PR conditional: 'never' neq 'never' → false → skip PR → display_complete
@@ -689,14 +689,11 @@ describe('Execution-tier integration — conditional branch variations', () => {
     let result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1,
       doc_path: reviewDoc,
-      verdict: 'approve',
+      verdict: 'approved',
       exit_criteria_met: true,
     }, io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('gate_phase');
-    // Approve phase gate → commit conditional: auto_commit=always → true branch
-    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
-    expect(result.success).toBe(true);
+    // Phase gate auto-approves in autonomous mode (verdict=approved) → commit conditional: auto_commit=always → true branch
     expect(result.action).toBe('invoke_source_control_commit');
 
     // Verify commit conditional took true branch
@@ -732,7 +729,7 @@ describe('Execution-tier integration — conditional branch variations', () => {
     seedDoc(DOC_PATHS.finalReview);
     processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: DOC_PATHS.finalReview,
-      verdict: 'approve',
+      verdict: 'approved',
     }, io);
 
     // final_approved → PR conditional: 'always' neq 'never' → true → invoke PR
@@ -887,13 +884,10 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
       phase: 1,
       task: 2,
       doc_path: reviewDoc,
-      verdict: 'approve',
+      verdict: 'approved',
     }, io);
 
-    // Task gate fires — approve it to advance
-    expect(result.action).toBe('gate_task');
-    result = processEvent('task_gate_approved', PROJECT_DIR, { phase: 1, task: 2 }, io);
-
+    // Task gate auto-approves in autonomous mode (verdict=approved) → task_loop completes → generate_phase_report
     expect(result.success).toBe(true);
     expect(result.action).toBe('generate_phase_report');
 

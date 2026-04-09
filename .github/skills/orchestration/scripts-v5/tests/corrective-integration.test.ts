@@ -189,7 +189,7 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
   let result = processEvent('code_review_completed', PROJECT_DIR, {
     ...ctx,
     doc_path: reviewDoc,
-    verdict: 'approve',
+    verdict: 'approved',
   }, io);
 
   // If task gate fires, approve it to continue
@@ -291,7 +291,7 @@ function drivePhasePostTasks(io: MockIO, phase: number, expectCommit: boolean): 
   let reviewResult = processEvent('phase_review_completed', PROJECT_DIR, {
     ...ctx,
     doc_path: reviewDoc,
-    verdict: 'approve',
+    verdict: 'approved',
     exit_criteria_met: true,
   }, io);
 
@@ -380,7 +380,7 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     }
 
     // ── Drive corrective task 1 with approve ─────────────────────────────
-    result = driveCorrectiveTask(io, 1, 1, 1, 'approve');
+    result = driveCorrectiveTask(io, 1, 1, 1, 'approved');
     expect(result.success).toBe(true);
     // task_gate auto-approves → corrective completes → iteration completes → next task
     expect(result.action).toBe('create_task_handoff');
@@ -432,7 +432,7 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     }
 
     // Corrective task 2 — approve
-    result = driveCorrectiveTask(io, 1, 1, 2, 'approve');
+    result = driveCorrectiveTask(io, 1, 1, 2, 'approved');
     expect(result.success).toBe(true);
     expect(result.action).toBe('create_task_handoff');
 

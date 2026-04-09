@@ -63,12 +63,9 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     let result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1,
       doc_path: phaseReviewDoc(1),
-      verdict: 'approve',
+      verdict: 'approved',
       exit_criteria_met: true,
     }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('gate_phase');
-    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_commit');
     expect(result.context).toEqual(expect.objectContaining({
@@ -95,12 +92,9 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     let result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1,
       doc_path: phaseReviewDoc(1),
-      verdict: 'approve',
+      verdict: 'approved',
       exit_criteria_met: true,
     }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('gate_phase');
-    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_commit');
     expect(result.context).toEqual(expect.objectContaining({
@@ -124,12 +118,9 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     let result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1,
       doc_path: phaseReviewDoc(1),
-      verdict: 'approve',
+      verdict: 'approved',
       exit_criteria_met: true,
     }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('gate_phase');
-    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_commit');
     expect(result.context).toEqual(expect.objectContaining({

@@ -530,15 +530,15 @@ describe('[PARITY] v4:resolveExecution', () => {
     const result = driveTaskWith(io, 1, 1);
 
     expect(result.success).toBe(true);
-    // Task gate fires and is approved by driveTaskWith → advance to task 2
+    // Task gate auto-approves in autonomous mode (verdict=approved) → advance to task 2
     expect(result.action).toBe('create_task_handoff');
 
-    // Verify task_gate fired and was approved by driveTaskWith
+    // Verify task_gate auto-approved (gate_active = false)
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
     const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
     expect(gate.status).toBe('completed');
-    expect(gate.gate_active).toBe(true);
+    expect(gate.gate_active).toBe(false);
   });
 
   // ── All tasks done → generate_phase_report ────────────────────────────────
@@ -618,17 +618,12 @@ describe('[PARITY] v4:resolveExecution', () => {
     let result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1,
       doc_path: phaseReviewDoc(1),
-      verdict: 'approve',
+      verdict: 'approved',
       exit_criteria_met: true,
     }, io);
 
     expect(result.success).toBe(true);
-    // Phase gate fires in autonomous mode (T02 will add verdict checking for auto-approve)
-    expect(result.action).toBe('gate_phase');
-
-    // Approve phase gate → commit conditional (auto_commit='ask') → invoke commit
-    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
-    expect(result.success).toBe(true);
+    // Phase gate auto-approves in autonomous mode (verdict=approved) → commit conditional (auto_commit='ask') → invoke commit
     expect(result.action).toBe('invoke_source_control_commit');
 
     // Drive through commit → iteration 0 completed → advance to iteration 1 → create_phase_plan
@@ -637,11 +632,11 @@ describe('[PARITY] v4:resolveExecution', () => {
     expect(result.success).toBe(true);
     expect(result.action).toBe('create_phase_plan');
 
-    // Verify phase_gate fired and was approved
+    // Verify phase_gate auto-approved (gate_active = false)
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const gate = phaseLoop.iterations[0].nodes['phase_gate'] as GateNodeState;
     expect(gate.status).toBe('completed');
-    expect(gate.gate_active).toBe(true);
+    expect(gate.gate_active).toBe(false);
   });
 
   // ── Final phase completion → spawn_final_reviewer (review tier transition) ─
@@ -671,7 +666,7 @@ describe('[PARITY] v4:resolveExecution', () => {
     processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1,
       doc_path: phaseReviewDoc(1),
-      verdict: 'approve',
+      verdict: 'approved',
       exit_criteria_met: true,
     }, io);
     // Approve phase 1 gate, then drive commit (auto_commit='ask')
@@ -699,7 +694,7 @@ describe('[PARITY] v4:resolveExecution', () => {
     processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 2,
       doc_path: phaseReviewDoc(2),
-      verdict: 'approve',
+      verdict: 'approved',
       exit_criteria_met: true,
     }, io);
     // Approve phase 2 gate, drive commit → phase_loop completes → spawn_final_reviewer
@@ -745,11 +740,10 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
 
   // ── autonomous mode ─────────────────────────────────────────────────────
 
-  it('[PARITY] v4:resolveTaskGate — execution_mode=autonomous fires task gate (gate fires, driveTaskWith approves it)', () => {
-    // v4: resolveTaskGate() — autonomous mode → no gate_task emitted; pointer advanced directly
-    // v5: task_gate.auto_approve_modes = [phase] does NOT include 'autonomous' → gate fires
-    // driveTaskWith approves the gate → creates_task_handoff returned
-    // After T02 (verdict checking), autonomous with verdict=approved will auto-approve (gate_active=false)
+  it('[PARITY] v4:resolveTaskGate — execution_mode=autonomous auto-approves task gate (verdict=approved)', () => {
+    // v5: in autonomous mode, if code_review.verdict === 'approved', the task gate
+    //     auto-approves without emitting gate_task (gate_active = false)
+    // After T02 (verdict checking), autonomous with verdict=approved auto-approves (gate_active=false)
     const config = createConfig({ human_gates: { execution_mode: 'autonomous' } });
     const io = driveToExecutionWithConfig(config);
 
@@ -760,20 +754,20 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     const result = driveTaskWith(io, 1, 1);
 
     expect(result.success).toBe(true);
-    // Task gate fires then is approved by driveTaskWith → advances to task 2
+    // Task gate auto-approves in autonomous mode (verdict=approved) → advances to task 2
     expect(result.action).toBe('create_task_handoff');
 
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
     const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
     expect(gate.status).toBe('completed');
-    expect(gate.gate_active).toBe(true);
+    expect(gate.gate_active).toBe(false);
   });
 
-  it('[PARITY] v4:resolvePhaseGate — execution_mode=autonomous fires phase gate (gate_active: true, approved explicitly)', () => {
-    // v4: resolvePhaseGate() — autonomous mode → no gate_phase emitted
-    // v5: phase_gate.auto_approve_modes = [] does NOT include 'autonomous' → gate fires
-    // After T02 (verdict checking), autonomous with verdict=approved will auto-approve (gate_active=false)
+  it('[PARITY] v4:resolvePhaseGate — execution_mode=autonomous auto-approves phase gate (verdict=approved)', () => {
+    // v5: in autonomous mode, if phase_review.verdict === 'approved', the phase gate
+    //     auto-approves without emitting gate_phase (gate_active = false)
+    // After T02 (verdict checking), autonomous with verdict=approved auto-approves (gate_active=false)
     const config = createConfig({
       human_gates: { execution_mode: 'autonomous' },
       source_control: { auto_commit: 'never' },
@@ -794,22 +788,17 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     let result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
     }, io);
 
     expect(result.success).toBe(true);
-    // Phase gate fires in autonomous mode
-    expect(result.action).toBe('gate_phase');
-
-    // Approve gate → auto_commit='never' → commit skipped → spawn_final_reviewer
-    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
-    expect(result.success).toBe(true);
+    // Phase gate auto-approves in autonomous mode (verdict=approved) → auto_commit='never' → commit skipped → spawn_final_reviewer
     expect(result.action).toBe('spawn_final_reviewer');
 
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const gate = phaseLoop.iterations[0].nodes['phase_gate'] as GateNodeState;
     expect(gate.status).toBe('completed');
-    expect(gate.gate_active).toBe(true);
+    expect(gate.gate_active).toBe(false);
   });
 
   // ── task mode ───────────────────────────────────────────────────────────
@@ -839,7 +828,7 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     const reviewDoc = codeReviewDoc(1, 1);
     seedDoc(reviewDoc);
     const result = processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx, doc_path: reviewDoc, verdict: 'approve',
+      ...ctx, doc_path: reviewDoc, verdict: 'approved',
     }, io);
 
     expect(result.success).toBe(true);
@@ -875,7 +864,7 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
     }, io);
 
     expect(result.success).toBe(true);
@@ -937,7 +926,7 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
     }, io);
 
     expect(result.success).toBe(true);
@@ -977,7 +966,7 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     const askReview = codeReviewDoc(1, 1);
     seedDoc(askReview);
     const result = processEvent('code_review_completed', PROJECT_DIR, {
-      ...askCtx, doc_path: askReview, verdict: 'approve',
+      ...askCtx, doc_path: askReview, verdict: 'approved',
     }, io);
 
     expect(result.success).toBe(true);
@@ -1220,15 +1209,11 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     let result = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx,
       doc_path: corrReview,
-      verdict: 'approve',
+      verdict: 'approved',
     }, io);
 
-    // Task gate fires — approve it to advance
-    expect(result.action).toBe('gate_task');
-    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
-
+    // Task gate auto-approves in autonomous mode (verdict=approved) → all tasks done → generate_phase_report
     expect(result.success).toBe(true);
-    // All tasks done → generate_phase_report
     expect(result.action).toBe('generate_phase_report');
 
     // Verify corrective entry completed
@@ -1395,13 +1380,10 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     seedDoc(codeReviewDoc(1, 1));
     let result = processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approve',
+      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
     }, io);
 
-    // Task gate fires — approve it to advance
-    expect(result.action).toBe('gate_task');
-    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
-
+    // Task gate auto-approves in autonomous mode (verdict=approved) → generate_phase_report
     expect(result.success).toBe(true);
     expect(result.action).toBe('generate_phase_report');
 
@@ -1455,7 +1437,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     let result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
     }, io);
 
     // Phase gate fires — approve it
@@ -1699,7 +1681,7 @@ describe('[PARITY] v4:resolveReview', () => {
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     const crDoc = path.join(PROJECT_DIR, 'tasks', 'p1-t1-review.md');
     seedDoc(crDoc);
-    processEvent('code_review_completed', PROJECT_DIR, { ...ctx, doc_path: crDoc, verdict: 'approve' }, io);
+    processEvent('code_review_completed', PROJECT_DIR, { ...ctx, doc_path: crDoc, verdict: 'approved' }, io);
 
     // Phase report + review with rejected verdict → halted
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);

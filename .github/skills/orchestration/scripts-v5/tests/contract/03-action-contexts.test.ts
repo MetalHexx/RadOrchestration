@@ -180,7 +180,7 @@ describe('[CONTRACT] Action Contexts — phase-level execution actions', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
     }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('gate_phase');
@@ -281,7 +281,7 @@ describe('[CONTRACT] Action Contexts — task-level execution actions', () => {
     const reviewDoc = codeReviewDoc(1, 1);
     seedDoc(reviewDoc);
     const result = processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx, doc_path: reviewDoc, verdict: 'approve',
+      ...ctx, doc_path: reviewDoc, verdict: 'approved',
     }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('gate_task');

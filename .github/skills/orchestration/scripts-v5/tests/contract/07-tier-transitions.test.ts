@@ -98,7 +98,7 @@ describe('[CONTRACT] Tier Transitions — task cycle to next task', () => {
     let result = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx,
       doc_path: codeReviewDoc(1, 1),
-      verdict: 'approve',
+      verdict: 'approved',
     }, io);
 
     // Task gate fires before advancing to the next task (even in autonomous mode)
@@ -133,7 +133,7 @@ describe('[CONTRACT] Tier Transitions — task cycle to next task', () => {
     let result = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx,
       doc_path: codeReviewDoc(1, 2),
-      verdict: 'approve',
+      verdict: 'approved',
     }, io);
 
     // Task gate fires before advancing to phase report (even in autonomous mode)

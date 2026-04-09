@@ -222,7 +222,7 @@ export function driveTaskWith(io: MockIO, phase: number, task: number): Pipeline
   let result = processEvent('code_review_completed', PROJECT_DIR, {
     ...ctx,
     doc_path: reviewDoc,
-    verdict: 'approve',
+    verdict: 'approved',
   }, io);
 
   // If task gate fires, approve it to continue (matches drivePhaseReviewApproval pattern)
@@ -246,7 +246,7 @@ export function drivePhaseReviewApproval(io: MockIO, phase: number): PipelineRes
   processEvent('phase_review_started', PROJECT_DIR, { phase }, io);
   seedDoc(phaseReviewDoc(phase));
   let result = processEvent('phase_review_completed', PROJECT_DIR, {
-    phase, doc_path: phaseReviewDoc(phase), verdict: 'approve', exit_criteria_met: true,
+    phase, doc_path: phaseReviewDoc(phase), verdict: 'approved', exit_criteria_met: true,
   }, io);
 
   // If phase gate fires, approve it to reach commit conditional
@@ -294,7 +294,7 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
     const crDoc = path.join(PROJECT_DIR, 'tasks', `p1-t${t}-review.md`);
     seedDoc(crDoc);
     const result = processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx, doc_path: crDoc, verdict: 'approve',
+      ...ctx, doc_path: crDoc, verdict: 'approved',
     }, io);
 
     // If task gate fires (e.g., ask mode), approve it
@@ -313,7 +313,7 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
   const prvDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-review.md');
   seedDoc(prvDoc);
   let result: PipelineResult = processEvent('phase_review_completed', PROJECT_DIR, {
-    phase: 1, doc_path: prvDoc, verdict: 'approve', exit_criteria_met: true,
+    phase: 1, doc_path: prvDoc, verdict: 'approved', exit_criteria_met: true,
   }, io);
 
   // If phase gate fires, approve it

@@ -12,7 +12,7 @@ import type {
   ForEachTaskNodeDef,
   PipelineTemplate,
 } from './types.js';
-import { EVENTS } from './constants.js';
+import { EVENTS, VALID_VERDICTS, REVIEW_VERDICTS } from './constants.js';
 import { scaffoldNodeState } from './scaffold.js';
 
 // ── Resolution scope ──────────────────────────────────────────────────────────
@@ -242,7 +242,19 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
   (node as StepNodeState).verdict = verdict;
   mutations_applied.push(`set phase_review.verdict = ${verdict ?? 'null'}`);
 
-  if (verdict === 'changes_requested') {
+  if (verdict !== null && !VALID_VERDICTS.has(verdict as string)) {
+    cloned.graph.status = 'halted';
+    cloned.pipeline.halt_reason = `Unrecognized verdict '${verdict}' in phase_review_completed`;
+    return {
+      state: cloned,
+      mutations_applied: [
+        ...mutations_applied,
+        `set graph.status = halted (unrecognized verdict '${verdict}')`,
+      ],
+    };
+  }
+
+  if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED) {
     const iteration = resolvePhaseIteration(cloned, context.phase ?? 1);
 
     // Reset phase_planning to not_started so the walker returns create_phase_plan
@@ -283,7 +295,7 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
     });
 
     mutations_applied.push('reset phase for corrective re-planning');
-  } else if (verdict === 'rejected') {
+  } else if (verdict === REVIEW_VERDICTS.REJECTED) {
     const iteration = resolvePhaseIteration(cloned, context.phase ?? 1);
     iteration.status = 'halted';
     cloned.graph.status = 'halted';
@@ -400,8 +412,20 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
   (node as StepNodeState).verdict = verdict;
   mutations_applied.push(`set code_review.verdict = ${verdict ?? 'null'}`);
 
+  if (verdict !== null && !VALID_VERDICTS.has(verdict as string)) {
+    cloned.graph.status = 'halted';
+    cloned.pipeline.halt_reason = `Unrecognized verdict '${verdict}' in code_review_completed`;
+    return {
+      state: cloned,
+      mutations_applied: [
+        ...mutations_applied,
+        `set graph.status = halted (unrecognized verdict '${verdict}')`,
+      ],
+    };
+  }
+
   // Verdict routing
-  if (verdict === 'changes_requested') {
+  if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED) {
     const iteration = resolveTaskIteration(cloned, context.phase ?? 1, context.task ?? 1);
     const correctiveCount = iteration.corrective_tasks.length;
     const maxRetries = config.limits.max_retries_per_task;
@@ -431,7 +455,7 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
       mutations_applied.push('set task_iteration.status = halted (retry budget exhausted)');
       mutations_applied.push('set graph.status = halted');
     }
-  } else if (verdict === 'rejected') {
+  } else if (verdict === REVIEW_VERDICTS.REJECTED) {
     const iteration = resolveTaskIteration(cloned, context.phase ?? 1, context.task ?? 1);
     iteration.status = 'halted';
     cloned.graph.status = 'halted';
@@ -471,7 +495,19 @@ mutationRegistry.set(EVENTS.FINAL_REVIEW_COMPLETED, (state, context, _config, _t
   (node as StepNodeState).verdict = verdict;
   mutations_applied.push(`set final_review.verdict = ${verdict ?? 'null'}`);
 
-  if (verdict === 'approved') {
+  if (verdict !== null && !VALID_VERDICTS.has(verdict as string)) {
+    cloned.graph.status = 'halted';
+    cloned.pipeline.halt_reason = `Unrecognized verdict '${verdict}' in final_review_completed`;
+    return {
+      state: cloned,
+      mutations_applied: [
+        ...mutations_applied,
+        `set graph.status = halted (unrecognized verdict '${verdict}')`,
+      ],
+    };
+  }
+
+  if (verdict === REVIEW_VERDICTS.APPROVED) {
     cloned.pipeline.current_tier = 'review';
     mutations_applied.push('set pipeline.current_tier = review');
   }

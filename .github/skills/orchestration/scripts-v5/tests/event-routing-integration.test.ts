@@ -111,10 +111,10 @@ describe('final_approved routes through template event index', () => {
     // Drive final review
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     const frDocPath = '/tmp/test-final-review.md';
-    seedDoc(frDocPath, { verdict: 'approve' });
+    seedDoc(frDocPath, { verdict: 'approved' });
     processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: frDocPath,
-      verdict: 'approve',
+      verdict: 'approved',
     }, io);
 
     // Call final_approved — the event under test
@@ -167,7 +167,7 @@ describe('routing priority', () => {
     const reviewResult = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx,
       doc_path: codeReviewDoc(1, 1),
-      verdict: 'approve',
+      verdict: 'approved',
     }, io);
 
     // In autonomous mode the task gate fires after code_review_completed

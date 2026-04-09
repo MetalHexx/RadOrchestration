@@ -167,12 +167,12 @@ describe('[CONTRACT] State Mutations — Code review completed mutations', () =>
     return io;
   }
 
-  it('code_review_completed (approved): code_review.status=completed, verdict=approve, doc_path set', () => {
+  it('code_review_completed (approved): code_review.status=completed, verdict=approved, doc_path set', () => {
     const io = driveToCodeReviewPosition();
     const ctx = { phase: 1, task: 1 };
 
     const result = processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approve',
+      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
     }, io);
 
     expect(result.success).toBe(true);
@@ -180,7 +180,7 @@ describe('[CONTRACT] State Mutations — Code review completed mutations', () =>
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
     const codeReviewNode = taskLoop.iterations[0].nodes['code_review'] as StepNodeState;
     expect(codeReviewNode.status).toBe('completed');
-    expect(codeReviewNode.verdict).toBe('approve');
+    expect(codeReviewNode.verdict).toBe('approved');
     expect(codeReviewNode.doc_path).toBe(codeReviewDoc(1, 1));
     expect(result.mutations_applied.some((m) => m.includes('code_review') && m.includes('completed'))).toBe(true);
     expect(result.mutations_applied.some((m) => m.includes('verdict'))).toBe(true);
@@ -240,18 +240,18 @@ describe('[CONTRACT] State Mutations — Phase review completed mutations', () =
     return io;
   }
 
-  it('phase_review_completed (approved): phase_review.status=completed, verdict=approve, doc_path set', () => {
+  it('phase_review_completed (approved): phase_review.status=completed, verdict=approved, doc_path set', () => {
     const io = driveToPhaseReviewPosition();
 
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
     }, io);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const phaseReviewNode = phaseLoop.iterations[0].nodes['phase_review'] as StepNodeState;
     expect(phaseReviewNode.status).toBe('completed');
-    expect(phaseReviewNode.verdict).toBe('approve');
+    expect(phaseReviewNode.verdict).toBe('approved');
     expect(phaseReviewNode.doc_path).toBe(phaseReviewDoc(1));
     expect(result.mutations_applied.some((m) => m.includes('phase_review') && m.includes('completed'))).toBe(true);
     expect(result.mutations_applied.some((m) => m.includes('verdict'))).toBe(true);
@@ -310,7 +310,7 @@ describe('[CONTRACT] State Mutations — Gate approved mutations', () => {
     seedDoc(codeReviewDoc(1, 1));
     // In task mode, code_review_completed fires gate_task
     processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approve',
+      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
     }, io);
 
     const result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
@@ -346,7 +346,7 @@ describe('[CONTRACT] State Mutations — Gate approved mutations', () => {
     seedDoc(phaseReviewDoc(1));
     // In task mode, phase_review_completed fires gate_phase
     processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
     }, io);
 
     const result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);

@@ -131,16 +131,15 @@ describe('[CONTRACT] Gate Behavior — Autonomous mode, task gate', () => {
     expect(gate.status).toBe('completed');
   });
 
-  it('gate fires when code_review verdict = "approve" (non-"approved" string)', () => {
+  it('unrecognized verdict halts pipeline (code_review_completed with "approve")', () => {
     const io = driveToExecutionWithConfig(autonomousConfig(), 1);
     drivePhasePlanning(io);
     const result = driveTaskToCodeReview(io, 1, 1, 'approve');
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('gate_task');
-
-    const gate = getTaskGateState(io, 1, 1);
-    expect(gate.gate_active).toBe(true);
+    expect(result.action).toBe('display_halted');
+    expect(io.currentState!.graph.status).toBe('halted');
+    expect(io.currentState!.pipeline.halt_reason).toContain('approve');
   });
 });
 
@@ -151,7 +150,7 @@ describe('[CONTRACT] Gate Behavior — Autonomous mode, phase gate', () => {
   it('auto-approves when phase_review verdict = "approved"', () => {
     const io = driveToExecutionWithConfig(autonomousConfig(), 1);
     drivePhasePlanning(io);
-    // driveTaskWith uses verdict='approve' → task gate fires (autonomous, non-approved) → approves it
+    // driveTaskWith uses verdict='approved' → task gate auto-approves (autonomous)
     driveTaskWith(io, 1, 1);
     const result = driveToPhaseReviewCompleted(io, 'approved');
 
@@ -163,17 +162,16 @@ describe('[CONTRACT] Gate Behavior — Autonomous mode, phase gate', () => {
     expect(gate.status).toBe('completed');
   });
 
-  it('gate fires when phase_review verdict = "approve" (non-"approved" string)', () => {
+  it('unrecognized verdict halts pipeline (phase_review_completed with "approve")', () => {
     const io = driveToExecutionWithConfig(autonomousConfig(), 1);
     drivePhasePlanning(io);
     driveTaskWith(io, 1, 1);
     const result = driveToPhaseReviewCompleted(io, 'approve');
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('gate_phase');
-
-    const gate = getPhaseGateState(io, 1);
-    expect(gate.gate_active).toBe(true);
+    expect(result.action).toBe('display_halted');
+    expect(io.currentState!.graph.status).toBe('halted');
+    expect(io.currentState!.pipeline.halt_reason).toContain('approve');
   });
 });
 
@@ -185,7 +183,7 @@ describe('[CONTRACT] Gate Behavior — Phase mode', () => {
     const io = driveToExecutionWithConfig(phaseConfig(), 1);
     drivePhasePlanning(io);
     // verdict is irrelevant — phase mode unconditionally auto-approves task gate
-    const result = driveTaskToCodeReview(io, 1, 1, 'approve');
+    const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
     expect(result.success).toBe(true);
     expect(result.action).not.toBe('gate_task');
@@ -200,7 +198,7 @@ describe('[CONTRACT] Gate Behavior — Phase mode', () => {
     drivePhasePlanning(io);
     // In phase mode task gate auto-approves — driveTaskWith handles either case
     driveTaskWith(io, 1, 1);
-    const result = driveToPhaseReviewCompleted(io, 'approve');
+    const result = driveToPhaseReviewCompleted(io, 'approved');
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('gate_phase');
@@ -217,7 +215,7 @@ describe('[CONTRACT] Gate Behavior — Task mode', () => {
   it('task gate fires ("task" not in auto_approve_modes: [phase])', () => {
     const io = driveToExecutionWithConfig(taskConfig(), 1);
     drivePhasePlanning(io);
-    const result = driveTaskToCodeReview(io, 1, 1, 'approve');
+    const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('gate_task');
@@ -231,7 +229,7 @@ describe('[CONTRACT] Gate Behavior — Task mode', () => {
     drivePhasePlanning(io);
     // In task mode, task gate fires — driveTaskWith approves it
     driveTaskWith(io, 1, 1);
-    const result = driveToPhaseReviewCompleted(io, 'approve');
+    const result = driveToPhaseReviewCompleted(io, 'approved');
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('gate_phase');
@@ -246,7 +244,7 @@ describe('[CONTRACT] Gate Behavior — Ask mode', () => {
     // ask mode + pipeline.gate_mode=null → walker returns ask_gate_mode before activating gate
     const io = driveToExecutionWithConfig(askConfig(), 1);
     drivePhasePlanning(io);
-    const result = driveTaskToCodeReview(io, 1, 1, 'approve');
+    const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('ask_gate_mode');
@@ -302,7 +300,7 @@ describe('[CONTRACT] Gate Behavior — Gate mode precedence', () => {
     io.currentState!.pipeline.gate_mode = 'phase';
 
     drivePhasePlanning(io);
-    const result = driveTaskToCodeReview(io, 1, 1, 'approve');
+    const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
     expect(result.success).toBe(true);
     expect(result.action).not.toBe('gate_task');

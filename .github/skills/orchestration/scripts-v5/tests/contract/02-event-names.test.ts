@@ -204,7 +204,7 @@ describe('[CONTRACT] Event Names — gate events', () => {
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     seedDoc(codeReviewDoc(1, 1));
     const gateResult = processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approve',
+      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
     }, io);
     expect(gateResult.action).toBe('gate_task');
     const result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
@@ -213,7 +213,7 @@ describe('[CONTRACT] Event Names — gate events', () => {
   });
 
   it('phase_gate_approved is a valid v5 event', () => {
-    const io = driveToExecutionWithConfig(commitConfig, 1);
+    const io = driveToExecutionWithConfig(taskGateConfig, 1);
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
@@ -224,7 +224,7 @@ describe('[CONTRACT] Event Names — gate events', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     const gateResult = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
     }, io);
     expect(gateResult.action).toBe('gate_phase');
     const result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
@@ -365,7 +365,7 @@ describe('[CONTRACT] Event Names — task execution events', () => {
     processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
     seedDoc(codeReviewDoc(1, 1));
     const result = processEvent('code_review_completed', PROJECT_DIR, {
-      phase: 1, task: 1, doc_path: codeReviewDoc(1, 1), verdict: 'approve',
+      phase: 1, task: 1, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
     }, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
@@ -431,7 +431,7 @@ describe('[CONTRACT] Event Names — phase review events', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
     }, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
@@ -474,7 +474,7 @@ describe('[CONTRACT] Event Names — source control events', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     let r = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
     }, io);
     if (r.action === 'gate_phase') {
       r = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
@@ -497,7 +497,7 @@ describe('[CONTRACT] Event Names — source control events', () => {
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     let r = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
     }, io);
     if (r.action === 'gate_phase') {
       r = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
