@@ -8,19 +8,9 @@ interface RetryBadgeProps {
 }
 
 export function RetryBadge({ retries, max }: RetryBadgeProps) {
-  const isMaxed = retries === max;
-
   return (
     <Badge
-      variant={isMaxed ? "outline" : "secondary"}
-      style={
-        isMaxed
-          ? {
-              color: "var(--color-warning)",
-              borderColor: "var(--color-warning)",
-            }
-          : undefined
-      }
+      variant="secondary"
       aria-label={`Retry count: ${retries} of ${max}`}
     >
       Retries: {retries}/{max}

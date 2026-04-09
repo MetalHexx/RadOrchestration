@@ -590,4 +590,8 @@ describe('normalizeDocPath', () => {
     );
     expect(result).toBe('tasks/T01.md');
   });
+
+  it('strips prefix when basePath has backslashes and docPath has mixed separators', () => {
+    expect(normalizeDocPath('C:\\base\\proj/file.md', 'C:\\base', 'proj')).toBe('file.md');
+  });
 });
