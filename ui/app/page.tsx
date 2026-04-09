@@ -40,18 +40,23 @@ export default function Home() {
   const configEditor = useConfigEditor();
 
   const [fileList, setFileList] = useState<string[]>([]);
-  const [maxRetries, setMaxRetries] = useState<number>(3);
+  const [globalMaxRetries, setGlobalMaxRetries] = useState<number>(3);
 
   useEffect(() => {
     fetch("/api/config")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: ConfigGetResponse | null) => {
         if (data?.config?.limits?.max_retries_per_task != null) {
-          setMaxRetries(data.config.limits.max_retries_per_task);
+          setGlobalMaxRetries(data.config.limits.max_retries_per_task);
         }
       })
       .catch(() => {});
   }, []);
+
+  const maxRetries = useMemo(
+    () => projectState?.config?.limits?.max_retries_per_task ?? globalMaxRetries,
+    [projectState, globalMaxRetries],
+  );
 
   useEffect(() => {
     if (!selectedProject) {

@@ -81,7 +81,7 @@ export function createMockIO(initialState: PipelineState | null = null): MockIO 
 
 export function createScaffoldedState(): PipelineState {
   const io = createMockIO(null);
-  processEvent('research_started', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io);
   return io.currentState!;
 }
 
@@ -194,7 +194,7 @@ export const phaseReviewDoc = (phase: number): string =>
  */
 export function driveToExecutionWithConfig(config: OrchestrationConfig, totalPhases = 1): MockIO {
   const io = createMockIOWithConfig(null, config);
-  processEvent('research_started', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io);
   const state = io.currentState!;
   completePlanningSteps(state, 'master_plan');
   const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
@@ -266,7 +266,7 @@ export function drivePhaseReviewApproval(io: MockIO, phase: number): PipelineRes
  */
 export function driveToReviewTier(config: OrchestrationConfig): MockIO {
   const io = createMockIOWithConfig(null, config);
-  processEvent('research_started', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io);
 
   const state = io.currentState!;
   completePlanningSteps(state, 'master_plan');
