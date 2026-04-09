@@ -139,7 +139,7 @@ describe('pipeline CLI — run()', () => {
     expect(result.error?.message).toContain('--project-dir');
   });
 
-  it('missing --config does NOT produce an error — processEvent is called without the --config arg', () => {
+  it('missing --config does NOT produce an error', () => {
     mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
 
     run(['--event', 'task_started', '--project-dir', '/tmp/test-project']);

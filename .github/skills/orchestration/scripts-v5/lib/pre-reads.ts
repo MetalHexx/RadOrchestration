@@ -1,5 +1,4 @@
 import { join, isAbsolute } from 'node:path';
-import { readFileSync } from 'node:fs';
 import type { PreReadResult, EventContext, EventIndexEntry, IOAdapter } from './types.js';
 import { validateFrontmatter } from './frontmatter-validators.js';
 
@@ -20,37 +19,10 @@ export function preRead(
   context: Partial<EventContext>,
   readDocument: IOAdapter['readDocument'],
   projectDir: string,
+  state: unknown,
   entry: EventIndexEntry
 ): PreReadResult {
   if (event === 'plan_approved' && (!context.doc_path || context.doc_path.trim() === '')) {
-    let stateRaw: string;
-    try {
-      stateRaw = readFileSync(join(projectDir, 'state.json'), 'utf-8');
-    } catch {
-      return {
-        context,
-        error: {
-          message: `Cannot derive master plan path: state.json unreadable at '${projectDir}'`,
-          event: 'plan_approved',
-          field: 'doc_path',
-        },
-      };
-    }
-
-    let state: unknown;
-    try {
-      state = JSON.parse(stateRaw);
-    } catch {
-      return {
-        context,
-        error: {
-          message: 'Cannot derive master plan path: state.json is not valid JSON',
-          event: 'plan_approved',
-          field: 'doc_path',
-        },
-      };
-    }
-
     const derived = extractMasterPlanDocPath(state);
     if (!derived) {
       return {

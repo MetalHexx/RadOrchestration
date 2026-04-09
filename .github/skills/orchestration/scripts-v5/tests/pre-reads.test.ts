@@ -1,13 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { preRead } from '../lib/pre-reads.js';
 import type { EventContext, EventIndexEntry, IOAdapter } from '../lib/types.js';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-const PROJECT_DIR = join(tmpdir(), 'pre-reads-test');
+const PROJECT_DIR = '/tmp/pre-reads-test';
 const ABS_DOC_PATH = join(PROJECT_DIR, 'tasks', 'TASK-01.md');
 const REL_DOC_PATH = join('tasks', 'TASK-01.md');
 const EXPECTED_RESOLVED_PATH = join(PROJECT_DIR, 'tasks', 'TASK-01.md');
@@ -61,7 +59,7 @@ describe('preRead — started event', () => {
     const mockFn = vi.fn();
     const readDocument: IOAdapter['readDocument'] = mockFn;
 
-    const result = preRead('step_started', context, readDocument, PROJECT_DIR, entry);
+    const result = preRead('step_started', context, readDocument, PROJECT_DIR, {}, entry);
 
     expect(result.context).toBe(context);
     expect(result.error).toBeUndefined();
@@ -78,7 +76,7 @@ describe('preRead — approved event', () => {
     const mockFn = vi.fn();
     const readDocument: IOAdapter['readDocument'] = mockFn;
 
-    const result = preRead('gate_approved', context, readDocument, PROJECT_DIR, entry);
+    const result = preRead('gate_approved', context, readDocument, PROJECT_DIR, {}, entry);
 
     expect(result.context).toBe(context);
     expect(result.error).toBeUndefined();
@@ -95,7 +93,7 @@ describe('preRead — completed event on step without doc_output_field', () => {
     const mockFn = vi.fn();
     const readDocument: IOAdapter['readDocument'] = mockFn;
 
-    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, entry);
+    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, {}, entry);
 
     expect(result.context).toBe(context);
     expect(result.error).toBeUndefined();
@@ -112,7 +110,7 @@ describe('preRead — completed event on a gate node', () => {
     const mockFn = vi.fn();
     const readDocument: IOAdapter['readDocument'] = mockFn;
 
-    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, entry);
+    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, {}, entry);
 
     expect(result.context).toBe(context);
     expect(result.error).toBeUndefined();
@@ -132,7 +130,7 @@ describe('preRead — completed event with valid doc_path on step with doc_outpu
     });
     const readDocument: IOAdapter['readDocument'] = mockFn;
 
-    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, entry);
+    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, {}, entry);
 
     expect(result.error).toBeUndefined();
     expect(mockFn).toHaveBeenCalledWith(ABS_DOC_PATH);
@@ -155,7 +153,7 @@ describe('preRead — completed event with missing doc_path', () => {
     const mockFn = vi.fn();
     const readDocument: IOAdapter['readDocument'] = mockFn;
 
-    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, entry);
+    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, {}, entry);
 
     expect(result.context).toBe(context);
     expect(result.error).toBeDefined();
@@ -171,7 +169,7 @@ describe('preRead — completed event with missing doc_path', () => {
     const mockFn = vi.fn();
     const readDocument: IOAdapter['readDocument'] = mockFn;
 
-    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, entry);
+    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, {}, entry);
 
     expect(result.error).toBeDefined();
     expect(result.error!.field).toBe('doc_path');
@@ -189,7 +187,7 @@ describe('preRead — completed event with unreadable document', () => {
     const mockFn = vi.fn().mockReturnValue(null);
     const readDocument: IOAdapter['readDocument'] = mockFn;
 
-    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, entry);
+    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, {}, entry);
 
     expect(result.context).toBe(context);
     expect(result.error).toBeDefined();
@@ -219,7 +217,7 @@ describe('preRead — frontmatter merge priority', () => {
     });
     const readDocument: IOAdapter['readDocument'] = mockFn;
 
-    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, entry);
+    const result = preRead('step_completed', context, readDocument, PROJECT_DIR, {}, entry);
 
     expect(result.error).toBeUndefined();
     // Context fields win over frontmatter
@@ -243,7 +241,7 @@ describe('preRead — relative doc_path resolution', () => {
     });
     const readDocument: IOAdapter['readDocument'] = mockFn;
 
-    preRead('step_completed', context, readDocument, PROJECT_DIR, entry);
+    preRead('step_completed', context, readDocument, PROJECT_DIR, {}, entry);
 
     expect(mockFn).toHaveBeenCalledWith(EXPECTED_RESOLVED_PATH);
   });
@@ -252,20 +250,7 @@ describe('preRead — relative doc_path resolution', () => {
 // ── plan_approved auto-derivation ─────────────────────────────────────────────
 
 describe('preRead — plan_approved: auto-derivation from graph.nodes.master_plan.doc_path', () => {
-  let tmpDir: string;
-
-  beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'pre-reads-plan-approved-'));
-    writeFileSync(
-      join(tmpDir, 'state.json'),
-      JSON.stringify({ graph: { nodes: { master_plan: { doc_path: 'plans/MASTER-PLAN.md' } } } }),
-      'utf-8',
-    );
-  });
-
-  afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
-  });
+  const MOCK_STATE = { graph: { nodes: { master_plan: { doc_path: 'plans/MASTER-PLAN.md' } } } };
 
   it('derives doc_path from state.graph.nodes.master_plan.doc_path when no doc_path in context', () => {
     const entry: EventIndexEntry = {
@@ -284,10 +269,10 @@ describe('preRead — plan_approved: auto-derivation from graph.nodes.master_pla
       content: '---\ntotal_phases: 3\n---\n# Plan',
     });
 
-    const result = preRead('plan_approved', {}, readDocument, tmpDir, entry);
+    const result = preRead('plan_approved', {}, readDocument, PROJECT_DIR, MOCK_STATE, entry);
 
     expect(result.error).toBeUndefined();
-    expect(result.context.doc_path).toBe(join(tmpDir, 'plans/MASTER-PLAN.md'));
+    expect(result.context.doc_path).toBe(join(PROJECT_DIR, 'plans/MASTER-PLAN.md'));
   });
 
   it('returns structured error when readDocument returns null for plan_approved', () => {
@@ -304,7 +289,7 @@ describe('preRead — plan_approved: auto-derivation from graph.nodes.master_pla
     };
     const readDocument: IOAdapter['readDocument'] = vi.fn().mockReturnValue(null);
 
-    const result = preRead('plan_approved', {}, readDocument, tmpDir, entry);
+    const result = preRead('plan_approved', {}, readDocument, PROJECT_DIR, MOCK_STATE, entry);
 
     expect(result.error).toBeDefined();
     expect(result.error!.message).toContain('document not found or unreadable');
@@ -312,12 +297,7 @@ describe('preRead — plan_approved: auto-derivation from graph.nodes.master_pla
   });
 
   it('errors with message containing "graph.nodes.master_plan.doc_path is not set" when state has no master_plan doc_path', () => {
-    writeFileSync(
-      join(tmpDir, 'state.json'),
-      JSON.stringify({ graph: { nodes: { master_plan: { doc_path: null } } } }),
-      'utf-8',
-    );
-
+    const emptyState = { graph: { nodes: { master_plan: { doc_path: null } } } };
     const entry: EventIndexEntry = {
       nodeDef: {
         id: 'plan_approval_gate',
@@ -331,7 +311,7 @@ describe('preRead — plan_approved: auto-derivation from graph.nodes.master_pla
     };
     const readDocument: IOAdapter['readDocument'] = vi.fn();
 
-    const result = preRead('plan_approved', {}, readDocument, tmpDir, entry);
+    const result = preRead('plan_approved', {}, readDocument, PROJECT_DIR, emptyState, entry);
 
     expect(result.error).toBeDefined();
     expect(result.error!.message).toContain('graph.nodes.master_plan.doc_path is not set');

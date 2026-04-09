@@ -300,7 +300,7 @@ export function processEvent(
         },
       };
     }
-    const preReadResult = preRead(event, context, io.readDocument, projectDir, entry);
+    const preReadResult = preRead(event, context, io.readDocument, projectDir, state, entry);
     if (preReadResult.error) {
       return {
         success: false,

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { processEvent } from '../../lib/engine.js';
 import {
   createMockIOWithConfig,
@@ -10,11 +10,7 @@ import {
   driveToExecutionWithConfig,
   phasePlanDoc,
 } from '../fixtures/parity-states.js';
-import { StepNodeState } from '../../lib/types.js';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { randomUUID } from 'node:crypto';
-import { join } from 'node:path';
+import type { StepNodeState } from '../../lib/types.js';
 
 beforeEach(() => {
   for (const key of Object.keys(DOC_STORE)) {
@@ -51,70 +47,32 @@ function driveToPhaseCreated() {
   return io;
 }
 
-// ── Group 1 — doc_path derivation: state unreadable ──────────────────────────
+// ── Group 1 — doc_path derivation: state is null (no state.json) ─────────────
 
-describe('[CONTRACT] Error shape — doc_path derivation: state unreadable', () => {
-  it('returns structured error when state.json does not exist at projectDir', () => {
-    const io = driveToApprovalReadiness();
+describe('[CONTRACT] Error shape — doc_path derivation: state is null', () => {
+  it('returns structured error when state is null for non-start event', () => {
+    const io = createMockIOWithConfig(null, config);
     const result = processEvent('plan_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(false);
     expect(result.action).toBe(null);
     expect(result.error?.message).toBe(
-      `Cannot derive master plan path: state.json unreadable at '${PROJECT_DIR}'`,
+      'No state.json found; use --event start',
     );
     expect(result.error?.event).toBe('plan_approved');
-    expect(result.error?.field).toBe('doc_path');
     expect(result.mutations_applied).toEqual([]);
   });
 });
 
-// ── Group 2 — doc_path derivation: state not valid JSON ──────────────────────
-
-describe('[CONTRACT] Error shape — doc_path derivation: state not valid JSON', () => {
-  let tempDir: string;
-
-  beforeEach(() => {
-    tempDir = join(tmpdir(), `v5-error-test-${randomUUID()}`);
-    mkdirSync(tempDir, { recursive: true });
-  });
-
-  afterEach(() => {
-    rmSync(tempDir, { recursive: true, force: true });
-  });
-
-  it('returns structured error when state.json contains invalid JSON', () => {
-    writeFileSync(join(tempDir, 'state.json'), 'not-valid-json{');
-    const io = driveToApprovalReadiness();
-    const result = processEvent('plan_approved', tempDir, {}, io);
-    expect(result.success).toBe(false);
-    expect(result.error?.message).toBe(
-      'Cannot derive master plan path: state.json is not valid JSON',
-    );
-    expect(result.error?.field).toBe('doc_path');
-  });
-});
+// ── Group 2 — (removed: invalid-JSON error path was eliminated by passing state from engine) ──
 
 // ── Group 3 — doc_path derivation: doc_path not set in state ─────────────────
 
 describe('[CONTRACT] Error shape — doc_path derivation: doc_path not set in state', () => {
-  let tempDir: string;
-
-  beforeEach(() => {
-    tempDir = join(tmpdir(), `v5-error-test-${randomUUID()}`);
-    mkdirSync(tempDir, { recursive: true });
-  });
-
-  afterEach(() => {
-    rmSync(tempDir, { recursive: true, force: true });
-  });
-
   it('returns structured error when graph.nodes.master_plan.doc_path is missing', () => {
-    writeFileSync(
-      join(tempDir, 'state.json'),
-      JSON.stringify({ graph: { nodes: { master_plan: { doc_path: null } } } }),
-    );
     const io = driveToApprovalReadiness();
-    const result = processEvent('plan_approved', tempDir, {}, io);
+    // Clear the master_plan doc_path in the mock state to simulate missing derivation
+    (io.currentState!.graph.nodes['master_plan'] as StepNodeState).doc_path = null;
+    const result = processEvent('plan_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe(
       'Cannot derive master plan path: graph.nodes.master_plan.doc_path is not set',

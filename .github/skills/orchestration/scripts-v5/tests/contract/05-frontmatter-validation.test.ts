@@ -16,7 +16,7 @@ import {
   phaseReviewDoc,
   TASKS_2,
 } from '../fixtures/parity-states.js';
-import { StepNodeState } from '../../lib/types.js';
+import type { StepNodeState } from '../../lib/types.js';
 
 beforeEach(() => {
   for (const key of Object.keys(DOC_STORE)) {
