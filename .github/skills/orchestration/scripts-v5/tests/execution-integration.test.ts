@@ -178,7 +178,7 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
   processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
 
   processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('execution_completed', PROJECT_DIR, ctx, io);
+  processEvent('task_completed', PROJECT_DIR, ctx, io);
 
   processEvent('code_review_started', PROJECT_DIR, ctx, io);
 
@@ -208,7 +208,7 @@ function drivePhasePostTasks(io: MockIO, phase: number, expectCommit: boolean): 
   processEvent('phase_report_started', PROJECT_DIR, ctx, io);
   const reportDoc = DOC_PATHS.phaseReport(phase);
   seedDoc(reportDoc);
-  processEvent('phase_report_completed', PROJECT_DIR, { ...ctx, doc_path: reportDoc }, io);
+  processEvent('phase_report_created', PROJECT_DIR, { ...ctx, doc_path: reportDoc }, io);
 
   processEvent('phase_review_started', PROJECT_DIR, ctx, io);
   const reviewDoc = DOC_PATHS.phaseReview(phase);
@@ -230,8 +230,8 @@ function drivePhasePostTasks(io: MockIO, phase: number, expectCommit: boolean): 
   }
 
   // commit conditional takes true branch
-  processEvent('source_control_commit_started', PROJECT_DIR, ctx, io);
-  return processEvent('source_control_commit_completed', PROJECT_DIR, ctx, io);
+  processEvent('task_commit_requested', PROJECT_DIR, ctx, io);
+  return processEvent('task_committed', PROJECT_DIR, ctx, io);
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -413,8 +413,8 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // final_approval_gate active (after_final_review = true)
     expect(result.action).toBe('request_final_approval');
 
-    // ── final_review_approved ────────────────────────────────────────────
-    result = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+    // ── final_approved ────────────────────────────────────────────
+    result = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     // PR conditional: auto_pr='always' neq 'never' → true branch → invoke PR
     expect(result.action).toBe('invoke_source_control_pr');
@@ -426,13 +426,13 @@ describe('Execution-tier integration — complete pipeline run', () => {
       expect(prGate.status).toBe('in_progress');
     }
 
-    // ── source_control_pr_started ────────────────────────────────────────
-    result = processEvent('source_control_pr_started', PROJECT_DIR, {}, io);
+    // ── pr_requested ────────────────────────────────────────
+    result = processEvent('pr_requested', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_pr');
 
-    // ── source_control_pr_completed → display_complete ───────────────────
-    result = processEvent('source_control_pr_completed', PROJECT_DIR, {}, io);
+    // ── pr_created → display_complete ───────────────────
+    result = processEvent('pr_created', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');
 
@@ -483,7 +483,7 @@ describe('Execution-tier integration — gate mode variations', () => {
       const h = DOC_PATHS.taskHandoff(1, 1); seedDoc(h);
       processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: h }, io);
       processEvent('execution_started', PROJECT_DIR, ctx, io);
-      processEvent('execution_completed', PROJECT_DIR, ctx, io);
+      processEvent('task_completed', PROJECT_DIR, ctx, io);
       processEvent('code_review_started', PROJECT_DIR, ctx, io);
       const r = DOC_PATHS.codeReview(1, 1); seedDoc(r);
       result = processEvent('code_review_completed', PROJECT_DIR, { ...ctx, doc_path: r, verdict: 'approve' }, io);
@@ -514,7 +514,7 @@ describe('Execution-tier integration — gate mode variations', () => {
       const h = DOC_PATHS.taskHandoff(1, 2); seedDoc(h);
       processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: h }, io);
       processEvent('execution_started', PROJECT_DIR, ctx, io);
-      processEvent('execution_completed', PROJECT_DIR, ctx, io);
+      processEvent('task_completed', PROJECT_DIR, ctx, io);
       processEvent('code_review_started', PROJECT_DIR, ctx, io);
       const r = DOC_PATHS.codeReview(1, 2); seedDoc(r);
       result = processEvent('code_review_completed', PROJECT_DIR, { ...ctx, doc_path: r, verdict: 'approve' }, io);
@@ -532,7 +532,7 @@ describe('Execution-tier integration — gate mode variations', () => {
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     const reportDoc = DOC_PATHS.phaseReport(1);
     seedDoc(reportDoc);
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: reportDoc }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: reportDoc }, io);
 
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     const reviewDoc = DOC_PATHS.phaseReview(1);
@@ -604,7 +604,7 @@ describe('Execution-tier integration — gate mode variations', () => {
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     const reportDoc = DOC_PATHS.phaseReport(1);
     seedDoc(reportDoc);
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: reportDoc }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: reportDoc }, io);
 
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     const reviewDoc = DOC_PATHS.phaseReview(1);
@@ -706,8 +706,8 @@ describe('Execution-tier integration — conditional branch variations', () => {
       verdict: 'approve',
     }, io);
 
-    // final_review_approved → PR conditional: 'never' neq 'never' → false → skip PR → display_complete
-    result = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+    // final_approved → PR conditional: 'never' neq 'never' → false → skip PR → display_complete
+    result = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');
 
@@ -740,7 +740,7 @@ describe('Execution-tier integration — conditional branch variations', () => {
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     const reportDoc = DOC_PATHS.phaseReport(1);
     seedDoc(reportDoc);
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: reportDoc }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: reportDoc }, io);
 
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     const reviewDoc = DOC_PATHS.phaseReview(1);
@@ -794,8 +794,8 @@ describe('Execution-tier integration — conditional branch variations', () => {
       verdict: 'approve',
     }, io);
 
-    // final_review_approved → PR conditional: 'always' neq 'never' → true → invoke PR
-    const result = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+    // final_approved → PR conditional: 'always' neq 'never' → true → invoke PR
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_pr');
 
@@ -938,7 +938,7 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
       doc_path: handoffDoc,
     }, io);
     processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 2 }, io);
-    processEvent('execution_completed', PROJECT_DIR, { phase: 1, task: 2 }, io);
+    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 2 }, io);
     processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 2 }, io);
     const reviewDoc = DOC_PATHS.codeReview(1, 2);
     seedDoc(reviewDoc);

@@ -215,7 +215,7 @@ export function driveTaskWith(io: MockIO, phase: number, task: number): Pipeline
   seedDoc(handoffDoc);
   processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
   processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('execution_completed', PROJECT_DIR, ctx, io);
+  processEvent('task_completed', PROJECT_DIR, ctx, io);
   processEvent('code_review_started', PROJECT_DIR, ctx, io);
   const reviewDoc = codeReviewDoc(phase, task);
   seedDoc(reviewDoc);
@@ -241,7 +241,7 @@ export function driveTaskWith(io: MockIO, phase: number, task: number): Pipeline
 export function drivePhaseReviewApproval(io: MockIO, phase: number): PipelineResult {
   processEvent('phase_report_started', PROJECT_DIR, { phase }, io);
   seedDoc(phaseReportDoc(phase));
-  processEvent('phase_report_completed', PROJECT_DIR, { phase, doc_path: phaseReportDoc(phase) }, io);
+  processEvent('phase_report_created', PROJECT_DIR, { phase, doc_path: phaseReportDoc(phase) }, io);
 
   processEvent('phase_review_started', PROJECT_DIR, { phase }, io);
   seedDoc(phaseReviewDoc(phase));
@@ -289,7 +289,7 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
     seedDoc(thDoc);
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: thDoc }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     const crDoc = path.join(PROJECT_DIR, 'tasks', `p1-t${t}-review.md`);
     seedDoc(crDoc);
@@ -307,7 +307,7 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
   processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
   const prDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-report.md');
   seedDoc(prDoc);
-  processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: prDoc }, io);
+  processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: prDoc }, io);
 
   processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
   const prvDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-review.md');
@@ -323,8 +323,8 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
 
   // If commit fires, drive it
   if (result.action === 'invoke_source_control_commit') {
-    processEvent('source_control_commit_started', PROJECT_DIR, { phase: 1 }, io);
-    processEvent('source_control_commit_completed', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('task_commit_requested', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('task_committed', PROJECT_DIR, { phase: 1 }, io);
   }
 
   return io;

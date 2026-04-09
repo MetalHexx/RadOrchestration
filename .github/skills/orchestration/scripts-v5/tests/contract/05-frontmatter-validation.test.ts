@@ -53,7 +53,7 @@ function driveToCodeReview() {
   seedDoc(taskHandoffDoc(1, 1));
   processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
   processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('execution_completed', PROJECT_DIR, ctx, io);
+  processEvent('task_completed', PROJECT_DIR, ctx, io);
   processEvent('code_review_started', PROJECT_DIR, ctx, io);
   return io;
 }
@@ -66,7 +66,7 @@ function driveToPhaseReview() {
   driveTaskWith(io, 1, 1);
   processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
   seedDoc(phaseReportDoc(1));
-  processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+  processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
   processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
   return io;
 }

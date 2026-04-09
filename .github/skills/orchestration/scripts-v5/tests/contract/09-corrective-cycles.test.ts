@@ -54,7 +54,7 @@ function driveTaskWithVerdict(
   seedDoc(handoff);
   processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoff }, io);
   processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('execution_completed', PROJECT_DIR, ctx, io);
+  processEvent('task_completed', PROJECT_DIR, ctx, io);
   processEvent('code_review_started', PROJECT_DIR, ctx, io);
   const review = codeReviewDoc(phase, task);
   seedDoc(review);
@@ -80,7 +80,7 @@ function driveCorrectiveTask(
   seedDoc(handoff);
   processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoff }, io);
   processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('execution_completed', PROJECT_DIR, ctx, io);
+  processEvent('task_completed', PROJECT_DIR, ctx, io);
   processEvent('code_review_started', PROJECT_DIR, ctx, io);
   const review = codeReviewDoc(phase, task);
   seedDoc(review);

@@ -507,7 +507,7 @@ describe('[PARITY] v4:resolveExecution', () => {
       doc_path: taskHandoffDoc(1, 1),
     }, io);
     processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    const result = processEvent('execution_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_code_reviewer');
@@ -581,7 +581,7 @@ describe('[PARITY] v4:resolveExecution', () => {
     // Drive to phase review
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    const result = processEvent('phase_report_completed', PROJECT_DIR, {
+    const result = processEvent('phase_report_created', PROJECT_DIR, {
       phase: 1,
       doc_path: phaseReportDoc(1),
     }, io);
@@ -608,7 +608,7 @@ describe('[PARITY] v4:resolveExecution', () => {
 
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, {
+    processEvent('phase_report_created', PROJECT_DIR, {
       phase: 1,
       doc_path: phaseReportDoc(1),
     }, io);
@@ -632,8 +632,8 @@ describe('[PARITY] v4:resolveExecution', () => {
     expect(result.action).toBe('invoke_source_control_commit');
 
     // Drive through commit → iteration 0 completed → advance to iteration 1 → create_phase_plan
-    processEvent('source_control_commit_started', PROJECT_DIR, { phase: 1 }, io);
-    result = processEvent('source_control_commit_completed', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('task_commit_requested', PROJECT_DIR, { phase: 1 }, io);
+    result = processEvent('task_committed', PROJECT_DIR, { phase: 1 }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('create_phase_plan');
 
@@ -662,7 +662,7 @@ describe('[PARITY] v4:resolveExecution', () => {
     driveTaskWith(io, 1, 2);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, {
+    processEvent('phase_report_created', PROJECT_DIR, {
       phase: 1,
       doc_path: phaseReportDoc(1),
     }, io);
@@ -676,8 +676,8 @@ describe('[PARITY] v4:resolveExecution', () => {
     }, io);
     // Approve phase 1 gate, then drive commit (auto_commit='ask')
     processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
-    processEvent('source_control_commit_started', PROJECT_DIR, { phase: 1 }, io);
-    processEvent('source_control_commit_completed', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('task_commit_requested', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('task_committed', PROJECT_DIR, { phase: 1 }, io);
 
     // ── Phase 2 full lifecycle ───────────────────────────────────────────
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 2 }, io);
@@ -690,7 +690,7 @@ describe('[PARITY] v4:resolveExecution', () => {
     driveTaskWith(io, 2, 2);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 2 }, io);
     seedDoc(phaseReportDoc(2));
-    processEvent('phase_report_completed', PROJECT_DIR, {
+    processEvent('phase_report_created', PROJECT_DIR, {
       phase: 2,
       doc_path: phaseReportDoc(2),
     }, io);
@@ -704,8 +704,8 @@ describe('[PARITY] v4:resolveExecution', () => {
     }, io);
     // Approve phase 2 gate, drive commit → phase_loop completes → spawn_final_reviewer
     processEvent('phase_gate_approved', PROJECT_DIR, { phase: 2 }, io);
-    processEvent('source_control_commit_started', PROJECT_DIR, { phase: 2 }, io);
-    const result = processEvent('source_control_commit_completed', PROJECT_DIR, { phase: 2 }, io);
+    processEvent('task_commit_requested', PROJECT_DIR, { phase: 2 }, io);
+    const result = processEvent('task_committed', PROJECT_DIR, { phase: 2 }, io);
 
     expect(result.success).toBe(true);
     // Phase gate approved → commit (auto_commit='ask') driven → phase_loop completes → spawn_final_reviewer
@@ -789,7 +789,7 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
 
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
 
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
@@ -834,7 +834,7 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     seedDoc(handoffDoc);
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     const reviewDoc = codeReviewDoc(1, 1);
     seedDoc(reviewDoc);
@@ -870,7 +870,7 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
 
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
 
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
@@ -932,7 +932,7 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
 
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
 
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
@@ -972,7 +972,7 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     seedDoc(askHandoff);
     processEvent('task_handoff_created', PROJECT_DIR, { ...askCtx, doc_path: askHandoff }, io);
     processEvent('execution_started', PROJECT_DIR, askCtx, io);
-    processEvent('execution_completed', PROJECT_DIR, askCtx, io);
+    processEvent('task_completed', PROJECT_DIR, askCtx, io);
     processEvent('code_review_started', PROJECT_DIR, askCtx, io);
     const askReview = codeReviewDoc(1, 1);
     seedDoc(askReview);
@@ -1155,7 +1155,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     seedDoc(handoffDoc);
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     const reviewDoc = codeReviewDoc(phase, task);
     seedDoc(reviewDoc);
@@ -1211,7 +1211,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     seedDoc(corrHandoff);
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: corrHandoff }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     const corrReview = codeReviewDoc(1, 2);
     seedDoc(corrReview);
@@ -1248,7 +1248,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     // Phase report
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
 
     // Phase review with changes_requested
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
@@ -1287,7 +1287,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     seedDoc(taskHandoffDoc(1, 2));
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 2) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     seedDoc(codeReviewDoc(1, 2));
     processEvent('code_review_completed', PROJECT_DIR, {
@@ -1300,7 +1300,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     seedDoc(taskHandoffDoc(1, 2));
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 2) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     seedDoc(codeReviewDoc(1, 2));
     const result = processEvent('code_review_completed', PROJECT_DIR, {
@@ -1349,7 +1349,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     // Phase report
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
 
     // Phase review with rejected verdict
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
@@ -1382,7 +1382,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     seedDoc(taskHandoffDoc(1, 1));
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     seedDoc(codeReviewDoc(1, 1));
     let result = processEvent('code_review_completed', PROJECT_DIR, {
@@ -1412,7 +1412,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     // Phase report + review with changes_requested (phase-level corrective)
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
 
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
@@ -1427,7 +1427,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     seedDoc(taskHandoffDoc(1, 1));
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     seedDoc(codeReviewDoc(1, 1));
     let result = processEvent('code_review_completed', PROJECT_DIR, {
@@ -1460,7 +1460,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     seedDoc(taskHandoffDoc(1, 1));
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     seedDoc(codeReviewDoc(1, 1));
     processEvent('code_review_completed', PROJECT_DIR, {
@@ -1473,7 +1473,7 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     seedDoc(taskHandoffDoc(1, 1));
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     seedDoc(codeReviewDoc(1, 1));
     const result = processEvent('code_review_completed', PROJECT_DIR, {
@@ -1538,7 +1538,7 @@ describe('[PARITY] v4:resolveReview', () => {
     processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDoc }, io);
 
     // final_approval_gate fires (mode_ref: human_gates.after_final_review = true, auto_approve_modes: [])
-    const approvalResult = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+    const approvalResult = processEvent('final_approved', PROJECT_DIR, {}, io);
 
     expect(approvalResult.success).toBe(true);
     // After approval, pr_gate: auto_pr='always' neq 'never' → true → invoke_source_control_pr
@@ -1562,7 +1562,7 @@ describe('[PARITY] v4:resolveReview', () => {
     seedDoc(frDoc);
     processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDoc }, io);
 
-    const result = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
 
     expect(result.success).toBe(true);
     // pr_gate false branch (empty) → all nodes complete → display_complete
@@ -1588,7 +1588,7 @@ describe('[PARITY] v4:resolveReview', () => {
     seedDoc(frDoc);
     processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDoc }, io);
 
-    const result = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_pr');
@@ -1597,7 +1597,7 @@ describe('[PARITY] v4:resolveReview', () => {
     expect(prGate.branch_taken).toBe('true');
   });
 
-  it('[PARITY] v4:resolveReview — final_review_approved then PR completed reaches display_complete', () => {
+  it('[PARITY] v4:resolveReview — final_approved then PR completed reaches display_complete', () => {
     // v4: resolveReview() — human_approved → terminal (halted in v4 — should have transitioned)
     // v5: after final_approval_gate + pr_gate + PR step complete → all nodes done → display_complete
     const config = createConfig({
@@ -1610,11 +1610,11 @@ describe('[PARITY] v4:resolveReview', () => {
     const frDoc = path.join(PROJECT_DIR, 'final-review.md');
     seedDoc(frDoc);
     processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDoc }, io);
-    processEvent('final_review_approved', PROJECT_DIR, {}, io);
+    processEvent('final_approved', PROJECT_DIR, {}, io);
 
     // Drive PR step
-    processEvent('source_control_pr_started', PROJECT_DIR, {}, io);
-    const result = processEvent('source_control_pr_completed', PROJECT_DIR, {}, io);
+    processEvent('pr_requested', PROJECT_DIR, {}, io);
+    const result = processEvent('pr_created', PROJECT_DIR, {}, io);
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');
@@ -1670,7 +1670,7 @@ describe('[PARITY] v4:resolveReview', () => {
     seedDoc(thDoc);
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: thDoc }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     const crDoc = path.join(PROJECT_DIR, 'tasks', 'p1-t1-review.md');
     seedDoc(crDoc);
@@ -1680,7 +1680,7 @@ describe('[PARITY] v4:resolveReview', () => {
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     const prDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-report.md');
     seedDoc(prDoc);
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: prDoc }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: prDoc }, io);
 
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     const prvDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-review.md');
@@ -1707,7 +1707,7 @@ describe('[PARITY] v4:resolveReview', () => {
     const frDoc = path.join(PROJECT_DIR, 'final-review.md');
     seedDoc(frDoc);
     processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDoc }, io);
-    const result = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
 
     // auto_pr='never' → pr_gate false → all done → display_complete
     expect(result.success).toBe(true);

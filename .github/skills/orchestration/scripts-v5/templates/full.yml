@@ -117,7 +117,7 @@ nodes:
             kind: step
             label: "Execute Task"
             action: execute_task
-            events: { started: execution_started, completed: execution_completed }
+            events: { started: execution_started, completed: task_completed }
             depends_on: [task_handoff]
 
           - id: code_review
@@ -141,7 +141,7 @@ nodes:
         kind: step
         label: "Phase Report"
         action: generate_phase_report
-        events: { started: phase_report_started, completed: phase_report_completed }
+        events: { started: phase_report_started, completed: phase_report_created }
         doc_output_field: doc_path
         depends_on: [task_loop]
 
@@ -175,7 +175,7 @@ nodes:
               kind: step
               label: "Source Control Commit"
               action: invoke_source_control_commit
-              events: { started: source_control_commit_started, completed: source_control_commit_completed }
+              events: { started: task_commit_requested, completed: task_committed }
               depends_on: []
           false: []
         depends_on: [phase_gate]
@@ -195,7 +195,7 @@ nodes:
     label: "Final Approval Gate"
     mode_ref: human_gates.after_final_review
     action_if_needed: request_final_approval
-    approved_event: final_review_approved
+    approved_event: final_approved
     auto_approve_modes: []
     depends_on: [final_review]
 
@@ -212,7 +212,7 @@ nodes:
           kind: step
           label: "Source Control PR"
           action: invoke_source_control_pr
-          events: { started: source_control_pr_started, completed: source_control_pr_completed }
+          events: { started: pr_requested, completed: pr_created }
           depends_on: []
       false: []
     depends_on: [final_approval_gate]

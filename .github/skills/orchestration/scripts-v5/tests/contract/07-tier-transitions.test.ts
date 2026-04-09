@@ -92,7 +92,7 @@ describe('[CONTRACT] Tier Transitions — task cycle to next task', () => {
     seedDoc(taskHandoffDoc(1, 1));
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     seedDoc(codeReviewDoc(1, 1));
     let result = processEvent('code_review_completed', PROJECT_DIR, {
@@ -127,7 +127,7 @@ describe('[CONTRACT] Tier Transitions — task cycle to next task', () => {
     seedDoc(taskHandoffDoc(1, 2));
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 2) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     seedDoc(codeReviewDoc(1, 2));
     let result = processEvent('code_review_completed', PROJECT_DIR, {
@@ -191,7 +191,7 @@ describe('[CONTRACT] Tier Transitions — phase completion to next phase', () =>
     expect(result.context).toEqual({});
   });
 
-  it('final_review_approved → display_complete', () => {
+  it('final_approved → display_complete', () => {
     const io = driveToExecutionWithConfig(config, 1);
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
@@ -206,7 +206,7 @@ describe('[CONTRACT] Tier Transitions — phase completion to next phase', () =>
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath);
     processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
-    const result = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');

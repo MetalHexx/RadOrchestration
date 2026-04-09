@@ -52,6 +52,12 @@ function scaffoldState(
         auto_pr: config.source_control.auto_pr,
       },
     },
+    pipeline: {
+      gate_mode: null,
+      source_control: null,
+      current_tier: 'planning',
+      halt_reason: null,
+    },
     graph: {
       template_id: template.template.id,
       status: 'not_started',

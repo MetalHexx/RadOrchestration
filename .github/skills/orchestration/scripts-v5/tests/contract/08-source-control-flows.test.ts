@@ -51,7 +51,7 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     driveTaskWith(io, 1, 1);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     let result = processEvent('phase_review_completed', PROJECT_DIR, {
@@ -90,7 +90,7 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     driveTaskWith(io, 1, 1);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     let result = processEvent('phase_review_completed', PROJECT_DIR, {
@@ -119,7 +119,7 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     driveTaskWith(io, 1, 2);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     let result = processEvent('phase_review_completed', PROJECT_DIR, {
@@ -151,7 +151,7 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_pr', () => {
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath);
     processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
-    const result = processEvent('final_review_approved', PROJECT_DIR, {
+    const result = processEvent('final_approved', PROJECT_DIR, {
       branch: 'feature/my-branch',
       base_branch: 'main',
       worktree_path: '/tmp/worktree',
@@ -171,7 +171,7 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_pr', () => {
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath);
     processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
-    const result = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_pr');
     expect(result.context).toEqual(expect.objectContaining({

@@ -180,7 +180,7 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
   processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
 
   processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('execution_completed', PROJECT_DIR, ctx, io);
+  processEvent('task_completed', PROJECT_DIR, ctx, io);
 
   processEvent('code_review_started', PROJECT_DIR, ctx, io);
 
@@ -219,7 +219,7 @@ function driveTaskWithVerdict(
   processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
 
   processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('execution_completed', PROJECT_DIR, ctx, io);
+  processEvent('task_completed', PROJECT_DIR, ctx, io);
 
   processEvent('code_review_started', PROJECT_DIR, ctx, io);
 
@@ -253,7 +253,7 @@ function driveCorrectiveTask(
   processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
 
   processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('execution_completed', PROJECT_DIR, ctx, io);
+  processEvent('task_completed', PROJECT_DIR, ctx, io);
 
   processEvent('code_review_started', PROJECT_DIR, ctx, io);
 
@@ -283,7 +283,7 @@ function drivePhasePostTasks(io: MockIO, phase: number, expectCommit: boolean): 
   processEvent('phase_report_started', PROJECT_DIR, ctx, io);
   const reportDoc = DOC_PATHS.phaseReport(phase);
   seedDoc(reportDoc);
-  processEvent('phase_report_completed', PROJECT_DIR, { ...ctx, doc_path: reportDoc }, io);
+  processEvent('phase_report_created', PROJECT_DIR, { ...ctx, doc_path: reportDoc }, io);
 
   processEvent('phase_review_started', PROJECT_DIR, ctx, io);
   const reviewDoc = DOC_PATHS.phaseReview(phase);
@@ -305,8 +305,8 @@ function drivePhasePostTasks(io: MockIO, phase: number, expectCommit: boolean): 
   }
 
   // commit conditional takes true branch
-  processEvent('source_control_commit_started', PROJECT_DIR, ctx, io);
-  return processEvent('source_control_commit_completed', PROJECT_DIR, ctx, io);
+  processEvent('task_commit_requested', PROJECT_DIR, ctx, io);
+  return processEvent('task_committed', PROJECT_DIR, ctx, io);
 }
 
 /**
@@ -322,7 +322,7 @@ function drivePhasePostTasksWithVerdict(
   processEvent('phase_report_started', PROJECT_DIR, ctx, io);
   const reportDoc = DOC_PATHS.phaseReport(phase);
   seedDoc(reportDoc);
-  processEvent('phase_report_completed', PROJECT_DIR, { ...ctx, doc_path: reportDoc }, io);
+  processEvent('phase_report_created', PROJECT_DIR, { ...ctx, doc_path: reportDoc }, io);
 
   processEvent('phase_review_started', PROJECT_DIR, ctx, io);
   const reviewDoc = DOC_PATHS.phaseReview(phase);

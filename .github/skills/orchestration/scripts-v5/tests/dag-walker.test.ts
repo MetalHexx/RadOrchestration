@@ -63,6 +63,12 @@ function makeState(nodes: Record<string, NodeState>): PipelineState {
       },
       source_control: { auto_commit: 'ask', auto_pr: 'ask' },
     },
+    pipeline: {
+      gate_mode: null,
+      source_control: null,
+      current_tier: 'planning',
+      halt_reason: null,
+    },
     graph: {
       template_id: 'test-template',
       status: 'in_progress',

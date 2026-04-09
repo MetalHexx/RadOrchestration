@@ -205,8 +205,8 @@ describe('EVENTS', () => {
     }).toThrow(TypeError);
   });
 
-  it('has exactly 32 keys', () => {
-    expect(Object.keys(EVENTS)).toHaveLength(32);
+  it('has exactly 38 keys', () => {
+    expect(Object.keys(EVENTS)).toHaveLength(38);
   });
 
   it('has expected keys', () => {
@@ -216,16 +216,17 @@ describe('EVENTS', () => {
       'DESIGN_STARTED', 'DESIGN_COMPLETED',
       'ARCHITECTURE_STARTED', 'ARCHITECTURE_COMPLETED',
       'MASTER_PLAN_STARTED', 'MASTER_PLAN_COMPLETED',
-      'PLAN_APPROVED', 'TASK_GATE_APPROVED', 'PHASE_GATE_APPROVED', 'FINAL_REVIEW_APPROVED',
+      'PLAN_APPROVED', 'TASK_GATE_APPROVED', 'PHASE_GATE_APPROVED', 'FINAL_APPROVED',
       'PHASE_PLANNING_STARTED', 'PHASE_PLAN_CREATED',
       'TASK_HANDOFF_STARTED', 'TASK_HANDOFF_CREATED',
-      'EXECUTION_STARTED', 'EXECUTION_COMPLETED',
+      'EXECUTION_STARTED', 'TASK_COMPLETED',
       'CODE_REVIEW_STARTED', 'CODE_REVIEW_COMPLETED',
-      'PHASE_REPORT_STARTED', 'PHASE_REPORT_COMPLETED',
+      'PHASE_REPORT_STARTED', 'PHASE_REPORT_CREATED',
       'PHASE_REVIEW_STARTED', 'PHASE_REVIEW_COMPLETED',
       'FINAL_REVIEW_STARTED', 'FINAL_REVIEW_COMPLETED',
-      'SOURCE_CONTROL_COMMIT_STARTED', 'SOURCE_CONTROL_COMMIT_COMPLETED',
-      'SOURCE_CONTROL_PR_STARTED', 'SOURCE_CONTROL_PR_COMPLETED',
+      'TASK_COMMIT_REQUESTED', 'TASK_COMMITTED',
+      'PR_REQUESTED', 'PR_CREATED',
+      'PLAN_REJECTED', 'GATE_REJECTED', 'FINAL_REJECTED', 'HALT', 'GATE_MODE_SET', 'SOURCE_CONTROL_INIT',
     ];
     for (const key of expectedKeys) {
       expect(EVENTS).toHaveProperty(key);
@@ -246,24 +247,30 @@ describe('EVENTS', () => {
     expect(EVENTS.PLAN_APPROVED).toBe('plan_approved');
     expect(EVENTS.TASK_GATE_APPROVED).toBe('task_gate_approved');
     expect(EVENTS.PHASE_GATE_APPROVED).toBe('phase_gate_approved');
-    expect(EVENTS.FINAL_REVIEW_APPROVED).toBe('final_review_approved');
+    expect(EVENTS.FINAL_APPROVED).toBe('final_approved');
     expect(EVENTS.PHASE_PLANNING_STARTED).toBe('phase_planning_started');
     expect(EVENTS.PHASE_PLAN_CREATED).toBe('phase_plan_created');
     expect(EVENTS.TASK_HANDOFF_STARTED).toBe('task_handoff_started');
     expect(EVENTS.TASK_HANDOFF_CREATED).toBe('task_handoff_created');
     expect(EVENTS.EXECUTION_STARTED).toBe('execution_started');
-    expect(EVENTS.EXECUTION_COMPLETED).toBe('execution_completed');
+    expect(EVENTS.TASK_COMPLETED).toBe('task_completed');
     expect(EVENTS.CODE_REVIEW_STARTED).toBe('code_review_started');
     expect(EVENTS.CODE_REVIEW_COMPLETED).toBe('code_review_completed');
     expect(EVENTS.PHASE_REPORT_STARTED).toBe('phase_report_started');
-    expect(EVENTS.PHASE_REPORT_COMPLETED).toBe('phase_report_completed');
+    expect(EVENTS.PHASE_REPORT_CREATED).toBe('phase_report_created');
     expect(EVENTS.PHASE_REVIEW_STARTED).toBe('phase_review_started');
     expect(EVENTS.PHASE_REVIEW_COMPLETED).toBe('phase_review_completed');
     expect(EVENTS.FINAL_REVIEW_STARTED).toBe('final_review_started');
     expect(EVENTS.FINAL_REVIEW_COMPLETED).toBe('final_review_completed');
-    expect(EVENTS.SOURCE_CONTROL_COMMIT_STARTED).toBe('source_control_commit_started');
-    expect(EVENTS.SOURCE_CONTROL_COMMIT_COMPLETED).toBe('source_control_commit_completed');
-    expect(EVENTS.SOURCE_CONTROL_PR_STARTED).toBe('source_control_pr_started');
-    expect(EVENTS.SOURCE_CONTROL_PR_COMPLETED).toBe('source_control_pr_completed');
+    expect(EVENTS.TASK_COMMIT_REQUESTED).toBe('task_commit_requested');
+    expect(EVENTS.TASK_COMMITTED).toBe('task_committed');
+    expect(EVENTS.PR_REQUESTED).toBe('pr_requested');
+    expect(EVENTS.PR_CREATED).toBe('pr_created');
+    expect(EVENTS.PLAN_REJECTED).toBe('plan_rejected');
+    expect(EVENTS.GATE_REJECTED).toBe('gate_rejected');
+    expect(EVENTS.FINAL_REJECTED).toBe('final_rejected');
+    expect(EVENTS.HALT).toBe('halt');
+    expect(EVENTS.GATE_MODE_SET).toBe('gate_mode_set');
+    expect(EVENTS.SOURCE_CONTROL_INIT).toBe('source_control_init');
   });
 });

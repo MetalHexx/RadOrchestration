@@ -145,7 +145,7 @@ describe('[CONTRACT] Action Contexts — phase-level execution actions', () => {
     driveTaskWith(io, 1, 1);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    const result = processEvent('phase_report_completed', PROJECT_DIR, {
+    const result = processEvent('phase_report_created', PROJECT_DIR, {
       phase: 1, doc_path: phaseReportDoc(1),
     }, io);
     expect(result.success).toBe(true);
@@ -174,7 +174,7 @@ describe('[CONTRACT] Action Contexts — phase-level execution actions', () => {
     driveTaskWith(io, 1, 1);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, {
+    processEvent('phase_report_created', PROJECT_DIR, {
       phase: 1, doc_path: phaseReportDoc(1),
     }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
@@ -245,7 +245,7 @@ describe('[CONTRACT] Action Contexts — task-level execution actions', () => {
       phase: 1, task: 1, doc_path: taskHandoffDoc(1, 1),
     }, io);
     processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    const result = processEvent('execution_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    const result = processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_code_reviewer');
     expect(result.context).toEqual(expect.objectContaining({
@@ -276,7 +276,7 @@ describe('[CONTRACT] Action Contexts — task-level execution actions', () => {
     seedDoc(handoffDoc);
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     const reviewDoc = codeReviewDoc(1, 1);
     seedDoc(reviewDoc);
@@ -361,7 +361,7 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath);
     processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
-    const result = processEvent('final_review_approved', PROJECT_DIR, {}, io);
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');
     expect(result.context).toEqual({});
@@ -385,7 +385,7 @@ describe('[CONTRACT] Action Contexts — display_halted', () => {
     seedDoc(taskHandoffDoc(1, 1));
     processEvent('task_handoff_created', PROJECT_DIR, { phase: 1, task: 1, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    processEvent('execution_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
     processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
     seedDoc(codeReviewDoc(1, 1), { verdict: 'rejected' });
     const result = processEvent('code_review_completed', PROJECT_DIR, {

@@ -43,6 +43,12 @@ const baseState: PipelineState = {
       auto_pr: 'never',
     },
   },
+  pipeline: {
+    gate_mode: null,
+    source_control: null,
+    current_tier: 'planning',
+    halt_reason: null,
+  },
   graph: {
     template_id: 'full',
     status: 'not_started',

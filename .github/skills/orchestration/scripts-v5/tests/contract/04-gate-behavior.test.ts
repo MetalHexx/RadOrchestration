@@ -78,7 +78,7 @@ function driveTaskToCodeReview(io: MockIO, phase: number, task: number, verdict:
   seedDoc(taskHandoffDoc(phase, task));
   processEvent('task_handoff_created', PROJECT_DIR, { phase, task, doc_path: taskHandoffDoc(phase, task) }, io);
   processEvent('execution_started', PROJECT_DIR, { phase, task }, io);
-  processEvent('execution_completed', PROJECT_DIR, { phase, task }, io);
+  processEvent('task_completed', PROJECT_DIR, { phase, task }, io);
   processEvent('code_review_started', PROJECT_DIR, { phase, task }, io);
   seedDoc(codeReviewDoc(phase, task));
   return processEvent('code_review_completed', PROJECT_DIR, {
@@ -90,7 +90,7 @@ function driveTaskToCodeReview(io: MockIO, phase: number, task: number, verdict:
 function driveToPhaseReviewCompleted(io: MockIO, verdict: string) {
   processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
   seedDoc(phaseReportDoc(1));
-  processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+  processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
   processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
   seedDoc(phaseReviewDoc(1));
   return processEvent('phase_review_completed', PROJECT_DIR, {

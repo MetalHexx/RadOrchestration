@@ -161,7 +161,7 @@ describe('[CONTRACT] State Mutations — Code review completed mutations', () =>
     seedDoc(taskHandoffDoc(1, 1));
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     seedDoc(codeReviewDoc(1, 1));
     return io;
@@ -234,7 +234,7 @@ describe('[CONTRACT] State Mutations — Phase review completed mutations', () =
     driveTaskWith(io, 1, 1);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     return io;
@@ -305,7 +305,7 @@ describe('[CONTRACT] State Mutations — Gate approved mutations', () => {
     seedDoc(taskHandoffDoc(1, 1));
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('execution_completed', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     seedDoc(codeReviewDoc(1, 1));
     // In task mode, code_review_completed fires gate_task
@@ -341,7 +341,7 @@ describe('[CONTRACT] State Mutations — Gate approved mutations', () => {
     driveTaskWith(io, 1, 1);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     // In task mode, phase_review_completed fires gate_phase
@@ -359,7 +359,7 @@ describe('[CONTRACT] State Mutations — Gate approved mutations', () => {
     expect(result.mutations_applied.some((m) => m.includes('phase_gate'))).toBe(true);
   });
 
-  it('source_control_commit_completed: phase_commit.status=completed', () => {
+  it('task_committed: phase_commit.status=completed', () => {
     const commitConfig = createConfig({
       human_gates: {
         after_planning: true,
@@ -377,8 +377,8 @@ describe('[CONTRACT] State Mutations — Gate approved mutations', () => {
     // After gate approval with auto_commit:'always', action = invoke_source_control_commit
     drivePhaseReviewApproval(io, 1);
 
-    processEvent('source_control_commit_started', PROJECT_DIR, { phase: 1 }, io);
-    const result = processEvent('source_control_commit_completed', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('task_commit_requested', PROJECT_DIR, { phase: 1 }, io);
+    const result = processEvent('task_committed', PROJECT_DIR, { phase: 1 }, io);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;

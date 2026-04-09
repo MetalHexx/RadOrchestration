@@ -166,7 +166,7 @@ mutationRegistry.set(EVENTS.PHASE_GATE_APPROVED, (state, context, _config, _temp
   return { state: cloned, mutations_applied };
 });
 
-mutationRegistry.set(EVENTS.FINAL_REVIEW_APPROVED, (state, _context, _config, _template): MutationResult => {
+mutationRegistry.set(EVENTS.FINAL_APPROVED, (state, _context, _config, _template): MutationResult => {
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
   const node = resolveNodeState(cloned, 'final_approval_gate', 'top');
@@ -202,7 +202,7 @@ for (const [eventName, nodeId] of phaseExecStartedSteps) {
 
 const phaseExecDocSteps: Array<[string, string]> = [
   [EVENTS.PHASE_PLAN_CREATED, 'phase_planning'],
-  [EVENTS.PHASE_REPORT_COMPLETED, 'phase_report'],
+  [EVENTS.PHASE_REPORT_CREATED, 'phase_report'],
 ];
 
 for (const [eventName, nodeId] of phaseExecDocSteps) {
@@ -309,9 +309,9 @@ mutationRegistry.set(EVENTS.TASK_HANDOFF_CREATED, (state, context, _config, _tem
   return { state: cloned, mutations_applied };
 });
 
-// ── execution_completed ───────────────────────────────────────────────────────
+// ── task_completed ───────────────────────────────────────────────────────
 
-mutationRegistry.set(EVENTS.EXECUTION_COMPLETED, (state, context, _config, _template): MutationResult => {
+mutationRegistry.set(EVENTS.TASK_COMPLETED, (state, context, _config, _template): MutationResult => {
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
@@ -454,8 +454,8 @@ mutationRegistry.set(EVENTS.FINAL_REVIEW_COMPLETED, (state, context, _config, _t
 // ── Source control commit mutations (phase_commit as phase-scoped sibling) ────
 
 const sourceControlCommitSteps: Array<[string, 'in_progress' | 'completed']> = [
-  [EVENTS.SOURCE_CONTROL_COMMIT_STARTED, 'in_progress'],
-  [EVENTS.SOURCE_CONTROL_COMMIT_COMPLETED, 'completed'],
+  [EVENTS.TASK_COMMIT_REQUESTED, 'in_progress'],
+  [EVENTS.TASK_COMMITTED, 'completed'],
 ];
 
 for (const [eventName, newStatus] of sourceControlCommitSteps) {
@@ -474,8 +474,8 @@ for (const [eventName, newStatus] of sourceControlCommitSteps) {
 // ── Source control PR mutations (final_pr as top-scoped sibling) ──────────────
 
 const sourceControlPrSteps: Array<[string, 'in_progress' | 'completed']> = [
-  [EVENTS.SOURCE_CONTROL_PR_STARTED, 'in_progress'],
-  [EVENTS.SOURCE_CONTROL_PR_COMPLETED, 'completed'],
+  [EVENTS.PR_REQUESTED, 'in_progress'],
+  [EVENTS.PR_CREATED, 'completed'],
 ];
 
 for (const [eventName, newStatus] of sourceControlPrSteps) {
