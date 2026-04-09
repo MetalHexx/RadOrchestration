@@ -563,7 +563,7 @@ describe('[CONTRACT] Event Names — unknown / invalid event names', () => {
   it('"gate_mode_set" is a valid v5 OOB event and produces success: true', () => {
     const io = createMockIO(null);
     processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('gate_mode_set', PROJECT_DIR, {}, io);
+    const result = processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io);
     expect(result.success).toBe(true);
   });
 });

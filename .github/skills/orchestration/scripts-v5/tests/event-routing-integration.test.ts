@@ -142,11 +142,11 @@ describe('routing priority', () => {
     processEvent('start', PROJECT_DIR, {}, io);
 
     // OOB event should be handled before template index lookup
-    const result = processEvent('gate_mode_set', PROJECT_DIR, {}, io);
+    const result = processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io);
 
     expect(result.success).toBe(true);
-    // OOB events populate mutations_applied with a stub entry referencing the event name
-    expect(result.mutations_applied.some(m => m.includes('gate_mode_set'))).toBe(true);
+    // Real implementation emits a non-empty mutations_applied array
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
   });
 
   it('gate_approved --gate-type task resolves alias before template index lookup → success: true', () => {
@@ -213,6 +213,12 @@ describe('unknown event error', () => {
 describe('OOB events bypass template event index', () => {
   const OOB_EVENTS_ARRAY = Array.from(OUT_OF_BAND_EVENTS);
 
+  // Context required for events that need specific fields to succeed
+  const OOB_CONTEXTS: Record<string, Record<string, string>> = {
+    gate_mode_set: { gate_mode: 'task' },
+    source_control_init: { branch: 'main', base_branch: 'main' },
+  };
+
   for (const oobEvent of OOB_EVENTS_ARRAY) {
     it(`OOB event '${oobEvent}' processes successfully with scaffolded state and is not in template event index`, () => {
       // Scaffold state
@@ -220,7 +226,8 @@ describe('OOB events bypass template event index', () => {
       processEvent('start', PROJECT_DIR, {}, io);
 
       // Process the OOB event — should succeed without event index lookup
-      const result = processEvent(oobEvent, PROJECT_DIR, {}, io);
+      const eventContext = OOB_CONTEXTS[oobEvent] ?? {};
+      const result = processEvent(oobEvent, PROJECT_DIR, eventContext, io);
       expect(result.success).toBe(true);
 
       // Confirm the OOB event does not appear in the template event index

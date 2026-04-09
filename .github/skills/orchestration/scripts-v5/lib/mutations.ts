@@ -453,43 +453,61 @@ mutationRegistry.set(EVENTS.FINAL_REVIEW_COMPLETED, (state, context, _config, _t
 
 // ── Source control commit mutations (phase_commit as phase-scoped sibling) ────
 
-const sourceControlCommitSteps: Array<[string, 'in_progress' | 'completed']> = [
-  [EVENTS.TASK_COMMIT_REQUESTED, 'in_progress'],
-  [EVENTS.TASK_COMMITTED, 'completed'],
-];
+mutationRegistry.set(EVENTS.TASK_COMMIT_REQUESTED, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
 
-for (const [eventName, newStatus] of sourceControlCommitSteps) {
-  mutationRegistry.set(eventName, (state, context, _config, _template): MutationResult => {
-    const cloned = structuredClone(state);
-    const mutations_applied: string[] = [];
+  const node = resolveNodeState(cloned, 'phase_commit', 'phase', context.phase);
+  node.status = 'in_progress';
+  mutations_applied.push('set phase_commit.status = in_progress');
 
-    const node = resolveNodeState(cloned, 'phase_commit', 'phase', context.phase);
-    node.status = newStatus;
-    mutations_applied.push(`set phase_commit.status = ${newStatus}`);
+  return { state: cloned, mutations_applied };
+});
 
-    return { state: cloned, mutations_applied };
-  });
-}
+mutationRegistry.set(EVENTS.TASK_COMMITTED, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const node = resolveNodeState(cloned, 'phase_commit', 'phase', context.phase);
+  node.status = 'completed';
+  mutations_applied.push('set phase_commit.status = completed');
+
+  if (cloned.pipeline.source_control) {
+    cloned.pipeline.source_control.commit_hash = (context.commit_hash as string) ?? null;
+    mutations_applied.push(`set pipeline.source_control.commit_hash = ${context.commit_hash ?? 'null'}`);
+  }
+
+  return { state: cloned, mutations_applied };
+});
 
 // ── Source control PR mutations (final_pr as top-scoped sibling) ──────────────
 
-const sourceControlPrSteps: Array<[string, 'in_progress' | 'completed']> = [
-  [EVENTS.PR_REQUESTED, 'in_progress'],
-  [EVENTS.PR_CREATED, 'completed'],
-];
+mutationRegistry.set(EVENTS.PR_REQUESTED, (state, _context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
 
-for (const [eventName, newStatus] of sourceControlPrSteps) {
-  mutationRegistry.set(eventName, (state, _context, _config, _template): MutationResult => {
-    const cloned = structuredClone(state);
-    const mutations_applied: string[] = [];
+  const node = resolveNodeState(cloned, 'final_pr', 'top');
+  node.status = 'in_progress';
+  mutations_applied.push('set final_pr.status = in_progress');
 
-    const node = resolveNodeState(cloned, 'final_pr', 'top');
-    node.status = newStatus;
-    mutations_applied.push(`set final_pr.status = ${newStatus}`);
+  return { state: cloned, mutations_applied };
+});
 
-    return { state: cloned, mutations_applied };
-  });
-}
+mutationRegistry.set(EVENTS.PR_CREATED, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const node = resolveNodeState(cloned, 'final_pr', 'top');
+  node.status = 'completed';
+  mutations_applied.push('set final_pr.status = completed');
+
+  if (cloned.pipeline.source_control) {
+    cloned.pipeline.source_control.pr_url = (context.pr_url as string) ?? null;
+    mutations_applied.push(`set pipeline.source_control.pr_url = ${context.pr_url ?? 'null'}`);
+  }
+
+  return { state: cloned, mutations_applied };
+});
 
 // ── plan_rejected mutation ────────────────────────────────────────────────────
 
@@ -579,22 +597,51 @@ mutationRegistry.set(EVENTS.HALT, (state, context, _config, _template): Mutation
   return { state: cloned, mutations_applied };
 });
 
-// ── Out-of-band stub mutations (remaining: gate_mode_set, source_control_init) ─
+// ── gate_mode_set mutation ────────────────────────────────────────────────────
 
-const oobStubEvents: string[] = [
-  EVENTS.GATE_MODE_SET,
-  EVENTS.SOURCE_CONTROL_INIT,
-];
+mutationRegistry.set(EVENTS.GATE_MODE_SET, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mode = context.gate_mode;
 
-for (const eventName of oobStubEvents) {
-  mutationRegistry.set(eventName, (state, _context, _config, _template): MutationResult => {
-    const cloned = structuredClone(state);
-    return {
-      state: cloned,
-      mutations_applied: [`stub: ${eventName}`],
-    };
-  });
-}
+  if (!mode || !['task', 'phase', 'autonomous'].includes(mode as string)) {
+    throw new Error(`Invalid gate mode '${mode}': expected task, phase, or autonomous`);
+  }
+
+  cloned.pipeline.gate_mode = mode as string;
+  return {
+    state: cloned,
+    mutations_applied: [`set pipeline.gate_mode = ${mode}`],
+  };
+});
+
+// ── source_control_init mutation ──────────────────────────────────────────────
+
+mutationRegistry.set(EVENTS.SOURCE_CONTROL_INIT, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+
+  const branch = context.branch;
+  const baseBranch = context.base_branch;
+  if (!branch || !baseBranch) {
+    throw new Error('source_control_init requires --branch and --base-branch');
+  }
+
+  cloned.pipeline.source_control = {
+    branch: branch as string,
+    base_branch: baseBranch as string,
+    worktree_path: (context.worktree_path as string) ?? '.',
+    auto_commit: (context.auto_commit as string) ?? 'never',
+    auto_pr: (context.auto_pr as string) ?? 'never',
+    remote_url: (context.remote_url as string) ?? null,
+    compare_url: (context.compare_url as string) ?? null,
+    pr_url: null,
+    commit_hash: null,
+  };
+
+  return {
+    state: cloned,
+    mutations_applied: ['created pipeline.source_control'],
+  };
+});
 
 // ── Public API ────────────────────────────────────────────────────────────────
 

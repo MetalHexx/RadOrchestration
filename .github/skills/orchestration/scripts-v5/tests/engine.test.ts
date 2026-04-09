@@ -771,33 +771,34 @@ describe('out-of-band event routing', () => {
     vi.mocked(getMutation).mockClear();
   });
 
+  // Context required per event (events that need specific context to succeed)
+  const OOB_EVENT_CONTEXTS: Record<string, Record<string, string>> = {
+    gate_mode_set: { gate_mode: 'task' },
+    source_control_init: { branch: 'main', base_branch: 'main' },
+  };
+
   for (const oobEvent of OOB_EVENTS) {
     it(`${oobEvent} with valid scaffolded state returns success: true`, () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
-      const result = processEvent(oobEvent, PROJECT_DIR, {}, io);
+      const eventContext = OOB_EVENT_CONTEXTS[oobEvent] ?? {};
+      const result = processEvent(oobEvent, PROJECT_DIR, eventContext, io);
       expect(result.success).toBe(true);
     });
   }
 
-  // Stub events (gate_mode_set and source_control_init remain as stubs; the other 4 have real implementations)
-  const STUB_OOB_EVENTS = ['gate_mode_set', 'source_control_init'] as const;
-  for (const oobEvent of STUB_OOB_EVENTS) {
-    it(`${oobEvent} result includes mutations_applied containing 'stub: ${oobEvent}'`, () => {
-      const state = makeScaffoldedState();
-      const io = createMockIO(state);
-      const result = processEvent(oobEvent, PROJECT_DIR, {}, io);
-      expect(result.mutations_applied).toContain(`stub: ${oobEvent}`);
-    });
-  }
-
-  // Real implementations (plan_rejected, gate_rejected, final_rejected, halt) return non-stub mutations_applied
-  const REAL_OOB_EVENTS = ['plan_rejected', 'gate_rejected', 'final_rejected', 'halt'] as const;
+  // Real implementations — all 6 OOB events have real handlers (no stubs remain)
+  const REAL_OOB_EVENTS = ['plan_rejected', 'gate_rejected', 'final_rejected', 'halt', 'gate_mode_set', 'source_control_init'] as const;
+  const REAL_OOB_CONTEXTS: Record<string, Record<string, string>> = {
+    gate_mode_set: { gate_mode: 'task' },
+    source_control_init: { branch: 'main', base_branch: 'main' },
+  };
   for (const oobEvent of REAL_OOB_EVENTS) {
     it(`${oobEvent} result includes non-empty mutations_applied (real implementation, not stub)`, () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
-      const result = processEvent(oobEvent, PROJECT_DIR, {}, io);
+      const eventContext = REAL_OOB_CONTEXTS[oobEvent] ?? {};
+      const result = processEvent(oobEvent, PROJECT_DIR, eventContext, io);
       expect(result.mutations_applied.length).toBeGreaterThan(0);
       expect(result.mutations_applied).not.toContain(`stub: ${oobEvent}`);
     });
