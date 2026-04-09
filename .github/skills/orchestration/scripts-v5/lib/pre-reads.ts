@@ -3,6 +3,18 @@ import { readFileSync } from 'node:fs';
 import type { PreReadResult, EventContext, EventIndexEntry, IOAdapter } from './types.js';
 import { validateFrontmatter } from './frontmatter-validators.js';
 
+function extractMasterPlanDocPath(state: unknown): string | undefined {
+  if (typeof state !== 'object' || state === null) return undefined;
+  const s = state as Record<string, unknown>;
+  if (typeof s.graph !== 'object' || s.graph === null) return undefined;
+  const g = s.graph as Record<string, unknown>;
+  if (typeof g.nodes !== 'object' || g.nodes === null) return undefined;
+  const n = g.nodes as Record<string, unknown>;
+  if (typeof n.master_plan !== 'object' || n.master_plan === null) return undefined;
+  const mp = n.master_plan as Record<string, unknown>;
+  return typeof mp.doc_path === 'string' ? mp.doc_path : undefined;
+}
+
 export function preRead(
   event: string,
   context: Partial<EventContext>,
@@ -39,7 +51,7 @@ export function preRead(
       };
     }
 
-    const derived = (state as any)?.graph?.nodes?.master_plan?.doc_path;
+    const derived = extractMasterPlanDocPath(state);
     if (!derived) {
       return {
         context,
