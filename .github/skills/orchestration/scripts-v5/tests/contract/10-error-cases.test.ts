@@ -13,6 +13,7 @@ import {
 import { StepNodeState } from '../../lib/types.js';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 
 beforeEach(() => {
@@ -73,7 +74,7 @@ describe('[CONTRACT] Error shape — doc_path derivation: state not valid JSON',
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = join(tmpdir(), `v5-error-test-${Date.now()}`);
+    tempDir = join(tmpdir(), `v5-error-test-${randomUUID()}`);
     mkdirSync(tempDir, { recursive: true });
   });
 
@@ -99,7 +100,7 @@ describe('[CONTRACT] Error shape — doc_path derivation: doc_path not set in st
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = join(tmpdir(), `v5-error-test-${Date.now()}`);
+    tempDir = join(tmpdir(), `v5-error-test-${randomUUID()}`);
     mkdirSync(tempDir, { recursive: true });
   });
 
