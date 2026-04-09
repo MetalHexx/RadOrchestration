@@ -11,6 +11,7 @@ import { DocumentDrawer } from "@/components/documents";
 import { ConfigEditorPanel } from "@/components/config";
 import { getOrderedDocs } from "@/lib/document-ordering";
 import type { ProjectSummary } from "@/types/components";
+import type { ConfigGetResponse } from "@/types/config";
 
 export default function Home() {
   const {
@@ -39,6 +40,18 @@ export default function Home() {
   const configEditor = useConfigEditor();
 
   const [fileList, setFileList] = useState<string[]>([]);
+  const [maxRetries, setMaxRetries] = useState<number>(3);
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: ConfigGetResponse | null) => {
+        if (data?.config?.limits?.max_retries_per_task != null) {
+          setMaxRetries(data.config.limits.max_retries_per_task);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!selectedProject) {
@@ -112,7 +125,7 @@ export default function Home() {
               project={selected}
               onDocClick={handleDocClick}
               otherDocs={otherDocs}
-              maxRetries={projectState?.config?.limits?.max_retries_per_task}
+              maxRetries={maxRetries}
             />
           ) : (
             <div className="flex h-full items-center justify-center p-6">
