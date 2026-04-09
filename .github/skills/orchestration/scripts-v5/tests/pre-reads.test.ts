@@ -279,12 +279,36 @@ describe('preRead — plan_approved: auto-derivation from graph.nodes.master_pla
       eventPhase: 'approved',
       templatePath: 'plan_approval_gate',
     };
-    const readDocument: IOAdapter['readDocument'] = vi.fn().mockReturnValue(null);
+    const readDocument: IOAdapter['readDocument'] = vi.fn().mockReturnValue({
+      frontmatter: { total_phases: 3 },
+      content: '---\ntotal_phases: 3\n---\n# Plan',
+    });
 
     const result = preRead('plan_approved', {}, readDocument, tmpDir, entry);
 
     expect(result.error).toBeUndefined();
     expect(result.context.doc_path).toBe(join(tmpDir, 'plans/MASTER-PLAN.md'));
+  });
+
+  it('returns structured error when readDocument returns null for plan_approved', () => {
+    const entry: EventIndexEntry = {
+      nodeDef: {
+        id: 'plan_approval_gate',
+        kind: 'gate',
+        mode_ref: 'gate_mode',
+        action_if_needed: 'prompt',
+        approved_event: 'plan_approved',
+      },
+      eventPhase: 'approved',
+      templatePath: 'plan_approval_gate',
+    };
+    const readDocument: IOAdapter['readDocument'] = vi.fn().mockReturnValue(null);
+
+    const result = preRead('plan_approved', {}, readDocument, tmpDir, entry);
+
+    expect(result.error).toBeDefined();
+    expect(result.error!.message).toContain('document not found or unreadable');
+    expect(result.error!.field).toBe('doc_path');
   });
 
   it('errors with message containing "graph.nodes.master_plan.doc_path is not set" when state has no master_plan doc_path', () => {

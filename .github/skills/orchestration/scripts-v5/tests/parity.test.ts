@@ -288,6 +288,10 @@ describe('[PARITY] v4:resolvePlanning', () => {
     completePlanningSteps(state, 'master_plan');
     const masterPlanDocPath = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
     const io = createMockIO(state);
+    DOC_STORE[masterPlanDocPath.replace(/\\/g, '/')] = {
+      frontmatter: { total_phases: 3 },
+      content: '---\ntotal_phases: 3\n---\n# Master Plan',
+    };
 
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: masterPlanDocPath }, io);
 
@@ -295,8 +299,6 @@ describe('[PARITY] v4:resolvePlanning', () => {
     const g = io.currentState!.graph.nodes['plan_approval_gate'] as GateNodeState;
     expect(g.status).toBe('completed');
     expect(g.gate_active).toBe(true);
-    // Without a seeded master plan doc, the walker cannot expand for_each_phase
-    expect(result.action).toBeNull();
   });
 
   // ── plan_approved with seeded master plan → tier transition ───────────────

@@ -70,7 +70,7 @@ export function getValidationRules(event: string): FrontmatterValidationRule[] {
 export function validateFrontmatter(
   event: string,
   frontmatter: Record<string, unknown>,
-  docPath: string,
+  _docPath: string,
 ): ValidationError | null {
   const rules = getValidationRules(event);
 

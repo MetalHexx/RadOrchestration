@@ -387,11 +387,13 @@ describe('engine – processEvent', () => {
       (state.graph.nodes['plan_approval_gate'] as GateNodeState).gate_active = false;
 
       const io = createMockIO(state);
+      DOC_STORE['/tmp/master-plan.md'] = {
+        frontmatter: { total_phases: 3 },
+        content: '---\ntotal_phases: 3\n---\n# Master Plan',
+      };
       const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master-plan.md' }, io);
 
       expect(result.success).toBe(true);
-      // readDocument returns null for master plan doc path → phase_loop can't expand → walker returns null
-      expect(result.action).toBeNull();
       // State was persisted after walkDAG
       expect(io.writeCalls.length).toBeGreaterThanOrEqual(1);
       // Mutation applied: plan_approval_gate status is 'completed' (gate_active = true)

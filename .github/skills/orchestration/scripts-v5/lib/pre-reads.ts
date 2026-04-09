@@ -73,22 +73,31 @@ export function preRead(
       : join(projectDir, context.doc_path);
 
     const doc = readDocument(resolvedPath);
-    if (doc) {
-      const enrichedContext = { ...doc.frontmatter, ...context } as Record<string, unknown>;
-      const validationError = validateFrontmatter(event, enrichedContext, resolvedPath);
-      if (validationError) {
-        return {
-          context: enrichedContext as Partial<EventContext>,
-          error: {
-            message: validationError.error,
-            event: validationError.event,
-            field: validationError.field,
-          },
-        };
-      }
-      // Merge frontmatter into context for downstream consumption
-      context = enrichedContext as Partial<EventContext>;
+    if (doc === null) {
+      return {
+        context,
+        error: {
+          message: `Pre-read failed: document not found or unreadable: ${resolvedPath}`,
+          event,
+          field: 'doc_path',
+        },
+      };
     }
+
+    const enrichedContext = { ...doc.frontmatter, ...context } as Record<string, unknown>;
+    const validationError = validateFrontmatter(event, enrichedContext, resolvedPath);
+    if (validationError) {
+      return {
+        context: enrichedContext as Partial<EventContext>,
+        error: {
+          message: validationError.error,
+          event: validationError.event,
+          field: validationError.field,
+        },
+      };
+    }
+    // Merge frontmatter into context for downstream consumption
+    context = enrichedContext as Partial<EventContext>;
   }
 
   if (entry.eventPhase === 'started' || entry.eventPhase === 'approved') {

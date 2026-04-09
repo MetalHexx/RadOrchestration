@@ -164,7 +164,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         ...base,
         is_correction: true,
         previous_review: reviewNode?.doc_path ?? '',
-        reason: reviewNode?.verdict ?? '',
+        reason: correctives[correctives.length - 1]?.reason ?? '',
       };
     }
 
