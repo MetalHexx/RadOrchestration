@@ -139,7 +139,7 @@ describe('[CONTRACT] Error shape — validation error structure', () => {
     expect(result.error?.message).toBe('Invalid value: tasks must be an array');
     expect(result.error?.event).toBe('phase_plan_created');
     expect(result.error?.field).toBe('tasks');
-    expect(result.context).toEqual({});
+    expect(typeof result.context.error).toBe('string');
     expect(result.mutations_applied).toEqual([]);
   });
 });

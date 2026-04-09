@@ -29,7 +29,7 @@ function makeErrorResult(message: string, event: string, orchRoot: string = '.gi
   return {
     success: false,
     action: null,
-    context: {},
+    context: { error: message },
     mutations_applied: [],
     orchRoot,
     error: { message, event },
@@ -56,11 +56,13 @@ export function run(argv: string[]): void {
     }
 
     if (!event) {
-      process.stdout.write(JSON.stringify(makeErrorResult('Missing required argument: --event', 'unknown')));
+      process.exitCode = 1;
+      process.stdout.write(JSON.stringify(makeErrorResult('Missing required argument: --event', 'unknown'), null, 2) + '\n');
       return;
     }
     if (!projectDir) {
-      process.stdout.write(JSON.stringify(makeErrorResult('Missing required argument: --project-dir', 'unknown')));
+      process.exitCode = 1;
+      process.stdout.write(JSON.stringify(makeErrorResult('Missing required argument: --project-dir', 'unknown'), null, 2) + '\n');
       return;
     }
 
@@ -79,7 +81,8 @@ export function run(argv: string[]): void {
     if (phaseStr !== undefined) {
       phase = Number(phaseStr);
       if (!Number.isFinite(phase) || phase < 1) {
-        process.stdout.write(JSON.stringify(makeErrorResult(`Invalid value for --phase: ${phaseStr}`, event, orchRoot)));
+        process.exitCode = 1;
+        process.stdout.write(JSON.stringify(makeErrorResult(`Invalid value for --phase: ${phaseStr}`, event, orchRoot), null, 2) + '\n');
         return;
       }
     }
@@ -87,7 +90,8 @@ export function run(argv: string[]): void {
     if (taskStr !== undefined) {
       task = Number(taskStr);
       if (!Number.isFinite(task) || task < 1) {
-        process.stdout.write(JSON.stringify(makeErrorResult(`Invalid value for --task: ${taskStr}`, event, orchRoot)));
+        process.exitCode = 1;
+        process.stdout.write(JSON.stringify(makeErrorResult(`Invalid value for --task: ${taskStr}`, event, orchRoot), null, 2) + '\n');
         return;
       }
     }
@@ -123,18 +127,20 @@ export function run(argv: string[]): void {
     };
 
     const result = processEvent(event, projectDir, context, io, configPath);
-    process.stdout.write(JSON.stringify(result));
+    process.exitCode = result.success ? 0 : 1;
+    process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const fallback: PipelineResult = {
       success: false,
       action: null,
-      context: {},
+      context: { error: message },
       mutations_applied: [],
       orchRoot,
       error: { message, event: event ?? 'unknown' },
     };
-    process.stdout.write(JSON.stringify(fallback));
+    process.exitCode = 1;
+    process.stdout.write(JSON.stringify(fallback, null, 2) + '\n');
   }
 }
 

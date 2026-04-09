@@ -214,20 +214,47 @@ describe('pipeline CLI — run()', () => {
     expect(writeSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('exit code is always 0 — process.exit is never called with a non-zero code', () => {
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as typeof process.exit);
+  it('process.exitCode is 0 after a successful engine call', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
 
-    // Error case: engine throws
-    mockProcessEvent.mockImplementation(() => {
-      throw new Error('uncaught');
-    });
+    process.exitCode = undefined as unknown as number;
     run(BASE_ARGS);
 
-    for (const [code] of exitSpy.mock.calls) {
-      expect(code === undefined || code === 0).toBe(true);
-    }
+    expect(process.exitCode).toBe(0);
+  });
 
-    exitSpy.mockRestore();
+  it('process.exitCode is 1 when the engine throws', () => {
+    mockProcessEvent.mockImplementation(() => {
+      throw new Error('engine exploded');
+    });
+
+    process.exitCode = undefined as unknown as number;
+    run(BASE_ARGS);
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('process.exitCode is 1 for missing --event', () => {
+    process.exitCode = undefined as unknown as number;
+    run(['--project-dir', '/tmp/test-project', '--config', '/tmp/config.yml']);
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('process.exitCode is 1 for missing --project-dir', () => {
+    process.exitCode = undefined as unknown as number;
+    run(['--event', 'task_started', '--config', '/tmp/config.yml']);
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('process.exitCode is 1 for invalid --phase', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    process.exitCode = undefined as unknown as number;
+    run([...BASE_ARGS, '--phase', 'abc']);
+
+    expect(process.exitCode).toBe(1);
   });
 
   // ── CLI Contract Schema Validation ──────────────────────────────────────────
@@ -304,5 +331,64 @@ describe('pipeline CLI — run()', () => {
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
     expect(result.error!.message).toContain('--task');
+  });
+
+  // ── context.error presence ──────────────────────────────────────────────────
+
+  it('missing --event error JSON includes context.error containing "--event"', () => {
+    run(['--project-dir', '/tmp/test-project', '--config', '/tmp/config.yml']);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(typeof result.context.error).toBe('string');
+    expect((result.context.error as string)).toContain('--event');
+  });
+
+  it('missing --project-dir error JSON includes context.error containing "--project-dir"', () => {
+    run(['--event', 'task_started', '--config', '/tmp/config.yml']);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(typeof result.context.error).toBe('string');
+    expect((result.context.error as string)).toContain('--project-dir');
+  });
+
+  it('catch-block fallback error JSON includes context.error matching the thrown message', () => {
+    mockProcessEvent.mockImplementation(() => {
+      throw new Error('unexpected failure');
+    });
+
+    run(BASE_ARGS);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(typeof result.context.error).toBe('string');
+    expect(result.context.error).toBe('unexpected failure');
+  });
+
+  // ── Pretty-printed JSON output ──────────────────────────────────────────────
+
+  it('success output is pretty-printed JSON with 2-space indent and trailing newline', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    run(BASE_ARGS);
+
+    expect(output.endsWith('\n')).toBe(true);
+    expect(output).toContain('\n  ');
+    const parsed = JSON.parse(output);
+    expect(parsed.success).toBe(true);
+  });
+
+  it('error output is pretty-printed JSON with 2-space indent and trailing newline', () => {
+    mockProcessEvent.mockImplementation(() => {
+      throw new Error('engine error');
+    });
+
+    run(BASE_ARGS);
+
+    expect(output.endsWith('\n')).toBe(true);
+    expect(output).toContain('\n  ');
+    const parsed = JSON.parse(output);
+    expect(parsed.success).toBe(false);
   });
 });

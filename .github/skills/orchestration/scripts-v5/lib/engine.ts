@@ -93,7 +93,7 @@ export function processEvent(
       return {
         success: false,
         action: null,
-        context: {},
+        context: { error: `Unknown event: ${event}` },
         mutations_applied: [],
         orchRoot,
         error: {
@@ -117,7 +117,7 @@ export function processEvent(
         return {
           success: false,
           action: null,
-          context: {},
+          context: { error: postWalkErrors[0] },
           mutations_applied: [],
           orchRoot,
           error: {
@@ -154,7 +154,7 @@ export function processEvent(
       return {
         success: false,
         action: null,
-        context: {},
+        context: { error: preReadResult.error.message },
         mutations_applied: [],
         orchRoot,
         error: preReadResult.error,
@@ -166,7 +166,7 @@ export function processEvent(
       return {
         success: false,
         action: null,
-        context: {},
+        context: { error: `No mutation registered for event: ${event}` },
         mutations_applied: [],
         orchRoot,
         error: {
@@ -184,7 +184,7 @@ export function processEvent(
       return {
         success: false,
         action: null,
-        context: {},
+        context: { error: validationErrors[0] },
         mutations_applied: [],
         orchRoot,
         error: {
@@ -218,7 +218,7 @@ export function processEvent(
         return {
           success: false,
           action: null,
-          context: {},
+          context: { error: postWalkErrors[0] },
           mutations_applied: [],
           orchRoot,
           error: {
@@ -258,7 +258,7 @@ export function processEvent(
     return {
       success: false,
       action: null,
-      context: {},
+      context: { error: message },
       mutations_applied: [],
       orchRoot,
       error: {

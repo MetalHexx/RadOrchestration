@@ -3,6 +3,12 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
 import { loadTemplate } from '../lib/template-loader.js';
+import { getMutation } from '../lib/mutations.js';
+
+vi.mock('../lib/mutations.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../lib/mutations.js')>();
+  return { ...original, getMutation: vi.fn(original.getMutation) };
+});
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -94,6 +100,7 @@ describe('engine – processEvent', () => {
     for (const key of Object.keys(DOC_STORE)) {
       delete DOC_STORE[key];
     }
+    vi.mocked(getMutation).mockClear();
   });
 
   describe('Init route (null state)', () => {
@@ -504,6 +511,42 @@ describe('engine – processEvent', () => {
       const written = io.writeCalls[0].state;
       const phaseLoop = written.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       expect(phaseLoop.iterations.length).toBe(1);
+    });
+  });
+
+  describe('Error paths populate context.error', () => {
+    it('unknown event returns context.error equal to "Unknown event: nonexistent_event"', () => {
+      const state = makeScaffoldedState();
+      const io = createMockIO(state);
+
+      const result = processEvent('nonexistent_event', PROJECT_DIR, {}, io);
+
+      expect(result.success).toBe(false);
+      expect(result.context.error).toBe('Unknown event: nonexistent_event');
+    });
+
+    it('no mutation registered for in-template event returns context.error containing "No mutation registered for event:"', () => {
+      const state = makeScaffoldedState();
+      const io = createMockIO(state);
+      vi.mocked(getMutation).mockReturnValueOnce(undefined);
+
+      const result = processEvent('research_started', PROJECT_DIR, {}, io);
+
+      expect(result.success).toBe(false);
+      expect(result.context.error).toContain('No mutation registered for event:');
+    });
+
+    it('engine exception (catch block) returns context.error matching the thrown error message', () => {
+      const state = makeScaffoldedState();
+      const io = createMockIO(state);
+
+      // task_handoff_started with context.phase=1 causes the mutation to throw
+      // because the phase_loop has no iterations in the scaffolded state
+      const result = processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+
+      expect(result.success).toBe(false);
+      expect(typeof result.context.error).toBe('string');
+      expect(result.context.error).toBe(result.error?.message);
     });
   });
 });
