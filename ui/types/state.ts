@@ -35,6 +35,19 @@ export const PLANNING_STEP_ORDER: readonly PlanningStepName[] = [
   'research', 'prd', 'design', 'architecture', 'master_plan'
 ] as const;
 
+// ─── State-embedded Config (snapshot) ────────────────────────────────────────
+
+export interface StateConfigLimits {
+  max_phases: number;
+  max_tasks_per_phase: number;
+  max_retries_per_task: number;
+  max_consecutive_review_rejections: number;
+}
+
+export interface StateConfig {
+  limits: StateConfigLimits;
+}
+
 // ─── State Root ──────────────────────────────────────────────────────────────
 
 export interface ProjectState {
@@ -44,6 +57,7 @@ export interface ProjectState {
   planning: PlanningState;
   execution: ExecutionState;
   final_review: FinalReview;
+  config?: StateConfig;
 }
 
 // ─── Source Control ──────────────────────────────────────────────────────────

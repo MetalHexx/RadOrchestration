@@ -249,6 +249,25 @@ test("FinalReviewSection returns null when finalReview.status === 'not_started'"
 
 console.log("\nMainDashboard prop threading tests:");
 
+interface MainDashboardMaxRetriesInputs {
+  projectName: string;
+  pipelineTier: PipelineTier;
+  maxRetries?: number;
+}
+
+function simulateMainDashboardMaxRetries(inputs: MainDashboardMaxRetriesInputs) {
+  return {
+    planningSectionProps: {
+      projectName: inputs.projectName,
+    },
+    finalReviewSectionProps: {
+      projectName: inputs.projectName,
+      pipelineTier: inputs.pipelineTier,
+    },
+    resolvedMaxRetries: inputs.maxRetries ?? 3,
+  };
+}
+
 test("MainDashboard passes projectName to PlanningSection", () => {
   const result = simulateMainDashboardPropThreading({
     projectName: "UI-HUMAN-GATE-CONTROLS",
@@ -264,6 +283,24 @@ test("MainDashboard passes projectName and pipelineTier to FinalReviewSection", 
   });
   assert.strictEqual(result.finalReviewSectionProps.projectName, "UI-HUMAN-GATE-CONTROLS");
   assert.strictEqual(result.finalReviewSectionProps.pipelineTier, "review");
+});
+
+test("MainDashboard resolves maxRetries from config when provided (e.g. 5 from state.config.limits.max_retries_per_task)", () => {
+  const result = simulateMainDashboardMaxRetries({
+    projectName: "DAG-CONTRACT-REPAIRS-2",
+    pipelineTier: "execution",
+    maxRetries: 5,
+  });
+  assert.strictEqual(result.resolvedMaxRetries, 5);
+});
+
+test("MainDashboard falls back to default maxRetries=3 when config is absent", () => {
+  const result = simulateMainDashboardMaxRetries({
+    projectName: "DAG-CONTRACT-REPAIRS-2",
+    pipelineTier: "execution",
+    maxRetries: undefined,
+  });
+  assert.strictEqual(result.resolvedMaxRetries, 3);
 });
 
 // ==================== Barrel Re-export Tests ====================
