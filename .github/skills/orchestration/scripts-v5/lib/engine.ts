@@ -78,6 +78,17 @@ export function normalizeDocPath(docPath: string, basePath: string, projectName:
   return normalized;
 }
 
+// ── resolveGateApproved ───────────────────────────────────────────────────────
+
+function resolveGateApproved(context: Partial<EventContext>): string {
+  const gateType = (context as Record<string, unknown>).gate_type;
+  if (gateType === 'task') return 'task_gate_approved';
+  if (gateType === 'phase') return 'phase_gate_approved';
+  throw new Error(gateType
+    ? `Unknown gate type '${gateType}': expected task or phase`
+    : 'gate_approved requires --gate-type task|phase');
+}
+
 // ── processEvent (main engine entry point) ────────────────────────────────────
 
 export function processEvent(
@@ -178,7 +189,25 @@ export function processEvent(
         },
       };
     }
-
+    // ── gate_approved alias resolution ──────────────────────────────────
+    if (event === 'gate_approved') {
+      try {
+        event = resolveGateApproved(context);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return {
+          success: false,
+          action: null,
+          context: { error: message },
+          mutations_applied: [],
+          orchRoot,
+          error: {
+            message,
+            event,
+          },
+        };
+      }
+    }
     // ── Standard route (state exists) ───────────────────────────────────
     const entry = eventIndex.get(event);
     if (!entry) {

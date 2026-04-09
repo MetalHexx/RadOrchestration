@@ -17,6 +17,7 @@ import type {
   StepNodeState,
   GateNodeState,
   ForEachPhaseNodeState,
+  ForEachTaskNodeState,
 } from '../lib/types.js';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -629,6 +630,123 @@ describe('engine – processEvent', () => {
       expect(result.success).toBe(false);
       expect(typeof result.context.error).toBe('string');
       expect(result.context.error).toBe(result.error?.message);
+    });
+  });
+
+  describe('gate_approved alias resolution', () => {
+    function makeStateWithTaskGate(): PipelineState {
+      const state = makeScaffoldedState();
+      const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+      phaseLoop.status = 'in_progress';
+      phaseLoop.iterations = [
+        {
+          index: 0,
+          status: 'in_progress',
+          nodes: {
+            phase_planning: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-plan.md', retries: 0 },
+            phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+            phase_commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
+            phase_commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            task_loop: {
+              kind: 'for_each_task',
+              status: 'in_progress',
+              iterations: [
+                {
+                  index: 0,
+                  status: 'in_progress',
+                  nodes: {
+                    task_handoff: { kind: 'step', status: 'completed', doc_path: '/tmp/handoff.md', retries: 0 },
+                    task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
+                    code_review: { kind: 'step', status: 'completed', doc_path: '/tmp/review.md', retries: 0 },
+                    task_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+                  },
+                  corrective_tasks: [],
+                },
+              ],
+            },
+          },
+          corrective_tasks: [],
+        },
+      ];
+      return state;
+    }
+
+    function makeStateWithPhaseGate(): PipelineState {
+      const state = makeScaffoldedState();
+      const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+      phaseLoop.status = 'in_progress';
+      phaseLoop.iterations = [
+        {
+          index: 0,
+          status: 'in_progress',
+          nodes: {
+            phase_planning: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-plan.md', retries: 0 },
+            phase_report: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-report.md', retries: 0 },
+            phase_review: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-review.md', retries: 0 },
+            phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+            phase_commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
+            phase_commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            task_loop: {
+              kind: 'for_each_task',
+              status: 'completed',
+              iterations: [
+                {
+                  index: 0,
+                  status: 'completed',
+                  nodes: {
+                    task_handoff: { kind: 'step', status: 'completed', doc_path: '/tmp/handoff.md', retries: 0 },
+                    task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
+                    code_review: { kind: 'step', status: 'completed', doc_path: '/tmp/review.md', retries: 0 },
+                    task_gate: { kind: 'gate', status: 'completed', gate_active: true },
+                  },
+                  corrective_tasks: [],
+                },
+              ],
+            },
+          },
+          corrective_tasks: [],
+        },
+      ];
+      return state;
+    }
+
+    it('gate_approved with gate_type: task resolves to task_gate_approved and returns success: true', () => {
+      const state = makeStateWithTaskGate();
+      const io = createMockIO(state);
+      const result = processEvent('gate_approved', PROJECT_DIR, { gate_type: 'task', phase: 1, task: 1 }, io);
+      expect(result.success).toBe(true);
+    });
+
+    it('gate_approved with gate_type: phase resolves to phase_gate_approved and returns success: true', () => {
+      const state = makeStateWithPhaseGate();
+      const io = createMockIO(state);
+      const result = processEvent('gate_approved', PROJECT_DIR, { gate_type: 'phase', phase: 1 }, io);
+      expect(result.success).toBe(true);
+    });
+
+    it('gate_approved without gate_type returns success: false with descriptive error', () => {
+      const state = makeScaffoldedState();
+      const io = createMockIO(state);
+      const result = processEvent('gate_approved', PROJECT_DIR, {}, io);
+      expect(result.success).toBe(false);
+      expect(result.context.error).toContain('gate_approved requires --gate-type task|phase');
+    });
+
+    it('gate_approved with gate_type: invalid returns success: false with descriptive error', () => {
+      const state = makeScaffoldedState();
+      const io = createMockIO(state);
+      const result = processEvent('gate_approved', PROJECT_DIR, { gate_type: 'invalid' }, io);
+      expect(result.success).toBe(false);
+      expect(result.context.error).toContain("Unknown gate type 'invalid': expected task or phase");
+    });
+
+    it('gate_approved with null state fires null-state guard before alias resolution', () => {
+      const io = createMockIO(null);
+      const result = processEvent('gate_approved', PROJECT_DIR, { gate_type: 'task' }, io);
+      expect(result.success).toBe(false);
+      expect(result.context.error).toContain('No state.json found');
     });
   });
 });
