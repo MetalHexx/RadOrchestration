@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { processEvent } from '../lib/engine.js';
+import { processEvent, normalizeDocPath } from '../lib/engine.js';
 import { loadTemplate } from '../lib/template-loader.js';
 import { getMutation } from '../lib/mutations.js';
 
@@ -231,7 +231,7 @@ describe('engine – processEvent', () => {
       const state = makeScaffoldedState();
       (state.graph.nodes['research'] as StepNodeState).status = 'in_progress';
 
-      const docPath = path.join(PROJECT_DIR, 'tasks', 'RESEARCH.md');
+      const docPath = path.posix.join(PROJECT_DIR, 'tasks', 'RESEARCH.md');
       DOC_STORE[docPath] = {
         frontmatter: { title: 'Research', status: 'completed' },
         content: '# Research findings',
@@ -548,5 +548,37 @@ describe('engine – processEvent', () => {
       expect(typeof result.context.error).toBe('string');
       expect(result.context.error).toBe(result.error?.message);
     });
+  });
+});
+
+// ── normalizeDocPath ──────────────────────────────────────────────────────────
+
+describe('normalizeDocPath', () => {
+  it('converts backslashes to forward slashes and strips prefix when prefix matches', () => {
+    // 'base\\path\\proj/file.md' → convert → 'base/path/proj/file.md' → prefix 'base/path/proj/' present → 'file.md'
+    expect(normalizeDocPath('base\\path\\proj/file.md', 'base/path', 'proj')).toBe('file.md');
+  });
+
+  it('strips basePath/projectName/ prefix when path already uses forward slashes', () => {
+    expect(
+      normalizeDocPath('.github/projects/MY-PROJECT/tasks/T01.md', '.github/projects', 'MY-PROJECT'),
+    ).toBe('tasks/T01.md');
+  });
+
+  it('returns path unchanged when prefix does not match', () => {
+    expect(normalizeDocPath('tasks/T01.md', '.github/projects', 'MY-PROJECT')).toBe('tasks/T01.md');
+  });
+
+  it('normalizes backslashes when prefix does not match', () => {
+    expect(normalizeDocPath('tasks\\T01.md', '.github/projects', 'MY-PROJECT')).toBe('tasks/T01.md');
+  });
+
+  it('returns empty string unchanged for falsy docPath', () => {
+    expect(normalizeDocPath('', 'base', 'proj')).toBe('');
+  });
+
+  it('handles mixed separators: converts then strips prefix', () => {
+    // 'base\\path/PROJECT/file.md' → convert → 'base/path/PROJECT/file.md' → prefix matches → 'file.md'
+    expect(normalizeDocPath('base\\path/PROJECT/file.md', 'base/path', 'PROJECT')).toBe('file.md');
   });
 });

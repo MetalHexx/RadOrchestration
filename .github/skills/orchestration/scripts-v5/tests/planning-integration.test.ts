@@ -73,7 +73,7 @@ function createMockIO(initialState: PipelineState | null = null): MockIO {
       return structuredClone(DEFAULT_CONFIG);
     },
     readDocument(docPath: string): { frontmatter: Record<string, unknown>; content: string } | null {
-      return DOC_STORE[docPath] ?? null;
+      return DOC_STORE[docPath.replace(/\\/g, '/')] ?? null;
     },
     ensureDirectories(projectDir: string): void {
       ensureDirCalls.push(projectDir);
@@ -90,7 +90,7 @@ function makeScaffoldedState(): PipelineState {
 
 // Helper: seed a document into DOC_STORE for readDocument lookups
 function seedDoc(docPath: string, extraFrontmatter: Record<string, unknown> = {}): void {
-  DOC_STORE[docPath] = {
+  DOC_STORE[docPath.replace(/\\/g, '/')] = {
     frontmatter: { title: path.basename(docPath, path.extname(docPath)), status: 'completed', ...extraFrontmatter },
     content: `# ${path.basename(docPath)}`,
   };
@@ -133,7 +133,7 @@ describe('Planning-tier integration — full sequence', () => {
     }
 
     // ── Step 3: research_completed ────────────────────────────────────────
-    const researchDoc = path.join(PROJECT_DIR, 'docs', 'research.md');
+    const researchDoc = path.posix.join(PROJECT_DIR, 'docs', 'research.md');
     seedDoc(researchDoc);
     result = processEvent('research_completed', PROJECT_DIR, { doc_path: researchDoc }, io);
     expect(result.success).toBe(true);
@@ -156,7 +156,7 @@ describe('Planning-tier integration — full sequence', () => {
     }
 
     // ── Step 5: prd_completed ─────────────────────────────────────────────
-    const prdDoc = path.join(PROJECT_DIR, 'docs', 'prd.md');
+    const prdDoc = path.posix.join(PROJECT_DIR, 'docs', 'prd.md');
     seedDoc(prdDoc);
     result = processEvent('prd_completed', PROJECT_DIR, { doc_path: prdDoc }, io);
     expect(result.success).toBe(true);
@@ -179,7 +179,7 @@ describe('Planning-tier integration — full sequence', () => {
     }
 
     // ── Step 7: design_completed ──────────────────────────────────────────
-    const designDoc = path.join(PROJECT_DIR, 'docs', 'design.md');
+    const designDoc = path.posix.join(PROJECT_DIR, 'docs', 'design.md');
     seedDoc(designDoc);
     result = processEvent('design_completed', PROJECT_DIR, { doc_path: designDoc }, io);
     expect(result.success).toBe(true);
@@ -202,7 +202,7 @@ describe('Planning-tier integration — full sequence', () => {
     }
 
     // ── Step 9: architecture_completed ───────────────────────────────────
-    const archDoc = path.join(PROJECT_DIR, 'docs', 'architecture.md');
+    const archDoc = path.posix.join(PROJECT_DIR, 'docs', 'architecture.md');
     seedDoc(archDoc);
     result = processEvent('architecture_completed', PROJECT_DIR, { doc_path: archDoc }, io);
     expect(result.success).toBe(true);
@@ -225,7 +225,7 @@ describe('Planning-tier integration — full sequence', () => {
     }
 
     // ── Step 11: master_plan_completed ────────────────────────────────────
-    const mpDoc = path.join(PROJECT_DIR, 'docs', 'master-plan.md');
+    const mpDoc = path.posix.join(PROJECT_DIR, 'docs', 'master-plan.md');
     seedDoc(mpDoc, { total_phases: 1 });
     result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: mpDoc }, io);
     expect(result.success).toBe(true);
@@ -318,7 +318,7 @@ describe('Planning-tier — individual step checks', () => {
   it('research_completed stores doc_path and returns spawn_prd', () => {
     const state = makeScaffoldedState();
     (state.graph.nodes['research'] as StepNodeState).status = 'in_progress';
-    const docPath = path.join(PROJECT_DIR, 'research.md');
+    const docPath = path.posix.join(PROJECT_DIR, 'research.md');
     seedDoc(docPath);
     const io = createMockIO(state);
 
@@ -337,7 +337,7 @@ describe('Planning-tier — individual step checks', () => {
     (state.graph.nodes['research'] as StepNodeState).status = 'completed';
     (state.graph.nodes['research'] as StepNodeState).doc_path = '/tmp/r.md';
     (state.graph.nodes['prd'] as StepNodeState).status = 'in_progress';
-    const docPath = path.join(PROJECT_DIR, 'prd.md');
+    const docPath = path.posix.join(PROJECT_DIR, 'prd.md');
     seedDoc(docPath);
     const io = createMockIO(state);
 
@@ -357,7 +357,7 @@ describe('Planning-tier — individual step checks', () => {
     (state.graph.nodes['prd'] as StepNodeState).status = 'completed';
     (state.graph.nodes['prd'] as StepNodeState).doc_path = '/tmp/p.md';
     (state.graph.nodes['design'] as StepNodeState).status = 'in_progress';
-    const docPath = path.join(PROJECT_DIR, 'design.md');
+    const docPath = path.posix.join(PROJECT_DIR, 'design.md');
     seedDoc(docPath);
     const io = createMockIO(state);
 
@@ -379,7 +379,7 @@ describe('Planning-tier — individual step checks', () => {
     (state.graph.nodes['design'] as StepNodeState).status = 'completed';
     (state.graph.nodes['design'] as StepNodeState).doc_path = '/tmp/d.md';
     (state.graph.nodes['architecture'] as StepNodeState).status = 'in_progress';
-    const docPath = path.join(PROJECT_DIR, 'architecture.md');
+    const docPath = path.posix.join(PROJECT_DIR, 'architecture.md');
     seedDoc(docPath);
     const io = createMockIO(state);
 
@@ -403,7 +403,7 @@ describe('Planning-tier — individual step checks', () => {
     (state.graph.nodes['architecture'] as StepNodeState).status = 'completed';
     (state.graph.nodes['architecture'] as StepNodeState).doc_path = '/tmp/a.md';
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
-    const docPath = path.join(PROJECT_DIR, 'master-plan.md');
+    const docPath = path.posix.join(PROJECT_DIR, 'master-plan.md');
     seedDoc(docPath);
     const io = createMockIO(state);
 

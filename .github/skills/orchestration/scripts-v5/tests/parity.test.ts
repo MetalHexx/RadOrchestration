@@ -205,7 +205,7 @@ describe('[PARITY] v4:resolvePlanning', () => {
     // v4: mutations.js — completed event stores doc_path on step node
     const state = createScaffoldedState();
     (state.graph.nodes['research'] as StepNodeState).status = 'in_progress';
-    const docPath = path.join(PROJECT_DIR, 'research.md');
+    const docPath = path.posix.join(PROJECT_DIR, 'research.md');
     seedDoc(docPath);
     const io = createMockIO(state);
 
@@ -221,7 +221,7 @@ describe('[PARITY] v4:resolvePlanning', () => {
     const state = createScaffoldedState();
     completePlanningSteps(state, 'research');
     (state.graph.nodes['prd'] as StepNodeState).status = 'in_progress';
-    const docPath = path.join(PROJECT_DIR, 'prd.md');
+    const docPath = path.posix.join(PROJECT_DIR, 'prd.md');
     seedDoc(docPath);
     const io = createMockIO(state);
 
@@ -237,7 +237,7 @@ describe('[PARITY] v4:resolvePlanning', () => {
     const state = createScaffoldedState();
     completePlanningSteps(state, 'prd');
     (state.graph.nodes['design'] as StepNodeState).status = 'in_progress';
-    const docPath = path.join(PROJECT_DIR, 'design.md');
+    const docPath = path.posix.join(PROJECT_DIR, 'design.md');
     seedDoc(docPath);
     const io = createMockIO(state);
 
@@ -253,7 +253,7 @@ describe('[PARITY] v4:resolvePlanning', () => {
     const state = createScaffoldedState();
     completePlanningSteps(state, 'design');
     (state.graph.nodes['architecture'] as StepNodeState).status = 'in_progress';
-    const docPath = path.join(PROJECT_DIR, 'architecture.md');
+    const docPath = path.posix.join(PROJECT_DIR, 'architecture.md');
     seedDoc(docPath);
     const io = createMockIO(state);
 
@@ -269,7 +269,7 @@ describe('[PARITY] v4:resolvePlanning', () => {
     const state = createScaffoldedState();
     completePlanningSteps(state, 'architecture');
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
-    const docPath = path.join(PROJECT_DIR, 'master-plan.md');
+    const docPath = path.posix.join(PROJECT_DIR, 'master-plan.md');
     seedDoc(docPath);
     const io = createMockIO(state);
 
@@ -387,7 +387,7 @@ describe('[PARITY] v4:resolveExecution', () => {
         return structuredClone(EXEC_CONFIG);
       },
       readDocument(docPath: string): { frontmatter: Record<string, unknown>; content: string } | null {
-        return DOC_STORE[docPath] ?? null;
+        return DOC_STORE[docPath.replace(/\\/g, '/')] ?? null;
       },
       ensureDirectories(projectDir: string): void {
         ensureDirCalls.push(projectDir);

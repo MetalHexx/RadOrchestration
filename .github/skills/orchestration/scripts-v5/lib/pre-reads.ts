@@ -39,12 +39,12 @@ export function preRead(
       };
     }
 
-    const derived = (state as any)?.planning?.steps?.[4]?.doc_path;
+    const derived = (state as any)?.graph?.nodes?.master_plan?.doc_path;
     if (!derived) {
       return {
         context,
         error: {
-          message: 'Cannot derive master plan path: state.planning.steps[4].doc_path is not set',
+          message: 'Cannot derive master plan path: graph.nodes.master_plan.doc_path is not set',
           event: 'plan_approved',
           field: 'doc_path',
         },

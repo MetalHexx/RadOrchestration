@@ -112,6 +112,7 @@ export default function Home() {
               project={selected}
               onDocClick={handleDocClick}
               otherDocs={otherDocs}
+              maxRetries={projectState?.config?.limits?.max_retries_per_task}
             />
           ) : (
             <div className="flex h-full items-center justify-center p-6">

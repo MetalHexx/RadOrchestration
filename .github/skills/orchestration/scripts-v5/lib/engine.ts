@@ -67,6 +67,16 @@ function scaffoldState(
   };
 }
 
+// ── normalizeDocPath ────────────────────────────────────────────────────────────
+
+export function normalizeDocPath(docPath: string, basePath: string, projectName: string): string {
+  if (!docPath) return docPath;
+  const normalized = docPath.replace(/\\/g, '/');
+  const prefix = basePath + '/' + projectName + '/';
+  if (normalized.startsWith(prefix)) return normalized.slice(prefix.length);
+  return normalized;
+}
+
 // ── processEvent (main engine entry point) ────────────────────────────────────
 
 export function processEvent(
@@ -176,7 +186,15 @@ export function processEvent(
       };
     }
 
-    const mutationResult = mutation(state, preReadResult.context, config, template);
+    const normalizedContext = { ...preReadResult.context };
+    if (normalizedContext.doc_path) {
+      normalizedContext.doc_path = normalizeDocPath(
+        normalizedContext.doc_path,
+        config.projects.base_path,
+        path.basename(projectDir),
+      );
+    }
+    const mutationResult = mutation(state, normalizedContext, config, template);
     const mutatedState = mutationResult.state;
 
     const validationErrors = validateState(state, mutatedState, config, template);

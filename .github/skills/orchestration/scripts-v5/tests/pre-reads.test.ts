@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { preRead } from '../lib/pre-reads.js';
 import type { EventContext, EventIndexEntry, IOAdapter } from '../lib/types.js';
 
@@ -245,5 +246,70 @@ describe('preRead — relative doc_path resolution', () => {
     preRead('step_completed', context, readDocument, PROJECT_DIR, entry);
 
     expect(mockFn).toHaveBeenCalledWith(EXPECTED_RESOLVED_PATH);
+  });
+});
+
+// ── plan_approved auto-derivation ─────────────────────────────────────────────
+
+describe('preRead — plan_approved: auto-derivation from graph.nodes.master_plan.doc_path', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'pre-reads-plan-approved-'));
+    writeFileSync(
+      join(tmpDir, 'state.json'),
+      JSON.stringify({ graph: { nodes: { master_plan: { doc_path: 'plans/MASTER-PLAN.md' } } } }),
+      'utf-8',
+    );
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('derives doc_path from state.graph.nodes.master_plan.doc_path when no doc_path in context', () => {
+    const entry: EventIndexEntry = {
+      nodeDef: {
+        id: 'plan_approval_gate',
+        kind: 'gate',
+        mode_ref: 'gate_mode',
+        action_if_needed: 'prompt',
+        approved_event: 'plan_approved',
+      },
+      eventPhase: 'approved',
+      templatePath: 'plan_approval_gate',
+    };
+    const readDocument: IOAdapter['readDocument'] = vi.fn().mockReturnValue(null);
+
+    const result = preRead('plan_approved', {}, readDocument, tmpDir, entry);
+
+    expect(result.error).toBeUndefined();
+    expect(result.context.doc_path).toBe(join(tmpDir, 'plans/MASTER-PLAN.md'));
+  });
+
+  it('errors with message containing "graph.nodes.master_plan.doc_path is not set" when state has no master_plan doc_path', () => {
+    writeFileSync(
+      join(tmpDir, 'state.json'),
+      JSON.stringify({ graph: { nodes: { master_plan: { doc_path: null } } } }),
+      'utf-8',
+    );
+
+    const entry: EventIndexEntry = {
+      nodeDef: {
+        id: 'plan_approval_gate',
+        kind: 'gate',
+        mode_ref: 'gate_mode',
+        action_if_needed: 'prompt',
+        approved_event: 'plan_approved',
+      },
+      eventPhase: 'approved',
+      templatePath: 'plan_approval_gate',
+    };
+    const readDocument: IOAdapter['readDocument'] = vi.fn();
+
+    const result = preRead('plan_approved', {}, readDocument, tmpDir, entry);
+
+    expect(result.error).toBeDefined();
+    expect(result.error!.message).toContain('graph.nodes.master_plan.doc_path is not set');
   });
 });

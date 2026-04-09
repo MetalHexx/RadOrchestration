@@ -107,16 +107,16 @@ describe('[CONTRACT] Error shape — doc_path derivation: doc_path not set in st
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('returns structured error when state.planning.steps[4].doc_path is missing', () => {
+  it('returns structured error when graph.nodes.master_plan.doc_path is missing', () => {
     writeFileSync(
       join(tempDir, 'state.json'),
-      JSON.stringify({ planning: { steps: [{}, {}, {}, {}, {}] } }),
+      JSON.stringify({ graph: { nodes: { master_plan: { doc_path: null } } } }),
     );
     const io = driveToApprovalReadiness();
     const result = processEvent('plan_approved', tempDir, {}, io);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe(
-      'Cannot derive master plan path: state.planning.steps[4].doc_path is not set',
+      'Cannot derive master plan path: graph.nodes.master_plan.doc_path is not set',
     );
     expect(result.error?.field).toBe('doc_path');
   });

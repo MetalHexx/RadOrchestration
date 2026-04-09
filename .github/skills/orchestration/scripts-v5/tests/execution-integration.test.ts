@@ -85,7 +85,7 @@ function createMockIO(
       return structuredClone(config);
     },
     readDocument(docPath: string): { frontmatter: Record<string, unknown>; content: string } | null {
-      return DOC_STORE[docPath] ?? null;
+      return DOC_STORE[docPath.replace(/\\/g, '/')] ?? null;
     },
     ensureDirectories(projectDir: string): void {
       ensureDirCalls.push(projectDir);
@@ -96,7 +96,7 @@ function createMockIO(
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function seedDoc(docPath: string, extraFrontmatter: Record<string, unknown> = {}): void {
-  DOC_STORE[docPath] = {
+  DOC_STORE[docPath.replace(/\\/g, '/')] = {
     frontmatter: {
       title: path.basename(docPath, path.extname(docPath)),
       status: 'completed',

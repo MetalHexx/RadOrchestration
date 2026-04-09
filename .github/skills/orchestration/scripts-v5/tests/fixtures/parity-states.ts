@@ -69,7 +69,7 @@ export function createMockIO(initialState: PipelineState | null = null): MockIO 
       return structuredClone(DEFAULT_CONFIG);
     },
     readDocument(docPath: string): { frontmatter: Record<string, unknown>; content: string } | null {
-      return DOC_STORE[docPath] ?? null;
+      return DOC_STORE[docPath.replace(/\\/g, '/')] ?? null;
     },
     ensureDirectories(projectDir: string): void {
       ensureDirCalls.push(projectDir);
@@ -88,7 +88,7 @@ export function createScaffoldedState(): PipelineState {
 // ── Seed document helper ──────────────────────────────────────────────────────
 
 export function seedDoc(docPath: string, extraFrontmatter: Record<string, unknown> = {}): void {
-  DOC_STORE[docPath] = {
+  DOC_STORE[docPath.replace(/\\/g, '/')] = {
     frontmatter: {
       title: path.basename(docPath, path.extname(docPath)),
       status: 'completed',
@@ -160,7 +160,7 @@ export function createMockIOWithConfig(
       return structuredClone(config);
     },
     readDocument(docPath: string): { frontmatter: Record<string, unknown>; content: string } | null {
-      return DOC_STORE[docPath] ?? null;
+      return DOC_STORE[docPath.replace(/\\/g, '/')] ?? null;
     },
     ensureDirectories(projectDir: string): void {
       ensureDirCalls.push(projectDir);
@@ -176,15 +176,15 @@ export const TASKS_2 = [
 ];
 
 export const phasePlanDoc = (phase: number): string =>
-  path.join(PROJECT_DIR, 'phases', `phase-${phase}-plan.md`);
+  path.posix.join(PROJECT_DIR, 'phases', `phase-${phase}-plan.md`);
 export const taskHandoffDoc = (phase: number, task: number): string =>
-  path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`);
+  path.posix.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`);
 export const codeReviewDoc = (phase: number, task: number): string =>
-  path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`);
+  path.posix.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`);
 export const phaseReportDoc = (phase: number): string =>
-  path.join(PROJECT_DIR, 'phases', `phase-${phase}-report.md`);
+  path.posix.join(PROJECT_DIR, 'phases', `phase-${phase}-report.md`);
 export const phaseReviewDoc = (phase: number): string =>
-  path.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`);
+  path.posix.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`);
 
 // ── Drive to execution tier helper ────────────────────────────────────────────
 
