@@ -567,3 +567,44 @@ describe('[CONTRACT] Event Names — unknown / invalid event names', () => {
     expect(result.success).toBe(true);
   });
 });
+
+// ── [CONTRACT] Event Names — OOB events ───────────────────────────────────────
+
+describe('[CONTRACT] Event Names — OOB events', () => {
+  it('plan_rejected is a valid v5 OOB event and produces success: true', () => {
+    const io = createMockIOWithConfig(null, config);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    completePlanningSteps(state, 'master_plan');
+    const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
+    seedDoc(mpDoc, { total_phases: 1 });
+    const result = processEvent('plan_rejected', PROJECT_DIR, {}, io);
+    expect(result.success).toBe(true);
+    expect(result.action).not.toBeNull();
+  });
+
+  it('gate_rejected is a valid v5 OOB event and produces success: true', () => {
+    const io = createMockIOWithConfig(null, config);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('gate_rejected', PROJECT_DIR, { gate_type: 'task', reason: 'Rejected by operator' }, io);
+    expect(result.success).toBe(true);
+  });
+
+  it('final_rejected is a valid v5 OOB event and produces success: true', () => {
+    const io = driveToReviewTier(config);
+    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const frDocPath = '/tmp/final-review.md';
+    seedDoc(frDocPath);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
+    const result = processEvent('final_rejected', PROJECT_DIR, {}, io);
+    expect(result.success).toBe(true);
+    expect(result.action).not.toBeNull();
+  });
+
+  it('halt is a valid v5 OOB event and produces success: true', () => {
+    const io = createMockIOWithConfig(null, config);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('halt', PROJECT_DIR, { reason: 'Emergency stop' }, io);
+    expect(result.success).toBe(true);
+  });
+});

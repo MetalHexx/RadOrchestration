@@ -43,8 +43,14 @@ const prConfig = createConfig({
 // ── [CONTRACT] Source Control Flows — invoke_source_control_commit ────────────
 
 describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () => {
-  it('context contains phase/task identifiers and forwards branch+worktree_path from CLI context', () => {
+  it('context contains phase/task identifiers and reads branch+worktree_path from state.pipeline.source_control', () => {
     const io = driveToExecutionWithConfig(commitConfig, 1);
+    // Initialize source control state via OOB event before driving to commit step
+    processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feature/my-branch',
+      base_branch: 'main',
+      worktree_path: '/tmp/worktree',
+    }, io);
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
@@ -59,17 +65,10 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
       doc_path: phaseReviewDoc(1),
       verdict: 'approve',
       exit_criteria_met: true,
-      branch: 'feature/my-branch',
-      worktree_path: '/tmp/worktree',
     }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('gate_phase');
-    // Approve phase gate, forwarding branch/worktree_path as CLI context
-    result = processEvent('phase_gate_approved', PROJECT_DIR, {
-      phase: 1,
-      branch: 'feature/my-branch',
-      worktree_path: '/tmp/worktree',
-    }, io);
+    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_commit');
     expect(result.context).toEqual(expect.objectContaining({
@@ -145,17 +144,19 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
 // ── [CONTRACT] Source Control Flows — invoke_source_control_pr ───────────────
 
 describe('[CONTRACT] Source Control Flows — invoke_source_control_pr', () => {
-  it('context contains branch, base_branch, worktree_path forwarded from CLI context', () => {
+  it('context contains branch, base_branch, worktree_path read from state.pipeline.source_control', () => {
     const io = driveToReviewTier(prConfig);
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
-    const frDocPath = '/tmp/final-review.md';
-    seedDoc(frDocPath);
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
-    const result = processEvent('final_approved', PROJECT_DIR, {
+    // Initialize source control state via OOB event before driving to PR step
+    processEvent('source_control_init', PROJECT_DIR, {
       branch: 'feature/my-branch',
       base_branch: 'main',
       worktree_path: '/tmp/worktree',
     }, io);
+    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const frDocPath = '/tmp/final-review.md';
+    seedDoc(frDocPath);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_pr');
     expect(result.context).toEqual(expect.objectContaining({

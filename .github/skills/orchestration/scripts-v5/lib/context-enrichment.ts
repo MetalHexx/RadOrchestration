@@ -191,17 +191,17 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       phase_id: formatPhaseId(phaseNumber),
       task_number: taskNumber,
       task_id: formatTaskId(phaseNumber, taskNumber),
-      branch: input.cliContext.branch ?? '',
-      worktree_path: input.cliContext.worktree_path ?? '',
+      branch: state.pipeline.source_control?.branch ?? '',
+      worktree_path: state.pipeline.source_control?.worktree_path ?? '',
     };
   }
 
   if (action === 'invoke_source_control_pr') {
     return {
       ...walkerContext,
-      branch: input.cliContext.branch ?? '',
-      base_branch: input.cliContext.base_branch ?? '',
-      worktree_path: input.cliContext.worktree_path ?? '',
+      branch: state.pipeline.source_control?.branch ?? '',
+      base_branch: state.pipeline.source_control?.base_branch ?? '',
+      worktree_path: state.pipeline.source_control?.worktree_path ?? '',
     };
   }
 
