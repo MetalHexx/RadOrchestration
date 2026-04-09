@@ -491,13 +491,97 @@ for (const [eventName, newStatus] of sourceControlPrSteps) {
   });
 }
 
-// ── Out-of-band stub mutations ────────────────────────────────────────────────
+// ── plan_rejected mutation ────────────────────────────────────────────────────
+
+mutationRegistry.set(EVENTS.PLAN_REJECTED, (state, _context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const masterPlanNode = resolveNodeState(cloned, 'master_plan', 'top');
+  masterPlanNode.status = 'not_started';
+  mutations_applied.push('set master_plan.status = not_started');
+  (masterPlanNode as StepNodeState).doc_path = null;
+  mutations_applied.push('set master_plan.doc_path = null');
+
+  const planGateNode = resolveNodeState(cloned, 'plan_approval_gate', 'top');
+  planGateNode.status = 'not_started';
+  mutations_applied.push('set plan_approval_gate.status = not_started');
+  (planGateNode as GateNodeState).gate_active = false;
+  mutations_applied.push('set plan_approval_gate.gate_active = false');
+
+  const phaseLoopNode = cloned.graph.nodes['phase_loop'];
+  if (phaseLoopNode.kind !== 'for_each_phase') {
+    throw new Error(`Expected phase_loop to be a for_each_phase node, got ${phaseLoopNode.kind}`);
+  }
+  phaseLoopNode.iterations = [];
+  mutations_applied.push('set phase_loop.iterations = []');
+
+  return { state: cloned, mutations_applied };
+});
+
+// ── gate_rejected mutation ────────────────────────────────────────────────────
+
+mutationRegistry.set(EVENTS.GATE_REJECTED, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  cloned.pipeline.current_tier = 'halted';
+  mutations_applied.push('set pipeline.current_tier = halted');
+
+  cloned.graph.status = 'halted';
+  mutations_applied.push('set graph.status = halted');
+
+  const gateType = context.gate_type ?? 'unknown';
+  const reason = context.reason || 'No reason provided';
+  cloned.pipeline.halt_reason = `Gate rejected (${gateType}): ${reason}`;
+  mutations_applied.push(`set pipeline.halt_reason = Gate rejected (${gateType}): ${reason}`);
+
+  return { state: cloned, mutations_applied };
+});
+
+// ── final_rejected mutation ───────────────────────────────────────────────────
+
+mutationRegistry.set(EVENTS.FINAL_REJECTED, (state, _context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const finalReviewNode = resolveNodeState(cloned, 'final_review', 'top');
+  finalReviewNode.status = 'not_started';
+  mutations_applied.push('set final_review.status = not_started');
+  (finalReviewNode as StepNodeState).doc_path = null;
+  mutations_applied.push('set final_review.doc_path = null');
+
+  const finalGateNode = resolveNodeState(cloned, 'final_approval_gate', 'top');
+  finalGateNode.status = 'not_started';
+  mutations_applied.push('set final_approval_gate.status = not_started');
+  (finalGateNode as GateNodeState).gate_active = false;
+  mutations_applied.push('set final_approval_gate.gate_active = false');
+
+  return { state: cloned, mutations_applied };
+});
+
+// ── halt mutation ─────────────────────────────────────────────────────────────
+
+mutationRegistry.set(EVENTS.HALT, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  cloned.pipeline.current_tier = 'halted';
+  mutations_applied.push('set pipeline.current_tier = halted');
+
+  cloned.graph.status = 'halted';
+  mutations_applied.push('set graph.status = halted');
+
+  const haltReason = context.reason ?? 'Pipeline halted by operator';
+  cloned.pipeline.halt_reason = haltReason;
+  mutations_applied.push(`set pipeline.halt_reason = ${haltReason}`);
+
+  return { state: cloned, mutations_applied };
+});
+
+// ── Out-of-band stub mutations (remaining: gate_mode_set, source_control_init) ─
 
 const oobStubEvents: string[] = [
-  EVENTS.PLAN_REJECTED,
-  EVENTS.GATE_REJECTED,
-  EVENTS.FINAL_REJECTED,
-  EVENTS.HALT,
   EVENTS.GATE_MODE_SET,
   EVENTS.SOURCE_CONTROL_INIT,
 ];

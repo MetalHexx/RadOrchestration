@@ -778,12 +778,28 @@ describe('out-of-band event routing', () => {
       const result = processEvent(oobEvent, PROJECT_DIR, {}, io);
       expect(result.success).toBe(true);
     });
+  }
 
+  // Stub events (gate_mode_set and source_control_init remain as stubs; the other 4 have real implementations)
+  const STUB_OOB_EVENTS = ['gate_mode_set', 'source_control_init'] as const;
+  for (const oobEvent of STUB_OOB_EVENTS) {
     it(`${oobEvent} result includes mutations_applied containing 'stub: ${oobEvent}'`, () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
       const result = processEvent(oobEvent, PROJECT_DIR, {}, io);
       expect(result.mutations_applied).toContain(`stub: ${oobEvent}`);
+    });
+  }
+
+  // Real implementations (plan_rejected, gate_rejected, final_rejected, halt) return non-stub mutations_applied
+  const REAL_OOB_EVENTS = ['plan_rejected', 'gate_rejected', 'final_rejected', 'halt'] as const;
+  for (const oobEvent of REAL_OOB_EVENTS) {
+    it(`${oobEvent} result includes non-empty mutations_applied (real implementation, not stub)`, () => {
+      const state = makeScaffoldedState();
+      const io = createMockIO(state);
+      const result = processEvent(oobEvent, PROJECT_DIR, {}, io);
+      expect(result.mutations_applied.length).toBeGreaterThan(0);
+      expect(result.mutations_applied).not.toContain(`stub: ${oobEvent}`);
     });
   }
 
