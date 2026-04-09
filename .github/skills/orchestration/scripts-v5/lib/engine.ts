@@ -60,7 +60,7 @@ function scaffoldState(
     },
     graph: {
       template_id: template.template.id,
-      status: 'not_started',
+      status: 'in_progress',
       current_node_path: null,
       nodes,
     },

@@ -125,9 +125,21 @@ describe('engine – processEvent', () => {
       expect(state.config.limits.max_consecutive_review_rejections).toBe(3);
       expect(state.config.source_control.auto_commit).toBe('ask');
       expect(state.config.source_control.auto_pr).toBe('ask');
-      expect(state.graph.status).toBe('not_started');
+      expect(state.graph.status).toBe('in_progress');
       expect(state.graph.template_id).toBe('full');
       expect(state.graph.current_node_path).toBeNull();
+    });
+
+    it('scaffolded state includes pipeline section with correct defaults', () => {
+      const io = createMockIO(null);
+      processEvent('research_started', PROJECT_DIR, {}, io);
+      const state = io.currentState!;
+      expect(state.pipeline).toEqual({
+        gate_mode: null,
+        source_control: null,
+        current_tier: 'planning',
+        halt_reason: null,
+      });
     });
 
     it('scaffolds correct node states for all top-level template nodes', () => {
