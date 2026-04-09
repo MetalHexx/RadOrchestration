@@ -16,7 +16,7 @@ import {
   TASKS_2,
 } from '../fixtures/parity-states.js';
 import type { MockIO } from '../fixtures/parity-states.js';
-import type { StepNodeState, ForEachPhaseNodeState, PipelineResult } from '../../lib/types.js';
+import type { StepNodeState, ForEachPhaseNodeState, PipelineResult, CorrectiveTaskEntry } from '../../lib/types.js';
 
 // ── Clear DOC_STORE between tests ─────────────────────────────────────────────
 
@@ -158,15 +158,21 @@ describe('[CONTRACT] Corrective Cycles — corrective create_phase_plan', () => 
   it('corrective create_phase_plan context includes is_correction: true and previous_review (non-empty)', () => {
     const io = driveToExecutionWithConfig(config, 1);
 
-    // Set phase_review to completed on the active phase iteration to simulate the
-    // corrective path. The v5 engine does not naturally re-enter create_phase_plan
-    // after a phase_review; this setup verifies the enrichment logic directly.
+    // Push a corrective entry to corrective_tasks so the enrichment detects
+    // corrective_tasks.length > 0, and set phase_review.doc_path for previous_review.
     const state = io.currentState!;
     const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const phaseIter = phaseLoop.iterations[0];
     const phaseReview = phaseIter.nodes['phase_review'] as StepNodeState;
     phaseReview.status = 'completed';
     phaseReview.doc_path = phaseReviewDoc(1);
+    phaseIter.corrective_tasks.push({
+      index: 1,
+      reason: 'Phase review requested changes',
+      injected_after: 'phase_review',
+      status: 'in_progress',
+      nodes: {},
+    } as CorrectiveTaskEntry);
 
     const result = processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
 

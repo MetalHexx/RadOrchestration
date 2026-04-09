@@ -190,7 +190,12 @@ function validateCorrectiveEntry(ct: CorrectiveTaskEntry, path: string): string[
   if (!validNodeStatuses.has(ct.status)) {
     errors.push(`Corrective task at ${path} has invalid status: '${ct.status}'`);
   }
-  if (!ct.nodes || typeof ct.nodes !== 'object' || Object.keys(ct.nodes).length === 0) {
+  if (!ct.nodes || typeof ct.nodes !== 'object') {
+    errors.push(`Corrective task at ${path} has missing or invalid nodes`);
+  } else if (ct.injected_after !== 'phase_review' && Object.keys(ct.nodes).length === 0) {
+    // Phase correctives (injected_after === 'phase_review') intentionally have nodes: {}
+    // because tasks are created by the subsequent phase planning step.
+    // Task-level correctives must have scaffolded body nodes.
     errors.push(`Corrective task at ${path} has empty or missing nodes`);
   }
   return errors;

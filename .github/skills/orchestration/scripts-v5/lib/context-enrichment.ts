@@ -108,8 +108,8 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
       const phaseReview = phaseIter?.nodes['phase_review'] as StepNodeState | undefined;
 
-      if (phaseReview?.status === 'completed') {
-        return { ...base, is_correction: true, previous_review: phaseReview.doc_path ?? '' };
+      if (phaseIter && phaseIter.corrective_tasks.length > 0) {
+        return { ...base, is_correction: true, previous_review: phaseReview?.doc_path ?? '' };
       }
 
       return base;  // Normal path — no is_correction field

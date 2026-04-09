@@ -141,6 +141,8 @@ mutationRegistry.set(EVENTS.PLAN_APPROVED, (state, _context, _config, _template)
   (node as GateNodeState).gate_active = true;
   mutations_applied.push('set plan_approval_gate.status = completed');
   mutations_applied.push('set plan_approval_gate.gate_active = true');
+  cloned.pipeline.current_tier = 'execution';
+  mutations_applied.push('set pipeline.current_tier = execution');
   return { state: cloned, mutations_applied };
 });
 
@@ -242,24 +244,45 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
 
   if (verdict === 'changes_requested') {
     const iteration = resolvePhaseIteration(cloned, context.phase ?? 1);
-    const bodyDefs = findTaskLoopBodyDefs(template);
-    if (bodyDefs.length === 0) {
-      throw new Error('findTaskLoopBodyDefs: no for_each_task body found in template');
+
+    // Reset phase_planning to not_started so the walker returns create_phase_plan
+    const phasePlanningNode = iteration.nodes['phase_planning'];
+    phasePlanningNode.status = 'not_started';
+    (phasePlanningNode as StepNodeState).doc_path = null;
+
+    // Reset task_loop so new tasks can be created from the new phase plan
+    const taskLoopNode = iteration.nodes['task_loop'];
+    taskLoopNode.status = 'not_started';
+    if (taskLoopNode.kind === 'for_each_task') {
+      taskLoopNode.iterations = [];
     }
-    const nodes: Record<string, NodeState> = {};
-    for (const bodyDef of bodyDefs) {
-      nodes[bodyDef.id] = scaffoldNodeState(bodyDef);
+
+    // Reset downstream nodes
+    for (const nodeId of ['phase_report', 'phase_review', 'phase_gate']) {
+      const n = iteration.nodes[nodeId];
+      n.status = 'not_started';
+      if (n.kind === 'step') {
+        // Preserve phase_review.doc_path — context-enrichment reads it for previous_review
+        if (nodeId !== 'phase_review') {
+          (n as StepNodeState).doc_path = null;
+        }
+        (n as StepNodeState).verdict = null;
+      }
+      if (n.kind === 'gate') {
+        (n as GateNodeState).gate_active = false;
+      }
     }
-    const entry: CorrectiveTaskEntry = {
+
+    // Store corrective context — empty nodes (tasks created by phase planning)
+    iteration.corrective_tasks.push({
       index: iteration.corrective_tasks.length + 1,
-      reason: 'Phase review requested changes',
+      reason: context.reason ?? 'Phase review requested changes',
       injected_after: 'phase_review',
-      status: 'not_started',
-      nodes,
-    };
-    iteration.corrective_tasks.push(entry);
-    mutations_applied.push(`injected phase corrective task ${entry.index} (changes_requested)`);
-    mutations_applied.push(`corrective_tasks.length = ${iteration.corrective_tasks.length}`);
+      status: 'in_progress',
+      nodes: {},
+    });
+
+    mutations_applied.push('reset phase for corrective re-planning');
   } else if (verdict === 'rejected') {
     const iteration = resolvePhaseIteration(cloned, context.phase ?? 1);
     iteration.status = 'halted';
@@ -447,6 +470,11 @@ mutationRegistry.set(EVENTS.FINAL_REVIEW_COMPLETED, (state, context, _config, _t
   const verdict = context.verdict ?? null;
   (node as StepNodeState).verdict = verdict;
   mutations_applied.push(`set final_review.verdict = ${verdict ?? 'null'}`);
+
+  if (verdict === 'approved') {
+    cloned.pipeline.current_tier = 'review';
+    mutations_applied.push('set pipeline.current_tier = review');
+  }
 
   return { state: cloned, mutations_applied };
 });

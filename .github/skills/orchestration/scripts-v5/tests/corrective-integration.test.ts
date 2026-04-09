@@ -524,13 +524,13 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
     }
   });
 
-  it('phase-level corrective loop — phase review changes_requested → corrective task → approve → advances', () => {
+  it('phase-level corrective loop — phase review changes_requested → re-planning → complete → advances', () => {
     const io = createMockIO(null, makeConfig());
     let result: PipelineResult;
 
     drivePlanningTier(io);
 
-    // ── Phase 1 — complete all tasks normally ────────────────────────────
+    // ── Phase 1 — first pass: complete all tasks normally ────────────────
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
     processEvent('phase_plan_created', PROJECT_DIR, {
@@ -541,12 +541,13 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
     driveTask(io, 1, 1);
     driveTask(io, 1, 2);
 
-    // ── Phase review with changes_requested ──────────────────────────────
+    // ── Phase review with changes_requested → corrective re-planning ─────
     result = drivePhasePostTasksWithVerdict(io, 1, 'changes_requested');
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('create_phase_plan');  // walker re-enters phase planning
+    expect(result.context['previous_review']).toBeTruthy();  // doc_path preserved through reset
 
-    // Verify phase-level corrective entry was created
+    // Verify phase-level corrective entry created with empty nodes
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       const iteration = phaseLoop.iterations[0];
@@ -555,13 +556,30 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
       expect(ct.index).toBe(1);
       expect(ct.injected_after).toBe('phase_review');
       expect(ct.reason).toBe('Phase review requested changes');
-      expect(ct.status).toBe('in_progress'); // walker promotes not_started → in_progress
+      expect(ct.status).toBe('in_progress');
+      expect(Object.keys(ct.nodes)).toHaveLength(0);  // empty — tasks created by re-planning
+      // Phase planning reset to not_started
+      expect(iteration.nodes['phase_planning'].status).toBe('not_started');
+      // Task loop iterations cleared
+      const taskLoop = iteration.nodes['task_loop'] as ForEachTaskNodeState;
+      expect(taskLoop.iterations).toHaveLength(0);
     }
 
-    // ── Drive corrective task through task body cycle with approve ────────
-    // Phase-level corrective tasks use the same task body events
-    result = driveCorrectiveTask(io, 1, 1, 1, 'approve');
+    // ── Phase 1 — corrective pass: re-run phase planning and tasks ───────
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
+    result = processEvent('phase_plan_created', PROJECT_DIR, {
+      phase: 1,
+      doc_path: DOC_PATHS.phasePlan(1),
+    }, io);
     expect(result.success).toBe(true);
+    expect(result.action).toBe('create_task_handoff');
+
+    driveTask(io, 1, 1);
+    driveTask(io, 1, 2);
+
+    // ── Phase report, review (approve), gate, commit ─────────────────────
+    result = drivePhasePostTasks(io, 1, true);  // auto_commit=always: include commit
 
     // Verify corrective entry completed and phase iteration completed
     {

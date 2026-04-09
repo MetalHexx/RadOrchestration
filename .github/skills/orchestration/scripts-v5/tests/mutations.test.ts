@@ -674,25 +674,15 @@ describe('phase_review_completed — corrective injection', () => {
 
   it('changes_requested injects one CorrectiveTaskEntry with correct shape', () => {
     const state = makeState();
-    const template = makeTemplateWithTaskBody();
-    const result = mutation(state, { phase: 1, doc_path: '/r.md', verdict: 'changes_requested' }, baseConfig, template);
+    const result = mutation(state, { phase: 1, doc_path: '/r.md', verdict: 'changes_requested' }, baseConfig, baseTemplate);
     const iteration = getPhaseIteration(result.state);
     expect(iteration.corrective_tasks).toHaveLength(1);
     const entry = iteration.corrective_tasks[0] as CorrectiveTaskEntry;
     expect(entry.index).toBe(1);
-    expect(entry.status).toBe('not_started');
+    expect(entry.status).toBe('in_progress');
     expect(entry.reason).toBe('Phase review requested changes');
     expect(entry.injected_after).toBe('phase_review');
-    expect(Object.keys(entry.nodes)).toHaveLength(4);
-  });
-
-  it('scaffolded corrective nodes have correct kinds — task_handoff is step, task_gate is gate', () => {
-    const state = makeState();
-    const template = makeTemplateWithTaskBody();
-    const result = mutation(state, { phase: 1, doc_path: '/r.md', verdict: 'changes_requested' }, baseConfig, template);
-    const entry = getPhaseIteration(result.state).corrective_tasks[0] as CorrectiveTaskEntry;
-    expect(entry.nodes['task_handoff']).toEqual({ kind: 'step', status: 'not_started', doc_path: null, retries: 0 });
-    expect(entry.nodes['task_gate']).toEqual({ kind: 'gate', status: 'not_started', gate_active: false });
+    expect(Object.keys(entry.nodes)).toHaveLength(0);
   });
 
   it('rejected verdict halts phase iteration and graph, adds no corrective entry', () => {
@@ -716,9 +706,8 @@ describe('phase_review_completed — corrective injection', () => {
 
   it('multiple changes_requested on same phase produce consecutive indices', () => {
     const state = makeState();
-    const template = makeTemplateWithTaskBody();
-    const result1 = mutation(state, { phase: 1, verdict: 'changes_requested' }, baseConfig, template);
-    const result2 = mutation(result1.state, { phase: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const result1 = mutation(state, { phase: 1, verdict: 'changes_requested' }, baseConfig, baseTemplate);
+    const result2 = mutation(result1.state, { phase: 1, verdict: 'changes_requested' }, baseConfig, baseTemplate);
     const iteration = getPhaseIteration(result2.state);
     expect(iteration.corrective_tasks).toHaveLength(2);
     expect(iteration.corrective_tasks[0].index).toBe(1);
@@ -727,18 +716,16 @@ describe('phase_review_completed — corrective injection', () => {
 
   it('original phase iteration nodes are untouched after corrective injection', () => {
     const state = makeState();
-    const template = makeTemplateWithTaskBody();
     const originalNodeKeys = Object.keys(getPhaseIteration(state).nodes);
-    const result = mutation(state, { phase: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const result = mutation(state, { phase: 1, verdict: 'changes_requested' }, baseConfig, baseTemplate);
     const resultNodeKeys = Object.keys(getPhaseIteration(result.state).nodes);
     expect(resultNodeKeys).toEqual(originalNodeKeys);
   });
 
   it('immutability — original state is never modified', () => {
     const state = makeState();
-    const template = makeTemplateWithTaskBody();
     const originalCorLen = getPhaseIteration(state).corrective_tasks.length;
-    mutation(state, { phase: 1, verdict: 'changes_requested' }, baseConfig, template);
+    mutation(state, { phase: 1, verdict: 'changes_requested' }, baseConfig, baseTemplate);
     expect(getPhaseIteration(state).corrective_tasks.length).toBe(originalCorLen);
     expect(state.graph.status).toBe('not_started');
   });
@@ -747,16 +734,9 @@ describe('phase_review_completed — corrective injection', () => {
     const verdicts = ['approved', 'changes_requested', 'rejected'];
     for (const verdict of verdicts) {
       const state = makeState();
-      const result = mutation(state, { phase: 1, verdict }, baseConfig, makeTemplateWithTaskBody());
+      const result = mutation(state, { phase: 1, verdict }, baseConfig, baseTemplate);
       expect(result.mutations_applied.length).toBeGreaterThan(0);
     }
-  });
-
-  it('throws when template has no for_each_task body', () => {
-    const emptyTemplate = { ...makeTemplateWithTaskBody(), nodes: [] };
-    const state = makeState();
-    expect(() => mutation(state, { phase: 1, verdict: 'changes_requested' }, baseConfig, emptyTemplate))
-      .toThrow('findTaskLoopBodyDefs: no for_each_task body found in template');
   });
 });
 

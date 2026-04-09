@@ -1260,16 +1260,23 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
     }, io);
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('create_phase_plan');  // walker re-enters phase planning
 
-    // Verify corrective task injected on phase iteration
+    // Verify corrective entry pushed with empty nodes (phase re-planning approach)
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const phaseIter = phaseLoop.iterations[0];
     expect(phaseIter.corrective_tasks).toHaveLength(1);
     expect(phaseIter.corrective_tasks[0].status).toBe('in_progress');
     expect(phaseIter.corrective_tasks[0].index).toBe(1);
     expect(phaseIter.corrective_tasks[0].injected_after).toBe('phase_review');
-    expect(phaseIter.corrective_tasks[0].nodes).toHaveProperty('task_handoff');
+    expect(Object.keys(phaseIter.corrective_tasks[0].nodes)).toHaveLength(0);  // empty: tasks recreated by planning
+
+    // Phase planning reset to not_started so walker re-enters create_phase_plan
+    expect(phaseIter.nodes['phase_planning'].status).toBe('not_started');
+
+    // Task loop cleared (iterations reset)
+    const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState;
+    expect(taskLoop.iterations).toHaveLength(0);
   });
 
   // ── Retry budget exhaustion ─────────────────────────────────────────────
@@ -1418,30 +1425,46 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
 
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
-    processEvent('phase_review_completed', PROJECT_DIR, {
+    const corrResult = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1, doc_path: phaseReviewDoc(1), verdict: 'changes_requested', exit_criteria_met: true,
     }, io);
 
-    // Drive phase-level corrective task through full cycle
-    // Phase corrective task uses phase context, task context routes to corrective's body
-    const ctx = { phase: 1, task: 1 };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
-    seedDoc(codeReviewDoc(1, 1));
-    let result = processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approve',
+    // Walker re-enters phase planning (corrective re-planning approach)
+    expect(corrResult.success).toBe(true);
+    expect(corrResult.action).toBe('create_phase_plan');
+
+    // ── Corrective pass: re-run phase planning, tasks, then phase review ──
+
+    // Re-run phase planning
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, {
+      phase: 1, doc_path: phasePlanDoc(1),
     }, io);
 
-    // Task gate fires — approve it to advance
-    expect(result.action).toBe('gate_task');
-    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+    // Re-drive both tasks
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    // Phase report (corrective run)
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
+
+    // Phase review (approve)
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReviewDoc(1));
+    let result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approve', exit_criteria_met: true,
+    }, io);
+
+    // Phase gate fires — approve it
+    if (result.action === 'gate_phase') {
+      result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
+    }
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_final_reviewer');
+    expect(result.action).toBe('spawn_final_reviewer');  // auto_commit=never: commit skipped → all phases done → final
 
     // After phase corrective completes, phase iteration completes → advance
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;

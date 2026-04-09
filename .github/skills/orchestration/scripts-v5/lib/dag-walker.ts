@@ -168,6 +168,31 @@ function walkForEachIterations(
         latestCorrective.status = NODE_STATUSES.IN_PROGRESS;
       }
 
+      // Phase-level corrective re-planning: corrective entry has empty nodes ({}).
+      // Tasks are re-created by phase planning, not scaffolded upfront. Walk the
+      // regular phase body against iteration.nodes so the walker re-enters
+      // create_phase_plan via phase_planning.status === 'in_progress'.
+      if (fepDef.kind === 'for_each_phase' && Object.keys(latestCorrective.nodes).length === 0) {
+        const phaseBodyResult = walkNodes(fepDef.body, iteration.nodes, config, state, readDocument);
+        if (phaseBodyResult !== null) {
+          return phaseBodyResult;
+        }
+        const allPhaseBodyDone = fepDef.body.every((bn) => {
+          const bnState = iteration.nodes[bn.id];
+          return (
+            bnState !== undefined &&
+            (bnState.status === NODE_STATUSES.COMPLETED ||
+              bnState.status === NODE_STATUSES.SKIPPED)
+          );
+        });
+        if (allPhaseBodyDone) {
+          latestCorrective.status = NODE_STATUSES.COMPLETED;
+          iteration.status = NODE_STATUSES.COMPLETED;
+          continue;
+        }
+        return null;
+      }
+
       // Derive correct body defs for corrective walking
       let correctiveBodyDefs: NodeDef[];
       if (fepDef.kind === 'for_each_phase') {
