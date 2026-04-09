@@ -614,6 +614,8 @@ mutationRegistry.set(EVENTS.GATE_REJECTED, (state, context, _config, _template):
   mutations_applied.push('set graph.status = halted');
 
   const gateType = context.gate_type ?? 'unknown';
+  // Intentional: use || (not ??) so that an empty-string reason also falls back to the default.
+  // The halt mutation uses ?? because an explicit empty string is a valid operator-supplied reason.
   const reason = context.reason || 'No reason provided';
   cloned.pipeline.halt_reason = `Gate rejected (${gateType}): ${reason}`;
   mutations_applied.push(`set pipeline.halt_reason = Gate rejected (${gateType}): ${reason}`);

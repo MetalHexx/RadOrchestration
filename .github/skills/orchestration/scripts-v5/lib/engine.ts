@@ -193,6 +193,8 @@ export function processEvent(
     // ── Out-of-band event routing (pre-index) ──────────────────────────
     if (OUT_OF_BAND_EVENTS.has(event)) {
       const mutation = getMutation(event);
+      // Defensive guard: all 6 OUT_OF_BAND_EVENTS are unconditionally registered in mutations.ts,
+      // so this branch is currently unreachable. Retained as a safety net against future deregistration.
       if (!mutation) {
         return {
           success: false,

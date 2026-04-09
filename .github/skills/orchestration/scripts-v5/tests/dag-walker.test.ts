@@ -366,7 +366,7 @@ describe('walkDAG', () => {
     const config = makeConfig();
 
     const result = walkDAG(state, template, config);
-    expect(result).toEqual({ action: 'display_halted', context: {} });
+    expect(result).toEqual({ action: 'display_halted', context: { details: 'Pipeline is halted' } });
   });
 
   it('returns null for for_each_phase with not_started and empty iterations when no readDocument callback', () => {
@@ -1398,7 +1398,7 @@ describe('corrective task walking', () => {
 
     const result = walkDAG(state, template, config);
 
-    expect(result).toEqual({ action: 'display_halted', context: {} });
+    expect(result).toEqual({ action: 'display_halted', context: { details: 'Pipeline is halted' } });
   });
 
   it('multiple corrective tasks — only latest is walked', () => {
@@ -1685,7 +1685,7 @@ describe('phase-level corrective task walking', () => {
 
     const result = walkDAG(state, template, config);
 
-    expect(result).toEqual({ action: 'display_halted', context: {} });
+    expect(result).toEqual({ action: 'display_halted', context: { details: 'Pipeline is halted' } });
   });
 
   it('corrective nodes use task body defs derived from for_each_task within phase body', () => {

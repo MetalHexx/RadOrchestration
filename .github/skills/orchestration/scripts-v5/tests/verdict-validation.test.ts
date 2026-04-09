@@ -174,6 +174,21 @@ describe('code_review_completed — verdict validation', () => {
     // halt_reason is not set by the guard (it's set by the routing branch)
     expect(io.currentState!.pipeline.halt_reason).toBeNull();
   });
+
+  it('null verdict is rejected at the pre-read boundary', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+    driveToCodeReview(io);
+
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      phase: 1,
+      task: 1,
+      doc_path: codeReviewDoc(1, 1),
+      verdict: null as unknown as string,
+    }, io);
+
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('verdict');
+  });
 });
 
 // ── phase_review_completed verdict validation ──────────────────────────────────

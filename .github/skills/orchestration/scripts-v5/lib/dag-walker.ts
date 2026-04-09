@@ -145,7 +145,7 @@ function walkForEachIterations(
       continue;
     }
     if (iteration.status === NODE_STATUSES.HALTED) {
-      return { action: NEXT_ACTIONS.DISPLAY_HALTED, context: {} };
+      return { action: NEXT_ACTIONS.DISPLAY_HALTED, context: { details: state.pipeline.halt_reason ?? 'Pipeline is halted' } };
     }
     if (iteration.status === NODE_STATUSES.NOT_STARTED) {
       iteration.status = NODE_STATUSES.IN_PROGRESS;
@@ -156,7 +156,7 @@ function walkForEachIterations(
       const latestCorrective = iteration.corrective_tasks[iteration.corrective_tasks.length - 1];
 
       if (latestCorrective.status === NODE_STATUSES.HALTED) {
-        return { action: NEXT_ACTIONS.DISPLAY_HALTED, context: {} };
+        return { action: NEXT_ACTIONS.DISPLAY_HALTED, context: { details: state.pipeline.halt_reason ?? 'Pipeline is halted' } };
       }
 
       if (latestCorrective.status === NODE_STATUSES.COMPLETED) {
@@ -268,7 +268,7 @@ function walkNodes(
 
     // Status: halted → return display_halted
     if (nodeState.status === NODE_STATUSES.HALTED) {
-      return { action: NEXT_ACTIONS.DISPLAY_HALTED, context: {} };
+      return { action: NEXT_ACTIONS.DISPLAY_HALTED, context: { details: state.pipeline.halt_reason ?? 'Pipeline is halted' } };
     }
 
     // Status: completed or skipped → continue to next sibling

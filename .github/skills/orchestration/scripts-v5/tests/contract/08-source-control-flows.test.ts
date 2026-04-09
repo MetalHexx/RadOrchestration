@@ -78,7 +78,7 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     }));
   });
 
-  it('defaults branch and worktree_path to empty string when not in CLI context', () => {
+  it('defaults branch and worktree_path to empty string when state.pipeline.source_control is null', () => {
     const io = driveToExecutionWithConfig(commitConfig, 1);
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
@@ -157,7 +157,7 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_pr', () => {
     }));
   });
 
-  it('defaults branch, base_branch, and worktree_path to empty string when not in CLI context', () => {
+  it('defaults branch, base_branch, and worktree_path to empty string when state.pipeline.source_control is null', () => {
     const io = driveToReviewTier(prConfig);
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     const frDocPath = '/tmp/final-review.md';
