@@ -10,7 +10,7 @@ import type {
   IterationEntry,
   NodeDef,
 } from './types.js';
-import { NODE_STATUSES, GRAPH_STATUSES } from './constants.js';
+import { NODE_STATUSES, GRAPH_STATUSES, ALLOWED_NODE_TRANSITIONS } from './constants.js';
 
 const validNodeStatuses = new Set<string>(Object.values(NODE_STATUSES));
 const validGraphStatuses = new Set<string>(Object.values(GRAPH_STATUSES));
@@ -31,6 +31,7 @@ export function validateState(
     ...checkCompletedParentChildren(proposedState.graph.nodes, 'graph.nodes'),
     ...checkIterationLimits(proposedState, config),
     ...checkNodeKindMatchesTemplate(proposedState, template),
+    ...checkStatusTransitions(_previousState, proposedState),
   ];
 }
 
@@ -282,4 +283,72 @@ function checkNodeKindMatchesTemplate(state: PipelineState, template: PipelineTe
 
   walkStateNodes(state.graph.nodes, 'graph.nodes');
   return errors;
+}
+
+// ── Check: status transitions ─────────────────────────────────────────────────
+
+function checkStatusTransitions(
+  previousState: PipelineState | null,
+  proposedState: PipelineState,
+): string[] {
+  if (!previousState) return [];
+  const errors: string[] = [];
+  compareNodes(
+    previousState.graph.nodes,
+    proposedState.graph.nodes,
+    'graph.nodes',
+    errors,
+  );
+  return errors;
+}
+
+function compareNodes(
+  prevNodes: Record<string, NodeState>,
+  currNodes: Record<string, NodeState>,
+  path: string,
+  errors: string[],
+): void {
+  for (const [id, currNode] of Object.entries(currNodes)) {
+    const prevNode = prevNodes[id];
+    if (!prevNode) continue; // new node — no transition to validate
+
+    if (prevNode.status !== currNode.status) {
+      const allowed = ALLOWED_NODE_TRANSITIONS.get(prevNode.status);
+      // Only flag transitions originating from terminal states (empty allowed set).
+      // Non-terminal states (in_progress, completed, etc.) may undergo multi-step
+      // atomic resets within a single mutation boundary that appear as a single
+      // cross-boundary jump; those are validated by checkNodeStatuses instead.
+      if (allowed && allowed.size === 0) {
+        errors.push(
+          `Illegal status transition at ${path}.${id}: '${prevNode.status}' → '${currNode.status}'`
+        );
+      }
+    }
+
+    // Recurse into for_each_phase / for_each_task iterations
+    if (
+      (currNode.kind === 'for_each_phase' || currNode.kind === 'for_each_task') &&
+      (prevNode.kind === 'for_each_phase' || prevNode.kind === 'for_each_task')
+    ) {
+      for (const currIter of currNode.iterations) {
+        const prevIter = (prevNode as ForEachPhaseNodeState | ForEachTaskNodeState)
+          .iterations[currIter.index];
+        if (!prevIter) continue; // new iteration — skip
+        compareNodes(prevIter.nodes, currIter.nodes, `${path}.${id}.iterations[${currIter.index}].nodes`, errors);
+
+        // Recurse into corrective_tasks
+        for (const currCt of currIter.corrective_tasks) {
+          const prevCt = prevIter.corrective_tasks.find(ct => ct.index === currCt.index);
+          if (!prevCt) continue;
+          compareNodes(prevCt.nodes, currCt.nodes,
+            `${path}.${id}.iterations[${currIter.index}].corrective_tasks[${currCt.index}].nodes`, errors);
+        }
+      }
+    }
+
+    // Recurse into parallel branches
+    if (currNode.kind === 'parallel' && prevNode.kind === 'parallel') {
+      compareNodes(prevNode.nodes, currNode.nodes, `${path}.${id}.nodes`, errors);
+    }
+  }
 }
