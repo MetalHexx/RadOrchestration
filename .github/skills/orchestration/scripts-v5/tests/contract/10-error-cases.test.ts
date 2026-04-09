@@ -35,7 +35,7 @@ const config = createConfig({
 
 function driveToApprovalReadiness() {
   const io = createMockIOWithConfig(null, config);
-  processEvent('research_started', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io);
   const state = io.currentState!;
   completePlanningSteps(state, 'master_plan');
   const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;

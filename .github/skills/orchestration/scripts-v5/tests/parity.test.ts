@@ -1651,7 +1651,7 @@ describe('[PARITY] v4:resolveReview', () => {
       source_control: { auto_commit: 'never', auto_pr: 'never' },
     });
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;

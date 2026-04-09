@@ -271,7 +271,7 @@ describe('[CONTRACT] Gate Behavior — Human gate (plan_approval_gate)', () => {
       source_control: NO_SC,
     });
     const io = createMockIOWithConfig(null, cfg);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     // Directly complete all planning nodes on the live state reference
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');

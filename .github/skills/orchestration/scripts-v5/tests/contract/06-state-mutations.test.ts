@@ -49,7 +49,7 @@ const config = createConfig({
 describe('[CONTRACT] State Mutations — Planning step mutations', () => {
   it('research_started: research.status=in_progress and graph.status=in_progress', () => {
     const io = createMockIO(null);
-    processEvent('research_started', PROJECT_DIR, {}, io); // scaffold (init route)
+    processEvent('start', PROJECT_DIR, {}, io); // scaffold
     const result = processEvent('research_started', PROJECT_DIR, {}, io); // standard route applies mutation
 
     expect(result.success).toBe(true);
@@ -62,7 +62,7 @@ describe('[CONTRACT] State Mutations — Planning step mutations', () => {
 
   it('research_completed: research.status=completed and doc_path set', () => {
     const io = createMockIO(null);
-    processEvent('research_started', PROJECT_DIR, {}, io); // scaffold
+    processEvent('start', PROJECT_DIR, {}, io); // scaffold
     processEvent('research_started', PROJECT_DIR, {}, io); // research in_progress
     const docPath = '/tmp/research-doc.md';
     seedDoc(docPath);
@@ -81,7 +81,7 @@ describe('[CONTRACT] State Mutations — Planning step mutations', () => {
 describe('[CONTRACT] State Mutations — Plan approved mutations', () => {
   it('plan_approved: gate.status=completed, gate_active=true, phase iterations created', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io); // scaffold
+    processEvent('start', PROJECT_DIR, {}, io); // scaffold
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;

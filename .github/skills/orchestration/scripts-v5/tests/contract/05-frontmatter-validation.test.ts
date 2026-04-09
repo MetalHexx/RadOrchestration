@@ -204,7 +204,7 @@ describe('[CONTRACT] Frontmatter — exit_criteria_met (phase_review_completed)'
 describe('[CONTRACT] Frontmatter — total_phases (plan_approved)', () => {
   function scaffoldForPlanApproved() {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
@@ -260,7 +260,7 @@ describe('[CONTRACT] Frontmatter — total_phases (plan_approved)', () => {
 describe('[CONTRACT] Frontmatter — total_phases validation error shape (plan_approved)', () => {
   function scaffoldForPlanApprovedValidation() {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;

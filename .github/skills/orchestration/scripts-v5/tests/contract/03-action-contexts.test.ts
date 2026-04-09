@@ -65,7 +65,7 @@ describe('[CONTRACT] Action Contexts — formatTaskId helper', () => {
 describe('[CONTRACT] Action Contexts — planning spawn actions', () => {
   it('spawn_research returns { step: "research" }', () => {
     const io = createMockIO(null);
-    const result = processEvent('research_started', PROJECT_DIR, {}, io);
+    const result = processEvent('start', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_research');
     expect(result.context).toEqual({ step: 'research' });
@@ -73,7 +73,7 @@ describe('[CONTRACT] Action Contexts — planning spawn actions', () => {
 
   it('spawn_prd returns { step: "prd" } (after completing research)', () => {
     const io = createMockIO(null);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('prd_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_prd');
@@ -82,7 +82,7 @@ describe('[CONTRACT] Action Contexts — planning spawn actions', () => {
 
   it('spawn_design returns { step: "design" } (after completing prd)', () => {
     const io = createMockIO(null);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('design_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_design');
@@ -91,7 +91,7 @@ describe('[CONTRACT] Action Contexts — planning spawn actions', () => {
 
   it('spawn_architecture returns { step: "architecture" } (after completing design)', () => {
     const io = createMockIO(null);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('architecture_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_architecture');
@@ -100,7 +100,7 @@ describe('[CONTRACT] Action Contexts — planning spawn actions', () => {
 
   it('spawn_master_plan returns { step: "master_plan" } (after completing architecture)', () => {
     const io = createMockIO(null);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_master_plan');
@@ -300,7 +300,7 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
   it('request_plan_approval returns {}', () => {
     // Drive planning steps via state mutation + master_plan_completed event
     const io = createMockIO(null);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
     completePlanningSteps(state, 'architecture');
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';

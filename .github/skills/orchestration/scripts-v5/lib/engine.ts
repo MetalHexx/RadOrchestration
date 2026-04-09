@@ -99,6 +99,87 @@ export function processEvent(
     const loadedTemplate = loadTemplate(templatePath);
     const { template, eventIndex } = loadedTemplate;
 
+    // ── Start event (pre-index routing) ────────────────────────────────
+    if (event === 'start') {
+      if (state === null) {
+        const projectName = path.basename(projectDir);
+        const scaffolded = scaffoldState(template, projectName, config);
+        scaffolded.project.updated = new Date().toISOString();
+
+        io.ensureDirectories(projectDir);
+        const nextAction = walkDAG(scaffolded, template, config, io.readDocument);
+
+        const postWalkErrors = validateState(null, scaffolded, config, template);
+        if (postWalkErrors.length > 0) {
+          return {
+            success: false,
+            action: null,
+            context: { error: postWalkErrors[0] },
+            mutations_applied: [],
+            orchRoot,
+            error: {
+              message: postWalkErrors[0],
+              event,
+            },
+          };
+        }
+
+        io.writeState(projectDir, scaffolded);
+
+        const enrichedContext = nextAction
+          ? enrichActionContext({
+              action: nextAction.action,
+              walkerContext: nextAction.context,
+              state: scaffolded,
+              config,
+              cliContext: context,
+            })
+          : {};
+
+        return {
+          success: true,
+          action: nextAction?.action ?? null,
+          context: enrichedContext,
+          mutations_applied: ['scaffold_initial_state'],
+          orchRoot,
+        };
+      } else {
+        const walkerResult = walkDAG(state, template, config, io.readDocument);
+        const enrichedContext = walkerResult
+          ? enrichActionContext({
+              action: walkerResult.action,
+              walkerContext: walkerResult.context,
+              state,
+              config,
+              cliContext: context,
+            })
+          : {};
+        return {
+          success: true,
+          action: walkerResult?.action ?? null,
+          context: enrichedContext,
+          mutations_applied: [],
+          orchRoot,
+        };
+      }
+    }
+
+    // ── Null-state guard (non-start events) ────────────────────────────
+    if (state === null) {
+      return {
+        success: false,
+        action: null,
+        context: { error: 'No state.json found; use --event start' },
+        mutations_applied: [],
+        orchRoot,
+        error: {
+          message: 'No state.json found; use --event start',
+          event,
+        },
+      };
+    }
+
+    // ── Standard route (state exists) ───────────────────────────────────
     const entry = eventIndex.get(event);
     if (!entry) {
       return {
@@ -113,53 +194,6 @@ export function processEvent(
         },
       };
     }
-
-    // ── Init route (state is null) ──────────────────────────────────────
-    if (state === null) {
-      const projectName = path.basename(projectDir);
-      const scaffolded = scaffoldState(template, projectName, config);
-      scaffolded.project.updated = new Date().toISOString();
-
-      io.ensureDirectories(projectDir);
-      const nextAction = walkDAG(scaffolded, template, config, io.readDocument);
-
-      const postWalkErrors = validateState(null, scaffolded, config, template);
-      if (postWalkErrors.length > 0) {
-        return {
-          success: false,
-          action: null,
-          context: { error: postWalkErrors[0] },
-          mutations_applied: [],
-          orchRoot,
-          error: {
-            message: postWalkErrors[0],
-            event,
-          },
-        };
-      }
-
-      io.writeState(projectDir, scaffolded);
-
-      const enrichedContext = nextAction
-        ? enrichActionContext({
-            action: nextAction.action,
-            walkerContext: nextAction.context,
-            state: scaffolded,
-            config,
-            cliContext: context,
-          })
-        : {};
-
-      return {
-        success: true,
-        action: nextAction?.action ?? null,
-        context: enrichedContext,
-        mutations_applied: ['scaffold_initial_state'],
-        orchRoot,
-      };
-    }
-
-    // ── Standard route (state exists) ───────────────────────────────────
     const preReadResult = preRead(event, context, io.readDocument, projectDir, entry);
     if (preReadResult.error) {
       return {

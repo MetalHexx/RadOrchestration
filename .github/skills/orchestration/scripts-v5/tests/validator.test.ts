@@ -447,9 +447,9 @@ describe('validator – engine integration', () => {
   });
 
   it('engine returns success: true and DOES write state when validation passes', () => {
-    // Use the init route to scaffold valid state first
+    // Use the start event to scaffold valid state first
     const initIO = createMockIO(null);
-    processEvent('research_started', PROJECT_DIR, {}, initIO);
+    processEvent('start', PROJECT_DIR, {}, initIO);
     const scaffoldedState = initIO.currentState!;
 
     // Now process research_started with existing state (standard route)

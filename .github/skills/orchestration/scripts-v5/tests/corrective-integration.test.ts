@@ -135,7 +135,7 @@ const TASKS_FIXTURE = [
  */
 function drivePlanningTier(io: MockIO): PipelineResult {
   // Init scaffold
-  processEvent('research_started', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io);
   // research in_progress
   processEvent('research_started', PROJECT_DIR, {}, io);
   // research completed

@@ -87,8 +87,8 @@ function createMockIO(initialState: PipelineState | null = null): IOAdapter & {
 // Helper to create a state that looks like scaffolded state from the real template
 function makeScaffoldedState(): PipelineState {
   const io = createMockIO(null);
-  const result = processEvent('research_started', PROJECT_DIR, {}, io);
-  // The init route scaffolds state and writes it
+  processEvent('start', PROJECT_DIR, {}, io);
+  // The start event scaffolds state and writes it
   return io.currentState!;
 }
 
@@ -106,7 +106,7 @@ describe('engine – processEvent', () => {
   describe('Init route (null state)', () => {
     it('scaffolds state from template and returns first action', () => {
       const io = createMockIO(null);
-      const result = processEvent('research_started', PROJECT_DIR, {}, io);
+      const result = processEvent('start', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(true);
       expect(result.action).toBe('spawn_research');
@@ -117,7 +117,7 @@ describe('engine – processEvent', () => {
 
     it('scaffolded state has correct schema, metadata, config, and graph status', () => {
       const io = createMockIO(null);
-      processEvent('research_started', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io);
 
       const state = io.currentState!;
       expect(state).not.toBeNull();
@@ -139,7 +139,7 @@ describe('engine – processEvent', () => {
 
     it('scaffolded state includes pipeline section with correct defaults', () => {
       const io = createMockIO(null);
-      processEvent('research_started', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io);
       const state = io.currentState!;
       expect(state.pipeline).toEqual({
         gate_mode: null,
@@ -151,7 +151,7 @@ describe('engine – processEvent', () => {
 
     it('scaffolds correct node states for all top-level template nodes', () => {
       const io = createMockIO(null);
-      processEvent('research_started', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io);
 
       const nodes = io.currentState!.graph.nodes;
 
@@ -197,15 +197,99 @@ describe('engine – processEvent', () => {
 
     it('calls ensureDirectories on init', () => {
       const io = createMockIO(null);
-      processEvent('research_started', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io);
       expect(io.ensureDirCalls).toContain(PROJECT_DIR);
     });
 
     it('writes state on init', () => {
       const io = createMockIO(null);
-      processEvent('research_started', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io);
       expect(io.writeCalls.length).toBe(1);
       expect(io.writeCalls[0].projectDir).toBe(PROJECT_DIR);
+    });
+  });
+
+  describe('start event – init (null state)', () => {
+    it('scaffolds state and returns success: true with first action spawn_research', () => {
+      const io = createMockIO(null);
+      const result = processEvent('start', PROJECT_DIR, {}, io);
+
+      expect(result.success).toBe(true);
+      expect(result.action).toBe('spawn_research');
+      expect(result.mutations_applied).toContain('scaffold_initial_state');
+    });
+
+    it('scaffolded state has $schema orchestration-state-v5, pipeline section, and graph.status in_progress', () => {
+      const io = createMockIO(null);
+      processEvent('start', PROJECT_DIR, {}, io);
+
+      const state = io.currentState!;
+      expect(state.$schema).toBe('orchestration-state-v5');
+      expect(state.pipeline).toEqual({
+        gate_mode: null,
+        source_control: null,
+        current_tier: 'planning',
+        halt_reason: null,
+      });
+      expect(state.graph.status).toBe('in_progress');
+    });
+
+    it('calls io.writeState once and io.ensureDirectories', () => {
+      const io = createMockIO(null);
+      processEvent('start', PROJECT_DIR, {}, io);
+
+      expect(io.writeCalls.length).toBe(1);
+      expect(io.ensureDirCalls).toContain(PROJECT_DIR);
+    });
+  });
+
+  describe('start event – cold-start / resume (state exists)', () => {
+    it('returns success: true and the current pending action without writing state', () => {
+      const state = makeScaffoldedState();
+      // research is not_started → walkDAG should find spawn_research as first action
+      const io = createMockIO(state);
+      const result = processEvent('start', PROJECT_DIR, {}, io);
+
+      expect(result.success).toBe(true);
+      expect(result.action).toBe('spawn_research');
+      expect(result.mutations_applied).toEqual([]);
+      expect(io.writeCalls.length).toBe(0);
+    });
+
+    it('returns the current pending action when research is in_progress', () => {
+      const state = makeScaffoldedState();
+      (state.graph.nodes['research'] as StepNodeState).status = 'in_progress';
+
+      const io = createMockIO(state);
+      const result = processEvent('start', PROJECT_DIR, {}, io);
+
+      // walkDAG returns null for in_progress nodes (no new action to dispatch)
+      expect(result.success).toBe(true);
+      expect(result.mutations_applied).toEqual([]);
+      expect(io.writeCalls.length).toBe(0);
+    });
+  });
+
+  describe('null-state guard (non-start events)', () => {
+    it('research_started with null state returns success: false with structured error', () => {
+      const io = createMockIO(null);
+      const result = processEvent('research_started', PROJECT_DIR, {}, io);
+
+      expect(result.success).toBe(false);
+      expect(result.action).toBeNull();
+      expect(result.context.error).toContain('No state.json found');
+      expect(io.writeCalls.length).toBe(0);
+    });
+
+    it('plan_approved with null state returns success: false with structured error', () => {
+      const io = createMockIO(null);
+      const result = processEvent('plan_approved', PROJECT_DIR, {}, io);
+
+      expect(result.success).toBe(false);
+      expect(result.context.error).toContain('No state.json found');
+      expect(result.error?.message).toContain('No state.json found; use --event start');
+      expect(result.error?.event).toBe('plan_approved');
+      expect(io.writeCalls.length).toBe(0);
     });
   });
 
@@ -387,7 +471,7 @@ describe('engine – processEvent', () => {
       const readConfigSpy = vi.spyOn(io, 'readConfig');
       const ensureDirSpy = vi.spyOn(io, 'ensureDirectories');
 
-      processEvent('research_started', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io);
 
       expect(readStateSpy).toHaveBeenCalledWith(PROJECT_DIR);
       expect(readConfigSpy).toHaveBeenCalled();
@@ -426,7 +510,7 @@ describe('engine – processEvent', () => {
   describe('PipelineResult structure', () => {
     it('all successful results include orchRoot field', () => {
       const io = createMockIO(null);
-      const result = processEvent('research_started', PROJECT_DIR, {}, io);
+      const result = processEvent('start', PROJECT_DIR, {}, io);
 
       expect(result).toHaveProperty('orchRoot');
       expect(result.orchRoot).toBe(ORCH_ROOT);
@@ -457,14 +541,12 @@ describe('engine – processEvent', () => {
       // Override readConfig to return the low-limit config
       io.readConfig = () => structuredClone(lowLimitConfig);
 
-      // The init route scaffolds state, then calls walkDAG.
+      // The start event scaffolds state, then calls walkDAG.
       // walkDAG may or may not expand iterations depending on doc availability,
       // but the post-walkDAG validation still runs.
       // With max_phases=0, even 0 iterations won't trigger (no expansion happens on init).
-      // So let's use a simpler approach: corrupt the state after scaffold by injecting
-      // a custom writeState that sabotages the state. Actually, the cleanest test
-      // is to verify that validation runs post-walkDAG by using the standard route.
-      const result = processEvent('research_started', PROJECT_DIR, {}, io);
+      // So let's use a simpler approach: verify that validation runs post-walkDAG by using the standard route.
+      const result = processEvent('start', PROJECT_DIR, {}, io);
       // With max_phases=0, scaffold produces 0 iterations in phase_loop, so validation should pass
       expect(result.success).toBe(true);
     });

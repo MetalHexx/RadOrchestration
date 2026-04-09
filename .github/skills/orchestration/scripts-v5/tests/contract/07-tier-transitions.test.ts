@@ -43,7 +43,7 @@ const config = createConfig({
 describe('[CONTRACT] Tier Transitions — planning to execution', () => {
   it('plan_approved → create_phase_plan for phase 1 (2 phases)', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
@@ -61,7 +61,7 @@ describe('[CONTRACT] Tier Transitions — planning to execution', () => {
 
   it('plan_approved → first action targets phase 1 even with 3 phases', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;

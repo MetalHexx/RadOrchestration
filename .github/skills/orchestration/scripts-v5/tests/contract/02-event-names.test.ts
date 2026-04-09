@@ -74,6 +74,7 @@ const prConfig = createConfig({
 describe('[CONTRACT] Event Names — planning tier events', () => {
   it('research_started is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
+    processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('research_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
@@ -81,7 +82,7 @@ describe('[CONTRACT] Event Names — planning tier events', () => {
 
   it('research_completed is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const docPath = '/tmp/research.md';
     seedDoc(docPath);
     const result = processEvent('research_completed', PROJECT_DIR, { doc_path: docPath }, io);
@@ -91,7 +92,7 @@ describe('[CONTRACT] Event Names — planning tier events', () => {
 
   it('prd_started is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('prd_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
@@ -99,7 +100,7 @@ describe('[CONTRACT] Event Names — planning tier events', () => {
 
   it('prd_completed is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
     completePlanningSteps(state, 'research');
     (state.graph.nodes['prd'] as StepNodeState).status = 'in_progress';
@@ -112,7 +113,7 @@ describe('[CONTRACT] Event Names — planning tier events', () => {
 
   it('design_started is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('design_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
@@ -120,7 +121,7 @@ describe('[CONTRACT] Event Names — planning tier events', () => {
 
   it('design_completed is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
     completePlanningSteps(state, 'prd');
     (state.graph.nodes['design'] as StepNodeState).status = 'in_progress';
@@ -133,7 +134,7 @@ describe('[CONTRACT] Event Names — planning tier events', () => {
 
   it('architecture_started is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('architecture_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
@@ -141,7 +142,7 @@ describe('[CONTRACT] Event Names — planning tier events', () => {
 
   it('architecture_completed is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
     completePlanningSteps(state, 'design');
     (state.graph.nodes['architecture'] as StepNodeState).status = 'in_progress';
@@ -154,7 +155,7 @@ describe('[CONTRACT] Event Names — planning tier events', () => {
 
   it('master_plan_started is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
@@ -162,7 +163,7 @@ describe('[CONTRACT] Event Names — planning tier events', () => {
 
   it('master_plan_completed is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
     completePlanningSteps(state, 'architecture');
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
@@ -179,7 +180,7 @@ describe('[CONTRACT] Event Names — planning tier events', () => {
 describe('[CONTRACT] Event Names — gate events', () => {
   it('plan_approved is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('research_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
@@ -541,6 +542,7 @@ describe('[CONTRACT] Event Names — source control events', () => {
 describe('[CONTRACT] Event Names — unknown / invalid event names', () => {
   it('"unknown_event" produces success: false with structured error', () => {
     const io = createMockIO(null);
+    processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('unknown_event', PROJECT_DIR, {}, io);
     expect(result.success).toBe(false);
     expect(result.action).toBeNull();
@@ -550,6 +552,7 @@ describe('[CONTRACT] Event Names — unknown / invalid event names', () => {
 
   it('"reserch_started" (misspelling) produces success: false with structured error', () => {
     const io = createMockIO(null);
+    processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('reserch_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(false);
     expect(result.action).toBeNull();
@@ -559,6 +562,7 @@ describe('[CONTRACT] Event Names — unknown / invalid event names', () => {
 
   it('"gate_mode_set" (v4 event not in v5) produces success: false with structured error', () => {
     const io = createMockIO(null);
+    processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('gate_mode_set', PROJECT_DIR, {}, io);
     expect(result.success).toBe(false);
     expect(result.action).toBeNull();

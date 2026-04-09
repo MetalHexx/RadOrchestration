@@ -81,10 +81,10 @@ function createMockIO(initialState: PipelineState | null = null): MockIO {
   };
 }
 
-// Helper: scaffold a state by running the init route
+// Helper: scaffold a state by running the start event
 function makeScaffoldedState(): PipelineState {
   const io = createMockIO(null);
-  processEvent('research_started', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io);
   return io.currentState!;
 }
 
@@ -110,7 +110,7 @@ describe('Planning-tier integration — full sequence', () => {
     let result: PipelineResult;
 
     // ── Step 1: Init (null state → scaffold) ─────────────────────────────
-    result = processEvent('research_started', PROJECT_DIR, {}, io);
+    result = processEvent('start', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_research');
     expect(result.context).toEqual({ step: 'research' });
