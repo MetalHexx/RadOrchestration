@@ -90,7 +90,7 @@ export const EVENTS = Object.freeze({
   PLAN_APPROVED: 'plan_approved',
   TASK_GATE_APPROVED: 'task_gate_approved',
   PHASE_GATE_APPROVED: 'phase_gate_approved',
-  FINAL_REVIEW_APPROVED: 'final_review_approved',
+  FINAL_APPROVED: 'final_approved',
 
   // ── Phase execution events ────────────────────────────────────────────
   PHASE_PLANNING_STARTED: 'phase_planning_started',
@@ -100,13 +100,13 @@ export const EVENTS = Object.freeze({
   TASK_HANDOFF_STARTED: 'task_handoff_started',
   TASK_HANDOFF_CREATED: 'task_handoff_created',
   EXECUTION_STARTED: 'execution_started',
-  EXECUTION_COMPLETED: 'execution_completed',
+  TASK_COMPLETED: 'task_completed',
   CODE_REVIEW_STARTED: 'code_review_started',
   CODE_REVIEW_COMPLETED: 'code_review_completed',
 
   // ── Phase review events ───────────────────────────────────────────────
   PHASE_REPORT_STARTED: 'phase_report_started',
-  PHASE_REPORT_COMPLETED: 'phase_report_completed',
+  PHASE_REPORT_CREATED: 'phase_report_created',
   PHASE_REVIEW_STARTED: 'phase_review_started',
   PHASE_REVIEW_COMPLETED: 'phase_review_completed',
 
@@ -115,8 +115,42 @@ export const EVENTS = Object.freeze({
   FINAL_REVIEW_COMPLETED: 'final_review_completed',
 
   // ── Source control events ─────────────────────────────────────────────
-  SOURCE_CONTROL_COMMIT_STARTED: 'source_control_commit_started',
-  SOURCE_CONTROL_COMMIT_COMPLETED: 'source_control_commit_completed',
-  SOURCE_CONTROL_PR_STARTED: 'source_control_pr_started',
-  SOURCE_CONTROL_PR_COMPLETED: 'source_control_pr_completed',
+  TASK_COMMIT_REQUESTED: 'task_commit_requested',
+  TASK_COMMITTED: 'task_committed',
+  PR_REQUESTED: 'pr_requested',
+  PR_CREATED: 'pr_created',
+
+  // ── Out-of-band events ────────────────────────────────────────────────
+  PLAN_REJECTED: 'plan_rejected',
+  GATE_REJECTED: 'gate_rejected',
+  FINAL_REJECTED: 'final_rejected',
+  HALT: 'halt',
+  GATE_MODE_SET: 'gate_mode_set',
+  SOURCE_CONTROL_INIT: 'source_control_init',
 } as const);
+
+export const OUT_OF_BAND_EVENTS = new Set<string>([
+  'plan_rejected',
+  'gate_rejected',
+  'final_rejected',
+  'halt',
+  'gate_mode_set',
+  'source_control_init',
+]);
+
+export const REVIEW_VERDICTS = Object.freeze({
+  APPROVED: 'approved',
+  CHANGES_REQUESTED: 'changes_requested',
+  REJECTED: 'rejected',
+} as const);
+
+export const VALID_VERDICTS = new Set<string>(Object.values(REVIEW_VERDICTS));
+
+export const ALLOWED_NODE_TRANSITIONS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+  ['not_started', new Set(['in_progress', 'skipped', 'completed'])],
+  ['in_progress', new Set(['completed', 'failed', 'halted'])],
+  ['completed',   new Set(['not_started', 'in_progress'])],
+  ['failed',      new Set(['in_progress'])],
+  ['halted',      new Set([])],
+  ['skipped',     new Set([])],
+]);

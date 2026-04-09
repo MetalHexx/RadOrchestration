@@ -167,6 +167,25 @@ export interface GraphState {
   nodes: Record<string, NodeState>;
 }
 
+export interface SourceControlState {
+  branch: string;
+  base_branch: string;
+  worktree_path: string;
+  auto_commit: string;         // 'always' | 'never'
+  auto_pr: string;             // 'always' | 'never'
+  remote_url: string | null;
+  compare_url: string | null;
+  pr_url: string | null;
+  commit_hash: string | null;
+}
+
+export interface PipelineSection {
+  gate_mode: string | null;                   // null = not yet set (ask mode pending)
+  source_control: SourceControlState | null;  // null = not yet initialized
+  current_tier: string;                       // 'planning' | 'execution' | 'review' | 'halted'
+  halt_reason: string | null;                 // populated by halt and gate_rejected mutations
+}
+
 export interface PipelineState {
   $schema: 'orchestration-state-v5';
   project: {
@@ -187,6 +206,7 @@ export interface PipelineState {
       auto_pr: string;
     };
   };
+  pipeline: PipelineSection;
   graph: GraphState;
 }
 
