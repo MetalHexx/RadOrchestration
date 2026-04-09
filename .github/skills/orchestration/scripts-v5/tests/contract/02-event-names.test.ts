@@ -560,13 +560,10 @@ describe('[CONTRACT] Event Names — unknown / invalid event names', () => {
     expect(result.error?.event).toBe('reserch_started');
   });
 
-  it('"gate_mode_set" (v4 event not in v5) produces success: false with structured error', () => {
+  it('"gate_mode_set" is a valid v5 OOB event and produces success: true', () => {
     const io = createMockIO(null);
     processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('gate_mode_set', PROJECT_DIR, {}, io);
-    expect(result.success).toBe(false);
-    expect(result.action).toBeNull();
-    expect(result.error?.message).toBe('Unknown event: gate_mode_set');
-    expect(result.error?.event).toBe('gate_mode_set');
+    expect(result.success).toBe(true);
   });
 });

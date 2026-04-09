@@ -4,6 +4,7 @@ import { preRead } from './pre-reads.js';
 import { getMutation } from './mutations.js';
 import { walkDAG, resolveNodeStatePath } from './dag-walker.js';
 import { enrichActionContext } from './context-enrichment.js';
+import { OUT_OF_BAND_EVENTS } from './constants.js';
 import type {
   PipelineState,
   PipelineResult,
@@ -189,6 +190,72 @@ export function processEvent(
         },
       };
     }
+    // ── Out-of-band event routing (pre-index) ──────────────────────────
+    if (OUT_OF_BAND_EVENTS.has(event)) {
+      const mutation = getMutation(event);
+      if (!mutation) {
+        return {
+          success: false,
+          action: null,
+          context: { error: `No mutation registered for event: ${event}` },
+          mutations_applied: [],
+          orchRoot,
+          error: { message: `No mutation registered for event: ${event}`, event },
+        };
+      }
+
+      const mutationResult = mutation(state, context, config, template);
+      const mutatedState = mutationResult.state;
+
+      const validationErrors = validateState(state, mutatedState, config, template);
+      if (validationErrors.length > 0) {
+        return {
+          success: false,
+          action: null,
+          context: { error: validationErrors[0] },
+          mutations_applied: [],
+          orchRoot,
+          error: { message: validationErrors[0], event },
+        };
+      }
+
+      mutatedState.project.updated = new Date().toISOString();
+
+      const walkerResult = walkDAG(mutatedState, template, config, io.readDocument);
+
+      const postWalkErrors = validateState(state, mutatedState, config, template);
+      if (postWalkErrors.length > 0) {
+        return {
+          success: false,
+          action: null,
+          context: { error: postWalkErrors[0] },
+          mutations_applied: [],
+          orchRoot,
+          error: { message: postWalkErrors[0], event },
+        };
+      }
+
+      io.writeState(projectDir, mutatedState);
+
+      const enrichedContext = walkerResult
+        ? enrichActionContext({
+            action: walkerResult.action,
+            walkerContext: walkerResult.context,
+            state: mutatedState,
+            config,
+            cliContext: context,
+          })
+        : {};
+
+      return {
+        success: true,
+        action: walkerResult?.action ?? null,
+        context: enrichedContext,
+        mutations_applied: mutationResult.mutations_applied,
+        orchRoot,
+      };
+    }
+
     // ── gate_approved alias resolution ──────────────────────────────────
     if (event === 'gate_approved') {
       try {

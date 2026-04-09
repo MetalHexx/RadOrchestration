@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { processEvent, normalizeDocPath } from '../lib/engine.js';
 import { loadTemplate } from '../lib/template-loader.js';
 import { getMutation } from '../lib/mutations.js';
+import { OUT_OF_BAND_EVENTS } from '../lib/constants.js';
 
 vi.mock('../lib/mutations.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../lib/mutations.js')>();
@@ -748,6 +749,63 @@ describe('engine – processEvent', () => {
       expect(result.success).toBe(false);
       expect(result.context.error).toContain('No state.json found');
     });
+  });
+});
+
+// ── out-of-band event routing ─────────────────────────────────────────────────
+
+describe('out-of-band event routing', () => {
+  const OOB_EVENTS = [
+    'plan_rejected',
+    'gate_rejected',
+    'final_rejected',
+    'halt',
+    'gate_mode_set',
+    'source_control_init',
+  ] as const;
+
+  beforeEach(() => {
+    for (const key of Object.keys(DOC_STORE)) {
+      delete DOC_STORE[key];
+    }
+    vi.mocked(getMutation).mockClear();
+  });
+
+  for (const oobEvent of OOB_EVENTS) {
+    it(`${oobEvent} with valid scaffolded state returns success: true`, () => {
+      const state = makeScaffoldedState();
+      const io = createMockIO(state);
+      const result = processEvent(oobEvent, PROJECT_DIR, {}, io);
+      expect(result.success).toBe(true);
+    });
+
+    it(`${oobEvent} result includes mutations_applied containing 'stub: ${oobEvent}'`, () => {
+      const state = makeScaffoldedState();
+      const io = createMockIO(state);
+      const result = processEvent(oobEvent, PROJECT_DIR, {}, io);
+      expect(result.mutations_applied).toContain(`stub: ${oobEvent}`);
+    });
+  }
+
+  it('any OOB event with null state returns success: false with context.error containing "No state.json found"', () => {
+    const io = createMockIO(null);
+    const result = processEvent('plan_rejected', PROJECT_DIR, {}, io);
+    expect(result.success).toBe(false);
+    expect(String(result.context.error)).toContain('No state.json found');
+  });
+
+  for (const oobEvent of OOB_EVENTS) {
+    it(`OOB event '${oobEvent}' does not appear in the template event index`, () => {
+      const { eventIndex } = loadTemplate(TEMPLATE_PATH);
+      expect(eventIndex.get(oobEvent)).toBeUndefined();
+    });
+  }
+
+  it('OOB event writes state via io.writeState', () => {
+    const state = makeScaffoldedState();
+    const io = createMockIO(state);
+    processEvent('halt', PROJECT_DIR, {}, io);
+    expect(io.writeCalls.length).toBeGreaterThan(0);
   });
 });
 

@@ -491,6 +491,27 @@ for (const [eventName, newStatus] of sourceControlPrSteps) {
   });
 }
 
+// ── Out-of-band stub mutations ────────────────────────────────────────────────
+
+const oobStubEvents: string[] = [
+  EVENTS.PLAN_REJECTED,
+  EVENTS.GATE_REJECTED,
+  EVENTS.FINAL_REJECTED,
+  EVENTS.HALT,
+  EVENTS.GATE_MODE_SET,
+  EVENTS.SOURCE_CONTROL_INIT,
+];
+
+for (const eventName of oobStubEvents) {
+  mutationRegistry.set(eventName, (state, _context, _config, _template): MutationResult => {
+    const cloned = structuredClone(state);
+    return {
+      state: cloned,
+      mutations_applied: [`stub: ${eventName}`],
+    };
+  });
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export function getMutation(event: string): MutationFn | undefined {
