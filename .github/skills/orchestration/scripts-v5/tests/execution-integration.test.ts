@@ -458,7 +458,7 @@ describe('Execution-tier integration — gate mode variations', () => {
     }
   });
 
-  it('gates are active in ask mode — requires explicit approval events', () => {
+  it('ask_gate_mode fires when execution_mode is ask and pipeline.gate_mode is null', () => {
     const config = makeConfig({ execution_mode: 'ask' });
     const io = createMockIO(null, config);
     let result: PipelineResult;
@@ -476,7 +476,7 @@ describe('Execution-tier integration — gate mode variations', () => {
       doc_path: DOC_PATHS.phasePlan(1),
     }, io);
 
-    // Phase 1, Task 1 — manual drive (no auto gate-approval so we observe gate_task)
+    // Phase 1, Task 1 — drive up to code review completion
     {
       const ctx = { phase: 1, task: 1 };
       processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
@@ -489,77 +489,18 @@ describe('Execution-tier integration — gate mode variations', () => {
       result = processEvent('code_review_completed', PROJECT_DIR, { ...ctx, doc_path: r, verdict: 'approve' }, io);
     }
     expect(result.success).toBe(true);
-    // task_gate is active in 'ask' mode → returns gate_task
-    expect(result.action).toBe('gate_task');
+    // pipeline.gate_mode is null and execution_mode='ask' → walker returns ask_gate_mode
+    // before activating the task_gate, prompting the operator to choose a gate mode
+    expect(result.action).toBe('ask_gate_mode');
 
-    // Verify task_gate is active
+    // Verify task_gate has NOT been activated (ask_gate_mode fires before gate evaluation)
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
       const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
-      expect(gate.gate_active).toBe(true);
+      expect(gate.gate_active).toBe(false);
       expect(gate.status).toBe('not_started');
     }
-
-    // Explicit task_gate_approved
-    result = processEvent('task_gate_approved', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    expect(result.success).toBe(true);
-    // After approval → advance to task 2
-    expect(result.action).toBe('create_task_handoff');
-
-    // Phase 1, Task 2 — manual drive (no auto gate-approval so we observe gate_task)
-    {
-      const ctx = { phase: 1, task: 2 };
-      processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-      const h = DOC_PATHS.taskHandoff(1, 2); seedDoc(h);
-      processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: h }, io);
-      processEvent('execution_started', PROJECT_DIR, ctx, io);
-      processEvent('task_completed', PROJECT_DIR, ctx, io);
-      processEvent('code_review_started', PROJECT_DIR, ctx, io);
-      const r = DOC_PATHS.codeReview(1, 2); seedDoc(r);
-      result = processEvent('code_review_completed', PROJECT_DIR, { ...ctx, doc_path: r, verdict: 'approve' }, io);
-    }
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('gate_task');
-
-    // Explicit task_gate_approved for task 2
-    result = processEvent('task_gate_approved', PROJECT_DIR, { phase: 1, task: 2 }, io);
-    expect(result.success).toBe(true);
-    // All tasks done → phase_report
-    expect(result.action).toBe('generate_phase_report');
-
-    // Drive phase report + review
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    const reportDoc = DOC_PATHS.phaseReport(1);
-    seedDoc(reportDoc);
-    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: reportDoc }, io);
-
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
-    const reviewDoc = DOC_PATHS.phaseReview(1);
-    seedDoc(reviewDoc);
-    result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1,
-      doc_path: reviewDoc,
-      verdict: 'approve',
-      exit_criteria_met: true,
-    }, io);
-    expect(result.success).toBe(true);
-    // phase_gate is active in 'ask' mode → returns gate_phase
-    expect(result.action).toBe('gate_phase');
-
-    // Verify phase_gate is active
-    {
-      const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-      const gate = phaseLoop.iterations[0].nodes['phase_gate'] as GateNodeState;
-      expect(gate.gate_active).toBe(true);
-      expect(gate.status).toBe('not_started');
-    }
-
-    // Explicit phase_gate_approved
-    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
-    expect(result.success).toBe(true);
-    // After phase gate approved → commit conditional (auto_commit=always) → invoke_source_control_commit
-    expect(result.action).toBe('invoke_source_control_commit');
   });
 
   it('execution_mode=task fires task gates and phase gate (requires explicit approvals)', () => {

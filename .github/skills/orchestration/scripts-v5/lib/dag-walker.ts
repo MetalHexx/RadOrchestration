@@ -360,11 +360,17 @@ function walkNodes(
           };
         }
 
-        // Resolve effective mode: state override → config → 'ask' fallback
+        // Resolve effective mode: persisted runtime → config → 'ask' fallback
         const effectiveMode: string =
-          state.config.gate_mode ||
-          (typeof configValue === 'string' ? configValue : undefined) ||
-          'ask';
+          state.pipeline.gate_mode ??
+          (typeof configValue === 'string' ? configValue : 'ask');
+
+        if (effectiveMode === 'ask' && state.pipeline.gate_mode === null) {
+          return {
+            action: NEXT_ACTIONS.ASK_GATE_MODE,
+            context: {},
+          };
+        }
 
         // Unconditional auto-approve: effective mode in auto_approve_modes
         if (
@@ -577,6 +583,13 @@ export function walkDAG(
   config: OrchestrationConfig,
   readDocument?: (docPath: string) => { frontmatter: Record<string, unknown> } | null,
 ): WalkerResult | null {
+  if (state.graph.status === GRAPH_STATUSES.HALTED) {
+    return {
+      action: NEXT_ACTIONS.DISPLAY_HALTED,
+      context: { details: state.pipeline.halt_reason ?? 'Pipeline is halted' },
+    };
+  }
+
   const result = walkNodes(template.nodes, state.graph.nodes, config, state, readDocument);
   if (result !== null) {
     return result;

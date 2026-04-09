@@ -242,22 +242,20 @@ describe('[CONTRACT] Gate Behavior — Task mode', () => {
 
 describe('[CONTRACT] Gate Behavior — Ask mode', () => {
 
-  it('task gate fires with gate_task action (v5 divergence: v4 would return ask_gate_mode)', () => {
-    // V5 DIVERGENCE: v4 emits 'ask_gate_mode' for ask mode.
-    // v5 has no ask_gate_mode emission — ask falls through to the default "show gate" path,
-    // returning gate_task (same behavior as task mode).
+  it('returns ask_gate_mode when execution_mode is ask and pipeline.gate_mode is null', () => {
+    // ask mode + pipeline.gate_mode=null → walker returns ask_gate_mode before activating gate
     const io = driveToExecutionWithConfig(askConfig(), 1);
     drivePhasePlanning(io);
     const result = driveTaskToCodeReview(io, 1, 1, 'approve');
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('gate_task'); // v5: gate_task (v4: ask_gate_mode)
+    expect(result.action).toBe('ask_gate_mode');
 
+    // Gate was NOT activated — ask_gate_mode fires before gate evaluation
     const gate = getTaskGateState(io, 1, 1);
-    expect(gate.gate_active).toBe(true);
+    expect(gate.gate_active).toBe(false);
+    expect(gate.status).toBe('not_started');
   });
-
-  it.todo('v4 parity: ask mode should emit ask_gate_mode instead of gate_task (v5 divergence, not implemented)');
 });
 
 // ── [CONTRACT] Human gate — request_plan_approval fires regardless of execution_mode ─────
@@ -294,15 +292,14 @@ describe('[CONTRACT] Gate Behavior — Human gate (plan_approval_gate)', () => {
 
 describe('[CONTRACT] Gate Behavior — Gate mode precedence', () => {
 
-  it('state.config.gate_mode="phase" overrides config execution_mode="task" → task gate auto-approves', () => {
-    // config.execution_mode = 'task' → state.config.gate_mode = 'task' at scaffold time
-    // After scaffold, override state.config.gate_mode → 'phase'
-    // effectiveMode = state.config.gate_mode = 'phase' (state override takes priority)
+  it('pipeline.gate_mode="phase" overrides config execution_mode="task" → task gate auto-approves', () => {
+    // pipeline.gate_mode is the runtime persisted choice (set by gate_mode_set mutation)
+    // when pipeline.gate_mode = 'phase', effectiveMode = 'phase' regardless of config
     // task_gate.auto_approve_modes = ['phase'] → includes 'phase' → unconditional auto-approve
     const io = driveToExecutionWithConfig(taskConfig(), 1);
 
-    // Override gate_mode directly on the live state — persists via io.writeState mechanism
-    io.currentState!.config.gate_mode = 'phase';
+    // Override pipeline.gate_mode to simulate operator having chosen 'phase' mode
+    io.currentState!.pipeline.gate_mode = 'phase';
 
     drivePhasePlanning(io);
     const result = driveTaskToCodeReview(io, 1, 1, 'approve');

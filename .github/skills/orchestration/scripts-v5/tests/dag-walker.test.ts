@@ -260,8 +260,8 @@ describe('walkDAG', () => {
   });
 
   it('auto-approves gate when effectiveMode is a string in auto_approve_modes', () => {
-    // F-01 fix: auto-approve uses effectiveMode (state.config.gate_mode → configValue → 'ask'),
-    // not configValue directly. state.config.gate_mode must be in auto_approve_modes to auto-approve.
+    // effectiveMode resolves via: state.pipeline.gate_mode ?? configValue ?? 'ask'.
+    // 'autonomous' must be in auto_approve_modes to auto-approve.
     const template = makeTemplate([
       gateDef('plan_gate', 'human_gates.execution_mode', 'request_plan_approval', ['autonomous']),
       stepDef('next_step', 'spawn_prd'),
@@ -270,7 +270,6 @@ describe('walkDAG', () => {
       plan_gate: gateState('not_started', false),
       next_step: stepState('not_started'),
     });
-    state.config.gate_mode = 'autonomous'; // effectiveMode = 'autonomous' (state override wins)
     const config = makeConfig({ execution_mode: 'autonomous' });
 
     const result = walkDAG(state, template, config);
@@ -283,7 +282,7 @@ describe('walkDAG', () => {
     expect(gateNodeState.gate_active).toBe(false);
   });
 
-  it('returns action_if_needed when gate config value is not in auto_approve_modes', () => {
+  it('returns ask_gate_mode when gate config resolves to ask and pipeline.gate_mode is null', () => {
     const template = makeTemplate([
       gateDef('plan_gate', 'human_gates.execution_mode', 'request_plan_approval', ['autonomous']),
       stepDef('next_step', 'spawn_prd'),
@@ -296,9 +295,10 @@ describe('walkDAG', () => {
 
     const result = walkDAG(state, template, config);
 
-    expect(result).toEqual({ action: 'request_plan_approval', context: {} });
+    expect(result).toEqual({ action: 'ask_gate_mode', context: {} });
+    // Gate was not reached — gate_active remains false (ask_gate_mode fires before gate evaluation)
     const gateNodeState = state.graph.nodes['plan_gate'] as GateNodeState;
-    expect(gateNodeState.gate_active).toBe(true);
+    expect(gateNodeState.gate_active).toBe(false);
   });
 
   it('auto-approves gate when boolean config is false (falsy = gate not needed)', () => {

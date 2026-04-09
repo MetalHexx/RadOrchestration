@@ -950,11 +950,11 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
 
   // ── ask mode ────────────────────────────────────────────────────────────
 
-  it('[PARITY] v4:resolveExecution — execution_mode=ask emits gate_task at task gate (v5 divergence: v4 emits ask_gate_mode first)', () => {
-    // v4: resolveExecution() — effectiveMode === 'ask' && gate_mode == null → ask_gate_mode
-    // v5 DIVERGENCE: v5 has no ask_gate_mode mechanism. gate_mode is always set at scaffold time.
-    // In v5, 'ask' is NOT in task_gate.auto_approve_modes [phase], so the
-    // task gate fires with gate_task instead. The v4 ask_gate_mode prompt is not replicated.
+  it('[PARITY] v4:resolveExecution — execution_mode=ask with pipeline.gate_mode=null emits ask_gate_mode', () => {
+    // v4 parity achieved: effectiveMode === 'ask' && pipeline.gate_mode === null → ask_gate_mode
+    // This is the new v5 behavior matching v4's ask_gate_mode mechanism.
+    // The walker returns ask_gate_mode before activating the task_gate,
+    // prompting the operator to choose a gate mode before proceeding.
     const config = createConfig({
       human_gates: { execution_mode: 'ask' },
       source_control: { auto_commit: 'never' },
@@ -965,7 +965,7 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
 
-    // Manual drive without gate approval — we want to observe gate_task firing
+    // Manual drive without gate approval — we want to observe ask_gate_mode firing
     const askCtx = { phase: 1, task: 1 };
     processEvent('task_handoff_started', PROJECT_DIR, askCtx, io);
     const askHandoff = taskHandoffDoc(1, 1);
@@ -981,13 +981,15 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     }, io);
 
     expect(result.success).toBe(true);
-    // v5: 'ask' not in auto_approve_modes [phase] → task gate fires
-    expect(result.action).toBe('gate_task');
+    // ask mode + pipeline.gate_mode=null → ask_gate_mode fires before gate evaluation
+    expect(result.action).toBe('ask_gate_mode');
 
+    // Gate was NOT activated — ask_gate_mode fires before gate evaluation
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
     const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
-    expect(gate.gate_active).toBe(true);
+    expect(gate.gate_active).toBe(false);
+    expect(gate.status).toBe('not_started');
   });
 });
 

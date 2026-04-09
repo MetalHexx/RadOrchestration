@@ -204,7 +204,15 @@ export function processEvent(
         };
       }
 
-      const mutationResult = mutation(state, context, config, template);
+      const normalizedContext = { ...context };
+      if (normalizedContext.doc_path) {
+        normalizedContext.doc_path = normalizeDocPath(
+          normalizedContext.doc_path,
+          config.projects.base_path,
+          path.basename(projectDir),
+        );
+      }
+      const mutationResult = mutation(state, normalizedContext, config, template);
       const mutatedState = mutationResult.state;
 
       const validationErrors = validateState(state, mutatedState, config, template);

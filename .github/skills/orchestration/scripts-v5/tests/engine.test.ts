@@ -807,6 +807,43 @@ describe('out-of-band event routing', () => {
     processEvent('halt', PROJECT_DIR, {}, io);
     expect(io.writeCalls.length).toBeGreaterThan(0);
   });
+
+  it('OOB mutation receives normalized doc_path when context.doc_path is a raw absolute path', () => {
+    const state = makeScaffoldedState();
+    const io = createMockIO(state);
+    // '\DAG-TEST\tasks\T01.md' → normalizeDocPath with basePath='' and projectName='DAG-TEST':
+    //   forward-slash conversion → '/DAG-TEST/tasks/T01.md'
+    //   prefix '/DAG-TEST/' matches → strips to 'tasks/T01.md'
+    const rawDocPath = '\\DAG-TEST\\tasks\\T01.md';
+
+    let capturedDocPath: string | undefined;
+    vi.mocked(getMutation).mockImplementationOnce((_event) => (s, ctx) => {
+      capturedDocPath = ctx.doc_path;
+      return { state: structuredClone(s), mutations_applied: [`stub: ${_event}`] };
+    });
+
+    const result = processEvent('halt', PROJECT_DIR, { doc_path: rawDocPath }, io);
+    expect(result.success).toBe(true);
+    expect(capturedDocPath).toBe('tasks/T01.md');
+  });
+
+  it('OOB mutation receives unmodified context when no doc_path is present', () => {
+    const state = makeScaffoldedState();
+    const io = createMockIO(state);
+
+    let capturedDocPath: string | undefined;
+    let capturedReason: string | undefined;
+    vi.mocked(getMutation).mockImplementationOnce((_event) => (s, ctx) => {
+      capturedDocPath = ctx.doc_path;
+      capturedReason = ctx.reason;
+      return { state: structuredClone(s), mutations_applied: [`stub: ${_event}`] };
+    });
+
+    const result = processEvent('halt', PROJECT_DIR, { reason: 'operator requested halt' }, io);
+    expect(result.success).toBe(true);
+    expect(capturedDocPath).toBeUndefined();
+    expect(capturedReason).toBe('operator requested halt');
+  });
 });
 
 // ── normalizeDocPath ──────────────────────────────────────────────────────────
