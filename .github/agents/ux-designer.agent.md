@@ -62,11 +62,13 @@ When spawned by the Orchestrator:
 10. **Define accessibility**: Keyboard nav, screen readers, color contrast, focus indicators
 11. **Specify responsive behavior**: Layout changes per breakpoint
 12. **Use the `create-design` skill** to produce the output document
-13. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-DESIGN.md`)
+13. **Self-review**: Run the self-review workflow from the `rad-plan-audit` skill — verify accuracy against the codebase and cohesion with upstream documents
+14. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-DESIGN.md`)
 
 ## Skills
 - **`orchestration`**: System context — agent roles, pipeline flow, naming conventions, key rules
 - **`create-design`**: Primary skill — guides design workflow and provides the Design template
+- **`rad-plan-audit`**: Self-review — verify accuracy and cohesion before finalizing
 
 ## Output Contract
 

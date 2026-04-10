@@ -53,7 +53,8 @@ When spawned by the Orchestrator to create an Architecture document:
 11. **Address cross-cutting concerns**: Error handling, logging, auth, state management
 12. **Recommend phasing**: Advisory suggestions for the Tactical Planner
 13. **Use the `create-architecture` skill** to produce the output document
-14. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-ARCHITECTURE.md`)
+14. **Self-review**: Run the self-review workflow from the `rad-plan-audit` skill — verify accuracy against the codebase and cohesion with upstream documents
+15. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-ARCHITECTURE.md`)
 
 ## Mode 2: Create Master Plan
 
@@ -70,12 +71,14 @@ When spawned by the Orchestrator to create a Master Plan:
 9. **Set execution constraints**: Pull from `orchestration.yml`
 10. **Build risk register**: Aggregate risks from PRD and Architecture
 11. **Use the `create-master-plan` skill** to produce the output document
-12. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-MASTER-PLAN.md`)
+12. **Self-review**: Run the self-review workflow from the `rad-plan-audit` skill — verify accuracy against the codebase and cohesion with upstream documents
+13. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-MASTER-PLAN.md`)
 
 ## Skills
 - **`orchestration`**: System context — agent roles, pipeline flow, naming conventions, key rules
 - **`create-architecture`**: Guides Architecture creation workflow and provides template
 - **`create-master-plan`**: Guides Master Plan creation workflow and provides template
+- **`rad-plan-audit`**: Self-review — verify accuracy and cohesion before finalizing
 
 ## Output Contract
 

@@ -64,6 +64,7 @@ Read `state.json → execution.phases[current].review.action` and route:
    - **Define execution order**: Sequential order with parallel-ready pairs marked
    - **Set exit criteria**: From Master Plan plus standard criteria (build passes, tests pass)
    - **Use the `create-phase-plan` skill** to produce the document
+   - **Self-review**: Run the self-review workflow from the `rad-plan-audit` skill — verify accuracy against the codebase and cohesion with upstream documents
    - **Save** to `{PROJECT-DIR}/phases/{NAME}-PHASE-{NN}-{TITLE}.md`
 
 ## Mode 2: Create Task Handoff
@@ -133,6 +134,7 @@ When spawned to generate a phase report after all tasks complete:
 - **`create-phase-plan`**: Guides phase planning and provides template
 - **`create-task-handoff`**: Guides task handoff creation and provides template
 - **`generate-phase-report`**: Guides phase report generation and provides template
+- **`rad-plan-audit`**: Self-review — verify accuracy and cohesion before finalizing
 
 ## Output Contract
 

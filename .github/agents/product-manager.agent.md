@@ -47,11 +47,13 @@ When spawned by the Orchestrator:
 8. **Assess risks**: Known risks with impact and mitigation
 9. **Define success metrics**: Measurable targets with clear measurement methods
 10. **Use the `create-prd` skill** to produce the output document
-11. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-PRD.md`)
+11. **Self-review**: Run the self-review workflow from the `rad-plan-audit` skill — verify accuracy against the codebase and cohesion with upstream documents
+12. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-PRD.md`)
 
 ## Skills
 - **`orchestration`**: System context — agent roles, pipeline flow, naming conventions, key rules
 - **`create-prd`**: Primary skill — guides PRD creation workflow and provides the PRD template
+- **`rad-plan-audit`**: Self-review — verify accuracy and cohesion before finalizing
 
 ## Output Contract
 
