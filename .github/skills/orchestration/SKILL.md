@@ -25,8 +25,9 @@ This skill bundles:
 
 - **`config/orchestration.yml`** — System configuration
 - **`schemas/state-v4.schema.json`** — State file JSON Schema
-- **`scripts/pipeline.js`** — Pipeline CLI entry point
-- **`scripts/migrate-to-v4.js`** — Migration CLI
+- **`scripts/pipeline.ts`** — Pipeline CLI entry point (TypeScript, invoke via `npx tsx`)
+- **`scripts/migrate-to-v5.ts`** — Migration CLI
 - **`scripts/lib/`** — Pipeline engine, resolver, mutations, state I/O, validator
-- **`scripts/validate/`** — Orchestration validator CLI, check modules, utilities
+- **`templates/`** — Pipeline templates (`full.yml`, `quick.yml`)
+- **`validate/`** — Orchestration validator CLI, check modules, utilities
 - **`references/`** — Role-specific reference documents
