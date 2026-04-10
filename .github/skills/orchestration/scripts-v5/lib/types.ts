@@ -10,6 +10,34 @@ export type EventPhase = 'started' | 'completed' | 'approved';
 
 export type ConditionOperator = 'eq' | 'neq' | 'in' | 'not_in' | 'truthy' | 'falsy';
 
+export type ValidationErrorSubtype =
+  | 'cycle_detected'
+  | 'dangling_ref'
+  | 'invalid_kind'
+  | 'unreachable_node'
+  | 'id_mismatch';
+
+export interface TemplateValidationError {
+  type: 'template_validation_error';
+  subtype: ValidationErrorSubtype;
+  template_id: string;
+  message: string;
+  detail: Record<string, unknown>;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: TemplateValidationError[];
+  warnings: TemplateValidationError[];
+}
+
+export interface TemplateResolution {
+  templateName: string;
+  templatePath: string;
+  source: 'state' | 'cli' | 'config' | 'default';
+  isProjectLocal: boolean;
+}
+
 // Template Node Definitions (parsed from YAML)
 
 export interface BaseNodeDef {
@@ -248,6 +276,7 @@ export interface EventContext {
   remote_url?: string;
   compare_url?: string;
   pr_url?: string;
+  template?: string;
 
   // ── Internal fields (v5 DAG walker; NOT required from callers) ──
   step?: string;
@@ -287,6 +316,7 @@ export interface OrchestrationConfig {
     auto_pr: string;
     provider: string;
   };
+  default_template?: string;
 }
 
 // Event Index (built at template load time)

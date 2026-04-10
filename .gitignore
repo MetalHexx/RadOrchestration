@@ -5,3 +5,4 @@ node_modules/
 # Claude Code config (contains API keys)
 .claude/
 CLAUDE.md
+.vscode/settings.json
