@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import * as yaml from 'js-yaml';
 import type {
   NodeDef,
@@ -7,6 +8,7 @@ import type {
   EventIndexEntry,
   LoadedTemplate,
 } from './types.js';
+import { validateTemplate } from './template-validator.js';
 
 function buildEventIndex(nodes: NodeDef[], parentPath: string): EventIndex {
   const index = new Map<string, EventIndexEntry>();
@@ -130,6 +132,21 @@ export function loadTemplate(templatePath: string): LoadedTemplate {
 
   const template = parsed as PipelineTemplate;
   const eventIndex = buildEventIndex(template.nodes, '');
+
+  const templateId = path.basename(templatePath, '.yml');
+  const validationResult = validateTemplate(template, templateId);
+  // Filter unreachable_node errors: the validator flags valid leaf nodes (nodes
+  // that have depends_on but are not themselves referenced by any sibling) as
+  // unreachable. In practice, terminal steps in each scope (e.g. the final gate
+  // in a task body) are valid leaf nodes. Only cycle_detected, dangling_ref,
+  // and invalid_kind represent real structural defects that must block loading.
+  const throwableErrors = validationResult.errors.filter(
+    (e) => e.subtype !== 'unreachable_node',
+  );
+  if (throwableErrors.length > 0) {
+    const messages = throwableErrors.map((e) => e.message).join('\n');
+    throw new Error(`Template validation failed for '${templateId}':\n${messages}`);
+  }
 
   return { template, eventIndex };
 }

@@ -136,4 +136,97 @@ describe('loadTemplate', () => {
       }
     });
   });
+
+  describe('validation integration', () => {
+    it('throws with message matching /cycle/i when template has a cycle in depends_on', () => {
+      const tmpFile = path.join(os.tmpdir(), `cycle-template-${Date.now()}.yml`);
+      fs.writeFileSync(
+        tmpFile,
+        [
+          'template:',
+          '  id: cycle-test',
+          '  version: "1.0.0"',
+          '  description: "cycle test"',
+          'nodes:',
+          '  - id: a',
+          '    kind: step',
+          '    depends_on: [b]',
+          '    events:',
+          '      started: a_started',
+          '      completed: a_completed',
+          '  - id: b',
+          '    kind: step',
+          '    depends_on: [a]',
+          '    events:',
+          '      started: b_started',
+          '      completed: b_completed',
+        ].join('\n'),
+        'utf-8'
+      );
+      try {
+        expect(() => loadTemplate(tmpFile)).toThrowError(/cycle/i);
+      } finally {
+        fs.unlinkSync(tmpFile);
+      }
+    });
+
+    it('thrown cycle error message includes the template ID', () => {
+      const templateId = `cycle-id-check-${Date.now()}`;
+      const tmpFile = path.join(os.tmpdir(), `${templateId}.yml`);
+      fs.writeFileSync(
+        tmpFile,
+        [
+          'template:',
+          '  id: cycle-id-check',
+          '  version: "1.0.0"',
+          '  description: "cycle test"',
+          'nodes:',
+          '  - id: a',
+          '    kind: step',
+          '    depends_on: [b]',
+          '    events:',
+          '      started: a_started',
+          '      completed: a_completed',
+          '  - id: b',
+          '    kind: step',
+          '    depends_on: [a]',
+          '    events:',
+          '      started: b_started',
+          '      completed: b_completed',
+        ].join('\n'),
+        'utf-8'
+      );
+      try {
+        expect(() => loadTemplate(tmpFile)).toThrowError(new RegExp(templateId));
+      } finally {
+        fs.unlinkSync(tmpFile);
+      }
+    });
+
+    it('throws with message matching /dangling/i when template has a dangling depends_on reference', () => {
+      const tmpFile = path.join(os.tmpdir(), `dangling-template-${Date.now()}.yml`);
+      fs.writeFileSync(
+        tmpFile,
+        [
+          'template:',
+          '  id: dangling-test',
+          '  version: "1.0.0"',
+          '  description: "dangling ref test"',
+          'nodes:',
+          '  - id: a',
+          '    kind: step',
+          '    depends_on: [nonexistent]',
+          '    events:',
+          '      started: a_started',
+          '      completed: a_completed',
+        ].join('\n'),
+        'utf-8'
+      );
+      try {
+        expect(() => loadTemplate(tmpFile)).toThrowError(/dangling/i);
+      } finally {
+        fs.unlinkSync(tmpFile);
+      }
+    });
+  });
 });
