@@ -538,11 +538,21 @@ mutationRegistry.set(EVENTS.TASK_COMMITTED, (state, context, _config, _template)
   node.status = 'completed';
   mutations_applied.push('set phase_commit.status = completed');
 
-  // TODO: Phase 2 — write commit_hash to per-task IterationEntry using context.phase/context.task
-  // if (cloned.pipeline.source_control) {
-  //   cloned.pipeline.source_control.commit_hash = (context.commit_hash as string) ?? null;
-  //   mutations_applied.push(`set pipeline.source_control.commit_hash = ${context.commit_hash ?? 'null'}`);
-  // }
+  // Write commit_hash to per-task IterationEntry or active CorrectiveTaskEntry
+  const taskIteration = resolveTaskIteration(cloned, context.phase ?? 1, context.task ?? 1);
+  const activeCorrective = taskIteration.corrective_tasks.slice().reverse().find(
+    (ct: CorrectiveTaskEntry) => ct.status === 'in_progress' || ct.status === 'not_started'
+  );
+
+  const commitHash = (context.commit_hash as string) ?? null;
+
+  if (activeCorrective) {
+    activeCorrective.commit_hash = commitHash;
+    mutations_applied.push(`set corrective_task[${activeCorrective.index}].commit_hash = ${commitHash ?? 'null'}`);
+  } else {
+    taskIteration.commit_hash = commitHash;
+    mutations_applied.push(`set task_iteration[${taskIteration.index}].commit_hash = ${commitHash ?? 'null'}`);
+  }
 
   return { state: cloned, mutations_applied };
 });

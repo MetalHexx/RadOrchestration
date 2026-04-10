@@ -139,4 +139,30 @@ describe('validateStateSchema', () => {
     const errors = validateStateSchema(state);
     expect(errors).toEqual([]);
   });
+
+  it('current_tier set to "complete" is rejected with error mentioning current_tier and valid enum values', () => {
+    const state = makeMinimalState();
+    (state.pipeline as any).current_tier = 'complete';
+    const errors = validateStateSchema(state);
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    const tierError = errors.find(e => e.includes('current_tier'));
+    expect(tierError).toBeDefined();
+    expect(tierError!).toMatch(/^\[schema\] /);
+    expect(tierError!).toContain('planning');
+    expect(tierError!).toContain('execution');
+    expect(tierError!).toContain('review');
+    expect(tierError!).toContain('halted');
+  });
+
+  it('null value on a string-typed field: type error does not say "got object" (null-type fix)', () => {
+    const state = makeMinimalState();
+    (state.project as any).name = null;
+    const errors = validateStateSchema(state);
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    const typeError = errors.find(e => e.includes('project') && e.includes('name'));
+    expect(typeError).toBeDefined();
+    expect(typeError!).toMatch(/^\[schema\] /);
+    // The fix prevents the old typeof null === 'object' output from appearing
+    expect(typeError!).not.toContain('got object');
+  });
 });

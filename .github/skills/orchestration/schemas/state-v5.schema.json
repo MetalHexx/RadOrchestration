@@ -509,9 +509,9 @@
         },
         "current_tier": {
           "title": "Current Tier",
-          "description": "Active pipeline tier. Values: planning, execution, review, complete, halted.",
+          "description": "Active pipeline tier. Values: planning, execution, review, halted.",
           "type": "string",
-          "enum": ["planning", "execution", "review", "complete", "halted"]
+          "enum": ["planning", "execution", "review", "halted"]
         },
         "halt_reason": {
           "title": "Halt Reason",

@@ -51,7 +51,7 @@ function formatSchemaError(error: ErrorObject): string {
     }
     case 'type': {
       const expected: string = error.params['type'];
-      const actual = typeof error.data;
+      const actual = error.data === null ? 'null' : typeof error.data;
       path = basePath;
       problem = `expected ${expected}, got ${actual}`;
       break;

@@ -202,8 +202,6 @@ describe('source_control_init mutation', () => {
     expect(sc.remote_url).toBe('https://github.com/org/repo');
     expect(sc.compare_url).toBe('https://github.com/org/repo/compare');
     expect(sc.pr_url).toBeNull();
-    // TODO: Phase 2 — commit_hash moved to per-task IterationEntry
-    // expect(sc.commit_hash).toBeNull();
   });
 
   it('missing branch throws required fields error', () => {
@@ -232,8 +230,6 @@ describe('source_control_init mutation', () => {
     expect(sc.remote_url).toBeNull();
     expect(sc.compare_url).toBeNull();
     expect(sc.pr_url).toBeNull();
-    // TODO: Phase 2 — commit_hash moved to per-task IterationEntry
-    // expect(sc.commit_hash).toBeNull();
   });
 
   it('missing optional worktree_path defaults to "."', () => {
@@ -313,8 +309,6 @@ describe('task_committed mutation (enhanced)', () => {
       baseConfig,
       baseTemplate,
     );
-    // TODO: Phase 2 — commit_hash write to pipeline.source_control is deferred
-    // expect(result.state.pipeline.source_control!.commit_hash).toBe('abc123def456');
     expect(result.mutations_applied).toContain('set phase_commit.status = completed');
   });
 
@@ -343,8 +337,6 @@ describe('task_committed mutation (enhanced)', () => {
       baseTemplate,
     );
     expect(result.mutations_applied).toContain('set phase_commit.status = completed');
-    // TODO: Phase 2 — commit_hash mutation entry deferred
-    // expect(result.mutations_applied).toContain('set pipeline.source_control.commit_hash = abc123');
   });
 
   it('phase_commit.status is set to "completed" (existing behavior preserved)', () => {
