@@ -14,6 +14,9 @@ projects:
   base_path: "C:\\dev\\orchestration-projects"    # Location of project files.   Relative paths from workspace root or absolute paths are valid.
   naming: "SCREAMING_CASE"                        # SCREAMING_CASE | lowercase | numbered
 
+# ─── Default Template ──────────────────────────────────────────────
+default_template: "full"           # full | quick | <custom-name> | ask
+
 # ─── Pipeline Limits (Scope Guards) ───────────────────────────────
 limits:
   max_phases: 10                         # Maximum phases per project
