@@ -116,6 +116,7 @@ export function run(argv: string[]): void {
     if (args['remote-url'] !== undefined) context.remote_url = args['remote-url'];
     if (args['compare-url'] !== undefined) context.compare_url = args['compare-url'];
     if (args['pr-url'] !== undefined) context.pr_url = args['pr-url'];
+    if (args['template'] !== undefined) context.template = args['template'];
 
     // Build IOAdapter from state-io named exports
     const io: IOAdapter = {

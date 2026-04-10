@@ -1,5 +1,6 @@
 import * as path from 'node:path';
 import { loadTemplate } from './template-loader.js';
+import { resolveTemplateName, snapshotTemplate } from './template-resolver.js';
 import { preRead } from './pre-reads.js';
 import { getMutation } from './mutations.js';
 import { walkDAG, resolveNodeStatePath } from './dag-walker.js';
@@ -107,18 +108,36 @@ export function processEvent(
 
     const state = io.readState(projectDir);
 
-    const templatePath = path.join(orchRoot, 'skills/orchestration/scripts-v5/templates/full.yml');
-    const loadedTemplate = loadTemplate(templatePath);
+    const templatesDir = path.join(orchRoot, 'skills/orchestration/scripts-v5/templates');
+    const resolution = resolveTemplateName(state, context.template, config, projectDir, templatesDir);
+    // For new-project creation (state === null) always load from the global templates directory.
+    // This avoids reading a project-local snapshot that may be mid-write in concurrent scenarios
+    // or stale from a prior failed run. The snapshot step below overwrites any stale file.
+    const effectiveLoadPath = state !== null
+      ? resolution.templatePath
+      : path.join(templatesDir, resolution.templateName + '.yml');
+    const loadedTemplate = loadTemplate(effectiveLoadPath);
     const { template, eventIndex } = loadedTemplate;
 
     // ── Start event (pre-index routing) ────────────────────────────────
     if (event === 'start') {
       if (state === null) {
         const projectName = path.basename(projectDir);
+        io.ensureDirectories(projectDir);
+        // Always snapshot the global template for new projects. This also handles
+        // the stale re-start case where a prior failed run left template.yml but
+        // no state.json — the stale file is overwritten with the correct global template.
+        try {
+          snapshotTemplate(
+            path.join(templatesDir, resolution.templateName + '.yml'),
+            projectDir,
+          );
+        } catch (err) {
+          console.error('[engine] snapshotTemplate failed; project will use global template on future events:', err);
+        }
         const scaffolded = scaffoldState(template, projectName, config);
         scaffolded.project.updated = new Date().toISOString();
 
-        io.ensureDirectories(projectDir);
         const nextAction = walkDAG(scaffolded, template, config, io.readDocument);
 
         const postWalkErrors = validateState(null, scaffolded, config, template);
