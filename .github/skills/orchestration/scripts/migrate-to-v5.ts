@@ -473,10 +473,14 @@ function buildPhaseLoop(
   );
 
   let status: NodeStatus;
-  if (iterations.every((p) => p.status === 'completed')) {
+  if (iterations.length === 0) {
+    status = 'not_started';
+  } else if (iterations.every((p) => p.status === 'completed')) {
     status = 'completed';
-  } else {
+  } else if (iterations.some((p) => p.status === 'in_progress')) {
     status = 'in_progress';
+  } else {
+    status = 'not_started';
   }
 
   return {

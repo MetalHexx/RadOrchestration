@@ -1,3 +1,10 @@
+/**
+ * ONE-TIME MIGRATION SCRIPT — fix-ghost-v5.ts
+ * Re-migrates "ghost v5" state files (files with $schema "orchestration-state-v5"
+ * but no valid graph section) by stripping $schema and re-running migrateState().
+ * This script was needed during the DAG-PIPELINE-2 v4→v5 transition and is not
+ * part of the regular pipeline runtime. Safe to archive after all projects are migrated.
+ */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { writeState } from './lib/state-io.js';
