@@ -88,6 +88,7 @@ function makePlanningCompletedState(): PipelineState {
                 phase_commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
               },
               corrective_tasks: [],
+              commit_hash: null,
             },
           ],
         },

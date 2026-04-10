@@ -284,6 +284,7 @@ function buildCorrectiveTasks(task: V4Task): CorrectiveTaskEntry[] {
         code_review: reviewNode,
         task_gate: gateNode,
       },
+      commit_hash: null,
     });
   }
   return entries;
@@ -354,6 +355,7 @@ function buildTaskIteration(task: V4Task, index: number, projectName: string): I
     status: taskStatus,
     nodes,
     corrective_tasks: buildCorrectiveTasks(task),
+    commit_hash: null,
   };
 }
 
@@ -450,6 +452,7 @@ function buildPhaseIteration(phase: V4Phase, index: number, projectName: string)
     status: phaseStatus,
     nodes,
     corrective_tasks: [],
+    commit_hash: null,
   };
 }
 
@@ -539,7 +542,6 @@ export function migrateState(
       remote_url: sc.remote_url ?? null,
       compare_url: sc.compare_url ?? null,
       pr_url: sc.pr_url ?? null,
-      commit_hash: null,
     };
   }
 

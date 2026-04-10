@@ -536,7 +536,6 @@ describe('migrateState()', () => {
         remote_url: 'https://github.com/org/repo',
         compare_url: 'https://github.com/org/repo/compare/main...feat/my-feature',
         pr_url: null,
-        commit_hash: null,
       });
     });
 
@@ -558,7 +557,8 @@ describe('migrateState()', () => {
       expect(result.pipeline.source_control?.pr_url).toBeNull();
     });
 
-    it('sets commit_hash to null always', () => {
+    // TODO: Phase 2 — commit_hash removed from SourceControlState; now lives on IterationEntry
+    it.skip('sets commit_hash to null always (obsolete — field removed from SourceControlState)', () => {
       const v4 = makeV4State({
         pipeline: {
           current_tier: 'complete',
@@ -573,7 +573,9 @@ describe('migrateState()', () => {
         },
       });
       const result = migrateState(v4, 'MY-PROJECT');
-      expect(result.pipeline.source_control?.commit_hash).toBeNull();
+      // TODO: Phase 2 — commit_hash no longer on SourceControlState
+      // expect(result.pipeline.source_control?.commit_hash).toBeNull();
+      expect(result.pipeline.source_control).not.toBeNull();
     });
 
     it('maps auto_commit and auto_pr to config.source_control', () => {

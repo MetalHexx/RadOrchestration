@@ -11,6 +11,7 @@ import type {
   NodeDef,
 } from './types.js';
 import { NODE_STATUSES, GRAPH_STATUSES, ALLOWED_NODE_TRANSITIONS } from './constants.js';
+import { validateStateSchema } from './schema-validator.js';
 
 const validNodeStatuses = new Set<string>(Object.values(NODE_STATUSES));
 const validGraphStatuses = new Set<string>(Object.values(GRAPH_STATUSES));
@@ -24,6 +25,7 @@ export function validateState(
   template: PipelineTemplate,
 ): string[] {
   return [
+    ...validateStateSchema(proposedState),     // schema check (must be first)
     ...checkGraphStatus(proposedState),
     ...checkCorrectiveTaskStructure(proposedState.graph.nodes, 'graph.nodes'),
     ...checkNodeStatuses(proposedState.graph.nodes, 'graph.nodes'),

@@ -630,7 +630,7 @@ describe('for_each_phase handling', () => {
     status: 'not_started' | 'in_progress' | 'completed' | 'skipped',
     nodes: Record<string, NodeState>,
   ): IterationEntry {
-    return { index, status, nodes, corrective_tasks: [] };
+    return { index, status, nodes, corrective_tasks: [], commit_hash: null };
   }
 
   const mockReadDocument = (totalPhases: number) =>
@@ -923,7 +923,7 @@ describe('for_each_task handling', () => {
     status: 'not_started' | 'in_progress' | 'completed' | 'skipped',
     nodes: Record<string, NodeState>,
   ): IterationEntry {
-    return { index, status, nodes, corrective_tasks: [] };
+    return { index, status, nodes, corrective_tasks: [], commit_hash: null };
   }
 
   // Helpers for nesting for_each_task inside for_each_phase in scope tests
@@ -1264,7 +1264,7 @@ describe('corrective task walking', () => {
     nodes: Record<string, NodeState>,
     corrective_tasks: CorrectiveTaskEntry[] = [],
   ): IterationEntry {
-    return { index, status, nodes, corrective_tasks };
+    return { index, status, nodes, corrective_tasks, commit_hash: null };
   }
 
   function makeCorrectiveEntry(
@@ -1278,6 +1278,7 @@ describe('corrective task walking', () => {
       injected_after: 'code_review',
       status,
       nodes,
+      commit_hash: null,
     };
   }
 
@@ -1561,7 +1562,7 @@ describe('phase-level corrective task walking', () => {
     nodes: Record<string, NodeState>,
     corrective_tasks: CorrectiveTaskEntry[] = [],
   ): IterationEntry {
-    return { index, status, nodes, corrective_tasks };
+    return { index, status, nodes, corrective_tasks, commit_hash: null };
   }
 
   function makeCorrectiveEntry(
@@ -1575,6 +1576,7 @@ describe('phase-level corrective task walking', () => {
       injected_after: 'phase_review',
       status,
       nodes,
+      commit_hash: null,
     };
   }
 

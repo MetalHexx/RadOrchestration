@@ -539,7 +539,7 @@ describe('engine – processEvent', () => {
         ...DEFAULT_CONFIG,
         limits: {
           ...DEFAULT_CONFIG.limits,
-          max_phases: 0,
+          max_phases: 1,
         },
       };
       const io = createMockIO(null);
@@ -667,11 +667,13 @@ describe('engine – processEvent', () => {
                     task_gate: { kind: 'gate', status: 'not_started', gate_active: false },
                   },
                   corrective_tasks: [],
+                  commit_hash: null,
                 },
               ],
             },
           },
           corrective_tasks: [],
+          commit_hash: null,
         },
       ];
       return state;
@@ -706,11 +708,13 @@ describe('engine – processEvent', () => {
                     task_gate: { kind: 'gate', status: 'completed', gate_active: true },
                   },
                   corrective_tasks: [],
+                  commit_hash: null,
                 },
               ],
             },
           },
           corrective_tasks: [],
+          commit_hash: null,
         },
       ];
       return state;

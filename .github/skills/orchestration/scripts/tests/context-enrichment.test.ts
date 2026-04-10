@@ -40,7 +40,6 @@ function stateWithSourceControl(
     remote_url: null,
     compare_url: null,
     pr_url: null,
-    commit_hash: null,
   };
   return state;
 }

@@ -172,6 +172,7 @@ describe('[CONTRACT] Corrective Cycles — corrective create_phase_plan', () => 
       injected_after: 'phase_review',
       status: 'in_progress',
       nodes: {},
+      commit_hash: null,
     } as CorrectiveTaskEntry);
 
     const result = processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);

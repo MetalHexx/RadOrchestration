@@ -91,11 +91,13 @@ function makeState(): PipelineState {
                         code_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                       },
                       corrective_tasks: [],
+                      commit_hash: null,
                     },
                   ],
                 },
               },
               corrective_tasks: [],
+              commit_hash: null,
             },
           ],
         },
@@ -945,7 +947,7 @@ describe('code_review_completed — corrective injection', () => {
     // Pre-fill corrective_tasks to max (3)
     const iteration = getTaskIteration(state);
     for (let i = 0; i < 3; i++) {
-      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {} });
+      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {}, commit_hash: null });
     }
     const result = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
     const resultIteration = getTaskIteration(result.state);
@@ -960,7 +962,7 @@ describe('code_review_completed — corrective injection', () => {
     // Pre-fill to max - 1 (2 entries)
     const iteration = getTaskIteration(state);
     for (let i = 0; i < 2; i++) {
-      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {} });
+      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {}, commit_hash: null });
     }
     const result = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
     const resultIteration = getTaskIteration(result.state);
@@ -1220,6 +1222,7 @@ function makeIterationNodes() {
             code_review: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
           },
           corrective_tasks: [],
+          commit_hash: null as null,
         },
         {
           index: 1,
@@ -1231,6 +1234,7 @@ function makeIterationNodes() {
             code_review: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
           },
           corrective_tasks: [],
+          commit_hash: null as null,
         },
       ],
     },
@@ -1242,8 +1246,8 @@ function makeMultiIterationState(): PipelineState {
   const phaseLoop = base.graph.nodes['phase_loop'];
   if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
   phaseLoop.iterations = [
-    { index: 0, status: 'not_started', nodes: makeIterationNodes(), corrective_tasks: [] },
-    { index: 1, status: 'not_started', nodes: makeIterationNodes(), corrective_tasks: [] },
+    { index: 0, status: 'not_started', nodes: makeIterationNodes(), corrective_tasks: [], commit_hash: null },
+    { index: 1, status: 'not_started', nodes: makeIterationNodes(), corrective_tasks: [], commit_hash: null },
   ];
   return base;
 }

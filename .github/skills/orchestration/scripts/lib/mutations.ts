@@ -292,6 +292,7 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
       injected_after: 'phase_review',
       status: 'in_progress',
       nodes: {},
+      commit_hash: null,
     });
 
     mutations_applied.push('reset phase for corrective re-planning');
@@ -445,6 +446,7 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
         injected_after: 'code_review',
         status: 'not_started',
         nodes,
+        commit_hash: null,
       };
       iteration.corrective_tasks.push(entry);
       mutations_applied.push(`injected corrective task ${entry.index} (changes_requested)`);
@@ -536,10 +538,11 @@ mutationRegistry.set(EVENTS.TASK_COMMITTED, (state, context, _config, _template)
   node.status = 'completed';
   mutations_applied.push('set phase_commit.status = completed');
 
-  if (cloned.pipeline.source_control) {
-    cloned.pipeline.source_control.commit_hash = (context.commit_hash as string) ?? null;
-    mutations_applied.push(`set pipeline.source_control.commit_hash = ${context.commit_hash ?? 'null'}`);
-  }
+  // TODO: Phase 2 — write commit_hash to per-task IterationEntry using context.phase/context.task
+  // if (cloned.pipeline.source_control) {
+  //   cloned.pipeline.source_control.commit_hash = (context.commit_hash as string) ?? null;
+  //   mutations_applied.push(`set pipeline.source_control.commit_hash = ${context.commit_hash ?? 'null'}`);
+  // }
 
   return { state: cloned, mutations_applied };
 });
@@ -700,7 +703,6 @@ mutationRegistry.set(EVENTS.SOURCE_CONTROL_INIT, (state, context, _config, _temp
     remote_url: (context.remote_url as string) ?? null,
     compare_url: (context.compare_url as string) ?? null,
     pr_url: null,
-    commit_hash: null,
   };
 
   return {

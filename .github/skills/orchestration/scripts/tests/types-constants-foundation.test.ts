@@ -19,7 +19,7 @@ import type {
 // ── SourceControlState interface ──────────────────────────────────────────────
 
 describe('SourceControlState interface', () => {
-  it('is exported and can be used as a type annotation with all 9 required fields', () => {
+  it('is exported and can be used as a type annotation with all 8 required fields', () => {
     const state: SourceControlState = {
       branch: 'feature/test',
       base_branch: 'main',
@@ -29,7 +29,6 @@ describe('SourceControlState interface', () => {
       remote_url: null,
       compare_url: null,
       pr_url: null,
-      commit_hash: null,
     };
     expect(state.branch).toBe('feature/test');
     expect(state.base_branch).toBe('main');
@@ -39,7 +38,6 @@ describe('SourceControlState interface', () => {
     expect(state.remote_url).toBeNull();
     expect(state.compare_url).toBeNull();
     expect(state.pr_url).toBeNull();
-    expect(state.commit_hash).toBeNull();
   });
 
   it('accepts non-null string values for nullable fields', () => {
@@ -52,12 +50,10 @@ describe('SourceControlState interface', () => {
       remote_url: 'https://github.com/org/repo',
       compare_url: 'https://github.com/org/repo/compare',
       pr_url: 'https://github.com/org/repo/pull/1',
-      commit_hash: 'abc123def456',
     };
     expect(state.remote_url).toBe('https://github.com/org/repo');
     expect(state.compare_url).toBe('https://github.com/org/repo/compare');
     expect(state.pr_url).toBe('https://github.com/org/repo/pull/1');
-    expect(state.commit_hash).toBe('abc123def456');
   });
 });
 
@@ -87,7 +83,6 @@ describe('PipelineSection interface', () => {
       remote_url: null,
       compare_url: null,
       pr_url: null,
-      commit_hash: null,
     };
     const section: PipelineSection = {
       gate_mode: 'autonomous',
