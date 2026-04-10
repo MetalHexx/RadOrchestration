@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare": "node setup-hooks.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
