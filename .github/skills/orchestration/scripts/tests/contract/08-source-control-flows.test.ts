@@ -3,14 +3,13 @@ import { processEvent } from '../../lib/engine.js';
 import {
   createConfig,
   driveToExecutionWithConfig,
-  driveTaskWith,
   driveToReviewTier,
   seedDoc,
   DOC_STORE,
   PROJECT_DIR,
   phasePlanDoc,
-  phaseReportDoc,
-  phaseReviewDoc,
+  taskHandoffDoc,
+  codeReviewDoc,
   TASKS_2,
 } from '../fixtures/parity-states.js';
 
@@ -54,17 +53,19 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    driveTaskWith(io, 1, 1);
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReviewDoc(1));
-    let result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1,
-      doc_path: phaseReviewDoc(1),
+    // Drive task manually to reach commit_gate at task scope
+    const ctx = { phase: 1, task: 1 };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    seedDoc(taskHandoffDoc(1, 1));
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    seedDoc(codeReviewDoc(1, 1));
+    let result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: codeReviewDoc(1, 1),
       verdict: 'approved',
-      exit_criteria_met: true,
     }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_commit');
@@ -83,17 +84,19 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    driveTaskWith(io, 1, 1);
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReviewDoc(1));
-    let result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1,
-      doc_path: phaseReviewDoc(1),
+    // Drive task manually to reach commit_gate at task scope
+    const ctx = { phase: 1, task: 1 };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    seedDoc(taskHandoffDoc(1, 1));
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    seedDoc(codeReviewDoc(1, 1));
+    let result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: codeReviewDoc(1, 1),
       verdict: 'approved',
-      exit_criteria_met: true,
     }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_commit');
@@ -103,23 +106,24 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     }));
   });
 
-  it('multi-task phase: resolves correct phase identifiers and task ref after both tasks complete', () => {
+  it('multi-task phase: resolves correct phase identifiers and task ref on first task commit', () => {
     const io = driveToExecutionWithConfig(commitConfig, 1);
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    driveTaskWith(io, 1, 1);
-    driveTaskWith(io, 1, 2);
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReviewDoc(1));
-    let result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1,
-      doc_path: phaseReviewDoc(1),
+    // Drive Task 1 manually to capture commit action
+    const ctx = { phase: 1, task: 1 };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    seedDoc(taskHandoffDoc(1, 1));
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    seedDoc(codeReviewDoc(1, 1));
+    let result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: codeReviewDoc(1, 1),
       verdict: 'approved',
-      exit_criteria_met: true,
     }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_commit');

@@ -10,7 +10,6 @@ import {
   seedDoc,
   driveToExecutionWithConfig,
   driveTaskWith,
-  drivePhaseReviewApproval,
   phasePlanDoc,
   taskHandoffDoc,
   codeReviewDoc,
@@ -359,7 +358,7 @@ describe('[CONTRACT] State Mutations — Gate approved mutations', () => {
     expect(result.mutations_applied.some((m) => m.includes('phase_gate'))).toBe(true);
   });
 
-  it('task_committed: phase_commit.status=completed', () => {
+  it('commit_completed: commit.status=completed', () => {
     const commitConfig = createConfig({
       human_gates: {
         after_planning: true,
@@ -372,18 +371,28 @@ describe('[CONTRACT] State Mutations — Gate approved mutations', () => {
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    driveTaskWith(io, 1, 1);
-    // drivePhaseReviewApproval drives phase report + review + phase gate (fires in autonomous+approve)
-    // After gate approval with auto_commit:'always', action = invoke_source_control_commit
-    drivePhaseReviewApproval(io, 1);
+    // Drive task manually to reach commit_gate at task scope
+    const ctx = { phase: 1, task: 1 };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    seedDoc(taskHandoffDoc(1, 1));
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    seedDoc(codeReviewDoc(1, 1));
+    const r = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
+    }, io);
+    expect(r.action).toBe('invoke_source_control_commit');
 
-    processEvent('task_commit_requested', PROJECT_DIR, { phase: 1 }, io);
-    const result = processEvent('task_committed', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('commit_started', PROJECT_DIR, ctx, io);
+    const result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-    const phaseCommitNode = phaseLoop.iterations[0].nodes['phase_commit'] as StepNodeState;
-    expect(phaseCommitNode.status).toBe('completed');
-    expect(result.mutations_applied.some((m) => m.includes('phase_commit'))).toBe(true);
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const commitNode = taskLoop.iterations[0].nodes['commit'] as StepNodeState;
+    expect(commitNode.status).toBe('completed');
+    expect(result.mutations_applied.some((m) => m.includes('commit'))).toBe(true);
   });
 });

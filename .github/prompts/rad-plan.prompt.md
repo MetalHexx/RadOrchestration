@@ -3,11 +3,11 @@ description: "Start the full planning pipeline for a new project — Research th
 agent: orchestrator
 ---
 
-#Inputs:
+## Inputs:
 - `project_name` (string): The name of the new project to plan. (e.g., "DAG-PIPELINE-2")
 - `project_template` (string): The template to use for planning. (e.g., "full" or "quick" or custom template name if one exists)
 
-# Workflow:
+## Workflow:
 I have project goals I'd like to develop into a full scale plan.  
 
 ## Step 1: Choose Project Template
