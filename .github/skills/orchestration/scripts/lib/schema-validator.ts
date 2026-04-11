@@ -6,7 +6,7 @@ import type { PipelineState } from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const SCHEMA_PATH = join(__dirname, '..', '..', 'schemas', 'state-v5.schema.json');
+const SCHEMA_PATH = join(__dirname, '..', '..', 'schemas', 'orchestration-state-v5.schema.json');
 
 let validateFn: ValidateFunction | null = null;
 
