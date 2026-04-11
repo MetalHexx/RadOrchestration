@@ -9,17 +9,6 @@ disable-model-invocation: true
 
 Kick off the planning pipeline for a project.
 
-## Scripts
-
-| Script | Input | Output | Purpose |
-|--------|-------|--------|---------|
-| `scripts/gather-context.js` | *(none — auto-detects)* | `{ repoRoot, orchRoot, projectsBasePath }` | Detect git repository root and read orchestration config |
-| `scripts/find-projects.js` | `--projects-base-path <path>` | `{ projects: [{ name, isPlanningReady, hasGoals, hasBrainstorming, goalsPath, brainstormingPath }] }` | Scan for projects that have a GOALS.md or BRAINSTORMING doc but no MASTER-PLAN |
-| `scripts/find-projects.js` | `--projects-base-path <path> --project-name <name>` | Same shape, single-project lookup | Check if a specific project is planning-ready |
-| `scripts/find-templates.js` | `--orch-root <path> --repo-root <path>` | `{ templates: [{ id, description, path }] }` | Scan the orchestration skill templates directory for available pipeline templates |
-
-All scripts output JSON to stdout. Exit codes: `0` = success, `2` = failure.
-
 ## Workflow
 
 Follow these steps in order. Run steps 1–3 silently — do not narrate or display output.
@@ -44,6 +33,17 @@ Follow these steps in order. Run steps 1–3 silently — do not narrate or disp
    - If all issues are fully resolved, stop early.
 
 9. **Finalize** — Build a brief audit summary showing pass results (✓ clean / issues found / fixed). Then ask the post-plan question from the workflow guide to determine the next step. See the workflow guide for the exact question schema and handoff instructions.
+
+## Scripts
+
+| Script | Input | Output | Purpose |
+|--------|-------|--------|---------|
+| `scripts/gather-context.js` | *(none — auto-detects)* | `{ repoRoot, orchRoot, projectsBasePath }` | Detect git repository root and read orchestration config |
+| `scripts/find-projects.js` | `--projects-base-path <path>` | `{ projects: [{ name, isPlanningReady, hasGoals, hasBrainstorming, goalsPath, brainstormingPath }] }` | Scan for projects that have a GOALS.md or BRAINSTORMING doc but no MASTER-PLAN |
+| `scripts/find-projects.js` | `--projects-base-path <path> --project-name <name>` | Same shape, single-project lookup | Check if a specific project is planning-ready |
+| `scripts/find-templates.js` | `--orch-root <path> --repo-root <path>` | `{ templates: [{ id, description, path }] }` | Scan the orchestration skill templates directory for available pipeline templates |
+
+All scripts output JSON to stdout. Exit codes: `0` = success, `2` = failure.
 
 ## Contents
 
