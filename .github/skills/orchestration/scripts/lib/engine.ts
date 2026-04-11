@@ -120,7 +120,18 @@ export function processEvent(
     const { template, eventIndex } = loadedTemplate;
 
     const wrappedReadDocument = (docPath: string) => {
-      const resolved = path.isAbsolute(docPath) ? docPath : path.join(projectDir, docPath);
+      if (path.isAbsolute(docPath)) {
+        return io.readDocument(docPath);
+      }
+
+      const resolvedProjectDir = path.resolve(projectDir);
+      const resolved = path.resolve(resolvedProjectDir, docPath);
+      const relativeToProject = path.relative(resolvedProjectDir, resolved);
+
+      if (relativeToProject.startsWith('..') || path.isAbsolute(relativeToProject)) {
+        throw new Error(`Document path escapes project directory: ${docPath}`);
+      }
+
       return io.readDocument(resolved);
     };
 

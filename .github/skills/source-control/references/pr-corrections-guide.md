@@ -4,7 +4,7 @@ Workflow for reviewing inbound PR comments, deciding on fixes, implementing them
 
 ## Step 1: Review
 
-- Read all PR comments and form a repair plan.
+- Read all unresolved PR comments and form a repair plan.
 - **Validate independently** — do not treat reviewer comments as ground truth.
 - Read docs like the PRD, Architecture, Design, and Master Plan to ground yourself in the project's scope.
 - Project docs could make mistakes, so keep that in mind and seek the truth. 

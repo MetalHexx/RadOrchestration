@@ -448,15 +448,15 @@
         },
         "auto_commit": {
           "title": "Auto Commit Mode",
-          "description": "Controls when commits are made automatically. Values: always, never.",
+          "description": "Controls when commits are made automatically. Values: ask, always, never.",
           "type": "string",
-          "enum": ["always", "never"]
+          "enum": ["ask", "always", "never"]
         },
         "auto_pr": {
           "title": "Auto PR Mode",
-          "description": "Controls when pull requests are created automatically. Values: always, never.",
+          "description": "Controls when pull requests are created automatically. Values: ask, always, never.",
           "type": "string",
-          "enum": ["always", "never"]
+          "enum": ["ask", "always", "never"]
         },
         "remote_url": {
           "title": "Remote URL",

@@ -140,6 +140,17 @@ describe('validateStateSchema', () => {
     expect(errors).toEqual([]);
   });
 
+  it('source_control with auto_commit and auto_pr set to "ask" returns 0 errors', () => {
+    const state = makeMinimalState();
+    state.pipeline.source_control = {
+      ...makeSourceControlState(),
+      auto_commit: 'ask' as any,
+      auto_pr: 'ask' as any,
+    };
+    const errors = validateStateSchema(state);
+    expect(errors).toEqual([]);
+  });
+
   it('current_tier set to "complete" is rejected with error mentioning current_tier and valid enum values', () => {
     const state = makeMinimalState();
     (state.pipeline as any).current_tier = 'complete';

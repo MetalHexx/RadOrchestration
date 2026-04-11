@@ -1041,7 +1041,7 @@ describe('wrappedReadDocument – relative path resolution', () => {
 
     // Populate DOC_STORE with the RESOLVED (absolute) path as key.
     // If wrappedReadDocument didn't resolve the relative path, the lookup would fail.
-    const resolvedPath = path.join(PROJECT_DIR, 'tasks/PHASE-PLAN.md');
+    const resolvedPath = path.resolve(PROJECT_DIR, 'tasks/PHASE-PLAN.md');
     DOC_STORE[resolvedPath] = {
       frontmatter: { tasks: [{ title: 'Task 1' }] },
       content: '# Phase Plan',
@@ -1062,6 +1062,58 @@ describe('wrappedReadDocument – relative path resolution', () => {
     // Verify io.readDocument was called with the resolved absolute path (not the raw relative one)
     expect(readDocSpy).toHaveBeenCalledWith(resolvedPath);
     expect(readDocSpy).not.toHaveBeenCalledWith('tasks/PHASE-PLAN.md');
+  });
+
+  it('rejects relative doc_path with .. that escapes project directory', () => {
+    // Set up the same state shape: all dependencies satisfied, phase_loop in_progress
+    // with one in-progress iteration where phase_planning has a traversal doc_path.
+    const state = makeScaffoldedState();
+
+    (state.graph.nodes['research'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['research'] as StepNodeState).doc_path = '/tmp/research.md';
+    (state.graph.nodes['prd'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['prd'] as StepNodeState).doc_path = '/tmp/prd.md';
+    (state.graph.nodes['design'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['design'] as StepNodeState).doc_path = '/tmp/design.md';
+    (state.graph.nodes['architecture'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['architecture'] as StepNodeState).doc_path = '/tmp/arch.md';
+    (state.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/tmp/master-plan.md';
+    (state.graph.nodes['plan_approval_gate'] as GateNodeState).status = 'completed';
+    (state.graph.nodes['plan_approval_gate'] as GateNodeState).gate_active = true;
+    (state.graph.nodes['gate_mode_selection'] as GateNodeState).status = 'completed';
+    (state.graph.nodes['gate_mode_selection'] as GateNodeState).gate_active = false;
+
+    // phase_planning has a RELATIVE path that escapes the project directory.
+    // When the walker reaches task_loop (0 iterations) it calls wrappedReadDocument
+    // with phase_planning.doc_path, which must be rejected by the traversal guard.
+    const traversalPath = '../../etc/passwd';
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.status = 'in_progress';
+    phaseLoop.iterations = [
+      {
+        index: 0,
+        status: 'in_progress',
+        nodes: {
+          phase_planning: { kind: 'step', status: 'completed', doc_path: traversalPath, retries: 0 },
+          task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
+          phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+          phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+          phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+        },
+        corrective_tasks: [],
+        commit_hash: null,
+      },
+    ];
+
+    const io = createMockIO(state);
+    const result = processEvent('start', PROJECT_DIR, {}, io);
+
+    expect(result.success).toBe(false);
+    expect(result.context.error).toContain('escapes project directory');
+    expect(result.context.error).toContain(traversalPath);
+    // No state write should occur after the traversal error
+    expect(io.writeCalls.length).toBe(0);
   });
 });
 
