@@ -15,7 +15,7 @@ projects:
   naming: "SCREAMING_CASE"                        # SCREAMING_CASE | lowercase | numbered
 
 # ─── Default Template ──────────────────────────────────────────────
-default_template: "full"           # full | quick | <custom-name> | ask
+default_template: "ask"           # full | quick | <custom-name> | ask
 
 # ─── Pipeline Limits (Scope Guards) ───────────────────────────────
 limits:

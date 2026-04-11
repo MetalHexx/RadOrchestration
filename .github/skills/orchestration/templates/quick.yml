@@ -60,6 +60,17 @@ nodes:
     auto_approve_modes: []
     depends_on: [master_plan]
 
+  # ── Gate Mode Selection ───────────────────────────────────────────────────
+
+  - id: gate_mode_selection
+    kind: gate
+    label: "Gate Mode Selection"
+    mode_ref: human_gates.execution_mode
+    action_if_needed: gate_task
+    approved_event: gate_mode_set
+    auto_approve_modes: [task, phase, autonomous]
+    depends_on: [plan_approval_gate]
+
   # ── Phase Execution Loop ──────────────────────────────────────────────────
 
   - id: phase_loop
@@ -67,7 +78,7 @@ nodes:
     label: "Phase Execution Loop"
     source_doc_ref: "$.nodes.master_plan.doc_path"
     total_field: total_phases
-    depends_on: [plan_approval_gate]
+    depends_on: [gate_mode_selection]
     body:
 
       - id: phase_planning

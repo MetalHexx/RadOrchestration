@@ -14,13 +14,13 @@ describe('loadTemplate', () => {
       expect(result.template.template.version).toBe('1.0.0');
     });
 
-    it('returns exactly 32 entries in the event index', () => {
+    it('returns exactly 33 entries in the event index', () => {
       const result = loadTemplate(FULL_YML_PATH);
-      expect(result.eventIndex.size).toBe(32);
+      expect(result.eventIndex.size).toBe(33);
     });
   });
 
-  describe('event index — all 32 mappings', () => {
+  describe('event index — all 33 mappings', () => {
     const result = loadTemplate(FULL_YML_PATH);
     const { eventIndex } = result;
 
@@ -36,7 +36,8 @@ describe('loadTemplate', () => {
       ['master_plan_started',              'master_plan',         'started',   'master_plan'],
       ['master_plan_completed',            'master_plan',         'completed', 'master_plan'],
       ['plan_approved',                    'plan_approval_gate',  'approved',  'plan_approval_gate'],
-      ['phase_planning_started',           'phase_planning',      'started',   'phase_loop.body.phase_planning'],
+      ['gate_mode_set',                     'gate_mode_selection', 'approved',  'gate_mode_selection'],
+      ['phase_planning_started',                      'phase_planning',      'started',   'phase_loop.body.phase_planning'],
       ['phase_plan_created',               'phase_planning',      'completed', 'phase_loop.body.phase_planning'],
       ['task_handoff_started',             'task_handoff',        'started',   'phase_loop.body.task_loop.body.task_handoff'],
       ['task_handoff_created',             'task_handoff',        'completed', 'phase_loop.body.task_loop.body.task_handoff'],
