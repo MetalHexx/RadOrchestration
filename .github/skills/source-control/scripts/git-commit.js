@@ -17,7 +17,7 @@ function parseArgs(argv) {
 
 /**
  * Core commit+push logic. Accepts an injectable exec function for testing.
- * Returns { committed, pushed, commitHash, error, errorType, exitCode }.
+ * Returns { committed, pushed, commitHash, upstreamConfigured, error, errorType, exitCode }.
  */
 function gitCommit({ worktreePath, message, exec = execFileSync }) {
   let commitHash = null;
