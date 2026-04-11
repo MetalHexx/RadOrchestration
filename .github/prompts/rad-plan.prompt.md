@@ -20,6 +20,6 @@ I have project goals I'd like to develop into a full scale plan.
   - If it doesn't, respond with an error message indicating the template was not found.
 - If no template is specified, use the askQuestions tool to ask the user to choose between "full", "quick" and list any available custom templates.
 
-  ## Step 2: Read Project Template
-  - Start the planning pipeline and call the CLI 
+## Step 2: Read Project Template
+- Start the planning pipeline and call needed CLI parameters to start the planning process, passing the chosen template as an argument (e.g., `--template full`).
 
