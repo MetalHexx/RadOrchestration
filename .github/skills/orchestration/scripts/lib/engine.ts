@@ -182,6 +182,20 @@ export function processEvent(
       } else {
         const walkerResult = walkDAG(state, template, config, wrappedReadDocument);
 
+        state.project.updated = new Date().toISOString();
+
+        const validationErrors = validateState(null, state, config, template);
+        if (validationErrors.length > 0) {
+          return {
+            success: false,
+            action: null,
+            context: { error: validationErrors[0] },
+            mutations_applied: [],
+            orchRoot,
+            error: { message: validationErrors[0], event },
+          };
+        }
+
         io.writeState(projectDir, state);
 
         const enrichedContext = walkerResult

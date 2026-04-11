@@ -54,6 +54,8 @@ node .github/skills/orchestration/scripts/pipeline.js \
 | `--gate-mode <mode>` | `gate_mode` | `gate_mode_set` |
 | `--commit-hash <hash>` | `commit_hash` | `commit_completed` |
 | `--pushed <true|false>` | `pushed` | `commit_completed` |
+| `--phase <N>` | `phase` | `commit_started`, `commit_completed` |
+| `--task <N>` | `task` | `commit_started`, `commit_completed` |
 
 ### migrate-to-v4.js
 

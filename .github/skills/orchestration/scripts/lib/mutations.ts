@@ -580,27 +580,42 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
 
   const phase = context.phase ?? resolveActivePhaseIndex(cloned);
   const task = context.task ?? resolveActiveTaskIndex(cloned, phase);
-  const node = resolveNodeState(cloned, 'commit', 'task', phase, task);
-  node.status = 'completed';
-  mutations_applied.push('set commit.status = completed');
+  try {
+    const node = resolveNodeState(cloned, 'commit', 'task', phase, task);
+    node.status = 'completed';
+    mutations_applied.push('set commit.status = completed');
 
-  // Write commit_hash to per-task IterationEntry or active CorrectiveTaskEntry
-  const taskIteration = resolveTaskIteration(cloned, phase, task);
-  const activeCorrective = taskIteration.corrective_tasks.slice().reverse().find(
-    (ct: CorrectiveTaskEntry) => ct.status === 'in_progress' || ct.status === 'not_started'
-  );
+    // Write commit_hash to per-task IterationEntry or active CorrectiveTaskEntry
+    const taskIteration = resolveTaskIteration(cloned, phase, task);
+    const activeCorrective = taskIteration.corrective_tasks.slice().reverse().find(
+      (ct: CorrectiveTaskEntry) => ct.status === 'in_progress' || ct.status === 'not_started'
+    );
 
-  const commitHash = (context.commit_hash as string) ?? null;
+    const commitHash = (context.commit_hash as string) ?? null;
 
-  if (activeCorrective) {
-    activeCorrective.commit_hash = commitHash;
-    mutations_applied.push(`set corrective_task[${activeCorrective.index}].commit_hash = ${commitHash ?? 'null'}`);
-  } else {
-    taskIteration.commit_hash = commitHash;
-    mutations_applied.push(`set task_iteration[${taskIteration.index}].commit_hash = ${commitHash ?? 'null'}`);
+    if (activeCorrective) {
+      activeCorrective.commit_hash = commitHash;
+      mutations_applied.push(`set corrective_task[${activeCorrective.index}].commit_hash = ${commitHash ?? 'null'}`);
+    } else {
+      taskIteration.commit_hash = commitHash;
+      mutations_applied.push(`set task_iteration[${taskIteration.index}].commit_hash = ${commitHash ?? 'null'}`);
+    }
+
+    return { state: cloned, mutations_applied };
+  } catch (err) {
+    if (context.phase === undefined) {
+      throw new Error(
+        `Cannot apply mutation for "commit_completed": no active phase could be resolved from state.\n` +
+        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
+        `Pass --phase <N> to specify the phase explicitly.`
+      );
+    }
+    throw new Error(
+      `Cannot apply mutation for "commit_completed": no active task could be resolved from state for phase ${phase}.\n` +
+      `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+      `Pass --task <N> to specify the task explicitly.`
+    );
   }
-
-  return { state: cloned, mutations_applied };
 });
 
 // ── Source control PR mutations (final_pr as top-scoped sibling) ──────────────

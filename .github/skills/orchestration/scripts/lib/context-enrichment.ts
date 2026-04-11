@@ -27,8 +27,13 @@ export function resolveActivePhaseIndex(state: PipelineState): number {
   const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
   if (!phaseLoop?.iterations?.length) return 1;
 
-  const inProgress = phaseLoop.iterations.find(it => it.status === 'in_progress');
-  if (inProgress) return inProgress.index + 1;
+  const matches = phaseLoop.iterations.filter(it => it.status === 'in_progress');
+  if (matches.length > 1) {
+    throw new Error(
+      `Ambiguous phase resolution: ${matches.length} phases are in_progress simultaneously. Pass --phase <N> to specify explicitly.`
+    );
+  }
+  if (matches.length === 1) return matches[0].index + 1;
 
   const notStarted = phaseLoop.iterations.find(it => it.status === 'not_started');
   if (notStarted) return notStarted.index + 1;
@@ -46,8 +51,13 @@ export function resolveActiveTaskIndex(state: PipelineState, phaseIndex: number)
   const taskLoop = phaseIteration.nodes['task_loop'] as ForEachTaskNodeState | undefined;
   if (!taskLoop?.iterations?.length) return 1;
 
-  const inProgress = taskLoop.iterations.find(it => it.status === 'in_progress');
-  if (inProgress) return inProgress.index + 1;
+  const matches = taskLoop.iterations.filter(it => it.status === 'in_progress');
+  if (matches.length > 1) {
+    throw new Error(
+      `Ambiguous task resolution: ${matches.length} tasks are in_progress simultaneously in phase ${phaseIndex}. Pass --task <N> to specify explicitly.`
+    );
+  }
+  if (matches.length === 1) return matches[0].index + 1;
 
   const notStarted = taskLoop.iterations.find(it => it.status === 'not_started');
   if (notStarted) return notStarted.index + 1;

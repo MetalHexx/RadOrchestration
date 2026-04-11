@@ -305,6 +305,18 @@ describe('engine – processEvent', () => {
       const writtenPhaseLoop = io.writeCalls[0].state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       expect(writtenPhaseLoop.iterations[0].status).toBe('in_progress');
     });
+
+    it('sets project.updated on resume', () => {
+      const state = makeScaffoldedState();
+      const originalUpdated = state.project.updated;
+      const io = createMockIO(state);
+      processEvent('start', PROJECT_DIR, {}, io);
+
+      expect(io.writeCalls.length).toBe(1);
+      const written = io.writeCalls[0].state;
+      expect(written.project.updated).not.toBe(originalUpdated);
+      expect(new Date(written.project.updated).getTime()).toBeGreaterThan(0);
+    });
   });
 
   describe('null-state guard (non-start events)', () => {
