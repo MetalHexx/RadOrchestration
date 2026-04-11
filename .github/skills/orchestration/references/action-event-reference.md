@@ -69,3 +69,6 @@ These are the exact event names passed to `--event`:
 | `final_approved` | *(none)* | After human approves final review |
 | `final_rejected` | *(none)* | After human rejects final review |
 | `halt` | *(none)* | Emergency stop — signals the pipeline to halt immediately |
+
+> [!NOTE]
+> **Phase auto-resolution:** For phase-scoped `_started` events (`phase_planning_started`, `phase_report_started`, `phase_review_started`), the `--phase` flag is optional. When omitted, the engine resolves the active phase from state automatically. If no single unambiguous active phase exists (zero or multiple phases `in_progress`), the event fails with a descriptive error and instructs the operator to pass `--phase <N>` explicitly.
