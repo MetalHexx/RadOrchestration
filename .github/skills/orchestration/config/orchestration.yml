@@ -32,6 +32,6 @@ human_gates:
 
 # ─── Source Control ────────────────────────────────────────────────────────────
 source_control:
-  auto_commit: "ask"           # always | ask | never
+  auto_commit: "ask"          # always | ask | never
   auto_pr: "ask"              # always | ask | never
   provider: "github"          # reserved: github only in v1
