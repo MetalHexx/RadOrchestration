@@ -188,7 +188,7 @@ The `log-error` skill is invoked when the JSON result contains a non-null `error
 - Invoke `log-error` on **full failure** (exit code 2, `errorType: "commit_failed"` or `"nothing_to_commit"`) — log the commit failure
 - **Never** invoke `log-error` on **full success** (exit code 0, `error: null`)
 
-**Completion rule:** After logging the error, **output your commit result block** — the Orchestrator reads it and signals `task_committed` with the extracted values.
+**Completion rule:** After logging the error, **output your commit result block** — the Orchestrator reads it and signals `commit_completed` with the extracted values.
 
 - On partial failure: log the error, then output the partial-failure result block (commit hash IS available)
 - On full failure: log the error, then output the full-failure result block
@@ -243,7 +243,7 @@ After parsing the JSON result from stdout, output one of these three patterns:
 
 ## 9. Commit Result Block
 
-After outputting the human-readable feedback above, **always append a `## Commit Result` block** as the final output. The Orchestrator scans for this block to extract the values it passes to `task_committed`.
+After outputting the human-readable feedback above, **always append a `## Commit Result` block** as the final output. The Orchestrator scans for this block to extract the values it passes to `commit_completed`.
 
 **Format** (required for every code path):
 
