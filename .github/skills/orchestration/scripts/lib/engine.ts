@@ -128,7 +128,7 @@ export function processEvent(
       const resolved = path.resolve(resolvedProjectDir, docPath);
       const relativeToProject = path.relative(resolvedProjectDir, resolved);
 
-      if (relativeToProject.startsWith('..') || path.isAbsolute(relativeToProject)) {
+      if (relativeToProject === '..' || relativeToProject.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToProject)) {
         throw new Error(`Document path escapes project directory: ${docPath}`);
       }
 

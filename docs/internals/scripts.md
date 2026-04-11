@@ -74,7 +74,7 @@ Migrates a project’s `state.json` from an older schema version (v1–v3) to v4
 
 ## Event Vocabulary
 
-The pipeline accepts exactly 32 events. Each maps to a mutation handler in the `MUTATIONS` lookup table.
+The pipeline accepts exactly 38 events. Each maps to a mutation handler in the `MUTATIONS` lookup table.
 
 | # | Event | Tier | Description |
 |---|-------|------|-------------|
@@ -94,22 +94,28 @@ The pipeline accepts exactly 32 events. Each maps to a mutation handler in the `
 | 14 | `phase_plan_created` | Execution | Phase plan saved; sets `phase.docs.phase_plan`, `phase.status` → in_progress, `phase.stage` → executing |
 | 15 | `task_handoff_started` | Execution | Task handoff begun; transitions task `status` → in_progress, `stage` stays planning |
 | 16 | `task_handoff_created` | Execution | Task handoff saved; sets `task.docs.handoff`, `task.status` → in_progress, `task.stage` → coding |
-| 17 | `task_completed` | Execution | Coder finished; sets `task.stage` → reviewing (`status` stays in_progress) |
-| 18 | `code_review_completed` | Execution | Review finished; sets `task.docs.review`, `task.review.verdict`, `task.review.action`; resolves task outcome |
-| 19 | `phase_report_created` | Execution | Phase report saved; sets `phase.docs.phase_report`, `phase.stage` → reviewing |
-| 20 | `phase_review_completed` | Execution | Phase review finished; sets `phase.docs.phase_review`, `phase.review.verdict`, `phase.review.action`; resolves phase outcome |
-| 21 | `source_control_init` | Execution | One-time initialization; persists branch, base_branch, worktree_path, auto_commit, auto_pr to `pipeline.source_control` |
-| 22 | `commit_started` | Execution | Signaled when the walker reaches the `commit` node in `task_loop.body`; `--phase` and `--task` are optional and auto-resolved from the active in-progress phase/task when omitted; fails with a descriptive error if resolution is ambiguous |
-| 23 | `commit_completed` | Execution | Source Control Agent completed commit; sets `task.commit_hash` from `--commit-hash` flag; `--phase` and `--task` are optional and auto-resolved from the active in-progress phase/task when omitted; fails with a descriptive error if resolution is ambiguous |
-| 24 | `pr_requested` | Execution | Signaled internally after `final_review_completed` when `auto_pr: always` and `pr_url` is undefined |
-| 25 | `pr_created` | Execution | Source Control Agent completed PR; sets `pipeline.source_control.pr_url` from `--pr-url` flag |
-| 26 | `gate_mode_set` | Gate | Operator selected gate mode; sets `pipeline.gate_mode` |
-| 27 | `gate_approved` | Gate | Human approved gate; advances task or phase depending on `--gate-type` flag |
-| 28 | `gate_rejected` | Gate | Human rejected gate; halts task or phase depending on `--gate-type` flag with `--reason` |
-| 29 | `final_review_completed` | Review | Final review saved; sets `final_review.doc_path`, `final_review.status` → complete |
-| 30 | `final_approved` | Review | Human approved final review; sets `final_review.human_approved`, transitions `pipeline.current_tier` → complete |
-| 31 | `final_rejected` | Review | Human rejected final review; resets for revision |
-| 32 | `halt` | Any | Halt the pipeline with a reason |
+| 17 | `execution_started` | Execution | Coder execution begun; transitions task `stage` → coding, `status` → in_progress |
+| 18 | `task_completed` | Execution | Coder finished; sets `task.stage` → reviewing (`status` stays in_progress) |
+| 19 | `code_review_started` | Execution | Code review begun; transitions task `stage` → reviewing |
+| 20 | `code_review_completed` | Execution | Review finished; sets `task.docs.review`, `task.review.verdict`, `task.review.action`; resolves task outcome |
+| 21 | `phase_report_started` | Execution | Phase report begun; transitions phase `stage` → reporting |
+| 22 | `phase_report_created` | Execution | Phase report saved; sets `phase.docs.phase_report`, `phase.stage` → reviewing |
+| 23 | `phase_review_started` | Execution | Phase review begun; transitions phase `stage` → reviewing |
+| 24 | `phase_review_completed` | Execution | Phase review finished; sets `phase.docs.phase_review`, `phase.review.verdict`, `phase.review.action`; resolves phase outcome |
+| 25 | `source_control_init` | Execution | One-time initialization; persists branch, base_branch, worktree_path, auto_commit, auto_pr to `pipeline.source_control` |
+| 26 | `commit_started` | Execution | Signaled when the walker reaches the `commit` node in `task_loop.body`; `--phase` and `--task` are optional and auto-resolved from the active in-progress phase/task when omitted; fails with a descriptive error if resolution is ambiguous |
+| 27 | `commit_completed` | Execution | Source Control Agent completed commit; sets `task.commit_hash` from `--commit-hash` flag; `--phase` and `--task` are optional and auto-resolved from the active in-progress phase/task when omitted; fails with a descriptive error if resolution is ambiguous |
+| 28 | `pr_requested` | Execution | Signaled internally after `final_review_completed` when `auto_pr: always` and `pr_url` is undefined |
+| 29 | `pr_created` | Execution | Source Control Agent completed PR; sets `pipeline.source_control.pr_url` from `--pr-url` flag |
+| 30 | `gate_mode_set` | Gate | Operator selected gate mode; sets `pipeline.gate_mode` |
+| 31 | `task_gate_approved` | Gate | Human approved task gate; advances task past the gate checkpoint |
+| 32 | `phase_gate_approved` | Gate | Human approved phase gate; advances phase past the gate checkpoint |
+| 33 | `gate_rejected` | Gate | Human rejected gate; halts task or phase depending on `--gate-type` flag with `--reason` |
+| 34 | `final_review_started` | Review | Final review begun; sets `final_review.status` → in_progress |
+| 35 | `final_review_completed` | Review | Final review saved; sets `final_review.doc_path`, `final_review.status` → complete |
+| 36 | `final_approved` | Review | Human approved final review; sets `final_review.human_approved`, transitions `pipeline.current_tier` → complete |
+| 37 | `final_rejected` | Review | Human rejected final review; resets for revision |
+| 38 | `halt` | Any | Halt the pipeline with a reason |
 
 ---
 
