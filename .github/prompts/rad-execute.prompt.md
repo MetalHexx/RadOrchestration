@@ -8,3 +8,8 @@ The Master Plan is complete. As a human reviewer, I have approved the plan and a
 
 # Execute Plan
 Execute the project according to the approved Master Plan using the proper execution pipeline.
+
+# Pipeline Error Handling
+- If any errors occur with the pipeline during execution, use the `log-error` skill to log them
+- Do not try to fix the pipeline code,  simply work around it. 
+- Ensure that error messages are clear, actionable, and include relevant information about the failure point.

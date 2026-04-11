@@ -277,4 +277,4 @@ After outputting the PR Result block, the Orchestrator reads the `## PR Result` 
 - **On success** (`pr_url` is non-null): signal `pr_created --pr-url <pr_url>` (PR created or existing PR found)
 - **On failure** (`pr_url` is `null`): signal `pr_created` **without** the `--pr-url` flag — do **not** pass the literal string `"null"`. The pipeline CLI omits `pr_url` from context when the flag is absent, and the mutation handler coalesces the missing value to `null`, correctly recording the failed attempt
 - On any failure, the Orchestrator still reads the PR Result block — **always output it regardless of outcome**
-- **Do NOT signal `task_committed`** — PR mode uses `pr_created`
+- **Do NOT signal `commit_completed`** — PR mode uses `pr_created`

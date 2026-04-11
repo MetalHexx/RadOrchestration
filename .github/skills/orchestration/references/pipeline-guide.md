@@ -9,7 +9,7 @@ Reference document for the Orchestrator agent. Covers the pipeline event loop, a
 Before constructing any path, determine the orchestration root folder:
 1. Find `orchestration.yml` in the workspace.
 2. If found, use its directory as `orchRoot`.
-3. Every `pipeline.js` JSON result includes an `orchRoot` field. Use `result.orchRoot` for all path construction after the first pipeline call.
+3. Every `pipeline.ts` JSON result includes an `orchRoot` field. Use `result.orchRoot` for all path construction after the first pipeline call.
 4. {orchRoot} is the base for all file paths in the pipeline — planning docs, code files, logs, and even subsequent pipeline calls.
 - `projects.base_path`: Where project folders live
 - Use `base_path` to locate the project directory: `{base_path}/{PROJECT-NAME}/`.
@@ -21,7 +21,7 @@ The Orchestrator operates as an event-driven controller:
 1. **Determine the event to signal** (see Event Signaling Reference below)
 2. **Call the pipeline script**:
    ```
-   node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--config <path>]
+   npx tsx {orchRoot}/skills/orchestration/scripts/pipeline.ts --event <event> --project-dir <dir> [--config <path>] [--template <name>]
        [--doc-path <path>]
        [--branch <name>] [--base-branch <name>] [--worktree-path <path>]
        [--auto-commit <always|never>] [--auto-pr <always|never>]
@@ -39,18 +39,18 @@ The Orchestrator operates as an event-driven controller:
 
 ### First Call
 
-- **New project**: `pipeline.js --event start --project-dir <path>`
-- **Continuing a project**: `pipeline.js --event start --project-dir <path>`
-- **Recovery after context compaction**: `pipeline.js --event start --project-dir <path>`
+- **New project**: `pipeline.ts --event start --project-dir <path>`
+- **Continuing a project**: `pipeline.ts --event start --project-dir <path>`
+- **Recovery after context compaction**: `pipeline.ts --event start --project-dir <path>`
 
 The `start` event is always safe — the pipeline loads `state.json`, skips mutation, and resolves the next action from the current state.
 
 ### CLI Invocation
 
-Always invoke `pipeline.js` from the workspace root:
+Always invoke `pipeline.ts` from the workspace root:
 
 ```bash
-node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--config <path>]
+npx tsx {orchRoot}/skills/orchestration/scripts/pipeline.ts --event <event> --project-dir <dir> [--config <path>] [--template <name>]
     [--doc-path <path>]
     [--branch <name>] [--base-branch <name>] [--worktree-path <path>]
     [--auto-commit <always|never>] [--auto-pr <always|never>]
@@ -64,7 +64,7 @@ node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --proje
 The `--config` flag overrides the default config path:
 
 ```bash
-node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --project-dir <dir> --config <path-to-orchestration.yml>
+npx tsx {orchRoot}/skills/orchestration/scripts/pipeline.ts --event <event> --project-dir <dir> --config <path-to-orchestration.yml>
 ```
 
 ### Loop Termination
@@ -159,7 +159,7 @@ If the pipeline exits with code 1, the result contains error details:
 On context compaction or agent restart, the Orchestrator has no runtime memory to recover. Recovery is a single call:
 
 ```bash
-node {orchRoot}/skills/orchestration/scripts/pipeline.js --event start --project-dir <path>
+npx tsx {orchRoot}/skills/orchestration/scripts/pipeline.ts --event start --project-dir <path>
 ```
 
 The pipeline loads `state.json`, skips mutation, and resolves the next action from the current state. All state is persisted in `state.json` by the pipeline script, so no runtime memory is needed.

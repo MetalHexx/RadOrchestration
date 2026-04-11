@@ -26,7 +26,7 @@ Orchestration pipeline skill for source control operations. Provides routing for
 3. **Execute the script** for your mode; parse the JSON result from stdout.
 4. **On any failure**, invoke the `log-error` skill before completing.
 5. **Output a structured result block** — every code path ends with this output:
-   - **Commit mode**: output a `## Commit Result` block — the Orchestrator reads it and signals `task_committed`
+   - **Commit mode**: output a `## Commit Result` block — the Orchestrator reads it and signals `commit_completed`
    - **PR mode**: output a `## PR Result` block — the Orchestrator reads it and signals `pr_created --pr-url <url>` on success, or `pr_created` **without** `--pr-url` on failure (when `pr_url` is `null`)
    - **PR-corrections mode**: no structured result block required (corrections are committed via commit mode)
 
@@ -36,7 +36,7 @@ Every scenario ends with outputting a structured result block. The Orchestrator 
 
 ### Commit Mode
 
-Output a `## Commit Result` block. The Orchestrator reads it and signals `task_committed`.
+Output a `## Commit Result` block. The Orchestrator reads it and signals `commit_completed`.
 
 | Scenario | Action | Report to Orchestrator |
 |----------|--------|------------------------|
