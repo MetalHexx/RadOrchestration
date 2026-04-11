@@ -28,7 +28,9 @@ I have project goals I'd like to develop into a full scale plan.
 
 ## Step 4: Audit the plan
 - Use the `rad-plan-audit` tool to audit the generated plan for completeness, correctness, and alignment with the project goals.  
-- Run the audit 3 times in a loop using a fresh subagent to ensure unbiased feedback.
+- Run the audit up to 3 times in a loop using a fresh subagent to ensure unbiased feedback.
+- Don't feel the need to review 3 times if the plan is already in good shape after 1 or 2 iterations. 
+-  Use your judgment to decide when to stop iterating.
   - If you still spot problems after 3 iterations, halt, go to Step 5.
 - When prompting the subagent, 
   - Tell them the name of all the planning docs to check based on the template used.
