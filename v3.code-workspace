@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "../../src/total-recall"
+		},
+		{
+			"path": "../../src/superpowers"
 		}
 	],
 	"settings": {}
