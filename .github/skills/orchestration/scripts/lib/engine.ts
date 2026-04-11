@@ -119,6 +119,11 @@ export function processEvent(
     const loadedTemplate = loadTemplate(effectiveLoadPath);
     const { template, eventIndex } = loadedTemplate;
 
+    const wrappedReadDocument = (docPath: string) => {
+      const resolved = path.isAbsolute(docPath) ? docPath : path.join(projectDir, docPath);
+      return io.readDocument(resolved);
+    };
+
     // ── Start event (pre-index routing) ────────────────────────────────
     if (event === 'start') {
       if (state === null) {
@@ -138,7 +143,7 @@ export function processEvent(
         const scaffolded = scaffoldState(template, projectName, config);
         scaffolded.project.updated = new Date().toISOString();
 
-        const nextAction = walkDAG(scaffolded, template, config, io.readDocument);
+        const nextAction = walkDAG(scaffolded, template, config, wrappedReadDocument);
 
         const postWalkErrors = validateState(null, scaffolded, config, template);
         if (postWalkErrors.length > 0) {
@@ -175,7 +180,7 @@ export function processEvent(
           orchRoot,
         };
       } else {
-        const walkerResult = walkDAG(state, template, config, io.readDocument);
+        const walkerResult = walkDAG(state, template, config, wrappedReadDocument);
         const enrichedContext = walkerResult
           ? enrichActionContext({
               action: walkerResult.action,
@@ -250,7 +255,7 @@ export function processEvent(
 
       mutatedState.project.updated = new Date().toISOString();
 
-      const walkerResult = walkDAG(mutatedState, template, config, io.readDocument);
+      const walkerResult = walkDAG(mutatedState, template, config, wrappedReadDocument);
 
       const postWalkErrors = validateState(state, mutatedState, config, template);
       if (postWalkErrors.length > 0) {
@@ -389,7 +394,7 @@ export function processEvent(
       nextAction = { action: stepNode.action, context: enrichedCtx };
       io.writeState(projectDir, mutatedState);
     } else {
-      const walkerResult = walkDAG(mutatedState, template, config, io.readDocument);
+      const walkerResult = walkDAG(mutatedState, template, config, wrappedReadDocument);
 
       const postWalkErrors = validateState(state, mutatedState, config, template);
       if (postWalkErrors.length > 0) {

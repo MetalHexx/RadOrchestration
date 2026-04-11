@@ -930,3 +930,78 @@ describe('normalizeDocPath', () => {
     ).toBe('MyDir/ReadMe.md');
   });
 });
+
+// ── wrappedReadDocument – relative path resolution ────────────────────────────
+
+describe('wrappedReadDocument – relative path resolution', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(DOC_STORE)) {
+      delete DOC_STORE[key];
+    }
+    vi.mocked(getMutation).mockClear();
+  });
+
+  it('resolves a relative doc_path against projectDir before calling io.readDocument', () => {
+    // Set up state where task_loop needs to expand using phase_planning.doc_path
+    const state = makeScaffoldedState();
+
+    // Mark all planning steps as completed
+    (state.graph.nodes['research'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['research'] as StepNodeState).doc_path = '/tmp/research.md';
+    (state.graph.nodes['prd'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['prd'] as StepNodeState).doc_path = '/tmp/prd.md';
+    (state.graph.nodes['design'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['design'] as StepNodeState).doc_path = '/tmp/design.md';
+    (state.graph.nodes['architecture'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['architecture'] as StepNodeState).doc_path = '/tmp/arch.md';
+    (state.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/tmp/master-plan.md';
+    (state.graph.nodes['plan_approval_gate'] as GateNodeState).status = 'completed';
+    (state.graph.nodes['plan_approval_gate'] as GateNodeState).gate_active = true;
+
+    // Set up phase_loop with one in-progress iteration.
+    // phase_planning is completed and has a RELATIVE doc_path.
+    // task_loop has 0 iterations — the walker will call readDocument to expand it.
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.status = 'in_progress';
+    phaseLoop.iterations = [
+      {
+        index: 0,
+        status: 'in_progress',
+        nodes: {
+          phase_planning: { kind: 'step', status: 'completed', doc_path: 'tasks/PHASE-PLAN.md', retries: 0 },
+          task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
+          phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+          phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+          phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+        },
+        corrective_tasks: [],
+        commit_hash: null,
+      },
+    ];
+
+    // Populate DOC_STORE with the RESOLVED (absolute) path as key.
+    // If wrappedReadDocument didn't resolve the relative path, the lookup would fail.
+    const resolvedPath = path.join(PROJECT_DIR, 'tasks/PHASE-PLAN.md');
+    DOC_STORE[resolvedPath] = {
+      frontmatter: { tasks: [{ title: 'Task 1' }] },
+      content: '# Phase Plan',
+    };
+
+    const io = createMockIO(state);
+    const readDocSpy = vi.spyOn(io, 'readDocument');
+
+    // Fire start event — walkDAG encounters task_loop with 0 iterations,
+    // reads phase_planning.doc_path ('tasks/PHASE-PLAN.md', relative),
+    // and wrappedReadDocument must resolve it to the absolute path.
+    const result = processEvent('start', PROJECT_DIR, {}, io);
+
+    expect(result.success).toBe(true);
+    // task_loop expansion succeeded → walker entered the task iteration → first action
+    expect(result.action).toBe('create_task_handoff');
+
+    // Verify io.readDocument was called with the resolved absolute path (not the raw relative one)
+    expect(readDocSpy).toHaveBeenCalledWith(resolvedPath);
+    expect(readDocSpy).not.toHaveBeenCalledWith('tasks/PHASE-PLAN.md');
+  });
+});

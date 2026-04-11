@@ -626,13 +626,7 @@ describe('[PARITY] v4:resolveExecution', () => {
     }, io);
 
     expect(result.success).toBe(true);
-    // Phase gate auto-approves in autonomous mode (verdict=approved) → commit conditional (auto_commit='ask') → invoke commit
-    expect(result.action).toBe('invoke_source_control_commit');
-
-    // Drive through commit → iteration 0 completed → advance to iteration 1 → create_phase_plan
-    processEvent('task_commit_requested', PROJECT_DIR, { phase: 1 }, io);
-    result = processEvent('task_committed', PROJECT_DIR, { phase: 1 }, io);
-    expect(result.success).toBe(true);
+    // Phase gate auto-approves in autonomous mode (verdict=approved) → no commit at phase scope (commit is per-task) → create_phase_plan
     expect(result.action).toBe('create_phase_plan');
 
     // Verify phase_gate auto-approved (gate_active = false)
@@ -673,9 +667,7 @@ describe('[PARITY] v4:resolveExecution', () => {
       exit_criteria_met: true,
     }, io);
     // Approve phase 1 gate, then drive commit (auto_commit='ask')
-    processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
-    processEvent('task_commit_requested', PROJECT_DIR, { phase: 1 }, io);
-    processEvent('task_committed', PROJECT_DIR, { phase: 1 }, io);
+    // Phase gate auto-approves (autonomous) → no commit at phase scope (commit is per-task) → advances to phase 2
 
     // ── Phase 2 full lifecycle ───────────────────────────────────────────
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 2 }, io);
@@ -694,19 +686,16 @@ describe('[PARITY] v4:resolveExecution', () => {
     }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 2 }, io);
     seedDoc(phaseReviewDoc(2));
-    processEvent('phase_review_completed', PROJECT_DIR, {
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 2,
       doc_path: phaseReviewDoc(2),
       verdict: 'approved',
       exit_criteria_met: true,
     }, io);
-    // Approve phase 2 gate, drive commit → phase_loop completes → spawn_final_reviewer
-    processEvent('phase_gate_approved', PROJECT_DIR, { phase: 2 }, io);
-    processEvent('task_commit_requested', PROJECT_DIR, { phase: 2 }, io);
-    const result = processEvent('task_committed', PROJECT_DIR, { phase: 2 }, io);
+    // Phase gate auto-approves (autonomous) → no commit at phase scope (commit is per-task) → phase_loop completes → spawn_final_reviewer
 
     expect(result.success).toBe(true);
-    // Phase gate approved → commit (auto_commit='ask') driven → phase_loop completes → spawn_final_reviewer
+    // Phase gate auto-approved (autonomous) → no commit at phase scope → phase_loop completes → spawn_final_reviewer
     expect(result.action).toBe('spawn_final_reviewer');
 
     // Verify phase_loop completed

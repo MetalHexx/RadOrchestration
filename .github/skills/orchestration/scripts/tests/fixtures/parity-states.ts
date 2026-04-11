@@ -227,6 +227,12 @@ export function driveTaskWith(io: MockIO, phase: number, task: number): Pipeline
     verdict: 'approved',
   }, io);
 
+  // If commit conditional fires, drive commit events at task scope
+  if (result.action === 'invoke_source_control_commit') {
+    processEvent('commit_started', PROJECT_DIR, ctx, io);
+    result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
+  }
+
   // If task gate fires, approve it to continue (matches drivePhaseReviewApproval pattern)
   if (result.action === 'gate_task') {
     result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
@@ -238,7 +244,7 @@ export function driveTaskWith(io: MockIO, phase: number, task: number): Pipeline
 // ── Drive phase review approval helper ────────────────────────────────────────
 
 /**
- * Drives phase report + review + gate approval to the commit conditional.
+ * Drives phase report + review + gate approval to phase completion.
  */
 export function drivePhaseReviewApproval(io: MockIO, phase: number): PipelineResult {
   processEvent('phase_report_started', PROJECT_DIR, { phase }, io);
@@ -295,9 +301,15 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
     const crDoc = path.join(PROJECT_DIR, 'tasks', `p1-t${t}-review.md`);
     seedDoc(crDoc);
-    const result = processEvent('code_review_completed', PROJECT_DIR, {
+    let result = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx, doc_path: crDoc, verdict: 'approved',
     }, io);
+
+    // If commit conditional fires, drive commit events at task scope
+    if (result.action === 'invoke_source_control_commit') {
+      processEvent('commit_started', PROJECT_DIR, ctx, io);
+      result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
+    }
 
     // If task gate fires (e.g., ask mode), approve it
     if (result.action === 'gate_task') {
@@ -321,12 +333,6 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
   // If phase gate fires, approve it
   if (result.action === 'gate_phase') {
     result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
-  }
-
-  // If commit fires, drive it
-  if (result.action === 'invoke_source_control_commit') {
-    processEvent('task_commit_requested', PROJECT_DIR, { phase: 1 }, io);
-    processEvent('task_committed', PROJECT_DIR, { phase: 1 }, io);
   }
 
   return io;
