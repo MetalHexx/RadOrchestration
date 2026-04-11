@@ -463,10 +463,16 @@ describe('Execution-tier integration — gate mode variations', () => {
     const io = createMockIO(null, config);
     let result: PipelineResult;
 
-    // Drive planning tier
+    // Drive planning tier — ask mode fires ask_gate_mode at gate_mode_selection
     result = drivePlanningTier(io);
     expect(result.success).toBe(true);
+    expect(result.action).toBe('ask_gate_mode');
+
+    // Pass through gate_mode_selection, then reset so subsequent gates see ask behavior
+    result = processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io);
+    expect(result.success).toBe(true);
     expect(result.action).toBe('create_phase_plan');
+    io.currentState!.pipeline.gate_mode = null;
 
     // Phase 1 setup
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);

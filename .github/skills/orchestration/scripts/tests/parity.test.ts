@@ -306,12 +306,16 @@ describe('[PARITY] v4:resolvePlanning', () => {
   it('[PARITY] v4:resolvePlanning — plan_approved with seeded master plan doc → create_phase_plan tier transition', () => {
     // v4: resolver.js resolvePlanning() → resolveExecution() — plan_approved sets current_tier = 'execution',
     //   next call returns create_phase_plan for phase 1
+    // Use autonomous mode so walker passes through gate_mode_selection transparently.
     const state = createScaffoldedState();
     completePlanningSteps(state, 'master_plan');
     // Seed the master plan doc at the doc_path stored on the master_plan node
     const masterPlanDocPath = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
     seedDoc(masterPlanDocPath, { total_phases: 2 });
-    const io = createMockIO(state);
+    const config = createConfig({
+      human_gates: { execution_mode: 'autonomous' },
+    });
+    const io = createMockIOWithConfig(state, config);
 
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: masterPlanDocPath }, io);
 

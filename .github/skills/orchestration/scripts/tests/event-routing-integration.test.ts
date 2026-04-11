@@ -220,7 +220,7 @@ describe('OOB events bypass template event index', () => {
   };
 
   for (const oobEvent of OOB_EVENTS_ARRAY) {
-    it(`OOB event '${oobEvent}' processes successfully with scaffolded state and is not in template event index`, () => {
+    it(`OOB event '${oobEvent}' processes successfully with scaffolded state`, () => {
       // Scaffold state
       const io = createMockIOWithConfig(null, config);
       processEvent('start', PROJECT_DIR, {}, io);
@@ -229,8 +229,14 @@ describe('OOB events bypass template event index', () => {
       const eventContext = OOB_CONTEXTS[oobEvent] ?? {};
       const result = processEvent(oobEvent, PROJECT_DIR, eventContext, io);
       expect(result.success).toBe(true);
+    });
+  }
 
-      // Confirm the OOB event does not appear in the template event index
+  // gate_mode_set is in OUT_OF_BAND_EVENTS but also appears in the template event index
+  // as the approved_event for gate_mode_selection. Both routes work — OOB intercepts first.
+  const OOB_NOT_IN_TEMPLATE = OOB_EVENTS_ARRAY.filter(e => e !== 'gate_mode_set');
+  for (const oobEvent of OOB_NOT_IN_TEMPLATE) {
+    it(`OOB event '${oobEvent}' does not appear in the template event index`, () => {
       const { eventIndex } = loadTemplate(TEMPLATE_PATH);
       expect(eventIndex.get(oobEvent)).toBeUndefined();
     });

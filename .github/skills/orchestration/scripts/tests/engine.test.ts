@@ -286,6 +286,9 @@ describe('engine – processEvent', () => {
       const planGate = nodes['plan_approval_gate'] as GateNodeState;
       planGate.status = 'completed';
       planGate.gate_active = false;
+      const gateMode = nodes['gate_mode_selection'] as GateNodeState;
+      gateMode.status = 'completed';
+      gateMode.gate_active = false;
 
       // Set phase_loop in_progress with one not_started iteration
       const phaseLoop = nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -624,9 +627,14 @@ describe('engine – processEvent', () => {
         content: '# Master Plan',
       };
 
-      // Use a config with max_phases=1 so that 5 phases will exceed the limit
+      // Use a config with max_phases=1 so that 5 phases will exceed the limit.
+      // Use autonomous execution_mode so the walker passes through gate_mode_selection.
       const lowLimitConfig: OrchestrationConfig = {
         ...DEFAULT_CONFIG,
+        human_gates: {
+          ...DEFAULT_CONFIG.human_gates,
+          execution_mode: 'autonomous',
+        },
         limits: {
           ...DEFAULT_CONFIG.limits,
           max_phases: 1,
@@ -862,7 +870,10 @@ describe('out-of-band event routing', () => {
     expect(String(result.context.error)).toContain('No state.json found');
   });
 
-  for (const oobEvent of OOB_EVENTS) {
+  // gate_mode_set is in OUT_OF_BAND_EVENTS but also appears in the template event index
+  // as the approved_event for gate_mode_selection. Both routes work — OOB intercepts first.
+  const OOB_NOT_IN_TEMPLATE = OOB_EVENTS.filter(e => e !== 'gate_mode_set');
+  for (const oobEvent of OOB_NOT_IN_TEMPLATE) {
     it(`OOB event '${oobEvent}' does not appear in the template event index`, () => {
       const { eventIndex } = loadTemplate(TEMPLATE_PATH);
       expect(eventIndex.get(oobEvent)).toBeUndefined();
@@ -1004,6 +1015,8 @@ describe('wrappedReadDocument – relative path resolution', () => {
     (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/tmp/master-plan.md';
     (state.graph.nodes['plan_approval_gate'] as GateNodeState).status = 'completed';
     (state.graph.nodes['plan_approval_gate'] as GateNodeState).gate_active = true;
+    (state.graph.nodes['gate_mode_selection'] as GateNodeState).status = 'completed';
+    (state.graph.nodes['gate_mode_selection'] as GateNodeState).gate_active = false;
 
     // Set up phase_loop with one in-progress iteration.
     // phase_planning is completed and has a RELATIVE doc_path.

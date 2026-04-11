@@ -201,7 +201,15 @@ export function driveToExecutionWithConfig(config: OrchestrationConfig, totalPha
   completePlanningSteps(state, 'master_plan');
   const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
   seedDoc(mpDoc, { total_phases: totalPhases });
-  processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+
+  // gate_mode_selection fires ask_gate_mode for ask configs.
+  // Pass through by setting a gate mode, then reset so subsequent gates still see ask behavior.
+  if (result.action === 'ask_gate_mode') {
+    processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io);
+    io.currentState!.pipeline.gate_mode = null;
+  }
+
   return io;
 }
 
