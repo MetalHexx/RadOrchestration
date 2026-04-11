@@ -56,8 +56,6 @@ function makeState(): PipelineState {
                 phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-                phase_commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
-                phase_commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 task_loop: {
                   kind: 'for_each_task',
                   status: 'not_started',
@@ -70,6 +68,8 @@ function makeState(): PipelineState {
                         task_handoff: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                         task_executor: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                         code_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+                        commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
+                        commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                       },
                       corrective_tasks: [],
                       commit_hash: null,
@@ -296,61 +296,65 @@ describe('source_control_init mutation', () => {
   });
 });
 
-// ── task_committed (enhanced) ─────────────────────────────────────────────────
+// ── commit_completed (enhanced) ───────────────────────────────────────────────
 
-describe('task_committed mutation (enhanced)', () => {
-  const mutation = getMutation('task_committed')!;
+describe('commit_completed mutation (enhanced)', () => {
+  const mutation = getMutation('commit_completed')!;
 
-  it('with source_control non-null and commit_hash in context, sets phase_commit.status = completed', () => {
+  it('with source_control non-null and commit_hash in context, sets commit.status = completed', () => {
     const state = makeStateWithSourceControl();
     const result = mutation(
       state,
-      { phase: 1, commit_hash: 'abc123def456' },
+      { phase: 1, task: 1, commit_hash: 'abc123def456' },
       baseConfig,
       baseTemplate,
     );
-    expect(result.mutations_applied).toContain('set phase_commit.status = completed');
+    expect(result.mutations_applied).toContain('set commit.status = completed');
   });
 
-  it('with source_control null, sets phase_commit.status completed without error', () => {
+  it('with source_control null, sets commit.status completed without error', () => {
     const state = makeState();
     expect(() =>
-      mutation(state, { phase: 1 }, baseConfig, baseTemplate),
+      mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate),
     ).not.toThrow();
   });
 
-  it('with source_control null, phase_commit.status is set to "completed"', () => {
+  it('with source_control null, commit.status is set to "completed"', () => {
     const state = makeState();
-    const result = mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+    const result = mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
     const phaseLoop = result.state.graph.nodes['phase_loop'];
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
-    const phaseCommit = phaseLoop.iterations[0].nodes['phase_commit'];
-    expect(phaseCommit.status).toBe('completed');
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+    if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected');
+    const commitNode = taskLoop.iterations[0].nodes['commit'];
+    expect(commitNode.status).toBe('completed');
   });
 
   it('mutations_applied includes both status and commit_hash entries when source_control non-null', () => {
     const state = makeStateWithSourceControl();
     const result = mutation(
       state,
-      { phase: 1, commit_hash: 'abc123' },
+      { phase: 1, task: 1, commit_hash: 'abc123' },
       baseConfig,
       baseTemplate,
     );
-    expect(result.mutations_applied).toContain('set phase_commit.status = completed');
+    expect(result.mutations_applied).toContain('set commit.status = completed');
   });
 
-  it('phase_commit.status is set to "completed" (existing behavior preserved)', () => {
+  it('commit.status is set to "completed" (existing behavior preserved)', () => {
     const state = makeStateWithSourceControl();
     const result = mutation(
       state,
-      { phase: 1, commit_hash: 'abc123' },
+      { phase: 1, task: 1, commit_hash: 'abc123' },
       baseConfig,
       baseTemplate,
     );
     const phaseLoop = result.state.graph.nodes['phase_loop'];
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
-    const phaseCommit = phaseLoop.iterations[0].nodes['phase_commit'];
-    expect(phaseCommit.status).toBe('completed');
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+    if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected');
+    const commitNode = taskLoop.iterations[0].nodes['commit'];
+    expect(commitNode.status).toBe('completed');
   });
 });
 

@@ -59,8 +59,6 @@ function makeState(): PipelineState {
                 phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-                phase_commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
-                phase_commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 task_loop: {
                   kind: 'for_each_task',
                   status: 'not_started',
@@ -73,6 +71,8 @@ function makeState(): PipelineState {
                         task_handoff: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                         task_executor: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                         code_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+                        commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
+                        commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                       },
                       corrective_tasks: [],
                       commit_hash: null,
@@ -102,6 +102,8 @@ function makeTwoTaskState(): PipelineState {
       task_handoff: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
       task_executor: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
       code_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+      commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
+      commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
     },
     corrective_tasks: [],
     commit_hash: null,
@@ -158,8 +160,8 @@ const baseTemplate: PipelineTemplate = {
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-describe('task_committed commit_hash', () => {
-  const mutation = getMutation('task_committed')!;
+describe('commit_completed commit_hash', () => {
+  const mutation = getMutation('commit_completed')!;
 
   it('primary task commit: writes commit_hash to IterationEntry when no corrective tasks', () => {
     const state = makeState();
@@ -189,7 +191,7 @@ describe('task_committed commit_hash', () => {
 
   it('missing commit_hash in context: resolves to null on IterationEntry', () => {
     const state = makeState();
-    const result = mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+    const result = mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
     const iteration = getTaskIteration(result.state, 1, 1);
     expect(iteration.commit_hash).toBeNull();
   });
