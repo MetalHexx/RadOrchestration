@@ -206,7 +206,7 @@ The Source Control Agent is a thin router — it loads the `source-control` skil
 
 **Input:** `state.json` (`pipeline.source_control` sub-object), task handoff title (for commit message prefix)
 
-**Output:** Structured commit result (commit hash, push status, errors) signaled back via `task_committed` event.
+**Output:** Structured commit result (commit hash, push status, errors) signaled back via `commit_completed` event.
 
 **Skills:** `orchestration`, `source-control`
 

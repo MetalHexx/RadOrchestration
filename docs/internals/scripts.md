@@ -52,8 +52,8 @@ node .github/skills/orchestration/scripts/pipeline.js \
 | `--gate-type <type>` | `gate_type` | `gate_approved`, `gate_rejected` |
 | `--reason <text>` | `reason` | `gate_rejected` |
 | `--gate-mode <mode>` | `gate_mode` | `gate_mode_set` |
-| `--commit-hash <hash>` | `commitHash` | `task_committed` |
-| `--pushed <true|false>` | `pushed` | `task_committed` |
+| `--commit-hash <hash>` | `commitHash` | `commit_completed` |
+| `--pushed <true|false>` | `pushed` | `commit_completed` |
 
 ### migrate-to-v4.js
 
@@ -97,8 +97,8 @@ The pipeline accepts exactly 32 events. Each maps to a mutation handler in the `
 | 19 | `phase_report_created` | Execution | Phase report saved; sets `phase.docs.phase_report`, `phase.stage` → reviewing |
 | 20 | `phase_review_completed` | Execution | Phase review finished; sets `phase.docs.phase_review`, `phase.review.verdict`, `phase.review.action`; resolves phase outcome |
 | 21 | `source_control_init` | Execution | One-time initialization; persists branch, base_branch, worktree_path, auto_commit, auto_pr to `pipeline.source_control` |
-| 22 | `task_commit_requested` | Execution | Signaled internally after approved code review when `auto_commit: always`; triggers Source Control Agent spawn |
-| 23 | `task_committed` | Execution | Source Control Agent completed commit; sets `task.commit_hash` from `--commit-hash` flag |
+| 22 | `commit_started` | Execution | Signaled when the walker reaches the `commit` node in `task_loop.body`; requires `--phase <N> --task <N>` context flags |
+| 23 | `commit_completed` | Execution | Source Control Agent completed commit; sets `task.commit_hash` from `--commit-hash` flag; requires `--phase <N> --task <N>` context flags |
 | 24 | `pr_requested` | Execution | Signaled internally after `final_review_completed` when `auto_pr: always` and `pr_url` is undefined |
 | 25 | `pr_created` | Execution | Source Control Agent completed PR; sets `pipeline.source_control.pr_url` from `--pr-url` flag |
 | 26 | `gate_mode_set` | Gate | Operator selected gate mode; sets `pipeline.gate_mode` |
