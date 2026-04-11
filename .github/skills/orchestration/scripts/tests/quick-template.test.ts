@@ -138,4 +138,11 @@ describe('quick template', () => {
     expect(phaseGate).toBeDefined();
     expect(phaseGate!.depends_on).toEqual(['task_loop']);
   });
+
+  it('phase_gate includes autonomous in auto_approve_modes', () => {
+    const result = loadTemplate(QUICK_YML_PATH);
+    const phaseGate = findNode(result.template.nodes, 'phase_gate');
+    expect(phaseGate).toBeDefined();
+    expect((phaseGate as any).auto_approve_modes).toContain('autonomous');
+  });
 });

@@ -75,8 +75,6 @@ function makeState(): PipelineState {
                 phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-                phase_commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
-                phase_commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 task_loop: {
                   kind: 'for_each_task',
                   status: 'not_started',
@@ -89,13 +87,17 @@ function makeState(): PipelineState {
                         task_handoff: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                         task_executor: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                         code_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+                        commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
+                        commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                       },
                       corrective_tasks: [],
+                      commit_hash: null,
                     },
                   ],
                 },
               },
               corrective_tasks: [],
+              commit_hash: null,
             },
           ],
         },
@@ -508,8 +510,8 @@ describe('getMutation — new T03 events', () => {
     'phase_review_completed',
     'final_review_started',
     'final_review_completed',
-    'task_commit_requested',
-    'task_committed',
+    'commit_started',
+    'commit_completed',
     'pr_requested',
     'pr_created',
   ];
@@ -945,7 +947,7 @@ describe('code_review_completed — corrective injection', () => {
     // Pre-fill corrective_tasks to max (3)
     const iteration = getTaskIteration(state);
     for (let i = 0; i < 3; i++) {
-      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {} });
+      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {}, commit_hash: null });
     }
     const result = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
     const resultIteration = getTaskIteration(result.state);
@@ -960,7 +962,7 @@ describe('code_review_completed — corrective injection', () => {
     // Pre-fill to max - 1 (2 entries)
     const iteration = getTaskIteration(state);
     for (let i = 0; i < 2; i++) {
-      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {} });
+      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {}, commit_hash: null });
     }
     const result = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
     const resultIteration = getTaskIteration(result.state);
@@ -1102,48 +1104,48 @@ describe('final_review_completed mutation', () => {
 
 // ── source_control_commit mutations ──────────────────────────────────────────
 
-describe('task_commit_requested mutation', () => {
-  it('sets phase_commit.status to in_progress at phase scope', () => {
+describe('commit_started mutation', () => {
+  it('sets commit.status to in_progress at task scope', () => {
     const state = makeState();
-    const mutation = getMutation('task_commit_requested')!;
-    const result = mutation(state, { phase: 1 }, baseConfig, baseTemplate);
-    expect(getPhaseNode(result.state, 'phase_commit').status).toBe('in_progress');
+    const mutation = getMutation('commit_started')!;
+    const result = mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
+    expect(getTaskNode(result.state, 'commit').status).toBe('in_progress');
   });
 
   it('does not mutate original state', () => {
     const state = makeState();
-    const mutation = getMutation('task_commit_requested')!;
-    mutation(state, { phase: 1 }, baseConfig, baseTemplate);
-    expect(getPhaseNode(state, 'phase_commit').status).toBe('not_started');
+    const mutation = getMutation('commit_started')!;
+    mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
+    expect(getTaskNode(state, 'commit').status).toBe('not_started');
   });
 
   it('returns non-empty mutations_applied', () => {
     const state = makeState();
-    const mutation = getMutation('task_commit_requested')!;
-    const result = mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+    const mutation = getMutation('commit_started')!;
+    const result = mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
     expect(result.mutations_applied.length).toBeGreaterThan(0);
   });
 });
 
-describe('task_committed mutation', () => {
-  it('sets phase_commit.status to completed at phase scope', () => {
+describe('commit_completed mutation', () => {
+  it('sets commit.status to completed at task scope', () => {
     const state = makeState();
-    const mutation = getMutation('task_committed')!;
-    const result = mutation(state, { phase: 1 }, baseConfig, baseTemplate);
-    expect(getPhaseNode(result.state, 'phase_commit').status).toBe('completed');
+    const mutation = getMutation('commit_completed')!;
+    const result = mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
+    expect(getTaskNode(result.state, 'commit').status).toBe('completed');
   });
 
   it('does not mutate original state', () => {
     const state = makeState();
-    const mutation = getMutation('task_committed')!;
-    mutation(state, { phase: 1 }, baseConfig, baseTemplate);
-    expect(getPhaseNode(state, 'phase_commit').status).toBe('not_started');
+    const mutation = getMutation('commit_completed')!;
+    mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
+    expect(getTaskNode(state, 'commit').status).toBe('not_started');
   });
 
   it('returns non-empty mutations_applied', () => {
     const state = makeState();
-    const mutation = getMutation('task_committed')!;
-    const result = mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+    const mutation = getMutation('commit_completed')!;
+    const result = mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
     expect(result.mutations_applied.length).toBeGreaterThan(0);
   });
 });
@@ -1204,8 +1206,6 @@ function makeIterationNodes() {
     phase_planning: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
     phase_report: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
     phase_review: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
-    phase_commit_gate: { kind: 'conditional' as const, status: 'not_started' as const, branch_taken: null },
-    phase_commit: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
     task_loop: {
       kind: 'for_each_task' as const,
       status: 'not_started' as const,
@@ -1218,8 +1218,11 @@ function makeIterationNodes() {
             task_handoff: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
             task_executor: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
             code_review: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
+            commit_gate: { kind: 'conditional' as const, status: 'not_started' as const, branch_taken: null },
+            commit: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
           },
           corrective_tasks: [],
+          commit_hash: null as null,
         },
         {
           index: 1,
@@ -1229,8 +1232,11 @@ function makeIterationNodes() {
             task_handoff: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
             task_executor: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
             code_review: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
+            commit_gate: { kind: 'conditional' as const, status: 'not_started' as const, branch_taken: null },
+            commit: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
           },
           corrective_tasks: [],
+          commit_hash: null as null,
         },
       ],
     },
@@ -1242,8 +1248,8 @@ function makeMultiIterationState(): PipelineState {
   const phaseLoop = base.graph.nodes['phase_loop'];
   if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
   phaseLoop.iterations = [
-    { index: 0, status: 'not_started', nodes: makeIterationNodes(), corrective_tasks: [] },
-    { index: 1, status: 'not_started', nodes: makeIterationNodes(), corrective_tasks: [] },
+    { index: 0, status: 'not_started', nodes: makeIterationNodes(), corrective_tasks: [], commit_hash: null },
+    { index: 1, status: 'not_started', nodes: makeIterationNodes(), corrective_tasks: [], commit_hash: null },
   ];
   return base;
 }

@@ -49,13 +49,13 @@ The 5 required fields (`branch`, `base_branch`, `worktree_path`, `auto_commit`, 
 
 ### Task Commit Hash
 
-Each Task record in `execution.phases[n].tasks` gains an optional `commit_hash` field written by the `task_committed` pipeline event after a successful commit.
+Each Task record in `execution.phases[n].tasks` gains an optional `commit_hash` field written by the `commit_completed` pipeline event after a successful commit.
 
 | Field | Type | Null Condition | Purpose |
 |-------|------|----------------|---------|
 | `commit_hash` | `string \| null` | `null` when `auto_commit` is `"never"`, commit was skipped, or no hash was returned | Short git commit hash (7 chars) of the commit created for this task |
 
-The Source Control Agent does **not** write this field directly — it is written by `handleTaskCommitted` in `mutations.js` using the `commitHash` value returned by `git-commit.js` and passed through the Orchestrator via `--commit-hash`. The agent’s responsibility is to include `commitHash` in its output result block so the Orchestrator can pass it to `pipeline.js`.
+The Source Control Agent does **not** write this field directly — it is written by the `COMMIT_COMPLETED` mutation handler in `mutations.ts` using the `commitHash` value returned by `git-commit.js` and passed through the Orchestrator via `--commit-hash`. The agent's responsibility is to include `commitHash` in its output result block so the Orchestrator can pass it to `pipeline.js`.
 
 #### Schema Reference (Task item)
 
@@ -84,7 +84,7 @@ The `source_control` property is **optional** on the `pipeline` object — it is
   ```
 - **Skip** the commit operation entirely — do NOT continue to git operations
 - **Never** throw an error and **never** return `success: false`
-- **Signal `task_committed`** with a skip-reason context so the pipeline continues
+- **Signal `commit_completed`** with a skip-reason context so the pipeline continues
 
 ### Example Skip Context
 
@@ -97,7 +97,7 @@ The `source_control` property is **optional** on the `pipeline` object — it is
 }
 ```
 
-This is graceful degradation, not an error. The pipeline must never stall — every code path ends with `task_committed`.
+This is graceful degradation, not an error. The pipeline must never stall — every code path ends with `commit_completed`.
 
 ---
 
@@ -123,7 +123,7 @@ git status --porcelain
   ℹ Working tree is clean — nothing to commit
   ```
 - **Do NOT treat a clean working tree as an error** — skip the commit, do not halt
-- **Signal `task_committed`** with appropriate context so the pipeline continues
+- **Signal `commit_completed`** with appropriate context so the pipeline continues
 
 ### Example Skip Context
 
@@ -156,7 +156,7 @@ fs.existsSync(worktreePath)  // or equivalent validation
 ### Inaccessible Path Behavior
 
 - **Invoke the `log-error` skill** with descriptive error context
-- **Signal `task_committed`** with error context — do NOT stall the pipeline
+- **Signal `commit_completed`** with error context — do NOT stall the pipeline
 
 ### Example Error Context
 
@@ -170,7 +170,7 @@ fs.existsSync(worktreePath)  // or equivalent validation
 }
 ```
 
-Unlike the absence of `pipeline.source_control` (Section 2) and a clean working tree (Section 3), an inaccessible `worktree_path` is a true error — use the `✗` symbol when reporting it and invoke `log-error` before signaling `task_committed`.
+Unlike the absence of `pipeline.source_control` (Section 2) and a clean working tree (Section 3), an inaccessible `worktree_path` is a true error — use the `✗` symbol when reporting it and invoke `log-error` before signaling `commit_completed`.
 
 ---
 
@@ -182,10 +182,10 @@ The agent follows a strict guard-clause sequence before performing any commit op
 
 1. **Read `state.json`** from the project directory and parse its contents
 2. **Check if `pipeline.source_control` exists** in the parsed state
-3. **If absent →** log `ℹ` notice and skip (Section 2 fallback behavior) — signal `task_committed` and **STOP**
+3. **If absent →** log `ℹ` notice and skip (Section 2 fallback behavior) — signal `commit_completed` and **STOP**
 4. **Extract `worktree_path` and `branch`** from `pipeline.source_control`
-5. **Validate `worktree_path` is accessible** (Section 4 validation) — if invalid, invoke `log-error`, signal `task_committed` with error context, and **STOP**
-6. **Check working tree has changes** via `git status --porcelain` (Section 3 validation) — if clean, log `ℹ` notice, signal `task_committed`, and **STOP**
+5. **Validate `worktree_path` is accessible** (Section 4 validation) — if invalid, invoke `log-error`, signal `commit_completed` with error context, and **STOP**
+6. **Check working tree has changes** via `git status --porcelain` (Section 3 validation) — if clean, log `ℹ` notice, signal `commit_completed`, and **STOP**
 7. **All checks passed** — proceed to commit operation (hand off to `operations-guide.md`)
 
 ### Guard-Clause Summary
@@ -195,18 +195,18 @@ Read state.json
      │
      ▼
 pipeline.source_control exists?
-     │ No  → ℹ log + skip → task_committed (STOP)
+     │ No  → ℹ log + skip → commit_completed (STOP)
      │ Yes ↓
 worktree_path accessible?
-     │ No  → ✗ log-error + task_committed (STOP)
+     │ No  → ✗ log-error + commit_completed (STOP)
      │ Yes ↓
 Working tree has changes?
-     │ No  → ℹ log + skip → task_committed (STOP)
+     │ No  → ℹ log + skip → commit_completed (STOP)
      │ Yes ↓
 Proceed to commit (operations-guide.md)
 ```
 
-**Critical rule:** Every code path — success, skip, or error — ends with `task_committed`. This event is the mechanism that advances the pipeline. Omitting it causes the pipeline to stall indefinitely.
+**Critical rule:** Every code path — success, skip, or error — ends with `commit_completed`. This event is the mechanism that advances the pipeline. Omitting it causes the pipeline to stall indefinitely.
 
 ---
 

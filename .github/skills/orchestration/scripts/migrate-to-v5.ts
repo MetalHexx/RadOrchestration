@@ -284,6 +284,7 @@ function buildCorrectiveTasks(task: V4Task): CorrectiveTaskEntry[] {
         code_review: reviewNode,
         task_gate: gateNode,
       },
+      commit_hash: null,
     });
   }
   return entries;
@@ -342,10 +343,20 @@ function buildTaskIteration(task: V4Task, index: number, projectName: string): I
     gate_active: false,
   };
 
+  // commit_gate: task complete → "completed", else "not_started"
+  const commitGateStatus: NodeStatus =
+    task.status === 'complete' ? 'completed' : 'not_started';
+  const commitGateNode: ConditionalNodeState = {
+    kind: 'conditional',
+    status: commitGateStatus,
+    branch_taken: null,
+  };
+
   const nodes: Record<string, NodeState> = {
     task_handoff: handoffNode,
     task_executor: executorNode,
     code_review: reviewNode,
+    commit_gate: commitGateNode,
     task_gate: gateNode,
   };
 
@@ -354,6 +365,7 @@ function buildTaskIteration(task: V4Task, index: number, projectName: string): I
     status: taskStatus,
     nodes,
     corrective_tasks: buildCorrectiveTasks(task),
+    commit_hash: null,
   };
 }
 
@@ -397,9 +409,7 @@ function buildPhaseIteration(phase: V4Phase, index: number, projectName: string)
       ? 'completed'
       : 'not_started';
 
-  // phase_commit_gate: phase complete → "completed"
-  const phaseCommitGateStatus: NodeStatus =
-    phase.status === 'complete' ? 'completed' : 'not_started';
+  // (commit_gate moved to task scope — no longer scaffolded at phase level)
 
   const phasePlanningNode: StepNodeState = {
     kind: 'step',
@@ -430,19 +440,12 @@ function buildPhaseIteration(phase: V4Phase, index: number, projectName: string)
     status: phaseGateStatus,
     gate_active: false,
   };
-  const phaseCommitGateNode: ConditionalNodeState = {
-    kind: 'conditional',
-    status: phaseCommitGateStatus,
-    branch_taken: null,
-  };
-
   const nodes: Record<string, NodeState> = {
     phase_planning: phasePlanningNode,
     task_loop: taskLoopNode,
     phase_report: phaseReportNode,
     phase_review: phaseReviewNode,
     phase_gate: phaseGateNode,
-    phase_commit_gate: phaseCommitGateNode,
   };
 
   return {
@@ -450,6 +453,7 @@ function buildPhaseIteration(phase: V4Phase, index: number, projectName: string)
     status: phaseStatus,
     nodes,
     corrective_tasks: [],
+    commit_hash: null,
   };
 }
 
@@ -539,7 +543,6 @@ export function migrateState(
       remote_url: sc.remote_url ?? null,
       compare_url: sc.compare_url ?? null,
       pr_url: sc.pr_url ?? null,
-      commit_hash: null,
     };
   }
 

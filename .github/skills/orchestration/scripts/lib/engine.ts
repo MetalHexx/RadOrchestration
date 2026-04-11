@@ -76,7 +76,7 @@ export function normalizeDocPath(docPath: string, basePath: string, projectName:
   const normalized = docPath.replace(/\\/g, '/');
   const normalizedBase = basePath.replace(/\\/g, '/');
   const prefix = normalizedBase + '/' + projectName + '/';
-  if (normalized.startsWith(prefix)) return normalized.slice(prefix.length);
+  if (normalized.toLowerCase().startsWith(prefix.toLowerCase())) return normalized.slice(prefix.length);
   return normalized;
 }
 
@@ -119,6 +119,22 @@ export function processEvent(
     const loadedTemplate = loadTemplate(effectiveLoadPath);
     const { template, eventIndex } = loadedTemplate;
 
+    const wrappedReadDocument = (docPath: string) => {
+      if (path.isAbsolute(docPath)) {
+        return io.readDocument(docPath);
+      }
+
+      const resolvedProjectDir = path.resolve(projectDir);
+      const resolved = path.resolve(resolvedProjectDir, docPath);
+      const relativeToProject = path.relative(resolvedProjectDir, resolved);
+
+      if (relativeToProject === '..' || relativeToProject.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToProject)) {
+        throw new Error(`Document path escapes project directory: ${docPath}`);
+      }
+
+      return io.readDocument(resolved);
+    };
+
     // ── Start event (pre-index routing) ────────────────────────────────
     if (event === 'start') {
       if (state === null) {
@@ -138,7 +154,7 @@ export function processEvent(
         const scaffolded = scaffoldState(template, projectName, config);
         scaffolded.project.updated = new Date().toISOString();
 
-        const nextAction = walkDAG(scaffolded, template, config, io.readDocument);
+        const nextAction = walkDAG(scaffolded, template, config, wrappedReadDocument);
 
         const postWalkErrors = validateState(null, scaffolded, config, template);
         if (postWalkErrors.length > 0) {
@@ -175,7 +191,24 @@ export function processEvent(
           orchRoot,
         };
       } else {
-        const walkerResult = walkDAG(state, template, config, io.readDocument);
+        const walkerResult = walkDAG(state, template, config, wrappedReadDocument);
+
+        state.project.updated = new Date().toISOString();
+
+        const validationErrors = validateState(null, state, config, template);
+        if (validationErrors.length > 0) {
+          return {
+            success: false,
+            action: null,
+            context: { error: validationErrors[0] },
+            mutations_applied: [],
+            orchRoot,
+            error: { message: validationErrors[0], event },
+          };
+        }
+
+        io.writeState(projectDir, state);
+
         const enrichedContext = walkerResult
           ? enrichActionContext({
               action: walkerResult.action,
@@ -250,7 +283,7 @@ export function processEvent(
 
       mutatedState.project.updated = new Date().toISOString();
 
-      const walkerResult = walkDAG(mutatedState, template, config, io.readDocument);
+      const walkerResult = walkDAG(mutatedState, template, config, wrappedReadDocument);
 
       const postWalkErrors = validateState(state, mutatedState, config, template);
       if (postWalkErrors.length > 0) {
@@ -389,7 +422,7 @@ export function processEvent(
       nextAction = { action: stepNode.action, context: enrichedCtx };
       io.writeState(projectDir, mutatedState);
     } else {
-      const walkerResult = walkDAG(mutatedState, template, config, io.readDocument);
+      const walkerResult = walkDAG(mutatedState, template, config, wrappedReadDocument);
 
       const postWalkErrors = validateState(state, mutatedState, config, template);
       if (postWalkErrors.length > 0) {

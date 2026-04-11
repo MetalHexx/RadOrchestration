@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { enrichActionContext } from '../lib/context-enrichment.js';
-import type { PipelineState, OrchestrationConfig } from '../lib/types.js';
+import { enrichActionContext, resolveActivePhaseIndex, resolveActiveTaskIndex } from '../lib/context-enrichment.js';
+import type { PipelineState, OrchestrationConfig, ForEachPhaseNodeState, ForEachTaskNodeState } from '../lib/types.js';
 import { createScaffoldedState } from './fixtures/parity-states.js';
 
 // ── Minimal config ────────────────────────────────────────────────────────────
@@ -40,7 +40,6 @@ function stateWithSourceControl(
     remote_url: null,
     compare_url: null,
     pr_url: null,
-    commit_hash: null,
   };
   return state;
 }
@@ -152,5 +151,106 @@ describe('enrichActionContext — display_halted', () => {
       cliContext: {},
     });
     expect(result.details).toBe('Pipeline is halted due to operator rejection');
+  });
+});
+
+// ── resolveActivePhaseIndex ───────────────────────────────────────────────────
+
+describe('resolveActivePhaseIndex', () => {
+  it('returns 1 when no iterations exist', () => {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [];
+    expect(resolveActivePhaseIndex(state)).toBe(1);
+  });
+
+  it('returns the in_progress phase index (1-based)', () => {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [
+      { index: 0, status: 'completed', nodes: {}, corrective_tasks: [], commit_hash: null },
+      { index: 1, status: 'in_progress', nodes: {}, corrective_tasks: [], commit_hash: null },
+      { index: 2, status: 'not_started', nodes: {}, corrective_tasks: [], commit_hash: null },
+    ];
+    expect(resolveActivePhaseIndex(state)).toBe(2);
+  });
+
+  it('returns the first not_started phase when none in_progress', () => {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [
+      { index: 0, status: 'completed', nodes: {}, corrective_tasks: [], commit_hash: null },
+      { index: 1, status: 'not_started', nodes: {}, corrective_tasks: [], commit_hash: null },
+      { index: 2, status: 'not_started', nodes: {}, corrective_tasks: [], commit_hash: null },
+    ];
+    expect(resolveActivePhaseIndex(state)).toBe(2);
+  });
+
+  it('throws when multiple phases are in_progress', () => {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [
+      { index: 0, status: 'in_progress', nodes: {}, corrective_tasks: [], commit_hash: null },
+      { index: 1, status: 'in_progress', nodes: {}, corrective_tasks: [], commit_hash: null },
+    ];
+    expect(() => resolveActivePhaseIndex(state)).toThrow(/Ambiguous phase resolution/);
+  });
+
+  it('returns 1 when all iterations are completed', () => {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [
+      { index: 0, status: 'completed', nodes: {}, corrective_tasks: [], commit_hash: null },
+      { index: 1, status: 'completed', nodes: {}, corrective_tasks: [], commit_hash: null },
+    ];
+    expect(resolveActivePhaseIndex(state)).toBe(1);
+  });
+});
+
+// ── resolveActiveTaskIndex ────────────────────────────────────────────────────
+
+describe('resolveActiveTaskIndex', () => {
+  it('returns 1 when no task iterations exist', () => {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [
+      { index: 0, status: 'in_progress', nodes: {}, corrective_tasks: [], commit_hash: null },
+    ];
+    expect(resolveActiveTaskIndex(state, 1)).toBe(1);
+  });
+
+  it('returns the in_progress task index (1-based)', () => {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop: ForEachTaskNodeState = {
+      kind: 'for_each_task',
+      status: 'in_progress',
+      iterations: [
+        { index: 0, status: 'completed', nodes: {}, corrective_tasks: [], commit_hash: null },
+        { index: 1, status: 'in_progress', nodes: {}, corrective_tasks: [], commit_hash: null },
+        { index: 2, status: 'not_started', nodes: {}, corrective_tasks: [], commit_hash: null },
+      ],
+    };
+    phaseLoop.iterations = [
+      { index: 0, status: 'in_progress', nodes: { task_loop: taskLoop }, corrective_tasks: [], commit_hash: null },
+    ];
+    expect(resolveActiveTaskIndex(state, 1)).toBe(2);
+  });
+
+  it('throws when multiple tasks are in_progress', () => {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop: ForEachTaskNodeState = {
+      kind: 'for_each_task',
+      status: 'in_progress',
+      iterations: [
+        { index: 0, status: 'in_progress', nodes: {}, corrective_tasks: [], commit_hash: null },
+        { index: 1, status: 'in_progress', nodes: {}, corrective_tasks: [], commit_hash: null },
+      ],
+    };
+    phaseLoop.iterations = [
+      { index: 0, status: 'in_progress', nodes: { task_loop: taskLoop }, corrective_tasks: [], commit_hash: null },
+    ];
+    expect(() => resolveActiveTaskIndex(state, 1)).toThrow(/Ambiguous task resolution/);
   });
 });

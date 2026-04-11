@@ -191,6 +191,12 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
     verdict: 'approved',
   }, io);
 
+  // If commit conditional fires, drive commit events at task scope
+  if (result.action === 'invoke_source_control_commit') {
+    processEvent('commit_started', PROJECT_DIR, ctx, io);
+    result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
+  }
+
   // If task gate fires, approve it to continue
   if (result.action === 'gate_task') {
     result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
@@ -200,10 +206,10 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
 }
 
 /**
- * Drives post-task-loop phase steps: report, review, gate, commit conditional.
+ * Drives post-task-loop phase steps: report, review, gate.
  * Returns the result of the last event for the phase.
  */
-function drivePhasePostTasks(io: MockIO, phase: number, expectCommit: boolean): PipelineResult {
+function drivePhasePostTasks(io: MockIO, phase: number): PipelineResult {
   const ctx = { phase };
 
   processEvent('phase_report_started', PROJECT_DIR, ctx, io);
@@ -226,13 +232,7 @@ function drivePhasePostTasks(io: MockIO, phase: number, expectCommit: boolean): 
     reviewResult = processEvent('phase_gate_approved', PROJECT_DIR, ctx, io);
   }
 
-  if (!expectCommit) {
-    return reviewResult;
-  }
-
-  // commit conditional takes true branch
-  processEvent('task_commit_requested', PROJECT_DIR, ctx, io);
-  return processEvent('task_committed', PROJECT_DIR, ctx, io);
+  return reviewResult;
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -294,13 +294,12 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // task_gate auto-approves in autonomous mode (verdict=approved) → advance to task 2
     expect(result.action).toBe('create_task_handoff');
 
-    // Verify task_gate auto-approved (gate_active = false, gate did not fire)
+    // Verify task_gate completed (gate fires after commit_gate at task scope)
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
       const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
       expect(gate.status).toBe('completed');
-      expect(gate.gate_active).toBe(false);
     }
 
     // ── Phase 1, Task 2 ──────────────────────────────────────────────────
@@ -309,19 +308,18 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // task_gate auto-approves → task_loop completes → phase_report
     expect(result.action).toBe('generate_phase_report');
 
-    // Verify task_gate for task 2 auto-approved (gate_active = false)
+    // Verify task_gate for task 2 completed
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
       const gate = taskLoop.iterations[1].nodes['task_gate'] as GateNodeState;
       expect(gate.status).toBe('completed');
-      expect(gate.gate_active).toBe(false);
     }
 
     // ── Phase 1 post-task steps ──────────────────────────────────────────
-    result = drivePhasePostTasks(io, 1, true);
+    result = drivePhasePostTasks(io, 1);
     expect(result.success).toBe(true);
-    // After commit_completed → advance to phase 2
+    // Phase gate auto-approves → advance to phase 2
     expect(result.action).toBe('create_phase_plan');
 
     // Verify phase_gate fired and was approved (gate_active = true)
@@ -332,10 +330,11 @@ describe('Execution-tier integration — complete pipeline run', () => {
       expect(gate.gate_active).toBe(false);
     }
 
-    // Verify commit conditional branch_taken
+    // Verify commit conditional branch_taken (task-scope)
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-      const cond = phaseLoop.iterations[0].nodes['phase_commit_gate'] as ConditionalNodeState;
+      const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+      const cond = taskLoop.iterations[0].nodes['commit_gate'] as ConditionalNodeState;
       expect(cond.branch_taken).toBe('true');
       expect(cond.status).toBe('completed');
     }
@@ -383,9 +382,9 @@ describe('Execution-tier integration — complete pipeline run', () => {
     expect(result.action).toBe('generate_phase_report');
 
     // ── Phase 2 post-task steps ──────────────────────────────────────────
-    result = drivePhasePostTasks(io, 2, true);
+    result = drivePhasePostTasks(io, 2);
     expect(result.success).toBe(true);
-    // After commit_completed for phase 2 → phase_loop completes → final_review
+    // Phase 2 complete → phase_loop completes → final_review
     expect(result.action).toBe('spawn_final_reviewer');
 
     // Verify phase_loop completed
@@ -464,10 +463,16 @@ describe('Execution-tier integration — gate mode variations', () => {
     const io = createMockIO(null, config);
     let result: PipelineResult;
 
-    // Drive planning tier
+    // Drive planning tier — ask mode fires ask_gate_mode at gate_mode_selection
     result = drivePlanningTier(io);
     expect(result.success).toBe(true);
+    expect(result.action).toBe('ask_gate_mode');
+
+    // Pass through gate_mode_selection, then reset so subsequent gates see ask behavior
+    result = processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io);
+    expect(result.success).toBe(true);
     expect(result.action).toBe('create_phase_plan');
+    io.currentState!.pipeline.gate_mode = null;
 
     // Phase 1 setup
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
@@ -489,6 +494,13 @@ describe('Execution-tier integration — gate mode variations', () => {
       const r = DOC_PATHS.codeReview(1, 1); seedDoc(r);
       result = processEvent('code_review_completed', PROJECT_DIR, { ...ctx, doc_path: r, verdict: 'approved' }, io);
     }
+    expect(result.success).toBe(true);
+    // commit_gate fires before task_gate → invoke_source_control_commit
+    expect(result.action).toBe('invoke_source_control_commit');
+
+    // Drive commit events at task scope
+    processEvent('commit_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    result = processEvent('commit_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
     expect(result.success).toBe(true);
     // pipeline.gate_mode is null and execution_mode='ask' → walker returns ask_gate_mode
     // before activating the task_gate, prompting the operator to choose a gate mode
@@ -561,10 +573,10 @@ describe('Execution-tier integration — gate mode variations', () => {
     // phase_gate fires in 'task' mode
     expect(result.action).toBe('gate_phase');
 
-    // Approve phase gate → commit conditional
+    // Approve phase gate → advance to next phase (commit is now at task scope)
     result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('invoke_source_control_commit');
+    expect(result.action).toBe('create_phase_plan');
 
     // Verify phase_gate fired and was approved (gate_active = true)
     {
@@ -604,15 +616,16 @@ describe('Execution-tier integration — conditional branch variations', () => {
 
     // Phase review completes → phase_gate auto-approves (autonomous) →
     // commit conditional: 'never' neq 'never' → false → branch_taken='false' → skip → next phase
-    result = drivePhasePostTasks(io, 1, false);
+    result = drivePhasePostTasks(io, 1);
     expect(result.success).toBe(true);
-    // Walker should proceed to phase 2 (commit skipped)
+    // Walker should proceed to phase 2 (commit skipped at task scope)
     expect(result.action).toBe('create_phase_plan');
 
-    // Verify commit conditional took false branch
+    // Verify commit conditional took false branch (task-scope)
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-      const cond = phaseLoop.iterations[0].nodes['phase_commit_gate'] as ConditionalNodeState;
+      const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+      const cond = taskLoop.iterations[0].nodes['commit_gate'] as ConditionalNodeState;
       expect(cond.branch_taken).toBe('false');
       expect(cond.status).toBe('completed');
     }
@@ -637,7 +650,7 @@ describe('Execution-tier integration — conditional branch variations', () => {
 
       driveTask(io, phase, 1);
       driveTask(io, phase, 2);
-      drivePhasePostTasks(io, phase, true);
+      drivePhasePostTasks(io, phase);
     }
 
     // Final review
@@ -661,13 +674,13 @@ describe('Execution-tier integration — conditional branch variations', () => {
     }
   });
 
-  it('auto_commit=always emits invoke_source_control_commit', () => {
+  it('auto_commit=always emits invoke_source_control_commit at task scope', () => {
     const config = makeConfig({ auto_commit: 'always' });
     const io = createMockIO(null, config);
 
     drivePlanningTier(io);
 
-    // Phase 1 setup + tasks
+    // Phase 1 setup
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
     processEvent('phase_plan_created', PROJECT_DIR, {
@@ -675,32 +688,33 @@ describe('Execution-tier integration — conditional branch variations', () => {
       doc_path: DOC_PATHS.phasePlan(1),
     }, io);
 
-    driveTask(io, 1, 1);
-    driveTask(io, 1, 2);
+    // Drive task 1 manually to observe invoke_source_control_commit action
+    {
+      const ctx = { phase: 1, task: 1 };
+      processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+      const handoffDoc = DOC_PATHS.taskHandoff(1, 1);
+      seedDoc(handoffDoc);
+      processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
+      processEvent('execution_started', PROJECT_DIR, ctx, io);
+      processEvent('task_completed', PROJECT_DIR, ctx, io);
+      processEvent('code_review_started', PROJECT_DIR, ctx, io);
+      const reviewDoc = DOC_PATHS.codeReview(1, 1);
+      seedDoc(reviewDoc);
+      const result = processEvent('code_review_completed', PROJECT_DIR, {
+        ...ctx,
+        doc_path: reviewDoc,
+        verdict: 'approved',
+      }, io);
+      expect(result.success).toBe(true);
+      // commit_gate: auto_commit=always neq never → true branch → invoke_source_control_commit
+      expect(result.action).toBe('invoke_source_control_commit');
+    }
 
-    // After phase_review_completed, phase_gate auto-approves, commit conditional: true
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    const reportDoc = DOC_PATHS.phaseReport(1);
-    seedDoc(reportDoc);
-    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: reportDoc }, io);
-
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
-    const reviewDoc = DOC_PATHS.phaseReview(1);
-    seedDoc(reviewDoc);
-    let result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1,
-      doc_path: reviewDoc,
-      verdict: 'approved',
-      exit_criteria_met: true,
-    }, io);
-    expect(result.success).toBe(true);
-    // Phase gate auto-approves in autonomous mode (verdict=approved) → commit conditional: auto_commit=always → true branch
-    expect(result.action).toBe('invoke_source_control_commit');
-
-    // Verify commit conditional took true branch
+    // Verify commit conditional took true branch (task-scope)
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-      const cond = phaseLoop.iterations[0].nodes['phase_commit_gate'] as ConditionalNodeState;
+      const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+      const cond = taskLoop.iterations[0].nodes['commit_gate'] as ConditionalNodeState;
       expect(cond.branch_taken).toBe('true');
     }
   });
@@ -722,7 +736,7 @@ describe('Execution-tier integration — conditional branch variations', () => {
 
       driveTask(io, phase, 1);
       driveTask(io, phase, 2);
-      drivePhasePostTasks(io, phase, true);
+      drivePhasePostTasks(io, phase);
     }
 
     // Final review
@@ -769,7 +783,7 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
 
     driveTask(io, 1, 1);
     driveTask(io, 1, 2);
-    result = drivePhasePostTasks(io, 1, true);
+    result = drivePhasePostTasks(io, 1);
     expect(result.action).toBe('create_phase_plan');
 
     // Verify iteration 0 completed and iteration 1 is next
@@ -888,7 +902,21 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
       verdict: 'approved',
     }, io);
 
-    // Task gate auto-approves in autonomous mode (verdict=approved) → task_loop completes → generate_phase_report
+    // commit_gate fires at task scope → invoke_source_control_commit
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('invoke_source_control_commit');
+
+    // Drive commit events at task scope
+    processEvent('commit_started', PROJECT_DIR, { phase: 1, task: 2 }, io);
+    result = processEvent('commit_completed', PROJECT_DIR, { phase: 1, task: 2 }, io);
+
+    // Task gate fires after commit → approve it
+    expect(result.success).toBe(true);
+    if (result.action === 'gate_task') {
+      result = processEvent('task_gate_approved', PROJECT_DIR, { phase: 1, task: 2 }, io);
+    }
+
+    // task_loop completes → generate_phase_report
     expect(result.success).toBe(true);
     expect(result.action).toBe('generate_phase_report');
 

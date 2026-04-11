@@ -30,7 +30,7 @@ const DEFAULT_CONFIG: OrchestrationConfig = {
   },
   human_gates: {
     after_planning: true,
-    execution_mode: 'ask',
+    execution_mode: 'autonomous',
     after_final_review: true,
   },
   source_control: {

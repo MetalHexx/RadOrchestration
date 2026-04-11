@@ -504,6 +504,30 @@ describe('migrateState()', () => {
       const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
       expect(taskLoop.iterations[0].corrective_tasks).toHaveLength(0);
     });
+
+    it('sets commit_hash to null on migrated IterationEntry', () => {
+      const taskWithRetries = makeV4Task({ retries: 2 });
+      const phase = makeV4Phase({ tasks: [taskWithRetries] });
+      const v4 = makeV4State({ execution: { status: 'complete', current_phase: 1, phases: [phase] } });
+
+      const result = migrateState(v4, 'MY-PROJECT');
+      const phaseLoop = getNode<ForEachPhaseNodeState>(result, 'phase_loop');
+      const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+      expect(taskLoop.iterations[0].commit_hash).toBeNull();
+    });
+
+    it('sets commit_hash to null on each migrated CorrectiveTaskEntry', () => {
+      const taskWithRetries = makeV4Task({ retries: 2 });
+      const phase = makeV4Phase({ tasks: [taskWithRetries] });
+      const v4 = makeV4State({ execution: { status: 'complete', current_phase: 1, phases: [phase] } });
+
+      const result = migrateState(v4, 'MY-PROJECT');
+      const phaseLoop = getNode<ForEachPhaseNodeState>(result, 'phase_loop');
+      const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+      const correctives = taskLoop.iterations[0].corrective_tasks;
+      expect(correctives[0].commit_hash).toBeNull();
+      expect(correctives[1].commit_hash).toBeNull();
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -536,7 +560,6 @@ describe('migrateState()', () => {
         remote_url: 'https://github.com/org/repo',
         compare_url: 'https://github.com/org/repo/compare/main...feat/my-feature',
         pr_url: null,
-        commit_hash: null,
       });
     });
 
@@ -558,7 +581,25 @@ describe('migrateState()', () => {
       expect(result.pipeline.source_control?.pr_url).toBeNull();
     });
 
-    it('sets commit_hash to null always', () => {
+    it('migrated pipeline.source_control does not have a commit_hash property', () => {
+      const v4 = makeV4State({
+        pipeline: {
+          current_tier: 'complete',
+          gate_mode: 'autonomous',
+          source_control: {
+            branch: 'feat/my-feature',
+            base_branch: 'main',
+            worktree_path: '/path/to/worktree',
+            auto_commit: 'always',
+            auto_pr: 'never',
+          },
+        },
+      });
+      const result = migrateState(v4, 'MY-PROJECT');
+      expect(result.pipeline.source_control).not.toHaveProperty('commit_hash');
+    });
+
+    it('commit_hash absent from pipeline.source_control even when v4 source had a commit_hash field', () => {
       const v4 = makeV4State({
         pipeline: {
           current_tier: 'complete',
@@ -569,11 +610,12 @@ describe('migrateState()', () => {
             worktree_path: '/path',
             auto_commit: 'always',
             auto_pr: 'never',
+            commit_hash: 'oldglobalhash',
           },
         },
       });
       const result = migrateState(v4, 'MY-PROJECT');
-      expect(result.pipeline.source_control?.commit_hash).toBeNull();
+      expect(result.pipeline.source_control).not.toHaveProperty('commit_hash');
     });
 
     it('maps auto_commit and auto_pr to config.source_control', () => {

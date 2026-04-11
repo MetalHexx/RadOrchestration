@@ -11,7 +11,6 @@ import {
   driveToExecutionWithConfig,
   driveTaskWith,
   driveToReviewTier,
-  drivePhaseReviewApproval,
   phasePlanDoc,
   taskHandoffDoc,
   codeReviewDoc,
@@ -462,49 +461,49 @@ describe('[CONTRACT] Event Names — final review events', () => {
 // ── [CONTRACT] Event Names — source control events ────────────────────────────
 
 describe('[CONTRACT] Event Names — source control events', () => {
-  it('task_commit_requested is a valid v5 event', () => {
+  it('commit_started is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(commitConfig, 1);
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    driveTaskWith(io, 1, 1);
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReviewDoc(1));
-    let r = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
+    // Drive task manually up to code_review_completed to reach commit_gate
+    const ctx = { phase: 1, task: 1 };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    seedDoc(taskHandoffDoc(1, 1));
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    seedDoc(codeReviewDoc(1, 1));
+    const r = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
     }, io);
-    if (r.action === 'gate_phase') {
-      r = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
-    }
     expect(r.action).toBe('invoke_source_control_commit');
-    const result = processEvent('task_commit_requested', PROJECT_DIR, { phase: 1 }, io);
+    const result = processEvent('commit_started', PROJECT_DIR, ctx, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
 
-  it('task_committed is a valid v5 event', () => {
+  it('commit_completed is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(commitConfig, 1);
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    driveTaskWith(io, 1, 1);
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReviewDoc(1));
-    let r = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
+    // Drive task manually up to code_review_completed to reach commit_gate
+    const ctx = { phase: 1, task: 1 };
+    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
+    seedDoc(taskHandoffDoc(1, 1));
+    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    seedDoc(codeReviewDoc(1, 1));
+    const r = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
     }, io);
-    if (r.action === 'gate_phase') {
-      r = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
-    }
     expect(r.action).toBe('invoke_source_control_commit');
-    processEvent('task_commit_requested', PROJECT_DIR, { phase: 1 }, io);
-    const result = processEvent('task_committed', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('commit_started', PROJECT_DIR, ctx, io);
+    const result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });

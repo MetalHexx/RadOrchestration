@@ -95,6 +95,7 @@ function makeValidCorrectiveEntry(overrides?: Partial<CorrectiveTaskEntry>): Cor
     nodes: {
       fix_task: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 } as StepNodeState,
     },
+    commit_hash: null,
     ...overrides,
   };
 }
@@ -107,6 +108,7 @@ function makeIterationEntry(index: number, overrides?: Partial<IterationEntry>):
       task_step: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 } as StepNodeState,
     },
     corrective_tasks: [],
+    commit_hash: null,
     ...overrides,
   };
 }
@@ -157,7 +159,7 @@ describe('validator – validateState', () => {
       (state.graph as any).status = 'running';
       const errors = validateState(null, state, DEFAULT_CONFIG, TEMPLATE);
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors[0]).toContain('running');
+      expect(errors.some(e => e.includes('running'))).toBe(true);
     });
   });
 
@@ -167,7 +169,7 @@ describe('validator – validateState', () => {
       (state.graph.nodes['research'] as any).status = 'active';
       const errors = validateState(null, state, DEFAULT_CONFIG, TEMPLATE);
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors[0]).toContain('active');
+      expect(errors.some(e => e.includes('active'))).toBe(true);
     });
 
     it('detects invalid status nested inside for_each_phase iteration', () => {
@@ -555,5 +557,37 @@ describe('validator – engine integration', () => {
     const result = processEvent('research_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(io.writeCalls.length).toBe(1);
+  });
+});
+
+// ── Tests: schema validation integration ─────────────────────────────────────
+
+describe('validator – schema validation integration', () => {
+  it('schema violation on proposed state causes validateState to return [schema]-prefixed errors', () => {
+    const state = makeMinimalState();
+    (state.graph as any).status = 'running';
+    const errors = validateState(null, state, DEFAULT_CONFIG, TEMPLATE);
+    const schemaErrors = errors.filter(e => e.startsWith('[schema]'));
+    expect(schemaErrors.length).toBeGreaterThan(0);
+    expect(schemaErrors[0]).toContain('graph.status');
+  });
+
+  it('mixed schema + structural violations: [schema] errors appear before non-prefixed structural errors', () => {
+    const state = makeMinimalState();
+    // Introduce a schema violation (invalid enum)
+    (state.graph as any).status = 'running';
+    // Introduce a structural violation (corrective task with empty reason)
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations.push(makeIterationEntry(0, {
+      corrective_tasks: [
+        makeValidCorrectiveEntry({ reason: '' }),
+      ],
+    }));
+    const errors = validateState(null, state, DEFAULT_CONFIG, TEMPLATE);
+    const firstSchemaIdx = errors.findIndex(e => e.startsWith('[schema]'));
+    const firstStructuralIdx = errors.findIndex(e => !e.startsWith('[schema]'));
+    expect(firstSchemaIdx).toBeGreaterThanOrEqual(0);
+    expect(firstStructuralIdx).toBeGreaterThanOrEqual(0);
+    expect(firstSchemaIdx).toBeLessThan(firstStructuralIdx);
   });
 });

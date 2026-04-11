@@ -14,13 +14,13 @@ describe('loadTemplate', () => {
       expect(result.template.template.version).toBe('1.0.0');
     });
 
-    it('returns exactly 32 entries in the event index', () => {
+    it('returns exactly 33 entries in the event index', () => {
       const result = loadTemplate(FULL_YML_PATH);
-      expect(result.eventIndex.size).toBe(32);
+      expect(result.eventIndex.size).toBe(33);
     });
   });
 
-  describe('event index — all 32 mappings', () => {
+  describe('event index — all 33 mappings', () => {
     const result = loadTemplate(FULL_YML_PATH);
     const { eventIndex } = result;
 
@@ -36,7 +36,8 @@ describe('loadTemplate', () => {
       ['master_plan_started',              'master_plan',         'started',   'master_plan'],
       ['master_plan_completed',            'master_plan',         'completed', 'master_plan'],
       ['plan_approved',                    'plan_approval_gate',  'approved',  'plan_approval_gate'],
-      ['phase_planning_started',           'phase_planning',      'started',   'phase_loop.body.phase_planning'],
+      ['gate_mode_set',                     'gate_mode_selection', 'approved',  'gate_mode_selection'],
+      ['phase_planning_started',                      'phase_planning',      'started',   'phase_loop.body.phase_planning'],
       ['phase_plan_created',               'phase_planning',      'completed', 'phase_loop.body.phase_planning'],
       ['task_handoff_started',             'task_handoff',        'started',   'phase_loop.body.task_loop.body.task_handoff'],
       ['task_handoff_created',             'task_handoff',        'completed', 'phase_loop.body.task_loop.body.task_handoff'],
@@ -50,8 +51,8 @@ describe('loadTemplate', () => {
       ['phase_review_started',             'phase_review',        'started',   'phase_loop.body.phase_review'],
       ['phase_review_completed',           'phase_review',        'completed', 'phase_loop.body.phase_review'],
       ['phase_gate_approved',              'phase_gate',          'approved',  'phase_loop.body.phase_gate'],
-      ['task_commit_requested',    'phase_commit',        'started',   'phase_loop.body.phase_commit_gate.branches.true.phase_commit'],
-      ['task_committed',  'phase_commit',        'completed', 'phase_loop.body.phase_commit_gate.branches.true.phase_commit'],
+      ['commit_started',           'commit',              'started',   'phase_loop.body.task_loop.body.commit_gate.branches.true.commit'],
+      ['commit_completed',         'commit',              'completed', 'phase_loop.body.task_loop.body.commit_gate.branches.true.commit'],
       ['final_review_started',             'final_review',        'started',   'final_review'],
       ['final_review_completed',           'final_review',        'completed', 'final_review'],
       ['final_approved',            'final_approval_gate', 'approved',  'final_approval_gate'],

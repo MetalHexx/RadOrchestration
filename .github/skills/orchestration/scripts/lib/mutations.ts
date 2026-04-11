@@ -14,6 +14,7 @@ import type {
 } from './types.js';
 import { EVENTS, VALID_VERDICTS, REVIEW_VERDICTS } from './constants.js';
 import { scaffoldNodeState } from './scaffold.js';
+import { resolveActivePhaseIndex, resolveActiveTaskIndex } from './context-enrichment.js';
 
 // ── Resolution scope ──────────────────────────────────────────────────────────
 
@@ -192,9 +193,18 @@ for (const [eventName, nodeId] of phaseExecStartedSteps) {
     const cloned = structuredClone(state);
     const mutations_applied: string[] = [];
 
-    const node = resolveNodeState(cloned, nodeId, 'phase', context.phase);
-    node.status = 'in_progress';
-    mutations_applied.push(`set ${nodeId}.status = in_progress`);
+    const phase = context.phase ?? resolveActivePhaseIndex(cloned);
+    try {
+      const node = resolveNodeState(cloned, nodeId, 'phase', phase);
+      node.status = 'in_progress';
+      mutations_applied.push(`set ${nodeId}.status = in_progress`);
+    } catch (err) {
+      throw new Error(
+        `Cannot apply mutation for "${eventName}": no active phase could be resolved from state.\n` +
+        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
+        `Pass --phase <N> to specify the phase explicitly.`
+      );
+    }
 
     return { state: cloned, mutations_applied };
   });
@@ -292,6 +302,7 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
       injected_after: 'phase_review',
       status: 'in_progress',
       nodes: {},
+      commit_hash: null,
     });
 
     mutations_applied.push('reset phase for corrective re-planning');
@@ -319,9 +330,26 @@ for (const [eventName, nodeId] of taskStartedSteps) {
     const cloned = structuredClone(state);
     const mutations_applied: string[] = [];
 
-    const node = resolveNodeState(cloned, nodeId, 'task', context.phase, context.task);
-    node.status = 'in_progress';
-    mutations_applied.push(`set ${nodeId}.status = in_progress`);
+    const phase = context.phase ?? resolveActivePhaseIndex(cloned);
+    const task = context.task ?? resolveActiveTaskIndex(cloned, phase);
+    try {
+      const node = resolveNodeState(cloned, nodeId, 'task', phase, task);
+      node.status = 'in_progress';
+      mutations_applied.push(`set ${nodeId}.status = in_progress`);
+    } catch (err) {
+      if (context.phase === undefined) {
+        throw new Error(
+          `Cannot apply mutation for "${eventName}": no active phase could be resolved from state.\n` +
+          `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
+          `Pass --phase <N> to specify the phase explicitly.`
+        );
+      }
+      throw new Error(
+        `Cannot apply mutation for "${eventName}": no active task could be resolved from state for phase ${phase}.\n` +
+        `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+        `Pass --task <N> to specify the task explicitly.`
+      );
+    }
 
     return { state: cloned, mutations_applied };
   });
@@ -445,6 +473,7 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
         injected_after: 'code_review',
         status: 'not_started',
         nodes,
+        commit_hash: null,
       };
       iteration.corrective_tasks.push(entry);
       mutations_applied.push(`injected corrective task ${entry.index} (changes_requested)`);
@@ -515,33 +544,78 @@ mutationRegistry.set(EVENTS.FINAL_REVIEW_COMPLETED, (state, context, _config, _t
   return { state: cloned, mutations_applied };
 });
 
-// ── Source control commit mutations (phase_commit as phase-scoped sibling) ────
+// ── Source control commit mutations ───────────────────────────────────────────
 
-mutationRegistry.set(EVENTS.TASK_COMMIT_REQUESTED, (state, context, _config, _template): MutationResult => {
+mutationRegistry.set(EVENTS.COMMIT_STARTED, (state, context, _config, _template): MutationResult => {
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
-  const node = resolveNodeState(cloned, 'phase_commit', 'phase', context.phase);
-  node.status = 'in_progress';
-  mutations_applied.push('set phase_commit.status = in_progress');
+  const phase = context.phase ?? resolveActivePhaseIndex(cloned);
+  const task = context.task ?? resolveActiveTaskIndex(cloned, phase);
+  try {
+    const node = resolveNodeState(cloned, 'commit', 'task', phase, task);
+    node.status = 'in_progress';
+    mutations_applied.push('set commit.status = in_progress');
+  } catch (err) {
+    if (context.phase === undefined) {
+      throw new Error(
+        `Cannot apply mutation for "commit_started": no active phase could be resolved from state.\n` +
+        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
+        `Pass --phase <N> to specify the phase explicitly.`
+      );
+    }
+    throw new Error(
+      `Cannot apply mutation for "commit_started": no active task could be resolved from state for phase ${phase}.\n` +
+      `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+      `Pass --task <N> to specify the task explicitly.`
+    );
+  }
 
   return { state: cloned, mutations_applied };
 });
 
-mutationRegistry.set(EVENTS.TASK_COMMITTED, (state, context, _config, _template): MutationResult => {
+mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _template): MutationResult => {
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
-  const node = resolveNodeState(cloned, 'phase_commit', 'phase', context.phase);
-  node.status = 'completed';
-  mutations_applied.push('set phase_commit.status = completed');
+  const phase = context.phase ?? resolveActivePhaseIndex(cloned);
+  const task = context.task ?? resolveActiveTaskIndex(cloned, phase);
+  try {
+    const node = resolveNodeState(cloned, 'commit', 'task', phase, task);
+    node.status = 'completed';
+    mutations_applied.push('set commit.status = completed');
 
-  if (cloned.pipeline.source_control) {
-    cloned.pipeline.source_control.commit_hash = (context.commit_hash as string) ?? null;
-    mutations_applied.push(`set pipeline.source_control.commit_hash = ${context.commit_hash ?? 'null'}`);
+    // Write commit_hash to per-task IterationEntry or active CorrectiveTaskEntry
+    const taskIteration = resolveTaskIteration(cloned, phase, task);
+    const activeCorrective = taskIteration.corrective_tasks.slice().reverse().find(
+      (ct: CorrectiveTaskEntry) => ct.status === 'in_progress' || ct.status === 'not_started'
+    );
+
+    const commitHash = (context.commit_hash as string) ?? null;
+
+    if (activeCorrective) {
+      activeCorrective.commit_hash = commitHash;
+      mutations_applied.push(`set corrective_task[${activeCorrective.index}].commit_hash = ${commitHash ?? 'null'}`);
+    } else {
+      taskIteration.commit_hash = commitHash;
+      mutations_applied.push(`set task_iteration[${taskIteration.index}].commit_hash = ${commitHash ?? 'null'}`);
+    }
+
+    return { state: cloned, mutations_applied };
+  } catch (err) {
+    if (context.phase === undefined) {
+      throw new Error(
+        `Cannot apply mutation for "commit_completed": no active phase could be resolved from state.\n` +
+        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
+        `Pass --phase <N> to specify the phase explicitly.`
+      );
+    }
+    throw new Error(
+      `Cannot apply mutation for "commit_completed": no active task could be resolved from state for phase ${phase}.\n` +
+      `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+      `Pass --task <N> to specify the task explicitly.`
+    );
   }
-
-  return { state: cloned, mutations_applied };
 });
 
 // ── Source control PR mutations (final_pr as top-scoped sibling) ──────────────
@@ -700,7 +774,6 @@ mutationRegistry.set(EVENTS.SOURCE_CONTROL_INIT, (state, context, _config, _temp
     remote_url: (context.remote_url as string) ?? null,
     compare_url: (context.compare_url as string) ?? null,
     pr_url: null,
-    commit_hash: null,
   };
 
   return {

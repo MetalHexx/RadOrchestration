@@ -78,6 +78,17 @@ nodes:
     auto_approve_modes: []
     depends_on: [master_plan]
 
+  # ── Gate Mode Selection ───────────────────────────────────────────────────
+
+  - id: gate_mode_selection
+    kind: gate
+    label: "Gate Mode Selection"
+    mode_ref: human_gates.execution_mode
+    action_if_needed: gate_task
+    approved_event: gate_mode_set
+    auto_approve_modes: [task, phase, autonomous]
+    depends_on: [plan_approval_gate]
+
   # ── Phase Execution Loop ──────────────────────────────────────────────────
 
   - id: phase_loop
@@ -85,7 +96,7 @@ nodes:
     label: "Phase Execution Loop"
     source_doc_ref: "$.nodes.master_plan.doc_path"
     total_field: total_phases
-    depends_on: [plan_approval_gate]
+    depends_on: [gate_mode_selection]
     body:
 
       - id: phase_planning
@@ -128,14 +139,32 @@ nodes:
             doc_output_field: doc_path
             depends_on: [task_executor]
 
+          - id: commit_gate
+            kind: conditional
+            label: "Auto-Commit"
+            condition:
+              config_ref: source_control.auto_commit
+              operator: neq
+              value: never
+            branches:
+              true:
+                - id: commit
+                  kind: step
+                  label: "Source Control Commit"
+                  action: invoke_source_control_commit
+                  events: { started: commit_started, completed: commit_completed }
+                  depends_on: []
+              false: []
+            depends_on: [code_review]
+
           - id: task_gate
             kind: gate
             label: "Task Review Gate"
             mode_ref: human_gates.execution_mode
             action_if_needed: gate_task
             approved_event: task_gate_approved
-            auto_approve_modes: [phase]
-            depends_on: [code_review]
+            auto_approve_modes: [phase, autonomous]
+            depends_on: [code_review, commit_gate]
 
       - id: phase_report
         kind: step
@@ -161,24 +190,6 @@ nodes:
         approved_event: phase_gate_approved
         auto_approve_modes: []
         depends_on: [phase_review]
-
-      - id: phase_commit_gate
-        kind: conditional
-        label: "Phase Auto-Commit"
-        condition:
-          config_ref: source_control.auto_commit
-          operator: neq
-          value: never
-        branches:
-          true:
-            - id: phase_commit
-              kind: step
-              label: "Source Control Commit"
-              action: invoke_source_control_commit
-              events: { started: task_commit_requested, completed: task_committed }
-              depends_on: []
-          false: []
-        depends_on: [phase_gate]
 
   # ── Final Review ──────────────────────────────────────────────────────────
 

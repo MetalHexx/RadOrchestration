@@ -11,6 +11,8 @@ import type {
   IOAdapter,
   ForEachPhaseNodeState,
   ForEachTaskNodeState,
+  IterationEntry,
+  CorrectiveTaskEntry,
 } from '../lib/types.js';
 
 // ── Path resolution ───────────────────────────────────────────────────────────
@@ -91,6 +93,40 @@ function loadStateFile(projectName: string): PipelineState {
   return JSON.parse(raw) as PipelineState;
 }
 
+/**
+ * Patches all IterationEntry and CorrectiveTaskEntry objects in a loaded state
+ * to include commit_hash: null when the field is absent. This is needed for
+ * legacy state files that pre-date the v5 commit_hash field on iterations.
+ * Does NOT modify the source file — only the in-memory object.
+ */
+function patchIterationEntries(state: PipelineState): void {
+  const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
+  if (!phaseLoop || phaseLoop.kind !== 'for_each_phase') return;
+  for (const phaseIter of phaseLoop.iterations as IterationEntry[]) {
+    if (!('commit_hash' in phaseIter)) {
+      (phaseIter as unknown as Record<string, unknown>)['commit_hash'] = null;
+    }
+    for (const ct of phaseIter.corrective_tasks as CorrectiveTaskEntry[]) {
+      if (!('commit_hash' in ct)) {
+        (ct as unknown as Record<string, unknown>)['commit_hash'] = null;
+      }
+    }
+    const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState | undefined;
+    if (taskLoop && taskLoop.kind === 'for_each_task') {
+      for (const taskIter of taskLoop.iterations as IterationEntry[]) {
+        if (!('commit_hash' in taskIter)) {
+          (taskIter as unknown as Record<string, unknown>)['commit_hash'] = null;
+        }
+        for (const ct of taskIter.corrective_tasks as CorrectiveTaskEntry[]) {
+          if (!('commit_hash' in ct)) {
+            (ct as unknown as Record<string, unknown>)['commit_hash'] = null;
+          }
+        }
+      }
+    }
+  }
+}
+
 const VALID_ACTIONS = new Set<string>(Object.values(NEXT_ACTIONS));
 
 function assertValidPipelineResult(result: unknown, label: string): asserts result is PipelineResult {
@@ -114,6 +150,11 @@ describe.skipIf(!fs.existsSync(PROJECTS_BASE))('Migrated state compatibility', (
     // Load real state files (read-only)
     autoCommitState = loadStateFile('AUTO-COMMIT');
     dagPipelineState = loadStateFile('DAG-PIPELINE');
+
+    // Patch legacy state files to add commit_hash: null on all iteration/corrective entries.
+    // These files pre-date the v5 commit_hash field. Do NOT modify the source files.
+    patchIterationEntries(autoCommitState);
+    patchIterationEntries(dagPipelineState);
 
     // Construct synthetic halted fixture from the completed AUTO-COMMIT state
     haltedFixture = structuredClone(autoCommitState);

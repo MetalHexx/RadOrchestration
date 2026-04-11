@@ -224,7 +224,7 @@ describe('EVENTS', () => {
       'PHASE_REPORT_STARTED', 'PHASE_REPORT_CREATED',
       'PHASE_REVIEW_STARTED', 'PHASE_REVIEW_COMPLETED',
       'FINAL_REVIEW_STARTED', 'FINAL_REVIEW_COMPLETED',
-      'TASK_COMMIT_REQUESTED', 'TASK_COMMITTED',
+      'COMMIT_STARTED', 'COMMIT_COMPLETED',
       'PR_REQUESTED', 'PR_CREATED',
       'PLAN_REJECTED', 'GATE_REJECTED', 'FINAL_REJECTED', 'HALT', 'GATE_MODE_SET', 'SOURCE_CONTROL_INIT',
     ];
@@ -262,8 +262,8 @@ describe('EVENTS', () => {
     expect(EVENTS.PHASE_REVIEW_COMPLETED).toBe('phase_review_completed');
     expect(EVENTS.FINAL_REVIEW_STARTED).toBe('final_review_started');
     expect(EVENTS.FINAL_REVIEW_COMPLETED).toBe('final_review_completed');
-    expect(EVENTS.TASK_COMMIT_REQUESTED).toBe('task_commit_requested');
-    expect(EVENTS.TASK_COMMITTED).toBe('task_committed');
+    expect(EVENTS.COMMIT_STARTED).toBe('commit_started');
+    expect(EVENTS.COMMIT_COMPLETED).toBe('commit_completed');
     expect(EVENTS.PR_REQUESTED).toBe('pr_requested');
     expect(EVENTS.PR_CREATED).toBe('pr_created');
     expect(EVENTS.PLAN_REJECTED).toBe('plan_rejected');

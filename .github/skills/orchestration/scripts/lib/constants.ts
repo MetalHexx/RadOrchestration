@@ -115,8 +115,8 @@ export const EVENTS = Object.freeze({
   FINAL_REVIEW_COMPLETED: 'final_review_completed',
 
   // ── Source control events ─────────────────────────────────────────────
-  TASK_COMMIT_REQUESTED: 'task_commit_requested',
-  TASK_COMMITTED: 'task_committed',
+  COMMIT_STARTED: 'commit_started',
+  COMMIT_COMPLETED: 'commit_completed',
   PR_REQUESTED: 'pr_requested',
   PR_CREATED: 'pr_created',
 

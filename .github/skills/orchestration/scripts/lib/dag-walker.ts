@@ -510,6 +510,7 @@ function walkNodes(
               status: NODE_STATUSES.NOT_STARTED,
               nodes: iterationNodes,
               corrective_tasks: [],
+              commit_hash: null,
             });
           }
 
@@ -573,6 +574,7 @@ function walkNodes(
               status: NODE_STATUSES.NOT_STARTED,
               nodes: iterationNodes,
               corrective_tasks: [],
+              commit_hash: null,
             });
           }
 

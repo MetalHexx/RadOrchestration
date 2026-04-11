@@ -108,6 +108,21 @@ The agent constructs the commit message BEFORE invoking the script — the messa
 | `--worktree-path` | string | Yes | Absolute path to the git worktree |
 | `--message` | string | Yes | Full commit message (pre-constructed by agent) |
 
+### Upstream Branch Fallback
+
+If the initial `git push` fails with `fatal: The current branch <name> has no upstream branch`, the script automatically recovers:
+
+1. Reads the current branch name with `git rev-parse --abbrev-ref HEAD`
+2. Retries the push as `git push --set-upstream origin <branch>`
+
+The script emits this message to stderr when the fallback triggers:
+
+> ℹ No upstream branch configured. Setting upstream and retrying push automatically.
+
+If the retry succeeds, the operation completes as a full success (exit code 0, `pushed: true`). If the retry also fails, the result is a partial failure (exit code 1, `errorType: "push_failed"`).
+
+This fallback handles the common case where a branch was created in a local worktree without a configured upstream tracking branch — which occurs when running tasks directly without the parallel-execution harness.
+
 ---
 
 ## 4. Partial Failure Detection
@@ -136,6 +151,19 @@ The `git-commit.js` script returns one of three JSON result shapes on stdout. Th
   "committed": true,
   "pushed": true,
   "commitHash": "a1b2c3d",
+  "upstreamConfigured": false,
+  "error": null,
+  "errorType": null
+}
+```
+
+**Full Success — upstream auto-configured** (exit code 0, upstream fallback triggered):
+```json
+{
+  "committed": true,
+  "pushed": true,
+  "commitHash": "a1b2c3d",
+  "upstreamConfigured": true,
   "error": null,
   "errorType": null
 }
@@ -147,6 +175,7 @@ The `git-commit.js` script returns one of three JSON result shapes on stdout. Th
   "committed": true,
   "pushed": false,
   "commitHash": "a1b2c3d",
+  "upstreamConfigured": false,
   "error": "fatal: unable to access remote",
   "errorType": "push_failed"
 }
@@ -158,6 +187,7 @@ The `git-commit.js` script returns one of three JSON result shapes on stdout. Th
   "committed": false,
   "pushed": false,
   "commitHash": null,
+  "upstreamConfigured": false,
   "error": "nothing to commit, working tree clean",
   "errorType": "nothing_to_commit"
 }
@@ -170,6 +200,7 @@ The `git-commit.js` script returns one of three JSON result shapes on stdout. Th
 | `committed` | boolean | Whether `git commit` succeeded |
 | `pushed` | boolean | Whether `git push` succeeded |
 | `commitHash` | string \| null | Short commit hash if committed; null otherwise |
+| `upstreamConfigured` | boolean | `true` when the upstream fallback triggered and succeeded; `false` otherwise |
 | `error` | string \| null | Error message on any failure; null on full success |
 | `errorType` | `"commit_failed"` \| `"push_failed"` \| `"nothing_to_commit"` \| null | Typed failure category; null on full success |
 
@@ -188,7 +219,7 @@ The `log-error` skill is invoked when the JSON result contains a non-null `error
 - Invoke `log-error` on **full failure** (exit code 2, `errorType: "commit_failed"` or `"nothing_to_commit"`) — log the commit failure
 - **Never** invoke `log-error` on **full success** (exit code 0, `error: null`)
 
-**Completion rule:** After logging the error, **output your commit result block** — the Orchestrator reads it and signals `task_committed` with the extracted values.
+**Completion rule:** After logging the error, **output your commit result block** — the Orchestrator reads it and signals `commit_completed` with the extracted values.
 
 - On partial failure: log the error, then output the partial-failure result block (commit hash IS available)
 - On full failure: log the error, then output the full-failure result block
@@ -243,7 +274,7 @@ After parsing the JSON result from stdout, output one of these three patterns:
 
 ## 9. Commit Result Block
 
-After outputting the human-readable feedback above, **always append a `## Commit Result` block** as the final output. The Orchestrator scans for this block to extract the values it passes to `task_committed`.
+After outputting the human-readable feedback above, **always append a `## Commit Result` block** as the final output. The Orchestrator scans for this block to extract the values it passes to `commit_completed`.
 
 **Format** (required for every code path):
 
