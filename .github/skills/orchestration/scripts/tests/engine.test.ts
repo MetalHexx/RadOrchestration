@@ -911,4 +911,22 @@ describe('normalizeDocPath', () => {
   it('strips prefix when basePath has backslashes and docPath has mixed separators', () => {
     expect(normalizeDocPath('C:\\base\\proj/file.md', 'C:\\base', 'proj')).toBe('file.md');
   });
+
+  it('strips prefix when docPath has lowercase drive and basePath has uppercase drive', () => {
+    expect(
+      normalizeDocPath('c:/dev/orchestration-projects/MY-PROJECT/tasks/T01.md', 'C:/dev/orchestration-projects', 'MY-PROJECT'),
+    ).toBe('tasks/T01.md');
+  });
+
+  it('strips prefix when docPath has uppercase drive and basePath has lowercase drive', () => {
+    expect(
+      normalizeDocPath('C:/dev/orchestration-projects/MY-PROJECT/tasks/T01.md', 'c:/dev/orchestration-projects', 'MY-PROJECT'),
+    ).toBe('tasks/T01.md');
+  });
+
+  it('preserves original casing in the returned relative path', () => {
+    expect(
+      normalizeDocPath('c:/projects/FOO/MyDir/ReadMe.md', 'C:/projects', 'FOO'),
+    ).toBe('MyDir/ReadMe.md');
+  });
 });

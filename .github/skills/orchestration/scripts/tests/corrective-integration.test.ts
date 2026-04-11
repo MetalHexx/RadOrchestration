@@ -193,6 +193,12 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
     verdict: 'approved',
   }, io);
 
+  // If commit conditional fires, drive commit events at task scope
+  if (result.action === 'invoke_source_control_commit') {
+    processEvent('commit_started', PROJECT_DIR, ctx, io);
+    result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
+  }
+
   // If task gate fires, approve it to continue
   if (result.action === 'gate_task') {
     result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
@@ -266,6 +272,12 @@ function driveCorrectiveTask(
     verdict,
   }, io);
 
+  // If commit conditional fires, drive commit events at task scope
+  if (result.action === 'invoke_source_control_commit') {
+    processEvent('commit_started', PROJECT_DIR, ctx, io);
+    result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
+  }
+
   // If task gate fires (verdict='approve' path), approve it to continue
   if (result.action === 'gate_task') {
     result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
@@ -275,10 +287,10 @@ function driveCorrectiveTask(
 }
 
 /**
- * Drives post-task-loop phase steps: report, review, gate, commit conditional.
+ * Drives post-task-loop phase steps: report, review, gate.
  * Returns the result of the last event for the phase.
  */
-function drivePhasePostTasks(io: MockIO, phase: number, expectCommit: boolean): PipelineResult {
+function drivePhasePostTasks(io: MockIO, phase: number): PipelineResult {
   const ctx = { phase };
 
   processEvent('phase_report_started', PROJECT_DIR, ctx, io);
@@ -301,13 +313,7 @@ function drivePhasePostTasks(io: MockIO, phase: number, expectCommit: boolean): 
     reviewResult = processEvent('phase_gate_approved', PROJECT_DIR, ctx, io);
   }
 
-  if (!expectCommit) {
-    return reviewResult;
-  }
-
-  // commit conditional takes true branch
-  processEvent('task_commit_requested', PROJECT_DIR, ctx, io);
-  return processEvent('task_committed', PROJECT_DIR, ctx, io);
+  return reviewResult;
 }
 
 /**
@@ -579,8 +585,8 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
     driveTask(io, 1, 1);
     driveTask(io, 1, 2);
 
-    // ── Phase report, review (approve), gate, commit ─────────────────────
-    result = drivePhasePostTasks(io, 1, true);  // auto_commit=always: include commit
+    // ── Phase report, review (approve), gate ───────────────────────────
+    result = drivePhasePostTasks(io, 1);
 
     // Verify corrective entry completed and phase iteration completed
     {

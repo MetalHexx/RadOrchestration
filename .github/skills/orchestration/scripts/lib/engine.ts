@@ -76,7 +76,7 @@ export function normalizeDocPath(docPath: string, basePath: string, projectName:
   const normalized = docPath.replace(/\\/g, '/');
   const normalizedBase = basePath.replace(/\\/g, '/');
   const prefix = normalizedBase + '/' + projectName + '/';
-  if (normalized.startsWith(prefix)) return normalized.slice(prefix.length);
+  if (normalized.toLowerCase().startsWith(prefix.toLowerCase())) return normalized.slice(prefix.length);
   return normalized;
 }
 
