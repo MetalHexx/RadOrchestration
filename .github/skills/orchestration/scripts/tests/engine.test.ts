@@ -651,8 +651,6 @@ describe('engine – processEvent', () => {
             phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
-            phase_commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
-            phase_commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             task_loop: {
               kind: 'for_each_task',
               status: 'in_progress',
@@ -664,6 +662,7 @@ describe('engine – processEvent', () => {
                     task_handoff: { kind: 'step', status: 'completed', doc_path: '/tmp/handoff.md', retries: 0 },
                     task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
                     code_review: { kind: 'step', status: 'completed', doc_path: '/tmp/review.md', retries: 0 },
+                    commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
                     task_gate: { kind: 'gate', status: 'not_started', gate_active: false },
                   },
                   corrective_tasks: [],
@@ -692,8 +691,6 @@ describe('engine – processEvent', () => {
             phase_report: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-report.md', retries: 0 },
             phase_review: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-review.md', retries: 0 },
             phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
-            phase_commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
-            phase_commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             task_loop: {
               kind: 'for_each_task',
               status: 'completed',
@@ -705,6 +702,7 @@ describe('engine – processEvent', () => {
                     task_handoff: { kind: 'step', status: 'completed', doc_path: '/tmp/handoff.md', retries: 0 },
                     task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
                     code_review: { kind: 'step', status: 'completed', doc_path: '/tmp/review.md', retries: 0 },
+                    commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
                     task_gate: { kind: 'gate', status: 'completed', gate_active: true },
                   },
                   corrective_tasks: [],

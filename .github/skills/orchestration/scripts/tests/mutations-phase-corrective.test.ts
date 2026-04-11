@@ -59,8 +59,6 @@ function makeState(): PipelineState {
                 phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-                phase_commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
-                phase_commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 task_loop: {
                   kind: 'for_each_task',
                   status: 'not_started',
@@ -73,6 +71,7 @@ function makeState(): PipelineState {
                         task_handoff: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                         task_executor: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                         code_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+                        commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
                       },
                       corrective_tasks: [],
                       commit_hash: null,
