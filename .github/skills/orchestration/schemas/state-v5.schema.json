@@ -364,7 +364,7 @@
         },
         "commit_hash": {
           "title": "Commit Hash",
-          "description": "Per-task commit hash set by the TASK_COMMITTED mutation, or null if no commit has been made for this iteration.",
+          "description": "Per-task commit hash set by the COMMIT_COMPLETED mutation, or null if no commit has been made for this iteration.",
           "oneOf": [
             { "type": "string" },
             { "type": "null" }
@@ -407,7 +407,7 @@
         },
         "commit_hash": {
           "title": "Commit Hash",
-          "description": "Per-corrective-task commit hash set by the TASK_COMMITTED mutation, or null if no commit has been made for this corrective task.",
+          "description": "Per-corrective-task commit hash set by the COMMIT_COMPLETED mutation, or null if no commit has been made for this corrective task.",
           "oneOf": [
             { "type": "string" },
             { "type": "null" }

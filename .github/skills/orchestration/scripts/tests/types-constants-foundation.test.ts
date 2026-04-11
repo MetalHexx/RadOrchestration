@@ -148,12 +148,12 @@ describe('EVENTS — renamed v5 keys to v4 canonical names', () => {
     expect(EVENTS.FINAL_APPROVED).toBe('final_approved');
   });
 
-  it('TASK_COMMIT_REQUESTED is "task_commit_requested"', () => {
-    expect(EVENTS.TASK_COMMIT_REQUESTED).toBe('task_commit_requested');
+  it('COMMIT_STARTED is "commit_started"', () => {
+    expect(EVENTS.COMMIT_STARTED).toBe('commit_started');
   });
 
-  it('TASK_COMMITTED is "task_committed"', () => {
-    expect(EVENTS.TASK_COMMITTED).toBe('task_committed');
+  it('COMMIT_COMPLETED is "commit_completed"', () => {
+    expect(EVENTS.COMMIT_COMPLETED).toBe('commit_completed');
   });
 
   it('PR_REQUESTED is "pr_requested"', () => {

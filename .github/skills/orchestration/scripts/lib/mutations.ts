@@ -517,26 +517,28 @@ mutationRegistry.set(EVENTS.FINAL_REVIEW_COMPLETED, (state, context, _config, _t
   return { state: cloned, mutations_applied };
 });
 
-// ── Source control commit mutations (phase_commit as phase-scoped sibling) ────
+// ── Source control commit mutations ───────────────────────────────────────────
 
-mutationRegistry.set(EVENTS.TASK_COMMIT_REQUESTED, (state, context, _config, _template): MutationResult => {
+mutationRegistry.set(EVENTS.COMMIT_STARTED, (state, context, _config, _template): MutationResult => {
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
-  const node = resolveNodeState(cloned, 'phase_commit', 'phase', context.phase);
+  const scope = context.task ? 'task' : 'phase';
+  const node = resolveNodeState(cloned, 'commit', scope, context.phase, context.task);
   node.status = 'in_progress';
-  mutations_applied.push('set phase_commit.status = in_progress');
+  mutations_applied.push('set commit.status = in_progress');
 
   return { state: cloned, mutations_applied };
 });
 
-mutationRegistry.set(EVENTS.TASK_COMMITTED, (state, context, _config, _template): MutationResult => {
+mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _template): MutationResult => {
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
-  const node = resolveNodeState(cloned, 'phase_commit', 'phase', context.phase);
+  const scope = context.task ? 'task' : 'phase';
+  const node = resolveNodeState(cloned, 'commit', scope, context.phase, context.task);
   node.status = 'completed';
-  mutations_applied.push('set phase_commit.status = completed');
+  mutations_applied.push('set commit.status = completed');
 
   // Write commit_hash to per-task IterationEntry or active CorrectiveTaskEntry
   const taskIteration = resolveTaskIteration(cloned, context.phase ?? 1, context.task ?? 1);

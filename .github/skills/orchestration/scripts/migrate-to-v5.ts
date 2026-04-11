@@ -343,10 +343,20 @@ function buildTaskIteration(task: V4Task, index: number, projectName: string): I
     gate_active: false,
   };
 
+  // commit_gate: task complete → "completed", else "not_started"
+  const commitGateStatus: NodeStatus =
+    task.status === 'complete' ? 'completed' : 'not_started';
+  const commitGateNode: ConditionalNodeState = {
+    kind: 'conditional',
+    status: commitGateStatus,
+    branch_taken: null,
+  };
+
   const nodes: Record<string, NodeState> = {
     task_handoff: handoffNode,
     task_executor: executorNode,
     code_review: reviewNode,
+    commit_gate: commitGateNode,
     task_gate: gateNode,
   };
 
@@ -399,9 +409,7 @@ function buildPhaseIteration(phase: V4Phase, index: number, projectName: string)
       ? 'completed'
       : 'not_started';
 
-  // phase_commit_gate: phase complete → "completed"
-  const phaseCommitGateStatus: NodeStatus =
-    phase.status === 'complete' ? 'completed' : 'not_started';
+  // (commit_gate moved to task scope — no longer scaffolded at phase level)
 
   const phasePlanningNode: StepNodeState = {
     kind: 'step',
@@ -432,19 +440,12 @@ function buildPhaseIteration(phase: V4Phase, index: number, projectName: string)
     status: phaseGateStatus,
     gate_active: false,
   };
-  const phaseCommitGateNode: ConditionalNodeState = {
-    kind: 'conditional',
-    status: phaseCommitGateStatus,
-    branch_taken: null,
-  };
-
   const nodes: Record<string, NodeState> = {
     phase_planning: phasePlanningNode,
     task_loop: taskLoopNode,
     phase_report: phaseReportNode,
     phase_review: phaseReviewNode,
     phase_gate: phaseGateNode,
-    phase_commit_gate: phaseCommitGateNode,
   };
 
   return {

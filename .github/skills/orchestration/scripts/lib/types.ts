@@ -159,7 +159,7 @@ export interface CorrectiveTaskEntry {
   injected_after: string;     // node ID that triggered injection (e.g., "code_review")
   status: NodeStatus;
   nodes: Record<string, NodeState>;
-  commit_hash: string | null; // per-corrective-task commit hash, set by TASK_COMMITTED mutation
+  commit_hash: string | null; // per-corrective-task commit hash, set by COMMIT_COMPLETED mutation
 }
 
 export interface IterationEntry {
@@ -167,7 +167,7 @@ export interface IterationEntry {
   status: NodeStatus;
   nodes: Record<string, NodeState>;
   corrective_tasks: CorrectiveTaskEntry[];
-  commit_hash: string | null; // per-task commit hash, set by TASK_COMMITTED mutation
+  commit_hash: string | null; // per-task commit hash, set by COMMIT_COMPLETED mutation
 }
 
 export interface ForEachPhaseNodeState extends BaseNodeState {

@@ -110,6 +110,24 @@ nodes:
             doc_output_field: doc_path
             depends_on: [task_executor]
 
+          - id: commit_gate
+            kind: conditional
+            label: "Auto-Commit"
+            condition:
+              config_ref: source_control.auto_commit
+              operator: neq
+              value: never
+            branches:
+              true:
+                - id: commit
+                  kind: step
+                  label: "Source Control Commit"
+                  action: invoke_source_control_commit
+                  events: { started: commit_started, completed: commit_completed }
+                  depends_on: []
+              false: []
+            depends_on: [code_review]
+
           - id: task_gate
             kind: gate
             label: "Task Review Gate"
@@ -117,7 +135,7 @@ nodes:
             action_if_needed: gate_task
             approved_event: task_gate_approved
             auto_approve_modes: [phase]
-            depends_on: [code_review]
+            depends_on: [commit_gate]
 
       - id: phase_gate
         kind: gate
@@ -127,24 +145,6 @@ nodes:
         approved_event: phase_gate_approved
         auto_approve_modes: []
         depends_on: [task_loop]
-
-      - id: phase_commit_gate
-        kind: conditional
-        label: "Phase Auto-Commit"
-        condition:
-          config_ref: source_control.auto_commit
-          operator: neq
-          value: never
-        branches:
-          true:
-            - id: phase_commit
-              kind: step
-              label: "Source Control Commit"
-              action: invoke_source_control_commit
-              events: { started: task_commit_requested, completed: task_committed }
-              depends_on: []
-          false: []
-        depends_on: [phase_gate]
 
   # ── Final Review ──────────────────────────────────────────────────────────
 
