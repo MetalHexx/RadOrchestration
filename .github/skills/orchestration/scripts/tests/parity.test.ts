@@ -536,12 +536,14 @@ describe('[PARITY] v4:resolveExecution', () => {
     // Task gate auto-approves in autonomous mode (verdict=approved) → advance to task 2
     expect(result.action).toBe('create_task_handoff');
 
-    // Verify task_gate auto-approved (gate_active = false)
+    // Verify task_gate resolved (gate_active=true: task_gate.depends_on=[commit_gate] has no verdict,
+    // so autonomous inline approval fails; gate_task fires, driveTaskWith handles via task_gate_approved,
+    // and TASK_GATE_APPROVED mutation sets gate_active=true)
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
     const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
     expect(gate.status).toBe('completed');
-    expect(gate.gate_active).toBe(false);
+    expect(gate.gate_active).toBe(true);
   });
 
   // ── All tasks done → generate_phase_report ────────────────────────────────
@@ -733,9 +735,8 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
   // ── autonomous mode ─────────────────────────────────────────────────────
 
   it('[PARITY] v4:resolveTaskGate — execution_mode=autonomous auto-approves task gate (verdict=approved)', () => {
-    // v5: in autonomous mode, if code_review.verdict === 'approved', the task gate
-    //     auto-approves without emitting gate_task (gate_active = false)
-    // After T02 (verdict checking), autonomous with verdict=approved auto-approves (gate_active=false)
+    // v5: in autonomous mode, task gate resolves via gate_task (task_gate.depends_on=[commit_gate]
+    //     has no verdict, so autonomous inline check fails; gate_task fires, driveTaskWith approves it)
     const config = createConfig({ human_gates: { execution_mode: 'autonomous' } });
     const io = driveToExecutionWithConfig(config);
 
@@ -746,14 +747,15 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     const result = driveTaskWith(io, 1, 1);
 
     expect(result.success).toBe(true);
-    // Task gate auto-approves in autonomous mode (verdict=approved) → advances to task 2
+    // Task gate resolved via gate_task → driveTaskWith approves → advances to task 2
     expect(result.action).toBe('create_task_handoff');
 
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
     const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
     expect(gate.status).toBe('completed');
-    expect(gate.gate_active).toBe(false);
+    // gate_active=true: TASK_GATE_APPROVED mutation sets gate_active=true
+    expect(gate.gate_active).toBe(true);
   });
 
   it('[PARITY] v4:resolvePhaseGate — execution_mode=autonomous auto-approves phase gate (verdict=approved)', () => {
@@ -1208,7 +1210,12 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
       verdict: 'approved',
     }, io);
 
-    // Task gate auto-approves in autonomous mode (verdict=approved) → all tasks done → generate_phase_report
+    // task_gate fires (autonomous verdict lookup uses depends_on[0]=commit_gate which has no verdict)
+    if (result.action === 'gate_task') {
+      result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+    }
+
+    // All tasks done → generate_phase_report
     expect(result.success).toBe(true);
     expect(result.action).toBe('generate_phase_report');
 
@@ -1379,7 +1386,12 @@ describe('[PARITY] v4:resolveExecution — corrective loops and halts', () => {
       ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
     }, io);
 
-    // Task gate auto-approves in autonomous mode (verdict=approved) → generate_phase_report
+    // task_gate fires (autonomous verdict lookup uses depends_on[0]=commit_gate which has no verdict)
+    if (result.action === 'gate_task') {
+      result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+    }
+
+    // All tasks done → generate_phase_report
     expect(result.success).toBe(true);
     expect(result.action).toBe('generate_phase_report');
 

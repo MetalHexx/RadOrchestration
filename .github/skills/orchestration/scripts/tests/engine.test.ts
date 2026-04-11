@@ -1039,3 +1039,185 @@ describe('wrappedReadDocument – relative path resolution', () => {
     expect(readDocSpy).not.toHaveBeenCalledWith('tasks/PHASE-PLAN.md');
   });
 });
+
+// ── Auto-resolution in mutation handler loops ─────────────────────────────────
+
+describe('auto-resolution in mutation handler loops', () => {
+  /** Build a state with phase_loop in_progress and one iteration at the given status */
+  function makeStateWithPhaseIteration(iterationStatus: 'not_started' | 'in_progress'): PipelineState {
+    const state = makeScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.status = 'in_progress';
+    phaseLoop.iterations = [
+      {
+        index: 0,
+        status: iterationStatus,
+        nodes: {
+          phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+          task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
+          phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+          phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+          phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+        },
+        corrective_tasks: [],
+        commit_hash: null,
+      },
+    ];
+    return state;
+  }
+
+  /** Build a state with one active phase iteration and one active task iteration */
+  function makeStateWithTaskIteration(): PipelineState {
+    const state = makeScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.status = 'in_progress';
+    phaseLoop.iterations = [
+      {
+        index: 0,
+        status: 'in_progress',
+        nodes: {
+          phase_planning: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-plan.md', retries: 0 },
+          task_loop: {
+            kind: 'for_each_task',
+            status: 'in_progress',
+            iterations: [
+              {
+                index: 0,
+                status: 'in_progress',
+                nodes: {
+                  task_handoff: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+                  task_executor: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+                  code_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+                  commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
+                  task_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+                },
+                corrective_tasks: [],
+                commit_hash: null,
+              },
+            ],
+          },
+          phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+          phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+          phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+        },
+        corrective_tasks: [],
+        commit_hash: null,
+      },
+    ];
+    return state;
+  }
+
+  describe('phase auto-resolution success', () => {
+    for (const [eventName, nodeId] of [
+      ['phase_planning_started', 'phase_planning'],
+      ['phase_report_started', 'phase_report'],
+      ['phase_review_started', 'phase_review'],
+    ] as const) {
+      it(`${eventName} succeeds without context.phase when one in_progress phase iteration exists`, () => {
+        const state = makeStateWithPhaseIteration('in_progress');
+        const io = createMockIO(state);
+        // No context.phase supplied
+        const result = processEvent(eventName, PROJECT_DIR, {}, io);
+        expect(result.success).toBe(true);
+        const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+        const targetNode = phaseLoop.iterations[0].nodes[nodeId] as StepNodeState;
+        expect(targetNode.status).toBe('in_progress');
+      });
+    }
+  });
+
+  describe('task auto-resolution success', () => {
+    for (const [eventName, nodeId] of [
+      ['task_handoff_started', 'task_handoff'],
+      ['execution_started', 'task_executor'],
+      ['code_review_started', 'code_review'],
+    ] as const) {
+      it(`${eventName} succeeds without context.phase or context.task when one active phase and task exist`, () => {
+        const state = makeStateWithTaskIteration();
+        const io = createMockIO(state);
+        // No context.phase or context.task supplied
+        const result = processEvent(eventName, PROJECT_DIR, {}, io);
+        expect(result.success).toBe(true);
+        const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+        const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+        const targetNode = taskLoop.iterations[0].nodes[nodeId] as StepNodeState;
+        expect(targetNode.status).toBe('in_progress');
+      });
+    }
+  });
+
+  describe('DX-1 error — phase scope, no iterations', () => {
+    it('phase_planning_started fails with DX-1 error when phase_loop.iterations is empty', () => {
+      const state = makeScaffoldedState();
+      const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+      phaseLoop.status = 'in_progress';
+      phaseLoop.iterations = [];
+      const io = createMockIO(state);
+      const result = processEvent('phase_planning_started', PROJECT_DIR, {}, io);
+      expect(result.success).toBe(false);
+      const errorMsg = String(result.context.error);
+      expect(errorMsg).toContain('Cannot apply mutation for');
+      expect(errorMsg).toContain('no active phase');
+      expect(errorMsg).toContain('--phase <N>');
+    });
+  });
+
+  describe('DX-1 error — task scope, no task iterations', () => {
+    it('task_handoff_started fails with DX-1 error when task_loop.iterations is empty but context.phase is provided', () => {
+      const state = makeStateWithPhaseIteration('in_progress');
+      // Provide context.phase so the phase branch is skipped; task_loop has no iterations
+      const io = createMockIO(state);
+      const result = processEvent('task_handoff_started', PROJECT_DIR, { phase: 1 }, io);
+      expect(result.success).toBe(false);
+      const errorMsg = String(result.context.error);
+      expect(errorMsg).toContain('no active task');
+      expect(errorMsg).toContain('--task <N>');
+    });
+  });
+
+  describe('explicit context.phase takes precedence', () => {
+    it('phase_planning_started targets the explicitly provided phase, not the auto-resolved one', () => {
+      const state = makeScaffoldedState();
+      const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+      phaseLoop.status = 'in_progress';
+      // Two iterations: index 0 is in_progress (auto-resolve would pick 1), index 1 is not_started
+      phaseLoop.iterations = [
+        {
+          index: 0,
+          status: 'in_progress',
+          nodes: {
+            phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
+            phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+          },
+          corrective_tasks: [],
+          commit_hash: null,
+        },
+        {
+          index: 1,
+          status: 'not_started',
+          nodes: {
+            phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
+            phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+          },
+          corrective_tasks: [],
+          commit_hash: null,
+        },
+      ];
+      const io = createMockIO(state);
+      // Explicitly target phase 2 (index 1)
+      const result = processEvent('phase_planning_started', PROJECT_DIR, { phase: 2 }, io);
+      expect(result.success).toBe(true);
+      const updatedPhaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+      // Phase 2 (index 1) should be in_progress
+      expect((updatedPhaseLoop.iterations[1].nodes['phase_planning'] as StepNodeState).status).toBe('in_progress');
+      // Phase 1 (index 0) should remain not_started
+      expect((updatedPhaseLoop.iterations[0].nodes['phase_planning'] as StepNodeState).status).toBe('not_started');
+    });
+  });
+});

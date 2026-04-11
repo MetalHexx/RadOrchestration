@@ -14,6 +14,7 @@ import type {
 } from './types.js';
 import { EVENTS, VALID_VERDICTS, REVIEW_VERDICTS } from './constants.js';
 import { scaffoldNodeState } from './scaffold.js';
+import { resolveActivePhaseIndex, resolveActiveTaskIndex } from './context-enrichment.js';
 
 // ── Resolution scope ──────────────────────────────────────────────────────────
 
@@ -192,9 +193,18 @@ for (const [eventName, nodeId] of phaseExecStartedSteps) {
     const cloned = structuredClone(state);
     const mutations_applied: string[] = [];
 
-    const node = resolveNodeState(cloned, nodeId, 'phase', context.phase);
-    node.status = 'in_progress';
-    mutations_applied.push(`set ${nodeId}.status = in_progress`);
+    const phase = context.phase ?? resolveActivePhaseIndex(cloned);
+    try {
+      const node = resolveNodeState(cloned, nodeId, 'phase', phase);
+      node.status = 'in_progress';
+      mutations_applied.push(`set ${nodeId}.status = in_progress`);
+    } catch (err) {
+      throw new Error(
+        `Cannot apply mutation for "${eventName}": no active phase could be resolved from state.\n` +
+        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
+        `Pass --phase <N> to specify the phase explicitly.`
+      );
+    }
 
     return { state: cloned, mutations_applied };
   });
@@ -320,9 +330,26 @@ for (const [eventName, nodeId] of taskStartedSteps) {
     const cloned = structuredClone(state);
     const mutations_applied: string[] = [];
 
-    const node = resolveNodeState(cloned, nodeId, 'task', context.phase, context.task);
-    node.status = 'in_progress';
-    mutations_applied.push(`set ${nodeId}.status = in_progress`);
+    const phase = context.phase ?? resolveActivePhaseIndex(cloned);
+    const task = context.task ?? resolveActiveTaskIndex(cloned, phase);
+    try {
+      const node = resolveNodeState(cloned, nodeId, 'task', phase, task);
+      node.status = 'in_progress';
+      mutations_applied.push(`set ${nodeId}.status = in_progress`);
+    } catch (err) {
+      if (context.phase === undefined) {
+        throw new Error(
+          `Cannot apply mutation for "${eventName}": no active phase could be resolved from state.\n` +
+          `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
+          `Pass --phase <N> to specify the phase explicitly.`
+        );
+      }
+      throw new Error(
+        `Cannot apply mutation for "${eventName}": no active task could be resolved from state for phase ${phase}.\n` +
+        `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+        `Pass --task <N> to specify the task explicitly.`
+      );
+    }
 
     return { state: cloned, mutations_applied };
   });
