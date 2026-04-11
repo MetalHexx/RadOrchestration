@@ -181,6 +181,9 @@ export function processEvent(
         };
       } else {
         const walkerResult = walkDAG(state, template, config, wrappedReadDocument);
+
+        io.writeState(projectDir, state);
+
         const enrichedContext = walkerResult
           ? enrichActionContext({
               action: walkerResult.action,

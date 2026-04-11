@@ -247,7 +247,7 @@ describe('engine – processEvent', () => {
   });
 
   describe('start event – cold-start / resume (state exists)', () => {
-    it('returns success: true and the current pending action without writing state', () => {
+    it('returns success: true and the current pending action, persisting walker state', () => {
       const state = makeScaffoldedState();
       // research is not_started → walkDAG should find spawn_research as first action
       const io = createMockIO(state);
@@ -256,7 +256,8 @@ describe('engine – processEvent', () => {
       expect(result.success).toBe(true);
       expect(result.action).toBe('spawn_research');
       expect(result.mutations_applied).toEqual([]);
-      expect(io.writeCalls.length).toBe(0);
+      expect(io.writeCalls.length).toBe(1);
+      expect(io.writeCalls[0].projectDir).toBe(PROJECT_DIR);
     });
 
     it('returns the current pending action when research is in_progress', () => {
@@ -269,7 +270,40 @@ describe('engine – processEvent', () => {
       // walkDAG returns null for in_progress nodes (no new action to dispatch)
       expect(result.success).toBe(true);
       expect(result.mutations_applied).toEqual([]);
-      expect(io.writeCalls.length).toBe(0);
+      expect(io.writeCalls.length).toBe(1);
+    });
+
+    it('persists walker side-effects: iteration status transitions are written to disk', () => {
+      // Build a state where phase_loop is in_progress with one not_started iteration.
+      // The walker transitions iteration.status → in_progress; that mutation must be persisted.
+      const baseState = makeScaffoldedState();
+      const nodes = baseState.graph.nodes;
+
+      // Satisfy all phase_loop dependencies
+      for (const id of ['research', 'prd', 'design', 'architecture', 'master_plan']) {
+        (nodes[id] as StepNodeState).status = 'completed';
+      }
+      const planGate = nodes['plan_approval_gate'] as GateNodeState;
+      planGate.status = 'completed';
+      planGate.gate_active = false;
+
+      // Set phase_loop in_progress with one not_started iteration
+      const phaseLoop = nodes['phase_loop'] as ForEachPhaseNodeState;
+      phaseLoop.status = 'in_progress';
+      phaseLoop.iterations = [
+        { index: 0, status: 'not_started', nodes: {}, corrective_tasks: [], commit_hash: null },
+      ];
+
+      const io = createMockIO(baseState);
+      processEvent('start', PROJECT_DIR, {}, io);
+
+      // writeState must have been called (the fix this task adds)
+      expect(io.writeCalls.length).toBe(1);
+      expect(io.writeCalls[0].projectDir).toBe(PROJECT_DIR);
+
+      // The walker side-effect (iteration promoted to in_progress) must appear in the written state
+      const writtenPhaseLoop = io.writeCalls[0].state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+      expect(writtenPhaseLoop.iterations[0].status).toBe('in_progress');
     });
   });
 

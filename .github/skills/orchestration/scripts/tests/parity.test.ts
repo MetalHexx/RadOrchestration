@@ -983,10 +983,10 @@ describe('[PARITY] v4:resolveExecution — source control conditionals', () => {
     }
   });
 
-  it('[PARITY] v4:resolveTaskGate — auto_commit=always + autonomous emits invoke_source_control_commit after phase gate', () => {
+  it('[PARITY] v4:resolveTaskGate — auto_commit=always + autonomous — commit per-task, verified at task scope', () => {
     // v4: resolveTaskGate() — auto_commit === 'always' → invoke_source_control_commit after task
-    // v5: commit is at phase level via phase_commit_gate conditional, not per-task.
-    // auto_commit='always' neq 'never' → true branch → invoke_source_control_commit
+    // v5: commit_gate is now at task scope (matching v4). driveTaskWith handles commit per-task.
+    // auto_commit='always' neq 'never' → true branch → invoke_source_control_commit per task
     const config = createConfig({
       human_gates: { execution_mode: 'autonomous' },
       source_control: { auto_commit: 'always' },
@@ -1003,18 +1003,19 @@ describe('[PARITY] v4:resolveExecution — source control conditionals', () => {
     const result = drivePhaseReviewApproval(io, 1);
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('invoke_source_control_commit');
+    // commit happens per-task inside driveTaskWith → no commit at phase scope → spawn_final_reviewer
+    expect(result.action).toBe('spawn_final_reviewer');
 
-    // Verify branch_taken on commit conditional
+    // Verify branch_taken on commit_gate at task scope
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-    const commitGate = phaseLoop.iterations[0].nodes['phase_commit_gate'] as ConditionalNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const commitGate = taskLoop.iterations[0].nodes['commit_gate'] as ConditionalNodeState;
     expect(commitGate.branch_taken).toBe('true');
   });
 
-  it('[PARITY] v4:resolveTaskGate — auto_commit=always + task mode — commit at phase level not per-task', () => {
+  it('[PARITY] v4:resolveTaskGate — auto_commit=always + task mode — commit per-task matching v4', () => {
     // v4: resolveTaskGate() — mode === 'task' + auto_commit === 'always' → invoke_source_control_commit per task
-    // v5 DIVERGENCE: v5 commit is always at phase level (phase_commit_gate), never per-task.
-    // Additionally, driveTaskWith approves the task_gate in v5, so pointer advances to next task.
+    // v5: commit_gate is now at task scope (matching v4). driveTaskWith handles commit per-task.
     const config = createConfig({
       human_gates: { execution_mode: 'task' },
       source_control: { auto_commit: 'always' },
@@ -1025,23 +1026,23 @@ describe('[PARITY] v4:resolveExecution — source control conditionals', () => {
     seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
 
-    // Task 1 completes — no per-task commit in v5
+    // Task 1 completes — commit handled per-task inside driveTaskWith
     const t1Result = driveTaskWith(io, 1, 1);
     expect(t1Result.success).toBe(true);
-    // v5: task gate fires → driveTaskWith approves → advances to task 2 (not invoke_source_control_commit)
+    // commit fires → driveTaskWith handles it → task gate fires → driveTaskWith approves → advances to task 2
     expect(t1Result.action).toBe('create_task_handoff');
 
     driveTaskWith(io, 1, 2);
 
-    // After all tasks + phase review, commit happens at phase level
+    // After all tasks + phase review → no commit at phase scope (commit was per-task) → spawn_final_reviewer
     const result = drivePhaseReviewApproval(io, 1);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('invoke_source_control_commit');
+    expect(result.action).toBe('spawn_final_reviewer');
   });
 
-  it('[PARITY] v4:resolveExecution — auto_commit=never skips phase commit conditional (branch_taken: false)', () => {
+  it('[PARITY] v4:resolveExecution — auto_commit=never skips commit_gate at task scope (branch_taken: false)', () => {
     // v4: auto_commit='never' → no commit step anywhere
-    // v5: phase_commit_gate condition auto_commit neq 'never' → false → false branch (empty) → skipped
+    // v5: commit_gate condition at task scope: auto_commit neq 'never' → false → false branch (empty) → skipped
     const config = createConfig({
       human_gates: { execution_mode: 'autonomous' },
       source_control: { auto_commit: 'never' },
@@ -1062,14 +1063,15 @@ describe('[PARITY] v4:resolveExecution — source control conditionals', () => {
     expect(result.action).toBe('spawn_final_reviewer');
 
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-    const commitGate = phaseLoop.iterations[0].nodes['phase_commit_gate'] as ConditionalNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const commitGate = taskLoop.iterations[0].nodes['commit_gate'] as ConditionalNodeState;
     expect(commitGate.branch_taken).toBe('false');
     expect(commitGate.status).toBe('completed');
   });
 
-  it('[PARITY] v4:resolveExecution — auto_commit=ask takes true branch (neq never) and emits invoke_source_control_commit', () => {
+  it('[PARITY] v4:resolveExecution — auto_commit=ask takes true branch at task scope (neq never)', () => {
     // v4: auto_commit='ask' → invoke source control commit (with prompt)
-    // v5: phase_commit_gate condition auto_commit neq 'never' → true ('ask' != 'never') → commit
+    // v5: commit_gate condition at task scope: auto_commit neq 'never' → true ('ask' != 'never') → commit per-task
     const config = createConfig({
       human_gates: { execution_mode: 'autonomous' },
       source_control: { auto_commit: 'ask' },
@@ -1086,10 +1088,12 @@ describe('[PARITY] v4:resolveExecution — source control conditionals', () => {
     const result = drivePhaseReviewApproval(io, 1);
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('invoke_source_control_commit');
+    // commit happens per-task inside driveTaskWith → no commit at phase scope → spawn_final_reviewer
+    expect(result.action).toBe('spawn_final_reviewer');
 
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-    const commitGate = phaseLoop.iterations[0].nodes['phase_commit_gate'] as ConditionalNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const commitGate = taskLoop.iterations[0].nodes['commit_gate'] as ConditionalNodeState;
     expect(commitGate.branch_taken).toBe('true');
   });
 });
