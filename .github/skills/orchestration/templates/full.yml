@@ -163,7 +163,7 @@ nodes:
             mode_ref: human_gates.execution_mode
             action_if_needed: gate_task
             approved_event: task_gate_approved
-            auto_approve_modes: [phase]
+            auto_approve_modes: [phase, autonomous]
             depends_on: [commit_gate]
 
       - id: phase_report

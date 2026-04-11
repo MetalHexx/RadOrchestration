@@ -540,14 +540,12 @@ describe('[PARITY] v4:resolveExecution', () => {
     // Task gate auto-approves in autonomous mode (verdict=approved) → advance to task 2
     expect(result.action).toBe('create_task_handoff');
 
-    // Verify task_gate resolved (gate_active=true: task_gate.depends_on=[commit_gate] has no verdict,
-    // so autonomous inline approval fails; gate_task fires, driveTaskWith handles via task_gate_approved,
-    // and TASK_GATE_APPROVED mutation sets gate_active=true)
+    // Verify task_gate resolved via auto_approve_modes: [phase, autonomous] → gate_active=false
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
     const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
     expect(gate.status).toBe('completed');
-    expect(gate.gate_active).toBe(true);
+    expect(gate.gate_active).toBe(false);
   });
 
   // ── All tasks done → generate_phase_report ────────────────────────────────
@@ -739,8 +737,8 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
   // ── autonomous mode ─────────────────────────────────────────────────────
 
   it('[PARITY] v4:resolveTaskGate — execution_mode=autonomous auto-approves task gate (verdict=approved)', () => {
-    // v5: in autonomous mode, task gate resolves via gate_task (task_gate.depends_on=[commit_gate]
-    //     has no verdict, so autonomous inline check fails; gate_task fires, driveTaskWith approves it)
+    // v5: in autonomous mode, task gate auto-approves via auto_approve_modes: [phase, autonomous]
+    //     (gate_active=false, no gate_task action fired)
     const config = createConfig({ human_gates: { execution_mode: 'autonomous' } });
     const io = driveToExecutionWithConfig(config);
 
@@ -751,15 +749,15 @@ describe('[PARITY] v4:resolveExecution — gate modes', () => {
     const result = driveTaskWith(io, 1, 1);
 
     expect(result.success).toBe(true);
-    // Task gate resolved via gate_task → driveTaskWith approves → advances to task 2
+    // Task gate auto-approves → advances to task 2
     expect(result.action).toBe('create_task_handoff');
 
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
     const gate = taskLoop.iterations[0].nodes['task_gate'] as GateNodeState;
     expect(gate.status).toBe('completed');
-    // gate_active=true: TASK_GATE_APPROVED mutation sets gate_active=true
-    expect(gate.gate_active).toBe(true);
+    // gate_active=false: auto_approve_modes path sets gate_active=false
+    expect(gate.gate_active).toBe(false);
   });
 
   it('[PARITY] v4:resolvePhaseGate — execution_mode=autonomous auto-approves phase gate (verdict=approved)', () => {
