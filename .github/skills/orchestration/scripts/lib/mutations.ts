@@ -550,10 +550,26 @@ mutationRegistry.set(EVENTS.COMMIT_STARTED, (state, context, _config, _template)
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
-  const scope = context.task ? 'task' : 'phase';
-  const node = resolveNodeState(cloned, 'commit', scope, context.phase, context.task);
-  node.status = 'in_progress';
-  mutations_applied.push('set commit.status = in_progress');
+  const phase = context.phase ?? resolveActivePhaseIndex(cloned);
+  const task = context.task ?? resolveActiveTaskIndex(cloned, phase);
+  try {
+    const node = resolveNodeState(cloned, 'commit', 'task', phase, task);
+    node.status = 'in_progress';
+    mutations_applied.push('set commit.status = in_progress');
+  } catch (err) {
+    if (context.phase === undefined) {
+      throw new Error(
+        `Cannot apply mutation for "commit_started": no active phase could be resolved from state.\n` +
+        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
+        `Pass --phase <N> to specify the phase explicitly.`
+      );
+    }
+    throw new Error(
+      `Cannot apply mutation for "commit_started": no active task could be resolved from state for phase ${phase}.\n` +
+      `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+      `Pass --task <N> to specify the task explicitly.`
+    );
+  }
 
   return { state: cloned, mutations_applied };
 });
@@ -562,13 +578,14 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
-  const scope = context.task ? 'task' : 'phase';
-  const node = resolveNodeState(cloned, 'commit', scope, context.phase, context.task);
+  const phase = context.phase ?? resolveActivePhaseIndex(cloned);
+  const task = context.task ?? resolveActiveTaskIndex(cloned, phase);
+  const node = resolveNodeState(cloned, 'commit', 'task', phase, task);
   node.status = 'completed';
   mutations_applied.push('set commit.status = completed');
 
   // Write commit_hash to per-task IterationEntry or active CorrectiveTaskEntry
-  const taskIteration = resolveTaskIteration(cloned, context.phase ?? 1, context.task ?? 1);
+  const taskIteration = resolveTaskIteration(cloned, phase, task);
   const activeCorrective = taskIteration.corrective_tasks.slice().reverse().find(
     (ct: CorrectiveTaskEntry) => ct.status === 'in_progress' || ct.status === 'not_started'
   );

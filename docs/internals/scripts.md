@@ -52,7 +52,7 @@ node .github/skills/orchestration/scripts/pipeline.js \
 | `--gate-type <type>` | `gate_type` | `gate_approved`, `gate_rejected` |
 | `--reason <text>` | `reason` | `gate_rejected` |
 | `--gate-mode <mode>` | `gate_mode` | `gate_mode_set` |
-| `--commit-hash <hash>` | `commitHash` | `commit_completed` |
+| `--commit-hash <hash>` | `commit_hash` | `commit_completed` |
 | `--pushed <true|false>` | `pushed` | `commit_completed` |
 
 ### migrate-to-v4.js

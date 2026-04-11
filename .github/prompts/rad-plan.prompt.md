@@ -19,23 +19,23 @@ I have project goals I'd like to develop into a full scale plan.
   - If it doesn't, respond with an error message indicating the template was not found.
 - If no template is specified, use the askQuestions tool to ask the user to choose between "full", "quick" and list any available custom templates.
 
-## Step 3: Starting Message
+## Step 2: Starting Message
 - Produce a nicely formatted and mildly enthusiastic message confirming the project name and template choice.
 - Indicate the planning process steps we'll run through. (Including the audit) 
 
-## Step 4: Read Project Template
+## Step 3: Read Project Template
 - Start the planning pipeline and call needed CLI parameters to start the planning process, passing the chosen template as an argument (e.g., `--template full`).
 
-## Step 5: Audit the plan
+## Step 4: Audit the plan
 - Use the `rad-plan-audit` tool to audit the generated plan for completeness, correctness, and alignment with the project goals.  
 - Run the audit 3 times in a loop using a fresh subagent to ensure unbiased feedback.
-  - If you still spot problems after 3 iterations, halt, go to Step 6.
+  - If you still spot problems after 3 iterations, halt, go to Step 5.
 - When prompting the subagent, 
   - Tell them the name of all the planning docs to check based on the template used.
   - Ask them to use the `rad-plan-audit` tool for auditing instructions.
 - Show the user the concise results of each audit iteration, and any changes you make to the plan based on the feedback.
 
-##  Step 6: Finalize the plan
+## Step 5: Finalize the plan
 - Produce an audit summary that includes the results of the audit iterations.
 - Use the `askQuestions` tool to:
   - If the plan is ready and passed the audit cleanup, give the user the option to execute the plan.

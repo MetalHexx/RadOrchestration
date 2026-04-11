@@ -108,6 +108,7 @@ if (require.main === module) {
       committed: false,
       pushed: false,
       commitHash: null,
+      upstreamConfigured: false,
       error: 'Missing required argument: --worktree-path and --message are both required',
       errorType: 'commit_failed'
     };
