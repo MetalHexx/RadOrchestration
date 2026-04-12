@@ -1,5 +1,5 @@
 import { PLANNING_STEP_ORDER } from '@/types/state';
-import type { PlanningStepName, ProjectState } from '@/types/state';
+import type { PlanningStepName, ProjectState, ProjectStateV5 } from '@/types/state';
 import type { OrderedDoc } from '@/types/components';
 
 const STEP_TITLES: Record<PlanningStepName, string> = {
@@ -117,4 +117,121 @@ export function getAdjacentDocs(
   const next = currentIndex < docs.length - 1 ? docs[currentIndex + 1] : null;
 
   return { prev, next, currentIndex, total: docs.length };
+}
+
+// ─── v5 helpers ──────────────────────────────────────────────────────────────
+
+const STEP_TITLES_V5: Record<string, string> = {
+  research: 'Research Findings',
+  prd: 'PRD',
+  design: 'Design',
+  architecture: 'Architecture',
+  master_plan: 'Master Plan',
+};
+
+const PLANNING_STEPS_V5 = new Set(['research', 'prd', 'design', 'architecture', 'master_plan']);
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
+}
+
+function titleForPhaseChild(childId: string, phaseNum: number): string {
+  if (childId === 'phase_planning' || childId === 'phase_plan') return `Phase ${phaseNum} Plan`;
+  if (childId === 'phase_report') return `Phase ${phaseNum} Report`;
+  if (childId === 'phase_review') return `Phase ${phaseNum} Review`;
+  return capitalize(childId);
+}
+
+function titleForTaskChild(taskNodeId: string, phaseNum: number, taskNum: number): string {
+  if (taskNodeId === 'task_handoff') return `P${phaseNum}-T${taskNum} Handoff`;
+  if (taskNodeId === 'code_review') return `P${phaseNum}-T${taskNum} Review`;
+  return `P${phaseNum}-T${taskNum} ${capitalize(taskNodeId)}`;
+}
+
+/**
+ * Derive the canonical document navigation order from a v5 project state.
+ * Recursively walks graph.nodes, iteration entries, and corrective task entries
+ * to collect doc_path values from step nodes.
+ *
+ * Order: root step nodes → per-phase-iteration (phase step nodes → per-task-iteration
+ *        (task step nodes → corrective task step nodes)) → final_review step → error log → other docs.
+ */
+export function getOrderedDocsV5(
+  state: ProjectStateV5,
+  projectName: string,
+  allFiles?: string[],
+): OrderedDoc[] {
+  const result: OrderedDoc[] = [];
+  const seenPaths = new Set<string>();
+  const seenBasenames = new Set<string>();
+  const basename = (p: string) => p.split(/[\/\\]/).pop() ?? p;
+
+  const push = (path: string, title: string, category: OrderedDoc['category']) => {
+    result.push({ path, title, category });
+    seenPaths.add(path);
+    seenBasenames.add(basename(path));
+  };
+
+  for (const [nodeId, node] of Object.entries(state.graph.nodes)) {
+    if (node.kind === 'step' && node.doc_path != null) {
+      if (PLANNING_STEPS_V5.has(nodeId)) {
+        push(node.doc_path, STEP_TITLES_V5[nodeId], 'planning');
+      } else if (nodeId === 'final_review') {
+        push(node.doc_path, 'Final Review', 'review');
+      }
+      // else: skip other step nodes (task_executor, commit, etc.)
+    } else if (node.kind === 'for_each_phase') {
+      const sortedIterations = [...node.iterations].sort((a, b) => a.index - b.index);
+      for (const iteration of sortedIterations) {
+        const phaseNum = iteration.index + 1;
+        for (const [childId, child] of Object.entries(iteration.nodes)) {
+          if (child.kind === 'step' && child.doc_path != null) {
+            const category: OrderedDoc['category'] = childId.includes('review') ? 'review' : 'phase';
+            push(child.doc_path, titleForPhaseChild(childId, phaseNum), category);
+          } else if (child.kind === 'for_each_task') {
+            const sortedTaskIters = [...child.iterations].sort((a, b) => a.index - b.index);
+            for (const taskIter of sortedTaskIters) {
+              const taskNum = taskIter.index + 1;
+              for (const [taskNodeId, taskNode] of Object.entries(taskIter.nodes)) {
+                if (taskNode.kind === 'step' && taskNode.doc_path != null) {
+                  const category: OrderedDoc['category'] = taskNodeId.includes('review') ? 'review' : 'task';
+                  push(taskNode.doc_path, titleForTaskChild(taskNodeId, phaseNum, taskNum), category);
+                }
+              }
+              const sortedCTs = [...taskIter.corrective_tasks].sort((a, b) => a.index - b.index);
+              for (const ct of sortedCTs) {
+                for (const [ctNodeId, ctNode] of Object.entries(ct.nodes)) {
+                  if (ctNode.kind === 'step' && ctNode.doc_path != null) {
+                    const title = titleForTaskChild(ctNodeId, phaseNum, taskNum) + ' (CT' + ct.index + ')';
+                    push(ctNode.doc_path, title, 'task');
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    // gate, conditional, parallel: skip
+  }
+
+  if (allFiles) {
+    const errorLogPattern = `${projectName}-ERROR-LOG.md`;
+    const errorLogFile = allFiles.find((f) => f.endsWith(errorLogPattern));
+    if (errorLogFile && !seenPaths.has(errorLogFile)) {
+      push(errorLogFile, 'Error Log', 'error-log');
+    }
+
+    const otherDocs = allFiles
+      .filter((f) => f.endsWith('.md') && !seenBasenames.has(basename(f)))
+      .sort();
+
+    for (const filePath of otherDocs) {
+      const filename = filePath.split('/').pop() ?? filePath;
+      const title = filename.replace(/\.md$/, '');
+      push(filePath, title, 'other');
+    }
+  }
+
+  return result;
 }
