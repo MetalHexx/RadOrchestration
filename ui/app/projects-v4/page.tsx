@@ -11,6 +11,8 @@ import { MainDashboard } from "@/components/layout";
 import { DocumentDrawer } from "@/components/documents";
 import { ConfigEditorPanel } from "@/components/config";
 import { getOrderedDocs } from "@/lib/document-ordering";
+import { isV5State } from "@/types/state";
+import type { ProjectState } from "@/types/state";
 import type { ProjectSummary } from "@/types/components";
 import type { ConfigGetResponse } from "@/types/config";
 
@@ -35,6 +37,8 @@ export default function ProjectsV4Page() {
     navigateTo,
     scrollAreaRef,
   } = useDocumentDrawer({ projectName: selectedProject });
+
+  const v4State: ProjectState | null = projectState && !isV5State(projectState) ? projectState : null;
 
   const configEditor = useConfigEditor();
 
@@ -63,13 +67,13 @@ export default function ProjectsV4Page() {
   }, []);
 
   const maxRetries = useMemo(
-    () => projectState?.config?.limits?.max_retries_per_task ?? globalMaxRetries,
-    [projectState, globalMaxRetries],
+    () => v4State?.config?.limits?.max_retries_per_task ?? globalMaxRetries,
+    [v4State, globalMaxRetries],
   );
 
   const orderedDocs = useMemo(
-    () => projectState && selectedProject ? getOrderedDocs(projectState, selectedProject, fileList) : [],
-    [projectState, selectedProject, fileList],
+    () => v4State && selectedProject ? getOrderedDocs(v4State, selectedProject, fileList) : [],
+    [v4State, selectedProject, fileList],
   );
 
   const otherDocs = useMemo(
@@ -129,7 +133,7 @@ export default function ProjectsV4Page() {
             </div>
           ) : selected ? (
             <MainDashboard
-              projectState={projectState}
+              projectState={v4State}
               project={selected}
               onDocClick={openDocument}
               otherDocs={otherDocs}
