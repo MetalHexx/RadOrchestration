@@ -3,6 +3,9 @@
  * Run with: npx tsx --tsconfig ui/tsconfig.test.json ui/components/layout/app-header.test.tsx
  */
 import assert from 'node:assert';
+// React must be in scope for JSX evaluation within the module under test (loadAppHeaderWithMockedNav uses require cache manipulation)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import React from 'react';
 import { AppHeader } from './app-header';
 import * as barrel from './index';
 import type { NavLink } from './app-header';

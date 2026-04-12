@@ -3,8 +3,17 @@
  * Run with: npx tsx --tsconfig ui/tsconfig.test.json ui/app/projects/page.test.tsx
  */
 import assert from 'node:assert';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path';
 import ProjectsPage from './page';
 import { ProjectsPlaceholderView } from '@/components/layout';
+
+// ─── Source text helper ───────────────────────────────────────────────────────
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const sourceText = readFileSync(join(__dirname, 'page.tsx'), 'utf-8');
 
 // ─── Test runner ─────────────────────────────────────────────────────────────
 
@@ -35,6 +44,20 @@ async function run() {
 
   await test('ProjectsPlaceholderView is importable from @/components/layout', () => {
     assert.strictEqual(typeof ProjectsPlaceholderView, 'function', 'ProjectsPlaceholderView should be a function');
+  });
+
+  await test('Source contains id="main-content" attribute', () => {
+    assert.ok(
+      sourceText.includes('id="main-content"') || sourceText.includes("id='main-content'"),
+      'projects/page.tsx must contain id="main-content" on the wrapper div'
+    );
+  });
+
+  await test('Source contains min-h-[calc(100dvh-3.5rem)] centering class', () => {
+    assert.ok(
+      sourceText.includes('min-h-[calc(100dvh-3.5rem)]'),
+      'projects/page.tsx must contain the min-h-[calc(100dvh-3.5rem)] centering class'
+    );
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);

@@ -1,6 +1,15 @@
 import assert from 'node:assert';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path';
 import { AppHeaderShell } from './app-header-shell';
 import * as barrel from './index';
+
+// ─── Source text helper ───────────────────────────────────────────────────────
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const sourceText = readFileSync(join(__dirname, 'app-header-shell.tsx'), 'utf-8');
 
 let passed = 0;
 let failed = 0;
@@ -30,6 +39,20 @@ async function run() {
 
   await test('AppHeaderShell.name equals "AppHeaderShell"', () => {
     assert.strictEqual(AppHeaderShell.name, 'AppHeaderShell');
+  });
+
+  await test('NAV_LINKS contains "/projects" href', () => {
+    assert.ok(
+      sourceText.includes('"/projects"') || sourceText.includes("'/projects'"),
+      'app-header-shell.tsx must contain a NAV_LINKS entry with href="/projects"'
+    );
+  });
+
+  await test('NAV_LINKS contains "/projects-v4" href', () => {
+    assert.ok(
+      sourceText.includes('"/projects-v4"') || sourceText.includes("'/projects-v4'"),
+      'app-header-shell.tsx must contain a NAV_LINKS entry with href="/projects-v4"'
+    );
   });
 
   if (failed > 0) {
