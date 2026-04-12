@@ -7,7 +7,14 @@ const config: Config = {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      height: {
+        page: "calc(100dvh - 3.5rem)",
+      },
+      minHeight: {
+        page: "calc(100dvh - 3.5rem)",
+      },
+    },
   },
   plugins: [],
 };

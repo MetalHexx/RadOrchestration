@@ -32,6 +32,12 @@ interface UseSSEOptions {
   onOpen?: () => void;
   /** Max events to keep in buffer (default: 50) */
   maxEvents?: number;
+  /**
+   * When true, skips the events buffer and lastEventTime state updates.
+   * Use this when only status and reconnect are needed (e.g., SSEProvider).
+   * Prevents unnecessary re-renders at the SSE event/heartbeat rate.
+   */
+  statusOnly?: boolean;
 }
 
 interface UseSSEReturn {
@@ -48,7 +54,7 @@ interface UseSSEReturn {
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
 export function useSSE(options: UseSSEOptions): UseSSEReturn {
-  const { url, onEvent, onError, onOpen, maxEvents = DEFAULT_MAX_EVENTS } = options;
+  const { url, onEvent, onError, onOpen, maxEvents = DEFAULT_MAX_EVENTS, statusOnly = false } = options;
 
   const [status, setStatus] = useState<SSEConnectionStatus>("disconnected");
   const [events, setEvents] = useState<SSEEvent[]>([]);
@@ -71,6 +77,9 @@ export function useSSE(options: UseSSEOptions): UseSSEReturn {
 
   const maxEventsRef = useRef(maxEvents);
   maxEventsRef.current = maxEvents;
+
+  const statusOnlyRef = useRef(statusOnly);
+  statusOnlyRef.current = statusOnly;
 
   const closeEventSource = useCallback(() => {
     if (esRef.current) {
@@ -145,14 +154,16 @@ export function useSSE(options: UseSSEOptions): UseSSEReturn {
 
         onEventRef.current?.(parsed);
 
-        setEvents((prev) => {
-          const next = [parsed, ...prev];
-          return next.length > maxEventsRef.current
-            ? next.slice(0, maxEventsRef.current)
-            : next;
-        });
+        if (!statusOnlyRef.current) {
+          setEvents((prev) => {
+            const next = [parsed, ...prev];
+            return next.length > maxEventsRef.current
+              ? next.slice(0, maxEventsRef.current)
+              : next;
+          });
 
-        setLastEventTime(new Date());
+          setLastEventTime(new Date());
+        }
       });
     });
   }, [url, closeEventSource, clearReconnectTimeout]);
