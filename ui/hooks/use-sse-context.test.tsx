@@ -3,7 +3,7 @@
  * Run with: npx tsx ui/hooks/use-sse-context.test.tsx
  */
 import assert from 'node:assert';
-import { SSEContext, SSEProvider, useSSEContext } from './use-sse-context';
+import { SSEContext, SSEProvider, useSSEContext, defaultSSEContextValue } from './use-sse-context';
 
 // ─── Test runner ─────────────────────────────────────────────────────────────
 
@@ -34,15 +34,13 @@ async function run() {
   });
 
   await test('SSEContext default value — sseStatus is "disconnected" and reconnect is a function', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const defaultValue = (SSEContext as any)._currentValue;
+    const defaultValue = defaultSSEContextValue;
     assert.strictEqual(defaultValue.sseStatus, 'disconnected', 'sseStatus default should be "disconnected"');
     assert.strictEqual(typeof defaultValue.reconnect, 'function', 'reconnect default should be a function');
   });
 
   await test('Default reconnect is safe to call without throwing', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const defaultValue = (SSEContext as any)._currentValue;
+    const defaultValue = defaultSSEContextValue;
     assert.doesNotThrow(
       () => defaultValue.reconnect(),
       'default reconnect() should not throw'

@@ -13,10 +13,12 @@ interface SSEContextValue {
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
-export const SSEContext = createContext<SSEContextValue>({
+export const defaultSSEContextValue: SSEContextValue = {
   sseStatus: "disconnected",
   reconnect: () => {},
-});
+};
+
+export const SSEContext = createContext<SSEContextValue>(defaultSSEContextValue);
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 

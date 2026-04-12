@@ -65,7 +65,7 @@ export default function ProjectsV4Page() {
   );
 
   const orderedDocs = useMemo(
-    () => projectState ? getOrderedDocs(projectState, selectedProject!, fileList) : [],
+    () => projectState && selectedProject ? getOrderedDocs(projectState, selectedProject, fileList) : [],
     [projectState, selectedProject, fileList],
   );
 
@@ -94,16 +94,12 @@ export default function ProjectsV4Page() {
     return () => { cancelled = true; };
   }, [selectedProject]);
 
-  const handleDocClick = (path: string) => {
-    openDocument(path);
-  };
-
   const selected: ProjectSummary | undefined = projects.find(
     (p) => p.name === selectedProject
   );
 
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)] flex-col bg-background">
+      <div className="flex h-page flex-col bg-background">
       <SidebarProvider>
         <ProjectSidebar
           projects={projects}
@@ -132,7 +128,7 @@ export default function ProjectsV4Page() {
             <MainDashboard
               projectState={projectState}
               project={selected}
-              onDocClick={handleDocClick}
+              onDocClick={openDocument}
               otherDocs={otherDocs}
               maxRetries={maxRetries}
             />

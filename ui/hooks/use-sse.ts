@@ -78,6 +78,9 @@ export function useSSE(options: UseSSEOptions): UseSSEReturn {
   const maxEventsRef = useRef(maxEvents);
   maxEventsRef.current = maxEvents;
 
+  const statusOnlyRef = useRef(statusOnly);
+  statusOnlyRef.current = statusOnly;
+
   const closeEventSource = useCallback(() => {
     if (esRef.current) {
       esRef.current.close();
@@ -151,7 +154,7 @@ export function useSSE(options: UseSSEOptions): UseSSEReturn {
 
         onEventRef.current?.(parsed);
 
-        if (!statusOnly) {
+        if (!statusOnlyRef.current) {
           setEvents((prev) => {
             const next = [parsed, ...prev];
             return next.length > maxEventsRef.current

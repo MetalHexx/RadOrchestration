@@ -11,10 +11,12 @@ interface ConfigClickContextValue {
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
-export const ConfigClickContext = createContext<ConfigClickContextValue>({
+export const defaultConfigClickContextValue: ConfigClickContextValue = {
   onConfigClick: undefined,
   setOnConfigClick: () => {},
-});
+};
+
+export const ConfigClickContext = createContext<ConfigClickContextValue>(defaultConfigClickContextValue);
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 

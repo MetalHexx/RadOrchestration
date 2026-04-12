@@ -7,6 +7,8 @@ import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConnectionIndicator } from "@/components/badges";
 import { ThemeToggle } from "@/components/theme";
+import { cn } from "@/lib/utils";
+import type { SSEConnectionStatus } from "@/types/events";
 
 export interface NavLink {
   label: string;
@@ -14,7 +16,7 @@ export interface NavLink {
 }
 
 interface AppHeaderProps {
-  sseStatus: "connected" | "reconnecting" | "disconnected";
+  sseStatus: SSEConnectionStatus;
   onReconnect: () => void;
   onConfigClick?: () => void;
   navLinks?: NavLink[];
@@ -44,11 +46,12 @@ export function AppHeader({ sseStatus, onReconnect, onConfigClick, navLinks = []
                 key={link.href}
                 href={link.href}
                 aria-current={isActive ? "page" : undefined}
-                className={
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                   isActive
-                    ? "rounded-md bg-accent px-3 py-1.5 text-sm text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                    : "rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                }
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                )}
               >
                 {link.label}
               </Link>

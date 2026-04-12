@@ -1,3 +1,7 @@
+/**
+ * Tests for components/layout/app-header-shell — AppHeaderShell component verification.
+ * Run with: npx tsx --tsconfig ui/tsconfig.test.json ui/components/layout/app-header-shell.test.tsx
+ */
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

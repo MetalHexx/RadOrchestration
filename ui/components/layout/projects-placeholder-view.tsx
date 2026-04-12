@@ -3,7 +3,7 @@
 import { Network } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function ProjectsPlaceholderView(): JSX.Element {
+export function ProjectsPlaceholderView() {
   return (
     <div className="flex h-full items-center justify-center p-6">
       <Card className="max-w-md text-center">

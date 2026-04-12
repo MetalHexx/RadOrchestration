@@ -39,7 +39,7 @@ function AppHeaderShellInner({ children }: AppHeaderShellProps) {
 
 // ─── Shell Component ──────────────────────────────────────────────────────────
 
-export function AppHeaderShell({ children }: AppHeaderShellProps): JSX.Element {
+export function AppHeaderShell({ children }: AppHeaderShellProps) {
   return (
     <SSEProvider>
       <ConfigClickProvider>

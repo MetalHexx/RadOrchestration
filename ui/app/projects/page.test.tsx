@@ -53,10 +53,10 @@ async function run() {
     );
   });
 
-  await test('Source contains min-h-[calc(100dvh-3.5rem)] centering class', () => {
+  await test('Source contains h-page centering class', () => {
     assert.ok(
-      sourceText.includes('min-h-[calc(100dvh-3.5rem)]'),
-      'projects/page.tsx must contain the min-h-[calc(100dvh-3.5rem)] centering class'
+      sourceText.includes('h-page'),
+      'projects/page.tsx must contain the h-page centering class'
     );
   });
 

@@ -3,7 +3,7 @@
  * Run with: npx tsx ui/hooks/use-config-click-context.test.tsx
  */
 import assert from 'node:assert';
-import { ConfigClickContext, ConfigClickProvider, useConfigClickContext } from './use-config-click-context';
+import { ConfigClickContext, ConfigClickProvider, useConfigClickContext, defaultConfigClickContextValue } from './use-config-click-context';
 
 // ─── Test runner ─────────────────────────────────────────────────────────────
 
@@ -34,14 +34,12 @@ async function run() {
   });
 
   await test('Default value — onConfigClick is undefined', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const defaultValue = (ConfigClickContext as any)._currentValue;
+    const defaultValue = defaultConfigClickContextValue;
     assert.strictEqual(defaultValue.onConfigClick, undefined, 'onConfigClick default should be undefined');
   });
 
   await test('Default value — setOnConfigClick is a no-op function', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const defaultValue = (ConfigClickContext as any)._currentValue;
+    const defaultValue = defaultConfigClickContextValue;
     assert.strictEqual(typeof defaultValue.setOnConfigClick, 'function', 'setOnConfigClick default should be a function');
     assert.doesNotThrow(
       () => defaultValue.setOnConfigClick(() => {}),
@@ -50,8 +48,7 @@ async function run() {
   });
 
   await test('Default setOnConfigClick is safe to call with undefined', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const defaultValue = (ConfigClickContext as any)._currentValue;
+    const defaultValue = defaultConfigClickContextValue;
     assert.doesNotThrow(
       () => defaultValue.setOnConfigClick(undefined),
       'setOnConfigClick(undefined) should not throw'
