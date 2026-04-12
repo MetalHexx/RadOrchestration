@@ -21,7 +21,7 @@ export const SSEContext = createContext<SSEContextValue>({
 // ─── Provider ────────────────────────────────────────────────────────────────
 
 export function SSEProvider({ children }: { children: React.ReactNode }) {
-  const { status, reconnect } = useSSE({ url: "/api/events" });
+  const { status, reconnect } = useSSE({ url: "/api/events", statusOnly: true });
 
   const value = useMemo<SSEContextValue>(
     () => ({ sseStatus: status, reconnect }),
