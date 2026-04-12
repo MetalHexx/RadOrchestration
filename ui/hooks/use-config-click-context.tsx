@@ -23,7 +23,7 @@ export function ConfigClickProvider({ children }: { children: React.ReactNode })
 
   const value = useMemo<ConfigClickContextValue>(
     () => ({ onConfigClick, setOnConfigClick }),
-    [onConfigClick]
+    [onConfigClick, setOnConfigClick]
   );
 
   return (

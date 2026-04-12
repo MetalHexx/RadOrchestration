@@ -1,6 +1,6 @@
 /**
  * Tests for app/page — server redirect component verification.
- * Run with: npx tsx --test ui/app/page.test.tsx
+ * Run with: node --test --import tsx ui/app/page.test.tsx
  */
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';

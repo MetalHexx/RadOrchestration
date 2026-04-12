@@ -7,7 +7,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 // React must be in scope for JSX evaluation within the module under test (loadAppHeaderWithMockedNav uses require cache manipulation)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React from 'react';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).React = React;
