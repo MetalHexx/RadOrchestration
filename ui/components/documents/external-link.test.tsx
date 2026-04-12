@@ -1,8 +1,11 @@
 // ui/components/documents/external-link.test.tsx
 import assert from 'node:assert/strict';
+import React from 'react';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ExternalLink } from './external-link';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).React = React;
 
 // Helper
 function render(props: Parameters<typeof ExternalLink>[0]): string {

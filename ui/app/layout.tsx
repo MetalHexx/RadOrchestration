@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { AppHeaderShell } from "@/components/layout";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -44,7 +45,9 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        {children}
+        <AppHeaderShell>
+          {children}
+        </AppHeaderShell>
       </body>
     </html>
   );
