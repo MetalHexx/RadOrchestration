@@ -1,4 +1,5 @@
 export { AppHeader } from "./app-header";
+export { AppHeaderShell } from "./app-header-shell";
 export { MainDashboard } from "./main-dashboard";
 export { NotInitializedView } from "./not-initialized-view";
 export { MalformedStateView } from "./malformed-state-view";
