@@ -1,5 +1,5 @@
 /**
- * Tests for ProjectsV4Page — module exports and ConfigClickContext dependency verification.
+ * Tests for ProjectsV4Page — component imports, hook wiring, content-id, and ConfigClickContext dependency verification.
  * Run with: npx tsx --tsconfig ui/tsconfig.test.json ui/app/projects-v4/page.test.tsx
  */
 import assert from 'node:assert';

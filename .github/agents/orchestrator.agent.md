@@ -7,6 +7,7 @@ tools:
   - agent
   - execute
   - vscode/askQuestions
+  - todo
 model: Claude Opus 4.6 (copilot)
 ---
 

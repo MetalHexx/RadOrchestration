@@ -64,6 +64,16 @@ export default function ProjectsV4Page() {
     [projectState, globalMaxRetries],
   );
 
+  const orderedDocs = useMemo(
+    () => projectState ? getOrderedDocs(projectState, selectedProject!, fileList) : [],
+    [projectState, selectedProject, fileList],
+  );
+
+  const otherDocs = useMemo(
+    () => orderedDocs.filter((d) => d.category === "other").map((d) => d.path),
+    [orderedDocs],
+  );
+
   useEffect(() => {
     if (!selectedProject) {
       setFileList([]);
@@ -83,16 +93,6 @@ export default function ProjectsV4Page() {
       });
     return () => { cancelled = true; };
   }, [selectedProject]);
-
-  const orderedDocs = useMemo(
-    () => projectState ? getOrderedDocs(projectState, selectedProject!, fileList) : [],
-    [projectState, selectedProject, fileList],
-  );
-
-  const otherDocs = useMemo(
-    () => orderedDocs.filter((d) => d.category === "other").map((d) => d.path),
-    [orderedDocs],
-  );
 
   const handleDocClick = (path: string) => {
     openDocument(path);
