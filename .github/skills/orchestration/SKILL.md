@@ -25,7 +25,8 @@ This skill bundles:
 
 - **`config/orchestration.yml`** — System configuration
 - **`schemas/state-v4.schema.json`** — State file JSON Schema
-- **`scripts/pipeline.ts`** — Pipeline CLI entry point (TypeScript, invoke via `npx tsx`)
+- **`scripts/pipeline.js`** — Pipeline entry point (Node.js) — checks for `node_modules`, runs `npm ci` if missing, then delegates to `main.ts`. All CLI arguments pass through transparently.
+- **`scripts/main.ts`** — Pipeline engine CLI (TypeScript) — invoked by `pipeline.js`
 - **`scripts/migrate-to-v5.ts`** — Migration CLI
 - **`scripts/lib/`** — Pipeline engine, resolver, mutations, state I/O, validator
 - **`templates/`** — Pipeline templates (`full.yml`, `quick.yml`)
