@@ -1,6 +1,6 @@
 /**
  * Tests for ConfigClickContext — module exports and default value verification.
- * Run with: npx tsx ui/hooks/use-config-click-context.test.tsx
+ * Run with: npx tsx --tsconfig ui/tsconfig.test.json ui/hooks/use-config-click-context.test.tsx
  */
 import assert from 'node:assert';
 import { ConfigClickContext, ConfigClickProvider, useConfigClickContext, defaultConfigClickContextValue } from './use-config-click-context';

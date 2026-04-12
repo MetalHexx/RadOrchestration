@@ -12,7 +12,7 @@ import React from 'react';
 (globalThis as any).React = React;
 import { AppHeader } from './app-header';
 import * as barrel from './index';
-import type { NavLink } from './app-header';
+import type { NavLink } from './app-header'; // Compile-time proof: NavLink is re-exported from the barrel
 
 // NavLink is a TypeScript interface; this import verifies it is exported from the module.
 // The type is erased at runtime — its presence here is a compile-time check only.
@@ -64,6 +64,31 @@ function findByAriaLabel(element: unknown, label: string): ReactElementLike | nu
   return null;
 }
 
+type NavLinkElement = {
+  props?: {
+    href?: string;
+    'aria-current'?: string;
+    children?: unknown;
+  };
+};
+
+function findByHref(element: unknown, href: string): NavLinkElement | null {
+  if (element === null || element === undefined) return null;
+  if (typeof element !== 'object') return null;
+  const el = element as NavLinkElement;
+  if (el.props?.href === href) return el;
+  const children = el.props?.children;
+  if (Array.isArray(children)) {
+    for (const child of children) {
+      const found = findByHref(child, href);
+      if (found) return found;
+    }
+  } else if (children !== null && children !== undefined) {
+    return findByHref(children, href);
+  }
+  return null;
+}
+
 /**
  * Load a fresh AppHeader with next/navigation's usePathname mocked to '/' so
  * the component can be called as a plain function (no React renderer needed).
@@ -109,10 +134,16 @@ async function run() {
     assert.strictEqual(AppHeader.name, 'AppHeader');
   });
 
-  await test('NavLink type is exported from app-header.tsx (compile-time verified)', () => {
-    // NavLink is a TypeScript interface (erased at runtime).
-    // The import type above confirms it is exported; this test asserts the module loaded.
-    assert.strictEqual(typeof AppHeader, 'function');
+  await test('NavLink with matching pathname has aria-current="page", non-matching has aria-current={undefined}', () => {
+    const AppHeaderMocked = loadAppHeaderWithMockedNav();
+    const navLinks = [{ label: 'Home', href: '/' }, { label: 'Projects', href: '/projects' }];
+    const tree = AppHeaderMocked({ sseStatus: 'connected', onReconnect: () => {}, onConfigClick: () => {}, navLinks });
+    const homeLink = findByHref(tree, '/');
+    const projectsLink = findByHref(tree, '/projects');
+    assert.notStrictEqual(homeLink, null, 'Expected to find link with href="/"');
+    assert.notStrictEqual(projectsLink, null, 'Expected to find link with href="/projects"');
+    assert.strictEqual(homeLink!.props?.['aria-current'], 'page', 'Link href="/" should have aria-current="page"');
+    assert.strictEqual(projectsLink!.props?.['aria-current'], undefined, 'Link href="/projects" should have aria-current={undefined}');
   });
 
   await test('Settings button hidden when onConfigClick is undefined', () => {

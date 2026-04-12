@@ -102,7 +102,7 @@ export default function ProjectsV4Page() {
   );
 
   return (
-      <div className="flex h-page flex-col bg-background">
+    <div className="flex h-page flex-col bg-background">
       <SidebarProvider>
         <ProjectSidebar
           projects={projects}

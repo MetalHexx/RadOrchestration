@@ -1,6 +1,6 @@
 /**
  * Tests for SSEContext — module exports and default value verification.
- * Run with: npx tsx ui/hooks/use-sse-context.test.tsx
+ * Run with: npx tsx --tsconfig ui/tsconfig.test.json ui/hooks/use-sse-context.test.tsx
  */
 import assert from 'node:assert';
 import { SSEContext, SSEProvider, useSSEContext, defaultSSEContextValue } from './use-sse-context';
