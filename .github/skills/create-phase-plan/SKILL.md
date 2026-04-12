@@ -72,12 +72,17 @@ The Phase Plan template frontmatter includes fields consumed by the pipeline eng
 
 > **IMPORTANT: The `tasks` array in frontmatter is REQUIRED. The pipeline engine validates that `tasks` is present, is an array, and is non-empty. If `tasks` is missing or empty, the pipeline returns an error result and halts processing for the event. Every phase plan MUST include this field.**
 
-## Key Rules
+## DO NOT
 
-- **Task details live in TASK-HANDOFF docs**: The Phase Plan has high-level task outlines only
-- **Dependencies use task IDs**: T3 depends on T1 means T1's output files are inputs to T3
-- **Handoff docs are created on a tight loop**: Not all at once — T1 handoff first, T2 handoff after T1 completes (read T1's report)
-- **Parallel-ready pairs are marked**: For future optimization, even though v1 executes sequentially
+- Add a Task Details or Task Summaries section — the Task Outline table IS the task description
+- Include implementation steps, imports, CSS classes, code snippets, hook calls, JSX, or design token refs — that belongs in the Task Handoff
+- Use file paths — refer to modules/components by name (e.g., "SSEProvider context"); file targets are resolved at handoff time
+
+## DO
+
+- Use task IDs for dependencies — T3 depends on T1 means T1's output files are inputs to T3
+- Create handoff docs on a tight loop — T1 handoff first, T2 handoff after T1 completes (read T1's report)
+- Mark parallel-ready pairs — for future optimization, even though v1 executes sequentially
 
 ## Template
 

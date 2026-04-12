@@ -27,12 +27,12 @@ created: "{ISO-DATE}"
 
 ## Task Outline
 
-| # | Task | Dependencies | Skills Required | Est. Files | Handoff Doc |
-|---|------|-------------|-----------------|-----------|-------------|
-| T1 | {Title} | — | `{skill}` | {NUMBER} | [Link]({path}) |
-| T2 | {Title} | T1 | `{skill}` | {NUMBER} | [Link]({path}) |
-| T3 | {Title} | T1 | `{skill}` | {NUMBER} | [Link]({path}) |
-| T4 | {Title} | T2, T3 | `{skill}` | {NUMBER} | [Link]({path}) |
+| # | Task | Dependencies | Est. Files |
+|---|------|-------------|------------|
+| T1 | {Title} | — | {NUMBER} |
+| T2 | {Title} | T1 | {NUMBER} |
+| T3 | {Title} | T1 | {NUMBER} |
+| T4 | {Title} | T2, T3 | {NUMBER} |
 
 ## Execution Order
 
