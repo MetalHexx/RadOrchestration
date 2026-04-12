@@ -85,15 +85,13 @@ function loadAppHeaderWithMockedNav(): typeof AppHeader {
     configurable: true,
   });
   req.cache[navPath].exports = mock;
-
-  // Force a fresh load of app-header so it captures mock usePathname.
   delete req.cache[headerPath];
-  const fresh = req('./app-header') as { AppHeader: typeof AppHeader };
-
-  // Restore original next/navigation exports for all other code.
-  req.cache[navPath].exports = origNavExports;
-
-  return fresh.AppHeader;
+  try {
+    const fresh = req('./app-header') as { AppHeader: typeof AppHeader };
+    return fresh.AppHeader;
+  } finally {
+    req.cache[navPath].exports = origNavExports;
+  }
 }
 
 async function run() {

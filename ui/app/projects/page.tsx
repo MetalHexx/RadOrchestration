@@ -1,5 +1,3 @@
-"use client";
-
 import { ProjectsPlaceholderView } from "@/components/layout";
 
 export default function ProjectsPage() {

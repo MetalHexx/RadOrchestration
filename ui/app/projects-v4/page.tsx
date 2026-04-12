@@ -49,14 +49,17 @@ export default function ProjectsV4Page() {
   }, [setOnConfigClick, configEditor.open]);
 
   useEffect(() => {
+    let cancelled = false;
     fetch("/api/config")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: ConfigGetResponse | null) => {
+        if (cancelled) return;
         if (data?.config?.limits?.max_retries_per_task != null) {
           setGlobalMaxRetries(data.config.limits.max_retries_per_task);
         }
       })
       .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const maxRetries = useMemo(
@@ -110,7 +113,7 @@ export default function ProjectsV4Page() {
 
         <SidebarInset id="main-content">
           {isLoading && !selected ? (
-            <div className="flex h-full items-center justify-center">
+            <div className="flex h-full items-center justify-center" role="status" aria-label="Loading projects">
               <div className="text-center">
                 <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
                 <p className="text-sm text-muted-foreground">
@@ -121,7 +124,7 @@ export default function ProjectsV4Page() {
           ) : error && !selected ? (
             <div className="flex h-full items-center justify-center p-6">
               <div className="max-w-md text-center">
-                <p className="text-sm text-destructive">{error}</p>
+                <p className="text-sm text-destructive" role="alert">{error}</p>
               </div>
             </div>
           ) : selected ? (
@@ -136,7 +139,7 @@ export default function ProjectsV4Page() {
             <div className="flex h-full items-center justify-center p-6">
               <div className="max-w-md text-center">
                 <h2 className="mb-2 text-lg font-semibold text-foreground">
-                  Orchestration Monitor
+                  No project selected
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   Select a project from the sidebar to view its dashboard.

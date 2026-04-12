@@ -27,11 +27,7 @@ export function AppHeader({ sseStatus, onReconnect, onConfigClick, navLinks = []
   return (
     <header
       role="banner"
-      className="sticky top-0 z-50 flex h-14 items-center justify-between border-b px-4"
-      style={{
-        backgroundColor: "var(--header-bg)",
-        borderColor: "var(--header-border)",
-      }}
+      className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-card px-4"
     >
       <div className="flex items-center gap-6">
         <h1 className="text-sm font-semibold tracking-tight">

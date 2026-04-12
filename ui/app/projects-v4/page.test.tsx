@@ -141,6 +141,13 @@ async function run() {
     );
   });
 
+  await test('Source calls setOnConfigClick(undefined) on cleanup', () => {
+    assert.ok(
+      sourceText.includes('setOnConfigClick(undefined)'),
+      'page.tsx cleanup must call setOnConfigClick(undefined)'
+    );
+  });
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);
 }
