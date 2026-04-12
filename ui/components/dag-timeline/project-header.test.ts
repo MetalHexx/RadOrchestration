@@ -19,16 +19,11 @@ function test(name: string, fn: () => void) {
   }
 }
 
-// ─── Types (mirrored from @/types/state) ─────────────────────────────────────
-
-type GraphStatus = "not_started" | "in_progress" | "completed" | "halted";
-
 // ─── Simulation (mirrors project-header.tsx logic) ───────────────────────────
 
 interface ProjectHeaderProps {
   projectName: string;
   schemaVersion: "v4" | "v5";
-  graphStatus?: GraphStatus;
 }
 
 function simulateProjectHeader(props: ProjectHeaderProps) {
