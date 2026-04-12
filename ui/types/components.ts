@@ -11,6 +11,8 @@ export interface ProjectSummary {
   planningStatus?: PlanningStatus;
   executionStatus?: ExecutionStatus;
   lastUpdated?: string;   // ISO 8601; from state.project.updated; undefined for uninitialized projects
+  /** Schema version: 'v4', 'v5', or undefined for uninitialized projects */
+  schemaVersion?: 'v4' | 'v5';
 }
 
 /** Gate history entry for the timeline */
