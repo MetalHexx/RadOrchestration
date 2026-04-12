@@ -3,6 +3,9 @@
  * Run with: npx tsx --tsconfig ui/tsconfig.test.json ui/components/layout/app-header.test.tsx
  */
 import assert from 'node:assert';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path';
 // React must be in scope for JSX evaluation within the module under test (loadAppHeaderWithMockedNav uses require cache manipulation)
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React from 'react';
@@ -14,6 +17,12 @@ import type { NavLink } from './app-header';
 // The type is erased at runtime — its presence here is a compile-time check only.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type _NavLinkCheck = NavLink;
+
+// ─── Source text helper ───────────────────────────────────────────────────────
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const sourceText = readFileSync(join(__dirname, 'app-header.tsx'), 'utf-8');
 
 let passed = 0;
 let failed = 0;
@@ -119,6 +128,50 @@ async function run() {
     const tree = AppHeaderMocked({ sseStatus: 'connected', onReconnect: () => {}, onConfigClick: () => {}, navLinks: [] });
     const found = findByAriaLabel(tree, 'Configuration');
     assert.notStrictEqual(found, null, 'Expected Configuration button to be present when onConfigClick is defined');
+  });
+
+  await test('ConnectionIndicator is imported', () => {
+    assert.ok(
+      sourceText.includes('import { ConnectionIndicator }') ||
+        sourceText.includes('ConnectionIndicator'),
+      'app-header.tsx must import ConnectionIndicator'
+    );
+  });
+
+  await test('ThemeToggle is imported', () => {
+    assert.ok(
+      sourceText.includes('import { ThemeToggle }') ||
+        sourceText.includes('ThemeToggle'),
+      'app-header.tsx must import ThemeToggle'
+    );
+  });
+
+  await test('ConnectionIndicator is rendered in source', () => {
+    assert.ok(
+      sourceText.includes('<ConnectionIndicator'),
+      'app-header.tsx must render <ConnectionIndicator'
+    );
+  });
+
+  await test('ThemeToggle is rendered in source', () => {
+    assert.ok(
+      sourceText.includes('<ThemeToggle'),
+      'app-header.tsx must render <ThemeToggle'
+    );
+  });
+
+  await test('Main navigation aria-label is present', () => {
+    assert.ok(
+      sourceText.includes('aria-label="Main navigation"'),
+      'app-header.tsx must contain aria-label="Main navigation"'
+    );
+  });
+
+  await test('Dashboard controls aria-label is present', () => {
+    assert.ok(
+      sourceText.includes('aria-label="Dashboard controls"'),
+      'app-header.tsx must contain aria-label="Dashboard controls"'
+    );
   });
 
   if (failed > 0) {

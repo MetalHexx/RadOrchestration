@@ -87,6 +87,13 @@ async function run() {
     );
   });
 
+  await test('skip-to-content link targets #main-content', () => {
+    assert.ok(
+      source.includes('href="#main-content"'),
+      'layout.tsx must contain a skip-to-content link with href="#main-content"'
+    );
+  });
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);
 }

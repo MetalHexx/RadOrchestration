@@ -55,6 +55,50 @@ async function run() {
     );
   });
 
+  await test('SSEProvider is imported', () => {
+    assert.ok(
+      sourceText.includes('import { SSEProvider') || sourceText.includes('import {SSEProvider'),
+      'app-header-shell.tsx must import SSEProvider'
+    );
+  });
+
+  await test('ConfigClickProvider is imported', () => {
+    assert.ok(
+      sourceText.includes('import { ConfigClickProvider') ||
+        sourceText.includes('import {ConfigClickProvider') ||
+        sourceText.includes('useConfigClickContext'),
+      'app-header-shell.tsx must import ConfigClickProvider or useConfigClickContext'
+    );
+  });
+
+  await test('AppHeaderShell wraps children in SSEProvider', () => {
+    assert.ok(
+      sourceText.includes('<SSEProvider>'),
+      'app-header-shell.tsx must render <SSEProvider>'
+    );
+  });
+
+  await test('AppHeaderShell wraps children in ConfigClickProvider', () => {
+    assert.ok(
+      sourceText.includes('<ConfigClickProvider>'),
+      'app-header-shell.tsx must render <ConfigClickProvider>'
+    );
+  });
+
+  await test('sseStatus is passed to AppHeader', () => {
+    assert.ok(
+      sourceText.includes('sseStatus={sseStatus}') || sourceText.includes('sseStatus='),
+      'app-header-shell.tsx must pass sseStatus to AppHeader'
+    );
+  });
+
+  await test('reconnect is passed to AppHeader', () => {
+    assert.ok(
+      sourceText.includes('onReconnect={reconnect}'),
+      'app-header-shell.tsx must pass reconnect to AppHeader'
+    );
+  });
+
   if (failed > 0) {
     console.error(`\n${failed} test(s) failed, ${passed} passed`);
     process.exit(1);
