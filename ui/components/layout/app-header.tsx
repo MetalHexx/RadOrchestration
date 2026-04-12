@@ -70,9 +70,11 @@ export function AppHeader({ sseStatus, onReconnect, onConfigClick, navLinks = []
           </Button>
         )}
 
-        <Button variant="ghost" size="icon" aria-label="Configuration" onClick={onConfigClick}>
-          <Settings size={16} />
-        </Button>
+        {onConfigClick !== undefined && (
+          <Button variant="ghost" size="icon" aria-label="Configuration" onClick={onConfigClick}>
+            <Settings size={16} />
+          </Button>
+        )}
 
         <ThemeToggle />
       </nav>
