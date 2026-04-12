@@ -61,7 +61,7 @@ function loadAppHeaderWithMockedNav(): typeof AppHeader {
   const navPath = req.resolve('next/navigation');
   const headerPath = req.resolve('./app-header');
   const origNavExports = req.cache[navPath]?.exports;
-  if (!origNavExports) return AppHeader;
+  assert.ok(origNavExports, 'next/navigation must be in require cache before mock');
 
   // Replace next/navigation exports so the re-loaded app-header gets the mock.
   const mock = Object.create(origNavExports as object) as Record<string, unknown>;

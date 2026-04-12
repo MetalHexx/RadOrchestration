@@ -38,15 +38,15 @@ export default function ProjectsV4Page() {
 
   const configEditor = useConfigEditor();
 
+  const [fileList, setFileList] = useState<string[]>([]);
+  const [globalMaxRetries, setGlobalMaxRetries] = useState<number>(3);
+
   const { setOnConfigClick } = useConfigClickContext();
 
   useEffect(() => {
     setOnConfigClick(configEditor.open);
     return () => { setOnConfigClick(undefined); };
   }, [setOnConfigClick, configEditor.open]);
-
-  const [fileList, setFileList] = useState<string[]>([]);
-  const [globalMaxRetries, setGlobalMaxRetries] = useState<number>(3);
 
   useEffect(() => {
     fetch("/api/config")
