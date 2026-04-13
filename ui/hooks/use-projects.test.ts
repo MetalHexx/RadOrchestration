@@ -65,11 +65,16 @@ function derivePlanningStatus(nodes: NodesRecord): PlanningStatus {
   return 'not_started';
 }
 
+const EXECUTION_NODES = ['phase_loop', 'final_review'];
+
 function deriveExecutionStatus(graphStatus: GraphStatus, nodes: NodesRecord): ExecutionStatus {
   if (graphStatus === 'completed') return 'complete';
   if (graphStatus === 'halted') return 'halted';
-  const nodeStatuses = Object.values(nodes).map(n => n.status);
-  if (nodeStatuses.some(s => s === 'in_progress')) return 'in_progress';
+  if (
+    EXECUTION_NODES.some(id => nodes[id] && nodes[id].status === 'in_progress')
+  ) {
+    return 'in_progress';
+  }
   return 'not_started';
 }
 
