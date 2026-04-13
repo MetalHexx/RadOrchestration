@@ -18,7 +18,7 @@ Generate a Master Plan that is the single source of truth for the project. Synth
 | Input | Source | Description |
 |-------|--------|-------------|
 | Brainstorming document *(optional)* | `{NAME}-BRAINSTORMING.md` | Project idea, validated concepts, and scope boundaries. |
-| Research Findings | `RESEARCH-FINDINGS.md` | Codebase analysis, constraints |
+| Research Findings | `RESEARCH-FINDINGS.md` | Per-finding codebase evidence organized by area, technology stack, constraints — indexed by FR ID |
 | PRD | `{NAME}-PRD.md` | Requirements |
 | Design | `{NAME}-DESIGN.md` | UI components, flows, accessibility |
 | Architecture | `{NAME}-ARCHITECTURE.md` | Modules, contracts, file structure, phasing recommendations |
