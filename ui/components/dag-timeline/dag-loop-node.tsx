@@ -36,6 +36,7 @@ export function DAGLoopNode({ nodeId, node, currentNodePath, onDocClick }: DAGLo
               iteration={iteration}
               iterationIndex={iteration.index}
               parentNodeId={nodeId}
+              parentKind={node.kind}
               currentNodePath={currentNodePath}
               onDocClick={onDocClick}
             />

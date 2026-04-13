@@ -13,6 +13,7 @@ interface DAGIterationPanelProps {
   iteration: IterationEntry;
   iterationIndex: number;
   parentNodeId: string;
+  parentKind: 'for_each_phase' | 'for_each_task';
   currentNodePath: string | null;
   onDocClick: (path: string) => void;
 }
@@ -35,6 +36,7 @@ export function DAGIterationPanel({
   iteration,
   iterationIndex,
   parentNodeId,
+  parentKind, // eslint-disable-line @typescript-eslint/no-unused-vars
   currentNodePath,
   onDocClick,
 }: DAGIterationPanelProps) {
