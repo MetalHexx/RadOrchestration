@@ -70,21 +70,6 @@ export const baseCorrectiveTask: CorrectiveTaskEntry = {
   commit_hash: null,
 };
 
-export const iterationWithCommitHash: IterationEntry = {
-  index: 0,
-  status: 'completed',
-  nodes: { task_handoff: stepNode },
-  corrective_tasks: [],
-  commit_hash: 'abc1234def5678',
-};
-
-export const iterationWithUndefinedCommitHash: IterationEntry = {
-  index: 1,
-  status: 'completed',
-  nodes: { task_handoff: stepNode },
-  corrective_tasks: [],
-};
-
 export const taskLoopIteration: IterationEntry = {
   index: 0,
   status: 'completed',

@@ -37,7 +37,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
         const label = node.branch_taken === 'true' ? 'Yes' : 'No';
         const badgeStatus = node.branch_taken === 'true' ? 'completed' : 'skipped';
         return (
-          <span aria-label={`Branch taken: ${label}`}>
+          <span role="group" aria-label={`Branch taken: ${label}`}>
             <NodeStatusBadge status={badgeStatus} label={label} />
           </span>
         );
