@@ -1,6 +1,6 @@
 ---
 name: brainstormer
-description: "Brainstorm and refine project ideas through collaborative ideation. Use when starting a new project idea, exploring problem spaces, validating concepts, or building consensus on what to build. Produces a structured BRAINSTORMING.md that feeds into the Product Manager and Research agents."
+description: "Brainstorm and refine project ideas through collaborative ideation. Use when starting a new project idea, exploring problem spaces, validating concepts, or building consensus on what to build. Produces a structured BRAINSTORMING.md that feeds into the planning agents."
 tools:
   - read
   - search
