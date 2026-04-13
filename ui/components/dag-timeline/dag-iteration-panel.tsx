@@ -4,7 +4,8 @@ import { DAGNodeRow } from './dag-node-row';
 import { NodeStatusBadge } from './node-status-badge';
 import { DAGCorrectiveTaskGroup } from './dag-corrective-task-group';
 import { ExternalLink } from '@/components/documents';
-import type { IterationEntry, NodesRecord, NodeState, StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState } from '@/types/state';
+import { getCommitLinkData, filterCompatibleNodes } from './dag-timeline-helpers';
+import type { IterationEntry } from '@/types/state';
 
 interface DAGIterationPanelProps {
   iteration: IterationEntry;
@@ -22,22 +23,6 @@ export function buildIterationLabel(iterationIndex: number): string {
 
 export function buildChildNodeId(parentNodeId: string, iterationIndex: number, childNodeId: string): string {
   return `${parentNodeId}.iter${iterationIndex}.${childNodeId}`;
-}
-
-export function getCommitLinkData(commit_hash: string | null): { href: string; label: string } | null {
-  if (commit_hash === null) return null;
-  return {
-    href: `#${commit_hash}`,
-    label: commit_hash.slice(0, 7),
-  };
-}
-
-export function filterCompatibleNodes(
-  nodes: NodesRecord
-): Array<[string, StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState]> {
-  const all = Object.entries(nodes) as Array<[string, NodeState]>;
-  const filtered = all.filter(([, node]) => node.kind !== 'for_each_phase' && node.kind !== 'for_each_task');
-  return filtered as Array<[string, StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState]>;
 }
 
 export function buildCorrectiveGroupParentId(parentNodeId: string, iterationIndex: number): string {

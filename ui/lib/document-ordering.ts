@@ -130,6 +130,7 @@ const STEP_TITLES_V5: Record<string, string> = {
 };
 
 const PLANNING_STEPS_V5 = new Set(['research', 'prd', 'design', 'architecture', 'master_plan']);
+const PLANNING_STEP_ORDER_V5 = ['research', 'prd', 'design', 'architecture', 'master_plan'] as const;
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
@@ -172,15 +173,23 @@ export function getOrderedDocsV5(
     seenBasenames.add(basename(path));
   };
 
+  // Emit planning steps in canonical order regardless of object key order
+  for (const planId of PLANNING_STEP_ORDER_V5) {
+    const node = state.graph.nodes[planId];
+    if (node && node.kind === 'step' && node.doc_path != null) {
+      push(node.doc_path, STEP_TITLES_V5[planId], 'planning');
+    }
+  }
+
   for (const [nodeId, node] of Object.entries(state.graph.nodes)) {
-    if (node.kind === 'step' && node.doc_path != null) {
-      if (PLANNING_STEPS_V5.has(nodeId)) {
-        push(node.doc_path, STEP_TITLES_V5[nodeId], 'planning');
-      } else if (nodeId === 'final_review') {
+    // Skip planning steps (already emitted above) and other root step nodes
+    if (node.kind === 'step') {
+      if (nodeId === 'final_review' && node.doc_path != null) {
         push(node.doc_path, 'Final Review', 'review');
       }
-      // else: skip other step nodes (task_executor, commit, etc.)
-    } else if (node.kind === 'for_each_phase') {
+      continue;
+    }
+    if (node.kind === 'for_each_phase') {
       const sortedIterations = [...node.iterations].sort((a, b) => a.index - b.index);
       for (const iteration of sortedIterations) {
         const phaseNum = iteration.index + 1;

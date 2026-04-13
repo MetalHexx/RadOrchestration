@@ -14,6 +14,8 @@ export function derivePlanningStatus(nodes: NodesRecord): PlanningStatus {
   if (statuses.some((s) => s === 'in_progress')) {
     return 'in_progress';
   }
+  // All other statuses (failed, halted, skipped, not_started) fall through to not_started.
+  // This is intentional: the sidebar badge only distinguishes not-started / in-progress / complete.
   return 'not_started';
 }
 

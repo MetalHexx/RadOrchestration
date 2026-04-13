@@ -4,7 +4,8 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/
 import { DAGNodeRow } from './dag-node-row';
 import { NodeStatusBadge } from './node-status-badge';
 import { ExternalLink } from '@/components/documents';
-import type { CorrectiveTaskEntry, NodeState, StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState } from '@/types/state';
+import { getCommitLinkData, filterCompatibleNodes } from './dag-timeline-helpers';
+import type { CorrectiveTaskEntry } from '@/types/state';
 
 interface DAGCorrectiveTaskGroupProps {
   correctiveTasks: CorrectiveTaskEntry[];
@@ -18,22 +19,6 @@ export const CHILD_DEPTH = 2;
 
 export function buildChildNodeId(parentNodeId: string, ctIndex: number, childNodeId: string): string {
   return `${parentNodeId}.ct${ctIndex}.${childNodeId}`;
-}
-
-export function getCommitLinkData(commitHash: string | null): { href: string; label: string } | null {
-  if (commitHash === null) return null;
-  return {
-    href: `#${commitHash}`,
-    label: commitHash.slice(0, 7),
-  };
-}
-
-export function filterCompatibleNodes(
-  nodes: Record<string, NodeState>
-): Array<[string, StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState]> {
-  const all = Object.entries(nodes) as Array<[string, NodeState]>;
-  const filtered = all.filter(([, node]) => node.kind !== 'for_each_phase' && node.kind !== 'for_each_task');
-  return filtered as Array<[string, StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState]>;
 }
 
 export function buildTriggerText(index: number): string {

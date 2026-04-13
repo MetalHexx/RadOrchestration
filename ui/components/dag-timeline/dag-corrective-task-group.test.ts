@@ -8,13 +8,12 @@
 import assert from "node:assert";
 import {
   buildChildNodeId,
-  getCommitLinkData,
-  filterCompatibleNodes,
   buildTriggerText,
   shouldRenderGroup,
   GROUP_ARIA_LABEL,
   CHILD_DEPTH,
 } from './dag-corrective-task-group';
+import { getCommitLinkData, filterCompatibleNodes } from './dag-timeline-helpers';
 import type {
   StepNodeState,
   GateNodeState,

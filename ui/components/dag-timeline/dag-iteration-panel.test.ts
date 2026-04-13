@@ -9,12 +9,11 @@ import assert from "node:assert";
 import {
   buildIterationLabel,
   buildChildNodeId,
-  getCommitLinkData,
-  filterCompatibleNodes,
   buildCorrectiveGroupParentId,
   shouldRenderCorrectiveTasks,
   CHILD_DEPTH,
 } from './dag-iteration-panel';
+import { getCommitLinkData, filterCompatibleNodes } from './dag-timeline-helpers';
 import type {
   StepNodeState,
   GateNodeState,
@@ -181,8 +180,7 @@ test('filterCompatibleNodes with mixed kinds returns only compatible entries in 
   const result = filterCompatibleNodes(nodes);
   assert.strictEqual(result.length, 2);
   const ids = result.map(([id]) => id);
-  assert.ok(ids.includes('task_handoff'));
-  assert.ok(ids.includes('code_review'));
+  assert.deepStrictEqual(ids, ['task_handoff', 'code_review']);
 });
 
 // CHILD_DEPTH constant

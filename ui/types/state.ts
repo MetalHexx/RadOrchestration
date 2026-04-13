@@ -222,6 +222,18 @@ export interface ConditionalNodeState {
   branch_taken: 'true' | 'false' | null;
 }
 
+/** Discriminated union of all v5 node state variants */
+export type NodeState =
+  | StepNodeState
+  | GateNodeState
+  | ConditionalNodeState
+  | ParallelNodeState
+  | ForEachPhaseNodeState
+  | ForEachTaskNodeState;
+
+/** Map of node IDs to their state */
+export type NodesRecord = Record<string, NodeState>;
+
 export interface ParallelNodeState {
   kind: 'parallel';
   status: NodeStatus;
@@ -239,18 +251,6 @@ export interface ForEachTaskNodeState {
   status: NodeStatus;
   iterations: IterationEntry[];
 }
-
-/** Discriminated union of all v5 node state variants */
-export type NodeState =
-  | StepNodeState
-  | GateNodeState
-  | ConditionalNodeState
-  | ParallelNodeState
-  | ForEachPhaseNodeState
-  | ForEachTaskNodeState;
-
-/** Map of node IDs to their state */
-export type NodesRecord = Record<string, NodeState>;
 
 // ─── v5 Iteration & Corrective Task ──────────────────────────────────────────
 

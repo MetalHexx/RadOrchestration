@@ -53,8 +53,8 @@ export default function ProjectsPage() {
   );
 
   const orderedDocs = useMemo(() => {
-    if (isV5 && projectState && isV5State(projectState) && selectedProject) {
-      return getOrderedDocsV5(projectState, selectedProject, fileList);
+    if (isV5 && projectState && selectedProject) {
+      return getOrderedDocsV5(projectState as ProjectStateV5, selectedProject, fileList);
     }
     if (v4State && selectedProject) {
       return getOrderedDocs(v4State, selectedProject, fileList);
@@ -116,8 +116,8 @@ export default function ProjectsPage() {
               />
               <div className="px-6 py-4">
                 <DAGTimeline
-                  nodes={(projectState as ProjectStateV5).graph.nodes}
-                  currentNodePath={(projectState as ProjectStateV5).graph.current_node_path}
+                  nodes={projectState.graph.nodes}
+                  currentNodePath={projectState.graph.current_node_path}
                   onDocClick={openDocument}
                 />
               </div>

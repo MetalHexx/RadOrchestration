@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { ProjectSummary } from "@/types/components";
 import type { AnyProjectState, ProjectState } from "@/types/state";
 import { isV5State } from "@/types/state";
@@ -38,7 +38,10 @@ export function useProjects(): UseProjectsReturn {
   const [error, setError] = useState<string | null>(null);
 
   // Stable ref for selectedProject to use inside the SSE callback
-  const selectedProjectRef = useCallback(() => selectedProject, [selectedProject]);
+  const selectedProjectRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedProjectRef.current = selectedProject;
+  }, [selectedProject]);
 
   const fetchProjectList = useCallback(async () => {
     try {
@@ -54,7 +57,7 @@ export function useProjects(): UseProjectsReturn {
 
   const handleSSEEvent = useCallback(
     (event: SSEEvent) => {
-      const currentSelected = selectedProjectRef();
+      const currentSelected = selectedProjectRef.current;
 
       switch (event.type) {
         case "state_change": {
@@ -128,7 +131,7 @@ export function useProjects(): UseProjectsReturn {
           break;
       }
     },
-    [selectedProjectRef, fetchProjectList],
+    [fetchProjectList],
   );
 
   const { status: sseStatus, reconnect } = useSSE({

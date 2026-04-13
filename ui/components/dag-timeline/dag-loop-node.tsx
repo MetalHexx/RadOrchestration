@@ -7,7 +7,7 @@ import { DAGIterationPanel } from './dag-iteration-panel';
 import { formatNodeId } from './dag-node-row';
 import type { ForEachPhaseNodeState, ForEachTaskNodeState } from '@/types/state';
 
-interface DAGLoopNodeProps {
+export interface DAGLoopNodeProps {
   nodeId: string;
   node: ForEachPhaseNodeState | ForEachTaskNodeState;
   currentNodePath: string | null;
@@ -24,7 +24,7 @@ export function DAGLoopNode({ nodeId, node, currentNodePath, onDocClick }: DAGLo
   return (
     <Accordion defaultValue={[]}>
       <AccordionItem value={buildLoopItemValue(nodeId)} className="border-b-0">
-        <AccordionTrigger className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50">
+        <AccordionTrigger className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center">
           <NodeKindIcon kind={node.kind} />
           <span className="text-sm font-medium truncate flex-1">{formatNodeId(nodeId)}</span>
           <NodeStatusBadge status={node.status} />

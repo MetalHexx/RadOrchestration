@@ -80,6 +80,17 @@ test('returns not_started for mixed not_started/completed without in_progress', 
   assert.strictEqual(derivePlanningStatus(nodes), 'not_started');
 });
 
+test('returns not_started when a planning node has failed status (intentional fall-through)', () => {
+  const nodes: NodesRecord = {
+    research: makeStepNode('completed'),
+    prd: makeStepNode('failed'),
+    design: makeStepNode('completed'),
+    architecture: makeStepNode('completed'),
+    master_plan: makeStepNode('completed'),
+  };
+  assert.strictEqual(derivePlanningStatus(nodes), 'not_started');
+});
+
 // ─── deriveExecutionStatus ───────────────────────────────────────────────────
 
 console.log('deriveExecutionStatus');
