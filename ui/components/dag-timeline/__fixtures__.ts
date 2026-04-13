@@ -9,6 +9,7 @@ import type {
   ForEachPhaseNodeState,
   ForEachTaskNodeState,
   CorrectiveTaskEntry,
+  IterationEntry,
 } from '@/types/state';
 
 export const stepNode: StepNodeState = {
@@ -55,4 +56,19 @@ export const baseCorrectiveTask: CorrectiveTaskEntry = {
   status: 'not_started',
   nodes: { task_handoff: stepNode },
   commit_hash: null,
+};
+
+export const iterationWithCommitHash: IterationEntry = {
+  index: 0,
+  status: 'completed',
+  nodes: { task_handoff: stepNode },
+  corrective_tasks: [],
+  commit_hash: 'abc1234def5678',
+};
+
+export const iterationWithUndefinedCommitHash: IterationEntry = {
+  index: 1,
+  status: 'completed',
+  nodes: { task_handoff: stepNode },
+  corrective_tasks: [],
 };

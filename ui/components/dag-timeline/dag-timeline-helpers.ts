@@ -2,8 +2,8 @@ import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeSt
 
 export type CompatibleNodeState = StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState;
 
-export function getCommitLinkData(commitHash: string | null): { href: string; label: string } | null {
-  if (commitHash === null) return null;
+export function getCommitLinkData(commitHash: string | null | undefined): { href: string; label: string } | null {
+  if (commitHash == null) return null;
   // TODO(DAG-VIEW-3): Replace with real commit URL once repo base URL is available
   return {
     href: `#${commitHash}`,

@@ -262,7 +262,7 @@ export interface IterationEntry {
   status: NodeStatus;
   nodes: NodesRecord;
   corrective_tasks: CorrectiveTaskEntry[];
-  commit_hash: string | null;
+  commit_hash?: string | null;
 }
 
 export interface CorrectiveTaskEntry {
@@ -271,7 +271,7 @@ export interface CorrectiveTaskEntry {
   injected_after: string;
   status: NodeStatus;
   nodes: NodesRecord;
-  commit_hash: string | null;
+  commit_hash?: string | null;
 }
 
 // ─── v5 Source Control ───────────────────────────────────────────────────────
