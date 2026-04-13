@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 
 import type { GateApproveResponse, GateErrorResponse } from '@/types/state';
+import { isV5State } from '@/types/state';
 import { getWorkspaceRoot, resolveProjectDir } from '@/lib/path-resolver';
 import { readConfig, readProjectState, resolveOrchRoot } from '@/lib/fs-reader';
 
@@ -74,19 +75,23 @@ export async function POST(
       '--project-dir', relativeProjectDir,
     ];
     if (event === 'plan_approved') {
-      const steps = state.planning?.steps;
-      // steps is an array in v3 format; master_plan is the last entry (index 4)
-      const masterPlanStep = Array.isArray(steps)
-        ? steps.find((s) => s.name === 'master_plan')
-        : (steps as Record<string, { doc_path?: string | null }>)?.['master_plan'];
-      const docPath = masterPlanStep?.doc_path;
-      if (docPath) {
-        pipelineArgs.push('--doc-path', docPath);
+      if (!isV5State(state)) {
+        const steps = state.planning?.steps;
+        // steps is an array in v3 format; master_plan is the last entry (index 4)
+        const masterPlanStep = Array.isArray(steps)
+          ? steps.find((s) => s.name === 'master_plan')
+          : (steps as Record<string, { doc_path?: string | null }>)?.['master_plan'];
+        const docPath = masterPlanStep?.doc_path;
+        if (docPath) {
+          pipelineArgs.push('--doc-path', docPath);
+        }
       }
     } else if (event === 'final_approved') {
-      const docPath = state.final_review?.doc_path;
-      if (docPath) {
-        pipelineArgs.push('--doc-path', docPath);
+      if (!isV5State(state)) {
+        const docPath = state.final_review?.doc_path;
+        if (docPath) {
+          pipelineArgs.push('--doc-path', docPath);
+        }
       }
     }
 

@@ -1,4 +1,4 @@
-import type { ProjectState } from './state';
+import type { AnyProjectState } from './state';
 
 /** SSE event types sent from server to client */
 export type SSEEventType = 'state_change' | 'project_added' | 'project_removed' | 'connected' | 'heartbeat';
@@ -12,7 +12,7 @@ export interface SSEEvent<T extends SSEEventType = SSEEventType> {
 export interface SSEPayloadMap {
   state_change: {
     projectName: string;
-    state: ProjectState;
+    state: AnyProjectState;   // was ProjectState — now accepts both v4 and v5
   };
   project_added: {
     projectName: string;

@@ -2,12 +2,14 @@ import { readFile, readdir, stat, writeFile, rename, unlink } from 'node:fs/prom
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 
-import type { ProjectState } from '@/types/state';
+import type { AnyProjectState } from '@/types/state';
+import { isV5State } from '@/types/state';
 import type { OrchestrationConfig } from '@/types/config';
 import type { ProjectSummary } from '@/types/components';
 
 import { resolveBasePath, resolveProjectDir } from '@/lib/path-resolver';
 import { parseYaml } from '@/lib/yaml-parser';
+import { derivePlanningStatus, deriveExecutionStatus } from '@/lib/status-derivation';
 
 /**
  * Resolve the absolute path to orchestration.yml.
@@ -131,17 +133,32 @@ export async function discoverProjects(
 
     try {
       const raw = await readFile(statePath, 'utf-8');
-      const state: ProjectState = JSON.parse(raw);
-      projects.push({
-        name: projectName,
-        tier: state.pipeline.current_tier,
-        hasState: true,
-        hasMalformedState: false,
-        brainstormingDoc: hasBrainstorming ? brainstormingFile : null,
-        planningStatus: state.planning?.status,
-        executionStatus: state.execution?.status,
-        lastUpdated: state.project?.updated,
-      });
+      const state: AnyProjectState = JSON.parse(raw);
+      if (isV5State(state)) {
+        projects.push({
+          name: projectName,
+          tier: state.graph.status === 'completed' ? 'complete' : state.pipeline.current_tier,
+          hasState: true,
+          hasMalformedState: false,
+          brainstormingDoc: hasBrainstorming ? brainstormingFile : null,
+          planningStatus: derivePlanningStatus(state.graph.nodes),
+          executionStatus: deriveExecutionStatus(state.graph.status, state.graph.nodes),
+          lastUpdated: state.project?.updated,
+          schemaVersion: 'v5',
+        });
+      } else {
+        projects.push({
+          name: projectName,
+          tier: state.pipeline.current_tier,
+          hasState: true,
+          hasMalformedState: false,
+          brainstormingDoc: hasBrainstorming ? brainstormingFile : null,
+          planningStatus: state.planning?.status,
+          executionStatus: state.execution?.status,
+          lastUpdated: state.project?.updated,
+          schemaVersion: 'v4',
+        });
+      }
     } catch (err) {
       // Determine if the file is missing or malformed
       const isNotFound =
@@ -183,11 +200,11 @@ export async function discoverProjects(
  */
 export async function readProjectState(
   projectDir: string
-): Promise<ProjectState | null> {
+): Promise<AnyProjectState | null> {
   const statePath = path.join(projectDir, 'state.json');
   try {
     const content = await readFile(statePath, 'utf-8');
-    return JSON.parse(content) as ProjectState;
+    return JSON.parse(content) as AnyProjectState;
   } catch (err) {
     const isNotFound =
       err instanceof Error &&
