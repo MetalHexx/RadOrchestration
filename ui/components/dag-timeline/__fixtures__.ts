@@ -31,6 +31,18 @@ export const conditionalNode: ConditionalNodeState = {
   branch_taken: null,
 };
 
+export const conditionalNodeBranchTrue: ConditionalNodeState = {
+  kind: 'conditional',
+  status: 'completed',
+  branch_taken: 'true',
+};
+
+export const conditionalNodeBranchFalse: ConditionalNodeState = {
+  kind: 'conditional',
+  status: 'completed',
+  branch_taken: 'false',
+};
+
 export const parallelNode: ParallelNodeState = {
   kind: 'parallel',
   status: 'not_started',
