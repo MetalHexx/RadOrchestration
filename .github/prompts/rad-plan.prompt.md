@@ -42,8 +42,8 @@ I have project goals I'd like to develop into a full scale plan.
 - Use the `askQuestions` tool to:
   - If the plan is ready and passed the audit cleanup, give the user the option to execute the plan.
     - Give them 2 options "Execute Plan in current branch / worktree" or "Execute the plan in a new branch / worktree".
-      - Follow the instructions in `rad-execute` if in current branch, or `rad-execute-parallel` if they choose to use a new worktree. 
-    - If they choose to execute, follow the `rad-execute` instructions to execute the plan.
+      - **Current branch**: Follow the `rad-execute` skill — approve and begin execution immediately.
+      - **New worktree**: Follow the `rad-execute-parallel` skill — set up the worktree and follow users choices. Stop there. Do NOT begin execution. The user will run `/rad-execute` manually.
   - If the plan has unresolved issues, ask the user if they want to execute the plan anyway or if they want to continue iterating on the audit.
 
 
