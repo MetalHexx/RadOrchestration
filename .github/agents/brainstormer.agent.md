@@ -11,6 +11,8 @@ tools:
   - web
   - context7/*
   - github/*
+  - chrome-devtools/*
+  - chromedevtools/chrome-devtools-mcp/*
 model: Claude Sonnet 4.6 (copilot)
 handoffs:
   - label: "Start Planning Pipeline Process"
