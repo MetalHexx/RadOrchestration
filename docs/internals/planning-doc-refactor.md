@@ -9,7 +9,7 @@
 | Project | Agent | Document(s) | Status |
 |---------|-------|-------------|--------|
 | BETTER-PLAN-DOCS-1 | Product Manager | PRD + `rad-create-plans` skill architecture | Complete |
-| BETTER-PLAN-DOCS-2 | Research | Research Findings | Brainstorming |
+| BETTER-PLAN-DOCS-2 | Research | Research Findings | Complete |
 | BETTER-PLAN-DOCS-3 | UX Designer | Design | Draft |
 | BETTER-PLAN-DOCS-4 | Architect | Architecture | Draft |
 | BETTER-PLAN-DOCS-5 | Tactical Planner (takes over from Architect) | Master Plan | Draft |
@@ -167,14 +167,14 @@ No risk section restates another document's risks. The Master Plan aggregates an
 **Decision**: Redesign the Research Findings document as a chunk-friendly, evidence-only artifact. The researcher reports what IS — never what SHOULD BE.
 
 **Template structure**:
-- **Research Scope**: 2-3 sentences framing what was investigated and why
+- **Research Scope**: 1–2 sentences framing what was investigated and why
 - **Index Table**: Quick-reference mapping codebase areas → finding count → related FR IDs
-- **Codebase Analysis**: Per-finding headings (`### Finding: {Title}`) at 100-150 tokens each, organized by codebase area (hybrid). Each finding ends with `Relates to FR-N, FR-M.`
 - **Technology Stack**: Table of relevant technologies (kept — useful navigational context for downstream agents)
+- **Codebase Analysis**: Per-area groupings with per-finding headings (`#### Finding: {Title}`) at 100–150 tokens each. Each finding ends with `Relates to FR-N, FR-M.`
 
 **Sections cut**:
 - **Recommendations**: Scope bleed into Architect/PM domains. The researcher's own quality standard ("Patterns over opinions") contradicts this section
-- **Adhoc mode**: Dropped from the research agent entirely — Explore agent covers ad-hoc research questions
+- **Adhoc mode**: Dropped from the research agent entirely
 
 **Constraint implications**: Factual "This means X" statements are permitted as the final sentence of a finding block, before the `Relates to` line. No "should," no "recommend." Only direct, non-debatable consequences of codebase evidence.
 
