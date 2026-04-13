@@ -72,3 +72,13 @@ export const iterationWithUndefinedCommitHash: IterationEntry = {
   nodes: { task_handoff: stepNode },
   corrective_tasks: [],
 };
+
+/** Compound node IDs used in getDisplayName tests */
+export const compoundNodeIds = {
+  simple: 'phase_planning',
+  twoSegment: 'phase_loop.phase_planning',
+  threeSegment: 'phase_loop.iter0.phase_planning',
+  deeplyNested: 'phase_loop.iter0.task_loop.iter0.code_review',
+  loopNode: 'phase_loop.iter0.task_loop',
+  singleWord: 'commit',
+} as const;

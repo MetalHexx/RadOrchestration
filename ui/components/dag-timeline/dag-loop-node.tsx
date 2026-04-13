@@ -4,7 +4,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/
 import { NodeKindIcon } from './node-kind-icon';
 import { NodeStatusBadge } from './node-status-badge';
 import { DAGIterationPanel } from './dag-iteration-panel';
-import { formatNodeId } from './dag-node-row';
+import { getDisplayName } from './dag-timeline-helpers';
 import type { ForEachPhaseNodeState, ForEachTaskNodeState } from '@/types/state';
 
 export interface DAGLoopNodeProps {
@@ -26,7 +26,7 @@ export function DAGLoopNode({ nodeId, node, currentNodePath, onDocClick }: DAGLo
       <AccordionItem value={buildLoopItemValue(nodeId)} className="border-b-0">
         <AccordionTrigger className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center">
           <NodeKindIcon kind={node.kind} />
-          <span className="text-sm font-medium truncate flex-1">{formatNodeId(nodeId)}</span>
+          <span className="text-sm font-medium truncate flex-1">{getDisplayName(nodeId)}</span>
           <NodeStatusBadge status={node.status} />
         </AccordionTrigger>
         <AccordionContent>

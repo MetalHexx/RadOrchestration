@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { NodeKindIcon } from './node-kind-icon';
 import { NodeStatusBadge } from './node-status-badge';
 import { DocumentLink } from '@/components/documents';
+import { getDisplayName } from './dag-timeline-helpers';
 import type { CompatibleNodeState } from './dag-timeline-helpers';
 
 interface DAGNodeRowProps {
@@ -14,17 +15,8 @@ interface DAGNodeRowProps {
   depth?: number;  // default: 0
 }
 
-/**
- * Converts a snake_case nodeId to a human-readable display name.
- * e.g. "gate_mode_selection" → "Gate Mode Selection"
- * Exported for unit testing.
- */
-export function formatNodeId(nodeId: string): string {
-  return nodeId
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
+// Re-export formatNodeId to preserve barrel export contract
+export { formatNodeId } from './dag-timeline-helpers';
 
 export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0 }: DAGNodeRowProps) {
   const isActive = nodeId === currentNodePath;
@@ -39,7 +31,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       aria-current={isActive ? 'step' : undefined}
     >
       <NodeKindIcon kind={node.kind} />
-      <span className="text-sm font-medium truncate flex-1">{formatNodeId(nodeId)}</span>
+      <span className="text-sm font-medium truncate flex-1">{getDisplayName(nodeId)}</span>
       <NodeStatusBadge status={node.status} />
       {node.kind === 'step' && node.doc_path !== null && (
         <DocumentLink path={node.doc_path} label="Doc" onDocClick={onDocClick} />

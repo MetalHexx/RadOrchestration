@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { getCommitLinkData } from './dag-timeline-helpers';
+import { getCommitLinkData, formatNodeId, getDisplayName } from './dag-timeline-helpers';
 
 let passed = 0;
 let failed = 0;
@@ -41,6 +41,46 @@ test("empty string returns href and empty label", () => {
 test("short hash (fewer than 7 chars) returns full hash as label", () => {
   const result = getCommitLinkData("abc");
   assert.deepStrictEqual(result, { href: "#abc", label: "abc" });
+});
+
+console.log("\nformatNodeId tests\n");
+
+test("phase_planning returns Phase Planning", () => {
+  assert.strictEqual(formatNodeId("phase_planning"), "Phase Planning");
+});
+
+test("code_review returns Code Review", () => {
+  assert.strictEqual(formatNodeId("code_review"), "Code Review");
+});
+
+test("commit (single word) returns Commit", () => {
+  assert.strictEqual(formatNodeId("commit"), "Commit");
+});
+
+console.log("\ngetDisplayName tests\n");
+
+test("simple ID with no dot passes through to formatNodeId", () => {
+  assert.strictEqual(getDisplayName("phase_planning"), "Phase Planning");
+});
+
+test("two-segment ID extracts leaf after dot", () => {
+  assert.strictEqual(getDisplayName("phase_loop.phase_planning"), "Phase Planning");
+});
+
+test("three-segment ID extracts leaf after last dot", () => {
+  assert.strictEqual(getDisplayName("phase_loop.iter0.phase_planning"), "Phase Planning");
+});
+
+test("deeply nested ID extracts leaf", () => {
+  assert.strictEqual(getDisplayName("phase_loop.iter0.task_loop.iter0.code_review"), "Code Review");
+});
+
+test("loop node ID extracts leaf", () => {
+  assert.strictEqual(getDisplayName("phase_loop.iter0.task_loop"), "Task Loop");
+});
+
+test("single word with no dot and no underscore returns capitalized", () => {
+  assert.strictEqual(getDisplayName("commit"), "Commit");
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
