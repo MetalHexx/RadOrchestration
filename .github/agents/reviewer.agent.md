@@ -7,6 +7,7 @@ tools:
   - edit
   - execute
   - todo
+  - chrome-devtools/*
   - vscode/askQuestions
 model: Claude Sonnet 4.6 (copilot)
 ---

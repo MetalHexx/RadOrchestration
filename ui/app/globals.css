@@ -132,6 +132,11 @@
     --color-warning: hsl(32, 95%, 34%);
     --color-progress-fill: hsl(217, 91%, 45%);
     --color-progress-track: hsl(220, 14%, 96%);
+
+    /* ── Canvas Tokens ── */
+    --canvas-edge-stroke: var(--color-link);
+    --canvas-node-group-bg: color-mix(in oklch, var(--muted) 40%, transparent);
+    --canvas-node-group-border: var(--border);
   }
 
   .dark {
@@ -209,6 +214,11 @@
     --color-link: hsl(217, 91%, 65%);
     --color-link-disabled: hsl(215, 14%, 40%);
     --color-progress-track: hsl(215, 28%, 17%);
+
+    /* ── Canvas Tokens ── */
+    --canvas-edge-stroke: var(--color-link);
+    --canvas-node-group-bg: color-mix(in oklch, var(--muted) 40%, transparent);
+    --canvas-node-group-border: var(--border);
   }
 
   /* ── Focus-visible ring ── */
@@ -223,6 +233,26 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ── ReactFlow Controls — theme-aware overrides ── */
+.react-flow .react-flow__controls-button {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+.react-flow .react-flow__controls-button svg {
+  fill: currentColor;
+}
+
+.react-flow .react-flow__controls-button:hover {
+  background: var(--accent);
+}
+
+.react-flow .react-flow__controls-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 @media (prefers-reduced-motion: reduce) {
