@@ -9,8 +9,9 @@
  */
 import assert from "node:assert";
 import { formatNodeId } from './dag-node-row';
+import { getDisplayName } from './dag-timeline-helpers';
 import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState } from '@/types/state';
-import { gateNode } from './__fixtures__';
+import { gateNode, conditionalNodeBranchTrue, conditionalNodeBranchFalse } from './__fixtures__';
 
 let passed = 0;
 let failed = 0;
@@ -41,6 +42,16 @@ function shouldRenderDocLink(node: StepNodeState | GateNodeState | ConditionalNo
   return node.kind === 'step' && node.doc_path !== null;
 }
 
+function shouldRenderBranchIndicator(node: StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState): boolean {
+  return node.kind === 'conditional' && node.branch_taken != null;
+}
+
+function computeBranchBadge(branchTaken: 'true' | 'false'): { label: string; badgeStatus: string; ariaLabel: string } {
+  const label = branchTaken === 'true' ? 'Yes' : 'No';
+  const badgeStatus = branchTaken === 'true' ? 'completed' : 'skipped';
+  return { label, badgeStatus, ariaLabel: `Branch taken: ${label}` };
+}
+
 function computeClasses(isActive: boolean): string[] {
   const classes = ['py-2', 'pr-3', 'rounded-md', 'gap-2', 'flex', 'items-center', 'hover:bg-accent/50'];
   if (isActive) {
@@ -68,7 +79,7 @@ const stepNodeNoDoc: StepNodeState = {
 const conditionalNode: ConditionalNodeState = {
   kind: 'conditional',
   status: 'completed',
-  branch_taken: 'true',
+  branch_taken: null,
 };
 
 const parallelNode: ParallelNodeState = {
@@ -80,6 +91,10 @@ const parallelNode: ParallelNodeState = {
 // ─── Tests: formatNodeId ─────────────────────────────────────────────────────
 
 console.log("\nDAGNodeRow logic tests\n");
+
+test('getDisplayName extracts leaf from compound path', () => {
+  assert.strictEqual(getDisplayName('phase_loop.iter0.task_handoff'), 'Task Handoff');
+});
 
 test('formatNodeId: "gate_mode_selection" → "Gate Mode Selection"', () => {
   assert.strictEqual(formatNodeId('gate_mode_selection'), 'Gate Mode Selection');
@@ -190,6 +205,51 @@ test('depth=2 → paddingLeft: 44', () => {
 
 test('depth=3 → paddingLeft: 60', () => {
   assert.strictEqual(computePaddingLeft(3), 60);
+});
+
+// ─── Tests: Branch indicator rendering ───
+
+test('shouldRenderBranchIndicator returns true for conditional node with branch_taken="true"', () => {
+  assert.strictEqual(shouldRenderBranchIndicator(conditionalNodeBranchTrue), true);
+});
+
+test('shouldRenderBranchIndicator returns true for conditional node with branch_taken="false"', () => {
+  assert.strictEqual(shouldRenderBranchIndicator(conditionalNodeBranchFalse), true);
+});
+
+test('shouldRenderBranchIndicator returns false for conditional node with branch_taken=null', () => {
+  assert.strictEqual(shouldRenderBranchIndicator(conditionalNode), false);
+});
+
+test('shouldRenderBranchIndicator returns false for step node', () => {
+  assert.strictEqual(shouldRenderBranchIndicator(stepNodeWithDoc), false);
+});
+
+test('shouldRenderBranchIndicator returns false for gate node', () => {
+  assert.strictEqual(shouldRenderBranchIndicator(gateNode), false);
+});
+
+test('shouldRenderBranchIndicator returns false for parallel node', () => {
+  assert.strictEqual(shouldRenderBranchIndicator(parallelNode), false);
+});
+
+test('computeBranchBadge("true") returns label="Yes", badgeStatus="completed", ariaLabel="Branch taken: Yes"', () => {
+  const result = computeBranchBadge('true');
+  assert.deepStrictEqual(result, { label: 'Yes', badgeStatus: 'completed', ariaLabel: 'Branch taken: Yes' });
+});
+
+test('computeBranchBadge("false") returns label="No", badgeStatus="skipped", ariaLabel="Branch taken: No"', () => {
+  const result = computeBranchBadge('false');
+  assert.deepStrictEqual(result, { label: 'No', badgeStatus: 'skipped', ariaLabel: 'Branch taken: No' });
+});
+
+test('shouldRenderBranchIndicator handles generic conditional node id (not hardcoded to commit_gate)', () => {
+  const genericNode: ConditionalNodeState = {
+    kind: 'conditional',
+    status: 'completed',
+    branch_taken: 'true',
+  };
+  assert.strictEqual(shouldRenderBranchIndicator(genericNode), true);
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

@@ -1,17 +1,14 @@
 "use client";
 
-import type { NodesRecord, NodeState } from '@/types/state';
+import type { NodesRecord } from '@/types/state';
 import { DAGNodeRow } from './dag-node-row';
 import { DAGLoopNode } from './dag-loop-node';
+import { isLoopNode } from './dag-timeline-helpers';
 
 interface DAGTimelineProps {
   nodes: NodesRecord;
   currentNodePath: string | null;
   onDocClick: (path: string) => void;
-}
-
-export function isLoopNode(node: NodeState): node is Extract<NodeState, { kind: 'for_each_phase' | 'for_each_task' }> {
-  return node.kind === 'for_each_phase' || node.kind === 'for_each_task';
 }
 
 export function DAGTimeline({ nodes, currentNodePath, onDocClick }: DAGTimelineProps) {

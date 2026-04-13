@@ -138,14 +138,16 @@ test('GROUP_ARIA_LABEL is "Corrective tasks"', () => {
   assert.strictEqual(GROUP_ARIA_LABEL, "Corrective tasks");
 });
 
-// shouldRenderGroup — empty array
-test('empty correctiveTasks array produces no output (component returns null)', () => {
-  assert.strictEqual(baseCorrectiveTask !== null, true); // non-empty fixture is valid
-  assert.strictEqual([].length > 0, false);
+// filterCompatibleNodes — empty nodes
+test('filterCompatibleNodes returns empty array when nodes is {}', () => {
+  const taskWithNoNodes: CorrectiveTaskEntry = { ...baseCorrectiveTask, nodes: {} };
+  assert.strictEqual(filterCompatibleNodes(taskWithNoNodes.nodes).length, 0);
 });
 
 test('non-empty correctiveTasks array renders the group', () => {
-  assert.strictEqual([baseCorrectiveTask].length > 0, true);
+  const result = filterCompatibleNodes(baseCorrectiveTask.nodes);
+  assert.strictEqual(result.length, 1);
+  assert.strictEqual(result[0][0], 'task_handoff');
 });
 
 // buildTriggerText

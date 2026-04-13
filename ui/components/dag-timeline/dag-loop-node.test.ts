@@ -7,7 +7,7 @@
  */
 import assert from "node:assert";
 import { buildLoopItemValue } from './dag-loop-node';
-import { formatNodeId } from './dag-node-row';
+import { isLoopNode, getDisplayName } from './dag-timeline-helpers';
 import type {
   ForEachPhaseNodeState,
   ForEachTaskNodeState,
@@ -84,13 +84,13 @@ test('buildLoopItemValue("my_node_id") returns "loop-my_node_id"', () => {
   assert.strictEqual(buildLoopItemValue("my_node_id"), "loop-my_node_id");
 });
 
-// formatNodeId (imported from dag-node-row)
-test('formatNodeId("phase_loop") returns "Phase Loop"', () => {
-  assert.strictEqual(formatNodeId("phase_loop"), "Phase Loop");
+// getDisplayName (used by component trigger row)
+test('getDisplayName("phase_loop") returns "Phase Loop"', () => {
+  assert.strictEqual(getDisplayName("phase_loop"), "Phase Loop");
 });
 
-test('formatNodeId("task_loop") returns "Task Loop"', () => {
-  assert.strictEqual(formatNodeId("task_loop"), "Task Loop");
+test('getDisplayName("task_loop") returns "Task Loop"', () => {
+  assert.strictEqual(getDisplayName("task_loop"), "Task Loop");
 });
 
 // Component simulation: for_each_phase node with 0 iterations
@@ -117,12 +117,11 @@ test('for_each_phase node with 2 iterations — second entry has iterationIndex 
 
 test('parentNodeId is passed through to DAGIterationPanel (simulation: nodeId matches)', () => {
   const nodeId = "phase_loop";
-  // Simulate what DAGLoopNode does: pass nodeId as parentNodeId to each panel
+  // isLoopNode confirms for_each_phase renders as DAGLoopNode, which then passes nodeId as parentNodeId
   const iterations = forEachPhaseNode2.iterations;
-  iterations.forEach(() => {
-    // In the real component: <DAGIterationPanel parentNodeId={nodeId} ... />
-    assert.strictEqual(nodeId, "phase_loop");
-  });
+  assert.strictEqual(isLoopNode(forEachPhaseNode2), true);
+  assert.strictEqual(iterations.length, 2);
+  assert.strictEqual(buildLoopItemValue(nodeId), "loop-phase_loop");
 });
 
 // Component simulation: for_each_task node with 3 iterations
@@ -169,16 +168,16 @@ test('trigger row uses node.status for NodeStatusBadge (completed)', () => {
 });
 
 // Trigger row — formatted node name
-test('trigger row displays formatted node name via formatNodeId', () => {
-  assert.strictEqual(formatNodeId("phase_loop"), "Phase Loop");
-  assert.strictEqual(formatNodeId("task_loop"), "Task Loop");
+test('trigger row displays formatted node name via getDisplayName', () => {
+  assert.strictEqual(getDisplayName("phase_loop"), "Phase Loop");
+  assert.strictEqual(getDisplayName("task_loop"), "Task Loop");
 });
 
 // currentNodePath and onDocClick passthrough simulation
 test('currentNodePath is passed through to DAGIterationPanel', () => {
   const currentNodePath = "phase_loop.iter0.task_handoff";
-  // In the component: each <DAGIterationPanel currentNodePath={currentNodePath} ... />
-  assert.strictEqual(typeof currentNodePath, 'string');
+  // getDisplayName extracts the leaf segment of compound node paths
+  assert.strictEqual(getDisplayName(currentNodePath), "Task Handoff");
 });
 
 test('onDocClick is passed through to DAGIterationPanel', () => {
