@@ -1,11 +1,11 @@
 import dagre from '@dagrejs/dagre';
 import type { TemplateGraphEdge, TemplateGraphNode } from '@/types/template';
 
-const NODE_WIDTH = 200;
-const NODE_HEIGHT = 60;
-const PAD_LEFT = 40;
+export const NODE_WIDTH = 200;
+export const NODE_HEIGHT = 60;
+export const PAD_LEFT = 40;
 const PAD_RIGHT = 40;
-const PAD_TOP = 60;
+export const PAD_TOP = 60;
 const PAD_BOTTOM = 40;
 
 /**

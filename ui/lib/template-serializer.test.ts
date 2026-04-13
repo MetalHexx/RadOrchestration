@@ -158,6 +158,25 @@ describe('parseTemplateToGraph', () => {
       /invalid template/i
     );
   });
+
+  it('conditional node with empty branches has type: templateNode', () => {
+    const yaml = [
+      'template:',
+      '  id: test-empty-cond',
+      '  version: "1.0"',
+      '  description: test',
+      'nodes:',
+      '  - id: check',
+      '    kind: conditional',
+      '    label: Check',
+      '    depends_on: []',
+      '    branches: {}',
+    ].join('\n');
+    const graph = parseTemplateToGraph(yaml);
+    const node = graph.nodes.find((n) => n.id === 'check');
+    assert.ok(node, 'conditional node not found');
+    assert.strictEqual(node.type, 'templateNode', 'conditional with no branch children should be templateNode');
+  });
 });
 
 // ── serializeGraphToYaml ──────────────────────────────────────────────────────

@@ -130,7 +130,7 @@ export function ReadOnlyCanvas({ templateId }: ReadOnlyCanvasProps) {
         <MiniMap
           position="bottom-left"
           style={{ backgroundColor: 'var(--card)' }}
-          maskColor="rgba(0, 0, 0, 0.6)"
+          maskColor="rgba(128, 128, 128, 0.4)"
           nodeColor="var(--muted)"
           nodeStrokeColor="var(--border)"
           aria-hidden="true"

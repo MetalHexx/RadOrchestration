@@ -18,7 +18,7 @@ const accentMap: Partial<Record<TemplateNodeKind, string>> = {
   conditional: 'var(--tier-execution)',
 };
 
-const loopLabelMap: Partial<Record<TemplateNodeKind, string>> = {
+const kindLabelMap: Partial<Record<TemplateNodeKind, string>> = {
   for_each_phase: 'Loop: each phase',
   for_each_task: 'Loop: each task',
   conditional: 'Conditional',
@@ -75,14 +75,14 @@ export function TemplateGroupNode({ data }: TemplateGroupNodeProps) {
         </span>
 
         <span className="ml-auto text-[11px] text-[var(--muted-foreground)] shrink-0" title={data.kind}>
-          {loopLabelMap[data.kind] ?? data.kind}
+          {kindLabelMap[data.kind] ?? data.kind}
         </span>
 
         {showTooltip && (
           <div id={tooltipId} role="tooltip" className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[var(--card)] border border-[var(--border)] rounded-md shadow-md px-3 py-2 text-xs whitespace-nowrap z-50">
-            <div>id: {data.id}</div>
+            {process.env.NODE_ENV === 'development' && <div>id: {data.id}</div>}
             <div>kind: {data.kind}</div>
-            <div>{loopLabelMap[data.kind] ?? ''}</div>
+            <div>{kindLabelMap[data.kind] ?? ''}</div>
           </div>
         )}
       </div>

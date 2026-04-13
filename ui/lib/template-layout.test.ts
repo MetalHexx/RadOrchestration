@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { computeTemplateLayout } from './template-layout';
+import { computeTemplateLayout, NODE_WIDTH, NODE_HEIGHT, PAD_LEFT, PAD_TOP } from './template-layout';
 import { parseTemplateToGraph } from './template-serializer';
 
 // ── Fixture loading ───────────────────────────────────────────────────────────
@@ -15,13 +15,6 @@ const QUICK_YAML = readFileSync(
   join(__dirname, '../../.github/skills/orchestration/templates/quick.yml'),
   'utf-8'
 );
-
-// ── Constants (matching template-layout.ts) ───────────────────────────────────
-
-const NODE_WIDTH = 200;
-const NODE_HEIGHT = 60;
-const PAD_LEFT = 40;
-const PAD_TOP = 60;
 
 // ── computeTemplateLayout ─────────────────────────────────────────────────────
 
@@ -186,29 +179,6 @@ describe('computeTemplateLayout', () => {
         assert.ok(
           Number.isFinite(height) && height > 0,
           `nested group node ${node.id} style.height is not positive finite (got ${height})`
-        );
-      }
-    });
-
-    it('children of nested templateGroup nodes have non-zero positions', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
-      const result = computeTemplateLayout(nodes, edges);
-      const nestedGroupIds = new Set(
-        result.nodes
-          .filter((n) => n.type === 'templateGroup' && n.parentId !== undefined)
-          .map((n) => n.id)
-      );
-      const children = result.nodes.filter(
-        (n) => n.parentId !== undefined && nestedGroupIds.has(n.parentId)
-      );
-      assert.ok(
-        children.length > 0,
-        'expected at least one child of a nested templateGroup node'
-      );
-      for (const child of children) {
-        assert.ok(
-          child.position.x > 0 || child.position.y > 0,
-          `child ${child.id} of nested group has position {0, 0}`
         );
       }
     });

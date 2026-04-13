@@ -90,10 +90,15 @@ async function run() {
 
   await test('kind subtitle renders correctly', () => {
     const html = renderWithProvider(phaseData);
-    assert.ok(html.includes('for_each_phase'), 'kind subtitle is present in rendered HTML');
+    assert.ok(html.includes('Loop: each phase'), 'mapped label text for for_each_phase should be present in rendered HTML');
   });
 
-  await test('Handle elements rendered in output', () => {
+  await test('kind subtitle renders correctly for kind for_each_task', () => {
+    const html = renderWithProvider(taskData);
+    assert.ok(html.includes('Loop: each task'), 'mapped label text for for_each_task should be present in rendered HTML');
+  });
+
+  await test('Handle components present in source (not testable in SSR)', () => {
     const source = readFileSync(join(__dirname, 'template-group-node.tsx'), 'utf-8');
     assert.ok(source.includes('<Handle'), 'source should contain Handle components');
   });
@@ -124,7 +129,7 @@ async function run() {
 
   await test('conditional kind displays Conditional label', () => {
     const html = renderWithProvider(conditionalData);
-    assert.ok(html.includes('Conditional'), 'should contain Conditional label text from loopLabelMap');
+    assert.ok(html.includes('Conditional'), 'should contain Conditional label text from kindLabelMap');
   });
 
   await test('conditional kind displays correct accent color', () => {

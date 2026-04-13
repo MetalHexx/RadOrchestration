@@ -235,7 +235,7 @@
   }
 }
 
-/* ── ReactFlow Controls Dark Theme ── */
+/* ── ReactFlow Controls — theme-aware overrides ── */
 .react-flow .react-flow__controls-button {
   background: var(--card);
   border: 1px solid var(--border);
@@ -248,6 +248,11 @@
 
 .react-flow .react-flow__controls-button:hover {
   background: var(--accent);
+}
+
+.react-flow .react-flow__controls-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 @media (prefers-reduced-motion: reduce) {
