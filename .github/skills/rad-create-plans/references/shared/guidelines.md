@@ -38,6 +38,8 @@ Every planning agent loads this file before beginning its document-type-specific
 - PRDs, Designs, and Master Plans must not contain source code, concrete file paths, or technology/framework choices
 - Implementation details belong in Architecture and downstream task documents — not in PRDs, Designs, or Master Plans
 - If a PRD, Design, or Master Plan contains implementation details, it must be revised before approval
+- **Exempt documents**: Research Findings and Architecture documents may contain concrete file paths, code references, and technology details — these documents exist precisely to provide implementation-level evidence and structure
+- This exemption applies only to Research Findings and Architecture — no other document types are exempt
 
 ## Self-Review
 
