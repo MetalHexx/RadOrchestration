@@ -21,7 +21,7 @@ I have project goals I'd like to develop into a full scale plan.
 
 ## Step 2: Starting Message
 - Produce a nicely formatted and mildly enthusiastic message confirming the project name and template choice.
-- Indicate the planning process steps we'll run through. (Including the audit) 
+- List planning steps by reading the template YAML: include only `kind: step` nodes that appear before the first `request_plan_approval` gate. Everything after that gate is execution, not planning.
 
 ## Step 3: Read Project Template
 - Start the planning pipeline and call needed CLI parameters to start the planning process, passing the chosen template as an argument (e.g., `--template full`).
