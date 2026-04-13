@@ -259,6 +259,31 @@ describe('round-trip fidelity', () => {
     assert.strictEqual(graph2.nodes.length, graph.nodes.length, 'node count should be preserved');
     assert.strictEqual(graph2.edges.length, graph.edges.length, 'edge count should be preserved');
   });
+
+  it('branchless conditional round-trip: no branches key emitted when conditional has no children', () => {
+    const yaml = [
+      'template:',
+      '  id: test-branchless',
+      '  version: "1.0"',
+      '  description: branchless conditional round-trip',
+      'nodes:',
+      '  - id: check',
+      '    kind: conditional',
+      '    label: Check',
+      '    depends_on: []',
+    ].join('\n');
+    const meta = (parseYamlRaw(yaml) as any).template;
+    const graph = parseTemplateToGraph(yaml);
+    const serialized = serializeGraphToYaml(graph, meta);
+    const reparsed = parseYamlRaw(serialized) as any;
+    const checkNode = reparsed.nodes.find((n: any) => n.id === 'check');
+    assert.ok(checkNode, 'check node not found in serialized output');
+    assert.strictEqual(
+      checkNode.branches,
+      undefined,
+      'branchless conditional should NOT have a branches key in serialized output'
+    );
+  });
 });
 
 // ── node kind coverage ────────────────────────────────────────────────────────

@@ -201,20 +201,22 @@ function buildYamlNodes(
     if (kind === 'conditional') {
       const childIds = childrenMap.get(nodeId) ?? [];
 
-      const trueBranchIds: string[] = [];
-      const falseBranchIds: string[] = [];
+      if (childIds.length > 0) {
+        const trueBranchIds: string[] = [];
+        const falseBranchIds: string[] = [];
 
-      for (const childId of childIds) {
-        const hasTrue = edges.some(e => e.source === nodeId && e.target === childId && e.label === 'true');
-        const hasFalse = edges.some(e => e.source === nodeId && e.target === childId && e.label === 'false');
-        if (hasTrue) trueBranchIds.push(childId);
-        if (hasFalse) falseBranchIds.push(childId);
+        for (const childId of childIds) {
+          const hasTrue = edges.some(e => e.source === nodeId && e.target === childId && e.label === 'true');
+          const hasFalse = edges.some(e => e.source === nodeId && e.target === childId && e.label === 'false');
+          if (hasTrue) trueBranchIds.push(childId);
+          if (hasFalse) falseBranchIds.push(childId);
+        }
+
+        yamlNode.branches = {
+          true: buildYamlNodes(trueBranchIds, nodeMap, childrenMap, edges),
+          false: buildYamlNodes(falseBranchIds, nodeMap, childrenMap, edges),
+        };
       }
-
-      yamlNode.branches = {
-        true: buildYamlNodes(trueBranchIds, nodeMap, childrenMap, edges),
-        false: buildYamlNodes(falseBranchIds, nodeMap, childrenMap, edges),
-      };
     }
 
     return yamlNode;

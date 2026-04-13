@@ -59,7 +59,7 @@ export function ReadOnlyCanvas({ templateId }: ReadOnlyCanvasProps) {
         const laid = computeTemplateLayout(graph.nodes, graph.edges);
 
         if (!aborted) {
-          setNodes(laid.nodes as Node<TemplateGraphNodeData>[]);
+          setNodes(laid.nodes);
           setEdges(laid.edges);
           setStatus('loaded');
         }

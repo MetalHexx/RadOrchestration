@@ -1,4 +1,5 @@
 // ui/types/template.ts
+import type { CSSProperties } from 'react';
 
 /** The five node kinds that appear in template YAML files. */
 export type TemplateNodeKind = 'step' | 'gate' | 'conditional' | 'for_each_phase' | 'for_each_task';
@@ -80,7 +81,7 @@ export interface TemplateGraphNode {
   data: TemplateGraphNodeData;
   parentId?: string;
   extent?: 'parent';
-  style?: Record<string, string | number>;
+  style?: CSSProperties;
 }
 
 /** A ReactFlow edge representing a depends_on relationship. */
