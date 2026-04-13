@@ -127,8 +127,15 @@ export function ReadOnlyCanvas({ templateId }: ReadOnlyCanvasProps) {
         }}
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
-        <MiniMap aria-hidden="true" />
-        <Controls />
+        <MiniMap
+          position="bottom-left"
+          style={{ backgroundColor: 'var(--card)' }}
+          maskColor="rgba(0, 0, 0, 0.6)"
+          nodeColor="var(--muted)"
+          nodeStrokeColor="var(--border)"
+          aria-hidden="true"
+        />
+        <Controls position="bottom-right" />
       </ReactFlow>
     </div>
   );
