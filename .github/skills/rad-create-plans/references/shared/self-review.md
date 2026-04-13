@@ -10,6 +10,7 @@ You are checking your own output for accuracy against the codebase and cohesion 
 - **Existing source files** — files your document references as already existing
 
 ### Planning Dependency Chain
+`Some documents may not be applicable depending on the process template being used, but this is a typical chain:`
 
 | Document | Upstream Inputs |
 |----------|----------------|
@@ -23,7 +24,7 @@ You are checking your own output for accuracy against the codebase and cohesion 
 
 ## Workflow
 
-1. **Identify upstream docs** from the dependency chain above.
+1. **Identify upstream docs** from the dependency chain above (or based on the selected process template).
 
 2. **Read each upstream doc** you haven't already read in this session.
 
