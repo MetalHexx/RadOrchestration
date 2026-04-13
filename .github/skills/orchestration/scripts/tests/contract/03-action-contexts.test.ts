@@ -328,7 +328,7 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
     expect(result.context).toEqual({});
   });
 
-  it('request_final_approval returns {}', () => {
+  it('request_final_approval returns { pr_url: null } when no source control is populated', () => {
     const reviewConfig = createConfig({
       human_gates: {
         after_planning: true,

@@ -410,13 +410,7 @@ describe('Execution-tier integration — complete pipeline run', () => {
       verdict: 'approved',
     }, io);
     expect(result.success).toBe(true);
-    // final_approval_gate active (after_final_review = true)
-    expect(result.action).toBe('request_final_approval');
-
-    // ── final_approved ────────────────────────────────────────────
-    result = processEvent('final_approved', PROJECT_DIR, {}, io);
-    expect(result.success).toBe(true);
-    // PR conditional: auto_pr='always' neq 'never' → true branch → invoke PR
+    // pr_gate: auto_pr='always' neq 'never' → true branch → invoke PR
     expect(result.action).toBe('invoke_source_control_pr');
 
     // Verify PR conditional branch_taken
@@ -431,8 +425,14 @@ describe('Execution-tier integration — complete pipeline run', () => {
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_pr');
 
-    // ── pr_created → display_complete ───────────────────
+    // ── pr_created → final_approval_gate ───────────────────
     result = processEvent('pr_created', PROJECT_DIR, {}, io);
+    expect(result.success).toBe(true);
+    // final_approval_gate active (after_final_review = true)
+    expect(result.action).toBe('request_final_approval');
+
+    // ── final_approved → display_complete ────────────────────────
+    result = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');
 
@@ -661,7 +661,7 @@ describe('Execution-tier integration — conditional branch variations', () => {
       verdict: 'approved',
     }, io);
 
-    // final_approved → PR conditional: 'never' neq 'never' → false → skip PR → display_complete
+    // final_approved → display_complete (pr_gate already completed with false branch after final_review)
     result = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');
@@ -742,13 +742,11 @@ describe('Execution-tier integration — conditional branch variations', () => {
     // Final review
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     seedDoc(DOC_PATHS.finalReview);
-    processEvent('final_review_completed', PROJECT_DIR, {
+    // final_review_completed → pr_gate: 'always' neq 'never' → true → invoke PR
+    const result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: DOC_PATHS.finalReview,
       verdict: 'approved',
     }, io);
-
-    // final_approved → PR conditional: 'always' neq 'never' → true → invoke PR
-    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_pr');
 
