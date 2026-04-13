@@ -34,9 +34,9 @@ test("undefined returns null without throwing", () => {
   assert.strictEqual(result, null);
 });
 
-test("empty string returns href and empty label", () => {
+test("empty string returns null", () => {
   const result = getCommitLinkData("");
-  assert.deepStrictEqual(result, { href: "#", label: "" });
+  assert.strictEqual(result, null);
 });
 
 test("short hash (fewer than 7 chars) returns full hash as label", () => {

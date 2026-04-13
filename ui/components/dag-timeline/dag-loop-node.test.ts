@@ -7,7 +7,6 @@
  */
 import assert from "node:assert";
 import { buildLoopItemValue } from './dag-loop-node';
-import { formatNodeId } from './dag-node-row';
 import { isLoopNode, getDisplayName } from './dag-timeline-helpers';
 import type {
   ForEachPhaseNodeState,
@@ -85,13 +84,13 @@ test('buildLoopItemValue("my_node_id") returns "loop-my_node_id"', () => {
   assert.strictEqual(buildLoopItemValue("my_node_id"), "loop-my_node_id");
 });
 
-// formatNodeId (imported from dag-node-row)
-test('formatNodeId("phase_loop") returns "Phase Loop"', () => {
-  assert.strictEqual(formatNodeId("phase_loop"), "Phase Loop");
+// getDisplayName (used by component trigger row)
+test('getDisplayName("phase_loop") returns "Phase Loop"', () => {
+  assert.strictEqual(getDisplayName("phase_loop"), "Phase Loop");
 });
 
-test('formatNodeId("task_loop") returns "Task Loop"', () => {
-  assert.strictEqual(formatNodeId("task_loop"), "Task Loop");
+test('getDisplayName("task_loop") returns "Task Loop"', () => {
+  assert.strictEqual(getDisplayName("task_loop"), "Task Loop");
 });
 
 // Component simulation: for_each_phase node with 0 iterations
@@ -169,9 +168,9 @@ test('trigger row uses node.status for NodeStatusBadge (completed)', () => {
 });
 
 // Trigger row — formatted node name
-test('trigger row displays formatted node name via formatNodeId', () => {
-  assert.strictEqual(formatNodeId("phase_loop"), "Phase Loop");
-  assert.strictEqual(formatNodeId("task_loop"), "Task Loop");
+test('trigger row displays formatted node name via getDisplayName', () => {
+  assert.strictEqual(getDisplayName("phase_loop"), "Phase Loop");
+  assert.strictEqual(getDisplayName("task_loop"), "Task Loop");
 });
 
 // currentNodePath and onDocClick passthrough simulation

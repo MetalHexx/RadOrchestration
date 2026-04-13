@@ -20,6 +20,9 @@ export { formatNodeId } from './dag-timeline-helpers';
 
 export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0 }: DAGNodeRowProps) {
   const isActive = nodeId === currentNodePath;
+  const branchTaken = node.kind === 'conditional' ? node.branch_taken : null;
+  const branchLabel = branchTaken != null ? (branchTaken === 'true' ? 'Yes' : 'No') : null;
+  const branchBadgeStatus = branchTaken != null ? (branchTaken === 'true' ? 'completed' : 'skipped') : null;
 
   return (
     <div
@@ -33,15 +36,11 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       <NodeKindIcon kind={node.kind} />
       <span className="text-sm font-medium truncate flex-1">{getDisplayName(nodeId)}</span>
       <NodeStatusBadge status={node.status} />
-      {node.kind === 'conditional' && node.branch_taken != null && (() => {
-        const label = node.branch_taken === 'true' ? 'Yes' : 'No';
-        const badgeStatus = node.branch_taken === 'true' ? 'completed' : 'skipped';
-        return (
-          <span role="group" aria-label={`Branch taken: ${label}`}>
-            <NodeStatusBadge status={badgeStatus} label={label} />
-          </span>
-        );
-      })()}
+      {branchLabel !== null && branchBadgeStatus !== null && (
+        <span role="group" aria-label={`Branch taken: ${branchLabel}`}>
+          <NodeStatusBadge status={branchBadgeStatus} label={branchLabel} />
+        </span>
+      )}
       {node.kind === 'step' && node.doc_path !== null && (
         <DocumentLink path={node.doc_path} label="Doc" onDocClick={onDocClick} />
       )}
