@@ -3,8 +3,11 @@
 import { DAGNodeRow } from './dag-node-row';
 import { NodeStatusBadge } from './node-status-badge';
 import { DAGCorrectiveTaskGroup } from './dag-corrective-task-group';
+import { DAGLoopNode } from './dag-loop-node';
 import { ExternalLink } from '@/components/documents';
-import { getCommitLinkData, filterCompatibleNodes } from './dag-timeline-helpers';
+import { getCommitLinkData } from './dag-timeline-helpers';
+import type { CompatibleNodeState } from './dag-timeline-helpers';
+import { isLoopNode } from './dag-timeline';
 import type { IterationEntry } from '@/types/state';
 
 interface DAGIterationPanelProps {
@@ -37,7 +40,6 @@ export function DAGIterationPanel({
   onDocClick,
 }: DAGIterationPanelProps) {
   const commitData = getCommitLinkData(iteration.commit_hash);
-  const compatibleNodes = filterCompatibleNodes(iteration.nodes);
   const correctiveGroupParentId = buildCorrectiveGroupParentId(parentNodeId, iterationIndex);
 
   return (
@@ -51,16 +53,26 @@ export function DAGIterationPanel({
           <ExternalLink href={commitData.href} label={commitData.label} icon="github" />
         )}
       </div>
-      {compatibleNodes.map(([childNodeId, childNode]) => (
-        <DAGNodeRow
-          key={childNodeId}
-          nodeId={buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId)}
-          node={childNode}
-          depth={ITERATION_CHILD_DEPTH}
-          currentNodePath={currentNodePath}
-          onDocClick={onDocClick}
-        />
-      ))}
+      {Object.entries(iteration.nodes).map(([childNodeId, childNode]) =>
+        isLoopNode(childNode) ? (
+          <DAGLoopNode
+            key={childNodeId}
+            nodeId={buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId)}
+            node={childNode}
+            currentNodePath={currentNodePath}
+            onDocClick={onDocClick}
+          />
+        ) : (
+          <DAGNodeRow
+            key={childNodeId}
+            nodeId={buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId)}
+            node={childNode as CompatibleNodeState}
+            depth={ITERATION_CHILD_DEPTH}
+            currentNodePath={currentNodePath}
+            onDocClick={onDocClick}
+          />
+        )
+      )}
       <DAGCorrectiveTaskGroup
         correctiveTasks={iteration.corrective_tasks}
         parentNodeId={correctiveGroupParentId}
