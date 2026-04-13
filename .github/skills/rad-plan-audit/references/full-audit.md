@@ -37,9 +37,10 @@ Apply [rubric §2](./audit-rubric.md#part-2-cross-document-cohesion-docs-vs-docs
 
 - §2.1 Requirement Traceability
 - §2.2 Design ↔ Architecture Alignment
-- §2.3 Contract Consistency
-- §2.4 Scope Alignment
-- §2.5 Terminology Consistency
+- §2.3 Master Plan Alignment
+- §2.4 Contract Consistency
+- §2.5 Scope Alignment
+- §2.6 Terminology Consistency
 
 ### Step 5: Report
 
