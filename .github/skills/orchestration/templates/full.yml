@@ -188,7 +188,7 @@ nodes:
         mode_ref: human_gates.execution_mode
         action_if_needed: gate_phase
         approved_event: phase_gate_approved
-        auto_approve_modes: []
+        auto_approve_modes: []   # walker's verdict-based auto-approve bypasses this when predecessor verdict === 'approved'
         depends_on: [phase_review]
 
   # ── Final Review ──────────────────────────────────────────────────────────

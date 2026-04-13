@@ -856,8 +856,9 @@ describe('task_completed mutation', () => {
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
     phaseLoop.iterations = [];
     const mutation = getMutation('task_completed')!;
-    expect(() => mutation(state, {}, baseConfig, baseTemplate)).toThrow(/task_completed/);
-    expect(() => mutation(state, {}, baseConfig, baseTemplate)).toThrow(/--phase/);
+    const fn = () => mutation(state, {}, baseConfig, baseTemplate);
+    expect(fn).toThrow(/task_completed/);
+    expect(fn).toThrow(/--phase/);
   });
 
   it('throws descriptive error containing "task_completed" and "--task" when task resolution fails', () => {
@@ -870,8 +871,9 @@ describe('task_completed mutation', () => {
     if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
     taskLoop.iterations = [];
     const mutation = getMutation('task_completed')!;
-    expect(() => mutation(state, { phase: 1 }, baseConfig, baseTemplate)).toThrow(/task_completed/);
-    expect(() => mutation(state, { phase: 1 }, baseConfig, baseTemplate)).toThrow(/--task/);
+    const fn = () => mutation(state, { phase: 1 }, baseConfig, baseTemplate);
+    expect(fn).toThrow(/task_completed/);
+    expect(fn).toThrow(/--task/);
   });
 });
 
@@ -1263,6 +1265,36 @@ describe('pr_created mutation', () => {
     const mutation = getMutation('pr_created')!;
     const result = mutation(state, {}, baseConfig, baseTemplate);
     expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+
+  it('writes pr_url to pipeline.source_control.pr_url', () => {
+    const state = makeState();
+    state.pipeline.source_control = {
+      branch: 'main', base_branch: 'main', worktree_path: '.',
+      auto_commit: 'on', auto_pr: 'on', remote_url: null, compare_url: null, pr_url: null,
+    };
+    const mutation = getMutation('pr_created')!;
+    const result = mutation(state, { pr_url: 'https://github.com/org/repo/pull/7' }, baseConfig, baseTemplate);
+    expect(result.state.pipeline.source_control!.pr_url).toBe('https://github.com/org/repo/pull/7');
+  });
+
+  it('throws when source_control is null and pr_url is provided', () => {
+    const state = makeState();
+    // source_control is null by default in makeState()
+    const mutation = getMutation('pr_created')!;
+    expect(() => mutation(state, { pr_url: 'https://example.com/pr/1' }, baseConfig, baseTemplate))
+      .toThrow(/source_control_init/);
+  });
+
+  it('skips pr_url write when context.pr_url is undefined', () => {
+    const state = makeState();
+    state.pipeline.source_control = {
+      branch: 'main', base_branch: 'main', worktree_path: '.',
+      auto_commit: 'on', auto_pr: 'on', remote_url: null, compare_url: null, pr_url: null,
+    };
+    const mutation = getMutation('pr_created')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.pipeline.source_control!.pr_url).toBeNull();
   });
 });
 

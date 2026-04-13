@@ -154,7 +154,7 @@ nodes:
         mode_ref: human_gates.execution_mode
         action_if_needed: gate_phase
         approved_event: phase_gate_approved
-        auto_approve_modes: [autonomous]
+        auto_approve_modes: [autonomous]   # walker's verdict-based auto-approve bypasses this when predecessor verdict === 'approved'
         depends_on: [task_loop]
 
   # ── Final Review ──────────────────────────────────────────────────────────

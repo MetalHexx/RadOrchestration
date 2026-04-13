@@ -322,7 +322,7 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // Phase gate auto-approves → advance to phase 2
     expect(result.action).toBe('create_phase_plan');
 
-    // Verify phase_gate fired and was approved (gate_active = true)
+    // Verify phase_gate auto-approved via walker's autonomous verdict check (gate_active = false, gate never fires as an action)
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       const gate = phaseLoop.iterations[0].nodes['phase_gate'] as GateNodeState;
@@ -419,6 +419,17 @@ describe('Execution-tier integration — complete pipeline run', () => {
       expect(prGate.branch_taken).toBe('true');
       expect(prGate.status).toBe('in_progress');
     }
+
+    // ── source_control_init ──────────────────────────────────────────────
+    result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feature/test-branch',
+      base_branch: 'main',
+      worktree_path: '.',
+      auto_commit: 'always',
+      auto_pr: 'always',
+      remote_url: 'https://github.com/test/repo',
+    }, io);
+    expect(result.success).toBe(true);
 
     // ── pr_requested ────────────────────────────────────────
     result = processEvent('pr_requested', PROJECT_DIR, {}, io);

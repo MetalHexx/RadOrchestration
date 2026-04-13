@@ -228,6 +228,9 @@ describe('pipeline.js — JIT dependency installer', () => {
      * Replicates the cleanEnv logic from pipeline.js so we can test it
      * in isolation without importing or exec-ing the script.
      */
+    // Note: this tests a replica of the cleanEnv logic from pipeline.js because
+    // pipeline.js has module-level side effects (execFileSync) that prevent direct import.
+    // If the cleaning logic in pipeline.js changes, these tests must be manually synchronized.
     function buildCleanEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
       const cleanEnv = { ...env };
       for (const key of Object.keys(cleanEnv)) {

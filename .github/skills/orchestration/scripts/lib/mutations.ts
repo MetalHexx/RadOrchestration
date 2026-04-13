@@ -285,7 +285,9 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
       const n = iteration.nodes[nodeId];
       n.status = 'not_started';
       if (n.kind === 'step') {
-        // Preserve phase_review.doc_path — context-enrichment reads it for previous_review
+        // Preserve phase_review.doc_path even though we reset status to not_started.
+        // context-enrichment reads it for the corrective `previous_review` context field.
+        // This is the only node that intentionally has doc_path != null while status == not_started.
         if (nodeId !== 'phase_review') {
           (n as StepNodeState).doc_path = null;
         }
@@ -487,7 +489,7 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
       }
       const entry: CorrectiveTaskEntry = {
         index: correctiveCount + 1,
-        reason: 'Code review requested changes',
+        reason: context.reason ?? 'Code review requested changes',
         injected_after: 'code_review',
         status: 'not_started',
         nodes,
@@ -669,18 +671,12 @@ mutationRegistry.set(EVENTS.PR_CREATED, (state, context, _config, _template): Mu
 
   if (context.pr_url !== undefined) {
     if (!cloned.pipeline.source_control) {
-      cloned.pipeline.source_control = {
-        branch: '',
-        base_branch: '',
-        worktree_path: '.',
-        auto_commit: 'never',
-        auto_pr: 'never',
-        remote_url: null,
-        compare_url: null,
-        pr_url: null,
-      };
+      throw new Error(
+        'pr_created: pipeline.source_control is null — cannot store pr_url. ' +
+        'Source control must be initialized via source_control_init before PR creation.'
+      );
     }
-    cloned.pipeline.source_control.pr_url = (context.pr_url as string) ?? null;
+    cloned.pipeline.source_control.pr_url = (context.pr_url ?? null) as string | null;
     mutations_applied.push(`set pipeline.source_control.pr_url = ${context.pr_url ?? 'null'}`);
   }
 
