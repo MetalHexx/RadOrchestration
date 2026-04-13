@@ -5,7 +5,7 @@ Review the entire planning document set for codebase accuracy and cross-document
 ## Inputs
 
 1. **All planning documents** — read in pipeline order:
-   Research Findings → PRD → Design → Architecture → Master Plan → Phase Plans (if they exist)
+   PRD → Research Findings → Design → Architecture → Master Plan → Phase Plans (if they exist)
 2. **Existing source files** — files the docs reference as already existing. These are ground truth.
 
 ## Workflow

@@ -37,7 +37,7 @@ Signals that something is claimed as existing: present-tense descriptions of beh
 
 **Principle**: Do all planning documents tell a consistent, traceable story from requirements through to execution?
 
-The planning chain flows: **Research → PRD → Design → Architecture → Master Plan → Phase Plans**. Each downstream doc consumes upstream docs. Run these checks in order.
+The planning chain flows: **PRD → Research → Design → Architecture → Master Plan → Phase Plans**. Each downstream doc consumes upstream docs. Run these checks in order.
 
 ### 2.1 Requirement Traceability
 
