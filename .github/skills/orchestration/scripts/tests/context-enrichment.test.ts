@@ -397,3 +397,61 @@ describe('enrichActionContext — create_phase_plan', () => {
     expect(result.previous_review).toBe('reports/PROJ-PHASE-REVIEW-P01.md');
   });
 });
+
+// ── request_final_approval ────────────────────────────────────────────────────
+
+describe('enrichActionContext — request_final_approval', () => {
+  it('returns pr_url from state.pipeline.source_control.pr_url when it contains a URL string', () => {
+    const state = stateWithSourceControl('feature/my-branch', 'main', '/path/to/worktree');
+    state.pipeline.source_control!.pr_url = 'https://github.com/org/repo/pull/123';
+    const result = enrichActionContext({
+      action: 'request_final_approval',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.pr_url).toBe('https://github.com/org/repo/pull/123');
+  });
+
+  it('returns pr_url: null when state.pipeline.source_control.pr_url is null', () => {
+    const state = stateWithSourceControl('feature/my-branch', 'main', '/path/to/worktree');
+    state.pipeline.source_control!.pr_url = null;
+    const result = enrichActionContext({
+      action: 'request_final_approval',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.pr_url).toBeNull();
+  });
+
+  it('returns pr_url: null when state.pipeline.source_control is null', () => {
+    const state = stateWithNullSourceControl();
+    const result = enrichActionContext({
+      action: 'request_final_approval',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.pr_url).toBeNull();
+  });
+
+  it('preserves walker context properties in the enriched result', () => {
+    const state = stateWithSourceControl('feature/my-branch', 'main', '/path/to/worktree');
+    state.pipeline.source_control!.pr_url = 'https://github.com/org/repo/pull/123';
+    const walkerContext = { custom_key: 'custom_value', another: 42 };
+    const result = enrichActionContext({
+      action: 'request_final_approval',
+      walkerContext,
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.custom_key).toBe('custom_value');
+    expect(result.another).toBe(42);
+    expect(result.pr_url).toBe('https://github.com/org/repo/pull/123');
+  });
+});

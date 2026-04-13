@@ -344,7 +344,7 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
     const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('request_final_approval');
-    expect(result.context).toEqual({});
+    expect(result.context).toEqual({ pr_url: null });
   });
 
   it('display_complete returns {}', () => {

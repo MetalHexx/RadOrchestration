@@ -89,7 +89,6 @@ const TASK_LEVEL_ACTIONS = new Set([
 
 const EMPTY_CONTEXT_ACTIONS = new Set([
   'request_plan_approval',
-  'request_final_approval',
   'ask_gate_mode',
   'spawn_final_reviewer',
   'display_complete',
@@ -217,6 +216,13 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       branch: state.pipeline.source_control?.branch ?? '',
       base_branch: state.pipeline.source_control?.base_branch ?? '',
       worktree_path: state.pipeline.source_control?.worktree_path ?? '',
+    };
+  }
+
+  if (action === 'request_final_approval') {
+    return {
+      ...walkerContext,
+      pr_url: state.pipeline.source_control?.pr_url ?? null,
     };
   }
 
