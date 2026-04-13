@@ -1,0 +1,255 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { computeTemplateLayout } from './template-layout';
+import { parseTemplateToGraph } from './template-serializer';
+
+// ── Fixture loading ───────────────────────────────────────────────────────────
+
+const FULL_YAML = readFileSync(
+  join(__dirname, '../../.github/skills/orchestration/templates/full.yml'),
+  'utf-8'
+);
+const QUICK_YAML = readFileSync(
+  join(__dirname, '../../.github/skills/orchestration/templates/quick.yml'),
+  'utf-8'
+);
+
+// ── Constants (matching template-layout.ts) ───────────────────────────────────
+
+const NODE_WIDTH = 200;
+const NODE_HEIGHT = 60;
+const PAD_LEFT = 40;
+const PAD_TOP = 60;
+
+// ── computeTemplateLayout ─────────────────────────────────────────────────────
+
+describe('computeTemplateLayout', () => {
+  // ── Valid positions ─────────────────────────────────────────────────────────
+
+  describe('valid positions', () => {
+    it('all nodes have finite x and y >= 0 after layout with full.yml', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      assert.ok(result.nodes.length > 0, 'expected at least one node');
+      for (const node of result.nodes) {
+        assert.ok(
+          Number.isFinite(node.position.x),
+          `node ${node.id} position.x is not finite`
+        );
+        assert.ok(
+          Number.isFinite(node.position.y),
+          `node ${node.id} position.y is not finite`
+        );
+        assert.ok(node.position.x >= 0, `node ${node.id} position.x is negative`);
+        assert.ok(node.position.y >= 0, `node ${node.id} position.y is negative`);
+      }
+    });
+
+    it('all nodes have finite x and y >= 0 after layout with quick.yml', () => {
+      const { nodes, edges } = parseTemplateToGraph(QUICK_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      assert.ok(result.nodes.length > 0, 'expected at least one node');
+      for (const node of result.nodes) {
+        assert.ok(
+          Number.isFinite(node.position.x),
+          `node ${node.id} position.x is not finite`
+        );
+        assert.ok(
+          Number.isFinite(node.position.y),
+          `node ${node.id} position.y is not finite`
+        );
+        assert.ok(node.position.x >= 0, `node ${node.id} position.x is negative`);
+        assert.ok(node.position.y >= 0, `node ${node.id} position.y is negative`);
+      }
+    });
+  });
+
+  // ── Group node dimensions ───────────────────────────────────────────────────
+
+  describe('group node dimensions', () => {
+    it('top-level templateGroup nodes with children have positive finite style.width and style.height', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      // The layout only sizes group nodes that are top-level (no parentId)
+      const topLevelGroupNodes = result.nodes.filter(
+        (n) => n.type === 'templateGroup' && !n.parentId
+      );
+      assert.ok(topLevelGroupNodes.length > 0, 'expected at least one top-level templateGroup node');
+      for (const node of topLevelGroupNodes) {
+        // Only top-level groups that have children get style dimensions
+        const hasChildren = result.nodes.some((n) => n.parentId === node.id);
+        if (!hasChildren) continue;
+        assert.ok(node.style !== undefined, `top-level group node ${node.id} has no style`);
+        const width = node.style!.width as number;
+        const height = node.style!.height as number;
+        assert.ok(
+          Number.isFinite(width) && width > 0,
+          `group node ${node.id} style.width is not positive finite (got ${width})`
+        );
+        assert.ok(
+          Number.isFinite(height) && height > 0,
+          `group node ${node.id} style.height is not positive finite (got ${height})`
+        );
+      }
+    });
+  });
+
+  // ── Children within parent bounds ───────────────────────────────────────────
+
+  describe('children within parent bounds', () => {
+    it('direct children of top-level group nodes fit within their parent dimensions', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      const nodeMap = new Map(result.nodes.map((n) => [n.id, n]));
+      // Only top-level group nodes (no parentId) receive style.width/height from layout
+      const topLevelGroupIds = new Set(
+        result.nodes
+          .filter((n) => n.type === 'templateGroup' && !n.parentId)
+          .map((n) => n.id)
+      );
+      // Find children whose parent is a top-level group
+      const directChildren = result.nodes.filter(
+        (n) => n.parentId !== undefined && topLevelGroupIds.has(n.parentId)
+      );
+      assert.ok(directChildren.length > 0, 'expected at least one direct child of a top-level group');
+      for (const child of directChildren) {
+        const parent = nodeMap.get(child.parentId!)!;
+        assert.ok(parent.style !== undefined, `parent ${parent.id} has no style`);
+        const parentWidth = parent.style!.width as number;
+        const parentHeight = parent.style!.height as number;
+        assert.ok(child.position.x >= 0, `child ${child.id} position.x is negative`);
+        assert.ok(child.position.y >= 0, `child ${child.id} position.y is negative`);
+        assert.ok(
+          child.position.x + NODE_WIDTH <= parentWidth,
+          `child ${child.id} overflows parent width: ${child.position.x} + ${NODE_WIDTH} > ${parentWidth}`
+        );
+        assert.ok(
+          child.position.y + NODE_HEIGHT <= parentHeight,
+          `child ${child.id} overflows parent height: ${child.position.y} + ${NODE_HEIGHT} > ${parentHeight}`
+        );
+      }
+    });
+  });
+
+  // ── Relative positioning ────────────────────────────────────────────────────
+
+  describe('relative positioning', () => {
+    it('direct children of top-level groups start at padding offsets relative to parent origin', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      // The layout repositions only direct children of top-level group nodes
+      const topLevelGroupIds = new Set(
+        result.nodes
+          .filter((n) => n.type === 'templateGroup' && !n.parentId)
+          .map((n) => n.id)
+      );
+      const directChildren = result.nodes.filter(
+        (n) => n.parentId !== undefined && topLevelGroupIds.has(n.parentId)
+      );
+      assert.ok(directChildren.length > 0, 'expected at least one direct child of a top-level group');
+      for (const child of directChildren) {
+        assert.ok(
+          child.position.x >= PAD_LEFT,
+          `child ${child.id} position.x (${child.position.x}) should be >= PAD_LEFT (${PAD_LEFT})`
+        );
+        assert.ok(
+          child.position.y >= PAD_TOP,
+          `child ${child.id} position.y (${child.position.y}) should be >= PAD_TOP (${PAD_TOP})`
+        );
+      }
+    });
+  });
+
+  // ── Edge preservation ───────────────────────────────────────────────────────
+
+  describe('edge preservation', () => {
+    it('edge count is preserved for full.yml', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      assert.strictEqual(result.edges.length, edges.length, 'edge count changed after layout');
+    });
+
+    it('edge count is preserved for quick.yml', () => {
+      const { nodes, edges } = parseTemplateToGraph(QUICK_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      assert.strictEqual(result.edges.length, edges.length, 'edge count changed after layout');
+    });
+
+    it('edges are structurally identical (same id, source, target) for full.yml', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      for (let i = 0; i < edges.length; i++) {
+        assert.strictEqual(result.edges[i].id, edges[i].id, `edge[${i}] id changed`);
+        assert.strictEqual(result.edges[i].source, edges[i].source, `edge[${i}] source changed`);
+        assert.strictEqual(result.edges[i].target, edges[i].target, `edge[${i}] target changed`);
+      }
+    });
+
+    it('edges are structurally identical (same id, source, target) for quick.yml', () => {
+      const { nodes, edges } = parseTemplateToGraph(QUICK_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      for (let i = 0; i < edges.length; i++) {
+        assert.strictEqual(result.edges[i].id, edges[i].id, `edge[${i}] id changed`);
+        assert.strictEqual(result.edges[i].source, edges[i].source, `edge[${i}] source changed`);
+        assert.strictEqual(result.edges[i].target, edges[i].target, `edge[${i}] target changed`);
+      }
+    });
+  });
+
+  // ── dagre configuration (TB direction) ─────────────────────────────────────
+
+  describe('dagre configuration', () => {
+    it('top-level source nodes have smaller position.y than their targets (TB rankdir)', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      const topLevelIds = new Set(
+        result.nodes.filter((n) => !n.parentId).map((n) => n.id)
+      );
+      const nodeMap = new Map(result.nodes.map((n) => [n.id, n]));
+      const topLevelEdges = edges.filter(
+        (e) => topLevelIds.has(e.source) && topLevelIds.has(e.target)
+      );
+      assert.ok(topLevelEdges.length > 0, 'expected at least one top-level edge');
+      for (const edge of topLevelEdges) {
+        const sourceNode = nodeMap.get(edge.source)!;
+        const targetNode = nodeMap.get(edge.target)!;
+        assert.ok(
+          sourceNode.position.y < targetNode.position.y,
+          `TB direction violated: source "${edge.source}" (y=${sourceNode.position.y}) should be above target "${edge.target}" (y=${targetNode.position.y})`
+        );
+      }
+    });
+
+    it('no two connected top-level nodes share the same position.y', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      const topLevelIds = new Set(
+        result.nodes.filter((n) => !n.parentId).map((n) => n.id)
+      );
+      const nodeMap = new Map(result.nodes.map((n) => [n.id, n]));
+      const topLevelEdges = edges.filter(
+        (e) => topLevelIds.has(e.source) && topLevelIds.has(e.target)
+      );
+      for (const edge of topLevelEdges) {
+        const sourceNode = nodeMap.get(edge.source)!;
+        const targetNode = nodeMap.get(edge.target)!;
+        assert.notStrictEqual(
+          sourceNode.position.y,
+          targetNode.position.y,
+          `connected nodes "${edge.source}" and "${edge.target}" share the same position.y (${sourceNode.position.y})`
+        );
+      }
+    });
+  });
+
+  // ── Empty input ─────────────────────────────────────────────────────────────
+
+  describe('empty input', () => {
+    it('returns { nodes: [], edges: [] } for empty arrays', () => {
+      const result = computeTemplateLayout([], []);
+      assert.deepStrictEqual(result, { nodes: [], edges: [] });
+    });
+  });
+});
