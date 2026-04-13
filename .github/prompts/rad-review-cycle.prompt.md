@@ -4,7 +4,8 @@ agent: orchestrator
 ---
 
 ## Lets execute this sequence:
-Each subagent should report to the human operator the issues that were found or repaired.  Always run tests and run builds to ensure the fixes didn't break the build.
+>Each subagent should report to the human operator the issues that were found or repaired on every pass. 
+>Always run tests and run builds to ensure the fixes didn't break the build.
 
 ### Phase 1: Fix any carry forward items from the project
 - Use a reviewer subagent look at all the review reports throughout the {project-name} project and find any lingering items that did not get repaired. Create a list of items to look into.  
