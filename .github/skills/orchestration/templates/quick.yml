@@ -167,15 +167,6 @@ nodes:
     doc_output_field: doc_path
     depends_on: [phase_loop]
 
-  - id: final_approval_gate
-    kind: gate
-    label: "Final Approval Gate"
-    mode_ref: human_gates.after_final_review
-    action_if_needed: request_final_approval
-    approved_event: final_approved
-    auto_approve_modes: []
-    depends_on: [final_review]
-
   - id: pr_gate
     kind: conditional
     label: "Auto-PR Gate"
@@ -192,4 +183,13 @@ nodes:
           events: { started: pr_requested, completed: pr_created }
           depends_on: []
       false: []
-    depends_on: [final_approval_gate]
+    depends_on: [final_review]
+
+  - id: final_approval_gate
+    kind: gate
+    label: "Final Approval Gate"
+    mode_ref: human_gates.after_final_review
+    action_if_needed: request_final_approval
+    approved_event: final_approved
+    auto_approve_modes: []
+    depends_on: [pr_gate]
