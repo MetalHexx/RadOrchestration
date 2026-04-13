@@ -7,6 +7,7 @@ tools:
   - edit
   - todo
   - vscode/askQuestions
+  - chrome-devtools/*
   - context7/*
 model: Claude Opus 4.6 (copilot)
 ---
