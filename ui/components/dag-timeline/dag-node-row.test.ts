@@ -9,6 +9,7 @@
  */
 import assert from "node:assert";
 import { formatNodeId } from './dag-node-row';
+import { getDisplayName } from './dag-timeline-helpers';
 import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState } from '@/types/state';
 import { gateNode, conditionalNodeBranchTrue, conditionalNodeBranchFalse } from './__fixtures__';
 
@@ -90,6 +91,10 @@ const parallelNode: ParallelNodeState = {
 // ─── Tests: formatNodeId ─────────────────────────────────────────────────────
 
 console.log("\nDAGNodeRow logic tests\n");
+
+test('getDisplayName extracts leaf from compound path', () => {
+  assert.strictEqual(getDisplayName('phase_loop.iter0.task_handoff'), 'Task Handoff');
+});
 
 test('formatNodeId: "gate_mode_selection" → "Gate Mode Selection"', () => {
   assert.strictEqual(formatNodeId('gate_mode_selection'), 'Gate Mode Selection');

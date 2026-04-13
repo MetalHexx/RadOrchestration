@@ -19,7 +19,7 @@ export function filterCompatibleNodes(
   nodes: NodesRecord
 ): Array<[string, CompatibleNodeState]> {
   return Object.entries(nodes).filter(
-    ([, node]) => node.kind !== 'for_each_phase' && node.kind !== 'for_each_task'
+    ([, node]) => !isLoopNode(node)
   ) as Array<[string, CompatibleNodeState]>;
 }
 
