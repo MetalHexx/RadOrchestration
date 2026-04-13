@@ -49,7 +49,7 @@ export function DAGCorrectiveTaskGroup({
 
           return (
             <AccordionItem key={entry.index} value={String(entry.index)}>
-              <AccordionTrigger>
+              <AccordionTrigger className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center">
                 <span className="text-sm font-medium">{buildTriggerText(entry.index)}</span>
                 <NodeStatusBadge status={entry.status} />
                 {commitData !== null && (

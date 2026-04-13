@@ -145,6 +145,7 @@ function capitalize(s: string): string {
 }
 
 function titleForPhaseChild(childId: string, phaseNum: number): string {
+  // phase_planning is v5 canonical; phase_plan retained for legacy compat
   if (childId === 'phase_planning' || childId === 'phase_plan') return `Phase ${phaseNum} Plan`;
   if (childId === 'phase_report') return `Phase ${phaseNum} Report`;
   if (childId === 'phase_review') return `Phase ${phaseNum} Review`;
@@ -226,7 +227,7 @@ export function getOrderedDocsV5(
         }
       }
     }
-    // gate, conditional, parallel: skip
+    // gate, conditional, parallel, for_each_task: skip
   }
 
   // Emit final_review after all phase/task nodes

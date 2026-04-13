@@ -1,14 +1,14 @@
 "use client";
 
 import { cn } from '@/lib/utils';
-import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState } from '@/types/state';
 import { NodeKindIcon } from './node-kind-icon';
 import { NodeStatusBadge } from './node-status-badge';
 import { DocumentLink } from '@/components/documents';
+import type { CompatibleNodeState } from './dag-timeline-helpers';
 
 interface DAGNodeRowProps {
   nodeId: string;
-  node: StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState;
+  node: CompatibleNodeState;
   currentNodePath: string | null;
   onDocClick: (path: string) => void;
   depth?: number;  // default: 0

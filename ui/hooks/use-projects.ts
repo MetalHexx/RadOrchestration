@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { ProjectSummary } from "@/types/components";
-import type { AnyProjectState, ProjectState } from "@/types/state";
+import type { AnyProjectState } from "@/types/state";
 import { isV5State } from "@/types/state";
 import type { SSEEvent, SSEConnectionStatus } from "@/types/events";
 import { derivePlanningStatus, deriveExecutionStatus } from "@/lib/status-derivation";

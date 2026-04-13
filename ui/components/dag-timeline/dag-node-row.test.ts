@@ -10,6 +10,7 @@
 import assert from "node:assert";
 import { formatNodeId } from './dag-node-row';
 import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState } from '@/types/state';
+import { gateNode } from './__fixtures__';
 
 let passed = 0;
 let failed = 0;
@@ -62,12 +63,6 @@ const stepNodeNoDoc: StepNodeState = {
   status: 'completed',
   doc_path: null,
   retries: 0,
-};
-
-const gateNode: GateNodeState = {
-  kind: 'gate',
-  status: 'not_started',
-  gate_active: false,
 };
 
 const conditionalNode: ConditionalNodeState = {
