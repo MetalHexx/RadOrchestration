@@ -8,8 +8,8 @@ Every `result.action` value maps to exactly one Orchestrator operation. All bran
 
 | # | `result.action` | Category | Orchestrator Operation | Event to Signal on Completion |
 |---|-----------------|----------|----------------------|-------------------------------|
-| 1 | `spawn_research` | Agent spawn | **Two-step protocol:** (1) Signal `research_started` with `{}` context → pipeline returns `spawn_research` again; (2) Spawn **research** agent with project idea + brainstorming doc (if exists). Output: {NAME}-RESEARCH-FINDINGS.md | `research_completed --doc-path <output-path>` |
-| 2 | `spawn_prd` | Agent spawn | **Two-step protocol:** (1) Signal `prd_started` with `{}` context → pipeline returns `spawn_prd` again; (2) Spawn **product-manager** agent with RESEARCH-FINDINGS.md (+ brainstorming doc if exists). Output: {NAME}-PRD.md | `prd_completed --doc-path <output-path>` |
+| 1 | `spawn_research` | Agent spawn | **Two-step protocol:** (1) Signal `research_started` with `{}` context → pipeline returns `spawn_research` again; (2) Spawn **research** agent with project idea + brainstorming doc (if exists) + PRD. Output: {NAME}-RESEARCH-FINDINGS.md | `research_completed --doc-path <output-path>` |
+| 2 | `spawn_prd` | Agent spawn | **Two-step protocol:** (1) Signal `prd_started` with `{}` context → pipeline returns `spawn_prd` again; (2) Spawn **product-manager** agent with brainstorming doc (if exists). Output: {NAME}-PRD.md | `prd_completed --doc-path <output-path>` |
 | 3 | `spawn_design` | Agent spawn | **Two-step protocol:** (1) Signal `design_started` with `{}` context → pipeline returns `spawn_design` again; (2) Spawn **ux-designer** agent with PRD.md + RESEARCH-FINDINGS.md. Output: {NAME}-DESIGN.md | `design_completed --doc-path <output-path>` |
 | 4 | `spawn_architecture` | Agent spawn | **Two-step protocol:** (1) Signal `architecture_started` with `{}` context → pipeline returns `spawn_architecture` again; (2) Spawn **architect** agent with PRD.md + DESIGN.md + RESEARCH-FINDINGS.md. Output: {NAME}-ARCHITECTURE.md | `architecture_completed --doc-path <output-path>` |
 | 5 | `spawn_master_plan` | Agent spawn | **Two-step protocol:** (1) Signal `master_plan_started` with `{}` context → pipeline returns `spawn_master_plan` again; (2) Spawn **architect** agent with all planning docs. Output: {NAME}-MASTER-PLAN.md | `master_plan_completed --doc-path <output-path>` |
@@ -37,15 +37,15 @@ These are the exact event names passed to `--event`:
 | Event | Flags (besides `--event` and `--project-dir`) | When to Signal |
 |-------|-----------------------------------------------|----------------|
 | `start` | *(none)* | First call (new project), cold start, or context compaction recovery |
-| `research_started` | *(none)* | Before Research agent spawn. Transitions `planning.steps[0].status` to `in_progress`. See action #1 two-step protocol. |
-| `research_completed` | `--doc-path <path>` | After Research agent finishes |
-| `prd_started` | *(none)* | Before Product Manager spawn. Transitions `planning.steps[1].status` to `in_progress`. See action #2 two-step protocol. |
+| `prd_started` | *(none)* | Before Product Manager spawn. Transitions `graph.nodes.prd.status` to `in_progress`. See action #2 two-step protocol. |
 | `prd_completed` | `--doc-path <path>` | After Product Manager finishes |
-| `design_started` | *(none)* | Before UX Designer spawn. Transitions `planning.steps[2].status` to `in_progress`. See action #3 two-step protocol. |
+| `research_started` | *(none)* | Before Research agent spawn. Transitions `graph.nodes.research.status` to `in_progress`. See action #1 two-step protocol. |
+| `research_completed` | `--doc-path <path>` | After Research agent finishes |
+| `design_started` | *(none)* | Before UX Designer spawn. Transitions `graph.nodes.design.status` to `in_progress`. See action #3 two-step protocol. |
 | `design_completed` | `--doc-path <path>` | After UX Designer finishes |
-| `architecture_started` | *(none)* | Before Architect spawn (architecture doc). Transitions `planning.steps[3].status` to `in_progress`. See action #4 two-step protocol. |
+| `architecture_started` | *(none)* | Before Architect spawn (architecture doc). Transitions `graph.nodes.architecture.status` to `in_progress`. See action #4 two-step protocol. |
 | `architecture_completed` | `--doc-path <path>` | After Architect finishes (architecture doc) |
-| `master_plan_started` | *(none)* | Before Architect spawn (master plan). Transitions `planning.steps[4].status` to `in_progress`. See action #5 two-step protocol. |
+| `master_plan_started` | *(none)* | Before Architect spawn (master plan). Transitions `graph.nodes.master_plan.status` to `in_progress`. See action #5 two-step protocol. |
 | `master_plan_completed` | `--doc-path <path>` | After Architect finishes (master plan) |
 | `plan_approved` | *(none)* | After human approves master plan |
 | `plan_rejected` | *(none)* | After human rejects master plan |

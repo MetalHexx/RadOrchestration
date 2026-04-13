@@ -30,20 +30,20 @@ Generate a UX Design document from the PRD. Before producing any content, triage
 
 | Input | Source | Description |
 |-------|--------|-------------|
-| PRD | `{NAME}-PRD.md` | Product requirements, user stories, functional requirements |
+| PRD | `{NAME}-PRD.md` | Product requirements, functional requirements |
 | Research Findings | `RESEARCH-FINDINGS.md` | Existing patterns, technology stack, codebase analysis |
 
 ## Workflow
 
 1. **Read inputs**: Load the PRD and Research Findings
-2. **Triage project type**: Evaluate the PRD's user stories and functional requirements to classify the project:
+2. **Triage project type**: Evaluate the PRD's functional requirements to classify the project:
    - **Full Design** — Has a visual UI (frontend, views, components). Continue with steps 3–12 using the full template at [templates/DESIGN.md](./templates/DESIGN.md).
    - **Flows only** — Has user-facing flows but no visual UI (CLI wizard, interactive terminal). Use the flows-only template at [templates/DESIGN-FLOWS-ONLY.md](./templates/DESIGN-FLOWS-ONLY.md). Write only Design Overview and User Flows, then save.
    - **Not required** — No user interaction (backend, scripts, instruction files). Use the stub template at [templates/DESIGN-NOT-REQUIRED.md](./templates/DESIGN-NOT-REQUIRED.md). Record the decision and rationale, then save.
 
    Default to "Not required" when uncertain.
 3. **Design overview**: Summarize the user experience being designed (2-3 sentences)
-4. **Map user flows**: Create step-by-step flows for each key user story
+4. **Map user flows**: Create step-by-step flows for each key functional requirement
 5. **Define layouts**: Specify view/page layouts with regions, components, and breakpoints
 6. **Define new components**: Full props, design tokens, and descriptions for any new components
 7. **Document design tokens**: Reference actual tokens from the design system

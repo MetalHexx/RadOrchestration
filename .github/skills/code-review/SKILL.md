@@ -109,7 +109,7 @@ Consolidated review skill supporting three modes: task, phase, and final. The re
 2. Read all Phase Reviews — understand per-phase outcomes and carry-forward items
 3. Read the full codebase produced by the project
 4. **Corrective-review check**: If a previous Final Review exists, read it to identify expected corrections. Deviations from the original plan that address issues in the previous final review are expected corrections — do NOT flag them
-5. **Conformance pass**: Assess architectural integrity (5-aspect checklist — see below), P0 requirement coverage (from PRD), cross-phase integration, and cumulative test/build health. Core question: "Did we build what we intended?"
+5. **Conformance pass**: Assess architectural integrity (5-aspect checklist — see below), requirement coverage (from PRD), cross-phase integration, and cumulative test/build health. Core question: "Did we build what we intended?"
 6. **Skeptical pass** (Independent Quality Assessment): Evaluate project-level correctness independent of planning documents. Include `Scope` column in findings to indicate affected phase(s)/module(s). Core question: "Is what we built correct?"
 7. Apply verdict rules — highest severity across both passes determines verdict
 8. Fill in the FINAL-REVIEW.md template and save to the final-mode save path from the Routing Table
@@ -117,7 +117,7 @@ Consolidated review skill supporting three modes: task, phase, and final. The re
 ### Focus Areas
 
 - Architectural integrity (module boundaries, API contracts, data flow, error propagation, dependency graph)
-- P0 requirement coverage
+- Requirement coverage
 - Cross-phase integration
 - Cumulative test & build health
 
@@ -143,4 +143,4 @@ The highest-severity finding across both passes (conformance + skeptical) determ
 | `references/code-smells.md` | Non-exhaustive code-smell categories with illustrative examples |
 | `templates/CODE-REVIEW.md` | Task-mode output template (conformance checklist, independent quality assessment, issues) |
 | `templates/PHASE-REVIEW.md` | Phase-mode output template (integration assessment, exit criteria, independent quality assessment) |
-| `templates/FINAL-REVIEW.md` | Final-mode output template (architectural integrity, P0 coverage, cross-phase integration, independent quality assessment) |
+| `templates/FINAL-REVIEW.md` | Final-mode output template (architectural integrity, requirement coverage, cross-phase integration, independent quality assessment) |

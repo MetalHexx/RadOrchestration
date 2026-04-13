@@ -12,7 +12,8 @@ Run this before finalizing your planning document. You are checking your own out
 
 | Document | Upstream Inputs |
 |----------|----------------|
-| PRD | Research Findings |
+| PRD | Brainstorming doc *(if available)* |
+| Research Findings | PRD |
 | Design | PRD, Research Findings |
 | Architecture | PRD, Design, Research Findings |
 | Master Plan | PRD, Design, Architecture, Research Findings |
@@ -29,9 +30,10 @@ Run this before finalizing your planning document. You are checking your own out
 
    | You are writing | Focus on |
    |----------------|----------|
-   | PRD | §2.1 — requirements are traceable to research findings |
-   | Design | §2.2 — components map to PRD user stories |
-   | Architecture | §2.1, §2.2, §2.3 — modules cover all requirements, contracts are exact, design components have corresponding modules |
-   | Master Plan | §2.1, §2.4, §2.5 — key requirements and constraints trace to PRD, Architecture and Design docs.  Phase scopes cover all requirements, terminology is consistent |
-   | Phase Plan | §2.4, §2.5 — tasks trace to phase scope, terminology matches upstream docs |
-   | Task Handoff | §2.3, §2.5 — inlined contracts match Architecture exactly, terminology is consistent |
+   | PRD | §2.1 — requirements are traceable to brainstorming document |
+   | Research Findings | §2.1, §2.6 — findings traceable to PRD, terminology consistent |
+   | Design | §2.2 — components map to PRD functional requirements |
+   | Architecture | §2.1, §2.2, §2.4 — modules cover all requirements, contracts are exact, design components have corresponding modules |
+   | Master Plan | §2.1, §2.5, §2.6 — key requirements and constraints trace to PRD, Architecture and Design docs.  Phase scopes cover all requirements, terminology is consistent |
+   | Phase Plan | §2.5, §2.6 — tasks trace to phase scope, terminology matches upstream docs |
+   | Task Handoff | §2.4, §2.6 — inlined contracts match Architecture exactly, terminology is consistent |

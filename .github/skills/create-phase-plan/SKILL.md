@@ -18,7 +18,7 @@ Generate a Phase Plan that breaks a phase from the Master Plan into concrete tas
 | Input | Source | Description |
 |-------|--------|-------------|
 | Master Plan | `{NAME}-MASTER-PLAN.md` | Phase scope, exit criteria, execution constraints |
-| PRD | `{NAME}-PRD.md` | Feature requirements, user stories, acceptance criteria |
+| PRD | `{NAME}-PRD.md` | Feature requirements, acceptance criteria |
 | Architecture | `{NAME}-ARCHITECTURE.md` | Module map, contracts, file structure |
 | Design | `{NAME}-DESIGN.md` | Components, design tokens (if applicable) |
 | State | `state.json` | Current project state, limits |

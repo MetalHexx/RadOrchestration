@@ -22,15 +22,6 @@ nodes:
 
   # ── Planning Steps ────────────────────────────────────────────────────────
 
-  - id: research
-    kind: step
-    label: "Research"
-    action: spawn_research
-    events: { started: research_started, completed: research_completed }
-    context: { step: research }
-    doc_output_field: doc_path
-    depends_on: []
-
   - id: prd
     kind: step
     label: "PRD"
@@ -38,7 +29,16 @@ nodes:
     events: { started: prd_started, completed: prd_completed }
     context: { step: prd }
     doc_output_field: doc_path
-    depends_on: [research]
+    depends_on: []
+
+  - id: research
+    kind: step
+    label: "Research"
+    action: spawn_research
+    events: { started: research_started, completed: research_completed }
+    context: { step: research }
+    doc_output_field: doc_path
+    depends_on: [prd]
 
   - id: design
     kind: step
@@ -47,7 +47,7 @@ nodes:
     events: { started: design_started, completed: design_completed }
     context: { step: design }
     doc_output_field: doc_path
-    depends_on: [prd]
+    depends_on: [research]
 
   - id: architecture
     kind: step
