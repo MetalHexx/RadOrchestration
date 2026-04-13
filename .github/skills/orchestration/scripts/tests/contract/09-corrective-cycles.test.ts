@@ -181,6 +181,7 @@ describe('[CONTRACT] Corrective Cycles — corrective create_phase_plan', () => 
     expect(result.action).toBe('create_phase_plan');
     expect(result.context).toEqual(expect.objectContaining({
       is_correction: true,
+      corrective_index: 1,
     }));
     expect(typeof result.context['previous_review']).toBe('string');
     expect((result.context['previous_review'] as string).length).toBeGreaterThan(0);

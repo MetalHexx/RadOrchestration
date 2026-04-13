@@ -667,7 +667,19 @@ mutationRegistry.set(EVENTS.PR_CREATED, (state, context, _config, _template): Mu
   node.status = 'completed';
   mutations_applied.push('set final_pr.status = completed');
 
-  if (cloned.pipeline.source_control) {
+  if (context.pr_url !== undefined) {
+    if (!cloned.pipeline.source_control) {
+      cloned.pipeline.source_control = {
+        branch: '',
+        base_branch: '',
+        worktree_path: '.',
+        auto_commit: 'never',
+        auto_pr: 'never',
+        remote_url: null,
+        compare_url: null,
+        pr_url: null,
+      };
+    }
     cloned.pipeline.source_control.pr_url = (context.pr_url as string) ?? null;
     mutations_applied.push(`set pipeline.source_control.pr_url = ${context.pr_url ?? 'null'}`);
   }

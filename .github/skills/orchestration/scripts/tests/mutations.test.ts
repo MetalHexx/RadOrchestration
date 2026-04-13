@@ -1222,7 +1222,7 @@ describe('pr_requested mutation', () => {
     const result = mutation(state, {}, baseConfig, baseTemplate);
     expect(result.state.graph.nodes['final_pr']).toBeDefined();
     expect(result.state.graph.nodes['final_pr'].status).toBe('in_progress');
-    expect(result.mutations_applied).toContain('scaffold final_pr (was not yet initialized)');
+    expect(result.mutations_applied).toEqual(['scaffold final_pr (was not yet initialized)', 'set final_pr.status = in_progress']);
   });
 
   it('does not scaffold when final_pr already exists', () => {

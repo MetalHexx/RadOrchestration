@@ -426,10 +426,11 @@ describe('Execution-tier integration — complete pipeline run', () => {
     expect(result.action).toBe('invoke_source_control_pr');
 
     // ── pr_created → final_approval_gate ───────────────────
-    result = processEvent('pr_created', PROJECT_DIR, {}, io);
+    result = processEvent('pr_created', PROJECT_DIR, { pr_url: 'https://github.com/test/repo/pull/1' }, io);
     expect(result.success).toBe(true);
     // final_approval_gate active (after_final_review = true)
     expect(result.action).toBe('request_final_approval');
+    expect(result.context.pr_url).toBe('https://github.com/test/repo/pull/1');
 
     // ── final_approved → display_complete ────────────────────────
     result = processEvent('final_approved', PROJECT_DIR, {}, io);
@@ -656,10 +657,11 @@ describe('Execution-tier integration — conditional branch variations', () => {
     // Final review
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     seedDoc(DOC_PATHS.finalReview);
-    processEvent('final_review_completed', PROJECT_DIR, {
+    result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: DOC_PATHS.finalReview,
       verdict: 'approved',
     }, io);
+    expect(result.action).toBe('request_final_approval');
 
     // final_approved → display_complete (pr_gate already completed with false branch after final_review)
     result = processEvent('final_approved', PROJECT_DIR, {}, io);
