@@ -63,6 +63,7 @@ export interface TemplateGraphNodeData {
   kind: TemplateNodeKind;
   label: string;
   meta: Record<string, string>;
+  [key: string]: unknown;
 }
 
 /** The serializer's output: ReactFlow-compatible nodes and edges. */

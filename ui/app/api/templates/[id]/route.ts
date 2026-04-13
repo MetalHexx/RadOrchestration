@@ -41,8 +41,8 @@ export async function GET(
 
     return NextResponse.json({ rawYaml: result.rawYaml, definition: result.definition }, { status: 200 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error(`GET /api/templates/${id} error:`, err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -74,7 +74,7 @@ export async function PUT(
       ? (body as Record<string, unknown>)
       : ({} as Record<string, unknown>);
 
-  if (typeof content !== 'string' || content === '') {
+  if (typeof content !== 'string' || !content || content.trim() === '') {
     return NextResponse.json({ error: 'Missing or invalid field: content' }, { status: 400 });
   }
 
@@ -98,7 +98,7 @@ export async function PUT(
     await writeTemplateFile(templateDir, id, content);
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Internal server error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error(`PUT /api/templates/${id} error:`, err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

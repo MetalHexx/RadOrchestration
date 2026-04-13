@@ -16,8 +16,8 @@ import { computeTemplateLayout } from '@/lib/template-layout';
 import { TemplateGraphNode } from './template-graph-node';
 import { TemplateGroupNode } from './template-group-node';
 import type {
-  TemplateGraphNode as TemplateGraphNodeType,
   TemplateGraphEdge,
+  TemplateGraphNodeData,
 } from '@/types/template';
 
 const nodeTypes: NodeTypes = {
@@ -30,7 +30,7 @@ interface ReadOnlyCanvasProps {
 }
 
 export function ReadOnlyCanvas({ templateId }: ReadOnlyCanvasProps) {
-  const [nodes, setNodes] = useState<TemplateGraphNodeType[]>([]);
+  const [nodes, setNodes] = useState<Node<TemplateGraphNodeData>[]>([]);
   const [edges, setEdges] = useState<TemplateGraphEdge[]>([]);
   const [status, setStatus] = useState<'loading' | 'error' | 'loaded'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
@@ -42,7 +42,7 @@ export function ReadOnlyCanvas({ templateId }: ReadOnlyCanvasProps) {
       setStatus('loading');
 
       try {
-        const res = await fetch(`/api/templates/${templateId}`);
+        const res = await fetch(`/api/templates/${encodeURIComponent(templateId)}`);
         if (!res.ok) {
           if (!aborted) {
             setErrorMessage('Failed to load template.');
@@ -56,7 +56,7 @@ export function ReadOnlyCanvas({ templateId }: ReadOnlyCanvasProps) {
         const laid = computeTemplateLayout(graph.nodes, graph.edges);
 
         if (!aborted) {
-          setNodes(laid.nodes);
+          setNodes(laid.nodes as Node<TemplateGraphNodeData>[]);
           setEdges(laid.edges);
           setStatus('loaded');
         }
@@ -108,7 +108,7 @@ export function ReadOnlyCanvas({ templateId }: ReadOnlyCanvasProps) {
       aria-label="Pipeline template graph — read only"
     >
       <ReactFlow
-        nodes={nodes as unknown as Node[]}
+        nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         fitView={true}

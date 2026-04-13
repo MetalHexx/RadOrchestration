@@ -156,6 +156,7 @@ describe('listTemplateFiles / readTemplateFile / writeTemplateFile / templateFil
     // but good.yml should still appear
     const ids = result.map(r => r.id);
     assert.ok(ids.includes('good'), `expected "good" in [${ids.join(', ')}]`);
+    assert.ok(!ids.includes('bad'), 'bad.yml should be excluded from results');
   });
 
   it('listTemplateFiles returns multiple summaries', async () => {

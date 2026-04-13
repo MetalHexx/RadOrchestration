@@ -246,6 +246,58 @@ async function run() {
     assert.strictEqual(json.error, 'Invalid JSON body');
   });
 
+  // --- GET: backslash path-traversal ID (..\\evil) returns 400 ---
+  await test('GET — backslash path-traversal ID (..\\\\evil) returns 400', async () => {
+    const res = await GET(
+      new Request('http://localhost:3000/api/templates/..\\evil'),
+      { params: Promise.resolve({ id: '..\\evil' }) },
+    );
+    assert.strictEqual(res.status, 400);
+    const json = await res.json();
+    assert.ok(json.error, 'Should return an error message');
+  });
+
+  // --- PUT: backslash path-traversal ID (..\\evil) returns 400 ---
+  await test('PUT — backslash path-traversal ID (..\\\\evil) returns 400', async () => {
+    const req = new Request('http://localhost:3000/api/templates/..\\evil', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: UPDATED_TEMPLATE_YAML }),
+    });
+    const res = await PUT(req, { params: Promise.resolve({ id: '..\\evil' }) });
+    assert.strictEqual(res.status, 400);
+    const json = await res.json();
+    assert.ok(json.error, 'Should return an error message');
+  });
+
+  // --- GET: 500 when workspace config is unreadable ---
+  await test('GET — returns 500 when orchestration.yml is missing', async () => {
+    const { rm: fsRm } = await import('node:fs/promises');
+    const configPath = path.join(tmpDir, '.github', 'skills', 'orchestration', 'config', 'orchestration.yml');
+    await fsRm(configPath);
+    const res = await GET(
+      new Request('http://localhost:3000/api/templates/test-template'),
+      { params: Promise.resolve({ id: 'test-template' }) },
+    );
+    assert.strictEqual(res.status, 500);
+    const json = await res.json();
+    assert.strictEqual(json.error, 'Internal server error');
+  });
+
+  // --- PUT: 500 when workspace config is unreadable ---
+  await test('PUT — returns 500 when orchestration.yml is missing', async () => {
+    const { rm: fsRm } = await import('node:fs/promises');
+    const configPath = path.join(tmpDir, '.github', 'skills', 'orchestration', 'config', 'orchestration.yml');
+    await fsRm(configPath);
+    const templateDir = path.join(tmpDir, '.github', 'skills', 'orchestration', 'templates');
+    await fsWriteFile(path.join(templateDir, 'test-template.yml'), TEMPLATE_YAML, 'utf-8');
+    const req = makePutRequest({ content: UPDATED_TEMPLATE_YAML });
+    const res = await PUT(req, { params: Promise.resolve({ id: 'test-template' }) });
+    assert.strictEqual(res.status, 500);
+    const json = await res.json();
+    assert.strictEqual(json.error, 'Internal server error');
+  });
+
   /* ------------------------------------------------------------------ */
   /*  Summary                                                            */
   /* ------------------------------------------------------------------ */

@@ -29,6 +29,7 @@ export function TemplateGroupNode({ data }: TemplateGroupNodeProps) {
 
   const Icon = iconMap[data.kind];
   const accent = accentMap[data.kind] ?? 'transparent';
+  const tooltipId = `tooltip-${data.id}`;
 
   return (
     <div
@@ -38,12 +39,17 @@ export function TemplateGroupNode({ data }: TemplateGroupNodeProps) {
         border: '1px dashed var(--canvas-node-group-border)',
         borderTop: `3px solid ${accent}`,
       }}
+      tabIndex={0}
+      aria-describedby={showTooltip ? tooltipId : undefined}
+      onFocus={() => setShowTooltip(true)}
+      onBlur={() => setShowTooltip(false)}
     >
       {/* Header row */}
       <div
         className={cn(
           'relative flex items-center h-[40px] px-3 gap-2 rounded-t-[var(--radius-lg)]',
           'bg-[var(--card)] cursor-default',
+          'hover:bg-[var(--canvas-node-group-bg)]/60',
         )}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
@@ -64,7 +70,7 @@ export function TemplateGroupNode({ data }: TemplateGroupNodeProps) {
         </span>
 
         {showTooltip && (
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[var(--card)] border border-[var(--border)] rounded-md shadow-md px-3 py-2 text-xs whitespace-nowrap z-50">
+          <div id={tooltipId} role="tooltip" className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[var(--card)] border border-[var(--border)] rounded-md shadow-md px-3 py-2 text-xs whitespace-nowrap z-50">
             <div>id: {data.id}</div>
             <div>kind: {data.kind}</div>
             <div>{loopLabelMap[data.kind] ?? ''}</div>

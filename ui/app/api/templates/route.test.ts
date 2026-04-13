@@ -244,6 +244,38 @@ async function run() {
     assert.strictEqual(json.error, 'Invalid JSON body');
   });
 
+  // --- POST: backslash path-traversal ID (..\\evil) returns 400 ---
+  await test('POST — backslash path-traversal ID (..\\\\evil) returns 400', async () => {
+    const req = makePostRequest({ id: '..\\evil', content: NEW_TEMPLATE_YAML });
+    const res = await POST(req);
+    assert.strictEqual(res.status, 400);
+    const json = await res.json();
+    assert.ok(json.error, 'Should return an error message');
+  });
+
+  // --- GET: 500 when workspace config is unreadable ---
+  await test('GET — returns 500 when orchestration.yml is missing', async () => {
+    const { rm: fsRm } = await import('node:fs/promises');
+    const configPath = path.join(tmpDir, '.github', 'skills', 'orchestration', 'config', 'orchestration.yml');
+    await fsRm(configPath);
+    const res = await GET();
+    assert.strictEqual(res.status, 500);
+    const json = await res.json();
+    assert.strictEqual(json.error, 'Internal server error');
+  });
+
+  // --- POST: 500 when workspace config is unreadable ---
+  await test('POST — returns 500 when orchestration.yml is missing', async () => {
+    const { rm: fsRm } = await import('node:fs/promises');
+    const configPath = path.join(tmpDir, '.github', 'skills', 'orchestration', 'config', 'orchestration.yml');
+    await fsRm(configPath);
+    const req = makePostRequest({ id: 'new-template', content: NEW_TEMPLATE_YAML });
+    const res = await POST(req);
+    assert.strictEqual(res.status, 500);
+    const json = await res.json();
+    assert.strictEqual(json.error, 'Internal server error');
+  });
+
   /* ------------------------------------------------------------------ */
   /*  Summary                                                            */
   /* ------------------------------------------------------------------ */

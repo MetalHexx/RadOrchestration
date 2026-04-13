@@ -114,7 +114,8 @@ export async function templateFileExists(
   try {
     await access(path.join(templateDir, `${id}.yml`), constants.F_OK);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw err;
   }
 }

@@ -6,12 +6,10 @@ import { FileText, Lock, GitBranch, type LucideIcon } from 'lucide-react';
 import { type TemplateNodeKind, type TemplateGraphNodeData } from '@/types/template';
 import { cn } from '@/lib/utils';
 
-const iconMap: Record<TemplateNodeKind, LucideIcon | undefined> = {
+const iconMap: Partial<Record<TemplateNodeKind, LucideIcon>> = {
   step: FileText,
   gate: Lock,
   conditional: GitBranch,
-  for_each_phase: undefined,
-  for_each_task: undefined,
 };
 
 const accentMap: Record<string, string> = {
@@ -29,6 +27,7 @@ export function TemplateGraphNode({ data }: TemplateGraphNodeProps) {
 
   const Icon = iconMap[data.kind];
   const accent = accentMap[data.kind] ?? 'transparent';
+  const tooltipId = `tooltip-${data.id}`;
 
   return (
     <div
@@ -39,8 +38,12 @@ export function TemplateGraphNode({ data }: TemplateGraphNodeProps) {
         'hover:bg-accent/50 cursor-default',
       )}
       style={{ borderLeft: `3px solid ${accent}` }}
+      tabIndex={0}
+      aria-describedby={showTooltip ? tooltipId : undefined}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
+      onFocus={() => setShowTooltip(true)}
+      onBlur={() => setShowTooltip(false)}
     >
       <Handle type="target" position={Position.Top} isConnectable={false} />
 
@@ -63,7 +66,7 @@ export function TemplateGraphNode({ data }: TemplateGraphNodeProps) {
       <Handle type="source" position={Position.Bottom} isConnectable={false} />
 
       {showTooltip && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[var(--card)] border border-[var(--border)] rounded-md shadow-md px-3 py-2 text-xs whitespace-nowrap z-50">
+        <div id={tooltipId} role="tooltip" className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[var(--card)] border border-[var(--border)] rounded-md shadow-md px-3 py-2 text-xs whitespace-nowrap z-50">
           <div>id: {data.id}</div>
           <div>kind: {data.kind}</div>
           {data.kind === 'step' && (

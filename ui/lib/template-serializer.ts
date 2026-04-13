@@ -128,6 +128,16 @@ export function parseTemplateToGraph(yamlContent: string): TemplateGraph {
   return { nodes, edges };
 }
 
+/**
+ * Restore typed values from YAML string representation using a JSON.parse-first strategy.
+ *
+ * Each meta value is attempted as JSON.parse first; if parsing succeeds the parsed
+ * value is used, otherwise the original string is kept.
+ *
+ * Known limitation: string values that happen to be valid JSON literals (e.g. "42",
+ * "true") will be coerced to their parsed types (number, boolean). This is acceptable
+ * for the current schema where meta string fields are non-parseable descriptive text.
+ */
 function restoreMeta(meta: Record<string, string>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(meta)) {
