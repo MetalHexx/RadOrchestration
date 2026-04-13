@@ -37,3 +37,9 @@ Run this before finalizing your planning document. You are checking your own out
    | Master Plan | §2.1, §2.5, §2.6 — key requirements and constraints trace to PRD, Architecture and Design docs.  Phase scopes cover all requirements, terminology is consistent |
    | Phase Plan | §2.5, §2.6 — tasks trace to phase scope, terminology matches upstream docs |
    | Task Handoff | §2.4, §2.6 — inlined contracts match Architecture exactly, terminology is consistent |
+
+6. **Apply anti-duplication checks** (Research Findings only):
+   - Does any finding body restate requirement text from the PRD? → Remove restatement
+   - Does every finding add file paths, code patterns, constraints, or unknowns not present in the PRD? → Remove findings that only restate PRD content
+   - Does any finding use "should," "recommend," or "consider"? → Remove prescriptive language
+   - Does every finding have a traceability tag (`Relates to FR-N`)? → Add if missing
