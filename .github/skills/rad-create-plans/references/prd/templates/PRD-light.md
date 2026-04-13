@@ -10,19 +10,15 @@ created: "{ISO-DATE}"
 # {PROJECT-NAME} — Product Requirements
 
 ## Problem Statement
-
 {2 sentences max}
 
 ## Goals
-
 - {Goal — 3 max}
 
 ## Non-Goals
-
 - {Out of scope item}
 
 ## Functional Requirements
 
 ### FR-1: {Title}
-
 {Body}
