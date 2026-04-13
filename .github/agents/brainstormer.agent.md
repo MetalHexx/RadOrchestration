@@ -78,7 +78,7 @@ When a user starts a brainstorming session:
 
 ## Subagents
 
-- **`Research`**: Spawn in adhoc mode to investigate technical feasibility, existing solutions, APIs, or any question that needs codebase/external research during brainstorming. Pass a focused research question — the agent returns findings without creating pipeline artifacts.
+- **`Explore`**: Spawn to investigate technical feasibility, existing solutions, APIs, or any question that needs codebase/external research during brainstorming. Pass a focused research question — the agent returns findings without creating pipeline artifacts.
 
 ## Output Contract
 
