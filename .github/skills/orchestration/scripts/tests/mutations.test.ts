@@ -492,7 +492,8 @@ describe('resolveNodeState', () => {
 });
 
 // ── getMutation — new execution/review/source-control events ─────────────────
-// Out-of-band events have no mutation functions: plan_rejected, gate_rejected, final_rejected, halt, gate_mode_set, source_control_init
+// Note: out-of-band (operator-triggered) events — plan_rejected, gate_rejected, final_rejected,
+// halt, gate_mode_set, source_control_init — also have mutations (see describe blocks below).
 
 describe('getMutation — new T03 events', () => {
   const newEvents = [
@@ -687,6 +688,7 @@ describe('phase_review_completed — corrective injection', () => {
     expect(entry.injected_after).toBe('phase_review');
     expect(Object.keys(entry.nodes)).toHaveLength(0);
     expect((getPhaseNode(result.state, 'phase_review') as StepNodeState).verdict).toBeNull();
+    expect((getPhaseNode(result.state, 'phase_review') as StepNodeState).doc_path).toBe('/r.md');
   });
 
   it('rejected verdict halts phase iteration and graph, adds no corrective entry', () => {
@@ -1208,6 +1210,32 @@ describe('commit_completed mutation', () => {
     const result = mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
     expect(result.mutations_applied.length).toBeGreaterThan(0);
   });
+
+  it('writes commit_hash to task iteration when no active corrective', () => {
+    const state = makeState();
+    const mutation = getMutation('commit_completed')!;
+    const result = mutation(state, { phase: 1, task: 1, commit_hash: 'abc123' }, baseConfig, baseTemplate);
+    const iteration = getTaskIteration(result.state);
+    expect(iteration.commit_hash).toBe('abc123');
+  });
+
+  it('writes commit_hash to active corrective entry', () => {
+    const state = makeState();
+    const iteration = getTaskIteration(state);
+    iteration.corrective_tasks.push({
+      index: 1,
+      reason: 'prior review',
+      injected_after: 'code_review',
+      status: 'in_progress',
+      nodes: {},
+      commit_hash: null,
+    });
+    const mutation = getMutation('commit_completed')!;
+    const result = mutation(state, { phase: 1, task: 1, commit_hash: 'def456' }, baseConfig, baseTemplate);
+    const resultIteration = getTaskIteration(result.state);
+    expect(resultIteration.corrective_tasks[0].commit_hash).toBe('def456');
+    expect(resultIteration.commit_hash).toBeNull();
+  });
 });
 
 // ── source_control_pr mutations ───────────────────────────────────────────────
@@ -1415,3 +1443,269 @@ describe('multi-iteration task mutation (task ≥ 2)', () => {
   });
 });
 
+// ── plan_rejected mutation ────────────────────────────────────────────────────
+
+describe('plan_rejected mutation', () => {
+  it('resets master_plan status and doc_path', () => {
+    const state = makeState();
+    state.graph.nodes['master_plan'].status = 'completed';
+    (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/plan.md';
+    const mutation = getMutation('plan_rejected')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    const masterPlan = result.state.graph.nodes['master_plan'] as StepNodeState;
+    expect(masterPlan.status).toBe('not_started');
+    expect(masterPlan.doc_path).toBeNull();
+  });
+
+  it('resets plan_approval_gate status and gate_active', () => {
+    const state = makeState();
+    state.graph.nodes['plan_approval_gate'].status = 'completed';
+    (state.graph.nodes['plan_approval_gate'] as GateNodeState).gate_active = true;
+    const mutation = getMutation('plan_rejected')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    const gate = result.state.graph.nodes['plan_approval_gate'] as GateNodeState;
+    expect(gate.status).toBe('not_started');
+    expect(gate.gate_active).toBe(false);
+  });
+
+  it('clears phase_loop.iterations', () => {
+    const state = makeState();
+    const mutation = getMutation('plan_rejected')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    const phaseLoop = result.state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
+    expect(phaseLoop.iterations).toHaveLength(0);
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('plan_rejected')!;
+    mutation(state, {}, baseConfig, baseTemplate);
+    expect(state.graph.nodes['master_plan'].status).toBe('not_started');
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
+    expect(phaseLoop.iterations).toHaveLength(1);
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('plan_rejected')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── gate_rejected mutation ────────────────────────────────────────────────────
+
+describe('gate_rejected mutation', () => {
+  it('sets pipeline.current_tier to halted and graph.status to halted', () => {
+    const state = makeState();
+    const mutation = getMutation('gate_rejected')!;
+    const result = mutation(state, { gate_type: 'phase_gate', reason: 'Operator declined' }, baseConfig, baseTemplate);
+    expect(result.state.pipeline.current_tier).toBe('halted');
+    expect(result.state.graph.status).toBe('halted');
+  });
+
+  it('sets halt_reason containing gate_type and reason', () => {
+    const state = makeState();
+    const mutation = getMutation('gate_rejected')!;
+    const result = mutation(state, { gate_type: 'phase_gate', reason: 'Declined' }, baseConfig, baseTemplate);
+    expect(result.state.pipeline.halt_reason).toContain('phase_gate');
+    expect(result.state.pipeline.halt_reason).toContain('Declined');
+  });
+
+  it('falls back to "No reason provided" when reason is omitted', () => {
+    const state = makeState();
+    const mutation = getMutation('gate_rejected')!;
+    const result = mutation(state, { gate_type: 'task_gate' }, baseConfig, baseTemplate);
+    expect(result.state.pipeline.halt_reason).toContain('No reason provided');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('gate_rejected')!;
+    mutation(state, { gate_type: 'phase_gate', reason: 'x' }, baseConfig, baseTemplate);
+    expect(state.pipeline.current_tier).toBe('planning');
+    expect(state.graph.status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('gate_rejected')!;
+    const result = mutation(state, { gate_type: 'phase_gate', reason: 'x' }, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── final_rejected mutation ───────────────────────────────────────────────────
+
+describe('final_rejected mutation', () => {
+  it('resets final_review status and doc_path', () => {
+    const state = makeState();
+    state.graph.nodes['final_review'].status = 'completed';
+    (state.graph.nodes['final_review'] as StepNodeState).doc_path = '/final.md';
+    const mutation = getMutation('final_rejected')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    const finalReview = result.state.graph.nodes['final_review'] as StepNodeState;
+    expect(finalReview.status).toBe('not_started');
+    expect(finalReview.doc_path).toBeNull();
+  });
+
+  it('resets final_approval_gate status and gate_active', () => {
+    const state = makeState();
+    state.graph.nodes['final_approval_gate'].status = 'completed';
+    (state.graph.nodes['final_approval_gate'] as GateNodeState).gate_active = true;
+    const mutation = getMutation('final_rejected')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    const gate = result.state.graph.nodes['final_approval_gate'] as GateNodeState;
+    expect(gate.status).toBe('not_started');
+    expect(gate.gate_active).toBe(false);
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('final_rejected')!;
+    mutation(state, {}, baseConfig, baseTemplate);
+    expect(state.graph.nodes['final_review'].status).toBe('not_started');
+    const gate = state.graph.nodes['final_approval_gate'] as GateNodeState;
+    expect(gate.gate_active).toBe(false);
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('final_rejected')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── halt mutation ─────────────────────────────────────────────────────────────
+
+describe('halt mutation', () => {
+  it('sets pipeline.current_tier to halted and graph.status to halted', () => {
+    const state = makeState();
+    const mutation = getMutation('halt')!;
+    const result = mutation(state, { reason: 'Emergency stop' }, baseConfig, baseTemplate);
+    expect(result.state.pipeline.current_tier).toBe('halted');
+    expect(result.state.graph.status).toBe('halted');
+  });
+
+  it('sets halt_reason from context.reason', () => {
+    const state = makeState();
+    const mutation = getMutation('halt')!;
+    const result = mutation(state, { reason: 'Emergency stop' }, baseConfig, baseTemplate);
+    expect(result.state.pipeline.halt_reason).toBe('Emergency stop');
+  });
+
+  it('defaults halt_reason to "Pipeline halted by operator" when reason is omitted', () => {
+    const state = makeState();
+    const mutation = getMutation('halt')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.pipeline.halt_reason).toBe('Pipeline halted by operator');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('halt')!;
+    mutation(state, { reason: 'test' }, baseConfig, baseTemplate);
+    expect(state.pipeline.current_tier).toBe('planning');
+    expect(state.graph.status).toBe('not_started');
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('halt')!;
+    const result = mutation(state, { reason: 'test' }, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── gate_mode_set mutation ────────────────────────────────────────────────────
+
+describe('gate_mode_set mutation', () => {
+  it.each(['task', 'phase', 'autonomous'])('sets pipeline.gate_mode to "%s"', (mode) => {
+    const state = makeState();
+    const mutation = getMutation('gate_mode_set')!;
+    const result = mutation(state, { gate_mode: mode }, baseConfig, baseTemplate);
+    expect(result.state.pipeline.gate_mode).toBe(mode);
+  });
+
+  it('throws on invalid gate_mode value', () => {
+    const state = makeState();
+    const mutation = getMutation('gate_mode_set')!;
+    expect(() => mutation(state, { gate_mode: 'invalid' }, baseConfig, baseTemplate)).toThrow(
+      /Invalid gate mode/
+    );
+  });
+
+  it('throws when gate_mode is not provided', () => {
+    const state = makeState();
+    const mutation = getMutation('gate_mode_set')!;
+    expect(() => mutation(state, {}, baseConfig, baseTemplate)).toThrow(/Invalid gate mode/);
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('gate_mode_set')!;
+    mutation(state, { gate_mode: 'task' }, baseConfig, baseTemplate);
+    expect(state.pipeline.gate_mode).toBeNull();
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('gate_mode_set')!;
+    const result = mutation(state, { gate_mode: 'task' }, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── source_control_init mutation ──────────────────────────────────────────────
+
+describe('source_control_init mutation', () => {
+  it('creates pipeline.source_control with branch and base_branch', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_init')!;
+    const result = mutation(state, { branch: 'feature/my-branch', base_branch: 'main' }, baseConfig, baseTemplate);
+    const sc = result.state.pipeline.source_control;
+    expect(sc).not.toBeNull();
+    expect(sc!.branch).toBe('feature/my-branch');
+    expect(sc!.base_branch).toBe('main');
+  });
+
+  it('defaults worktree_path to "." when not provided', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_init')!;
+    const result = mutation(state, { branch: 'b', base_branch: 'main' }, baseConfig, baseTemplate);
+    expect(result.state.pipeline.source_control!.worktree_path).toBe('.');
+  });
+
+  it('throws when branch is missing', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_init')!;
+    expect(() => mutation(state, { base_branch: 'main' }, baseConfig, baseTemplate)).toThrow(
+      /--branch/
+    );
+  });
+
+  it('throws when base_branch is missing', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_init')!;
+    expect(() => mutation(state, { branch: 'feature/x' }, baseConfig, baseTemplate)).toThrow(
+      /--base-branch/
+    );
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_init')!;
+    mutation(state, { branch: 'b', base_branch: 'main' }, baseConfig, baseTemplate);
+    expect(state.pipeline.source_control).toBeNull();
+  });
+
+  it('returns non-empty mutations_applied', () => {
+    const state = makeState();
+    const mutation = getMutation('source_control_init')!;
+    const result = mutation(state, { branch: 'b', base_branch: 'main' }, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
