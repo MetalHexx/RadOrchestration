@@ -32,6 +32,13 @@ const taskData: TemplateGraphNodeData = {
   meta: {},
 };
 
+const conditionalData: TemplateGraphNodeData = {
+  id: 'cond-1',
+  kind: 'conditional',
+  label: 'Commit Gate',
+  meta: {},
+};
+
 let passed = 0;
 let failed = 0;
 
@@ -103,6 +110,26 @@ async function run() {
     const html = renderWithProvider(phaseData);
     assert.ok(html.includes('role="group"'), 'should have role="group"');
     assert.ok(html.includes(`aria-label="${phaseData.label}"`), 'should have aria-label matching data.label');
+  });
+
+  await test('renders without crashing for kind conditional', () => {
+    const html = renderWithProvider(conditionalData);
+    assert.ok(html.length > 0, 'rendered HTML is non-empty');
+  });
+
+  await test('icon SVG is rendered for kind conditional', () => {
+    const html = renderWithProvider(conditionalData);
+    assert.ok(html.includes('<svg'), 'an SVG icon should be rendered for conditional');
+  });
+
+  await test('conditional kind displays Conditional label', () => {
+    const html = renderWithProvider(conditionalData);
+    assert.ok(html.includes('Conditional'), 'should contain Conditional label text from loopLabelMap');
+  });
+
+  await test('conditional kind displays correct accent color', () => {
+    const html = renderWithProvider(conditionalData);
+    assert.ok(html.includes('--tier-execution'), 'should include --tier-execution accent from accentMap');
   });
 
   if (failed > 0) {

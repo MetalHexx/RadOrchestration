@@ -2,23 +2,26 @@
 
 import { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Layers, RefreshCcw, type LucideIcon } from 'lucide-react';
+import { Layers, RefreshCcw, GitBranch, type LucideIcon } from 'lucide-react';
 import { type TemplateNodeKind, type TemplateGraphNodeData } from '@/types/template';
 import { cn } from '@/lib/utils';
 
 const iconMap: Partial<Record<TemplateNodeKind, LucideIcon>> = {
   for_each_phase: Layers,
   for_each_task: RefreshCcw,
+  conditional: GitBranch,
 };
 
 const accentMap: Partial<Record<TemplateNodeKind, string>> = {
   for_each_phase: 'var(--tier-planning)',
   for_each_task: 'var(--tier-review)',
+  conditional: 'var(--tier-execution)',
 };
 
 const loopLabelMap: Partial<Record<TemplateNodeKind, string>> = {
   for_each_phase: 'Loop: each phase',
   for_each_task: 'Loop: each task',
+  conditional: 'Conditional',
 };
 
 interface TemplateGroupNodeProps {
@@ -71,8 +74,8 @@ export function TemplateGroupNode({ data }: TemplateGroupNodeProps) {
           {data.label}
         </span>
 
-        <span className="ml-auto text-[11px] text-[var(--muted-foreground)] shrink-0">
-          {data.kind}
+        <span className="ml-auto text-[11px] text-[var(--muted-foreground)] shrink-0" title={data.kind}>
+          {loopLabelMap[data.kind] ?? data.kind}
         </span>
 
         {showTooltip && (

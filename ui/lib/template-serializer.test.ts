@@ -90,12 +90,12 @@ describe('parseTemplateToGraph', () => {
     }
   });
 
-  it('conditional nodes have type: templateNode', () => {
+  it('conditional nodes with non-empty branches have type: templateGroup', () => {
     const graph = parseTemplateToGraph(FULL_YAML);
     const nodes = graph.nodes.filter(n => n.data.kind === 'conditional');
     assert.ok(nodes.length > 0, 'no conditional nodes found');
     for (const n of nodes) {
-      assert.strictEqual(n.type, 'templateNode', `${n.id} should have type templateNode`);
+      assert.strictEqual(n.type, 'templateGroup', `${n.id} should have type templateGroup`);
     }
   });
 

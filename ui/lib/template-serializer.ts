@@ -66,6 +66,14 @@ function walkNodes(
     if (node.kind === 'conditional' && node.branches) {
       const { true: trueBranch, false: falseBranch } = node.branches;
 
+      const hasBranchChildren =
+        (trueBranch && trueBranch.length > 0) ||
+        (falseBranch && falseBranch.length > 0);
+
+      if (hasBranchChildren) {
+        graphNode.type = 'templateGroup';
+      }
+
       if (trueBranch && trueBranch.length > 0) {
         walkNodes(trueBranch, node.id, nodes, edges);
         for (const child of trueBranch) {

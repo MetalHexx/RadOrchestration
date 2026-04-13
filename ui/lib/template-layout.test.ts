@@ -371,4 +371,83 @@ describe('computeTemplateLayout', () => {
       assert.deepStrictEqual(result, { nodes: [], edges: [] });
     });
   });
+
+  // ── Conditional group layout ─────────────────────────────────────────────────
+
+  describe('conditional group layout', () => {
+    it('conditional-with-branches nodes have type templateGroup after serialization', () => {
+      const { nodes } = parseTemplateToGraph(FULL_YAML);
+      const commitGate = nodes.find((n) => n.id === 'commit_gate');
+      const prGate = nodes.find((n) => n.id === 'pr_gate');
+      assert.ok(commitGate !== undefined, 'expected commit_gate node to exist');
+      assert.ok(prGate !== undefined, 'expected pr_gate node to exist');
+      assert.strictEqual(commitGate!.type, 'templateGroup', 'commit_gate should have type templateGroup');
+      assert.strictEqual(prGate!.type, 'templateGroup', 'pr_gate should have type templateGroup');
+    });
+
+    it('conditional parents have positive style.width and style.height after layout', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      const commitGate = result.nodes.find((n) => n.id === 'commit_gate');
+      const prGate = result.nodes.find((n) => n.id === 'pr_gate');
+      assert.ok(commitGate !== undefined, 'expected commit_gate node in layout result');
+      assert.ok(prGate !== undefined, 'expected pr_gate node in layout result');
+      assert.ok(commitGate!.style !== undefined, 'commit_gate should have style');
+      assert.ok(prGate!.style !== undefined, 'pr_gate should have style');
+      const cgWidth = commitGate!.style!.width as number;
+      const cgHeight = commitGate!.style!.height as number;
+      const pgWidth = prGate!.style!.width as number;
+      const pgHeight = prGate!.style!.height as number;
+      assert.ok(Number.isFinite(cgWidth) && cgWidth > 0, `commit_gate style.width should be positive (got ${cgWidth})`);
+      assert.ok(Number.isFinite(cgHeight) && cgHeight > 0, `commit_gate style.height should be positive (got ${cgHeight})`);
+      assert.ok(Number.isFinite(pgWidth) && pgWidth > 0, `pr_gate style.width should be positive (got ${pgWidth})`);
+      assert.ok(Number.isFinite(pgHeight) && pgHeight > 0, `pr_gate style.height should be positive (got ${pgHeight})`);
+    });
+
+    it('children of conditional parents are positioned inside parent bounds', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      const nodeMap = new Map(result.nodes.map((n) => [n.id, n]));
+      const commit = nodeMap.get('commit');
+      const finalPr = nodeMap.get('final_pr');
+      const commitGate = nodeMap.get('commit_gate');
+      const prGate = nodeMap.get('pr_gate');
+      assert.ok(commit !== undefined, 'expected commit node to exist');
+      assert.ok(finalPr !== undefined, 'expected final_pr node to exist');
+      assert.ok(commitGate !== undefined, 'expected commit_gate node to exist');
+      assert.ok(prGate !== undefined, 'expected pr_gate node to exist');
+      const cgWidth = commitGate!.style!.width as number;
+      const cgHeight = commitGate!.style!.height as number;
+      const pgWidth = prGate!.style!.width as number;
+      const pgHeight = prGate!.style!.height as number;
+      assert.ok(commit!.position.x >= PAD_LEFT, `commit position.x (${commit!.position.x}) should be >= PAD_LEFT (${PAD_LEFT})`);
+      assert.ok(commit!.position.y >= PAD_TOP, `commit position.y (${commit!.position.y}) should be >= PAD_TOP (${PAD_TOP})`);
+      assert.ok(commit!.position.x + NODE_WIDTH <= cgWidth, `commit overflows commit_gate width: ${commit!.position.x} + ${NODE_WIDTH} > ${cgWidth}`);
+      assert.ok(commit!.position.y + NODE_HEIGHT <= cgHeight, `commit overflows commit_gate height: ${commit!.position.y} + ${NODE_HEIGHT} > ${cgHeight}`);
+      assert.ok(finalPr!.position.x >= PAD_LEFT, `final_pr position.x (${finalPr!.position.x}) should be >= PAD_LEFT (${PAD_LEFT})`);
+      assert.ok(finalPr!.position.y >= PAD_TOP, `final_pr position.y (${finalPr!.position.y}) should be >= PAD_TOP (${PAD_TOP})`);
+      assert.ok(finalPr!.position.x + NODE_WIDTH <= pgWidth, `final_pr overflows pr_gate width: ${finalPr!.position.x} + ${NODE_WIDTH} > ${pgWidth}`);
+      assert.ok(finalPr!.position.y + NODE_HEIGHT <= pgHeight, `final_pr overflows pr_gate height: ${finalPr!.position.y} + ${NODE_HEIGHT} > ${pgHeight}`);
+    });
+
+    it('no console warning for conditional child nodes', () => {
+      const warnings: string[] = [];
+      const originalWarn = console.warn;
+      console.warn = (...args: unknown[]) => {
+        warnings.push(args.map(String).join(' '));
+      };
+      try {
+        const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+        computeTemplateLayout(nodes, edges);
+      } finally {
+        console.warn = originalWarn;
+      }
+      const noPositionWarnings = warnings.filter((w) => w.includes('no computed position'));
+      assert.strictEqual(
+        noPositionWarnings.length,
+        0,
+        `expected no "no computed position" warnings, got: ${noPositionWarnings.join('; ')}`
+      );
+    });
+  });
 });

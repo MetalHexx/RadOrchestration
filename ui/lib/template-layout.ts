@@ -110,7 +110,9 @@ export function computeTemplateLayout(
   }
 
   // Process all top-level group nodes recursively (populates groupStyles and childPositioned)
-  for (const groupNode of topLevelNodes.filter((n) => n.type === 'templateGroup')) {
+  for (const groupNode of topLevelNodes.filter(
+    (n) => n.type === 'templateGroup' || childrenMap.has(n.id)
+  )) {
     layoutGroup(groupNode.id);
   }
 
