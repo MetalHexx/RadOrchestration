@@ -92,6 +92,12 @@ async function run() {
     assert.ok(barrelSource.includes('TemplateGraphNode'), 'barrel should export TemplateGraphNode');
   });
 
+  await test('has role="group" and aria-label matching the label', () => {
+    const html = renderToStaticMarkup(createElement(TemplateGroupNode, { data: phaseData }));
+    assert.ok(html.includes('role="group"'), 'should have role="group"');
+    assert.ok(html.includes(`aria-label="${phaseData.label}"`), 'should have aria-label matching data.label');
+  });
+
   if (failed > 0) {
     console.error(`\n${failed} test(s) failed, ${passed} passed`);
     process.exit(1);
