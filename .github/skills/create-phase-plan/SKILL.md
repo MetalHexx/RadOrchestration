@@ -36,31 +36,31 @@ Generate a Phase Plan that breaks a phase from the Master Plan into concrete tas
 8. **Set exit criteria**: Mirror from Master Plan plus standard criteria (all tasks complete, build passes, tests pass)
 9. **Note risks**: Phase-specific risks
 10. **Write the Phase Plan**: Use the bundled template at [templates/PHASE-PLAN.md](./templates/PHASE-PLAN.md)
-11. **Save**: Write to `{PROJECT-DIR}/phases/{NAME}-PHASE-{NN}-{TITLE}.md`
+11. **Save**: Write to the appropriate path based on corrective status:
+    - **Normal (first-time)**: `{PROJECT-DIR}/phases/{NAME}-PHASE-{NN}-{TITLE}.md`
+    - **Corrective** (when `is_correction` is true in the event context): `{PROJECT-DIR}/phases/{NAME}-PHASE-{NN}-{TITLE}-C{corrective_index}.md`
+    
+    The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. Examples:
+    | Scenario | Filename |
+    |----------|----------|
+    | Original plan | `MYPROJ-PHASE-02-SETUP.md` |
+    | First correction | `MYPROJ-PHASE-02-SETUP-C1.md` |
+    | Second correction | `MYPROJ-PHASE-02-SETUP-C2.md` |
 
-## Prior Context (Corrective Handling)
+## Corrective Phase Plan
 
-Before creating the phase plan, check for corrective routing:
+When `is_correction` is `true` in your event context, the Orchestrator is spawning you for a corrective cycle (not a fresh phase). The `corrective_index` field tells you which correction this is, and `previous_review` contains the path to the phase review document.
 
-1. **Read** `state.json → execution.phases[current_phase - 1].review.action`
-2. **Route** based on the value:
+### What to produce
 
-| `review.action` value | What to produce |
-|-----------------------------|------------------|
-| `null` (no review) | Normal Phase Plan for the next phase |
-| `"advance"` | Normal Phase Plan (include carry-forward tasks if any exit criteria were unmet) |
-| `"corrective_tasks_issued"` | Phase Plan that opens with corrective tasks addressing the Phase Review's Cross-Task Issues; new tasks come after |
-| `"halted"` | DO NOT produce a Phase Plan — inform the Orchestrator the pipeline is halted |
+When `is_correction` is true:
 
-### Corrective Phase Plan
-
-When `review.action == "corrective_tasks_issued"`:
-
-1. Read the phase review document at the phase's `docs.phase_review` path in `state.json`
+1. Read the phase review document at the path provided in `previous_review` (event context)
 2. Extract the **Cross-Task Issues** section from the review
 3. Create corrective tasks targeting those issues — these tasks come FIRST in the task outline
 4. Follow corrective tasks with any remaining normal tasks for the phase
 5. Carry-forward items from the phase review become inputs to subsequent tasks
+6. Save with the corrective filename suffix: `{NAME}-PHASE-{NN}-{TITLE}-C{corrective_index}.md` — the original phase plan file is preserved (not overwritten)
 
 ## Required Frontmatter Fields
 

@@ -220,4 +220,122 @@ describe('pipeline.js — JIT dependency installer', () => {
       }
     });
   });
+
+  // ── TSX environment variable isolation ─────────────────────────────────
+
+  describe('TSX environment variable isolation', () => {
+    /**
+     * Replicates the cleanEnv logic from pipeline.js so we can test it
+     * in isolation without importing or exec-ing the script.
+     */
+    // Note: this tests a replica of the cleanEnv logic from pipeline.js because
+    // pipeline.js has module-level side effects (execFileSync) that prevent direct import.
+    // If the cleaning logic in pipeline.js changes, these tests must be manually synchronized.
+    function buildCleanEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+      const cleanEnv = { ...env };
+      for (const key of Object.keys(cleanEnv)) {
+        if (key.startsWith('TSX_')) {
+          delete cleanEnv[key];
+        }
+      }
+      return cleanEnv;
+    }
+
+    it('strips TSX_* variables from the clean env', () => {
+      const originalTsxValue = process.env['TSX_TSCONFIG_PATH'];
+      const originalOtherValue = process.env['TSX_OTHER'];
+
+      process.env['TSX_TSCONFIG_PATH'] = '/some/tsconfig.json';
+      process.env['TSX_OTHER'] = 'some-value';
+
+      try {
+        const cleanEnv = buildCleanEnv(process.env);
+        expect(Object.prototype.hasOwnProperty.call(cleanEnv, 'TSX_TSCONFIG_PATH')).toBe(false);
+        expect(Object.prototype.hasOwnProperty.call(cleanEnv, 'TSX_OTHER')).toBe(false);
+      } finally {
+        // Restore original state
+        if (originalTsxValue === undefined) {
+          delete process.env['TSX_TSCONFIG_PATH'];
+        } else {
+          process.env['TSX_TSCONFIG_PATH'] = originalTsxValue;
+        }
+        if (originalOtherValue === undefined) {
+          delete process.env['TSX_OTHER'];
+        } else {
+          process.env['TSX_OTHER'] = originalOtherValue;
+        }
+      }
+    });
+
+    it('preserves non-TSX_* variables in the clean env', () => {
+      const originalTsxValue = process.env['TSX_TSCONFIG_PATH'];
+
+      process.env['TSX_TSCONFIG_PATH'] = '/some/tsconfig.json';
+
+      try {
+        const cleanEnv = buildCleanEnv(process.env);
+        // Non-TSX_ vars must be preserved
+        if (process.env['PATH'] !== undefined) {
+          expect(cleanEnv['PATH']).toBe(process.env['PATH']);
+        }
+        if (process.env['HOME'] !== undefined) {
+          expect(cleanEnv['HOME']).toBe(process.env['HOME']);
+        }
+        if (process.env['NODE_ENV'] !== undefined) {
+          expect(cleanEnv['NODE_ENV']).toBe(process.env['NODE_ENV']);
+        }
+        // TSX_ var must be gone
+        expect(Object.prototype.hasOwnProperty.call(cleanEnv, 'TSX_TSCONFIG_PATH')).toBe(false);
+      } finally {
+        if (originalTsxValue === undefined) {
+          delete process.env['TSX_TSCONFIG_PATH'];
+        } else {
+          process.env['TSX_TSCONFIG_PATH'] = originalTsxValue;
+        }
+      }
+    });
+
+    it('is a no-op when no TSX_* variables are present', () => {
+      // Ensure no TSX_ vars exist for this test
+      const savedTsxVars: Record<string, string> = {};
+      for (const key of Object.keys(process.env)) {
+        if (key.startsWith('TSX_')) {
+          savedTsxVars[key] = process.env[key]!;
+          delete process.env[key];
+        }
+      }
+
+      try {
+        const envBefore = { ...process.env };
+        const cleanEnv = buildCleanEnv(process.env);
+        expect(Object.keys(cleanEnv).sort()).toEqual(Object.keys(envBefore).sort());
+        for (const key of Object.keys(envBefore)) {
+          expect(cleanEnv[key]).toBe(envBefore[key]);
+        }
+      } finally {
+        // Restore saved TSX_ vars
+        for (const [key, value] of Object.entries(savedTsxVars)) {
+          process.env[key] = value;
+        }
+      }
+    });
+
+    it('does not mutate process.env when building clean env', () => {
+      const originalTsxValue = process.env['TSX_TSCONFIG_PATH'];
+
+      process.env['TSX_TSCONFIG_PATH'] = '/some/tsconfig.json';
+
+      try {
+        buildCleanEnv(process.env);
+        // process.env must still contain the TSX_ var
+        expect(process.env['TSX_TSCONFIG_PATH']).toBe('/some/tsconfig.json');
+      } finally {
+        if (originalTsxValue === undefined) {
+          delete process.env['TSX_TSCONFIG_PATH'];
+        } else {
+          process.env['TSX_TSCONFIG_PATH'] = originalTsxValue;
+        }
+      }
+    });
+  });
 });

@@ -89,7 +89,6 @@ const TASK_LEVEL_ACTIONS = new Set([
 
 const EMPTY_CONTEXT_ACTIONS = new Set([
   'request_plan_approval',
-  'request_final_approval',
   'ask_gate_mode',
   'spawn_final_reviewer',
   'display_complete',
@@ -119,7 +118,12 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       const phaseReview = phaseIter?.nodes['phase_review'] as StepNodeState | undefined;
 
       if (phaseIter && phaseIter.corrective_tasks.length > 0) {
-        return { ...base, is_correction: true, previous_review: phaseReview?.doc_path ?? '' };
+        return {
+          ...base,
+          is_correction: true,
+          corrective_index: phaseIter.corrective_tasks.length,
+          previous_review: phaseReview?.doc_path ?? '',
+        };
       }
 
       return base;  // Normal path — no is_correction field
@@ -212,6 +216,13 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       branch: state.pipeline.source_control?.branch ?? '',
       base_branch: state.pipeline.source_control?.base_branch ?? '',
       worktree_path: state.pipeline.source_control?.worktree_path ?? '',
+    };
+  }
+
+  if (action === 'request_final_approval') {
+    return {
+      ...walkerContext,
+      pr_url: state.pipeline.source_control?.pr_url ?? null,
     };
   }
 

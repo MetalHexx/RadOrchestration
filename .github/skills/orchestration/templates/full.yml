@@ -188,7 +188,7 @@ nodes:
         mode_ref: human_gates.execution_mode
         action_if_needed: gate_phase
         approved_event: phase_gate_approved
-        auto_approve_modes: []
+        auto_approve_modes: []   # in autonomous mode, the walker's verdict-based auto-approve bypasses this gate when predecessor verdict === 'approved'
         depends_on: [phase_review]
 
   # ── Final Review ──────────────────────────────────────────────────────────
@@ -200,15 +200,6 @@ nodes:
     events: { started: final_review_started, completed: final_review_completed }
     doc_output_field: doc_path
     depends_on: [phase_loop]
-
-  - id: final_approval_gate
-    kind: gate
-    label: "Final Approval Gate"
-    mode_ref: human_gates.after_final_review
-    action_if_needed: request_final_approval
-    approved_event: final_approved
-    auto_approve_modes: []
-    depends_on: [final_review]
 
   - id: pr_gate
     kind: conditional
@@ -226,4 +217,13 @@ nodes:
           events: { started: pr_requested, completed: pr_created }
           depends_on: []
       false: []
-    depends_on: [final_approval_gate]
+    depends_on: [final_review]
+
+  - id: final_approval_gate
+    kind: gate
+    label: "Final Approval Gate"
+    mode_ref: human_gates.after_final_review
+    action_if_needed: request_final_approval
+    approved_event: final_approved
+    auto_approve_modes: []
+    depends_on: [pr_gate]
