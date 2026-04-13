@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { enrichActionContext, resolveActivePhaseIndex, resolveActiveTaskIndex } from '../lib/context-enrichment.js';
-import type { PipelineState, OrchestrationConfig, ForEachPhaseNodeState, ForEachTaskNodeState } from '../lib/types.js';
+import type { PipelineState, OrchestrationConfig, ForEachPhaseNodeState, ForEachTaskNodeState, StepNodeState } from '../lib/types.js';
 import { createScaffoldedState } from './fixtures/parity-states.js';
 
 // ── Minimal config ────────────────────────────────────────────────────────────
@@ -252,5 +252,148 @@ describe('resolveActiveTaskIndex', () => {
       { index: 0, status: 'in_progress', nodes: { task_loop: taskLoop }, corrective_tasks: [], commit_hash: null },
     ];
     expect(() => resolveActiveTaskIndex(state, 1)).toThrow(/Ambiguous task resolution/);
+  });
+});
+
+// ── create_phase_plan enrichment ──────────────────────────────────────────────
+
+describe('enrichActionContext — create_phase_plan', () => {
+  it('includes is_correction: true and corrective_index: 1 when corrective_tasks.length === 1', () => {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [
+      {
+        index: 0,
+        status: 'in_progress',
+        nodes: {
+          phase_review: {
+            kind: 'step',
+            status: 'completed',
+            doc_path: 'reports/PROJ-PHASE-REVIEW-P01.md',
+            retries: 0,
+          } as StepNodeState,
+        },
+        corrective_tasks: [
+          {
+            index: 1,
+            reason: 'changes_requested',
+            injected_after: 'phase_review',
+            status: 'not_started',
+            nodes: {},
+            commit_hash: null,
+          },
+        ],
+        commit_hash: null,
+      },
+    ];
+    const result = enrichActionContext({
+      action: 'create_phase_plan',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.is_correction).toBe(true);
+    expect(result.corrective_index).toBe(1);
+  });
+
+  it('includes corrective_index: 2 when corrective_tasks.length === 2', () => {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [
+      {
+        index: 0,
+        status: 'in_progress',
+        nodes: {},
+        corrective_tasks: [
+          {
+            index: 1,
+            reason: 'changes_requested',
+            injected_after: 'phase_review',
+            status: 'completed',
+            nodes: {},
+            commit_hash: null,
+          },
+          {
+            index: 2,
+            reason: 'changes_requested',
+            injected_after: 'phase_review',
+            status: 'not_started',
+            nodes: {},
+            commit_hash: null,
+          },
+        ],
+        commit_hash: null,
+      },
+    ];
+    const result = enrichActionContext({
+      action: 'create_phase_plan',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.corrective_index).toBe(2);
+  });
+
+  it('does NOT include is_correction or corrective_index when corrective_tasks is empty', () => {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [
+      {
+        index: 0,
+        status: 'in_progress',
+        nodes: {},
+        corrective_tasks: [],
+        commit_hash: null,
+      },
+    ];
+    const result = enrichActionContext({
+      action: 'create_phase_plan',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result).not.toHaveProperty('is_correction');
+    expect(result).not.toHaveProperty('corrective_index');
+  });
+
+  it('includes previous_review with the phase review doc_path when corrective', () => {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [
+      {
+        index: 0,
+        status: 'in_progress',
+        nodes: {
+          phase_review: {
+            kind: 'step',
+            status: 'completed',
+            doc_path: 'reports/PROJ-PHASE-REVIEW-P01.md',
+            retries: 0,
+          } as StepNodeState,
+        },
+        corrective_tasks: [
+          {
+            index: 1,
+            reason: 'changes_requested',
+            injected_after: 'phase_review',
+            status: 'not_started',
+            nodes: {},
+            commit_hash: null,
+          },
+        ],
+        commit_hash: null,
+      },
+    ];
+    const result = enrichActionContext({
+      action: 'create_phase_plan',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.previous_review).toBe('reports/PROJ-PHASE-REVIEW-P01.md');
   });
 });

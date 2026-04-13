@@ -36,7 +36,16 @@ Generate a Phase Plan that breaks a phase from the Master Plan into concrete tas
 8. **Set exit criteria**: Mirror from Master Plan plus standard criteria (all tasks complete, build passes, tests pass)
 9. **Note risks**: Phase-specific risks
 10. **Write the Phase Plan**: Use the bundled template at [templates/PHASE-PLAN.md](./templates/PHASE-PLAN.md)
-11. **Save**: Write to `{PROJECT-DIR}/phases/{NAME}-PHASE-{NN}-{TITLE}.md`
+11. **Save**: Write to the appropriate path based on corrective status:
+    - **Normal (first-time)**: `{PROJECT-DIR}/phases/{NAME}-PHASE-{NN}-{TITLE}.md`
+    - **Corrective** (when `is_correction` is true in the event context): `{PROJECT-DIR}/phases/{NAME}-PHASE-{NN}-{TITLE}-C{corrective_index}.md`
+    
+    The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. Examples:
+    | Scenario | Filename |
+    |----------|----------|
+    | Original plan | `MYPROJ-PHASE-02-SETUP.md` |
+    | First correction | `MYPROJ-PHASE-02-SETUP-C1.md` |
+    | Second correction | `MYPROJ-PHASE-02-SETUP-C2.md` |
 
 ## Prior Context (Corrective Handling)
 
@@ -61,6 +70,7 @@ When `review.action == "corrective_tasks_issued"`:
 3. Create corrective tasks targeting those issues — these tasks come FIRST in the task outline
 4. Follow corrective tasks with any remaining normal tasks for the phase
 5. Carry-forward items from the phase review become inputs to subsequent tasks
+6. Save with the corrective filename suffix: `{NAME}-PHASE-{NN}-{TITLE}-C{corrective_index}.md` — the original phase plan file is preserved (not overwritten)
 
 ## Required Frontmatter Fields
 
