@@ -51,7 +51,7 @@ export function computeTemplateLayout(
 
     // Recurse into nested groups first so their sizes are known before this group's layout
     for (const child of children) {
-      if (child.type === 'templateGroup') {
+      if (child.type === 'templateGroup' || childrenMap.has(child.id)) {
         layoutGroup(child.id);
       }
     }

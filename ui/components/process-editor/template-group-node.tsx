@@ -40,6 +40,8 @@ export function TemplateGroupNode({ data }: TemplateGroupNodeProps) {
         borderTop: `3px solid ${accent}`,
       }}
       tabIndex={0}
+      role="group"
+      aria-label={data.label}
       aria-describedby={showTooltip ? tooltipId : undefined}
       onFocus={() => setShowTooltip(true)}
       onBlur={() => setShowTooltip(false)}

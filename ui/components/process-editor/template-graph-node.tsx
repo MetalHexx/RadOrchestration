@@ -79,7 +79,14 @@ export function TemplateGraphNode({ data }: TemplateGraphNodeProps) {
           )}
           {data.kind === 'conditional' && (
             <div>
-              condition: {data.meta.config_ref ?? '—'} {data.meta.operator ?? ''} {data.meta.value ?? ''}
+              condition: {(() => {
+                try {
+                  const parsed = JSON.parse(String(data.meta?.condition ?? ''));
+                  return `${parsed.config_ref ?? '—'} ${parsed.operator ?? ''} ${parsed.value ?? ''}`;
+                } catch {
+                  return '—';
+                }
+              })()}
             </div>
           )}
         </div>
