@@ -1,4 +1,4 @@
-import { parseYaml } from '@/lib/yaml-parser';
+import { parseYaml, stringifyYaml } from '@/lib/yaml-parser';
 import type {
   TemplateDefinition,
   TemplateGraph,
@@ -128,6 +128,109 @@ export function parseTemplateToGraph(yamlContent: string): TemplateGraph {
   return { nodes, edges };
 }
 
-export function serializeGraphToYaml(): never {
-  throw new Error('Not implemented — see Task T02');
+function restoreMeta(meta: Record<string, string>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(meta)) {
+    try {
+      result[key] = JSON.parse(value);
+    } catch {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+function buildDependsOn(nodeId: string, edges: TemplateGraphEdge[]): string[] {
+  return edges
+    .filter(e => e.target === nodeId && e.label === undefined)
+    .map(e => e.source);
+}
+
+function buildYamlNodes(
+  nodeIds: string[],
+  nodeMap: Map<string, TemplateGraphNode>,
+  childrenMap: Map<string, string[]>,
+  edges: TemplateGraphEdge[],
+): TemplateYamlNode[] {
+  return nodeIds.map(nodeId => {
+    const graphNode = nodeMap.get(nodeId)!;
+    const { id, kind, label, meta } = graphNode.data;
+
+    const yamlNode = Object.assign(
+      {
+        id,
+        kind,
+        label,
+        depends_on: buildDependsOn(nodeId, edges),
+      } as TemplateYamlNode,
+      restoreMeta(meta),
+    );
+
+    if (kind === 'for_each_phase' || kind === 'for_each_task') {
+      const childIds = childrenMap.get(nodeId) ?? [];
+      yamlNode.body = buildYamlNodes(childIds, nodeMap, childrenMap, edges);
+    }
+
+    if (kind === 'conditional') {
+      const childIds = childrenMap.get(nodeId) ?? [];
+
+      const trueBranchIds: string[] = [];
+      const falseBranchIds: string[] = [];
+
+      for (const childId of childIds) {
+        const hasTrue = edges.some(e => e.source === nodeId && e.target === childId && e.label === 'true');
+        const hasFalse = edges.some(e => e.source === nodeId && e.target === childId && e.label === 'false');
+        if (hasTrue) trueBranchIds.push(childId);
+        if (hasFalse) falseBranchIds.push(childId);
+      }
+
+      yamlNode.branches = {
+        true: buildYamlNodes(trueBranchIds, nodeMap, childrenMap, edges),
+        false: buildYamlNodes(falseBranchIds, nodeMap, childrenMap, edges),
+      };
+    }
+
+    return yamlNode;
+  });
+}
+
+/**
+ * Convert ReactFlow graph state back into a template YAML string.
+ *
+ * - Reconstructs TemplateYamlNode[] from flat node list using parentId relationships.
+ * - Rebuilds depends_on arrays from edge list.
+ * - Strips x/y positions (not persisted to YAML).
+ * - Preserves all kind-specific fields stored in node.data.meta.
+ *
+ * @param graph - TemplateGraph with nodes and edges
+ * @param templateMeta - Template-level metadata (id, version, description)
+ * @returns YAML string ready to write to disk
+ */
+export function serializeGraphToYaml(
+  graph: TemplateGraph,
+  templateMeta: { id: string; version: string; description: string },
+): string {
+  const nodeMap = new Map<string, TemplateGraphNode>(graph.nodes.map(n => [n.id, n]));
+
+  const childrenMap = new Map<string, string[]>();
+  for (const node of graph.nodes) {
+    if (node.parentId !== undefined) {
+      const children = childrenMap.get(node.parentId) ?? [];
+      children.push(node.id);
+      childrenMap.set(node.parentId, children);
+    }
+  }
+
+  const topLevelNodeIds = graph.nodes.filter(n => n.parentId === undefined).map(n => n.id);
+
+  const definition = {
+    template: {
+      id: templateMeta.id,
+      version: templateMeta.version,
+      description: templateMeta.description,
+    },
+    nodes: buildYamlNodes(topLevelNodeIds, nodeMap, childrenMap, graph.edges),
+  };
+
+  return stringifyYaml(definition);
 }
