@@ -8,8 +8,8 @@
 
 | Project | Agent | Document(s) | Status |
 |---------|-------|-------------|--------|
-| BETTER-PLAN-DOCS-1 | Product Manager | PRD + `rad-create-plans` skill architecture | Brainstorming |
-| BETTER-PLAN-DOCS-2 | Research | Research Findings | Draft |
+| BETTER-PLAN-DOCS-1 | Product Manager | PRD + `rad-create-plans` skill architecture | Complete |
+| BETTER-PLAN-DOCS-2 | Research | Research Findings | Brainstorming |
 | BETTER-PLAN-DOCS-3 | UX Designer | Design | Draft |
 | BETTER-PLAN-DOCS-4 | Architect | Architecture | Draft |
 | BETTER-PLAN-DOCS-5 | Tactical Planner (takes over from Architect) | Master Plan | Draft |
@@ -59,7 +59,7 @@ Each planning document **owns what belongs to its layer**, references what upstr
 
 **Decision**: Structure all planning documents so that discrete elements (FRs, NFRs, risks, design components, architecture modules, phase tasks, etc.) each live under their own markdown heading rather than inside tables or dense lists.
 
-**Rationale**: The future total-recall memory system chunks on markdown headers. Tables don't chunk well — a single table row may be too small to carry context, and a multi-row table is too large for a single chunk. Individual headings make each element a discrete, indexable chunk of 200-300 tokens. This applies across all document types in the series, not just PRD FRs/NFRs:
+**Rationale**: The future total-recall memory system chunks on markdown headers. Tables don't chunk well — a single table row may be too small to carry context, and a multi-row table is too large for a single chunk. Individual headings make each element a discrete, indexable chunk of 100-150 tokens (hard ceiling: 200-300). This applies across all document types in the series, not just PRD FRs/NFRs:
 - **PRD**: FR/NFR headings (replaces table rows)
 - **Research Findings**: Per-module or per-finding headings (replaces long prose or tables)
 - **Design**: Per-component or per-flow headings
@@ -71,7 +71,7 @@ Each planning document **owns what belongs to its layer**, references what upstr
 ```markdown
 ### FR-1: Short descriptive title
 
-{Element text. 200-300 tokens max per chunk.}
+{Element text. 100-150 tokens target, 200-300 hard ceiling.}
 ```
 
 Each document type's `workflow.md` in `rad-create-plans` specifies which elements get their own headings and at what level. The shared `references/shared/guidelines.md` defines the universal chunking rules (target size, heading conventions, what not to put in tables).
@@ -161,6 +161,31 @@ skills/
 - **Master Plan**: Aggregated risk register from all upstream documents
 
 No risk section restates another document's risks. The Master Plan aggregates and deduplicates.
+
+### Research Findings Redesign (BETTER-PLAN-DOCS-2)
+
+**Decision**: Redesign the Research Findings document as a chunk-friendly, evidence-only artifact. The researcher reports what IS — never what SHOULD BE.
+
+**Template structure**:
+- **Research Scope**: 2-3 sentences framing what was investigated and why
+- **Index Table**: Quick-reference mapping codebase areas → finding count → related FR IDs
+- **Codebase Analysis**: Per-finding headings (`### Finding: {Title}`) at 100-150 tokens each, organized by codebase area (hybrid). Each finding ends with `Relates to FR-N, FR-M.`
+- **Technology Stack**: Table of relevant technologies (kept — useful navigational context for downstream agents)
+
+**Sections cut**:
+- **Recommendations**: Scope bleed into Architect/PM domains. The researcher's own quality standard ("Patterns over opinions") contradicts this section
+- **Adhoc mode**: Dropped from the research agent entirely — Explore agent covers ad-hoc research questions
+
+**Constraint implications**: Factual "This means X" statements are permitted as the final sentence of a finding block, before the `Relates to` line. No "should," no "recommend." Only direct, non-debatable consequences of codebase evidence.
+
+**Anti-duplication guardrails**:
+- Every finding must contain information NOT in the PRD (file paths, code patterns, constraints, unknowns)
+- Findings reference PRD FR IDs but do not restate the requirement text
+- Self-review cohesion checks (§2.1, §2.6) validate scoping without duplication
+
+**No-implementation carve-out**: Shared guidelines (`references/shared/guidelines.md`) get an explicit exemption for Research Findings and Architecture documents, which require concrete file paths and code references by nature.
+
+**Template variants**: Full (`RESEARCH-FINDINGS.md`) and Light (`RESEARCH-FINDINGS-light.md`), matching the PRD pattern.
 
 ## DAG Engine Analysis
 
