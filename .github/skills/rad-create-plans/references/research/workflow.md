@@ -25,10 +25,10 @@ You explore codebases, documentation, and external sources to build a comprehens
 6. Research external sources: If referenced in the PRD — APIs, libraries, standards.
    Vet libraries for supply-chain safety, popularity, and maintenance status
 7. Discover constraints: Note technical limitations, compatibility requirements, dependencies
-8. Select template variant: Use `templates/RESEARCH-FINDINGS.md` (full) by default;
-   use `templates/RESEARCH-FINDINGS-light.md` when scope is narrow
+8. Select template variant: Use [`templates/RESEARCH-FINDINGS.md`](templates/RESEARCH-FINDINGS.md) (full) by default;
+   use [`templates/RESEARCH-FINDINGS-light.md`](templates/RESEARCH-FINDINGS-light.md) when scope is narrow
    (single codebase area, ≤ 3 FRs)
-9. Self-review: Run the self-review workflow from `references/shared/self-review.md` —
+9. Self-review: Run the self-review workflow from [`../shared/self-review.md`](../shared/self-review.md) —
    verify accuracy against the codebase and cohesion with the PRD
 10. Save to the path specified by the Orchestrator
    (typically `{PROJECT-DIR}/{NAME}-RESEARCH-FINDINGS.md`)
@@ -72,9 +72,9 @@ You explore codebases, documentation, and external sources to build a comprehens
 
 ### Variants and Selection
 
-- **Full**: `templates/RESEARCH-FINDINGS.md` — 5 sections (Research Scope, Index, Tech Stack,
+- **Full**: [`templates/RESEARCH-FINDINGS.md`](templates/RESEARCH-FINDINGS.md) — 5 sections (Research Scope, Index, Tech Stack,
   Codebase Analysis with per-area groupings)
-- **Light**: `templates/RESEARCH-FINDINGS-light.md` — 3 sections (Research Scope,
+- **Light**: [`templates/RESEARCH-FINDINGS-light.md`](templates/RESEARCH-FINDINGS-light.md) — 3 sections (Research Scope,
   Codebase Analysis only)
 - Use light variant when scope is narrow (single codebase area, ≤ 3 FRs)
 

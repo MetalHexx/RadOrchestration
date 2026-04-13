@@ -21,9 +21,9 @@ You synthesize a brainstorming document or project idea into a structured Produc
 4. Define functional requirements: Use `### FR-N: {Title}` headings. Each block 100–150 tokens (max 200–300)
 5. Define non-functional requirements: Use `### NFR-N: {Title}` headings. Same token targets as FRs
 6. Assess risks: Known product-scoped risks with impact and mitigation (optional section — omit if none)
-7. Select template variant: Use `templates/PRD.md` (full) by default; use `templates/PRD-light.md`
+7. Select template variant: Use [`templates/PRD.md`](templates/PRD.md) (full) by default; use [`templates/PRD-light.md`](templates/PRD-light.md)
    when specified by Orchestrator, or when fewer than 5 FRs and no meaningful NFRs or risks
-8. Self-review: Run the self-review workflow from `references/shared/self-review.md` — verify accuracy
+8. Self-review: Run the self-review workflow from [`../shared/self-review.md`](../shared/self-review.md) — verify accuracy
    against upstream documents and cohesion across the planning set
 9. Save to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-PRD.md`)
 
@@ -49,8 +49,8 @@ You synthesize a brainstorming document or project idea into a structured Produc
 
 ### Variants and Selection
 
-- **Full**: `templates/PRD.md` — 6 sections (Problem Statement, Goals, Non-Goals, FRs, NFRs, Risks)
-- **Light**: `templates/PRD-light.md` — 4 sections (Problem Statement, Goals, Non-Goals, FRs)
+- **Full**: [`templates/PRD.md`](templates/PRD.md) — 6 sections (Problem Statement, Goals, Non-Goals, FRs, NFRs, Risks)
+- **Light**: [`templates/PRD-light.md`](templates/PRD-light.md) — 4 sections (Problem Statement, Goals, Non-Goals, FRs)
 - Use light variant when specified by Orchestrator, or when fewer than 5 FRs and no meaningful NFRs or risks
 
 

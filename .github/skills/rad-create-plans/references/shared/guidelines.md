@@ -43,6 +43,6 @@ Every planning agent loads this file before beginning its document-type-specific
 
 ## Self-Review
 
-- After completing every document draft, run the self-review workflow defined in `references/shared/self-review.md` before saving
+- After completing every document draft, run the self-review workflow defined in [self-review.md](self-review.md) before saving
 - Do not skip self-review even if the document feels complete
 - Self-review catches convention violations before the document enters the review pipeline
