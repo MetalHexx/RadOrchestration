@@ -72,7 +72,7 @@ describe('computeTemplateLayout', () => {
     it('top-level templateGroup nodes with children have positive finite style.width and style.height', () => {
       const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
       const result = computeTemplateLayout(nodes, edges);
-      // The layout only sizes group nodes that are top-level (no parentId)
+      // The layout sizes group nodes at all nesting depths
       const topLevelGroupNodes = result.nodes.filter(
         (n) => n.type === 'templateGroup' && !n.parentId
       );
@@ -139,7 +139,7 @@ describe('computeTemplateLayout', () => {
     it('direct children of top-level groups start at padding offsets relative to parent origin', () => {
       const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
       const result = computeTemplateLayout(nodes, edges);
-      // The layout repositions only direct children of top-level group nodes
+      // The layout repositions children of group nodes at all nesting depths
       const topLevelGroupIds = new Set(
         result.nodes
           .filter((n) => n.type === 'templateGroup' && !n.parentId)
@@ -157,6 +157,125 @@ describe('computeTemplateLayout', () => {
         assert.ok(
           child.position.y >= PAD_TOP,
           `child ${child.id} position.y (${child.position.y}) should be >= PAD_TOP (${PAD_TOP})`
+        );
+      }
+    });
+  });
+
+  // ── Nested group layout ─────────────────────────────────────────────────────
+
+  describe('nested group layout', () => {
+    it('nested templateGroup nodes have positive finite style.width and style.height', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      const nestedGroupNodes = result.nodes.filter(
+        (n) => n.type === 'templateGroup' && n.parentId !== undefined
+      );
+      assert.ok(
+        nestedGroupNodes.length > 0,
+        'expected at least one nested templateGroup node (e.g. task_loop)'
+      );
+      for (const node of nestedGroupNodes) {
+        assert.ok(node.style !== undefined, `nested group node ${node.id} has no style`);
+        const width = node.style!.width as number;
+        const height = node.style!.height as number;
+        assert.ok(
+          Number.isFinite(width) && width > 0,
+          `nested group node ${node.id} style.width is not positive finite (got ${width})`
+        );
+        assert.ok(
+          Number.isFinite(height) && height > 0,
+          `nested group node ${node.id} style.height is not positive finite (got ${height})`
+        );
+      }
+    });
+
+    it('children of nested templateGroup nodes have non-zero positions', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      const nestedGroupIds = new Set(
+        result.nodes
+          .filter((n) => n.type === 'templateGroup' && n.parentId !== undefined)
+          .map((n) => n.id)
+      );
+      const children = result.nodes.filter(
+        (n) => n.parentId !== undefined && nestedGroupIds.has(n.parentId)
+      );
+      assert.ok(
+        children.length > 0,
+        'expected at least one child of a nested templateGroup node'
+      );
+      for (const child of children) {
+        assert.ok(
+          child.position.x > 0 || child.position.y > 0,
+          `child ${child.id} of nested group has position {0, 0}`
+        );
+      }
+    });
+
+    it('children of nested templateGroup nodes start at padding offsets', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      const nestedGroupIds = new Set(
+        result.nodes
+          .filter((n) => n.type === 'templateGroup' && n.parentId !== undefined)
+          .map((n) => n.id)
+      );
+      const children = result.nodes.filter(
+        (n) => n.parentId !== undefined && nestedGroupIds.has(n.parentId)
+      );
+      assert.ok(
+        children.length > 0,
+        'expected at least one child of a nested templateGroup node'
+      );
+      for (const child of children) {
+        assert.ok(
+          child.position.x >= PAD_LEFT,
+          `child ${child.id} position.x (${child.position.x}) should be >= PAD_LEFT (${PAD_LEFT})`
+        );
+        assert.ok(
+          child.position.y >= PAD_TOP,
+          `child ${child.id} position.y (${child.position.y}) should be >= PAD_TOP (${PAD_TOP})`
+        );
+      }
+    });
+
+    it('children of nested templateGroup nodes fit within parent computed dimensions', () => {
+      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const result = computeTemplateLayout(nodes, edges);
+      const nodeMap = new Map(result.nodes.map((n) => [n.id, n]));
+      const nestedGroupIds = new Set(
+        result.nodes
+          .filter((n) => n.type === 'templateGroup' && n.parentId !== undefined)
+          .map((n) => n.id)
+      );
+      const children = result.nodes.filter(
+        (n) => n.parentId !== undefined && nestedGroupIds.has(n.parentId)
+      );
+      assert.ok(
+        children.length > 0,
+        'expected at least one child of a nested templateGroup node'
+      );
+      for (const child of children) {
+        const parent = nodeMap.get(child.parentId!)!;
+        assert.ok(parent.style !== undefined, `parent ${parent.id} has no style`);
+        const parentWidth = parent.style!.width as number;
+        const parentHeight = parent.style!.height as number;
+        const childWidth =
+          child.type === 'templateGroup' && child.style?.width
+            ? (child.style.width as number)
+            : NODE_WIDTH;
+        const childHeight =
+          child.type === 'templateGroup' && child.style?.height
+            ? (child.style.height as number)
+            : NODE_HEIGHT;
+        assert.ok(
+          child.position.x + childWidth <= parentWidth,
+          `child ${child.id} overflows parent width: ${child.position.x} + ${childWidth} > ${parentWidth}`
+        );
+        assert.ok(
+          child.position.y + childHeight <= parentHeight,
+          `child ${child.id} overflows parent height: ${child.position.y} + ${childHeight} > ${parentHeight}`
         );
       }
     });
