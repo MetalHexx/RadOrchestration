@@ -8,6 +8,7 @@ import type {
   IterationEntry,
   CorrectiveTaskEntry,
   NodeDef,
+  StepNodeDef,
   ForEachPhaseNodeDef,
   ForEachTaskNodeDef,
   PipelineTemplate,
@@ -640,6 +641,16 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
 mutationRegistry.set(EVENTS.PR_REQUESTED, (state, _context, _config, _template): MutationResult => {
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
+
+  if (!cloned.graph.nodes['final_pr']) {
+    cloned.graph.nodes['final_pr'] = scaffoldNodeState({
+      id: 'final_pr',
+      kind: 'step',
+      action: 'invoke_source_control_pr',
+      events: { started: 'pr_requested', completed: 'pr_created' },
+    } as StepNodeDef);
+    mutations_applied.push('scaffold final_pr (was not yet initialized)');
+  }
 
   const node = resolveNodeState(cloned, 'final_pr', 'top');
   node.status = 'in_progress';

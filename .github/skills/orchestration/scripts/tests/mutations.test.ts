@@ -1214,6 +1214,33 @@ describe('pr_requested mutation', () => {
     const result = mutation(state, {}, baseConfig, baseTemplate);
     expect(result.mutations_applied.length).toBeGreaterThan(0);
   });
+
+  it('defensively scaffolds final_pr when it is missing', () => {
+    const state = makeState();
+    delete state.graph.nodes['final_pr'];
+    const mutation = getMutation('pr_requested')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.graph.nodes['final_pr']).toBeDefined();
+    expect(result.state.graph.nodes['final_pr'].status).toBe('in_progress');
+    expect(result.mutations_applied).toContain('scaffold final_pr (was not yet initialized)');
+  });
+
+  it('does not scaffold when final_pr already exists', () => {
+    const state = makeState();
+    const mutation = getMutation('pr_requested')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.graph.nodes['final_pr'].status).toBe('in_progress');
+    expect(result.mutations_applied).not.toContain('scaffold final_pr (was not yet initialized)');
+    expect(result.mutations_applied.length).toBe(1);
+  });
+
+  it('does not mutate original state when defensive scaffolding triggers', () => {
+    const state = makeState();
+    delete state.graph.nodes['final_pr'];
+    const mutation = getMutation('pr_requested')!;
+    mutation(state, {}, baseConfig, baseTemplate);
+    expect(state.graph.nodes['final_pr']).toBeUndefined();
+  });
 });
 
 describe('pr_created mutation', () => {
