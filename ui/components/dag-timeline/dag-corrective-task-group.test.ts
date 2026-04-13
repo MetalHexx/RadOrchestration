@@ -138,8 +138,8 @@ test('GROUP_ARIA_LABEL is "Corrective tasks"', () => {
   assert.strictEqual(GROUP_ARIA_LABEL, "Corrective tasks");
 });
 
-// shouldRenderGroup — empty array
-test('empty correctiveTasks array produces no output (component returns null)', () => {
+// filterCompatibleNodes — empty nodes
+test('filterCompatibleNodes returns empty array when nodes is {}', () => {
   const taskWithNoNodes: CorrectiveTaskEntry = { ...baseCorrectiveTask, nodes: {} };
   assert.strictEqual(filterCompatibleNodes(taskWithNoNodes.nodes).length, 0);
 });
