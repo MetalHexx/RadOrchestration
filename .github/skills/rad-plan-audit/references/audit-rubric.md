@@ -49,6 +49,8 @@ Trace requirements from the PRD through to execution plans.
 | **Master Plan key requirements** | The Master Plan's curated key requirements section traces back to actual FR/NFR IDs in the PRD — no invented requirements, no missing requirements |
 | **Phase scope coverage** | Phase outlines in the Master Plan collectively cover all requirements — none left unaddressed |
 | **NFR representation** | Non-functional requirements (NFR-*) from the PRD are reflected in Architecture's cross-cutting concerns or constraints |
+| **Research Findings FR coverage** | Every finding has a traceability tag (`Relates to FR-N`) linking to at least one PRD FR — no orphan findings |
+| **Research Findings anti-duplication** | Findings contain codebase evidence (file paths, patterns, constraints) absent from the PRD — not restatements of requirements |
 
 The goal is not 1:1 mapping — it's that nothing falls through the cracks. A requirement with no trace into Architecture or phase scopes is a finding.
 
