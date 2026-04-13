@@ -66,7 +66,7 @@ export function DAGIterationPanel({
           <DAGNodeRow
             key={childNodeId}
             nodeId={buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId)}
-            node={childNode as CompatibleNodeState}
+            node={childNode}
             depth={ITERATION_CHILD_DEPTH}
             currentNodePath={currentNodePath}
             onDocClick={onDocClick}

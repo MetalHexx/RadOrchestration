@@ -1,3 +1,9 @@
+/**
+ * Tests for dag-timeline-helpers utility functions.
+ * Run with: npx tsx ui/components/dag-timeline/dag-timeline-helpers.test.ts
+ *
+ * NOTE: Tests use the established .test.ts pattern (no DOM/JSX rendering).
+ */
 import assert from "node:assert";
 import { getCommitLinkData, formatNodeId, getDisplayName } from './dag-timeline-helpers';
 import { compoundNodeIds } from './__fixtures__';
