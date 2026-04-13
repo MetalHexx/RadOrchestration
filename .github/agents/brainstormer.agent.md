@@ -96,7 +96,7 @@ When a user starts a brainstorming session:
 - **Consensus-driven**: Only write goals that the human has validated — don't dump every thought
 - **Living document**: Update goals as they evolve — never leave stale or superseded concepts
 - **Structured enough to be useful**: Not a raw transcript — organized goals with rationale and scope
-- **Actionable output**: The final document should give the Research Agent and Product Manager enough to work from
+- **Actionable output**: The final document should give the Product Manager and Research Agent enough to work from
 - **Active collaboration**: Suggest, challenge, and question — don't just passively record what the human says
 - **Low Implementation Details**: Goals can be technical, but not overly verbose with implementation details.  
 - **Idea-level fidelity**: Capture *what* and *why*, not *how* — no schemas, APIs, or implementation steps 

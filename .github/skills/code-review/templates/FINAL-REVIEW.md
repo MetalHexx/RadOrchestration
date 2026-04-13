@@ -28,13 +28,13 @@ created: "{ISO-DATE}"
 | Error propagation | ✅/⚠️/❌ | {Assessment} |
 | Dependency graph | ✅/⚠️/❌ | {Assessment} |
 
-## P0 Requirement Coverage
+## Requirement Coverage
 
-<!-- Evaluate every P0 requirement from the PRD. Each row should map to a specific P0 requirement. -->
+<!-- Evaluate every requirement from the PRD. Each row should map to a specific requirement. -->
 
 | Requirement | Covered? | Evidence | Notes |
 |-------------|----------|----------|-------|
-| {P0 requirement from PRD} | ✅/❌ | {Where/how it is implemented} | {Any caveats} |
+| {Requirement from PRD} | ✅/❌ | {Where/how it is implemented} | {Any caveats} |
 
 ## Cross-Phase Integration
 

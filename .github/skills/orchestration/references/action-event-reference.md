@@ -37,15 +37,15 @@ These are the exact event names passed to `--event`:
 | Event | Flags (besides `--event` and `--project-dir`) | When to Signal |
 |-------|-----------------------------------------------|----------------|
 | `start` | *(none)* | First call (new project), cold start, or context compaction recovery |
-| `research_started` | *(none)* | Before Research agent spawn. Transitions `planning.steps[0].status` to `in_progress`. See action #1 two-step protocol. |
-| `research_completed` | `--doc-path <path>` | After Research agent finishes |
-| `prd_started` | *(none)* | Before Product Manager spawn. Transitions `planning.steps[1].status` to `in_progress`. See action #2 two-step protocol. |
+| `prd_started` | *(none)* | Before Product Manager spawn. Transitions `graph.nodes.prd.status` to `in_progress`. See action #2 two-step protocol. |
 | `prd_completed` | `--doc-path <path>` | After Product Manager finishes |
-| `design_started` | *(none)* | Before UX Designer spawn. Transitions `planning.steps[2].status` to `in_progress`. See action #3 two-step protocol. |
+| `research_started` | *(none)* | Before Research agent spawn. Transitions `graph.nodes.research.status` to `in_progress`. See action #1 two-step protocol. |
+| `research_completed` | `--doc-path <path>` | After Research agent finishes |
+| `design_started` | *(none)* | Before UX Designer spawn. Transitions `graph.nodes.design.status` to `in_progress`. See action #3 two-step protocol. |
 | `design_completed` | `--doc-path <path>` | After UX Designer finishes |
-| `architecture_started` | *(none)* | Before Architect spawn (architecture doc). Transitions `planning.steps[3].status` to `in_progress`. See action #4 two-step protocol. |
+| `architecture_started` | *(none)* | Before Architect spawn (architecture doc). Transitions `graph.nodes.architecture.status` to `in_progress`. See action #4 two-step protocol. |
 | `architecture_completed` | `--doc-path <path>` | After Architect finishes (architecture doc) |
-| `master_plan_started` | *(none)* | Before Architect spawn (master plan). Transitions `planning.steps[4].status` to `in_progress`. See action #5 two-step protocol. |
+| `master_plan_started` | *(none)* | Before Architect spawn (master plan). Transitions `graph.nodes.master_plan.status` to `in_progress`. See action #5 two-step protocol. |
 | `master_plan_completed` | `--doc-path <path>` | After Architect finishes (master plan) |
 | `plan_approved` | *(none)* | After human approves master plan |
 | `plan_rejected` | *(none)* | After human rejects master plan |

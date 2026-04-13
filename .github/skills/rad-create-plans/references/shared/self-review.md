@@ -30,11 +30,11 @@ You are checking your own output for accuracy against the codebase and cohesion 
 3. **Read existing source files** your document claims already exist.
    Do not assume they exist — read each file to verify your claims.
 
-4. **Apply accuracy checks** — [rubric §1](./audit-rubric.md#part-1-codebase-accuracy-docs-vs-code).
+4. **Apply accuracy checks** — [rubric §1](../../../rad-plan-audit/references/audit-rubric.md#part-1-codebase-accuracy-docs-vs-code).
    Verify every claim your doc makes about existing code (names, signatures, paths, types, behaviors).
    Record discrepancies and revise your document before continuing.
 
-5. **Apply cohesion checks** — [rubric §2](./audit-rubric.md#part-2-cross-document-cohesion-docs-vs-docs).
+5. **Apply cohesion checks** — [rubric §2](../../../rad-plan-audit/references/audit-rubric.md#part-2-cross-document-cohesion-docs-vs-docs).
    Verify your doc aligns with upstream docs.
    Record alignment gaps and revise before saving.
    Focus on the subsections relevant to your document type:

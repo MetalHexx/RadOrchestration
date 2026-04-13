@@ -76,6 +76,6 @@ When spawned by the Orchestrator (pipeline mode):
 ## Quality Standards
 
 - **Concrete file paths**: Always reference actual files, not vague descriptions like "the auth module"
-- **Patterns over opinions**: Report what exists — the PM and Architect make decisions
+- **Patterns over opinions**: Report what exists — downstream agents make decisions
 - **Concise format**: Tables and bullets — no narrative prose
 - **Scope to the idea**: Don't analyze the entire codebase — focus on what's relevant

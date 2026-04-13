@@ -117,7 +117,7 @@ Consolidated review skill supporting three modes: task, phase, and final. The re
 ### Focus Areas
 
 - Architectural integrity (module boundaries, API contracts, data flow, error propagation, dependency graph)
-- requirement coverage
+- Requirement coverage
 - Cross-phase integration
 - Cumulative test & build health
 
@@ -143,4 +143,4 @@ The highest-severity finding across both passes (conformance + skeptical) determ
 | `references/code-smells.md` | Non-exhaustive code-smell categories with illustrative examples |
 | `templates/CODE-REVIEW.md` | Task-mode output template (conformance checklist, independent quality assessment, issues) |
 | `templates/PHASE-REVIEW.md` | Phase-mode output template (integration assessment, exit criteria, independent quality assessment) |
-| `templates/FINAL-REVIEW.md` | Final-mode output template (architectural integrity, P0 coverage, cross-phase integration, independent quality assessment) |
+| `templates/FINAL-REVIEW.md` | Final-mode output template (architectural integrity, requirement coverage, cross-phase integration, independent quality assessment) |
