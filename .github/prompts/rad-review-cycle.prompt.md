@@ -1,6 +1,5 @@
 ---
 description: "Run through a review / repair loop ensure all lingering issues are resolved and the code is in good shape."
-agent: orchestrator
 ---
 
 ## Lets execute this sequence:

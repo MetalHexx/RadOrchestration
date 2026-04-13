@@ -3,8 +3,8 @@
  * Run with: npx tsx ui/lib/document-ordering.test.ts
  */
 import assert from 'node:assert';
-import { getOrderedDocs, getAdjacentDocs } from './document-ordering';
-import type { ProjectState } from '@/types/state';
+import { getOrderedDocs, getAdjacentDocs, getOrderedDocsV5 } from './document-ordering';
+import type { ProjectState, ProjectStateV5, NodesRecord } from '@/types/state';
 import type { OrderedDoc } from '@/types/components';
 
 function makeState(overrides?: Partial<ProjectState>): ProjectState {
@@ -390,6 +390,323 @@ test('returns both prev and next at a middle index', () => {
 test('returns currentIndex -1 when path not found', () => {
   const result = getAdjacentDocs(sampleDocs, 'unknown.md');
   assert.deepStrictEqual(result, { prev: null, next: null, currentIndex: -1, total: 3 });
+});
+
+// ─── getOrderedDocsV5 ─────────────────────────────────────────────────────────
+
+console.log('\ngetOrderedDocsV5');
+
+function makeV5State(nodes: NodesRecord = {}): ProjectStateV5 {
+  return {
+    $schema: 'orchestration-state-v5',
+    project: { name: 'TEST', created: '', updated: '' },
+    config: {
+      gate_mode: 'autonomous',
+      limits: { max_phases: 5, max_tasks_per_phase: 10, max_retries_per_task: 2, max_consecutive_review_rejections: 2 },
+      source_control: { auto_commit: 'never', auto_pr: 'never' },
+    },
+    pipeline: {
+      gate_mode: 'autonomous',
+      source_control: null,
+      current_tier: 'execution',
+      halt_reason: null,
+    },
+    graph: {
+      template_id: 'full',
+      status: 'in_progress',
+      current_node_path: null,
+      nodes,
+    },
+  };
+}
+
+test('root planning step nodes produce docs in definition order with planning category', () => {
+  const state = makeV5State({
+    research: { kind: 'step', status: 'completed', doc_path: 'docs/RESEARCH.md', retries: 0 },
+    prd: { kind: 'step', status: 'completed', doc_path: 'docs/PRD.md', retries: 0 },
+    design: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+    architecture: { kind: 'step', status: 'completed', doc_path: 'docs/ARCH.md', retries: 0 },
+    master_plan: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+  });
+
+  const docs = getOrderedDocsV5(state, 'TEST');
+  assert.strictEqual(docs.length, 3);
+  assert.deepStrictEqual(docs.map((d) => d.title), ['Research Findings', 'PRD', 'Architecture']);
+  assert.deepStrictEqual(docs.map((d) => d.category), ['planning', 'planning', 'planning']);
+  assert.strictEqual(docs[0].path, 'docs/RESEARCH.md');
+});
+
+test('null doc_path on step nodes is skipped', () => {
+  const state = makeV5State({
+    research: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+    prd: { kind: 'step', status: 'completed', doc_path: 'docs/PRD.md', retries: 0 },
+  });
+
+  const docs = getOrderedDocsV5(state, 'TEST');
+  assert.strictEqual(docs.length, 1);
+  assert.strictEqual(docs[0].title, 'PRD');
+});
+
+test('for_each_phase iterations produce phase-level documents with correct categories and titles', () => {
+  const state = makeV5State({
+    phase_loop: {
+      kind: 'for_each_phase',
+      status: 'in_progress',
+      iterations: [
+        {
+          index: 0,
+          status: 'completed',
+          nodes: {
+            phase_planning: { kind: 'step', status: 'completed', doc_path: 'phases/P01-PLAN.md', retries: 0 },
+            phase_report: { kind: 'step', status: 'completed', doc_path: 'phases/P01-REPORT.md', retries: 0 },
+            phase_review: { kind: 'step', status: 'completed', doc_path: 'reviews/P01-REVIEW.md', retries: 0 },
+          },
+          corrective_tasks: [],
+          commit_hash: null,
+        },
+      ],
+    },
+  });
+
+  const docs = getOrderedDocsV5(state, 'TEST');
+  assert.strictEqual(docs.length, 3);
+  assert.deepStrictEqual(docs.map((d) => d.title), ['Phase 1 Plan', 'Phase 1 Report', 'Phase 1 Review']);
+  assert.deepStrictEqual(docs.map((d) => d.category), ['phase', 'phase', 'review']);
+});
+
+test('for_each_task iterations produce task-level documents with correct categories and PN-TM titles', () => {
+  const state = makeV5State({
+    phase_loop: {
+      kind: 'for_each_phase',
+      status: 'in_progress',
+      iterations: [
+        {
+          index: 0,
+          status: 'in_progress',
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task',
+              status: 'in_progress',
+              iterations: [
+                {
+                  index: 0,
+                  status: 'completed',
+                  nodes: {
+                    task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/T01.md', retries: 0 },
+                    code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/T01-REVIEW.md', retries: 0 },
+                  },
+                  corrective_tasks: [],
+                  commit_hash: null,
+                },
+              ],
+            },
+          },
+          corrective_tasks: [],
+          commit_hash: null,
+        },
+      ],
+    },
+  });
+
+  const docs = getOrderedDocsV5(state, 'TEST');
+  assert.strictEqual(docs.length, 2);
+  assert.deepStrictEqual(docs.map((d) => d.title), ['P1-T1 Handoff', 'P1-T1 Review']);
+  assert.strictEqual(docs[0].category, 'task');
+  assert.strictEqual(docs[1].category, 'review');
+});
+
+test('corrective task step nodes append CT suffix with task category', () => {
+  const state = makeV5State({
+    phase_loop: {
+      kind: 'for_each_phase',
+      status: 'in_progress',
+      iterations: [
+        {
+          index: 0,
+          status: 'in_progress',
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task',
+              status: 'in_progress',
+              iterations: [
+                {
+                  index: 0,
+                  status: 'in_progress',
+                  nodes: {
+                    task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/T01.md', retries: 0 },
+                  },
+                  corrective_tasks: [
+                    {
+                      index: 1,
+                      reason: 'failed',
+                      injected_after: 'code_review',
+                      status: 'completed',
+                      nodes: {
+                        task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/T01-CT1.md', retries: 0 },
+                      },
+                      commit_hash: null,
+                    },
+                  ],
+                  commit_hash: null,
+                },
+              ],
+            },
+          },
+          corrective_tasks: [],
+          commit_hash: null,
+        },
+      ],
+    },
+  });
+
+  const docs = getOrderedDocsV5(state, 'TEST');
+  assert.strictEqual(docs.length, 2);
+  assert.strictEqual(docs[0].title, 'P1-T1 Handoff');
+  assert.strictEqual(docs[1].title, 'P1-T1 Handoff (CT1)');
+  assert.strictEqual(docs[1].category, 'task');
+  assert.strictEqual(docs[1].path, 'tasks/T01-CT1.md');
+});
+
+test('gate and conditional nodes are skipped (no documents produced)', () => {
+  const state = makeV5State({
+    plan_approval_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+    gate_mode_selection: { kind: 'conditional', status: 'not_started', branch_taken: null },
+    research: { kind: 'step', status: 'completed', doc_path: 'docs/RESEARCH.md', retries: 0 },
+  });
+
+  const docs = getOrderedDocsV5(state, 'TEST');
+  assert.strictEqual(docs.length, 1);
+  assert.strictEqual(docs[0].title, 'Research Findings');
+});
+
+test('final_review root step node produces review category with Final Review title', () => {
+  const state = makeV5State({
+    final_review: { kind: 'step', status: 'completed', doc_path: 'reviews/FINAL-REVIEW.md', retries: 0 },
+  });
+
+  const docs = getOrderedDocsV5(state, 'TEST');
+  assert.strictEqual(docs.length, 1);
+  assert.strictEqual(docs[0].title, 'Final Review');
+  assert.strictEqual(docs[0].category, 'review');
+  assert.strictEqual(docs[0].path, 'reviews/FINAL-REVIEW.md');
+});
+
+test('error log from allFiles is appended with error-log category after graph docs', () => {
+  const state = makeV5State({
+    final_review: { kind: 'step', status: 'completed', doc_path: 'reviews/FINAL-REVIEW.md', retries: 0 },
+  });
+
+  const allFiles = ['reviews/FINAL-REVIEW.md', 'TEST-ERROR-LOG.md'];
+  const docs = getOrderedDocsV5(state, 'TEST', allFiles);
+
+  assert.strictEqual(docs.length, 2);
+  assert.strictEqual(docs[0].title, 'Final Review');
+  assert.strictEqual(docs[1].title, 'Error Log');
+  assert.strictEqual(docs[1].category, 'error-log');
+});
+
+test('remaining md files from allFiles are appended sorted with other category', () => {
+  const state = makeV5State();
+  const allFiles = ['docs/ZEBRA.md', 'docs/ALPHA.md', 'image.png'];
+  const docs = getOrderedDocsV5(state, 'TEST', allFiles);
+
+  assert.deepStrictEqual(docs.map((d) => d.title), ['ALPHA', 'ZEBRA']);
+  assert.strictEqual(docs[0].category, 'other');
+  assert.strictEqual(docs[1].category, 'other');
+});
+
+test('empty graph produces empty result', () => {
+  const state = makeV5State();
+  const docs = getOrderedDocsV5(state, 'TEST');
+  assert.deepStrictEqual(docs, []);
+});
+
+test('empty graph with allFiles extras returns only extras', () => {
+  const state = makeV5State();
+  const allFiles = ['TEST-ERROR-LOG.md', 'EXTRA.md'];
+  const docs = getOrderedDocsV5(state, 'TEST', allFiles);
+  assert.strictEqual(docs[0].category, 'error-log');
+  assert.strictEqual(docs[1].category, 'other');
+  assert.strictEqual(docs[1].title, 'EXTRA');
+});
+
+test('full integration: planning + phase iteration with task iteration + corrective task + final review', () => {
+  const state = makeV5State({
+    research: { kind: 'step', status: 'completed', doc_path: 'docs/RESEARCH.md', retries: 0 },
+    prd: { kind: 'step', status: 'completed', doc_path: 'docs/PRD.md', retries: 0 },
+    design: { kind: 'step', status: 'completed', doc_path: 'docs/DESIGN.md', retries: 0 },
+    architecture: { kind: 'step', status: 'completed', doc_path: 'docs/ARCH.md', retries: 0 },
+    master_plan: { kind: 'step', status: 'completed', doc_path: 'docs/MASTER-PLAN.md', retries: 0 },
+    plan_approval_gate: { kind: 'gate', status: 'completed', gate_active: false },
+    phase_loop: {
+      kind: 'for_each_phase',
+      status: 'in_progress',
+      iterations: [
+        {
+          index: 0,
+          status: 'in_progress',
+          nodes: {
+            phase_planning: { kind: 'step', status: 'completed', doc_path: 'phases/P01-PLAN.md', retries: 0 },
+            task_loop: {
+              kind: 'for_each_task',
+              status: 'in_progress',
+              iterations: [
+                {
+                  index: 0,
+                  status: 'completed',
+                  nodes: {
+                    task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/T01.md', retries: 0 },
+                    code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/T01-REVIEW.md', retries: 0 },
+                  },
+                  corrective_tasks: [
+                    {
+                      index: 1,
+                      reason: 'failed review',
+                      injected_after: 'code_review',
+                      status: 'completed',
+                      nodes: {
+                        task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/T01-CT1.md', retries: 0 },
+                      },
+                      commit_hash: null,
+                    },
+                  ],
+                  commit_hash: null,
+                },
+              ],
+            },
+            phase_report: { kind: 'step', status: 'completed', doc_path: 'phases/P01-REPORT.md', retries: 0 },
+            phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+          },
+          corrective_tasks: [],
+          commit_hash: null,
+        },
+      ],
+    },
+    final_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+  });
+
+  const docs = getOrderedDocsV5(state, 'TEST');
+  const titles = docs.map((d) => d.title);
+
+  assert.deepStrictEqual(titles, [
+    'Research Findings',
+    'PRD',
+    'Design',
+    'Architecture',
+    'Master Plan',
+    'Phase 1 Plan',
+    'P1-T1 Handoff',
+    'P1-T1 Review',
+    'P1-T1 Handoff (CT1)',
+    'Phase 1 Report',
+  ]);
+
+  assert.strictEqual(docs[0].category, 'planning');
+  assert.strictEqual(docs[5].category, 'phase');
+  assert.strictEqual(docs[6].category, 'task');
+  assert.strictEqual(docs[7].category, 'review');
+  assert.strictEqual(docs[8].category, 'task');
+  assert.strictEqual(docs[9].category, 'phase');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
