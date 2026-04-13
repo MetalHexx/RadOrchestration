@@ -308,7 +308,7 @@ describe('pipeline.js — JIT dependency installer', () => {
       try {
         const envBefore = { ...process.env };
         const cleanEnv = buildCleanEnv(process.env);
-        expect(Object.keys(cleanEnv)).toEqual(Object.keys(envBefore));
+        expect(Object.keys(cleanEnv).sort()).toEqual(Object.keys(envBefore).sort());
         for (const key of Object.keys(envBefore)) {
           expect(cleanEnv[key]).toBe(envBefore[key]);
         }
