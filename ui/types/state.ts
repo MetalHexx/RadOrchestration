@@ -35,6 +35,9 @@ export const PLANNING_STEP_ORDER: readonly PlanningStepName[] = [
   'research', 'prd', 'design', 'architecture', 'master_plan'
 ] as const;
 
+export const NODE_ID_PHASE_LOOP = 'phase_loop';
+export const NODE_ID_FINAL_REVIEW = 'final_review';
+
 // ─── State-embedded Config (snapshot) ────────────────────────────────────────
 
 export interface StateConfigLimits {

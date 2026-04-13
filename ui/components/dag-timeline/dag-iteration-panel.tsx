@@ -62,11 +62,11 @@ export function DAGIterationPanel({
         />
       ))}
       <DAGCorrectiveTaskGroup
-          correctiveTasks={iteration.corrective_tasks}
-          parentNodeId={correctiveGroupParentId}
-          currentNodePath={currentNodePath}
-          onDocClick={onDocClick}
-        />
+        correctiveTasks={iteration.corrective_tasks}
+        parentNodeId={correctiveGroupParentId}
+        currentNodePath={currentNodePath}
+        onDocClick={onDocClick}
+      />
     </div>
   );
 }

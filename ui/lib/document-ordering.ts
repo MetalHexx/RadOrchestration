@@ -1,4 +1,4 @@
-import { PLANNING_STEP_ORDER } from '@/types/state';
+import { PLANNING_STEP_ORDER, NODE_ID_FINAL_REVIEW } from '@/types/state';
 import type { PlanningStepName, ProjectState, ProjectStateV5 } from '@/types/state';
 import type { OrderedDoc } from '@/types/components';
 
@@ -9,6 +9,31 @@ const STEP_TITLES: Record<PlanningStepName, string> = {
   architecture: 'Architecture',
   master_plan: 'Master Plan',
 };
+
+function appendAllFileDocs(
+  allFiles: string[],
+  projectName: string,
+  seenPaths: Set<string>,
+  seenBasenames: Set<string>,
+  basename: (p: string) => string,
+  push: (path: string, title: string, category: OrderedDoc['category']) => void,
+): void {
+  const errorLogPattern = `${projectName}-ERROR-LOG.md`;
+  const errorLogFile = allFiles.find((f) => f.endsWith(errorLogPattern));
+  if (errorLogFile && !seenPaths.has(errorLogFile)) {
+    push(errorLogFile, 'Error Log', 'error-log');
+  }
+
+  const otherDocs = allFiles
+    .filter((f) => f.endsWith('.md') && !seenBasenames.has(basename(f)))
+    .sort();
+
+  for (const filePath of otherDocs) {
+    const filename = filePath.split('/').pop() ?? filePath;
+    const title = filename.replace(/\.md$/, '');
+    push(filePath, title, 'other');
+  }
+}
 
 /**
  * Derive the canonical document navigation order from project state.
@@ -80,21 +105,7 @@ export function getOrderedDocs(
 
   // 4 & 5. Error log + other docs from allFiles
   if (allFiles) {
-    const errorLogPattern = `${projectName}-ERROR-LOG.md`;
-    const errorLogFile = allFiles.find((f) => f.endsWith(errorLogPattern));
-    if (errorLogFile && !seenPaths.has(errorLogFile)) {
-      push(errorLogFile, 'Error Log', 'error-log');
-    }
-
-    const otherDocs = allFiles
-      .filter((f) => f.endsWith('.md') && !seenBasenames.has(basename(f)))
-      .sort();
-
-    for (const filePath of otherDocs) {
-      const filename = filePath.split('/').pop() ?? filePath;
-      const title = filename.replace(/\.md$/, '');
-      push(filePath, title, 'other');
-    }
+    appendAllFileDocs(allFiles, projectName, seenPaths, seenBasenames, basename, push);
   }
 
   return docs;
@@ -219,27 +230,13 @@ export function getOrderedDocsV5(
   }
 
   // Emit final_review after all phase/task nodes
-  const finalReviewNode = state.graph.nodes['final_review'];
+  const finalReviewNode = state.graph.nodes[NODE_ID_FINAL_REVIEW];
   if (finalReviewNode && finalReviewNode.kind === 'step' && finalReviewNode.doc_path != null) {
     push(finalReviewNode.doc_path, 'Final Review', 'review');
   }
 
   if (allFiles) {
-    const errorLogPattern = `${projectName}-ERROR-LOG.md`;
-    const errorLogFile = allFiles.find((f) => f.endsWith(errorLogPattern));
-    if (errorLogFile && !seenPaths.has(errorLogFile)) {
-      push(errorLogFile, 'Error Log', 'error-log');
-    }
-
-    const otherDocs = allFiles
-      .filter((f) => f.endsWith('.md') && !seenBasenames.has(basename(f)))
-      .sort();
-
-    for (const filePath of otherDocs) {
-      const filename = filePath.split('/').pop() ?? filePath;
-      const title = filename.replace(/\.md$/, '');
-      push(filePath, title, 'other');
-    }
+    appendAllFileDocs(allFiles, projectName, seenPaths, seenBasenames, basename, push);
   }
 
   return result;

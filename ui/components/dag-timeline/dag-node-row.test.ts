@@ -37,7 +37,7 @@ function computePaddingLeft(depth: number): number {
 }
 
 function shouldRenderDocLink(node: StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState): boolean {
-  return node.kind === 'step' && (node as StepNodeState).doc_path !== null;
+  return node.kind === 'step' && node.doc_path !== null;
 }
 
 function computeClasses(isActive: boolean): string[] {

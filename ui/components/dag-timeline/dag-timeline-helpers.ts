@@ -2,6 +2,7 @@ import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeSt
 
 export function getCommitLinkData(commitHash: string | null): { href: string; label: string } | null {
   if (commitHash === null) return null;
+  // TODO(DAG-VIEW-3): Replace with real commit URL once repo base URL is available
   return {
     href: `#${commitHash}`,
     label: commitHash.slice(0, 7),
@@ -11,7 +12,5 @@ export function getCommitLinkData(commitHash: string | null): { href: string; la
 export function filterCompatibleNodes(
   nodes: NodesRecord
 ): Array<[string, StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState]> {
-  const all = Object.entries(nodes);
-  const filtered = all.filter(([, node]) => node.kind !== 'for_each_phase' && node.kind !== 'for_each_task');
-  return filtered as Array<[string, StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState]>;
+  return Object.entries(nodes).filter(([, node]) => node.kind !== 'for_each_phase' && node.kind !== 'for_each_task') as Array<[string, StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState]>;
 }

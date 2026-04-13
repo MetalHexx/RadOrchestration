@@ -1,12 +1,11 @@
+import { PLANNING_STEP_ORDER, NODE_ID_PHASE_LOOP, NODE_ID_FINAL_REVIEW } from '@/types/state';
 import type { NodesRecord, GraphStatus, PlanningStatus, ExecutionStatus } from '@/types/state';
-
-const PLANNING_NODE_KEYS = ['research', 'prd', 'design', 'architecture', 'master_plan'] as const;
 
 /**
  * Derive a v4-compatible PlanningStatus from v5 graph root nodes.
  */
 export function derivePlanningStatus(nodes: NodesRecord): PlanningStatus {
-  const statuses = PLANNING_NODE_KEYS.map((key) => nodes[key]?.status ?? 'not_started');
+  const statuses = PLANNING_STEP_ORDER.map((key) => nodes[key]?.status ?? 'not_started');
 
   if (statuses.every((s) => s === 'completed')) {
     return 'complete';
@@ -30,8 +29,8 @@ export function deriveExecutionStatus(graphStatus: GraphStatus, nodes: NodesReco
     return 'halted';
   }
   if (
-    (nodes['phase_loop'] && nodes['phase_loop'].status === 'in_progress') ||
-    (nodes['final_review'] && nodes['final_review'].status === 'in_progress')
+    (nodes[NODE_ID_PHASE_LOOP] && nodes[NODE_ID_PHASE_LOOP].status === 'in_progress') ||
+    (nodes[NODE_ID_FINAL_REVIEW] && nodes[NODE_ID_FINAL_REVIEW].status === 'in_progress')
   ) {
     return 'in_progress';
   }

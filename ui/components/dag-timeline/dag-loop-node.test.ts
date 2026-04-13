@@ -1,6 +1,6 @@
 /**
  * Tests for DAGLoopNode component logic.
- * Run with: npx vitest run ui/components/dag-timeline/dag-loop-node.test.ts
+ * Run with: npx tsx ui/components/dag-timeline/dag-loop-node.test.ts
  *
  * NOTE: Tests use the established .test.ts pattern (no DOM/JSX rendering).
  * Helper functions are exported from dag-loop-node.tsx for testability.

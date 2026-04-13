@@ -7,17 +7,15 @@
  */
 import assert from "node:assert";
 import { isLoopNode } from './dag-timeline';
-import type {
-  NodeKind,
-  NodeState,
-  NodesRecord,
-  StepNodeState,
-  GateNodeState,
-  ConditionalNodeState,
-  ParallelNodeState,
-  ForEachPhaseNodeState,
-  ForEachTaskNodeState,
-} from '@/types/state';
+import type { NodeKind, NodeState, NodesRecord } from '@/types/state';
+import {
+  stepNode,
+  gateNode,
+  conditionalNode,
+  parallelNode,
+  forEachPhaseNode,
+  forEachTaskNode,
+} from './__fixtures__';
 
 let passed = 0;
 let failed = 0;
@@ -33,45 +31,6 @@ function test(name: string, fn: () => void) {
     failed++;
   }
 }
-
-// ─── Fixture Nodes ────────────────────────────────────────────────────────────
-
-const stepNode: StepNodeState = {
-  kind: 'step',
-  status: 'in_progress',
-  doc_path: 'tasks/some-task.md',
-  retries: 0,
-};
-
-const gateNode: GateNodeState = {
-  kind: 'gate',
-  status: 'not_started',
-  gate_active: false,
-};
-
-const conditionalNode: ConditionalNodeState = {
-  kind: 'conditional',
-  status: 'completed',
-  branch_taken: 'true',
-};
-
-const parallelNode: ParallelNodeState = {
-  kind: 'parallel',
-  status: 'not_started',
-  nodes: {},
-};
-
-const forEachPhaseNode: ForEachPhaseNodeState = {
-  kind: 'for_each_phase',
-  status: 'in_progress',
-  iterations: [],
-};
-
-const forEachTaskNode: ForEachTaskNodeState = {
-  kind: 'for_each_task',
-  status: 'completed',
-  iterations: [],
-};
 
 // ─── Tests: Dispatch Logic (isLoopNode) ───────────────────────────────────────
 
