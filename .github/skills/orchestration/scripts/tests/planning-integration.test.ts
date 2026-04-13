@@ -113,40 +113,16 @@ describe('Planning-tier integration — full sequence', () => {
     // ── Step 1: Init (null state → scaffold) ─────────────────────────────
     result = processEvent('start', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_research');
-    expect(result.context).toEqual({ step: 'research' });
+    expect(result.action).toBe('spawn_prd');
+    expect(result.context).toEqual({ step: 'prd' });
     expect(result.mutations_applied).toContain('scaffold_initial_state');
     // Scaffolded state has all nodes at not_started
     {
-      const n = io.currentState!.graph.nodes['research'] as StepNodeState;
+      const n = io.currentState!.graph.nodes['prd'] as StepNodeState;
       expect(n.status).toBe('not_started');
     }
 
-    // ── Step 2: research_started ──────────────────────────────────────────
-    result = processEvent('research_started', PROJECT_DIR, {}, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_research');
-    expect(result.context).toEqual({ step: 'research' });
-    {
-      const n = io.currentState!.graph.nodes['research'] as StepNodeState;
-      expect(n.status).toBe('in_progress');
-      expect(io.currentState!.graph.status).toBe('in_progress');
-    }
-
-    // ── Step 3: research_completed ────────────────────────────────────────
-    const researchDoc = path.posix.join(PROJECT_DIR, 'docs', 'research.md');
-    seedDoc(researchDoc);
-    result = processEvent('research_completed', PROJECT_DIR, { doc_path: researchDoc }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_prd');
-    expect(result.context).toEqual({ step: 'prd' });
-    {
-      const n = io.currentState!.graph.nodes['research'] as StepNodeState;
-      expect(n.status).toBe('completed');
-      expect(n.doc_path).toBe(researchDoc);
-    }
-
-    // ── Step 4: prd_started ───────────────────────────────────────────────
+    // ── Step 2: prd_started ───────────────────────────────────────────────
     result = processEvent('prd_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_prd');
@@ -154,19 +130,43 @@ describe('Planning-tier integration — full sequence', () => {
     {
       const n = io.currentState!.graph.nodes['prd'] as StepNodeState;
       expect(n.status).toBe('in_progress');
+      expect(io.currentState!.graph.status).toBe('in_progress');
     }
 
-    // ── Step 5: prd_completed ─────────────────────────────────────────────
+    // ── Step 3: prd_completed ─────────────────────────────────────────────
     const prdDoc = path.posix.join(PROJECT_DIR, 'docs', 'prd.md');
     seedDoc(prdDoc);
     result = processEvent('prd_completed', PROJECT_DIR, { doc_path: prdDoc }, io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_design');
-    expect(result.context).toEqual({ step: 'design' });
+    expect(result.action).toBe('spawn_research');
+    expect(result.context).toEqual({ step: 'research' });
     {
       const n = io.currentState!.graph.nodes['prd'] as StepNodeState;
       expect(n.status).toBe('completed');
       expect(n.doc_path).toBe(prdDoc);
+    }
+
+    // ── Step 4: research_started ──────────────────────────────────────────
+    result = processEvent('research_started', PROJECT_DIR, {}, io);
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('spawn_research');
+    expect(result.context).toEqual({ step: 'research' });
+    {
+      const n = io.currentState!.graph.nodes['research'] as StepNodeState;
+      expect(n.status).toBe('in_progress');
+    }
+
+    // ── Step 5: research_completed ────────────────────────────────────────
+    const researchDoc = path.posix.join(PROJECT_DIR, 'docs', 'research.md');
+    seedDoc(researchDoc);
+    result = processEvent('research_completed', PROJECT_DIR, { doc_path: researchDoc }, io);
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('spawn_design');
+    expect(result.context).toEqual({ step: 'design' });
+    {
+      const n = io.currentState!.graph.nodes['research'] as StepNodeState;
+      expect(n.status).toBe('completed');
+      expect(n.doc_path).toBe(researchDoc);
     }
 
     // ── Step 6: design_started ────────────────────────────────────────────
@@ -316,8 +316,10 @@ describe('Planning-tier — individual step checks', () => {
     expect(n.status).toBe('in_progress');
   });
 
-  it('research_completed stores doc_path and returns spawn_prd', () => {
+  it('research_completed stores doc_path and returns spawn_design', () => {
     const state = makeScaffoldedState();
+    (state.graph.nodes['prd'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['prd'] as StepNodeState).doc_path = '/tmp/p.md';
     (state.graph.nodes['research'] as StepNodeState).status = 'in_progress';
     const docPath = path.posix.join(PROJECT_DIR, 'research.md');
     seedDoc(docPath);
@@ -326,17 +328,14 @@ describe('Planning-tier — individual step checks', () => {
     const result = processEvent('research_completed', PROJECT_DIR, { doc_path: docPath }, io);
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_prd');
+    expect(result.action).toBe('spawn_design');
     const n = io.currentState!.graph.nodes['research'] as StepNodeState;
     expect(n.status).toBe('completed');
     expect(n.doc_path).toBe(docPath);
   });
 
-  it('prd_completed stores doc_path and returns spawn_design', () => {
+  it('prd_completed stores doc_path and returns spawn_research', () => {
     const state = makeScaffoldedState();
-    // Set research completed so resolver moves past it
-    (state.graph.nodes['research'] as StepNodeState).status = 'completed';
-    (state.graph.nodes['research'] as StepNodeState).doc_path = '/tmp/r.md';
     (state.graph.nodes['prd'] as StepNodeState).status = 'in_progress';
     const docPath = path.posix.join(PROJECT_DIR, 'prd.md');
     seedDoc(docPath);
@@ -345,7 +344,7 @@ describe('Planning-tier — individual step checks', () => {
     const result = processEvent('prd_completed', PROJECT_DIR, { doc_path: docPath }, io);
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_design');
+    expect(result.action).toBe('spawn_research');
     const n = io.currentState!.graph.nodes['prd'] as StepNodeState;
     expect(n.status).toBe('completed');
     expect(n.doc_path).toBe(docPath);
@@ -577,14 +576,6 @@ describe('Planning-tier — state invariants', () => {
     const state = makeScaffoldedState();
     const io = createMockIO(state);
 
-    processEvent('research_started', PROJECT_DIR, {}, io);
-    expect(io.currentState!.graph.current_node_path).toBe('research');
-
-    const docPath = path.join(PROJECT_DIR, 'research.md');
-    seedDoc(docPath);
-    processEvent('research_completed', PROJECT_DIR, { doc_path: docPath }, io);
-    expect(io.currentState!.graph.current_node_path).toBe('research');
-
     processEvent('prd_started', PROJECT_DIR, {}, io);
     expect(io.currentState!.graph.current_node_path).toBe('prd');
 
@@ -592,6 +583,14 @@ describe('Planning-tier — state invariants', () => {
     seedDoc(prdPath);
     processEvent('prd_completed', PROJECT_DIR, { doc_path: prdPath }, io);
     expect(io.currentState!.graph.current_node_path).toBe('prd');
+
+    processEvent('research_started', PROJECT_DIR, {}, io);
+    expect(io.currentState!.graph.current_node_path).toBe('research');
+
+    const docPath = path.join(PROJECT_DIR, 'research.md');
+    seedDoc(docPath);
+    processEvent('research_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(io.currentState!.graph.current_node_path).toBe('research');
 
     processEvent('design_started', PROJECT_DIR, {}, io);
     expect(io.currentState!.graph.current_node_path).toBe('design');

@@ -35,9 +35,9 @@ Every planning agent loads this file before beginning its document-type-specific
 
 ## No-Implementation Rule
 
-- Planning documents must not contain source code, concrete file paths, or technology/framework choices
+- PRDs, Designs, and Master Plans must not contain source code, concrete file paths, or technology/framework choices
 - Implementation details belong in Architecture and downstream task documents — not in PRDs, Designs, or Master Plans
-- If a document contains implementation details, it must be revised before approval
+- If a PRD, Design, or Master Plan contains implementation details, it must be revised before approval
 
 ## Self-Review
 
