@@ -1,4 +1,4 @@
-import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord } from '@/types/state';
+import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord, NodeState } from '@/types/state';
 
 export type CompatibleNodeState = StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState;
 
@@ -9,6 +9,10 @@ export function getCommitLinkData(commitHash: string | null | undefined): { href
     href: `#${commitHash}`,
     label: commitHash.slice(0, 7),
   };
+}
+
+export function isLoopNode(node: NodeState): node is Extract<NodeState, { kind: 'for_each_phase' | 'for_each_task' }> {
+  return node.kind === 'for_each_phase' || node.kind === 'for_each_task';
 }
 
 export function filterCompatibleNodes(

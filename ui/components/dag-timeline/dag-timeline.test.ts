@@ -3,10 +3,10 @@
  * Run with: npx tsx ui/components/dag-timeline/dag-timeline.test.ts
  *
  * NOTE: Tests use the established .test.ts pattern (no DOM/JSX rendering).
- * isLoopNode is exported from dag-timeline.tsx for testability.
+ * isLoopNode is exported from dag-timeline-helpers.ts for testability.
  */
 import assert from "node:assert";
-import { isLoopNode } from './dag-timeline';
+import { isLoopNode } from './dag-timeline-helpers';
 import type { NodeKind, NodeState, NodesRecord } from '@/types/state';
 import {
   stepNode,

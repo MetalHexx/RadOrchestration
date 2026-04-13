@@ -33,7 +33,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       <NodeKindIcon kind={node.kind} />
       <span className="text-sm font-medium truncate flex-1">{getDisplayName(nodeId)}</span>
       <NodeStatusBadge status={node.status} />
-      {node.kind === 'conditional' && node.branch_taken !== null && (() => {
+      {node.kind === 'conditional' && node.branch_taken != null && (() => {
         const label = node.branch_taken === 'true' ? 'Yes' : 'No';
         const badgeStatus = node.branch_taken === 'true' ? 'completed' : 'skipped';
         return (

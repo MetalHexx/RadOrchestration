@@ -42,7 +42,7 @@ function shouldRenderDocLink(node: StepNodeState | GateNodeState | ConditionalNo
 }
 
 function shouldRenderBranchIndicator(node: StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState): boolean {
-  return node.kind === 'conditional' && node.branch_taken !== null;
+  return node.kind === 'conditional' && node.branch_taken != null;
 }
 
 function computeBranchBadge(branchTaken: 'true' | 'false'): { label: string; badgeStatus: string; ariaLabel: string } {

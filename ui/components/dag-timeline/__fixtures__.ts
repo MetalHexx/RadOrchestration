@@ -117,6 +117,7 @@ export const taskLoopIteration: IterationEntry = {
   commit_hash: 'abc1234def5678',
 };
 
+/** Simplified task loop iteration with a corrective task — omits commit_gate to focus on corrective-task structure */
 export const taskLoopIterationWithCorrective: IterationEntry = {
   index: 0,
   status: 'completed',

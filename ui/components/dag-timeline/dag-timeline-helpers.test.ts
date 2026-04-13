@@ -1,5 +1,6 @@
 import assert from "node:assert";
 import { getCommitLinkData, formatNodeId, getDisplayName } from './dag-timeline-helpers';
+import { compoundNodeIds } from './__fixtures__';
 
 let passed = 0;
 let failed = 0;
@@ -60,27 +61,27 @@ test("commit (single word) returns Commit", () => {
 console.log("\ngetDisplayName tests\n");
 
 test("simple ID with no dot passes through to formatNodeId", () => {
-  assert.strictEqual(getDisplayName("phase_planning"), "Phase Planning");
+  assert.strictEqual(getDisplayName(compoundNodeIds.simple), "Phase Planning");
 });
 
 test("two-segment ID extracts leaf after dot", () => {
-  assert.strictEqual(getDisplayName("phase_loop.phase_planning"), "Phase Planning");
+  assert.strictEqual(getDisplayName(compoundNodeIds.twoSegment), "Phase Planning");
 });
 
 test("three-segment ID extracts leaf after last dot", () => {
-  assert.strictEqual(getDisplayName("phase_loop.iter0.phase_planning"), "Phase Planning");
+  assert.strictEqual(getDisplayName(compoundNodeIds.threeSegment), "Phase Planning");
 });
 
 test("deeply nested ID extracts leaf", () => {
-  assert.strictEqual(getDisplayName("phase_loop.iter0.task_loop.iter0.code_review"), "Code Review");
+  assert.strictEqual(getDisplayName(compoundNodeIds.deeplyNested), "Code Review");
 });
 
 test("loop node ID extracts leaf", () => {
-  assert.strictEqual(getDisplayName("phase_loop.iter0.task_loop"), "Task Loop");
+  assert.strictEqual(getDisplayName(compoundNodeIds.loopNode), "Task Loop");
 });
 
 test("single word with no dot and no underscore returns capitalized", () => {
-  assert.strictEqual(getDisplayName("commit"), "Commit");
+  assert.strictEqual(getDisplayName(compoundNodeIds.singleWord), "Commit");
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

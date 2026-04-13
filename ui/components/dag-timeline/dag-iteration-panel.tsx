@@ -7,7 +7,7 @@ import { DAGLoopNode } from './dag-loop-node';
 import { ExternalLink } from '@/components/documents';
 import { getCommitLinkData } from './dag-timeline-helpers';
 import type { CompatibleNodeState } from './dag-timeline-helpers';
-import { isLoopNode } from './dag-timeline';
+import { isLoopNode } from './dag-timeline-helpers';
 import type { IterationEntry } from '@/types/state';
 
 interface DAGIterationPanelProps {

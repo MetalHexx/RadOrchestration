@@ -13,7 +13,7 @@ import {
   ITERATION_CHILD_DEPTH,
 } from './dag-iteration-panel';
 import { getCommitLinkData, filterCompatibleNodes } from './dag-timeline-helpers';
-import { isLoopNode } from './dag-timeline';
+import { isLoopNode } from './dag-timeline-helpers';
 import {
   stepNode,
   gateNode,
