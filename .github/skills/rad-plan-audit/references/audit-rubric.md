@@ -64,7 +64,7 @@ Verify the Design and Architecture are describing the same system.
 
 If the Design is a "not required" stub, skip this section — there's nothing to cross-check.
 
-### 2.2 Master Plan Alignment
+### 2.3 Master Plan Alignment
 
 Master doc should align with all other docs.
 
@@ -76,7 +76,7 @@ Master doc should align with all other docs.
 | **Terminology consistency** | Terms used in the Master Plan are consistent with upstream docs — no conflicting names or abbreviations |
 
 
-### 2.3 Contract Consistency
+### 2.4 Contract Consistency
 
 Verify that contracts and interfaces are described identically everywhere they appear.
 
@@ -87,7 +87,7 @@ Verify that contracts and interfaces are described identically everywhere they a
 | **File path consistency** | The same file is referenced by the same path across all docs — no `/src/config.ts` in one doc and `/lib/config.ts` in another |
 | **Frozen contract integrity** | Contracts marked as frozen, sacred, or NFR are not modified by any doc in the set — even additive changes |
 
-### 2.4 Scope Alignment
+### 2.5 Scope Alignment
 
 Verify that the Master Plan's phase structure and downstream Phase Plans agree.
 
@@ -101,7 +101,7 @@ Verify that the Master Plan's phase structure and downstream Phase Plans agree.
 
 If Phase Plans don't exist yet (pre-execution), check only Master Plan internal consistency (phase count, scope completeness).
 
-### 2.5 Terminology Consistency
+### 2.6 Terminology Consistency
 
 Verify that the same concept uses the same name across all documents.
 

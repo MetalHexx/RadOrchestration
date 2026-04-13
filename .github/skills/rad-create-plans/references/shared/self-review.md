@@ -17,9 +17,9 @@ You are checking your own output for accuracy against the codebase and cohesion 
 | Research Findings | PRD |
 | Design | PRD + Research Findings |
 | Architecture | PRD + Design + Research Findings |
-| Master Plan | PRD + Architecture + Design |
-| Phase Plan | Master Plan + Architecture |
-| Task Handoff | Phase Plan + Architecture |
+| Master Plan | PRD, Design, Architecture, Research Findings |
+| Phase Plan | Master Plan, Architecture, Design, PRD |
+| Task Handoff | Phase Plan, Architecture, Design |
 
 ## Workflow
 
@@ -42,9 +42,9 @@ You are checking your own output for accuracy against the codebase and cohesion 
    | You are writing | Focus on |
    |----------------|----------|
    | PRD | §2.1 — requirements are traceable to brainstorming document |
-   | Research Findings | §2.1, §2.5 — findings are scoped to PRD problem statement, terminology matches |
+   | Research Findings | §2.1, §2.6 — findings are scoped to PRD problem statement, terminology matches |
    | Design | §2.2 — components map to PRD functional requirements |
-   | Architecture | §2.1, §2.2, §2.3 — modules cover all requirements, contracts are exact, design components have corresponding modules |
-   | Master Plan | §2.1, §2.4, §2.5 — key requirements and constraints trace to PRD, Architecture and Design docs. Phase scopes cover all requirements, terminology is consistent |
-   | Phase Plan | §2.4, §2.5 — tasks trace to phase scope, terminology matches upstream docs |
-   | Task Handoff | §2.3, §2.5 — inlined contracts match Architecture exactly, terminology is consistent |
+   | Architecture | §2.1, §2.2, §2.4 — modules cover all requirements, contracts are exact, design components have corresponding modules |
+   | Master Plan | §2.1, §2.5, §2.6 — key requirements and constraints trace to PRD, Architecture and Design docs. Phase scopes cover all requirements, terminology is consistent |
+   | Phase Plan | §2.5, §2.6 — tasks trace to phase scope, terminology matches upstream docs |
+   | Task Handoff | §2.4, §2.6 — inlined contracts match Architecture exactly, terminology is consistent |
