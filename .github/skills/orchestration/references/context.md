@@ -15,7 +15,7 @@ This workspace contains a **document-driven agent orchestration system** built o
 |-------|---------|
 | `@brainstormer` | Collaboratively brainstorms and refines project ideas — standalone, outside the pipeline |
 | `@orchestrator` | Coordinates the pipeline — spawns agents, reads state, asks human questions. **Never writes files.** |
-| `@research` | Explores codebase and external sources to gather context |
+| `@research` | Explores codebase and external sources to gather evidence — reports what exists, never recommends |
 | `@product-manager` | Creates PRDs from brainstorming documents and other supplied context |
 | `@ux-designer` | Creates design documents from PRDs |
 | `@architect` | Creates architecture docs and master plans |

@@ -186,7 +186,7 @@ When spawning a subagent, always provide:
 Example spawn instructions:
 > "Create the PRD for the MYAPP project. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that. Save the PRD to `{base_path}/MYAPP/MYAPP-PRD.md`."
 
-> "Research the codebase for the MYAPP project. Read the PRD at `{base_path}/MYAPP/MYAPP-PRD.md`. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that too. Save the research findings to `{base_path}/MYAPP/MYAPP-RESEARCH-FINDINGS.md`."
+> "Research the codebase for the MYAPP project. Evidence-only — report file paths, patterns, constraints, and unknowns. Do not include recommendations. Read the PRD at `{base_path}/MYAPP/MYAPP-PRD.md`. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that too. Save the research findings to `{base_path}/MYAPP/MYAPP-RESEARCH-FINDINGS.md`."
 
 ### Source Control — PR Mode
 
