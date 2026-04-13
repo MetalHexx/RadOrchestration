@@ -78,10 +78,6 @@ When a user starts a brainstorming session:
 9. **Signal completion**: Either party can signal that brainstorming is done. When the agent senses convergence, propose wrapping up. When the human says they're done, finalize the document.
 10. **Finalize**: Ensure the BRAINSTORMING.md has a clear problem statement, validated goals, scope boundaries, and enough detail for the Research Agent to work from.
 
-## Subagents
-
-- **`Research`**: Spawn in adhoc mode to investigate technical feasibility, existing solutions, APIs, or any question that needs codebase/external research during brainstorming. Pass a focused research question — the agent returns findings without creating pipeline artifacts.
-
 ## Output Contract
 
 | Document | Path | Format |

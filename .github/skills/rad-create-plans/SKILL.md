@@ -10,6 +10,7 @@ A consolidated skill for creating planning documents. It loads shared guidelines
 ## When to Use This Skill
 
 - **PRD** — Product Requirements Document (supported)
+- **Research** — Research Findings document (supported)
 - **Design** — UX Design document *(future)*
 - **Architecture** — Technical Architecture document *(future)*
 - **Master Plan** — Project Master Plan *(future)*
@@ -25,6 +26,7 @@ A consolidated skill for creating planning documents. It loads shared guidelines
 | Invoking Agent | Routes to |
 |----------------|-----------|
 | `product-manager` | `references/prd/workflow.md` |
+| `research` | `references/research/workflow.md` |
 | `ux-designer` | `references/design/workflow.md` *(future)* |
 | `architect` | `references/architecture/workflow.md` *(future)* |
 | `tactical-planner` | `references/master-plan/workflow.md` *(future)* |

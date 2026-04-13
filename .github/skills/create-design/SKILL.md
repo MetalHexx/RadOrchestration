@@ -31,7 +31,7 @@ Generate a UX Design document from the PRD. Before producing any content, triage
 | Input | Source | Description |
 |-------|--------|-------------|
 | PRD | `{NAME}-PRD.md` | Product requirements, functional requirements |
-| Research Findings | `RESEARCH-FINDINGS.md` | Existing patterns, technology stack, codebase analysis |
+| Research Findings | `RESEARCH-FINDINGS.md` | Per-finding codebase evidence organized by area, technology stack, constraints — indexed by FR ID |
 
 ## Workflow
 
