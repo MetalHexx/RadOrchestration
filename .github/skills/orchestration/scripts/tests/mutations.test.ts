@@ -686,6 +686,7 @@ describe('phase_review_completed — corrective injection', () => {
     expect(entry.reason).toBe('Phase review requested changes');
     expect(entry.injected_after).toBe('phase_review');
     expect(Object.keys(entry.nodes)).toHaveLength(0);
+    expect((getPhaseNode(result.state, 'phase_review') as StepNodeState).verdict).toBeNull();
   });
 
   it('rejected verdict halts phase iteration and graph, adds no corrective entry', () => {
@@ -874,6 +875,22 @@ describe('task_completed mutation', () => {
     const fn = () => mutation(state, { phase: 1 }, baseConfig, baseTemplate);
     expect(fn).toThrow(/task_completed/);
     expect(fn).toThrow(/--task/);
+  });
+
+  it('discriminator: throws "--task" (not "--phase") when phase is in_progress but task resolution fails with no explicit context', () => {
+    const state = makeState();
+    // Set up: phase iteration in_progress so phase resolves, but task_loop has no iterations
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    phaseLoop.iterations[0].status = 'in_progress';
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+    if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
+    taskLoop.iterations = [];
+    const mutation = getMutation('task_completed')!;
+    // Pass {} — no --phase, no --task
+    const fn = () => mutation(state, {}, baseConfig, baseTemplate);
+    expect(fn).toThrow(/--task/);
+    expect(fn).not.toThrow(/--phase/);
   });
 });
 

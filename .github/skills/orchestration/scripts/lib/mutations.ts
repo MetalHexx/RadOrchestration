@@ -9,6 +9,7 @@ import type {
   CorrectiveTaskEntry,
   NodeDef,
   StepNodeDef,
+  ForEachPhaseNodeState,
   ForEachPhaseNodeDef,
   ForEachTaskNodeDef,
   PipelineTemplate,
@@ -49,7 +50,9 @@ export function resolveNodeState(
   }
 
   // scope === 'task'
-  // Phase-level corrective tasks contain task body nodes; check before task loop resolution
+  // Phase-level corrective tasks (from phase_review_completed) have nodes: {} so this check
+  // always falls through — correct behavior since mutations target the re-expanded task_loop.
+  // Task-level corrective tasks (from code_review_completed) DO have populated nodes.
   if (phaseIteration.corrective_tasks.length > 0) {
     const latest = phaseIteration.corrective_tasks[phaseIteration.corrective_tasks.length - 1];
     if ((latest.status === 'in_progress' || latest.status === 'not_started') && nodeId in latest.nodes) {
@@ -292,6 +295,9 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
           (n as StepNodeState).doc_path = null;
         }
         (n as StepNodeState).verdict = null;
+        if (nodeId === 'phase_review') {
+          mutations_applied.push('reset phase_review.verdict = null (corrective cycle)');
+        }
       }
       if (n.kind === 'gate') {
         (n as GateNodeState).gate_active = false;
@@ -341,6 +347,16 @@ for (const [eventName, nodeId] of taskStartedSteps) {
       mutations_applied.push(`set ${nodeId}.status = in_progress`);
     } catch (err) {
       if (context.phase === undefined) {
+        // Discriminate: did phase resolve successfully but task fail, or did phase itself fail?
+        const phaseLoopNode = cloned.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
+        const hasInProgressPhase = phaseLoopNode?.iterations?.some(it => it.status === 'in_progress');
+        if (hasInProgressPhase) {
+          throw new Error(
+            `Cannot apply mutation for "${eventName}": no active task could be resolved from state for phase ${phase}.\n` +
+            `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+            `Pass --task <N> to specify the task explicitly.`
+          );
+        }
         throw new Error(
           `Cannot apply mutation for "${eventName}": no active phase could be resolved from state.\n` +
           `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
@@ -389,6 +405,16 @@ mutationRegistry.set(EVENTS.TASK_COMPLETED, (state, context, _config, _template)
     mutations_applied.push('set task_executor.status = completed');
   } catch (err) {
     if (context.phase === undefined) {
+      // Discriminate: did phase resolve successfully but task fail, or did phase itself fail?
+      const phaseLoopNode = cloned.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
+      const hasInProgressPhase = phaseLoopNode?.iterations?.some(it => it.status === 'in_progress');
+      if (hasInProgressPhase) {
+        throw new Error(
+          `Cannot apply mutation for "task_completed": no active task could be resolved from state for phase ${phase}.\n` +
+          `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+          `Pass --task <N> to specify the task explicitly.`
+        );
+      }
       throw new Error(
         `Cannot apply mutation for "task_completed": no active phase could be resolved from state.\n` +
         `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
@@ -578,6 +604,16 @@ mutationRegistry.set(EVENTS.COMMIT_STARTED, (state, context, _config, _template)
     mutations_applied.push('set commit.status = in_progress');
   } catch (err) {
     if (context.phase === undefined) {
+      // Discriminate: did phase resolve successfully but task fail, or did phase itself fail?
+      const phaseLoopNode = cloned.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
+      const hasInProgressPhase = phaseLoopNode?.iterations?.some(it => it.status === 'in_progress');
+      if (hasInProgressPhase) {
+        throw new Error(
+          `Cannot apply mutation for "commit_started": no active task could be resolved from state for phase ${phase}.\n` +
+          `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+          `Pass --task <N> to specify the task explicitly.`
+        );
+      }
       throw new Error(
         `Cannot apply mutation for "commit_started": no active phase could be resolved from state.\n` +
         `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
@@ -624,6 +660,16 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
     return { state: cloned, mutations_applied };
   } catch (err) {
     if (context.phase === undefined) {
+      // Discriminate: did phase resolve successfully but task fail, or did phase itself fail?
+      const phaseLoopNode = cloned.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
+      const hasInProgressPhase = phaseLoopNode?.iterations?.some(it => it.status === 'in_progress');
+      if (hasInProgressPhase) {
+        throw new Error(
+          `Cannot apply mutation for "commit_completed": no active task could be resolved from state for phase ${phase}.\n` +
+          `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+          `Pass --task <N> to specify the task explicitly.`
+        );
+      }
       throw new Error(
         `Cannot apply mutation for "commit_completed": no active phase could be resolved from state.\n` +
         `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
