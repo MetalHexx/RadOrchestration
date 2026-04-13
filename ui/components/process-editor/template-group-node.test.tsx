@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 import React, { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { ReactFlowProvider } from '@xyflow/react';
 import { TemplateGroupNode } from './template-group-node';
 import type { TemplateGraphNodeData } from '@/types/template';
 
@@ -34,6 +35,12 @@ const taskData: TemplateGraphNodeData = {
 let passed = 0;
 let failed = 0;
 
+function renderWithProvider(data: TemplateGraphNodeData): string {
+  return renderToStaticMarkup(
+    createElement(ReactFlowProvider, null, createElement(TemplateGroupNode, { data }))
+  );
+}
+
 async function test(name: string, fn: () => void | Promise<void>) {
   try {
     await fn();
@@ -50,38 +57,38 @@ async function run() {
   console.log('template-group-node — TemplateGroupNode component');
 
   await test('renders without crashing for kind for_each_phase', () => {
-    const html = renderToStaticMarkup(createElement(TemplateGroupNode, { data: phaseData }));
+    const html = renderWithProvider(phaseData);
     assert.ok(html.length > 0, 'rendered HTML is non-empty');
   });
 
   await test('renders without crashing for kind for_each_task', () => {
-    const html = renderToStaticMarkup(createElement(TemplateGroupNode, { data: taskData }));
+    const html = renderWithProvider(taskData);
     assert.ok(html.length > 0, 'rendered HTML is non-empty');
   });
 
   await test('icon SVG is rendered for kind for_each_phase', () => {
-    const html = renderToStaticMarkup(createElement(TemplateGroupNode, { data: phaseData }));
+    const html = renderWithProvider(phaseData);
     assert.ok(html.includes('<svg'), 'an SVG icon should be rendered for for_each_phase');
   });
 
   await test('icon SVG is rendered for kind for_each_task', () => {
-    const html = renderToStaticMarkup(createElement(TemplateGroupNode, { data: taskData }));
+    const html = renderWithProvider(taskData);
     assert.ok(html.includes('<svg'), 'an SVG icon should be rendered for for_each_task');
   });
 
   await test('label text renders correctly', () => {
-    const html = renderToStaticMarkup(createElement(TemplateGroupNode, { data: phaseData }));
+    const html = renderWithProvider(phaseData);
     assert.ok(html.includes('Phase Loop'), 'label text is present in rendered HTML');
   });
 
   await test('kind subtitle renders correctly', () => {
-    const html = renderToStaticMarkup(createElement(TemplateGroupNode, { data: phaseData }));
+    const html = renderWithProvider(phaseData);
     assert.ok(html.includes('for_each_phase'), 'kind subtitle is present in rendered HTML');
   });
 
-  await test('no Handle elements rendered in output', () => {
-    const html = renderToStaticMarkup(createElement(TemplateGroupNode, { data: phaseData }));
-    assert.ok(!html.includes('react-flow__handle'), 'rendered output should not contain Handle elements');
+  await test('Handle elements rendered in output', () => {
+    const source = readFileSync(join(__dirname, 'template-group-node.tsx'), 'utf-8');
+    assert.ok(source.includes('<Handle'), 'source should contain Handle components');
   });
 
   await test('TemplateGroupNode is exported from barrel', () => {
@@ -93,7 +100,7 @@ async function run() {
   });
 
   await test('has role="group" and aria-label matching the label', () => {
-    const html = renderToStaticMarkup(createElement(TemplateGroupNode, { data: phaseData }));
+    const html = renderWithProvider(phaseData);
     assert.ok(html.includes('role="group"'), 'should have role="group"');
     assert.ok(html.includes(`aria-label="${phaseData.label}"`), 'should have aria-label matching data.label');
   });

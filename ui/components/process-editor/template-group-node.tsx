@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Handle, Position } from '@xyflow/react';
 import { Layers, RefreshCcw, type LucideIcon } from 'lucide-react';
 import { type TemplateNodeKind, type TemplateGraphNodeData } from '@/types/template';
 import { cn } from '@/lib/utils';
@@ -36,8 +37,10 @@ export function TemplateGroupNode({ data }: TemplateGroupNodeProps) {
       className="w-full h-full rounded-[var(--radius-lg)]"
       style={{
         background: 'var(--canvas-node-group-bg)',
-        border: '1px dashed var(--canvas-node-group-border)',
         borderTop: `3px solid ${accent}`,
+        borderRight: '1px dashed var(--canvas-node-group-border)',
+        borderBottom: '1px dashed var(--canvas-node-group-border)',
+        borderLeft: '1px dashed var(--canvas-node-group-border)',
       }}
       tabIndex={0}
       role="group"
@@ -46,6 +49,7 @@ export function TemplateGroupNode({ data }: TemplateGroupNodeProps) {
       onFocus={() => setShowTooltip(true)}
       onBlur={() => setShowTooltip(false)}
     >
+      <Handle type="target" position={Position.Top} isConnectable={false} />
       {/* Header row */}
       <div
         className={cn(
@@ -79,6 +83,7 @@ export function TemplateGroupNode({ data }: TemplateGroupNodeProps) {
           </div>
         )}
       </div>
+      <Handle type="source" position={Position.Bottom} isConnectable={false} />
     </div>
   );
 }
