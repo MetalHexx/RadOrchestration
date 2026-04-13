@@ -25,6 +25,10 @@ const nodeTypes: NodeTypes = {
   templateGroup: TemplateGroupNode,
 };
 
+const defaultEdgeOptions = {
+  style: { stroke: 'var(--canvas-edge-stroke)', strokeWidth: 1.5 },
+};
+
 interface ReadOnlyCanvasProps {
   templateId: string;
 }
@@ -122,9 +126,7 @@ export function ReadOnlyCanvas({ templateId }: ReadOnlyCanvasProps) {
         panOnDrag={true}
         zoomOnScroll={true}
         zoomOnPinch={true}
-        defaultEdgeOptions={{
-          style: { stroke: 'var(--canvas-edge-stroke)', strokeWidth: 1.5 },
-        }}
+        defaultEdgeOptions={defaultEdgeOptions}
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
         <MiniMap

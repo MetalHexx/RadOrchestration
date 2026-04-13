@@ -136,6 +136,9 @@ export function parseTemplateToGraph(yamlContent: string): TemplateGraph {
   // Deduplicate edges by id — a conditional branch child that also has depends_on
   // targeting the conditional node produces duplicate edge IDs; keep the last
   // occurrence (the branch edge with the label).
+  // Note: branch edges (labeled 'true'/'false') intentionally override any
+  // explicit depends_on edge from child to parent conditional — the branch
+  // edge already establishes execution order.
   const edgeMap = new Map<string, TemplateGraphEdge>();
   for (const edge of edges) {
     edgeMap.set(edge.id, edge);
