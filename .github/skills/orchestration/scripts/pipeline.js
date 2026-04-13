@@ -66,12 +66,20 @@ if (!existsSync(nodeModulesDir)) {
 const pipelineScript = join(__dirname, 'main.ts');
 const tsxArgs = [pipelineScript, ...process.argv.slice(2)];
 
+const cleanEnv = { ...process.env };
+for (const key of Object.keys(cleanEnv)) {
+  if (key.startsWith('TSX_')) {
+    delete cleanEnv[key];
+  }
+}
+
 try {
   const result = execFileSync('npx', ['tsx', ...tsxArgs], {
     cwd: process.cwd(), // preserve caller's working directory
     stdio: ['inherit', 'pipe', 'inherit'],
     // On Windows, npx is a cmd script — shell: true is required
     shell: process.platform === 'win32',
+    env: cleanEnv,
   });
   process.stdout.write(result);
 } catch (err) {
