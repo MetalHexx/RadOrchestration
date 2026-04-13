@@ -65,9 +65,11 @@ nodes:
 /* ------------------------------------------------------------------ */
 
 let tmpDir: string;
+let prevWorkspaceRoot: string | undefined;
 
 /** Create a temp workspace with orchestration.yml and an empty templates dir */
 async function setupWorkspace(): Promise<void> {
+  prevWorkspaceRoot = process.env.WORKSPACE_ROOT;
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'templates-test-'));
   const configDir = path.join(tmpDir, '.github', 'skills', 'orchestration', 'config');
   await mkdir(configDir, { recursive: true });
@@ -81,6 +83,11 @@ async function setupWorkspace(): Promise<void> {
 async function teardownWorkspace(): Promise<void> {
   if (tmpDir) {
     await rm(tmpDir, { recursive: true, force: true });
+  }
+  if (prevWorkspaceRoot === undefined) {
+    delete process.env.WORKSPACE_ROOT;
+  } else {
+    process.env.WORKSPACE_ROOT = prevWorkspaceRoot;
   }
 }
 

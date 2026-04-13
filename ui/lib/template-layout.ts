@@ -159,11 +159,15 @@ export function computeTemplateLayout(
       };
     }),
     ...childNodes.map((node) => {
-      const pos = childPositioned.get(node.id) ?? node.position;
+      const pos = childPositioned.get(node.id);
+      if (!pos) {
+        console.warn('computeTemplateLayout: no computed position for child node', node.id);
+      }
+      const finalPos = pos ?? node.position;
       const style = groupStyles.get(node.id);
       return {
         ...node,
-        position: pos,
+        position: finalPos,
         ...(style !== undefined ? { style: { ...node.style, ...style } } : {}),
       };
     }),

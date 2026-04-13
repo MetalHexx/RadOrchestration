@@ -44,11 +44,14 @@ export function ReadOnlyCanvas({ templateId }: ReadOnlyCanvasProps) {
       try {
         const res = await fetch(`/api/templates/${encodeURIComponent(templateId)}`);
         if (!res.ok) {
-          if (!aborted) {
-            setErrorMessage('Failed to load template.');
-            setStatus('error');
+          let msg = 'Failed to load template.';
+          try {
+            const body = await res.json();
+            if (body.error) msg = body.error;
+          } catch {
+            // fallback to generic message
           }
-          return;
+          throw new Error(msg);
         }
 
         const json = await res.json();
@@ -60,9 +63,9 @@ export function ReadOnlyCanvas({ templateId }: ReadOnlyCanvasProps) {
           setEdges(laid.edges);
           setStatus('loaded');
         }
-      } catch {
+      } catch (err) {
         if (!aborted) {
-          setErrorMessage('Failed to load template.');
+          setErrorMessage(err instanceof Error ? err.message : 'Failed to load template.');
           setStatus('error');
         }
       }
@@ -104,7 +107,7 @@ export function ReadOnlyCanvas({ templateId }: ReadOnlyCanvasProps) {
   return (
     <div
       className="flex-1 w-full overflow-hidden"
-      role="img"
+      role="region"
       aria-label="Pipeline template graph — read only"
     >
       <ReactFlow

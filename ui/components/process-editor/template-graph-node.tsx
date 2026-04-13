@@ -39,6 +39,8 @@ export function TemplateGraphNode({ data }: TemplateGraphNodeProps) {
       )}
       style={{ borderLeft: `3px solid ${accent}` }}
       tabIndex={0}
+      role="group"
+      aria-label={data.label}
       aria-describedby={showTooltip ? tooltipId : undefined}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}

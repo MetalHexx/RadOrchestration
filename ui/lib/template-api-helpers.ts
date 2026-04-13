@@ -50,8 +50,8 @@ export async function listTemplateFiles(templateDir: string): Promise<TemplateSu
         description: definition.template?.description ?? '',
         version: definition.template?.version ?? '',
       });
-    } catch {
-      // skip files that fail to parse
+    } catch (err) {
+      console.warn('listTemplateFiles: skipping unparseable file', entry, err instanceof Error ? err.message : err);
     }
   }
 

@@ -125,7 +125,15 @@ export function parseTemplateToGraph(yamlContent: string): TemplateGraph {
 
   walkNodes(definition.nodes, undefined, nodes, edges);
 
-  return { nodes, edges };
+  // Deduplicate edges by id — a conditional branch child that also has depends_on
+  // targeting the conditional node produces duplicate edge IDs; keep the last
+  // occurrence (the branch edge with the label).
+  const edgeMap = new Map<string, TemplateGraphEdge>();
+  for (const edge of edges) {
+    edgeMap.set(edge.id, edge);
+  }
+
+  return { nodes, edges: Array.from(edgeMap.values()) };
 }
 
 /**
@@ -163,7 +171,8 @@ function buildYamlNodes(
   edges: TemplateGraphEdge[],
 ): TemplateYamlNode[] {
   return nodeIds.map(nodeId => {
-    const graphNode = nodeMap.get(nodeId)!;
+    const graphNode = nodeMap.get(nodeId);
+    if (!graphNode) throw new Error(`serializeGraphToYaml: node not found: ${nodeId}`);
     const { id, kind, label, meta } = graphNode.data;
 
     const yamlNode = Object.assign(
