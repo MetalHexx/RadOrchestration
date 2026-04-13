@@ -832,6 +832,47 @@ describe('task_completed mutation', () => {
     const result = mutation(state, { phase: 1, task: 1 }, baseConfig, baseTemplate);
     expect(result.mutations_applied.length).toBeGreaterThan(0);
   });
+
+  it('auto-resolves phase and task from state when omitted', () => {
+    const state = makeState();
+    // Set phase iteration in_progress
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    phaseLoop.iterations[0].status = 'in_progress';
+    // Set task iteration in_progress
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+    if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
+    taskLoop.iterations[0].status = 'in_progress';
+    taskLoop.iterations[0].nodes['task_executor'].status = 'in_progress';
+    const mutation = getMutation('task_completed')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(getTaskNode(result.state, 'task_executor').status).toBe('completed');
+  });
+
+  it('throws descriptive error containing "task_completed" and "--phase" when phase resolution fails', () => {
+    const state = makeState();
+    // Empty phase_loop iterations so resolveNodeState throws (no iteration at index 0)
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    phaseLoop.iterations = [];
+    const mutation = getMutation('task_completed')!;
+    expect(() => mutation(state, {}, baseConfig, baseTemplate)).toThrow(/task_completed/);
+    expect(() => mutation(state, {}, baseConfig, baseTemplate)).toThrow(/--phase/);
+  });
+
+  it('throws descriptive error containing "task_completed" and "--task" when task resolution fails', () => {
+    const state = makeState();
+    // Set phase iteration in_progress but empty task iterations
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    phaseLoop.iterations[0].status = 'in_progress';
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+    if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
+    taskLoop.iterations = [];
+    const mutation = getMutation('task_completed')!;
+    expect(() => mutation(state, { phase: 1 }, baseConfig, baseTemplate)).toThrow(/task_completed/);
+    expect(() => mutation(state, { phase: 1 }, baseConfig, baseTemplate)).toThrow(/--task/);
+  });
 });
 
 // ── code_review_completed mutation ────────────────────────────────────────────

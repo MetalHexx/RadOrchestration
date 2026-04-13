@@ -378,9 +378,26 @@ mutationRegistry.set(EVENTS.TASK_COMPLETED, (state, context, _config, _template)
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
-  const node = resolveNodeState(cloned, 'task_executor', 'task', context.phase, context.task);
-  node.status = 'completed';
-  mutations_applied.push('set task_executor.status = completed');
+  const phase = context.phase ?? resolveActivePhaseIndex(cloned);
+  const task = context.task ?? resolveActiveTaskIndex(cloned, phase);
+  try {
+    const node = resolveNodeState(cloned, 'task_executor', 'task', phase, task);
+    node.status = 'completed';
+    mutations_applied.push('set task_executor.status = completed');
+  } catch (err) {
+    if (context.phase === undefined) {
+      throw new Error(
+        `Cannot apply mutation for "task_completed": no active phase could be resolved from state.\n` +
+        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
+        `Pass --phase <N> to specify the phase explicitly.`
+      );
+    }
+    throw new Error(
+      `Cannot apply mutation for "task_completed": no active task could be resolved from state for phase ${phase}.\n` +
+      `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+      `Pass --task <N> to specify the task explicitly.`
+    );
+  }
 
   return { state: cloned, mutations_applied };
 });
