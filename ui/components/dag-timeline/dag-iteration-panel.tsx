@@ -15,22 +15,18 @@ interface DAGIterationPanelProps {
   onDocClick: (path: string) => void;
 }
 
-export const CHILD_DEPTH = 1;
+export const ITERATION_CHILD_DEPTH = 1;
 
 export function buildIterationLabel(iterationIndex: number): string {
   return `Iteration ${iterationIndex + 1}`;
 }
 
-export function buildChildNodeId(parentNodeId: string, iterationIndex: number, childNodeId: string): string {
+export function buildIterationChildNodeId(parentNodeId: string, iterationIndex: number, childNodeId: string): string {
   return `${parentNodeId}.iter${iterationIndex}.${childNodeId}`;
 }
 
 export function buildCorrectiveGroupParentId(parentNodeId: string, iterationIndex: number): string {
   return `${parentNodeId}.iter${iterationIndex}`;
-}
-
-export function shouldRenderCorrectiveTasks(correctiveTasks: IterationEntry['corrective_tasks']): boolean {
-  return correctiveTasks.length > 0;
 }
 
 export function DAGIterationPanel({
@@ -58,21 +54,19 @@ export function DAGIterationPanel({
       {compatibleNodes.map(([childNodeId, childNode]) => (
         <DAGNodeRow
           key={childNodeId}
-          nodeId={buildChildNodeId(parentNodeId, iterationIndex, childNodeId)}
+          nodeId={buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId)}
           node={childNode}
-          depth={CHILD_DEPTH}
+          depth={ITERATION_CHILD_DEPTH}
           currentNodePath={currentNodePath}
           onDocClick={onDocClick}
         />
       ))}
-      {shouldRenderCorrectiveTasks(iteration.corrective_tasks) && (
-        <DAGCorrectiveTaskGroup
+      <DAGCorrectiveTaskGroup
           correctiveTasks={iteration.corrective_tasks}
           parentNodeId={correctiveGroupParentId}
           currentNodePath={currentNodePath}
           onDocClick={onDocClick}
         />
-      )}
     </div>
   );
 }

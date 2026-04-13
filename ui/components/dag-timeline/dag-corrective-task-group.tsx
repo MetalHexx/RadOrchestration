@@ -15,18 +15,14 @@ interface DAGCorrectiveTaskGroupProps {
 }
 
 export const GROUP_ARIA_LABEL = "Corrective tasks";
-export const CHILD_DEPTH = 2;
+export const CORRECTIVE_CHILD_DEPTH = 2;
 
-export function buildChildNodeId(parentNodeId: string, ctIndex: number, childNodeId: string): string {
+export function buildCorrectiveChildNodeId(parentNodeId: string, ctIndex: number, childNodeId: string): string {
   return `${parentNodeId}.ct${ctIndex}.${childNodeId}`;
 }
 
 export function buildTriggerText(index: number): string {
   return `Corrective Task ${index}`;
-}
-
-export function shouldRenderGroup(correctiveTasks: CorrectiveTaskEntry[]): boolean {
-  return correctiveTasks.length > 0;
 }
 
 export function DAGCorrectiveTaskGroup({
@@ -64,9 +60,9 @@ export function DAGCorrectiveTaskGroup({
                 {compatibleNodes.map(([childNodeId, childNode]) => (
                   <DAGNodeRow
                     key={childNodeId}
-                    nodeId={buildChildNodeId(parentNodeId, entry.index, childNodeId)}
+                    nodeId={buildCorrectiveChildNodeId(parentNodeId, entry.index, childNodeId)}
                     node={childNode}
-                    depth={CHILD_DEPTH}
+                    depth={CORRECTIVE_CHILD_DEPTH}
                     currentNodePath={currentNodePath}
                     onDocClick={onDocClick}
                   />

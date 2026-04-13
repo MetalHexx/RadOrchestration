@@ -121,7 +121,7 @@ export function getAdjacentDocs(
 
 // ─── v5 helpers ──────────────────────────────────────────────────────────────
 
-const STEP_TITLES_V5: Record<string, string> = {
+const STEP_TITLES_V5: Record<PlanningStepName, string> = {
   research: 'Research Findings',
   prd: 'PRD',
   design: 'Design',
@@ -129,11 +129,8 @@ const STEP_TITLES_V5: Record<string, string> = {
   master_plan: 'Master Plan',
 };
 
-const PLANNING_STEPS_V5 = new Set(['research', 'prd', 'design', 'architecture', 'master_plan']);
-const PLANNING_STEP_ORDER_V5 = ['research', 'prd', 'design', 'architecture', 'master_plan'] as const;
-
 function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
+  return s.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
 function titleForPhaseChild(childId: string, phaseNum: number): string {
@@ -174,19 +171,16 @@ export function getOrderedDocsV5(
   };
 
   // Emit planning steps in canonical order regardless of object key order
-  for (const planId of PLANNING_STEP_ORDER_V5) {
+  for (const planId of PLANNING_STEP_ORDER) {
     const node = state.graph.nodes[planId];
     if (node && node.kind === 'step' && node.doc_path != null) {
       push(node.doc_path, STEP_TITLES_V5[planId], 'planning');
     }
   }
 
-  for (const [nodeId, node] of Object.entries(state.graph.nodes)) {
-    // Skip planning steps (already emitted above) and other root step nodes
+  for (const [, node] of Object.entries(state.graph.nodes)) {
+    // Skip all root step nodes (planning steps already emitted above; final_review emitted after loop)
     if (node.kind === 'step') {
-      if (nodeId === 'final_review' && node.doc_path != null) {
-        push(node.doc_path, 'Final Review', 'review');
-      }
       continue;
     }
     if (node.kind === 'for_each_phase') {
@@ -222,6 +216,12 @@ export function getOrderedDocsV5(
       }
     }
     // gate, conditional, parallel: skip
+  }
+
+  // Emit final_review after all phase/task nodes
+  const finalReviewNode = state.graph.nodes['final_review'];
+  if (finalReviewNode && finalReviewNode.kind === 'step' && finalReviewNode.doc_path != null) {
+    push(finalReviewNode.doc_path, 'Final Review', 'review');
   }
 
   if (allFiles) {

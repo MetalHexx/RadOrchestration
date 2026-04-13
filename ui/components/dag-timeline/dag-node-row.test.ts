@@ -33,7 +33,7 @@ function computeAriaCurrent(nodeId: string, currentNodePath: string | null): 'st
 }
 
 function computePaddingLeft(depth: number): number {
-  return depth * 16;
+  return 12 + depth * 16;
 }
 
 function shouldRenderDocLink(node: StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState): boolean {
@@ -41,7 +41,7 @@ function shouldRenderDocLink(node: StepNodeState | GateNodeState | ConditionalNo
 }
 
 function computeClasses(isActive: boolean): string[] {
-  const classes = ['py-2', 'px-3', 'rounded-md', 'gap-2', 'flex', 'items-center', 'hover:bg-accent/50'];
+  const classes = ['py-2', 'pr-3', 'rounded-md', 'gap-2', 'flex', 'items-center', 'hover:bg-accent/50'];
   if (isActive) {
     classes.push('border-l-2', 'border-l-[var(--color-link)]');
   }
@@ -181,20 +181,20 @@ test('does NOT apply border-l-2 class when not active', () => {
 
 // ─── Tests: depth-based left padding ─────────────────────────────────────────
 
-test('default depth=0 → paddingLeft: 0 (no extra left padding)', () => {
-  assert.strictEqual(computePaddingLeft(0), 0);
+test('default depth=0 → paddingLeft: 12 (base indent)', () => {
+  assert.strictEqual(computePaddingLeft(0), 12);
 });
 
-test('depth=1 → paddingLeft: 16', () => {
-  assert.strictEqual(computePaddingLeft(1), 16);
+test('depth=1 → paddingLeft: 28', () => {
+  assert.strictEqual(computePaddingLeft(1), 28);
 });
 
-test('depth=2 → paddingLeft: 32', () => {
-  assert.strictEqual(computePaddingLeft(2), 32);
+test('depth=2 → paddingLeft: 44', () => {
+  assert.strictEqual(computePaddingLeft(2), 44);
 });
 
-test('depth=3 → paddingLeft: 48', () => {
-  assert.strictEqual(computePaddingLeft(3), 48);
+test('depth=3 → paddingLeft: 60', () => {
+  assert.strictEqual(computePaddingLeft(3), 60);
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

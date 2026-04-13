@@ -8,21 +8,21 @@
 import assert from "node:assert";
 import {
   buildIterationLabel,
-  buildChildNodeId,
+  buildIterationChildNodeId,
   buildCorrectiveGroupParentId,
-  shouldRenderCorrectiveTasks,
-  CHILD_DEPTH,
+  ITERATION_CHILD_DEPTH,
 } from './dag-iteration-panel';
 import { getCommitLinkData, filterCompatibleNodes } from './dag-timeline-helpers';
+import {
+  stepNode,
+  gateNode,
+  conditionalNode,
+  parallelNode,
+  forEachPhaseNode,
+  forEachTaskNode,
+} from './__fixtures__';
 import type {
-  StepNodeState,
-  GateNodeState,
-  ConditionalNodeState,
-  ParallelNodeState,
-  ForEachPhaseNodeState,
-  ForEachTaskNodeState,
   NodeState,
-  CorrectiveTaskEntry,
 } from '@/types/state';
 
 let passed = 0;
@@ -40,54 +40,6 @@ function test(name: string, fn: () => void) {
   }
 }
 
-// ─── Fixture Nodes ───────────────────────────────────────────────────────────
-
-const stepNode: StepNodeState = {
-  kind: 'step',
-  status: 'not_started',
-  doc_path: null,
-  retries: 0,
-};
-
-const gateNode: GateNodeState = {
-  kind: 'gate',
-  status: 'not_started',
-  gate_active: false,
-};
-
-const conditionalNode: ConditionalNodeState = {
-  kind: 'conditional',
-  status: 'not_started',
-  branch_taken: null,
-};
-
-const parallelNode: ParallelNodeState = {
-  kind: 'parallel',
-  status: 'not_started',
-  nodes: {},
-};
-
-const forEachPhaseNode: ForEachPhaseNodeState = {
-  kind: 'for_each_phase',
-  status: 'not_started',
-  iterations: [],
-};
-
-const forEachTaskNode: ForEachTaskNodeState = {
-  kind: 'for_each_task',
-  status: 'not_started',
-  iterations: [],
-};
-
-const baseCorrectiveTask: CorrectiveTaskEntry = {
-  index: 1,
-  reason: 'Test reason',
-  injected_after: 'task_executor',
-  status: 'not_started',
-  nodes: { task_handoff: stepNode },
-  commit_hash: null,
-};
-
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 console.log("\nDAGIterationPanel logic tests\n");
@@ -102,16 +54,16 @@ test('buildIterationLabel(4) returns "Iteration 5"', () => {
 });
 
 // buildChildNodeId
-test('buildChildNodeId("phase_loop", 0, "phase_planning") returns "phase_loop.iter0.phase_planning"', () => {
+test('buildIterationChildNodeId("phase_loop", 0, "phase_planning") returns "phase_loop.iter0.phase_planning"', () => {
   assert.strictEqual(
-    buildChildNodeId("phase_loop", 0, "phase_planning"),
+    buildIterationChildNodeId("phase_loop", 0, "phase_planning"),
     "phase_loop.iter0.phase_planning"
   );
 });
 
-test('buildChildNodeId("task_loop", 2, "task_handoff") returns "task_loop.iter2.task_handoff"', () => {
+test('buildIterationChildNodeId("task_loop", 2, "task_handoff") returns "task_loop.iter2.task_handoff"', () => {
   assert.strictEqual(
-    buildChildNodeId("task_loop", 2, "task_handoff"),
+    buildIterationChildNodeId("task_loop", 2, "task_handoff"),
     "task_loop.iter2.task_handoff"
   );
 });
@@ -184,8 +136,8 @@ test('filterCompatibleNodes with mixed kinds returns only compatible entries in 
 });
 
 // CHILD_DEPTH constant
-test('CHILD_DEPTH is exported and equals 1', () => {
-  assert.strictEqual(CHILD_DEPTH, 1);
+test('ITERATION_CHILD_DEPTH is exported and equals 1', () => {
+  assert.strictEqual(ITERATION_CHILD_DEPTH, 1);
 });
 
 // buildCorrectiveGroupParentId
@@ -195,15 +147,6 @@ test('buildCorrectiveGroupParentId("phase_loop", 0) returns "phase_loop.iter0"',
 
 test('buildCorrectiveGroupParentId("task_loop", 3) returns "task_loop.iter3"', () => {
   assert.strictEqual(buildCorrectiveGroupParentId("task_loop", 3), "task_loop.iter3");
-});
-
-// shouldRenderCorrectiveTasks
-test('shouldRenderCorrectiveTasks([]) returns false', () => {
-  assert.strictEqual(shouldRenderCorrectiveTasks([]), false);
-});
-
-test('shouldRenderCorrectiveTasks([...tasks]) returns true', () => {
-  assert.strictEqual(shouldRenderCorrectiveTasks([baseCorrectiveTask]), true);
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

@@ -32,10 +32,10 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
   return (
     <div
       className={cn(
-        'py-2 px-3 rounded-md gap-2 flex items-center hover:bg-accent/50',
+        'py-2 pr-3 rounded-md gap-2 flex items-center hover:bg-accent/50',
         isActive && 'border-l-2 border-l-[var(--color-link)]'
       )}
-      style={{ paddingLeft: depth * 16 }}
+      style={{ paddingLeft: 12 + depth * 16 }}
       aria-current={isActive ? 'step' : undefined}
     >
       <NodeKindIcon kind={node.kind} />
