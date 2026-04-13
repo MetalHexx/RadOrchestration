@@ -236,13 +236,17 @@
 }
 
 /* ── ReactFlow Controls Dark Theme ── */
-.react-flow__controls-button {
+.react-flow .react-flow__controls-button {
   background: var(--card);
   border: 1px solid var(--border);
-  fill: var(--foreground);
+  color: var(--foreground);
 }
 
-.react-flow__controls-button:hover {
+.react-flow .react-flow__controls-button svg {
+  fill: currentColor;
+}
+
+.react-flow .react-flow__controls-button:hover {
   background: var(--accent);
 }
 
