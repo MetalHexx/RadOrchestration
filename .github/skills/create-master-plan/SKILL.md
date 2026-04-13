@@ -19,7 +19,7 @@ Generate a Master Plan that is the single source of truth for the project. Synth
 |-------|--------|-------------|
 | Brainstorming document *(optional)* | `{NAME}-BRAINSTORMING.md` | Project idea, validated concepts, and scope boundaries. |
 | Research Findings | `RESEARCH-FINDINGS.md` | Codebase analysis, constraints |
-| PRD | `{NAME}-PRD.md` | Requirements, user stories, success metrics |
+| PRD | `{NAME}-PRD.md` | Requirements |
 | Design | `{NAME}-DESIGN.md` | UI components, flows, accessibility |
 | Architecture | `{NAME}-ARCHITECTURE.md` | Modules, contracts, file structure, phasing recommendations |
 
