@@ -18,7 +18,7 @@ You synthesize a brainstorming document or project idea into a structured Produc
 1. Read the Brainstorming document at the path provided by the Orchestrator — only if it exists. Skip if not.
 2. Identify the problem: Synthesize a clear, concise problem statement (2–4 sentences)
 3. Define goals and non-goals: Goals must be measurable outcomes; non-goals prevent scope creep
-4. Define functional requirements: Use `### FR-N: {Title}` headings. Each block 200–300 tokens (max 400)
+4. Define functional requirements: Use `### FR-N: {Title}` headings. Each block 100–150 tokens (max 200–300)
 5. Define non-functional requirements: Use `### NFR-N: {Title}` headings. Same token targets as FRs
 6. Assess risks: Known product-scoped risks with impact and mitigation (optional section — omit if none)
 7. Select template variant: Use `templates/PRD.md` (full) by default; use `templates/PRD-light.md`

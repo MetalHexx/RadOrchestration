@@ -7,8 +7,8 @@ Every planning agent loads this file before beginning its document-type-specific
 
 - Functional Requirements use `### FR-N: {Title}` headings (H3)
 - Non-Functional Requirements use `### NFR-N: {Title}` headings (H3)
-- Each heading + body block targets 200–300 tokens (hard ceiling: 400 tokens)
-- Titles are 5 words maximum; body is 1–3 sentences describing what the system shall do
+- Each heading + body block targets 100–150 tokens (hard ceiling: 200–300 tokens)
+- Titles are 5 words maximum; body is 1–2 sentences describing what the system shall do
 - Use a single blank line to separate the heading from the body within each chunk
 
 ## Optional-Input Handling
@@ -21,7 +21,7 @@ Every planning agent loads this file before beginning its document-type-specific
 
 - All planning documents are saved to `{PROJECT-DIR}/{NAME}-{TYPE}.md`
 - `{PROJECT-DIR}` is the project root directory passed in as context
-- `{NAME}` is the project name; `{TYPE}` is the document type (e.g., `PRD`, `DESIGN`, `ARCH`)
+- `{NAME}` is the project name; `{TYPE}` is the document type.
 - This convention is defined once here — individual workflows must not redefine it
 
 ## Frontmatter Schema
