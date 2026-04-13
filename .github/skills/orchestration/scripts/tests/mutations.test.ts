@@ -40,7 +40,7 @@ function makeState(): PipelineState {
         max_retries_per_task: 3,
         max_consecutive_review_rejections: 3,
       },
-      source_control: { auto_commit: 'on', auto_pr: 'on' },
+      source_control: { auto_commit: 'always', auto_pr: 'always' },
     },
     pipeline: {
       gate_mode: null,
@@ -116,7 +116,7 @@ const baseConfig: OrchestrationConfig = {
     max_consecutive_review_rejections: 3,
   },
   human_gates: { after_planning: true, execution_mode: 'manual', after_final_review: true },
-  source_control: { auto_commit: 'on', auto_pr: 'on', provider: 'github' },
+  source_control: { auto_commit: 'always', auto_pr: 'always', provider: 'github' },
   default_template: 'full',
 };
 
@@ -1316,7 +1316,7 @@ describe('pr_created mutation', () => {
     const state = makeState();
     state.pipeline.source_control = {
       branch: 'main', base_branch: 'main', worktree_path: '.',
-      auto_commit: 'on', auto_pr: 'on', remote_url: null, compare_url: null, pr_url: null,
+      auto_commit: 'always', auto_pr: 'always', remote_url: null, compare_url: null, pr_url: null,
     };
     const mutation = getMutation('pr_created')!;
     const result = mutation(state, { pr_url: 'https://github.com/org/repo/pull/7' }, baseConfig, baseTemplate);
@@ -1335,7 +1335,7 @@ describe('pr_created mutation', () => {
     const state = makeState();
     state.pipeline.source_control = {
       branch: 'main', base_branch: 'main', worktree_path: '.',
-      auto_commit: 'on', auto_pr: 'on', remote_url: null, compare_url: null, pr_url: null,
+      auto_commit: 'always', auto_pr: 'always', remote_url: null, compare_url: null, pr_url: null,
     };
     const mutation = getMutation('pr_created')!;
     const result = mutation(state, {}, baseConfig, baseTemplate);
