@@ -4,8 +4,7 @@ Review the entire planning document set for codebase accuracy and cross-document
 
 ## Inputs
 
-1. **All planning documents** — read in pipeline order:
-   PRD → Research Findings → Design → Architecture → Master Plan → Phase Plans (if they exist)
+1. **All planning documents** — read in the pipeline order  defined by the current process template. These are the primary source of truth for the audit.
 2. **Existing source files** — files the docs reference as already existing. These are ground truth.
 
 ## Workflow
@@ -33,7 +32,7 @@ Apply [rubric §1](./audit-rubric.md#part-1-codebase-accuracy-docs-vs-code) acro
 
 ### Step 4: Cohesion checks
 
-Apply [rubric §2](./audit-rubric.md#part-2-cross-document-cohesion-docs-vs-docs) across the full document set:
+Apply [rubric §2](./audit-rubric.md#part-2-cross-document-cohesion-docs-vs-docs) across the full document set (or available docs give the process template used):
 
 - §2.1 Requirement Traceability
 - §2.2 Design ↔ Architecture Alignment
