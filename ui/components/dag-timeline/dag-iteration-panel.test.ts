@@ -13,6 +13,7 @@ import {
   ITERATION_CHILD_DEPTH,
 } from './dag-iteration-panel';
 import { getCommitLinkData, filterCompatibleNodes } from './dag-timeline-helpers';
+import { isLoopNode } from './dag-timeline';
 import {
   stepNode,
   gateNode,
@@ -20,9 +21,12 @@ import {
   parallelNode,
   forEachPhaseNode,
   forEachTaskNode,
+  taskLoopIteration,
+  taskLoopIterationWithCorrective,
 } from './__fixtures__';
 import type {
   NodeState,
+  ForEachTaskNodeState,
 } from '@/types/state';
 
 let passed = 0;
@@ -147,6 +151,126 @@ test('buildCorrectiveGroupParentId("phase_loop", 0) returns "phase_loop.iter0"',
 
 test('buildCorrectiveGroupParentId("task_loop", 3) returns "task_loop.iter3"', () => {
   assert.strictEqual(buildCorrectiveGroupParentId("task_loop", 3), "task_loop.iter3");
+});
+
+// ─── Loop dispatch classification within iteration nodes ─────────────────────
+
+test('isLoopNode() returns true for the for_each_task node inside taskLoopIteration.nodes', () => {
+  const forEachTask = taskLoopIteration.nodes['for_each_task'];
+  assert.ok(forEachTask !== undefined);
+  assert.strictEqual(isLoopNode(forEachTask), true);
+});
+
+test('isLoopNode() returns false for all non-loop nodes in taskLoopIteration.nodes', () => {
+  const nonLoopKeys = ['phase_planning', 'phase_report', 'phase_review', 'phase_gate'];
+  for (const key of nonLoopKeys) {
+    const node = taskLoopIteration.nodes[key];
+    assert.ok(node !== undefined, `Expected node "${key}" to exist`);
+    assert.strictEqual(isLoopNode(node), false, `Expected isLoopNode(${key}) to be false`);
+  }
+});
+
+test('partitioning taskLoopIteration.nodes by isLoopNode() yields 1 loop node and 4 non-loop nodes', () => {
+  const entries = Object.entries(taskLoopIteration.nodes);
+  const loopNodes = entries.filter(([, node]) => isLoopNode(node));
+  const nonLoopNodes = entries.filter(([, node]) => !isLoopNode(node));
+  assert.strictEqual(loopNodes.length, 1);
+  assert.strictEqual(nonLoopNodes.length, 4);
+});
+
+// ─── Compound node ID construction through nesting chain ─────────────────────
+
+test('phase-level child ID: buildIterationChildNodeId("phase_loop", 0, "task_loop") -> "phase_loop.iter0.task_loop"', () => {
+  assert.strictEqual(
+    buildIterationChildNodeId("phase_loop", 0, "task_loop"),
+    "phase_loop.iter0.task_loop"
+  );
+});
+
+test('task-level nested child ID: buildIterationChildNodeId("phase_loop.iter0.task_loop", 0, "code_review") -> "phase_loop.iter0.task_loop.iter0.code_review"', () => {
+  assert.strictEqual(
+    buildIterationChildNodeId("phase_loop.iter0.task_loop", 0, "code_review"),
+    "phase_loop.iter0.task_loop.iter0.code_review"
+  );
+});
+
+test('task-level child ID at iteration index 2: buildIterationChildNodeId("phase_loop.iter0.task_loop", 2, "task_handoff") -> "phase_loop.iter0.task_loop.iter2.task_handoff"', () => {
+  assert.strictEqual(
+    buildIterationChildNodeId("phase_loop.iter0.task_loop", 2, "task_handoff"),
+    "phase_loop.iter0.task_loop.iter2.task_handoff"
+  );
+});
+
+test('multi-level chaining: deeply nested corrective task ID construction', () => {
+  const level1 = buildIterationChildNodeId("phase_loop", 0, "task_loop");
+  const level2 = buildIterationChildNodeId(level1, 0, "ct1");
+  assert.strictEqual(level1, "phase_loop.iter0.task_loop");
+  assert.strictEqual(level2, "phase_loop.iter0.task_loop.iter0.ct1");
+  const level3 = buildIterationChildNodeId(level2, 0, "task_handoff");
+  assert.strictEqual(level3, "phase_loop.iter0.task_loop.iter0.ct1.iter0.task_handoff");
+});
+
+// ─── Nested state data safety ─────────────────────────────────────────────────
+
+test('traversing taskLoopIteration nested data completes without error and yields 5 child node keys', () => {
+  const entries = Object.entries(taskLoopIteration.nodes);
+  const found = entries.find(([, n]) => isLoopNode(n));
+  assert.ok(found !== undefined);
+  const forEachTask = found[1] as ForEachTaskNodeState;
+  const innerKeys = Object.keys(forEachTask.iterations[0].nodes);
+  assert.deepStrictEqual(
+    innerKeys.sort(),
+    ['code_review', 'commit_gate', 'task_executor', 'task_gate', 'task_handoff'].sort()
+  );
+});
+
+test('traversing taskLoopIterationWithCorrective nested data completes without error and corrective_tasks has length 1', () => {
+  const entries = Object.entries(taskLoopIterationWithCorrective.nodes);
+  const found = entries.find(([, n]) => isLoopNode(n));
+  assert.ok(found !== undefined);
+  const forEachTask = found[1] as ForEachTaskNodeState;
+  const innerIteration = forEachTask.iterations[0];
+  assert.strictEqual(innerIteration.corrective_tasks.length, 1);
+});
+
+test('inner task iteration does NOT contain any further loop nodes (recursion naturally terminates)', () => {
+  const entries = Object.entries(taskLoopIteration.nodes);
+  const found = entries.find(([, n]) => isLoopNode(n));
+  assert.ok(found !== undefined);
+  const forEachTask = found[1] as ForEachTaskNodeState;
+  const innerEntries = Object.entries(forEachTask.iterations[0].nodes);
+  const innerLoopNodes = innerEntries.filter(([, n]) => isLoopNode(n));
+  assert.strictEqual(innerLoopNodes.length, 0);
+});
+
+// ─── Corrective task fixture structure ───────────────────────────────────────
+
+test('taskLoopIterationWithCorrective corrective task has reason "Code review found issues"', () => {
+  const entries = Object.entries(taskLoopIterationWithCorrective.nodes);
+  const found = entries.find(([, n]) => isLoopNode(n));
+  assert.ok(found !== undefined);
+  const forEachTask = found[1] as ForEachTaskNodeState;
+  const correctiveTask = forEachTask.iterations[0].corrective_tasks[0];
+  assert.strictEqual(correctiveTask.reason, 'Code review found issues');
+});
+
+test('taskLoopIterationWithCorrective corrective task nodes contains a task_handoff step node', () => {
+  const entries = Object.entries(taskLoopIterationWithCorrective.nodes);
+  const found = entries.find(([, n]) => isLoopNode(n));
+  assert.ok(found !== undefined);
+  const forEachTask = found[1] as ForEachTaskNodeState;
+  const correctiveTask = forEachTask.iterations[0].corrective_tasks[0];
+  assert.ok('task_handoff' in correctiveTask.nodes);
+  assert.strictEqual(correctiveTask.nodes['task_handoff'].kind, 'step');
+});
+
+test('taskLoopIterationWithCorrective corrective task commit_hash is null', () => {
+  const entries = Object.entries(taskLoopIterationWithCorrective.nodes);
+  const found = entries.find(([, n]) => isLoopNode(n));
+  assert.ok(found !== undefined);
+  const forEachTask = found[1] as ForEachTaskNodeState;
+  const correctiveTask = forEachTask.iterations[0].corrective_tasks[0];
+  assert.strictEqual(correctiveTask.commit_hash, null);
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
