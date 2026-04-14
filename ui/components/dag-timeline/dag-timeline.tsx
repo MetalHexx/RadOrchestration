@@ -46,6 +46,7 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick }: DAGTimelineP
           </DAGSectionGroup>
         </Fragment>
       ))}
+      {groups.length > 0 && unmatchedEntries.length > 0 && <Separator className="my-3" />}
       {unmatchedEntries.map(([nodeId, node]) => (
         <div key={nodeId} role="listitem">
           {isLoopNode(node) ? (
