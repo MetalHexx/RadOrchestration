@@ -47,8 +47,6 @@ test('computeAriaLabel("Completion") returns "Completion section"', () => {
   assert.strictEqual(computeAriaLabel("Completion"), "Completion section");
 });
 
-// ─── label div attributes ───────────────────────────────────────────────────
-
 // ─── CSS class composition ──────────────────────────────────────────────────
 
 test('SECTION_LABEL_CLASSES contains "text-xs"', () => {

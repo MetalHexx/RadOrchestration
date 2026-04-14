@@ -22,7 +22,7 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick }: DAGTimelineP
     <div className="flex flex-col gap-0" role="list">
       {groups.map((group, index) => (
         <Fragment key={group.label}>
-          {index > 0 && <Separator className="my-3" />}
+          {index > 0 && <Separator className="my-3" role="none" />}
           <DAGSectionGroup label={group.label}>
             {group.entries.map(([nodeId, node]) => (
               <div key={nodeId} role="listitem">
@@ -46,7 +46,7 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick }: DAGTimelineP
           </DAGSectionGroup>
         </Fragment>
       ))}
-      {groups.length > 0 && unmatchedEntries.length > 0 && <Separator className="my-3" />}
+      {groups.length > 0 && unmatchedEntries.length > 0 && <Separator className="my-3" role="none" />}
       {unmatchedEntries.map(([nodeId, node]) => (
         <div key={nodeId} role="listitem">
           {isLoopNode(node) ? (
