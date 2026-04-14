@@ -2,7 +2,7 @@
 
 ## Overview
 
-Templates are structured markdown files bundled inside skill folders that control the format and structure of each skill's output. There are 16 templates across 12 skills, organized into four groups: Planning, Execution, Review, and Meta. They define the sections, headings, and frontmatter that agents produce when executing a skill.
+Templates are structured markdown files bundled inside skill folders that control the format and structure of each skill's output. There are 15 templates across 12 skills, organized into four groups: Planning, Execution, Review, and Meta. They define the sections, headings, and frontmatter that agents produce when executing a skill.
 
 ## How Skills and Templates Relate
 
@@ -23,9 +23,8 @@ Each skill that produces a document bundles one or more templates in its `templa
 | [`BRAINSTORMING.md`](../.github/skills/brainstorm/templates/BRAINSTORMING.md) | `brainstorm` | Collaborative ideation and project goal refinement |
 | [`RESEARCH-FINDINGS.md`](../.github/skills/research-codebase/templates/RESEARCH-FINDINGS.md) | `research-codebase` | Codebase analysis, patterns, constraints, and recommendations |
 | [`PRD.md`](../.github/skills/create-prd/templates/PRD.md) | `create-prd` | Product requirements with user stories, functional and non-functional requirements |
-| [`DESIGN.md`](../.github/skills/create-design/templates/DESIGN.md) | `create-design` | Full UX design with layout, components, tokens, and accessibility |
-| [`DESIGN-NOT-REQUIRED.md`](../.github/skills/create-design/templates/DESIGN-NOT-REQUIRED.md) | `create-design` | Design triage record for projects with no user interaction |
-| [`DESIGN-FLOWS-ONLY.md`](../.github/skills/create-design/templates/DESIGN-FLOWS-ONLY.md) | `create-design` | User flows and information architecture without visual UI specs |
+| [`DESIGN.md`](../.github/skills/rad-create-plans/references/design/templates/DESIGN.md) | `rad-create-plans` | Full UX design — per-component layouts (heading-per-item), interaction states, optional tokens and accessibility |
+| [`DESIGN-light.md`](../.github/skills/rad-create-plans/references/design/templates/DESIGN-light.md) | `rad-create-plans` | Light UX design — mandatory sections only (Design Overview, User Flows, Layout & Components, New Components, States & Interactions) |
 | [`ARCHITECTURE.md`](../.github/skills/create-architecture/templates/ARCHITECTURE.md) | `create-architecture` | System architecture, module map, API contracts, and file structure |
 | [`MASTER-PLAN.md`](../.github/skills/create-master-plan/templates/MASTER-PLAN.md) | `create-master-plan` | Phased execution plan synthesizing PRD, design, and architecture |
 
@@ -54,16 +53,17 @@ Each skill that produces a document bundles one or more templates in its `templa
 
 ## Design Variants
 
-The `create-design` skill selects one of three template variants based on the project's user interaction profile. The UX Designer agent performs a triage assessment to determine which variant fits.
+The `rad-create-plans` skill selects one of two design template variants based on the project's user interaction profile. The UX Designer agent performs a triage assessment to determine which variant fits. If the project has no user interaction, the agent skips design document creation entirely — no stub document is produced.
 
 | Variant | Template File | When Selected |
 |---------|---------------|---------------|
 | Full Design | `DESIGN.md` | Project has a visual UI — frontend views, components, pages, or interactive elements |
-| Flows Only | `DESIGN-FLOWS-ONLY.md` | Project has user-facing flows but no visual UI — CLI tools, terminal interfaces, documentation reading paths |
-| Not Required | `DESIGN-NOT-REQUIRED.md` | Project has no user interaction — backend services, scripts, infrastructure, or documentation-only changes |
+| Light Design | `DESIGN-light.md` | Project has user-facing flows but limited or no visual UI — CLI tools, terminal interfaces, or scoped interaction |
+
+When uncertain whether a design document is needed, default to skipping. No document is preferable to a low-signal placeholder.
 
 ## Next Steps
 
-- [Skills](skills.md) — Explore the 18 skills and their capabilities
+- [Skills](skills.md) — Explore the 16 skills and their capabilities
 - [Agents](agents.md) — Learn about the 12 agents that use these templates
 - [Configuration](configuration.md) — Configure pipeline behavior and project settings

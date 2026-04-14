@@ -1,6 +1,6 @@
 # Skills
 
-The orchestration system includes 18 reusable skills — self-contained capability bundles that give agents domain-specific knowledge, templates, and instructions. Agents are composed with the skills they need, and GitHub Copilot matches requests to skills through description-based matching.
+The orchestration system includes 16 reusable skills — self-contained capability bundles that give agents domain-specific knowledge, templates, and instructions. Agents are composed with the skills they need, and GitHub Copilot matches requests to skills through description-based matching.
 
 ## Skill Inventory
 
@@ -9,9 +9,7 @@ The orchestration system includes 18 reusable skills — self-contained capabili
 | Skill | Description | Used By |
 |-------|-------------|---------|
 | `brainstorm` | Collaboratively explore, refine, and converge on project ideas through structured ideation | brainstormer |
-| `research-codebase` | Explore and analyze codebases, documentation, and external sources to gather technical context | research |
-| `create-prd` | Generate Product Requirements Documents with numbered requirements (FR-/NFR-) from research findings | product-manager |
-| `create-design` | Create UX Design documents with user flows, layouts, states, and accessibility specs from PRDs | ux-designer |
+| `rad-create-plans` | Consolidated planning skill — routes research, PRD, design, architecture, master plan, and phase plan creation to purpose-built workflows | research, product-manager, ux-designer, architect, tactical-planner |
 | `create-architecture` | Define system architecture — layers, modules, contracts, APIs, schemas — from PRD + Design | architect |
 | `create-master-plan` | Synthesize all planning documents into a Master Plan with phases, exit criteria, and risk register | architect |
 
@@ -54,9 +52,9 @@ Each agent is assigned skills in its `.agent.md` definition. This table shows th
 |-------|--------|
 | brainstormer | `orchestration`, `brainstorm` |
 | orchestrator | `orchestration`, `log-error` |
-| research | `orchestration`, `research-codebase` |
-| product-manager | `orchestration`, `create-prd` |
-| ux-designer | `orchestration`, `create-design` |
+| research | `orchestration`, `rad-create-plans` |
+| product-manager | `orchestration`, `rad-create-plans` |
+| ux-designer | `orchestration`, `rad-create-plans` |
 | architect | `orchestration`, `create-architecture`, `create-master-plan` |
 | tactical-planner | `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
 | coder | `orchestration`, `execute-coding-task`, `run-tests` |
