@@ -403,7 +403,42 @@ mutationRegistry.set(EVENTS.TASK_HANDOFF_CREATED, (state, context, _config, _tem
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
-  const node = resolveNodeState(cloned, 'task_handoff', 'task', context.phase, context.task);
+  let phase = context.phase;
+  if (phase === undefined) {
+    try {
+      phase = resolveActivePhaseIndex(cloned);
+    } catch {
+      throw new Error(
+        `Cannot apply mutation for "task_handoff_created": no active phase could be resolved from state.\n` +
+        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
+        `Pass --phase <N> to specify the phase explicitly.`
+      );
+    }
+  }
+
+  let task = context.task;
+  if (task === undefined) {
+    try {
+      task = resolveActiveTaskIndex(cloned, phase);
+    } catch {
+      throw new Error(
+        `Cannot apply mutation for "task_handoff_created": no active task could be resolved from state for phase ${phase}.\n` +
+        `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+        `Pass --task <N> to specify the task explicitly.`
+      );
+    }
+  }
+
+  let node: NodeState;
+  try {
+    node = resolveNodeState(cloned, 'task_handoff', 'task', phase, task);
+  } catch {
+    throw new Error(
+      `Cannot apply mutation for "task_handoff_created": failed to resolve task_handoff node for phase ${phase}, task ${task}.\n` +
+      `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+      `Pass --phase <N> and/or --task <N> to specify explicitly.`
+    );
+  }
   node.status = 'completed';
   mutations_applied.push('set task_handoff.status = completed');
 
@@ -519,8 +554,43 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
+  let phase = context.phase;
+  if (phase === undefined) {
+    try {
+      phase = resolveActivePhaseIndex(cloned);
+    } catch {
+      throw new Error(
+        `Cannot apply mutation for "code_review_completed": no active phase could be resolved from state.\n` +
+        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
+        `Pass --phase <N> to specify the phase explicitly.`
+      );
+    }
+  }
+
+  let task = context.task;
+  if (task === undefined) {
+    try {
+      task = resolveActiveTaskIndex(cloned, phase);
+    } catch {
+      throw new Error(
+        `Cannot apply mutation for "code_review_completed": no active task could be resolved from state for phase ${phase}.\n` +
+        `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+        `Pass --task <N> to specify the task explicitly.`
+      );
+    }
+  }
+
   // Base behavior: always mark code_review completed with doc_path and verdict
-  const node = resolveNodeState(cloned, 'code_review', 'task', context.phase, context.task);
+  let node: NodeState;
+  try {
+    node = resolveNodeState(cloned, 'code_review', 'task', phase, task);
+  } catch {
+    throw new Error(
+      `Cannot apply mutation for "code_review_completed": failed to resolve code_review node for phase ${phase}, task ${task}.\n` +
+      `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
+      `Pass --phase <N> and/or --task <N> to specify explicitly.`
+    );
+  }
   node.status = 'completed';
   mutations_applied.push('set code_review.status = completed');
 
@@ -546,7 +616,7 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
 
   // Verdict routing
   if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED) {
-    const iteration = resolveTaskIteration(cloned, context.phase ?? 1, context.task ?? 1);
+    const iteration = resolveTaskIteration(cloned, phase, task);
     const correctiveCount = iteration.corrective_tasks.length;
     const maxRetries = config.limits.max_retries_per_task;
 
@@ -577,7 +647,7 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
       mutations_applied.push('set graph.status = halted');
     }
   } else if (verdict === REVIEW_VERDICTS.REJECTED) {
-    const iteration = resolveTaskIteration(cloned, context.phase ?? 1, context.task ?? 1);
+    const iteration = resolveTaskIteration(cloned, phase, task);
     iteration.status = 'halted';
     cloned.graph.status = 'halted';
     mutations_applied.push('set task_iteration.status = halted (rejected verdict)');

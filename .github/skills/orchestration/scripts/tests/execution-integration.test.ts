@@ -941,3 +941,88 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
     }
   });
 });
+
+// ── Auto-resolution integration tests ───────────────────────────────────────
+// These mirror how Claude Code calls the pipeline: without --phase/--task flags,
+// relying on auto-resolution from state.
+
+describe('Execution integration — auto-resolution (no explicit phase/task)', () => {
+  /**
+   * Drives one task through the full cycle WITHOUT explicit phase/task context.
+   * Only doc_path and verdict are provided — phase/task must be auto-resolved.
+   */
+  function driveTaskAutoResolved(io: MockIO, phase: number, task: number): PipelineResult {
+    // task_handoff_started still needs explicit context (signals which task to start)
+    processEvent('task_handoff_started', PROJECT_DIR, { phase, task }, io);
+
+    const handoffDoc = DOC_PATHS.taskHandoff(phase, task);
+    seedDoc(handoffDoc);
+    // task_handoff_created: NO phase/task — auto-resolved
+    processEvent('task_handoff_created', PROJECT_DIR, { doc_path: handoffDoc }, io);
+
+    processEvent('execution_started', PROJECT_DIR, { phase, task }, io);
+    processEvent('task_completed', PROJECT_DIR, {}, io);
+
+    processEvent('code_review_started', PROJECT_DIR, { phase, task }, io);
+
+    const reviewDoc = DOC_PATHS.codeReview(phase, task);
+    seedDoc(reviewDoc);
+    // code_review_completed: NO phase/task — auto-resolved
+    let result = processEvent('code_review_completed', PROJECT_DIR, {
+      doc_path: reviewDoc,
+      verdict: 'approved',
+    }, io);
+
+    // If commit conditional fires, drive commit events
+    if (result.action === 'invoke_source_control_commit') {
+      processEvent('commit_started', PROJECT_DIR, {}, io);
+      result = processEvent('commit_completed', PROJECT_DIR, {}, io);
+    }
+
+    // If task gate fires, approve it
+    if (result.action === 'gate_task') {
+      result = processEvent('task_gate_approved', PROJECT_DIR, { phase, task }, io);
+    }
+
+    return result;
+  }
+
+  it('completes a 2-phase × 2-task pipeline with auto-resolved task_handoff_created and code_review_completed', () => {
+    const config = makeConfig({ execution_mode: 'autonomous', auto_commit: 'always', auto_pr: 'never' });
+    const io = createMockIO(null, config);
+
+    drivePlanningTier(io);
+
+    // Gate mode
+    processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'autonomous' }, io);
+
+    // Phase 1 planning
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
+    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: DOC_PATHS.phasePlan(1) }, io);
+
+    // Drive tasks WITHOUT explicit phase/task on _created and _completed events
+    driveTaskAutoResolved(io, 1, 1);
+    const result1 = driveTaskAutoResolved(io, 1, 2);
+
+    // After all tasks → generate_phase_report
+    expect(result1.success).toBe(true);
+    expect(result1.action).toBe('generate_phase_report');
+
+    // Verify task iterations completed with correct state
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    expect(taskLoop.status).toBe('completed');
+    expect(taskLoop.iterations[0].status).toBe('completed');
+    expect(taskLoop.iterations[1].status).toBe('completed');
+
+    // Verify code_review nodes have verdict set (Bug 1 fix: pipeline now reaches this code)
+    const cr0 = taskLoop.iterations[0].nodes['code_review'] as StepNodeState;
+    expect(cr0.status).toBe('completed');
+    expect(cr0.verdict).toBe('approved');
+
+    const cr1 = taskLoop.iterations[1].nodes['code_review'] as StepNodeState;
+    expect(cr1.status).toBe('completed');
+    expect(cr1.verdict).toBe('approved');
+  });
+});

@@ -810,6 +810,45 @@ describe('task_handoff_created mutation', () => {
     const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
     expect(result.mutations_applied.length).toBeGreaterThan(0);
   });
+
+  it('auto-resolves phase and task from state when omitted', () => {
+    const state = makeState();
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    phaseLoop.iterations[0].status = 'in_progress';
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+    if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
+    taskLoop.iterations[0].status = 'in_progress';
+    taskLoop.iterations[0].nodes['task_handoff'].status = 'in_progress';
+    const mutation = getMutation('task_handoff_created')!;
+    const result = mutation(state, { doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
+    expect(getTaskNode(result.state, 'task_handoff').status).toBe('completed');
+  });
+
+  it('throws descriptive error containing "task_handoff_created" and "--phase" when phase resolution fails', () => {
+    const state = makeState();
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    phaseLoop.iterations = [];
+    const mutation = getMutation('task_handoff_created')!;
+    const fn = () => mutation(state, { doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
+    expect(fn).toThrow(/task_handoff_created/);
+    expect(fn).toThrow(/--phase/);
+  });
+
+  it('throws descriptive error containing "task_handoff_created" and "--task" when task resolution fails', () => {
+    const state = makeState();
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    phaseLoop.iterations[0].status = 'in_progress';
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+    if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
+    taskLoop.iterations = [];
+    const mutation = getMutation('task_handoff_created')!;
+    const fn = () => mutation(state, { doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
+    expect(fn).toThrow(/task_handoff_created/);
+    expect(fn).toThrow(/--phase.*--task|--task/);
+  });
 });
 
 // ── task_completed mutation ──────────────────────────────────────────────
@@ -934,6 +973,45 @@ describe('code_review_completed mutation', () => {
     const mutation = getMutation('code_review_completed')!;
     const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
     expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+
+  it('auto-resolves phase and task from state when omitted', () => {
+    const state = makeState();
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    phaseLoop.iterations[0].status = 'in_progress';
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+    if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
+    taskLoop.iterations[0].status = 'in_progress';
+    taskLoop.iterations[0].nodes['code_review'].status = 'in_progress';
+    const mutation = getMutation('code_review_completed')!;
+    const result = mutation(state, { doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    expect(getTaskNode(result.state, 'code_review').status).toBe('completed');
+  });
+
+  it('throws descriptive error containing "code_review_completed" and "--phase" when phase resolution fails', () => {
+    const state = makeState();
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    phaseLoop.iterations = [];
+    const mutation = getMutation('code_review_completed')!;
+    const fn = () => mutation(state, { doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    expect(fn).toThrow(/code_review_completed/);
+    expect(fn).toThrow(/--phase/);
+  });
+
+  it('throws descriptive error containing "code_review_completed" and "--task" when task resolution fails', () => {
+    const state = makeState();
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    phaseLoop.iterations[0].status = 'in_progress';
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+    if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
+    taskLoop.iterations = [];
+    const mutation = getMutation('code_review_completed')!;
+    const fn = () => mutation(state, { doc_path: '/path/review.md', verdict: 'approved' }, baseConfig, baseTemplate);
+    expect(fn).toThrow(/code_review_completed/);
+    expect(fn).toThrow(/--phase.*--task|--task/);
   });
 });
 
