@@ -134,7 +134,7 @@ After resolving, if the worktree check was not already done, run `find-projects.
   "options": [
     { "label": "Open in new VS Code window", "recommended": true, "description": "Runs: code \"{worktreePath}\"" },
     { "label": "Open Copilot CLI", "description": "Launches orchestration via Copilot CLI in an external terminal" },
-    { "label": "Open Claude Code", "description": "Launches orchestration via Claude Code in an external terminal" },
+    { "label": "Open Claude Code", "description": "Launches orchestration via Claude Code in yolo mode in an external terminal" },
     { "label": "Open terminal at worktree", "description": "Opens an external terminal at the worktree path" },
     { "label": "Do nothing", "description": "Just create it — I'll navigate there myself" }
   ],
@@ -231,19 +231,19 @@ gnome-terminal -- bash -c "cd '{worktreePath}' && copilot --agent orchestrator -
 
 **Windows:**
 ```powershell
-$innerCmd = "claude --agent orchestrator -i 'Start project execution for project {masterPlanPath or projectName}'"
+$innerCmd = "claude --dangerously-skip-permissions '/rad-execute execute project {masterPlanPath}'"
 $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($innerCmd))
 Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList "-Command", "wt --startingDirectory '{worktreePath}' powershell -NoExit -EncodedCommand $encoded"
 ```
 
 **macOS:**
 ```
-osascript -e 'tell application "Terminal" to do script "cd \"{worktreePath}\" && claude --agent orchestrator \"Start project execution for project {masterPlanPath or projectName}\""'
+osascript -e 'tell application "Terminal" to do script "cd \"{worktreePath}\" && claude --dangerously-skip-permissions \"/rad-execute execute project {masterPlanPath}\""'
 ```
 
 **Linux:**
 ```
-gnome-terminal -- bash -c "cd '{worktreePath}' && claude --agent orchestrator 'Start project execution for project {masterPlanPath or projectName}'; exec bash"
+gnome-terminal -- bash -c "cd '{worktreePath}' && claude --dangerously-skip-permissions '/rad-execute execute project {masterPlanPath}'; exec bash"
 ```
 
 ### Open terminal at worktree
