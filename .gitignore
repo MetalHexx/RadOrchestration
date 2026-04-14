@@ -2,7 +2,4 @@ node_modules/
 
 .vscode/mcp.json
 
-# Claude Code config (contains API keys)
-.claude/
-CLAUDE.md
 .vscode/settings.json
