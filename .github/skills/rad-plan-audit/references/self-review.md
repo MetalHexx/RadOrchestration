@@ -38,8 +38,21 @@ Run this before finalizing your planning document. You are checking your own out
    | Phase Plan | §2.5, §2.6 — tasks trace to phase scope, terminology matches upstream docs |
    | Task Handoff | §2.4, §2.6 — inlined contracts match Architecture exactly, terminology is consistent |
 
-6. **Apply anti-duplication checks** (Research Findings only):
+6. **Apply anti-duplication checks** (Research Findings and Design):
+
+   **Research Findings**:
    - Does any finding body restate requirement text from the PRD? → Remove restatement
-   - Does every finding add file paths, code patterns, constraints, or unknowns not present in the PRD? → Remove findings that only restate PRD content
-   - Does any finding use "should," "recommend," or "consider"? → Remove prescriptive language
+   - Does every finding add file paths, code patterns, constraints, or unknowns
+     not present in the PRD? → Remove findings that only restate PRD content
+   - Does any finding use "should," "recommend," or "consider"? → Remove
+     prescriptive language
    - Does every finding have a traceability tag (`Relates to FR-N`)? → Add if missing
+
+   **Design**:
+   - Do any User Flows merely linearize functional requirements into steps without
+     adding error recovery, branching logic, or state transitions? → Rewrite to add
+     unique interaction signal or remove the flow
+   - Do any component descriptions restate PRD requirement text instead of describing
+     the visual and interaction contract? → Rewrite to focus on design intent
+   - Do any component props include TypeScript types, file paths, or technology
+     choices? → Replace with conceptual descriptions

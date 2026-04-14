@@ -64,7 +64,7 @@ Verify the Design and Architecture are describing the same system.
 | **Design flow feasibility** | User flows in Design are implementable given Architecture's module boundaries and contracts |
 | **Design token consistency** | Design tokens or component props referenced in Design are compatible with Architecture's file structure and technology choices |
 
-If the Design is a "not required" stub, skip this section — there's nothing to cross-check.
+If no Design document was produced (the project has no user interaction), skip this section — there's nothing to cross-check.
 
 ### 2.3 Master Plan Alignment
 
