@@ -11,7 +11,7 @@ A consolidated skill for creating planning documents. It loads shared guidelines
 
 - **PRD** — Product Requirements Document (supported)
 - **Research** — Research Findings document (supported)
-- **Design** — UX Design document *(future)*
+- **Design** — UX Design document (supported)
 - **Architecture** — Technical Architecture document *(future)*
 - **Master Plan** — Project Master Plan *(future)*
 - **Phase Plan** — Phase execution plan *(future)*
@@ -27,6 +27,6 @@ A consolidated skill for creating planning documents. It loads shared guidelines
 |----------------|-----------|
 | `product-manager` | [references/prd/workflow.md](references/prd/workflow.md) |
 | `research` | [references/research/workflow.md](references/research/workflow.md) |
-| `ux-designer` | `references/design/workflow.md` *(future)* |
+| `ux-designer` | [references/design/workflow.md](references/design/workflow.md) |
 | `architect` | `references/architecture/workflow.md` *(future)* |
 | `tactical-planner` | `references/master-plan/workflow.md` *(future)* |
