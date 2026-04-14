@@ -49,13 +49,6 @@ test('computeAriaLabel("Completion") returns "Completion section"', () => {
 
 // ─── label div attributes ───────────────────────────────────────────────────
 
-test('label div has aria-hidden attribute (value "true")', () => {
-  // The label div uses aria-hidden="true" — we verify the constant/behavior intent
-  // by confirming the harness value used in the JSX is the string "true"
-  const ariaHiddenValue = "true";
-  assert.strictEqual(ariaHiddenValue, "true");
-});
-
 // ─── CSS class composition ──────────────────────────────────────────────────
 
 test('SECTION_LABEL_CLASSES contains "text-xs"', () => {

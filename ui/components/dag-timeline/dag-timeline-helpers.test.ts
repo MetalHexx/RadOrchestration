@@ -92,9 +92,9 @@ test("single word with no dot and no underscore returns capitalized", () => {
 
 console.log("\nparsePhaseNameFromDocPath tests\n");
 
-test("valid doc path with multi-word title returns Phase N — Title Case", () => {
+test("valid doc path with multi-word title returns Phase N — all-caps segments preserved", () => {
   const result = parsePhaseNameFromDocPath("phases/MY-PROJECT-PHASE-02-CORE-RESEARCH-BRANCH.md", 1);
-  assert.strictEqual(result, "Phase 2 \u2014 Core Research Branch");
+  assert.strictEqual(result, "Phase 2 \u2014 CORE RESEARCH BRANCH");
 });
 
 test("null doc path returns fallback Phase N", () => {
@@ -109,7 +109,7 @@ test("non-matching doc path returns fallback Phase N", () => {
 
 test("single-word title returns Phase N — Word", () => {
   const result = parsePhaseNameFromDocPath("phases/FOO-PHASE-01-SETUP.md", 0);
-  assert.strictEqual(result, "Phase 1 \u2014 Setup");
+  assert.strictEqual(result, "Phase 1 \u2014 SETUP");
 });
 
 test("case-insensitive: lowercase -phase- segment parses correctly", () => {
@@ -121,7 +121,7 @@ console.log("\nparseTaskNameFromDocPath tests\n");
 
 test("valid doc path with single-word title returns Task N — Word", () => {
   const result = parseTaskNameFromDocPath("tasks/MY-PROJECT-TASK-P01-T03-WORKFLOW.md", 2);
-  assert.strictEqual(result, "Task 3 \u2014 Workflow");
+  assert.strictEqual(result, "Task 3 \u2014 WORKFLOW");
 });
 
 test("null doc path returns fallback Task N", () => {
@@ -134,9 +134,9 @@ test("non-matching doc path returns fallback Task N", () => {
   assert.strictEqual(result, "Task 5");
 });
 
-test("multi-word title returns Task N — Title Case", () => {
+test("multi-word title returns Task N — all-caps segments preserved", () => {
   const result = parseTaskNameFromDocPath("tasks/X-TASK-P02-T01-UI-COMPONENT-SETUP.md", 0);
-  assert.strictEqual(result, "Task 1 \u2014 Ui Component Setup");
+  assert.strictEqual(result, "Task 1 \u2014 UI COMPONENT SETUP");
 });
 
 test("case-insensitive: lowercase -task- segment parses correctly", () => {
@@ -243,7 +243,7 @@ test("phase loop with in_progress iteration and doc_path returns parsed phase na
       },
     ],
   });
-  assert.strictEqual(result, "Phase 1 \u2014 Core Setup");
+  assert.strictEqual(result, "Phase 1 \u2014 CORE SETUP");
 });
 
 test("phase loop with in_progress iteration and null doc_path returns fallback Phase N", () => {

@@ -3,6 +3,7 @@
  * Run with: npx tsx ui/components/dag-timeline/project-header.test.ts
  */
 import assert from "node:assert";
+import type { GateMode } from '../../types/state';
 
 let passed = 0;
 let failed = 0;
@@ -27,7 +28,7 @@ interface ProjectHeaderProps {
   projectName: string;
   schemaVersion: "v4" | "v5";
   graphStatus?: GraphStatus;
-  gateMode?: string | null;
+  gateMode?: GateMode | null;
   currentPhaseName?: string | null;
   progress?: { completed: number; total: number } | null;
 }

@@ -49,12 +49,12 @@ export function DAGIterationPanel({
   if (parentKind === 'for_each_phase') {
     const phaseNode = iteration.nodes['phase_planning'];
     const docPath = (phaseNode && 'doc_path' in phaseNode) ? phaseNode.doc_path : null;
-    isFallback = docPath == null;
+    isFallback = !docPath;
     iterationName = parsePhaseNameFromDocPath(docPath, iterationIndex);
   } else {
     const taskNode = iteration.nodes['task_handoff'];
     const docPath = (taskNode && 'doc_path' in taskNode) ? taskNode.doc_path : null;
-    isFallback = docPath == null;
+    isFallback = !docPath;
     iterationName = parseTaskNameFromDocPath(docPath, iterationIndex);
   }
 
@@ -90,6 +90,11 @@ export function DAGIterationPanel({
       case 'completed':
         cardClasses = 'border border-border/50 bg-muted/30 rounded-md p-2 mb-1.5';
         opacity = 0.7;
+        break;
+      case 'failed':
+      case 'halted':
+        cardClasses = 'border border-[var(--status-failed)] bg-card rounded-md p-2 mb-1.5';
+        opacity = 1;
         break;
       default:
         cardClasses = 'border border-border/40 bg-card rounded-md p-2 mb-1.5';

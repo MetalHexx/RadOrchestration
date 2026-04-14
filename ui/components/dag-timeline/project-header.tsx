@@ -9,7 +9,7 @@ interface ProjectHeaderProps {
   projectName: string;
   schemaVersion: 'v4' | 'v5';
   graphStatus?: GraphStatus;
-  gateMode?: string | null;
+  gateMode?: GateMode | null;
   currentPhaseName?: string | null;
   progress?: { completed: number; total: number } | null;
 }
@@ -21,7 +21,7 @@ export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMod
         <span className="text-lg font-semibold">{projectName}</span>
         <Badge variant="secondary" className="text-xs">{schemaVersion}</Badge>
         {graphStatus && <NodeStatusBadge status={graphStatus} />}
-        {gateMode !== undefined && <GateModeBadge mode={gateMode as GateMode | null} />}
+        {gateMode !== undefined && <GateModeBadge mode={gateMode} />}
       </div>
       {graphStatus === 'in_progress' && currentPhaseName && (
         <div className="flex items-center gap-3 mt-1">

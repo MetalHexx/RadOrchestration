@@ -122,7 +122,7 @@ export default function ProjectsPage() {
                 <p className="text-sm text-destructive" role="alert">{error}</p>
               </div>
             </div>
-          ) : selected && projectState && isV5State(projectState) ? (
+          ) : selected && projectState && isV5 ? (
             <div className="overflow-auto">
               <ProjectHeader
                 projectName={selected.name}
@@ -134,8 +134,8 @@ export default function ProjectsPage() {
               />
               <div className="px-6 py-4">
                 <DAGTimeline
-                  nodes={projectState.graph.nodes}
-                  currentNodePath={projectState.graph.current_node_path}
+                  nodes={(projectState as ProjectStateV5).graph.nodes}
+                  currentNodePath={(projectState as ProjectStateV5).graph.current_node_path}
                   onDocClick={openDocument}
                 />
               </div>

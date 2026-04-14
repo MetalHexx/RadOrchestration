@@ -87,7 +87,7 @@ export function parsePhaseNameFromDocPath(
 
   const title = match[1]
     .split('-')
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .map(w => w === w.toUpperCase() && w.length > 1 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ');
 
   return `Phase ${phaseNum} — ${title}`;
@@ -106,7 +106,7 @@ export function parseTaskNameFromDocPath(
 
   const title = match[1]
     .split('-')
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .map(w => w === w.toUpperCase() && w.length > 1 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ');
 
   return `Task ${taskNum} — ${title}`;
@@ -149,10 +149,7 @@ export function deriveCurrentPhase(
   if (!activeIteration) return null;
 
   const phasePlanningNode = activeIteration.nodes.phase_planning;
-  const docPath =
-    phasePlanningNode && 'doc_path' in phasePlanningNode
-      ? (phasePlanningNode as { doc_path: string | null }).doc_path
-      : null;
+  const docPath = phasePlanningNode?.kind === 'step' ? phasePlanningNode.doc_path : null;
 
   return parsePhaseNameFromDocPath(docPath, activeIteration.index);
 }
