@@ -19,7 +19,7 @@ Generate a self-contained Task Handoff document that is the sole input a Coding 
 |-------|--------|-------------|
 | Phase Plan | `{NAME}-PHASE-{NN}-{TITLE}.md` | Task outline, dependencies, execution order |
 | Architecture | `{NAME}-ARCHITECTURE.md` | Contracts, interfaces, file structure |
-| Design | `{NAME}-DESIGN.md` | Design tokens, component specs (if UI task) |
+| Design | `{NAME}-DESIGN.md` | Per-component layouts and interaction states (heading-per-item), optional design tokens and accessibility (if included) |
 | Previous Code Review | `{NAME}-CODE-REVIEW-P{NN}-T{NN}.md` | Review from prior task (if dependency exists) |
 | State | `state.json` | Current project state, review actions, mutation handler outcomes |
 

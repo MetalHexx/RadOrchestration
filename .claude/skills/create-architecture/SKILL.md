@@ -18,7 +18,7 @@ Generate a technical Architecture document from the PRD and Design. The Architec
 | Input | Source | Description |
 |-------|--------|-------------|
 | PRD | `{NAME}-PRD.md` | Functional/non-functional requirements |
-| Design | `{NAME}-DESIGN.md` | Components, layouts, design tokens, accessibility |
+| Design | `{NAME}-DESIGN.md` | Per-component layouts and interaction states (heading-per-item), optional design tokens and accessibility (if included) |
 | Research Findings | `RESEARCH-FINDINGS.md` | Per-finding codebase evidence organized by area, technology stack, constraints |
 
 ## Workflow
