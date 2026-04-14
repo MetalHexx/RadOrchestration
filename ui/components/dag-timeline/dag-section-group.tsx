@@ -18,7 +18,7 @@ export function shouldRender(childCount: number): boolean {
 }
 
 export function DAGSectionGroup({ label, children }: DAGSectionGroupProps) {
-  if (React.Children.count(children) === 0) return null;
+  if (!shouldRender(React.Children.count(children))) return null;
 
   return (
     <div role="group" aria-label={computeAriaLabel(label)}>
