@@ -1,6 +1,7 @@
 ---
 name: create-phase-plan
 description: 'Create a Phase Plan that breaks a project phase into concrete tasks with execution order, dependencies, and acceptance criteria. Use when planning phase execution, defining task breakdown, establishing task dependencies, or creating a phase-level execution plan. Produces a structured phase plan with task outlines, dependency graphs, execution order, and exit criteria.'
+user-invocable: false
 ---
 
 # Create Phase Plan

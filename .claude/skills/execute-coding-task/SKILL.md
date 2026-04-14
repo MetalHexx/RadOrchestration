@@ -1,6 +1,7 @@
 ---
 name: execute-coding-task
 description: 'Execute any coding or testing task end-to-end from a Task Handoff document. Covers reading the handoff, implementing code, creating / running tests, and builds, and verifying acceptance criteria.'
+user-invocable: false
 ---
 
 # Execute Coding Task

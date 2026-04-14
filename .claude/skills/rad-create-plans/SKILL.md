@@ -1,6 +1,7 @@
 ---
 name: rad-create-plans
 description: "Consolidated document-creation skill for PRDs, Design docs, Architecture docs, Master Plans, Phase Plans, and Task Handoffs. Loads shared conventions and routes to the appropriate per-document-type workflow."
+user-invocable: false
 ---
 
 # rad-create-plans

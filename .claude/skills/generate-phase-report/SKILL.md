@@ -1,6 +1,7 @@
 ---
 name: generate-phase-report
 description: 'Generate a Phase Report summarizing outcomes after all tasks in a phase complete. Use when creating phase summaries, aggregating task results, assessing exit criteria, documenting carry-forward items, or recommending master plan adjustments. Produces a structured report with task results, exit criteria assessment, files changed, issues, and carry-forward items.'
+user-invocable: false
 ---
 
 # Generate Phase Report

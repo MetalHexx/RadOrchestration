@@ -1,6 +1,7 @@
 ---
 name: create-task-handoff
 description: 'Create a self-contained Task Handoff document for a Coding Agent. Use when creating task handoffs, preparing coding tasks, defining implementation steps, specifying file targets, or generating task assignments with contracts, interfaces, test requirements, and acceptance criteria. The handoff is the SOLE input the Coder reads — it must be completely self-contained with no external document references.'
+user-invocable: false
 ---
 
 # Create Task Handoff

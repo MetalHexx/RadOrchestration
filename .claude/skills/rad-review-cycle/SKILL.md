@@ -2,6 +2,7 @@
 name: rad-review-cycle
 description: "Run through a review / repair loop to ensure all lingering issues are resolved and the code is in good shape."
 disable-model-invocation: true
+user-invocable: true
 ---
 
 ## Lets execute this sequence:

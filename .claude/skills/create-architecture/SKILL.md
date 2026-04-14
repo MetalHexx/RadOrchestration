@@ -1,6 +1,7 @@
 ---
 name: create-architecture
 description: 'Create a technical Architecture document from a PRD and Design document. Use when defining system architecture, module structure, API contracts, interfaces, dependencies, file structure, cross-cutting concerns, or phasing recommendations. Produces a structured architecture doc with system layers, module map, contracts, API endpoints, and dependency graphs.'
+user-invocable: false
 ---
 
 # Create Architecture

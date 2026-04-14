@@ -1,6 +1,7 @@
 ---
 name: create-master-plan
 description: 'Create a Master Plan document that serves as the single source of truth for a project. Use when synthesizing a PRD, Design, and Architecture into a master plan, defining project phases, creating phase outlines with exit criteria, or preparing for execution. Produces a structured master plan with executive summary, key requirements, technical decisions, phase outlines, and risk register.'
+user-invocable: false
 ---
 
 # Create Master Plan

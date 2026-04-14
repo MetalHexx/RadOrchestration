@@ -1,6 +1,7 @@
 ---
 name: source-control
 description: 'Source control operations for the orchestration pipeline. Use when the Orchestrator spawns the Source Control Agent to commit code or create a PR.  Also useful for adhoc source control operations by any agent or human such as correcting a PR based on review feedback.'
+user-invocable: true
 ---
 
 # Source Control

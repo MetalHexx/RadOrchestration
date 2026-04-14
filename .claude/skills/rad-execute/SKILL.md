@@ -2,6 +2,7 @@
 name: rad-execute
 description: "Continue a project through the orchestration pipeline. Ensures the Orchestrator runs as the primary agent — not as a subagent — so it retains full control of agent sequencing. Use for local, background, or cloud-based execution."
 disable-model-invocation: true
+user-invocable: true
 ---
 
 ## Initialize
