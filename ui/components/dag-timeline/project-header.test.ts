@@ -3,7 +3,7 @@
  * Run with: npx tsx ui/components/dag-timeline/project-header.test.ts
  */
 import assert from "node:assert";
-import type { GateMode } from '../../types/state';
+import type { GateMode, GraphStatus } from '../../types/state';
 
 let passed = 0;
 let failed = 0;
@@ -21,8 +21,6 @@ function test(name: string, fn: () => void) {
 }
 
 // ─── Simulation (mirrors project-header.tsx logic) ───────────────────────────
-
-type GraphStatus = 'not_started' | 'in_progress' | 'completed' | 'halted';
 
 interface ProjectHeaderProps {
   projectName: string;
@@ -216,3 +214,4 @@ test('v4 rendering: only projectName and schemaVersion — no badges, no row 2',
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
+
