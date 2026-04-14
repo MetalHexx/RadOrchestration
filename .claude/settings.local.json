@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(gh api:*)",
-      "Bash(gh pr:*)"
+      "Bash(gh pr:*)",
+      "Bash(node .claude/skills/orchestration/scripts/pipeline.js --event start --project-dir \"C:/dev/orchestration-projects/BETTER-PLAN-DOCS-3\" --template full)",
+      "Bash(node .github/skills/orchestration/scripts/pipeline.js --event start --project-dir \"C:/dev/orchestration-projects/BETTER-PLAN-DOCS-3\" --template full)"
     ]
   }
 }
