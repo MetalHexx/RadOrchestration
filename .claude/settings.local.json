@@ -4,7 +4,19 @@
       "Bash(gh api:*)",
       "Bash(gh pr:*)",
       "Bash(node .claude/skills/orchestration/scripts/pipeline.js --event start --project-dir \"C:/dev/orchestration-projects/BETTER-PLAN-DOCS-3\" --template full)",
-      "Bash(node .github/skills/orchestration/scripts/pipeline.js --event start --project-dir \"C:/dev/orchestration-projects/BETTER-PLAN-DOCS-3\" --template full)"
+      "Bash(node .github/skills/orchestration/scripts/pipeline.js --event start --project-dir \"C:/dev/orchestration-projects/BETTER-PLAN-DOCS-3\" --template full)",
+      "Bash(node \"c:/dev/orchestration/v3/.claude/skills/orchestration/scripts/pipeline.js\" --event start --project-dir \"C:/dev/orchestration-projects/BETTER-PLAN-DOCS-3\" --template full)",
+      "Bash(node \".github/skills/orchestration/scripts/pipeline.js\" --event prd_started --project-dir \"C:/dev/orchestration-projects/BETTER-PLAN-DOCS-3\")",
+      "Bash(node \".github/skills/orchestration/scripts/pipeline.js\" --event research_completed --project-dir \"C:/dev/orchestration-projects/BETTER-PLAN-DOCS-3\" --doc-path \"C:/dev/orchestration-projects/BETTER-PLAN-DOCS-3/BETTER-PLAN-DOCS-3-RESEARCH-FINDINGS.md\")",
+      "Bash(node \".github/skills/orchestration/scripts/pipeline.js\" --event design_started --project-dir \"C:/dev/orchestration-projects/BETTER-PLAN-DOCS-3\")",
+      "Bash(rm \"C:/dev/orchestration/v3/.github/skills/rad-create-plans/references/design/.gitkeep\")",
+      "Bash(rm \"C:/dev/orchestration/v3/.claude/skills/rad-create-plans/references/design/.gitkeep\")",
+      "Bash(rm \"/c/dev/orchestration/v3/.claude/skills/create-design/templates/DESIGN.md\")",
+      "Bash(rm \"/c/dev/orchestration/v3/.claude/skills/create-design/templates/DESIGN-FLOWS-ONLY.md\")",
+      "Bash(rm \"/c/dev/orchestration/v3/.claude/skills/create-design/templates/DESIGN-NOT-REQUIRED.md\")",
+      "Bash(rm \"/c/dev/orchestration/v3/.claude/skills/create-design/SKILL.md\")",
+      "Bash(rmdir \"/c/dev/orchestration/v3/.claude/skills/create-design/templates\")",
+      "Bash(rmdir \"/c/dev/orchestration/v3/.claude/skills/create-design\")"
     ]
   }
 }
