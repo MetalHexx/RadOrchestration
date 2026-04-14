@@ -1,6 +1,7 @@
 ---
 description: "Review code, phases, and projects for quality, correctness, and conformance. Supports three modes: task review (Action #9), phase review (Action #11), and final review (Action #12). Each mode uses a dual-pass approach — conformance checking against planning documents followed by an independent quality assessment."
 model: sonnet
+user-invocable: false
 allowedTools:
   - Read
   - Grep

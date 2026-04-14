@@ -1,6 +1,7 @@
 ---
 description: "Create UX Design documents from Product Requirements Documents and Research Findings. Use when designing user interfaces, user flows, component layouts, interaction states, accessibility requirements, responsive behavior, or specifying design tokens."
 model: opus
+user-invocable: false
 allowedTools:
   - Read
   - Grep

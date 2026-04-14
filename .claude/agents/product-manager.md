@@ -1,6 +1,7 @@
 ---
 description: "Create Product Requirements Documents (PRDs) from brainstorming documents. Use when defining product requirements, specifying functional and non-functional requirements, or converting project goals into a structured PRD."
 model: opus
+user-invocable: false
 allowedTools:
   - Read
   - Grep

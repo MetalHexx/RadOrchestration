@@ -1,6 +1,7 @@
 ---
 description: "Research and explore codebases, documentation, and external sources to gather technical context for a project. Use when starting a new project, analyzing existing code, discovering patterns, considering a new library, or gathering context to inform the Design and Architecture."
 model: opus
+user-invocable: false
 allowedTools:
   - Read
   - Grep

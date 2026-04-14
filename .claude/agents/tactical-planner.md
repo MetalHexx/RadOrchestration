@@ -1,6 +1,7 @@
 ---
 description: "Plan phase execution, create task handoffs, and generate phase reports. Use when breaking phases into tasks, creating task handoffs for the Coder, or generating phase reports after task completion."
 model: opus
+user-invocable: false
 allowedTools:
   - Read
   - Grep
