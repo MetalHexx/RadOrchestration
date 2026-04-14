@@ -62,7 +62,7 @@ The Research agent analyzes the existing project structure, technology stack, pa
 
 **Output:** `RESEARCH-FINDINGS.md` — codebase analysis, technology inventory, patterns discovered, constraints, and recommendations.
 
-**Skills:** `orchestration`, `research-codebase`
+**Skills:** `orchestration`, `rad-create-plans`
 
 ---
 
@@ -72,25 +72,25 @@ The Research agent analyzes the existing project structure, technology stack, pa
 
 Translates technical research and brainstorming output into structured requirements with numbered items (FR-1, NFR-1) for cross-referencing throughout the pipeline.
 
-**Input:** `RESEARCH-FINDINGS.md`, `BRAINSTORMING.md`
+**Input:** `BRAINSTORMING.md` (if exists)
 
 **Output:** `PRD.md` — functional requirements, non-functional requirements, user stories, etc.
 
-**Skills:** `orchestration`, `create-prd`
+**Skills:** `orchestration`, `rad-create-plans`
 
 ---
 
 ### @ux-designer
 
-**Purpose:** Create a UX Design document from the PRD.
+**Purpose:** Create a UX Design document from the PRD and Research Findings.
 
-Defines user flows, component layouts, interaction states, responsive behavior, accessibility requirements, and design tokens.
+Defines user flows, component layouts, interaction states, and accessibility requirements. Defines the experience, not the implementation — component props stay conceptual.
 
-**Input:** `PRD.md`
+**Input:** `PRD.md`, `RESEARCH-FINDINGS.md` (if exists)
 
-**Output:** `DESIGN.md` — user flows, layout specifications, component definitions, states, breakpoints, and accessibility requirements.
+**Output:** `DESIGN.md` — per-component layouts, interaction states, user flows with unique signal (error recovery, branching, state transitions).
 
-**Skills:** `orchestration`, `create-design`
+**Skills:** `orchestration`, `rad-create-plans`
 
 ---
 
