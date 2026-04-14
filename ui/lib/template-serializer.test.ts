@@ -411,16 +411,12 @@ describe('depends_on ↔ edges round-trip', () => {
     assert.ok(edge, 'edge design → architecture not found');
   });
 
-  it('task_gate depends on code_review and commit_gate → two unlabeled edges exist', () => {
+  it('task_gate depends on commit_gate → one unlabeled edge exists', () => {
     const graph = parseTemplateToGraph(FULL_YAML);
-    const edge1 = graph.edges.find(
-      e => e.source === 'code_review' && e.target === 'task_gate' && e.label === undefined
-    );
-    const edge2 = graph.edges.find(
+    const edge = graph.edges.find(
       e => e.source === 'commit_gate' && e.target === 'task_gate' && e.label === undefined
     );
-    assert.ok(edge1, 'edge code_review → task_gate not found');
-    assert.ok(edge2, 'edge commit_gate → task_gate not found');
+    assert.ok(edge, 'edge commit_gate → task_gate not found');
   });
 
   it('after round-trip, depends_on arrays in re-parsed YAML match originals', () => {
@@ -434,10 +430,10 @@ describe('depends_on ↔ edges round-trip', () => {
     assert.ok(architecture, 'architecture not found in re-parsed YAML');
     assert.deepStrictEqual(architecture.depends_on, ['design']);
 
-    // task_gate.depends_on should be ['code_review', 'commit_gate']
+    // task_gate.depends_on should be ['commit_gate']
     const taskGate = findYamlNode(reparsed.nodes, 'task_gate');
     assert.ok(taskGate, 'task_gate not found in re-parsed YAML');
-    assert.deepStrictEqual(taskGate.depends_on, ['code_review', 'commit_gate']);
+    assert.deepStrictEqual(taskGate.depends_on, ['commit_gate']);
   });
 });
 

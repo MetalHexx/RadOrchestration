@@ -5,7 +5,6 @@ import {
   ReactFlow,
   Background,
   BackgroundVariant,
-  MiniMap,
   Controls,
   type Node,
   type NodeTypes,
@@ -127,16 +126,9 @@ export function ReadOnlyCanvas({ templateId }: ReadOnlyCanvasProps) {
         zoomOnScroll={true}
         zoomOnPinch={true}
         defaultEdgeOptions={defaultEdgeOptions}
+        proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
-        <MiniMap
-          position="bottom-left"
-          style={{ backgroundColor: 'var(--card)' }}
-          maskColor="rgba(128, 128, 128, 0.4)"
-          nodeColor="var(--muted)"
-          nodeStrokeColor="var(--border)"
-          aria-hidden="true"
-        />
         <Controls position="bottom-right" />
       </ReactFlow>
     </div>

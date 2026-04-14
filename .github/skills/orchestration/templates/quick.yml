@@ -146,7 +146,7 @@ nodes:
             action_if_needed: gate_task
             approved_event: task_gate_approved
             auto_approve_modes: [phase, autonomous]
-            depends_on: [code_review, commit_gate]
+            depends_on: [commit_gate]
 
       - id: phase_gate
         kind: gate
