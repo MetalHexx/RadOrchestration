@@ -58,10 +58,10 @@ async function run() {
     );
   });
 
-  await test('File calls redirect("/projects")', () => {
+  await test('File calls redirect("/projects-v4")', () => {
     assert.ok(
-      sourceText.includes('redirect("/projects")') || sourceText.includes("redirect('/projects')"),
-      'page.tsx must call redirect("/projects")'
+      sourceText.includes('redirect("/projects-v4")') || sourceText.includes("redirect('/projects-v4')"),
+      'page.tsx must call redirect("/projects-v4")'
     );
   });
 

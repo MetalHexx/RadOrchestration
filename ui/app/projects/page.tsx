@@ -7,7 +7,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
 import { MainDashboard } from "@/components/layout";
 import { DocumentDrawer } from "@/components/documents";
-import { DAGTimeline, ProjectHeader } from "@/components/dag-timeline";
+import { DAGTimeline, ProjectHeader, deriveCurrentPhase, derivePhaseProgress } from "@/components/dag-timeline";
 import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
 import { isV5State } from "@/types/state";
 import type { ProjectState, ProjectStateV5 } from "@/types/state";
@@ -51,6 +51,20 @@ export default function ProjectsPage() {
     () => (projectState && !isV5State(projectState) ? projectState : null),
     [projectState],
   );
+
+  const v5Derivations = useMemo(() => {
+    if (!projectState || !isV5State(projectState)) {
+      return { graphStatus: undefined, gateMode: undefined, currentPhaseName: null, progress: null };
+    }
+    const phaseLoopNode = projectState.graph.nodes.phase_loop;
+    const typedPhaseLoop = phaseLoopNode?.kind === 'for_each_phase' ? phaseLoopNode : undefined;
+    return {
+      graphStatus: projectState.graph.status,
+      gateMode: projectState.pipeline.gate_mode,
+      currentPhaseName: deriveCurrentPhase(typedPhaseLoop),
+      progress: derivePhaseProgress(typedPhaseLoop),
+    };
+  }, [projectState]);
 
   const orderedDocs = useMemo(() => {
     if (isV5 && projectState && selectedProject) {
@@ -108,16 +122,20 @@ export default function ProjectsPage() {
                 <p className="text-sm text-destructive" role="alert">{error}</p>
               </div>
             </div>
-          ) : selected && projectState && isV5State(projectState) ? (
+          ) : selected && projectState && isV5 ? (
             <div className="overflow-auto">
               <ProjectHeader
                 projectName={selected.name}
                 schemaVersion="v5"
+                graphStatus={v5Derivations.graphStatus}
+                gateMode={v5Derivations.gateMode}
+                currentPhaseName={v5Derivations.currentPhaseName}
+                progress={v5Derivations.progress}
               />
               <div className="px-6 py-4">
                 <DAGTimeline
-                  nodes={projectState.graph.nodes}
-                  currentNodePath={projectState.graph.current_node_path}
+                  nodes={(projectState as ProjectStateV5).graph.nodes}
+                  currentNodePath={(projectState as ProjectStateV5).graph.current_node_path}
                   onDocClick={openDocument}
                 />
               </div>
