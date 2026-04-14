@@ -7,7 +7,7 @@ This document describes the DAG-PROCESS-EDITOR project series: a visual pipeline
 A visual, ReactFlow-based editor for pipeline templates (`full.yml`, `quick.yml`, and any custom variants). Templates are YAML DAG definitions that describe the orchestration pipeline — which steps run, in what order, with what gates and loops. Today these are hand-edited YAML files. The editor makes them visual, discoverable, and safe to modify.
 
 The editor lives at `/process-editor` and has two modes:
-- **Global templates** — edit, create, and clone templates from `.github/skills/orchestration/templates/`
+- **Global templates** — edit, create, and clone templates from `.claude/skills/orchestration/templates/`
 - **Project templates** — view and edit the `template.yml` for any individual project (locked once planning begins)
 
 ## Editor Layout
@@ -39,7 +39,7 @@ Three zones:
 | YAML comments | Dropped on save | Accepted tradeoff — the editor owns the file after first write |
 | Node positions | Not persisted to YAML | Layout is always recomputed on load from dagre; x/y are session-only |
 | SSR | `dynamic` import with `ssr: false` | ReactFlow is client-only; required for Next.js |
-| Global template location | `.github/skills/orchestration/templates/*.yml` | Existing location; the UI writes directly via API |
+| Global template location | `.claude/skills/orchestration/templates/*.yml` | Existing location; the UI writes directly via API |
 | Project template lock | Derived from `state.json` `pipeline.current_tier` | Lock on save enforced server-side too |
 | Validation | Client-side, continuous, warn-but-allow | Inline errors on nodes + banner; save is never blocked |
 

@@ -285,14 +285,14 @@ function validateAgent(filePath, filename, context) {
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 /**
- * Validate all .agent.md files in .github/agents/.
- * @param {string} basePath - Absolute path to workspace root (parent of .github/)
+ * Validate all .agent.md files in .claude/agents/.
+ * @param {string} basePath - Absolute path to workspace root (parent of .claude/)
  * @param {object} context  - Mutable shared discovery context
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: object}>>}
  */
 async function checkAgents(basePath, context, _config, orchRoot) {
   try {
-    const root = orchRoot || '.github';
+    const root = orchRoot || '.claude';
     const results = [];
     const agentsDir = path.join(basePath, root, 'agents');
 

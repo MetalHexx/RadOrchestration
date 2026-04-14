@@ -18,7 +18,7 @@ import type {
 
 const PROJECT_DIR = '/tmp/test-project/EXEC-INTEGRATION';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ORCH_ROOT = path.resolve(__dirname, '../../../..'); // points to .github
+const ORCH_ROOT = path.resolve(__dirname, '../../../..');
 
 function makeConfig(overrides: {
   execution_mode?: string;

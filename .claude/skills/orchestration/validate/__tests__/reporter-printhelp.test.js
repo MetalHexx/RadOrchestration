@@ -85,12 +85,12 @@ async function test(description, fn) {
     );
   });
 
-  // Test 4: no-argument call uses .github (backward compatibility)
-  await test('printHelp() — no argument falls back to ".github" (backward compatibility)', async () => {
+  // Test 4: no-argument call uses .claude (backward compatibility)
+  await test('printHelp() — no argument falls back to ".claude" (backward compatibility)', async () => {
     const out = captureStdout(() => printHelp());
     assert.ok(
-      out.includes('node .github/skills/orchestration/scripts/validate/validate-orchestration.js'),
-      `Usage line should contain ".github/skills/..." but got:\n${out}`
+      out.includes('node .claude/skills/orchestration/scripts/validate/validate-orchestration.js'),
+      `Usage line should contain ".claude/skills/..." but got:\n${out}`
     );
   });
 

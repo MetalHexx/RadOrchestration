@@ -2,14 +2,14 @@
 
 The orchestration system uses two configuration files:
 
-- **`orchestration.yml`** — The global configuration file that controls all system behavior. Lives in your orchestration root folder (`.github/` by default).
+- **`orchestration.yml`** — The global configuration file that controls all system behavior. Lives in your orchestration root folder (`.claude/` by default).
 - **`state.json`** — A per-project file that tracks project progress and locks in configuration for the lifetime of that project.
 
 Understanding how these two files interact is key to understanding how the system behaves.
 
 ## orchestration.yml
 
-This is the single source of truth for system-wide settings. It lives at `{orch_root}/orchestration.yml` (by default `.github/orchestration.yml`). You edit this file to control how the system behaves for all future projects.
+This is the single source of truth for system-wide settings. It lives at `{orch_root}/orchestration.yml` (by default `.claude/orchestration.yml`). You edit this file to control how the system behaves for all future projects.
 
 Run `/configure-system` in Copilot to create or update it interactively, or edit it directly. The dashboard UI (gear icon) also provides a visual editor.
 
@@ -20,11 +20,11 @@ version: "1.0"
 
 # ─── System ──────────────────────────────────────────────
 system:
-  orch_root: ".github"          # Where orchestration files live
+  orch_root: ".claude"          # Where orchestration files live
 
 # ─── Project Storage ─────────────────────────────────────
 projects:
-  base_path: ".github/projects" # Where project folders are created
+  base_path: ".claude/projects" # Where project folders are created
   naming: "SCREAMING_CASE"      # SCREAMING_CASE | lowercase | numbered
 
 # ─── Pipeline Limits ─────────────────────────────────────
@@ -49,7 +49,7 @@ source_control:
 
 ### What Each Section Controls
 
-**`system`** — Declares where orchestration system files live (agents, skills, prompts, scripts). Accepts a single folder name relative to the workspace root (e.g., `".github"`, `".agents"`) or an absolute path. Defaults to `".github"` if omitted.
+**`system`** — Declares where orchestration system files live (agents, skills, prompts, scripts). Accepts a single folder name relative to the workspace root (e.g., `".github"`, `".agents"`) or an absolute path. Defaults to `".claude"` if omitted.
 
 **`projects`** — Controls where project folders are created and how they're named. `base_path` accepts relative paths (resolved from workspace root) or absolute paths (useful for git worktree setups where multiple worktrees share a single project folder). Each project gets a subfolder: `{base_path}/{PROJECT-NAME}/`.
 

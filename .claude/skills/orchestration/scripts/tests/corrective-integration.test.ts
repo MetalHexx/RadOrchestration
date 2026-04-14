@@ -19,7 +19,7 @@ import type {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = '/tmp/test-project/CORRECTIVE-INTEGRATION';
-const ORCH_ROOT = path.resolve(__dirname, '../../../..'); // points to .github
+const ORCH_ROOT = path.resolve(__dirname, '../../../..');
 
 function makeConfig(overrides: {
   execution_mode?: string;

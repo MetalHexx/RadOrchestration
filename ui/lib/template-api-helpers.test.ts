@@ -67,10 +67,10 @@ describe('resolveTemplateDir', () => {
     assert.equal(result, path.join('/workspace', '.github', 'skills', 'orchestration', 'templates'));
   });
 
-  it('defaults to .github when system.orch_root is undefined', () => {
+  it('defaults to .claude when system.orch_root is undefined', () => {
     const config = { ...MINIMAL_CONFIG, system: { orch_root: undefined as unknown as string } };
     const result = resolveTemplateDir('/workspace', config);
-    assert.equal(result, path.join('/workspace', '.github', 'skills', 'orchestration', 'templates'));
+    assert.equal(result, path.join('/workspace', '.claude', 'skills', 'orchestration', 'templates'));
   });
 
   it('uses custom orch_root when provided', () => {

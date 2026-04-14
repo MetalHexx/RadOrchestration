@@ -71,20 +71,20 @@ function parseArgs(argv) {
  * Resolve the orchestration root folder name from orchestration.yml.
  * Uses __dirname-relative discovery (same pattern as pipeline scripts).
  * @param {string} basePath - Workspace root (reserved — config resolved via __dirname)
- * @returns {string} Folder name, e.g. '.github'
+ * @returns {string} Folder name, e.g. '.claude'
  */
 function bootstrapOrchRoot(basePath) {
   try {
     const configPath = path.resolve(__dirname, '../../config/orchestration.yml');
     const content = readFile(configPath);
-    if (content === null) return '.github';
+    if (content === null) return '.claude';
     const parsed = parseYaml(content);
     if (parsed && parsed.system && typeof parsed.system.orch_root === 'string' && parsed.system.orch_root.trim() !== '') {
       return parsed.system.orch_root;
     }
-    return '.github';
+    return '.claude';
   } catch {
-    return '.github';
+    return '.claude';
   }
 }
 

@@ -30,7 +30,7 @@ Covers all documents produced during pipeline execution. Planning documents (PRD
 | task | integer | Task number, 1-based (e.g., `2`) | Task Handoff, Code Review |
 | title | string | Human-readable title (e.g., `"Setup Auth"`) | Task Handoff, Phase Plan, Phase Report |
 | status | string | Varies by document — see below | Task Handoff, Phase Plan, Phase Report |
-| skills | array | Skill folder names from `.github/skills/` | Task Handoff |
+| skills | array | Skill folder names from `.claude/skills/` | Task Handoff |
 | estimated_files | integer | Estimated file count (e.g., `3`) | Task Handoff |
 | tasks | array | List of `{id, title}` objects | Phase Plan |
 | author | string | Agent name (e.g., `"tactical-planner-agent"`) | Phase Plan, Phase Report, Phase Review, Code Review |

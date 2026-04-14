@@ -47,7 +47,7 @@ if (!existsSync(nodeModulesDir)) {
           action: null,
           context: { error: `npm ${command} failed` },
           mutations_applied: [],
-          orchRoot: '.github',
+          orchRoot: '.claude',
           error: {
             message: `npm ${command} failed: ${err.stderr?.toString() ?? err.message}`,
             event: 'unknown',

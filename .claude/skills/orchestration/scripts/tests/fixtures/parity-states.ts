@@ -13,7 +13,7 @@ import type {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const PROJECT_DIR = '/tmp/test-project/PARITY-TEST';
-export const ORCH_ROOT = path.resolve(__dirname, '../../../../..'); // points to .github
+export const ORCH_ROOT = path.resolve(__dirname, '../../../../..');
 
 export const DEFAULT_CONFIG: OrchestrationConfig = {
   system: { orch_root: ORCH_ROOT },

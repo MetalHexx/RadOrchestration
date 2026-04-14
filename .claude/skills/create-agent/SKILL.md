@@ -32,7 +32,7 @@ A skill for creating new custom agents (`.agent.md` files) for the orchestration
 ## Workflow
 
 1. **Determine the agent name**: Use a clear, descriptive display name (e.g., "Security Reviewer", "API Designer")
-2. **Determine the filename**: Lowercase, hyphenated: `{agent-name}.agent.md` (placed in `.github/agents/`)
+2. **Determine the filename**: Lowercase, hyphenated: `{agent-name}.md` (placed in `.claude/agents/`)
 3. **Select tools**: Apply principle of least privilege — only grant what the agent needs. Use the **Frontmatter Reference** below
 4. **Write the description**: Keyword-rich — includes WHAT it does AND WHEN to use it (Copilot uses this for agent discovery)
 5. **Write the body**: Follow the **Agent Body Template** below
@@ -76,7 +76,7 @@ Use the bundled agent template: [templates/AGENT.md](./templates/AGENT.md)
 Before finalizing an agent, verify:
 
 - [ ] File is named `{agent-name}.agent.md` with lowercase hyphenated name
-- [ ] File is placed in `.github/agents/`
+- [ ] File is placed in `.claude/agents/`
 - [ ] `name` field is a clear display name
 - [ ] `description` explains WHAT the agent does AND WHEN to use it (keyword-rich)
 - [ ] All tool names use namespaced format (e.g., `read/readFile`) or valid toolset names (e.g., `read`)

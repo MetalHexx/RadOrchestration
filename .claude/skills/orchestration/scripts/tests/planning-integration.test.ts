@@ -17,7 +17,7 @@ import type {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/full.yml');
 const PROJECT_DIR = '/tmp/test-project/INTEGRATION-TEST';
-const ORCH_ROOT = path.resolve(__dirname, '../../../..'); // points to .github
+const ORCH_ROOT = path.resolve(__dirname, '../../../..');
 
 const DEFAULT_CONFIG: OrchestrationConfig = {
   system: { orch_root: ORCH_ROOT },

@@ -82,7 +82,7 @@ async function run() {
     await test('returns correct path when ORCH_ROOT is not set', async () => {
       delete process.env.ORCH_ROOT;
       const result = getConfigPath('/workspace');
-      const expected = path.join('/workspace', '.github', 'skills', 'orchestration', 'config', 'orchestration.yml');
+      const expected = path.join('/workspace', '.claude', 'skills', 'orchestration', 'config', 'orchestration.yml');
       assert.strictEqual(result, expected);
     });
 
@@ -100,7 +100,7 @@ async function run() {
 
     await test('readConfig() reads and parses config', async () => {
       delete process.env.ORCH_ROOT;
-      const configDir = path.join(tmpDir, '.github', 'skills', 'orchestration', 'config');
+      const configDir = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config');
       await mkdir(configDir, { recursive: true });
       await fsWriteFile(path.join(configDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
 

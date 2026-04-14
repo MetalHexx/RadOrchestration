@@ -241,7 +241,7 @@ describe('runWizard({ skipConfirmation: true })', () => {
 
   it('returns default values when skipConfirmation is true', () => {
     assert.equal(result.tool, 'copilot');
-    assert.equal(result.orchRoot, '.github');
+    assert.equal(result.orchRoot, '.claude');
     assert.equal(result.projectsBasePath, 'orchestration-projects');
     assert.equal(result.projectsNaming, 'SCREAMING_CASE');
     assert.equal(result.maxPhases, 10);

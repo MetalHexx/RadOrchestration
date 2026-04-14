@@ -4,14 +4,14 @@ const path = require('path');
 const { exists, isDirectory } = require('../utils/fs-helpers');
 
 /**
- * Check that the required .github/ directories and files exist.
- * @param {string} basePath - Absolute path to the workspace root (parent of .github/)
+ * Check that the required .claude/ directories and files exist.
+ * @param {string} basePath - Absolute path to the workspace root (parent of .claude/)
  * @param {object} context  - Shared discovery context (not populated by this module)
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: {expected: string, found: string, context?: string}}>>}
  */
 async function checkStructure(basePath, context, _config, orchRoot) {
   try {
-    const root = orchRoot || '.github';
+    const root = orchRoot || '.claude';
     const results = [];
     const ghDir = path.join(basePath, root);
 

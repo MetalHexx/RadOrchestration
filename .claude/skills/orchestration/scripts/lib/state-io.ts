@@ -7,7 +7,7 @@ import type { PipelineState, OrchestrationConfig } from './types.js';
 
 const DEFAULT_CONFIG: OrchestrationConfig = {
   system: {
-    orch_root: '.github',
+    orch_root: '.claude',
   },
   projects: {
     base_path: '',

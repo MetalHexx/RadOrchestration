@@ -26,7 +26,7 @@ import type {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/full.yml');
 const PROJECT_DIR = '/tmp/test-project/DAG-TEST';
-const ORCH_ROOT = path.resolve(__dirname, '../../../..'); // points to .github
+const ORCH_ROOT = path.resolve(__dirname, '../../../..');
 
 const DEFAULT_CONFIG: OrchestrationConfig = {
   system: { orch_root: ORCH_ROOT },
@@ -106,14 +106,16 @@ describe('engine – processEvent', () => {
     vi.mocked(getMutation).mockClear();
   });
 
-  describe('Init route (null state)', () => {
-    it('scaffolds state from template and returns first action', () => {
+  describe('Init route (null state) — full template', () => {
+    // Note: assertions on the first action (spawn_prd) are full-template-specific.
+    // The full template starts with prd; other templates may differ.
+    it('scaffolds state from template and returns first action (spawn_prd in full template)', () => {
       const io = createMockIO(null);
       const result = processEvent('start', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(true);
-      expect(result.action).toBe('spawn_research');
-      expect(result.context).toEqual({ step: 'research' });
+      expect(result.action).toBe('spawn_prd');
+      expect(result.context).toEqual({ step: 'prd' });
       expect(result.mutations_applied).toContain('scaffold_initial_state');
       expect(result.orchRoot).toBe(ORCH_ROOT);
     });
@@ -213,12 +215,12 @@ describe('engine – processEvent', () => {
   });
 
   describe('start event – init (null state)', () => {
-    it('scaffolds state and returns success: true with first action spawn_research', () => {
+    it('scaffolds state and returns success: true with first action spawn_prd (full template)', () => {
       const io = createMockIO(null);
       const result = processEvent('start', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(true);
-      expect(result.action).toBe('spawn_research');
+      expect(result.action).toBe('spawn_prd');
       expect(result.mutations_applied).toContain('scaffold_initial_state');
     });
 
@@ -249,12 +251,12 @@ describe('engine – processEvent', () => {
   describe('start event – cold-start / resume (state exists)', () => {
     it('returns success: true and the current pending action, persisting walker state', () => {
       const state = makeScaffoldedState();
-      // research is not_started → walkDAG should find spawn_research as first action
+      // prd is not_started → walkDAG should find spawn_prd as first action
       const io = createMockIO(state);
       const result = processEvent('start', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(true);
-      expect(result.action).toBe('spawn_research');
+      expect(result.action).toBe('spawn_prd');
       expect(result.mutations_applied).toEqual([]);
       expect(io.writeCalls.length).toBe(1);
       expect(io.writeCalls[0].projectDir).toBe(PROJECT_DIR);

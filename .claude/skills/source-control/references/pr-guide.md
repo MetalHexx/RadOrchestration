@@ -25,7 +25,7 @@ Before invoking the `gh-pr.js` script, read `state.json` to gather all required 
 Invoke the `gh-pr.js` script from the source-control skill's scripts directory:
 
 ```
-node .github/skills/source-control/scripts/gh-pr.js \
+node .claude/skills/source-control/scripts/gh-pr.js \
   --worktree-path <worktree_path> \
   --branch <branch> \
   --base-branch <base_branch> \

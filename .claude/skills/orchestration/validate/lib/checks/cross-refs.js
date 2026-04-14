@@ -167,13 +167,13 @@ function checkConfigPaths(basePath, config) {
 /**
  * Validate cross-references between orchestration files.
  * Reads from the shared DiscoveryContext (does NOT write to it).
- * @param {string} basePath - Absolute path to workspace root (parent of .github/)
+ * @param {string} basePath - Absolute path to workspace root (parent of .claude/)
  * @param {object} context  - Shared DiscoveryContext (read-only for this module)
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: object}>>}
  */
 module.exports = async function checkCrossRefs(basePath, context, _config, orchRoot) {
   try {
-    const root = orchRoot || '.github';
+    const root = orchRoot || '.claude';
     const results = [];
 
     // Gracefully handle null/empty context sections (do NOT mutate context)

@@ -17,7 +17,7 @@ import { promptUiInstall } from './prompts/ui-install.js';
 const DEFAULTS = {
   tool: 'copilot',
   workspaceDir: process.cwd(),
-  orchRoot: '.github',
+  orchRoot: '.claude',
   projectsBasePath: 'orchestration-projects',
   projectsNaming: 'SCREAMING_CASE',
   maxPhases: 10,

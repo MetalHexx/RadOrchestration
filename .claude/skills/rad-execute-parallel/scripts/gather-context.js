@@ -115,11 +115,11 @@ const platform = platformMap[process.platform] || 'linux';
 
 // Discover config via __dirname → skills/execute-parallel/scripts → up to orch root
 // Then look for skills/orchestration/config/orchestration.yml
-const orchRootGuess = path.resolve(__dirname, '..', '..', '..');  // scripts → rad-execute-parallel → skills → .github
+const orchRootGuess = path.resolve(__dirname, '..', '..', '..');  // scripts → rad-execute-parallel → skills → .claude
 const configPath = path.join(orchRootGuess, 'skills', 'orchestration', 'config', 'orchestration.yml');
 
-let orchRoot = '.github';
-let projectsBasePath = path.join(repoRoot, '.github', 'projects');
+let orchRoot = '.claude';
+let projectsBasePath = path.join(repoRoot, '.claude', 'projects');
 let configAutoCommit = 'ask';
 let configAutoPr = 'ask';
 

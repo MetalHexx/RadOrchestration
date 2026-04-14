@@ -42,15 +42,15 @@ function checkApplyToSync(filename, frontmatter, config) {
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 /**
- * Validate all .instructions.md files in .github/instructions/.
- * @param {string} basePath - Absolute path to workspace root (parent of .github/)
+ * Validate all .instructions.md files in .claude/instructions/.
+ * @param {string} basePath - Absolute path to workspace root (parent of .claude/)
  * @param {object} context  - Mutable shared discovery context
  * @param {object} [config] - Parsed orchestration.yml config (optional; needed for applyTo sync check)
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: object}>>}
  */
 async function checkInstructions(basePath, context, config, orchRoot) {
   try {
-    const root = orchRoot || '.github';
+    const root = orchRoot || '.claude';
     const results = [];
     const instrDir = path.join(basePath, root, 'instructions');
 

@@ -4,7 +4,7 @@ The orchestration system uses a single unified pipeline script (`pipeline.js`) f
 
 > `pipeline.js` is called by the Orchestrator agent during pipeline execution. It is not intended for manual use — users do not need to run it directly.
 
-> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](../configuration.md), adjust paths accordingly.
+> **Note:** Commands below use `.claude` as the default orchestration root. If you've [configured a custom root](../configuration.md), adjust paths accordingly.
 
 ---
 
@@ -13,8 +13,8 @@ The orchestration system uses a single unified pipeline script (`pipeline.js`) f
 ### pipeline.js
 
 ```bash
-# Default .github root shown. Adjust if you configured a custom orch_root.
-node .github/skills/orchestration/scripts/pipeline.js \
+# Default .claude root shown. Adjust if you configured a custom orch_root.
+node .claude/skills/orchestration/scripts/pipeline.js \
   --event <event_name> \
   --project-dir <path> \
   [--config <path>] \
@@ -60,8 +60,8 @@ node .github/skills/orchestration/scripts/pipeline.js \
 ### migrate-to-v4.js
 
 ```bash
-# Default .github root shown. Adjust if you configured a custom orch_root.
-node .github/skills/orchestration/scripts/migrate-to-v4.js <project-dir>
+# Default .claude root shown. Adjust if you configured a custom orch_root.
+node .claude/skills/orchestration/scripts/migrate-to-v4.js <project-dir>
 ```
 
 | Argument | Required | Description |

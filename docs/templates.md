@@ -20,36 +20,36 @@ Each skill that produces a document bundles one or more templates in its `templa
 
 | Template | Skill | Description |
 |----------|-------|-------------|
-| [`BRAINSTORMING.md`](../.github/skills/brainstorm/templates/BRAINSTORMING.md) | `brainstorm` | Collaborative ideation and project goal refinement |
-| [`RESEARCH-FINDINGS.md`](../.github/skills/research-codebase/templates/RESEARCH-FINDINGS.md) | `research-codebase` | Codebase analysis, patterns, constraints, and recommendations |
-| [`PRD.md`](../.github/skills/create-prd/templates/PRD.md) | `create-prd` | Product requirements with user stories, functional and non-functional requirements |
-| [`DESIGN.md`](../.github/skills/rad-create-plans/references/design/templates/DESIGN.md) | `rad-create-plans` | Full UX design — per-component layouts (heading-per-item), interaction states, optional tokens and accessibility |
-| [`DESIGN-light.md`](../.github/skills/rad-create-plans/references/design/templates/DESIGN-light.md) | `rad-create-plans` | Light UX design — mandatory sections only (Design Overview, User Flows, Layout & Components, New Components, States & Interactions) |
-| [`ARCHITECTURE.md`](../.github/skills/create-architecture/templates/ARCHITECTURE.md) | `create-architecture` | System architecture, module map, API contracts, and file structure |
-| [`MASTER-PLAN.md`](../.github/skills/create-master-plan/templates/MASTER-PLAN.md) | `create-master-plan` | Phased execution plan synthesizing PRD, design, and architecture |
+| [`BRAINSTORMING.md`](../.claude/skills/brainstorm/templates/BRAINSTORMING.md) | `brainstorm` | Collaborative ideation and project goal refinement |
+| [`RESEARCH-FINDINGS.md`](../.claude/skills/research-codebase/templates/RESEARCH-FINDINGS.md) | `research-codebase` | Codebase analysis, patterns, constraints, and recommendations |
+| [`PRD.md`](../.claude/skills/create-prd/templates/PRD.md) | `create-prd` | Product requirements with user stories, functional and non-functional requirements |
+| [`DESIGN.md`](../.claude/skills/rad-create-plans/references/design/templates/DESIGN.md) | `rad-create-plans` | Full UX design — per-component layouts (heading-per-item), interaction states, optional tokens and accessibility |
+| [`DESIGN-light.md`](../.claude/skills/rad-create-plans/references/design/templates/DESIGN-light.md) | `rad-create-plans` | Light UX design — mandatory sections only (Design Overview, User Flows, Layout & Components, New Components, States & Interactions) |
+| [`ARCHITECTURE.md`](../.claude/skills/create-architecture/templates/ARCHITECTURE.md) | `create-architecture` | System architecture, module map, API contracts, and file structure |
+| [`MASTER-PLAN.md`](../.claude/skills/create-master-plan/templates/MASTER-PLAN.md) | `create-master-plan` | Phased execution plan synthesizing PRD, design, and architecture |
 
 ## Execution Templates
 
 | Template | Skill | Description |
 |----------|-------|-------------|
-| [`PHASE-PLAN.md`](../.github/skills/create-phase-plan/templates/PHASE-PLAN.md) | `create-phase-plan` | Phase-level task breakdown with dependencies and execution order |
-| [`TASK-HANDOFF.md`](../.github/skills/create-task-handoff/templates/TASK-HANDOFF.md) | `create-task-handoff` | Self-contained coding task assignment with contracts and acceptance criteria |
-| [`PHASE-REPORT.md`](../.github/skills/generate-phase-report/templates/PHASE-REPORT.md) | `generate-phase-report` | Phase summary aggregating task results and exit criteria assessment |
+| [`PHASE-PLAN.md`](../.claude/skills/create-phase-plan/templates/PHASE-PLAN.md) | `create-phase-plan` | Phase-level task breakdown with dependencies and execution order |
+| [`TASK-HANDOFF.md`](../.claude/skills/create-task-handoff/templates/TASK-HANDOFF.md) | `create-task-handoff` | Self-contained coding task assignment with contracts and acceptance criteria |
+| [`PHASE-REPORT.md`](../.claude/skills/generate-phase-report/templates/PHASE-REPORT.md) | `generate-phase-report` | Phase summary aggregating task results and exit criteria assessment |
 
 ## Review Templates
 
 | Template | Skill | Description |
 |----------|-------|-------------|
-| [`CODE-REVIEW.md`](../.github/skills/code-review/templates/CODE-REVIEW.md) | `code-review` | Task-level code review with verdict, checklist, and issues |
-| [`PHASE-REVIEW.md`](../.github/skills/code-review/templates/PHASE-REVIEW.md) | `code-review` | Phase-level integration review with cross-task assessment |
-| [`FINAL-REVIEW.md`](../.github/skills/code-review/templates/FINAL-REVIEW.md) | `code-review` | Project-level final review with architectural integrity and P0 requirement coverage |
+| [`CODE-REVIEW.md`](../.claude/skills/code-review/templates/CODE-REVIEW.md) | `code-review` | Task-level code review with verdict, checklist, and issues |
+| [`PHASE-REVIEW.md`](../.claude/skills/code-review/templates/PHASE-REVIEW.md) | `code-review` | Phase-level integration review with cross-task assessment |
+| [`FINAL-REVIEW.md`](../.claude/skills/code-review/templates/FINAL-REVIEW.md) | `code-review` | Project-level final review with architectural integrity and P0 requirement coverage |
 
 ## Meta Templates
 
 | Template | Skill | Description |
 |----------|-------|-------------|
-| [`ERROR-LOG.md`](../.github/skills/log-error/templates/ERROR-LOG.md) | `log-error` | Append-only pipeline error log with numbered entries |
-| [`AGENT.md`](../.github/skills/create-agent/templates/AGENT.md) | `create-agent` | Agent definition file scaffold for new custom agents |
+| [`ERROR-LOG.md`](../.claude/skills/log-error/templates/ERROR-LOG.md) | `log-error` | Append-only pipeline error log with numbered entries |
+| [`AGENT.md`](../.claude/skills/create-agent/templates/AGENT.md) | `create-agent` | Agent definition file scaffold for new custom agents |
 
 ## Design Variants
 

@@ -88,24 +88,24 @@ function test(description, fn) {
 
 console.log('\nbootstrapOrchRoot() unit tests\n');
 
-test('returns ".github" when config file does not exist (readFile returns null)', () => {
+test('returns ".claude" when config file does not exist (readFile returns null)', () => {
   const fn = loadWithMocks(null, /* ignored */ null);
-  assert.strictEqual(fn(''), '.github');
+  assert.strictEqual(fn(''), '.claude');
 });
 
-test('returns ".github" when config file contains invalid YAML (parseYaml returns null)', () => {
+test('returns ".claude" when config file contains invalid YAML (parseYaml returns null)', () => {
   const fn = loadWithMocks('!!! invalid yaml %%%', null);
-  assert.strictEqual(fn(''), '.github');
+  assert.strictEqual(fn(''), '.claude');
 });
 
-test('returns ".github" when config file omits the system section', () => {
+test('returns ".claude" when config file omits the system section', () => {
   const fn = loadWithMocks('version: "1.0"\n', { version: '1.0' });
-  assert.strictEqual(fn(''), '.github');
+  assert.strictEqual(fn(''), '.claude');
 });
 
-test('returns ".github" when system.orch_root is an empty string', () => {
+test('returns ".claude" when system.orch_root is an empty string', () => {
   const fn = loadWithMocks('system:\n  orch_root: ""\n', { system: { orch_root: '' } });
-  assert.strictEqual(fn(''), '.github');
+  assert.strictEqual(fn(''), '.claude');
 });
 
 test('returns ".agents" when config file contains system: { orch_root: ".agents" }', () => {

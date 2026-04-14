@@ -116,8 +116,8 @@ async function test(description, fn) {
     }
   });
 
-  // Test 2: checkStructure with orchRoot=undefined — falls back to '.github'
-  await test('checkStructure with orchRoot=undefined falls back to ".github"', async () => {
+  // Test 2: checkStructure with orchRoot=undefined — falls back to '.claude'
+  await test('checkStructure with orchRoot=undefined falls back to ".claude"', async () => {
     const fsMock = makeFsHelpersMock({ isDirectory: () => true, exists: () => true });
     const checkStructure = loadModule(structurePath, fsMock);
 
@@ -126,8 +126,8 @@ async function test(description, fn) {
     assert.ok(results.length > 0, 'Expected at least one result');
     for (const r of results) {
       assert.ok(
-        r.name === '.github' || r.name.startsWith('.github/'),
-        `Expected name to start with ".github" but got "${r.name}"`
+        r.name === '.claude' || r.name.startsWith('.claude/'),
+        `Expected name to start with ".claude" but got "${r.name}"`
       );
     }
   });
@@ -150,8 +150,8 @@ async function test(description, fn) {
       `Expected path "${expected}", got "${capturedPath}"`);
   });
 
-  // Test 4: checkAgents with orchRoot=undefined — falls back to .github/agents
-  await test('checkAgents with orchRoot=undefined falls back to ".github/agents"', async () => {
+  // Test 4: checkAgents with orchRoot=undefined — falls back to .claude/agents
+  await test('checkAgents with orchRoot=undefined falls back to ".claude/agents"', async () => {
     let capturedPath = null;
     const fsMock = makeFsHelpersMock({
       listFiles: (p) => { capturedPath = p; return []; },
@@ -161,7 +161,7 @@ async function test(description, fn) {
     await checkAgents('/fake', {}, null, undefined);
 
     assert.ok(capturedPath !== null, 'listFiles should have been called');
-    const expected = path.join('/fake', '.github', 'agents');
+    const expected = path.join('/fake', '.claude', 'agents');
     assert.strictEqual(capturedPath, expected,
       `Expected path "${expected}", got "${capturedPath}"`);
   });
@@ -185,8 +185,8 @@ async function test(description, fn) {
       `Expected path "${expected}", got "${capturedPath}"`);
   });
 
-  // Test 6: checkSkills with orchRoot=undefined — falls back to .github/skills
-  await test('checkSkills with orchRoot=undefined falls back to ".github/skills"', async () => {
+  // Test 6: checkSkills with orchRoot=undefined — falls back to .claude/skills
+  await test('checkSkills with orchRoot=undefined falls back to ".claude/skills"', async () => {
     let capturedPath = null;
     const fsMock = makeFsHelpersMock({
       listDirs:  (p) => { capturedPath = p; return []; },
@@ -197,7 +197,7 @@ async function test(description, fn) {
     await checkSkills('/fake', {}, null, undefined);
 
     assert.ok(capturedPath !== null, 'listDirs should have been called');
-    const expected = path.join('/fake', '.github', 'skills');
+    const expected = path.join('/fake', '.claude', 'skills');
     assert.strictEqual(capturedPath, expected,
       `Expected path "${expected}", got "${capturedPath}"`);
   });
@@ -220,8 +220,8 @@ async function test(description, fn) {
       `Expected path "${expected}", got "${capturedPath}"`);
   });
 
-  // Test 8: checkInstructions with orchRoot=undefined — falls back to .github/instructions
-  await test('checkInstructions with orchRoot=undefined falls back to ".github/instructions"', async () => {
+  // Test 8: checkInstructions with orchRoot=undefined — falls back to .claude/instructions
+  await test('checkInstructions with orchRoot=undefined falls back to ".claude/instructions"', async () => {
     let capturedPath = null;
     const fsMock = makeFsHelpersMock({
       listFiles: (p) => { capturedPath = p; return []; },
@@ -231,7 +231,7 @@ async function test(description, fn) {
     await checkInstructions('/fake', {}, null, undefined);
 
     assert.ok(capturedPath !== null, 'listFiles should have been called');
-    const expected = path.join('/fake', '.github', 'instructions');
+    const expected = path.join('/fake', '.claude', 'instructions');
     assert.strictEqual(capturedPath, expected,
       `Expected path "${expected}", got "${capturedPath}"`);
   });
@@ -254,8 +254,8 @@ async function test(description, fn) {
       `Expected path "${expected}", got "${capturedPath}"`);
   });
 
-  // Test 10: checkPrompts with orchRoot=undefined — falls back to .github/prompts
-  await test('checkPrompts with orchRoot=undefined falls back to ".github/prompts"', async () => {
+  // Test 10: checkPrompts with orchRoot=undefined — falls back to .claude/prompts
+  await test('checkPrompts with orchRoot=undefined falls back to ".claude/prompts"', async () => {
     let capturedPath = null;
     const fsMock = makeFsHelpersMock({
       listFiles: (p) => { capturedPath = p; return []; },
@@ -265,7 +265,7 @@ async function test(description, fn) {
     await checkPrompts('/fake', {}, null, undefined);
 
     assert.ok(capturedPath !== null, 'listFiles should have been called');
-    const expected = path.join('/fake', '.github', 'prompts');
+    const expected = path.join('/fake', '.claude', 'prompts');
     assert.strictEqual(capturedPath, expected,
       `Expected path "${expected}", got "${capturedPath}"`);
   });

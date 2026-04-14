@@ -60,24 +60,27 @@ describe('[CONTRACT] Action Contexts — formatTaskId helper', () => {
   });
 });
 
-// ── [CONTRACT] Planning spawn actions ────────────────────────────────────────
+// ── [CONTRACT] Planning spawn actions (full template: prd → research → design → …) ──
 
-describe('[CONTRACT] Action Contexts — planning spawn actions', () => {
-  it('spawn_research returns { step: "research" }', () => {
+describe('[CONTRACT] Action Contexts — planning spawn actions (full template)', () => {
+  // Note: step order is template-specific. The full template starts with prd,
+  // followed by research. A different template (e.g. quick) may reorder these.
+
+  it('first action is spawn_prd (prd is first node in full template)', () => {
     const io = createMockIO(null);
     const result = processEvent('start', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_research');
-    expect(result.context).toEqual({ step: 'research' });
-  });
-
-  it('spawn_prd returns { step: "prd" } (after completing research)', () => {
-    const io = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('prd_started', PROJECT_DIR, {}, io);
-    expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_prd');
     expect(result.context).toEqual({ step: 'prd' });
+  });
+
+  it('spawn_research returns { step: "research" } (research follows prd in full template)', () => {
+    const io = createMockIO(null);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('research_started', PROJECT_DIR, {}, io);
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('spawn_research');
+    expect(result.context).toEqual({ step: 'research' });
   });
 
   it('spawn_design returns { step: "design" } (after completing prd)', () => {

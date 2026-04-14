@@ -21,6 +21,7 @@ Call `askQuestions` with 1 question:
       "header": "orch_root",
       "question": "Where should orchestration system files live?",
       "options": [
+        { "label": ".claude", "recommended": true, "description": "Default Claude Code orchestration location" },
         { "label": ".github", "recommended": true, "description": "Standard GitHub location" },
         { "label": ".agents", "description": "VS Code alternate discovery folder" },
         { "label": ".copilot", "description": "VS Code alternate discovery folder" },
@@ -62,7 +63,7 @@ system:
 
 # ─── Project Storage ───────────────────────────────────────────────
 projects:
-  base_path: ".github/projects"          # Where project folders are created
+  base_path: ".claude/projects"           # Where project folders are created
   naming: "SCREAMING_CASE"               # SCREAMING_CASE | lowercase | numbered
 
 # ─── Pipeline Limits (Scope Guards) ───────────────────────────────
@@ -106,7 +107,7 @@ Call `askQuestions` with 2 questions:
       "header": "base_path",
       "question": "Where should project folders be stored?",
       "options": [
-        { "label": ".github/projects", "recommended": true, "description": "Under the orchestration root" },
+        { "label": ".claude/projects", "recommended": true, "description": "Under the orchestration root" },
         { "label": "orchestration-projects", "description": "Top-level sibling folder" },
         { "label": "Custom", "description": "Type a custom relative or absolute path" }
       ],
@@ -298,7 +299,7 @@ If `system.orch_root` or `projects.base_path` changed from its previous value (o
 
 **Old orch_root** = previous value of `system.orch_root` (or `system.root` if migrating)
 **New orch_root** = newly selected value
-**Old base_path** = previous value of `projects.base_path` (or `.github/projects` if freshly created)
+**Old base_path** = previous value of `projects.base_path` (or `.claude/projects` if freshly created)
 **New base_path** = newly selected value
 
 ### If `system.orch_root` changed

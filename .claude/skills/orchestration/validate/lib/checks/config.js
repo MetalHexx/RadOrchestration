@@ -47,11 +47,11 @@ function resolveDottedKey(config, dottedKey) {
  * @param {string} basePath - Absolute path to workspace root
  * @param {object} context  - Shared DiscoveryContext
  * @param {object|null} _config - Parsed config (passed by entry point, unused — checkConfig reads its own copy)
- * @param {string} [orchRoot='.github'] - Orchestration root folder name
+ * @param {string} [orchRoot='.claude'] - Orchestration root folder name
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: object}>>}
  */
 module.exports = async function checkConfig(basePath, context, _config, orchRoot) {
-  const root = orchRoot || '.github';
+  const root = orchRoot || '.claude';
   try {
     const results = [];
     const configPath = path.join(basePath, root, 'skills', 'orchestration', 'config', 'orchestration.yml');

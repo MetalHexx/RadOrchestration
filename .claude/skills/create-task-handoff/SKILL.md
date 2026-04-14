@@ -85,7 +85,7 @@ Before producing a task handoff, verify:
 - [ ] Is the task scope achievable in a single agent session?
 
 ## Skill Discovery and Assignment
-> **Note:** `{orch_root}` is your orchestration root folder — `.github` by default. Set via `system.orch_root` in `orchestration.yml`.
+> **Note:** `{orch_root}` is your orchestration root folder — `.claude` by default. Set via `system.orch_root` in `orchestration.yml`.
 
 - Enumerate `{orch_root}/skills/` folder names. For each skill, read the `description` field from its `SKILL.md` frontmatter. 
 - Evaluate each skill against this task's objective and implementation steps using the lens: "would a coder working on this task benefit from invoking this skill?" 

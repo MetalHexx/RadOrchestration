@@ -18,10 +18,10 @@ import type {
 // ── Path resolution ───────────────────────────────────────────────────────────
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ORCH_ROOT = path.resolve(__dirname, '../../../..'); // .github
+const ORCH_ROOT = path.resolve(__dirname, '../../../..'); // .claude
 // Deviation from handoff (path): handoff specified '../../../orchestration-projects' (3 levels
 // up from ORCH_ROOT), but the actual directory is at c:\dev\orchestration-projects which
-// requires 4 levels up from ORCH_ROOT (.github) → DAG-PIPELINE-2 → v3-worktrees → orchestration → c:\dev.
+// requires 4 levels up from ORCH_ROOT (.claude) → DAG-PIPELINE-2 → v3-worktrees → orchestration → c:\dev.
 const PROJECTS_BASE = path.resolve(ORCH_ROOT, '../../../../orchestration-projects');
 
 const IN_PROGRESS_CTX = { step: 'task_executor', phase: 1, task: 1 } as const;

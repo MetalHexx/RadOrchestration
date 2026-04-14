@@ -4,10 +4,10 @@ This page documents the file layout, naming conventions, and document types.
 
 ## Workspace Layout
 
-> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
+> **Note:** Commands below use `.claude` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
 
 ```text
-.github/
+.claude/
 ├── agents/                    # Agent definitions
 │   └── ...
 ├── skills/                    # Skill bundles
@@ -74,7 +74,7 @@ ui/                            # Monitoring dashboard (Next.js)
 
 ## Project Folder Structure
 
-Each project gets its own subfolder under the configured `base_path` (default: `.github/projects/` — configurable via `orchestration.yml`). The `base_path` supports both relative paths (resolved from workspace root) and absolute paths (used as-is, useful for git worktree setups):
+Each project gets its own subfolder under the configured `base_path` (default: `.claude/projects/` — configurable via `orchestration.yml`). The `base_path` supports both relative paths (resolved from workspace root) and absolute paths (used as-is, useful for git worktree setups):
 
 ```text
 {PROJECT-NAME}/
@@ -121,7 +121,7 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 | Component | Convention | Example |
 |-----------|-----------|---------|
 | Agents | lowercase with hyphens | `orchestrator.agent.md` |
-| Skills | lowercase with hyphens | `.github/skills/create-prd/` |
+| Skills | lowercase with hyphens | `.claude/skills/create-prd/` |
 | Instructions | lowercase with hyphens | `project-docs.instructions.md` |
 | Prompts | lowercase with hyphens | `configure-system.prompt.md` |
 
@@ -163,7 +163,7 @@ Instruction files use `applyTo` glob patterns to load context-specific rules onl
 
 | File | Applies To | Rules |
 |------|-----------|-------|
-| `project-docs.instructions.md` | `.github/projects/**` | Naming conventions, file ownership (sole writer policy), document quality standards |
+| `project-docs.instructions.md` | `.claude/projects/**` | Naming conventions, file ownership (sole writer policy), document quality standards |
 
 > **Note:** The `applyTo` glob in `project-docs.instructions.md` must match the `base_path` configured in `orchestration.yml`. If you change `base_path`, update `applyTo` to `{new_base_path}/**` or run `/configure-system` to sync automatically.
 

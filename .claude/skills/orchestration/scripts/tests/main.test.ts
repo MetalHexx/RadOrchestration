@@ -181,7 +181,7 @@ describe('pipeline CLI — run()', () => {
     const result = capturedJson();
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('engine exploded');
-    expect(result.orchRoot).toBe('.github');
+    expect(result.orchRoot).toBe('.claude');
   });
 
   // ── Output Contract ─────────────────────────────────────────────────────────

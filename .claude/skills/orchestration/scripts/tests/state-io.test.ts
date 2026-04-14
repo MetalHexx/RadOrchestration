@@ -42,7 +42,7 @@ const SAMPLE_STATE: PipelineState = {
 };
 
 const DEFAULT_CONFIG_VALUES = {
-  system: { orch_root: '.github' },
+  system: { orch_root: '.claude' },
   projects: { base_path: '', naming: 'SCREAMING_CASE' },
   limits: {
     max_phases: 10,

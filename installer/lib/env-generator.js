@@ -3,7 +3,7 @@
 /**
  * Generates .env.local content for the UI.
  * @param {string} workspaceDir - Absolute path to workspace root
- * @param {string} orchRoot - Orchestration root folder name (e.g., '.github') or absolute path
+ * @param {string} orchRoot - Orchestration root folder name (e.g., '.claude') or absolute path
  * @returns {string} - File content: WORKSPACE_ROOT=... and ORCH_ROOT=...
  */
 export function generateEnvLocal(workspaceDir, orchRoot) {

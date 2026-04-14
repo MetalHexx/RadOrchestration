@@ -35,14 +35,14 @@ function parseTemplateLinks(body) {
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 /**
- * Validate all skill directories in .github/skills/.
- * @param {string} basePath - Absolute path to workspace root (parent of .github/)
+ * Validate all skill directories in .claude/skills/.
+ * @param {string} basePath - Absolute path to workspace root (parent of .claude/)
  * @param {object} context  - Mutable shared discovery context
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: object}>>}
  */
 async function checkSkills(basePath, context, _config, orchRoot) {
   try {
-    const root = orchRoot || '.github';
+    const root = orchRoot || '.claude';
     const results = [];
     const skillsDir = path.join(basePath, root, 'skills');
 

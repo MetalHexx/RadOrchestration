@@ -25,7 +25,7 @@ function parseArgs(argv: string[]): Record<string, string> {
   return args;
 }
 
-function makeErrorResult(message: string, event: string, orchRoot: string = '.github'): PipelineResult {
+function makeErrorResult(message: string, event: string, orchRoot: string = '.claude'): PipelineResult {
   return {
     success: false,
     action: null,
@@ -41,7 +41,7 @@ function makeErrorResult(message: string, event: string, orchRoot: string = '.gi
 export function run(argv: string[]): void {
   const args = parseArgs(argv);
   const event = args['event'];
-  let orchRoot = '.github'; // fallback until config is read
+  let orchRoot = '.claude'; // fallback until config is read
 
   try {
     const __dirname = path.dirname(fileURLToPath(import.meta.url));

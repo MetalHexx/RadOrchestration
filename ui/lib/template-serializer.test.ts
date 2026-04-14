@@ -9,11 +9,11 @@ import { parseTemplateToGraph, serializeGraphToYaml } from './template-serialize
 // ── Fixture loading ───────────────────────────────────────────────────────────
 
 const FULL_YAML = readFileSync(
-  join(__dirname, '../../.github/skills/orchestration/templates/full.yml'),
+  join(__dirname, '../../.claude/skills/orchestration/templates/full.yml'),
   'utf-8'
 );
 const QUICK_YAML = readFileSync(
-  join(__dirname, '../../.github/skills/orchestration/templates/quick.yml'),
+  join(__dirname, '../../.claude/skills/orchestration/templates/quick.yml'),
   'utf-8'
 );
 
@@ -430,10 +430,10 @@ describe('depends_on ↔ edges round-trip', () => {
     assert.ok(architecture, 'architecture not found in re-parsed YAML');
     assert.deepStrictEqual(architecture.depends_on, ['design']);
 
-    // task_gate.depends_on should be ['commit_gate']
+    // task_gate.depends_on should be ['code_review', 'commit_gate']
     const taskGate = findYamlNode(reparsed.nodes, 'task_gate');
     assert.ok(taskGate, 'task_gate not found in re-parsed YAML');
-    assert.deepStrictEqual(taskGate.depends_on, ['commit_gate']);
+    assert.deepStrictEqual(taskGate.depends_on, ['code_review', 'commit_gate']);
   });
 });
 

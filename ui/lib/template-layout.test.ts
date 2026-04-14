@@ -8,11 +8,11 @@ import { parseTemplateToGraph } from './template-serializer';
 // ── Fixture loading ───────────────────────────────────────────────────────────
 
 const FULL_YAML = readFileSync(
-  join(__dirname, '../../.github/skills/orchestration/templates/full.yml'),
+  join(__dirname, '../../.claude/skills/orchestration/templates/full.yml'),
   'utf-8'
 );
 const QUICK_YAML = readFileSync(
-  join(__dirname, '../../.github/skills/orchestration/templates/quick.yml'),
+  join(__dirname, '../../.claude/skills/orchestration/templates/quick.yml'),
   'utf-8'
 );
 

@@ -100,7 +100,7 @@ export function processEvent(
   io: IOAdapter,
   configPath?: string,
 ): PipelineResult {
-  let orchRoot = '.github';
+  let orchRoot = '.claude';
 
   try {
     const config = io.readConfig(configPath);

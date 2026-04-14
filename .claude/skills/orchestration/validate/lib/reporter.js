@@ -290,11 +290,11 @@ function report(results, options) {
 
 /**
  * Print the --help usage text to stdout.
- * @param {string} [orchRoot='.github'] - Orchestration root folder name
+ * @param {string} [orchRoot='.claude'] - Orchestration root folder name
  */
 function printHelp(orchRoot) {
   try {
-    const root = orchRoot || '.github';
+    const root = orchRoot || '.claude';
     const helpText = [
       'Orchestration Validator v1.0.0',
       '',

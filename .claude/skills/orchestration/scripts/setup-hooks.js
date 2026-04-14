@@ -36,7 +36,7 @@ const preCommitContent = `#!/bin/sh
 # Exit 0 = commit proceeds, Exit 1 = commit blocked
 # Always runs regardless of which files are staged
 
-SCRIPTS_DIR=".github/skills/orchestration/scripts"
+SCRIPTS_DIR=".claude/skills/orchestration/scripts"
 
 cd "$SCRIPTS_DIR" || { echo "[type-check] ERROR: Could not cd into $SCRIPTS_DIR"; exit 1; }
 

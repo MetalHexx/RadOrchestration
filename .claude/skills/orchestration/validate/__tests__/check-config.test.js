@@ -123,8 +123,8 @@ async function test(description, fn) {
     );
   });
 
-  // Test 2: orchRoot defaults to '.github' when undefined
-  await test('orchRoot defaults to ".github" when undefined', async () => {
+  // Test 2: orchRoot defaults to '.claude' when undefined
+  await test('orchRoot defaults to ".claude" when undefined', async () => {
     let calledPath = null;
     const checkConfig = loadCheckConfig(
       (p) => { calledPath = p; return null; },
@@ -133,8 +133,8 @@ async function test(description, fn) {
     await checkConfig('/fake', {}, null, undefined);
     assert.ok(calledPath !== null, 'readFile should have been called');
     assert.ok(
-      calledPath.endsWith(path.join('.github', 'skills', 'orchestration', 'config', 'orchestration.yml')),
-      `Expected path ending with ${path.join('.github', 'skills', 'orchestration', 'config', 'orchestration.yml')}, got "${calledPath}"`
+      calledPath.endsWith(path.join('.claude', 'skills', 'orchestration', 'config', 'orchestration.yml')),
+      `Expected path ending with ${path.join('.claude', 'skills', 'orchestration', 'config', 'orchestration.yml')}, got "${calledPath}"`
     );
   });
 

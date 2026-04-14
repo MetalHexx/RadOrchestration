@@ -19,7 +19,7 @@ import { derivePlanningStatus, deriveExecutionStatus } from '@/lib/status-deriva
  * @returns Absolute path to orchestration.yml
  */
 export function getConfigPath(workspaceRoot: string): string {
-  const bootstrapRoot = process.env.ORCH_ROOT || '.github';
+  const bootstrapRoot = process.env.ORCH_ROOT || '.claude';
   return path.join(workspaceRoot, bootstrapRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
 }
 
@@ -28,7 +28,7 @@ export function getConfigPath(workspaceRoot: string): string {
  *
  * Bootstrap strategy:
  * 1. Check the `ORCH_ROOT` environment variable for the orchestration root folder name.
- * 2. Fall back to `'.github'` when `ORCH_ROOT` is unset or empty.
+ * 2. Fall back to `'.claude'` when `ORCH_ROOT` is unset or empty.
  * 3. Read `orchestration.yml` from `{bootstrapRoot}/skills/orchestration/config/`.
  * 4. Use `system.orch_root` from the loaded config for subsequent operations (downstream responsibility).
  *
@@ -90,15 +90,15 @@ export async function writeConfig(workspaceRoot: string, content: string): Promi
 /**
  * Resolve the effective orchestration root folder name from a loaded config.
  *
- * Returns `config.system.orch_root` when present, otherwise defaults to `'.github'`.
+ * Returns `config.system.orch_root` when present, otherwise defaults to `'.claude'`.
  * This is the canonical way for downstream consumers (e.g., API routes) to obtain
  * the orchestration root after a config has been loaded.
  *
  * @param config - A parsed OrchestrationConfig object
- * @returns The effective orchestration root folder name (e.g., `'.github'`, `'.agents'`)
+ * @returns The effective orchestration root folder name (e.g., `'.claude'`, `'.agents'`)
  */
 export function resolveOrchRoot(config: OrchestrationConfig): string {
-  return config.system?.orch_root ?? '.github';
+  return config.system?.orch_root ?? '.claude';
 }
 
 /**

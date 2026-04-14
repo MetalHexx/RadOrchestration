@@ -42,14 +42,14 @@ function validateTools(tools, filename) {
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 /**
- * Validate all .prompt.md files in .github/prompts/.
- * @param {string} basePath - Absolute path to workspace root (parent of .github/)
+ * Validate all .prompt.md files in .claude/prompts/.
+ * @param {string} basePath - Absolute path to workspace root (parent of .claude/)
  * @param {object} context  - Mutable shared discovery context
  * @returns {Promise<Array<{category: string, name: string, status: string, message: string, detail?: object}>>}
  */
 async function checkPrompts(basePath, context, _config, orchRoot) {
   try {
-    const root = orchRoot || '.github';
+    const root = orchRoot || '.claude';
     const results = [];
     const promptsDir = path.join(basePath, root, 'prompts');
 

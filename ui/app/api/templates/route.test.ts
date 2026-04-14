@@ -72,7 +72,7 @@ let prevOrchRoot: string | undefined;
 async function setupWorkspace(): Promise<void> {
   prevWorkspaceRoot = process.env.WORKSPACE_ROOT;
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'templates-test-'));
-  const configDir = path.join(tmpDir, '.github', 'skills', 'orchestration', 'config');
+  const configDir = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config');
   await mkdir(configDir, { recursive: true });
   await fsWriteFile(path.join(configDir, 'orchestration.yml'), VALID_YAML, 'utf-8');
   const templateDir = path.join(tmpDir, '.github', 'skills', 'orchestration', 'templates');
@@ -270,7 +270,7 @@ async function run() {
   // --- GET: 500 when workspace config is unreadable ---
   await test('GET — returns 500 when orchestration.yml is missing', async () => {
     const { rm: fsRm } = await import('node:fs/promises');
-    const configPath = path.join(tmpDir, '.github', 'skills', 'orchestration', 'config', 'orchestration.yml');
+    const configPath = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config', 'orchestration.yml');
     await fsRm(configPath);
     const res = await GET();
     assert.strictEqual(res.status, 500);
@@ -281,7 +281,7 @@ async function run() {
   // --- POST: 500 when workspace config is unreadable ---
   await test('POST — returns 500 when orchestration.yml is missing', async () => {
     const { rm: fsRm } = await import('node:fs/promises');
-    const configPath = path.join(tmpDir, '.github', 'skills', 'orchestration', 'config', 'orchestration.yml');
+    const configPath = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config', 'orchestration.yml');
     await fsRm(configPath);
     const req = makePostRequest({ id: 'new-template', content: NEW_TEMPLATE_YAML });
     const res = await POST(req);

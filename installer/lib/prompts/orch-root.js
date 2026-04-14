@@ -7,18 +7,19 @@ import { isValidFolderName, normalizePath } from '../path-utils.js';
 /**
  * Runs the "Orchestration Root" prompt section: root folder selection + optional custom entry.
  * @returns {Promise<{ orchRoot: string }>}
- *   - orchRoot: Folder name (e.g., '.github') or absolute path
+ *   - orchRoot: Folder name (e.g., '.claude') or absolute path
  */
 export async function promptOrchRoot() {
   const selection = await select({
     message: 'Orchestration root folder',
     theme: INQUIRER_THEME,
     choices: [
+      { name: '.claude', value: '.claude' },
       { name: '.agents', value: '.agents' },
       { name: '.github', value: '.github' },
       { name: 'Custom…', value: 'custom' },
     ],
-    default: '.github',
+    default: '.claude',
   });
 
   let orchRoot = selection;
