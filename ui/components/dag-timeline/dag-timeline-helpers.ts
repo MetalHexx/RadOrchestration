@@ -1,4 +1,4 @@
-import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord, NodeState } from '@/types/state';
+import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord, NodeState, ForEachPhaseNodeState } from '@/types/state';
 
 export type CompatibleNodeState = StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState;
 
@@ -45,4 +45,124 @@ export function getDisplayName(nodeId: string): string {
   const lastDot = nodeId.lastIndexOf('.');
   const leaf = lastDot === -1 ? nodeId : nodeId.slice(lastDot + 1);
   return formatNodeId(leaf);
+}
+
+// ─── Section Types ────────────────────────────────────────────────────────────
+
+export type SectionLabel = 'Planning' | 'Gates' | 'Execution' | 'Completion';
+
+export interface SectionGroup {
+  label: SectionLabel;
+  entries: Array<[string, NodeState]>;
+}
+
+// ─── Section Constants ────────────────────────────────────────────────────────
+
+export const NODE_SECTION_MAP: Record<string, SectionLabel> = {
+  prd: 'Planning',
+  research: 'Planning',
+  design: 'Planning',
+  architecture: 'Planning',
+  master_plan: 'Planning',
+  plan_approval_gate: 'Gates',
+  gate_mode_selection: 'Gates',
+  phase_loop: 'Execution',
+  final_review: 'Completion',
+  pr_gate: 'Completion',
+  final_approval_gate: 'Completion',
+};
+
+// ─── Section Helper Functions ─────────────────────────────────────────────────
+
+export function parsePhaseNameFromDocPath(
+  docPath: string | null,
+  iterationIndex: number
+): string {
+  const phaseNum = iterationIndex + 1;
+  if (!docPath) return `Phase ${phaseNum}`;
+
+  // Match pattern: {anything}-PHASE-{NN}-{TITLE}.md
+  const match = docPath.match(/-PHASE-\d+-(.+)\.md$/i);
+  if (!match) return `Phase ${phaseNum}`;
+
+  const title = match[1]
+    .split('-')
+    .map(w => w === w.toUpperCase() && w.length > 1 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+
+  return `Phase ${phaseNum} — ${title}`;
+}
+
+export function parseTaskNameFromDocPath(
+  docPath: string | null,
+  iterationIndex: number
+): string {
+  const taskNum = iterationIndex + 1;
+  if (!docPath) return `Task ${taskNum}`;
+
+  // Match pattern: {anything}-TASK-P{NN}-T{NN}-{TITLE}.md
+  const match = docPath.match(/-TASK-P\d+-T\d+-(.+)\.md$/i);
+  if (!match) return `Task ${taskNum}`;
+
+  const title = match[1]
+    .split('-')
+    .map(w => w === w.toUpperCase() && w.length > 1 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+
+  return `Task ${taskNum} — ${title}`;
+}
+
+export function groupNodesBySection(nodes: NodesRecord): SectionGroup[] {
+  const sectionOrder: SectionLabel[] = ['Planning', 'Gates', 'Execution', 'Completion'];
+  const buckets = new Map<SectionLabel, Array<[string, NodeState]>>();
+
+  for (const label of sectionOrder) {
+    buckets.set(label, []);
+  }
+
+  for (const [nodeId, nodeState] of Object.entries(nodes)) {
+    if (!Object.hasOwn(NODE_SECTION_MAP, nodeId)) {
+      continue;
+    }
+    const label = NODE_SECTION_MAP[nodeId];
+    buckets.get(label)!.push([nodeId, nodeState]);
+  }
+
+  const groups: SectionGroup[] = [];
+  for (const label of sectionOrder) {
+    const entries = buckets.get(label)!;
+    if (entries.length > 0) {
+      groups.push({ label, entries });
+    }
+  }
+
+  return groups;
+}
+
+export function deriveCurrentPhase(
+  phaseLoopNode: ForEachPhaseNodeState | undefined
+): string | null {
+  if (!phaseLoopNode) return null;
+
+  const activeIteration = phaseLoopNode.iterations.find(
+    (iter) => iter.status === 'in_progress'
+  );
+  if (!activeIteration) return null;
+
+  const phasePlanningNode = activeIteration.nodes.phase_planning;
+  const docPath = phasePlanningNode?.kind === 'step' ? phasePlanningNode.doc_path : null;
+
+  return parsePhaseNameFromDocPath(docPath, activeIteration.index);
+}
+
+export function derivePhaseProgress(
+  phaseLoopNode: ForEachPhaseNodeState | undefined
+): { completed: number; total: number } | null {
+  if (!phaseLoopNode || phaseLoopNode.iterations.length === 0) return null;
+
+  const completed = phaseLoopNode.iterations.filter(
+    (iter) => iter.status === 'completed'
+  ).length;
+
+  return { completed, total: phaseLoopNode.iterations.length };
 }
