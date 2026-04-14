@@ -231,19 +231,19 @@ gnome-terminal -- bash -c "cd '{worktreePath}' && copilot --agent orchestrator -
 
 **Windows:**
 ```powershell
-$innerCmd = "claude --dangerously-skip-permissions '/rad-execute execute project {masterPlanPath}'"
+$innerCmd = "claude --dangerously-skip-permissions --add-dir '{projectsBasePath}' '/rad-execute execute project {masterPlanPath}'"
 $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($innerCmd))
 Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList "-Command", "wt --startingDirectory '{worktreePath}' powershell -NoExit -EncodedCommand $encoded"
 ```
 
 **macOS:**
 ```
-osascript -e 'tell application "Terminal" to do script "cd \"{worktreePath}\" && claude --dangerously-skip-permissions \"/rad-execute execute project {masterPlanPath}\""'
+osascript -e 'tell application "Terminal" to do script "cd \"{worktreePath}\" && claude --dangerously-skip-permissions --add-dir \"{projectsBasePath}\" \"/rad-execute execute project {masterPlanPath}\""'
 ```
 
 **Linux:**
 ```
-gnome-terminal -- bash -c "cd '{worktreePath}' && claude --dangerously-skip-permissions '/rad-execute execute project {masterPlanPath}'; exec bash"
+gnome-terminal -- bash -c "cd '{worktreePath}' && claude --dangerously-skip-permissions --add-dir '{projectsBasePath}' '/rad-execute execute project {masterPlanPath}'; exec bash"
 ```
 
 ### Open terminal at worktree

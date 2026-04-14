@@ -231,19 +231,19 @@ gnome-terminal -- bash -c "cd '{worktreePath}' && copilot --agent orchestrator -
 
 **Windows:**
 ```powershell
-$innerCmd = "claude --agent orchestrator -i 'Start project execution for project {masterPlanPath or projectName}'"
+$innerCmd = "claude --agent orchestrator --add-dir '{projectsBasePath}' -i 'Start project execution for project {masterPlanPath or projectName}'"
 $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($innerCmd))
 Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList "-Command", "wt --startingDirectory '{worktreePath}' powershell -NoExit -EncodedCommand $encoded"
 ```
 
 **macOS:**
 ```
-osascript -e 'tell application "Terminal" to do script "cd \"{worktreePath}\" && claude --agent orchestrator \"Start project execution for project {masterPlanPath or projectName}\""'
+osascript -e 'tell application "Terminal" to do script "cd \"{worktreePath}\" && claude --agent orchestrator --add-dir \"{projectsBasePath}\" \"Start project execution for project {masterPlanPath or projectName}\""'
 ```
 
 **Linux:**
 ```
-gnome-terminal -- bash -c "cd '{worktreePath}' && claude --agent orchestrator 'Start project execution for project {masterPlanPath or projectName}'; exec bash"
+gnome-terminal -- bash -c "cd '{worktreePath}' && claude --agent orchestrator --add-dir '{projectsBasePath}' 'Start project execution for project {masterPlanPath or projectName}'; exec bash"
 ```
 
 ### Open terminal at worktree
