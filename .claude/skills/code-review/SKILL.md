@@ -29,7 +29,7 @@ Consolidated review skill supporting three modes: task, phase, and final. The re
 |-------|--------|-------------|
 | PRD | `{NAME}-PRD.md` | Product requirements being validated |
 | Architecture | `{NAME}-ARCHITECTURE.md` | Contracts, module map, file structure |
-| Design | `{NAME}-DESIGN.md` | Component specs, design tokens (if applicable) |
+| Design | `{NAME}-DESIGN.md` | Per-component layouts, interaction states, design tokens (if applicable) |
 | Master Plan | `{NAME}-MASTER-PLAN.md` | Phase/task structure, exit criteria |
 
 ## Mode: Task Review
