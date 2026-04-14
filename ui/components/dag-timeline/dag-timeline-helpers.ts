@@ -121,10 +121,11 @@ export function groupNodesBySection(nodes: NodesRecord): SectionGroup[] {
   }
 
   for (const [nodeId, nodeState] of Object.entries(nodes)) {
-    const label = NODE_SECTION_MAP[nodeId];
-    if (label) {
-      buckets.get(label)!.push([nodeId, nodeState]);
+    if (!Object.hasOwn(NODE_SECTION_MAP, nodeId)) {
+      continue;
     }
+    const label = NODE_SECTION_MAP[nodeId];
+    buckets.get(label)!.push([nodeId, nodeState]);
   }
 
   const groups: SectionGroup[] = [];

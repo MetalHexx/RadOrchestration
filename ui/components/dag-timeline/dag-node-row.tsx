@@ -34,7 +34,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       aria-current={isActive ? 'step' : undefined}
     >
       <NodeKindIcon kind={node.kind} />
-      <span className="text-sm font-medium truncate max-w-[55%]">{getDisplayName(nodeId)}</span>
+      <span className="text-sm font-medium min-w-0 shrink truncate max-w-[55%]">{getDisplayName(nodeId)}</span>
       <NodeStatusBadge status={node.status} />
       {branchLabel !== null && branchBadgeStatus !== null && (
         <span role="group" aria-label={`Branch taken: ${branchLabel}`}>

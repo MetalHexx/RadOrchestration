@@ -113,7 +113,7 @@ export function DAGIterationPanel({
   return (
     <div className={cardClasses} style={{ opacity }} aria-label={ariaLabel}>
       <div className={headerClass}>
-        <span className={isFallback ? 'text-sm italic text-muted-foreground truncate max-w-[60%]' : 'text-sm font-medium truncate max-w-[60%]'}>
+        <span className={isFallback ? 'text-sm italic text-muted-foreground truncate max-w-[60%] min-w-0' : 'text-sm font-medium truncate max-w-[60%] min-w-0'}>
           {iterationName}
         </span>
         <NodeStatusBadge status={iteration.status} />

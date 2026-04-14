@@ -16,7 +16,7 @@ interface DAGTimelineProps {
 
 export function DAGTimeline({ nodes, currentNodePath, onDocClick }: DAGTimelineProps) {
   const groups = groupNodesBySection(nodes);
-  const unmatchedEntries = Object.entries(nodes).filter(([nodeId]) => !(nodeId in NODE_SECTION_MAP));
+  const unmatchedEntries = Object.entries(nodes).filter(([nodeId]) => !Object.hasOwn(NODE_SECTION_MAP, nodeId));
 
   return (
     <div className="flex flex-col gap-0" role="list">
