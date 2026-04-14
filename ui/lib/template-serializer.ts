@@ -85,6 +85,7 @@ function walkNodes(
             markerEnd: { type: 'arrowclosed' },
             label: 'true',
             animated: false,
+            hidden: true,
           });
         }
       }
@@ -100,6 +101,7 @@ function walkNodes(
             markerEnd: { type: 'arrowclosed' },
             label: 'false',
             animated: false,
+            hidden: true,
           });
         }
       }

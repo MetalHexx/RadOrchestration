@@ -13,7 +13,7 @@ const iconMap: Partial<Record<TemplateNodeKind, LucideIcon>> = {
 };
 
 const accentMap: Record<string, string> = {
-  step: 'transparent',
+  step: 'var(--tier-planning)',
   gate: 'var(--gate-phase)',
   conditional: 'var(--tier-execution)',
 };
@@ -37,7 +37,7 @@ export function TemplateGraphNode({ data }: TemplateGraphNodeProps) {
         'px-3 py-2 gap-2',
         'hover:bg-accent/50 cursor-default',
       )}
-      style={{ borderLeft: `3px solid ${accent}` }}
+      style={{ boxShadow: `inset 3px 0 0 ${accent}` }}
       tabIndex={0}
       role="group"
       aria-label={data.label}

@@ -93,4 +93,5 @@ export interface TemplateGraphEdge {
   markerEnd: { type: 'arrowclosed' };
   label?: string;
   animated: false;
+  hidden?: boolean;
 }

@@ -6,7 +6,7 @@ export const NODE_HEIGHT = 60;
 export const PAD_LEFT = 40;
 const PAD_RIGHT = 40;
 export const PAD_TOP = 60;
-const PAD_BOTTOM = 40;
+const PAD_BOTTOM = 20;
 
 /**
  * Compute dagre layout for template graph nodes.
@@ -58,7 +58,7 @@ export function computeTemplateLayout(
 
     // Build a dagre sub-graph for this group's direct children
     const childGraph = new dagre.graphlib.Graph();
-    childGraph.setGraph({ rankdir: 'TB', nodesep: 50, ranksep: 80 });
+    childGraph.setGraph({ rankdir: 'TB', nodesep: 50, ranksep: 50 });
     childGraph.setDefaultEdgeLabel(() => ({}));
 
     const childIds = new Set(children.map((n) => n.id));
@@ -79,13 +79,17 @@ export function computeTemplateLayout(
 
     dagre.layout(childGraph);
 
-    // Read back child absolute positions in the sub-graph (center → top-left)
+    // Read back child absolute positions in the sub-graph (center → top-left).
+    // Snap center X to the nearest even integer so all children in the same
+    // column share an identical center X value — prevents sub-pixel misalignment
+    // that causes jagged edges between nodes of different widths.
     const childAbsPositions = children.map((child) => {
       const dn = childGraph.node(child.id);
       const nestedStyle = groupStyles.get(child.id);
       const w = nestedStyle ? nestedStyle.width : NODE_WIDTH;
       const h = nestedStyle ? nestedStyle.height : NODE_HEIGHT;
-      return { id: child.id, x: dn.x - w / 2, y: dn.y - h / 2, w, h };
+      const cx = Math.round(dn.x / 2) * 2;
+      return { id: child.id, x: cx - w / 2, y: dn.y - h / 2, w, h };
     });
 
     // Compute bounding box of children using each child's actual width/height
@@ -100,11 +104,12 @@ export function computeTemplateLayout(
       height: maxY - minY + PAD_TOP + PAD_BOTTOM,
     });
 
-    // Reposition children relative to their parent group's top-left origin
+    // Reposition children relative to their parent group's top-left origin.
+    // cp.x is already an integer (even cx - even w/2), so no rounding needed on X.
     for (const cp of childAbsPositions) {
       childPositioned.set(cp.id, {
         x: cp.x - minX + PAD_LEFT,
-        y: cp.y - minY + PAD_TOP,
+        y: Math.round(cp.y - minY + PAD_TOP),
       });
     }
   }
@@ -119,7 +124,7 @@ export function computeTemplateLayout(
 
   // Build and run the top-level dagre graph using actual group sizes
   const graph = new dagre.graphlib.Graph();
-  graph.setGraph({ rankdir: 'TB', nodesep: 50, ranksep: 80 });
+  graph.setGraph({ rankdir: 'TB', nodesep: 50, ranksep: 50 });
   graph.setDefaultEdgeLabel(() => ({}));
 
   for (const node of topLevelNodes) {
@@ -138,27 +143,32 @@ export function computeTemplateLayout(
   dagre.layout(graph);
 
   // Read back positions from dagre for top-level nodes (center → top-left)
+  // Apply same even-integer center snap as in layoutGroup so top-level handles
+  // also align across nodes of different widths.
   const topLevelPositioned = new Map<string, { x: number; y: number }>();
   for (const node of topLevelNodes) {
     const style = groupStyles.get(node.id);
     const w = style ? style.width : NODE_WIDTH;
     const h = style ? style.height : NODE_HEIGHT;
     const dn = graph.node(node.id);
+    const cx = Math.round(dn.x / 2) * 2;
     topLevelPositioned.set(node.id, {
-      x: dn.x - w / 2,
-      y: dn.y - h / 2,
+      x: cx - w / 2,
+      y: Math.round(dn.y - h / 2),
     });
   }
 
-  // Build output node arrays — do not mutate inputs
+  // Build output node arrays — do not mutate inputs.
+  // Every node gets explicit style.width / style.height so React Flow's wrapper
+  // dimensions are deterministic and handle positions align across node types.
   const outNodes: TemplateGraphNode[] = [
     ...topLevelNodes.map((node) => {
       const pos = topLevelPositioned.get(node.id)!;
-      const style = groupStyles.get(node.id);
+      const dims = groupStyles.get(node.id) ?? { width: NODE_WIDTH, height: NODE_HEIGHT };
       return {
         ...node,
         position: pos,
-        ...(style !== undefined ? { style: { ...node.style, ...style } } : {}),
+        style: { ...node.style, ...dims },
       };
     }),
     ...childNodes.map((node) => {
@@ -167,11 +177,11 @@ export function computeTemplateLayout(
         console.warn('computeTemplateLayout: no computed position for child node', node.id);
       }
       const finalPos = pos ?? node.position;
-      const style = groupStyles.get(node.id);
+      const dims = groupStyles.get(node.id) ?? { width: NODE_WIDTH, height: NODE_HEIGHT };
       return {
         ...node,
         position: finalPos,
-        ...(style !== undefined ? { style: { ...node.style, ...style } } : {}),
+        style: { ...node.style, ...dims },
       };
     }),
   ];
