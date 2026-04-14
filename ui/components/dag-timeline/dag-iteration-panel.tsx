@@ -58,47 +58,38 @@ export function DAGIterationPanel({
     iterationName = parseTaskNameFromDocPath(docPath, iterationIndex);
   }
 
-  // Compute card container classes and opacity
+  // Compute card container classes
   let cardClasses: string;
-  let opacity: number;
 
   if (parentKind === 'for_each_phase') {
     switch (iteration.status) {
       case 'in_progress':
         cardClasses = 'border border-[var(--color-link)] bg-card rounded-md p-3 mb-2';
-        opacity = 1;
         break;
       case 'completed':
         cardClasses = 'border border-border bg-muted/50 rounded-md p-3 mb-2';
-        opacity = 0.75;
         break;
       case 'failed':
       case 'halted':
         cardClasses = 'border border-[var(--status-failed)] bg-card rounded-md p-3 mb-2';
-        opacity = 1;
         break;
       default:
         cardClasses = 'border border-border bg-card rounded-md p-3 mb-2';
-        opacity = 0.6;
     }
   } else {
     switch (iteration.status) {
       case 'in_progress':
         cardClasses = 'border border-border/70 bg-card rounded-md p-2 mb-1.5';
-        opacity = 1;
         break;
       case 'completed':
         cardClasses = 'border border-border/50 bg-muted/30 rounded-md p-2 mb-1.5';
-        opacity = 0.7;
         break;
       case 'failed':
       case 'halted':
         cardClasses = 'border border-[var(--status-failed)] bg-card rounded-md p-2 mb-1.5';
-        opacity = 1;
         break;
       default:
         cardClasses = 'border border-border/40 bg-card rounded-md p-2 mb-1.5';
-        opacity = 0.55;
     }
   }
 
@@ -111,7 +102,7 @@ export function DAGIterationPanel({
     : 'py-1 flex items-center gap-2 mb-1';
 
   return (
-    <div className={cardClasses} style={{ opacity }} aria-label={ariaLabel}>
+    <div className={cardClasses} aria-label={ariaLabel}>
       <div className={headerClass}>
         <span className={isFallback ? 'text-sm italic text-muted-foreground truncate max-w-[60%] min-w-0' : 'text-sm font-medium truncate max-w-[60%] min-w-0'}>
           {iterationName}
