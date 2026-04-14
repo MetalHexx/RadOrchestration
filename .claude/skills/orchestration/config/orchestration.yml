@@ -1,12 +1,8 @@
-# .github/orchestration.yml
-# Orchestration System Configuration
-# -----------------------------------
-
 version: "1.0"
 
 # ─── System ────────────────────────────────────────────────────────
 system:
-  orch_root: ".github"                   # Orchestration root folder (relative name or absolute path)
+  orch_root: ".claude"                   # Orchestration root folder (relative name or absolute path)
 
 # ─── Project Storage ───────────────────────────────────────────────
 projects:
