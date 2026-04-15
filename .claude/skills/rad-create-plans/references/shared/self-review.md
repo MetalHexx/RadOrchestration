@@ -50,7 +50,7 @@ You are checking your own output for accuracy against the codebase and cohesion 
    | Phase Plan | §2.5, §2.6 — tasks trace to phase scope, terminology matches upstream docs |
    | Task Handoff | §2.4, §2.6 — inlined contracts match Architecture exactly, terminology is consistent |
 
-6. **Apply anti-duplication checks** (Research Findings and Design):
+6. **Apply anti-duplication checks** (Research Findings, Design, Architecture, and Master Plan):
 
    **Research Findings**:
    - Does any finding body restate requirement text from the PRD? → Remove restatement
@@ -78,3 +78,13 @@ You are checking your own output for accuracy against the codebase and cohesion 
    - Does any section body restate requirement text from the PRD? → Rewrite to reference FR-N only
    - Does a `## Technical Overview` section exist? → Remove it
    - Does a `## Phasing Recommendations` section exist? → Remove it
+
+   **Master Plan**:
+   - Is `total_phases` present in frontmatter and a positive integer? → Add or correct if missing or zero
+   - Does `total_phases` equal the count of `### Phase N:` headings in the document body? → Reconcile if mismatched
+   - Is `author` set to `"tactical-planner-agent"`? → Correct if any other value is present
+   - Does every FR-N and NFR-N from the PRD appear in exactly one phase scope? → Assign any unassigned identifiers; remove any that appear in more than one phase
+   - Does every AD-N from the Architecture document appear in exactly one phase scope? → Assign any unassigned; remove duplicates
+   - Is every exit criterion binary (met or not met, no "should" or "mostly")? → Rewrite any non-binary criteria as observable outcomes
+   - Do all Phase Outlines use the same set of fields (no mixed thick/thin phases)? → Normalize to a single thickness tier
+   - Does any Phase Outline contain source code, concrete file paths (outside the Source Documents table), or technology/framework choices? → Remove all implementation content from Phase Outlines
