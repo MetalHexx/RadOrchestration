@@ -19,7 +19,7 @@ This workspace contains a **document-driven agent orchestration system** built o
 | `@product-manager` | Creates PRDs from brainstorming documents and other supplied context |
 | `@ux-designer` | Creates design documents from PRDs and Research Findings — defines the experience, not the implementation |
 | `@architect` | Creates Architecture documents via `rad-create-plans` |
-| `@tactical-planner` | Creates Master Plans, breaks phases into tasks, creates task handoffs, generates phase reports |
+| `@tactical-planner` | Creates Master Plans, Phase Plans, and Task Handoffs via `rad-create-plans`; generates Phase Reports via `generate-phase-report` |
 | `@coder` | Executes coding tasks from self-contained task handoffs |
 | `@coder-junior` | Executes simpler coding tasks with additional guardrails |
 | `@coder-senior` | Executes complex coding tasks with expanded autonomy |
