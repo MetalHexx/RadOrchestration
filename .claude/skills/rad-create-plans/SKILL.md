@@ -1,6 +1,6 @@
 ---
 name: rad-create-plans
-description: "Consolidated document-creation skill for PRDs, Design docs, Architecture docs, Master Plans, Phase Plans, and Task Handoffs. Loads shared conventions and routes to the appropriate per-document-type workflow."
+description: "Consolidated document-creation skill for PRDs, Research Findings, Design docs, Architecture docs, Master Plans, Phase Plans, and Task Handoffs. Loads shared conventions and routes to the appropriate per-document-type workflow."
 user-invocable: false
 ---
 
@@ -15,8 +15,8 @@ A consolidated skill for creating planning documents. It loads shared guidelines
 - **Design** — UX Design document (supported)
 - **Architecture** — Technical Architecture document (supported)
 - **Master Plan** — Project Master Plan (supported)
-- **Phase Plan** — Phase execution plan *(future)*
-- **Task Handoff** — Coding task handoff document *(future)*
+- **Phase Plan** — Phase execution plan (supported)
+- **Task Handoff** — Coding task handoff document (supported)
 
 ## Load Sequence
 
@@ -30,4 +30,4 @@ A consolidated skill for creating planning documents. It loads shared guidelines
 | `research` | [references/research/workflow.md](references/research/workflow.md) |
 | `ux-designer` | [references/design/workflow.md](references/design/workflow.md) |
 | `architect` | [references/architecture/workflow.md](references/architecture/workflow.md) |
-| `tactical-planner` | [references/master-plan/workflow.md](references/master-plan/workflow.md) |
+| `tactical-planner` | Agent routes internally — see `tactical-planner.md` REQUIRED block for action-to-workflow mapping. Workflow paths: `references/master-plan/workflow.md`, `references/phase-plan/workflow.md`, `references/task-handoff/workflow.md` |
