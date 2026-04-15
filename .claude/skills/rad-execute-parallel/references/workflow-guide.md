@@ -229,22 +229,11 @@ gnome-terminal -- bash -c "cd '{worktreePath}' && copilot --agent orchestrator -
 
 ### Open Claude Code
 
-**Windows:**
-```powershell
-$innerCmd = "claude --dangerously-skip-permissions --add-dir '{projectsBasePath}' '/rad-execute execute project {masterPlanPath}'"
-$encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($innerCmd))
-Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList "-Command", "wt --startingDirectory '{worktreePath}' powershell -NoExit -EncodedCommand $encoded"
+```
+node {skillRoot}/scripts/launch-claude.js --worktree-path "{worktreePath}" --projects-base-path "{projectsBasePath}" --prompt "/rad-execute execute project {masterPlanPath or projectName}"
 ```
 
-**macOS:**
-```
-osascript -e 'tell application "Terminal" to do script "cd \"{worktreePath}\" && claude --dangerously-skip-permissions --add-dir \"{projectsBasePath}\" \"/rad-execute execute project {masterPlanPath}\""'
-```
-
-**Linux:**
-```
-gnome-terminal -- bash -c "cd '{worktreePath}' && claude --dangerously-skip-permissions --add-dir '{projectsBasePath}' '/rad-execute execute project {masterPlanPath}'; exec bash"
-```
+`{skillRoot}` is the absolute path to the `rad-execute-parallel` skill folder (the directory containing `SKILL.md`). The script handles Windows, macOS, and Linux internally — no platform-specific branching needed here.
 
 ### Open terminal at worktree
 
