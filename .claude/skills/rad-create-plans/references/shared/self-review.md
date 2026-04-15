@@ -68,3 +68,13 @@ You are checking your own output for accuracy against the codebase and cohesion 
      the visual and interaction contract? → Rewrite to focus on design intent
    - Do any component props include TypeScript types, file paths, or technology
      choices? → Replace with conceptual descriptions
+
+   **Architecture**:
+   - Does every addressable element have a flat sequential AD-N identifier? → Add if missing
+   - Does every H3 section have a `**Tags:** AD-N, ...` line as its first body line? → Add if missing
+   - Does every module, contract, and API endpoint section have a `**Resolves:** FR-X` line? → Add if missing
+   - Does any code block exceed 512 tokens? → Split element or reduce interface surface
+   - Does the document contain any mermaid code blocks? → Remove all mermaid blocks
+   - Does any section body restate requirement text from the PRD? → Rewrite to reference FR-N only
+   - Does a `## Technical Overview` section exist? → Remove it
+   - Does a `## Phasing Recommendations` section exist? → Remove it
