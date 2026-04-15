@@ -50,7 +50,7 @@ You are checking your own output for accuracy against the codebase and cohesion 
    | Phase Plan | §2.5, §2.6 — tasks trace to phase scope, terminology matches upstream docs |
    | Task Handoff | §2.4, §2.6 — inlined contracts match Architecture exactly, terminology is consistent |
 
-6. **Apply anti-duplication checks** (Research Findings, Design, Architecture, and Master Plan):
+6. **Apply anti-duplication checks** (Research Findings, Design, Architecture, Master Plan, Phase Plan, and Task Handoff):
 
    **Research Findings**:
    - Does any finding body restate requirement text from the PRD? → Remove restatement
@@ -88,3 +88,35 @@ You are checking your own output for accuracy against the codebase and cohesion 
    - Is every exit criterion binary (met or not met, no "should" or "mostly")? → Rewrite any non-binary criteria as observable outcomes
    - Do all Phase Outlines use the same set of fields (no mixed thick/thin phases)? → Normalize to a single thickness tier
    - Does any Phase Outline contain source code, concrete file paths (outside the Source Documents table), or technology/framework choices? → Remove all implementation content from Phase Outlines
+
+   **Phase Plan**:
+   - Scope coverage:
+     - [ ] Every identifier in the Master Plan's phase-level Scope block appears in exactly one task row's Scope column
+     - [ ] No identifier appears in more than one task row (no double-assignment)
+     - [ ] No identifier in any task's Scope column is absent from the Master Plan's phase Scope block (no invented identifiers)
+   - Frontmatter integrity:
+     - [ ] `tasks` field is a non-empty array of `{id, title}` objects
+     - [ ] `tasks` array length matches the number of rows in the Task Outline table
+     - [ ] `phase` field is a positive integer matching the phase number
+     - [ ] `author` is `"tactical-planner-agent"`
+   - Exit criteria quality:
+     - [ ] Every exit criterion is binary (met or not met)
+     - [ ] Exit criteria refine (not merely copy) the Master Plan's phase-level exit criteria
+     - [ ] Standard exit criteria are present: all tasks complete, phase review passed, build passes, all tests pass
+   - Zoom-level boundary compliance:
+     - [ ] No project-level context (risk register, cross-phase strategy, project arc)
+     - [ ] No implementation details (file paths, contract signatures, code patterns)
+     - [ ] Phase Objective expands the Master Plan's label without copying it verbatim
+
+   **Task Handoff**:
+   - Zoom-level boundary compliance:
+     - [ ] No phase-level planning content (task ordering, cross-task dependencies, phase objectives)
+     - [ ] No project-level context (project goals, risk register, series context)
+     - [ ] No identifier labels used as references (all identifiers resolved into inlined content)
+   - Self-contained contract verification:
+     - [ ] Every contract or interface referenced by the task's scope identifiers is inlined as a code block
+     - [ ] No external document references remain ("see Architecture doc" or "per the PRD" are violations)
+     - [ ] File targets are concrete paths with CREATE/MODIFY actions
+   - Scope-directed compilation verification:
+     - [ ] Every identifier in the Phase Plan's Scope column for this task has been resolved and its content incorporated
+     - [ ] No content is inlined from upstream sections not indicated by the Scope column (scope discipline)
