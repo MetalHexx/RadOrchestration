@@ -10,6 +10,11 @@ Every planning agent loads this file before beginning its document-type-specific
 - Each heading + body block targets 100–150 tokens (hard ceiling: 200–300 tokens)
 - Titles are 5 words maximum; body is 1–2 sentences describing what the system shall do
 - Use a single blank line to separate the heading from the body within each chunk
+- Architectural Decisions use `### AD-N: {Title}` headings (H3); one element per heading
+- Each AD-N heading + body block targets 200–300 tokens; body is context, rationale, and key constraints
+- Hard ceiling for AD-N sections containing code blocks: 512 tokens (public interface surface only)
+- The `**Tags:** AD-N, tag1, tag2` line is the first line of every AD-N element body (immediately after the heading blank line)
+- AD-N numbering is flat and sequential across the entire Architecture document — no per-section resets; retired numbers are never reassigned
 
 ## Optional-Input Handling
 
