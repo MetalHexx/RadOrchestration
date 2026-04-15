@@ -1,5 +1,5 @@
 ---
-description: "Plan phase execution, create task handoffs, and generate phase reports. Use when breaking phases into tasks, creating task handoffs for the Coder, or generating phase reports after task completion."
+description: "Create Master Plans, plan phase execution, create task handoffs, and generate phase reports."
 model: opus
 user-invocable: false
 allowedTools:
@@ -129,17 +129,30 @@ When spawned to generate a phase report after all tasks complete:
 10. **Use the `generate-phase-report` skill** to produce the document
 11. **Save** to `{PROJECT-DIR}/reports/{NAME}-PHASE-REPORT-P{NN}.md`
 
+## Mode 4: Create Master Plan
+
+When spawned to create a Master Plan:
+
+1. **Load `rad-create-plans`** — follow routing to `references/master-plan/workflow.md`
+   The workflow defines all steps, thickness determination, and self-review.
+
+**REQUIRED**: Load and follow the `rad-create-plans` skill. It defines your full workflow,
+inputs, thickness rules, self-review checklist, and output contract. Do not proceed
+without reading it.
+
 ## Skills
 - **`orchestration`**: System context and validation guide — agent roles, pipeline flow, validation workflow
 - **`create-phase-plan`**: Guides phase planning and provides template
 - **`create-task-handoff`**: Guides task handoff creation and provides template
 - **`generate-phase-report`**: Guides phase report generation and provides template
+- **`rad-create-plans`**: Master Plan creation workflow and template
 - **`rad-plan-audit`**: Self-review — verify accuracy and cohesion before finalizing
 
 ## Output Contract
 
 | Document | Path | Format |
 |----------|------|--------|
+| Master Plan | `{PROJECT-DIR}/{NAME}-MASTER-PLAN.md` | Markdown per template |
 | Phase Plan | `{PROJECT-DIR}/phases/{NAME}-PHASE-{NN}-{TITLE}.md` | Markdown per template |
 | Task Handoff | `{PROJECT-DIR}/tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | Markdown per template |
 | Phase Report | `{PROJECT-DIR}/reports/{NAME}-PHASE-REPORT-P{NN}.md` | Markdown per template |
