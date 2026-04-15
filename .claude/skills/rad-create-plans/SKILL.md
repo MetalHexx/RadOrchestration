@@ -14,7 +14,7 @@ A consolidated skill for creating planning documents. It loads shared guidelines
 - **Research** — Research Findings document (supported)
 - **Design** — UX Design document (supported)
 - **Architecture** — Technical Architecture document (supported)
-- **Master Plan** — Project Master Plan *(future)*
+- **Master Plan** — Project Master Plan (supported)
 - **Phase Plan** — Phase execution plan *(future)*
 - **Task Handoff** — Coding task handoff document *(future)*
 
@@ -30,4 +30,4 @@ A consolidated skill for creating planning documents. It loads shared guidelines
 | `research` | [references/research/workflow.md](references/research/workflow.md) |
 | `ux-designer` | [references/design/workflow.md](references/design/workflow.md) |
 | `architect` | [references/architecture/workflow.md](references/architecture/workflow.md) |
-| `tactical-planner` | `references/master-plan/workflow.md` *(future)* |
+| `tactical-planner` | [references/master-plan/workflow.md](references/master-plan/workflow.md) |
