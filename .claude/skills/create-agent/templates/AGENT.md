@@ -1,18 +1,25 @@
 ---
-name: {Agent Display Name}
+name: {agent-filename}
 description: "{What this agent does}. Use when {specific triggers, scenarios, keywords}."
 argument-hint: "{Hint text guiding users on what input to provide.}"
-tools:
-  - read
-  - search
-  # - edit          # Uncomment if agent writes files
-  # - execute       # Uncomment if agent runs terminal commands / tests
-  # - web/fetch     # Uncomment if agent needs external web access
-  # - agent         # Uncomment only for advanced routing; see orchestration docs
-  # - todo          # Uncomment for progress tracking on multi-step work
-# model: claude-sonnet-4.6    # Optional: override default model
-# user-invocable: true                   # Set false to hide from agents dropdown
-# disable-model-invocation: false        # Set true to prevent auto-invocation as subagent
+model: sonnet
+user-invocable: true
+# Claude Code: comma-separated Pascal-case tool names.
+# Add as needed: Edit, Write, Bash, WebFetch, WebSearch, Agent, TodoWrite
+tools: Read, Grep, Glob
+# VS Code Copilot legacy chatmode compat (optional — Claude Code ignores this key):
+allowedTools:
+  - Read
+  - Grep
+  - Glob
+  # - Edit
+  # - Write
+  # - Bash
+  # - WebFetch
+  # - WebSearch
+  # - Agent
+  # - TodoWrite
+# disable-model-invocation: false        # Copilot-only: set true to prevent auto-invocation as subagent
 ---
 
 # {Agent Name}

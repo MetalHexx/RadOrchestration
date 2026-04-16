@@ -5,7 +5,7 @@ description: 'Create new custom agents (.agent.md) for the orchestration system.
 
 # Create Agent
 
-A skill for creating new custom agents (`.agent.md` files) for the orchestration system. Generates properly structured agent files with correct YAML frontmatter, namespaced tools, and a consistent markdown body following the established patterns.
+A skill for creating new custom agents for the orchestration system. Generates properly structured agent files with dual-format YAML frontmatter (Claude Code and Github Copilot) and a consistent markdown body following the established patterns.
 
 ## When to Use This Skill
 
@@ -31,20 +31,18 @@ A skill for creating new custom agents (`.agent.md` files) for the orchestration
 
 ## Workflow
 
-1. **Determine the agent name**: Use a clear, descriptive display name (e.g., "Security Reviewer", "API Designer")
-2. **Determine the filename**: Lowercase, hyphenated: `{agent-name}.md` (placed in `.claude/agents/`)
-3. **Select tools**: Apply principle of least privilege — only grant what the agent needs. Use the **Frontmatter Reference** below
-4. **Write the description**: Keyword-rich — includes WHAT it does AND WHEN to use it (Copilot uses this for agent discovery)
-5. **Write the body**: Follow the **Agent Body Template** below
-6. **Validate**: Use the checklist at the bottom of this skill
+1. **Determine the filename and name**: Lowercase, hyphenated: `{agent-name}.md` (placed in `.claude/agents/`). The `name:` field must match the filename without extension (e.g., filename `product-manager.md` → `name: product-manager`) — Claude Code spawns agents by this name.
+2. **Select tools**: Apply principle of least privilege — only grant what the agent needs. Populate BOTH `tools:` (comma-separated Pascal names) and `allowedTools:` (YAML list, same entries). See the **Frontmatter Reference** below.
+3. **Write the description**: Keyword-rich — includes WHAT it does AND WHEN to use it (both hosts use this for agent discovery)
+4. **Write the body**: Follow the **Agent Body Template** below
+5. **Validate**: Use the checklist at the bottom of this skill
 
 ## Key Rules
 
-- **Namespaced tools are mandatory**: Use `read/readFile`, NOT `readFile`. Use toolsets (`read`, `search`, `edit`, `execute`, `web`) for broad access
-- **`agent` tool required with `agents` array**: If the agent can spawn subagents, `agent` MUST be in the `tools` list
-- **`agents: []` prevents subagent use**: Explicitly set to empty array for agents that should NOT spawn subagents
-- **Principle of least privilege**: Grant only the tools the agent needs — read-only agents don't get `edit`
-- **Consistent body structure**: Follow the established pattern — Role & Constraints → Workflow → Skills → Output Contract → Quality Standards
+- **Dual-format frontmatter is mandatory**: Every agent must include BOTH `name:` + `tools:` (Claude Code — comma-separated Pascal names) AND `allowedTools:` (legacy Copilot chatmode — YAML list). Without the Claude Code pair, `/rad-plan` fails with `Agent type not found`. See the [frontmatter reference](./references/frontmatter-reference.md) for details.
+- **Keep the tool lists in sync**: `tools:` and `allowedTools:` must list the same tools — if you grant `Edit` in one, grant it in the other.
+- **Principle of least privilege**: Grant only the tools the agent needs — read-only agents don't get `Edit`/`Write`.
+- **Consistent body structure**: Follow the established pattern — Role & Constraints → Workflow → Skills → Output Contract → Quality Standards.
 
 ## Frontmatter Reference
 
@@ -52,20 +50,15 @@ See the bundled reference at [references/frontmatter-reference.md](./references/
 
 ### Quick Tool Selection Guide
 
+Use these Pascal-case names in both the `tools:` string and the `allowedTools:` list.
+
 | Agent Archetype | Recommended Tools | Notes |
 |-----------------|-------------------|-------|
-| Read-only / Orchestrator | `read`, `search`, `agent` | Add `agent` only if it spawns subagents |
-| Planning / Document writer | `read`, `search`, `edit`, `todo` | No terminal access needed |
-| Research / Explorer | `read`, `search`, `edit`, `web/fetch`, `todo` | `web/fetch` for external sources |
-| Code writer | `read`, `search`, `edit`, `execute`, `todo` | `execute` for terminal, tests, builds |
-| Reviewer | `read`, `search`, `edit`, `execute`, `todo` | `execute` for running tests/builds |
-
-### Tool Sets vs Individual Tools
-
-| Approach | When to Use |
-|----------|-------------|
-| **Toolsets** (`read`, `search`, `edit`, `execute`) | Broad access to all tools in category — simpler, recommended default |
-| **Individual tools** (`read/readFile`, `search/codebase`) | Precise control — use when you need to restrict within a category |
+| Read-only / Orchestrator | `Read, Grep, Glob, Agent` | Include `Agent` only if it spawns subagents |
+| Planning / Document writer | `Read, Grep, Glob, Edit, Write, TodoWrite` | No terminal access needed |
+| Research / Explorer | `Read, Grep, Glob, Edit, Write, TodoWrite, WebFetch` | `WebFetch` for external sources |
+| Code writer | `Read, Grep, Glob, Edit, Write, Bash, TodoWrite` | `Bash` for terminal, tests, builds |
+| Reviewer | `Read, Grep, Glob, Edit, Write, Bash, TodoWrite` | `Bash` for running tests/builds |
 
 ## Template
 
@@ -75,14 +68,13 @@ Use the bundled agent template: [templates/AGENT.md](./templates/AGENT.md)
 
 Before finalizing an agent, verify:
 
-- [ ] File is named `{agent-name}.agent.md` with lowercase hyphenated name
+- [ ] File is named `{agent-name}.md` with lowercase hyphenated name
 - [ ] File is placed in `.claude/agents/`
-- [ ] `name` field is a clear display name
-- [ ] `description` explains WHAT the agent does AND WHEN to use it (keyword-rich)
-- [ ] All tool names use namespaced format (e.g., `read/readFile`) or valid toolset names (e.g., `read`)
-- [ ] `agent` tool is included if `agents` array is non-empty
-- [ ] `agents: []` is set explicitly if the agent should NOT spawn subagents
+- [ ] `name:` field matches the filename without `.md` (Claude Code spawns by this name)
+- [ ] `description:` explains WHAT the agent does AND WHEN to use it (keyword-rich)
+- [ ] `tools:` field is a comma-separated string of Pascal-case names (Claude Code)
+- [ ] `allowedTools:` field is a YAML list containing the same entries as `tools:` (Copilot legacy chatmode)
+- [ ] Tools use Pascal-case names: `Read, Grep, Glob, Edit, Write, Bash, WebFetch, WebSearch, Agent, TodoWrite`
 - [ ] Body follows the standard structure: Role & Constraints → Workflow → Skills → Output Contract → Quality Standards
 - [ ] "What you do NOT do" section clearly defines boundaries
 - [ ] Write access is explicitly stated
-- [ ] No deprecated tool names (`readFile`, `editFile`, `createFile`, `findFiles`, `runInTerminal`, `fetchWebpage`)

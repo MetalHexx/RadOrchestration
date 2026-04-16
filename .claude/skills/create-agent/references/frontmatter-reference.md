@@ -1,6 +1,47 @@
 # Agent Frontmatter Quick Reference
 
-All available frontmatter fields for `.agent.md` files, per the [VS Code Custom Agents Documentation](https://code.visualstudio.com/docs/copilot/customization/custom-agents).
+Agents in this orchestration system target **two hosts** and use a dual-format frontmatter so the same file works in both:
+
+- **Claude Code** — reads `name:`, `description:`, `tools:` (comma-separated Pascal-case names), `model:` (`sonnet` | `opus` | `haiku` | `inherit`). Ignores any unknown keys.
+- **VS Code / GitHub Copilot Custom Agents** — reads the fields documented in the full reference below. Ignores unknown keys.
+
+## Claude Code compatibility (read this first)
+
+Claude Code requires two fields to discover and register an agent:
+
+| Field | Required | Value |
+|-------|----------|-------|
+| `name` | Yes | Lowercase-hyphenated — matches filename without `.md` (e.g., `product-manager`) |
+| `tools` | Yes | Comma-separated Pascal-case names: `Read, Grep, Glob, Edit, Write, Bash, WebFetch, WebSearch, Agent, TodoWrite` |
+
+Without `tools:` as a **comma-separated string of Pascal-case names**, Claude Code silently skips the agent and `/rad-plan` fails with `Agent type '<name>' not found`.
+
+### Dual-format pattern
+
+Keep both the Claude Code `tools:` string AND the legacy `allowedTools:` list in every agent file. Each host reads the one it understands and ignores the other. Example:
+
+```yaml
+---
+name: product-manager
+description: "Create Product Requirements Documents (PRDs)..."
+model: opus
+user-invocable: false
+tools: Read, Grep, Glob, Edit, Write, TodoWrite
+allowedTools:
+  - Read
+  - Grep
+  - Glob
+  - Edit
+  - Write
+  - TodoWrite
+---
+```
+
+Keep the two lists in sync — if you add a tool for Claude Code, add it to `allowedTools:` too (and vice-versa).
+
+---
+
+Below: full field reference for VS Code Custom Agents, per the [VS Code Custom Agents Documentation](https://code.visualstudio.com/docs/copilot/customization/custom-agents). These fields are applicable to Copilot only.
 
 ## Frontmatter Fields
 
