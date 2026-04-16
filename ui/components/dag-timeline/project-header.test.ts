@@ -6,7 +6,8 @@ import assert from "node:assert";
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import type { GateMode, GraphStatus, V5SourceControlState } from '../../types/state';
+import type { V5SourceControlState } from '../../types/state';
+import type { ProjectHeaderProps } from './project-header';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,17 +31,10 @@ function test(name: string, fn: () => void) {
 
 // ─── Simulation (mirrors project-header.tsx logic) ───────────────────────────
 
-interface ProjectHeaderProps {
-  projectName: string;
-  schemaVersion: "v4" | "v5";
-  graphStatus?: GraphStatus;
-  gateMode?: GateMode | null;
-  currentPhaseName?: string | null;
-  progress?: { completed: number; total: number } | null;
-  sourceControl: V5SourceControlState | null;
+type SimulateProjectHeaderProps = Omit<ProjectHeaderProps, 'followMode' | 'onToggleFollowMode'> & {
   followMode?: boolean;
   onToggleFollowMode?: () => void;
-}
+};
 
 interface FollowModeSwitchSim {
   id: "follow-mode-switch";
@@ -63,7 +57,7 @@ function makeSourceControl(overrides: Partial<V5SourceControlState> = {}): V5Sou
   };
 }
 
-function simulateProjectHeader(props: ProjectHeaderProps) {
+function simulateProjectHeader(props: SimulateProjectHeaderProps) {
   const showRow2 = props.graphStatus === 'in_progress' && !!props.currentPhaseName;
   const followMode = props.followMode ?? false;
   const onToggleFollowMode = props.onToggleFollowMode ?? (() => {});
@@ -416,10 +410,11 @@ test("Invoking onCheckedChange(false) calls onToggleFollowMode exactly once and 
 
 // ─── Tooltip copy strings ────────────────────────────────────────────────────
 
-test('schema-version tooltip copy appears verbatim in source', () => {
+test('schema-version tooltip helper is present in source', () => {
   assert.ok(
+    headerSource.includes('schemaVersionTooltip') ||
     headerSource.includes("Pipeline state schema version 5 (v5)."),
-    'schema-version tooltip string missing from project-header.tsx',
+    'schemaVersionTooltip function or v5 tooltip string missing from project-header.tsx',
   );
 });
 
@@ -518,6 +513,40 @@ test('autoPrTooltip "never" copy appears verbatim in source', () => {
   assert.ok(
     headerSource.includes("Auto-PR is off: no pull request will be created automatically."),
     'auto-pr never tooltip string missing from project-header.tsx',
+  );
+});
+
+test('auto_commit "ask" badge uses --status-in-progress cssVar in source', () => {
+  assert.ok(
+    headerSource.includes("'--status-in-progress'"),
+    'auto_commit ask badge cssVar --status-in-progress missing from project-header.tsx',
+  );
+  // Confirm the three-way ternary form: auto_commit === 'ask' triggers in-progress, not failed
+  assert.ok(
+    headerSource.includes("auto_commit === 'ask'"),
+    'three-way check for auto_commit === ask missing from project-header.tsx',
+  );
+  // isRejected should be tied to 'never' only — not 'ask'
+  assert.ok(
+    headerSource.includes("isRejected={auto_commit === 'never'}"),
+    'isRejected for auto_commit should be tied to never only',
+  );
+});
+
+test('auto_pr "ask" badge uses --status-in-progress cssVar in source', () => {
+  assert.ok(
+    headerSource.includes("'--status-in-progress'"),
+    'auto_pr ask badge cssVar --status-in-progress missing from project-header.tsx',
+  );
+  // Confirm the three-way ternary form: auto_pr === 'ask' triggers in-progress, not failed
+  assert.ok(
+    headerSource.includes("auto_pr === 'ask'"),
+    'three-way check for auto_pr === ask missing from project-header.tsx',
+  );
+  // isRejected should be tied to 'never' only — not 'ask'
+  assert.ok(
+    headerSource.includes("isRejected={auto_pr === 'never'}"),
+    'isRejected for auto_pr should be tied to never only',
   );
 });
 

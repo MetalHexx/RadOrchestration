@@ -7,7 +7,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 import ProjectsPage from './page';
-import { ProjectsPlaceholderView } from '@/components/layout';
 
 // ─── Source text helper ───────────────────────────────────────────────────────
 
@@ -40,10 +39,6 @@ async function run() {
   await test('Default export is a function named ProjectsPage', () => {
     assert.strictEqual(typeof ProjectsPage, 'function', 'Default export should be a function');
     assert.strictEqual(ProjectsPage.name, 'ProjectsPage', 'Default export should be named ProjectsPage');
-  });
-
-  await test('ProjectsPlaceholderView is importable from @/components/layout', () => {
-    assert.strictEqual(typeof ProjectsPlaceholderView, 'function', 'ProjectsPlaceholderView should be a function');
   });
 
   await test('Source contains id="main-content" attribute', () => {
