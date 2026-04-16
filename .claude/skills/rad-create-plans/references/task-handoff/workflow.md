@@ -9,7 +9,7 @@ You compile a self-contained implementation spec by resolving the Phase Plan's p
 | Phase Plan | `{PROJECT-DIR}/phases/{NAME}-PHASE-{NN}-{TITLE}.md` | Yes — task row (Scope column, dependencies, est. files) |
 | Architecture | `{PROJECT-DIR}/{NAME}-ARCHITECTURE.md` | Yes — contracts, interfaces, file structure (scoped by Scope column AD-N refs) |
 | `state.json` | `{PROJECT-DIR}/state.json` | Yes — execution state, review actions |
-| Design | `{PROJECT-DIR}/{NAME}-DESIGN.md` | Conditional — read if present; skip gracefully if absent. Read when Scope contains Design refs |
+| Design | `{PROJECT-DIR}/{NAME}-DESIGN.md` | Conditional — read if present; skip gracefully if absent. Read when Scope contains DD-N refs |
 | PRD | `{PROJECT-DIR}/{NAME}-PRD.md` | Conditional — read if present; skip gracefully if absent. Read when Scope contains FR-N/NFR-N refs |
 | Research Findings | `{PROJECT-DIR}/{NAME}-RESEARCH-FINDINGS.md` | Conditional — read if present; skip gracefully if absent. Read when Scope contains Research refs |
 | Previous Code Review(s) | Path from `state.json` task docs | Conditional — for dependent completed tasks |
@@ -35,7 +35,7 @@ You compile a self-contained implementation spec by resolving the Phase Plan's p
    ```
    FR-N, NFR-N  -> PRD section ### FR-N: or ### NFR-N:
    AD-N         -> Architecture section ### AD-N:
-   Design: {H}  -> Design document section matching heading H
+   DD-N         -> Design document section ### DD-N:
    Research: {H} -> Research Findings section matching heading H
    ```
 
@@ -53,7 +53,7 @@ You compile a self-contained implementation spec by resolving the Phase Plan's p
 
 9. **Inline contracts:** Copy the exact interfaces/contracts from Architecture sections resolved by the task's scope identifiers. Render as code blocks. Do NOT reference the Architecture doc — the content must be fully inlined. Every contract or interface referenced by the task's scope identifiers must be present.
 
-10. **Determine conditional sections:** Check whether the task's Scope column contains Design section references that resolve to design tokens, CSS variables, or visual design elements. If yes, include the "Styles & Design Tokens" section with actual token values inlined from the Design document. If no Design refs exist in scope, omit the section entirely — no placeholder, no "N/A" row, no empty heading. The document flows directly from "Contracts & Interfaces" to "Test Requirements."
+10. **Determine conditional sections:** Check whether the task's Scope column contains DD-N identifiers that resolve to Design elements containing design tokens, CSS variables, or visual design elements. If yes, include the "Styles & Design Tokens" section with actual token values inlined from the Design document. If no Design refs exist in scope, omit the section entirely — no placeholder, no "N/A" row, no empty heading. The document flows directly from "Contracts & Interfaces" to "Test Requirements."
 
 11. **Define test requirements:** Specific, verifiable test cases as a checkbox list.
 
