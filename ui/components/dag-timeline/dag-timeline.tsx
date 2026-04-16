@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import type { NodesRecord, NodeState } from '@/types/state';
 import { DAGNodeRow } from './dag-node-row';
 import { DAGLoopNode } from './dag-loop-node';
@@ -35,66 +35,44 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
   const groups = groupNodesBySection(nodes);
   const unmatchedEntries = Object.entries(nodes).filter(([nodeId]) => !Object.hasOwn(NODE_SECTION_MAP, nodeId));
 
+  const renderNodeEntry = ([nodeId, node]: [string, NodeState]): ReactNode => (
+    <div key={nodeId} role="listitem">
+      {isLoopNode(node) ? (
+        <DAGLoopNode
+          nodeId={nodeId}
+          node={node}
+          currentNodePath={currentNodePath}
+          onDocClick={onDocClick}
+          expandedLoopIds={expandedLoopIds}
+          onAccordionChange={onAccordionChange}
+          repoBaseUrl={repoBaseUrl}
+          projectName={projectName}
+        />
+      ) : (
+        <DAGNodeRow
+          nodeId={nodeId}
+          node={node}
+          currentNodePath={currentNodePath}
+          onDocClick={onDocClick}
+          projectName={projectName}
+          gateActive={deriveGateActive(node)}
+        />
+      )}
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-0" role="list">
       {groups.map((group, index) => (
         <Fragment key={group.label}>
           {index > 0 && <Separator className="my-3" role="none" />}
           <DAGSectionGroup label={group.label}>
-            {group.entries.map(([nodeId, node]) => (
-              <div key={nodeId} role="listitem">
-                {isLoopNode(node) ? (
-                  <DAGLoopNode
-                    nodeId={nodeId}
-                    node={node}
-                    currentNodePath={currentNodePath}
-                    onDocClick={onDocClick}
-                    expandedLoopIds={expandedLoopIds}
-                    onAccordionChange={onAccordionChange}
-                    repoBaseUrl={repoBaseUrl}
-                    projectName={projectName}
-                  />
-                ) : (
-                  <DAGNodeRow
-                    nodeId={nodeId}
-                    node={node}
-                    currentNodePath={currentNodePath}
-                    onDocClick={onDocClick}
-                    projectName={projectName}
-                    gateActive={deriveGateActive(node)}
-                  />
-                )}
-              </div>
-            ))}
+            {group.entries.map(renderNodeEntry)}
           </DAGSectionGroup>
         </Fragment>
       ))}
       {groups.length > 0 && unmatchedEntries.length > 0 && <Separator className="my-3" role="none" />}
-      {unmatchedEntries.map(([nodeId, node]) => (
-        <div key={nodeId} role="listitem">
-          {isLoopNode(node) ? (
-            <DAGLoopNode
-              nodeId={nodeId}
-              node={node}
-              currentNodePath={currentNodePath}
-              onDocClick={onDocClick}
-              expandedLoopIds={expandedLoopIds}
-              onAccordionChange={onAccordionChange}
-              repoBaseUrl={repoBaseUrl}
-              projectName={projectName}
-            />
-          ) : (
-            <DAGNodeRow
-              nodeId={nodeId}
-              node={node}
-              currentNodePath={currentNodePath}
-              onDocClick={onDocClick}
-              projectName={projectName}
-              gateActive={deriveGateActive(node)}
-            />
-          )}
-        </div>
-      ))}
+      {unmatchedEntries.map(renderNodeEntry)}
     </div>
   );
 }

@@ -267,12 +267,13 @@ function hasGateForwardingOnDAGNodeRow(source: string): boolean {
   return foundAny;
 }
 
-test('dag-timeline.tsx forwards `projectName={projectName}` on every <DAGNodeRow> call site (>= 4 total occurrences across DAGNodeRow + DAGLoopNode forwarding)', () => {
+test('dag-timeline.tsx forwards `projectName={projectName}` on every <DAGNodeRow> call site (>= 2 total occurrences across DAGNodeRow + DAGLoopNode forwarding)', () => {
   const matches = timelineSource.match(/projectName=\{projectName\}/g) ?? [];
-  // The file forwards projectName to DAGLoopNode (twice) and to DAGNodeRow (twice) = 4 total.
+  // After the renderNodeEntry helper refactor, the file forwards projectName
+  // to DAGLoopNode (once) and to DAGNodeRow (once) inside the shared helper = 2 total.
   assert.ok(
-    matches.length >= 4,
-    `expected at least 4 projectName={projectName} occurrences, got ${matches.length}`
+    matches.length >= 2,
+    `expected at least 2 projectName={projectName} occurrences, got ${matches.length}`
   );
   assert.ok(
     hasGateForwardingOnDAGNodeRow(timelineSource),
