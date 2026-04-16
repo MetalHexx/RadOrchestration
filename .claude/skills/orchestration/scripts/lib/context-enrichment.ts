@@ -134,7 +134,19 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
       const phaseReport = phaseIter?.nodes['phase_report'] as StepNodeState | undefined;
       const phase_report_doc = phaseReport?.doc_path ?? '';
-      return { ...base, phase_report_doc };
+
+      const taskLoop = phaseIter?.nodes['task_loop'] as ForEachTaskNodeState | undefined;
+      const taskIters = taskLoop?.iterations ?? [];
+      const firstTask = taskIters[0];
+      const lastTask = taskIters[taskIters.length - 1];
+      const phase_first_sha = firstTask?.commit_hash ?? null;
+      const lastTaskFinalCorrective = lastTask?.corrective_tasks
+        .slice()
+        .reverse()
+        .find(ct => ct.commit_hash != null);
+      const phase_head_sha = lastTaskFinalCorrective?.commit_hash ?? lastTask?.commit_hash ?? null;
+
+      return { ...base, phase_report_doc, phase_first_sha, phase_head_sha };
     }
 
     return base;

@@ -140,7 +140,7 @@ describe('[CONTRACT] Action Contexts — phase-level execution actions', () => {
     }));
   });
 
-  it('spawn_phase_reviewer returns { phase_number: 1, phase_id: "P01", phase_report_doc }', () => {
+  it('spawn_phase_reviewer returns { phase_number: 1, phase_id: "P01", phase_report_doc, phase_first_sha, phase_head_sha }', () => {
     const io = driveToExecutionWithConfig(config, 1);
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
@@ -159,6 +159,12 @@ describe('[CONTRACT] Action Contexts — phase-level execution actions', () => {
     }));
     expect(typeof result.context.phase_report_doc).toBe('string');
     expect((result.context.phase_report_doc as string).length).toBeGreaterThan(0);
+    expect(
+      typeof result.context.phase_first_sha === 'string' || result.context.phase_first_sha === null,
+    ).toBe(true);
+    expect(
+      typeof result.context.phase_head_sha === 'string' || result.context.phase_head_sha === null,
+    ).toBe(true);
   });
 
   it('gate_phase returns { phase_number: 1, phase_id: "P01" } (execution_mode=task)', () => {

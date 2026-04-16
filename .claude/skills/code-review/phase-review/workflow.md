@@ -2,12 +2,17 @@
 
 Self-contained workflow for phase-level review (Action #11, `spawn_phase_reviewer`). Do not load other review docs — everything you need is below.
 
+## Your Job
+
+You are the backstop. Task reviews already vetted each commit in isolation against its own handoff. Four approved task reviews do not equal a green phase — task reviewers see their commit; you see all of them. Your unique value is what spans tasks: integration, contract drift at task boundaries, exports that never get imported, conflicting patterns across tasks. If the cumulative diff reveals something every task reviewer missed, that's on you to catch.
+
 ## Review Mindset
 
-- Act as a professional code reviewer — focus on correctness, maintainability, and conformance to the plan.
+- Task reviews already vetted each commit in isolation. Your job is to see what they couldn't — the seams between tasks.
+- Skepticism is required, not optional. Four green task reviews do not equal a green phase. Task reviewers see their commit; you see all of them.
+- Every issue raised must include a concrete fix — never flag a problem without offering a path forward.
+- Run the tests and verify the build yourself. "The phase report says tests pass" is not evidence.
 - Use binary assessments for each finding: ✅ pass, ⚠️ concern, ❌ fail.
-- Every issue raised must include a concrete suggestion for how to fix it — never flag a problem without offering a path forward.
-- Run actual tests and verify the build — do not assume they pass.
 
 ## Inputs
 
@@ -19,24 +24,23 @@ Self-contained workflow for phase-level review (Action #11, `spawn_phase_reviewe
 | Master Plan | `{NAME}-MASTER-PLAN.md` | Phase/task structure, exit criteria |
 | Phase Plan | `{NAME}-PHASE-{NN}-{TITLE}.md` | Exit criteria, task outline |
 | All Code Reviews | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` (all tasks) | Per-task review verdicts and issues |
-| Source Code | All files from the phase | Code to review holistically |
+| `phase_first_sha` | Spawn context | First task's initial commit. `null` when auto-commit is off. |
+| `phase_head_sha` | Spawn context | Last committed SHA of the phase (corrective-aware). `null` when auto-commit is off. |
+| Cumulative diff | `git diff <phase_first_sha>~1..<phase_head_sha>` (fallback: `git diff HEAD` + untracked files when either SHA is null) | Scope for the skeptical pass |
+| Source Code | Files produced in this phase | Read only when the diff requires surrounding context |
 | Previous Phase Review | `{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | Previous phase review (if corrective — may not exist) |
 
 ## Workflow
 
 1. Read the Phase Plan — understand exit criteria and task outline.
-2. Read all Code Reviews for this phase — understand individual task outcomes.
-3. Read all source files produced in this phase.
-4. **Corrective-review check**: If a previous Phase Review exists, read it to identify expected corrections. Deviations from the original plan that address issues in the previous phase review are expected corrections — do NOT flag them.
-5. **Conformance pass**: Compare against the Phase Plan, PRD, Architecture, Design, and Master Plan as context. Assess cross-task integration using the 4-category checklist (see categories below). Verify each exit criterion from the Phase Plan. Core question: "Did we build what we intended?"
-6. **Skeptical pass** (Independent Quality Assessment):
-   - Evaluate code correctness independent of planning documents.
-   - Core question: "Is what we built correct?"
-   - Focus areas: bugs, edge cases, defensive gaps, documentation-code drift.
-   - Planning documents describe intent but may contain errors — use them as context for what was intended, not as ground truth for what is correct.
-   - Apply code-smell detection, security checks, and performance review without anchoring to the plan.
-7. Apply verdict rules (see Verdict Rules section below) — highest severity across both passes determines verdict. Set `exit_criteria_met` frontmatter field to `true` only when ALL exit criteria are verified as met; `false` otherwise.
-8. Fill in the output template at [./template.md](./template.md) and save to `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`.
+2. **Run the cumulative phase diff.** If both `phase_first_sha` and `phase_head_sha` are present, run `git diff <phase_first_sha>~1..<phase_head_sha>`. If either is `null`, fall back to `git diff HEAD` and read any untracked files listed in the phase's Task Handoff File Targets. This diff is the scope for the skeptical pass.
+3. Read all Code Reviews for this phase — understand individual task outcomes.
+4. Run tests and verify the build passes — do not accept "tests passed" on faith.
+5. **Corrective-review check**: If a previous Phase Review exists, read it to identify expected corrections. Deviations from the original plan that address issues in the previous phase review are expected corrections — do NOT flag them.
+6. **Conformance pass**: The Phase Plan sets exit criteria — verify each one against what's actually checked in. If a criterion isn't verifiable from the current codebase, mark it failed; do not infer. Assess cross-task integration using the 4-category checklist (see categories below). Do NOT re-verify requirement conformance at task scope — task reviewers already did that. Your unique value is what spans tasks.
+7. **Skeptical pass** (Independent Quality Assessment): Read the cumulative phase diff line by line. Don't trust that modules integrate because the code reviews say they do — the code reviews describe per-task intent, the diff shows how the tasks actually fit together. Your job is to find what slipped through the seams between tasks: contract drift where a later task's call site doesn't match an earlier task's new signature; exports that no other task imports; conflicting patterns where T1 and T3 solved similar problems differently. Read full files only when the diff alone is insufficient to confirm a finding.
+8. Apply verdict rules (see Verdict Rules section below) — highest severity across both passes determines verdict. Set `exit_criteria_met` frontmatter field to `true` only when ALL exit criteria are verified as met; `false` otherwise.
+9. Fill in the output template at [./template.md](./template.md) and save to `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`.
 
 ## Conformance Checklist Categories
 
@@ -61,6 +65,9 @@ The following categories are starting points, not an exhaustive checklist. Look 
 | Dead code | Unreachable branches, unused exports or imports | Exported function never imported anywhere |
 | Implicit coupling | Hidden dependencies between modules | Module A directly reads a file owned by Module B |
 | Resource leaks | Opened handles, streams, or connections never closed | File stream opened in function but no cleanup on error path |
+| Cross-task contract drift | A consumer in a later task doesn't match a producer's contract from an earlier task | T1 changes a function's return type to `Promise<T>`; T3 still awaits synchronously |
+| Dead-on-arrival exports | Exports added in one task that no other task in the phase imports | T1 adds `export function helperX`; grep across T2–T4 diffs shows zero imports |
+| Approved-but-integrated-wrong | Every task review was approved, but the cumulative diff reveals the tasks don't fit together | T1 returns ISO date strings; T3 parses dates expecting Unix timestamps — each task review passed against its own handoff |
 
 ## Corrective Review Context
 
@@ -77,6 +84,7 @@ A corrective review occurs when reviewing a submission that follows a previous r
 - Error handling covers realistic failure modes, not just the happy path.
 - Public APIs and exported interfaces are documented.
 - No security vulnerabilities (injection, authentication gaps, exposed secrets).
+- Code reviews are evidence, not verdict. A phase of approved task reviews does not mean the phase is approved. If the cumulative diff reveals something every task reviewer missed, that's on you to catch.
 
 ## Verdict Rules
 

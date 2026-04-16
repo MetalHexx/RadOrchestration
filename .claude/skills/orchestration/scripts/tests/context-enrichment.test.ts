@@ -584,3 +584,133 @@ describe('enrichActionContext — spawn_code_reviewer', () => {
     expect(result.head_sha).toBe('abc123');
   });
 });
+
+// ── spawn_phase_reviewer ──────────────────────────────────────────────────────
+
+describe('enrichActionContext — spawn_phase_reviewer', () => {
+  function stateWithPhaseTasks(
+    taskCommitHashes: Array<string | null>,
+    lastTaskCorrectives: Array<{ index: number; status: 'not_started' | 'in_progress' | 'completed'; commit_hash: string | null }> = [],
+  ): PipelineState {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [
+      {
+        index: 0,
+        status: 'in_progress',
+        nodes: {
+          task_loop: {
+            kind: 'for_each_task',
+            status: 'in_progress',
+            iterations: taskCommitHashes.map((commit_hash, index) => ({
+              index,
+              status: 'completed',
+              nodes: {},
+              corrective_tasks: index === taskCommitHashes.length - 1
+                ? lastTaskCorrectives.map(c => ({
+                    index: c.index,
+                    reason: 'changes_requested',
+                    injected_after: 'code_review',
+                    status: c.status,
+                    nodes: {},
+                    commit_hash: c.commit_hash,
+                  }))
+                : [],
+              commit_hash,
+            })),
+          } as ForEachTaskNodeState,
+        },
+        corrective_tasks: [],
+        commit_hash: null,
+      },
+    ];
+    return state;
+  }
+
+  it('returns phase_first_sha and phase_head_sha from first and last task commits when no correctives', () => {
+    const state = stateWithPhaseTasks(['abc', 'def', 'ghi']);
+    const result = enrichActionContext({
+      action: 'spawn_phase_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.phase_first_sha).toBe('abc');
+    expect(result.phase_head_sha).toBe('ghi');
+    expect(result.phase_number).toBe(1);
+    expect(result.phase_id).toBe('P01');
+  });
+
+  it('returns phase_head_sha from the last task final corrective commit when one has committed', () => {
+    const state = stateWithPhaseTasks(['abc', 'def', 'ghi'], [
+      { index: 1, status: 'completed', commit_hash: 'jkl' },
+    ]);
+    const result = enrichActionContext({
+      action: 'spawn_phase_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.phase_first_sha).toBe('abc');
+    expect(result.phase_head_sha).toBe('jkl');
+  });
+
+  it('falls back to last task base commit when the latest corrective has no commit yet', () => {
+    const state = stateWithPhaseTasks(['abc', 'def', 'ghi'], [
+      { index: 1, status: 'in_progress', commit_hash: null },
+    ]);
+    const result = enrichActionContext({
+      action: 'spawn_phase_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.phase_first_sha).toBe('abc');
+    expect(result.phase_head_sha).toBe('ghi');
+  });
+
+  it('picks the most recent corrective with a commit when multiple correctives exist', () => {
+    const state = stateWithPhaseTasks(['abc', 'def', 'ghi'], [
+      { index: 1, status: 'completed', commit_hash: 'first_corr' },
+      { index: 2, status: 'completed', commit_hash: 'second_corr' },
+      { index: 3, status: 'in_progress', commit_hash: null },
+    ]);
+    const result = enrichActionContext({
+      action: 'spawn_phase_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.phase_head_sha).toBe('second_corr');
+  });
+
+  it('returns both SHAs as null when auto-commit is off (no commits made)', () => {
+    const state = stateWithPhaseTasks([null, null, null]);
+    const result = enrichActionContext({
+      action: 'spawn_phase_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.phase_first_sha).toBeNull();
+    expect(result.phase_head_sha).toBeNull();
+  });
+
+  it('returns phase_first_sha === phase_head_sha for a single-task phase', () => {
+    const state = stateWithPhaseTasks(['only']);
+    const result = enrichActionContext({
+      action: 'spawn_phase_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.phase_first_sha).toBe('only');
+    expect(result.phase_head_sha).toBe('only');
+  });
+});

@@ -11,5 +11,5 @@ Three modes. Identify yours from the spawn context fields you received, then fol
 | Your context includes…                       | Mode  | Workflow                                               | Template                                               |
 |----------------------------------------------|-------|--------------------------------------------------------|--------------------------------------------------------|
 | `task_number` (and `task_id`, `head_sha`)    | Task  | [task-review/workflow.md](./task-review/workflow.md)   | [task-review/template.md](./task-review/template.md)   |
-| `phase_report_doc` (and no `task_number`)    | Phase | [phase-review/workflow.md](./phase-review/workflow.md) | [phase-review/template.md](./phase-review/template.md) |
+| `phase_report_doc` (and `phase_first_sha`, `phase_head_sha`) | Phase | [phase-review/workflow.md](./phase-review/workflow.md) | [phase-review/template.md](./phase-review/template.md) |
 | No task or phase fields (empty context)      | Final | [final-review/workflow.md](./final-review/workflow.md) | [final-review/template.md](./final-review/template.md) |
