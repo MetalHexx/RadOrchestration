@@ -39,12 +39,41 @@ design content for a non-UI project.
 4. Map user flows: Focus on what FRs do NOT say — error recovery paths, branching logic,
    state transitions, multi-step interaction sequences, and user context.
    Do not linearize FRs into steps.
+   For each user flow element, assign the next sequential DD-N number, write the
+   heading as `### DD-N: {Title}`, write `**Tags:** DD-N, flow, {keyword1}, {keyword2}`
+   as the first body line, and write `**Resolves:** FR-N` on the next line when the
+   flow addresses specific functional requirements. See `../shared/guidelines.md` for
+   DD-N chunk-format conventions (heading format, Tags line placement, Resolves line
+   placement, 100-150 token target with 200-300 ceiling, flat sequential numbering).
 5. Define layouts: View/page layouts with regions, components, and design tokens.
    Use per-component headings (one `###` heading per component or view region).
+   For each view/page layout element, assign the next sequential DD-N number, write
+   the heading as `### DD-N: {View/Page Name}`, write
+   `**Tags:** DD-N, layout, {keyword1}, {keyword2}` as the first body line, and write
+   `**Resolves:** FR-N` on the next line. Use the type tag `layout` for view-level and
+   region-level entries; use the type tag `component` for component-level entries that
+   appear under a view. See `../shared/guidelines.md` for DD-N chunk-format conventions
+   (heading format, Tags line placement, Resolves line placement, 100-150 token target
+   with 200-300 ceiling, flat sequential numbering).
 6. Define new components: Per-component headings with conceptual props, design tokens,
    and description. Props stay conceptual — no TypeScript types, no file paths.
+   For each new component, assign the next sequential DD-N number, write the heading
+   as `### DD-N: {Component Name}`, write `**Tags:** DD-N, component, {keyword1}, {keyword2}`
+   as the first body line, and write `**Resolves:** FR-N` on the next line. Keep
+   `### New Components` itself as an H3 sub-section container with no DD-N identifier —
+   only the child component entries receive DD-N identifiers. See `../shared/guidelines.md`
+   for DD-N chunk-format conventions (heading format, Tags line placement, Resolves line
+   placement, 100-150 token target with 200-300 ceiling, flat sequential numbering).
 7. Specify states & interactions: Per-component headings for each state with visual
    treatment description.
+   For each state entry, assign the next sequential DD-N number, write the heading as
+   `### DD-N: {Component Name} {State Name}`, write
+   `**Tags:** DD-N, state, {keyword1}, {keyword2}` as the first body line, and write
+   `**Resolves:** FR-N` on the next line. The component association that the former
+   grouping heading provided is carried in the title and the keyword tags. See
+   `../shared/guidelines.md` for DD-N chunk-format conventions (heading format, Tags
+   line placement, Resolves line placement, 100-150 token target with 200-300 ceiling,
+   flat sequential numbering).
 8. (Optional) Document design tokens used: Include only when the project references
    specific tokens worth calling out.
 9. (Optional) Define accessibility: Include only when non-obvious focus management,
@@ -89,6 +118,10 @@ design content for a non-UI project.
   (hard ceiling: 200-300 tokens)
 - **No code**: Component names and conceptual props only — implementation lives in
   Architecture and task handoffs
+- **DD-N identifiers**: Every leaf element in User Flows, Layout & Components
+  (including New Components), and States & Interactions carries a flat sequential
+  DD-N identifier — no per-section resets, retired numbers never reassigned,
+  one element per heading.
 
 ## Constraints
 
