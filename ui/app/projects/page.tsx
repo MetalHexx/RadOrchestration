@@ -10,23 +10,11 @@ import { ProjectSidebar } from "@/components/sidebar";
 import { MainDashboard } from "@/components/layout";
 import { DocumentDrawer } from "@/components/documents";
 import { DAGTimeline, ProjectHeader, HaltReasonBanner, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
+import { SSEStatusBanner } from "@/components/badges";
 import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
 import { isV5State } from "@/types/state";
 import type { ProjectState, ProjectStateV5 } from "@/types/state";
 import type { ProjectSummary } from "@/types/components";
-import type { SSEConnectionStatus } from "@/types/events";
-
-// ─── Status band slot placeholders (replaced by T02 / T03) ───────────────────
-
-interface SSEStatusBannerProps {
-  status: SSEConnectionStatus;
-  onReconnect: () => void;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function SSEStatusBannerPlaceholder(_props: SSEStatusBannerProps): null {
-  return null;
-}
 
 export default function ProjectsPage() {
   const {
@@ -159,7 +147,7 @@ export default function ProjectsPage() {
                   graphStatus={v5Derivations.graphStatus}
                   haltReason={v5State.pipeline.halt_reason}
                 />
-                <SSEStatusBannerPlaceholder
+                <SSEStatusBanner
                   status={sseStatus}
                   onReconnect={reconnect}
                 />
