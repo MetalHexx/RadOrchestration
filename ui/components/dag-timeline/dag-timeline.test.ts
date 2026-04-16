@@ -6,8 +6,12 @@
  * isLoopNode is exported from dag-timeline-helpers.ts for testability.
  */
 import assert from "node:assert";
-import { isLoopNode } from './dag-timeline-helpers';
-import type { NodeKind, NodeState, NodesRecord } from '@/types/state';
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { isLoopNode, getGateNodeConfig } from './dag-timeline-helpers';
+import { deriveGateActive } from './dag-timeline';
+import type { NodeKind, NodeState, NodesRecord, GateNodeState, StepNodeState, ConditionalNodeState, ParallelNodeState } from '@/types/state';
 import {
   stepNode,
   gateNode,
@@ -114,6 +118,166 @@ test('loop kinds form exactly the set {for_each_phase, for_each_task}', () => {
   const allKinds: NodeKind[] = ['step', 'gate', 'conditional', 'parallel', 'for_each_phase', 'for_each_task'];
   const identified = allKinds.filter((kind) => isLoopNode({ kind } as NodeState));
   assert.deepStrictEqual(identified.sort(), ['for_each_phase', 'for_each_task'].sort());
+});
+
+// ─── Tests: deriveGateActive helper ──────────────────────────────────────────
+
+const activeGateNode: GateNodeState = {
+  kind: 'gate',
+  status: 'in_progress',
+  gate_active: true,
+};
+
+test('deriveGateActive(gateNode) returns false (shared fixture has gate_active: false)', () => {
+  assert.strictEqual(deriveGateActive(gateNode), false);
+});
+
+test('deriveGateActive({ kind: "gate", status: "in_progress", gate_active: true }) returns true', () => {
+  assert.strictEqual(deriveGateActive(activeGateNode), true);
+});
+
+test('deriveGateActive(stepNode) returns undefined', () => {
+  assert.strictEqual(deriveGateActive(stepNode), undefined);
+});
+
+test('deriveGateActive(conditionalNode) returns undefined', () => {
+  assert.strictEqual(deriveGateActive(conditionalNode), undefined);
+});
+
+test('deriveGateActive(parallelNode) returns undefined', () => {
+  assert.strictEqual(deriveGateActive(parallelNode), undefined);
+});
+
+test('deriveGateActive(forEachPhaseNode) returns undefined', () => {
+  assert.strictEqual(deriveGateActive(forEachPhaseNode), undefined);
+});
+
+test('deriveGateActive(forEachTaskNode) returns undefined', () => {
+  assert.strictEqual(deriveGateActive(forEachTaskNode), undefined);
+});
+
+// ─── Integration: shouldRenderGateButton composition ─────────────────────────
+
+/**
+ * Mirrors the gate-render decision logic in DAGNodeRow. Local copy of the
+ * helper used in dag-node-row.test.ts — validates that the composition of
+ * `node.kind`, `gateActive`, `projectName`, and `getGateNodeConfig(nodeId)`
+ * produces the correct top-level-only scope for `ApproveGateButton` rendering.
+ */
+function shouldRenderGateButton(
+  node: StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState,
+  nodeId: string,
+  projectName: string | undefined,
+  gateActive: boolean | undefined
+): boolean {
+  if (node.kind !== 'gate') return false;
+  if (gateActive !== true) return false;
+  if (projectName === undefined) return false;
+  return getGateNodeConfig(nodeId) !== null;
+}
+
+test('integration: plan_approval_gate with gate_active: true and projectName defined → shouldRenderGateButton true', () => {
+  const nodeId = 'plan_approval_gate';
+  const node = activeGateNode;
+  assert.strictEqual(
+    shouldRenderGateButton(node, nodeId, 'my-project', deriveGateActive(node)),
+    true
+  );
+});
+
+test('integration: final_approval_gate with gate_active: true and projectName defined → shouldRenderGateButton true', () => {
+  const nodeId = 'final_approval_gate';
+  const node = activeGateNode;
+  assert.strictEqual(
+    shouldRenderGateButton(node, nodeId, 'my-project', deriveGateActive(node)),
+    true
+  );
+});
+
+test('integration: plan_approval_gate with gate_active: false → shouldRenderGateButton false (hide-after-approval / inactive)', () => {
+  const nodeId = 'plan_approval_gate';
+  const inactiveNode: GateNodeState = { kind: 'gate', status: 'completed', gate_active: false };
+  assert.strictEqual(
+    shouldRenderGateButton(inactiveNode, nodeId, 'my-project', deriveGateActive(inactiveNode)),
+    false
+  );
+});
+
+test('integration: gate_mode_selection with gate_active: true and projectName defined → shouldRenderGateButton false (excluded from GATE_NODE_CONFIG)', () => {
+  const nodeId = 'gate_mode_selection';
+  const node = activeGateNode;
+  assert.strictEqual(
+    shouldRenderGateButton(node, nodeId, 'my-project', deriveGateActive(node)),
+    false
+  );
+});
+
+test('integration: pr_gate as conditional node → shouldRenderGateButton false regardless of other props (not a gate kind)', () => {
+  const nodeId = 'pr_gate';
+  const prGateConditional: ConditionalNodeState = {
+    kind: 'conditional',
+    status: 'in_progress',
+    branch_taken: null,
+  };
+  // gateActive is derived to undefined for non-gate kinds
+  assert.strictEqual(
+    shouldRenderGateButton(prGateConditional, nodeId, 'my-project', deriveGateActive(prGateConditional)),
+    false
+  );
+});
+
+// ─── Source-text: dag-timeline.tsx forwards projectName + gateActive ─────────
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const timelineSource = readFileSync(join(__dirname, 'dag-timeline.tsx'), 'utf-8');
+
+test('dag-timeline.tsx forwards `projectName={projectName}` at least twice (once per DAGNodeRow call site)', () => {
+  const matches = timelineSource.match(/projectName=\{projectName\}/g) ?? [];
+  // The file also forwards projectName to DAGLoopNode (twice) and to DAGNodeRow (twice).
+  // We require at least 2 occurrences overall; this check confirms wiring is present.
+  assert.ok(
+    matches.length >= 2,
+    `expected at least 2 projectName={projectName} occurrences, got ${matches.length}`
+  );
+});
+
+test('dag-timeline.tsx forwards `gateActive={deriveGateActive(node)}` at least twice (once per DAGNodeRow call site)', () => {
+  const matches = timelineSource.match(/gateActive=\{deriveGateActive\(node\)\}/g) ?? [];
+  assert.strictEqual(
+    matches.length >= 2,
+    true,
+    `expected at least 2 gateActive={deriveGateActive(node)} occurrences, got ${matches.length}`
+  );
+});
+
+// ─── No-side-effects contract: DAGTimeline delegates gate API to ApproveGateButton ─
+
+test('dag-timeline.tsx does NOT import fetch, api-client, or useApproveGate directly', () => {
+  // Confirm no direct network side-effects. All gate API calls are delegated
+  // through ApproveGateButton (via useApproveGate), which is owned by the
+  // node-row scope — not by DAGTimeline.
+  assert.ok(
+    !/from\s+['"].*api\/projects\/.*gate['"]/.test(timelineSource),
+    'dag-timeline.tsx must NOT import from the gate API route'
+  );
+  assert.ok(
+    !/useApproveGate/.test(timelineSource),
+    'dag-timeline.tsx must NOT reference useApproveGate'
+  );
+  assert.ok(
+    !/\bfetch\s*\(/.test(timelineSource),
+    'dag-timeline.tsx must NOT call fetch() directly'
+  );
+  // Strip JSDoc / line comments before checking for ApproveGateButton references
+  // — a doc comment that names the component is allowed, but no import/JSX use.
+  const codeOnly = timelineSource
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  assert.ok(
+    !/ApproveGateButton/.test(codeOnly),
+    'dag-timeline.tsx must NOT import or render ApproveGateButton directly (it is wired inside DAGNodeRow)'
+  );
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

@@ -6,6 +6,9 @@
  * Helper functions are exported from dag-iteration-panel.tsx for testability.
  */
 import assert from "node:assert";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import {
   buildIterationLabel,
   buildIterationChildNodeId,
@@ -280,6 +283,61 @@ test('taskLoopIterationWithCorrective corrective task commit_hash is null', () =
   const forEachTask = found[1] as ForEachTaskNodeState;
   const correctiveTask = forEachTask.iterations[0].corrective_tasks[0];
   assert.strictEqual(correctiveTask.commit_hash, null);
+});
+
+// ─── Source-text: no projectName / gateActive forwarding into iteration scope ─
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const iterationPanelSource = readFileSync(join(__dirname, 'dag-iteration-panel.tsx'), 'utf-8');
+const correctiveTaskGroupSource = readFileSync(join(__dirname, 'dag-corrective-task-group.tsx'), 'utf-8');
+
+/**
+ * Returns true if any <DAGNodeRow ...> JSX element in the given source text
+ * contains a `projectName=` or `gateActive=` prop. The check is performed
+ * line-by-line: when a line references `<DAGNodeRow`, all subsequent lines up
+ * to the closing `/>` or `>` (end of the opening tag) are inspected for the
+ * forbidden substrings. This guards against accidental future forwarding of
+ * gate activation state into iteration-internal (`task_gate`, `phase_gate`)
+ * rows, which are intentionally out of scope for approval-button rendering.
+ */
+function hasGateForwardingOnDAGNodeRow(source: string): boolean {
+  const lines = source.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].includes('<DAGNodeRow')) continue;
+    // Scan the opening tag (may span multiple lines)
+    let j = i;
+    while (j < lines.length) {
+      const line = lines[j];
+      if (line.includes('projectName=') || line.includes('gateActive=')) {
+        return true;
+      }
+      if (line.includes('/>') || (j > i && line.includes('>'))) break;
+      j++;
+    }
+  }
+  return false;
+}
+
+test('dag-iteration-panel.tsx <DAGNodeRow> elements do NOT forward projectName or gateActive', () => {
+  assert.ok(iterationPanelSource.includes('<DAGNodeRow'), 'sanity: iteration panel should contain a <DAGNodeRow element');
+  assert.strictEqual(
+    hasGateForwardingOnDAGNodeRow(iterationPanelSource),
+    false,
+    'dag-iteration-panel.tsx must NOT forward projectName or gateActive on any <DAGNodeRow> — iteration-internal gate nodes (task_gate, phase_gate) are intentionally out of scope'
+  );
+});
+
+test('dag-corrective-task-group.tsx does NOT contain projectName= or gateActive=', () => {
+  assert.ok(correctiveTaskGroupSource.includes('<DAGNodeRow'), 'sanity: corrective task group should contain a <DAGNodeRow element');
+  assert.ok(
+    !correctiveTaskGroupSource.includes('projectName='),
+    'dag-corrective-task-group.tsx must NOT contain projectName= (confirms no nested-scope forwarding)'
+  );
+  assert.ok(
+    !correctiveTaskGroupSource.includes('gateActive='),
+    'dag-corrective-task-group.tsx must NOT contain gateActive= (confirms no nested-scope forwarding)'
+  );
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

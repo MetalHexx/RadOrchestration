@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment } from 'react';
-import type { NodesRecord } from '@/types/state';
+import type { NodesRecord, NodeState } from '@/types/state';
 import { DAGNodeRow } from './dag-node-row';
 import { DAGLoopNode } from './dag-loop-node';
 import { isLoopNode, groupNodesBySection, NODE_SECTION_MAP } from './dag-timeline-helpers';
@@ -19,6 +19,16 @@ interface DAGTimelineProps {
   ) => void;
   repoBaseUrl: string | null;
   projectName: string;
+}
+
+/**
+ * Derives the gate-active value for a node. Returns `node.gate_active` for
+ * gate-kind nodes; returns `undefined` for all other `NodeKind` values.
+ * Used to forward gate activation state into `<DAGNodeRow>` so the reused
+ * `ApproveGateButton` is rendered for the qualifying top-level gate rows.
+ */
+export function deriveGateActive(node: NodeState): boolean | undefined {
+  return node.kind === 'gate' ? node.gate_active : undefined;
 }
 
 export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName }: DAGTimelineProps) {
@@ -50,6 +60,8 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
                     node={node}
                     currentNodePath={currentNodePath}
                     onDocClick={onDocClick}
+                    projectName={projectName}
+                    gateActive={deriveGateActive(node)}
                   />
                 )}
               </div>
@@ -77,6 +89,8 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
               node={node}
               currentNodePath={currentNodePath}
               onDocClick={onDocClick}
+              projectName={projectName}
+              gateActive={deriveGateActive(node)}
             />
           )}
         </div>
