@@ -40,9 +40,9 @@ Each skill that produces a document bundles one or more templates in its `templa
 
 | Template | Skill | Description |
 |----------|-------|-------------|
-| [`CODE-REVIEW.md`](../.claude/skills/code-review/templates/CODE-REVIEW.md) | `code-review` | Task-level code review with verdict, checklist, and issues |
-| [`PHASE-REVIEW.md`](../.claude/skills/code-review/templates/PHASE-REVIEW.md) | `code-review` | Phase-level integration review with cross-task assessment |
-| [`FINAL-REVIEW.md`](../.claude/skills/code-review/templates/FINAL-REVIEW.md) | `code-review` | Project-level final review with architectural integrity and P0 requirement coverage |
+| [`task-review/template.md`](../.claude/skills/code-review/task-review/template.md) | `code-review` | Task-level code review with verdict, checklist, and issues |
+| [`phase-review/template.md`](../.claude/skills/code-review/phase-review/template.md) | `code-review` | Phase-level integration review with cross-task assessment |
+| [`final-review/template.md`](../.claude/skills/code-review/final-review/template.md) | `code-review` | Project-level final review with architectural integrity and P0 requirement coverage |
 
 ## Meta Templates
 

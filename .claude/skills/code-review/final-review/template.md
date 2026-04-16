@@ -1,7 +1,7 @@
 ---
 project: "{PROJECT-NAME}"
 verdict: "approved|changes_requested|rejected"
-severity: "none|minor|critical"
+severity: "none|low|medium|high"
 author: "reviewer-agent"
 created: "{ISO-DATE}"
 ---
@@ -56,7 +56,7 @@ created: "{ISO-DATE}"
 
 | Finding | Severity | Scope | Evidence | Suggestion |
 |---------|----------|-------|----------|------------|
-| {What was found} | none/minor/critical | {Phase(s)/module(s) affected} | {Concrete evidence} | {Specific fix} |
+| {What was found} | low/medium/high | {Phase(s)/module(s) affected} | {Concrete evidence} | {Specific fix} |
 
 <!-- If no independent findings, replace the table with: "No issues found beyond conformance checks." -->
 

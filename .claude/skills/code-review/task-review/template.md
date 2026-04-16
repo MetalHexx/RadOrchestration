@@ -3,7 +3,7 @@ project: "{PROJECT-NAME}"
 phase: {PHASE-NUMBER}
 task: {TASK-NUMBER}
 verdict: "approved|changes_requested|rejected"
-severity: "none|minor|critical"
+severity: "none|low|medium|high"
 author: "reviewer-agent"
 created: "{ISO-DATE}"
 ---
@@ -42,7 +42,7 @@ created: "{ISO-DATE}"
 
 | # | File | Line(s) | Severity | Issue | Suggestion |
 |---|------|---------|----------|-------|-----------|
-| 1 | `{path}` | {lines} | minor/critical | {Issue} | {Fix suggestion} |
+| 1 | `{path}` | {lines} | low/medium/high | {Issue} | {Fix suggestion} |
 
 ## Positive Observations
 

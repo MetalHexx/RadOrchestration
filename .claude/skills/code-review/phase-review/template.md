@@ -2,7 +2,7 @@
 project: "{PROJECT-NAME}"
 phase: {PHASE-NUMBER}
 verdict: "approved|changes_requested|rejected"
-severity: "none|minor|critical"
+severity: "none|low|medium|high"
 exit_criteria_met: true
 author: "reviewer-agent"
 created: "{ISO-DATE}"
@@ -45,7 +45,7 @@ created: "{ISO-DATE}"
 
 | # | Scope | Severity | Issue | Recommendation |
 |---|-------|----------|-------|---------------|
-| 1 | T1 ↔ T3 | minor | {Integration issue} | {Fix} |
+| 1 | T1 ↔ T3 | low/medium/high | {Integration issue} | {Fix} |
 
 ## Test & Build Summary
 
