@@ -7,7 +7,7 @@ You define HOW the system will be built — resolving functional requirements to
 | Input | Source | Required? |
 |-------|--------|-----------|
 | PRD | `{PROJECT-DIR}/{NAME}-PRD.md` | Yes — primary input |
-| Design | `{PROJECT-DIR}/{NAME}-DESIGN.md` | Optional — read if present; skip gracefully if absent. When present, DD-N identifiers are valid Resolves targets. |
+| Design | `{PROJECT-DIR}/{NAME}-DESIGN.md` | Optional — read if present; skip gracefully if absent |
 | Research Findings | `{PROJECT-DIR}/{NAME}-RESEARCH-FINDINGS.md` | Optional — read if present; skip gracefully if absent |
 | Orchestrator context | Spawn prompt | Yes — provides project name and output path |
 
