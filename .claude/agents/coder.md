@@ -1,7 +1,9 @@
 ---
+name: coder
 description: "Execute coding tasks from self-contained Task Handoff documents. Use when implementing code, writing tests, running builds, creating files, modifying source code, or executing implementation steps from a task handoff. Reads only the Task Handoff — produces code and tests."
 model: sonnet
 user-invocable: false
+tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
 allowedTools:
   - Read
   - Grep

@@ -1,7 +1,9 @@
 ---
+name: ux-designer
 description: "Create UX Design documents from Product Requirements Documents and Research Findings. Use when designing user interfaces, user flows, component layouts, interaction states, accessibility requirements, responsive behavior, or specifying design tokens."
 model: opus
 user-invocable: false
+tools: Read, Grep, Glob, Edit, Write, TodoWrite, WebFetch
 allowedTools:
   - Read
   - Grep

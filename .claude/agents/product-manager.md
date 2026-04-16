@@ -1,7 +1,9 @@
 ---
+name: product-manager
 description: "Create Product Requirements Documents (PRDs) from brainstorming documents. Use when defining product requirements, specifying functional and non-functional requirements, or converting project goals into a structured PRD."
 model: opus
 user-invocable: false
+tools: Read, Grep, Glob, Edit, Write, TodoWrite
 allowedTools:
   - Read
   - Grep

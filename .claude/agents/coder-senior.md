@@ -1,7 +1,9 @@
 ---
+name: coder-senior
 description: "Execute complex or high-stakes coding tasks from self-contained Task Handoff documents. Use when implementing difficult, architecturally significant, or nuanced code changes, writing tests, running builds, or executing implementation steps from a task handoff. Reads only the Task Handoff — produces code and tests."
 model: opus
 user-invocable: false
+tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
 allowedTools:
   - Read
   - Grep

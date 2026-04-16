@@ -1,6 +1,8 @@
 ---
+name: orchestrator
 description: "The main orchestration agent that coordinates the entire project pipeline."
 model: opus
+tools: Read, Grep, Glob, Agent, Bash
 allowedTools:
   - Read
   - Grep

@@ -1,7 +1,9 @@
 ---
+name: tactical-planner
 description: "Create Master Plans, Phase Plans, and Task Handoffs through rad-create-plans; generate Phase Reports through generate-phase-report."
 model: opus
 user-invocable: false
+tools: Read, Grep, Glob, Edit, Write, TodoWrite
 allowedTools:
   - Read
   - Grep

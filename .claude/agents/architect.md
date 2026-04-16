@@ -1,7 +1,9 @@
 ---
+name: architect
 description: "Create Architecture documents via rad-create-plans."
 model: opus
 user-invocable: false
+tools: Read, Grep, Glob, Edit, Write, TodoWrite
 allowedTools:
   - Read
   - Grep

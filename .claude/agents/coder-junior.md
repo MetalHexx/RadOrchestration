@@ -1,7 +1,9 @@
 ---
+name: coder-junior
 description: "Execute straightforward coding tasks from self-contained Task Handoff documents. Use when implementing well-defined, lower-complexity code changes, writing tests, creating files, or executing implementation steps from a task handoff. Reads only the Task Handoff — produces code and tests."
 model: haiku
 user-invocable: false
+tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite
 allowedTools:
   - Read
   - Grep
