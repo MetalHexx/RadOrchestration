@@ -32,7 +32,7 @@ created: "{YYYY-MM-DD}"
 - FR-N, FR-M — [§ FR-N: {Title}]({prd-path}#fr-n), [§ FR-M: {Title}]({prd-path}#fr-m)
 - NFR-N — [§ NFR-N: {Title}]({prd-path}#nfr-n)
 - AD-N, AD-M — [§ AD-N: {Title}]({arch-path}#ad-n), [§ AD-M: {Title}]({arch-path}#ad-m)
-- Design: {Section Heading} — [§ {Heading}]({design-path}#{anchor})
+- DD-N, DD-M — [§ DD-N: {Title}]({design-path}#dd-n), [§ DD-M: {Title}]({design-path}#dd-m)
 - Research: {Finding Heading} — [§ {Heading}]({research-path}#{anchor})
 
 **Exit Criteria**:
