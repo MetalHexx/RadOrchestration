@@ -1,9 +1,10 @@
 "use client";
 
 import { Badge } from '@/components/ui/badge';
-import type { GraphStatus, GateMode } from '@/types/state';
+import type { GraphStatus, GateMode, V5SourceControlState } from '@/types/state';
 import { NodeStatusBadge } from './node-status-badge';
 import { GateModeBadge } from '@/components/badges/gate-mode-badge';
+import { SourceControlRow } from './source-control-row';
 
 interface ProjectHeaderProps {
   projectName: string;
@@ -12,9 +13,10 @@ interface ProjectHeaderProps {
   gateMode?: GateMode | null;
   currentPhaseName?: string | null;
   progress?: { completed: number; total: number } | null;
+  sourceControl?: V5SourceControlState | null;
 }
 
-export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMode, currentPhaseName, progress }: ProjectHeaderProps) {
+export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMode, currentPhaseName, progress, sourceControl }: ProjectHeaderProps) {
   return (
     <header className="border-b border-border px-6 py-4" aria-label={`Project ${projectName}`}>
       <div className="flex items-center gap-3">
@@ -31,6 +33,11 @@ export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMod
               {progress.completed} of {progress.total} phases
             </span>
           )}
+        </div>
+      )}
+      {sourceControl && (
+        <div className="mt-2">
+          <SourceControlRow sourceControl={sourceControl} />
         </div>
       )}
     </header>

@@ -132,6 +132,7 @@ export default function ProjectsPage() {
                 gateMode={v5Derivations.gateMode}
                 currentPhaseName={v5Derivations.currentPhaseName}
                 progress={v5Derivations.progress}
+                sourceControl={(projectState as ProjectStateV5).pipeline.source_control}
               />
               <div className="px-6 py-4">
                 <DAGTimeline

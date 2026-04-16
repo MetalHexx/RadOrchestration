@@ -3,7 +3,7 @@
  * Run with: npx tsx ui/components/dag-timeline/project-header.test.ts
  */
 import assert from "node:assert";
-import type { GateMode, GraphStatus } from '../../types/state';
+import type { GateMode, GraphStatus, V5SourceControlState } from '../../types/state';
 
 let passed = 0;
 let failed = 0;
@@ -29,6 +29,21 @@ interface ProjectHeaderProps {
   gateMode?: GateMode | null;
   currentPhaseName?: string | null;
   progress?: { completed: number; total: number } | null;
+  sourceControl?: V5SourceControlState | null;
+}
+
+function makeSourceControl(overrides: Partial<V5SourceControlState> = {}): V5SourceControlState {
+  return {
+    branch: 'feat/test-branch',
+    base_branch: 'main',
+    worktree_path: '/path/to/worktree',
+    auto_commit: 'always',
+    auto_pr: 'never',
+    remote_url: 'https://github.com/org/repo',
+    compare_url: 'https://github.com/org/repo/compare/main...feat/test-branch',
+    pr_url: null,
+    ...overrides,
+  };
 }
 
 function simulateProjectHeader(props: ProjectHeaderProps) {
@@ -51,6 +66,7 @@ function simulateProjectHeader(props: ProjectHeaderProps) {
     currentPhaseName: showRow2 ? props.currentPhaseName : null,
     showProgress: showRow2 && !!props.progress,
     progress: showRow2 ? props.progress : null,
+    showSourceControlRow: !!props.sourceControl,
   };
 }
 
@@ -208,6 +224,27 @@ test('v4 rendering: only projectName and schemaVersion — no badges, no row 2',
   assert.strictEqual(result.showRow2, false);
   assert.strictEqual(result.projectName, "LEGACY");
   assert.strictEqual(result.schemaVersionText, "v4");
+});
+
+// ─── Source control row visibility ───────────────────────────────────────────
+
+test('showSourceControlRow is false when sourceControl is undefined', () => {
+  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5" });
+  assert.strictEqual(result.showSourceControlRow, false);
+});
+
+test('showSourceControlRow is false when sourceControl is null', () => {
+  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", sourceControl: null });
+  assert.strictEqual(result.showSourceControlRow, false);
+});
+
+test('showSourceControlRow is true when a non-null V5SourceControlState fixture is passed', () => {
+  const result = simulateProjectHeader({
+    projectName: "Test",
+    schemaVersion: "v5",
+    sourceControl: makeSourceControl(),
+  });
+  assert.strictEqual(result.showSourceControlRow, true);
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
