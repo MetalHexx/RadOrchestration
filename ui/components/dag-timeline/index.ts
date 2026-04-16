@@ -3,6 +3,8 @@ export { NodeStatusBadge } from './node-status-badge';
 export { ProjectHeader } from './project-header';
 export { HaltReasonBanner } from './halt-reason-banner';
 export type { HaltReasonBannerProps } from './halt-reason-banner';
+export { DAGTimelineSkeleton } from './dag-timeline-skeleton';
+export type { DAGTimelineSkeletonProps } from './dag-timeline-skeleton';
 export { DAGNodeRow, formatNodeId } from './dag-node-row';
 export { DAGCorrectiveTaskGroup } from './dag-corrective-task-group';
 export { DAGIterationPanel } from './dag-iteration-panel';

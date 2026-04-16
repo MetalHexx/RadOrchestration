@@ -9,7 +9,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
 import { MainDashboard } from "@/components/layout";
 import { DocumentDrawer } from "@/components/documents";
-import { DAGTimeline, ProjectHeader, HaltReasonBanner, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
+import { DAGTimeline, DAGTimelineSkeleton, ProjectHeader, HaltReasonBanner, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
 import { SSEStatusBanner } from "@/components/badges";
 import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
 import { isV5State } from "@/types/state";
@@ -127,6 +127,29 @@ export default function ProjectsPage() {
             <div className="flex h-full items-center justify-center p-6">
               <div className="max-w-md text-center">
                 <p className="text-sm text-destructive" role="alert">{error}</p>
+              </div>
+            </div>
+          ) : selected && !v5State && !v4State ? (
+            <div className="overflow-auto">
+              <ProjectHeader
+                projectName={selected.name}
+                schemaVersion="v5"
+                sourceControl={null}
+                followMode={false}
+                onToggleFollowMode={() => {}}
+              />
+              <div className="flex flex-col">
+                <HaltReasonBanner
+                  graphStatus={v5Derivations.graphStatus}
+                  haltReason={null}
+                />
+                <SSEStatusBanner
+                  status={sseStatus}
+                  onReconnect={reconnect}
+                />
+              </div>
+              <div className="px-6 py-4">
+                <DAGTimelineSkeleton />
               </div>
             </div>
           ) : selected && v5State ? (
