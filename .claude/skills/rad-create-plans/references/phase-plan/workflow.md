@@ -10,7 +10,7 @@ You distribute a phase's identifier scope across concrete tasks, producing the o
 | PRD | `{PROJECT-DIR}/{NAME}-PRD.md` | Yes — FR-N, NFR-N requirement text (for scope understanding) |
 | Architecture | `{PROJECT-DIR}/{NAME}-ARCHITECTURE.md` | Yes — AD-N decision/module/contract details |
 | `state.json` | `{PROJECT-DIR}/state.json` | Yes — `config.limits.max_tasks_per_phase`, execution state |
-| Design | `{PROJECT-DIR}/{NAME}-DESIGN.md` | Conditional — read if present; skip gracefully if absent. Read when Design section refs appear in phase scope |
+| Design | `{PROJECT-DIR}/{NAME}-DESIGN.md` | Conditional — read if present; skip gracefully if absent. Read when DD-N identifiers appear in phase scope |
 | Research Findings | `{PROJECT-DIR}/{NAME}-RESEARCH-FINDINGS.md` | Conditional — read if present; skip gracefully if absent. Read when Research refs appear in phase scope |
 | Previous Phase Report | `{PROJECT-DIR}/reports/{NAME}-PHASE-REPORT-P{N-1}.md` | Conditional — required only when phase > 1 |
 | Phase Review | Path from event context `previous_review` field | Conditional — read only when `is_correction == true` in event context |
@@ -32,7 +32,7 @@ You distribute a phase's identifier scope across concrete tasks, producing the o
 
 4. **Define Phase Objective:** Write 1-2 sentences expanding the Master Plan's phase Objective. Add what this phase depends on from prior phases (if any) and what it enables for subsequent phases (if any). Do not copy the Master Plan's objective verbatim — expand it with inter-phase dependency and enablement context.
 
-5. **Extract phase scope identifiers:** Collect the complete list of identifiers from the Master Plan's phase-level `**Scope**:` block. These are the identifiers to distribute: FR-N, NFR-N, AD-N, Design section refs (`Design: {Heading}`), Research refs (`Research: {Heading}`). Record the full set — every one of these must be assigned to exactly one task.
+5. **Extract phase scope identifiers:** Collect the complete list of identifiers from the Master Plan's phase-level `**Scope**:` block. These are the identifiers to distribute: FR-N, NFR-N, AD-N, DD-N, Research refs (`Research: {Heading}`). Record the full set — every one of these must be assigned to exactly one task.
 
 6. **Break into tasks:** Decompose the phase scope into tasks. Each task should be achievable in a single agent session. Assign a task ID in the format `T{NN}-{SHORT-TAG}` (e.g., `T01-AUTH`, `T02-DB-SCHEMA`).
 
@@ -41,13 +41,13 @@ You distribute a phase's identifier scope across concrete tasks, producing the o
    - No identifier appears in more than one task row (no double-assignment)
    - No identifier in any task's Scope column is absent from the Master Plan's phase Scope block (no invented identifiers)
    - The union of all task Scope cells equals the phase Scope block
-   - Identifiers are bare (no inline links) — e.g., `FR-1, AD-3, Design: Login Flow`
+   - Identifiers are bare (no inline links) — e.g., `FR-1, AD-3, DD-5`
 
    Identifier types and their resolution targets (for the downstream Task Handoff creator):
    ```
    FR-N, NFR-N  -> PRD section ### FR-N: or ### NFR-N:
    AD-N         -> Architecture section ### AD-N:
-   Design: {H}  -> Design document section matching heading H
+   DD-N         -> Design document section ### DD-N:
    Research: {H} -> Research Findings section matching heading H
    ```
 

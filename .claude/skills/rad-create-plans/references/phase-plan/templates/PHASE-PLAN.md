@@ -20,7 +20,7 @@ created: "{ISO-DATE}"
 
 | # | Task | Scope | Dependencies | Est. Files |
 |---|------|-------|-------------|------------|
-| T1 | {Title} | {FR-N, AD-N, Design: Section} | — | {NUMBER} |
+| T1 | {Title} | {FR-N, AD-N, DD-N} | — | {NUMBER} |
 | T2 | {Title} | {FR-N, NFR-N} | T1 | {NUMBER} |
 | T3 | {Title} | {AD-N, Research: Finding} | T1 | {NUMBER} |
 | T4 | {Title} | {FR-N, AD-N} | T2, T3 | {NUMBER} |
