@@ -15,7 +15,7 @@ the pipeline.
 | `template.yml` | `{PROJECT-DIR}/template.yml` | Yes — read `phase_loop.body[]` for thickness determination |
 | PRD | `graph.nodes.prd.doc_path` (if non-null) | Conditional — read if path is non-null; provides FR-N and NFR-N identifiers |
 | Research Findings | `graph.nodes.research.doc_path` (if non-null) | Conditional — read if path is non-null; referenced by heading (no F-N identifiers) |
-| Design | `graph.nodes.design.doc_path` (if non-null) | Conditional — read if path is non-null; referenced by section heading (no DD-N identifiers) |
+| Design | `graph.nodes.design.doc_path` (if non-null) | Conditional — read if path is non-null; provides DD-N identifiers |
 | Architecture | `graph.nodes.architecture.doc_path` (if non-null) | Conditional — read if path is non-null; provides AD-N identifiers |
 | Orchestrator context | Spawn prompt | Yes — provides project name, output path; in free-form mode also provides user description |
 | `orchestration.yml` | *(NOT READ)* | **Explicitly prohibited** — all config context is available from `state.json → config` |
@@ -102,7 +102,7 @@ the pipeline.
 
 3. Read upstream planning documents — for each `doc_path` that is non-null, read the
    document to extract identifiers. Reading sequence: PRD (FR-N, NFR-N) → Architecture
-   (AD-N) → Design (section headings) → Research Findings (finding headings). If a
+   (AD-N) → Design (DD-N) → Research Findings (finding headings). If a
    `doc_path` is null, skip that document gracefully — it was not produced by the pipeline.
 
 4. **[FREE-FORM BRANCH — skip if any doc_path is non-null]** When all `doc_path` values are
@@ -158,8 +158,8 @@ the pipeline.
 
    b. Write **Scope** — identifier lists with inline links, grouped by source doc type.
       Assign every FR-N and NFR-N from the PRD to exactly one phase. Assign every AD-N
-      from Architecture to exactly one phase. Reference Design sections by heading.
-      Reference Research Findings by heading title.
+      from Architecture to exactly one phase. Assign every DD-N from the Design document
+      to exactly one phase. Reference Research Findings by heading title.
 
       **Scope block writing rules:**
       - Identifiers are grouped by source document type — one line per source type
@@ -167,9 +167,10 @@ the pipeline.
         links to the exact section anchor: `[§ FR-N: {Title}]({prd-path}#fr-n)`
       - AD-N identifiers come from the Architecture document; inline links use
         `({arch-path}#ad-n)`
-      - Design sections are referenced by heading text (no DD-N identifiers exist yet —
-        per AD-23 this is a known limitation):
-        `Design: {Section Heading} — [§ {Heading}]({design-path}#{anchor})`
+      - DD-N identifiers come from the Design document; inline links use
+        `({design-path}#dd-n)` (when no Design document exists, no DD-N line appears in
+        any Phase Outline):
+        `DD-N, DD-M — [§ DD-N: {Title}]({design-path}#dd-n), [§ DD-M: {Title}]({design-path}#dd-m)`
       - Research Findings are referenced by heading title (no F-N identifiers exist —
         headings use `#### Finding: {Title}` in the template):
         `Research: {Finding Title} — [§ {Heading}]({research-path}#{anchor})`
@@ -240,7 +241,7 @@ the pipeline.
     **Scope completeness:**
     - [ ] Every FR-N and NFR-N from the PRD appears in exactly one phase scope
     - [ ] Every AD-N from the Architecture document appears in exactly one phase scope
-    - [ ] Every Design section referenced in Phase Outlines links to a real heading
+    - [ ] Every DD-N from the Design document appears in exactly one phase scope
     - [ ] No identifier appears in more than one phase scope
 
     **Exit criteria quality:**
@@ -274,7 +275,7 @@ the pipeline.
 ## Quality Standards
 
 - **total_phases is the highest-priority field**: a missing or non-integer `total_phases` stalls the pipeline. Self-review Step 12 treats frontmatter integrity as the first check.
-- **Identifier coverage is exhaustive**: every FR-N, NFR-N, and AD-N from upstream documents must appear in exactly one phase scope. Gaps in coverage are detected by self-review.
+- **Identifier coverage is exhaustive**: every FR-N, NFR-N, AD-N, and DD-N from upstream documents must appear in exactly one phase scope. Gaps in coverage are detected by self-review.
 - **Thickness is uniform**: all Phase Outlines in the document use the same mode. Mixed-thickness documents (some thin, some self-contained) are a defect.
 - **Exit criteria are binary**: "Mostly working" and "Consider adding tests" are not exit criteria. Each criterion is an observable outcome that is either met or not.
 - **No-implementation rule**: Phase Outlines do not contain source code, concrete file paths, or technology/framework choices. These belong in Phase Plans and Task Handoffs.
@@ -321,6 +322,7 @@ Template path (relative to this workflow file): `templates/MASTER-PLAN.md`
 - `status` == `"draft"`
 - All FR-N and NFR-N from PRD assigned to exactly one phase scope
 - All AD-N from Architecture assigned to exactly one phase scope
+- All DD-N from Design assigned to exactly one phase scope
 - No source code in any Phase Outline
 - No concrete file paths in Phase Outlines (except Source Documents table)
 - No "Key Requirements" / "Key Technical Decisions" / "Key Design Constraints" sections
