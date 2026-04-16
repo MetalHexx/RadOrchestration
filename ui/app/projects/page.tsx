@@ -3,11 +3,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { useProjects } from "@/hooks/use-projects";
 import { useDocumentDrawer } from "@/hooks/use-document-drawer";
+import { useFollowMode } from "@/hooks/use-follow-mode";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
 import { MainDashboard } from "@/components/layout";
 import { DocumentDrawer } from "@/components/documents";
-import { DAGTimeline, ProjectHeader, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
+import { DAGTimeline, ProjectHeader, TimelineToolbar, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
 import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
 import { isV5State } from "@/types/state";
 import type { ProjectState, ProjectStateV5 } from "@/types/state";
@@ -36,6 +37,9 @@ export default function ProjectsPage() {
   } = useDocumentDrawer({ projectName: selectedProject });
 
   const [fileList, setFileList] = useState<string[]>([]);
+
+  const nodesForFollowMode = projectState && isV5State(projectState) ? (projectState as ProjectStateV5).graph.nodes : null;
+  const { followMode, expandedLoopIds, onAccordionChange, toggleFollowMode } = useFollowMode(nodesForFollowMode, selectedProject);
 
   const selected: ProjectSummary | undefined = useMemo(
     () => projects.find((p) => p.name === selectedProject),
@@ -134,13 +138,17 @@ export default function ProjectsPage() {
                 progress={v5Derivations.progress}
                 sourceControl={(projectState as ProjectStateV5).pipeline.source_control}
               />
+              <TimelineToolbar
+                followMode={followMode}
+                onToggleFollowMode={toggleFollowMode}
+              />
               <div className="px-6 py-4">
                 <DAGTimeline
                   nodes={(projectState as ProjectStateV5).graph.nodes}
                   currentNodePath={(projectState as ProjectStateV5).graph.current_node_path}
                   onDocClick={openDocument}
-                  expandedLoopIds={[]}
-                  onAccordionChange={() => {}}
+                  expandedLoopIds={expandedLoopIds}
+                  onAccordionChange={onAccordionChange}
                   repoBaseUrl={v5Derivations.repoBaseUrl}
                   projectName={selected.name}
                 />
