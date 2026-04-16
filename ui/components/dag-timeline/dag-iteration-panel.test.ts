@@ -72,16 +72,25 @@ test('buildIterationChildNodeId("task_loop", 2, "task_handoff") returns "task_lo
   );
 });
 
-// getCommitLinkData — with hash
-test('getCommitLinkData("abc1234def", null) returns { href: null, label: "abc1234" }', () => {
+// getCommitLinkData — linked state (drives ExternalLink icon="external-link" branch)
+test('getCommitLinkData("abc1234def", "https://github.com/user/repo") returns { href: "https://github.com/user/repo/commit/abc1234def", label: "abc1234" } (linked-state branch)', () => {
+  const result = getCommitLinkData("abc1234def", "https://github.com/user/repo");
+  assert.ok(result !== null);
+  assert.strictEqual(result.href, "https://github.com/user/repo/commit/abc1234def");
+  assert.strictEqual(result.label, "abc1234");
+});
+
+// getCommitLinkData — unlinked state (drives plain-monospace-span branch)
+test('getCommitLinkData("abc1234def", null) returns { href: null, label: "abc1234" } (unlinked-state branch receives href === null and 7-char label)', () => {
   const result = getCommitLinkData("abc1234def", null);
   assert.ok(result !== null);
   assert.strictEqual(result.label, "abc1234");
+  assert.strictEqual(result.label.length, 7);
   assert.strictEqual(result.href, null);
 });
 
-// getCommitLinkData — null
-test('getCommitLinkData(null, null) returns null', () => {
+// getCommitLinkData — absent state (outer commitData !== null guard suppresses render)
+test('getCommitLinkData(null, null) returns null (absent-state outer guard suppresses render)', () => {
   const result = getCommitLinkData(null, null);
   assert.strictEqual(result, null);
 });

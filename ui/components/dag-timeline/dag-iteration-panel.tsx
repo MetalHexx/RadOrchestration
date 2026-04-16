@@ -113,7 +113,17 @@ export function DAGIterationPanel({
         </span>
         <NodeStatusBadge status={iteration.status} />
         {commitData !== null && (
-          <ExternalLink href={commitData.href} label={commitData.label} icon="github" />
+          commitData.href !== null ? (
+            <ExternalLink
+              href={commitData.href}
+              label={commitData.label}
+              icon="external-link"
+            />
+          ) : (
+            <span className="text-xs font-mono text-muted-foreground">
+              {commitData.label}
+            </span>
+          )
         )}
       </div>
       {Object.entries(iteration.nodes).map(([childNodeId, childNode]) =>

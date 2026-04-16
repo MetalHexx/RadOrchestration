@@ -55,7 +55,17 @@ export function DAGCorrectiveTaskGroup({
                 <span className="text-sm font-medium">{buildTriggerText(entry.index)}</span>
                 <NodeStatusBadge status={entry.status} />
                 {commitData !== null && (
-                  <ExternalLink href={commitData.href} label={commitData.label} icon="github" />
+                  commitData.href !== null ? (
+                    <ExternalLink
+                      href={commitData.href}
+                      label={commitData.label}
+                      icon="external-link"
+                    />
+                  ) : (
+                    <span className="text-xs font-mono text-muted-foreground">
+                      {commitData.label}
+                    </span>
+                  )
                 )}
               </AccordionTrigger>
               <AccordionContent>
