@@ -45,6 +45,11 @@ export function DAGLoopNode({
       <AccordionItem value={buildLoopItemValue(nodeId)} className="border-b-0">
         <AccordionTrigger className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center">
           <NodeKindIcon kind={node.kind} />
+          {/* flex-1 is intentional here — loop node triggers are accordion headers where the label,
+              status badge, and chevron share a flex row. flex-1 fills available space before the
+              badge and chevron, keeping the chevron right-aligned. DAGNodeRow uses max-w-[55%]
+              instead because standard rows have additional trailing elements (document links, branch
+              badges) that need predictable horizontal space. */}
           <span className="text-sm font-medium truncate flex-1">{getDisplayName(nodeId)}</span>
           <NodeStatusBadge status={node.status} />
         </AccordionTrigger>
