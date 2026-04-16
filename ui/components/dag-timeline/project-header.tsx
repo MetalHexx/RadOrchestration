@@ -2,6 +2,7 @@
 
 import { Github, Clock, ExternalLink, XCircle } from "lucide-react";
 import { Badge } from '@/components/ui/badge';
+import { Switch } from "@/components/ui/switch";
 import { SpinnerBadge } from "@/components/badges";
 import type { GraphStatus, GateMode, V5SourceControlState } from '@/types/state';
 import { NodeStatusBadge } from './node-status-badge';
@@ -20,9 +21,6 @@ interface ProjectHeaderProps {
 }
 
 export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMode, currentPhaseName, progress, sourceControl, followMode, onToggleFollowMode }: ProjectHeaderProps) {
-  // followMode and onToggleFollowMode are threaded through for the downstream task that fills the reserved placeholder.
-  void followMode;
-  void onToggleFollowMode;
   return (
     <header className="border-b border-border px-6 py-4" aria-label={`Project ${projectName}`}>
       <div className="flex flex-wrap items-center gap-3">
@@ -113,7 +111,15 @@ export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMod
             </>
           );
         })()}
-        <div className="ml-auto inline-flex items-center gap-2" />
+        <div className="ml-auto inline-flex items-center gap-2">
+          <label htmlFor="follow-mode-switch">Follow Mode</label>
+          <Switch
+            id="follow-mode-switch"
+            checked={followMode}
+            onCheckedChange={() => onToggleFollowMode()}
+            className="cursor-pointer"
+          />
+        </div>
       </div>
       {graphStatus === 'in_progress' && currentPhaseName && (
         <div className="flex items-center gap-3 mt-1">

@@ -69,20 +69,12 @@ async function run() {
     );
   });
 
-  await test('Source imports TimelineToolbar from @/components/dag-timeline', () => {
+  await test('Source does NOT import TimelineToolbar from @/components/dag-timeline', () => {
+    // Follow Mode is now controlled by the shadcn Switch inside <ProjectHeader>.
+    // TimelineToolbar was deleted; the page must no longer import it.
     assert.ok(
-      sourceText.includes('TimelineToolbar') &&
-        /from\s*["']@\/components\/dag-timeline["']/.test(sourceText),
-      'projects/page.tsx must import TimelineToolbar from @/components/dag-timeline'
-    );
-    // Stricter: ensure TimelineToolbar appears inside an import statement from @/components/dag-timeline.
-    const importBlock = sourceText.match(
-      /import\s*\{[^}]*\}\s*from\s*["']@\/components\/dag-timeline["']/
-    );
-    assert.ok(importBlock, 'projects/page.tsx must have a named import block from @/components/dag-timeline');
-    assert.ok(
-      /TimelineToolbar/.test(importBlock![0]),
-      'TimelineToolbar must be included in the @/components/dag-timeline import block'
+      !sourceText.includes('TimelineToolbar'),
+      'projects/page.tsx must not reference TimelineToolbar'
     );
   });
 
@@ -93,10 +85,21 @@ async function run() {
     );
   });
 
-  await test('Source renders <TimelineToolbar at least once', () => {
+  await test('Source does NOT render <TimelineToolbar', () => {
     assert.ok(
-      sourceText.includes('<TimelineToolbar'),
-      'projects/page.tsx must render <TimelineToolbar'
+      !sourceText.includes('<TimelineToolbar'),
+      'projects/page.tsx must not render <TimelineToolbar (Follow Mode is now inside ProjectHeader)'
+    );
+  });
+
+  await test('Source threads followMode and toggleFollowMode into <ProjectHeader>', () => {
+    assert.ok(
+      sourceText.includes('followMode={followMode}'),
+      'projects/page.tsx must pass followMode={followMode} to <ProjectHeader>'
+    );
+    assert.ok(
+      sourceText.includes('onToggleFollowMode={toggleFollowMode}'),
+      'projects/page.tsx must pass onToggleFollowMode={toggleFollowMode} to <ProjectHeader>'
     );
   });
 
@@ -128,33 +131,22 @@ async function run() {
     );
   });
 
-  await test('TimelineToolbar is rendered between </ProjectHeader> and <DAGTimeline', () => {
-    const projectHeaderCloseIdx = sourceText.indexOf('</ProjectHeader>');
-    // ProjectHeader is a self-closing tag in page.tsx — fall back to the opening tag's end (`/>`)
-    // if `</ProjectHeader>` is not present. We locate the end of the ProjectHeader element.
-    let headerEndIdx = projectHeaderCloseIdx;
-    if (headerEndIdx === -1) {
-      const openIdx = sourceText.indexOf('<ProjectHeader');
-      assert.ok(openIdx >= 0, '<ProjectHeader must appear in page.tsx');
-      const selfCloseIdx = sourceText.indexOf('/>', openIdx);
-      assert.ok(selfCloseIdx >= 0, 'ProjectHeader must have a closing tag or self-close');
-      headerEndIdx = selfCloseIdx;
-    }
+  await test('<DAGTimeline> is rendered directly after <ProjectHeader> (no toolbar sibling)', () => {
+    const projectHeaderOpenIdx = sourceText.indexOf('<ProjectHeader');
+    assert.ok(projectHeaderOpenIdx >= 0, '<ProjectHeader must appear in page.tsx');
+    const headerSelfCloseIdx = sourceText.indexOf('/>', projectHeaderOpenIdx);
+    assert.ok(headerSelfCloseIdx >= 0, 'ProjectHeader must have a self-close');
 
-    const toolbarIdx = sourceText.indexOf('<TimelineToolbar');
     const dagTimelineIdx = sourceText.indexOf('<DAGTimeline');
-
-    assert.ok(headerEndIdx >= 0, 'ProjectHeader element must be present');
-    assert.ok(toolbarIdx >= 0, '<TimelineToolbar must be present');
     assert.ok(dagTimelineIdx >= 0, '<DAGTimeline must be present');
 
     assert.ok(
-      toolbarIdx > headerEndIdx,
-      '<TimelineToolbar must appear after the end of <ProjectHeader ...'
+      dagTimelineIdx > headerSelfCloseIdx,
+      '<DAGTimeline must appear after <ProjectHeader ... />'
     );
     assert.ok(
-      toolbarIdx < dagTimelineIdx,
-      '<TimelineToolbar must appear before <DAGTimeline'
+      !sourceText.includes('<TimelineToolbar'),
+      'No <TimelineToolbar sibling may appear between <ProjectHeader /> and <DAGTimeline'
     );
   });
 

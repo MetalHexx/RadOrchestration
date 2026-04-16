@@ -8,7 +8,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
 import { MainDashboard } from "@/components/layout";
 import { DocumentDrawer } from "@/components/documents";
-import { DAGTimeline, ProjectHeader, TimelineToolbar, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
+import { DAGTimeline, ProjectHeader, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
 import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
 import { isV5State } from "@/types/state";
 import type { ProjectState, ProjectStateV5 } from "@/types/state";
@@ -135,10 +135,6 @@ export default function ProjectsPage() {
                 currentPhaseName={v5Derivations.currentPhaseName}
                 progress={v5Derivations.progress}
                 sourceControl={v5State.pipeline.source_control}
-                followMode={followMode}
-                onToggleFollowMode={toggleFollowMode}
-              />
-              <TimelineToolbar
                 followMode={followMode}
                 onToggleFollowMode={toggleFollowMode}
               />

@@ -8,7 +8,6 @@ export { DAGLoopNode } from './dag-loop-node';
 export { DAGTimeline } from './dag-timeline';
 export { getDisplayName } from './dag-timeline-helpers';
 export { DAGSectionGroup } from './dag-section-group';
-export { TimelineToolbar } from './timeline-toolbar';
 export {
   NODE_SECTION_MAP,
   parsePhaseNameFromDocPath,

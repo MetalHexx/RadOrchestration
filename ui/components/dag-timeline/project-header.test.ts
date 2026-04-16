@@ -34,6 +34,13 @@ interface ProjectHeaderProps {
   onToggleFollowMode?: () => void;
 }
 
+interface FollowModeSwitchSim {
+  id: "follow-mode-switch";
+  checked: boolean;
+  className: "cursor-pointer";
+  onCheckedChange: (...args: unknown[]) => void;
+}
+
 function makeSourceControl(overrides: Partial<V5SourceControlState> = {}): V5SourceControlState {
   return {
     branch: 'feat/test-branch',
@@ -50,6 +57,23 @@ function makeSourceControl(overrides: Partial<V5SourceControlState> = {}): V5Sou
 
 function simulateProjectHeader(props: ProjectHeaderProps) {
   const showRow2 = props.graphStatus === 'in_progress' && !!props.currentPhaseName;
+  const followMode = props.followMode ?? false;
+  const onToggleFollowMode = props.onToggleFollowMode ?? (() => {});
+  // Mirrors the call-site `() => onToggleFollowMode()` adapter — any
+  // boolean argument supplied by the shadcn Switch is intentionally
+  // discarded (not forwarded to the props callback). We build the closure
+  // via `.bind(null)` so the synthesized function ignores whatever the
+  // primitive passes in (0-arity) without triggering lint's unused-param rule.
+  const onCheckedChangeAdapter: (...args: unknown[]) => void =
+    function (this: unknown) {
+      onToggleFollowMode();
+    };
+  const followModeSwitch: FollowModeSwitchSim = {
+    id: "follow-mode-switch",
+    checked: followMode,
+    className: "cursor-pointer",
+    onCheckedChange: onCheckedChangeAdapter,
+  };
   return {
     projectName: props.projectName,
     schemaVersionText: props.schemaVersion,
@@ -69,7 +93,10 @@ function simulateProjectHeader(props: ProjectHeaderProps) {
     showProgress: showRow2 && !!props.progress,
     progress: showRow2 ? props.progress : null,
     showInlinedSourceControl: props.sourceControl !== null,
-    followModePlaceholderClass: "ml-auto inline-flex items-center gap-2",
+    followModeContainerClass: "ml-auto inline-flex items-center gap-2",
+    followModeLabelText: "Follow Mode",
+    followModeLabelHtmlFor: "follow-mode-switch",
+    followModeSwitch,
   };
 }
 
@@ -254,13 +281,129 @@ test('inlined source-control fragments render when a non-null V5SourceControlSta
   assert.strictEqual(result.showInlinedSourceControl, true);
 });
 
-// ─── Follow Mode reserved placeholder slot ───────────────────────────────────
+// ─── Follow Mode populated container ─────────────────────────────────────────
 
-test('reserved Follow Mode placeholder uses ml-auto and inline-flex gap-2 classes', () => {
+test('Follow Mode container uses ml-auto and inline-flex gap-2 classes', () => {
   const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", sourceControl: null });
-  assert.ok(result.followModePlaceholderClass.includes("ml-auto"), 'placeholder should include "ml-auto"');
-  assert.ok(result.followModePlaceholderClass.includes("inline-flex"), 'placeholder should include "inline-flex"');
-  assert.ok(result.followModePlaceholderClass.includes("gap-2"), 'placeholder should include "gap-2"');
+  assert.ok(result.followModeContainerClass.includes("ml-auto"), 'container should include "ml-auto"');
+  assert.ok(result.followModeContainerClass.includes("inline-flex"), 'container should include "inline-flex"');
+  assert.ok(result.followModeContainerClass.includes("gap-2"), 'container should include "gap-2"');
+});
+
+// ─── Follow Mode Switch wiring ───────────────────────────────────────────────
+
+test('Follow Mode label text is exactly "Follow Mode" when followMode is true', () => {
+  const result = simulateProjectHeader({
+    projectName: "Test",
+    schemaVersion: "v5",
+    sourceControl: null,
+    followMode: true,
+    onToggleFollowMode: () => {},
+  });
+  assert.strictEqual(result.followModeLabelText, "Follow Mode");
+});
+
+test('Follow Mode label text is exactly "Follow Mode" when followMode is false', () => {
+  const result = simulateProjectHeader({
+    projectName: "Test",
+    schemaVersion: "v5",
+    sourceControl: null,
+    followMode: false,
+    onToggleFollowMode: () => {},
+  });
+  assert.strictEqual(result.followModeLabelText, "Follow Mode");
+});
+
+test("Follow Mode label htmlFor matches the Switch id (\"follow-mode-switch\")", () => {
+  const result = simulateProjectHeader({
+    projectName: "Test",
+    schemaVersion: "v5",
+    sourceControl: null,
+    followMode: false,
+    onToggleFollowMode: () => {},
+  });
+  assert.strictEqual(result.followModeLabelHtmlFor, "follow-mode-switch");
+  assert.strictEqual(result.followModeSwitch.id, "follow-mode-switch");
+  assert.strictEqual(result.followModeLabelHtmlFor, result.followModeSwitch.id);
+});
+
+test("Follow Mode Switch carries className \"cursor-pointer\"", () => {
+  const result = simulateProjectHeader({
+    projectName: "Test",
+    schemaVersion: "v5",
+    sourceControl: null,
+    followMode: false,
+    onToggleFollowMode: () => {},
+  });
+  assert.strictEqual(result.followModeSwitch.className, "cursor-pointer");
+});
+
+test("Follow Mode Switch checked === true when followMode is true", () => {
+  const result = simulateProjectHeader({
+    projectName: "Test",
+    schemaVersion: "v5",
+    sourceControl: null,
+    followMode: true,
+    onToggleFollowMode: () => {},
+  });
+  assert.strictEqual(result.followModeSwitch.checked, true);
+});
+
+test("Follow Mode Switch checked === false when followMode is false", () => {
+  const result = simulateProjectHeader({
+    projectName: "Test",
+    schemaVersion: "v5",
+    sourceControl: null,
+    followMode: false,
+    onToggleFollowMode: () => {},
+  });
+  assert.strictEqual(result.followModeSwitch.checked, false);
+});
+
+test("Invoking onCheckedChange(true) calls onToggleFollowMode exactly once and does not forward the argument", () => {
+  let calls = 0;
+  const receivedArgs: unknown[][] = [];
+  const handler = (...args: unknown[]) => {
+    calls++;
+    receivedArgs.push(args);
+  };
+  const result = simulateProjectHeader({
+    projectName: "Test",
+    schemaVersion: "v5",
+    sourceControl: null,
+    followMode: false,
+    onToggleFollowMode: handler as () => void,
+  });
+  result.followModeSwitch.onCheckedChange(true);
+  assert.strictEqual(calls, 1, "onToggleFollowMode should be called exactly once");
+  assert.strictEqual(
+    receivedArgs[0].length,
+    0,
+    "onToggleFollowMode should receive no arguments (the `checked` value must be discarded)",
+  );
+});
+
+test("Invoking onCheckedChange(false) calls onToggleFollowMode exactly once and does not forward the argument", () => {
+  let calls = 0;
+  const receivedArgs: unknown[][] = [];
+  const handler = (...args: unknown[]) => {
+    calls++;
+    receivedArgs.push(args);
+  };
+  const result = simulateProjectHeader({
+    projectName: "Test",
+    schemaVersion: "v5",
+    sourceControl: null,
+    followMode: true,
+    onToggleFollowMode: handler as () => void,
+  });
+  result.followModeSwitch.onCheckedChange(false);
+  assert.strictEqual(calls, 1, "onToggleFollowMode should be called exactly once");
+  assert.strictEqual(
+    receivedArgs[0].length,
+    0,
+    "onToggleFollowMode should receive no arguments (the `checked` value must be discarded)",
+  );
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
