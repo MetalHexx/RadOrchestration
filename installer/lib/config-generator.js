@@ -49,8 +49,8 @@ source_control:
   provider: "${config.provider || 'github'}"               # reserved: github only in v1
 
 # ─── Notes ─────────────────────────────────────────────────────────
-# Model selection is configured per-agent in .agent.md frontmatter.
-# See ${config.orchRoot}/agents/*.agent.md → \`model\` field.
+# Model selection is configured per-agent in agent frontmatter.
+# See ${config.orchRoot}/agents/*.md → \`model\` field.
 `;
 }
 

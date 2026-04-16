@@ -19,13 +19,11 @@ async function checkStructure(basePath, context, _config, orchRoot) {
       { name: root, path: ghDir, check: 'isDirectory' },
       { name: `${root}/agents`, path: path.join(ghDir, 'agents'), check: 'isDirectory' },
       { name: `${root}/skills`, path: path.join(ghDir, 'skills'), check: 'isDirectory' },
-      { name: `${root}/instructions`, path: path.join(ghDir, 'instructions'), check: 'isDirectory' },
-      { name: `${root}/prompts`, path: path.join(ghDir, 'prompts'), check: 'isDirectory', optional: true },
     ];
 
     const requiredFiles = [
       { name: `${root}/skills/orchestration/config/orchestration.yml`, path: path.join(ghDir, 'skills', 'orchestration', 'config', 'orchestration.yml'), check: 'exists' },
-      { name: `${root}/copilot-instructions.md`, path: path.join(ghDir, 'copilot-instructions.md'), check: 'exists' },
+      { name: `${root}/settings.json`, path: path.join(ghDir, 'settings.json'), check: 'exists' },
     ];
 
     for (const entry of requiredDirs) {

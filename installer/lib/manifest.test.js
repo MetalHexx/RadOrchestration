@@ -15,9 +15,9 @@ test('getManifest returns object with categories array and globalExcludes array'
 
 // ── Category count ────────────────────────────────────────────────────────────
 
-test('getManifest returns exactly 6 categories', () => {
+test('getManifest returns exactly 3 categories', () => {
   const { categories } = getManifest('.github');
-  assert.strictEqual(categories.length, 6);
+  assert.strictEqual(categories.length, 3);
 });
 
 // ── Category names and order ──────────────────────────────────────────────────
@@ -28,9 +28,6 @@ test('category names are in correct order', () => {
   assert.deepStrictEqual(names, [
     'Root config',
     'Agents',
-    'Instructions',
-    'Prompts',
-    'Hooks',
     'Skills',
   ]);
 });
@@ -55,41 +52,11 @@ test('Agents category has correct sourceDir, targetDir, and recursive', () => {
   assert.strictEqual(cat.recursive, false);
 });
 
-// ── Instructions category ─────────────────────────────────────────────────────
-
-test('Instructions category has correct sourceDir, targetDir, and recursive', () => {
-  const { categories } = getManifest('.github');
-  const cat = categories[2];
-  assert.strictEqual(cat.sourceDir, 'src/.claude/instructions');
-  assert.strictEqual(cat.targetDir, 'instructions');
-  assert.strictEqual(cat.recursive, false);
-});
-
-// ── Prompts category ──────────────────────────────────────────────────────────
-
-test('Prompts category has correct sourceDir, targetDir, and recursive', () => {
-  const { categories } = getManifest('.github');
-  const cat = categories[3];
-  assert.strictEqual(cat.sourceDir, 'src/.claude/prompts');
-  assert.strictEqual(cat.targetDir, 'prompts');
-  assert.strictEqual(cat.recursive, false);
-});
-
-// ── Hooks category ────────────────────────────────────────────────────────────
-
-test('Hooks category has correct sourceDir, targetDir, and recursive', () => {
-  const { categories } = getManifest('.github');
-  const cat = categories[4];
-  assert.strictEqual(cat.sourceDir, 'src/.claude/hooks');
-  assert.strictEqual(cat.targetDir, 'hooks');
-  assert.strictEqual(cat.recursive, false);
-});
-
 // ── Skills category ───────────────────────────────────────────────────────────
 
 test('Skills category has correct sourceDir, targetDir, recursive, and excludeDirs', () => {
   const { categories } = getManifest('.github');
-  const cat = categories[5];
+  const cat = categories[2];
   assert.strictEqual(cat.sourceDir, 'src/.claude/skills');
   assert.strictEqual(cat.targetDir, 'skills');
   assert.strictEqual(cat.recursive, true);
@@ -115,10 +82,7 @@ test('getManifest sourceDir values are decoupled from orchRoot parameter', () =>
   // sourceDir is always src/.claude/... regardless of orchRoot
   assert.strictEqual(categories[0].sourceDir, 'src/.claude');
   assert.strictEqual(categories[1].sourceDir, 'src/.claude/agents');
-  assert.strictEqual(categories[2].sourceDir, 'src/.claude/instructions');
-  assert.strictEqual(categories[3].sourceDir, 'src/.claude/prompts');
-  assert.strictEqual(categories[4].sourceDir, 'src/.claude/hooks');
-  assert.strictEqual(categories[5].sourceDir, 'src/.claude/skills');
+  assert.strictEqual(categories[2].sourceDir, 'src/.claude/skills');
 });
 
 // ── No missing required properties ───────────────────────────────────────────

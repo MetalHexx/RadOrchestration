@@ -1,3 +1,17 @@
+// setup-hooks.js — DEV-ONLY hook installer for v3 contributors.
+//
+// This is NOT run on end-user installs. It is invoked manually by v3 repo
+// contributors (see README "Development" section). It writes
+// `.githooks/pre-commit` and points `core.hooksPath` at it so the
+// orchestration scripts get type-checked before each commit.
+//
+// Usage (from the v3 repo root):
+//   node .claude/skills/orchestration/scripts/setup-hooks.js
+//
+// Or simply set the hooks path manually (the pre-commit file is already
+// committed at .githooks/pre-commit):
+//   git config core.hooksPath .githooks
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';

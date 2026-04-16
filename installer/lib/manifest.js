@@ -23,24 +23,6 @@ export function getManifest(orchRoot) {
       recursive: false,
     },
     {
-      name: 'Instructions',
-      sourceDir: 'src/.claude/instructions',
-      targetDir: 'instructions',
-      recursive: false,
-    },
-    {
-      name: 'Prompts',
-      sourceDir: 'src/.claude/prompts',
-      targetDir: 'prompts',
-      recursive: false,
-    },
-    {
-      name: 'Hooks',
-      sourceDir: 'src/.claude/hooks',
-      targetDir: 'hooks',
-      recursive: false,
-    },
-    {
       name: 'Skills',
       sourceDir: 'src/.claude/skills',
       targetDir: 'skills',
