@@ -50,7 +50,7 @@ Consolidated review skill supporting three modes: task, phase, and final. The re
 2. Read every source file listed in the Task Handoff's File Targets section
 3. Run tests and verify the build passes
 4. **Corrective-review check**: If a previous Code Review exists for this task, read it (and the corrective task handoff, if present) to identify expected corrections. Deviations from the original plan that address issues in the previous review are expected corrections — do NOT flag them as conformance failures
-5. **Conformance pass**: Compare implementation against the Task Handoff using the 7-category checklist (see categories below). Core question: "Did we build what we intended?" For "Design consistency", verify that the implementation satisfies the DD-N elements inlined in the Task Handoff, alongside existing FR-N and AD-N traceability validation.
+5. **Conformance pass**: Compare implementation against the Task Handoff using the 7-category checklist (see categories below). Core question: "Did we build what we intended?" Verify that the implementation satisfies the FR-N, NFR-N, AD-N and DD-N elements inlined in the Task Handoff.
 6. **Skeptical pass** (Independent Quality Assessment): Evaluate code correctness independent of planning documents. Core question: "Is what we built correct?" Record findings with severity, evidence, and suggestions
 7. Apply verdict rules (see Verdict Rules section below) — highest severity across both passes determines verdict
 8. Fill in the CODE-REVIEW.md template and save to the task-mode save path from the Routing Table
