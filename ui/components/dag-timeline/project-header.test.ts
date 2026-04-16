@@ -3,7 +3,15 @@
  * Run with: npx tsx ui/components/dag-timeline/project-header.test.ts
  */
 import assert from "node:assert";
+import { readFileSync, existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import type { GateMode, GraphStatus, V5SourceControlState } from '../../types/state';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const headerSource = readFileSync(join(__dirname, 'project-header.tsx'), 'utf-8');
+const barrelSource = readFileSync(join(__dirname, 'index.ts'), 'utf-8');
 
 let passed = 0;
 let failed = 0;
@@ -403,6 +411,286 @@ test("Invoking onCheckedChange(false) calls onToggleFollowMode exactly once and 
     receivedArgs[0].length,
     0,
     "onToggleFollowMode should receive no arguments (the `checked` value must be discarded)",
+  );
+});
+
+// ─── Tooltip copy strings ────────────────────────────────────────────────────
+
+test('schema-version tooltip copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Pipeline state schema version 5 (v5)."),
+    'schema-version tooltip string missing from project-header.tsx',
+  );
+});
+
+test('statusTooltip "not_started" copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Pipeline has not yet started."),
+    'status not_started tooltip string missing from project-header.tsx',
+  );
+});
+
+test('statusTooltip "in_progress" copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Pipeline is currently running."),
+    'status in_progress tooltip string missing from project-header.tsx',
+  );
+});
+
+test('statusTooltip "completed" copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("All phases completed successfully."),
+    'status completed tooltip string missing from project-header.tsx',
+  );
+});
+
+test('statusTooltip "halted" copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Pipeline halted and needs attention."),
+    'status halted tooltip string missing from project-header.tsx',
+  );
+});
+
+test('gateModeTooltip "task" copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Task gate: approval requested after each task."),
+    'gateMode task tooltip string missing from project-header.tsx',
+  );
+});
+
+test('gateModeTooltip "phase" copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Phase gate: approval requested after each phase."),
+    'gateMode phase tooltip string missing from project-header.tsx',
+  );
+});
+
+test('gateModeTooltip "autonomous" copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Autonomous: pipeline proceeds without manual approval."),
+    'gateMode autonomous tooltip string missing from project-header.tsx',
+  );
+});
+
+test('gateModeTooltip null (global default) copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Global default: project-wide gate mode applies (no per-pipeline override)."),
+    'gateMode null tooltip string missing from project-header.tsx',
+  );
+});
+
+test('autoCommitTooltip "always" copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Auto-Commit is on: commits are created after each iteration."),
+    'auto-commit always tooltip string missing from project-header.tsx',
+  );
+});
+
+test('autoCommitTooltip "ask" copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Auto-Commit prompts before each iteration."),
+    'auto-commit ask tooltip string missing from project-header.tsx',
+  );
+});
+
+test('autoCommitTooltip "never" copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Auto-Commit is off: commits must be made manually."),
+    'auto-commit never tooltip string missing from project-header.tsx',
+  );
+});
+
+test('autoPrTooltip "always" copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Auto-PR is on: a pull request is created when phases complete."),
+    'auto-pr always tooltip string missing from project-header.tsx',
+  );
+});
+
+test('autoPrTooltip "ask" copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Auto-PR prompts before creating a pull request."),
+    'auto-pr ask tooltip string missing from project-header.tsx',
+  );
+});
+
+test('autoPrTooltip "never" copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Auto-PR is off: no pull request will be created automatically."),
+    'auto-pr never tooltip string missing from project-header.tsx',
+  );
+});
+
+test('branchTooltip template (compare URL present) appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Open branch comparison on GitHub: ${branch}"),
+    'branch compare tooltip template missing from project-header.tsx',
+  );
+});
+
+test('branchTooltip template (no compare URL) appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Branch: ${branch} (no compare link available)"),
+    'branch fallback tooltip template missing from project-header.tsx',
+  );
+});
+
+test('prStateTooltip (valid URL) copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Open the existing pull request."),
+    'PR valid-URL tooltip string missing from project-header.tsx',
+  );
+});
+
+test('prStateTooltip (pending/null) copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Pull request has not yet been created; it will be created when phases complete."),
+    'PR pending tooltip string missing from project-header.tsx',
+  );
+});
+
+test('prStateTooltip (failed) copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Pull request creation failed; check project logs for details."),
+    'PR failed tooltip string missing from project-header.tsx',
+  );
+});
+
+test('followModeTooltip on=true copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Follow mode is on: the active iteration auto-expands and completed iterations collapse."),
+    'follow-mode on tooltip string missing from project-header.tsx',
+  );
+});
+
+test('followModeTooltip on=false copy appears verbatim in source', () => {
+  assert.ok(
+    headerSource.includes("Follow mode is off. Click to re-engage and apply smart defaults."),
+    'follow-mode off tooltip string missing from project-header.tsx',
+  );
+});
+
+// ─── TooltipProvider single-scope ────────────────────────────────────────────
+
+test('exactly one <TooltipProvider> opening tag exists in source', () => {
+  const openMatches = headerSource.match(/<TooltipProvider>/g) ?? [];
+  assert.strictEqual(
+    openMatches.length,
+    1,
+    `expected exactly one <TooltipProvider> opening tag; found ${openMatches.length}`,
+  );
+});
+
+test('exactly one </TooltipProvider> closing tag exists in source', () => {
+  const closeMatches = headerSource.match(/<\/TooltipProvider>/g) ?? [];
+  assert.strictEqual(
+    closeMatches.length,
+    1,
+    `expected exactly one </TooltipProvider> closing tag; found ${closeMatches.length}`,
+  );
+});
+
+test('no attribute-bearing <TooltipProvider ...> tag exists in source', () => {
+  assert.ok(
+    !/<TooltipProvider\s/.test(headerSource),
+    'no <TooltipProvider> tag should carry attributes (provider scope is a singleton)',
+  );
+});
+
+// ─── Tooltip wrapping count ──────────────────────────────────────────────────
+
+test('exactly eleven <TooltipContent> opening tags exist in source', () => {
+  // Breakdown:
+  //   schema-version badge     → 1
+  //   status badge             → 1
+  //   gate-mode badge          → 1
+  //   branch link arm          → 1
+  //   branch fallback span     → 1
+  //   PR link arm              → 1
+  //   PR pending span          → 1
+  //   PR failed span           → 1
+  //   Auto-Commit SpinnerBadge → 1
+  //   Auto-PR SpinnerBadge     → 1
+  //   follow-mode Switch       → 1
+  //   ──────────────────────── 11
+  const matches = headerSource.match(/<TooltipContent>/g) ?? [];
+  assert.strictEqual(
+    matches.length,
+    11,
+    `expected exactly 11 <TooltipContent> opening tags; found ${matches.length}`,
+  );
+});
+
+// ─── TooltipTrigger render-prop discipline ───────────────────────────────────
+
+test('every <TooltipTrigger ...> opening tag uses the render={ prop shape', () => {
+  const triggerRegex = /<TooltipTrigger([^>]*)>/g;
+  const attrSlices: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = triggerRegex.exec(headerSource)) !== null) {
+    attrSlices.push(m[1]);
+  }
+  assert.ok(
+    attrSlices.length > 0,
+    'expected at least one <TooltipTrigger> in project-header.tsx',
+  );
+  for (const attrSlice of attrSlices) {
+    assert.ok(
+      /^\s+render=\{/.test(attrSlice),
+      `TooltipTrigger must use render prop; got: <TooltipTrigger${attrSlice}>`,
+    );
+  }
+});
+
+// ─── Barrel shrink ───────────────────────────────────────────────────────────
+
+test('barrel (index.ts) does not contain "SourceControlRow"', () => {
+  assert.strictEqual(
+    barrelSource.includes("SourceControlRow"),
+    false,
+    'barrel must not contain SourceControlRow (as export or comment)',
+  );
+});
+
+test('barrel (index.ts) does not contain "TimelineToolbar"', () => {
+  assert.strictEqual(
+    barrelSource.includes("TimelineToolbar"),
+    false,
+    'barrel must not contain TimelineToolbar (as export or comment)',
+  );
+});
+
+// ─── Retired files absent ────────────────────────────────────────────────────
+
+test('retired file "source-control-row.tsx" does not exist on disk', () => {
+  assert.strictEqual(
+    existsSync(join(__dirname, 'source-control-row.tsx')),
+    false,
+    'source-control-row.tsx must not exist',
+  );
+});
+
+test('retired file "source-control-row.test.ts" does not exist on disk', () => {
+  assert.strictEqual(
+    existsSync(join(__dirname, 'source-control-row.test.ts')),
+    false,
+    'source-control-row.test.ts must not exist',
+  );
+});
+
+test('retired file "timeline-toolbar.tsx" does not exist on disk', () => {
+  assert.strictEqual(
+    existsSync(join(__dirname, 'timeline-toolbar.tsx')),
+    false,
+    'timeline-toolbar.tsx must not exist',
+  );
+});
+
+test('retired file "timeline-toolbar.test.ts" does not exist on disk', () => {
+  assert.strictEqual(
+    existsSync(join(__dirname, 'timeline-toolbar.test.ts')),
+    false,
+    'timeline-toolbar.test.ts must not exist',
   );
 });
 
