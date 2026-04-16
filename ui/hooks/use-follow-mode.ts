@@ -87,13 +87,16 @@ export const __shallowEqualStringArrays = shallowEqualStringArrays;
  *   2. Reacts to SSE-driven `nodes` changes while follow-mode is engaged, so
  *      the active iteration stays expanded as the pipeline progresses.
  *   3. Disengages follow-mode silently on any user-initiated accordion
- *      interaction using a double-guard:
- *        a) `eventDetails.reason === 'trigger-press'` AND
- *        b) the `isProgrammaticRef` suppression flag is `false`.
- *      The suppression flag is set immediately before every hook-initiated
- *      state update and cleared via `queueMicrotask` so the ensuing
- *      `onValueChange` callback never misinterprets the programmatic update
- *      as a user interaction.
+ *      interaction, guarded by the `isProgrammaticRef` suppression flag.
+ *      The reason field on `onValueChange` is unreliable — base-ui's
+ *      `AccordionRoot.handleValueChange` hardcodes it to `REASONS.none`
+ *      regardless of whether the origin was a user click or an imperative
+ *      update, so we cannot discriminate by reason. However, controlled
+ *      `value`-prop updates do NOT fire `onValueChange` at all (base-ui
+ *      uses `useControlled`, which updates state silently), so every
+ *      callback invocation is in fact a user interaction. The suppression
+ *      flag is kept as defense-in-depth: it is set immediately before every
+ *      hook-initiated state update and cleared via `queueMicrotask`.
  *   4. Resets to smart defaults + re-engages follow-mode when the selected
  *      project changes.
  *
@@ -155,25 +158,36 @@ export function useFollowMode(
 
   // ── Accordion change handler ───────────────────────────────────────────────
   // Always mirror the new value into `expandedLoopIds` so the UI reflects the
-  // click immediately. Then apply the double-guard: disengage follow-mode
-  // ONLY when BOTH the reason is 'trigger-press' AND the suppression flag is
-  // clear. Disengagement is silent — no toast / banner / log.
+  // click immediately. Then disengage follow-mode unless the update came from
+  // our own programmatic path.
+  //
+  // Why no reason check: base-ui's `AccordionRoot.handleValueChange` hardcodes
+  // `details.reason` to `REASONS.none` (see AccordionRoot.js:73), so the type's
+  // `triggerPress | none` union is not usable at runtime. Controlled
+  // `value`-prop updates don't fire `onValueChange` — `useControlled` updates
+  // state silently — so every callback invocation is a user click.
+  // Disengagement is silent: no toast / banner / log.
   const onAccordionChange = useCallback(
-    (value: string[], eventDetails: { reason: string }) => {
+    (value: string[], _eventDetails: { reason: string }) => {
       setExpandedLoopIds(value);
-      if (eventDetails.reason === "trigger-press" && !isProgrammaticRef.current) {
+      if (!isProgrammaticRef.current) {
         setFollowMode(false);
       }
     },
     []
   );
 
-  // ── Toggle (re-engage) ─────────────────────────────────────────────────────
-  // The toolbar's Follow Mode toggle invokes this. Re-engaging re-applies
-  // smart defaults through the suppression-flag-guarded path so the ensuing
-  // `onValueChange` callback from the accordion is not misread as a user
-  // interaction.
+  // ── Toggle ────────────────────────────────────────────────────────────────
+  // The toolbar's Follow Mode switch invokes this. On→Off disengages silently
+  // and leaves the current expansion alone so the user's view is preserved.
+  // Off→On re-engages and re-applies smart defaults through the
+  // suppression-flag-guarded path so the ensuing `onValueChange` callback
+  // from the accordion is not misread as a user interaction.
   const toggleFollowMode = useCallback(() => {
+    if (followMode) {
+      setFollowMode(false);
+      return;
+    }
     const nextExpanded = computeSmartDefaults(nodes);
     isProgrammaticRef.current = true;
     setFollowMode(true);
@@ -181,7 +195,7 @@ export function useFollowMode(
     queueMicrotask(() => {
       isProgrammaticRef.current = false;
     });
-  }, [nodes]);
+  }, [followMode, nodes]);
 
   // ── `nodes === null` fallback ──────────────────────────────────────────────
   // No project selected or v4 project — return safe defaults and no-op

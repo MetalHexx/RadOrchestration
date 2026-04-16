@@ -723,6 +723,40 @@ test('retired file "timeline-toolbar.test.ts" does not exist on disk', () => {
   );
 });
 
+// ─── Header-row child ordering ───────────────────────────────────────────────
+// Confirms the sourceControl fragment renders Auto-Commit and Auto-PR badges
+// BEFORE the branch/compare link and PR status region. Enforced in source order
+// because project-header.test.ts is a pure source-text test file.
+
+test('Auto-Commit badge source position precedes the branch compare link', () => {
+  const autoCommitIdx = headerSource.indexOf('label="Auto-Commit"');
+  const branchLinkIdx = headerSource.indexOf('View ${branch} branch diff on GitHub');
+  assert.ok(autoCommitIdx !== -1, 'Auto-Commit SpinnerBadge must exist in source');
+  assert.ok(branchLinkIdx !== -1, 'branch link aria-label must exist in source');
+  assert.ok(
+    autoCommitIdx < branchLinkIdx,
+    `Auto-Commit (${autoCommitIdx}) must appear before branch link (${branchLinkIdx})`,
+  );
+});
+
+test('Auto-PR badge source position precedes the branch compare link', () => {
+  const autoPrIdx = headerSource.indexOf('label="Auto-PR"');
+  const branchLinkIdx = headerSource.indexOf('View ${branch} branch diff on GitHub');
+  assert.ok(autoPrIdx !== -1, 'Auto-PR SpinnerBadge must exist in source');
+  assert.ok(autoPrIdx < branchLinkIdx, `Auto-PR (${autoPrIdx}) must appear before branch link (${branchLinkIdx})`);
+});
+
+test('branch compare link source position precedes the PR status region', () => {
+  const branchLinkIdx = headerSource.indexOf('View ${branch} branch diff on GitHub');
+  const prRegionIdx = headerSource.indexOf('View pull request on GitHub');
+  assert.ok(branchLinkIdx !== -1, 'branch link aria-label must exist in source');
+  assert.ok(prRegionIdx !== -1, 'PR link aria-label must exist in source');
+  assert.ok(
+    branchLinkIdx < prRegionIdx,
+    `branch link (${branchLinkIdx}) must appear before PR region (${prRegionIdx})`,
+  );
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

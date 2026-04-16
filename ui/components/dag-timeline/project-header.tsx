@@ -131,6 +131,46 @@ export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMod
           )}
           {sourceControl !== null && (
             <>
+              {/* Configuration badges */}
+              <Tooltip>
+                <TooltipTrigger render={
+                  <SpinnerBadge
+                    label="Auto-Commit"
+                    cssVar={
+                      auto_commit === 'always'
+                        ? '--status-complete'
+                        : auto_commit === 'ask'
+                        ? '--status-in-progress'
+                        : '--status-failed'
+                    }
+                    isSpinning={false}
+                    isComplete={auto_commit === 'always'}
+                    isRejected={auto_commit === 'never'}
+                    ariaLabel={`Auto-Commit: ${auto_commit}`}
+                  />
+                } />
+                <TooltipContent>{autoCommitTooltip(auto_commit!)}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger render={
+                  <SpinnerBadge
+                    label="Auto-PR"
+                    cssVar={
+                      auto_pr === 'always'
+                        ? '--status-complete'
+                        : auto_pr === 'ask'
+                        ? '--status-in-progress'
+                        : '--status-failed'
+                    }
+                    isSpinning={false}
+                    isComplete={auto_pr === 'always'}
+                    isRejected={auto_pr === 'never'}
+                    ariaLabel={`Auto-PR: ${auto_pr}`}
+                  />
+                } />
+                <TooltipContent>{autoPrTooltip(auto_pr!)}</TooltipContent>
+              </Tooltip>
+
               {/* Branch region */}
               {compareLink !== null ? (
                 <Tooltip>
@@ -214,46 +254,6 @@ export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMod
                   </Tooltip>
                 )
               )}
-
-              {/* Configuration badges */}
-              <Tooltip>
-                <TooltipTrigger render={
-                  <SpinnerBadge
-                    label="Auto-Commit"
-                    cssVar={
-                      auto_commit === 'always'
-                        ? '--status-complete'
-                        : auto_commit === 'ask'
-                        ? '--status-in-progress'
-                        : '--status-failed'
-                    }
-                    isSpinning={false}
-                    isComplete={auto_commit === 'always'}
-                    isRejected={auto_commit === 'never'}
-                    ariaLabel={`Auto-Commit: ${auto_commit}`}
-                  />
-                } />
-                <TooltipContent>{autoCommitTooltip(auto_commit!)}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger render={
-                  <SpinnerBadge
-                    label="Auto-PR"
-                    cssVar={
-                      auto_pr === 'always'
-                        ? '--status-complete'
-                        : auto_pr === 'ask'
-                        ? '--status-in-progress'
-                        : '--status-failed'
-                    }
-                    isSpinning={false}
-                    isComplete={auto_pr === 'always'}
-                    isRejected={auto_pr === 'never'}
-                    ariaLabel={`Auto-PR: ${auto_pr}`}
-                  />
-                } />
-                <TooltipContent>{autoPrTooltip(auto_pr!)}</TooltipContent>
-              </Tooltip>
             </>
           )}
           <div className="ml-auto inline-flex items-center gap-2">

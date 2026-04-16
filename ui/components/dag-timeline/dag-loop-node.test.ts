@@ -244,6 +244,19 @@ test('dag-loop-node.tsx wires <Accordion> in controlled mode with value={expande
   );
 });
 
+// Regression: base-ui's Accordion.Root defaults to `multiple=false` (single-open
+// mode), which — with the shared `expandedLoopIds` array passed to every nested
+// DAGLoopNode — causes a nested task_loop click to REPLACE the value array
+// (AccordionRoot.js:75 — `nextValue = [newValue]`) and thereby collapse the
+// parent phase_loop. Multi-open mode is required so value updates preserve
+// unrelated loop-item entries across sibling and ancestor Accordions.
+test('dag-loop-node.tsx sets `multiple` on <Accordion> so nested loop clicks preserve sibling/ancestor expansion', () => {
+  assert.ok(
+    /<Accordion\b[^>]*\bmultiple\b/.test(loopNodeSource),
+    'dag-loop-node.tsx must pass `multiple` to <Accordion> (required for nested-loop state preservation)',
+  );
+});
+
 test('dag-loop-node.tsx forwards expandedLoopIds and onAccordionChange to nested DAGIterationPanel', () => {
   // Iteration panels need to participate in the same controlled-mode tree so
   // nested loops (task_loop within phase_loop) stay in sync with the same

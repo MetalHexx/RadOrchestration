@@ -270,6 +270,66 @@ async function run() {
     assert.doesNotThrow(() => stub(['loop-a', 'loop-b'], { reason: 'trigger-press' }));
   });
 
+  // (k-toggle) source-text: toggleFollowMode must branch on current followMode
+  //   so the Switch flips both directions (On→Off and Off→On). Earlier
+  //   revision unconditionally called setFollowMode(true), which meant
+  //   clicking the Switch while follow-mode was already on had no effect.
+  await test('(k-toggle) toggleFollowMode source branches on `followMode` (not always setFollowMode(true))', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const { dirname, join } = await import('node:path');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    const hookSource = readFileSync(join(__dirname, 'use-follow-mode.ts'), 'utf-8');
+    // Slice just the toggleFollowMode body so we don't match unrelated code.
+    const startIdx = hookSource.indexOf('const toggleFollowMode');
+    assert.ok(startIdx !== -1, 'toggleFollowMode declaration must exist in hook source');
+    const endIdx = hookSource.indexOf('}, [followMode, nodes]);', startIdx);
+    assert.ok(endIdx !== -1, 'toggleFollowMode must depend on both followMode and nodes');
+    const body = hookSource.slice(startIdx, endIdx);
+    assert.ok(
+      /if\s*\(\s*followMode\s*\)/.test(body),
+      'toggleFollowMode must branch on `followMode` so the Switch can flip both directions',
+    );
+    assert.ok(
+      body.includes('setFollowMode(false)'),
+      'toggleFollowMode must disengage via setFollowMode(false) on the On→Off branch',
+    );
+    assert.ok(
+      body.includes('setFollowMode(true)'),
+      'toggleFollowMode must re-engage via setFollowMode(true) on the Off→On branch',
+    );
+  });
+
+  // (k-disengage) source-text regression: onAccordionChange must not rely on
+  //   the base-ui `reason` field (AccordionRoot.js:73 hardcodes it to
+  //   REASONS.none), and must still use !isProgrammaticRef as the guard.
+  await test('(k-disengage) onAccordionChange drops reason check and keeps isProgrammaticRef guard', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const { dirname, join } = await import('node:path');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    const hookSource = readFileSync(join(__dirname, 'use-follow-mode.ts'), 'utf-8');
+    const startIdx = hookSource.indexOf('const onAccordionChange');
+    assert.ok(startIdx !== -1, 'onAccordionChange declaration must exist in hook source');
+    const endIdx = hookSource.indexOf('  );', startIdx);
+    assert.ok(endIdx !== -1, 'onAccordionChange body must be closed with "  );"');
+    const body = hookSource.slice(startIdx, endIdx);
+    assert.ok(
+      !body.includes("'trigger-press'") && !body.includes('"trigger-press"'),
+      'onAccordionChange must not reference the literal "trigger-press" (base-ui reason is always "none" at runtime)',
+    );
+    assert.ok(
+      body.includes('!isProgrammaticRef.current'),
+      'onAccordionChange must still guard disengagement with !isProgrammaticRef.current',
+    );
+    assert.ok(
+      body.includes('setFollowMode(false)'),
+      'onAccordionChange must call setFollowMode(false) on the user-click branch',
+    );
+  });
+
   // (k) smart-default recursion over multiple sibling loops
   await test('(k) computeSmartDefaults collects all in-progress loops across siblings', () => {
     const nodes: Record<string, AnyNodeShape> = {

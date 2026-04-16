@@ -38,7 +38,7 @@ export function DAGLoopNode({
   const sortedIterations = [...node.iterations].sort((a, b) => a.index - b.index);
 
   return (
-    <Accordion value={expandedLoopIds} onValueChange={onAccordionChange}>
+    <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
       <AccordionItem value={buildLoopItemValue(nodeId)} className="border-b-0">
         <AccordionTrigger className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center">
           <NodeKindIcon kind={node.kind} />
