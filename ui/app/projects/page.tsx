@@ -9,25 +9,14 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
 import { MainDashboard } from "@/components/layout";
 import { DocumentDrawer } from "@/components/documents";
-import { DAGTimeline, ProjectHeader, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
+import { DAGTimeline, ProjectHeader, HaltReasonBanner, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
 import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
 import { isV5State } from "@/types/state";
 import type { ProjectState, ProjectStateV5 } from "@/types/state";
 import type { ProjectSummary } from "@/types/components";
-import type { GraphStatus } from "@/types/state";
 import type { SSEConnectionStatus } from "@/types/events";
 
 // ─── Status band slot placeholders (replaced by T02 / T03) ───────────────────
-
-interface HaltReasonBannerProps {
-  graphStatus: GraphStatus | undefined;
-  haltReason: string | null;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function HaltReasonBannerPlaceholder(_props: HaltReasonBannerProps): null {
-  return null;
-}
 
 interface SSEStatusBannerProps {
   status: SSEConnectionStatus;
@@ -166,7 +155,7 @@ export default function ProjectsPage() {
                 onToggleFollowMode={toggleFollowMode}
               />
               <div className="flex flex-col">
-                <HaltReasonBannerPlaceholder
+                <HaltReasonBanner
                   graphStatus={v5Derivations.graphStatus}
                   haltReason={v5State.pipeline.halt_reason}
                 />
