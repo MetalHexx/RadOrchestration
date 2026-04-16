@@ -9,8 +9,13 @@
       "Bash(rm \"/c/dev/orchestration/v3/.claude/skills/create-design/templates/DESIGN-NOT-REQUIRED.md\")",
       "Bash(rm \"/c/dev/orchestration/v3/.claude/skills/create-design/SKILL.md\")",
       "Bash(rmdir \"/c/dev/orchestration/v3/.claude/skills/create-design/templates\")",
-      "Bash(rmdir \"/c/dev/orchestration/v3/.claude/skills/create-design\")"
+      "Bash(rmdir \"/c/dev/orchestration/v3/.claude/skills/create-design\")",
+      "Read(//c/dev/src/total-recall/**)",
+      "Read(//c/dev/**)",
+      "Bash(node *)"
     ],
-    "additionalDirectories": ["/dev/orchestration-projects"]
+    "additionalDirectories": [
+      "/dev/orchestration-projects"
+    ]
   }
 }
