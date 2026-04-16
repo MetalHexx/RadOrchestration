@@ -2,11 +2,20 @@ import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeSt
 
 export type CompatibleNodeState = StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState;
 
-export function getCommitLinkData(commitHash: string | null | undefined): { href: string; label: string } | null {
+export function deriveRepoBaseUrl(compareUrl: string | null): string | null {
+  if (compareUrl == null) return null;
+  const idx = compareUrl.indexOf('/compare/');
+  if (idx === -1) return null;
+  return compareUrl.slice(0, idx);
+}
+
+export function getCommitLinkData(
+  commitHash: string | null | undefined,
+  repoBaseUrl: string | null
+): { href: string | null; label: string } | null {
   if (commitHash == null || commitHash.length === 0) return null;
-  // TODO(DAG-VIEW-3): Replace with real commit URL once repo base URL is available
   return {
-    href: `#${commitHash}`,
+    href: repoBaseUrl != null ? repoBaseUrl + '/commit/' + commitHash : null,
     label: commitHash.slice(0, 7),
   };
 }
