@@ -466,18 +466,13 @@ describe('[CONTRACT] Event Names — source control events', () => {
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    // Drive task manually up to code_review_completed to reach commit_gate
+    // Drive task manually up to task_completed to reach commit_gate (commit runs before code_review)
     const ctx = { phase: 1, task: 1 };
     processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
     seedDoc(taskHandoffDoc(1, 1));
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
-    seedDoc(codeReviewDoc(1, 1));
-    const r = processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
-    }, io);
+    const r = processEvent('task_completed', PROJECT_DIR, ctx, io);
     expect(r.action).toBe('invoke_source_control_commit');
     const result = processEvent('commit_started', PROJECT_DIR, ctx, io);
     expect(result.success).toBe(true);
@@ -489,18 +484,13 @@ describe('[CONTRACT] Event Names — source control events', () => {
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
     processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    // Drive task manually up to code_review_completed to reach commit_gate
+    // Drive task manually up to task_completed to reach commit_gate (commit runs before code_review)
     const ctx = { phase: 1, task: 1 };
     processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
     seedDoc(taskHandoffDoc(1, 1));
     processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
-    seedDoc(codeReviewDoc(1, 1));
-    const r = processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
-    }, io);
+    const r = processEvent('task_completed', PROJECT_DIR, ctx, io);
     expect(r.action).toBe('invoke_source_control_commit');
     processEvent('commit_started', PROJECT_DIR, ctx, io);
     const result = processEvent('commit_completed', PROJECT_DIR, ctx, io);

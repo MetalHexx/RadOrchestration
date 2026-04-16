@@ -14,3 +14,5 @@ The following categories are starting points, not an exhaustive checklist. Look 
 | Dead code | Unreachable branches, unused exports or imports | Exported function never imported anywhere |
 | Implicit coupling | Hidden dependencies between modules | Module A directly reads a file owned by Module B |
 | Resource leaks | Opened handles, streams, or connections never closed | File stream opened in function but no cleanup on error path |
+| Scope creep | Changes touching files outside the Task Handoff's File Targets | Edit to an unrelated helper "while I was there" |
+| Undocumented diff | Lines changed without a purpose tied to the task objective | Refactor of formatting or naming mixed into a functional change |

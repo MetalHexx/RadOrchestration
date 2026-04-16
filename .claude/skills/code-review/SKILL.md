@@ -26,6 +26,8 @@ Consolidated review skill supporting three modes: task, phase, and final. The re
 
 ## Shared Inputs
 
+> **Phase Review and Final Review only.** Task Review does not load these — see Mode: Task Review for its reduced input set.
+
 | Input | Source | Description |
 |-------|--------|-------------|
 | PRD | `{NAME}-PRD.md` | Product requirements being validated |
@@ -35,25 +37,29 @@ Consolidated review skill supporting three modes: task, phase, and final. The re
 
 ## Mode: Task Review
 
-### Additional Inputs
+### Inputs
+
+Task Review reads only the inputs below — do NOT load the PRD, Architecture, Design, or Master Plan. The Task Handoff is the complete conformance contract; the diff is the scope for the skeptical pass.
 
 | Input | Source | Description |
 |-------|--------|-------------|
-| Task Handoff | `{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | Task requirements, contracts, acceptance criteria |
-| Source Code | Files listed in Task Handoff's File Targets | The code to review |
+| Task Handoff | `{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | Task requirements, contracts, acceptance criteria (complete conformance contract) |
+| `head_sha` | Spawn context | Commit hash of the just-made task commit. `null` when `source_control.auto_commit` is `never`. |
+| Diff | `git diff <head_sha>~1..<head_sha>` (or `git diff HEAD` + untracked files when `head_sha` is null) | The actual change under review — scope for the skeptical pass |
+| Source files | Files listed in Task Handoff's File Targets | Read only when the diff requires surrounding context |
 | Previous Code Review | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` | Previous review (if corrective task — may not exist) |
 | Corrective Task Handoff | Task Handoff for the corrective task | Corrective handoff (if corrective task — may not exist) |
 
 ### Workflow
 
-1. Read the Task Handoff — understand what was supposed to be built
-2. Read every source file listed in the Task Handoff's File Targets section
-3. Run tests and verify the build passes
-4. **Corrective-review check**: If a previous Code Review exists for this task, read it (and the corrective task handoff, if present) to identify expected corrections. Deviations from the original plan that address issues in the previous review are expected corrections — do NOT flag them as conformance failures
-5. **Conformance pass**: Compare implementation against the Task Handoff using the 7-category checklist (see categories below). Core question: "Did we build what we intended?" Verify that the implementation satisfies the FR-N, NFR-N, AD-N and DD-N elements inlined in the Task Handoff.
-6. **Skeptical pass** (Independent Quality Assessment): Evaluate code correctness independent of planning documents. Core question: "Is what we built correct?" Record findings with severity, evidence, and suggestions
-7. Apply verdict rules (see Verdict Rules section below) — highest severity across both passes determines verdict
-8. Fill in the CODE-REVIEW.md template and save to the task-mode save path from the Routing Table
+1. Read the Task Handoff — this is the complete conformance contract. Every FR-N, NFR-N, AD-N, and DD-N element that applies to this task is inlined there. Do not load other planning documents.
+2. **Scope the diff**: if `head_sha` is provided in spawn context, run `git diff <head_sha>~1..<head_sha>`. Otherwise (auto-commit is off) run `git diff HEAD` and read any untracked files listed in the Task Handoff's File Targets.
+3. Run tests and verify the build passes — do not accept "tests passed" on faith.
+4. **Corrective-review check**: If a previous Code Review exists for this task, read it (and the corrective task handoff, if present) to identify expected corrections. Deviations from the original plan that address issues in the previous review are expected corrections — do NOT flag them as conformance failures.
+5. **Conformance pass**: Compare the implementation against the Task Handoff using the 7-category checklist (see categories below). Core question: "Did we build what we intended?" Verify that the implementation satisfies the FR-N, NFR-N, AD-N, and DD-N elements inlined in the Task Handoff. Read full files from File Targets when the diff alone is insufficient to confirm conformance (e.g., to verify an export survived or a signature is still correct).
+6. **Skeptical pass** (Independent Quality Assessment): Read the diff line by line. Don't trust that it works because the handoff says it should — the handoff describes intent, the diff shows reality. Find what the implementer missed: bugs, edge cases, silent failures, defensive gaps. Apply code-smell detection without anchoring to the plan. Read full files only when the diff requires surrounding context.
+7. Apply verdict rules (see Verdict Rules section below) — highest severity across both passes determines verdict.
+8. Fill in the CODE-REVIEW.md template and save to the task-mode save path from the Routing Table.
 
 ### Checklist Categories
 

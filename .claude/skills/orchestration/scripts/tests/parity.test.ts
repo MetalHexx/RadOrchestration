@@ -497,6 +497,9 @@ describe('[PARITY] v4:resolveExecution', () => {
 
   it('[PARITY] v4:resolveExecution — task reviewing stage returns spawn_code_reviewer', () => {
     // v4: resolveTask() → task.stage === 'reviewing' → spawn_code_reviewer
+    // v5: commit_gate runs before code_review, so after task_completed the
+    // next action is invoke_source_control_commit (when auto_commit != 'never');
+    // spawn_code_reviewer is reached after commit_completed.
     const io = driveToExecution();
     processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
@@ -505,7 +508,7 @@ describe('[PARITY] v4:resolveExecution', () => {
       doc_path: phasePlanDoc(1),
     }, io);
 
-    // Drive task 1 to reviewing stage
+    // Drive task 1 through commit to reach reviewing stage
     processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
     seedDoc(taskHandoffDoc(1, 1));
     processEvent('task_handoff_created', PROJECT_DIR, {
@@ -514,7 +517,11 @@ describe('[PARITY] v4:resolveExecution', () => {
       doc_path: taskHandoffDoc(1, 1),
     }, io);
     processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    const result = processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    processEvent('commit_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    const result = processEvent('commit_completed', PROJECT_DIR, {
+      phase: 1, task: 1, commit_hash: 'abc123', pushed: 'false',
+    }, io);
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_code_reviewer');

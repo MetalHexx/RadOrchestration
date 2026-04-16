@@ -248,7 +248,11 @@ describe('[CONTRACT] Action Contexts — task-level execution actions', () => {
       phase: 1, task: 1, doc_path: taskHandoffDoc(1, 1),
     }, io);
     processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    const result = processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    processEvent('commit_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    const result = processEvent('commit_completed', PROJECT_DIR, {
+      phase: 1, task: 1, commit_hash: 'abc123', pushed: 'false',
+    }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_code_reviewer');
     expect(result.context).toEqual(expect.objectContaining({

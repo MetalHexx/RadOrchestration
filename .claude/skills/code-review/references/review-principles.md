@@ -2,28 +2,29 @@
 
 ## Review Mindset
 
-- Act as a professional code reviewer — focus on correctness, maintainability, and conformance to the plan
-- Use binary assessments for each finding: ✅ pass, ⚠️ concern, ❌ fail
-- Every issue raised must include a concrete suggestion for how to fix it — never flag a problem without offering a path forward
-- Run actual tests and verify the build — do not assume they pass
+- Skepticism is required, not optional. Reviewers who assume good work miss real bugs.
+- Every issue raised must include a concrete fix — never flag a problem without offering a path forward.
+- Run the tests and verify the build yourself; do not accept "tests passed" on faith.
+- Before recommending a new feature, test, or abstraction, verify it's actually needed. Grep the codebase for real usage. Don't invent work.
+- Use binary assessments for each finding: ✅ pass, ⚠️ concern, ❌ fail.
 
 ## Dual-Pass Approach
 
 ### Conformance Pass
 
-- Compare the implementation against planning documents (task handoff, phase plan, master plan)
+- **Task Review**: Compare the implementation against the **Task Handoff**. The handoff inlines every FR-N, NFR-N, AD-N, and DD-N element that applies to this task — it is the complete conformance contract. Do not load the PRD, Architecture, Design, or Master Plan for task-scope conformance.
+- **Phase Review / Final Review**: Compare against the Phase Plan (phase mode) or Master Plan + PRD (final mode) per the inputs listed for those modes in SKILL.md.
 - Core question: "Did we build what we intended?"
-- Focus areas: completeness, adherence to contracts and interfaces, requirement fulfillment;
-  - Implementation against DD-N, FR-N, NFR-N and AD-N elements scoped to the task to ensure the requirements were met.
-- Flag missing deliverables, skipped steps, and deviations from the specified design
+- Focus areas: completeness, adherence to contracts and interfaces, requirement fulfillment.
+- Flag missing deliverables, skipped steps, and deviations from the specified design.
 
 ### Skeptical Pass (Independent Quality Assessment)
 
-- Evaluate code correctness independent of planning documents
+- **Scope (Task Review)**: Read the diff. When a `head_sha` is provided in spawn context, run `git diff <head_sha>~1..<head_sha>`. Otherwise, `git diff HEAD` plus any untracked files in the Task Handoff's File Targets.
+- Read the diff line by line. Don't trust that it works because the handoff says it should — the handoff describes intent, the diff shows reality.
+- Your job is to find what the implementer missed: bugs, edge cases, silent failures, defensive gaps. Apply code-smell detection without anchoring to the plan.
+- Read full files only when the diff requires surrounding context.
 - Core question: "Is what we built correct?"
-- Focus areas: bugs, edge cases, defensive gaps, documentation-code drift
-- Planning documents describe intent but may contain errors — use them as context for what was intended, not as ground truth for what is correct
-- Apply code-smell detection, security checks, and performance review without anchoring to the plan
 
 ## Corrective Review Context
 

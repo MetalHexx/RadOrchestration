@@ -192,6 +192,20 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       return { ...base, handoff_doc };
     }
 
+    if (action === 'spawn_code_reviewer') {
+      const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
+      const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
+      const taskLoop = phaseIter?.nodes['task_loop'] as ForEachTaskNodeState | undefined;
+      const taskIter = taskLoop?.iterations[taskNumber - 1];
+      const activeCorrective = taskIter?.corrective_tasks.slice().reverse().find(
+        ct => ct.status === 'in_progress' || ct.status === 'not_started'
+      );
+      const head_sha = activeCorrective
+        ? (activeCorrective.commit_hash ?? null)
+        : (taskIter?.commit_hash ?? null);
+      return { ...base, head_sha };
+    }
+
     return base;
   }
 

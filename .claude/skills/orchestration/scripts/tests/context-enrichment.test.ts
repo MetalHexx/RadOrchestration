@@ -455,3 +455,132 @@ describe('enrichActionContext — request_final_approval', () => {
     expect(result.pr_url).toBe('https://github.com/org/repo/pull/123');
   });
 });
+
+// ── spawn_code_reviewer ───────────────────────────────────────────────────────
+
+describe('enrichActionContext — spawn_code_reviewer', () => {
+  function stateWithTaskIteration(
+    taskCommitHash: string | null,
+    correctives: Array<{ index: number; status: 'not_started' | 'in_progress' | 'completed'; commit_hash: string | null }> = [],
+  ): PipelineState {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [
+      {
+        index: 0,
+        status: 'in_progress',
+        nodes: {
+          task_loop: {
+            kind: 'for_each_task',
+            status: 'in_progress',
+            iterations: [
+              {
+                index: 0,
+                status: 'in_progress',
+                nodes: {},
+                corrective_tasks: correctives.map(c => ({
+                  index: c.index,
+                  reason: 'changes_requested',
+                  injected_after: 'code_review',
+                  status: c.status,
+                  nodes: {},
+                  commit_hash: c.commit_hash,
+                })),
+                commit_hash: taskCommitHash,
+              },
+            ],
+          } as ForEachTaskNodeState,
+        },
+        corrective_tasks: [],
+        commit_hash: null,
+      },
+    ];
+    return state;
+  }
+
+  it('returns head_sha from taskIteration.commit_hash when no active corrective', () => {
+    const state = stateWithTaskIteration('abc123def456');
+    const result = enrichActionContext({
+      action: 'spawn_code_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.head_sha).toBe('abc123def456');
+    expect(result.phase_number).toBe(1);
+    expect(result.task_number).toBe(1);
+    expect(result.phase_id).toBe('P01');
+    expect(result.task_id).toBe('P01-T01');
+  });
+
+  it('returns head_sha from active corrective (in_progress) when one exists, overriding taskIteration.commit_hash', () => {
+    const state = stateWithTaskIteration('original_hash', [
+      { index: 1, status: 'in_progress', commit_hash: 'corrective_hash' },
+    ]);
+    const result = enrichActionContext({
+      action: 'spawn_code_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.head_sha).toBe('corrective_hash');
+  });
+
+  it('returns head_sha: null when active corrective exists but has no commit yet (does NOT fall back to stale task commit)', () => {
+    const state = stateWithTaskIteration('original_hash', [
+      { index: 1, status: 'not_started', commit_hash: null },
+    ]);
+    const result = enrichActionContext({
+      action: 'spawn_code_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    // Once a corrective cycle is active, its commit_hash is authoritative.
+    // The original task's commit is stale — do not return it.
+    expect(result.head_sha).toBeNull();
+  });
+
+  it('falls through completed correctives to the latest active one', () => {
+    const state = stateWithTaskIteration('task_hash', [
+      { index: 1, status: 'completed', commit_hash: 'first_corrective' },
+      { index: 2, status: 'in_progress', commit_hash: 'second_corrective' },
+    ]);
+    const result = enrichActionContext({
+      action: 'spawn_code_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.head_sha).toBe('second_corrective');
+  });
+
+  it('returns head_sha: null when no commit has been made (auto_commit never)', () => {
+    const state = stateWithTaskIteration(null);
+    const result = enrichActionContext({
+      action: 'spawn_code_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.head_sha).toBeNull();
+  });
+
+  it('preserves walker context properties', () => {
+    const state = stateWithTaskIteration('abc123');
+    const result = enrichActionContext({
+      action: 'spawn_code_reviewer',
+      walkerContext: { custom_key: 'custom_value' },
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.custom_key).toBe('custom_value');
+    expect(result.head_sha).toBe('abc123');
+  });
+});
