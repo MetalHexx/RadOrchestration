@@ -30,10 +30,7 @@ export function DAGLoopNode({
   node,
   currentNodePath,
   onDocClick,
-  // expandedLoopIds and onAccordionChange are accepted for Phase 4 controlled-accordion wiring
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   expandedLoopIds,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onAccordionChange,
   repoBaseUrl,
   projectName,
@@ -41,7 +38,7 @@ export function DAGLoopNode({
   const sortedIterations = [...node.iterations].sort((a, b) => a.index - b.index);
 
   return (
-    <Accordion defaultValue={[]}>
+    <Accordion value={expandedLoopIds} onValueChange={onAccordionChange}>
       <AccordionItem value={buildLoopItemValue(nodeId)} className="border-b-0">
         <AccordionTrigger className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center">
           <NodeKindIcon kind={node.kind} />
@@ -65,6 +62,8 @@ export function DAGLoopNode({
               onDocClick={onDocClick}
               repoBaseUrl={repoBaseUrl}
               projectName={projectName}
+              expandedLoopIds={expandedLoopIds}
+              onAccordionChange={onAccordionChange}
             />
           ))}
         </AccordionContent>

@@ -17,6 +17,11 @@ interface DAGIterationPanelProps {
   onDocClick: (path: string) => void;
   repoBaseUrl: string | null;
   projectName: string;
+  expandedLoopIds: string[];
+  onAccordionChange: (
+    value: string[],
+    eventDetails: { reason: string }
+  ) => void;
 }
 
 export const ITERATION_CHILD_DEPTH = 1;
@@ -42,6 +47,8 @@ export function DAGIterationPanel({
   onDocClick,
   repoBaseUrl,
   projectName,
+  expandedLoopIds,
+  onAccordionChange,
 }: DAGIterationPanelProps) {
   const commitData = getCommitLinkData(iteration.commit_hash, repoBaseUrl);
   const correctiveGroupParentId = buildCorrectiveGroupParentId(parentNodeId, iterationIndex);
@@ -134,8 +141,8 @@ export function DAGIterationPanel({
             node={childNode}
             currentNodePath={currentNodePath}
             onDocClick={onDocClick}
-            expandedLoopIds={[]}
-            onAccordionChange={() => {}}
+            expandedLoopIds={expandedLoopIds}
+            onAccordionChange={onAccordionChange}
             repoBaseUrl={repoBaseUrl}
             projectName={projectName}
           />

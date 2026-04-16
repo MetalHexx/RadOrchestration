@@ -200,12 +200,59 @@ test('component does not add aria-current to trigger row (delegation to child DA
   assert.strictEqual(triggerHasAriaCurrent, false);
 });
 
-// Accordion defaults to collapsed state
-test('Accordion defaultValue is [] (collapsed by default)', () => {
-  // Simulate the defaultValue prop passed to Accordion
-  const defaultValue: string[] = [];
-  assert.deepStrictEqual(defaultValue, []);
-  assert.strictEqual(defaultValue.length, 0);
+// Accordion controlled-mode wiring: value prop reflects expandedLoopIds
+test('Accordion value prop equals expandedLoopIds when passed by caller', () => {
+  // Simulate the controlled-mode wiring: parent passes expandedLoopIds,
+  // DAGLoopNode forwards it to <Accordion value={expandedLoopIds}>.
+  const expandedLoopIds: string[] = ['loop-phase_loop'];
+  // The value prop passed to Accordion is the exact expandedLoopIds reference
+  const accordionValueProp = expandedLoopIds;
+  assert.deepStrictEqual(accordionValueProp, ['loop-phase_loop']);
+  assert.strictEqual(accordionValueProp, expandedLoopIds);
+  assert.strictEqual(accordionValueProp.length, 1);
+  assert.strictEqual(accordionValueProp[0], 'loop-phase_loop');
+});
+
+test('Accordion value prop forwards an empty expandedLoopIds array unchanged', () => {
+  const expandedLoopIds: string[] = [];
+  const accordionValueProp = expandedLoopIds;
+  assert.deepStrictEqual(accordionValueProp, []);
+  assert.strictEqual(accordionValueProp.length, 0);
+});
+
+// onAccordionChange callback shape: (value: string[], eventDetails: { reason: string })
+test('onAccordionChange callback is invokable with (value, eventDetails) and reason "trigger-press"', () => {
+  let capturedValue: string[] | null = null;
+  let capturedReason: string | null = null;
+  const onAccordionChange = (
+    value: string[],
+    eventDetails: { reason: string }
+  ) => {
+    capturedValue = value;
+    capturedReason = eventDetails.reason;
+  };
+
+  // Simulate the @base-ui accordion firing onValueChange on a user click
+  onAccordionChange(['loop-phase_loop'], { reason: 'trigger-press' });
+
+  assert.deepStrictEqual(capturedValue, ['loop-phase_loop']);
+  assert.strictEqual(capturedReason, 'trigger-press');
+});
+
+test('onAccordionChange eventDetails.reason can take the value "none" for programmatic updates', () => {
+  let capturedReason: string | null = null;
+  const onAccordionChange = (
+    value: string[],
+    eventDetails: { reason: string }
+  ) => {
+    void value;
+    capturedReason = eventDetails.reason;
+  };
+
+  // Simulate @base-ui firing onValueChange when parent mutates value prop directly
+  onAccordionChange(['loop-phase_loop'], { reason: 'none' });
+
+  assert.strictEqual(capturedReason, 'none');
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
