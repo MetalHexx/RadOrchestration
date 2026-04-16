@@ -15,7 +15,10 @@ created: "{ISO-DATE}"
 
 ## User Flows
 
-### {Flow Name}
+### DD-1: {Flow Name}
+
+**Tags:** DD-1, flow, {keyword1}, {keyword2}
+**Resolves:** FR-N
 
 ```
 {Step 1} → {Step 2} → {Step 3} → {Outcome}
@@ -25,16 +28,25 @@ created: "{ISO-DATE}"
 
 ## Layout & Components
 
-### {View/Page Name}
+### DD-2: {View/Page Name}
 
-#### {Component Name}
+**Tags:** DD-2, layout, {keyword1}, {keyword2}
+**Resolves:** FR-N
+
+### DD-3: {Component Name}
+
+**Tags:** DD-3, component, {view-keyword}, {keyword2}
+**Resolves:** FR-N
 
 - **Design Token / Class**: {token or "existing component"}
 - **Notes**: {Brief description}
 
 ### New Components
 
-#### {Component Name}
+### DD-4: {Component Name}
+
+**Tags:** DD-4, component, {keyword1}, {keyword2}
+**Resolves:** FR-N
 
 - **Props**: {conceptual props}
 - **Design Tokens**: {tokens used}
@@ -42,8 +54,9 @@ created: "{ISO-DATE}"
 
 ## States & Interactions
 
-### {Component Name}
+### DD-5: {Component Name} {State Name}
 
-#### {State Name}
+**Tags:** DD-5, state, {component-keyword}, {state-keyword}
+**Resolves:** FR-N
 
 {Visual treatment description. 100-150 tokens per state block.}
