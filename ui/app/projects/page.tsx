@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useProjects } from "@/hooks/use-projects";
 import { useDocumentDrawer } from "@/hooks/use-document-drawer";
 import { useFollowMode } from "@/hooks/use-follow-mode";
+import { useSSEContext } from "@/hooks/use-sse-context";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
 import { MainDashboard } from "@/components/layout";
@@ -13,6 +14,30 @@ import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
 import { isV5State } from "@/types/state";
 import type { ProjectState, ProjectStateV5 } from "@/types/state";
 import type { ProjectSummary } from "@/types/components";
+import type { GraphStatus } from "@/types/state";
+import type { SSEConnectionStatus } from "@/types/events";
+
+// ─── Status band slot placeholders (replaced by T02 / T03) ───────────────────
+
+interface HaltReasonBannerProps {
+  graphStatus: GraphStatus | undefined;
+  haltReason: string | null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function HaltReasonBannerPlaceholder(_props: HaltReasonBannerProps): null {
+  return null;
+}
+
+interface SSEStatusBannerProps {
+  status: SSEConnectionStatus;
+  onReconnect: () => void;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function SSEStatusBannerPlaceholder(_props: SSEStatusBannerProps): null {
+  return null;
+}
 
 export default function ProjectsPage() {
   const {
@@ -23,6 +48,8 @@ export default function ProjectsPage() {
     isLoading,
     error,
   } = useProjects();
+
+  const { sseStatus, reconnect } = useSSEContext();
 
   const {
     isOpen,
@@ -138,6 +165,16 @@ export default function ProjectsPage() {
                 followMode={followMode}
                 onToggleFollowMode={toggleFollowMode}
               />
+              <div className="flex flex-col">
+                <HaltReasonBannerPlaceholder
+                  graphStatus={v5Derivations.graphStatus}
+                  haltReason={v5State.pipeline.halt_reason}
+                />
+                <SSEStatusBannerPlaceholder
+                  status={sseStatus}
+                  onReconnect={reconnect}
+                />
+              </div>
               <div className="px-6 py-4">
                 <DAGTimeline
                   nodes={v5State.graph.nodes}

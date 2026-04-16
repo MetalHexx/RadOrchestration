@@ -145,6 +145,120 @@ async function run() {
     );
   });
 
+  // ─── Status band foundation (P05-T01) ────────────────────────────────────
+
+  await test('Source imports useSSEContext from @/hooks/use-sse-context', () => {
+    assert.ok(
+      /import\s*\{\s*useSSEContext\s*\}\s*from\s*["']@\/hooks\/use-sse-context["']/.test(sourceText),
+      'projects/page.tsx must import useSSEContext from @/hooks/use-sse-context'
+    );
+  });
+
+  await test('Source calls useSSEContext( at least once', () => {
+    assert.ok(
+      sourceText.includes('useSSEContext('),
+      'projects/page.tsx must invoke useSSEContext('
+    );
+  });
+
+  await test('Halt-slot call site precedes SSE-slot call site (stack order lock)', () => {
+    const haltSlotIdx = sourceText.indexOf('HaltReasonBannerPlaceholder');
+    const sseSlotIdx = sourceText.indexOf('SSEStatusBannerPlaceholder');
+    assert.ok(haltSlotIdx >= 0, 'HaltReasonBannerPlaceholder must appear in page.tsx');
+    assert.ok(sseSlotIdx >= 0, 'SSEStatusBannerPlaceholder must appear in page.tsx');
+    assert.ok(
+      haltSlotIdx < sseSlotIdx,
+      'Halt-slot call site must appear before SSE-slot call site in source text'
+    );
+  });
+
+  await test('Status band <div> sits between <ProjectHeader and <div className="px-6 py-4">', () => {
+    const headerIdx = sourceText.indexOf('<ProjectHeader');
+    assert.ok(headerIdx >= 0, '<ProjectHeader must be present');
+    const statusBandIdx = sourceText.indexOf('<div className="flex flex-col">', headerIdx);
+    assert.ok(statusBandIdx > headerIdx, 'Status band must appear after <ProjectHeader');
+    const timelineWrapperIdx = sourceText.indexOf('<div className="px-6 py-4">', statusBandIdx);
+    assert.ok(timelineWrapperIdx > statusBandIdx, 'Timeline wrapper must appear after status band');
+  });
+
+  await test('No import from halt-reason-banner, sse-status-banner, or dag-timeline-skeleton', () => {
+    assert.ok(
+      !sourceText.includes('@/components/dag-timeline/halt-reason-banner'),
+      'page.tsx must not import halt-reason-banner yet (belongs to T02)'
+    );
+    assert.ok(
+      !sourceText.includes('@/components/badges/sse-status-banner'),
+      'page.tsx must not import sse-status-banner yet (belongs to T03)'
+    );
+    assert.ok(
+      !sourceText.includes('@/components/dag-timeline/dag-timeline-skeleton'),
+      'page.tsx must not import dag-timeline-skeleton yet (belongs to T04)'
+    );
+  });
+
+  await test('No new fetch URL literals or new EventSource constructions in page.tsx', () => {
+    // The only fetch call allowed is the pre-existing /api/projects/.../files one.
+    // We check there is no new EventSource construction.
+    assert.ok(
+      !sourceText.includes('new EventSource('),
+      'page.tsx must not introduce new EventSource constructions'
+    );
+    // Verify the only fetch URL is the pre-existing /api/projects/ one
+    const fetchMatches = sourceText.match(/fetch\(`[^`]*`\)/g) ?? [];
+    const templateLiteralFetches = fetchMatches.filter(m => !m.includes('/api/projects/'));
+    assert.strictEqual(
+      templateLiteralFetches.length,
+      0,
+      `page.tsx must not introduce new fetch URL literals beyond the pre-existing /api/projects/ call. Found: ${templateLiteralFetches.join(', ')}`
+    );
+    // Also check for string literal fetches
+    assert.ok(
+      !sourceText.match(/fetch\(["'][^"']*["']\)/),
+      'page.tsx must not introduce new string-literal fetch calls'
+    );
+  });
+
+  await test('No new npm package imports in page.tsx', () => {
+    // Extract all "from ..." import specifiers
+    const importSpecifiers = [...sourceText.matchAll(/from\s+["']([^"']+)["']/g)].map(m => m[1]);
+    const knownImports = new Set([
+      'react',
+      '@/hooks/use-projects',
+      '@/hooks/use-document-drawer',
+      '@/hooks/use-follow-mode',
+      '@/hooks/use-sse-context',
+      '@/components/ui/sidebar',
+      '@/components/sidebar',
+      '@/components/layout',
+      '@/components/documents',
+      '@/components/dag-timeline',
+      '@/lib/document-ordering',
+      '@/types/state',
+      '@/types/components',
+      '@/types/events',
+    ]);
+    const unknownImports = importSpecifiers.filter(spec => !knownImports.has(spec));
+    assert.strictEqual(
+      unknownImports.length,
+      0,
+      `page.tsx contains unexpected import specifiers: ${unknownImports.join(', ')}`
+    );
+  });
+
+  await test('aria-live does not appear on the status-band container', () => {
+    const statusBandIdx = sourceText.indexOf('<div className="flex flex-col">');
+    assert.ok(statusBandIdx >= 0, 'Status band must be present');
+    // The band closing tag is the next </div> after the SSE slot
+    const sseSlotIdx = sourceText.indexOf('SSEStatusBannerPlaceholder', statusBandIdx);
+    assert.ok(sseSlotIdx >= 0, 'SSEStatusBannerPlaceholder must appear in band');
+    const bandCloseIdx = sourceText.indexOf('</div>', sseSlotIdx);
+    const bandRegion = sourceText.slice(statusBandIdx, bandCloseIdx);
+    assert.ok(
+      !bandRegion.includes('aria-live'),
+      'Status band container must not carry aria-live (live regions belong to banner components T02/T03)'
+    );
+  });
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);
 }
