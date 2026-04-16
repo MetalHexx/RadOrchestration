@@ -4,7 +4,8 @@ import { cn } from '@/lib/utils';
 import { NodeKindIcon } from './node-kind-icon';
 import { NodeStatusBadge } from './node-status-badge';
 import { DocumentLink } from '@/components/documents';
-import { getDisplayName } from './dag-timeline-helpers';
+import { ApproveGateButton } from '@/components/dashboard';
+import { getDisplayName, getGateNodeConfig } from './dag-timeline-helpers';
 import type { CompatibleNodeState } from './dag-timeline-helpers';
 
 interface DAGNodeRowProps {
@@ -13,16 +14,21 @@ interface DAGNodeRowProps {
   currentNodePath: string | null;
   onDocClick: (path: string) => void;
   depth?: number;  // default: 0
+  projectName?: string;
+  gateActive?: boolean;
 }
 
 // Re-export formatNodeId to preserve barrel export contract
 export { formatNodeId } from './dag-timeline-helpers';
 
-export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0 }: DAGNodeRowProps) {
+export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0, projectName, gateActive }: DAGNodeRowProps) {
   const isActive = nodeId === currentNodePath;
   const branchTaken = node.kind === 'conditional' ? node.branch_taken : null;
   const branchLabel = branchTaken != null ? (branchTaken === 'true' ? 'Yes' : 'No') : null;
   const branchBadgeStatus = branchTaken != null ? (branchTaken === 'true' ? 'completed' : 'skipped') : null;
+  const gateConfig = node.kind === 'gate' && gateActive === true && projectName !== undefined
+    ? getGateNodeConfig(nodeId)
+    : null;
 
   return (
     <div
@@ -43,6 +49,15 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       )}
       {node.kind === 'step' && node.doc_path !== null && (
         <DocumentLink path={node.doc_path} label="Doc" onDocClick={onDocClick} />
+      )}
+      {gateConfig !== null && (
+        <ApproveGateButton
+          gateEvent={gateConfig.event}
+          projectName={projectName!}
+          documentName={projectName!}
+          label={gateConfig.label}
+          className="ml-auto"
+        />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord, NodeState, ForEachPhaseNodeState } from '@/types/state';
+import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord, NodeState, ForEachPhaseNodeState, GateEvent } from '@/types/state';
 
 export type CompatibleNodeState = StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState;
 
@@ -54,6 +54,35 @@ export function getDisplayName(nodeId: string): string {
   const lastDot = nodeId.lastIndexOf('.');
   const leaf = lastDot === -1 ? nodeId : nodeId.slice(lastDot + 1);
   return formatNodeId(leaf);
+}
+
+// ─── Gate Node Config (single source of truth for approval buttons) ──────────
+
+/**
+ * Maps gate node leaf IDs to their corresponding gate event and button label.
+ * Only plan-approval and final-approval gates receive approval buttons.
+ * `pr_gate`, `gate_mode_selection`, `task_gate`, and `phase_gate` are
+ * intentionally absent.
+ */
+export const GATE_NODE_CONFIG: Record<string, {
+  event: GateEvent;
+  label: string;
+}> = {
+  plan_approval_gate: { event: 'plan_approved', label: 'Approve Plan' },
+  final_approval_gate: { event: 'final_approved', label: 'Approve Final Review' },
+};
+
+/**
+ * Resolves a node ID (possibly compound, like `phase_loop.iter0.task_gate`)
+ * against `GATE_NODE_CONFIG` by extracting its leaf segment (substring after
+ * the last `.`, or the whole string if no `.`). Returns the config or `null`.
+ */
+export function getGateNodeConfig(
+  nodeId: string
+): { event: GateEvent; label: string } | null {
+  const lastDot = nodeId.lastIndexOf('.');
+  const leaf = lastDot === -1 ? nodeId : nodeId.slice(lastDot + 1);
+  return GATE_NODE_CONFIG[leaf] ?? null;
 }
 
 // ─── Section Types ────────────────────────────────────────────────────────────

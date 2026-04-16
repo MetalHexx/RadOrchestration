@@ -9,7 +9,7 @@
  */
 import assert from "node:assert";
 import { formatNodeId } from './dag-node-row';
-import { getDisplayName } from './dag-timeline-helpers';
+import { getDisplayName, getGateNodeConfig, GATE_NODE_CONFIG } from './dag-timeline-helpers';
 import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState } from '@/types/state';
 import { gateNode, conditionalNodeBranchTrue, conditionalNodeBranchFalse } from './__fixtures__';
 
@@ -50,6 +50,23 @@ function computeBranchBadge(branchTaken: 'true' | 'false'): { label: string; bad
   const label = branchTaken === 'true' ? 'Yes' : 'No';
   const badgeStatus = branchTaken === 'true' ? 'completed' : 'skipped';
   return { label, badgeStatus, ariaLabel: `Branch taken: ${label}` };
+}
+
+/**
+ * Mirrors the gate-render decision logic in DAGNodeRow:
+ * returns true iff the node is a gate, gateActive === true, projectName is
+ * defined, and the nodeId leaf resolves in GATE_NODE_CONFIG.
+ */
+function shouldRenderGateButton(
+  node: StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState,
+  nodeId: string,
+  projectName: string | undefined,
+  gateActive: boolean | undefined
+): boolean {
+  if (node.kind !== 'gate') return false;
+  if (gateActive !== true) return false;
+  if (projectName === undefined) return false;
+  return getGateNodeConfig(nodeId) !== null;
 }
 
 function computeClasses(isActive: boolean): string[] {
@@ -250,6 +267,194 @@ test('shouldRenderBranchIndicator handles generic conditional node id (not hardc
     branch_taken: 'true',
   };
   assert.strictEqual(shouldRenderBranchIndicator(genericNode), true);
+});
+
+// ─── Tests: GATE_NODE_CONFIG & getGateNodeConfig ─────────────────────────────
+
+test('GATE_NODE_CONFIG contains exactly two entries', () => {
+  assert.strictEqual(Object.keys(GATE_NODE_CONFIG).length, 2);
+});
+
+test('GATE_NODE_CONFIG contains plan_approval_gate', () => {
+  assert.ok('plan_approval_gate' in GATE_NODE_CONFIG, 'should contain plan_approval_gate');
+});
+
+test('GATE_NODE_CONFIG contains final_approval_gate', () => {
+  assert.ok('final_approval_gate' in GATE_NODE_CONFIG, 'should contain final_approval_gate');
+});
+
+test('GATE_NODE_CONFIG does NOT contain pr_gate', () => {
+  assert.ok(!('pr_gate' in GATE_NODE_CONFIG), 'should not contain pr_gate');
+});
+
+test('GATE_NODE_CONFIG does NOT contain gate_mode_selection', () => {
+  assert.ok(!('gate_mode_selection' in GATE_NODE_CONFIG), 'should not contain gate_mode_selection');
+});
+
+test('GATE_NODE_CONFIG does NOT contain task_gate', () => {
+  assert.ok(!('task_gate' in GATE_NODE_CONFIG), 'should not contain task_gate');
+});
+
+test('GATE_NODE_CONFIG does NOT contain phase_gate', () => {
+  assert.ok(!('phase_gate' in GATE_NODE_CONFIG), 'should not contain phase_gate');
+});
+
+test("getGateNodeConfig('plan_approval_gate') returns plan_approved config", () => {
+  assert.deepStrictEqual(getGateNodeConfig('plan_approval_gate'), {
+    event: 'plan_approved',
+    label: 'Approve Plan',
+  });
+});
+
+test("getGateNodeConfig('final_approval_gate') returns final_approved config", () => {
+  assert.deepStrictEqual(getGateNodeConfig('final_approval_gate'), {
+    event: 'final_approved',
+    label: 'Approve Final Review',
+  });
+});
+
+test("getGateNodeConfig('pr_gate') returns null", () => {
+  assert.strictEqual(getGateNodeConfig('pr_gate'), null);
+});
+
+test("getGateNodeConfig('gate_mode_selection') returns null", () => {
+  assert.strictEqual(getGateNodeConfig('gate_mode_selection'), null);
+});
+
+test("getGateNodeConfig('task_gate') returns null", () => {
+  assert.strictEqual(getGateNodeConfig('task_gate'), null);
+});
+
+test("getGateNodeConfig('phase_gate') returns null", () => {
+  assert.strictEqual(getGateNodeConfig('phase_gate'), null);
+});
+
+test("getGateNodeConfig resolves leaf for compound ID 'some.prefix.plan_approval_gate'", () => {
+  assert.deepStrictEqual(getGateNodeConfig('some.prefix.plan_approval_gate'), {
+    event: 'plan_approved',
+    label: 'Approve Plan',
+  });
+});
+
+test("getGateNodeConfig resolves leaf for compound ID 'phase_loop.iter0.final_approval_gate'", () => {
+  assert.deepStrictEqual(getGateNodeConfig('phase_loop.iter0.final_approval_gate'), {
+    event: 'final_approved',
+    label: 'Approve Final Review',
+  });
+});
+
+test("getGateNodeConfig returns null for compound ID with non-map leaf 'phase_loop.iter0.task_gate'", () => {
+  assert.strictEqual(getGateNodeConfig('phase_loop.iter0.task_gate'), null);
+});
+
+test("getGateNodeConfig returns null for compound ID with non-map leaf 'phase_loop.iter0.phase_gate'", () => {
+  assert.strictEqual(getGateNodeConfig('phase_loop.iter0.phase_gate'), null);
+});
+
+// ─── Tests: shouldRenderGateButton decision logic ────────────────────────────
+
+const activeGateNode: GateNodeState = {
+  kind: 'gate',
+  status: 'in_progress',
+  gate_active: true,
+};
+
+test("shouldRenderGateButton returns true for active plan_approval_gate with projectName", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(activeGateNode, 'plan_approval_gate', 'my-project', true),
+    true
+  );
+});
+
+test("shouldRenderGateButton returns true for active final_approval_gate with projectName", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(activeGateNode, 'final_approval_gate', 'my-project', true),
+    true
+  );
+});
+
+test("shouldRenderGateButton returns true for compound ID resolving to plan_approval_gate", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(activeGateNode, 'some.prefix.plan_approval_gate', 'my-project', true),
+    true
+  );
+});
+
+test("shouldRenderGateButton returns false for step node (non-gate kind)", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(stepNodeWithDoc, 'plan_approval_gate', 'my-project', true),
+    false
+  );
+});
+
+test("shouldRenderGateButton returns false for conditional node (non-gate kind)", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(conditionalNode, 'plan_approval_gate', 'my-project', true),
+    false
+  );
+});
+
+test("shouldRenderGateButton returns false for parallel node (non-gate kind)", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(parallelNode, 'plan_approval_gate', 'my-project', true),
+    false
+  );
+});
+
+test("shouldRenderGateButton returns false when gateActive === false", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(activeGateNode, 'plan_approval_gate', 'my-project', false),
+    false
+  );
+});
+
+test("shouldRenderGateButton returns false when gateActive === undefined", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(activeGateNode, 'plan_approval_gate', 'my-project', undefined),
+    false
+  );
+});
+
+test("shouldRenderGateButton returns false when projectName === undefined", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(activeGateNode, 'plan_approval_gate', undefined, true),
+    false
+  );
+});
+
+test("shouldRenderGateButton returns false for pr_gate leaf", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(activeGateNode, 'pr_gate', 'my-project', true),
+    false
+  );
+});
+
+test("shouldRenderGateButton returns false for gate_mode_selection leaf", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(activeGateNode, 'gate_mode_selection', 'my-project', true),
+    false
+  );
+});
+
+test("shouldRenderGateButton returns false for task_gate leaf", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(activeGateNode, 'task_gate', 'my-project', true),
+    false
+  );
+});
+
+test("shouldRenderGateButton returns false for phase_gate leaf", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(activeGateNode, 'phase_gate', 'my-project', true),
+    false
+  );
+});
+
+test("shouldRenderGateButton returns false for existing gateNode fixture (gate_active: false)", () => {
+  assert.strictEqual(
+    shouldRenderGateButton(gateNode, 'plan_approval_gate', 'my-project', gateNode.gate_active),
+    false
+  );
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
