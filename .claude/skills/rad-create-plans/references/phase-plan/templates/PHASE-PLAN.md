@@ -12,27 +12,18 @@ created: "{ISO-DATE}"
 
 # Phase {PHASE-NUMBER}: {PHASE-TITLE}
 
-## Phase Goal
+## Phase Objective
 
-{1-2 sentences. What this phase delivers when complete.}
-
-## Inputs
-
-| Source | Key Information Used |
-|--------|---------------------|
-| [Master Plan]({path}) | Phase {PHASE-NUMBER} scope and exit criteria |
-| [Architecture]({path}) | {Specific sections referenced} |
-| [Design]({path}) | {Specific sections referenced, if applicable} |
-| [Previous Phase Report]({path}) | {What carried forward, if applicable} |
+{1-2 sentences. Expand the Master Plan's phase Objective with what this phase depends on from prior phases (if any) and what it enables for subsequent phases (if any).}
 
 ## Task Outline
 
-| # | Task | Dependencies | Est. Files |
-|---|------|-------------|------------|
-| T1 | {Title} | — | {NUMBER} |
-| T2 | {Title} | T1 | {NUMBER} |
-| T3 | {Title} | T1 | {NUMBER} |
-| T4 | {Title} | T2, T3 | {NUMBER} |
+| # | Task | Scope | Dependencies | Est. Files |
+|---|------|-------|-------------|------------|
+| T1 | {Title} | {FR-N, AD-N, Design: Section} | — | {NUMBER} |
+| T2 | {Title} | {FR-N, NFR-N} | T1 | {NUMBER} |
+| T3 | {Title} | {AD-N, Research: Finding} | T1 | {NUMBER} |
+| T4 | {Title} | {FR-N, AD-N} | T2, T3 | {NUMBER} |
 
 ## Execution Order
 
@@ -55,7 +46,3 @@ T4 (depends on T2, T3)
 - [ ] Phase review passed
 - [ ] Build passes
 - [ ] All tests pass
-
-## Known Risks for This Phase
-
-- {Risk 1}

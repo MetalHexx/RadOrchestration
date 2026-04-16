@@ -100,6 +100,8 @@ Verify that the Master Plan's phase structure and downstream Phase Plans agree.
 | **Exit criteria match** | Exit criteria stated in the Master Plan for each phase match the exit criteria in the Phase Plan |
 | **No orphan tasks** | Every task in a Phase Plan traces back to a phase scope item in the Master Plan or a requirement in the PRD |
 | **No orphan requirements** | Every requirement in the PRD is covered by at least one task across all Phase Plans |
+| **Scope column coverage** | Every identifier in the Master Plan's phase scope (FR-N, NFR-N, AD-N, DD-N, Design section refs) appears in exactly one task row's Scope column in the corresponding Phase Plan — no identifiers lost, no identifiers duplicated across tasks |
+| **Task Handoff scope-directed compilation** | Every identifier in a task's Scope column is resolved and incorporated in the corresponding Task Handoff; no Task Handoff content is sourced from upstream sections not indicated by the task's Scope column |
 
 If Phase Plans don't exist yet (pre-execution), check only Master Plan internal consistency (phase count, scope completeness).
 

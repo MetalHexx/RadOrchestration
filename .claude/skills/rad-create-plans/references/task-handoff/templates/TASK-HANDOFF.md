@@ -42,6 +42,7 @@ interface {InterfaceName} {
 }
 ```
 
+<!-- CONDITIONAL: Include this section only for UI tasks with design token references in scope -->
 ## Styles & Design Tokens
 
 {Specific design tokens, variables, component names from design system. Actual values, not references.}
