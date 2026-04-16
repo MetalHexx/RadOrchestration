@@ -12,13 +12,32 @@ export interface DAGLoopNodeProps {
   node: ForEachPhaseNodeState | ForEachTaskNodeState;
   currentNodePath: string | null;
   onDocClick: (path: string) => void;
+  expandedLoopIds: string[];
+  onAccordionChange: (
+    value: string[],
+    eventDetails: { reason: string }
+  ) => void;
+  repoBaseUrl: string | null;
+  projectName: string;
 }
 
 export function buildLoopItemValue(nodeId: string): string {
   return `loop-${nodeId}`;
 }
 
-export function DAGLoopNode({ nodeId, node, currentNodePath, onDocClick }: DAGLoopNodeProps) {
+export function DAGLoopNode({
+  nodeId,
+  node,
+  currentNodePath,
+  onDocClick,
+  // expandedLoopIds and onAccordionChange are accepted for Phase 4 controlled-accordion wiring
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  expandedLoopIds,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onAccordionChange,
+  repoBaseUrl,
+  projectName,
+}: DAGLoopNodeProps) {
   const sortedIterations = [...node.iterations].sort((a, b) => a.index - b.index);
 
   return (
@@ -39,6 +58,8 @@ export function DAGLoopNode({ nodeId, node, currentNodePath, onDocClick }: DAGLo
               parentKind={node.kind}
               currentNodePath={currentNodePath}
               onDocClick={onDocClick}
+              repoBaseUrl={repoBaseUrl}
+              projectName={projectName}
             />
           ))}
         </AccordionContent>

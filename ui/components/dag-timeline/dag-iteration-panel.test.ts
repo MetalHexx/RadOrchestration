@@ -73,16 +73,16 @@ test('buildIterationChildNodeId("task_loop", 2, "task_handoff") returns "task_lo
 });
 
 // getCommitLinkData — with hash
-test('getCommitLinkData("abc1234def") returns { href: "#abc1234def", label: "abc1234" }', () => {
-  const result = getCommitLinkData("abc1234def");
+test('getCommitLinkData("abc1234def", null) returns { href: null, label: "abc1234" }', () => {
+  const result = getCommitLinkData("abc1234def", null);
   assert.ok(result !== null);
   assert.strictEqual(result.label, "abc1234");
-  assert.strictEqual(result.href, "#abc1234def");
+  assert.strictEqual(result.href, null);
 });
 
 // getCommitLinkData — null
-test('getCommitLinkData(null) returns null', () => {
-  const result = getCommitLinkData(null);
+test('getCommitLinkData(null, null) returns null', () => {
+  const result = getCommitLinkData(null, null);
   assert.strictEqual(result, null);
 });
 

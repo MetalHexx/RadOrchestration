@@ -12,9 +12,16 @@ interface DAGTimelineProps {
   nodes: NodesRecord;
   currentNodePath: string | null;
   onDocClick: (path: string) => void;
+  expandedLoopIds: string[];
+  onAccordionChange: (
+    value: string[],
+    eventDetails: { reason: string }
+  ) => void;
+  repoBaseUrl: string | null;
+  projectName: string;
 }
 
-export function DAGTimeline({ nodes, currentNodePath, onDocClick }: DAGTimelineProps) {
+export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName }: DAGTimelineProps) {
   const groups = groupNodesBySection(nodes);
   const unmatchedEntries = Object.entries(nodes).filter(([nodeId]) => !Object.hasOwn(NODE_SECTION_MAP, nodeId));
 
@@ -32,6 +39,10 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick }: DAGTimelineP
                     node={node}
                     currentNodePath={currentNodePath}
                     onDocClick={onDocClick}
+                    expandedLoopIds={expandedLoopIds}
+                    onAccordionChange={onAccordionChange}
+                    repoBaseUrl={repoBaseUrl}
+                    projectName={projectName}
                   />
                 ) : (
                   <DAGNodeRow
@@ -55,6 +66,10 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick }: DAGTimelineP
               node={node}
               currentNodePath={currentNodePath}
               onDocClick={onDocClick}
+              expandedLoopIds={expandedLoopIds}
+              onAccordionChange={onAccordionChange}
+              repoBaseUrl={repoBaseUrl}
+              projectName={projectName}
             />
           ) : (
             <DAGNodeRow

@@ -63,20 +63,20 @@ test('buildCorrectiveChildNodeId works with different indices', () => {
 
 // getCommitLinkData — with hash
 test('commit_hash "abc1234def" produces label "abc1234" (first 7 chars)', () => {
-  const result = getCommitLinkData("abc1234def");
+  const result = getCommitLinkData("abc1234def", null);
   assert.ok(result !== null);
   assert.strictEqual(result.label, "abc1234");
 });
 
-test('commit_hash "abc1234def" produces href "#abc1234def"', () => {
-  const result = getCommitLinkData("abc1234def");
+test('commit_hash "abc1234def" with null repoBaseUrl produces href null', () => {
+  const result = getCommitLinkData("abc1234def", null);
   assert.ok(result !== null);
-  assert.strictEqual(result.href, "#abc1234def");
+  assert.strictEqual(result.href, null);
 });
 
 // getCommitLinkData — null
 test('commit_hash null produces null (no commit link)', () => {
-  const result = getCommitLinkData(null);
+  const result = getCommitLinkData(null, null);
   assert.strictEqual(result, null);
 });
 
