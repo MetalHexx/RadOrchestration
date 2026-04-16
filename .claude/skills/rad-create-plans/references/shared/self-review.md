@@ -68,11 +68,17 @@ You are checking your own output for accuracy against the codebase and cohesion 
      the visual and interaction contract? → Rewrite to focus on design intent
    - Do any component props include TypeScript types, file paths, or technology
      choices? → Replace with conceptual descriptions
+   - Does every leaf-level design element have a DD-N identifier? → Add a DD-N identifier to any unnumbered leaf element
+   - Does every DD-N have a `**Tags:** DD-N, ...` line with exactly one valid type tag (`flow`, `component`, `state`, or `layout`)? → Add the Tags line or correct the type tag
+   - Does every DD-N in User Flows, Layout & Components, New Components, and States & Interactions have a `**Resolves:** FR-N` line when it addresses specific functional requirements? → Add the conditional Resolves line where the element addresses an FR
+   - Are `**Resolves:**` lines absent from DD-N elements inside optional table sections? → Remove any Resolves line that appears inside an optional table section
+   - Does the document contain any summary table that lists or renumbers DD-N? → Remove the summary table; DD-N identifiers are only defined at their H3 headings
+   - Is DD-N numbering flat and sequential with no gaps from retired numbers being reassigned? → Renumber to restore flat sequential assignment without reusing retired numbers
 
    **Architecture**:
    - Does every addressable element have a flat sequential AD-N identifier? → Add if missing
    - Does every H3 section have a `**Tags:** AD-N, ...` line as its first body line? → Add if missing
-   - Does every module, contract, and API endpoint section have a `**Resolves:** FR-X` line? → Add if missing
+   - Does every module, contract, and API endpoint section have a `**Resolves:** FR-X, DD-N` line? → Add if missing
    - Does any code block exceed 512 tokens? → Split element or reduce interface surface
    - Does the document contain any mermaid code blocks? → Remove all mermaid blocks
    - Does any section body restate requirement text from the PRD? → Rewrite to reference FR-N only
@@ -85,6 +91,7 @@ You are checking your own output for accuracy against the codebase and cohesion 
    - Is `author` set to `"tactical-planner-agent"`? → Correct if any other value is present
    - Does every FR-N and NFR-N from the PRD appear in exactly one phase scope? → Assign any unassigned identifiers; remove any that appear in more than one phase
    - Does every AD-N from the Architecture document appear in exactly one phase scope? → Assign any unassigned; remove duplicates
+   - Does every DD-N from the Design document appear in exactly one phase scope? → Assign any unassigned; remove duplicates
    - Is every exit criterion binary (met or not met, no "should" or "mostly")? → Rewrite any non-binary criteria as observable outcomes
    - Do all Phase Outlines use the same set of fields (no mixed thick/thin phases)? → Normalize to a single thickness tier
    - Does any Phase Outline contain source code, concrete file paths (outside the Source Documents table), or technology/framework choices? → Remove all implementation content from Phase Outlines
