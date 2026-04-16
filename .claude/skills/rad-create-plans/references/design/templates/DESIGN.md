@@ -13,7 +13,10 @@ created: "{ISO-DATE}"
 
 ## User Flows
 
-### {Flow Name}
+### DD-1: {Flow Name}
+
+**Tags:** DD-1, flow, {keyword1}, {keyword2}
+**Resolves:** FR-N
 
 ```
 {Step 1} → {Step 2} → {Step 3} → {Outcome}
@@ -24,18 +27,27 @@ state transitions, multi-step interaction sequences. Do not linearize FRs.}
 
 ## Layout & Components
 
-### {View/Page Name}
+### DD-2: {View/Page Name}
+
+**Tags:** DD-2, layout, {keyword1}, {keyword2}
+**Resolves:** FR-N
 
 **Regions**: {Region1 — ComponentName} | {Region2 — ComponentName} | ...
 
-#### {Component Name}
+### DD-3: {Component Name}
+
+**Tags:** DD-3, component, {view-keyword}, {keyword2}
+**Resolves:** FR-N
 
 - **Design Token / Class**: {token or "existing component"}
 - **Notes**: {Brief description of role in this view}
 
 ### New Components
 
-#### {Component Name}
+### DD-4: {Component Name}
+
+**Tags:** DD-4, component, {keyword1}, {keyword2}
+**Resolves:** FR-N
 
 - **Props**: {conceptual props — e.g., "accepts onSubmit callback, takes item list"}
 - **Design Tokens**: {tokens used}
@@ -43,9 +55,10 @@ state transitions, multi-step interaction sequences. Do not linearize FRs.}
 
 ## States & Interactions
 
-### {Component Name}
+### DD-5: {Component Name} {State Name}
 
-#### {State Name}
+**Tags:** DD-5, state, {component-keyword}, {state-keyword}
+**Resolves:** FR-N
 
 {Visual treatment description: what the user sees, how the component looks.
 100-150 tokens per state block.}
