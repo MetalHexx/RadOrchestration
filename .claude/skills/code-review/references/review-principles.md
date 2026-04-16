@@ -13,7 +13,8 @@
 
 - Compare the implementation against planning documents (task handoff, phase plan, master plan)
 - Core question: "Did we build what we intended?"
-- Focus areas: completeness, adherence to contracts and interfaces, requirement fulfillment; Design consistency validates implementation against DD-N elements scoped to the task — the reviewer checks each inlined DD-N element's visual and interaction contract against the code
+- Focus areas: completeness, adherence to contracts and interfaces, requirement fulfillment;
+  - Implementation against DD-N, FR-N, NFR-N and AD-N elements scoped to the task to ensure the requirements were met.
 - Flag missing deliverables, skipped steps, and deviations from the specified design
 
 ### Skeptical Pass (Independent Quality Assessment)
