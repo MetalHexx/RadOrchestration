@@ -151,7 +151,7 @@ Before writing any section, apply all of the following rules:
 
 The Task Handoff uses a single template: `templates/TASK-HANDOFF.md`.
 
-The template contains frontmatter fields (project, phase, task, title, status, skills, estimated_files) and body sections: Objective, Context, File Targets, Implementation Steps, Contracts & Interfaces, Styles & Design Tokens (conditional), Test Requirements, Acceptance Criteria, and Constraints. The "Styles & Design Tokens" section carries the annotation `<!-- CONDITIONAL: Include this section only for UI tasks with design token references in scope -->` — include this section only when the task's Scope column contains Design section references that resolve to design tokens, CSS variables, or visual design elements. When not triggered, omit the section entirely with no placeholder.
+The template contains frontmatter fields (project, phase, task, title, status, skills, estimated_files) and body sections: Objective, Context, File Targets, Implementation Steps, Contracts & Interfaces, Styles & Design Tokens (conditional), Test Requirements, Acceptance Criteria, and Constraints. The "Styles & Design Tokens" section carries the annotation `<!-- CONDITIONAL: Include this section only for UI tasks with design token references in scope -->` — include this section only when the task's Scope column contains DD-N identifiers that resolve to Design elements containing design tokens, CSS variables, or visual design elements. When not triggered, omit the section entirely with no placeholder.
 
 ## Output Contract
 
@@ -166,4 +166,4 @@ The template contains frontmatter fields (project, phase, task, title, status, s
 - No phase-level planning content (task ordering, phase objectives)
 - No project-level context (project goals, risk register)
 - No identifier labels used as references (all resolved into content)
-- Conditional "Styles & Design Tokens" present only when Design refs in scope
+- Conditional "Styles & Design Tokens" present only when DD-N refs in scope

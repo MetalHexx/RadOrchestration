@@ -275,7 +275,7 @@ the pipeline.
 ## Quality Standards
 
 - **total_phases is the highest-priority field**: a missing or non-integer `total_phases` stalls the pipeline. Self-review Step 12 treats frontmatter integrity as the first check.
-- **Identifier coverage is exhaustive**: every FR-N, NFR-N, and AD-N from upstream documents must appear in exactly one phase scope. Gaps in coverage are detected by self-review.
+- **Identifier coverage is exhaustive**: every FR-N, NFR-N, AD-N, and DD-N from upstream documents must appear in exactly one phase scope. Gaps in coverage are detected by self-review.
 - **Thickness is uniform**: all Phase Outlines in the document use the same mode. Mixed-thickness documents (some thin, some self-contained) are a defect.
 - **Exit criteria are binary**: "Mostly working" and "Consider adding tests" are not exit criteria. Each criterion is an observable outcome that is either met or not.
 - **No-implementation rule**: Phase Outlines do not contain source code, concrete file paths, or technology/framework choices. These belong in Phase Plans and Task Handoffs.
@@ -322,6 +322,7 @@ Template path (relative to this workflow file): `templates/MASTER-PLAN.md`
 - `status` == `"draft"`
 - All FR-N and NFR-N from PRD assigned to exactly one phase scope
 - All AD-N from Architecture assigned to exactly one phase scope
+- All DD-N from Design assigned to exactly one phase scope
 - No source code in any Phase Outline
 - No concrete file paths in Phase Outlines (except Source Documents table)
 - No "Key Requirements" / "Key Technical Decisions" / "Key Design Constraints" sections
