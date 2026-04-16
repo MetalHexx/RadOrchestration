@@ -54,17 +54,16 @@ function computeBranchBadge(branchTaken: 'true' | 'false'): { label: string; bad
 
 /**
  * Mirrors the gate-render decision logic in DAGNodeRow:
- * returns true iff the node is a gate, gateActive === true, projectName is
- * defined, and the nodeId leaf resolves in GATE_NODE_CONFIG.
+ * returns true iff the node is a gate, its status is not 'completed',
+ * projectName is defined, and the nodeId leaf resolves in GATE_NODE_CONFIG.
  */
 function shouldRenderGateButton(
   node: StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState,
   nodeId: string,
-  projectName: string | undefined,
-  gateActive: boolean | undefined
+  projectName: string | undefined
 ): boolean {
   if (node.kind !== 'gate') return false;
-  if (gateActive !== true) return false;
+  if (node.status === 'completed') return false;
   if (projectName === undefined) return false;
   return getGateNodeConfig(nodeId) !== null;
 }
@@ -353,106 +352,104 @@ test("getGateNodeConfig returns null for compound ID with non-map leaf 'phase_lo
 
 // ─── Tests: shouldRenderGateButton decision logic ────────────────────────────
 
-const activeGateNode: GateNodeState = {
+// Gate that the walker has reached but that is still awaiting human approval —
+// walker leaves status at 'not_started' and flips gate_active = true. That is
+// the realistic shape for plan_approval_gate / final_approval_gate pre-approval.
+const pendingGateNode: GateNodeState = {
   kind: 'gate',
-  status: 'in_progress',
+  status: 'not_started',
   gate_active: true,
 };
 
-test("shouldRenderGateButton returns true for active plan_approval_gate with projectName", () => {
+test("shouldRenderGateButton returns true for pending plan_approval_gate with projectName", () => {
   assert.strictEqual(
-    shouldRenderGateButton(activeGateNode, 'plan_approval_gate', 'my-project', true),
+    shouldRenderGateButton(pendingGateNode, 'plan_approval_gate', 'my-project'),
     true
   );
 });
 
-test("shouldRenderGateButton returns true for active final_approval_gate with projectName", () => {
+test("shouldRenderGateButton returns true for pending final_approval_gate with projectName", () => {
   assert.strictEqual(
-    shouldRenderGateButton(activeGateNode, 'final_approval_gate', 'my-project', true),
+    shouldRenderGateButton(pendingGateNode, 'final_approval_gate', 'my-project'),
     true
   );
 });
 
 test("shouldRenderGateButton returns true for compound ID resolving to plan_approval_gate", () => {
   assert.strictEqual(
-    shouldRenderGateButton(activeGateNode, 'some.prefix.plan_approval_gate', 'my-project', true),
+    shouldRenderGateButton(pendingGateNode, 'some.prefix.plan_approval_gate', 'my-project'),
     true
   );
 });
 
 test("shouldRenderGateButton returns false for step node (non-gate kind)", () => {
   assert.strictEqual(
-    shouldRenderGateButton(stepNodeWithDoc, 'plan_approval_gate', 'my-project', true),
+    shouldRenderGateButton(stepNodeWithDoc, 'plan_approval_gate', 'my-project'),
     false
   );
 });
 
 test("shouldRenderGateButton returns false for conditional node (non-gate kind)", () => {
   assert.strictEqual(
-    shouldRenderGateButton(conditionalNode, 'plan_approval_gate', 'my-project', true),
+    shouldRenderGateButton(conditionalNode, 'plan_approval_gate', 'my-project'),
     false
   );
 });
 
 test("shouldRenderGateButton returns false for parallel node (non-gate kind)", () => {
   assert.strictEqual(
-    shouldRenderGateButton(parallelNode, 'plan_approval_gate', 'my-project', true),
+    shouldRenderGateButton(parallelNode, 'plan_approval_gate', 'my-project'),
     false
   );
 });
 
-test("shouldRenderGateButton returns false when gateActive === false", () => {
+// Regression: DAG-VIEW-4 persisted plan_approval_gate as
+// { status: 'completed', gate_active: true } after human approval because the
+// mutation handler writes gate_active = true on approval. The UI must hide the
+// button once status === 'completed' regardless of gate_active.
+test("shouldRenderGateButton returns false when node.status === 'completed' (regression: DAG-VIEW-4 plan_approval_gate stuck visible)", () => {
+  const completedGate: GateNodeState = {
+    kind: 'gate',
+    status: 'completed',
+    gate_active: true,
+  };
   assert.strictEqual(
-    shouldRenderGateButton(activeGateNode, 'plan_approval_gate', 'my-project', false),
-    false
-  );
-});
-
-test("shouldRenderGateButton returns false when gateActive === undefined", () => {
-  assert.strictEqual(
-    shouldRenderGateButton(activeGateNode, 'plan_approval_gate', 'my-project', undefined),
+    shouldRenderGateButton(completedGate, 'plan_approval_gate', 'my-project'),
     false
   );
 });
 
 test("shouldRenderGateButton returns false when projectName === undefined", () => {
   assert.strictEqual(
-    shouldRenderGateButton(activeGateNode, 'plan_approval_gate', undefined, true),
+    shouldRenderGateButton(pendingGateNode, 'plan_approval_gate', undefined),
     false
   );
 });
 
 test("shouldRenderGateButton returns false for pr_gate leaf", () => {
   assert.strictEqual(
-    shouldRenderGateButton(activeGateNode, 'pr_gate', 'my-project', true),
+    shouldRenderGateButton(pendingGateNode, 'pr_gate', 'my-project'),
     false
   );
 });
 
 test("shouldRenderGateButton returns false for gate_mode_selection leaf", () => {
   assert.strictEqual(
-    shouldRenderGateButton(activeGateNode, 'gate_mode_selection', 'my-project', true),
+    shouldRenderGateButton(pendingGateNode, 'gate_mode_selection', 'my-project'),
     false
   );
 });
 
 test("shouldRenderGateButton returns false for task_gate leaf", () => {
   assert.strictEqual(
-    shouldRenderGateButton(activeGateNode, 'task_gate', 'my-project', true),
+    shouldRenderGateButton(pendingGateNode, 'task_gate', 'my-project'),
     false
   );
 });
 
 test("shouldRenderGateButton returns false for phase_gate leaf", () => {
   assert.strictEqual(
-    shouldRenderGateButton(activeGateNode, 'phase_gate', 'my-project', true),
-    false
-  );
-});
-
-test("shouldRenderGateButton returns false for existing gateNode fixture (gate_active: false)", () => {
-  assert.strictEqual(
-    shouldRenderGateButton(gateNode, 'plan_approval_gate', 'my-project', gateNode.gate_active),
+    shouldRenderGateButton(pendingGateNode, 'phase_gate', 'my-project'),
     false
   );
 });

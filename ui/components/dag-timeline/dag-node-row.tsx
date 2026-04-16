@@ -15,18 +15,17 @@ interface DAGNodeRowProps {
   onDocClick: (path: string) => void;
   depth?: number;  // default: 0
   projectName?: string;
-  gateActive?: boolean;
 }
 
 // Re-export formatNodeId to preserve barrel export contract
 export { formatNodeId } from './dag-timeline-helpers';
 
-export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0, projectName, gateActive }: DAGNodeRowProps) {
+export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0, projectName }: DAGNodeRowProps) {
   const isActive = nodeId === currentNodePath;
   const branchTaken = node.kind === 'conditional' ? node.branch_taken : null;
   const branchLabel = branchTaken != null ? (branchTaken === 'true' ? 'Yes' : 'No') : null;
   const branchBadgeStatus = branchTaken != null ? (branchTaken === 'true' ? 'completed' : 'skipped') : null;
-  const gateConfig = node.kind === 'gate' && gateActive === true && projectName !== undefined
+  const gateConfig = node.kind === 'gate' && node.status !== 'completed' && projectName !== undefined
     ? getGateNodeConfig(nodeId)
     : null;
 

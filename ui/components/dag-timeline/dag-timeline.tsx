@@ -21,16 +21,6 @@ interface DAGTimelineProps {
   projectName: string;
 }
 
-/**
- * Derives the gate-active value for a node. Returns `node.gate_active` for
- * gate-kind nodes; returns `undefined` for all other `NodeKind` values.
- * Used to forward gate activation state into `<DAGNodeRow>` so the reused
- * `ApproveGateButton` is rendered for the qualifying top-level gate rows.
- */
-export function deriveGateActive(node: NodeState): boolean | undefined {
-  return node.kind === 'gate' ? node.gate_active : undefined;
-}
-
 export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName }: DAGTimelineProps) {
   const groups = groupNodesBySection(nodes);
   const unmatchedEntries = Object.entries(nodes).filter(([nodeId]) => !Object.hasOwn(NODE_SECTION_MAP, nodeId));
@@ -55,7 +45,6 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
           currentNodePath={currentNodePath}
           onDocClick={onDocClick}
           projectName={projectName}
-          gateActive={deriveGateActive(node)}
         />
       )}
     </div>
