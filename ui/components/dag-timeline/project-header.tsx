@@ -60,8 +60,8 @@ function autoPrTooltip(v: V5AutoPR): string {
   }
 }
 
-function branchTooltip(branch: string, hasCompareUrl: boolean): string {
-  if (hasCompareUrl) {
+function branchTooltip(branch: string, hasLink: boolean): string {
+  if (hasLink) {
     return `Open branch comparison on GitHub: ${branch}`;
   }
   return `Branch: ${branch} (no compare link available)`;
@@ -120,15 +120,16 @@ export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMod
           )}
           {sourceControl !== null && (() => {
             const { branch, compare_url, auto_commit, auto_pr, pr_url } = sourceControl;
-            const hasCompareUrl = compare_url !== null && /^https?:\/\//i.test(compare_url);
+            const compareLink: string | null =
+              compare_url !== null && /^https?:\/\//i.test(compare_url) ? compare_url : null;
             return (
               <>
                 {/* Branch region */}
-                {hasCompareUrl ? (
+                {compareLink !== null ? (
                   <Tooltip>
                     <TooltipTrigger render={
                       <a
-                        href={compare_url!}
+                        href={compareLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-primary hover:underline font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
@@ -138,7 +139,7 @@ export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMod
                         {branch}
                       </a>
                     } />
-                    <TooltipContent>{branchTooltip(branch, hasCompareUrl)}</TooltipContent>
+                    <TooltipContent>{branchTooltip(branch, compareLink !== null)}</TooltipContent>
                   </Tooltip>
                 ) : (
                   <Tooltip>
@@ -148,7 +149,7 @@ export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMod
                         {branch}
                       </span>
                     } />
-                    <TooltipContent>{branchTooltip(branch, hasCompareUrl)}</TooltipContent>
+                    <TooltipContent>{branchTooltip(branch, compareLink !== null)}</TooltipContent>
                   </Tooltip>
                 )}
 

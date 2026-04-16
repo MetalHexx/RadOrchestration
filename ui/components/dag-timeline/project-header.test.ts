@@ -69,9 +69,9 @@ function simulateProjectHeader(props: ProjectHeaderProps) {
   const onToggleFollowMode = props.onToggleFollowMode ?? (() => {});
   // Mirrors the call-site `() => onToggleFollowMode()` adapter — any
   // boolean argument supplied by the shadcn Switch is intentionally
-  // discarded (not forwarded to the props callback). We build the closure
-  // via `.bind(null)` so the synthesized function ignores whatever the
-  // primitive passes in (0-arity) without triggering lint's unused-param rule.
+  // discarded (not forwarded to the props callback). We wrap in a named
+  // function expression so the synthesized handler ignores whatever argument
+  // the primitive passes in without triggering lint's unused-param rule.
   const onCheckedChangeAdapter: (...args: unknown[]) => void =
     function (this: unknown) {
       onToggleFollowMode();
