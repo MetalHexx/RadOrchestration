@@ -4,16 +4,20 @@
 
 ## Series Overview
 
-**BETTER-PLAN-DOCS** is a 6-project series that improves the orchestration planning pipeline documents. Each project targets one agent and the document(s) it owns.
+**BETTER-PLAN-DOCS** is an 8-project series that improves the orchestration planning pipeline documents. Each project targets one agent and the document(s) it owns.
 
 | Project | Agent | Document(s) | Status |
 |---------|-------|-------------|--------|
 | BETTER-PLAN-DOCS-1 | Product Manager | PRD + `rad-create-plans` skill architecture | Complete |
 | BETTER-PLAN-DOCS-2 | Research | Research Findings | Complete |
-| BETTER-PLAN-DOCS-3 | UX Designer | Design | Validated |
-| BETTER-PLAN-DOCS-4 | Architect | Architecture | Draft |
-| BETTER-PLAN-DOCS-5 | Tactical Planner (takes over from Architect) | Master Plan | Draft |
-| BETTER-PLAN-DOCS-6 | Tactical Planner | Phase Plan + Task Handoff | Draft |
+| BETTER-PLAN-DOCS-3 | UX Designer | Design | Complete |
+| BETTER-PLAN-DOCS-4 | Architect | Architecture | Complete |
+| BETTER-PLAN-DOCS-5 | Tactical Planner (takes over from Architect) | Master Plan | Complete |
+| BETTER-PLAN-DOCS-6 | Tactical Planner | Phase Plan + Task Handoff | Validated |
+| BETTER-PLAN-DOCS-7 | Tactical Planner | Phase Report + Code Review + Phase Review | Draft |
+| BETTER-PLAN-DOCS-8 | *(cleanup)* | Old skill deprecation + DD-N Design identifiers | Draft |
+
+**Related series**: [TEMPLATE-ARCHITECTURE](../internals/template-architecture-refactor.md) — pipeline topology concerns (minimum template skeleton, quick.yml rewrite) extracted from the BETTER-PLAN-DOCS-6 brainstorm into a separate series.
 
 ## North Star
 
@@ -134,7 +138,7 @@ skills/
         templates/
           TASK-HANDOFF.md
       phase-report/
-        workflow.md                             # (BETTER-PLAN-DOCS-6)
+        workflow.md                             # (BETTER-PLAN-DOCS-7)
         templates/
           PHASE-REPORT.md
 ```
