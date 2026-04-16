@@ -15,6 +15,12 @@ Every planning agent loads this file before beginning its document-type-specific
 - Hard ceiling for AD-N sections containing code blocks: 512 tokens (public interface surface only)
 - The `**Tags:** AD-N, tag1, tag2` line is the first line of every AD-N element body (immediately after the heading blank line)
 - AD-N numbering is flat and sequential across the entire Architecture document — no per-section resets; retired numbers are never reassigned
+- Design Decisions use `### DD-N: {Title}` headings (H3); one element per heading
+- Each DD-N heading + body block targets 100–150 tokens (hard ceiling: 200–300 tokens)
+- The `**Tags:** DD-N, {type-tag}, {keywords}` line is the first line of every DD-N element body (immediately after the heading blank line)
+- The `{type-tag}` is exactly one of `flow`, `component`, `state`, or `layout`
+- DD-N numbering is flat and sequential across the entire Design document — no per-section resets; retired numbers are never reassigned
+- Canonical DD-N patterns: heading `### DD-(\d+): (.+)`, anchor `#dd-{n}` (lowercase), Tags line `**Tags:** DD-{N}, {type-tag}, {keywords}` — downstream workflows reference these and must not define variant patterns
 
 ## Optional-Input Handling
 
