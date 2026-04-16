@@ -135,6 +135,8 @@ export default function ProjectsPage() {
                 currentPhaseName={v5Derivations.currentPhaseName}
                 progress={v5Derivations.progress}
                 sourceControl={v5State.pipeline.source_control}
+                followMode={followMode}
+                onToggleFollowMode={toggleFollowMode}
               />
               <TimelineToolbar
                 followMode={followMode}

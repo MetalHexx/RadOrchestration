@@ -30,6 +30,8 @@ interface ProjectHeaderProps {
   currentPhaseName?: string | null;
   progress?: { completed: number; total: number } | null;
   sourceControl: V5SourceControlState | null;
+  followMode?: boolean;
+  onToggleFollowMode?: () => void;
 }
 
 function makeSourceControl(overrides: Partial<V5SourceControlState> = {}): V5SourceControlState {
@@ -56,7 +58,7 @@ function simulateProjectHeader(props: ProjectHeaderProps) {
     outerElement: "header",
     outerClass: "border-b border-border px-6 py-4",
     ariaLabel: `Project ${props.projectName}`,
-    row1Class: "flex items-center gap-3",
+    row1Class: "flex flex-wrap items-center gap-3",
     nameClass: "text-lg font-semibold",
     showGraphStatusBadge: !!props.graphStatus,
     graphStatus: props.graphStatus,
@@ -66,7 +68,8 @@ function simulateProjectHeader(props: ProjectHeaderProps) {
     currentPhaseName: showRow2 ? props.currentPhaseName : null,
     showProgress: showRow2 && !!props.progress,
     progress: showRow2 ? props.progress : null,
-    showSourceControlRow: !!props.sourceControl,
+    showInlinedSourceControl: props.sourceControl !== null,
+    followModePlaceholderClass: "ml-auto inline-flex items-center gap-2",
   };
 }
 
@@ -111,9 +114,10 @@ test('outer class includes border-b', () => {
   assert.ok(result.outerClass.includes("border-b"), 'should include "border-b"');
 });
 
-test('row 1 has flex items-center gap-3', () => {
+test('row 1 has flex flex-wrap items-center gap-3 (unified wrapping row)', () => {
   const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", sourceControl: null });
   assert.ok(result.row1Class.includes("flex"), 'row1 should include "flex"');
+  assert.ok(result.row1Class.includes("flex-wrap"), 'row1 should include "flex-wrap"');
   assert.ok(result.row1Class.includes("items-center"), 'row1 should include "items-center"');
   assert.ok(result.row1Class.includes("gap-3"), 'row1 should include "gap-3"');
 });
@@ -234,20 +238,29 @@ test('v4 rendering: only projectName and schemaVersion — no badges, no row 2',
   assert.strictEqual(result.schemaVersionText, "v4");
 });
 
-// ─── Source control row visibility ───────────────────────────────────────────
+// ─── Inlined source-control fragment visibility ──────────────────────────────
 
-test('showSourceControlRow is false when sourceControl is null (the canonical absent state)', () => {
+test('inlined source-control fragments are hidden when sourceControl is null', () => {
   const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", sourceControl: null });
-  assert.strictEqual(result.showSourceControlRow, false);
+  assert.strictEqual(result.showInlinedSourceControl, false);
 });
 
-test('showSourceControlRow is true when a non-null V5SourceControlState fixture is passed', () => {
+test('inlined source-control fragments render when a non-null V5SourceControlState fixture is passed', () => {
   const result = simulateProjectHeader({
     projectName: "Test",
     schemaVersion: "v5",
     sourceControl: makeSourceControl(),
   });
-  assert.strictEqual(result.showSourceControlRow, true);
+  assert.strictEqual(result.showInlinedSourceControl, true);
+});
+
+// ─── Follow Mode reserved placeholder slot ───────────────────────────────────
+
+test('reserved Follow Mode placeholder uses ml-auto and inline-flex gap-2 classes', () => {
+  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", sourceControl: null });
+  assert.ok(result.followModePlaceholderClass.includes("ml-auto"), 'placeholder should include "ml-auto"');
+  assert.ok(result.followModePlaceholderClass.includes("inline-flex"), 'placeholder should include "inline-flex"');
+  assert.ok(result.followModePlaceholderClass.includes("gap-2"), 'placeholder should include "gap-2"');
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
