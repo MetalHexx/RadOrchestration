@@ -15,6 +15,13 @@ interface DAGIterationPanelProps {
   parentKind: 'for_each_phase' | 'for_each_task';
   currentNodePath: string | null;
   onDocClick: (path: string) => void;
+  repoBaseUrl: string | null;
+  projectName: string;
+  expandedLoopIds: string[];
+  onAccordionChange: (
+    value: string[],
+    eventDetails: { reason: string }
+  ) => void;
 }
 
 export const ITERATION_CHILD_DEPTH = 1;
@@ -38,8 +45,12 @@ export function DAGIterationPanel({
   parentKind,
   currentNodePath,
   onDocClick,
+  repoBaseUrl,
+  projectName,
+  expandedLoopIds,
+  onAccordionChange,
 }: DAGIterationPanelProps) {
-  const commitData = getCommitLinkData(iteration.commit_hash);
+  const commitData = getCommitLinkData(iteration.commit_hash, repoBaseUrl);
   const correctiveGroupParentId = buildCorrectiveGroupParentId(parentNodeId, iterationIndex);
 
   // Derive iteration name from child node doc path
@@ -109,7 +120,17 @@ export function DAGIterationPanel({
         </span>
         <NodeStatusBadge status={iteration.status} />
         {commitData !== null && (
-          <ExternalLink href={commitData.href} label={commitData.label} icon="github" />
+          commitData.href !== null ? (
+            <ExternalLink
+              href={commitData.href}
+              label={commitData.label}
+              icon="external-link"
+            />
+          ) : (
+            <span className="text-xs font-mono text-muted-foreground">
+              {commitData.label}
+            </span>
+          )
         )}
       </div>
       {Object.entries(iteration.nodes).map(([childNodeId, childNode]) =>
@@ -120,6 +141,10 @@ export function DAGIterationPanel({
             node={childNode}
             currentNodePath={currentNodePath}
             onDocClick={onDocClick}
+            expandedLoopIds={expandedLoopIds}
+            onAccordionChange={onAccordionChange}
+            repoBaseUrl={repoBaseUrl}
+            projectName={projectName}
           />
         ) : (
           <DAGNodeRow
@@ -137,6 +162,7 @@ export function DAGIterationPanel({
         parentNodeId={correctiveGroupParentId}
         currentNodePath={currentNodePath}
         onDocClick={onDocClick}
+        repoBaseUrl={repoBaseUrl}
       />
     </div>
   );

@@ -5,7 +5,7 @@
  * NOTE: Tests use the established .test.ts pattern (no DOM/JSX rendering).
  */
 import assert from "node:assert";
-import { getCommitLinkData, formatNodeId, getDisplayName, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, groupNodesBySection, deriveCurrentPhase, derivePhaseProgress, NODE_SECTION_MAP } from './dag-timeline-helpers';
+import { getCommitLinkData, deriveRepoBaseUrl, formatNodeId, getDisplayName, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, groupNodesBySection, deriveCurrentPhase, derivePhaseProgress, NODE_SECTION_MAP } from './dag-timeline-helpers';
 import { compoundNodeIds, stepNode, gateNode, forEachPhaseNode } from './__fixtures__';
 
 let passed = 0;
@@ -25,29 +25,61 @@ function test(name: string, fn: () => void) {
 
 console.log("\ndag-timeline-helpers tests\n");
 
-test("valid commit hash returns href and 7-char label", () => {
-  const result = getCommitLinkData("abc1234def");
-  assert.deepStrictEqual(result, { href: "#abc1234def", label: "abc1234" });
+test("valid commit hash with valid repoBaseUrl returns real commit URL and 7-char label", () => {
+  const result = getCommitLinkData("abc1234def", "https://github.com/user/repo");
+  assert.deepStrictEqual(result, { href: "https://github.com/user/repo/commit/abc1234def", label: "abc1234" });
 });
 
-test("null returns null", () => {
-  const result = getCommitLinkData(null);
+test("valid commit hash with null repoBaseUrl returns null href and 7-char label", () => {
+  const result = getCommitLinkData("abc1234def", null);
+  assert.deepStrictEqual(result, { href: null, label: "abc1234" });
+});
+
+test("null commitHash with valid repoBaseUrl returns null", () => {
+  const result = getCommitLinkData(null, "https://github.com/user/repo");
   assert.strictEqual(result, null);
 });
 
-test("undefined returns null without throwing", () => {
-  const result = getCommitLinkData(undefined);
+test("null commitHash with null repoBaseUrl returns null", () => {
+  const result = getCommitLinkData(null, null);
   assert.strictEqual(result, null);
 });
 
-test("empty string returns null", () => {
-  const result = getCommitLinkData("");
+test("undefined commitHash returns null without throwing", () => {
+  const result = getCommitLinkData(undefined, null);
   assert.strictEqual(result, null);
 });
 
-test("short hash (fewer than 7 chars) returns full hash as label", () => {
-  const result = getCommitLinkData("abc");
-  assert.deepStrictEqual(result, { href: "#abc", label: "abc" });
+test("empty string commitHash returns null", () => {
+  const result = getCommitLinkData("", null);
+  assert.strictEqual(result, null);
+});
+
+test("short hash (fewer than 7 chars) with null repoBaseUrl returns null href and full hash as label", () => {
+  const result = getCommitLinkData("abc", null);
+  assert.deepStrictEqual(result, { href: null, label: "abc" });
+});
+
+console.log("\nderiveRepoBaseUrl tests\n");
+
+test("valid compare URL returns repo base URL", () => {
+  const result = deriveRepoBaseUrl("https://github.com/user/repo/compare/main...branch");
+  assert.strictEqual(result, "https://github.com/user/repo");
+});
+
+test("null input returns null", () => {
+  const result = deriveRepoBaseUrl(null);
+  assert.strictEqual(result, null);
+});
+
+test("URL without /compare/ segment returns null", () => {
+  const result = deriveRepoBaseUrl("https://github.com/user/repo");
+  assert.strictEqual(result, null);
+});
+
+test("URL with /compare/ followed by trailing slash returns repo base URL", () => {
+  const result = deriveRepoBaseUrl("https://github.com/user/repo/compare/");
+  assert.strictEqual(result, "https://github.com/user/repo");
 });
 
 console.log("\nformatNodeId tests\n");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useApproveGate } from "@/hooks/use-approve-gate";
@@ -43,8 +43,6 @@ export function ApproveGateButton({
 }: ApproveGateButtonProps) {
   const { approveGate, isPending, error, clearError } = useApproveGate();
   const [open, setOpen] = useState<boolean>(false);
-  const approvedRef = useRef(false);
-  const [hidden, setHidden] = useState(false);
 
   const dialogTitle = DIALOG_TITLES[gateEvent];
   const consequenceDescription = DIALOG_DESCRIPTIONS[gateEvent];
@@ -52,20 +50,12 @@ export function ApproveGateButton({
   const handleConfirm = async () => {
     const success = await approveGate(projectName, gateEvent);
     if (success) {
-      approvedRef.current = true;
       setOpen(false);
     }
   };
 
-  if (hidden) return null;
-
   const handleOpenChange = (value: boolean) => {
-    if (!value) {
-      clearError();
-      if (approvedRef.current) {
-        setHidden(true);
-      }
-    }
+    if (!value) clearError();
     setOpen(value);
   };
 

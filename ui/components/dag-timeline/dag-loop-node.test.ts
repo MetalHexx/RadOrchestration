@@ -6,6 +6,9 @@
  * Helper functions are exported from dag-loop-node.tsx for testability.
  */
 import assert from "node:assert";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { buildLoopItemValue } from './dag-loop-node';
 import { isLoopNode, getDisplayName } from './dag-timeline-helpers';
 import type {
@@ -200,12 +203,72 @@ test('component does not add aria-current to trigger row (delegation to child DA
   assert.strictEqual(triggerHasAriaCurrent, false);
 });
 
-// Accordion defaults to collapsed state
-test('Accordion defaultValue is [] (collapsed by default)', () => {
-  // Simulate the defaultValue prop passed to Accordion
-  const defaultValue: string[] = [];
-  assert.deepStrictEqual(defaultValue, []);
-  assert.strictEqual(defaultValue.length, 0);
+// ─── Source-text: Accordion controlled-mode wiring on DAGLoopNode ────────────
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const loopNodeSource = readFileSync(join(__dirname, 'dag-loop-node.tsx'), 'utf-8');
+
+/**
+ * Returns true if the source contains an `<Accordion ...>` opening tag whose
+ * attributes include both `value={expandedLoopIds}` and
+ * `onValueChange={onAccordionChange}` — i.e. the accordion is wired in
+ * controlled mode with state forwarded from the caller. The check is
+ * line-by-line: when a line opens `<Accordion`, all subsequent lines up to the
+ * end of the opening tag (`>` or `/>`) are inspected for the required props.
+ */
+function hasControlledAccordionWiring(source: string): boolean {
+  const lines = source.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].includes('<Accordion')) continue;
+    let sawValue = false;
+    let sawOnValueChange = false;
+    let j = i;
+    while (j < lines.length) {
+      const line = lines[j];
+      if (line.includes('value={expandedLoopIds}')) sawValue = true;
+      if (line.includes('onValueChange={onAccordionChange}')) sawOnValueChange = true;
+      if (line.includes('/>') || (j > i && line.includes('>'))) break;
+      j++;
+    }
+    if (sawValue && sawOnValueChange) return true;
+  }
+  return false;
+}
+
+test('dag-loop-node.tsx wires <Accordion> in controlled mode with value={expandedLoopIds} and onValueChange={onAccordionChange}', () => {
+  assert.ok(loopNodeSource.includes('<Accordion'), 'sanity: dag-loop-node.tsx should contain an <Accordion element');
+  assert.ok(
+    hasControlledAccordionWiring(loopNodeSource),
+    'dag-loop-node.tsx must wire <Accordion> with both value={expandedLoopIds} and onValueChange={onAccordionChange} (controlled-mode forwarding)'
+  );
+});
+
+// Regression: base-ui's Accordion.Root defaults to `multiple=false` (single-open
+// mode), which — with the shared `expandedLoopIds` array passed to every nested
+// DAGLoopNode — causes a nested task_loop click to REPLACE the value array
+// (AccordionRoot.js:75 — `nextValue = [newValue]`) and thereby collapse the
+// parent phase_loop. Multi-open mode is required so value updates preserve
+// unrelated loop-item entries across sibling and ancestor Accordions.
+test('dag-loop-node.tsx sets `multiple` on <Accordion> so nested loop clicks preserve sibling/ancestor expansion', () => {
+  assert.ok(
+    /<Accordion\b[^>]*\bmultiple\b/.test(loopNodeSource),
+    'dag-loop-node.tsx must pass `multiple` to <Accordion> (required for nested-loop state preservation)',
+  );
+});
+
+test('dag-loop-node.tsx forwards expandedLoopIds and onAccordionChange to nested DAGIterationPanel', () => {
+  // Iteration panels need to participate in the same controlled-mode tree so
+  // nested loops (task_loop within phase_loop) stay in sync with the same
+  // expandedLoopIds set held by the page-level useFollowMode hook.
+  assert.ok(
+    /expandedLoopIds=\{expandedLoopIds\}/.test(loopNodeSource),
+    'dag-loop-node.tsx must forward expandedLoopIds={expandedLoopIds} to DAGIterationPanel'
+  );
+  assert.ok(
+    /onAccordionChange=\{onAccordionChange\}/.test(loopNodeSource),
+    'dag-loop-node.tsx must forward onAccordionChange={onAccordionChange} to DAGIterationPanel'
+  );
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ interface DAGCorrectiveTaskGroupProps {
   parentNodeId: string;
   currentNodePath: string | null;
   onDocClick: (path: string) => void;
+  repoBaseUrl: string | null;
 }
 
 export const GROUP_ARIA_LABEL = "Corrective tasks";
@@ -30,6 +31,7 @@ export function DAGCorrectiveTaskGroup({
   parentNodeId,
   currentNodePath,
   onDocClick,
+  repoBaseUrl,
 }: DAGCorrectiveTaskGroupProps) {
   if (correctiveTasks.length === 0) return null;
 
@@ -44,7 +46,7 @@ export function DAGCorrectiveTaskGroup({
       </span>
       <Accordion multiple>
         {correctiveTasks.map((entry) => {
-          const commitData = getCommitLinkData(entry.commit_hash);
+          const commitData = getCommitLinkData(entry.commit_hash, repoBaseUrl);
           const compatibleNodes = filterCompatibleNodes(entry.nodes);
 
           return (
@@ -53,7 +55,17 @@ export function DAGCorrectiveTaskGroup({
                 <span className="text-sm font-medium">{buildTriggerText(entry.index)}</span>
                 <NodeStatusBadge status={entry.status} />
                 {commitData !== null && (
-                  <ExternalLink href={commitData.href} label={commitData.label} icon="github" />
+                  commitData.href !== null ? (
+                    <ExternalLink
+                      href={commitData.href}
+                      label={commitData.label}
+                      icon="external-link"
+                    />
+                  ) : (
+                    <span className="text-xs font-mono text-muted-foreground">
+                      {commitData.label}
+                    </span>
+                  )
                 )}
               </AccordionTrigger>
               <AccordionContent>

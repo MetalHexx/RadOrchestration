@@ -1,12 +1,22 @@
-import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord, NodeState, ForEachPhaseNodeState } from '@/types/state';
+import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord, NodeState, ForEachPhaseNodeState, GateEvent } from '@/types/state';
 
 export type CompatibleNodeState = StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState;
 
-export function getCommitLinkData(commitHash: string | null | undefined): { href: string; label: string } | null {
+export function deriveRepoBaseUrl(compareUrl: string | null): string | null {
+  if (compareUrl == null) return null;
+  if (compareUrl.trim().length === 0) return null;
+  const idx = compareUrl.indexOf('/compare/');
+  if (idx === -1) return null;
+  return compareUrl.slice(0, idx);
+}
+
+export function getCommitLinkData(
+  commitHash: string | null | undefined,
+  repoBaseUrl: string | null
+): { href: string | null; label: string } | null {
   if (commitHash == null || commitHash.length === 0) return null;
-  // TODO(DAG-VIEW-3): Replace with real commit URL once repo base URL is available
   return {
-    href: `#${commitHash}`,
+    href: repoBaseUrl != null ? repoBaseUrl + '/commit/' + commitHash : null,
     label: commitHash.slice(0, 7),
   };
 }
@@ -35,6 +45,18 @@ export function formatNodeId(nodeId: string): string {
 }
 
 /**
+ * Extracts the leaf segment of a compound node ID — the substring after the
+ * last `.`, or the whole string if no `.` is present.
+ *
+ * "phase_loop.iter0.phase_planning" → "phase_planning"
+ * "phase_planning"                  → "phase_planning"
+ */
+function extractLeaf(nodeId: string): string {
+  const lastDot = nodeId.lastIndexOf('.');
+  return lastDot === -1 ? nodeId : nodeId.slice(lastDot + 1);
+}
+
+/**
  * Extracts the leaf segment from a compound node ID and formats it
  * as a human-readable display name.
  *
@@ -42,9 +64,34 @@ export function formatNodeId(nodeId: string): string {
  * "phase_planning"                  → "Phase Planning"
  */
 export function getDisplayName(nodeId: string): string {
-  const lastDot = nodeId.lastIndexOf('.');
-  const leaf = lastDot === -1 ? nodeId : nodeId.slice(lastDot + 1);
-  return formatNodeId(leaf);
+  return formatNodeId(extractLeaf(nodeId));
+}
+
+// ─── Gate Node Config (single source of truth for approval buttons) ──────────
+
+/**
+ * Maps gate node leaf IDs to their corresponding gate event and button label.
+ * Only plan-approval and final-approval gates receive approval buttons.
+ * `pr_gate`, `gate_mode_selection`, `task_gate`, and `phase_gate` are
+ * intentionally absent.
+ */
+export const GATE_NODE_CONFIG: Record<string, {
+  event: GateEvent;
+  label: string;
+}> = {
+  plan_approval_gate: { event: 'plan_approved', label: 'Approve Plan' },
+  final_approval_gate: { event: 'final_approved', label: 'Approve Final Review' },
+};
+
+/**
+ * Resolves a node ID (possibly compound, like `phase_loop.iter0.task_gate`)
+ * against `GATE_NODE_CONFIG` by extracting its leaf segment (substring after
+ * the last `.`, or the whole string if no `.`). Returns the config or `null`.
+ */
+export function getGateNodeConfig(
+  nodeId: string
+): { event: GateEvent; label: string } | null {
+  return GATE_NODE_CONFIG[extractLeaf(nodeId)] ?? null;
 }
 
 // ─── Section Types ────────────────────────────────────────────────────────────

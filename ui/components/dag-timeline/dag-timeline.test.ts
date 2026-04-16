@@ -6,8 +6,11 @@
  * isLoopNode is exported from dag-timeline-helpers.ts for testability.
  */
 import assert from "node:assert";
-import { isLoopNode } from './dag-timeline-helpers';
-import type { NodeKind, NodeState, NodesRecord } from '@/types/state';
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { isLoopNode, getGateNodeConfig } from './dag-timeline-helpers';
+import type { NodeKind, NodeState, NodesRecord, GateNodeState, StepNodeState, ConditionalNodeState, ParallelNodeState } from '@/types/state';
 import {
   stepNode,
   gateNode,
@@ -114,6 +117,135 @@ test('loop kinds form exactly the set {for_each_phase, for_each_task}', () => {
   const allKinds: NodeKind[] = ['step', 'gate', 'conditional', 'parallel', 'for_each_phase', 'for_each_task'];
   const identified = allKinds.filter((kind) => isLoopNode({ kind } as NodeState));
   assert.deepStrictEqual(identified.sort(), ['for_each_phase', 'for_each_task'].sort());
+});
+
+// ─── Integration: shouldRenderGateButton composition ─────────────────────────
+
+// Gate awaiting human approval — walker leaves status as 'not_started' while
+// blocking. This is the realistic pre-approval shape.
+const pendingGateNode: GateNodeState = {
+  kind: 'gate',
+  status: 'not_started',
+  gate_active: true,
+};
+
+/**
+ * Mirrors the gate-render decision logic in DAGNodeRow. Local copy of the
+ * helper used in dag-node-row.test.ts — validates that the composition of
+ * `node.kind`, `node.status`, `projectName`, and `getGateNodeConfig(nodeId)`
+ * produces the correct top-level-only scope for `ApproveGateButton` rendering.
+ */
+function shouldRenderGateButton(
+  node: StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState,
+  nodeId: string,
+  projectName: string | undefined
+): boolean {
+  if (node.kind !== 'gate') return false;
+  if (node.status === 'completed') return false;
+  if (projectName === undefined) return false;
+  return getGateNodeConfig(nodeId) !== null;
+}
+
+test('integration: plan_approval_gate pending (status: not_started) with projectName defined → shouldRenderGateButton true', () => {
+  assert.strictEqual(
+    shouldRenderGateButton(pendingGateNode, 'plan_approval_gate', 'my-project'),
+    true
+  );
+});
+
+test('integration: final_approval_gate pending (status: not_started) with projectName defined → shouldRenderGateButton true', () => {
+  assert.strictEqual(
+    shouldRenderGateButton(pendingGateNode, 'final_approval_gate', 'my-project'),
+    true
+  );
+});
+
+test('integration: plan_approval_gate completed → shouldRenderGateButton false (hide-after-approval)', () => {
+  const approvedNode: GateNodeState = { kind: 'gate', status: 'completed', gate_active: true };
+  assert.strictEqual(
+    shouldRenderGateButton(approvedNode, 'plan_approval_gate', 'my-project'),
+    false
+  );
+});
+
+test('integration: gate_mode_selection pending with projectName defined → shouldRenderGateButton false (excluded from GATE_NODE_CONFIG)', () => {
+  assert.strictEqual(
+    shouldRenderGateButton(pendingGateNode, 'gate_mode_selection', 'my-project'),
+    false
+  );
+});
+
+test('integration: pr_gate as conditional node → shouldRenderGateButton false regardless of other props (not a gate kind)', () => {
+  const nodeId = 'pr_gate';
+  const prGateConditional: ConditionalNodeState = {
+    kind: 'conditional',
+    status: 'in_progress',
+    branch_taken: null,
+  };
+  assert.strictEqual(
+    shouldRenderGateButton(prGateConditional, nodeId, 'my-project'),
+    false
+  );
+});
+
+// ─── Source-text: dag-timeline.tsx forwards projectName (no gateActive) ──────
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const timelineSource = readFileSync(join(__dirname, 'dag-timeline.tsx'), 'utf-8');
+
+test('dag-timeline.tsx forwards `projectName={projectName}` on every <DAGNodeRow> / <DAGLoopNode> call site (>= 2 total occurrences)', () => {
+  const matches = timelineSource.match(/projectName=\{projectName\}/g) ?? [];
+  // The file forwards projectName to DAGLoopNode (once) and to DAGNodeRow (once)
+  // inside the shared renderNodeEntry helper = 2 total.
+  assert.ok(
+    matches.length >= 2,
+    `expected at least 2 projectName={projectName} occurrences, got ${matches.length}`
+  );
+});
+
+test('dag-timeline.tsx does NOT forward `gateActive` (button visibility is driven by node.status inside DAGNodeRow)', () => {
+  // Strip JSDoc / line comments so doc-comment references don't trip the check.
+  const codeOnly = timelineSource
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  assert.ok(
+    !/gateActive\s*=/.test(codeOnly),
+    'dag-timeline.tsx must NOT pass a gateActive prop to DAGNodeRow — render logic must key off node.status'
+  );
+  assert.ok(
+    !/deriveGateActive/.test(codeOnly),
+    'dag-timeline.tsx must NOT reference deriveGateActive (helper was removed)'
+  );
+});
+
+// ─── No-side-effects contract: DAGTimeline delegates gate API to ApproveGateButton ─
+
+test('dag-timeline.tsx does NOT import fetch, api-client, or useApproveGate directly', () => {
+  // Confirm no direct network side-effects. All gate API calls are delegated
+  // through ApproveGateButton (via useApproveGate), which is owned by the
+  // node-row scope — not by DAGTimeline.
+  assert.ok(
+    !/from\s+['"].*api\/projects\/.*gate['"]/.test(timelineSource),
+    'dag-timeline.tsx must NOT import from the gate API route'
+  );
+  assert.ok(
+    !/useApproveGate/.test(timelineSource),
+    'dag-timeline.tsx must NOT reference useApproveGate'
+  );
+  assert.ok(
+    !/\bfetch\s*\(/.test(timelineSource),
+    'dag-timeline.tsx must NOT call fetch() directly'
+  );
+  // Strip JSDoc / line comments before checking for ApproveGateButton references
+  // — a doc comment that names the component is allowed, but no import/JSX use.
+  const codeOnly = timelineSource
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  assert.ok(
+    !/ApproveGateButton/.test(codeOnly),
+    'dag-timeline.tsx must NOT import or render ApproveGateButton directly (it is wired inside DAGNodeRow)'
+  );
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
