@@ -38,17 +38,15 @@ export default function ProjectsPage() {
 
   const [fileList, setFileList] = useState<string[]>([]);
 
-  const nodesForFollowMode = projectState && isV5State(projectState) ? (projectState as ProjectStateV5).graph.nodes : null;
+  const v5State: ProjectStateV5 | null =
+    projectState && isV5State(projectState) ? projectState : null;
+
+  const nodesForFollowMode = v5State ? v5State.graph.nodes : null;
   const { followMode, expandedLoopIds, onAccordionChange, toggleFollowMode } = useFollowMode(nodesForFollowMode, selectedProject);
 
   const selected: ProjectSummary | undefined = useMemo(
     () => projects.find((p) => p.name === selectedProject),
     [projects, selectedProject],
-  );
-
-  const isV5 = useMemo(
-    () => (projectState ? isV5State(projectState) : false),
-    [projectState],
   );
 
   const v4State: ProjectState | null = useMemo(
@@ -57,29 +55,29 @@ export default function ProjectsPage() {
   );
 
   const v5Derivations = useMemo(() => {
-    if (!projectState || !isV5State(projectState)) {
+    if (!v5State) {
       return { graphStatus: undefined, gateMode: undefined, currentPhaseName: null, progress: null, repoBaseUrl: null };
     }
-    const phaseLoopNode = projectState.graph.nodes.phase_loop;
+    const phaseLoopNode = v5State.graph.nodes.phase_loop;
     const typedPhaseLoop = phaseLoopNode?.kind === 'for_each_phase' ? phaseLoopNode : undefined;
     return {
-      graphStatus: projectState.graph.status,
-      gateMode: projectState.pipeline.gate_mode,
+      graphStatus: v5State.graph.status,
+      gateMode: v5State.pipeline.gate_mode,
       currentPhaseName: deriveCurrentPhase(typedPhaseLoop),
       progress: derivePhaseProgress(typedPhaseLoop),
-      repoBaseUrl: deriveRepoBaseUrl((projectState as ProjectStateV5).pipeline.source_control?.compare_url ?? null),
+      repoBaseUrl: deriveRepoBaseUrl(v5State.pipeline.source_control?.compare_url ?? null),
     };
-  }, [projectState]);
+  }, [v5State]);
 
   const orderedDocs = useMemo(() => {
-    if (isV5 && projectState && selectedProject) {
-      return getOrderedDocsV5(projectState as ProjectStateV5, selectedProject, fileList);
+    if (v5State && selectedProject) {
+      return getOrderedDocsV5(v5State, selectedProject, fileList);
     }
     if (v4State && selectedProject) {
       return getOrderedDocs(v4State, selectedProject, fileList);
     }
     return [];
-  }, [isV5, projectState, v4State, selectedProject, fileList]);
+  }, [v5State, v4State, selectedProject, fileList]);
 
   useEffect(() => {
     if (!selectedProject) {
@@ -127,7 +125,7 @@ export default function ProjectsPage() {
                 <p className="text-sm text-destructive" role="alert">{error}</p>
               </div>
             </div>
-          ) : selected && projectState && isV5 ? (
+          ) : selected && v5State ? (
             <div className="overflow-auto">
               <ProjectHeader
                 projectName={selected.name}
@@ -136,7 +134,7 @@ export default function ProjectsPage() {
                 gateMode={v5Derivations.gateMode}
                 currentPhaseName={v5Derivations.currentPhaseName}
                 progress={v5Derivations.progress}
-                sourceControl={(projectState as ProjectStateV5).pipeline.source_control}
+                sourceControl={v5State.pipeline.source_control}
               />
               <TimelineToolbar
                 followMode={followMode}
@@ -144,8 +142,8 @@ export default function ProjectsPage() {
               />
               <div className="px-6 py-4">
                 <DAGTimeline
-                  nodes={(projectState as ProjectStateV5).graph.nodes}
-                  currentNodePath={(projectState as ProjectStateV5).graph.current_node_path}
+                  nodes={v5State.graph.nodes}
+                  currentNodePath={v5State.graph.current_node_path}
                   onDocClick={openDocument}
                   expandedLoopIds={expandedLoopIds}
                   onAccordionChange={onAccordionChange}

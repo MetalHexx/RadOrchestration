@@ -13,7 +13,7 @@ interface ProjectHeaderProps {
   gateMode?: GateMode | null;
   currentPhaseName?: string | null;
   progress?: { completed: number; total: number } | null;
-  sourceControl?: V5SourceControlState | null;
+  sourceControl: V5SourceControlState | null;
 }
 
 export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMode, currentPhaseName, progress, sourceControl }: ProjectHeaderProps) {

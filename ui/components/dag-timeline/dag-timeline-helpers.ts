@@ -4,6 +4,7 @@ export type CompatibleNodeState = StepNodeState | GateNodeState | ConditionalNod
 
 export function deriveRepoBaseUrl(compareUrl: string | null): string | null {
   if (compareUrl == null) return null;
+  if (compareUrl.trim().length === 0) return null;
   const idx = compareUrl.indexOf('/compare/');
   if (idx === -1) return null;
   return compareUrl.slice(0, idx);
@@ -44,6 +45,18 @@ export function formatNodeId(nodeId: string): string {
 }
 
 /**
+ * Extracts the leaf segment of a compound node ID — the substring after the
+ * last `.`, or the whole string if no `.` is present.
+ *
+ * "phase_loop.iter0.phase_planning" → "phase_planning"
+ * "phase_planning"                  → "phase_planning"
+ */
+function extractLeaf(nodeId: string): string {
+  const lastDot = nodeId.lastIndexOf('.');
+  return lastDot === -1 ? nodeId : nodeId.slice(lastDot + 1);
+}
+
+/**
  * Extracts the leaf segment from a compound node ID and formats it
  * as a human-readable display name.
  *
@@ -51,9 +64,7 @@ export function formatNodeId(nodeId: string): string {
  * "phase_planning"                  → "Phase Planning"
  */
 export function getDisplayName(nodeId: string): string {
-  const lastDot = nodeId.lastIndexOf('.');
-  const leaf = lastDot === -1 ? nodeId : nodeId.slice(lastDot + 1);
-  return formatNodeId(leaf);
+  return formatNodeId(extractLeaf(nodeId));
 }
 
 // ─── Gate Node Config (single source of truth for approval buttons) ──────────
@@ -80,9 +91,7 @@ export const GATE_NODE_CONFIG: Record<string, {
 export function getGateNodeConfig(
   nodeId: string
 ): { event: GateEvent; label: string } | null {
-  const lastDot = nodeId.lastIndexOf('.');
-  const leaf = lastDot === -1 ? nodeId : nodeId.slice(lastDot + 1);
-  return GATE_NODE_CONFIG[leaf] ?? null;
+  return GATE_NODE_CONFIG[extractLeaf(nodeId)] ?? null;
 }
 
 // ─── Section Types ────────────────────────────────────────────────────────────

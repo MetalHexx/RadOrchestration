@@ -232,22 +232,58 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const timelineSource = readFileSync(join(__dirname, 'dag-timeline.tsx'), 'utf-8');
 
-test('dag-timeline.tsx forwards `projectName={projectName}` at least twice (once per DAGNodeRow call site)', () => {
+/**
+ * Returns true if every `<DAGNodeRow ...>` opening tag in the given source
+ * forwards both `projectName={projectName}` and `gateActive={deriveGateActive(node)}`
+ * — i.e. the gate-rendering inputs are wired on every top-level node-row call
+ * site. The check is line-by-line: when a line opens `<DAGNodeRow`, all
+ * subsequent lines up to the end of the opening tag (`>` or `/>`) are
+ * inspected for the required props. Returns false if no `<DAGNodeRow>` tags
+ * are found, or if any tag is missing either prop.
+ */
+function hasGateForwardingOnDAGNodeRow(source: string): boolean {
+  // Strip JSDoc / line comments first so backticked references in doc text
+  // (e.g. "`<DAGNodeRow>`") don't get mistaken for real opening tags.
+  const codeOnly = source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  const lines = codeOnly.split(/\r?\n/);
+  let foundAny = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].includes('<DAGNodeRow')) continue;
+    foundAny = true;
+    let sawProjectName = false;
+    let sawGateActive = false;
+    let j = i;
+    while (j < lines.length) {
+      const line = lines[j];
+      if (line.includes('projectName={projectName}')) sawProjectName = true;
+      if (line.includes('gateActive={deriveGateActive(node)}')) sawGateActive = true;
+      if (line.includes('/>') || (j > i && line.includes('>'))) break;
+      j++;
+    }
+    if (!sawProjectName || !sawGateActive) return false;
+  }
+  return foundAny;
+}
+
+test('dag-timeline.tsx forwards `projectName={projectName}` on every <DAGNodeRow> call site (>= 4 total occurrences across DAGNodeRow + DAGLoopNode forwarding)', () => {
   const matches = timelineSource.match(/projectName=\{projectName\}/g) ?? [];
-  // The file also forwards projectName to DAGLoopNode (twice) and to DAGNodeRow (twice).
-  // We require at least 2 occurrences overall; this check confirms wiring is present.
+  // The file forwards projectName to DAGLoopNode (twice) and to DAGNodeRow (twice) = 4 total.
   assert.ok(
-    matches.length >= 2,
-    `expected at least 2 projectName={projectName} occurrences, got ${matches.length}`
+    matches.length >= 4,
+    `expected at least 4 projectName={projectName} occurrences, got ${matches.length}`
+  );
+  assert.ok(
+    hasGateForwardingOnDAGNodeRow(timelineSource),
+    'every <DAGNodeRow> opening tag must forward both projectName={projectName} and gateActive={deriveGateActive(node)}'
   );
 });
 
-test('dag-timeline.tsx forwards `gateActive={deriveGateActive(node)}` at least twice (once per DAGNodeRow call site)', () => {
-  const matches = timelineSource.match(/gateActive=\{deriveGateActive\(node\)\}/g) ?? [];
-  assert.strictEqual(
-    matches.length >= 2,
-    true,
-    `expected at least 2 gateActive={deriveGateActive(node)} occurrences, got ${matches.length}`
+test('dag-timeline.tsx forwards `gateActive={deriveGateActive(node)}` on every <DAGNodeRow> call site', () => {
+  assert.ok(
+    hasGateForwardingOnDAGNodeRow(timelineSource),
+    'every <DAGNodeRow> opening tag must forward both projectName={projectName} and gateActive={deriveGateActive(node)}'
   );
 });
 

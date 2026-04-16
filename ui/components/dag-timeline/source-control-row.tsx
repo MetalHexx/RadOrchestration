@@ -19,7 +19,7 @@ export function SourceControlRow({ sourceControl }: SourceControlRowProps) {
       aria-label="Source Control"
     >
       {/* Branch region */}
-      {compare_url !== null ? (
+      {compare_url !== null && /^https?:\/\//i.test(compare_url) ? (
         <a
           href={compare_url}
           target="_blank"

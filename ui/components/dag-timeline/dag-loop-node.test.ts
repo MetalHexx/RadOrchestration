@@ -6,6 +6,9 @@
  * Helper functions are exported from dag-loop-node.tsx for testability.
  */
 import assert from "node:assert";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { buildLoopItemValue } from './dag-loop-node';
 import { isLoopNode, getDisplayName } from './dag-timeline-helpers';
 import type {
@@ -200,59 +203,59 @@ test('component does not add aria-current to trigger row (delegation to child DA
   assert.strictEqual(triggerHasAriaCurrent, false);
 });
 
-// Accordion controlled-mode wiring: value prop reflects expandedLoopIds
-test('Accordion value prop equals expandedLoopIds when passed by caller', () => {
-  // Simulate the controlled-mode wiring: parent passes expandedLoopIds,
-  // DAGLoopNode forwards it to <Accordion value={expandedLoopIds}>.
-  const expandedLoopIds: string[] = ['loop-phase_loop'];
-  // The value prop passed to Accordion is the exact expandedLoopIds reference
-  const accordionValueProp = expandedLoopIds;
-  assert.deepStrictEqual(accordionValueProp, ['loop-phase_loop']);
-  assert.strictEqual(accordionValueProp, expandedLoopIds);
-  assert.strictEqual(accordionValueProp.length, 1);
-  assert.strictEqual(accordionValueProp[0], 'loop-phase_loop');
+// ─── Source-text: Accordion controlled-mode wiring on DAGLoopNode ────────────
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const loopNodeSource = readFileSync(join(__dirname, 'dag-loop-node.tsx'), 'utf-8');
+
+/**
+ * Returns true if the source contains an `<Accordion ...>` opening tag whose
+ * attributes include both `value={expandedLoopIds}` and
+ * `onValueChange={onAccordionChange}` — i.e. the accordion is wired in
+ * controlled mode with state forwarded from the caller. The check is
+ * line-by-line: when a line opens `<Accordion`, all subsequent lines up to the
+ * end of the opening tag (`>` or `/>`) are inspected for the required props.
+ */
+function hasControlledAccordionWiring(source: string): boolean {
+  const lines = source.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].includes('<Accordion')) continue;
+    let sawValue = false;
+    let sawOnValueChange = false;
+    let j = i;
+    while (j < lines.length) {
+      const line = lines[j];
+      if (line.includes('value={expandedLoopIds}')) sawValue = true;
+      if (line.includes('onValueChange={onAccordionChange}')) sawOnValueChange = true;
+      if (line.includes('/>') || (j > i && line.includes('>'))) break;
+      j++;
+    }
+    if (sawValue && sawOnValueChange) return true;
+  }
+  return false;
+}
+
+test('dag-loop-node.tsx wires <Accordion> in controlled mode with value={expandedLoopIds} and onValueChange={onAccordionChange}', () => {
+  assert.ok(loopNodeSource.includes('<Accordion'), 'sanity: dag-loop-node.tsx should contain an <Accordion element');
+  assert.ok(
+    hasControlledAccordionWiring(loopNodeSource),
+    'dag-loop-node.tsx must wire <Accordion> with both value={expandedLoopIds} and onValueChange={onAccordionChange} (controlled-mode forwarding)'
+  );
 });
 
-test('Accordion value prop forwards an empty expandedLoopIds array unchanged', () => {
-  const expandedLoopIds: string[] = [];
-  const accordionValueProp = expandedLoopIds;
-  assert.deepStrictEqual(accordionValueProp, []);
-  assert.strictEqual(accordionValueProp.length, 0);
-});
-
-// onAccordionChange callback shape: (value: string[], eventDetails: { reason: string })
-test('onAccordionChange callback is invokable with (value, eventDetails) and reason "trigger-press"', () => {
-  let capturedValue: string[] | null = null;
-  let capturedReason: string | null = null;
-  const onAccordionChange = (
-    value: string[],
-    eventDetails: { reason: string }
-  ) => {
-    capturedValue = value;
-    capturedReason = eventDetails.reason;
-  };
-
-  // Simulate the @base-ui accordion firing onValueChange on a user click
-  onAccordionChange(['loop-phase_loop'], { reason: 'trigger-press' });
-
-  assert.deepStrictEqual(capturedValue, ['loop-phase_loop']);
-  assert.strictEqual(capturedReason, 'trigger-press');
-});
-
-test('onAccordionChange eventDetails.reason can take the value "none" for programmatic updates', () => {
-  let capturedReason: string | null = null;
-  const onAccordionChange = (
-    value: string[],
-    eventDetails: { reason: string }
-  ) => {
-    void value;
-    capturedReason = eventDetails.reason;
-  };
-
-  // Simulate @base-ui firing onValueChange when parent mutates value prop directly
-  onAccordionChange(['loop-phase_loop'], { reason: 'none' });
-
-  assert.strictEqual(capturedReason, 'none');
+test('dag-loop-node.tsx forwards expandedLoopIds and onAccordionChange to nested DAGIterationPanel', () => {
+  // Iteration panels need to participate in the same controlled-mode tree so
+  // nested loops (task_loop within phase_loop) stay in sync with the same
+  // expandedLoopIds set held by the page-level useFollowMode hook.
+  assert.ok(
+    /expandedLoopIds=\{expandedLoopIds\}/.test(loopNodeSource),
+    'dag-loop-node.tsx must forward expandedLoopIds={expandedLoopIds} to DAGIterationPanel'
+  );
+  assert.ok(
+    /onAccordionChange=\{onAccordionChange\}/.test(loopNodeSource),
+    'dag-loop-node.tsx must forward onAccordionChange={onAccordionChange} to DAGIterationPanel'
+  );
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
