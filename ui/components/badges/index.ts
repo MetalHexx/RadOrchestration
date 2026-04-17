@@ -7,3 +7,5 @@ export { RetryBadge } from "./retry-badge";
 export { WarningBadge } from "./warning-badge";
 export { ConnectionIndicator } from "./connection-indicator";
 export { LockBadge } from "./lock-badge";
+export { SSEStatusBanner } from "./sse-status-banner";
+export type { SSEStatusBannerProps } from "./sse-status-banner";

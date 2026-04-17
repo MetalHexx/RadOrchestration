@@ -29,6 +29,7 @@ interface ProjectSummary {
   executionStatus?: ExecutionStatus;
   lastUpdated?: string;
   schemaVersion?: 'v4' | 'v5';
+  graphStatus?: GraphStatus | 'not_initialized';
 }
 
 // v4 state shape (minimal fields used by the handler)
@@ -99,6 +100,7 @@ function applyStateChange(
     executionStatus: payload.state.execution?.status,
     lastUpdated: payload.state.project?.updated,
     schemaVersion: 'v4',
+    graphStatus: 'not_initialized',
   };
 }
 
@@ -120,6 +122,7 @@ function applyStateChangeV5(
       executionStatus: deriveExecutionStatus(payload.state.graph.status, payload.state.graph.nodes),
       lastUpdated: payload.state.project?.updated,
       schemaVersion: 'v5',
+      graphStatus: payload.state.graph.status,
     };
   } else {
     return {
@@ -129,6 +132,7 @@ function applyStateChangeV5(
       executionStatus: payload.state.execution?.status,
       lastUpdated: payload.state.project?.updated,
       schemaVersion: 'v4',
+      graphStatus: 'not_initialized',
     };
   }
 }
@@ -305,6 +309,80 @@ async function run() {
     const result = applyStateChangeV5(p, { projectName: 'proj', state });
     assert.strictEqual(result, p);
     assert.strictEqual(result.lastUpdated, '2026-01-01T00:00:00Z');
+  });
+
+  // graphStatus tests
+  await test('(j) v5 state_change — graphStatus mirrors payload graph.status (in_progress)', async () => {
+    const p: ProjectSummary = {
+      name: 'proj',
+      tier: 'not_initialized',
+      hasState: false,
+      hasMalformedState: false,
+    };
+    const state: V5State = {
+      $schema: 'orchestration-state-v5',
+      pipeline: { current_tier: 'execution' },
+      graph: {
+        status: 'in_progress',
+        nodes: {
+          research:     { status: 'completed' },
+          prd:          { status: 'completed' },
+          design:       { status: 'completed' },
+          architecture: { status: 'completed' },
+          master_plan:  { status: 'completed' },
+          phase_loop:   { status: 'in_progress' },
+        },
+      },
+      project: { name: 'proj', created: '2026-01-01T00:00:00Z', updated: '2026-04-16T00:00:00Z' },
+    };
+    const result = applyStateChangeV5(p, { projectName: 'proj', state });
+    assert.strictEqual(result.graphStatus, 'in_progress');
+  });
+
+  await test('(k) v5 state_change — graphStatus mirrors payload graph.status (completed)', async () => {
+    const p: ProjectSummary = {
+      name: 'proj',
+      tier: 'not_initialized',
+      hasState: false,
+      hasMalformedState: false,
+    };
+    const state: V5State = {
+      $schema: 'orchestration-state-v5',
+      pipeline: { current_tier: 'execution' },
+      graph: {
+        status: 'completed',
+        nodes: {
+          research:     { status: 'completed' },
+          prd:          { status: 'completed' },
+          design:       { status: 'completed' },
+          architecture: { status: 'completed' },
+          master_plan:  { status: 'completed' },
+          phase_loop:   { status: 'completed' },
+          final_review: { status: 'completed' },
+        },
+      },
+      project: { name: 'proj', created: '2026-01-01T00:00:00Z', updated: '2026-04-16T00:00:00Z' },
+    };
+    const result = applyStateChangeV5(p, { projectName: 'proj', state });
+    assert.strictEqual(result.graphStatus, 'completed');
+  });
+
+  await test('(l) v4 state_change — graphStatus is "not_initialized"', async () => {
+    const p: ProjectSummary = {
+      name: 'proj',
+      tier: 'not_initialized',
+      hasState: false,
+      hasMalformedState: false,
+    };
+    const state: V4State = {
+      $schema: 'orchestration-state-v4',
+      pipeline: { current_tier: 'planning' },
+      planning: { status: 'in_progress' },
+      execution: { status: 'not_started' },
+      project: { name: 'proj', created: '2026-01-01T00:00:00Z', updated: '2026-04-16T00:00:00Z' },
+    };
+    const result = applyStateChangeV5(p, { projectName: 'proj', state });
+    assert.strictEqual(result.graphStatus, 'not_initialized');
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);

@@ -7,20 +7,16 @@
 import assert from 'node:assert';
 
 // Inline types matching ui/types/components.ts and ui/types/state.ts
-type PipelineTier = 'planning' | 'execution' | 'review' | 'complete' | 'halted' | 'not_initialized';
-type PlanningStatus = 'not_started' | 'in_progress' | 'complete';
-type ExecutionStatus = 'not_started' | 'in_progress' | 'complete' | 'halted';
+type GraphStatus = 'not_started' | 'in_progress' | 'completed' | 'halted';
 
 interface ProjectSummary {
   name: string;
-  tier: PipelineTier | 'not_initialized';
   hasState: boolean;
   hasMalformedState: boolean;
   errorMessage?: string;
   brainstormingDoc?: string | null;
-  planningStatus?: PlanningStatus;
-  executionStatus?: ExecutionStatus;
   lastUpdated?: string;
+  graphStatus?: GraphStatus | 'not_initialized';
 }
 
 type SortField = 'status' | 'name' | 'updated';
@@ -43,17 +39,25 @@ const DEFAULT_SORT_CONFIG: SortConfig = {
 };
 
 function getStatusPriority(p: ProjectSummary): number {
-  const { tier, planningStatus, executionStatus, hasMalformedState } = p;
-  if (tier === "halted" || (tier === "execution" && executionStatus === "halted")) return 0;
+  const { graphStatus, hasMalformedState } = p;
+
+  // Bucket 0: halted — v5 halted projects (live or persisted)
+  if (graphStatus === 'halted') return 0;
+
+  // Bucket 1: malformed / warning state — wins over any active status
   if (hasMalformedState) return 1;
-  if (tier === "review") return 2;
-  if (tier === "execution" && executionStatus === "in_progress") return 3;
-  if (tier === "planning" && planningStatus === "in_progress") return 4;
-  if (tier === "execution" && (executionStatus === "not_started" || executionStatus === undefined)) return 5;
-  if (tier === "planning" && planningStatus === "complete") return 6;
-  if (tier === "planning" && (planningStatus === "not_started" || planningStatus === undefined)) return 7;
-  if (tier === "not_initialized") return 8;
-  return 9;
+
+  // Bucket 2: actively running v5 pipelines
+  if (graphStatus === 'in_progress') return 2;
+
+  // Bucket 3: v5 pipelines that have not yet begun
+  if (graphStatus === 'not_started') return 3;
+
+  // Bucket 4: v5 pipelines that finished successfully
+  if (graphStatus === 'completed') return 4;
+
+  // Bucket 5: legacy fallback — 'not_initialized', undefined, or any unrecognized value
+  return 5;
 }
 
 function compareField(
@@ -118,37 +122,80 @@ function makeProject(
 ): ProjectSummary {
   return {
     name,
-    tier: 'not_initialized',
     hasState: false,
     hasMalformedState: false,
     ...overrides,
   };
 }
 
-// One project per priority 0–9
-const p0_halted       = makeProject('Halted',          { tier: 'halted' });
-const p0b_halted_exec = makeProject('HaltedExec',      { tier: 'execution', executionStatus: 'halted' });
-const p1_malformed    = makeProject('Malformed',       { tier: 'planning', hasMalformedState: true });
-const p2_review       = makeProject('Review',          { tier: 'review' });
-const p3_exec_active  = makeProject('ExecActive',      { tier: 'execution', executionStatus: 'in_progress' });
-const p4_plan_active  = makeProject('PlanActive',      { tier: 'planning', planningStatus: 'in_progress' });
-const p5_exec_queued  = makeProject('ExecQueued',      { tier: 'execution', executionStatus: 'not_started' });
-const p6_plan_done    = makeProject('PlanDone',        { tier: 'planning', planningStatus: 'complete' });
-const p7_plan_new     = makeProject('PlanNew',         { tier: 'planning', planningStatus: 'not_started' });
-const p8_uninit       = makeProject('Uninit',          { tier: 'not_initialized' });
-const p9_complete     = makeProject('Complete',        { tier: 'complete' });
+// One project per bucket 0–5 (plus undefined-graphStatus variant of bucket 5)
+const p0_halted             = makeProject('Halted',           { graphStatus: 'halted' });
+const p1_malformed          = makeProject('Malformed',        { graphStatus: 'in_progress', hasMalformedState: true });
+const p2_in_progress        = makeProject('InProgress',       { graphStatus: 'in_progress' });
+const p3_not_started        = makeProject('NotStarted',       { graphStatus: 'not_started' });
+const p4_completed          = makeProject('Completed',        { graphStatus: 'completed' });
+const p5_fallback_legacy    = makeProject('FallbackLegacy',   { graphStatus: 'not_initialized' });
+const p5_fallback_undefined = makeProject('FallbackUndefined',{ graphStatus: undefined });
 
-const allPriorities = [p9_complete, p8_uninit, p7_plan_new, p6_plan_done, p5_exec_queued,
-                       p4_plan_active, p3_exec_active, p2_review, p1_malformed, p0_halted];
+const allBuckets = [
+  p4_completed,
+  p5_fallback_legacy,
+  p5_fallback_undefined,
+  p3_not_started,
+  p2_in_progress,
+  p1_malformed,
+  p0_halted,
+];
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 async function run() {
   console.log('use-sort-config — compareSortConfig');
 
-  await test('Default sort equivalence — all 10 priority levels', async () => {
-    const sorted = [...allPriorities].sort((a, b) => compareSortConfig(a, b, DEFAULT_SORT_CONFIG));
-    const expected = [...allPriorities].sort(
+  // ─── getStatusPriority bucket-level tests ──────────────────────────────────
+
+  await test('Bucket 0 — halted regardless of hasMalformedState', async () => {
+    const haltedNoMalformed  = makeProject('H1', { graphStatus: 'halted' });
+    const haltedAndMalformed = makeProject('H2', { graphStatus: 'halted', hasMalformedState: true });
+    assert.strictEqual(getStatusPriority(haltedNoMalformed),  0);
+    assert.strictEqual(getStatusPriority(haltedAndMalformed), 0);
+  });
+
+  await test('Bucket 1 — malformed wins over in_progress', async () => {
+    const malformedActive = makeProject('M', { graphStatus: 'in_progress', hasMalformedState: true });
+    assert.strictEqual(getStatusPriority(malformedActive), 1);
+  });
+
+  await test('Bucket 2 — in_progress (non-malformed) returns 2', async () => {
+    const active = makeProject('A', { graphStatus: 'in_progress', hasMalformedState: false });
+    assert.strictEqual(getStatusPriority(active), 2);
+  });
+
+  await test('Bucket 3 — not_started returns 3', async () => {
+    const queued = makeProject('Q', { graphStatus: 'not_started' });
+    assert.strictEqual(getStatusPriority(queued), 3);
+  });
+
+  await test('Bucket 4 — completed returns 4', async () => {
+    const done = makeProject('D', { graphStatus: 'completed' });
+    assert.strictEqual(getStatusPriority(done), 4);
+  });
+
+  await test('Bucket 5 — not_initialized (legacy fallback) returns 5', async () => {
+    const legacy = makeProject('L', { graphStatus: 'not_initialized' });
+    assert.strictEqual(getStatusPriority(legacy), 5);
+  });
+
+  await test('Bucket 5 — undefined graphStatus returns 5 (same fallback)', async () => {
+    const noField = makeProject('U', { graphStatus: undefined });
+    assert.strictEqual(getStatusPriority(noField), 5);
+  });
+
+  // ─── Sort-order tests ──────────────────────────────────────────────────────
+
+  await test('Default sort equivalence — all six buckets including legacy fallback', async () => {
+    const sorted = [...allBuckets].sort((a, b) => compareSortConfig(a, b, DEFAULT_SORT_CONFIG));
+    const expected = [...allBuckets].sort(
       (a, b) => getStatusPriority(a) - getStatusPriority(b) || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
     );
     assert.deepStrictEqual(
@@ -156,16 +203,83 @@ async function run() {
       expected.map(p => p.name),
       'Sort order does not match getStatusPriority + name tiebreaker'
     );
+    // Sanity check — bucket-by-bucket bucket order must be 0..5 (with bucket 5 grouping both fallback rows)
+    const expectedNames = [
+      'Halted',           // bucket 0
+      'Malformed',        // bucket 1
+      'InProgress',       // bucket 2
+      'NotStarted',       // bucket 3
+      'Completed',        // bucket 4
+      'FallbackLegacy',   // bucket 5 (name asc tiebreaker: FallbackLegacy < FallbackUndefined)
+      'FallbackUndefined',
+    ];
+    assert.deepStrictEqual(sorted.map(p => p.name), expectedNames);
   });
 
-  await test('Default sort equivalence — also covers halted-execution (priority 0b)', async () => {
-    const fixtures = [...allPriorities, p0b_halted_exec];
-    const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, DEFAULT_SORT_CONFIG));
-    const expected = [...fixtures].sort(
-      (a, b) => getStatusPriority(a) - getStatusPriority(b) || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-    );
-    assert.deepStrictEqual(sorted.map(p => p.name), expected.map(p => p.name));
+  await test('Legacy fallback bucket sits just above completed', async () => {
+    const config = DEFAULT_SORT_CONFIG;
+    const fixtures = [p4_completed, p5_fallback_legacy, p5_fallback_undefined, p3_not_started];
+    const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, config));
+    const names = sorted.map(p => p.name);
+
+    // not_started first, completed last? Per the bucket ordering 3 < 4 < 5, the actual order is:
+    //   NotStarted (3) → Completed (4) → FallbackLegacy (5) → FallbackUndefined (5)
+    // The test description says "places not_started first, completed last".
+    // Since bucket 4 (completed) sits BELOW bucket 3 (not_started) and ABOVE bucket 5 (fallback),
+    // "completed last" means completed is the last of the *active* (non-fallback) rows — i.e. the
+    // fallback rows sit immediately ABOVE completed in descending-priority terms (lower bucket number
+    // = higher in the list). The handoff bucket table confirms: bucket 5 sort position is "bottom
+    // (just above the natural last position)" — fallback comes AFTER completed in the asc sort.
+    assert.strictEqual(names[0], 'NotStarted', 'not_started must be first (lowest bucket among active)');
+
+    // Fallback rows must form a contiguous trailing block after completed.
+    const completedIdx = names.indexOf('Completed');
+    const fallbackLegacyIdx = names.indexOf('FallbackLegacy');
+    const fallbackUndefIdx = names.indexOf('FallbackUndefined');
+    assert.ok(completedIdx >= 0 && fallbackLegacyIdx > completedIdx && fallbackUndefIdx > completedIdx,
+      'Both fallback rows must appear AFTER completed (bucket 5 > bucket 4 in asc)');
+    // Fallback rows must be contiguous (immediately following completed) — no active row interleaved.
+    assert.strictEqual(fallbackLegacyIdx, completedIdx + 1, 'FallbackLegacy must immediately follow Completed');
+    assert.strictEqual(fallbackUndefIdx,  completedIdx + 2, 'FallbackUndefined must immediately follow FallbackLegacy');
   });
+
+  await test('Mixed v5 and legacy summaries do not interleave', async () => {
+    const config = DEFAULT_SORT_CONFIG;
+    // Alternating mix — buckets 2, 5, 3, 5
+    const fixtures = [p2_in_progress, p5_fallback_legacy, p3_not_started, p5_fallback_undefined];
+    const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, config));
+    const names = sorted.map(p => p.name);
+
+    // Expected grouping: bucket 2, then bucket 3, then bucket 5 (fallback rows last, contiguous).
+    assert.deepStrictEqual(names, ['InProgress', 'NotStarted', 'FallbackLegacy', 'FallbackUndefined']);
+
+    // Invariant: no v5 active row (buckets 2 or 3) appears AFTER any fallback row.
+    const lastActiveIdx = Math.max(names.indexOf('InProgress'), names.indexOf('NotStarted'));
+    const firstFallbackIdx = Math.min(names.indexOf('FallbackLegacy'), names.indexOf('FallbackUndefined'));
+    assert.ok(lastActiveIdx < firstFallbackIdx,
+      'Active v5 rows (buckets 2, 3) must all sort before any fallback row (bucket 5)');
+  });
+
+  await test('Status descending — reverse priority order ends at halted', async () => {
+    const config: SortConfig = { primary: 'status', primaryDir: 'desc', secondary: 'name', secondaryDir: 'asc' };
+    const fixtures = [...allBuckets];
+    const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, config));
+    const names = sorted.map(p => p.name);
+
+    // desc = highest bucket first → 5, 5, 4, 3, 2, 1, 0
+    // Within the bucket-5 tie, secondary 'name asc' breaks: FallbackLegacy < FallbackUndefined.
+    assert.deepStrictEqual(names, [
+      'FallbackLegacy',    // bucket 5
+      'FallbackUndefined', // bucket 5
+      'Completed',         // bucket 4
+      'NotStarted',        // bucket 3
+      'InProgress',        // bucket 2
+      'Malformed',         // bucket 1
+      'Halted',            // bucket 0
+    ]);
+  });
+
+  // ─── Pre-existing non-status tests (fixtures updated to new ProjectSummary shape) ──
 
   await test('Name ascending — A→Z', async () => {
     const config: SortConfig = { primary: 'name', primaryDir: 'asc', secondary: 'none', secondaryDir: 'asc' };
@@ -223,26 +337,15 @@ async function run() {
 
   await test('Secondary tiebreaker — name desc breaks same-status tie', async () => {
     const config: SortConfig = { primary: 'status', primaryDir: 'asc', secondary: 'name', secondaryDir: 'desc' };
-    // Both are 'not_initialized' — same priority (8)
+    // Three p5_fallback_legacy-shaped projects — all bucket 5, tied on status.
     const fixtures = [
-      makeProject('Alpha', { tier: 'not_initialized' }),
-      makeProject('Bravo', { tier: 'not_initialized' }),
-      makeProject('Charlie', { tier: 'not_initialized' }),
+      makeProject('Alpha',   { graphStatus: 'not_initialized' }),
+      makeProject('Bravo',   { graphStatus: 'not_initialized' }),
+      makeProject('Charlie', { graphStatus: 'not_initialized' }),
     ];
     const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, config));
     // With name desc, Z→A: Charlie, Bravo, Alpha
     assert.deepStrictEqual(sorted.map(p => p.name), ['Charlie', 'Bravo', 'Alpha']);
-  });
-
-  await test('Status descending — reverse priority order (complete first, halted last)', async () => {
-    const config: SortConfig = { primary: 'status', primaryDir: 'desc', secondary: 'none', secondaryDir: 'asc' };
-    const fixtures = [p0_halted, p3_exec_active, p6_plan_done, p9_complete, p2_review];
-    const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, config));
-    // desc = highest priority number first  → 9, 6, 3, 2, 0
-    assert.deepStrictEqual(
-      sorted.map(p => p.name),
-      [p9_complete, p6_plan_done, p3_exec_active, p2_review, p0_halted].map(p => p.name)
-    );
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);

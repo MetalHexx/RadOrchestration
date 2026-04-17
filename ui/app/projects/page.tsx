@@ -8,7 +8,8 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
 import { MainDashboard } from "@/components/layout";
 import { DocumentDrawer } from "@/components/documents";
-import { DAGTimeline, ProjectHeader, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
+import { DAGTimeline, DAGTimelineSkeleton, ProjectHeader, HaltReasonBanner, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
+import { SSEStatusBanner } from "@/components/badges";
 import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
 import { isV5State } from "@/types/state";
 import type { ProjectState, ProjectStateV5 } from "@/types/state";
@@ -22,6 +23,8 @@ export default function ProjectsPage() {
     selectProject,
     isLoading,
     error,
+    sseStatus,
+    reconnect,
   } = useProjects();
 
   const {
@@ -125,6 +128,29 @@ export default function ProjectsPage() {
                 <p className="text-sm text-destructive" role="alert">{error}</p>
               </div>
             </div>
+          ) : selected && selected.schemaVersion === 'v5' && !v5State && !v4State ? (
+            <div className="overflow-auto">
+              <ProjectHeader
+                projectName={selected.name}
+                schemaVersion="v5"
+                sourceControl={null}
+                followMode={false}
+                onToggleFollowMode={() => {}}
+              />
+              <div className="flex flex-col">
+                <HaltReasonBanner
+                  graphStatus={v5Derivations.graphStatus}
+                  haltReason={null}
+                />
+                <SSEStatusBanner
+                  status={sseStatus}
+                  onReconnect={reconnect}
+                />
+              </div>
+              <div className="px-6 py-4">
+                <DAGTimelineSkeleton />
+              </div>
+            </div>
           ) : selected && v5State ? (
             <div className="overflow-auto">
               <ProjectHeader
@@ -138,6 +164,16 @@ export default function ProjectsPage() {
                 followMode={followMode}
                 onToggleFollowMode={toggleFollowMode}
               />
+              <div className="flex flex-col">
+                <HaltReasonBanner
+                  graphStatus={v5Derivations.graphStatus}
+                  haltReason={v5State.pipeline.halt_reason}
+                />
+                <SSEStatusBanner
+                  status={sseStatus}
+                  onReconnect={reconnect}
+                />
+              </div>
               <div className="px-6 py-4">
                 <DAGTimeline
                   nodes={v5State.graph.nodes}

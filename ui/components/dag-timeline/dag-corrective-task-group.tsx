@@ -13,6 +13,8 @@ interface DAGCorrectiveTaskGroupProps {
   currentNodePath: string | null;
   onDocClick: (path: string) => void;
   repoBaseUrl: string | null;
+  focusedRowKey: string | null;
+  onFocusChange: (nodeId: string) => void;
 }
 
 export const GROUP_ARIA_LABEL = "Corrective tasks";
@@ -32,6 +34,8 @@ export function DAGCorrectiveTaskGroup({
   currentNodePath,
   onDocClick,
   repoBaseUrl,
+  focusedRowKey,
+  onFocusChange,
 }: DAGCorrectiveTaskGroupProps) {
   if (correctiveTasks.length === 0) return null;
 
@@ -60,6 +64,7 @@ export function DAGCorrectiveTaskGroup({
                       href={commitData.href}
                       label={commitData.label}
                       icon="external-link"
+                      tabIndex={-1}
                     />
                   ) : (
                     <span className="text-xs font-mono text-muted-foreground">
@@ -69,16 +74,21 @@ export function DAGCorrectiveTaskGroup({
                 )}
               </AccordionTrigger>
               <AccordionContent>
-                {compatibleNodes.map(([childNodeId, childNode]) => (
-                  <DAGNodeRow
-                    key={childNodeId}
-                    nodeId={buildCorrectiveChildNodeId(parentNodeId, entry.index, childNodeId)}
-                    node={childNode}
-                    depth={CORRECTIVE_CHILD_DEPTH}
-                    currentNodePath={currentNodePath}
-                    onDocClick={onDocClick}
-                  />
-                ))}
+                {compatibleNodes.map(([childNodeId, childNode]) => {
+                  const childKey = buildCorrectiveChildNodeId(parentNodeId, entry.index, childNodeId);
+                  return (
+                    <DAGNodeRow
+                      key={childNodeId}
+                      nodeId={childKey}
+                      node={childNode}
+                      depth={CORRECTIVE_CHILD_DEPTH}
+                      currentNodePath={currentNodePath}
+                      onDocClick={onDocClick}
+                      isFocused={focusedRowKey === childKey}
+                      onFocusChange={onFocusChange}
+                    />
+                  );
+                })}
               </AccordionContent>
             </AccordionItem>
           );
