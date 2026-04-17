@@ -230,16 +230,27 @@ for (const [eventName, nodeId] of phaseExecDocSteps) {
     if (phase === undefined) {
       try {
         phase = resolveActivePhaseIndex(cloned);
-      } catch {
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
         throw new Error(
-          `Cannot apply mutation for "${eventName}": no active phase could be resolved from state.\n` +
-          `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
+          `Cannot apply mutation for "${eventName}": failed to resolve the active phase from state.\n` +
+          `${detail}\n` +
           `Pass --phase <N> to specify the phase explicitly.`
         );
       }
     }
 
-    const node = resolveNodeState(cloned, nodeId, 'phase', phase);
+    let node: NodeState;
+    try {
+      node = resolveNodeState(cloned, nodeId, 'phase', phase);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Cannot apply mutation for "${eventName}": could not resolve node "${nodeId}" for phase ${phase}.\n` +
+        `${detail}\n` +
+        `Pass --phase <N> to specify an existing phase explicitly.`
+      );
+    }
     node.status = 'completed';
     mutations_applied.push(`set ${nodeId}.status = completed`);
 
@@ -261,16 +272,27 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
   if (phase === undefined) {
     try {
       phase = resolveActivePhaseIndex(cloned);
-    } catch {
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
       throw new Error(
-        `Cannot apply mutation for "phase_review_completed": no active phase could be resolved from state.\n` +
-        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
+        `Cannot apply mutation for "phase_review_completed": failed to resolve the active phase from state.\n` +
+        `${detail}\n` +
         `Pass --phase <N> to specify the phase explicitly.`
       );
     }
   }
 
-  const node = resolveNodeState(cloned, 'phase_review', 'phase', phase);
+  let node: NodeState;
+  try {
+    node = resolveNodeState(cloned, 'phase_review', 'phase', phase);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Cannot apply mutation for "phase_review_completed": could not resolve phase_review for phase ${phase}.\n` +
+      `${detail}\n` +
+      `Pass --phase <N> to specify an existing phase explicitly.`
+    );
+  }
   node.status = 'completed';
   mutations_applied.push('set phase_review.status = completed');
 

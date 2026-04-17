@@ -337,3 +337,70 @@ describe('[REGRESSION] Auto-resolution — phase_review_completed approved witho
     expect(phaseReview.doc_path).toBe(phaseReviewDoc(1));
   });
 });
+
+// ── [REGRESSION] Actionable error when phase cannot be resolved (PR #50 follow-up) ─
+
+describe('[REGRESSION] phase_report_created with nonexistent phase throws actionable error', () => {
+  it('wraps resolveNodeState failure in a clear "Cannot apply mutation" error naming the node and phase', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, {
+      phase: 1, doc_path: phasePlanDoc(1),
+    }, io);
+
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+
+    // Fire phase_report_created with an explicit phase that doesn't exist in state.
+    const result = processEvent('phase_report_created', PROJECT_DIR, {
+      phase: 99,
+      doc_path: phaseReportDoc(1),
+    }, io);
+
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toMatch(/Cannot apply mutation for "phase_report_created"/);
+    expect(result.error?.message).toMatch(/phase_report/);
+    expect(result.error?.message).toMatch(/phase 99/);
+  });
+});
+
+describe('[REGRESSION] phase_review_completed with nonexistent phase throws actionable error', () => {
+  it('wraps resolveNodeState failure in a clear "Cannot apply mutation" error naming phase_review and phase', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, {
+      phase: 1, doc_path: phasePlanDoc(1),
+    }, io);
+
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+    processEvent('phase_report_created', PROJECT_DIR, {
+      phase: 1, doc_path: phaseReportDoc(1),
+    }, io);
+
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReviewDoc(1));
+
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 99,
+      doc_path: phaseReviewDoc(1),
+      verdict: 'approved',
+      exit_criteria_met: true,
+    }, io);
+
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toMatch(/Cannot apply mutation for "phase_review_completed"/);
+    expect(result.error?.message).toMatch(/phase_review/);
+    expect(result.error?.message).toMatch(/phase 99/);
+  });
+});
