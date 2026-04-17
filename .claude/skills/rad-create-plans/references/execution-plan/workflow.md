@@ -19,7 +19,6 @@ This workflow does NOT load `references/shared/guidelines.md` or
 |-------|--------|-----------|
 | Requirements doc | `{PROJECT-DIR}/{NAME}-REQUIREMENTS.md` | Yes — source of every ID you will cite |
 | Orchestrator prompt | Spawn context | Yes — project name, output path, scope bounds |
-| Brainstorming | `{PROJECT-DIR}/{NAME}-BRAINSTORMING.md` | Optional — read if present |
 | Codebase | Workspace (via Grep/Glob/Read) | Yes — targeted discovery to write exact file paths and commands |
 
 ## Authoring principle
