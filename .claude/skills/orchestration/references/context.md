@@ -57,7 +57,7 @@ Project artifacts are stored in a configurable location set by `orchestration.ym
 
 Contents:
 - Brainstorming: `BRAINSTORMING.md` (optional, created by `@brainstormer`)
-- Planning docs: `PRD.md`, `DESIGN.md`, `ARCHITECTURE.md`, `MASTER-PLAN.md`
+- Planning docs: `PRD.md`, `DESIGN.md`, `ARCHITECTURE.md`, `MASTER-PLAN.md`, `REQUIREMENTS.md` (lean project-level ledger written by `@planner`), `EXECUTION-PLAN.md` (inlined phase + task plan written by `@planner`)
 - Execution docs: `phases/`, `tasks/`, `reports/`
 - State: `state.json`
 - Error log: `ERROR-LOG.md` (append-only, created by `@orchestrator` via `log-error` skill)
