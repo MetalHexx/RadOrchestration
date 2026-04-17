@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { NodesRecord, NodeState } from '@/types/state';
 import { DAGNodeRow } from './dag-node-row';
 import { DAGLoopNode } from './dag-loop-node';
@@ -19,6 +19,26 @@ interface DAGTimelineProps {
   ) => void;
   repoBaseUrl: string | null;
   projectName: string;
+}
+
+/**
+ * Parse the iteration-encoded `lostKey` and return the chain of ancestor
+ * loop nodeIds, ordered deepest-first (longest prefix first). The encoding
+ * follows `buildIterationChildNodeId` (`${parentNodeId}.iter${N}.${childNodeId}`)
+ * and `buildCorrectiveChildNodeId` (which builds on a parent already shaped as
+ * `${loopId}.iter${N}`), so each `.iter\d+\.` boundary in the key marks an
+ * ancestor loop nodeId ending. A lostKey with no `.iter\d+\.` boundary
+ * (e.g. a top-level row key) returns an empty array — there is no loop to
+ * fall back to.
+ */
+export function deriveAncestorLoopKeys(lostKey: string): string[] {
+  const result: string[] = [];
+  const regex = /\.iter\d+\./g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(lostKey)) !== null) {
+    result.push(lostKey.slice(0, match.index));
+  }
+  return result.reverse();
 }
 
 export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName }: DAGTimelineProps) {
@@ -65,6 +85,26 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
     }
     items[nextIndex].focus();
   }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (document.activeElement !== document.body) return;
+    if (focusedRowKey === null) return;
+
+    const container = containerRef.current;
+    if (container === null) return;
+
+    const ancestorKeys = deriveAncestorLoopKeys(focusedRowKey);
+    for (const ancestorKey of ancestorKeys) {
+      const target = container.querySelector<HTMLElement>(
+        `[data-row-key="${CSS.escape(ancestorKey)}"]`
+      );
+      if (target !== null) {
+        target.focus();
+        return;
+      }
+    }
+  }, [expandedLoopIds, focusedRowKey]);
 
   const renderNodeEntry = ([nodeId, node]: [string, NodeState]): ReactNode => (
     <div key={nodeId} role="presentation">

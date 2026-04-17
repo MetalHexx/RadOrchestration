@@ -55,6 +55,7 @@ export function DAGLoopNode({
           className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center"
           tabIndex={isFocused ? 0 : -1}
           data-timeline-row
+          data-row-key={nodeId}
           onFocus={handleFocus}
         >
           <NodeKindIcon kind={node.kind} />
