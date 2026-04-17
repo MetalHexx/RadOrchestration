@@ -372,6 +372,40 @@ test('DAGLoopNodeProps contract fixture: isFocused is boolean and onFocusChange 
   assert.strictEqual(typeof _propsContractFixture.onFocusChange, 'function');
 });
 
+// ─── Source-text: AccordionTrigger listbox-option semantics ──────────────────
+
+test('dag-loop-node.tsx source contains role="option" on the AccordionTrigger (listbox-option parity with DAGNodeRow)', () => {
+  assert.ok(
+    loopNodeSource.includes('role="option"'),
+    'dag-loop-node.tsx must set role="option" on the AccordionTrigger so every focusable row inside the listbox container exposes option semantics'
+  );
+});
+
+test('dag-loop-node.tsx source contains aria-selected={isActive} on the AccordionTrigger (selection tracks SSE currentNodePath)', () => {
+  assert.ok(
+    loopNodeSource.includes('aria-selected={isActive}'),
+    'dag-loop-node.tsx must wire aria-selected={isActive} on the AccordionTrigger so the current pipeline step is announced as the selected listbox option'
+  );
+});
+
+test('dag-loop-node.tsx source contains aria-label={ariaLabel} on the AccordionTrigger (accessible name parity with DAGNodeRow)', () => {
+  assert.ok(
+    loopNodeSource.includes('aria-label={ariaLabel}'),
+    'dag-loop-node.tsx must wire aria-label={ariaLabel} on the AccordionTrigger so screen readers announce a consistent "<display name> — <status>" name across rows and loop triggers'
+  );
+});
+
+test('dag-loop-node.tsx derives isActive from currentNodePath and builds ariaLabel from display name + status label', () => {
+  assert.ok(
+    loopNodeSource.includes('const isActive = nodeId === currentNodePath'),
+    'dag-loop-node.tsx must compute isActive = nodeId === currentNodePath so aria-selected mirrors the SSE current-step signal'
+  );
+  assert.ok(
+    /const ariaLabel = `\$\{getDisplayName\(nodeId\)\} — \$\{STATUS_MAP\[node\.status\]\.defaultLabel\}`/.test(loopNodeSource),
+    'dag-loop-node.tsx must build ariaLabel from `${getDisplayName(nodeId)} — ${STATUS_MAP[node.status].defaultLabel}` to mirror DAGNodeRow'
+  );
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

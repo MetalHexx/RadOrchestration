@@ -457,6 +457,17 @@ test('dag-timeline.tsx does NOT contain placeholder isFocused={false} (regressio
   );
 });
 
+test('dag-timeline.tsx contains focus-recovery useEffect that reseeds focusedRowKey when null or stale', () => {
+  assert.ok(
+    timelineSource.includes('!focusableRowKeys.includes(focusedRowKey)'),
+    'dag-timeline.tsx must include the staleness guard `!focusableRowKeys.includes(focusedRowKey)` so focus recovers when the focused key disappears'
+  );
+  assert.ok(
+    timelineSource.includes('setFocusedRowKey(focusableRowKeys[0])'),
+    'dag-timeline.tsx must reseed focusedRowKey to focusableRowKeys[0] in the recovery effect so the listbox stays Tab-enterable after SSE-late row arrival'
+  );
+});
+
 test('dag-timeline.tsx does NOT contain placeholder onFocusChange={() => {}} (regression guard: all placeholders replaced)', () => {
   assert.ok(
     !timelineSource.includes('onFocusChange={() => {}}'),

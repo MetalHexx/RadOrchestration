@@ -61,6 +61,13 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
 
   const [focusedRowKey, setFocusedRowKey] = useState<string | null>(() => focusableRowKeys[0] ?? null);
 
+  useEffect(() => {
+    if (focusableRowKeys.length === 0) return;
+    if (focusedRowKey === null || !focusableRowKeys.includes(focusedRowKey)) {
+      setFocusedRowKey(focusableRowKeys[0]);
+    }
+  }, [focusableRowKeys, focusedRowKey]);
+
   const handleFocusChange = useCallback((nodeId: string) => {
     setFocusedRowKey(nodeId);
   }, []);
