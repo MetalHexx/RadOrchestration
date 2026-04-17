@@ -88,12 +88,19 @@ function computeRowTabIndex(isFocused: boolean): 0 | -1 {
   return isFocused ? 0 : -1;
 }
 
-// Mirrors the onKeyDown decision logic in DAGNodeRow: only Enter and Space
-// trigger gate click forwarding, and only when the row has a gate button.
-function decideKeyDownAction(key: string, hasGate: boolean): 'click-gate' | 'noop' {
+// Mirrors the onKeyDown decision logic in DAGNodeRow.
+// Enter/Space always preventDefault (swallow space-scroll on listbox options);
+// gate wins over doc; doc rows open their document; rows with neither action
+// still swallow the keystroke.
+function decideKeyDownAction(
+  key: string,
+  hasGate: boolean,
+  hasDoc: boolean,
+): 'click-gate' | 'open-doc' | 'swallow' | 'noop' {
   if (key !== 'Enter' && key !== ' ') return 'noop';
-  if (!hasGate) return 'noop';
-  return 'click-gate';
+  if (hasGate) return 'click-gate';
+  if (hasDoc) return 'open-doc';
+  return 'swallow';
 }
 
 // Static-markup invariants the production component emits on the row's
@@ -527,36 +534,48 @@ test("row carries the 'data-timeline-row' attribute", () => {
 
 // ─── Tests: decideKeyDownAction ──────────────────────────────────────────────
 
-test("decideKeyDownAction('Enter', true) === 'click-gate'", () => {
-  assert.strictEqual(decideKeyDownAction('Enter', true), 'click-gate');
+test("decideKeyDownAction('Enter', true, false) === 'click-gate'", () => {
+  assert.strictEqual(decideKeyDownAction('Enter', true, false), 'click-gate');
 });
 
-test("decideKeyDownAction(' ', true) === 'click-gate'", () => {
-  assert.strictEqual(decideKeyDownAction(' ', true), 'click-gate');
+test("decideKeyDownAction(' ', true, false) === 'click-gate'", () => {
+  assert.strictEqual(decideKeyDownAction(' ', true, false), 'click-gate');
 });
 
-test("decideKeyDownAction('Enter', false) === 'noop'", () => {
-  assert.strictEqual(decideKeyDownAction('Enter', false), 'noop');
+test("decideKeyDownAction('Enter', true, true) === 'click-gate' (gate wins over doc)", () => {
+  assert.strictEqual(decideKeyDownAction('Enter', true, true), 'click-gate');
 });
 
-test("decideKeyDownAction(' ', false) === 'noop'", () => {
-  assert.strictEqual(decideKeyDownAction(' ', false), 'noop');
+test("decideKeyDownAction('Enter', false, true) === 'open-doc'", () => {
+  assert.strictEqual(decideKeyDownAction('Enter', false, true), 'open-doc');
 });
 
-test("decideKeyDownAction('Tab', true) === 'noop'", () => {
-  assert.strictEqual(decideKeyDownAction('Tab', true), 'noop');
+test("decideKeyDownAction(' ', false, true) === 'open-doc'", () => {
+  assert.strictEqual(decideKeyDownAction(' ', false, true), 'open-doc');
 });
 
-test("decideKeyDownAction('ArrowDown', true) === 'noop'", () => {
-  assert.strictEqual(decideKeyDownAction('ArrowDown', true), 'noop');
+test("decideKeyDownAction('Enter', false, false) === 'swallow'", () => {
+  assert.strictEqual(decideKeyDownAction('Enter', false, false), 'swallow');
 });
 
-test("decideKeyDownAction('ArrowUp', true) === 'noop'", () => {
-  assert.strictEqual(decideKeyDownAction('ArrowUp', true), 'noop');
+test("decideKeyDownAction(' ', false, false) === 'swallow'", () => {
+  assert.strictEqual(decideKeyDownAction(' ', false, false), 'swallow');
 });
 
-test("decideKeyDownAction('Escape', true) === 'noop'", () => {
-  assert.strictEqual(decideKeyDownAction('Escape', true), 'noop');
+test("decideKeyDownAction('Tab', true, true) === 'noop'", () => {
+  assert.strictEqual(decideKeyDownAction('Tab', true, true), 'noop');
+});
+
+test("decideKeyDownAction('ArrowDown', true, true) === 'noop'", () => {
+  assert.strictEqual(decideKeyDownAction('ArrowDown', true, true), 'noop');
+});
+
+test("decideKeyDownAction('ArrowUp', true, true) === 'noop'", () => {
+  assert.strictEqual(decideKeyDownAction('ArrowUp', true, true), 'noop');
+});
+
+test("decideKeyDownAction('Escape', true, true) === 'noop'", () => {
+  assert.strictEqual(decideKeyDownAction('Escape', true, true), 'noop');
 });
 
 // ─── Tests: gate-forwarding integration (pure-logic) ─────────────────────────
@@ -565,9 +584,15 @@ test("Enter on pending plan_approval_gate row forwards .click() to gate button",
   // Row would render the gate button (shouldRenderGateButton === true) AND
   // the keydown decision would forward Enter as a gate click.
   const renders = shouldRenderGateButton(pendingGateNode, 'plan_approval_gate', 'my-project');
-  const action = decideKeyDownAction('Enter', renders);
+  const action = decideKeyDownAction('Enter', renders, false);
   assert.strictEqual(renders, true);
   assert.strictEqual(action, 'click-gate');
+});
+
+test("Enter on step row with doc_path returns 'open-doc'", () => {
+  // Step rows with a non-null doc_path should keyboard-activate the doc.
+  const action = decideKeyDownAction('Enter', false, true);
+  assert.strictEqual(action, 'open-doc');
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

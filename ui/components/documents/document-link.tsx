@@ -16,14 +16,20 @@ interface DocumentLinkProps {
   label: string;
   /** Callback when the link is clicked (only fires when path is non-null) */
   onDocClick: (path: string) => void;
+  /**
+   * Optional tabIndex override. Defaults to the browser's natural tab order for
+   * a focusable <button>. DAGNodeRow passes -1 to keep the row's roving-tabindex
+   * scheme intact.
+   */
+  tabIndex?: number;
 }
 
-export function DocumentLink({ path, label, onDocClick }: DocumentLinkProps) {
+export function DocumentLink({ path, label, onDocClick, tabIndex }: DocumentLinkProps) {
   if (path !== null) {
     return (
       <button
         type="button"
-        tabIndex={-1}
+        tabIndex={tabIndex}
         className="inline-flex items-center gap-1.5 text-primary hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
         aria-label={label}
         onClick={() => onDocClick(path)}

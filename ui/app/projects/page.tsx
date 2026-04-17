@@ -129,7 +129,7 @@ export default function ProjectsPage() {
                 <p className="text-sm text-destructive" role="alert">{error}</p>
               </div>
             </div>
-          ) : selected && !v5State && !v4State ? (
+          ) : selected && selected.schemaVersion === 'v5' && !v5State && !v4State ? (
             <div className="overflow-auto">
               <ProjectHeader
                 projectName={selected.name}

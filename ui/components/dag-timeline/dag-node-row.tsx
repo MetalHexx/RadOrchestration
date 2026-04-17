@@ -43,11 +43,13 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
     if (hasGate && gateButtonRef.current !== null) {
-      event.preventDefault();
       gateButtonRef.current.click();
+    } else if (node.kind === 'step' && node.doc_path !== null) {
+      onDocClick(node.doc_path);
     }
-  }, [hasGate]);
+  }, [hasGate, node, onDocClick]);
 
   return (
     <div
@@ -75,7 +77,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
         </span>
       )}
       {node.kind === 'step' && node.doc_path !== null && (
-        <DocumentLink path={node.doc_path} label="Doc" onDocClick={onDocClick} />
+        <DocumentLink path={node.doc_path} label="Doc" onDocClick={onDocClick} tabIndex={-1} />
       )}
       {gateConfig !== null && (
         <ApproveGateButton
