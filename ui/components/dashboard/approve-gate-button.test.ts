@@ -46,6 +46,7 @@ interface ApproveGateButtonInputs {
   documentName: string;
   label: string;
   className?: string;
+  tabIndex?: number;
 }
 
 interface HookState {
@@ -68,17 +69,32 @@ const DIALOG_DESCRIPTIONS: Record<GateEvent, string> = {
 /**
  * Simulates the ApproveGateButton rendering logic.
  * Returns what the component would render based on its props and hook state.
+ *
+ * The optional fourth argument `refSlot` mirrors the ref forwarding in the
+ * production component: when provided, the simulator sets `refSlot.current`
+ * to a placeholder HTMLButtonElement-like object and records `refReceived: true`
+ * on the trigger button. This models the React.forwardRef wiring without
+ * requiring a DOM rendering library.
  */
 function simulateApproveGateButton(
   props: ApproveGateButtonInputs,
   hookState: HookState,
   open: boolean,
+  refSlot?: { current: HTMLButtonElement | null },
 ) {
-  const { gateEvent, documentName, label, className } = props;
+  const { gateEvent, documentName, label, className, tabIndex } = props;
   const { isPending, error } = hookState;
 
   const dialogTitle = DIALOG_TITLES[gateEvent];
   const consequenceDescription = DIALOG_DESCRIPTIONS[gateEvent];
+
+  // Simulate ref attachment: if a refSlot was provided, attach a placeholder
+  // element to it (mirrors the production component forwarding ref to <Button>).
+  let refReceived = false;
+  if (refSlot !== undefined) {
+    refSlot.current = {} as HTMLButtonElement;
+    refReceived = true;
+  }
 
   // Trigger button
   const triggerButton = isPending
@@ -89,6 +105,8 @@ function simulateApproveGateButton(
         disabled: true,
         "aria-busy": "true" as const,
         "aria-disabled": "true" as const,
+        tabIndex,
+        refReceived,
         text: "Approving…",
         spinner: {
           className: "size-3.5 animate-spin",
@@ -102,6 +120,8 @@ function simulateApproveGateButton(
         disabled: false,
         "aria-busy": undefined,
         "aria-disabled": undefined,
+        tabIndex,
+        refReceived,
         text: label,
         spinner: null,
       };
@@ -381,6 +401,71 @@ test("Closing the dialog (via onOpenChange(false)) calls clearError()", () => {
   handleOpenChange(false);
   assert.strictEqual(cleared, true, "clearError should be called when dialog closes");
   assert.strictEqual(dialogOpen, false, "Dialog should be closed");
+});
+
+// ---------- New tests: tabIndex prop forwarding ----------
+
+test("Trigger button receives tabIndex={-1} when caller passes -1", () => {
+  const result = simulateApproveGateButton(
+    {
+      gateEvent: "plan_approved",
+      projectName: "my-project",
+      documentName: "MASTER-PLAN.md",
+      label: "Approve Plan",
+      tabIndex: -1,
+    },
+    { isPending: false, error: null },
+    false,
+  );
+  assert.strictEqual(result.triggerButton.tabIndex, -1);
+});
+
+test("Trigger button receives tabIndex={0} when caller passes 0", () => {
+  const result = simulateApproveGateButton(
+    {
+      gateEvent: "plan_approved",
+      projectName: "my-project",
+      documentName: "MASTER-PLAN.md",
+      label: "Approve Plan",
+      tabIndex: 0,
+    },
+    { isPending: false, error: null },
+    false,
+  );
+  assert.strictEqual(result.triggerButton.tabIndex, 0);
+});
+
+test("Trigger button tabIndex is undefined when caller does not supply the prop", () => {
+  const result = simulateApproveGateButton(
+    {
+      gateEvent: "plan_approved",
+      projectName: "my-project",
+      documentName: "MASTER-PLAN.md",
+      label: "Approve Plan",
+    },
+    { isPending: false, error: null },
+    false,
+  );
+  assert.strictEqual(result.triggerButton.tabIndex, undefined);
+});
+
+// ---------- New test: ref forwarding ----------
+
+test("When caller supplies a ref slot, refReceived is true and refSlot.current is attached", () => {
+  const refSlot: { current: HTMLButtonElement | null } = { current: null };
+  const result = simulateApproveGateButton(
+    {
+      gateEvent: "plan_approved",
+      projectName: "my-project",
+      documentName: "MASTER-PLAN.md",
+      label: "Approve Plan",
+    },
+    { isPending: false, error: null },
+    false,
+    refSlot,
+  );
+  assert.strictEqual(result.triggerButton.refReceived, true);
+  assert.notStrictEqual(refSlot.current, null, "refSlot.current should be attached to the inner button element");
 });
 
 // ---------- Summary ----------
