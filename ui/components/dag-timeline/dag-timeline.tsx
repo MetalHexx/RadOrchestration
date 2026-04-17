@@ -45,6 +45,8 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
           currentNodePath={currentNodePath}
           onDocClick={onDocClick}
           projectName={projectName}
+          isFocused={false}
+          onFocusChange={() => {}}
         />
       )}
     </div>

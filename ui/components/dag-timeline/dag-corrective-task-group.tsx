@@ -77,6 +77,8 @@ export function DAGCorrectiveTaskGroup({
                     depth={CORRECTIVE_CHILD_DEPTH}
                     currentNodePath={currentNodePath}
                     onDocClick={onDocClick}
+                    isFocused={false}
+                    onFocusChange={() => {}}
                   />
                 ))}
               </AccordionContent>

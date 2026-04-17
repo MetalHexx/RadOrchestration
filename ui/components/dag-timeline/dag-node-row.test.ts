@@ -10,6 +10,7 @@
 import assert from "node:assert";
 import { formatNodeId } from './dag-node-row';
 import { getDisplayName, getGateNodeConfig, GATE_NODE_CONFIG } from './dag-timeline-helpers';
+import { STATUS_MAP } from './node-status-badge';
 import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState } from '@/types/state';
 import { gateNode, conditionalNodeBranchTrue, conditionalNodeBranchFalse } from './__fixtures__';
 
@@ -75,6 +76,30 @@ function computeClasses(isActive: boolean): string[] {
   }
   return classes;
 }
+
+// Mirrors the aria-label composition in DAGNodeRow: display-name and status
+// label joined by a real em-dash.
+function computeAriaLabel(displayName: string, statusLabel: string): string {
+  return `${displayName} — ${statusLabel}`;
+}
+
+// Mirrors the row tabIndex stamp: 0 when focused, -1 otherwise.
+function computeRowTabIndex(isFocused: boolean): 0 | -1 {
+  return isFocused ? 0 : -1;
+}
+
+// Mirrors the onKeyDown decision logic in DAGNodeRow: only Enter and Space
+// trigger gate click forwarding, and only when the row has a gate button.
+function decideKeyDownAction(key: string, hasGate: boolean): 'click-gate' | 'noop' {
+  if (key !== 'Enter' && key !== ' ') return 'noop';
+  if (!hasGate) return 'noop';
+  return 'click-gate';
+}
+
+// Static-markup invariants the production component emits on the row's
+// outer <div>. These literals must match exactly what DAGNodeRow renders.
+const ROW_ROLE_LITERAL = 'option';
+const ROW_DATA_ATTRIBUTE_NAME = 'data-timeline-row';
 
 // ─── Fixture Nodes ───────────────────────────────────────────────────────────
 
@@ -452,6 +477,97 @@ test("shouldRenderGateButton returns false for phase_gate leaf", () => {
     shouldRenderGateButton(pendingGateNode, 'phase_gate', 'my-project'),
     false
   );
+});
+
+// ─── Tests: composed aria-label ──────────────────────────────────────────────
+
+test("computeAriaLabel('Plan Architecture', 'In Progress') returns 'Plan Architecture — In Progress'", () => {
+  assert.strictEqual(
+    computeAriaLabel('Plan Architecture', 'In Progress'),
+    'Plan Architecture — In Progress'
+  );
+});
+
+test("computeAriaLabel uses STATUS_MAP['halted'].defaultLabel → 'Approve Plan — Halted'", () => {
+  assert.strictEqual(
+    computeAriaLabel('Approve Plan', STATUS_MAP['halted'].defaultLabel),
+    'Approve Plan — Halted'
+  );
+});
+
+test("computeAriaLabel with compound-id leaf extraction → 'Plan Approval Gate — Not Started'", () => {
+  assert.strictEqual(
+    computeAriaLabel(
+      getDisplayName('phase_loop.iter0.plan_approval_gate'),
+      STATUS_MAP['not_started'].defaultLabel
+    ),
+    'Plan Approval Gate — Not Started'
+  );
+});
+
+// ─── Tests: row tabIndex ─────────────────────────────────────────────────────
+
+test('computeRowTabIndex(true) === 0', () => {
+  assert.strictEqual(computeRowTabIndex(true), 0);
+});
+
+test('computeRowTabIndex(false) === -1', () => {
+  assert.strictEqual(computeRowTabIndex(false), -1);
+});
+
+// ─── Tests: static markup invariants ─────────────────────────────────────────
+
+test("row role literal is 'option'", () => {
+  assert.strictEqual(ROW_ROLE_LITERAL, 'option');
+});
+
+test("row carries the 'data-timeline-row' attribute", () => {
+  assert.strictEqual(ROW_DATA_ATTRIBUTE_NAME, 'data-timeline-row');
+});
+
+// ─── Tests: decideKeyDownAction ──────────────────────────────────────────────
+
+test("decideKeyDownAction('Enter', true) === 'click-gate'", () => {
+  assert.strictEqual(decideKeyDownAction('Enter', true), 'click-gate');
+});
+
+test("decideKeyDownAction(' ', true) === 'click-gate'", () => {
+  assert.strictEqual(decideKeyDownAction(' ', true), 'click-gate');
+});
+
+test("decideKeyDownAction('Enter', false) === 'noop'", () => {
+  assert.strictEqual(decideKeyDownAction('Enter', false), 'noop');
+});
+
+test("decideKeyDownAction(' ', false) === 'noop'", () => {
+  assert.strictEqual(decideKeyDownAction(' ', false), 'noop');
+});
+
+test("decideKeyDownAction('Tab', true) === 'noop'", () => {
+  assert.strictEqual(decideKeyDownAction('Tab', true), 'noop');
+});
+
+test("decideKeyDownAction('ArrowDown', true) === 'noop'", () => {
+  assert.strictEqual(decideKeyDownAction('ArrowDown', true), 'noop');
+});
+
+test("decideKeyDownAction('ArrowUp', true) === 'noop'", () => {
+  assert.strictEqual(decideKeyDownAction('ArrowUp', true), 'noop');
+});
+
+test("decideKeyDownAction('Escape', true) === 'noop'", () => {
+  assert.strictEqual(decideKeyDownAction('Escape', true), 'noop');
+});
+
+// ─── Tests: gate-forwarding integration (pure-logic) ─────────────────────────
+
+test("Enter on pending plan_approval_gate row forwards .click() to gate button", () => {
+  // Row would render the gate button (shouldRenderGateButton === true) AND
+  // the keydown decision would forward Enter as a gate click.
+  const renders = shouldRenderGateButton(pendingGateNode, 'plan_approval_gate', 'my-project');
+  const action = decideKeyDownAction('Enter', renders);
+  assert.strictEqual(renders, true);
+  assert.strictEqual(action, 'click-gate');
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

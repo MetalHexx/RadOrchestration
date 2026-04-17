@@ -154,6 +154,8 @@ export function DAGIterationPanel({
             depth={ITERATION_CHILD_DEPTH}
             currentNodePath={currentNodePath}
             onDocClick={onDocClick}
+            isFocused={false}
+            onFocusChange={() => {}}
           />
         )
       )}
