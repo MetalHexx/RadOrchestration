@@ -33,7 +33,11 @@ Generate a Phase Report after all tasks in a phase are complete. Summarizes phas
 7. **Identify carry-forward items**: Anything the next phase must address
 8. **Recommend adjustments**: If phase outcomes suggest the Master Plan needs adjustment
 9. **Write the Phase Report**: Use the bundled template at [templates/PHASE-REPORT.md](./templates/PHASE-REPORT.md)
-10. **Save**: Write to `{PROJECT-DIR}/reports/{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md`
+10. **Save**: Write based on corrective status:
+    - Normal (first-time): `{PROJECT-DIR}/reports/{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md`
+    - Corrective: `{PROJECT-DIR}/reports/{NAME}-PHASE-REPORT-P{NN}-{TITLE}-C{corrective_index}.md`
+
+    The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) report is preserved, not overwritten. (See `rad-create-plans/references/phase-plan/workflow.md` lines 135–150 for the shared pattern.)
 
 ## Key Rules
 
