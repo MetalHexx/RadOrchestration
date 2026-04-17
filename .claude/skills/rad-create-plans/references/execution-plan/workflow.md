@@ -84,12 +84,12 @@ becomes task-local and action-oriented.
    - Modify: `exact/path/to/existing.ts:45-60`
    - Test: `tests/exact/path.test.ts`
 
-   - [ ] **Step 1: Write the failing test**
+   - [ ] **Step 1: Write the failing test (FR-1)**
        (exact test code inline)
    - [ ] **Step 2: Run test, confirm it fails**
        Run: `npm test -- login.test.ts`
        Expected: FAIL — {reason} (FR-1)
-   - [ ] **Step 3: Implement minimal code**
+   - [ ] **Step 3: Implement minimal code (FR-1)**
        (exact implementation inline)
    - [ ] **Step 4: Run test, confirm pass**
        Run: `npm test -- login.test.ts`

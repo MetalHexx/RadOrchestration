@@ -6,7 +6,7 @@ user-invocable: false
 
 # rad-create-plans
 
-A consolidated skill for creating planning documents. It loads shared guidelines and self-review conventions, then routes to the correct per-document-type workflow based on the invoking agent's identity.
+A consolidated skill for creating planning documents. Most routes load shared guidelines and self-review conventions before routing; planner routes (Requirements, Execution Plan) are self-contained and skip `references/shared/`. Routing is based on the invoking agent's identity.
 
 ## When to Use This Skill
 

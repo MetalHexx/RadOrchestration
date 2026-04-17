@@ -36,7 +36,7 @@ author: "planner-agent"
 - Create: `src/components/LoginForm.tsx`
 - Test: `src/components/__tests__/LoginForm.test.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing test (FR-1)**
     ```tsx
     import { render, screen } from '@testing-library/react';
     import { LoginForm } from '../LoginForm';
@@ -50,7 +50,7 @@ author: "planner-agent"
 - [ ] **Step 2: Run test, confirm it fails**
     Run: `npm test -- LoginForm.test.tsx`
     Expected: FAIL — `LoginForm` module does not exist yet (FR-1)
-- [ ] **Step 3: Implement minimal code**
+- [ ] **Step 3: Implement minimal code (FR-1, DD-1)**
     ```tsx
     import { FormEvent } from 'react';
 
