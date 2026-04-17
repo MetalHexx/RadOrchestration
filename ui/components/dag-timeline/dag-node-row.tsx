@@ -52,6 +52,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
   return (
     <div
       role="option"
+      aria-selected={false}
       tabIndex={isFocused ? 0 : -1}
       data-timeline-row
       aria-label={ariaLabel}
