@@ -442,6 +442,8 @@ Addressed by the audit in §4.2. Summary:
 
 Cleanup phases and corrective tasks may benefit from visual differentiation in the timeline (e.g., a subtle badge or color). Not required for correctness; nice-to-have for operator clarity. Worth discussing when the refactor reaches UI tasks.
 
+**Related**: prompt regression testing for the planner pipeline lives outside `.claude/` in `/prompt-tests/`; see §13 and Iteration 3.
+
 ---
 
 ## 11. Future Direction (Not In Scope)
@@ -473,6 +475,7 @@ Captured here as a reference trail so the planner knows what was explicitly cons
 5. **Cleanup phase naming**: auto-generated `P{N+1}-CLEANUP` where N is the count of pre-existing phases. Predictable, scriptable, distinguishable by suffix. Not authored by the reviewer. See §5.3.
 6. **Schema strategy**: extend v5 in place with optional fields — no v6 bump, no migrator. Rationale: every new field is additive and optional; old state files remain valid without migration. See §7.2.
 7. **Execution Plan edit-after-approval**: immutable after approval. Any change requires full replan. Rationale: simplest semantics, no mutation reconciliation; replanning is cheap under the new pipeline. See §3.2 and §3.3.
+8. **Prompt regression harness**: lives outside `.claude/` at `/prompt-tests/`, organized one folder per behavior with fixtures nested inside. Driven by a per-behavior `_runner.md` prompt the operator pastes into a fresh Claude session — no new skill, no orchestrator involvement. Output is timestamped per run for diff-based comparison; structural linters run automatically, semantic judgement is human-only for v1. First behavior is `plan-pipeline-e2e` with RAINBOW-HELLO as the first fixture. Rationale: planner-agent output is non-deterministic; structural checks catch format bugs cheaply while humans judge whether the planning decomposition is sensible. Executor validation is a future behavior, not part of v1. See §13.
 
 **Still open for the planner to decide** (not brainstormed, not high-risk):
 
@@ -482,7 +485,106 @@ Captured here as a reference trail so the planner knows what was explicitly cons
 
 ---
 
-## 13. Recommended Iteration Shape
+## 13. Prompt Regression Test Harness
+
+### 13.1 Purpose and Scope
+
+An operator-run, human-reviewed E2E harness that exercises the new planning pipeline end to end: brainstorm → Requirements → Execution Plan → explosion script → exploded phase/task docs. It is the main tool for catching regressions when planner-agent prompts or the explosion script are tweaked during later iterations.
+
+**Scope boundary for v1**: the chain stops at exploded phase/task docs. Running exploded tasks through the executor + code reviewer to validate downstream consumption is a separate, future harness behavior.
+
+**Not in scope for v1**: automated pass/fail gating, CI integration, reviewer-subagent semantic passes, multiple fixtures. The v1 output is a set of artifacts a human reviews alongside a structural lint report.
+
+### 13.2 Why Outside `.claude/`
+
+The harness is not a skill — it has no reason to load on every session, and it's driven by humans editing a runner prompt, not by agents loading instructions. Living outside `.claude/` keeps session context clean and makes the harness an independent artifact owned by whoever maintains planner prompts.
+
+### 13.3 Folder Layout
+
+```
+prompt-tests/
+  README.md                                 # overall purpose + how to add a new behavior
+  tools/
+    lint-requirements.mjs                   # shared structural linter
+    lint-execution-plan.mjs                 # shared structural linter
+  plan-pipeline-e2e/                        # first behavior (one folder per behavior)
+    README.md                               # what this behavior tests, acceptance criteria
+    _runner.md                              # prompt operator pastes into a fresh Claude session
+    fixtures/
+      rainbow-hello/
+        BRAINSTORMING.md                    # copied from C:\dev\orchestration-projects\RAINBOW-HELLO\
+    output/
+      rainbow-hello/
+        2026-04-17-143022/                  # one timestamped subfolder per run
+          REQUIREMENTS.md
+          EXECUTION-PLAN.md
+          exploded/
+            phases/
+            tasks/
+          lint-report.md                    # auto-generated
+          run-notes.md                      # blank template for human review notes
+```
+
+- Fixtures are checked in (brainstorm-only; full project copies are noise).
+- `/prompt-tests/**/output/**` is gitignored except `.gitkeep` scaffolding. Baseline runs that are explicitly captured for reference can be added back under `output/` with a narrower `.gitignore` exception if needed.
+- Behavior folders are additive: future behaviors (e.g., `executor-end-to-end/`, `corrective-cycle/`) sit beside `plan-pipeline-e2e/` without touching it.
+
+### 13.4 Runner Model
+
+Each behavior folder has a `_runner.md` the operator pastes into a fresh Claude session. The runner is a declarative prompt — it does not mock the orchestrator's state machine; it simply invokes the same planner subagents the pipeline invokes, in isolation.
+
+A typical run drives Claude to:
+
+1. Choose a fixture (default: `rainbow-hello`) and create a new timestamped folder under `output/<fixture>/<YYYY-MM-DD-HHMMSS>/`.
+2. Spawn the Requirements agent (new in iteration 1) with the fixture's `BRAINSTORMING.md` as input; write the result to `REQUIREMENTS.md` in the run folder.
+3. Spawn the Execution Plan agent (new in iteration 1) with `REQUIREMENTS.md` as input; write the result to `EXECUTION-PLAN.md`.
+4. Invoke the explosion script (new in iteration 2) against `EXECUTION-PLAN.md`; emit exploded docs into `exploded/phases/` and `exploded/tasks/`.
+5. Run the shared linters and write `lint-report.md` summarizing pass/fail per check.
+6. Emit a blank `run-notes.md` with a human-review checklist (see §13.6).
+
+The runner is deliberately agent-driven rather than shell-scripted because the planner subagents are spawned through the `Agent` tool and don't have a standalone CLI entry point.
+
+### 13.5 Shared Linters
+
+Two Node scripts in `/prompt-tests/tools/`, callable from the runner or standalone. They read a target doc, write findings to stdout or a specified report file, and never halt the run — findings are informational, not gating.
+
+**`lint-requirements.mjs`** validates:
+
+- Frontmatter (`project`, `type: requirements`, `created`, `status`, `requirement_count` present and well-typed).
+- Every heading matching `^### (FR|NFR|AD|DD)-\d+:` is followed by a short description.
+- Every requirement block is ≤500 tokens (whitespace-based estimate or `tiktoken` if available) — the hard constraint from §3.1.
+- `requirement_count` frontmatter matches the actual count of FR/NFR/AD/DD blocks.
+- Stable numbering: no gaps or duplicates within each type.
+
+**`lint-execution-plan.mjs`** validates:
+
+- Frontmatter.
+- Phase headings match `^## P\d{2}:`; task headings match `^### P\d{2}-T\d{2}:`.
+- Phase descriptions ≤3 sentences, task descriptions ≤2 sentences (best-effort sentence counting).
+- Referential integrity: every `FR-N`/`NFR-N`/`AD-N`/`DD-N` tag mentioned in the Execution Plan resolves to a block in the companion Requirements doc.
+- Optional coverage check: every requirement is referenced by ≥1 task.
+
+Linter failures surface gaps but don't fail the run. The run is considered "complete" when the output folder contains all expected artifacts; whether those artifacts are good enough is a human call.
+
+### 13.6 Human Review
+
+`run-notes.md` ships as a blank template the reviewer fills in after inspecting the output. Default checklist:
+
+- Do the Requirements capture the brainstormed scope? Are FR/NFR/AD/DD tags used correctly?
+- Does the Execution Plan decompose into sensible phases and tasks?
+- Does each task have enough inlined context to execute without re-reading upstream docs?
+- Did the explosion script split cleanly? Any malformed outputs?
+- What did the linters flag, and is each flag worth acting on?
+
+Comparing across runs (after tweaking a planner prompt, for example) is done by diffing timestamped output folders.
+
+### 13.7 First Fixture: `rainbow-hello`
+
+The RAINBOW-HELLO brainstorming doc is small (single sprint, ~4–6 tasks expected), well-scoped, and already written. It's copied into `fixtures/rainbow-hello/BRAINSTORMING.md` with a normalized filename so the runner doesn't need per-fixture path logic. Additional fixtures (medium-scale, near-ceiling task count) can be added later without changing the runner or linters.
+
+---
+
+## 14. Recommended Iteration Shape
 
 Not a task list. A high-level ordering suggestion the planning cycle can use as a starting point.
 
@@ -504,14 +606,23 @@ Not a task list. A high-level ordering suggestion the planning cycle can use as 
 - Extend the orchestrator to invoke explosion as a pipeline action.
 - Seed `state.json` iterations with the exploded layout.
 - Update schema types and validators for pre-seeded iterations and doc-path population.
+- Deterministic vitest tests for the explosion-script parser land alongside the script itself under `.claude/skills/orchestration/scripts/tests/`, reusing existing fixture patterns.
 
-**Iteration 3 — New process template:**
+**Iteration 3 — Prompt regression harness:**
+
+- Scaffold `/prompt-tests/` (root README, shared `tools/lint-requirements.mjs`, `tools/lint-execution-plan.mjs`).
+- Author the first behavior folder `plan-pipeline-e2e/` — its `README.md`, `_runner.md`, and `fixtures/rainbow-hello/BRAINSTORMING.md` (copied from `C:\dev\orchestration-projects\RAINBOW-HELLO\RAINBOW-HELLO-BRAINSTORMING.md`).
+- Add a `.gitignore` rule to exclude `/prompt-tests/**/output/**` except `.gitkeep` scaffolding.
+- Run the harness once against RAINBOW-HELLO and commit the resulting output folder as a baseline for future diff-based review.
+- Depends on iterations 1 (doc formats) and 2 (explosion script). See §13 for design.
+
+**Iteration 4 — New process template:**
 
 - Author the new template (e.g., `cheaper.yml`) with Requirements, Execution Plan, explosion, and the existing phase/task loop — minus `phase_planning` and `task_handoff`.
 - Plan-approval gate sits post-explosion.
 - Integration tests cover the happy path end-to-end.
 
-**Iteration 4 — Corrective cycle redesign:**
+**Iteration 5 — Corrective cycle redesign:**
 
 - Update the code-review skill to amend task handoffs with `## Correction N — YYYY-MM-DD — <title>` sections instead of emitting separate reports.
 - Add correction mode to `execute-coding-task` skill.
@@ -519,18 +630,18 @@ Not a task list. A high-level ordering suggestion the planning cycle can use as 
 - Redirect phase-level corrective behavior from re-planning to appended corrective tasks.
 - Add `max_phase_review_retries` to `orchestration.yml` and enforce in mutations.
 
-**Iteration 5 — Final review and cleanup phase:**
+**Iteration 6 — Final review and cleanup phase:**
 
 - Redefine final review skill to consume Requirements doc + cumulative diff only (conformance + quality sweep).
 - Implement cleanup phase injection (single `P{N+1}-CLEANUP` phase, append tasks on repeat rejections) on final review rejection.
 - Add `max_final_review_retries` to `orchestration.yml` and enforce in mutations.
 
-**Iteration 6 — UI polish (optional):**
+**Iteration 7 — UI polish (optional):**
 
 - Visual differentiation for cleanup phases and corrective tasks in the DAG timeline.
 - Tweak `doc_path` and verdict initialization to match type contracts cleanly.
 
-**Iteration 7 — `full.yml` retirement:**
+**Iteration 8 — `full.yml` retirement:**
 
 - Run one or two real projects on `cheaper.yml` and confirm no regressions.
 - Confirm no in-flight `full.yml` projects remain.
@@ -539,6 +650,6 @@ Not a task list. A high-level ordering suggestion the planning cycle can use as 
 
 ---
 
-## 14. Session Provenance
+## 15. Session Provenance
 
 Brainstormed on 2026-04-16. Decisions captured in this doc reflect the converged positions from that session; the "/brainstorm" transcript was the working medium and is not preserved verbatim. If you pick this up and disagree with a decision, that's fine — rewrite it. This is a starting position, not a constitution.
