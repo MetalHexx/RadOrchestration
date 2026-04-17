@@ -248,6 +248,397 @@ test('dag-timeline.tsx does NOT import fetch, api-client, or useApproveGate dire
   );
 });
 
+// ─── Roving-tabindex coordinator: pure-logic helpers ─────────────────────────
+
+/**
+ * Mirrors the production `useState<string | null>(() => focusableRowKeys[0] ?? null)`
+ * lazy initializer so tests can assert the initial-focus derivation without
+ * rendering the component.
+ */
+function deriveInitialFocusedRowKey(orderedKeys: readonly string[]): string | null {
+  return orderedKeys[0] ?? null;
+}
+
+/**
+ * Mirrors the `handleKeyDown` wrap-around index computation:
+ * - ArrowDown: `currentIndex < length - 1 ? currentIndex + 1 : 0`
+ * - ArrowUp:   `currentIndex > 0 ? currentIndex - 1 : length - 1`
+ * When `currentIndex === -1` (no row has focus), ArrowDown resolves to 0 and
+ * ArrowUp resolves to `length - 1` by the same expressions.
+ */
+function computeNextIndex(
+  direction: 'ArrowDown' | 'ArrowUp',
+  currentIndex: number,
+  length: number,
+): number {
+  if (direction === 'ArrowDown') {
+    return currentIndex < length - 1 ? currentIndex + 1 : 0;
+  }
+  return currentIndex > 0 ? currentIndex - 1 : length - 1;
+}
+
+/**
+ * Mirrors the production `tabIndex={isFocused ? 0 : -1}` expression where
+ * `isFocused` is `focusedRowKey === rowKey`. Returns `0` when the row is the
+ * currently focused row in the coordinator state, `-1` otherwise.
+ */
+function computeRowTabIndex(rowKey: string, focusedRowKey: string | null): 0 | -1 {
+  return rowKey === focusedRowKey ? 0 : -1;
+}
+
+// ─── Tests: deriveInitialFocusedRowKey ───────────────────────────────────────
+
+test('deriveInitialFocusedRowKey([]) === null (empty timeline has no initial focus)', () => {
+  assert.strictEqual(deriveInitialFocusedRowKey([]), null);
+});
+
+test('deriveInitialFocusedRowKey(["a"]) === "a" (single-row timeline)', () => {
+  assert.strictEqual(deriveInitialFocusedRowKey(['a']), 'a');
+});
+
+test('deriveInitialFocusedRowKey(["a", "b", "c"]) === "a" (first in document order)', () => {
+  assert.strictEqual(deriveInitialFocusedRowKey(['a', 'b', 'c']), 'a');
+});
+
+// ─── Tests: computeNextIndex ─────────────────────────────────────────────────
+
+test('computeNextIndex("ArrowDown", 0, 3) === 1 (advance forward)', () => {
+  assert.strictEqual(computeNextIndex('ArrowDown', 0, 3), 1);
+});
+
+test('computeNextIndex("ArrowDown", 1, 3) === 2 (advance forward)', () => {
+  assert.strictEqual(computeNextIndex('ArrowDown', 1, 3), 2);
+});
+
+test('computeNextIndex("ArrowDown", 2, 3) === 0 (wrap to start from last)', () => {
+  assert.strictEqual(computeNextIndex('ArrowDown', 2, 3), 0);
+});
+
+test('computeNextIndex("ArrowDown", -1, 3) === 0 (no current focus → first row)', () => {
+  assert.strictEqual(computeNextIndex('ArrowDown', -1, 3), 0);
+});
+
+test('computeNextIndex("ArrowUp", 2, 3) === 1 (advance backward)', () => {
+  assert.strictEqual(computeNextIndex('ArrowUp', 2, 3), 1);
+});
+
+test('computeNextIndex("ArrowUp", 1, 3) === 0 (advance backward)', () => {
+  assert.strictEqual(computeNextIndex('ArrowUp', 1, 3), 0);
+});
+
+test('computeNextIndex("ArrowUp", 0, 3) === 2 (wrap to end from first)', () => {
+  assert.strictEqual(computeNextIndex('ArrowUp', 0, 3), 2);
+});
+
+test('computeNextIndex("ArrowUp", -1, 3) === 2 (no current focus → last row)', () => {
+  assert.strictEqual(computeNextIndex('ArrowUp', -1, 3), 2);
+});
+
+test('computeNextIndex("ArrowDown", 0, 1) === 0 (single-row wrap-to-self)', () => {
+  assert.strictEqual(computeNextIndex('ArrowDown', 0, 1), 0);
+});
+
+test('computeNextIndex("ArrowUp", 0, 1) === 0 (single-row wrap-to-self)', () => {
+  assert.strictEqual(computeNextIndex('ArrowUp', 0, 1), 0);
+});
+
+// ─── Tests: computeRowTabIndex ───────────────────────────────────────────────
+
+test('computeRowTabIndex("a", "a") === 0 (focused row is tabbable)', () => {
+  assert.strictEqual(computeRowTabIndex('a', 'a'), 0);
+});
+
+test('computeRowTabIndex("a", "b") === -1 (unfocused row is not tabbable)', () => {
+  assert.strictEqual(computeRowTabIndex('a', 'b'), -1);
+});
+
+test('computeRowTabIndex("a", null) === -1 (no focused row → row not tabbable)', () => {
+  assert.strictEqual(computeRowTabIndex('a', null), -1);
+});
+
+test('computeRowTabIndex("b", null) === -1 (no focused row → row not tabbable)', () => {
+  assert.strictEqual(computeRowTabIndex('b', null), -1);
+});
+
+// ─── Tests: single-tabindex=0 invariant ──────────────────────────────────────
+
+test('single-tabindex=0 invariant: focusedRowKey="b" in ["a","b","c"] → [-1, 0, -1]', () => {
+  const orderedKeys = ['a', 'b', 'c'];
+  const result = orderedKeys.map((k) => computeRowTabIndex(k, 'b'));
+  assert.deepStrictEqual(result, [-1, 0, -1]);
+  const zeros = result.filter((v) => v === 0);
+  assert.strictEqual(zeros.length, 1, 'exactly one row should carry tabindex=0');
+});
+
+test('single-tabindex=0 invariant: focusedRowKey=null in ["a","b","c"] → all -1 (empty coordinator state)', () => {
+  const orderedKeys = ['a', 'b', 'c'];
+  const result = orderedKeys.map((k) => computeRowTabIndex(k, null));
+  assert.deepStrictEqual(result, [-1, -1, -1]);
+  const zeros = result.filter((v) => v === 0);
+  assert.strictEqual(zeros.length, 0, 'no row should carry tabindex=0 when focusedRowKey is null');
+});
+
+// ─── Source-text invariants: dag-timeline.tsx coordinator wiring ─────────────
+
+test('dag-timeline.tsx contains role="listbox" (outer container role swap)', () => {
+  assert.ok(
+    timelineSource.includes('role="listbox"'),
+    'dag-timeline.tsx must declare role="listbox" on the outer container'
+  );
+});
+
+test('dag-timeline.tsx contains aria-label="Pipeline timeline"', () => {
+  assert.ok(
+    timelineSource.includes('aria-label="Pipeline timeline"'),
+    'dag-timeline.tsx must declare aria-label="Pipeline timeline" on the outer container'
+  );
+});
+
+test('dag-timeline.tsx contains ref={containerRef} (ref attachment for descendant query)', () => {
+  assert.ok(
+    timelineSource.includes('ref={containerRef}'),
+    'dag-timeline.tsx must attach a containerRef to the outer container for the [data-timeline-row] descendant query'
+  );
+});
+
+test('dag-timeline.tsx contains onKeyDown={handleKeyDown} (arrow-key handler wired on container)', () => {
+  assert.ok(
+    timelineSource.includes('onKeyDown={handleKeyDown}'),
+    'dag-timeline.tsx must attach onKeyDown={handleKeyDown} to the outer container'
+  );
+});
+
+test('dag-timeline.tsx contains [data-timeline-row] (descendant query selector for roving coordinator)', () => {
+  assert.ok(
+    timelineSource.includes('[data-timeline-row]'),
+    'dag-timeline.tsx must query [data-timeline-row] descendants (not [role="option"]) so loop triggers are reached on equal footing'
+  );
+});
+
+test('dag-timeline.tsx contains isFocused={focusedRowKey === nodeId} on both renderNodeEntry branches (>= 2 occurrences)', () => {
+  const matches = timelineSource.match(/isFocused=\{focusedRowKey === nodeId\}/g) ?? [];
+  assert.ok(
+    matches.length >= 2,
+    `expected at least 2 isFocused={focusedRowKey === nodeId} occurrences (one per DAGLoopNode / DAGNodeRow branch), got ${matches.length}`
+  );
+});
+
+test('dag-timeline.tsx contains onFocusChange={handleFocusChange} on both renderNodeEntry branches (>= 2 occurrences)', () => {
+  const matches = timelineSource.match(/onFocusChange=\{handleFocusChange\}/g) ?? [];
+  assert.ok(
+    matches.length >= 2,
+    `expected at least 2 onFocusChange={handleFocusChange} occurrences (one per branch), got ${matches.length}`
+  );
+});
+
+test('dag-timeline.tsx does NOT contain role="list" (regression guard: container role flipped from list to listbox)', () => {
+  // Strip JSDoc / line comments so doc-comment references don't trip the check.
+  const codeOnly = timelineSource
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  assert.ok(
+    !codeOnly.includes('role="list"'),
+    'dag-timeline.tsx must NOT contain role="list" — the container role flipped to "listbox" and per-entry wrappers flipped to "presentation"'
+  );
+});
+
+test('dag-timeline.tsx does NOT contain placeholder isFocused={false} (regression guard: all placeholders replaced)', () => {
+  assert.ok(
+    !timelineSource.includes('isFocused={false}'),
+    'dag-timeline.tsx must NOT contain isFocused={false} — all placeholder literals must be replaced by the coordinator wiring'
+  );
+});
+
+test('dag-timeline.tsx does NOT contain placeholder onFocusChange={() => {}} (regression guard: all placeholders replaced)', () => {
+  assert.ok(
+    !timelineSource.includes('onFocusChange={() => {}}'),
+    'dag-timeline.tsx must NOT contain onFocusChange={() => {}} — all placeholder literals must be replaced by handleFocusChange'
+  );
+});
+
+// ─── Source-text invariants: dag-iteration-panel.tsx coordinator wiring ──────
+
+const iterationPanelSourceForCoordinator = readFileSync(
+  join(__dirname, 'dag-iteration-panel.tsx'),
+  'utf-8'
+);
+
+test('dag-iteration-panel.tsx does NOT contain placeholder isFocused={false} (regression guard)', () => {
+  assert.ok(
+    !iterationPanelSourceForCoordinator.includes('isFocused={false}'),
+    'dag-iteration-panel.tsx must NOT contain isFocused={false} — all placeholder literals must be replaced by focusedRowKey === childKey'
+  );
+});
+
+test('dag-iteration-panel.tsx does NOT contain placeholder onFocusChange={() => {}} (regression guard)', () => {
+  assert.ok(
+    !iterationPanelSourceForCoordinator.includes('onFocusChange={() => {}}'),
+    'dag-iteration-panel.tsx must NOT contain onFocusChange={() => {}} — all placeholder literals must be replaced by onFocusChange (coordinator-forwarded)'
+  );
+});
+
+test('dag-iteration-panel.tsx contains isFocused={focusedRowKey === childKey} on both iteration-child branches (>= 2 occurrences)', () => {
+  const matches = iterationPanelSourceForCoordinator.match(/isFocused=\{focusedRowKey === childKey\}/g) ?? [];
+  assert.ok(
+    matches.length >= 2,
+    `expected at least 2 isFocused={focusedRowKey === childKey} occurrences (one per DAGLoopNode / DAGNodeRow branch), got ${matches.length}`
+  );
+});
+
+test('dag-iteration-panel.tsx contains focusedRowKey={focusedRowKey} forwarded to nested DAGLoopNode and DAGCorrectiveTaskGroup (>= 2 occurrences)', () => {
+  const matches = iterationPanelSourceForCoordinator.match(/focusedRowKey=\{focusedRowKey\}/g) ?? [];
+  assert.ok(
+    matches.length >= 2,
+    `expected at least 2 focusedRowKey={focusedRowKey} occurrences (forwarded to DAGLoopNode and DAGCorrectiveTaskGroup), got ${matches.length}`
+  );
+});
+
+test('dag-iteration-panel.tsx contains onFocusChange={onFocusChange} forwarded to DAGLoopNode, DAGNodeRow, and DAGCorrectiveTaskGroup (>= 3 occurrences)', () => {
+  const matches = iterationPanelSourceForCoordinator.match(/onFocusChange=\{onFocusChange\}/g) ?? [];
+  assert.ok(
+    matches.length >= 3,
+    `expected at least 3 onFocusChange={onFocusChange} occurrences (forwarded to DAGLoopNode, DAGNodeRow, DAGCorrectiveTaskGroup), got ${matches.length}`
+  );
+});
+
+// ─── Source-text invariants: dag-corrective-task-group.tsx coordinator wiring ─
+
+const correctiveTaskGroupSourceForCoordinator = readFileSync(
+  join(__dirname, 'dag-corrective-task-group.tsx'),
+  'utf-8'
+);
+
+test('dag-corrective-task-group.tsx does NOT contain placeholder isFocused={false} (regression guard)', () => {
+  assert.ok(
+    !correctiveTaskGroupSourceForCoordinator.includes('isFocused={false}'),
+    'dag-corrective-task-group.tsx must NOT contain isFocused={false} — placeholder replaced by focusedRowKey === childKey'
+  );
+});
+
+test('dag-corrective-task-group.tsx does NOT contain placeholder onFocusChange={() => {}} (regression guard)', () => {
+  assert.ok(
+    !correctiveTaskGroupSourceForCoordinator.includes('onFocusChange={() => {}}'),
+    'dag-corrective-task-group.tsx must NOT contain onFocusChange={() => {}} — placeholder replaced by onFocusChange (coordinator-forwarded)'
+  );
+});
+
+test('dag-corrective-task-group.tsx contains isFocused={focusedRowKey === childKey} on the DAGNodeRow branch (>= 1 occurrence)', () => {
+  const matches = correctiveTaskGroupSourceForCoordinator.match(/isFocused=\{focusedRowKey === childKey\}/g) ?? [];
+  assert.ok(
+    matches.length >= 1,
+    `expected at least 1 isFocused={focusedRowKey === childKey} occurrence on the DAGNodeRow branch, got ${matches.length}`
+  );
+});
+
+// ─── TypeScript-level fixtures: new required-prop contracts compile ──────────
+
+// These declarations fail TypeScript compilation if the new required fields
+// (focusedRowKey, onFocusChange) are missing or mistyped on the component
+// prop interfaces — mirroring the test-fixture pattern already used in
+// dag-loop-node.test.ts for asserting prop-contract shape.
+import type { DAGLoopNodeProps } from './dag-loop-node';
+
+const _loopPropsContractFixture: DAGLoopNodeProps = {
+  nodeId: 'phase_loop',
+  node: {
+    kind: 'for_each_phase',
+    status: 'not_started',
+    iterations: [],
+  },
+  currentNodePath: null,
+  onDocClick: (path: string) => { void path; },
+  expandedLoopIds: [],
+  onAccordionChange: (value: string[], eventDetails: { reason: string }) => { void value; void eventDetails; },
+  repoBaseUrl: null,
+  projectName: 'test-project',
+  focusedRowKey: null,
+  isFocused: false,
+  onFocusChange: (nodeId: string) => { void nodeId; },
+};
+
+test('DAGLoopNodeProps contract fixture: focusedRowKey is string|null and onFocusChange is (nodeId: string) => void', () => {
+  assert.strictEqual(_loopPropsContractFixture.focusedRowKey, null);
+  assert.strictEqual(typeof _loopPropsContractFixture.onFocusChange, 'function');
+});
+
+// The DAGIterationPanel and DAGCorrectiveTaskGroup prop interfaces are not
+// exported (they are internal `interface` declarations). Build an equivalent
+// structural type locally and assert that an object with the expected shape
+// compiles. This exercises the same contract that the parent components
+// satisfy when rendering those elements.
+
+interface _DAGIterationPanelPropsContract {
+  iteration: {
+    index: number;
+    status: string;
+    nodes: Record<string, unknown>;
+    corrective_tasks: unknown[];
+    commit_hash: string | null;
+  };
+  iterationIndex: number;
+  parentNodeId: string;
+  parentKind: 'for_each_phase' | 'for_each_task';
+  currentNodePath: string | null;
+  onDocClick: (path: string) => void;
+  repoBaseUrl: string | null;
+  projectName: string;
+  expandedLoopIds: string[];
+  onAccordionChange: (value: string[], eventDetails: { reason: string }) => void;
+  focusedRowKey: string | null;
+  onFocusChange: (nodeId: string) => void;
+}
+
+const _iterationPanelPropsContractFixture: _DAGIterationPanelPropsContract = {
+  iteration: {
+    index: 0,
+    status: 'not_started',
+    nodes: {},
+    corrective_tasks: [],
+    commit_hash: null,
+  },
+  iterationIndex: 0,
+  parentNodeId: 'phase_loop',
+  parentKind: 'for_each_phase',
+  currentNodePath: null,
+  onDocClick: (path: string) => { void path; },
+  repoBaseUrl: null,
+  projectName: 'test-project',
+  expandedLoopIds: [],
+  onAccordionChange: (value: string[], eventDetails: { reason: string }) => { void value; void eventDetails; },
+  focusedRowKey: null,
+  onFocusChange: (nodeId: string) => { void nodeId; },
+};
+
+test('DAGIterationPanelProps structural fixture: focusedRowKey and onFocusChange are present and typed correctly', () => {
+  assert.strictEqual(_iterationPanelPropsContractFixture.focusedRowKey, null);
+  assert.strictEqual(typeof _iterationPanelPropsContractFixture.onFocusChange, 'function');
+});
+
+interface _DAGCorrectiveTaskGroupPropsContract {
+  correctiveTasks: unknown[];
+  parentNodeId: string;
+  currentNodePath: string | null;
+  onDocClick: (path: string) => void;
+  repoBaseUrl: string | null;
+  focusedRowKey: string | null;
+  onFocusChange: (nodeId: string) => void;
+}
+
+const _correctiveTaskGroupPropsContractFixture: _DAGCorrectiveTaskGroupPropsContract = {
+  correctiveTasks: [],
+  parentNodeId: 'phase_loop.iter0',
+  currentNodePath: null,
+  onDocClick: (path: string) => { void path; },
+  repoBaseUrl: null,
+  focusedRowKey: null,
+  onFocusChange: (nodeId: string) => { void nodeId; },
+};
+
+test('DAGCorrectiveTaskGroupProps structural fixture: focusedRowKey and onFocusChange are present and typed correctly', () => {
+  assert.strictEqual(_correctiveTaskGroupPropsContractFixture.focusedRowKey, null);
+  assert.strictEqual(typeof _correctiveTaskGroupPropsContractFixture.onFocusChange, 'function');
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

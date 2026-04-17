@@ -20,6 +20,7 @@ export interface DAGLoopNodeProps {
   ) => void;
   repoBaseUrl: string | null;
   projectName: string;
+  focusedRowKey: string | null;
   isFocused: boolean;
   onFocusChange: (nodeId: string) => void;
 }
@@ -37,6 +38,7 @@ export function DAGLoopNode({
   onAccordionChange,
   repoBaseUrl,
   projectName,
+  focusedRowKey,
   isFocused,
   onFocusChange,
 }: DAGLoopNodeProps) {
@@ -78,6 +80,8 @@ export function DAGLoopNode({
               projectName={projectName}
               expandedLoopIds={expandedLoopIds}
               onAccordionChange={onAccordionChange}
+              focusedRowKey={focusedRowKey}
+              onFocusChange={onFocusChange}
             />
           ))}
         </AccordionContent>

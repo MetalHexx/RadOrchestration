@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, type ReactNode } from 'react';
+import { Fragment, useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { NodesRecord, NodeState } from '@/types/state';
 import { DAGNodeRow } from './dag-node-row';
 import { DAGLoopNode } from './dag-loop-node';
@@ -22,11 +22,52 @@ interface DAGTimelineProps {
 }
 
 export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName }: DAGTimelineProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const groups = groupNodesBySection(nodes);
   const unmatchedEntries = Object.entries(nodes).filter(([nodeId]) => !Object.hasOwn(NODE_SECTION_MAP, nodeId));
 
+  const focusableRowKeys = useMemo(() => {
+    const keys: string[] = [];
+    for (const group of groups) {
+      for (const [nodeId] of group.entries) {
+        keys.push(nodeId);
+      }
+    }
+    for (const [nodeId] of unmatchedEntries) {
+      keys.push(nodeId);
+    }
+    return keys;
+  }, [groups, unmatchedEntries]);
+
+  const [focusedRowKey, setFocusedRowKey] = useState<string | null>(() => focusableRowKeys[0] ?? null);
+
+  const handleFocusChange = useCallback((nodeId: string) => {
+    setFocusedRowKey(nodeId);
+  }, []);
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    const container = containerRef.current;
+    if (container === null) return;
+    const items = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-timeline-row]')
+    );
+    if (items.length === 0) return;
+    const currentIndex = items.findIndex(
+      (item) => item === document.activeElement
+    );
+    let nextIndex: number;
+    if (event.key === 'ArrowDown') {
+      nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+    } else {
+      nextIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+    }
+    items[nextIndex].focus();
+  }, []);
+
   const renderNodeEntry = ([nodeId, node]: [string, NodeState]): ReactNode => (
-    <div key={nodeId} role="listitem">
+    <div key={nodeId} role="presentation">
       {isLoopNode(node) ? (
         <DAGLoopNode
           nodeId={nodeId}
@@ -37,8 +78,9 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
           onAccordionChange={onAccordionChange}
           repoBaseUrl={repoBaseUrl}
           projectName={projectName}
-          isFocused={false}
-          onFocusChange={() => {}}
+          focusedRowKey={focusedRowKey}
+          isFocused={focusedRowKey === nodeId}
+          onFocusChange={handleFocusChange}
         />
       ) : (
         <DAGNodeRow
@@ -47,15 +89,21 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
           currentNodePath={currentNodePath}
           onDocClick={onDocClick}
           projectName={projectName}
-          isFocused={false}
-          onFocusChange={() => {}}
+          isFocused={focusedRowKey === nodeId}
+          onFocusChange={handleFocusChange}
         />
       )}
     </div>
   );
 
   return (
-    <div className="flex flex-col gap-0" role="list">
+    <div
+      ref={containerRef}
+      role="listbox"
+      aria-label="Pipeline timeline"
+      onKeyDown={handleKeyDown}
+      className="flex flex-col gap-0"
+    >
       {groups.map((group, index) => (
         <Fragment key={group.label}>
           {index > 0 && <Separator className="my-3" role="none" />}
