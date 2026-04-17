@@ -227,6 +227,37 @@ async function run() {
       assert.strictEqual(p!.hasMalformedState, true);
     });
 
+    // graphStatus assertions
+    await test('v5 project — graphStatus equals state.graph.status ("in_progress")', async () => {
+      const p = projects.find(x => x.name === 'v5-project');
+      assert.ok(p, 'v5-project should be in results');
+      assert.strictEqual(p!.graphStatus, 'in_progress');
+    });
+
+    await test('v5 completed project — graphStatus equals state.graph.status ("completed")', async () => {
+      const p = projects.find(x => x.name === 'v5-completed-project');
+      assert.ok(p, 'v5-completed-project should be in results');
+      assert.strictEqual(p!.graphStatus, 'completed');
+    });
+
+    await test('v4 project — graphStatus is "not_initialized"', async () => {
+      const p = projects.find(x => x.name === 'v4-project');
+      assert.ok(p, 'v4-project should be in results');
+      assert.strictEqual(p!.graphStatus, 'not_initialized');
+    });
+
+    await test('no-state project — graphStatus is "not_initialized"', async () => {
+      const p = projects.find(x => x.name === 'no-state-project');
+      assert.ok(p, 'no-state-project should be in results');
+      assert.strictEqual(p!.graphStatus, 'not_initialized');
+    });
+
+    await test('malformed-state project — graphStatus is "not_initialized"', async () => {
+      const p = projects.find(x => x.name === 'malformed-project');
+      assert.ok(p, 'malformed-project should be in results');
+      assert.strictEqual(p!.graphStatus, 'not_initialized');
+    });
+
     // readProjectState tests
     console.log('\nreadProjectState — v5 state support');
 

@@ -271,6 +271,141 @@ test('dag-loop-node.tsx forwards expandedLoopIds and onAccordionChange to nested
   );
 });
 
+// ─── Roving-tabindex helpers and tests ───────────────────────────────────────
+
+/**
+ * Mirrors the production `tabIndex={isFocused ? 0 : -1}` expression on the
+ * `<AccordionTrigger>` so tests can assert the computation without DOM rendering.
+ */
+function computeTriggerTabIndex(isFocused: boolean): 0 | -1 {
+  return isFocused ? 0 : -1;
+}
+
+/**
+ * Simulates the production `handleFocus` callback wiring:
+ * `useCallback(() => { onFocusChange(nodeId); }, [nodeId, onFocusChange])`.
+ * Returns an object with `calls` (recording each nodeId passed to
+ * onFocusChange) and `trigger()` (mimicking one real DOM focus event).
+ */
+function simulateOnFocusFires(nodeId: string): { calls: string[]; trigger: () => void } {
+  const calls: string[] = [];
+  const onFocusChange = (id: string) => { calls.push(id); };
+  const trigger = () => { onFocusChange(nodeId); };
+  return { calls, trigger };
+}
+
+test('computeTriggerTabIndex(true) returns 0', () => {
+  assert.strictEqual(computeTriggerTabIndex(true), 0);
+});
+
+test('computeTriggerTabIndex(false) returns -1', () => {
+  assert.strictEqual(computeTriggerTabIndex(false), -1);
+});
+
+test('dag-loop-node.tsx source contains data-timeline-row (join-key attribute for [data-timeline-row] coordinator query)', () => {
+  assert.ok(
+    loopNodeSource.includes('data-timeline-row'),
+    'dag-loop-node.tsx must stamp data-timeline-row on the <AccordionTrigger> so a future DAGTimeline coordinator can discover all focusable timeline rows via a single [data-timeline-row] query'
+  );
+});
+
+test('dag-loop-node.tsx source contains tabIndex={isFocused ? 0 : -1} (roving-tabindex wired through isFocused)', () => {
+  assert.ok(
+    loopNodeSource.includes('tabIndex={isFocused ? 0 : -1}'),
+    'dag-loop-node.tsx must wire tabIndex={isFocused ? 0 : -1} on the <AccordionTrigger> (not hard-coded)'
+  );
+});
+
+test('dag-loop-node.tsx source contains onFocus={handleFocus} (focus event wired to memoized handler)', () => {
+  assert.ok(
+    loopNodeSource.includes('onFocus={handleFocus}'),
+    'dag-loop-node.tsx must wire onFocus={handleFocus} on the <AccordionTrigger>'
+  );
+});
+
+test('dag-loop-node.tsx source does NOT contain onKeyDown= (browser-default <button> Enter/Space drives accordion)', () => {
+  // Strip JSDoc and line comments before testing, mirroring the comment-stripping
+  // pattern in dag-timeline.test.ts to avoid false positives from comment text.
+  const stripped = loopNodeSource
+    .replace(/\/\*[\s\S]*?\*\//g, '')  // remove block comments (including JSDoc)
+    .replace(/\/\/[^\n]*/g, '');        // remove line comments
+  assert.ok(
+    !stripped.includes('onKeyDown='),
+    'dag-loop-node.tsx must NOT contain onKeyDown= — the accordion toggle is driven by browser-default <button> Enter/Space activation; a row-level onKeyDown would risk double-firing the toggle'
+  );
+});
+
+test('simulateOnFocusFires: calling trigger() once produces calls === [nodeId]', () => {
+  const { calls, trigger } = simulateOnFocusFires('phase_loop');
+  trigger();
+  assert.deepStrictEqual(calls, ['phase_loop']);
+});
+
+test('simulateOnFocusFires: calling trigger() twice produces calls === [nodeId, nodeId] (no internal deduplication)', () => {
+  const { calls, trigger } = simulateOnFocusFires('phase_loop');
+  trigger();
+  trigger();
+  assert.deepStrictEqual(calls, ['phase_loop', 'phase_loop']);
+});
+
+// Props-contract fixture: asserts DAGLoopNodeProps compiles with both new required fields.
+// This declaration fails TypeScript compilation if isFocused or onFocusChange is missing
+// or mistyped — mirroring the test-fixture pattern used elsewhere in this file.
+import type { DAGLoopNodeProps } from './dag-loop-node';
+
+const _propsContractFixture: DAGLoopNodeProps = {
+  nodeId: 'phase_loop',
+  node: forEachPhaseNode2,
+  currentNodePath: null,
+  onDocClick: (path: string) => { void path; },
+  expandedLoopIds: [],
+  onAccordionChange: (value: string[], eventDetails: { reason: string }) => { void value; void eventDetails; },
+  repoBaseUrl: null,
+  projectName: 'test-project',
+  focusedRowKey: null,
+  isFocused: false,
+  onFocusChange: (nodeId: string) => { void nodeId; },
+};
+
+test('DAGLoopNodeProps contract fixture: isFocused is boolean and onFocusChange is (nodeId: string) => void', () => {
+  assert.strictEqual(typeof _propsContractFixture.isFocused, 'boolean');
+  assert.strictEqual(typeof _propsContractFixture.onFocusChange, 'function');
+});
+
+// ─── Source-text: AccordionTrigger listbox-option semantics ──────────────────
+
+test('dag-loop-node.tsx source contains role="option" on the AccordionTrigger (listbox-option parity with DAGNodeRow)', () => {
+  assert.ok(
+    loopNodeSource.includes('role="option"'),
+    'dag-loop-node.tsx must set role="option" on the AccordionTrigger so every focusable row inside the listbox container exposes option semantics'
+  );
+});
+
+test('dag-loop-node.tsx source contains aria-selected={isActive} on the AccordionTrigger (selection tracks SSE currentNodePath)', () => {
+  assert.ok(
+    loopNodeSource.includes('aria-selected={isActive}'),
+    'dag-loop-node.tsx must wire aria-selected={isActive} on the AccordionTrigger so the current pipeline step is announced as the selected listbox option'
+  );
+});
+
+test('dag-loop-node.tsx source contains aria-label={ariaLabel} on the AccordionTrigger (accessible name parity with DAGNodeRow)', () => {
+  assert.ok(
+    loopNodeSource.includes('aria-label={ariaLabel}'),
+    'dag-loop-node.tsx must wire aria-label={ariaLabel} on the AccordionTrigger so screen readers announce a consistent "<display name> — <status>" name across rows and loop triggers'
+  );
+});
+
+test('dag-loop-node.tsx derives isActive from currentNodePath and builds ariaLabel from display name + status label', () => {
+  assert.ok(
+    loopNodeSource.includes('const isActive = nodeId === currentNodePath'),
+    'dag-loop-node.tsx must compute isActive = nodeId === currentNodePath so aria-selected mirrors the SSE current-step signal'
+  );
+  assert.ok(
+    /const ariaLabel = `\$\{getDisplayName\(nodeId\)\} — \$\{STATUS_MAP\[node\.status\]\.defaultLabel\}`/.test(loopNodeSource),
+    'dag-loop-node.tsx must build ariaLabel from `${getDisplayName(nodeId)} — ${STATUS_MAP[node.status].defaultLabel}` to mirror DAGNodeRow'
+  );
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

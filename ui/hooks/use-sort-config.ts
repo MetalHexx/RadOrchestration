@@ -30,37 +30,25 @@ const STORAGE_KEY = "monitoring-ui-sort-config";
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getStatusPriority(p: ProjectSummary): number {
-  const { tier, planningStatus, executionStatus, hasMalformedState } = p;
+  const { graphStatus, hasMalformedState } = p;
 
-  // Priority 0: halted — tier-level OR execution sub-status
-  if (tier === "halted" || (tier === "execution" && executionStatus === "halted")) return 0;
+  // Bucket 0: halted — v5 halted projects (live or persisted)
+  if (graphStatus === 'halted') return 0;
 
-  // Priority 1: malformed / warning state
+  // Bucket 1: malformed / warning state — wins over any active status
   if (hasMalformedState) return 1;
 
-  // Priority 2: final review gate
-  if (tier === "review") return 2;
+  // Bucket 2: actively running v5 pipelines
+  if (graphStatus === 'in_progress') return 2;
 
-  // Priority 3: actively executing
-  if (tier === "execution" && executionStatus === "in_progress") return 3;
+  // Bucket 3: v5 pipelines that have not yet begun
+  if (graphStatus === 'not_started') return 3;
 
-  // Priority 4: actively planning
-  if (tier === "planning" && planningStatus === "in_progress") return 4;
+  // Bucket 4: v5 pipelines that finished successfully
+  if (graphStatus === 'completed') return 4;
 
-  // Priority 5: cleared planning gate, queued for execution
-  if (tier === "execution" && (executionStatus === "not_started" || executionStatus === undefined)) return 5;
-
-  // Priority 6: planning complete, awaiting execution gate approval
-  if (tier === "planning" && planningStatus === "complete") return 6;
-
-  // Priority 7: planning not yet started
-  if (tier === "planning" && (planningStatus === "not_started" || planningStatus === undefined)) return 7;
-
-  // Priority 8: not yet initialized
-  if (tier === "not_initialized") return 8;
-
-  // Priority 9: complete (or any unrecognized/edge-case combination)
-  return 9;
+  // Bucket 5: legacy fallback — 'not_initialized', undefined, or any unrecognized value
+  return 5;
 }
 
 function compareField(

@@ -1,8 +1,9 @@
 "use client";
 
+import { useCallback } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { NodeKindIcon } from './node-kind-icon';
-import { NodeStatusBadge } from './node-status-badge';
+import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
 import { DAGIterationPanel } from './dag-iteration-panel';
 import { getDisplayName } from './dag-timeline-helpers';
 import type { ForEachPhaseNodeState, ForEachTaskNodeState } from '@/types/state';
@@ -19,6 +20,9 @@ export interface DAGLoopNodeProps {
   ) => void;
   repoBaseUrl: string | null;
   projectName: string;
+  focusedRowKey: string | null;
+  isFocused: boolean;
+  onFocusChange: (nodeId: string) => void;
 }
 
 export function buildLoopItemValue(nodeId: string): string {
@@ -34,13 +38,31 @@ export function DAGLoopNode({
   onAccordionChange,
   repoBaseUrl,
   projectName,
+  focusedRowKey,
+  isFocused,
+  onFocusChange,
 }: DAGLoopNodeProps) {
   const sortedIterations = [...node.iterations].sort((a, b) => a.index - b.index);
+  const isActive = nodeId === currentNodePath;
+  const ariaLabel = `${getDisplayName(nodeId)} — ${STATUS_MAP[node.status].defaultLabel}`;
+
+  const handleFocus = useCallback(() => {
+    onFocusChange(nodeId);
+  }, [nodeId, onFocusChange]);
 
   return (
     <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
       <AccordionItem value={buildLoopItemValue(nodeId)} className="border-b-0">
-        <AccordionTrigger className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center">
+        <AccordionTrigger
+          role="option"
+          aria-selected={isActive}
+          aria-label={ariaLabel}
+          className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center"
+          tabIndex={isFocused ? 0 : -1}
+          data-timeline-row
+          data-row-key={nodeId}
+          onFocus={handleFocus}
+        >
           <NodeKindIcon kind={node.kind} />
           {/* flex-1 is intentional here — loop node triggers are accordion headers where the label,
               status badge, and chevron share a flex row. flex-1 fills available space before the
@@ -64,6 +86,8 @@ export function DAGLoopNode({
               projectName={projectName}
               expandedLoopIds={expandedLoopIds}
               onAccordionChange={onAccordionChange}
+              focusedRowKey={focusedRowKey}
+              onFocusChange={onFocusChange}
             />
           ))}
         </AccordionContent>

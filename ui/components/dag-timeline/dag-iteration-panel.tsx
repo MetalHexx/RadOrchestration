@@ -22,6 +22,8 @@ interface DAGIterationPanelProps {
     value: string[],
     eventDetails: { reason: string }
   ) => void;
+  focusedRowKey: string | null;
+  onFocusChange: (nodeId: string) => void;
 }
 
 export const ITERATION_CHILD_DEPTH = 1;
@@ -49,6 +51,8 @@ export function DAGIterationPanel({
   projectName,
   expandedLoopIds,
   onAccordionChange,
+  focusedRowKey,
+  onFocusChange,
 }: DAGIterationPanelProps) {
   const commitData = getCommitLinkData(iteration.commit_hash, repoBaseUrl);
   const correctiveGroupParentId = buildCorrectiveGroupParentId(parentNodeId, iterationIndex);
@@ -125,6 +129,7 @@ export function DAGIterationPanel({
               href={commitData.href}
               label={commitData.label}
               icon="external-link"
+              tabIndex={-1}
             />
           ) : (
             <span className="text-xs font-mono text-muted-foreground">
@@ -133,11 +138,12 @@ export function DAGIterationPanel({
           )
         )}
       </div>
-      {Object.entries(iteration.nodes).map(([childNodeId, childNode]) =>
-        isLoopNode(childNode) ? (
+      {Object.entries(iteration.nodes).map(([childNodeId, childNode]) => {
+        const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
+        return isLoopNode(childNode) ? (
           <DAGLoopNode
             key={childNodeId}
-            nodeId={buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId)}
+            nodeId={childKey}
             node={childNode}
             currentNodePath={currentNodePath}
             onDocClick={onDocClick}
@@ -145,24 +151,31 @@ export function DAGIterationPanel({
             onAccordionChange={onAccordionChange}
             repoBaseUrl={repoBaseUrl}
             projectName={projectName}
+            focusedRowKey={focusedRowKey}
+            isFocused={focusedRowKey === childKey}
+            onFocusChange={onFocusChange}
           />
         ) : (
           <DAGNodeRow
             key={childNodeId}
-            nodeId={buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId)}
+            nodeId={childKey}
             node={childNode}
             depth={ITERATION_CHILD_DEPTH}
             currentNodePath={currentNodePath}
             onDocClick={onDocClick}
+            isFocused={focusedRowKey === childKey}
+            onFocusChange={onFocusChange}
           />
-        )
-      )}
+        );
+      })}
       <DAGCorrectiveTaskGroup
         correctiveTasks={iteration.corrective_tasks}
         parentNodeId={correctiveGroupParentId}
         currentNodePath={currentNodePath}
         onDocClick={onDocClick}
         repoBaseUrl={repoBaseUrl}
+        focusedRowKey={focusedRowKey}
+        onFocusChange={onFocusChange}
       />
     </div>
   );
