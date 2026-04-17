@@ -141,8 +141,8 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 | `DESIGN.md` | UX Designer | User flows, layouts, components, states, breakpoints, accessibility |
 | `ARCHITECTURE.md` | Architect | System layers, module map, contracts, APIs, schemas, dependency graph |
 | `MASTER-PLAN.md` | Architect | Executive summary, phase outlines, exit criteria, risk register |
-| `REQUIREMENTS.md` | Planner | Lean FR/NFR/AD/DD ledger (≤ 500 tokens per block) referenced by ID throughout the Execution Plan |
-| `EXECUTION-PLAN.md` | Planner | Inlined phase + task plan with exact code, commands, and file paths; replaces the Master Plan + Phase Plan + Task Handoff chain |
+| `REQUIREMENTS.md` | Planner | Lean FR/NFR/AD/DD ledger (≤ 500 estimated tokens per block) referenced by ID throughout the Execution Plan |
+| `EXECUTION-PLAN.md` | Planner | Inlined phase + task plan with exact code, commands, and file paths per task; every step tagged with the requirement IDs it satisfies |
 
 ### Execution Documents
 

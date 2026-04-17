@@ -29,7 +29,7 @@ Covers all documents produced during pipeline execution. Planning documents (PRD
 |---|---|---|---|
 | project | string | Project name in SCREAMING-CASE (e.g., `"MYAPP"`) | All templates |
 | type | string | `"requirements"` \| `"execution_plan"` (additional document-type marker on new docs) | Requirements, Execution Plan |
-| phase | integer | Phase number, 1-based (e.g., `1`) | All templates |
+| phase | integer | Phase number, 1-based (e.g., `1`) | Phase Plan, Task Handoff, Code Review, Phase Report, Phase Review |
 | task | integer | Task number, 1-based (e.g., `2`) | Task Handoff, Code Review |
 | title | string | Human-readable title (e.g., `"Setup Auth"`) | Task Handoff, Phase Plan, Phase Report |
 | status | string | Varies by document — see below | Task Handoff, Phase Plan, Phase Report, Requirements, Execution Plan |

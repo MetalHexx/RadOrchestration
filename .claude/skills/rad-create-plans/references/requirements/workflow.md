@@ -39,7 +39,7 @@ prompt says, no more.
 
 3. Author the intro. Two short paragraphs (2–3 sentences each) capturing
    project sentiment: what is being built, who it's for, what success looks
-   like. No identifier lists. No PRD-style "executive summary" prose.
+   like. No identifier lists. No "executive summary" prose padding.
 
 4. Author `## Goals` — single-line bullets. One thought per bullet. No caps,
    no deep-nested sub-goals; if a goal needs a paragraph, it is probably an
@@ -137,7 +137,7 @@ author: "planner-agent"
   resolve a specific FR (or small set of FRs).
 - No placeholder text. No "TBD", no "details to follow". If you don't know
   enough to write it now, don't write the block.
-- No cross-doc assumptions. Requirements stands on its own — it never
-  references a Design doc, Architecture doc, or Master Plan, because those
-  don't exist in this document chain.
+- No cross-doc assumptions. Requirements stands on its own — it does not
+  reference external planning docs. Every FR/NFR/AD/DD block is
+  self-contained.
 - Four separate ID sequences. Never merge FR and AD numbering.

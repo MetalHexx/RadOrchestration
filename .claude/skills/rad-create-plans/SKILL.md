@@ -1,6 +1,6 @@
 ---
 name: rad-create-plans
-description: "Consolidated document-creation skill for PRDs, Research Findings, Design docs, Architecture docs, Master Plans, Phase Plans, Task Handoffs, Requirements documents, and Execution Plans. Loads shared conventions and routes to the appropriate per-document-type workflow."
+description: "Consolidated document-creation skill for PRDs, Research Findings, Design docs, Architecture docs, Master Plans, Phase Plans, Task Handoffs, Requirements documents, and Execution Plans. Routes to the appropriate per-document-type workflow; most routes load shared conventions first, planner (Requirements / Execution Plan) routes are self-contained."
 user-invocable: false
 ---
 
@@ -18,7 +18,7 @@ A consolidated skill for creating planning documents. It loads shared guidelines
 - **Phase Plan** — Phase execution plan (supported)
 - **Task Handoff** — Coding task handoff document (supported)
 - **Requirements** — Project Requirements ledger (FR/NFR/AD/DD) (supported — self-contained workflow, does not load `shared/`)
-- **Execution Plan** — Inlined phase + task plan that replaces Master/Phase/Handoff chain (supported — self-contained workflow, does not load `shared/`)
+- **Execution Plan** — Inlined phase + task plan with exact code, commands, and file paths (supported — self-contained workflow, does not load `shared/`)
 
 ## Load Sequence
 

@@ -41,8 +41,13 @@ function main() {
   process.exit(0);
 }
 
+function countHeadingWords(heading) {
+  const stripped = heading.replace(/^###\s*/, '').replace(/:\s*$/, '').trim();
+  return stripped ? stripped.split(/\s+/).length : 0;
+}
+
 function finalize(block) {
-  const headingWords = block.heading.split(/\s+/).length;
+  const headingWords = countHeadingWords(block.heading);
   const totalWords = headingWords + block.wordCount;
   return {
     heading: block.heading,

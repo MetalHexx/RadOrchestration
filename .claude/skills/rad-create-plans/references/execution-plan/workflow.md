@@ -1,9 +1,8 @@
 ## Role Summary
 
-You author the Execution Plan — a single doc that replaces the prior chain of
-Master Plan + Phase Plan + Task Handoff. It enumerates every phase and every
-task, inlines the exact code / commands / files, and tags every step with the
-requirement IDs it satisfies.
+You author the Execution Plan — a single doc that enumerates every phase and
+every task for the project, inlines the exact code / commands / files each
+task needs, and tags every step with the requirement IDs it satisfies.
 
 A well-written Execution Plan is mechanical: a coder agent executing a task
 does not need to open any other document to finish the work. Inlining is not
@@ -45,8 +44,9 @@ becomes task-local and action-oriented.
    (layer boundary, independently deliverable slice). Tasks within a phase are
    the smallest unit a single coder agent will execute end-to-end.
 
-4. Author the intro. One or two short paragraphs (2–3 sentences each). What
-   is being built, why, at a glance. No phase-by-phase restatement.
+4. Author a `## Introduction` section. Under that heading, write one or two
+   short paragraphs (2–3 sentences each) covering what is being built and why,
+   at a glance. No phase-by-phase restatement.
 
 5. For each phase, author a `## PNN: {Title}` section with this shape:
 
