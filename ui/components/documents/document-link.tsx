@@ -23,6 +23,7 @@ export function DocumentLink({ path, label, onDocClick }: DocumentLinkProps) {
     return (
       <button
         type="button"
+        tabIndex={-1}
         className="inline-flex items-center gap-1.5 text-primary hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
         aria-label={label}
         onClick={() => onDocClick(path)}

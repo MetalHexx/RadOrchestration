@@ -68,6 +68,11 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     event.preventDefault();
+    // Stop propagation so the event never reaches base-ui's AccordionTrigger
+    // onKeyDown (which calls stopEvent + focuses "next trigger" in the same
+    // single-item Accordion, trapping focus on the loop row). Combined with
+    // onKeyDownCapture below, this runs before any child bubble-phase handler.
+    event.stopPropagation();
     const container = containerRef.current;
     if (container === null) return;
     const items = Array.from(
@@ -141,7 +146,7 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
       ref={containerRef}
       role="listbox"
       aria-label="Pipeline timeline"
-      onKeyDown={handleKeyDown}
+      onKeyDownCapture={handleKeyDown}
       className="flex flex-col gap-0"
     >
       {groups.map((group, index) => (

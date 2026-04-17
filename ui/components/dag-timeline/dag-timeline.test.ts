@@ -402,10 +402,17 @@ test('dag-timeline.tsx contains ref={containerRef} (ref attachment for descendan
   );
 });
 
-test('dag-timeline.tsx contains onKeyDown={handleKeyDown} (arrow-key handler wired on container)', () => {
+test('dag-timeline.tsx contains onKeyDownCapture={handleKeyDown} (arrow-key handler wired on container in capture phase)', () => {
   assert.ok(
-    timelineSource.includes('onKeyDown={handleKeyDown}'),
-    'dag-timeline.tsx must attach onKeyDown={handleKeyDown} to the outer container'
+    timelineSource.includes('onKeyDownCapture={handleKeyDown}'),
+    'dag-timeline.tsx must attach onKeyDownCapture={handleKeyDown} to the outer container (capture phase is required so base-ui\'s AccordionTrigger onKeyDown does not intercept ArrowDown/ArrowUp and trap focus on loop rows)'
+  );
+});
+
+test('dag-timeline.tsx handleKeyDown calls event.stopPropagation() for ArrowDown/ArrowUp (prevents base-ui AccordionTrigger from stealing arrow keys)', () => {
+  assert.ok(
+    timelineSource.includes('event.stopPropagation()'),
+    'dag-timeline.tsx handleKeyDown must call event.stopPropagation() so arrow-key events never reach base-ui\'s AccordionTrigger onKeyDown (which would call its own stopEvent + focus-trap the loop row)'
   );
 });
 
