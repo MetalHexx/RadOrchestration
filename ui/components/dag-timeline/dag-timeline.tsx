@@ -37,6 +37,8 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
           onAccordionChange={onAccordionChange}
           repoBaseUrl={repoBaseUrl}
           projectName={projectName}
+          isFocused={false}
+          onFocusChange={() => {}}
         />
       ) : (
         <DAGNodeRow

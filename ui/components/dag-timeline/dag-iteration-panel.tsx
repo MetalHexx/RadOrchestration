@@ -145,6 +145,8 @@ export function DAGIterationPanel({
             onAccordionChange={onAccordionChange}
             repoBaseUrl={repoBaseUrl}
             projectName={projectName}
+            isFocused={false}
+            onFocusChange={() => {}}
           />
         ) : (
           <DAGNodeRow

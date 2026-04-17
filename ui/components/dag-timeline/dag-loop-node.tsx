@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { NodeKindIcon } from './node-kind-icon';
 import { NodeStatusBadge } from './node-status-badge';
@@ -19,6 +20,8 @@ export interface DAGLoopNodeProps {
   ) => void;
   repoBaseUrl: string | null;
   projectName: string;
+  isFocused: boolean;
+  onFocusChange: (nodeId: string) => void;
 }
 
 export function buildLoopItemValue(nodeId: string): string {
@@ -34,13 +37,24 @@ export function DAGLoopNode({
   onAccordionChange,
   repoBaseUrl,
   projectName,
+  isFocused,
+  onFocusChange,
 }: DAGLoopNodeProps) {
   const sortedIterations = [...node.iterations].sort((a, b) => a.index - b.index);
+
+  const handleFocus = useCallback(() => {
+    onFocusChange(nodeId);
+  }, [nodeId, onFocusChange]);
 
   return (
     <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
       <AccordionItem value={buildLoopItemValue(nodeId)} className="border-b-0">
-        <AccordionTrigger className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center">
+        <AccordionTrigger
+          className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center"
+          tabIndex={isFocused ? 0 : -1}
+          data-timeline-row
+          onFocus={handleFocus}
+        >
           <NodeKindIcon kind={node.kind} />
           {/* flex-1 is intentional here — loop node triggers are accordion headers where the label,
               status badge, and chevron share a flex row. flex-1 fills available space before the
