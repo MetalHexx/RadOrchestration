@@ -40,7 +40,11 @@ You are the backstop. Task reviews already vetted each commit in isolation again
 6. **Conformance pass**: The Phase Plan sets exit criteria — verify each one against what's actually checked in. If a criterion isn't verifiable from the current codebase, mark it failed; do not infer. Assess cross-task integration using the 4-category checklist (see categories below). Do NOT re-verify requirement conformance at task scope — task reviewers already did that. Your unique value is what spans tasks.
 7. **Skeptical pass** (Independent Quality Assessment): Read the cumulative phase diff line by line. Don't trust that modules integrate because the code reviews say they do — the code reviews describe per-task intent, the diff shows how the tasks actually fit together. Your job is to find what slipped through the seams between tasks: contract drift where a later task's call site doesn't match an earlier task's new signature; exports that no other task imports; conflicting patterns where T1 and T3 solved similar problems differently. Read full files only when the diff alone is insufficient to confirm a finding.
 8. Apply verdict rules (see Verdict Rules section below) — highest severity across both passes determines verdict. Set `exit_criteria_met` frontmatter field to `true` only when ALL exit criteria are verified as met; `false` otherwise.
-9. Fill in the output template at [./template.md](./template.md) and save to `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`.
+9. Fill in the output template at [./template.md](./template.md) and save based on corrective status:
+    - Normal (first-time): `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`
+    - Corrective: `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}-C{corrective_index}.md`
+
+    The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) review is preserved, not overwritten. (See `rad-create-plans/references/phase-plan/workflow.md` lines 135–150 for the shared pattern.)
 
 ## Conformance Checklist Categories
 
@@ -103,4 +107,6 @@ The highest-severity finding across both passes (conformance + skeptical) determ
 ## Output
 
 - **Template**: [./template.md](./template.md)
-- **Save path**: `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`
+- **Save path**:
+  - Normal: `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`
+  - Corrective: `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}-C{corrective_index}.md`

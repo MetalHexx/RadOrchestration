@@ -217,3 +217,190 @@ describe('[CONTRACT] Corrective Cycles — multi-retry persistence', () => {
     expect((secondResult.context['reason'] as string).length).toBeGreaterThan(0);
   });
 });
+
+// ── [REGRESSION] Auto-resolution when phase context is omitted ─────────────────
+
+describe('[REGRESSION] Auto-resolution — phase_report_created without phase context', () => {
+  it('succeeds with empty context after a task-level corrective cycle', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, {
+      phase: 1, doc_path: phasePlanDoc(1),
+    }, io);
+
+    // Task 1 through a corrective cycle: changes_requested then approved
+    driveTaskWithVerdict(io, 1, 1, 'changes_requested');
+    driveCorrectiveTask(io, 1, 1, 'approved');
+
+    // Task 2 normal
+    driveTaskWith(io, 1, 2);
+
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+
+    // Fire phase_report_created with NO phase in context — auto-resolution must kick in.
+    const result = processEvent('phase_report_created', PROJECT_DIR, {
+      doc_path: phaseReportDoc(1),
+    }, io);
+
+    expect(result.success).toBe(true);
+    const state = io.currentState!;
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const phaseReport = phaseLoop.iterations[0].nodes['phase_report'] as StepNodeState;
+    expect(phaseReport.status).toBe('completed');
+    expect(phaseReport.doc_path).toBe(phaseReportDoc(1));
+  });
+});
+
+describe('[REGRESSION] Auto-resolution — phase_review_completed changes_requested without phase context', () => {
+  it('injects phase-level corrective entry into the active iteration when phase is omitted', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, {
+      phase: 1, doc_path: phasePlanDoc(1),
+    }, io);
+
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+    processEvent('phase_report_created', PROJECT_DIR, {
+      phase: 1, doc_path: phaseReportDoc(1),
+    }, io);
+
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReviewDoc(1));
+
+    // Fire phase_review_completed with NO phase in context.
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      doc_path: phaseReviewDoc(1),
+      verdict: 'changes_requested',
+      exit_criteria_met: false,
+    }, io);
+
+    expect(result.success).toBe(true);
+    const state = io.currentState!;
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const phaseIter = phaseLoop.iterations[0];
+    expect(phaseIter.corrective_tasks).toHaveLength(1);
+    expect(phaseIter.corrective_tasks[0].index).toBe(1);
+    expect(phaseIter.corrective_tasks[0].injected_after).toBe('phase_review');
+    expect(phaseIter.corrective_tasks[0].status).toBe('in_progress');
+
+    // phase_planning was reset for re-planning.
+    const phasePlanning = phaseIter.nodes['phase_planning'] as StepNodeState;
+    expect(phasePlanning.status).toBe('not_started');
+    expect(phasePlanning.doc_path).toBeNull();
+  });
+});
+
+describe('[REGRESSION] Auto-resolution — phase_review_completed approved without phase context', () => {
+  it('marks phase_review completed in the active iteration when phase is omitted', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, {
+      phase: 1, doc_path: phasePlanDoc(1),
+    }, io);
+
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+    processEvent('phase_report_created', PROJECT_DIR, {
+      phase: 1, doc_path: phaseReportDoc(1),
+    }, io);
+
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReviewDoc(1));
+
+    // Fire phase_review_completed with NO phase in context, approved.
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      doc_path: phaseReviewDoc(1),
+      verdict: 'approved',
+      exit_criteria_met: true,
+    }, io);
+
+    expect(result.success).toBe(true);
+    const state = io.currentState!;
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const phaseReview = phaseLoop.iterations[0].nodes['phase_review'] as StepNodeState;
+    expect(phaseReview.status).toBe('completed');
+    expect(phaseReview.verdict).toBe('approved');
+    expect(phaseReview.doc_path).toBe(phaseReviewDoc(1));
+  });
+});
+
+// ── [REGRESSION] Actionable error when phase cannot be resolved (PR #50 follow-up) ─
+
+describe('[REGRESSION] phase_report_created with nonexistent phase throws actionable error', () => {
+  it('wraps resolveNodeState failure in a clear "Cannot apply mutation" error naming the node and phase', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, {
+      phase: 1, doc_path: phasePlanDoc(1),
+    }, io);
+
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+
+    // Fire phase_report_created with an explicit phase that doesn't exist in state.
+    const result = processEvent('phase_report_created', PROJECT_DIR, {
+      phase: 99,
+      doc_path: phaseReportDoc(1),
+    }, io);
+
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toMatch(/Cannot apply mutation for "phase_report_created"/);
+    expect(result.error?.message).toMatch(/phase_report/);
+    expect(result.error?.message).toMatch(/phase 99/);
+  });
+});
+
+describe('[REGRESSION] phase_review_completed with nonexistent phase throws actionable error', () => {
+  it('wraps resolveNodeState failure in a clear "Cannot apply mutation" error naming phase_review and phase', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+
+    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
+    processEvent('phase_plan_created', PROJECT_DIR, {
+      phase: 1, doc_path: phasePlanDoc(1),
+    }, io);
+
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+
+    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReportDoc(1));
+    processEvent('phase_report_created', PROJECT_DIR, {
+      phase: 1, doc_path: phaseReportDoc(1),
+    }, io);
+
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReviewDoc(1));
+
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 99,
+      doc_path: phaseReviewDoc(1),
+      verdict: 'approved',
+      exit_criteria_met: true,
+    }, io);
+
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toMatch(/Cannot apply mutation for "phase_review_completed"/);
+    expect(result.error?.message).toMatch(/phase_review/);
+    expect(result.error?.message).toMatch(/phase 99/);
+  });
+});
