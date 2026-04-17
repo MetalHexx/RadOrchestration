@@ -1,6 +1,6 @@
 # Agents
 
-The orchestration system uses 12 specialized agents, each with a defined role, scoped tool access, and strict write permissions. Agents communicate through structured markdown documents — never through shared memory or message passing.
+The orchestration system uses 13 specialized agents, each with a defined role, scoped tool access, and strict write permissions. Agents communicate through structured markdown documents — never through shared memory or message passing.
 
 ## Agent Overview
 
@@ -13,6 +13,7 @@ The orchestration system uses 12 specialized agents, each with a defined role, s
 | `@ux-designer` | Interface and interaction design | `DESIGN.md` |
 | `@architect` | System architecture and master planning | `ARCHITECTURE.md`, `MASTER-PLAN.md` |
 | `@tactical-planner` | Task breakdown and phase reporting | `PHASE-PLAN.md`, `TASK-HANDOFF.md`, `PHASE-REPORT.md` |
+| `@planner` | Lean requirements ledger + inlined execution plan (authoring skill only — not yet wired into the pipeline) | `REQUIREMENTS.md`, `EXECUTION-PLAN.md` |
 | `@coder` | Code implementation | Code, tests |
 | `@coder-junior` | Straightforward, lower-complexity coding tasks from task handoffs | Code, tests |
 | `@coder-senior` | Complex or high-stakes coding tasks from task handoffs | Code, tests |
@@ -125,6 +126,22 @@ The Tactical Planner is a pure planning agent that operates in 3 modes:
 **Output:**`PHASE-PLAN.md`, `PHASE-REPORT.md`, `TASK-HANDOFF.md`
 
 **Skills:** `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report`
+
+---
+
+### @planner
+
+**Purpose:** Author the two lean planning documents for a project: a chunkable project-level Requirements ledger and an inlined, mechanical Execution Plan.
+
+The Planner is a single agent with two internal modes, routed by orchestrator action: `create_requirements` writes the Requirements doc, `create_execution_plan` writes the Execution Plan. The Requirements doc carries four separate ID sequences (FR-N, NFR-N, AD-N, DD-N), each block ≤ 500 estimated tokens. The Execution Plan inlines exact code, commands, and file paths per task, tags every step with the requirement IDs it satisfies, and uses a 4-step RED-GREEN TDD shape for code tasks. Both workflows are deliberately self-contained — they do not inherit the "context / rationale / constraints" prose mandate from `rad-create-plans/references/shared/`.
+
+**Status:** Authoring skill and agent only. The two new docs are not yet wired into the pipeline templates — Iteration 2 will add the explosion script and state seeding; Iteration 3 will wire a `cheaper.yml` process template.
+
+**Input:** Orchestrator prompt, `BRAINSTORMING.md` (optional), codebase (via Grep/Glob/Read), and (for Execution Plan mode) the project's `REQUIREMENTS.md`
+
+**Output:** `REQUIREMENTS.md` (project-level FR/NFR/AD/DD ledger) and `EXECUTION-PLAN.md` (phase + task inlined plan)
+
+**Skills:** `orchestration`, `rad-create-plans`, `log-error`
 
 ---
 

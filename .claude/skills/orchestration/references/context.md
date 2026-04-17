@@ -1,6 +1,6 @@
 # Orchestration System Context
 
-This workspace contains a **document-driven agent orchestration system** built on Copilot's native primitives (custom agents, skills, prompt files, and instruction files). The system takes software projects from idea through planning, execution, and review using 12 specialized agents.
+This workspace contains a **document-driven agent orchestration system** built on Copilot's native primitives (custom agents, skills, prompt files, and instruction files). The system takes software projects from idea through planning, execution, and review using 13 specialized agents.
 
 ## How It Works
 
@@ -20,6 +20,7 @@ This workspace contains a **document-driven agent orchestration system** built o
 | `@ux-designer` | Creates design documents from PRDs and Research Findings — defines the experience, not the implementation |
 | `@architect` | Creates Architecture documents via `rad-create-plans` |
 | `@tactical-planner` | Creates Master Plans, Phase Plans, and Task Handoffs via `rad-create-plans`; generates Phase Reports via `generate-phase-report` |
+| `@planner` | Authors the lean Requirements ledger and inlined Execution Plan via `rad-create-plans` (authoring skill only — not yet wired into the pipeline) |
 | `@coder` | Executes coding tasks from self-contained task handoffs |
 | `@coder-junior` | Executes simpler coding tasks with additional guardrails |
 | `@coder-senior` | Executes complex coding tasks with expanded autonomy |
@@ -57,7 +58,7 @@ Project artifacts are stored in a configurable location set by `orchestration.ym
 
 Contents:
 - Brainstorming: `BRAINSTORMING.md` (optional, created by `@brainstormer`)
-- Planning docs: `PRD.md`, `DESIGN.md`, `ARCHITECTURE.md`, `MASTER-PLAN.md`
+- Planning docs: `PRD.md`, `DESIGN.md`, `ARCHITECTURE.md`, `MASTER-PLAN.md`, `REQUIREMENTS.md` (lean project-level ledger written by `@planner`), `EXECUTION-PLAN.md` (inlined phase + task plan written by `@planner`)
 - Execution docs: `phases/`, `tasks/`, `reports/`
 - State: `state.json`
 - Error log: `ERROR-LOG.md` (append-only, created by `@orchestrator` via `log-error` skill)
