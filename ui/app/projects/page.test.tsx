@@ -162,8 +162,8 @@ async function run() {
   });
 
   await test('Halt-slot call site precedes SSE-slot call site (stack order lock)', () => {
-    const haltSlotIdx = sourceText.indexOf('HaltReasonBanner');
-    const sseSlotIdx = sourceText.indexOf('SSEStatusBanner');
+    const haltSlotIdx = sourceText.indexOf('<HaltReasonBanner');
+    const sseSlotIdx = sourceText.indexOf('<SSEStatusBanner');
     assert.ok(haltSlotIdx >= 0, 'HaltReasonBanner must appear in page.tsx');
     assert.ok(sseSlotIdx >= 0, 'SSEStatusBanner must appear in page.tsx');
     assert.ok(
@@ -250,7 +250,7 @@ async function run() {
     const statusBandIdx = sourceText.indexOf('<div className="flex flex-col">');
     assert.ok(statusBandIdx >= 0, 'Status band must be present');
     // The band closing tag is the next </div> after the SSE slot
-    const sseSlotIdx = sourceText.indexOf('SSEStatusBanner', statusBandIdx);
+    const sseSlotIdx = sourceText.indexOf('<SSEStatusBanner', statusBandIdx);
     assert.ok(sseSlotIdx >= 0, 'SSEStatusBanner must appear in band');
     const bandCloseIdx = sourceText.indexOf('</div>', sseSlotIdx);
     const bandRegion = sourceText.slice(statusBandIdx, bandCloseIdx);
