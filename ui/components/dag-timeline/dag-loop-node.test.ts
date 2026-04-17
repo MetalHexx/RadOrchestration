@@ -362,6 +362,7 @@ const _propsContractFixture: DAGLoopNodeProps = {
   onAccordionChange: (value: string[], eventDetails: { reason: string }) => { void value; void eventDetails; },
   repoBaseUrl: null,
   projectName: 'test-project',
+  focusedRowKey: null,
   isFocused: false,
   onFocusChange: (nodeId: string) => { void nodeId; },
 };

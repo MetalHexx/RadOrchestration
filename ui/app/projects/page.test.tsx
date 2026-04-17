@@ -220,7 +220,7 @@ async function run() {
 
   await test('No new npm package imports in page.tsx', () => {
     // Extract all "from ..." import specifiers
-    const importSpecifiers = [...sourceText.matchAll(/from\s+["']([^"']+)["']/g)].map(m => m[1]);
+    const importSpecifiers = Array.from(sourceText.matchAll(/from\s+["']([^"']+)["']/g)).map(m => m[1]);
     const knownImports = new Set([
       'react',
       '@/hooks/use-projects',
