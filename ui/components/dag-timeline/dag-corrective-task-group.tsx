@@ -64,6 +64,7 @@ export function DAGCorrectiveTaskGroup({
                       href={commitData.href}
                       label={commitData.label}
                       icon="external-link"
+                      tabIndex={-1}
                     />
                   ) : (
                     <span className="text-xs font-mono text-muted-foreground">

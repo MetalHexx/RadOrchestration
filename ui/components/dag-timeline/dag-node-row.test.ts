@@ -107,6 +107,7 @@ function decideKeyDownAction(
 // outer <div>. These literals must match exactly what DAGNodeRow renders.
 const ROW_ROLE_LITERAL = 'option';
 const ROW_DATA_ATTRIBUTE_NAME = 'data-timeline-row';
+const ROW_DATA_ROW_KEY_ATTRIBUTE_NAME = 'data-row-key';
 
 // ─── Fixture Nodes ───────────────────────────────────────────────────────────
 
@@ -530,6 +531,10 @@ test("row role literal is 'option'", () => {
 
 test("row carries the 'data-timeline-row' attribute", () => {
   assert.strictEqual(ROW_DATA_ATTRIBUTE_NAME, 'data-timeline-row');
+});
+
+test("row carries the 'data-row-key' attribute stamped with nodeId", () => {
+  assert.strictEqual(ROW_DATA_ROW_KEY_ATTRIBUTE_NAME, 'data-row-key');
 });
 
 // ─── Tests: decideKeyDownAction ──────────────────────────────────────────────

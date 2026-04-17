@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useProjects } from "@/hooks/use-projects";
 import { useDocumentDrawer } from "@/hooks/use-document-drawer";
 import { useFollowMode } from "@/hooks/use-follow-mode";
-import { useSSEContext } from "@/hooks/use-sse-context";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
 import { MainDashboard } from "@/components/layout";
@@ -24,9 +23,9 @@ export default function ProjectsPage() {
     selectProject,
     isLoading,
     error,
+    sseStatus,
+    reconnect,
   } = useProjects();
-
-  const { sseStatus, reconnect } = useSSEContext();
 
   const {
     isOpen,

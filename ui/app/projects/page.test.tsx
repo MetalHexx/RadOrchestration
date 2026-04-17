@@ -147,17 +147,25 @@ async function run() {
 
   // ─── Status band foundation (P05-T01) ────────────────────────────────────
 
-  await test('Source imports useSSEContext from @/hooks/use-sse-context', () => {
+  await test('Source destructures sseStatus and reconnect from useProjects (single SSE source of truth)', () => {
+    // Banner status must reflect the same EventSource that drives state updates.
+    // useProjects exposes sseStatus/reconnect from its own useSSE instance, so
+    // the banner and its Retry button act on the connection delivering events.
+    const useProjectsCallIdx = sourceText.indexOf('useProjects(');
+    assert.ok(useProjectsCallIdx >= 0, 'page.tsx must call useProjects(');
     assert.ok(
-      /import\s*\{\s*useSSEContext\s*\}\s*from\s*["']@\/hooks\/use-sse-context["']/.test(sourceText),
-      'projects/page.tsx must import useSSEContext from @/hooks/use-sse-context'
+      /const\s*\{[^}]*\bsseStatus\b[^}]*\breconnect\b[^}]*\}\s*=\s*useProjects\(\)/.test(sourceText)
+      || /const\s*\{[^}]*\breconnect\b[^}]*\bsseStatus\b[^}]*\}\s*=\s*useProjects\(\)/.test(sourceText),
+      'page.tsx must destructure sseStatus and reconnect from useProjects()'
     );
   });
 
-  await test('Source calls useSSEContext( at least once', () => {
+  await test('Source does not consume useSSEContext for banner (architectural guard)', () => {
+    // The banner must not read status from the separate SSEProvider context,
+    // which tracks a different EventSource and can diverge from actual data flow.
     assert.ok(
-      sourceText.includes('useSSEContext('),
-      'projects/page.tsx must invoke useSSEContext('
+      !sourceText.includes('useSSEContext'),
+      'page.tsx must not import or call useSSEContext (banner now sourced from useProjects)'
     );
   });
 

@@ -59,6 +59,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       data-timeline-row
       aria-label={ariaLabel}
       aria-current={isActive ? 'step' : undefined}
+      data-row-key={nodeId}
       onFocus={handleFocus}
       onKeyDown={handleKeyDown}
       className={cn(

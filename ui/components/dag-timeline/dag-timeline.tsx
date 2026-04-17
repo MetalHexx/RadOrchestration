@@ -62,11 +62,22 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
   const [focusedRowKey, setFocusedRowKey] = useState<string | null>(() => focusableRowKeys[0] ?? null);
 
   useEffect(() => {
-    if (focusableRowKeys.length === 0) return;
-    if (focusedRowKey === null || !focusableRowKeys.includes(focusedRowKey)) {
-      setFocusedRowKey(focusableRowKeys[0]);
+    // Derive the keyset from the DOM so nested iteration/corrective rows
+    // (keys like `phase_loop.iter0.task_handoff`) are honored — focusableRowKeys
+    // only holds top-level nodeIds and would otherwise treat any nested focus
+    // as stale and clobber it.
+    const container = containerRef.current;
+    if (container === null) return;
+    const renderedKeys = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-timeline-row][data-row-key]')
+    )
+      .map((el) => el.dataset.rowKey)
+      .filter((k): k is string => typeof k === 'string' && k.length > 0);
+    if (renderedKeys.length === 0) return;
+    if (focusedRowKey === null || !renderedKeys.includes(focusedRowKey)) {
+      setFocusedRowKey(renderedKeys[0]);
     }
-  }, [focusableRowKeys, focusedRowKey]);
+  }, [focusableRowKeys, focusedRowKey, expandedLoopIds]);
 
   const handleFocusChange = useCallback((nodeId: string) => {
     setFocusedRowKey(nodeId);
@@ -86,9 +97,18 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
       container.querySelectorAll<HTMLElement>('[data-timeline-row]')
     );
     if (items.length === 0) return;
-    const currentIndex = items.findIndex(
-      (item) => item === document.activeElement
-    );
+    // Resolve the active row via the nearest [data-timeline-row] ancestor so
+    // arrow-nav stays anchored to the row even when focus is on a descendant
+    // button (DocumentLink / ApproveGateButton are tabIndex={-1} but still
+    // clickable and can hold focus).
+    const activeElement =
+      event.target instanceof Element
+        ? event.target
+        : document.activeElement instanceof Element
+          ? document.activeElement
+          : null;
+    const activeRow = activeElement?.closest<HTMLElement>('[data-timeline-row]') ?? null;
+    const currentIndex = items.findIndex((item) => item === activeRow);
     let nextIndex: number;
     if (event.key === 'ArrowDown') {
       nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
