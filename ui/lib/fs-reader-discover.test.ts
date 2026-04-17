@@ -95,6 +95,25 @@ async function run() {
       assert.strictEqual(p!.lastUpdated, undefined);
     });
 
+    // graphStatus assertions
+    await test('(a2) v4 initialized project — graphStatus is "not_initialized"', async () => {
+      const p = projects.find(x => x.name === 'initialized-project');
+      assert.ok(p, 'initialized-project should be in results');
+      assert.strictEqual(p!.graphStatus, 'not_initialized');
+    });
+
+    await test('(b2) no-state project — graphStatus is "not_initialized"', async () => {
+      const p = projects.find(x => x.name === 'no-state-project');
+      assert.ok(p, 'no-state-project should be in results');
+      assert.strictEqual(p!.graphStatus, 'not_initialized');
+    });
+
+    await test('(c2) malformed-state project — graphStatus is "not_initialized"', async () => {
+      const p = projects.find(x => x.name === 'malformed-project');
+      assert.ok(p, 'malformed-project should be in results');
+      assert.strictEqual(p!.graphStatus, 'not_initialized');
+    });
+
     console.log(`\n${passed} passed, ${failed} failed`);
     if (failed > 0) process.exitCode = 1;
   } finally {

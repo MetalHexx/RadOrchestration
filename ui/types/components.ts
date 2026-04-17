@@ -1,4 +1,4 @@
-import type { PipelineTier, PlanningStatus, ExecutionStatus } from './state';
+import type { PipelineTier, PlanningStatus, ExecutionStatus, GraphStatus } from './state';
 
 /** Sidebar project entry */
 export interface ProjectSummary {
@@ -13,6 +13,8 @@ export interface ProjectSummary {
   lastUpdated?: string;   // ISO 8601; from state.project.updated; undefined for uninitialized projects
   /** Schema version: 'v4', 'v5', or undefined for uninitialized projects */
   schemaVersion?: 'v4' | 'v5';
+  // NEW — added for DAG-VIEW-5; consumed by getStatusPriority only
+  graphStatus?: GraphStatus | 'not_initialized';
 }
 
 /** Gate history entry for the timeline */

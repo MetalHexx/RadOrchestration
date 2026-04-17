@@ -145,6 +145,7 @@ export async function discoverProjects(
           executionStatus: deriveExecutionStatus(state.graph.status, state.graph.nodes),
           lastUpdated: state.project?.updated,
           schemaVersion: 'v5',
+          graphStatus: state.graph.status,
         });
       } else {
         projects.push({
@@ -157,6 +158,7 @@ export async function discoverProjects(
           executionStatus: state.execution?.status,
           lastUpdated: state.project?.updated,
           schemaVersion: 'v4',
+          graphStatus: 'not_initialized',
         });
       }
     } catch (err) {
@@ -173,6 +175,7 @@ export async function discoverProjects(
           hasState: false,
           hasMalformedState: false,
           brainstormingDoc: hasBrainstorming ? brainstormingFile : null,
+          graphStatus: 'not_initialized',
         });
       } else {
         projects.push({
@@ -183,6 +186,7 @@ export async function discoverProjects(
           errorMessage:
             err instanceof Error ? err.message : 'Unknown parse error',
           brainstormingDoc: hasBrainstorming ? brainstormingFile : null,
+          graphStatus: 'not_initialized',
         });
       }
     }

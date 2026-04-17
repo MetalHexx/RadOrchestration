@@ -85,6 +85,7 @@ export function useProjects(): UseProjectsReturn {
                       executionStatus,
                       lastUpdated: v5state.project?.updated,
                       schemaVersion: 'v5' as const,
+                      graphStatus: v5state.graph.status,
                     }
                   : p
               )
@@ -101,6 +102,7 @@ export function useProjects(): UseProjectsReturn {
                       executionStatus: v4state.execution?.status,
                       lastUpdated: v4state.project?.updated,
                       schemaVersion: 'v4' as const,
+                      graphStatus: 'not_initialized' as const,
                     }
                   : p
               )
