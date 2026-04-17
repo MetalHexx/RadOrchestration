@@ -32,7 +32,11 @@ Task Review reads only the inputs below — do NOT load the PRD, Architecture, D
 5. **Conformance pass**: Compare the implementation against the Task Handoff using the 7-category checklist (see categories below). Core question: "Did we build what we intended?" Verify that the implementation satisfies the FR-N, NFR-N, AD-N, and DD-N elements inlined in the Task Handoff. Read full files from File Targets when the diff alone is insufficient to confirm conformance (e.g., to verify an export survived or a signature is still correct).
 6. **Skeptical pass** (Independent Quality Assessment): Read the diff line by line. Don't trust that it works because the handoff says it should — the handoff describes intent, the diff shows reality. Find what the implementer missed: bugs, edge cases, silent failures, defensive gaps. Apply code-smell detection without anchoring to the plan. Read full files only when the diff requires surrounding context.
 7. Apply verdict rules (see Verdict Rules section below) — highest severity across both passes determines verdict.
-8. Fill in the output template at [./template.md](./template.md) and save to `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md`.
+8. Fill in the output template at [./template.md](./template.md) and save based on corrective status:
+    - Normal (first-time): `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md`
+    - Corrective: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}-C{corrective_index}.md`
+
+    The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) review is preserved, not overwritten. (See `rad-create-plans/references/phase-plan/workflow.md` lines 135–150 for the shared pattern.)
 
 ## Conformance Checklist Categories
 
@@ -96,4 +100,6 @@ The highest-severity finding across both passes (conformance + skeptical) determ
 ## Output
 
 - **Template**: [./template.md](./template.md)
-- **Save path**: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md`
+- **Save path**:
+  - Normal: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md`
+  - Corrective: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}-C{corrective_index}.md`

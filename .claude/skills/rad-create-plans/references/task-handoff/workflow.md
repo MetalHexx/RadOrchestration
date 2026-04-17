@@ -114,7 +114,7 @@ When `review.action == "corrective_task_issued"`:
 3. These issues become the primary objective of the corrective handoff
 4. Include the original task's acceptance criteria (they still apply)
 5. Focus implementation steps ONLY on fixing the identified issues — do not re-implement the full task
-6. Save with the same task ID (overwrite or append `-fix` suffix as appropriate)
+6. Save to `{PROJECT-DIR}/tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}-C{corrective_index}.md`. The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) handoff is preserved, not overwritten. (See `rad-create-plans/references/phase-plan/workflow.md` lines 135–150 for the shared pattern.)
 
 ## Anti-Duplication Rules
 

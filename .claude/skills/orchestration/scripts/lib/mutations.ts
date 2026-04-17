@@ -226,7 +226,31 @@ for (const [eventName, nodeId] of phaseExecDocSteps) {
     const cloned = structuredClone(state);
     const mutations_applied: string[] = [];
 
-    const node = resolveNodeState(cloned, nodeId, 'phase', context.phase);
+    let phase = context.phase;
+    if (phase === undefined) {
+      try {
+        phase = resolveActivePhaseIndex(cloned);
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        throw new Error(
+          `Cannot apply mutation for "${eventName}": failed to resolve the active phase from state.\n` +
+          `${detail}\n` +
+          `Pass --phase <N> to specify the phase explicitly.`
+        );
+      }
+    }
+
+    let node: NodeState;
+    try {
+      node = resolveNodeState(cloned, nodeId, 'phase', phase);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Cannot apply mutation for "${eventName}": could not resolve node "${nodeId}" for phase ${phase}.\n` +
+        `${detail}\n` +
+        `Pass --phase <N> to specify an existing phase explicitly.`
+      );
+    }
     node.status = 'completed';
     mutations_applied.push(`set ${nodeId}.status = completed`);
 
@@ -244,7 +268,31 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
-  const node = resolveNodeState(cloned, 'phase_review', 'phase', context.phase);
+  let phase = context.phase;
+  if (phase === undefined) {
+    try {
+      phase = resolveActivePhaseIndex(cloned);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Cannot apply mutation for "phase_review_completed": failed to resolve the active phase from state.\n` +
+        `${detail}\n` +
+        `Pass --phase <N> to specify the phase explicitly.`
+      );
+    }
+  }
+
+  let node: NodeState;
+  try {
+    node = resolveNodeState(cloned, 'phase_review', 'phase', phase);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Cannot apply mutation for "phase_review_completed": could not resolve phase_review for phase ${phase}.\n` +
+      `${detail}\n` +
+      `Pass --phase <N> to specify an existing phase explicitly.`
+    );
+  }
   node.status = 'completed';
   mutations_applied.push('set phase_review.status = completed');
 
@@ -269,7 +317,7 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
   }
 
   if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED) {
-    const iteration = resolvePhaseIteration(cloned, context.phase ?? 1);
+    const iteration = resolvePhaseIteration(cloned, phase);
 
     // Reset phase_planning to not_started so the walker returns create_phase_plan
     const phasePlanningNode = iteration.nodes['phase_planning'];
@@ -316,7 +364,7 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
 
     mutations_applied.push('reset phase for corrective re-planning');
   } else if (verdict === REVIEW_VERDICTS.REJECTED) {
-    const iteration = resolvePhaseIteration(cloned, context.phase ?? 1);
+    const iteration = resolvePhaseIteration(cloned, phase);
     iteration.status = 'halted';
     cloned.graph.status = 'halted';
     mutations_applied.push('set phase_iteration.status = halted (rejected verdict)');

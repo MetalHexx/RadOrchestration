@@ -146,7 +146,20 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         .find(ct => ct.commit_hash != null);
       const phase_head_sha = lastTaskFinalCorrective?.commit_hash ?? lastTask?.commit_hash ?? null;
 
-      return { ...base, phase_report_doc, phase_first_sha, phase_head_sha };
+      const correctiveFields = phaseIter && phaseIter.corrective_tasks.length > 0
+        ? { is_correction: true, corrective_index: phaseIter.corrective_tasks.length }
+        : {};
+
+      return { ...base, phase_report_doc, phase_first_sha, phase_head_sha, ...correctiveFields };
+    }
+
+    if (action === 'generate_phase_report') {
+      const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
+      const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
+      if (phaseIter && phaseIter.corrective_tasks.length > 0) {
+        return { ...base, is_correction: true, corrective_index: phaseIter.corrective_tasks.length };
+      }
+      return base;
     }
 
     return base;
@@ -189,6 +202,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       return {
         ...base,
         is_correction: true,
+        corrective_index: correctives.length,
         previous_review: reviewNode?.doc_path ?? '',
         reason: correctives[correctives.length - 1]?.reason ?? '',
       };
@@ -209,13 +223,17 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
       const taskLoop = phaseIter?.nodes['task_loop'] as ForEachTaskNodeState | undefined;
       const taskIter = taskLoop?.iterations[taskNumber - 1];
-      const activeCorrective = taskIter?.corrective_tasks.slice().reverse().find(
+      const correctives = taskIter?.corrective_tasks ?? [];
+      const activeCorrective = correctives.slice().reverse().find(
         ct => ct.status === 'in_progress' || ct.status === 'not_started'
       );
       const head_sha = activeCorrective
         ? (activeCorrective.commit_hash ?? null)
         : (taskIter?.commit_hash ?? null);
-      return { ...base, head_sha };
+      const correctiveFields = activeCorrective
+        ? { is_correction: true, corrective_index: correctives.length }
+        : {};
+      return { ...base, head_sha, ...correctiveFields };
     }
 
     return base;
