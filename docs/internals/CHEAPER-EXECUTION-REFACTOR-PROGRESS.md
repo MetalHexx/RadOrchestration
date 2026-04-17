@@ -24,7 +24,7 @@ This refactor uses a multi-branch, worktree-per-iteration strategy to isolate wo
 **Branch hierarchy:**
 
 ```
-feat/process-improvements          (parent — final merge target)
+feat/process-refactor          (parent — final merge target)
   └── feat/cheaper-execution       (integration branch for this refactor)
         ├── feat/cheaper-execution/iter-0-prereqs      (per-iteration branch)
         ├── feat/cheaper-execution/iter-1-doc-formats
@@ -44,7 +44,7 @@ feat/process-improvements          (parent — final merge target)
 
 **Final cutover** (after all iterations have landed on `feat/cheaper-execution` and are verified end-to-end):
 
-- Open a PR from `feat/cheaper-execution` → `feat/process-improvements`.
+- Open a PR from `feat/cheaper-execution` → `feat/process-refactor`.
 - After merge, delete `feat/cheaper-execution`.
 - Log the cutover in the progression log with the merge commit hash and PR URL.
 
@@ -75,10 +75,8 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 
 ## Branches & Worktrees
 
-**Parent branch**: `feat/process-improvements`
-**Integration branch**: `feat/cheaper-execution` — status: _not yet created_
-
-When the integration branch is created, update this line with the branch's creation date and the commit it was branched from.
+**Parent branch**: `feat/process-refactor`
+**Integration branch**: `feat/cheaper-execution` — created 2026-04-17 off `feat/process-refactor` @ `86c6616`.
 
 **Per-iteration state:**
 
@@ -99,7 +97,7 @@ When the integration branch is created, update this line with the branch's creat
 
 | From | To | Merge Commit | PR | Date |
 |------|-----|--------------|-----|------|
-| `feat/cheaper-execution` | `feat/process-improvements` | — | — | — |
+| `feat/cheaper-execution` | `feat/process-refactor` | — | — | — |
 
 ---
 
@@ -117,8 +115,13 @@ Append new entries at the bottom. Format:
 ### 2026-04-16 — Design frozen
 
 - `CHEAPER-EXECUTION-REFACTOR.md` published in `docs/internals/`, capturing the full design.
-- Progress tracker (this doc) created with git workflow: parent `feat/process-improvements` → integration `feat/cheaper-execution` → per-iteration worktree branches.
-- Next up: create `feat/cheaper-execution` off `feat/process-improvements`, then start Iteration 0 (prerequisite auto-resolution bug) in its own worktree.
+- Progress tracker (this doc) created with git workflow: parent `feat/process-refactor` → integration `feat/cheaper-execution` → per-iteration worktree branches.
+- Next up: create `feat/cheaper-execution` off `feat/process-refactor`, then start Iteration 0 (prerequisite auto-resolution bug) in its own worktree.
+
+### 2026-04-17 — Integration branch created
+
+- Created `feat/cheaper-execution` off `feat/process-refactor` @ `86c6616` and switched to it.
+- Next up: Iteration 0 — create worktree + branch `feat/cheaper-execution/iter-0-prereqs` and address the corrective-cycle auto-resolution bug (§8).
 
 ---
 
