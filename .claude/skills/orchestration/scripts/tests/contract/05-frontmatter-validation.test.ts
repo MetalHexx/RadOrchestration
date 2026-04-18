@@ -213,7 +213,7 @@ describe('[CONTRACT] Frontmatter — total_phases (plan_approved)', () => {
 
   it('valid positive integer passes', () => {
     const { io, mpDoc } = scaffoldForPlanApproved();
-    seedDoc(mpDoc, { total_phases: 2 });
+    seedDoc(mpDoc, { total_phases: 2, total_tasks: 4 });
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
@@ -269,7 +269,7 @@ describe('[CONTRACT] Frontmatter — total_phases validation error shape (plan_a
 
   it('valid total_phases: 1 → success: true', () => {
     const { io, mpDoc } = scaffoldForPlanApprovedValidation();
-    seedDoc(mpDoc, { total_phases: 1 });
+    seedDoc(mpDoc, { total_phases: 1, total_tasks: 3 });
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
     expect(result.success).toBe(true);
   });
@@ -299,5 +299,52 @@ describe('[CONTRACT] Frontmatter — total_phases validation error shape (plan_a
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
     expect(result.success).toBe(false);
     expect(result.error?.field).toBe('total_phases');
+  });
+});
+
+// ── Group 7: total_tasks validation (plan_approved) ───────────────────────────
+
+describe('[CONTRACT] Frontmatter — total_tasks (plan_approved)', () => {
+  function scaffoldForPlanApprovedValidation() {
+    const io = createMockIOWithConfig(null, config);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    completePlanningSteps(state, 'master_plan');
+    const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
+    return { io, mpDoc };
+  }
+
+  it('missing total_tasks (only total_phases present) → success: false, missing field error for total_tasks', () => {
+    const { io, mpDoc } = scaffoldForPlanApprovedValidation();
+    seedDoc(mpDoc, { total_phases: 1 });
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Missing required field');
+    expect(result.error?.field).toBe('total_tasks');
+    expect(result.error?.event).toBe('plan_approved');
+  });
+
+  it('valid total_phases + total_tasks → success: true', () => {
+    const { io, mpDoc } = scaffoldForPlanApprovedValidation();
+    seedDoc(mpDoc, { total_phases: 1, total_tasks: 3 });
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    expect(result.success).toBe(true);
+  });
+
+  it('total_tasks: 0 → success: false, invalid value error', () => {
+    const { io, mpDoc } = scaffoldForPlanApprovedValidation();
+    seedDoc(mpDoc, { total_phases: 1, total_tasks: 0 });
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Invalid value: total_tasks must be a positive integer');
+    expect(result.error?.field).toBe('total_tasks');
+  });
+
+  it('total_tasks: "three" → success: false, validation error', () => {
+    const { io, mpDoc } = scaffoldForPlanApprovedValidation();
+    seedDoc(mpDoc, { total_phases: 1, total_tasks: 'three' });
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('total_tasks');
   });
 });

@@ -1,55 +1,92 @@
 ---
 project: "{PROJECT-NAME}"
+type: master_plan
 status: "draft"
-total_phases: {N}
-author: "tactical-planner-agent"
 created: "{YYYY-MM-DD}"
+total_phases: {N}
+total_tasks: {N}
+author: "planner-agent"
 ---
 
 # {PROJECT-NAME} — Master Plan
 
-## Executive Summary
+## Introduction
 
-{3–5 sentences. Describe what is being built and why it matters. Summarize the high-level approach — the key phases or milestones that organize execution. State who the primary users are and what outcome successful delivery produces. A new reader should understand the project, its purpose, and its structure after reading this paragraph.}
+{Paragraph 1 — 2–3 sentences: what is being built and why, at a glance.}
 
-## Source Documents
+{Paragraph 2 — 2–3 sentences: shape of the work, headline constraints, what successful delivery looks like.}
 
-| Document | Path | Status |
-|----------|------|--------|
-| Brainstorming | [{NAME}-BRAINSTORMING.md](./{NAME}-BRAINSTORMING.md) | ✅ Complete |
-| Research Findings | [{NAME}-RESEARCH-FINDINGS.md](./{NAME}-RESEARCH-FINDINGS.md) | ✅ Complete |
-| PRD | [{NAME}-PRD.md](./{NAME}-PRD.md) | ✅ Complete |
-| Design | [{NAME}-DESIGN.md](./{NAME}-DESIGN.md) | ✅ Complete |
-| Architecture | [{NAME}-ARCHITECTURE.md](./{NAME}-ARCHITECTURE.md) | ✅ Complete |
+## P01: {Phase Title}
 
-## Phase Outlines
+{≤3 sentence phase description: what this phase delivers and why it's its own phase.}
 
-### Phase N: {Title}
+**Requirements:** FR-1, FR-2, AD-1, DD-1
 
-**Objective**: {One sentence — what this phase achieves and why it matters}
+**Execution order:**
+    T01 → T02 → T03
+    T04 (depends on T01)
 
-**Scope**:
-- FR-N, FR-M — [§ FR-N: {Title}]({prd-path}#fr-n), [§ FR-M: {Title}]({prd-path}#fr-m)
-- NFR-N — [§ NFR-N: {Title}]({prd-path}#nfr-n)
-- AD-N, AD-M — [§ AD-N: {Title}]({arch-path}#ad-n), [§ AD-M: {Title}]({arch-path}#ad-m)
-- DD-N, DD-M — [§ DD-N: {Title}]({design-path}#dd-n), [§ DD-M: {Title}]({design-path}#dd-m)
-- Research: {Finding Heading} — [§ {Heading}]({research-path}#{anchor})
+### P01-T01: Add login form component
 
-**Exit Criteria**:
-- [ ] {Measurable outcome — the criterion is met or it is not}
-- [ ] {Measurable outcome}
+{≤2 sentence task description — what the task produces.}
 
-**Phase Doc**: *(created at execution time)*
+**Task type:** code
+**Requirements:** FR-1, DD-1
+**Files:**
+- Create: `src/components/LoginForm.tsx`
+- Test: `src/components/__tests__/LoginForm.test.tsx`
 
-## Execution Constraints
+- [ ] **Step 1: Write the failing test (FR-1)**
+    ```tsx
+    import { render, screen } from '@testing-library/react';
+    import { LoginForm } from '../LoginForm';
 
-- **Max phases**: {N} (from `state.json → config.limits.max_phases`)
-- **Max tasks per phase**: {N} (from `state.json → config.limits.max_tasks_per_phase`)
-- **Git strategy**: {Single feature branch or as configured}
-- **Human gates**: {Configured gate mode from state.json → config.gate_mode}
+    test('renders email and password fields', () => {
+      render(<LoginForm onSubmit={() => {}} />);
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+    });
+    ```
+- [ ] **Step 2: Run test, confirm it fails**
+    Run: `npm test -- LoginForm.test.tsx`
+    Expected: FAIL — `LoginForm` module does not exist yet (FR-1)
+- [ ] **Step 3: Implement minimal code (FR-1, DD-1)**
+    ```tsx
+    import { FormEvent } from 'react';
 
-## Risk Register
+    type Props = { onSubmit: (email: string, password: string) => void };
 
-| Risk | Impact | Mitigation | Owner |
-|------|--------|------------|-------|
-| {Risk aggregated from PRD or Architecture} | High/Medium/Low | {Mitigation strategy} | {Agent name or Human} |
+    export function LoginForm({ onSubmit }: Props) {
+      return (
+        <form
+          onSubmit={(e: FormEvent<HTMLFormElement>) => {
+            e.preventDefault();
+            const data = new FormData(e.currentTarget);
+            onSubmit(String(data.get('email')), String(data.get('password')));
+          }}
+        >
+          <label>Email<input name="email" type="email" /></label>
+          <label>Password<input name="password" type="password" /></label>
+          <button type="submit">Sign in</button>
+        </form>
+      );
+    }
+    ```
+- [ ] **Step 4: Run test, confirm pass**
+    Run: `npm test -- LoginForm.test.tsx`
+    Expected: PASS (FR-1, DD-1)
+
+### P01-T02: Document login flow in README
+
+{≤2 sentence task description.}
+
+**Task type:** doc
+**Requirements:** DD-1
+**Files:**
+- Modify: `README.md:120-160`
+
+- [ ] **Step 1: Add the login flow section under "Usage"**
+    Insert a new subsection titled "Logging in" after the existing "Installation" subsection. Content must describe the email + password form introduced in P01-T01 and link to `src/components/LoginForm.tsx`. (DD-1)
+- [ ] **Step 2: Verify the anchor renders**
+    Run: `npx markdown-link-check README.md`
+    Expected: exit 0, no broken anchors (DD-1)

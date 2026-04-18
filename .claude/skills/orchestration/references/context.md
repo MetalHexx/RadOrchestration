@@ -19,8 +19,8 @@ This workspace contains a **document-driven agent orchestration system** built o
 | `@product-manager` | Creates PRDs from brainstorming documents and other supplied context |
 | `@ux-designer` | Creates design documents from PRDs and Research Findings — defines the experience, not the implementation |
 | `@architect` | Creates Architecture documents via `rad-create-plans` |
-| `@tactical-planner` | Creates Master Plans, Phase Plans, and Task Handoffs via `rad-create-plans`; generates Phase Reports via `generate-phase-report` |
-| `@planner` | Authors the lean Requirements ledger and inlined Execution Plan via `rad-create-plans` (authoring skill only — not yet wired into the pipeline) |
+| `@tactical-planner` | Creates Phase Plans and Task Handoffs via `rad-create-plans`; generates Phase Reports via `generate-phase-report` |
+| `@planner` | Authors the lean Requirements ledger and inlined Master Plan via `rad-create-plans` |
 | `@coder` | Executes coding tasks from self-contained task handoffs |
 | `@coder-junior` | Executes simpler coding tasks with additional guardrails |
 | `@coder-senior` | Executes complex coding tasks with expanded autonomy |
@@ -58,7 +58,7 @@ Project artifacts are stored in a configurable location set by `orchestration.ym
 
 Contents:
 - Brainstorming: `BRAINSTORMING.md` (optional, created by `@brainstormer`)
-- Planning docs: `PRD.md`, `DESIGN.md`, `ARCHITECTURE.md`, `MASTER-PLAN.md`, `REQUIREMENTS.md` (lean project-level ledger written by `@planner`), `EXECUTION-PLAN.md` (inlined phase + task plan written by `@planner`)
+- Planning docs: `PRD.md`, `DESIGN.md`, `ARCHITECTURE.md`, `MASTER-PLAN.md` (inlined phase + task plan written by `@planner`), `REQUIREMENTS.md` (lean project-level ledger written by `@planner`)
 - Execution docs: `phases/`, `tasks/`, `reports/`
 - State: `state.json`
 - Error log: `ERROR-LOG.md` (append-only, created by `@orchestrator` via `log-error` skill)

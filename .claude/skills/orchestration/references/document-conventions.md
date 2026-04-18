@@ -15,7 +15,6 @@ Covers all documents produced during pipeline execution. Planning documents (PRD
 | Architecture | — (root) | `{NAME}-ARCHITECTURE.md` | `MYAPP-ARCHITECTURE.md` |
 | Master Plan | — (root) | `{NAME}-MASTER-PLAN.md` | `MYAPP-MASTER-PLAN.md` |
 | Requirements | — (root) | `{NAME}-REQUIREMENTS.md` | `MYAPP-REQUIREMENTS.md` |
-| Execution Plan | — (root) | `{NAME}-EXECUTION-PLAN.md` | `MYAPP-EXECUTION-PLAN.md` |
 | Error Log | — (root) | `{NAME}-ERROR-LOG.md` | `MYAPP-ERROR-LOG.md` |
 | Phase Plan | phases/ | `{NAME}-PHASE-{NN}-{TITLE}.md` | `MYAPP-PHASE-01-SETUP.md` |
 | Task Handoff | tasks/ | `{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-TASK-P01-T02-AUTH.md` |
@@ -28,20 +27,20 @@ Covers all documents produced during pipeline execution. Planning documents (PRD
 | Field | Type | Valid Values | Used In |
 |---|---|---|---|
 | project | string | Project name in SCREAMING-CASE (e.g., `"MYAPP"`) | All templates |
-| type | string | `"requirements"` \| `"execution_plan"` (additional document-type marker on new docs) | Requirements, Execution Plan |
+| type | string | `"requirements"` \| `"master_plan"` (additional document-type marker on new docs) | Requirements, Master Plan |
 | phase | integer | Phase number, 1-based (e.g., `1`) | Phase Plan, Task Handoff, Code Review, Phase Report, Phase Review |
 | task | integer | Task number, 1-based (e.g., `2`) | Task Handoff, Code Review |
 | title | string | Human-readable title (e.g., `"Setup Auth"`) | Task Handoff, Phase Plan, Phase Report |
-| status | string | Varies by document — see below | Task Handoff, Phase Plan, Phase Report, Requirements, Execution Plan |
+| status | string | Varies by document — see below | Task Handoff, Phase Plan, Phase Report, Requirements, Master Plan |
 | skills | array | Skill folder names from `.claude/skills/` | Task Handoff |
 | estimated_files | integer | Estimated file count (e.g., `3`) | Task Handoff |
 | tasks | array | List of `{id, title}` objects | Phase Plan |
-| author | string | Agent name (e.g., `"tactical-planner-agent"`, `"planner-agent"`) | Phase Plan, Phase Report, Phase Review, Code Review, Requirements, Execution Plan |
-| created | string | ISO 8601 date-time (e.g., `"2026-01-15T00:00:00.000Z"`) or ISO 8601 date (e.g., `"2026-01-15"`) | Phase Plan, Phase Report, Phase Review, Code Review, Requirements, Execution Plan |
+| author | string | Agent name (e.g., `"tactical-planner-agent"`, `"planner-agent"`) | Phase Plan, Phase Report, Phase Review, Code Review, Requirements, Master Plan |
+| created | string | ISO 8601 date-time (e.g., `"2026-01-15T00:00:00.000Z"`) or ISO 8601 date (e.g., `"2026-01-15"`) | Phase Plan, Phase Report, Phase Review, Code Review, Requirements, Master Plan |
 | approved_at | string \| null | ISO 8601 date-time or `null` until a human gate approves the doc | Requirements |
 | requirement_count | integer | Total FR + NFR + AD + DD blocks in the doc body (e.g., `12`) | Requirements |
-| total_phases | integer | Count of `## PNN:` phase headings in the Execution Plan body | Execution Plan |
-| total_tasks | integer | Count of `### PNN-TMM:` task headings in the Execution Plan body | Execution Plan |
+| total_phases | integer | Count of `## PNN:` phase headings in the Master Plan body | Master Plan |
+| total_tasks | integer | Count of `### PNN-TMM:` task headings in the Master Plan body | Master Plan |
 | verdict | string | `"approved"` \| `"changes_requested"` \| `"rejected"` | Code Review, Phase Review |
 | severity | string | `"none"` \| `"minor"` \| `"critical"` | Code Review, Phase Review |
 | exit_criteria_met | boolean | `true` \| `false` | Phase Review |
@@ -54,7 +53,7 @@ Covers all documents produced during pipeline execution. Planning documents (PRD
 - Phase Plan: `"active"` | `"complete"` | `"halted"`
 - Phase Report: `"complete"` | `"partial"` | `"failed"`
 - Requirements: `"draft"` | `"approved"` | `"frozen"`
-- Execution Plan: `"draft"` | `"approved"`
+- Master Plan: `"draft"` | `"approved"`
 
 ## Placeholder Token Convention
 

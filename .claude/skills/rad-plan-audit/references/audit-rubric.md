@@ -41,7 +41,7 @@ The planning chain flows: **PRD → Research → Design → Architecture → Mas
 
 ### 2.1 Requirement Traceability
 
-Trace requirements from the PRD through to execution plans.
+Trace requirements from the PRD through to master plans.
 
 | Check | What to Verify |
 |-------|---------------|

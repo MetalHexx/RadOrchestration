@@ -160,7 +160,7 @@ function drivePlanningTier(io: MockIO): PipelineResult {
 
   // master_plan
   processEvent('master_plan_started', PROJECT_DIR, {}, io);
-  seedDoc(DOC_PATHS.masterPlan, { total_phases: 2 });
+  seedDoc(DOC_PATHS.masterPlan, { total_phases: 2, total_tasks: 4 });
   processEvent('master_plan_completed', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 
   // plan_approved → triggers phase_loop expansion
