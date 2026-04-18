@@ -46,6 +46,8 @@ export const NEXT_ACTIONS = Object.freeze({
   SPAWN_DESIGN: 'spawn_design',
   SPAWN_ARCHITECTURE: 'spawn_architecture',
   SPAWN_MASTER_PLAN: 'spawn_master_plan',
+  CREATE_REQUIREMENTS: 'create_requirements',
+  CREATE_EXECUTION_PLAN: 'create_execution_plan',
 
   // Human gates
   REQUEST_PLAN_APPROVAL: 'request_plan_approval',
@@ -85,6 +87,10 @@ export const EVENTS = Object.freeze({
   ARCHITECTURE_COMPLETED: 'architecture_completed',
   MASTER_PLAN_STARTED: 'master_plan_started',
   MASTER_PLAN_COMPLETED: 'master_plan_completed',
+  REQUIREMENTS_STARTED: 'requirements_started',
+  REQUIREMENTS_COMPLETED: 'requirements_completed',
+  EXECUTION_PLAN_STARTED: 'execution_plan_started',
+  EXECUTION_PLAN_COMPLETED: 'execution_plan_completed',
 
   // ── Gate approved events ──────────────────────────────────────────────
   PLAN_APPROVED: 'plan_approved',

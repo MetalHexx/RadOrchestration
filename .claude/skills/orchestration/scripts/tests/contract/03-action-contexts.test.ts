@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { processEvent } from '../../lib/engine.js';
 import {
   createMockIO,
+  createMockIOWithConfig,
   createConfig,
   DOC_STORE,
   PROJECT_DIR,
@@ -108,6 +109,56 @@ describe('[CONTRACT] Action Contexts — planning spawn actions (full template)'
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_master_plan');
     expect(result.context).toEqual({ step: 'master_plan' });
+  });
+});
+
+// ── [CONTRACT] Planning spawn actions (cheaper template) ─────────────────────
+
+describe('[CONTRACT] Action Contexts — planning spawn actions (cheaper template)', () => {
+  const cheaperConfig = createConfig({
+    human_gates: {
+      after_planning: true,
+      execution_mode: 'autonomous',
+      after_final_review: true,
+    },
+    source_control: { auto_commit: 'never', auto_pr: 'never' },
+    default_template: 'cheaper',
+  });
+
+  it('first action is create_requirements with { step: "requirements" }', () => {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    const result = processEvent('start', PROJECT_DIR, {}, io);
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('create_requirements');
+    expect(result.context).toEqual({ step: 'requirements' });
+  });
+
+  it('after requirements_completed, next action is create_execution_plan with { step: "execution_plan" }', () => {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'in_progress';
+    const docPath = '/tmp/requirements.md';
+    seedDoc(docPath, { type: 'requirements', requirement_count: 3 });
+    const result = processEvent('requirements_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('create_execution_plan');
+    expect(result.context).toEqual({ step: 'execution_plan' });
+  });
+
+  it('after execution_plan_completed, next action is request_plan_approval with {} context', () => {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
+    (state.graph.nodes['execution_plan'] as StepNodeState).status = 'in_progress';
+    const docPath = '/tmp/execution-plan.md';
+    seedDoc(docPath, { type: 'execution_plan', total_phases: 1, total_tasks: 2 });
+    const result = processEvent('execution_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('request_plan_approval');
+    expect(result.context).toEqual({});
   });
 });
 

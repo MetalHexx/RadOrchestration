@@ -124,6 +124,7 @@ export function createConfig(overrides: {
   system?: Partial<OrchestrationConfig['system']>;
   projects?: Partial<OrchestrationConfig['projects']>;
   limits?: Partial<OrchestrationConfig['limits']>;
+  default_template?: string;
 }): OrchestrationConfig {
   return {
     system: { ...DEFAULT_CONFIG.system, ...overrides.system },
@@ -131,7 +132,7 @@ export function createConfig(overrides: {
     limits: { ...DEFAULT_CONFIG.limits, ...overrides.limits },
     human_gates: { ...DEFAULT_CONFIG.human_gates, ...overrides.human_gates },
     source_control: { ...DEFAULT_CONFIG.source_control, ...overrides.source_control },
-    default_template: DEFAULT_CONFIG.default_template,
+    default_template: overrides.default_template ?? DEFAULT_CONFIG.default_template,
   };
 }
 

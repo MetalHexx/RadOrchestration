@@ -1,0 +1,52 @@
+template:
+  id: cheaper
+  version: "0.1.0"
+  description: "Planner pipeline — Requirements + Execution Plan (WIP: explosion lands Iter 3, execution tier lands Iter 5)."
+
+# ── Display & Routing Fields ─────────────────────────────────────────────────
+# Informational field (not consumed by the v5 DAG engine at runtime):
+#
+#   label            - Human-readable display name for each node. The engine
+#                      uses the `id` field for node identity and routing.
+#
+# Consumed field (read by the v5 DAG engine at runtime):
+#
+#   action_if_needed - On gate nodes, specifies the action to dispatch when
+#                      the gate is active. This field IS consumed by the v5
+#                      DAG engine: dag-walker.ts reads gateDef.action_if_needed
+#                      in gate evaluation paths and returns it as the action to
+#                      dispatch for gate routing.
+# ─────────────────────────────────────────────────────────────────────────────
+
+nodes:
+
+  # ── Planning Steps ────────────────────────────────────────────────────────
+
+  - id: requirements
+    kind: step
+    label: "Requirements"
+    action: create_requirements
+    events: { started: requirements_started, completed: requirements_completed }
+    context: { step: requirements }
+    doc_output_field: doc_path
+    depends_on: []
+
+  - id: execution_plan
+    kind: step
+    label: "Execution Plan"
+    action: create_execution_plan
+    events: { started: execution_plan_started, completed: execution_plan_completed }
+    context: { step: execution_plan }
+    doc_output_field: doc_path
+    depends_on: [requirements]
+
+  # ── Plan Approval Gate ────────────────────────────────────────────────────
+
+  - id: plan_approval_gate
+    kind: gate
+    label: "Plan Approval Gate"
+    mode_ref: human_gates.after_planning
+    action_if_needed: request_plan_approval
+    approved_event: plan_approved
+    auto_approve_modes: []
+    depends_on: [execution_plan]

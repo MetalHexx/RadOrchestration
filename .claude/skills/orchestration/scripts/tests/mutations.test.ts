@@ -139,6 +139,10 @@ describe('getMutation — planning events', () => {
     'architecture_completed',
     'master_plan_started',
     'master_plan_completed',
+    'requirements_started',
+    'requirements_completed',
+    'execution_plan_started',
+    'execution_plan_completed',
   ];
 
   for (const eventName of planningEvents) {
@@ -278,6 +282,118 @@ describe('planning _completed mutations', () => {
       expect(result.mutations_applied.length).toBeGreaterThan(0);
     });
   }
+});
+
+// ── cheaper-template planner mutations ────────────────────────────────────────
+
+function makeCheaperState(): PipelineState {
+  const state = makeState();
+  state.graph.template_id = 'cheaper';
+  state.graph.nodes['requirements'] = { kind: 'step', status: 'not_started', doc_path: null, retries: 0 };
+  state.graph.nodes['execution_plan'] = { kind: 'step', status: 'not_started', doc_path: null, retries: 0 };
+  return state;
+}
+
+describe('requirements_started mutation', () => {
+  it('sets requirements.status to in_progress', () => {
+    const state = makeCheaperState();
+    const mutation = getMutation('requirements_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.graph.nodes['requirements'].status).toBe('in_progress');
+  });
+
+  it('sets graph.status to in_progress (first planning step under cheaper)', () => {
+    const state = makeCheaperState();
+    const mutation = getMutation('requirements_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.graph.status).toBe('in_progress');
+  });
+
+  it('does not mutate the original state', () => {
+    const state = makeCheaperState();
+    const mutation = getMutation('requirements_started')!;
+    mutation(state, {}, baseConfig, baseTemplate);
+    expect(state.graph.nodes['requirements'].status).toBe('not_started');
+    expect(state.graph.status).toBe('not_started');
+  });
+
+  it('returns a non-empty mutations_applied array', () => {
+    const state = makeCheaperState();
+    const mutation = getMutation('requirements_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+describe('requirements_completed mutation', () => {
+  it('sets requirements.status to completed', () => {
+    const state = makeCheaperState();
+    const mutation = getMutation('requirements_completed')!;
+    const result = mutation(state, { doc_path: '/path/to/REQUIREMENTS.md' }, baseConfig, baseTemplate);
+    expect(result.state.graph.nodes['requirements'].status).toBe('completed');
+  });
+
+  it('stores doc_path from context', () => {
+    const state = makeCheaperState();
+    const mutation = getMutation('requirements_completed')!;
+    const result = mutation(state, { doc_path: '/path/to/REQUIREMENTS.md' }, baseConfig, baseTemplate);
+    const node = result.state.graph.nodes['requirements'] as StepNodeState;
+    expect(node.doc_path).toBe('/path/to/REQUIREMENTS.md');
+  });
+
+  it('does not mutate the original state', () => {
+    const state = makeCheaperState();
+    const mutation = getMutation('requirements_completed')!;
+    mutation(state, { doc_path: '/path/to/REQUIREMENTS.md' }, baseConfig, baseTemplate);
+    expect(state.graph.nodes['requirements'].status).toBe('not_started');
+  });
+});
+
+describe('execution_plan_started mutation', () => {
+  it('sets execution_plan.status to in_progress', () => {
+    const state = makeCheaperState();
+    const mutation = getMutation('execution_plan_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.graph.nodes['execution_plan'].status).toBe('in_progress');
+  });
+
+  it('does not transition graph.status (not a tier-entry event)', () => {
+    const state = makeCheaperState();
+    const mutation = getMutation('execution_plan_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.graph.status).toBe('not_started');
+  });
+
+  it('does not mutate the original state', () => {
+    const state = makeCheaperState();
+    const mutation = getMutation('execution_plan_started')!;
+    mutation(state, {}, baseConfig, baseTemplate);
+    expect(state.graph.nodes['execution_plan'].status).toBe('not_started');
+  });
+});
+
+describe('execution_plan_completed mutation', () => {
+  it('sets execution_plan.status to completed', () => {
+    const state = makeCheaperState();
+    const mutation = getMutation('execution_plan_completed')!;
+    const result = mutation(state, { doc_path: '/path/to/EXECUTION-PLAN.md' }, baseConfig, baseTemplate);
+    expect(result.state.graph.nodes['execution_plan'].status).toBe('completed');
+  });
+
+  it('stores doc_path from context', () => {
+    const state = makeCheaperState();
+    const mutation = getMutation('execution_plan_completed')!;
+    const result = mutation(state, { doc_path: '/path/to/EXECUTION-PLAN.md' }, baseConfig, baseTemplate);
+    const node = result.state.graph.nodes['execution_plan'] as StepNodeState;
+    expect(node.doc_path).toBe('/path/to/EXECUTION-PLAN.md');
+  });
+
+  it('does not mutate the original state', () => {
+    const state = makeCheaperState();
+    const mutation = getMutation('execution_plan_completed')!;
+    mutation(state, { doc_path: '/path/to/EXECUTION-PLAN.md' }, baseConfig, baseTemplate);
+    expect(state.graph.nodes['execution_plan'].status).toBe('not_started');
+  });
 });
 
 // ── plan_approved mutation ────────────────────────────────────────────────────

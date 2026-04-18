@@ -60,14 +60,15 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 |-----------|-------------|--------|---------|-----------|
 | 0 | Prerequisites (auto-resolution bug) | In progress | 2026-04-17 | — |
 | 1 | Document formats (Requirements + Execution Plan) | In progress | 2026-04-17 | — |
-| 2 | Explosion script + state pre-seeding | Not started | — | — |
-| 3 | New process template (`cheaper.yml`) | Not started | — | — |
-| 4 | Corrective cycle redesign | Not started | — | — |
-| 5 | Final review + cleanup phase | Not started | — | — |
-| 6 | UI polish (optional) | Not started | — | — |
-| 7 | `full.yml` retirement | Not started | — | — |
+| 2 | Planner pipeline wiring + cheaper.yml bootstrap | Complete | 2026-04-17 | 2026-04-17 |
+| 3 | Explosion script + state pre-seeding | Not started | — | — |
+| 4 | New process template (`cheaper.yml`) | Not started | — | — |
+| 5 | Corrective cycle redesign | Not started | — | — |
+| 6 | Final review + cleanup phase | Not started | — | — |
+| 7 | UI polish (optional) | Not started | — | — |
+| 8 | `full.yml` retirement | Not started | — | — |
 
-**Overall**: 0 / 8 iterations complete. Design frozen 2026-04-16.
+**Overall**: 0 / 9 iterations complete. Design frozen 2026-04-16.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -84,12 +85,13 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 |------|--------|---------------|-------|--------------|-----|
 | 0 | `feat/iter-0-prereqs` | `C:\dev\orchestration\v3-worktrees\feat-iter-0-prereqs` | Worktree active | — | — |
 | 1 | `feat/iter-1-doc-formats` | `C:\dev\orchestration\v3-worktrees\feat-iter-1-doc-formats` | Worktree active | — | — |
-| 2 | — | — | Not created | — | — |
+| 2 | `feat/iter-2-planner-wiring` | `C:\dev\orchestration\v3-worktrees\feat-iter-2-planner-wiring` | Awaiting merge | — | — |
 | 3 | — | — | Not created | — | — |
 | 4 | — | — | Not created | — | — |
 | 5 | — | — | Not created | — | — |
 | 6 | — | — | Not created | — | — |
 | 7 | — | — | Not created | — | — |
+| 8 | — | — | Not created | — | — |
 
 **State values**: `Not created` → `Worktree active` → `Awaiting merge` → `Merged` → `Worktree removed`
 
@@ -134,6 +136,27 @@ Append new entries at the bottom. Format:
 - Tests: 1218 passed (baseline 1215) + 1 todo across 46 test files. Typecheck clean.
 - Meta-infrastructure: a user-global `/create-worktree-plan-mode` skill was added outside the repo at `C:\Users\Metal\.claude\skills\create-worktree-plan-mode\` (Part A of this plan). It takes a plan-mode markdown file, creates a worktree + branch, and launches a new Claude Code terminal primed to execute the plan. Not committed — lives in the user's home `.claude`.
 - Commit(s): pending (Step 8).
+
+### 2026-04-17 — Iteration 2 — Planner pipeline wiring + `cheaper.yml` bootstrap (start)
+
+- Branch: `feat/iter-2-planner-wiring` off `feat/cheaper-execution` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-2-planner-wiring`). Flat naming, consistent with iter-0 and iter-1.
+- Scope: wire the Iter-1 `@planner` agent into the pipeline (2 actions + 4 events), add the matching mutation handlers + context-enrichment rows + frontmatter validators, and ship a minimal 3-node `cheaper.yml` template (requirements → execution_plan → plan_approval_gate) so the new events have somewhere to land. Operator-facing references (`action-event-reference.md`, `context.md`, orchestrator agent, SKILL.md) updated for the new counts and the `@planner` row. `full.yml` / `quick.yml` untouched.
+- Locked design decisions for this iteration live in `docs/internals/CHEAPER-EXECUTION-REFACTOR.md` §12 items 9–13 (template filename, event suffix, cheaper.yml shape, test strategy, frontmatter validator strictness) and §14 (iteration sequence entry).
+- Explicit Iter-2 deferrals: explosion action + state pre-seeding (Iter 3), execution tier in `cheaper.yml` (Iter 5), `rad-plan-audit` for new docs (not on roadmap), and `docs/*` doc-sync pass (separate follow-up).
+- Downstream iterations shifted +1 (old Iter 2–7 → Iter 3–8); overall count bumps to 9.
+
+### 2026-04-17 — Iteration 2 — Planner pipeline wiring + `cheaper.yml` bootstrap (complete)
+
+- Catalog: 2 new actions (`create_requirements`, `create_execution_plan`) + 4 new events (`requirements_started/_completed`, `execution_plan_started/_completed`) added to `.claude/skills/orchestration/scripts/lib/constants.ts`. `NEXT_ACTIONS` count 21 → 23. `EVENTS` count 38 → 42.
+- Mutations: `planningStartedSteps` and `planningCompletedSteps` arrays in `mutations.ts` gained two rows each. Introduced `PLANNING_TIER_ENTRY_EVENTS` set so both `research_started` (full template entry) and `requirements_started` (cheaper template entry) transition `graph.status` to `in_progress` — replaces the prior `if (eventName === EVENTS.RESEARCH_STARTED)` check.
+- Context enrichment: `PLANNING_SPAWN_STEPS` in `context-enrichment.ts` gained `create_requirements: 'requirements'` and `create_execution_plan: 'execution_plan'` rows.
+- Frontmatter validators: `VALIDATION_RULES` in `frontmatter-validators.ts` gained `requirements_completed` (type + requirement_count) and `execution_plan_completed` (type + total_phases + total_tasks) entries. Minimum-viable per §12.13.
+- New template: `.claude/skills/orchestration/templates/cheaper.yml` — 3 nodes (requirements → execution_plan → plan_approval_gate). Runnable as author-only mode; explosion lands Iter 3 and execution tier lands Iter 5.
+- Tests: 1272 passed (baseline 1228) + 1 todo across 46 test files — +44 new tests. Direct-call mutation tests added in `mutations.test.ts`; contract tests extended in `02-event-names.test.ts`, `03-action-contexts.test.ts`, `05-frontmatter-validation.test.ts`, `06-state-mutations.test.ts`. Catalog-freeze counts updated in `constants.test.ts` and `static-compliance.test.ts`. Test fixture `createConfig` helper gained an optional `default_template` override so contract tests can scaffold cheaper-template state.
+- Operator-facing references: `orchestration/references/action-event-reference.md` gained 2 action rows (rows 6–7) + 4 event rows; subsequent action rows re-numbered 8–23. `orchestration/references/context.md` dropped the "(authoring skill only — not yet wired into the pipeline)" qualifier from the `@planner` row. `.claude/agents/orchestrator.md` and `.claude/skills/orchestration/SKILL.md` bumped `20 actions` / `20-action` → `23`.
+- Smoke test: `node .claude/skills/orchestration/scripts/pipeline.js --event start --project-dir /tmp/smoke-test --template cheaper` returned `{ action: 'create_requirements', context: { step: 'requirements' } }`. Template-load sanity parsed 3 nodes and surfaced all 5 expected events in the index.
+- Typecheck: clean.
+- Commit(s): pending (Step 14).
 
 ### 2026-04-17 — Iteration 1 — Document formats (Requirements + Execution Plan)
 

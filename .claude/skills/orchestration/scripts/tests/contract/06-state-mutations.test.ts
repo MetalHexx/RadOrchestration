@@ -75,6 +75,95 @@ describe('[CONTRACT] State Mutations — Planning step mutations', () => {
   });
 });
 
+// ── [CONTRACT] State Mutations — Requirements mutations (cheaper) ─────────────
+
+describe('[CONTRACT] State Mutations — Requirements mutations', () => {
+  const cheaperConfig = createConfig({
+    human_gates: {
+      after_planning: true,
+      execution_mode: 'autonomous',
+      after_final_review: true,
+    },
+    source_control: { auto_commit: 'never', auto_pr: 'never' },
+    default_template: 'cheaper',
+  });
+
+  it('requirements_started: requirements.status=in_progress and graph.status=in_progress', () => {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('requirements_started', PROJECT_DIR, {}, io);
+
+    expect(result.success).toBe(true);
+    const node = io.currentState!.graph.nodes['requirements'] as StepNodeState;
+    expect(node.status).toBe('in_progress');
+    expect(io.currentState!.graph.status).toBe('in_progress');
+    expect(result.mutations_applied.some((m) => m.includes('requirements') && m.includes('in_progress'))).toBe(true);
+    expect(result.mutations_applied.some((m) => m.includes('graph.status'))).toBe(true);
+  });
+
+  it('requirements_completed: requirements.status=completed and doc_path set', () => {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    processEvent('start', PROJECT_DIR, {}, io);
+    processEvent('requirements_started', PROJECT_DIR, {}, io);
+    const docPath = '/tmp/requirements.md';
+    seedDoc(docPath, { type: 'requirements', requirement_count: 4 });
+    const result = processEvent('requirements_completed', PROJECT_DIR, { doc_path: docPath }, io);
+
+    expect(result.success).toBe(true);
+    const node = io.currentState!.graph.nodes['requirements'] as StepNodeState;
+    expect(node.status).toBe('completed');
+    expect(node.doc_path).toBe(docPath);
+    expect(result.mutations_applied.some((m) => m.includes('requirements') && m.includes('completed'))).toBe(true);
+  });
+});
+
+// ── [CONTRACT] State Mutations — Execution Plan mutations (cheaper) ───────────
+
+describe('[CONTRACT] State Mutations — Execution Plan mutations', () => {
+  const cheaperConfig = createConfig({
+    human_gates: {
+      after_planning: true,
+      execution_mode: 'autonomous',
+      after_final_review: true,
+    },
+    source_control: { auto_commit: 'never', auto_pr: 'never' },
+    default_template: 'cheaper',
+  });
+
+  it('execution_plan_started: execution_plan.status=in_progress (graph.status untouched)', () => {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
+    state.graph.status = 'in_progress'; // already in progress from prior requirements_started mutation in a real flow
+    const result = processEvent('execution_plan_started', PROJECT_DIR, {}, io);
+
+    expect(result.success).toBe(true);
+    const node = io.currentState!.graph.nodes['execution_plan'] as StepNodeState;
+    expect(node.status).toBe('in_progress');
+    expect(result.mutations_applied.some((m) => m.includes('execution_plan') && m.includes('in_progress'))).toBe(true);
+  });
+
+  it('execution_plan_completed: execution_plan.status=completed and doc_path set', () => {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
+    (state.graph.nodes['execution_plan'] as StepNodeState).status = 'in_progress';
+    const docPath = '/tmp/execution-plan.md';
+    seedDoc(docPath, { type: 'execution_plan', total_phases: 1, total_tasks: 3 });
+    const result = processEvent('execution_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+
+    expect(result.success).toBe(true);
+    const node = io.currentState!.graph.nodes['execution_plan'] as StepNodeState;
+    expect(node.status).toBe('completed');
+    expect(node.doc_path).toBe(docPath);
+    expect(result.mutations_applied.some((m) => m.includes('execution_plan') && m.includes('completed'))).toBe(true);
+  });
+});
+
 // ── [CONTRACT] State Mutations — Plan approved mutations ──────────────────────
 
 describe('[CONTRACT] State Mutations — Plan approved mutations', () => {

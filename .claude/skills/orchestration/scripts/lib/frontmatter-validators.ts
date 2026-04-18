@@ -27,6 +27,35 @@ const VALIDATION_RULES: Record<string, FrontmatterValidationRule[]> = {
       expected: 'a positive integer',
     },
   ],
+  requirements_completed: [
+    {
+      field: 'type',
+      validate: (v) => v === 'requirements',
+      expected: '"requirements"',
+    },
+    {
+      field: 'requirement_count',
+      validate: (v) => typeof v === 'number' && Number.isInteger(v) && v > 0,
+      expected: 'a positive integer',
+    },
+  ],
+  execution_plan_completed: [
+    {
+      field: 'type',
+      validate: (v) => v === 'execution_plan',
+      expected: '"execution_plan"',
+    },
+    {
+      field: 'total_phases',
+      validate: (v) => typeof v === 'number' && Number.isInteger(v) && v > 0,
+      expected: 'a positive integer',
+    },
+    {
+      field: 'total_tasks',
+      validate: (v) => typeof v === 'number' && Number.isInteger(v) && v > 0,
+      expected: 'a positive integer',
+    },
+  ],
   phase_plan_created: [
     {
       field: 'tasks',

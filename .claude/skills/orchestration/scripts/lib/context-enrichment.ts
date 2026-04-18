@@ -71,6 +71,8 @@ const PLANNING_SPAWN_STEPS: Record<string, string> = {
   spawn_design: 'design',
   spawn_architecture: 'architecture',
   spawn_master_plan: 'master_plan',
+  create_requirements: 'requirements',
+  create_execution_plan: 'execution_plan',
 };
 
 const PHASE_LEVEL_ACTIONS = new Set([

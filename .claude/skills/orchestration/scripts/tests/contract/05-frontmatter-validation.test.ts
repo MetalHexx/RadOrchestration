@@ -301,3 +301,181 @@ describe('[CONTRACT] Frontmatter — total_phases validation error shape (plan_a
     expect(result.error?.field).toBe('total_phases');
   });
 });
+
+// ── Group 7: requirements_completed (cheaper template) ───────────────────────
+
+describe('[CONTRACT] Frontmatter — requirements_completed', () => {
+  const cheaperConfig = createConfig({
+    human_gates: {
+      after_planning: true,
+      execution_mode: 'autonomous',
+      after_final_review: true,
+    },
+    source_control: { auto_commit: 'never', auto_pr: 'never' },
+    default_template: 'cheaper',
+  });
+
+  function scaffoldForRequirementsCompleted() {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'in_progress';
+    const docPath = '/tmp/requirements.md';
+    return { io, docPath };
+  }
+
+  it('valid type + requirement_count passes', () => {
+    const { io, docPath } = scaffoldForRequirementsCompleted();
+    seedDoc(docPath, { type: 'requirements', requirement_count: 5 });
+    const result = processEvent('requirements_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(true);
+  });
+
+  it('missing type → success: false, structured error', () => {
+    const { io, docPath } = scaffoldForRequirementsCompleted();
+    seedDoc(docPath, { requirement_count: 3 });
+    const result = processEvent('requirements_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Missing required field');
+    expect(result.error?.field).toBe('type');
+    expect(result.error?.event).toBe('requirements_completed');
+  });
+
+  it('wrong type value → success: false, invalid value error', () => {
+    const { io, docPath } = scaffoldForRequirementsCompleted();
+    seedDoc(docPath, { type: 'execution_plan', requirement_count: 3 });
+    const result = processEvent('requirements_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Invalid value: type must be "requirements"');
+    expect(result.error?.field).toBe('type');
+  });
+
+  it('missing requirement_count → success: false, structured error', () => {
+    const { io, docPath } = scaffoldForRequirementsCompleted();
+    seedDoc(docPath, { type: 'requirements' });
+    const result = processEvent('requirements_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Missing required field');
+    expect(result.error?.field).toBe('requirement_count');
+  });
+
+  it('requirement_count: 0 → success: false, invalid value error', () => {
+    const { io, docPath } = scaffoldForRequirementsCompleted();
+    seedDoc(docPath, { type: 'requirements', requirement_count: 0 });
+    const result = processEvent('requirements_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Invalid value: requirement_count must be a positive integer');
+    expect(result.error?.field).toBe('requirement_count');
+  });
+
+  it('requirement_count: -1 → success: false, invalid value error', () => {
+    const { io, docPath } = scaffoldForRequirementsCompleted();
+    seedDoc(docPath, { type: 'requirements', requirement_count: -1 });
+    const result = processEvent('requirements_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('requirement_count');
+  });
+
+  it('requirement_count: "five" → success: false, validation error', () => {
+    const { io, docPath } = scaffoldForRequirementsCompleted();
+    seedDoc(docPath, { type: 'requirements', requirement_count: 'five' });
+    const result = processEvent('requirements_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('requirement_count');
+  });
+});
+
+// ── Group 8: execution_plan_completed (cheaper template) ─────────────────────
+
+describe('[CONTRACT] Frontmatter — execution_plan_completed', () => {
+  const cheaperConfig = createConfig({
+    human_gates: {
+      after_planning: true,
+      execution_mode: 'autonomous',
+      after_final_review: true,
+    },
+    source_control: { auto_commit: 'never', auto_pr: 'never' },
+    default_template: 'cheaper',
+  });
+
+  function scaffoldForExecutionPlanCompleted() {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
+    (state.graph.nodes['execution_plan'] as StepNodeState).status = 'in_progress';
+    const docPath = '/tmp/execution-plan.md';
+    return { io, docPath };
+  }
+
+  it('valid type + total_phases + total_tasks passes', () => {
+    const { io, docPath } = scaffoldForExecutionPlanCompleted();
+    seedDoc(docPath, { type: 'execution_plan', total_phases: 2, total_tasks: 5 });
+    const result = processEvent('execution_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(true);
+  });
+
+  it('missing type → success: false, structured error', () => {
+    const { io, docPath } = scaffoldForExecutionPlanCompleted();
+    seedDoc(docPath, { total_phases: 1, total_tasks: 2 });
+    const result = processEvent('execution_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Missing required field');
+    expect(result.error?.field).toBe('type');
+    expect(result.error?.event).toBe('execution_plan_completed');
+  });
+
+  it('wrong type value → success: false, invalid value error', () => {
+    const { io, docPath } = scaffoldForExecutionPlanCompleted();
+    seedDoc(docPath, { type: 'requirements', total_phases: 1, total_tasks: 2 });
+    const result = processEvent('execution_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Invalid value: type must be "execution_plan"');
+    expect(result.error?.field).toBe('type');
+  });
+
+  it('missing total_phases → success: false, structured error', () => {
+    const { io, docPath } = scaffoldForExecutionPlanCompleted();
+    seedDoc(docPath, { type: 'execution_plan', total_tasks: 2 });
+    const result = processEvent('execution_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Missing required field');
+    expect(result.error?.field).toBe('total_phases');
+  });
+
+  it('total_phases: 0 → success: false, invalid value error', () => {
+    const { io, docPath } = scaffoldForExecutionPlanCompleted();
+    seedDoc(docPath, { type: 'execution_plan', total_phases: 0, total_tasks: 2 });
+    const result = processEvent('execution_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Invalid value: total_phases must be a positive integer');
+    expect(result.error?.field).toBe('total_phases');
+  });
+
+  it('missing total_tasks → success: false, structured error', () => {
+    const { io, docPath } = scaffoldForExecutionPlanCompleted();
+    seedDoc(docPath, { type: 'execution_plan', total_phases: 1 });
+    const result = processEvent('execution_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Missing required field');
+    expect(result.error?.field).toBe('total_tasks');
+  });
+
+  it('total_tasks: 0 → success: false, invalid value error', () => {
+    const { io, docPath } = scaffoldForExecutionPlanCompleted();
+    seedDoc(docPath, { type: 'execution_plan', total_phases: 1, total_tasks: 0 });
+    const result = processEvent('execution_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Invalid value: total_tasks must be a positive integer');
+    expect(result.error?.field).toBe('total_tasks');
+  });
+
+  it('total_tasks: "many" → success: false, validation error', () => {
+    const { io, docPath } = scaffoldForExecutionPlanCompleted();
+    seedDoc(docPath, { type: 'execution_plan', total_phases: 1, total_tasks: 'many' });
+    const result = processEvent('execution_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('total_tasks');
+  });
+});

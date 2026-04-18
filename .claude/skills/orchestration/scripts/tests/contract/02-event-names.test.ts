@@ -174,6 +174,80 @@ describe('[CONTRACT] Event Names — planning tier events', () => {
   });
 });
 
+// ── [CONTRACT] Event Names — cheaper template planner events ─────────────────
+
+describe('[CONTRACT] Event Names — cheaper template planner events', () => {
+  const cheaperConfig = createConfig({
+    human_gates: {
+      after_planning: true,
+      execution_mode: 'autonomous',
+      after_final_review: true,
+    },
+    source_control: { auto_commit: 'never', auto_pr: 'never' },
+    default_template: 'cheaper',
+  });
+
+  it('requirements_started is a valid v5 event under cheaper', () => {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('requirements_started', PROJECT_DIR, {}, io);
+    expect(result.success).toBe(true);
+    expect(result.action).not.toBeNull();
+  });
+
+  it('requirements_completed is a valid v5 event under cheaper', () => {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'in_progress';
+    const docPath = '/tmp/requirements.md';
+    seedDoc(docPath, { type: 'requirements', requirement_count: 3 });
+    const result = processEvent('requirements_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(true);
+    expect(result.action).not.toBeNull();
+  });
+
+  it('execution_plan_started is a valid v5 event under cheaper', () => {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
+    const result = processEvent('execution_plan_started', PROJECT_DIR, {}, io);
+    expect(result.success).toBe(true);
+    expect(result.action).not.toBeNull();
+  });
+
+  it('execution_plan_completed is a valid v5 event under cheaper', () => {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
+    (state.graph.nodes['execution_plan'] as StepNodeState).status = 'in_progress';
+    const docPath = '/tmp/execution-plan.md';
+    seedDoc(docPath, { type: 'execution_plan', total_phases: 1, total_tasks: 2 });
+    const result = processEvent('execution_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    expect(result.success).toBe(true);
+    expect(result.action).not.toBeNull();
+  });
+
+  it('plan_approved is a valid v5 event under cheaper', () => {
+    const io = createMockIOWithConfig(null, cheaperConfig);
+    processEvent('start', PROJECT_DIR, {}, io);
+    const state = io.currentState!;
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
+    const epDoc = '/tmp/execution-plan.md';
+    (state.graph.nodes['execution_plan'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['execution_plan'] as StepNodeState).doc_path = epDoc;
+    seedDoc(epDoc, { total_phases: 1 });
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: epDoc }, io);
+    expect(result.success).toBe(true);
+    expect(result.action).not.toBeNull();
+  });
+});
+
 // ── [CONTRACT] Event Names — gate events ──────────────────────────────────────
 
 describe('[CONTRACT] Event Names — gate events', () => {

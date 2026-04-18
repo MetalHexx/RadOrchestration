@@ -89,7 +89,16 @@ const planningStartedSteps: Array<[string, string]> = [
   [EVENTS.DESIGN_STARTED, 'design'],
   [EVENTS.ARCHITECTURE_STARTED, 'architecture'],
   [EVENTS.MASTER_PLAN_STARTED, 'master_plan'],
+  [EVENTS.REQUIREMENTS_STARTED, 'requirements'],
+  [EVENTS.EXECUTION_PLAN_STARTED, 'execution_plan'],
 ];
+
+// Events that mark the start of a planning tier — each one is the entry
+// step of its template, so it also transitions graph.status to in_progress.
+const PLANNING_TIER_ENTRY_EVENTS = new Set<string>([
+  EVENTS.RESEARCH_STARTED,
+  EVENTS.REQUIREMENTS_STARTED,
+]);
 
 for (const [eventName, nodeId] of planningStartedSteps) {
   mutationRegistry.set(eventName, (state, _context, _config, _template): MutationResult => {
@@ -100,7 +109,7 @@ for (const [eventName, nodeId] of planningStartedSteps) {
     node.status = 'in_progress';
     mutations_applied.push(`set ${nodeId}.status = in_progress`);
 
-    if (eventName === EVENTS.RESEARCH_STARTED) {
+    if (PLANNING_TIER_ENTRY_EVENTS.has(eventName)) {
       cloned.graph.status = 'in_progress';
       mutations_applied.push('set graph.status = in_progress');
     }
@@ -117,6 +126,8 @@ const planningCompletedSteps: Array<[string, string]> = [
   [EVENTS.DESIGN_COMPLETED, 'design'],
   [EVENTS.ARCHITECTURE_COMPLETED, 'architecture'],
   [EVENTS.MASTER_PLAN_COMPLETED, 'master_plan'],
+  [EVENTS.REQUIREMENTS_COMPLETED, 'requirements'],
+  [EVENTS.EXECUTION_PLAN_COMPLETED, 'execution_plan'],
 ];
 
 for (const [eventName, nodeId] of planningCompletedSteps) {
