@@ -59,7 +59,8 @@ Load-bearing step. Iter 2's companion had stale references that would have burne
 
 - Grep / glob every file path, line number, and symbol named in the companion's **Code Surface** and **Ripples** sections.
 - For each mismatch, do NOT silently fix it in the plan file. Amend the companion doc itself so it matches live code, then commit the amendment to `feat/cheaper-execution` before creating the iteration worktree (so the worktree inherits the corrected companion).
-- Log a "Deviations from Design" entry in the progress tracker ONLY if the amendment changes scope or design intent (e.g., new files added to the ripple list, new agent retarget, removed steps). Pure reference drift — line numbers, renamed symbols, moved paths with no scope change — is just a commit with a descriptive message; skip the tracker entry.
+- **Keep companion amendments concise and high-signal.** The companion is a brief — bullets, line numbers, named symbols, terse rationale. The plan file is where you expand. Don't restate intent already captured in the surrounding companion text. If an amendment runs more than a few lines, you're probably writing the plan in the wrong file.
+- **Do NOT touch the progress tracker during planning.** The tracker is for execution outcomes (what the inner session did), not planning decisions. Companion amendments — whether reference drift or scope changes — live in the companion commit message, full stop. Deviation entries only land in the tracker when *execution* diverges from the plan file, and the inner session writes them.
 - Collect any scope questions surfaced by validation for the brainstorm step.
 
 ## Step 4 — Brainstorm with the user
