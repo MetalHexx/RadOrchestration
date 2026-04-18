@@ -64,8 +64,8 @@ Load-bearing step. Iter 2's companion had stale references that would have burne
 
 ## Step 4 — Brainstorm with the user
 
-- Present validation findings and scope questions as prose.
-- Use `AskUserQuestion` only when a discrete choice between concrete options is required; otherwise ask in prose.
+- Present validation findings and scope questions well formatted and easy to read.  Keep it high-level and conversational. The user is not expected to understand super detailed technical nuances.  Follow their lead on how deep to go on each point. The goal is shared understanding and buy-in on the iteration scope, not a technical audit.
+- Use `AskUserQuestion` only when a discrete choice between concrete options is required.  Make sure they have an option to respond if your options dont align with their thinking.
 - Lock: scope, additions/removals, smoke-test approach, whether the companion needs further amendment.
 
 ## Step 5 — High-level summary in chat (required)
