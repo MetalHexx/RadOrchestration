@@ -482,16 +482,6 @@ Captured here as a reference trail so the planner knows what was explicitly cons
 - Whether to add a UI badge distinguishing cleanup phases (see §10 "Open UI consideration").
 - Exact layout of the `## Correction N` body beyond the heading — the finding/revised-steps shape shown in §5.1 is a recommendation, not a contract.
 
-### Decisions locked during Iter-2 planning (2026-04-17)
-
-These lock-ins were made during the Iter-2 interview, after the design doc was first written. They apply to the new "Iteration 2 — Planner pipeline wiring + `cheaper.yml` bootstrap" and inform subsequent iterations that touch cheaper.yml.
-
-9. **Template filename**: `cheaper.yml`. No longer a working name — locked in as the final filename. Sits alongside `full.yml` and `quick.yml` in `.claude/skills/orchestration/templates/`. See §4.1 and §9.
-10. **Event suffix convention for the two planner actions**: `_started` / `_completed`. Names: `requirements_started`, `requirements_completed`, `execution_plan_started`, `execution_plan_completed`. Rationale: these are top-level planning steps, so they follow the existing top-level pattern (prd/research/design/architecture/master_plan all use `_completed`). The `_created` suffix is reserved for per-iteration artifacts inside a `for_each` loop where a new doc instance materializes each pass, which isn't what the two planner docs do.
-11. **Iter-2 `cheaper.yml` shape**: three nodes — `requirements` → `execution_plan` → `plan_approval_gate`. Gate is included in Iter 2 (not deferred) so that the full plan-approval path can be exercised end-to-end inside the iteration; Iter 3 repositions the gate to its design-intended post-explosion position. Trade-off accepted: the `plan_approved` mutation sets `pipeline.current_tier = 'execution'` even though the partial template has no execution nodes yet — harmless (walker idles), and the tier transition becomes semantically accurate once Iter 3 adds the explosion step and Iter 5 adds the phase/task loop.
-12. **Iter-2 test strategy**: extend contract tests (`02-event-names`, `03-action-contexts`, `05-frontmatter-validation`, `06-state-mutations`) to drive the new events end-to-end under `cheaper.yml`, in addition to direct-call mutation unit tests in `mutations.test.ts`. Closes the integration-coverage gap inside the iteration rather than deferring to Iter 5. The direct-call mutation tests stay — they validate the mutation function in isolation; the contract tests validate the full engine path.
-13. **Iter-2 frontmatter validator strictness**: minimum viable — type + count fields only. For `requirements_completed`: `type === 'requirements'` and `requirement_count` is a positive integer. For `execution_plan_completed`: `type === 'execution_plan'`, `total_phases` is a positive integer, `total_tasks` is a positive integer. Structural body-vs-frontmatter cross-checks are deferred to the explosion parser (Iter 3) to avoid duplicating parser code across two components. The skill-level `token-lint.js` already flags over-budget blocks via `log-error`.
-
 ---
 
 ## 13. Prompt Regression Test Harness
@@ -609,13 +599,9 @@ Not a task list. A high-level ordering suggestion the planning cycle can use as 
 - Update `rad-create-plans` skill to produce these two doc types.
 - Validate the 500-token constraint with a linter or script check on the Requirements doc.
 
-**Iteration 2 — Planner pipeline wiring + `cheaper.yml` bootstrap:**
+**Iteration 2 — Planner Agent / Requirements and Execution Plan Pipeline wiring**
 
-- Add `create_requirements` / `create_execution_plan` actions and their `_started` / `_completed` events to the pipeline catalog (`constants.ts`).
-- Add mutation handlers (status transition + `doc_path` capture) and frontmatter validators (`type` + count fields) for the two completed events.
-- Update operator-facing references inside `.claude/` (`orchestration/references/action-event-reference.md`, `context.md`, and the `@planner` row and `20-action` drift in `orchestrator.md` + `orchestration/SKILL.md`). `/docs/` files are deferred to a later sync pass.
-- Create a minimal `cheaper.yml` template with three nodes: `requirements` → `execution_plan` → `plan_approval_gate`. Runnable end-to-end as an "author-only" mode; subsequent iterations append explosion and execution-tier nodes onto this file.
-- Ships additive-only code — `full.yml` / `quick.yml` coexistence unaffected. No `state.json` schema change in this iteration (new step nodes conform to existing `kind: step` shape).
+To be dicussed...
 
 **Iteration 3 — Explosion script and pre-seeding:**
 
