@@ -164,30 +164,6 @@ Append new entries at the bottom. Format:
 - Tests: 1228 passed (baseline 1228) + 1 todo across 46 test files. No pipeline code touched — additive only.
 - Smoke test: hand-drove a tiny `SMOKE-REQUIREMENTS.md` + `SMOKE-EXECUTION-PLAN.md` outside the repo. Lint returned `[]` for the lean Requirements and flagged an oversized FR when padded to ~600 tokens. Execution Plan structural-lint items (task heading regex, type tag, Requirements line, step prefix, no placeholders, IDs resolve in the Requirements doc) all pass for the sample.
 
-### 2026-04-18 — Design realignment — Gutting-first, per-iteration companions, 15-iteration timeline
-
-- Root doc `CHEAPER-EXECUTION-REFACTOR.md` rewritten from 659 → ~225 lines. Lean: motivation, goals/non-goals, standing design principles, pipeline overview, iteration timeline (2–3 sentences per entry + exit line + companion link), future direction.
-- 13 per-iteration companion docs authored under `docs/internals/cheaper-execution/iter-NN-<slug>.md`, one per future iteration (2-14). Each companion uses a standard template: Validation Preface → Overview → Scope → Ripples → Scope Deliberately Untouched → Code Surface → Dependencies → Testing Discipline → Exit Criteria → Open Questions.
-- Status table above renumbered: old "Iteration 2" (explosion script) is now "Iteration 5"; "Iteration 3" (new process template) is split across Iterations 7+9; "Iteration 4" (corrective cycle redesign) is now "Iteration 12"; new iterations (rename, remove upstream, requirements node, harness, remove per-phase/task, phase_report absorption, reviewer rework, executor rework, rad-plan-audit, public docs) inserted.
-- Key direction changes: full.yml deprecated in place (not coexisting); quick.yml removed; cheaper.yml → default.yml; Iter-1 execution-plan artifact reclassified as the existing "Master Plan" — name preserved to match pipeline vocabulary (`master_plan` node/action/events); only the artifact's content shape and authoring source change. Tactical-planner agent removed; generate-phase-report skill removed.
-- Baseline-first testing discipline added as a standing policy across every iteration.
-- No code changes; all work in design-doc surface.
-
-### 2026-04-18 — Iteration 2 — Planning pass + companion-doc amendments
-
-- Iteration 2 planning-pass complete (no code changes yet). Plan file at `C:\Users\Metal\.claude\plans\lets-get-idempotent-tarjan.md` covers the full execution order, test-fixture blast radius, and the worktree-review-PR loop.
-- Three amendments folded into `docs/internals/cheaper-execution/iter-02-rename-to-master-plan.md` (Scope / Ripples / Code Surface / Open Questions). Summary under "Deviations from Design" below.
-- Iteration branch will be `feat/iter-2-rename-to-master-plan` (flat naming, consistent with iter-0 / iter-1). Worktree target: `C:\dev\orchestration\v3-worktrees\feat-iter-2-rename-to-master-plan`.
-- Next up: launch worktree via `/create-worktree-plan-mode`, dispatch coder-senior subagent against the amended companion.
-
-### 2026-04-18 — Naming decision — "Master Plan" name preserved
-
-- **Considered earlier the same day**: renaming the Iter-1 artifact to "Master Doc" to differentiate it from the legacy master-plan concept.
-- **Landed on**: keep the name "Master Plan." Legacy tactical-planner-authored Master Plan is replaced with planner-authored inlined Master Plan — same name, different content shape, different authoring source.
-- **Why**: matches existing pipeline vocabulary (node id `master_plan`, action `spawn_master_plan`, events `master_plan_started` / `master_plan_completed`) without two-name translation; smaller cognitive surface.
-- **Corpus sweep done**: 14 files updated. `Master Doc` → `Master Plan`; `MASTER-DOC.md` → `MASTER-PLAN.md`; `master-doc/` folder → `master-plan/`; `explode_master_doc` action → `explode_master_plan`; `lint-master-doc.mjs` → `lint-master-plan.mjs`. Iter-02 companion file renamed on disk: `iter-02-rename-master-doc.md` → `iter-02-rename-to-master-plan.md`. Grep-hygiene check confirms zero `Master Doc` / `master_doc` residuals.
-- **Iter 2 scope tightened**: delete-first-then-rename sequence now explicit (legacy `rad-create-plans/references/master-plan/` deleted first to free the folder name; Iter-1's `references/execution-plan/` renamed into that slot).
-
 ---
 
 ## Deviations from Design
