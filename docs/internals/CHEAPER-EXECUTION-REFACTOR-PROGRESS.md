@@ -58,18 +58,27 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 
 | Iteration | Description | Status | Started | Completed |
 |-----------|-------------|--------|---------|-----------|
-| 0 | Prerequisites (auto-resolution bug) | In progress | 2026-04-17 | — |
-| 1 | Document formats (Requirements + Execution Plan) | In progress | 2026-04-17 | — |
-| 2 | Explosion script + state pre-seeding | Not started | — | — |
-| 3 | New process template (`cheaper.yml`) | Not started | — | — |
-| 4 | Corrective cycle redesign | Not started | — | — |
-| 5 | Final review + cleanup phase | Not started | — | — |
-| 6 | UI polish (optional) | Not started | — | — |
-| 7 | `full.yml` retirement | Not started | — | — |
+| 0 | Prerequisites (auto-resolution bug + corrective filename) | Complete | 2026-04-17 | 2026-04-17 |
+| 1 | Document formats (Requirements + Execution Plan) | Complete | 2026-04-17 | 2026-04-17 |
+| 2 | Rename Execution Plan → Master Plan | Not started | — | — |
+| 3 | Remove upstream planning (PRD/Research/Design/Architecture) | Not started | — | — |
+| 4 | Requirements pipeline node | Not started | — | — |
+| 5 | Explosion script + state.json pre-seeding | Not started | — | — |
+| 6 | Prompt regression harness | Not started | — | — |
+| 7 | Remove per-phase/per-task planning | Not started | — | — |
+| 8 | phase_review absorbs phase_report | Not started | — | — |
+| 9 | Complete `default.yml` | Not started | — | — |
+| 10 | Code-review rework (task/phase/final) | Not started | — | — |
+| 11 | Execute-coding-task rework + correction sections | Not started | — | — |
+| 12 | Corrective cycle wiring | Not started | — | — |
+| 13 | Rad-plan-audit overhaul | Not started | — | — |
+| 14 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 0 / 8 iterations complete. Design frozen 2026-04-16.
+**Overall**: 2 / 15 iterations complete. Design realigned 2026-04-18 for gutting-first approach.
 
 **Legend**: Not started → In progress → Blocked → Complete
+
+**Note on renumbering**: this status table uses the post-realignment iteration numbering (0-14). The Progression Log entries below for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ are new.
 
 ---
 
@@ -82,14 +91,21 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 
 | Iter | Branch | Worktree Path | State | Merge Commit | PR |
 |------|--------|---------------|-------|--------------|-----|
-| 0 | `feat/iter-0-prereqs` | `C:\dev\orchestration\v3-worktrees\feat-iter-0-prereqs` | Worktree active | — | — |
-| 1 | `feat/iter-1-doc-formats` | `C:\dev\orchestration\v3-worktrees\feat-iter-1-doc-formats` | Worktree active | — | — |
+| 0 | `feat/iter-0-prereqs` | `C:\dev\orchestration\v3-worktrees\feat-iter-0-prereqs` | Merged | (see commit 08bf2ff lineage) | — |
+| 1 | `feat/iter-1-doc-formats` | `C:\dev\orchestration\v3-worktrees\feat-iter-1-doc-formats` | Merged | `08bf2ff` | #51 |
 | 2 | — | — | Not created | — | — |
 | 3 | — | — | Not created | — | — |
 | 4 | — | — | Not created | — | — |
 | 5 | — | — | Not created | — | — |
 | 6 | — | — | Not created | — | — |
 | 7 | — | — | Not created | — | — |
+| 8 | — | — | Not created | — | — |
+| 9 | — | — | Not created | — | — |
+| 10 | — | — | Not created | — | — |
+| 11 | — | — | Not created | — | — |
+| 12 | — | — | Not created | — | — |
+| 13 | — | — | Not created | — | — |
+| 14 | — | — | Not created | — | — |
 
 **State values**: `Not created` → `Worktree active` → `Awaiting merge` → `Merged` → `Worktree removed`
 
@@ -147,6 +163,23 @@ Append new entries at the bottom. Format:
 - Explicit Iter-1 deferrals: no pipeline wiring, no explosion script, no `cheaper.yml`, no `rad-plan-audit` for new docs, no self-review step on new docs, no commit-step inside Execution Plan tasks.
 - Tests: 1228 passed (baseline 1228) + 1 todo across 46 test files. No pipeline code touched — additive only.
 - Smoke test: hand-drove a tiny `SMOKE-REQUIREMENTS.md` + `SMOKE-EXECUTION-PLAN.md` outside the repo. Lint returned `[]` for the lean Requirements and flagged an oversized FR when padded to ~600 tokens. Execution Plan structural-lint items (task heading regex, type tag, Requirements line, step prefix, no placeholders, IDs resolve in the Requirements doc) all pass for the sample.
+
+### 2026-04-18 — Design realignment — Gutting-first, per-iteration companions, 15-iteration timeline
+
+- Root doc `CHEAPER-EXECUTION-REFACTOR.md` rewritten from 659 → ~225 lines. Lean: motivation, goals/non-goals, standing design principles, pipeline overview, iteration timeline (2–3 sentences per entry + exit line + companion link), future direction.
+- 13 per-iteration companion docs authored under `docs/internals/cheaper-execution/iter-NN-<slug>.md`, one per future iteration (2-14). Each companion uses a standard template: Validation Preface → Overview → Scope → Ripples → Scope Deliberately Untouched → Code Surface → Dependencies → Testing Discipline → Exit Criteria → Open Questions.
+- Status table above renumbered: old "Iteration 2" (explosion script) is now "Iteration 5"; "Iteration 3" (new process template) is split across Iterations 7+9; "Iteration 4" (corrective cycle redesign) is now "Iteration 12"; new iterations (rename, remove upstream, requirements node, harness, remove per-phase/task, phase_report absorption, reviewer rework, executor rework, rad-plan-audit, public docs) inserted.
+- Key direction changes: full.yml deprecated in place (not coexisting); quick.yml removed; cheaper.yml → default.yml; Iter-1 execution-plan artifact reclassified as the existing "Master Plan" — name preserved to match pipeline vocabulary (`master_plan` node/action/events); only the artifact's content shape and authoring source change. Tactical-planner agent removed; generate-phase-report skill removed.
+- Baseline-first testing discipline added as a standing policy across every iteration.
+- No code changes; all work in design-doc surface.
+
+### 2026-04-18 — Naming decision — "Master Plan" name preserved
+
+- **Considered earlier the same day**: renaming the Iter-1 artifact to "Master Doc" to differentiate it from the legacy master-plan concept.
+- **Landed on**: keep the name "Master Plan." Legacy tactical-planner-authored Master Plan is replaced with planner-authored inlined Master Plan — same name, different content shape, different authoring source.
+- **Why**: matches existing pipeline vocabulary (node id `master_plan`, action `spawn_master_plan`, events `master_plan_started` / `master_plan_completed`) without two-name translation; smaller cognitive surface.
+- **Corpus sweep done**: 14 files updated. `Master Doc` → `Master Plan`; `MASTER-DOC.md` → `MASTER-PLAN.md`; `master-doc/` folder → `master-plan/`; `explode_master_doc` action → `explode_master_plan`; `lint-master-doc.mjs` → `lint-master-plan.mjs`. Iter-02 companion file renamed on disk: `iter-02-rename-master-doc.md` → `iter-02-rename-to-master-plan.md`. Grep-hygiene check confirms zero `Master Doc` / `master_doc` residuals.
+- **Iter 2 scope tightened**: delete-first-then-rename sequence now explicit (legacy `rad-create-plans/references/master-plan/` deleted first to free the folder name; Iter-1's `references/execution-plan/` renamed into that slot).
 
 ---
 
@@ -239,12 +272,14 @@ Format:
 - **Context**: Iteration 1 deliberately omits a commit step from the `code` task shape (4 steps: failing test → run fail → implement → run pass). The user noted that the current source-control step has been heavy — revisit whether commit cadence should live inline in the task or continue to live in a dedicated pipeline node.
 - **Why unresolved**: Needs measurement of the existing source-control step's actual cost before deciding whether inlining commits buys anything or just duplicates work. Also interacts with the future `commit_gate` pipeline node sketched in the refactor doc.
 - **Suggested owner**: A future iteration — probably alongside the Iter-3 `cheaper.yml` template work, once the full execution path is observable end-to-end.
+- **2026-04-18 resolution**: Addressed by Iter 11 (Execute-coding-task rework). Decision: commit cadence stays owned by the existing source-control step; executor does not commit directly. Rationale documented in the iteration companion.
 
 ### 2026-04-17 — Cross-doc conformance check (Execution Plan vs. Requirements)
 
 - **Context**: Iteration 1 ships the two new doc formats without any author-time check that every FR/NFR/AD/DD in `REQUIREMENTS.md` is addressed by at least one task in `EXECUTION-PLAN.md`. Coverage is enforced only implicitly (workflow guidance, YAGNI inline tagging). `rad-plan-audit` was explicitly scoped out of Iter-1.
 - **Why unresolved**: Needs a design decision on whether the check lives as a standalone skill / agent mode (mirrors `rad-plan-audit`) or as a cheap CLI script invoked by the planner's workflow. Also overlaps with the future conformance-check agent mentioned in the design doc.
 - **Suggested owner**: A later iteration, possibly the one that introduces a conformance-check agent.
+- **2026-04-18 resolution**: Addressed by Iter 13 (Rad-plan-audit overhaul). The audit is rewritten for a single purpose — Requirements ↔ Master Plan conformance. Both forward coverage (every Requirements ID cited by ≥1 Master Plan task) and backward resolution (every Master Plan tag resolves to a block) land in the iteration.
 
 ---
 
