@@ -47,7 +47,7 @@ describe('[CONTRACT] Tier Transitions — planning to execution', () => {
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-    seedDoc(mpDoc, { total_phases: 2 });
+    seedDoc(mpDoc, { total_phases: 2, total_tasks: 4 });
 
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
 
@@ -65,7 +65,7 @@ describe('[CONTRACT] Tier Transitions — planning to execution', () => {
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-    seedDoc(mpDoc, { total_phases: 3 });
+    seedDoc(mpDoc, { total_phases: 3, total_tasks: 6 });
 
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
 

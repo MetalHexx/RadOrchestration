@@ -440,8 +440,8 @@ describe('engine – processEvent', () => {
 
       const io = createMockIO(state);
       DOC_STORE['/tmp/master-plan.md'] = {
-        frontmatter: { total_phases: 3 },
-        content: '---\ntotal_phases: 3\n---\n# Master Plan',
+        frontmatter: { total_phases: 3, total_tasks: 6 },
+        content: '---\ntotal_phases: 3\ntotal_tasks: 6\n---\n# Master Plan',
       };
       const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master-plan.md' }, io);
 
@@ -625,7 +625,7 @@ describe('engine – processEvent', () => {
 
       // Provide a master plan doc that declares phases, so walkDAG can expand
       DOC_STORE['/tmp/master-plan.md'] = {
-        frontmatter: { total_phases: 5 },
+        frontmatter: { total_phases: 5, total_tasks: 10 },
         content: '# Master Plan',
       };
 

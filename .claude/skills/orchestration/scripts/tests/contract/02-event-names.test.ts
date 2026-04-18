@@ -183,7 +183,7 @@ describe('[CONTRACT] Event Names — gate events', () => {
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-    seedDoc(mpDoc, { total_phases: 1 });
+    seedDoc(mpDoc, { total_phases: 1, total_tasks: 2 });
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();

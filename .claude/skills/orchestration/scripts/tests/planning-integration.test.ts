@@ -227,7 +227,7 @@ describe('Planning-tier integration — full sequence', () => {
 
     // ── Step 11: master_plan_completed ────────────────────────────────────
     const mpDoc = path.posix.join(PROJECT_DIR, 'docs', 'master-plan.md');
-    seedDoc(mpDoc, { total_phases: 1 });
+    seedDoc(mpDoc, { total_phases: 1, total_tasks: 1 });
     result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: mpDoc }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('request_plan_approval');
@@ -425,8 +425,8 @@ describe('Planning-tier — individual step checks', () => {
     }
     const io = createMockIO(state);
     DOC_STORE['/tmp/master_plan.md'] = {
-      frontmatter: { total_phases: 3 },
-      content: '---\ntotal_phases: 3\n---\n# Master Plan',
+      frontmatter: { total_phases: 3, total_tasks: 6 },
+      content: '---\ntotal_phases: 3\ntotal_tasks: 6\n---\n# Master Plan',
     };
 
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master_plan.md' }, io);
@@ -604,8 +604,8 @@ describe('Planning-tier — state invariants', () => {
     }
     const io = createMockIO(state);
     DOC_STORE['/tmp/master_plan.md'] = {
-      frontmatter: { total_phases: 3 },
-      content: '---\ntotal_phases: 3\n---\n# Master Plan',
+      frontmatter: { total_phases: 3, total_tasks: 6 },
+      content: '---\ntotal_phases: 3\ntotal_tasks: 6\n---\n# Master Plan',
     };
 
     processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master_plan.md' }, io);

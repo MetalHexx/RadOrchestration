@@ -3,7 +3,7 @@
 You author the project-level Requirements doc — a single ledger that captures
 functional requirements (FR), non-functional requirements (NFR), architectural
 decisions (AD), and design decisions (DD). This doc is the source of truth every
-Execution Plan step cites by ID. Keep each block lean enough to chunk, short
+Master Plan step cites by ID. Keep each block lean enough to chunk, short
 enough to scan, specific enough to act on.
 
 This workflow does NOT load `references/shared/guidelines.md` or
@@ -47,7 +47,7 @@ prompt says, no more.
    goal reads naturally.
 
 5. Author `## Non-Goals` — single-line bullets. State what is explicitly
-   out of scope so the execution plan can't drift into it.
+   out of scope so the master plan can't drift into it.
 
 6. Author the four requirement sections in this order:
    - `## Functional Requirements`

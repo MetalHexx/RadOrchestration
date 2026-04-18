@@ -84,7 +84,7 @@ describe('[CONTRACT] State Mutations — Plan approved mutations', () => {
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-    seedDoc(mpDoc, { total_phases: 2 });
+    seedDoc(mpDoc, { total_phases: 2, total_tasks: 4 });
 
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
 

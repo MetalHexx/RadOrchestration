@@ -36,7 +36,7 @@ function driveToApprovalReadiness() {
   const state = io.currentState!;
   completePlanningSteps(state, 'master_plan');
   const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-  seedDoc(mpDoc, { total_phases: 1 });
+  seedDoc(mpDoc, { total_phases: 1, total_tasks: 2 });
   return io;
 }
 

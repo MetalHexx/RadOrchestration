@@ -289,8 +289,8 @@ describe('[PARITY] v4:resolvePlanning', () => {
     const masterPlanDocPath = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
     const io = createMockIO(state);
     DOC_STORE[masterPlanDocPath.replace(/\\/g, '/')] = {
-      frontmatter: { total_phases: 3 },
-      content: '---\ntotal_phases: 3\n---\n# Master Plan',
+      frontmatter: { total_phases: 3, total_tasks: 6 },
+      content: '---\ntotal_phases: 3\ntotal_tasks: 6\n---\n# Master Plan',
     };
 
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: masterPlanDocPath }, io);
@@ -311,7 +311,7 @@ describe('[PARITY] v4:resolvePlanning', () => {
     completePlanningSteps(state, 'master_plan');
     // Seed the master plan doc at the doc_path stored on the master_plan node
     const masterPlanDocPath = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-    seedDoc(masterPlanDocPath, { total_phases: 2 });
+    seedDoc(masterPlanDocPath, { total_phases: 2, total_tasks: 4 });
     const config = createConfig({
       human_gates: { execution_mode: 'autonomous' },
     });
@@ -408,7 +408,7 @@ describe('[PARITY] v4:resolveExecution', () => {
     const state = createScaffoldedState();
     completePlanningSteps(state, 'master_plan');
     const masterPlanDocPath = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-    seedDoc(masterPlanDocPath, { total_phases: totalPhases });
+    seedDoc(masterPlanDocPath, { total_phases: totalPhases, total_tasks: totalPhases * 2 });
     const io = createExecMockIO(state);
     processEvent('plan_approved', PROJECT_DIR, { doc_path: masterPlanDocPath }, io);
     return io;
@@ -1679,7 +1679,7 @@ describe('[PARITY] v4:resolveReview', () => {
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-    seedDoc(mpDoc, { total_phases: 1 });
+    seedDoc(mpDoc, { total_phases: 1, total_tasks: 1 });
     processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
 
     // Phase 1 with one task

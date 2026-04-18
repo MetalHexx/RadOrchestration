@@ -265,8 +265,8 @@ describe('preRead — plan_approved: auto-derivation from graph.nodes.master_pla
       templatePath: 'plan_approval_gate',
     };
     const readDocument: IOAdapter['readDocument'] = vi.fn().mockReturnValue({
-      frontmatter: { total_phases: 3 },
-      content: '---\ntotal_phases: 3\n---\n# Plan',
+      frontmatter: { total_phases: 3, total_tasks: 6 },
+      content: '---\ntotal_phases: 3\ntotal_tasks: 6\n---\n# Plan',
     });
 
     const result = preRead('plan_approved', {}, readDocument, PROJECT_DIR, MOCK_STATE, entry);
