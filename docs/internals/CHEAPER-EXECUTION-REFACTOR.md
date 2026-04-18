@@ -442,7 +442,7 @@ Addressed by the audit in §4.2. Summary:
 
 Cleanup phases and corrective tasks may benefit from visual differentiation in the timeline (e.g., a subtle badge or color). Not required for correctness; nice-to-have for operator clarity. Worth discussing when the refactor reaches UI tasks.
 
-**Related**: prompt regression testing for the planner pipeline lives outside `.claude/` in `/prompt-tests/`; see §13 and Iteration 3.
+**Related**: prompt regression testing for the planner pipeline lives outside `.claude/` in `/prompt-tests/`; see §13 and Iteration 4.
 
 ---
 
@@ -479,9 +479,18 @@ Captured here as a reference trail so the planner knows what was explicitly cons
 
 **Still open for the planner to decide** (not brainstormed, not high-risk):
 
-- Final template filename (`cheaper.yml` is the working name; planner may choose differently).
 - Whether to add a UI badge distinguishing cleanup phases (see §10 "Open UI consideration").
 - Exact layout of the `## Correction N` body beyond the heading — the finding/revised-steps shape shown in §5.1 is a recommendation, not a contract.
+
+### Decisions locked during Iter-2 planning (2026-04-17)
+
+These lock-ins were made during the Iter-2 interview, after the design doc was first written. They apply to the new "Iteration 2 — Planner pipeline wiring + `cheaper.yml` bootstrap" and inform subsequent iterations that touch cheaper.yml.
+
+9. **Template filename**: `cheaper.yml`. No longer a working name — locked in as the final filename. Sits alongside `full.yml` and `quick.yml` in `.claude/skills/orchestration/templates/`. See §4.1 and §9.
+10. **Event suffix convention for the two planner actions**: `_started` / `_completed`. Names: `requirements_started`, `requirements_completed`, `execution_plan_started`, `execution_plan_completed`. Rationale: these are top-level planning steps, so they follow the existing top-level pattern (prd/research/design/architecture/master_plan all use `_completed`). The `_created` suffix is reserved for per-iteration artifacts inside a `for_each` loop where a new doc instance materializes each pass, which isn't what the two planner docs do.
+11. **Iter-2 `cheaper.yml` shape**: three nodes — `requirements` → `execution_plan` → `plan_approval_gate`. Gate is included in Iter 2 (not deferred) so that the full plan-approval path can be exercised end-to-end inside the iteration; Iter 3 repositions the gate to its design-intended post-explosion position. Trade-off accepted: the `plan_approved` mutation sets `pipeline.current_tier = 'execution'` even though the partial template has no execution nodes yet — harmless (walker idles), and the tier transition becomes semantically accurate once Iter 3 adds the explosion step and Iter 5 adds the phase/task loop.
+12. **Iter-2 test strategy**: extend contract tests (`02-event-names`, `03-action-contexts`, `05-frontmatter-validation`, `06-state-mutations`) to drive the new events end-to-end under `cheaper.yml`, in addition to direct-call mutation unit tests in `mutations.test.ts`. Closes the integration-coverage gap inside the iteration rather than deferring to Iter 5. The direct-call mutation tests stay — they validate the mutation function in isolation; the contract tests validate the full engine path.
+13. **Iter-2 frontmatter validator strictness**: minimum viable — type + count fields only. For `requirements_completed`: `type === 'requirements'` and `requirement_count` is a positive integer. For `execution_plan_completed`: `type === 'execution_plan'`, `total_phases` is a positive integer, `total_tasks` is a positive integer. Structural body-vs-frontmatter cross-checks are deferred to the explosion parser (Iter 3) to avoid duplicating parser code across two components. The skill-level `token-lint.js` already flags over-budget blocks via `log-error`.
 
 ---
 
@@ -538,7 +547,7 @@ A typical run drives Claude to:
 1. Choose a fixture (default: `rainbow-hello`) and create a new timestamped folder under `output/<fixture>/<YYYY-MM-DD-HHMMSS>/`.
 2. Spawn the Requirements agent (new in iteration 1) with the fixture's `BRAINSTORMING.md` as input; write the result to `REQUIREMENTS.md` in the run folder.
 3. Spawn the Execution Plan agent (new in iteration 1) with `REQUIREMENTS.md` as input; write the result to `EXECUTION-PLAN.md`.
-4. Invoke the explosion script (new in iteration 2) against `EXECUTION-PLAN.md`; emit exploded docs into `exploded/phases/` and `exploded/tasks/`.
+4. Invoke the explosion script (new in iteration 3) against `EXECUTION-PLAN.md`; emit exploded docs into `exploded/phases/` and `exploded/tasks/`.
 5. Run the shared linters and write `lint-report.md` summarizing pass/fail per check.
 6. Emit a blank `run-notes.md` with a human-review checklist (see §13.6).
 
@@ -600,7 +609,15 @@ Not a task list. A high-level ordering suggestion the planning cycle can use as 
 - Update `rad-create-plans` skill to produce these two doc types.
 - Validate the 500-token constraint with a linter or script check on the Requirements doc.
 
-**Iteration 2 — Explosion script and pre-seeding:**
+**Iteration 2 — Planner pipeline wiring + `cheaper.yml` bootstrap:**
+
+- Add `create_requirements` / `create_execution_plan` actions and their `_started` / `_completed` events to the pipeline catalog (`constants.ts`).
+- Add mutation handlers (status transition + `doc_path` capture) and frontmatter validators (`type` + count fields) for the two completed events.
+- Update operator-facing references inside `.claude/` (`orchestration/references/action-event-reference.md`, `context.md`, and the `@planner` row and `20-action` drift in `orchestrator.md` + `orchestration/SKILL.md`). `/docs/` files are deferred to a later sync pass.
+- Create a minimal `cheaper.yml` template with three nodes: `requirements` → `execution_plan` → `plan_approval_gate`. Runnable end-to-end as an "author-only" mode; subsequent iterations append explosion and execution-tier nodes onto this file.
+- Ships additive-only code — `full.yml` / `quick.yml` coexistence unaffected. No `state.json` schema change in this iteration (new step nodes conform to existing `kind: step` shape).
+
+**Iteration 3 — Explosion script and pre-seeding:**
 
 - Implement the script that parses the Execution Plan and emits phase/task docs in existing locations.
 - Extend the orchestrator to invoke explosion as a pipeline action.
@@ -608,40 +625,41 @@ Not a task list. A high-level ordering suggestion the planning cycle can use as 
 - Update schema types and validators for pre-seeded iterations and doc-path population.
 - Deterministic vitest tests for the explosion-script parser land alongside the script itself under `.claude/skills/orchestration/scripts/tests/`, reusing existing fixture patterns.
 
-**Iteration 3 — Prompt regression harness:**
+**Iteration 4 — Prompt regression harness:**
 
 - Scaffold `/prompt-tests/` (root README, shared `tools/lint-requirements.mjs`, `tools/lint-execution-plan.mjs`).
 - Author the first behavior folder `plan-pipeline-e2e/` — its `README.md`, `_runner.md`, and `fixtures/rainbow-hello/BRAINSTORMING.md` (copied from `C:\dev\orchestration-projects\RAINBOW-HELLO\RAINBOW-HELLO-BRAINSTORMING.md`).
 - Add a `.gitignore` rule to exclude `/prompt-tests/**/output/**` except `.gitkeep` scaffolding.
 - Run the harness once against RAINBOW-HELLO and commit the resulting output folder as a baseline for future diff-based review.
-- Depends on iterations 1 (doc formats) and 2 (explosion script). See §13 for design.
+- Depends on iterations 1 (doc formats), 2 (planner wiring), and 3 (explosion script). See §13 for design.
 
-**Iteration 4 — New process template:**
+**Iteration 5 — New process template:**
 
-- Author the new template (e.g., `cheaper.yml`) with Requirements, Execution Plan, explosion, and the existing phase/task loop — minus `phase_planning` and `task_handoff`.
+- Author `cheaper.yml` — assemble the already-wired Requirements, Execution Plan, and explosion actions into the new process template, plus the existing phase/task loop (minus `phase_planning` and `task_handoff`).
 - Plan-approval gate sits post-explosion.
 - Integration tests cover the happy path end-to-end.
 
-**Iteration 5 — Corrective cycle redesign:**
+**Iteration 6 — Corrective cycle redesign:**
 
 - Update the code-review skill to amend task handoffs with `## Correction N — YYYY-MM-DD — <title>` sections instead of emitting separate reports.
 - Add correction mode to `execute-coding-task` skill.
 - Make corrective-cycle node seeding template-aware in mutations (clones whatever body nodes the active template defines).
 - Redirect phase-level corrective behavior from re-planning to appended corrective tasks.
 - Add `max_phase_review_retries` to `orchestration.yml` and enforce in mutations.
+- **Revisit the reviewer agent (`@reviewer`) and the `code-review` skill as part of this iteration** — both need design-level discussion before implementation: what behavioral changes the reviewer needs for handoff-amendment mode (vs. today's separate-report mode), how the `code-review` skill routes between the two modes during `full.yml` coexistence, and whether the reviewer's skill references need template-awareness or can rely on orchestrator-supplied context alone. Treat this as a brainstorming checkpoint at iteration start, not an assumed-locked design.
 
-**Iteration 6 — Final review and cleanup phase:**
+**Iteration 7 — Final review and cleanup phase:**
 
 - Redefine final review skill to consume Requirements doc + cumulative diff only (conformance + quality sweep).
 - Implement cleanup phase injection (single `P{N+1}-CLEANUP` phase, append tasks on repeat rejections) on final review rejection.
 - Add `max_final_review_retries` to `orchestration.yml` and enforce in mutations.
 
-**Iteration 7 — UI polish (optional):**
+**Iteration 8 — UI polish (optional):**
 
 - Visual differentiation for cleanup phases and corrective tasks in the DAG timeline.
 - Tweak `doc_path` and verdict initialization to match type contracts cleanly.
 
-**Iteration 8 — `full.yml` retirement:**
+**Iteration 9 — `full.yml` retirement:**
 
 - Run one or two real projects on `cheaper.yml` and confirm no regressions.
 - Confirm no in-flight `full.yml` projects remain.
