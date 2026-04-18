@@ -32,4 +32,4 @@ A consolidated skill for creating planning documents. Most routes load shared gu
 | `ux-designer` | [references/design/workflow.md](references/design/workflow.md) |
 | `architect` | [references/architecture/workflow.md](references/architecture/workflow.md) |
 | `tactical-planner` | Agent routes internally — see `tactical-planner.md` REQUIRED block for action-to-workflow mapping. Workflow paths: `references/phase-plan/workflow.md`, `references/task-handoff/workflow.md` |
-| `planner` | Agent routes internally — see `planner.md` REQUIRED block for action-to-workflow mapping. Workflow paths: `references/requirements/workflow.md`. The workflow is self-contained and does NOT inherit from `references/shared/`. |
+| `planner` | Agent routes internally — see `planner.md` REQUIRED block for action-to-workflow mapping. Workflow paths: `references/requirements/workflow.md`, `references/master-plan/workflow.md`. Both workflows are self-contained and do NOT inherit from `references/shared/`. |
