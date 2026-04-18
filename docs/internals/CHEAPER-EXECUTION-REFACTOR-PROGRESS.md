@@ -60,7 +60,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 |-----------|-------------|--------|---------|-----------|
 | 0 | Prerequisites (auto-resolution bug + corrective filename) | Complete | 2026-04-17 | 2026-04-17 |
 | 1 | Document formats (Requirements + Execution Plan) | Complete | 2026-04-17 | 2026-04-17 |
-| 2 | Rename Execution Plan → Master Plan | Not started | — | — |
+| 2 | Rename Execution Plan → Master Plan | Complete | 2026-04-18 | 2026-04-18 |
 | 3 | Remove upstream planning (PRD/Research/Design/Architecture) | Not started | — | — |
 | 4 | Requirements pipeline node | Not started | — | — |
 | 5 | Explosion script + state.json pre-seeding | Not started | — | — |
@@ -74,7 +74,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 13 | Rad-plan-audit overhaul | Not started | — | — |
 | 14 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 2 / 15 iterations complete. Design realigned 2026-04-18 for gutting-first approach.
+**Overall**: 3 / 15 iterations complete. Design realigned 2026-04-18 for gutting-first approach.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -93,7 +93,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 |------|--------|---------------|-------|--------------|-----|
 | 0 | `feat/iter-0-prereqs` | `C:\dev\orchestration\v3-worktrees\feat-iter-0-prereqs` | Merged | (see commit 08bf2ff lineage) | — |
 | 1 | `feat/iter-1-doc-formats` | `C:\dev\orchestration\v3-worktrees\feat-iter-1-doc-formats` | Merged | `08bf2ff` | #51 |
-| 2 | — | — | Not created | — | — |
+| 2 | `feat/iter-2-rename-to-master-plan` | `C:\dev\orchestration\v3-worktrees\feat-iter-2-rename-to-master-plan` | Awaiting merge | — | [#53](https://github.com/MetalHexx/RadOrchestation/pull/53) |
 | 3 | — | — | Not created | — | — |
 | 4 | — | — | Not created | — | — |
 | 5 | — | — | Not created | — | — |
@@ -221,6 +221,14 @@ Format:
 - **Execution did**: The two new workflows have no self-review step. A lightweight structural lint pass (Execution Plan) and the soft-warn token lint (Requirements) are the only author-time checks.
 - **Why**: The "audit your own doc" pattern trained the prose-heavy style we're moving away from — self-review prompts fuel expansion rather than compression. Revisit once a future iteration introduces a dedicated conformance-check agent.
 - **Impact**: Per-doc quality now relies on the workflow rules + template shape + token lint. Cross-doc conformance (does every requirement ID get addressed by the Execution Plan?) is not enforced in Iter-1 — logged as an open item.
+
+### 2026-04-18 — Iteration 2 — Rename execution-plan → master-plan + extend plan_approved validator
+
+- Branch: `feat/iter-2-rename-to-master-plan` off `feat/cheaper-execution` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-2-rename-to-master-plan`).
+- Deleted legacy tactical-planner-authored `references/master-plan/`; git-mv'd Iter-1 `references/execution-plan/` into the freed slot; renamed template to `MASTER-PLAN.md`; flipped `type: execution_plan` → `type: master_plan`.
+- `plan_approved` validator extended with `total_tasks` positive-integer rule; 12 test fixture files updated; 4 new validator test cases added (net: 1228 → 1232 pass, 0 fail).
+- `action-event-reference.md` row 5 retargeted: `tactical-planner` → `planner`; `spawn_master_plan` wired. Dead `spawn_master_plan` row stripped from `tactical-planner.md`. Vocabulary purge across 6 internal skill docs.
+- Commits: `69599ec` (main), `04dffa5` (corrective). PR: [#53](https://github.com/MetalHexx/RadOrchestation/pull/53).
 
 ### 2026-04-18 — Iteration 2 — Three planning-time amendments to the companion doc
 
