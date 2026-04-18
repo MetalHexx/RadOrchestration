@@ -23,17 +23,20 @@ Sequence matters — delete first, then rename into the empty slot:
 5. **Update** the renamed `references/master-plan/workflow.md` to set `type: master_plan` in its output contract (was `execution_plan`) and to speak in "Master Plan" vocabulary throughout.
 6. **Extend** the `plan_approved` rule in `.claude/skills/orchestration/scripts/lib/frontmatter-validators.ts:22-29` to require `total_tasks` alongside the existing `total_phases` check (same positive-integer validator shape). The field exists in the template already; this step makes the pipeline actually enforce it.
 7. **Update** `.claude/agents/planner.md` router table: map the pipeline action `spawn_master_plan` to `references/master-plan/workflow.md`. The existing `create_execution_plan` row is replaced, not added to.
+8. **Retarget** `.claude/skills/orchestration/references/action-event-reference.md:15` so the `spawn_master_plan` row names the `planner` agent as the spawn target instead of `tactical-planner`. This is the orchestrator's action→agent source of truth — updating only the `@planner` internal router (step 7) changes what @planner *can* do when spawned but not *who* gets spawned. Do not touch the `create_phase_plan` / `create_task_handoff` rows; those stay with `tactical-planner` until Iter 7.
 
 ## Ripples
 
-- Purge "execution plan" / `execution_plan` / `EXECUTION-PLAN` phrasing (case-insensitive) across internal skill docs:
-  - `.claude/skills/rad-create-plans/SKILL.md`
-  - `.claude/skills/orchestration/references/document-conventions.md`
-  - `.claude/skills/orchestration/references/action-event-reference.md`
-  - `.claude/skills/orchestration/references/context.md`
-  - `.claude/skills/orchestration/references/pipeline-guide.md`
+- Purge "execution plan" / `execution_plan` / `EXECUTION-PLAN` phrasing (case-insensitive) across internal skill docs (verified at plan time — these have live matches today):
+  - `.claude/skills/rad-create-plans/SKILL.md` (5 lines)
+  - `.claude/skills/orchestration/references/document-conventions.md` (6 lines)
+  - `.claude/skills/orchestration/references/context.md` (1 line)
+  - `.claude/skills/rad-create-plans/references/requirements/workflow.md:50` (1 line — added to Ripples at plan time)
+  - `.claude/skills/rad-plan-audit/references/audit-rubric.md:44` (1 line — added to Ripples at plan time)
+- `.claude/skills/orchestration/references/action-event-reference.md` — NOT a vocabulary purge (zero `execution_plan` matches today). The edit here is the **agent retarget** in Scope step 8 (`tactical-planner` → `planner` on the `spawn_master_plan` row).
+- `.claude/skills/orchestration/references/pipeline-guide.md` — zero matches at plan time; no edit required.
 - Update any Iter-1 smoke-test scripts or hand-drive notes that reference `EXECUTION-PLAN.md` / `type: execution_plan`.
-- Update tests that assert the Iter-1 frontmatter contract (the Iter-1 baseline was `type: execution_plan` + `total_phases` + `total_tasks`; now it's `type: master_plan` + both fields, enforced).
+- Update tests that assert the Iter-1 frontmatter contract (the Iter-1 baseline was `type: execution_plan` + `total_phases` + `total_tasks`; now it's `type: master_plan` + both fields, enforced). Verified fixture hotspots at plan time: `tests/contract/05-frontmatter-validation.test.ts`, `tests/dag-walker.test.ts`, `tests/engine.test.ts`, `tests/corrective-integration.test.ts`, `tests/execution-integration.test.ts`, `tests/fixtures/parity-states.ts` — all currently seed `{ total_phases: N }` only; passing fixtures need `total_tasks` added, new negative cases must cover `total_tasks` missing/invalid.
 - `rad-plan` and `rad-execute` SKILL.md files already speak in "Master Plan" vocabulary — no vocabulary change required. They may reference "Tactical Planner"; that cleanup lands in Iter 7, not here.
 
 ## Scope Deliberately Untouched
@@ -60,11 +63,15 @@ Sequence matters — delete first, then rename into the empty slot:
   - `.claude/skills/rad-create-plans/references/master-plan/` (entire folder — delete; same path becomes the rename target)
 - Agent + routing:
   - `.claude/agents/planner.md` (router table in the prose body)
+  - `.claude/skills/orchestration/references/action-event-reference.md:15` (action→agent row retargeted `tactical-planner` → `planner` for `spawn_master_plan`; the orchestrator's routing source of truth)
 - Validator rule:
   - `.claude/skills/orchestration/scripts/lib/frontmatter-validators.ts` (the `VALIDATION_RULES` object; `plan_approved` key currently carries one rule for `total_phases`)
-- Internal docs (ripple-only edits):
+- Internal docs (ripple-only vocabulary purge):
   - `.claude/skills/rad-create-plans/SKILL.md`
-  - `.claude/skills/orchestration/references/{document-conventions,action-event-reference,context,pipeline-guide}.md`
+  - `.claude/skills/orchestration/references/document-conventions.md`
+  - `.claude/skills/orchestration/references/context.md`
+  - `.claude/skills/rad-create-plans/references/requirements/workflow.md`
+  - `.claude/skills/rad-plan-audit/references/audit-rubric.md`
 
 ## Dependencies
 
@@ -87,5 +94,7 @@ Sequence matters — delete first, then rename into the empty slot:
 
 ## Open Questions
 
-- **Action name**: per the Standing Design Principle "minimum-diff on pipeline scripts" (root doc §2), the action stays `spawn_master_plan`. Iteration planner confirms and documents this in the iteration's plan (no decision needed; just record that the principle applies here).
-- **Planner router format**: the current `planner.md` router lists `create_requirements` / `create_execution_plan` actions. After Iter 2 the routing table needs to reflect `spawn_master_plan → references/master-plan/workflow.md`. Whether `create_requirements` also renames (e.g., to `spawn_requirements`) is an Iter 4 concern, not this iteration.
+Both resolved at plan time:
+
+- **Action name**: `spawn_master_plan` retained (Standing Design Principle "minimum-diff on pipeline scripts"). Record the principle application in the iteration's deviation log alongside the `action-event-reference.md:15` retarget.
+- **Planner router format**: after Iter 2, `planner.md` routes `spawn_master_plan → references/master-plan/workflow.md` and retains the `create_requirements` row. Whether `create_requirements` also renames (e.g., to `spawn_requirements`) is an Iter 4 concern, not this iteration.

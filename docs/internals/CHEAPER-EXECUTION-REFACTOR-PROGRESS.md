@@ -173,6 +173,13 @@ Append new entries at the bottom. Format:
 - Baseline-first testing discipline added as a standing policy across every iteration.
 - No code changes; all work in design-doc surface.
 
+### 2026-04-18 — Iteration 2 — Planning pass + companion-doc amendments
+
+- Iteration 2 planning-pass complete (no code changes yet). Plan file at `C:\Users\Metal\.claude\plans\lets-get-idempotent-tarjan.md` covers the full execution order, test-fixture blast radius, and the worktree-review-PR loop.
+- Three amendments folded into `docs/internals/cheaper-execution/iter-02-rename-to-master-plan.md` (Scope / Ripples / Code Surface / Open Questions). Summary under "Deviations from Design" below.
+- Iteration branch will be `feat/iter-2-rename-to-master-plan` (flat naming, consistent with iter-0 / iter-1). Worktree target: `C:\dev\orchestration\v3-worktrees\feat-iter-2-rename-to-master-plan`.
+- Next up: launch worktree via `/create-worktree-plan-mode`, dispatch coder-senior subagent against the amended companion.
+
 ### 2026-04-18 — Naming decision — "Master Plan" name preserved
 
 - **Considered earlier the same day**: renaming the Iter-1 artifact to "Master Doc" to differentiate it from the legacy master-plan concept.
@@ -238,6 +245,13 @@ Format:
 - **Execution did**: The two new workflows have no self-review step. A lightweight structural lint pass (Execution Plan) and the soft-warn token lint (Requirements) are the only author-time checks.
 - **Why**: The "audit your own doc" pattern trained the prose-heavy style we're moving away from — self-review prompts fuel expansion rather than compression. Revisit once a future iteration introduces a dedicated conformance-check agent.
 - **Impact**: Per-doc quality now relies on the workflow rules + template shape + token lint. Cross-doc conformance (does every requirement ID get addressed by the Execution Plan?) is not enforced in Iter-1 — logged as an open item.
+
+### 2026-04-18 — Iteration 2 — Three planning-time amendments to the companion doc
+
+- **Design said**: Iter-02 companion Scope steps 1–7 covered folder delete/rename, frontmatter flip, validator extension, and `planner.md` router update. Ripples listed five internal docs for "execution plan" vocabulary purge, including `action-event-reference.md` and `pipeline-guide.md`.
+- **Execution did (planning-time, pre-code)**: Companion amended in three ways. (1) Added Scope step 8 retargeting `action-event-reference.md:15` from `tactical-planner` → `planner` for `spawn_master_plan` — the orchestrator reads this row as its action→agent source of truth; updating only `planner.md`'s internal router changes what @planner *can* do when spawned but not *who* gets spawned, so the exit criterion ("`@planner` invoked … produces `{NAME}-MASTER-PLAN.md`") could not hold without this edit. (2) Corrected Ripples: `pipeline-guide.md` dropped (zero matches today), `action-event-reference.md` reframed as agent retarget not vocabulary purge (zero `execution_plan` matches today). (3) Added two missing purge surfaces discovered at plan time: `rad-create-plans/references/requirements/workflow.md:50` and `rad-plan-audit/references/audit-rubric.md:44`.
+- **Why**: All three emerged from a plan-time grep/read pass validating the companion's Scope + Ripples + Code Surface against live code. Companion doc now matches ground truth so the coder session doesn't hit the same discovery drift.
+- **Impact**: Iter-2 scope grew by one agent-retarget line, two purge-file edits. Tactical-planner agent file + its `create_phase_plan` / `create_task_handoff` router rows stay for Iter 7.
 
 ### 2026-04-17 — Iteration 1 — Commit step omitted from Execution Plan tasks
 
