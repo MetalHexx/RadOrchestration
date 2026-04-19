@@ -295,6 +295,21 @@ describe('parseMasterPlan — parser cases', () => {
     expect(caught).not.toBeNull();
     expect(caught!.message).toMatch(/before any phase heading/);
   });
+
+  it('parseMasterPlan on nonexistent file throws ParseError with line >= 1', () => {
+    const nonexistentPath = path.join(TMP_DIR, 'does-not-exist.md');
+    let caught: ParseError | null = null;
+    try {
+      parseMasterPlan(nonexistentPath);
+    } catch (err) {
+      caught = err as ParseError;
+    }
+    expect(caught).not.toBeNull();
+    expect(caught).toBeInstanceOf(ParseError);
+    expect(caught!.line).toBeGreaterThanOrEqual(1);
+    expect(caught!.expected).toContain('Master Plan file');
+    expect(caught!.found).toContain('missing file');
+  });
 });
 
 // ── Re-run integration ────────────────────────────────────────────────────────

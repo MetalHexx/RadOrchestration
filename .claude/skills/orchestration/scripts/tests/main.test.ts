@@ -450,6 +450,21 @@ describe('pipeline CLI — run()', () => {
     expect(mockProcessEvent).not.toHaveBeenCalled();
   });
 
+  it('--parse-error with literal null value is rejected with clear error message (no crash)', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    process.exitCode = undefined as unknown as number;
+    run([...BASE_ARGS, '--parse-error', 'null']);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toContain('--parse-error');
+    expect(result.error?.message).toContain('expected an object');
+    expect(result.error?.message).toContain('null');
+    expect(process.exitCode).toBe(1);
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
+
   // ── Pretty-printed JSON output ──────────────────────────────────────────────
 
   it('success output is pretty-printed JSON with 2-space indent and trailing newline', () => {

@@ -133,7 +133,7 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
     const code = (err as { code?: string } | null)?.code;
     if (code === 'ENOENT') {
       throw new ParseError({
-        line: 0,
+        line: 1,
         expected: 'Master Plan file at ' + masterPlanPath,
         found: 'missing file',
         message: `Master Plan file not found at ${masterPlanPath}`,
@@ -149,7 +149,7 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
     // Defensive — readFileSync above succeeded, so readDocument should only be
     // null if the file vanished mid-call. Treat as missing-file.
     throw new ParseError({
-      line: 0,
+      line: 1,
       expected: 'Master Plan file at ' + masterPlanPath,
       found: 'missing file',
       message: `Master Plan file not found at ${masterPlanPath}`,
