@@ -1,5 +1,5 @@
 # DEPRECATED — legacy 4-stage upstream planning pipeline (PRD → Research → Design → Architecture → Master Plan).
-# Replaced by default.yml (Iter 9). Kept on disk for read-only UI rendering of completed legacy projects.
+# Replaced by default.yml (Iter 9). Remains the default template fallback until Iter 9; kept for backwards compatibility.
 template:
   id: full
   version: "1.0.0"
