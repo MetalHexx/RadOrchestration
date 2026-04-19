@@ -72,9 +72,10 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 11 | Execute-coding-task rework + correction sections | Not started | — | — |
 | 12 | Corrective cycle wiring | Not started | — | — |
 | 13 | Rad-plan-audit overhaul | Not started | — | — |
-| 14 | Public-facing docs refresh | Not started | — | — |
+| 14 | Explosion-retry configurability | Not started | — | — |
+| 15 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 5 / 15 iterations complete. Design realigned 2026-04-18 for gutting-first approach.
+**Overall**: 5 / 16 iterations complete. Design realigned 2026-04-18 for gutting-first approach. Iter 14 (explosion-retry configurability) inserted 2026-04-19 during Iter 5 planning when the retry cap was deferred from baked-in to configurable.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -106,6 +107,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 12 | — | — | Not created | — | — |
 | 13 | — | — | Not created | — | — |
 | 14 | — | — | Not created | — | — |
+| 15 | — | — | Not created | — | — |
 
 **State values**: `Not created` → `Worktree active` → `Awaiting merge` → `Merged` → `Worktree removed`
 

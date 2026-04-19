@@ -214,9 +214,17 @@ Rewrites `rad-plan-audit` for a single purpose: conformance between Requirements
 
 **Exit**: test suite green; audit flags a deliberately unaddressed requirement and passes on a correctly-cited plan.
 
-### Iter 14 — Public-facing docs refresh
+### Iter 14 — Explosion-retry configurability
 
-**Companion**: [iter-14-public-docs.md](./cheaper-execution/iter-14-public-docs.md)
+**Companion**: [iter-14-explosion-retry-config.md](./cheaper-execution/iter-14-explosion-retry-config.md)
+
+Surfaces the explosion-script's parse-retry cap (hardcoded constant in Iter 5) as a tunable config field. New `explosion_max_retries` in `orchestration.yml` + validator rule for bounds + `/configure-system` skill prompt + interactive installer prompt. Touches three trees (engine, skill, installer) — kept separate from Iter 5 so the configuration UX (skill workflow, prompt copy, validator bounds) gets proper attention. Also revisits where the retry counter lives in `state.json` (provisional location chosen in Iter 5).
+
+**Exit**: setting `explosion_max_retries: N` in `orchestration.yml` is honored by the recovery loop; `/configure-system` and installer correctly read/write the field; validator rejects out-of-bounds values.
+
+### Iter 15 — Public-facing docs refresh
+
+**Companion**: [iter-15-public-docs.md](./cheaper-execution/iter-15-public-docs.md)
 
 Catches root-level `/docs/*.md` and `README.md` up to post-refactor reality in a single coherent pass — agent roster, pipeline flow, template choices, skill list, document types. All prior iterations deliberately deferred `/docs/` updates to this tail iteration. No code changes; grep-hygiene checks confirm removed concepts don't linger.
 
