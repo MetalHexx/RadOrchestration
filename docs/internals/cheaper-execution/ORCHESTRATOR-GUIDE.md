@@ -93,6 +93,11 @@ The plan should cover, in whatever structure reads well:
   - `ui/` — `npm test` (`node --test --import tsx`)
   - `installer/` — `npm test` (`node --test --experimental-test-module-mocks`)
 - **What good looks like**: automated asserts (test counts, greps for removed vocabulary, folder/symbol checks) plus a manual smoke drive if the iteration changes behavior at a user- or orchestrator-visible surface.
+- **UI smoke (REQUIRED for any iteration touching `ui/`)**: unit tests cover correctness; the browser smoke catches rendering regressions. The plan must include an explicit step that:
+  - Writes `ui/.env.local` with `WORKSPACE_ROOT=<absolute path to workspace>` and `ORCH_ROOT=.claude` (one line each). The installer normally writes this — see `installer/lib/env-generator.js` for the canonical format. Inline the snippet in the plan so the inner session doesn't have to rediscover it.
+  - Builds + boots the dev server (`cd ui && npm run build && npm run dev`).
+  - Opens the dev server URL in a browser and verifies: the new surface renders correctly; status transitions / interactions work; a pre-existing legacy state.json still renders cleanly (no missing-node warnings, no layout regressions); zero new console errors vs. baseline.
+  - Captures a screenshot or terse note for the PR description.
 - **Worktree Workflow**: paste the boilerplate below verbatim at the end of the plan, substituting the iteration branch name. This is the orchestration procedure for the inner session, and it's the same every iteration.
 
 ### Worktree Workflow boilerplate (paste verbatim, addressed to the inner session)
