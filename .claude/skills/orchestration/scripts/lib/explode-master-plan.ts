@@ -491,7 +491,7 @@ export function explodeMasterPlan(opts: ExplodeOptions): ExplodeResult {
   // 6. Seed state.json iterations if a state.json exists for the project.
   const state = readState(projectDir);
   if (state !== null) {
-    seedIterations(state, parsed, projectName, emittedPhaseFiles, emittedTaskFiles);
+    seedIterations(state, parsed, projectName, emittedPhaseFiles, emittedTaskFiles, projectDir);
     writeState(projectDir, state);
   }
 
@@ -502,12 +502,21 @@ export function explodeMasterPlan(opts: ExplodeOptions): ExplodeResult {
   };
 }
 
+function toRelativeDocPath(absPath: string, projectDir: string): string {
+  const rel = path.relative(projectDir, absPath);
+  // Normalize to forward slashes — matches the legacy state.json convention
+  // (phases/NAME-PHASE-NN-TITLE.md, tasks/NAME-TASK-PNN-TMM-TITLE.md) and
+  // keeps state.json portable across platforms + check-in/check-out.
+  return rel.split(path.sep).join('/');
+}
+
 function seedIterations(
   state: PipelineState,
   parsed: ParsedMasterPlan,
   _projectName: string,
   emittedPhaseFiles: string[],
   emittedTaskFiles: string[],
+  projectDir: string,
 ): void {
   // Locate phase_loop; if absent (partial template such as default.yml), create a minimal one.
   let phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
@@ -529,11 +538,13 @@ function seedIterations(
   let taskFilePointer = 0;
   for (let i = 0; i < parsed.phases.length; i++) {
     const phase = parsed.phases[i]!;
-    const phaseFile = emittedPhaseFiles[i] ?? null;
+    const phaseFileAbs = emittedPhaseFiles[i] ?? null;
+    const phaseFile = phaseFileAbs !== null ? toRelativeDocPath(phaseFileAbs, projectDir) : null;
 
     const taskLoopIterations: IterationEntry[] = [];
     for (let j = 0; j < phase.tasks.length; j++) {
-      const taskFile = emittedTaskFiles[taskFilePointer++] ?? null;
+      const taskFileAbs = emittedTaskFiles[taskFilePointer++] ?? null;
+      const taskFile = taskFileAbs !== null ? toRelativeDocPath(taskFileAbs, projectDir) : null;
       const taskHandoffNode: StepNodeState = {
         kind: 'step',
         status: 'completed',

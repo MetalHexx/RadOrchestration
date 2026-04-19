@@ -285,7 +285,10 @@ describe('explodeMasterPlan — re-run integration', () => {
     expect(phasePlanningNode.kind).toBe('step');
     expect(phasePlanningNode.status).toBe('completed');
     expect(phasePlanningNode.retries).toBe(0);
-    expect(phasePlanningNode.doc_path).toContain(path.sep + 'phases' + path.sep);
+    // doc_path values in state.json are RELATIVE with forward slashes — matches legacy convention
+    // (phases/NAME-PHASE-NN-TITLE.md) and keeps state.json portable across platforms.
+    expect(phasePlanningNode.doc_path).toMatch(/^phases\//);
+    expect(phasePlanningNode.doc_path).not.toContain('\\');
     expect(phasePlanningNode.doc_path).toContain(`${projectName}-PHASE-01-`);
     // Task iterations populated.
     const taskLoop = phaseLoop.iterations[0]!.nodes['task_loop'] as ForEachTaskNodeState;
@@ -296,7 +299,8 @@ describe('explodeMasterPlan — re-run integration', () => {
     expect(taskHandoffNode.kind).toBe('step');
     expect(taskHandoffNode.status).toBe('completed');
     expect(taskHandoffNode.retries).toBe(0);
-    expect(taskHandoffNode.doc_path).toContain(path.sep + 'tasks' + path.sep);
+    expect(taskHandoffNode.doc_path).toMatch(/^tasks\//);
+    expect(taskHandoffNode.doc_path).not.toContain('\\');
   });
 
   it('malformed Master Plan on re-run: filesystem UNTOUCHED (no backup, no fresh emission)', () => {
