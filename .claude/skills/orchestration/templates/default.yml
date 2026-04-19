@@ -40,6 +40,15 @@ nodes:
     doc_output_field: doc_path
     depends_on: [requirements]
 
+  - id: explode_master_plan
+    kind: step
+    label: "Explode Master Plan"
+    action: explode_master_plan
+    events: { started: explosion_started, completed: explosion_completed, failed: explosion_failed }
+    context: { step: explode_master_plan }
+    doc_output_field: doc_path
+    depends_on: [master_plan]
+
   # ── Plan Approval Gate ────────────────────────────────────────────────────
 
   - id: plan_approval_gate
@@ -49,4 +58,4 @@ nodes:
     action_if_needed: request_plan_approval
     approved_event: plan_approved
     auto_approve_modes: []
-    depends_on: [master_plan]
+    depends_on: [explode_master_plan]

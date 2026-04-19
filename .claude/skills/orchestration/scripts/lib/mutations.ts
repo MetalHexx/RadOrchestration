@@ -130,6 +130,97 @@ for (const [eventName, nodeId] of planningCompletedSteps) {
   });
 }
 
+// ── explosion_started mutation ────────────────────────────────────────────────
+
+mutationRegistry.set(EVENTS.EXPLOSION_STARTED, (state, _context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const node = resolveNodeState(cloned, 'explode_master_plan', 'top');
+  node.status = 'in_progress';
+  mutations_applied.push('set explode_master_plan.status = in_progress');
+
+  return { state: cloned, mutations_applied };
+});
+
+// ── explosion_completed mutation (clears parse-failure recovery state) ────────
+
+mutationRegistry.set(EVENTS.EXPLOSION_COMPLETED, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const node = resolveNodeState(cloned, 'explode_master_plan', 'top');
+  node.status = 'completed';
+  mutations_applied.push('set explode_master_plan.status = completed');
+
+  const docPath = context.doc_path ?? null;
+  (node as StepNodeState).doc_path = docPath;
+  mutations_applied.push(`set explode_master_plan.doc_path = ${docPath ?? 'null'}`);
+
+  // Clear any recovery state on master_plan — success wipes the slate.
+  const masterPlanNode = resolveNodeState(cloned, 'master_plan', 'top') as StepNodeState;
+  if (masterPlanNode.last_parse_error !== null && masterPlanNode.last_parse_error !== undefined) {
+    masterPlanNode.last_parse_error = null;
+    mutations_applied.push('cleared master_plan.last_parse_error');
+  }
+  if (masterPlanNode.parse_retry_count !== null && masterPlanNode.parse_retry_count !== undefined && masterPlanNode.parse_retry_count !== 0) {
+    masterPlanNode.parse_retry_count = 0;
+    mutations_applied.push('reset master_plan.parse_retry_count = 0');
+  }
+
+  return { state: cloned, mutations_applied };
+});
+
+// ── explosion_failed mutation (parse-failure recovery loop; cap=3) ────────────
+
+// Hardcoded for Iter 5; configurability is Iter 14.
+const MAX_PARSE_RETRIES = 3;
+
+mutationRegistry.set(EVENTS.EXPLOSION_FAILED, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const masterPlanNode = resolveNodeState(cloned, 'master_plan', 'top') as StepNodeState;
+  const explodeNode = resolveNodeState(cloned, 'explode_master_plan', 'top') as StepNodeState;
+
+  // context.parse_error carries { line, expected, found, message } from the explosion CLI wrapper.
+  const parseError = (context.parse_error ?? null) as StepNodeState['last_parse_error'];
+  masterPlanNode.last_parse_error = parseError;
+  mutations_applied.push(
+    parseError
+      ? `set master_plan.last_parse_error = { line: ${parseError.line}, ... }`
+      : 'set master_plan.last_parse_error = null'
+  );
+
+  const previousCount = masterPlanNode.parse_retry_count ?? 0;
+  const nextCount = previousCount + 1;
+  masterPlanNode.parse_retry_count = nextCount;
+  mutations_applied.push(`set master_plan.parse_retry_count = ${nextCount}`);
+
+  if (nextCount > MAX_PARSE_RETRIES) {
+    // Cap exceeded — halt. The orchestrator surfaces this via the log-error skill.
+    explodeNode.status = 'failed';
+    mutations_applied.push(`set explode_master_plan.status = failed (parse retry cap ${MAX_PARSE_RETRIES} exceeded)`);
+    cloned.graph.status = 'halted';
+    mutations_applied.push('set graph.status = halted');
+    const reasonMsg = parseError?.message ?? 'unknown parse error';
+    cloned.pipeline.halt_reason =
+      `Explosion parser rejected planner output ${nextCount} times (cap=${MAX_PARSE_RETRIES}). ` +
+      `Manual intervention required. Last error: ${reasonMsg}`;
+    mutations_applied.push(`set pipeline.halt_reason (parse retry cap exceeded)`);
+    return { state: cloned, mutations_applied };
+  }
+
+  // Recoverable — reset and re-spawn the planner.
+  explodeNode.status = 'not_started';
+  (explodeNode as StepNodeState).doc_path = null;
+  mutations_applied.push('set explode_master_plan.status = not_started');
+  masterPlanNode.status = 'in_progress';
+  mutations_applied.push('set master_plan.status = in_progress (recovery re-spawn)');
+
+  return { state: cloned, mutations_applied };
+});
+
 // ── Gate approved mutations ───────────────────────────────────────────────────
 
 mutationRegistry.set(EVENTS.PLAN_APPROVED, (state, _context, _config, _template): MutationResult => {

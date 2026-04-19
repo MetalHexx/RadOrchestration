@@ -178,7 +178,7 @@ test("case-insensitive: lowercase -task- segment parses correctly", () => {
 
 console.log("\ngroupNodesBySection tests\n");
 
-test("all 12 NODE_SECTION_MAP keys produce 4 sections in correct order with correct counts", () => {
+test("all 13 NODE_SECTION_MAP keys produce 4 sections in correct order with correct counts", () => {
   const allNodes = {
     prd: stepNode,
     research: stepNode,
@@ -186,6 +186,7 @@ test("all 12 NODE_SECTION_MAP keys produce 4 sections in correct order with corr
     architecture: stepNode,
     requirements: stepNode,
     master_plan: stepNode,
+    explode_master_plan: stepNode,
     plan_approval_gate: gateNode,
     gate_mode_selection: gateNode,
     phase_loop: forEachPhaseNode,
@@ -197,7 +198,7 @@ test("all 12 NODE_SECTION_MAP keys produce 4 sections in correct order with corr
   const result = groupNodesBySection(allNodes);
   assert.strictEqual(result.length, 4);
   assert.strictEqual(result[0].label, "Planning");
-  assert.strictEqual(result[0].entries.length, 6);
+  assert.strictEqual(result[0].entries.length, 7);
   assert.strictEqual(result[1].label, "Gates");
   assert.strictEqual(result[1].entries.length, 2);
   assert.strictEqual(result[2].label, "Execution");
@@ -278,6 +279,73 @@ test("Iter 4: legacy full.yml state (no requirements node) still groups correctl
   assert.strictEqual(planningSection.entries.length, 5);
   assert.ok(!planningIds.includes("requirements"), "legacy state should not have requirements");
   assert.ok(planningIds.includes("master_plan"), "legacy state must still have master_plan");
+});
+
+test("Iter 5: default.yml partial template (requirements + master_plan + explode_master_plan + plan_approval_gate) groups correctly — explode_master_plan placed after master_plan, before the gate", () => {
+  // Simulates a fresh project scaffolded from default.yml post-Iter-5: 3 planning steps + 1 gate.
+  const result = groupNodesBySection({
+    requirements: stepNode,
+    master_plan: stepNode,
+    explode_master_plan: stepNode,
+    plan_approval_gate: gateNode,
+  });
+  assert.strictEqual(result.length, 2);
+  const planningSection = result[0];
+  assert.strictEqual(planningSection.label, "Planning");
+  assert.strictEqual(planningSection.entries.length, 3);
+  assert.strictEqual(planningSection.entries[0][0], "requirements");
+  assert.strictEqual(planningSection.entries[1][0], "master_plan");
+  assert.strictEqual(planningSection.entries[2][0], "explode_master_plan");
+  assert.strictEqual(result[1].label, "Gates");
+  assert.strictEqual(result[1].entries[0][0], "plan_approval_gate");
+});
+
+test("Iter 5: pre-seeded iterations — phase_loop node with explode_master_plan completed + iterations with doc_path populated + nodes {} empty still groups correctly", () => {
+  // After explosion completes, explode_master_plan.status=completed and phase_loop.iterations carry doc_path values.
+  // Rendering must not crash on iterations with nodes: {} (no per-phase body nodes yet).
+  const seededPhaseLoop = {
+    ...forEachPhaseNode,
+    status: "not_started" as const,
+    iterations: [
+      { index: 0, status: "not_started" as const, nodes: {}, corrective_tasks: [], commit_hash: null, doc_path: "phases/MYAPP-PHASE-01-SETUP.md" },
+      { index: 1, status: "not_started" as const, nodes: {}, corrective_tasks: [], commit_hash: null, doc_path: "phases/MYAPP-PHASE-02-CORE.md" },
+    ],
+  };
+  const completedExplode = { ...stepNode, status: "completed" as const, doc_path: "MYAPP-MASTER-PLAN.md" };
+  const result = groupNodesBySection({
+    requirements: stepNode,
+    master_plan: stepNode,
+    explode_master_plan: completedExplode,
+    plan_approval_gate: gateNode,
+    phase_loop: seededPhaseLoop,
+  });
+  assert.strictEqual(result.length, 3);
+  assert.strictEqual(result[0].label, "Planning");
+  assert.strictEqual(result[0].entries.length, 3);
+  // Confirm the completed explode node is present with status completed.
+  const explodeEntry = result[0].entries.find(([id]) => id === "explode_master_plan");
+  assert.ok(explodeEntry, "explode_master_plan must be in Planning section");
+  assert.strictEqual(explodeEntry![1].status, "completed");
+});
+
+test("Iter 5: legacy state.json (no explode_master_plan + no doc_path on iterations + no last_parse_error on master_plan) still groups cleanly", () => {
+  // Pre-Iter-5 state.json must keep rendering without the explode node and without the new iteration.doc_path field.
+  const legacyPhaseLoop = {
+    ...forEachPhaseNode,
+    iterations: [
+      { index: 0, status: "not_started" as const, nodes: {}, corrective_tasks: [] },
+    ],
+  };
+  const legacyNodes = {
+    requirements: stepNode,
+    master_plan: stepNode,
+    plan_approval_gate: gateNode,
+    phase_loop: legacyPhaseLoop,
+  };
+  const result = groupNodesBySection(legacyNodes);
+  const planningIds = result.find(g => g.label === "Planning")!.entries.map(([id]) => id);
+  assert.ok(!planningIds.includes("explode_master_plan"), "legacy state should not carry explode_master_plan");
+  assert.ok(planningIds.includes("master_plan"), "legacy state must still carry master_plan");
 });
 
 test("section order is Planning → Gates → Execution → Completion regardless of insertion order", () => {

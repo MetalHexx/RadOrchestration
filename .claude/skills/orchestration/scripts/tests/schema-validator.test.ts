@@ -176,4 +176,66 @@ describe('validateStateSchema', () => {
     // The fix prevents the old typeof null === 'object' output from appearing
     expect(typeError!).not.toContain('got object');
   });
+
+  // ── Iter 5: explosion-script additive fields ────────────────────────────────
+
+  it('state with master_plan.last_parse_error + parse_retry_count + iteration.doc_path validates successfully (Iter 5 additive)', () => {
+    const state = makeMinimalState();
+    state.graph.nodes.master_plan = {
+      kind: 'step',
+      status: 'in_progress',
+      doc_path: 'path/to/plan.md',
+      retries: 0,
+      last_parse_error: {
+        line: 42,
+        expected: 'task heading "### P01-T01:"',
+        found: '### P01-TX: Bad ID',
+        message: 'Malformed task ID at line 42',
+      },
+      parse_retry_count: 1,
+    } as any;
+    state.graph.nodes.phase_loop = {
+      kind: 'for_each_phase',
+      status: 'not_started',
+      iterations: [
+        {
+          index: 0,
+          status: 'not_started',
+          nodes: {},
+          corrective_tasks: [],
+          commit_hash: null,
+          doc_path: 'phases/FOO-PHASE-01-BAR.md',
+        },
+      ],
+    } as any;
+    const errors = validateStateSchema(state);
+    expect(errors).toEqual([]);
+  });
+
+  it('legacy state.json (no doc_path / last_parse_error / parse_retry_count) still validates (backwards-compat)', () => {
+    const state = makeMinimalState();
+    // Legacy shape: no Iter 5 fields present anywhere
+    state.graph.nodes.master_plan = {
+      kind: 'step',
+      status: 'completed',
+      doc_path: 'path/to/plan.md',
+      retries: 0,
+    } as any;
+    state.graph.nodes.phase_loop = {
+      kind: 'for_each_phase',
+      status: 'not_started',
+      iterations: [
+        {
+          index: 0,
+          status: 'not_started',
+          nodes: {},
+          corrective_tasks: [],
+          commit_hash: null,
+          // NOTE: no doc_path — legacy
+        },
+      ],
+    } as any;
+    const errors = validateStateSchema(state);
+    expect(errors).toEqual([]);
+  });
 });

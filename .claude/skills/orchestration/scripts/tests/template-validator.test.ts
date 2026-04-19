@@ -160,14 +160,14 @@ describe('validateTemplate', () => {
     });
   });
 
-  describe('default.yml (Iter 4 partial template)', () => {
-    it('loads via template-loader without throwing — 3 nodes: requirements → master_plan → plan_approval_gate', () => {
+  describe('default.yml (Iter 5 partial template)', () => {
+    it('loads via template-loader without throwing — 4 nodes: requirements → master_plan → explode_master_plan → plan_approval_gate', () => {
       // loadTemplate is what the engine actually calls; it filters tolerable
       // unreachable_node warnings for leaf terminals (see template-loader.ts).
       // This asserts default.yml is loadable end-to-end in the engine's path.
       const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'default.yml'));
       const ids = template.nodes.map((n) => n.id);
-      expect(ids).toEqual(['requirements', 'master_plan', 'plan_approval_gate']);
+      expect(ids).toEqual(['requirements', 'master_plan', 'explode_master_plan', 'plan_approval_gate']);
     });
 
     it('has no structural defects (cycles, dangling refs, invalid kinds) — unreachable-leaf warnings are tolerated', () => {
@@ -175,6 +175,20 @@ describe('validateTemplate', () => {
       const result = validateTemplate(template, 'default');
       const hardErrors = result.errors.filter((e) => e.subtype !== 'unreachable_node');
       expect(hardErrors).toHaveLength(0);
+    });
+
+    it('explode_master_plan step exists with expected events (started/completed/failed) and depends_on [master_plan]', () => {
+      const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'default.yml'));
+      const explode = template.nodes.find(n => n.id === 'explode_master_plan');
+      expect(explode).toBeDefined();
+      expect(explode!.kind).toBe('step');
+      expect((explode as any).action).toBe('explode_master_plan');
+      expect((explode as any).events.started).toBe('explosion_started');
+      expect((explode as any).events.completed).toBe('explosion_completed');
+      expect((explode as any).events.failed).toBe('explosion_failed');
+      expect((explode as any).depends_on).toEqual(['master_plan']);
+      const gate = template.nodes.find(n => n.id === 'plan_approval_gate');
+      expect((gate as any).depends_on).toEqual(['explode_master_plan']);
     });
   });
 

@@ -9,6 +9,7 @@ const STEP_TITLES: Record<PlanningStepName, string> = {
   architecture: 'Architecture',
   requirements: 'Requirements',
   master_plan: 'Master Plan',
+  explode_master_plan: 'Phase/Task Generation',
 };
 
 function appendAllFileDocs(
@@ -140,6 +141,7 @@ const STEP_TITLES_V5: Record<PlanningStepName, string> = {
   architecture: 'Architecture',
   requirements: 'Requirements',
   master_plan: 'Master Plan',
+  explode_master_plan: 'Phase/Task Generation',
 };
 
 function capitalize(s: string): string {
