@@ -10,7 +10,7 @@ import {
   readDocument,
   ensureDirectories,
 } from './lib/state-io.js';
-import type { EventContext, IOAdapter, ParseErrorDetail, PipelineResult } from './lib/types.js';
+import type { EventContext, IOAdapter, PipelineResult } from './lib/types.js';
 
 // ── Argument Parsing ──────────────────────────────────────────────────────────
 

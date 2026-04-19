@@ -203,7 +203,7 @@
               "additionalProperties": false,
               "required": ["line", "expected", "found", "message"],
               "properties": {
-                "line": { "type": "integer" },
+                "line": { "type": "integer", "minimum": 1 },
                 "expected": { "type": "string" },
                 "found": { "type": "string" },
                 "message": { "type": "string" }

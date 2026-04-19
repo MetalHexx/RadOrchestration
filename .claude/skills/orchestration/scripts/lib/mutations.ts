@@ -175,10 +175,8 @@ mutationRegistry.set(EVENTS.EXPLOSION_COMPLETED, (state, _context, _config, _tem
     masterPlanNode.last_parse_error = null;
     mutations_applied.push('cleared master_plan.last_parse_error');
   }
-  if (masterPlanNode.parse_retry_count !== null && masterPlanNode.parse_retry_count !== undefined && masterPlanNode.parse_retry_count !== 0) {
-    masterPlanNode.parse_retry_count = 0;
-    mutations_applied.push('reset master_plan.parse_retry_count = 0');
-  }
+  masterPlanNode.parse_retry_count = 0;
+  mutations_applied.push('reset master_plan.parse_retry_count = 0');
 
   return { state: cloned, mutations_applied };
 });

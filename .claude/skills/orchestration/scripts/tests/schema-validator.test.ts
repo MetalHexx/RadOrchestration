@@ -269,4 +269,46 @@ describe('validateStateSchema', () => {
     const errors = validateStateSchema(state);
     expect(errors).toEqual([]);
   });
+
+  it('last_parse_error.line >= 1 validates (minimum constraint)', () => {
+    const state = makeMinimalState();
+    state.graph.nodes.master_plan = {
+      kind: 'step',
+      status: 'in_progress',
+      doc_path: 'path/to/plan.md',
+      retries: 0,
+      last_parse_error: {
+        line: 1,
+        expected: 'task heading',
+        found: 'garbage',
+        message: 'Parse error at line 1',
+      },
+      parse_retry_count: 1,
+    } as any;
+    const errors = validateStateSchema(state);
+    expect(errors).toEqual([]);
+  });
+
+  it('last_parse_error.line = 0 is rejected by schema (minimum: 1 constraint)', () => {
+    const state = makeMinimalState();
+    state.graph.nodes.master_plan = {
+      kind: 'step',
+      status: 'in_progress',
+      doc_path: 'path/to/plan.md',
+      retries: 0,
+      last_parse_error: {
+        line: 0,
+        expected: 'task heading',
+        found: 'garbage',
+        message: 'Parse error at line 0',
+      },
+      parse_retry_count: 1,
+    } as any;
+    const errors = validateStateSchema(state);
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    const lineError = errors.find(e => e.includes('line'));
+    expect(lineError).toBeDefined();
+    expect(lineError!).toMatch(/^\[schema\] /);
+    expect(lineError!).toContain('>= 1');
+  });
 });
