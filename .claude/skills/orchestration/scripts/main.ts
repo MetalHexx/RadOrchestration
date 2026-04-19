@@ -128,11 +128,11 @@ export function run(argv: string[]): void {
           `Invalid JSON for --parse-error: ${(e as Error).message}`, event, orchRoot), null, 2) + '\n');
         return;
       }
-      if (typeof parsed.line !== 'number' || typeof parsed.expected !== 'string' ||
+      if (!Number.isInteger(parsed.line) || parsed.line < 1 || typeof parsed.expected !== 'string' ||
           typeof parsed.found !== 'string' || typeof parsed.message !== 'string') {
         process.exitCode = 1;
         process.stdout.write(JSON.stringify(makeErrorResult(
-          `Invalid --parse-error shape: expected { line: number, expected: string, found: string, message: string }`,
+          `Invalid --parse-error shape: expected { line: positive integer, expected: string, found: string, message: string }`,
           event, orchRoot), null, 2) + '\n');
         return;
       }

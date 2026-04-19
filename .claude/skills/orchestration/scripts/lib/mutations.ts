@@ -141,6 +141,13 @@ mutationRegistry.set(EVENTS.EXPLOSION_STARTED, (state, _context, _config, _templ
   node.status = 'in_progress';
   mutations_applied.push('set explode_master_plan.status = in_progress');
 
+  // Defensive: explicitly clear any stale doc_path on the explode node, matching the
+  // idempotency guard in explosion_completed, cap-exceeded, and invalid-dispatch branches.
+  // A state.json produced by an older version may carry a lingering value. Clearing to null
+  // guarantees the UI doesn't render a spurious "Doc" link WHILE the explode step is in progress.
+  (node as StepNodeState).doc_path = null;
+  mutations_applied.push('set explode_master_plan.doc_path = null');
+
   return { state: cloned, mutations_applied };
 });
 
@@ -194,7 +201,7 @@ mutationRegistry.set(EVENTS.EXPLOSION_FAILED, (state, context, _config, _templat
   // last_parse_error = null, yielding an "unknown parse error" halt that gives the planner
   // nothing actionable to fix.
   const parseError = context.parse_error as ParseErrorDetail | undefined;
-  if (!parseError || typeof parseError.line !== 'number' ||
+  if (!parseError || !Number.isInteger(parseError.line) || parseError.line < 1 ||
       typeof parseError.expected !== 'string' ||
       typeof parseError.found !== 'string' ||
       typeof parseError.message !== 'string') {

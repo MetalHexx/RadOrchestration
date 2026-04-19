@@ -1864,4 +1864,40 @@ describe('explosion_failed mutation', () => {
     expect(result.state.pipeline.halt_reason).toBeTruthy();
     expect(result.state.pipeline.halt_reason).toContain('cap=3');
   });
+
+  it('parse_error with float line (1.5) triggers dispatch-error halt', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 0 });
+    const malformedError = { line: 1.5, expected: 'x', found: 'y', message: 'error' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: malformedError }, baseConfig, baseTemplate);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('failed');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('dispatch error');
+  });
+
+  it('parse_error with negative line (-1) triggers dispatch-error halt', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 0 });
+    const malformedError = { line: -1, expected: 'x', found: 'y', message: 'error' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: malformedError }, baseConfig, baseTemplate);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('failed');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('dispatch error');
+  });
+
+  it('parse_error with zero line (0) triggers dispatch-error halt', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 0 });
+    const malformedError = { line: 0, expected: 'x', found: 'y', message: 'error' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: malformedError }, baseConfig, baseTemplate);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('failed');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('dispatch error');
+  });
 });

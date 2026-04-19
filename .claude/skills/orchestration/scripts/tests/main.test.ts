@@ -408,6 +408,48 @@ describe('pipeline CLI — run()', () => {
     expect(mockProcessEvent).not.toHaveBeenCalled();
   });
 
+  it('--parse-error with float line (1.5) is rejected as invalid shape', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    process.exitCode = undefined as unknown as number;
+    run([...BASE_ARGS, '--parse-error', JSON.stringify({ line: 1.5, expected: 'x', found: 'y', message: 'm' })]);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toContain('--parse-error');
+    expect(result.error?.message).toContain('shape');
+    expect(process.exitCode).toBe(1);
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
+
+  it('--parse-error with negative line (-1) is rejected as invalid shape', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    process.exitCode = undefined as unknown as number;
+    run([...BASE_ARGS, '--parse-error', JSON.stringify({ line: -1, expected: 'x', found: 'y', message: 'm' })]);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toContain('--parse-error');
+    expect(result.error?.message).toContain('shape');
+    expect(process.exitCode).toBe(1);
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
+
+  it('--parse-error with zero line (0) is rejected as invalid shape', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    process.exitCode = undefined as unknown as number;
+    run([...BASE_ARGS, '--parse-error', JSON.stringify({ line: 0, expected: 'x', found: 'y', message: 'm' })]);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toContain('--parse-error');
+    expect(result.error?.message).toContain('shape');
+    expect(process.exitCode).toBe(1);
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
+
   // ── Pretty-printed JSON output ──────────────────────────────────────────────
 
   it('success output is pretty-printed JSON with 2-space indent and trailing newline', () => {
