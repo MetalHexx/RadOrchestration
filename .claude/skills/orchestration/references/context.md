@@ -62,5 +62,5 @@ Contents:
 ## Naming Conventions
 
 - **Project files**: `SCREAMING-CASE` with project prefix — `MYAPP-MASTER-PLAN.md`, `MYAPP-TASK-P01-T03-AUTH.md`. See [document-conventions.md](document-conventions.md) for the full set of filename patterns, placement rules, and frontmatter field values.
-- **Skills**: lowercase with hyphens — `{orch_root}/skills/create-prd/`
-- **Agents**: lowercase with hyphens — `{orch_root}/agents/orchestrator.agent.md`
+- **Skills**: lowercase with hyphens — `{orch_root}/skills/rad-create-plan/`
+- **Agents**: lowercase with hyphens — `{orch_root}/agents/planner.md`
