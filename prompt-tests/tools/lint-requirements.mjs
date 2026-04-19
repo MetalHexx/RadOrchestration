@@ -4,7 +4,12 @@
 // Usage:
 //   node lint-requirements.mjs <path/to/REQUIREMENTS.md>
 //   node lint-requirements.mjs --self-test
-// Exit 0 on pass, 1 on errors. Last stdout line is a JSON summary.
+// Exit codes:
+//   doc-lint path: 0 on pass, 1 on errors.
+//   --self-test path: 0 when the expected error set matches (even though
+//                     the fixture intentionally produces lint errors),
+//                     1 when the assertion fails.
+// Last stdout line is a JSON summary in all modes.
 
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';

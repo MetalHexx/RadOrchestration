@@ -17,7 +17,7 @@ Full routing reference lives at `.claude/skills/orchestration/references/pipelin
 | Input | Default | Notes |
 |-------|---------|-------|
 | Fixture name | `rainbow-hello` | Matches `prompt-tests/plan-pipeline-e2e/fixtures/<fixture>/BRAINSTORMING.md` |
-| Project name | `RAINBOW-HELLO-HARNESS-<YYYY-MM-DD>` | A stable, human-readable identifier (e.g. `RAINBOW-HELLO-HARNESS-2026-04-19`). Use UPPER-KEBAB-CASE. **This becomes `state.project.name`** — the engine sets it to `path.basename(--project-dir)`, so the run-folder name IS the project name. Do not derive it from a timestamp; pick it deliberately before creating the folder. |
+| Project name | `baseline-<fixture>-<YYYY-MM-DD>` or `<UPPER-KEBAB-CASE>` | For inaugural/tracked baseline runs, use `baseline-<fixture>-<YYYY-MM-DD>` (lowercase, `baseline-` prefix; e.g. `baseline-rainbow-hello-2026-04-19`) — this pattern is **required** for the `.gitignore` exception to re-include `lint-report.md` + `run-notes.md`. For ad-hoc re-runs (non-baseline, untracked), the project-name shape is flexible (UPPER-KEBAB-CASE or lowercase both work); whatever you pick becomes `state.project.name`. The inaugural baseline in this PR used the baseline-<fixture>-<date> convention. **This becomes `state.project.name`** — the engine sets it to `path.basename(--project-dir)`, so the run-folder name IS the project name. |
 | Run folder | `prompt-tests/plan-pipeline-e2e/output/<fixture>/<project-name>/` | Use the stable project name as the folder name (e.g. `output/rainbow-hello/RAINBOW-HELLO-HARNESS-2026-04-19/`). Distinguish re-runs by bumping the date suffix or appending `-v2`, not by embedding a timestamp. Only `lint-report.md` and `run-notes.md` inside a `baseline-*`-named folder escape the `.gitignore`; everything else stays untracked. |
 
 > **How project name is passed to the engine.** There is no `--name` CLI flag. The engine reads `path.basename(--project-dir)` on the `start` event and writes it into `state.project.name`. All downstream doc filenames (e.g. `<PROJECT-NAME>-REQUIREMENTS.md`) derive from that value. Choosing a stable, descriptive folder name is therefore the only way to get readable doc names.
@@ -28,7 +28,7 @@ All paths below are relative to the repo root unless noted.
 
 Hand-roll the minimum project scaffold — do **NOT** invoke the installer and do **NOT** pre-seed `state.json` or `orchestration.yml`. The pipeline engine creates state.json lazily on the first event.
 
-1. Choose a stable project name following the convention `RAINBOW-HELLO-HARNESS-<YYYY-MM-DD>` (e.g. `RAINBOW-HELLO-HARNESS-2026-04-19`). This name doubles as the run-folder basename and becomes `state.project.name` — the engine derives the project name from `path.basename(--project-dir)` at `start` time, so there is no separate flag to pass.
+1. Choose a project name. For inaugural baseline runs (tracked, committed), use `baseline-<fixture>-<YYYY-MM-DD>` (e.g. `baseline-rainbow-hello-2026-04-19`). For ad-hoc re-runs, use any stable identifier (UPPER-KEBAB-CASE like `RAINBOW-HELLO-HARNESS-2026-04-19` or lowercase — both work). This name doubles as the run-folder basename and becomes `state.project.name` — the engine derives the project name from `path.basename(--project-dir)` at `start` time, so there is no separate flag to pass.
 2. Create the run folder (named after the project name) and the three subdirs the explosion script will write into:
    ```
    prompt-tests/plan-pipeline-e2e/output/<fixture>/<PROJECT-NAME>/
