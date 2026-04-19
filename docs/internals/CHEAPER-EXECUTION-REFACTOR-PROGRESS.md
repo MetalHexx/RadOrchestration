@@ -98,7 +98,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 3 | `feat/iter-3-remove-upstream-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning` | Awaiting merge | — | [#54](https://github.com/MetalHexx/RadOrchestation/pull/54) |
 | 4 | `feat/iter-4-requirements-pipeline-node` | `C:\dev\orchestration\v3-worktrees\feat-iter-4-requirements-pipeline-node` | Awaiting merge | — | [#55](https://github.com/MetalHexx/RadOrchestation/pull/55) |
 | 5 | `feat/iter-5-explosion-script` | `C:\dev\orchestration\v3-worktrees\feat-iter-5-explosion-script` | Awaiting merge | — | [#56](https://github.com/MetalHexx/RadOrchestation/pull/56) |
-| 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Awaiting merge | — | — |
+| 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Awaiting merge | — | [#57](https://github.com/MetalHexx/RadOrchestation/pull/57) |
 | 7 | — | — | Not created | — | — |
 | 8 | — | — | Not created | — | — |
 | 9 | — | — | Not created | — | — |
@@ -269,7 +269,7 @@ Format:
 - Inaugural baseline run executed against the `rainbow-hello` fixture in the same iteration. 8 requirements, 3 phases, 6 tasks emitted; explosion script succeeded first try (`parse_retry_count = 0`); all 9 pre-seeded iteration doc_paths (`phase_planning` / `task_handoff`) set correctly. Both linters return zero errors on the run docs and exactly 6 errors each on self-test. Commits only `lint-report.md` + `run-notes.md`; everything else under the baseline folder stays untracked.
 - Tests: orchestration 47 files / 1220 pass / 1 todo (baseline unchanged — harness sits outside `.claude/` / `ui/` / `installer/` / `scripts/`, no test-tree edits); UI 157 tests / 154 pass / 3 pre-existing failures (baseline unchanged); installer 399 pass / 0 fail. Zero test count delta.
 - UI smoke: N/A — no UI surface touched.
-- Commits: `f534247` (scaffold), `b890c18` (review-corrective — dead code, tightened self-test thresholds, project-name stability, narrowed `.gitkeep` exception), `a9cb44c` (inaugural baseline artifacts). PR: _pending_.
+- Commits: `f534247` (scaffold), `b890c18` (review-corrective — dead code, tightened self-test thresholds, project-name stability, narrowed `.gitkeep` exception), `a9cb44c` (inaugural baseline artifacts), `211c34a` (progress tracker). PR: [#57](https://github.com/MetalHexx/RadOrchestation/pull/57).
 
 ### 2026-04-18 — Iteration 3 — Remove upstream planning (PRD / Research / Design / Architecture)
 
