@@ -110,6 +110,7 @@ export const NODE_SECTION_MAP: Record<string, SectionLabel> = {
   research: 'Planning',
   design: 'Planning',
   architecture: 'Planning',
+  requirements: 'Planning',
   master_plan: 'Planning',
   plan_approval_gate: 'Gates',
   gate_mode_selection: 'Gates',

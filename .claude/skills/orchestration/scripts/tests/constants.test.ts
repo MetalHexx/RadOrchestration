@@ -151,13 +151,13 @@ describe('NEXT_ACTIONS', () => {
     }).toThrow(TypeError);
   });
 
-  it('has exactly 17 keys', () => {
-    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(17);
+  it('has exactly 18 keys', () => {
+    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(18);
   });
 
   it('has expected keys', () => {
     const expectedKeys = [
-      'SPAWN_MASTER_PLAN',
+      'SPAWN_REQUIREMENTS', 'SPAWN_MASTER_PLAN',
       'REQUEST_PLAN_APPROVAL', 'GATE_TASK', 'GATE_PHASE', 'ASK_GATE_MODE', 'REQUEST_FINAL_APPROVAL',
       'CREATE_PHASE_PLAN', 'CREATE_TASK_HANDOFF', 'EXECUTE_TASK', 'SPAWN_CODE_REVIEWER',
       'GENERATE_PHASE_REPORT', 'SPAWN_PHASE_REVIEWER', 'SPAWN_FINAL_REVIEWER',
@@ -170,6 +170,7 @@ describe('NEXT_ACTIONS', () => {
   });
 
   it('has expected values', () => {
+    expect(NEXT_ACTIONS.SPAWN_REQUIREMENTS).toBe('spawn_requirements');
     expect(NEXT_ACTIONS.SPAWN_MASTER_PLAN).toBe('spawn_master_plan');
     expect(NEXT_ACTIONS.REQUEST_PLAN_APPROVAL).toBe('request_plan_approval');
     expect(NEXT_ACTIONS.GATE_TASK).toBe('gate_task');
@@ -201,12 +202,13 @@ describe('EVENTS', () => {
     }).toThrow(TypeError);
   });
 
-  it('has exactly 30 keys', () => {
-    expect(Object.keys(EVENTS)).toHaveLength(30);
+  it('has exactly 32 keys', () => {
+    expect(Object.keys(EVENTS)).toHaveLength(32);
   });
 
   it('has expected keys', () => {
     const expectedKeys = [
+      'REQUIREMENTS_STARTED', 'REQUIREMENTS_COMPLETED',
       'MASTER_PLAN_STARTED', 'MASTER_PLAN_COMPLETED',
       'PLAN_APPROVED', 'TASK_GATE_APPROVED', 'PHASE_GATE_APPROVED', 'FINAL_APPROVED',
       'PHASE_PLANNING_STARTED', 'PHASE_PLAN_CREATED',
@@ -226,6 +228,8 @@ describe('EVENTS', () => {
   });
 
   it('has expected values', () => {
+    expect(EVENTS.REQUIREMENTS_STARTED).toBe('requirements_started');
+    expect(EVENTS.REQUIREMENTS_COMPLETED).toBe('requirements_completed');
     expect(EVENTS.MASTER_PLAN_STARTED).toBe('master_plan_started');
     expect(EVENTS.MASTER_PLAN_COMPLETED).toBe('master_plan_completed');
     expect(EVENTS.PLAN_APPROVED).toBe('plan_approved');

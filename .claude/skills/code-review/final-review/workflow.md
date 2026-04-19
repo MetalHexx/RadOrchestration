@@ -1,6 +1,6 @@
 # Final Review
 
-Self-contained workflow for project-level final review (Action #12, `spawn_final_reviewer`). Do not load other review docs — everything you need is below.
+Self-contained workflow for project-level final review (Action #9, `spawn_final_reviewer`). Do not load other review docs — everything you need is below.
 
 ## Review Mindset
 

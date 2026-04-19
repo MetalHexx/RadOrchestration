@@ -15,6 +15,7 @@ const STEP_DISPLAY_NAMES: Record<PlanningStepName, string> = {
   prd: "PRD",
   design: "Design",
   architecture: "Architecture",
+  requirements: "Requirements",
   master_plan: "Master Plan",
 };
 

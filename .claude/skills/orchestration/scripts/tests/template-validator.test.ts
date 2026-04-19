@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { validateTemplate } from '../lib/template-validator.js';
+import { loadTemplate } from '../lib/template-loader.js';
 import type { PipelineTemplate, NodeDef } from '../lib/types.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const TEMPLATES_DIR = path.resolve(__dirname, '../../templates');
 
 function makeTemplate(nodes: NodeDef[], id = 'my-template'): PipelineTemplate {
   return {
@@ -151,6 +157,24 @@ describe('validateTemplate', () => {
       expect(cycleErr).toBeDefined();
       expect(cycleErr!.detail.cycle_nodes).toContain('body-a');
       expect(cycleErr!.detail.cycle_nodes).toContain('body-b');
+    });
+  });
+
+  describe('default.yml (Iter 4 partial template)', () => {
+    it('loads via template-loader without throwing — 3 nodes: requirements → master_plan → plan_approval_gate', () => {
+      // loadTemplate is what the engine actually calls; it filters tolerable
+      // unreachable_node warnings for leaf terminals (see template-loader.ts).
+      // This asserts default.yml is loadable end-to-end in the engine's path.
+      const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'default.yml'));
+      const ids = template.nodes.map((n) => n.id);
+      expect(ids).toEqual(['requirements', 'master_plan', 'plan_approval_gate']);
+    });
+
+    it('has no structural defects (cycles, dangling refs, invalid kinds) — unreachable-leaf warnings are tolerated', () => {
+      const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'default.yml'));
+      const result = validateTemplate(template, 'default');
+      const hardErrors = result.errors.filter((e) => e.subtype !== 'unreachable_node');
+      expect(hardErrors).toHaveLength(0);
     });
   });
 

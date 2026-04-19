@@ -41,6 +41,7 @@ export const CONDITION_OPERATORS = Object.freeze({
 // ── Next Actions ──────────────────────────────────────────────────────────────
 export const NEXT_ACTIONS = Object.freeze({
   // Planning agent spawns
+  SPAWN_REQUIREMENTS: 'spawn_requirements',
   SPAWN_MASTER_PLAN: 'spawn_master_plan',
 
   // Human gates
@@ -71,6 +72,8 @@ export const NEXT_ACTIONS = Object.freeze({
 // ── Events ────────────────────────────────────────────────────────────────────
 export const EVENTS = Object.freeze({
   // ── Planning step events ──────────────────────────────────────────────
+  REQUIREMENTS_STARTED: 'requirements_started',
+  REQUIREMENTS_COMPLETED: 'requirements_completed',
   MASTER_PLAN_STARTED: 'master_plan_started',
   MASTER_PLAN_COMPLETED: 'master_plan_completed',
 

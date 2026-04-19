@@ -1,6 +1,6 @@
 # Iter 4 — Requirements pipeline node
 
-> **Validation Preface**: Before planning this iteration, the planner agent MUST validate this doc against live code — file paths, symbol names, and line numbers can drift. Run a quick grep / glob pass on the Code Surface section below. Any mismatch → log a deviation in [`CHEAPER-EXECUTION-REFACTOR-PROGRESS.md`](../CHEAPER-EXECUTION-REFACTOR-PROGRESS.md) before proceeding. Do not plan on stale assumptions.
+> **Validation Preface**: Before planning this iteration, the planner agent MUST validate this doc against live code — file paths, symbol names, and line numbers can drift. Run a quick grep / glob pass on the Code Surface section below. Any mismatch → amend this companion directly (commit message carries the reason). Do NOT touch the progress tracker during planning — that doc is for execution outcomes only. Do not plan on stale assumptions.
 
 ## Overview
 
@@ -16,12 +16,14 @@ The `@planner` router already has a `create_requirements` row from Iter 1 — it
   - `NEXT_ACTIONS.SPAWN_REQUIREMENTS: 'spawn_requirements'`
   - `EVENTS.REQUIREMENTS_STARTED: 'requirements_started'`
   - `EVENTS.REQUIREMENTS_COMPLETED: 'requirements_completed'`
-- In `mutations.ts`, add a `[EVENTS.REQUIREMENTS_STARTED, 'requirements']` entry to `planningStartedSteps` (line ~86) and a matching entry to `planningCompletedSteps` (line ~114). The loops registering handlers pick the new event up for free.
+- In `mutations.ts`, add a `[EVENTS.REQUIREMENTS_STARTED, 'requirements']` entry to `planningStartedSteps` (now ~line 87 post-Iter-3) and a matching entry to `planningCompletedSteps` (now ~line 111). The loops registering handlers pick the new event up for free.
+- **Mechanical relocation**: move the `graph.status = 'in_progress'` side-effect off `MASTER_PLAN_STARTED` and onto `REQUIREMENTS_STARTED`. Iter 3 relocated this hook from the (then-deleted) `RESEARCH_STARTED` to `MASTER_PLAN_STARTED` because master_plan became the new first planning step; the same logic now demands the hook live on the new first planning step (requirements). Without this, no event sets `graph.status` to `in_progress` until master_plan starts — leaving the requirements step's runtime status incoherent. Same one-line move pattern as Iter 3.
 - In `context-enrichment.ts:68-74`, add `spawn_requirements: 'requirements'` to the `PLANNING_SPAWN_STEPS` record.
 - Add a new rule in `frontmatter-validators.ts` for `requirements_completed`: require `requirement_count` to be a positive integer.
-- Update `.claude/agents/planner.md` router to route `spawn_requirements` → `references/requirements/workflow.md`. (Replace or supplement the existing `create_requirements` row, whichever keeps the router intent cleanest.)
+- Update `.claude/agents/planner.md` router (lines 33–36): **rename** the existing `create_requirements` row to `spawn_requirements`. Do not dual-route — `create_requirements` was an Iter-1-time placeholder that predates the `spawn_*` convention re-established by Iter 3 (the only surviving `spawn_*` action there is `spawn_master_plan`). Single-route keeps the agent's contract minimal.
 - Create `.claude/skills/orchestration/templates/default.yml` with three top-level step nodes: `requirements`, `master_plan` (reusing existing action/events), `plan_approval_gate`. Template is deliberately partial; Iter 5 adds `explode_master_plan`, Iter 7+9 add the loops and closing stages.
 - Add `requirements` → `Planning` entry to UI `NODE_SECTION_MAP` (`ui/components/dag-timeline/dag-timeline-helpers.ts:108-120`).
+- UI type updates in `ui/types/state.ts`: add `'requirements'` to the `PlanningStepName` union (line 10) **and** to the `PLANNING_STEP_ORDER` readonly array (lines 34–36). Both are needed — the union lives one definition above the array; companion's "Code Surface" line range only covered the array. Consumers `ui/lib/document-ordering.ts` and `ui/lib/status-derivation.ts` import via the union, so updating the union keeps the type-checked consumers consistent.
 
 ## Scope Deliberately Untouched
 
@@ -41,6 +43,12 @@ The `@planner` router already has a `create_requirements` row from Iter 1 — it
 - **UI tests**:
   - Add a fixture test rendering a scratch state.json with `requirements` node present; assert it groups under Planning and renders status correctly.
   - Add a status-transition test covering `requirements_started` → `requirements_completed` event flow's UI reflection.
+- **Manual browser smoke (REQUIRED, not optional)**: once the UI changes have landed, the inner session must build and run the UI (`cd ui && npm run build && npm run dev`), open the dev server in a browser, and visually verify:
+  1. A scratch / fixture project carrying a `requirements` node renders it in the DAG timeline grouped under "Planning," ordered before `master_plan`.
+  2. Status transitions render correctly across `not_started → in_progress → completed`.
+  3. A pre-existing legacy completed project (any state.json without a `requirements` node) still renders cleanly — no missing-node warnings, no layout regressions.
+  4. No new console errors or warnings vs. the baseline.
+  Capture a screenshot or short note of the verified state in the iteration's commit / PR description. The UI-test fixture coverage is necessary but not sufficient; this manual smoke is what catches rendering regressions that pass typecheck + unit tests.
 
 ## Code Surface
 
@@ -52,11 +60,16 @@ The `@planner` router already has a `create_requirements` row from Iter 1 — it
 - Templates: `.claude/skills/orchestration/templates/default.yml` (new file, partial)
 - Agent routing: `.claude/agents/planner.md`
 - UI: `ui/components/dag-timeline/dag-timeline-helpers.ts:108-120`
-- Ripple surfaces:
-  - `.claude/skills/brainstorm/SKILL.md` + `.claude/skills/brainstorm/references/*.md` — update memory references to pull from Requirements + Master Plan as canonical planning doctypes
-  - `.claude/skills/orchestration/validate/lib/checks/config.js` + any test fixtures that enumerate expected actions / events
-  - `.claude/skills/orchestration/references/{action-event-reference, document-conventions, context, pipeline-guide}.md`
-  - `.claude/skills/rad-plan/SKILL.md` — planning step listing logic picks up the new `requirements` node from the template
+- Ripple surfaces (verified at plan time — only items marked **edit needed** require touching):
+  - **edit needed** — `.claude/skills/brainstorm/references/project-memory.md:26-36` (priority list still names PRD / Architecture / Research Findings — replace with Requirements + Master Plan as the canonical pair)
+  - **edit needed** — `.claude/skills/brainstorm/templates/BRAINSTORMING.md:13` (comment reads `PRD > Master Plan > Brainstorming`; reframe as `Requirements > Master Plan > Brainstorming`)
+  - **edit needed** — `.claude/skills/brainstorm/references/project-series.md:57` (one-line mention; `(PRD if it exists, else BRAINSTORMING)` → include Requirements)
+  - **edit needed** — `.claude/skills/orchestration/references/action-event-reference.md` (insert a `spawn_requirements` row above the existing `spawn_master_plan` row at line 12 in the action table; insert matching `requirements_started` / `requirements_completed` event rows in the events table)
+  - **edit needed** — `.claude/skills/orchestration/references/pipeline-guide.md` — scan for any agent-prompt example referencing "Master Plan" as the first planning artifact and add a corresponding "Create the Requirements doc…" example sibling. Plan-time grep at iteration time to confirm exact lines.
+  - **no edit required** — `.claude/skills/orchestration/references/document-conventions.md:13` (already lists `Requirements | (root) | {NAME}-REQUIREMENTS.md`)
+  - **no edit required** — `.claude/skills/orchestration/references/context.md:57` (already mentions Requirements + Master Plan as canonical planning pair)
+  - **no edit required** — `.claude/skills/orchestration/validate/lib/checks/config.js` (generic structural validator — no hardcoded action/event roster)
+  - **no edit required** — `.claude/skills/rad-plan/SKILL.md:27-29` (Step 2 reads template YAML dynamically; auto-discovers `requirements` once `default.yml` exists)
 
 ## Dependencies
 
@@ -77,10 +90,13 @@ The `@planner` router already has a `create_requirements` row from Iter 1 — it
 - `@planner` with `spawn_requirements` dispatch writes `{NAME}-REQUIREMENTS.md` to the project dir with valid frontmatter.
 - Scratch project drives `requirements` → `master_plan` → `plan_approval_gate` end-to-end under `default.yml`.
 - UI renders the new `requirements` node in the "Planning" section alongside `master_plan`.
+- **Manual browser smoke completed**: UI built + dev server run; new requirements node verified visually in a fresh project; legacy state.json verified to still render without regressions; PR description records the verification (screenshot or terse note).
 - Brainstorm skill memory refs point at Requirements + Master Plan, not the legacy five-doc set.
 
 ## Open Questions
 
-- **Action name convention**: codebase uses `spawn_*` for agent-spawning planning steps and `create_*` for synthesized artifacts produced inside the execution loop (e.g., `create_phase_plan`). `spawn_requirements` fits `spawn_*` — but the Iter-1 `planner.md` router uses `create_requirements`. Either rename the action to `spawn_requirements` (preferred, matches convention) or keep both routes registered briefly. Iteration planner decides and documents.
-- **Pre-read for requirements_completed**: the generic `preRead()` function already validates frontmatter if a rule exists. A special-case block (like `plan_approved`'s master-plan-doc-path derivation) is probably unnecessary. Confirm during planning.
-- **Partial default.yml validation**: `template-validator.ts` may reject a template with only three nodes and no loops. If so, either relax the validator or seed a minimal-but-complete stub pipeline during Iter 4 (TBD — Iter 9 completes it anyway). Decide early in Iter 4 planning.
+All resolved at plan time:
+
+- **Action name convention** — RESOLVED: rename Iter-1 router row `create_requirements` → `spawn_requirements`. No dual-routing. Codified in Scope above. Reason: `spawn_*` is the live convention (see `spawn_master_plan`); `create_*` is reserved for execution-loop synthesized artifacts (`create_phase_plan`, `create_task_handoff`).
+- **Pre-read for `requirements_completed`** — RESOLVED: no special-case needed. `preRead()` in `pre-reads.ts` runs `validateFrontmatter(event, …)` generically; the new validator rule registered in `frontmatter-validators.ts` is auto-picked-up. The `plan_approved` special-case is unique because it derives `doc_path` from `graph.nodes.master_plan.doc_path` — no analogous derivation exists for requirements.
+- **Partial `default.yml` validation** — RESOLVED: validator allows it. `template-validator.ts` enforces no-cycles / no-dangling-refs / reachable nodes / valid kinds — none of those forbid a 3-node `step → step → gate` chain. No validator changes required.
