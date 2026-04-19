@@ -300,15 +300,17 @@ test("Iter 5: default.yml partial template (requirements + master_plan + explode
   assert.strictEqual(result[1].entries[0][0], "plan_approval_gate");
 });
 
-test("Iter 5: pre-seeded iterations — phase_loop node with explode_master_plan completed + iterations with doc_path populated + nodes {} empty still groups correctly", () => {
-  // After explosion completes, explode_master_plan.status=completed and phase_loop.iterations carry doc_path values.
-  // Rendering must not crash on iterations with nodes: {} (no per-phase body nodes yet).
+test("Iter 5: pre-seeded iterations — phase_loop node with explode_master_plan completed + iterations carrying phase_planning child nodes with doc_path populated still groups correctly", () => {
+  // After explosion completes, explode_master_plan.status=completed and each phase iteration
+  // carries a pre-seeded `phase_planning` child step node with doc_path populated (not on the
+  // iteration itself — IterationEntry has no doc_path field).
+  // Rendering must not crash on iterations whose nodes contain only these pre-seeded child steps.
   const seededPhaseLoop = {
     ...forEachPhaseNode,
     status: "not_started" as const,
     iterations: [
-      { index: 0, status: "not_started" as const, nodes: {}, corrective_tasks: [], commit_hash: null, doc_path: "phases/MYAPP-PHASE-01-SETUP.md" },
-      { index: 1, status: "not_started" as const, nodes: {}, corrective_tasks: [], commit_hash: null, doc_path: "phases/MYAPP-PHASE-02-CORE.md" },
+      { index: 0, status: "not_started" as const, nodes: { phase_planning: { kind: "step" as const, status: "completed" as const, doc_path: "phases/MYAPP-PHASE-01-SETUP.md", retries: 0 } }, corrective_tasks: [], commit_hash: null },
+      { index: 1, status: "not_started" as const, nodes: { phase_planning: { kind: "step" as const, status: "completed" as const, doc_path: "phases/MYAPP-PHASE-02-CORE.md", retries: 0 } }, corrective_tasks: [], commit_hash: null },
     ],
   };
   const completedExplode = { ...stepNode, status: "completed" as const, doc_path: "MYAPP-MASTER-PLAN.md" };
@@ -328,8 +330,9 @@ test("Iter 5: pre-seeded iterations — phase_loop node with explode_master_plan
   assert.strictEqual(explodeEntry![1].status, "completed");
 });
 
-test("Iter 5: legacy state.json (no explode_master_plan + no doc_path on iterations + no last_parse_error on master_plan) still groups cleanly", () => {
-  // Pre-Iter-5 state.json must keep rendering without the explode node and without the new iteration.doc_path field.
+test("Iter 5: legacy state.json (no explode_master_plan + no pre-seeded phase_planning child + no last_parse_error on master_plan) still groups cleanly", () => {
+  // Pre-Iter-5 state.json must keep rendering without the explode node and without the
+  // pre-seeded phase_planning child step nodes that Iter 5's explosion script now emits.
   const legacyPhaseLoop = {
     ...forEachPhaseNode,
     iterations: [

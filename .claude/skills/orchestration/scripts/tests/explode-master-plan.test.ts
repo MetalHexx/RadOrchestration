@@ -15,6 +15,7 @@ import { writeState, readState } from '../lib/state-io.js';
 import type {
   PipelineState,
   ForEachPhaseNodeState,
+  ForEachTaskNodeState,
   StepNodeState,
 } from '../lib/types.js';
 
@@ -287,9 +288,9 @@ describe('explodeMasterPlan — re-run integration', () => {
     expect(phasePlanningNode.doc_path).toContain(path.sep + 'phases' + path.sep);
     expect(phasePlanningNode.doc_path).toContain(`${projectName}-PHASE-01-`);
     // Task iterations populated.
-    const taskLoop = phaseLoop.iterations[0]!.nodes['task_loop'] as any;
+    const taskLoop = phaseLoop.iterations[0]!.nodes['task_loop'] as ForEachTaskNodeState;
     expect(taskLoop.iterations).toHaveLength(2);
-    expect(taskLoop.iterations[0]!.doc_path).toBeUndefined();
+    expect((taskLoop.iterations[0] as any).doc_path).toBeUndefined();
     // Task-iteration child: pre-seeded completed task_handoff step node carrying the task file path.
     const taskHandoffNode = taskLoop.iterations[0]!.nodes['task_handoff'] as StepNodeState;
     expect(taskHandoffNode.kind).toBe('step');
