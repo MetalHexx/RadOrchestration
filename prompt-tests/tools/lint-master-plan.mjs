@@ -49,7 +49,6 @@ function parseStructure(body) {
 
   const flushBuffer = () => {
     if (!buffer.length) return;
-    const joined = buffer.join(' ').trim();
     if (task) task.descriptionLines.push(...buffer);
     else if (phase && phase.tasks.length === 0) phase.descriptionLines.push(...buffer);
     buffer = [];
@@ -74,8 +73,6 @@ function parseStructure(body) {
     buffer.push(line);
 
     // Collect requirement-id refs at scope we're currently in.
-    const resetMatches = () => { /* no-op helper */ };
-    resetMatches();
     let m;
     REQ_TAG.lastIndex = 0;
     while ((m = REQ_TAG.exec(line)) !== null) {
@@ -164,10 +161,10 @@ async function lint(text, sourceLabel, masterPlanPath) {
     const expected = `P${String(i + 1).padStart(2, '0')}`;
     if (p.id !== expected) errors.push(`phase ${p.id}: expected ${expected} at position ${i + 1}`);
 
-    const phraseSentences = countSentences(p.descriptionLines);
-    if (phraseSentences === 0) errors.push(`${p.id}: missing phase description sentence under heading`);
-    if (phraseSentences > PHASE_SENTENCE_LIMIT) {
-      warnings.push(`${p.id}: phase description has ${phraseSentences} sentences (best-effort limit ${PHASE_SENTENCE_LIMIT})`);
+    const phaseSentences = countSentences(p.descriptionLines);
+    if (phaseSentences === 0) errors.push(`${p.id}: missing phase description sentence under heading`);
+    if (phaseSentences > PHASE_SENTENCE_LIMIT) {
+      warnings.push(`${p.id}: phase description has ${phaseSentences} sentences (best-effort limit ${PHASE_SENTENCE_LIMIT})`);
     }
 
     // Task ID contiguity within phase (T01, T02, ...).
@@ -271,9 +268,12 @@ async function main() {
   }
   if (arg === '--self-test') {
     const result = await lint(selfTestFixture(), '<self-test>', null);
-    const code = printReport(result);
-    // Self-test passes when expected errors surface.
-    const expected = result.errors.length >= 3;
+    printReport(result);
+    // Self-test passes when exactly the expected errors surface (masterPlanPath=null, so no
+    // companion doc is loaded). Expected: wrong-type, total_phases mismatch, total_tasks mismatch,
+    // P01 missing description, P02 missing description, P02-T01 missing description (6 total).
+    console.log('Note: referential integrity check skipped in self-test mode (no companion requirements doc).');
+    const expected = result.errors.length === 6;
     process.exit(expected ? 0 : 1);
   }
   const abs = path.resolve(arg);

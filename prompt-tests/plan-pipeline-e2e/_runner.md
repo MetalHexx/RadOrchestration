@@ -17,8 +17,10 @@ Full routing reference lives at `.claude/skills/orchestration/references/pipelin
 | Input | Default | Notes |
 |-------|---------|-------|
 | Fixture name | `rainbow-hello` | Matches `prompt-tests/plan-pipeline-e2e/fixtures/<fixture>/BRAINSTORMING.md` |
-| Run folder | `prompt-tests/plan-pipeline-e2e/output/<fixture>/baseline-<YYYY-MM-DD-HHMMSS>/` | Use `baseline-*` prefix only for inaugural or operator-requested baselines; ad-hoc runs use `run-*`. Only `baseline-*/lint-report.md` and `baseline-*/run-notes.md` escape the `.gitignore`. |
-| Project name | Derived from `path.basename(runFolder)` | The pipeline uses the folder name as `state.project.name` |
+| Project name | `RAINBOW-HELLO-HARNESS-<YYYY-MM-DD>` | A stable, human-readable identifier (e.g. `RAINBOW-HELLO-HARNESS-2026-04-19`). Use UPPER-KEBAB-CASE. **This becomes `state.project.name`** — the engine sets it to `path.basename(--project-dir)`, so the run-folder name IS the project name. Do not derive it from a timestamp; pick it deliberately before creating the folder. |
+| Run folder | `prompt-tests/plan-pipeline-e2e/output/<fixture>/<project-name>/` | Use the stable project name as the folder name (e.g. `output/rainbow-hello/RAINBOW-HELLO-HARNESS-2026-04-19/`). Distinguish re-runs by bumping the date suffix or appending `-v2`, not by embedding a timestamp. Only `lint-report.md` and `run-notes.md` inside a `baseline-*`-named folder escape the `.gitignore`; everything else stays untracked. |
+
+> **How project name is passed to the engine.** There is no `--name` CLI flag. The engine reads `path.basename(--project-dir)` on the `start` event and writes it into `state.project.name`. All downstream doc filenames (e.g. `<PROJECT-NAME>-REQUIREMENTS.md`) derive from that value. Choosing a stable, descriptive folder name is therefore the only way to get readable doc names.
 
 All paths below are relative to the repo root unless noted.
 
@@ -26,18 +28,19 @@ All paths below are relative to the repo root unless noted.
 
 Hand-roll the minimum project scaffold — do **NOT** invoke the installer and do **NOT** pre-seed `state.json` or `orchestration.yml`. The pipeline engine creates state.json lazily on the first event.
 
-1. Compute a timestamp in the operator's local time as `YYYY-MM-DD-HHMMSS` and choose a prefix (`baseline-` vs `run-`) per the table above.
-2. Create the run folder and the three subdirs the explosion script will write into:
+1. Choose a stable project name following the convention `RAINBOW-HELLO-HARNESS-<YYYY-MM-DD>` (e.g. `RAINBOW-HELLO-HARNESS-2026-04-19`). This name doubles as the run-folder basename and becomes `state.project.name` — the engine derives the project name from `path.basename(--project-dir)` at `start` time, so there is no separate flag to pass.
+2. Create the run folder (named after the project name) and the three subdirs the explosion script will write into:
    ```
-   prompt-tests/plan-pipeline-e2e/output/<fixture>/<prefix><timestamp>/
+   prompt-tests/plan-pipeline-e2e/output/<fixture>/<PROJECT-NAME>/
      ├── phases/
      ├── tasks/
      └── backups/
    ```
-3. Copy the fixture brainstorming doc into the run folder, renaming it to match project naming conventions (`<PROJECT-NAME>-BRAINSTORMING.md`, where `<PROJECT-NAME>` is the uppercase run-folder name):
+   Example: `output/rainbow-hello/RAINBOW-HELLO-HARNESS-2026-04-19/`
+3. Copy the fixture brainstorming doc into the run folder, renaming it to match project naming conventions (`<PROJECT-NAME>-BRAINSTORMING.md`):
    ```
    prompt-tests/plan-pipeline-e2e/fixtures/<fixture>/BRAINSTORMING.md
-     → prompt-tests/plan-pipeline-e2e/output/<fixture>/<prefix><timestamp>/<PROJECT-NAME>-BRAINSTORMING.md
+     → prompt-tests/plan-pipeline-e2e/output/<fixture>/<PROJECT-NAME>/<PROJECT-NAME>-BRAINSTORMING.md
    ```
    The `@planner` agent in Requirements mode discovers this file by convention.
 
@@ -54,7 +57,7 @@ Initial call — use `--event start` to scaffold state. The engine rejects any n
 ```
 node .claude/skills/orchestration/scripts/pipeline.js \
   --event start \
-  --project-dir prompt-tests/plan-pipeline-e2e/output/<fixture>/<prefix><timestamp> \
+  --project-dir prompt-tests/plan-pipeline-e2e/output/<fixture>/<PROJECT-NAME> \
   --template default
 ```
 

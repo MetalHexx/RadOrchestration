@@ -180,9 +180,11 @@ async function main() {
   }
   if (arg === '--self-test') {
     const result = lint(selfTestFixture(), '<self-test>');
-    const code = printReport(result);
-    // Self-test PASSES the script when it finds the expected errors.
-    const expected = result.errors.length >= 4;
+    printReport(result);
+    // Self-test PASSES the script when it finds exactly the expected errors.
+    // Expected: wrong-type, FR-1 missing description, FR-3 missing description,
+    // requirement_count mismatch, FR-1 duplicate, FR-2 gap (6 total).
+    const expected = result.errors.length === 6;
     process.exit(expected ? 0 : 1);
   }
   const result = await runFile(path.resolve(arg));
