@@ -153,7 +153,7 @@ mutationRegistry.set(EVENTS.EXPLOSION_STARTED, (state, _context, _config, _templ
 
 // ── explosion_completed mutation (clears parse-failure recovery state) ────────
 
-mutationRegistry.set(EVENTS.EXPLOSION_COMPLETED, (state, context, _config, _template): MutationResult => {
+mutationRegistry.set(EVENTS.EXPLOSION_COMPLETED, (state, _context, _config, _template): MutationResult => {
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
 
@@ -221,9 +221,7 @@ mutationRegistry.set(EVENTS.EXPLOSION_FAILED, (state, context, _config, _templat
 
   masterPlanNode.last_parse_error = parseError;
   mutations_applied.push(
-    parseError
-      ? `set master_plan.last_parse_error = { line: ${parseError.line}, ... }`
-      : 'set master_plan.last_parse_error = null'
+    `set master_plan.last_parse_error = { line: ${parseError.line}, ... }`
   );
 
   const previousCount = masterPlanNode.parse_retry_count ?? 0;
@@ -243,7 +241,7 @@ mutationRegistry.set(EVENTS.EXPLOSION_FAILED, (state, context, _config, _templat
     mutations_applied.push('set explode_master_plan.doc_path = null');
     cloned.graph.status = 'halted';
     mutations_applied.push('set graph.status = halted');
-    const reasonMsg = parseError?.message ?? 'unknown parse error';
+    const reasonMsg = parseError.message;
     cloned.pipeline.halt_reason =
       `Explosion parser rejected planner output ${nextCount} times (cap=${MAX_PARSE_RETRIES}). ` +
       `Manual intervention required. Last error: ${reasonMsg}`;
@@ -255,6 +253,7 @@ mutationRegistry.set(EVENTS.EXPLOSION_FAILED, (state, context, _config, _templat
   explodeNode.status = 'not_started';
   (explodeNode as StepNodeState).doc_path = null;
   mutations_applied.push('set explode_master_plan.status = not_started');
+  mutations_applied.push('set explode_master_plan.doc_path = null (recovery reset)');
   masterPlanNode.status = 'in_progress';
   mutations_applied.push('set master_plan.status = in_progress (recovery re-spawn)');
 
