@@ -231,6 +231,11 @@ describe('parseMasterPlan — parser cases', () => {
     // The trailing duplicated Requirements line (added by the old renderer in addition to the
     // inline one already present in the body) must be gone. We allow inline "Requirements:"
     // text from the master plan body itself, but not a standalone trailing line.
+    //
+    // Note on the regex: it matches `**Requirements**: ...` with the colon OUTSIDE the bold —
+    // the exact shape the old renderer appended. It does NOT match the inline
+    // `**Requirements:** FR-1` form the master plan body carries (colon INSIDE the bold).
+    // That's deliberate: the inline form is legitimate content copied from the master plan.
     const trailingReqLines = body.match(/^\*\*Requirements\*\*:.*$/gm) ?? [];
     expect(trailingReqLines.length).toBe(0);
   });
@@ -320,6 +325,10 @@ describe('explodeMasterPlan — re-run integration', () => {
     const seededState = readState(TMP_DIR)!;
     const phaseLoop = seededState.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     expect(phaseLoop.iterations).toHaveLength(3);
+    // Regression: phase_loop.status must reset to not_started when iterations are regenerated.
+    // The pre-seeded phaseLoop had status 'in_progress'; leaving it stale would contradict the
+    // fresh not_started iterations below.
+    expect(phaseLoop.status).toBe('not_started');
     // iteration.doc_path is NOT seeded — doc paths live on child step nodes (phase_planning, task_handoff).
     expect((phaseLoop.iterations[0] as any).doc_path).toBeUndefined();
     // Phase-iteration child: pre-seeded completed phase_planning step node carrying the phase file path.

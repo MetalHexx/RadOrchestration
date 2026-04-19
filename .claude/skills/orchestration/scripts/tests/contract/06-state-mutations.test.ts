@@ -560,6 +560,24 @@ describe('[CONTRACT] State Mutations — Explosion script mutations (Iter 5)', (
     expect(result.mutations_applied.some((m) => m.includes('reset master_plan.parse_retry_count'))).toBe(true);
   });
 
+  it('explosion_completed (idempotency regression): if a legacy state had explode_master_plan.doc_path set to a stale value, the mutation explicitly clears it to null', () => {
+    const state = makeStateWithExplosion({
+      masterPlanStatus: 'completed',
+      explodeStatus: 'in_progress',
+      parseRetryCount: 0,
+      lastParseError: null,
+    });
+    // Simulate upgrade path: prior version of the handler stored doc_path here.
+    (state.graph.nodes['explode_master_plan'] as StepNodeState).doc_path = '/tmp/stale-master-plan.md';
+
+    const mutation = getMutation('explosion_completed')!;
+    const result = mutation(state, {}, DEFAULT_CONFIG, emptyTemplate);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.doc_path).toBeNull();
+    expect(result.mutations_applied.some((m) => m.includes('explode_master_plan.doc_path = null'))).toBe(true);
+  });
+
   it('explosion_failed (1st attempt): increments parse_retry_count to 1, stores parse_error, resets explode_master_plan to not_started, flips master_plan back to in_progress', () => {
     const state = makeStateWithExplosion({
       masterPlanStatus: 'completed',

@@ -153,6 +153,14 @@ mutationRegistry.set(EVENTS.EXPLOSION_COMPLETED, (state, context, _config, _temp
   node.status = 'completed';
   mutations_applied.push('set explode_master_plan.status = completed');
 
+  // Defensive: explicitly clear any stale doc_path on the explode node. The script
+  // itself never writes a doc_path here (its output is phases/ + tasks/ + seeded
+  // iterations, not a single doc), but a state.json produced by an older version
+  // of this handler may carry a lingering value. Setting to null guarantees the
+  // UI doesn't render a spurious "Doc" link on a re-run or after upgrade.
+  (node as StepNodeState).doc_path = null;
+  mutations_applied.push('set explode_master_plan.doc_path = null');
+
   // Clear any recovery state on master_plan — success wipes the slate.
   const masterPlanNode = resolveNodeState(cloned, 'master_plan', 'top') as StepNodeState;
   if (masterPlanNode.last_parse_error !== null && masterPlanNode.last_parse_error !== undefined) {

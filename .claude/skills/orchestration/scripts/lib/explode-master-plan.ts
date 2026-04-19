@@ -525,8 +525,12 @@ function seedIterations(
     );
   }
 
-  // Wipe and re-seed.
+  // Wipe and re-seed. Reset phase_loop.status too — all iterations are
+  // regenerated as not_started, so a stale in_progress/completed status on the
+  // container would be inconsistent with the fresh children. The nested
+  // task_loop statuses are set explicitly below.
   phaseLoop.iterations = [];
+  phaseLoop.status = 'not_started';
   let taskFilePointer = 0;
   for (let i = 0; i < parsed.phases.length; i++) {
     const phase = parsed.phases[i]!;

@@ -4,7 +4,7 @@
 
 ## Overview
 
-With Iter 5's explosion script in place, phase-plan and task-handoff documents exist on disk before the execution loop starts — no per-iteration agent authoring is needed. This iteration gutes the legacy path: the tactical-planner agent, its `rad-create-plans` workflow folders, the per-loop authoring nodes (`phase_planning`, `task_handoff`), their actions / events / mutations, and their context-enrichment blocks all go.
+With Iter 5's explosion script in place, phase-plan and task-handoff documents exist on disk before the execution loop starts — no per-iteration agent authoring is needed. This iteration guts the legacy path: the tactical-planner agent, its `rad-create-plans` workflow folders, the per-loop authoring nodes (`phase_planning`, `task_handoff`), their actions / events / mutations, and their context-enrichment blocks all go.
 
 The trickiest bit is the `execute_task` action's context enrichment (`context-enrichment.ts:211-219`). Today it reads a `task_handoff` node's `doc_path` from the task iteration via an in-loop authoring step. After this iteration, authoring is gone — but the task iteration still carries a pre-seeded `task_handoff` child step node at `taskIter.nodes['task_handoff']` (populated by the explosion script in Iter 5, status `completed`). The enrichment continues to read `taskIter.nodes['task_handoff'].doc_path`; the only change is that the value arrives via pre-seeding rather than via an authoring dispatch.
 
