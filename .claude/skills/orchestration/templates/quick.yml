@@ -1,7 +1,10 @@
+# DEPRECATED — references spawn_research and spawn_architecture which were removed in Iter 3.
+# Kept on disk pending replacement by default.yml (Iter 9). Not runnable after Iter 3.
 template:
   id: quick
   version: "1.0.0"
   description: "Lean pipeline for features and bug fixes. Omits PRD, Design, phase reports, and phase reviews. Use for small, well-scoped work."
+  status: deprecated
 
 # ── Display & Routing Fields ─────────────────────────────────────────────────
 # Informational field (not consumed by the v5 DAG engine at runtime):

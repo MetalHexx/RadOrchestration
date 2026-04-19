@@ -14,25 +14,17 @@ describe('loadTemplate', () => {
       expect(result.template.template.version).toBe('1.0.0');
     });
 
-    it('returns exactly 33 entries in the event index', () => {
+    it('returns exactly 25 entries in the event index', () => {
       const result = loadTemplate(FULL_YML_PATH);
-      expect(result.eventIndex.size).toBe(33);
+      expect(result.eventIndex.size).toBe(25);
     });
   });
 
-  describe('event index — all 33 mappings', () => {
+  describe('event index — all 25 mappings', () => {
     const result = loadTemplate(FULL_YML_PATH);
     const { eventIndex } = result;
 
     const cases: Array<[string, string, string, string]> = [
-      ['research_started',                 'research',            'started',   'research'],
-      ['research_completed',               'research',            'completed', 'research'],
-      ['prd_started',                      'prd',                 'started',   'prd'],
-      ['prd_completed',                    'prd',                 'completed', 'prd'],
-      ['design_started',                   'design',              'started',   'design'],
-      ['design_completed',                 'design',              'completed', 'design'],
-      ['architecture_started',             'architecture',        'started',   'architecture'],
-      ['architecture_completed',           'architecture',        'completed', 'architecture'],
       ['master_plan_started',              'master_plan',         'started',   'master_plan'],
       ['master_plan_completed',            'master_plan',         'completed', 'master_plan'],
       ['plan_approved',                    'plan_approval_gate',  'approved',  'plan_approval_gate'],

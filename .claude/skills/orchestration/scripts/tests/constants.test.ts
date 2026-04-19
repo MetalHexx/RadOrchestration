@@ -151,13 +151,13 @@ describe('NEXT_ACTIONS', () => {
     }).toThrow(TypeError);
   });
 
-  it('has exactly 21 keys', () => {
-    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(21);
+  it('has exactly 17 keys', () => {
+    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(17);
   });
 
   it('has expected keys', () => {
     const expectedKeys = [
-      'SPAWN_RESEARCH', 'SPAWN_PRD', 'SPAWN_DESIGN', 'SPAWN_ARCHITECTURE', 'SPAWN_MASTER_PLAN',
+      'SPAWN_MASTER_PLAN',
       'REQUEST_PLAN_APPROVAL', 'GATE_TASK', 'GATE_PHASE', 'ASK_GATE_MODE', 'REQUEST_FINAL_APPROVAL',
       'CREATE_PHASE_PLAN', 'CREATE_TASK_HANDOFF', 'EXECUTE_TASK', 'SPAWN_CODE_REVIEWER',
       'GENERATE_PHASE_REPORT', 'SPAWN_PHASE_REVIEWER', 'SPAWN_FINAL_REVIEWER',
@@ -170,10 +170,6 @@ describe('NEXT_ACTIONS', () => {
   });
 
   it('has expected values', () => {
-    expect(NEXT_ACTIONS.SPAWN_RESEARCH).toBe('spawn_research');
-    expect(NEXT_ACTIONS.SPAWN_PRD).toBe('spawn_prd');
-    expect(NEXT_ACTIONS.SPAWN_DESIGN).toBe('spawn_design');
-    expect(NEXT_ACTIONS.SPAWN_ARCHITECTURE).toBe('spawn_architecture');
     expect(NEXT_ACTIONS.SPAWN_MASTER_PLAN).toBe('spawn_master_plan');
     expect(NEXT_ACTIONS.REQUEST_PLAN_APPROVAL).toBe('request_plan_approval');
     expect(NEXT_ACTIONS.GATE_TASK).toBe('gate_task');
@@ -205,16 +201,12 @@ describe('EVENTS', () => {
     }).toThrow(TypeError);
   });
 
-  it('has exactly 38 keys', () => {
-    expect(Object.keys(EVENTS)).toHaveLength(38);
+  it('has exactly 30 keys', () => {
+    expect(Object.keys(EVENTS)).toHaveLength(30);
   });
 
   it('has expected keys', () => {
     const expectedKeys = [
-      'RESEARCH_STARTED', 'RESEARCH_COMPLETED',
-      'PRD_STARTED', 'PRD_COMPLETED',
-      'DESIGN_STARTED', 'DESIGN_COMPLETED',
-      'ARCHITECTURE_STARTED', 'ARCHITECTURE_COMPLETED',
       'MASTER_PLAN_STARTED', 'MASTER_PLAN_COMPLETED',
       'PLAN_APPROVED', 'TASK_GATE_APPROVED', 'PHASE_GATE_APPROVED', 'FINAL_APPROVED',
       'PHASE_PLANNING_STARTED', 'PHASE_PLAN_CREATED',
@@ -234,14 +226,6 @@ describe('EVENTS', () => {
   });
 
   it('has expected values', () => {
-    expect(EVENTS.RESEARCH_STARTED).toBe('research_started');
-    expect(EVENTS.RESEARCH_COMPLETED).toBe('research_completed');
-    expect(EVENTS.PRD_STARTED).toBe('prd_started');
-    expect(EVENTS.PRD_COMPLETED).toBe('prd_completed');
-    expect(EVENTS.DESIGN_STARTED).toBe('design_started');
-    expect(EVENTS.DESIGN_COMPLETED).toBe('design_completed');
-    expect(EVENTS.ARCHITECTURE_STARTED).toBe('architecture_started');
-    expect(EVENTS.ARCHITECTURE_COMPLETED).toBe('architecture_completed');
     expect(EVENTS.MASTER_PLAN_STARTED).toBe('master_plan_started');
     expect(EVENTS.MASTER_PLAN_COMPLETED).toBe('master_plan_completed');
     expect(EVENTS.PLAN_APPROVED).toBe('plan_approved');

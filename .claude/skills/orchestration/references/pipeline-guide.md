@@ -184,9 +184,7 @@ When spawning a subagent, always provide:
 4. **Output expectations**: Where to save the output document (derive from project naming conventions)
 
 Example spawn instructions:
-> "Create the PRD for the MYAPP project. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that. Save the PRD to `{base_path}/MYAPP/MYAPP-PRD.md`."
-
-> "Research the codebase for the MYAPP project. Evidence-only — report file paths, patterns, constraints, and unknowns. Do not include recommendations. Read the PRD at `{base_path}/MYAPP/MYAPP-PRD.md`. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that too. Save the research findings to `{base_path}/MYAPP/MYAPP-RESEARCH-FINDINGS.md`."
+> "Create the requirements for the MYAPP project. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that. Save the requirements to `{base_path}/MYAPP/MYAPP-REQUIREMENTS.md`."
 
 ### Source Control — PR Mode
 

@@ -1,6 +1,6 @@
 ---
 name: rad-plan
-description: "Start the full planning pipeline for a new project — Research through Master Plan"
+description: "Start the planning pipeline for a new project — produces Requirements + Master Plan"
 disable-model-invocation: true
 user-invocable: true
 ---

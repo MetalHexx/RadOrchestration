@@ -1,6 +1,6 @@
 # Iter 3 — Remove upstream planning (PRD + Research + Design + Architecture)
 
-> **Validation Preface**: Before planning this iteration, the planner agent MUST validate this doc against live code — file paths, symbol names, and line numbers can drift. Run a quick grep / glob pass on the Code Surface section below. Any mismatch → log a deviation in [`CHEAPER-EXECUTION-REFACTOR-PROGRESS.md`](../CHEAPER-EXECUTION-REFACTOR-PROGRESS.md) before proceeding. Do not plan on stale assumptions.
+> **Validation Preface**: Before planning this iteration, the planner agent MUST validate this doc against live code — file paths, symbol names, and line numbers can drift. Run a quick grep / glob pass on the Code Surface section below. Any mismatch → amend this companion directly (commit message carries the reason). Do NOT touch the progress tracker during planning — that doc is for execution outcomes only. Do not plan on stale assumptions.
 
 ## Overview
 
@@ -43,6 +43,8 @@ After this iteration: no code path spawns a product-manager, architect, ux-desig
   - Add a fixture test in `ui/` that renders a captured legacy state.json (pre-refactor, with all 4 upstream planning nodes) and asserts all 4 appear in the Planning section with correct status.
   - Add a test that `full.yml` in the process editor shows with deprecated styling and that the "create new project" flow doesn't offer it.
 
+## Code Surface
+
 - Agents: `.claude/agents/{product-manager, architect, ux-designer, research}.md`
 - Skill workflows: `.claude/skills/rad-create-plans/references/{prd, research, design, architecture}/` (entire folders)
 - Engine:
@@ -55,11 +57,14 @@ After this iteration: no code path spawns a product-manager, architect, ux-desig
   - `.claude/skills/orchestration/scripts/tests/contract/02-event-names.test.ts`, `03-action-contexts.test.ts`, `05-frontmatter-validation.test.ts`, `06-state-mutations.test.ts`, `07-tier-transitions.test.ts`
   - `.claude/skills/orchestration/scripts/tests/engine.test.ts`, `dag-walker.test.ts`, `event-routing-integration.test.ts`, `execution-integration.test.ts`
   - `.claude/skills/orchestration/scripts/tests/context-enrichment.test.ts`
-- Ripple surfaces:
-  - `.claude/skills/orchestration/validate/lib/checks/agents.js` (expected agent roster)
-  - `.claude/skills/rad-create-plans/SKILL.md` (agent-routing table)
-  - `.claude/skills/rad-plan/SKILL.md` (drop "Research through Master Plan" phrasing; planning-step listing logic)
-  - `.claude/skills/orchestration/references/{action-event-reference, document-conventions, context, pipeline-guide}.md`
+- Ripple surfaces (verified at plan time):
+  - `.claude/skills/orchestration/validate/lib/checks/agents.js` — **no edit required**. Validator scans for `.agent.md` suffix; all agents in this repo use the `.md` extension so none were ever in the validator's discovered set regardless of this deletion.
+  - `.claude/skills/rad-create-plans/SKILL.md:30-33` — agent-routing table: drop the 4 rows for `product-manager` / `research` / `ux-designer` / `architect`.
+  - `.claude/skills/rad-plan/SKILL.md:3` — drop "Research through Master Plan" from the description; check the body for any planning-step listing that names the 4 stages.
+  - `.claude/skills/orchestration/references/action-event-reference.md:11-14` — drop the 4 rows for `spawn_research` / `spawn_prd` / `spawn_design` / `spawn_architecture` (rows 1-4 in the action table).
+  - `.claude/skills/orchestration/references/document-conventions.md:5, 12-15` — drop PRD / Research Findings / Design / Architecture rows from the document filename table.
+  - `.claude/skills/orchestration/references/context.md:18-21, 61, 68-69` — drop `@research` / `@product-manager` / `@ux-designer` / `@architect` from the agent list and the four legacy filenames from the planning-docs list.
+  - `.claude/skills/orchestration/references/pipeline-guide.md:187-189` — drop "Create the PRD…" / "Research the codebase…" agent-prompt examples.
 
 ## Dependencies
 

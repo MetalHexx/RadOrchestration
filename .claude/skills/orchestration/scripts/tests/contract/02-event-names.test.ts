@@ -71,87 +71,6 @@ const prConfig = createConfig({
 // ── [CONTRACT] Event Names — planning tier events ─────────────────────────────
 
 describe('[CONTRACT] Event Names — planning tier events', () => {
-  it('research_started is a valid v5 event', () => {
-    const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('research_started', PROJECT_DIR, {}, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
-
-  it('research_completed is a valid v5 event', () => {
-    const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const docPath = '/tmp/research.md';
-    seedDoc(docPath);
-    const result = processEvent('research_completed', PROJECT_DIR, { doc_path: docPath }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
-
-  it('prd_started is a valid v5 event', () => {
-    const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('prd_started', PROJECT_DIR, {}, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
-
-  it('prd_completed is a valid v5 event', () => {
-    const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const state = io.currentState!;
-    completePlanningSteps(state, 'research');
-    (state.graph.nodes['prd'] as StepNodeState).status = 'in_progress';
-    const docPath = '/tmp/prd.md';
-    seedDoc(docPath);
-    const result = processEvent('prd_completed', PROJECT_DIR, { doc_path: docPath }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
-
-  it('design_started is a valid v5 event', () => {
-    const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('design_started', PROJECT_DIR, {}, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
-
-  it('design_completed is a valid v5 event', () => {
-    const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const state = io.currentState!;
-    completePlanningSteps(state, 'prd');
-    (state.graph.nodes['design'] as StepNodeState).status = 'in_progress';
-    const docPath = '/tmp/design.md';
-    seedDoc(docPath);
-    const result = processEvent('design_completed', PROJECT_DIR, { doc_path: docPath }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
-
-  it('architecture_started is a valid v5 event', () => {
-    const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('architecture_started', PROJECT_DIR, {}, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
-
-  it('architecture_completed is a valid v5 event', () => {
-    const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const state = io.currentState!;
-    completePlanningSteps(state, 'design');
-    (state.graph.nodes['architecture'] as StepNodeState).status = 'in_progress';
-    const docPath = '/tmp/architecture.md';
-    seedDoc(docPath);
-    const result = processEvent('architecture_completed', PROJECT_DIR, { doc_path: docPath }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
-
   it('master_plan_started is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
     processEvent('start', PROJECT_DIR, {}, io);
@@ -164,7 +83,6 @@ describe('[CONTRACT] Event Names — planning tier events', () => {
     const io = createMockIOWithConfig(null, config);
     processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
-    completePlanningSteps(state, 'architecture');
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
     const docPath = '/tmp/master_plan.md';
     seedDoc(docPath, { total_phases: 1 });
