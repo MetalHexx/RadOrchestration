@@ -94,7 +94,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 0 | `feat/iter-0-prereqs` | `C:\dev\orchestration\v3-worktrees\feat-iter-0-prereqs` | Merged | (see commit 08bf2ff lineage) | — |
 | 1 | `feat/iter-1-doc-formats` | `C:\dev\orchestration\v3-worktrees\feat-iter-1-doc-formats` | Merged | `08bf2ff` | #51 |
 | 2 | `feat/iter-2-rename-to-master-plan` | `C:\dev\orchestration\v3-worktrees\feat-iter-2-rename-to-master-plan` | Awaiting merge | — | [#53](https://github.com/MetalHexx/RadOrchestation/pull/53) |
-| 3 | `feat/iter-3-remove-upstream-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning` | Awaiting merge | — | — |
+| 3 | `feat/iter-3-remove-upstream-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning` | Awaiting merge | — | [#54](https://github.com/MetalHexx/RadOrchestation/pull/54) |
 | 4 | — | — | Not created | — | — |
 | 5 | — | — | Not created | — | — |
 | 6 | — | — | Not created | — | — |
@@ -238,7 +238,7 @@ Format:
 - Stripped 4 `SPAWN_*` actions and 8 `*_STARTED`/`*_COMPLETED` events from `constants.ts`; trimmed `planningStartedSteps`/`planningCompletedSteps` in `mutations.ts` to `master_plan` only; `PLANNING_SPAWN_STEPS` in `context-enrichment.ts` reduced to `{spawn_master_plan: 'master_plan'}`.
 - Vocabulary purge across 6 internal skill docs. Deleted 77 legacy planning-chain tests; added 2 new `describe('deprecated templates')` cases in `template-validator.test.ts`. Updated 6 `ui/lib/template-serializer.test.ts` tests to reference surviving template nodes.
 - Tests: orchestration 46 files / 1155 pass / 1 todo (baseline 1232 — net −77 legacy + 2 new); UI 152 pass / 3 fail (baseline unchanged); installer 399 pass / 0 fail.
-- PR: pending.
+- PR: [#54](https://github.com/MetalHexx/RadOrchestation/pull/54).
 
 ### 2026-04-18 — Iteration 2 — Three planning-time amendments to the companion doc
 
