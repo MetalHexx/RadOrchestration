@@ -183,6 +183,9 @@ When spawning a subagent, always provide:
 3. **Project context**: Project name, current phase/task numbers from `result.context`
 4. **Output expectations**: Where to save the output document (derive from project naming conventions)
 
+Example spawn instructions:
+> "Create the requirements for the MYAPP project. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that. Save the PRD to `{base_path}/MYAPP/MYAPP-REQUIREMENTS.md`."
+
 ### Source Control — PR Mode
 
 When `result.action` is `invoke_source_control_pr`, spawn **source-control** in PR mode:
