@@ -180,16 +180,16 @@ describe('e2e: full template pipeline processing', () => {
     const io = createMockIO(null);
     processEvent('start', tmpDir, {}, io);
     const nodes = io.currentState!.graph.nodes;
-    for (const nodeId of ['research', 'prd', 'design', 'architecture', 'master_plan', 'plan_approval_gate', 'phase_loop']) {
+    for (const nodeId of ['master_plan', 'plan_approval_gate', 'phase_loop']) {
       expect(nodes).toHaveProperty(nodeId);
     }
   });
 
-  it('pipeline can advance past the first node via research_started', () => {
+  it('pipeline can advance past the first node via master_plan_started', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-full-'));
     const io = createMockIO(null);
     processEvent('start', tmpDir, {}, io);
-    const result2 = processEvent('research_started', tmpDir, {}, io);
+    const result2 = processEvent('master_plan_started', tmpDir, {}, io);
     expect(result2.success).toBe(true);
   });
 });
@@ -203,15 +203,6 @@ describe('e2e: quick template pipeline processing', () => {
     if (tmpDir && fs.existsSync(tmpDir)) {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
-  });
-
-  it('processEvent start with template: quick scaffolds correctly and returns a valid NEXT_ACTIONS value', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-quick-'));
-    const io = createMockIO(null);
-    const result = processEvent('start', tmpDir, { template: 'quick' }, io);
-    expect(result.success).toBe(true);
-    expect(Object.values(NEXT_ACTIONS)).toContain(result.action);
-    expect(io.currentState!.graph.template_id).toBe('quick');
   });
 
   it('quick template scaffolded state does NOT contain prd, design, phase_report, phase_review nodes', () => {
@@ -231,28 +222,6 @@ describe('e2e: quick template pipeline processing', () => {
     const nodes = io.currentState!.graph.nodes;
     for (const nodeId of ['research', 'architecture', 'master_plan', 'plan_approval_gate', 'phase_loop']) {
       expect(nodes).toHaveProperty(nodeId);
-    }
-  });
-
-  it('quick pipeline can advance past the first node via research_started', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-quick-'));
-    const io = createMockIO(null);
-    processEvent('start', tmpDir, { template: 'quick' }, io);
-    const result2 = processEvent('research_started', tmpDir, {}, io);
-    expect(result2.success).toBe(true);
-  });
-
-  it('all emitted actions from quick pipeline are members of NEXT_ACTIONS values', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-quick-'));
-    const io = createMockIO(null);
-    const result1 = processEvent('start', tmpDir, { template: 'quick' }, io);
-    const nextActionsValues = new Set<string>(Object.values(NEXT_ACTIONS));
-    if (result1.action !== null) {
-      expect(nextActionsValues.has(result1.action)).toBe(true);
-    }
-    const result2 = processEvent('research_started', tmpDir, {}, io);
-    if (result2.action !== null) {
-      expect(nextActionsValues.has(result2.action)).toBe(true);
     }
   });
 });

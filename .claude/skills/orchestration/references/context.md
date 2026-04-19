@@ -1,6 +1,6 @@
 # Orchestration System Context
 
-This workspace contains a **document-driven agent orchestration system** built on Copilot's native primitives (custom agents, skills, prompt files, and instruction files). The system takes software projects from idea through planning, execution, and review using 13 specialized agents.
+This workspace contains a **document-driven agent orchestration system** built on Copilot's native primitives (custom agents, skills, prompt files, and instruction files). The system takes software projects from idea through planning, execution, and review using 9 specialized agents.
 
 ## How It Works
 
@@ -15,10 +15,6 @@ This workspace contains a **document-driven agent orchestration system** built o
 |-------|---------|
 | `@brainstormer` | Collaboratively brainstorms and refines project ideas — standalone, outside the pipeline |
 | `@orchestrator` | Coordinates the pipeline — spawns agents, reads state, asks human questions. **Never writes files.** |
-| `@research` | Explores codebase and external sources to gather evidence — reports what exists, never recommends |
-| `@product-manager` | Creates PRDs from brainstorming documents and other supplied context |
-| `@ux-designer` | Creates design documents from PRDs and Research Findings — defines the experience, not the implementation |
-| `@architect` | Creates Architecture documents via `rad-create-plans` |
 | `@tactical-planner` | Creates Phase Plans and Task Handoffs via `rad-create-plans`; generates Phase Reports via `generate-phase-report` |
 | `@planner` | Authors the lean Requirements ledger and inlined Master Plan via `rad-create-plans` |
 | `@coder` | Executes coding tasks from self-contained task handoffs |
@@ -58,13 +54,13 @@ Project artifacts are stored in a configurable location set by `orchestration.ym
 
 Contents:
 - Brainstorming: `BRAINSTORMING.md` (optional, created by `@brainstormer`)
-- Planning docs: `PRD.md`, `DESIGN.md`, `ARCHITECTURE.md`, `MASTER-PLAN.md` (inlined phase + task plan written by `@planner`), `REQUIREMENTS.md` (lean project-level ledger written by `@planner`)
+- Planning docs: `MASTER-PLAN.md` (inlined phase + task plan written by `@planner`), `REQUIREMENTS.md` (lean project-level ledger written by `@planner`)
 - Execution docs: `phases/`, `tasks/`, `reports/`
 - State: `state.json`
 - Error log: `ERROR-LOG.md` (append-only, created by `@orchestrator` via `log-error` skill)
 
 ## Naming Conventions
 
-- **Project files**: `SCREAMING-CASE` with project prefix — `MYAPP-PRD.md`, `MYAPP-TASK-P01-T03-AUTH.md`. See [document-conventions.md](document-conventions.md) for the full set of filename patterns, placement rules, and frontmatter field values.
+- **Project files**: `SCREAMING-CASE` with project prefix — `MYAPP-MASTER-PLAN.md`, `MYAPP-TASK-P01-T03-AUTH.md`. See [document-conventions.md](document-conventions.md) for the full set of filename patterns, placement rules, and frontmatter field values.
 - **Skills**: lowercase with hyphens — `{orch_root}/skills/create-prd/`
 - **Agents**: lowercase with hyphens — `{orch_root}/agents/orchestrator.agent.md`

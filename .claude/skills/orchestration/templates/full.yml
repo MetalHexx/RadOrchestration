@@ -1,7 +1,10 @@
+# DEPRECATED — legacy 4-stage upstream planning pipeline (PRD → Research → Design → Architecture → Master Plan).
+# Replaced by default.yml (Iter 9). Kept on disk for read-only UI rendering of completed legacy projects.
 template:
   id: full
   version: "1.0.0"
   description: "Complete orchestration pipeline — planning, execution, review, source control"
+  status: deprecated
 
 # ── Display & Routing Fields ─────────────────────────────────────────────────
 # Informational field (not consumed by the v5 DAG engine at runtime):
@@ -22,42 +25,6 @@ nodes:
 
   # ── Planning Steps ────────────────────────────────────────────────────────
 
-  - id: prd
-    kind: step
-    label: "PRD"
-    action: spawn_prd
-    events: { started: prd_started, completed: prd_completed }
-    context: { step: prd }
-    doc_output_field: doc_path
-    depends_on: []
-
-  - id: research
-    kind: step
-    label: "Research"
-    action: spawn_research
-    events: { started: research_started, completed: research_completed }
-    context: { step: research }
-    doc_output_field: doc_path
-    depends_on: [prd]
-
-  - id: design
-    kind: step
-    label: "Design"
-    action: spawn_design
-    events: { started: design_started, completed: design_completed }
-    context: { step: design }
-    doc_output_field: doc_path
-    depends_on: [research]
-
-  - id: architecture
-    kind: step
-    label: "Architecture"
-    action: spawn_architecture
-    events: { started: architecture_started, completed: architecture_completed }
-    context: { step: architecture }
-    doc_output_field: doc_path
-    depends_on: [design]
-
   - id: master_plan
     kind: step
     label: "Master Plan"
@@ -65,7 +32,7 @@ nodes:
     events: { started: master_plan_started, completed: master_plan_completed }
     context: { step: master_plan }
     doc_output_field: doc_path
-    depends_on: [architecture]
+    depends_on: []
 
   # ── Plan Approval Gate ────────────────────────────────────────────────────
 

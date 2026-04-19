@@ -61,7 +61,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 0 | Prerequisites (auto-resolution bug + corrective filename) | Complete | 2026-04-17 | 2026-04-17 |
 | 1 | Document formats (Requirements + Execution Plan) | Complete | 2026-04-17 | 2026-04-17 |
 | 2 | Rename Execution Plan → Master Plan | Complete | 2026-04-18 | 2026-04-18 |
-| 3 | Remove upstream planning (PRD/Research/Design/Architecture) | Not started | — | — |
+| 3 | Remove upstream planning (PRD/Research/Design/Architecture) | Complete | 2026-04-18 | 2026-04-18 |
 | 4 | Requirements pipeline node | Not started | — | — |
 | 5 | Explosion script + state.json pre-seeding | Not started | — | — |
 | 6 | Prompt regression harness | Not started | — | — |
@@ -74,7 +74,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 13 | Rad-plan-audit overhaul | Not started | — | — |
 | 14 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 3 / 15 iterations complete. Design realigned 2026-04-18 for gutting-first approach.
+**Overall**: 4 / 15 iterations complete. Design realigned 2026-04-18 for gutting-first approach.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -94,7 +94,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 0 | `feat/iter-0-prereqs` | `C:\dev\orchestration\v3-worktrees\feat-iter-0-prereqs` | Merged | (see commit 08bf2ff lineage) | — |
 | 1 | `feat/iter-1-doc-formats` | `C:\dev\orchestration\v3-worktrees\feat-iter-1-doc-formats` | Merged | `08bf2ff` | #51 |
 | 2 | `feat/iter-2-rename-to-master-plan` | `C:\dev\orchestration\v3-worktrees\feat-iter-2-rename-to-master-plan` | Awaiting merge | — | [#53](https://github.com/MetalHexx/RadOrchestation/pull/53) |
-| 3 | — | — | Not created | — | — |
+| 3 | `feat/iter-3-remove-upstream-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning` | Awaiting merge | — | — |
 | 4 | — | — | Not created | — | — |
 | 5 | — | — | Not created | — | — |
 | 6 | — | — | Not created | — | — |
@@ -230,12 +230,36 @@ Format:
 - `action-event-reference.md` row 5 retargeted: `tactical-planner` → `planner`; `spawn_master_plan` wired. Dead `spawn_master_plan` row stripped from `tactical-planner.md`. Vocabulary purge across 6 internal skill docs.
 - Commits: `69599ec` (main), `04dffa5` (corrective). PR: [#53](https://github.com/MetalHexx/RadOrchestation/pull/53).
 
+### 2026-04-18 — Iteration 3 — Remove upstream planning (PRD / Research / Design / Architecture)
+
+- Branch: `feat/iter-3-remove-upstream-planning` off `feat/cheaper-execution` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning`).
+- Deleted 4 agent files (`product-manager.md`, `architect.md`, `ux-designer.md`, `research.md`) and 4 `rad-create-plans` reference folders (`prd/`, `research/`, `design/`, `architecture/`).
+- Added `status?: 'deprecated'` to `TemplateHeader`; added early-return deprecated-skip in `template-validator.ts`; stamped both `full.yml` and `quick.yml` as `status: deprecated` (see Deviations — quick.yml also carried the legacy stages).
+- Stripped 4 `SPAWN_*` actions and 8 `*_STARTED`/`*_COMPLETED` events from `constants.ts`; trimmed `planningStartedSteps`/`planningCompletedSteps` in `mutations.ts` to `master_plan` only; `PLANNING_SPAWN_STEPS` in `context-enrichment.ts` reduced to `{spawn_master_plan: 'master_plan'}`.
+- Vocabulary purge across 6 internal skill docs. Deleted 77 legacy planning-chain tests; added 2 new `describe('deprecated templates')` cases in `template-validator.test.ts`. Updated 6 `ui/lib/template-serializer.test.ts` tests to reference surviving template nodes.
+- Tests: orchestration 46 files / 1155 pass / 1 todo (baseline 1232 — net −77 legacy + 2 new); UI 152 pass / 3 fail (baseline unchanged); installer 399 pass / 0 fail.
+- PR: pending.
+
 ### 2026-04-18 — Iteration 2 — Three planning-time amendments to the companion doc
 
 - **Design said**: Iter-02 companion Scope steps 1–7 covered folder delete/rename, frontmatter flip, validator extension, and `planner.md` router update. Ripples listed five internal docs for "execution plan" vocabulary purge, including `action-event-reference.md` and `pipeline-guide.md`.
 - **Execution did (planning-time, pre-code)**: Companion amended in three ways. (1) Added Scope step 8 retargeting `action-event-reference.md:15` from `tactical-planner` → `planner` for `spawn_master_plan` — the orchestrator reads this row as its action→agent source of truth; updating only `planner.md`'s internal router changes what @planner *can* do when spawned but not *who* gets spawned, so the exit criterion ("`@planner` invoked … produces `{NAME}-MASTER-PLAN.md`") could not hold without this edit. (2) Corrected Ripples: `pipeline-guide.md` dropped (zero matches today), `action-event-reference.md` reframed as agent retarget not vocabulary purge (zero `execution_plan` matches today). (3) Added two missing purge surfaces discovered at plan time: `rad-create-plans/references/requirements/workflow.md:50` and `rad-plan-audit/references/audit-rubric.md:44`.
 - **Why**: All three emerged from a plan-time grep/read pass validating the companion's Scope + Ripples + Code Surface against live code. Companion doc now matches ground truth so the coder session doesn't hit the same discovery drift.
 - **Impact**: Iter-2 scope grew by one agent-retarget line, two purge-file edits. Tactical-planner agent file + its `create_phase_plan` / `create_task_handoff` router rows stay for Iter 7.
+
+### 2026-04-18 — Iteration 3 — quick.yml stamped deprecated (plan assumed it was clean)
+
+- **Design said**: "quick.yml — not stamped deprecated. Only full.yml carries the legacy 4-stage chain; quick.yml is a separate template and stays as-is."
+- **Execution did**: quick.yml was also stamped `status: deprecated` with a matching banner comment. Additionally, `ui/lib/template-serializer.test.ts` had 6 tests updated to reference surviving nodes (master_plan, plan_approval_gate) instead of deleted ones (research, architecture).
+- **Why**: quick.yml contains live `research` (action: `spawn_research`) and `architecture` (action: `spawn_architecture`) nodes. Both actions and their events were deleted from `constants.ts` and `mutations.ts` in Steps 6–7. Without the deprecated stamp, quick.yml would pass structural validation but fail at runtime when the engine tried to dispatch its first event. The plan's assumption that quick.yml was clean was incorrect. Quality review surfaced the issue.
+- **Impact**: Both templates are now engine-deprecated pending Iter 9 (`default.yml`). The validator correctly skips both. No UI changes.
+
+### 2026-04-18 — Iteration 3 — graph.status in_progress relocation
+
+- **Design said**: Step 7 said "keep `MASTER_PLAN_STARTED`" without specifying the `graph.status = 'in_progress'` side-effect previously attached to `RESEARCH_STARTED`.
+- **Execution did**: The `graph.status = 'in_progress'` hook moved from `RESEARCH_STARTED` to `MASTER_PLAN_STARTED`, because `master_plan` is now the first planning step.
+- **Why**: Behavior-preserving mechanical consequence — without the move, no event would ever set `graph.status` to `in_progress` after the planning tier starts.
+- **Impact**: Covered by updated test in `contract/06-state-mutations.test.ts`.
 
 ### 2026-04-17 — Iteration 1 — Commit step omitted from Execution Plan tasks
 

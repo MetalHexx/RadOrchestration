@@ -140,6 +140,14 @@ export function validateTemplate(
   template: PipelineTemplate,
   templateId: string,
 ): ValidationResult {
+  // Deprecated templates skip validation — their action/event references may
+  // point at removed handlers, but they're kept on disk for legacy state.json
+  // rendering only (never dispatched for new projects).
+  if (template.template.status === 'deprecated') {
+    console.info(`[template-validator] template '${templateId}' is deprecated; skipping validation`);
+    return { valid: true, errors: [], warnings: [] };
+  }
+
   const errors: TemplateValidationError[] = [];
   const warnings: TemplateValidationError[] = [];
 

@@ -2,17 +2,13 @@
 
 Canonical reference for all pipeline-produced document naming, placement, and frontmatter values.
 
-Covers all documents produced during pipeline execution. Planning documents (PRD, Design, Architecture, Master Plan, Research Findings, Brainstorming) and execution documents (Phase Plan, Task Handoff, Code Review, Phase Report, Phase Review).
+Covers all documents produced during pipeline execution. Planning documents (Master Plan, Requirements, Brainstorming) and execution documents (Phase Plan, Task Handoff, Code Review, Phase Report, Phase Review).
 
 ## Filename Patterns & Placement
 
 | Document Type | Subdirectory | Filename Pattern | Example |
 |---|---|---|---|
 | Brainstorming | — (root) | `{NAME}-BRAINSTORMING.md` | `MYAPP-BRAINSTORMING.md` |
-| Research Findings | — (root) | `{NAME}-RESEARCH-FINDINGS.md` | `MYAPP-RESEARCH-FINDINGS.md` |
-| PRD | — (root) | `{NAME}-PRD.md` | `MYAPP-PRD.md` |
-| Design | — (root) | `{NAME}-DESIGN.md` | `MYAPP-DESIGN.md` |
-| Architecture | — (root) | `{NAME}-ARCHITECTURE.md` | `MYAPP-ARCHITECTURE.md` |
 | Master Plan | — (root) | `{NAME}-MASTER-PLAN.md` | `MYAPP-MASTER-PLAN.md` |
 | Requirements | — (root) | `{NAME}-REQUIREMENTS.md` | `MYAPP-REQUIREMENTS.md` |
 | Error Log | — (root) | `{NAME}-ERROR-LOG.md` | `MYAPP-ERROR-LOG.md` |

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { validateTemplate } from '../lib/template-validator.js';
 import type { PipelineTemplate, NodeDef } from '../lib/types.js';
 
@@ -151,6 +151,44 @@ describe('validateTemplate', () => {
       expect(cycleErr).toBeDefined();
       expect(cycleErr!.detail.cycle_nodes).toContain('body-a');
       expect(cycleErr!.detail.cycle_nodes).toContain('body-b');
+    });
+  });
+
+  describe('deprecated templates', () => {
+    it('skips validation for a deprecated template even when nodes are structurally invalid', () => {
+      const deprecatedTemplate: PipelineTemplate = {
+        template: { id: 'foo', version: '1', description: 'd', status: 'deprecated' },
+        nodes: [
+          // Invalid nodes: cycle + dangling ref — would normally fail validation
+          makeStep('a', ['b']),
+          makeStep('b', ['a']),
+          makeStep('x', ['nonexistent']),
+        ],
+      };
+      const result = validateTemplate(deprecatedTemplate, 'foo');
+      expect(result).toEqual({ valid: true, errors: [], warnings: [] });
+    });
+
+    it('emits exactly one console.info matching the deprecated skip message', () => {
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+      try {
+        const deprecatedTemplate: PipelineTemplate = {
+          template: { id: 'foo', version: '1', description: 'd', status: 'deprecated' },
+          nodes: [
+            makeStep('a', ['b']),
+            makeStep('b', ['a']),
+          ],
+        };
+        validateTemplate(deprecatedTemplate, 'foo');
+
+        // Count calls whose first-argument string matches the expected pattern
+        const matching = infoSpy.mock.calls.filter(([msg]) =>
+          typeof msg === 'string' && /template 'foo' is deprecated; skipping validation/.test(msg),
+        );
+        expect(matching).toHaveLength(1);
+      } finally {
+        infoSpy.mockRestore();
+      }
     });
   });
 });

@@ -46,32 +46,32 @@ const config = createConfig({
 // ── [CONTRACT] State Mutations — Planning step mutations ──────────────────────
 
 describe('[CONTRACT] State Mutations — Planning step mutations', () => {
-  it('research_started: research.status=in_progress and graph.status=in_progress', () => {
+  it('master_plan_started: master_plan.status=in_progress and graph.status=in_progress', () => {
     const io = createMockIO(null);
     processEvent('start', PROJECT_DIR, {}, io); // scaffold
-    const result = processEvent('research_started', PROJECT_DIR, {}, io); // standard route applies mutation
+    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io); // standard route applies mutation
 
     expect(result.success).toBe(true);
-    const researchNode = io.currentState!.graph.nodes['research'] as StepNodeState;
-    expect(researchNode.status).toBe('in_progress');
+    const mpNode = io.currentState!.graph.nodes['master_plan'] as StepNodeState;
+    expect(mpNode.status).toBe('in_progress');
     expect(io.currentState!.graph.status).toBe('in_progress');
-    expect(result.mutations_applied.some((m) => m.includes('research') && m.includes('in_progress'))).toBe(true);
+    expect(result.mutations_applied.some((m) => m.includes('master_plan') && m.includes('in_progress'))).toBe(true);
     expect(result.mutations_applied.some((m) => m.includes('graph.status'))).toBe(true);
   });
 
-  it('research_completed: research.status=completed and doc_path set', () => {
+  it('master_plan_completed: master_plan.status=completed and doc_path set', () => {
     const io = createMockIO(null);
     processEvent('start', PROJECT_DIR, {}, io); // scaffold
-    processEvent('research_started', PROJECT_DIR, {}, io); // research in_progress
-    const docPath = '/tmp/research-doc.md';
-    seedDoc(docPath);
-    const result = processEvent('research_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    processEvent('master_plan_started', PROJECT_DIR, {}, io); // master_plan in_progress
+    const docPath = '/tmp/master-plan-doc.md';
+    seedDoc(docPath, { total_phases: 1 });
+    const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
 
     expect(result.success).toBe(true);
-    const researchNode = io.currentState!.graph.nodes['research'] as StepNodeState;
-    expect(researchNode.status).toBe('completed');
-    expect(researchNode.doc_path).toBe(docPath);
-    expect(result.mutations_applied.some((m) => m.includes('research') && m.includes('completed'))).toBe(true);
+    const mpNode = io.currentState!.graph.nodes['master_plan'] as StepNodeState;
+    expect(mpNode.status).toBe('completed');
+    expect(mpNode.doc_path).toBe(docPath);
+    expect(result.mutations_applied.some((m) => m.includes('master_plan') && m.includes('completed'))).toBe(true);
   });
 });
 
