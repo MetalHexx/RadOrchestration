@@ -133,6 +133,9 @@ export const OUT_OF_BAND_EVENTS = new Set<string>([
   'halt',
   'gate_mode_set',
   'source_control_init',
+  // Parse-failure recovery loop: step-level `failed` events are not template-indexed
+  // by buildEventIndex, so routing `explosion_failed` requires the out-of-band path.
+  'explosion_failed',
 ]);
 
 export const REVIEW_VERDICTS = Object.freeze({

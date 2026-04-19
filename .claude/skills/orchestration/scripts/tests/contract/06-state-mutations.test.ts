@@ -644,4 +644,42 @@ describe('[CONTRACT] State Mutations — Explosion script mutations (Iter 5)', (
     expect(explodeNode.doc_path).toBeNull();
     expect(result.mutations_applied.some((m) => m.includes('explode_master_plan.doc_path = null'))).toBe(true);
   });
+
+  it('explosion_failed: processEvent routes it out-of-band and the recovery mutation fires end-to-end (integration)', () => {
+    // Regression for PR #56 Copilot finding: `explosion_failed` was returning
+    // "Unknown event" because step-level `failed` events aren't registered by
+    // buildEventIndex. The fix adds it to OUT_OF_BAND_EVENTS; this test confirms
+    // the full processEvent path (not just the mutation handler in isolation).
+    const seedState = makeStateWithExplosion({
+      masterPlanStatus: 'completed',
+      explodeStatus: 'in_progress',
+      parseRetryCount: 1,
+      lastParseError: null,
+    });
+    const io = createMockIO(seedState);
+    const parseError = {
+      line: 7,
+      expected: '## P01:',
+      found: '## Some Phase',
+      message: 'missing phase id prefix',
+    };
+
+    const result = processEvent('explosion_failed', PROJECT_DIR, { parse_error: parseError }, io);
+
+    // The path that was broken — must no longer return "Unknown event".
+    expect(result.success).toBe(true);
+    expect(String(result.context.error ?? '')).not.toContain('Unknown event');
+
+    // Mutation fired end-to-end through the out-of-band dispatch path.
+    const mpNode = io.currentState!.graph.nodes['master_plan'] as StepNodeState;
+    expect(mpNode.status).toBe('in_progress');
+    expect(mpNode.last_parse_error).toEqual(parseError);
+    expect(mpNode.parse_retry_count).toBe(2);
+
+    const explodeNode = io.currentState!.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('not_started');
+    expect(explodeNode.doc_path).toBeNull();
+
+    expect(result.mutations_applied.some((m) => m.includes('recovery re-spawn'))).toBe(true);
+  });
 });

@@ -177,7 +177,7 @@ describe('validateTemplate', () => {
       expect(hardErrors).toHaveLength(0);
     });
 
-    it('explode_master_plan step exists with expected events (started/completed/failed) and depends_on [master_plan]', () => {
+    it('explode_master_plan step exists with expected events (started/completed) and depends_on [master_plan]', () => {
       const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'default.yml'));
       const explode = template.nodes.find(n => n.id === 'explode_master_plan');
       expect(explode).toBeDefined();
@@ -185,7 +185,10 @@ describe('validateTemplate', () => {
       expect((explode as any).action).toBe('explode_master_plan');
       expect((explode as any).events.started).toBe('explosion_started');
       expect((explode as any).events.completed).toBe('explosion_completed');
-      expect((explode as any).events.failed).toBe('explosion_failed');
+      // `failed` is NOT declared on the step — `explosion_failed` is routed via
+      // OUT_OF_BAND_EVENTS (see scripts/lib/constants.ts) because buildEventIndex
+      // does not register step-level `failed` events.
+      expect((explode as any).events.failed).toBeUndefined();
       expect((explode as any).depends_on).toEqual(['master_plan']);
       const gate = template.nodes.find(n => n.id === 'plan_approval_gate');
       expect((gate as any).depends_on).toEqual(['explode_master_plan']);
