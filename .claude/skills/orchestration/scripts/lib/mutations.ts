@@ -205,6 +205,12 @@ mutationRegistry.set(EVENTS.EXPLOSION_FAILED, (state, context, _config, _templat
     // Cap exceeded — halt. The orchestrator surfaces this via the log-error skill.
     explodeNode.status = 'failed';
     mutations_applied.push(`set explode_master_plan.status = failed (parse retry cap ${MAX_PARSE_RETRIES} exceeded)`);
+    // Defensive: explicitly clear any stale doc_path on the explode node, mirroring the
+    // idempotency fix in the explosion_completed path. An upgraded state.json may carry
+    // a lingering value from an older handler; null guarantees the UI doesn't render
+    // a spurious "Doc" link on the halted node.
+    (explodeNode as StepNodeState).doc_path = null;
+    mutations_applied.push('set explode_master_plan.doc_path = null');
     cloned.graph.status = 'halted';
     mutations_applied.push('set graph.status = halted');
     const reasonMsg = parseError?.message ?? 'unknown parse error';

@@ -624,4 +624,24 @@ describe('[CONTRACT] State Mutations — Explosion script mutations (Iter 5)', (
     expect(result.state.pipeline.halt_reason).toContain('cap=3');
     expect(result.mutations_applied.some((m) => m.includes('halted'))).toBe(true);
   });
+
+  it('explosion_failed (cap-exceeded idempotency regression): if a legacy state had explode_master_plan.doc_path set to a stale value, the cap-exceeded branch explicitly clears it to null', () => {
+    const state = makeStateWithExplosion({
+      masterPlanStatus: 'completed',
+      explodeStatus: 'in_progress',
+      parseRetryCount: 3, // 4th attempt trips the cap
+      lastParseError: null,
+    });
+    // Simulate upgrade path: prior version of the handler stored doc_path here.
+    (state.graph.nodes['explode_master_plan'] as StepNodeState).doc_path = '/tmp/stale.md';
+
+    const parseError = { line: 99, expected: 'task heading', found: 'garbage', message: 'irrecoverable' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: parseError }, DEFAULT_CONFIG, emptyTemplate);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('failed');
+    expect(explodeNode.doc_path).toBeNull();
+    expect(result.mutations_applied.some((m) => m.includes('explode_master_plan.doc_path = null'))).toBe(true);
+  });
 });

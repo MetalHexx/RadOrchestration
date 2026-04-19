@@ -39,10 +39,21 @@ const STATUS_COLORS: Record<string, string> = {
  */
 export function stringifyFrontmatterItem(item: unknown): string {
   if (item === null || item === undefined) return "";
+  // YAML timestamps are parsed by gray-matter / js-yaml into Date objects.
+  // Without this guard, `typeof dateInstance === "object"` would fall through
+  // to the generic-object branch and render `Object.entries(date)` → "".
+  if (item instanceof Date) {
+    return isNaN(item.getTime()) ? "" : item.toLocaleDateString();
+  }
   if (typeof item === "object") {
     const entries = Object.entries(item as Record<string, unknown>)
       .filter(([, v]) => v !== null && v !== undefined)
-      .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`);
+      .map(([k, v]) => {
+        if (v instanceof Date) {
+          return `${k}: ${isNaN(v.getTime()) ? "" : v.toLocaleDateString()}`;
+        }
+        return `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`;
+      });
     return entries.join(", ");
   }
   return String(item);
@@ -52,6 +63,16 @@ export function formatValue(
   key: string,
   value: unknown
 ): { text?: string; items?: string[]; className?: string } {
+  // YAML timestamps (e.g. `created: 2026-04-19`) are parsed by gray-matter / js-yaml
+  // into Date instances, not strings. Handle them first so the downstream
+  // `typeof === "object"` branch doesn't swallow them into an empty render.
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) {
+      return { text: "" };
+    }
+    return { text: value.toLocaleDateString() };
+  }
+
   if (DATE_KEYS.has(key) && typeof value === "string") {
     const date = new Date(value);
     if (!isNaN(date.getTime())) {

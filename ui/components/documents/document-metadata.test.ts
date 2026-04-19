@@ -117,5 +117,53 @@ test("formatValue date key formats a valid ISO date", () => {
   assert.ok(result.text && result.text !== "2026-04-19T00:00:00.000Z", "date should be formatted");
 });
 
+// ─── formatValue / stringifyFrontmatterItem — Date instance handling ────────
+// YAML timestamps are parsed by gray-matter / js-yaml into Date objects, not
+// strings. Prior code fell through to the typeof === "object" branch and
+// rendered the field as an empty string via Object.entries(dateInstance) → [].
+
+test("formatValue with Date instance for date key returns a non-ISO text", () => {
+  const d = new Date("2026-04-19T00:00:00.000Z");
+  const result = formatValue("created", d);
+  assert.ok(result.text, `expected text, got ${JSON.stringify(result)}`);
+  assert.notStrictEqual(result.text, "", "text should not be empty");
+  assert.ok(result.text !== d.toISOString(), `expected non-ISO formatted date, got ${result.text}`);
+});
+
+test("formatValue with Date instance for non-date key still renders readably (not empty)", () => {
+  const d = new Date("2026-04-19T00:00:00.000Z");
+  const result = formatValue("arbitrary_ts", d);
+  assert.ok(result.text, `expected text, got ${JSON.stringify(result)}`);
+  assert.notStrictEqual(result.text, "", "non-date key with Date value should still render text");
+  assert.strictEqual(result.items, undefined);
+});
+
+test("formatValue with invalid Date falls back to empty string (graceful)", () => {
+  const d = new Date("garbage");
+  const result = formatValue("created", d);
+  assert.strictEqual(result.text, "");
+});
+
+test("stringifyFrontmatterItem with Date instance returns non-empty readable string", () => {
+  const d = new Date("2026-04-19T00:00:00.000Z");
+  const result = stringifyFrontmatterItem(d);
+  assert.notStrictEqual(result, "", "Date should render as non-empty string, not fall through to Object.entries");
+  assert.ok(result.length > 0);
+});
+
+test("stringifyFrontmatterItem with invalid Date returns empty string", () => {
+  const d = new Date("garbage");
+  assert.strictEqual(stringifyFrontmatterItem(d), "");
+});
+
+test("stringifyFrontmatterItem with Date nested inside an object renders sanely", () => {
+  const d = new Date("2026-04-19T00:00:00.000Z");
+  const result = stringifyFrontmatterItem({ id: "T01", when: d });
+  assert.ok(result.includes("id: T01"), `expected id: T01 in ${result}`);
+  assert.ok(result.includes("when: "), `expected when: <date> in ${result}`);
+  assert.ok(!result.includes("when: [object"), `nested Date should not render as [object Object], got ${result}`);
+  assert.ok(!result.includes('when: ""') && !/when:\s*(,|$)/.test(result), `nested Date should not render empty, got ${result}`);
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
