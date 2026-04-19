@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { Check, Loader2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -22,44 +23,52 @@ interface SpinnerBadgeProps {
   hideLabel?: boolean;
 }
 
-export function SpinnerBadge({ label, cssVar, isSpinning, isComplete, isRejected, ariaLabel, hideLabel }: SpinnerBadgeProps) {
-  return (
-    <Badge
-      variant="outline"
-      className="gap-1.5 border-transparent"
-      style={{
-        backgroundColor: `color-mix(in srgb, var(${cssVar}) 15%, transparent)`,
-        color: `var(${cssVar})`,
-      }}
-      aria-label={ariaLabel ?? label}
-    >
-      {isSpinning ? (
-        <Loader2
-          size={12}
-          className="animate-spin"
-          style={{ color: `var(${cssVar})` }}
-          aria-hidden="true"
-        />
-      ) : isComplete ? (
-        <Check
-          size={12}
-          style={{ color: `var(${cssVar})` }}
-          aria-hidden="true"
-        />
-      ) : isRejected ? (
-        <X
-          size={12}
-          style={{ color: `var(${cssVar})` }}
-          aria-hidden="true"
-        />
-      ) : (
-        <span
-          className="inline-block h-1.5 w-1.5 rounded-full"
-          style={{ backgroundColor: `var(${cssVar})` }}
-          aria-hidden="true"
-        />
-      )}
-      {!hideLabel && <span>{label}</span>}
-    </Badge>
-  );
-}
+export const SpinnerBadge = React.forwardRef<HTMLSpanElement, SpinnerBadgeProps>(
+  function SpinnerBadge(
+    { label, cssVar, isSpinning, isComplete, isRejected, ariaLabel, hideLabel },
+    ref,
+  ) {
+    return (
+      <Badge
+        ref={ref}
+        variant="outline"
+        className="gap-1.5 border-transparent"
+        style={{
+          backgroundColor: `color-mix(in srgb, var(${cssVar}) 15%, transparent)`,
+          color: `var(${cssVar})`,
+        }}
+        aria-label={ariaLabel ?? label}
+      >
+        {isSpinning ? (
+          <Loader2
+            size={12}
+            className="animate-spin"
+            style={{ color: `var(${cssVar})` }}
+            aria-hidden="true"
+          />
+        ) : isComplete ? (
+          <Check
+            size={12}
+            style={{ color: `var(${cssVar})` }}
+            aria-hidden="true"
+          />
+        ) : isRejected ? (
+          <X
+            size={12}
+            style={{ color: `var(${cssVar})` }}
+            aria-hidden="true"
+          />
+        ) : (
+          <span
+            className="inline-block h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: `var(${cssVar})` }}
+            aria-hidden="true"
+          />
+        )}
+        {!hideLabel && <span>{label}</span>}
+      </Badge>
+    );
+  },
+);
+
+SpinnerBadge.displayName = "SpinnerBadge";
