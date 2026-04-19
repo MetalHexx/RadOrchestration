@@ -62,7 +62,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 1 | Document formats (Requirements + Execution Plan) | Complete | 2026-04-17 | 2026-04-17 |
 | 2 | Rename Execution Plan → Master Plan | Complete | 2026-04-18 | 2026-04-18 |
 | 3 | Remove upstream planning (PRD/Research/Design/Architecture) | Complete | 2026-04-18 | 2026-04-18 |
-| 4 | Requirements pipeline node | Awaiting merge | 2026-04-18 | 2026-04-18 |
+| 4 | Requirements pipeline node | Complete | 2026-04-18 | 2026-04-18 |
 | 5 | Explosion script + state.json pre-seeding | Not started | — | — |
 | 6 | Prompt regression harness | Not started | — | — |
 | 7 | Remove per-phase/per-task planning | Not started | — | — |

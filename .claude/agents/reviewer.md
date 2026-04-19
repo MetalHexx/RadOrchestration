@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: "Review code, phases, and projects for quality, correctness, and conformance. Supports three modes: task review (Action #9), phase review (Action #11), and final review (Action #12). Each mode uses a dual-pass approach — conformance checking against planning documents followed by an independent quality assessment."
+description: "Review code, phases, and projects for quality, correctness, and conformance. Supports three modes: task review (Action #6), phase review (Action #8), and final review (Action #9). Each mode uses a dual-pass approach — conformance checking against planning documents followed by an independent quality assessment."
 model: sonnet
 user-invocable: false
 tools: Read, Grep, Glob, Edit, Write, Bash, TodoWrite

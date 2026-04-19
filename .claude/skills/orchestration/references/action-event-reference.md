@@ -41,26 +41,26 @@ These are the exact event names passed to `--event`:
 | `plan_approved` | *(none)* | After human approves master plan |
 | `plan_rejected` | *(none)* | After human rejects master plan |
 | `source_control_init` | `--branch <name> --base-branch <name> --worktree-path <path> --auto-commit <always\|never> --auto-pr <always\|never> [--remote-url <url>] [--compare-url <url>]` | After `rad-execute-parallel` creates the worktree. One-time initialization that persists source control context to `pipeline.source_control` in state. Remote and compare URLs are optional; omitted or empty values are stored as `null`. |
-| `phase_planning_started` | *(none)* | Before Tactical Planner spawn for fresh (non-corrective) phases only. Transitions phase from `not_started / planning` to `in_progress / planning`. See action #2 two-step protocol. |
+| `phase_planning_started` | *(none)* | Before Tactical Planner spawn for fresh (non-corrective) phases only. Transitions phase from `not_started / planning` to `in_progress / planning`. See action #3 two-step protocol. |
 | `phase_plan_created` | `--doc-path <path>` | After Tactical Planner finishes phase plan |
-| `task_handoff_started` | *(none)* | Before Tactical Planner spawn for fresh (non-corrective) tasks only. Transitions task from `not_started` to `in_progress` while leaving `task.stage` at `'planning'`. See action #3 two-step protocol. |
+| `task_handoff_started` | *(none)* | Before Tactical Planner spawn for fresh (non-corrective) tasks only. Transitions task from `not_started` to `in_progress` while leaving `task.stage` at `'planning'`. See action #4 two-step protocol. |
 | `task_handoff_created` | `--doc-path <path>` | After Tactical Planner finishes task handoff |
-| `execution_started` | *(none)* | Before Coder spawn. Transitions `task_executor.status` to `in_progress`. See action #4 two-step protocol. |
-| `code_review_started` | *(none)* | Before Reviewer spawn (task-level). Transitions `code_review.status` to `in_progress`. See action #5 two-step protocol. |
+| `execution_started` | *(none)* | Before Coder spawn. Transitions `task_executor.status` to `in_progress`. See action #5 two-step protocol. |
+| `code_review_started` | *(none)* | Before Reviewer spawn (task-level). Transitions `code_review.status` to `in_progress`. See action #6 two-step protocol. |
 | `task_completed` | `--doc-path <path>` *(optional, ignored)* | After Coder finishes task. The CLI accepts `--doc-path` for backward compatibility, but the pipeline ignores it. |
 | `code_review_completed` | `--doc-path <path>` | After Reviewer finishes code review |
 | `commit_started` | `[--phase <N>] [--task <N>]` | Signaled when the walker reaches the `commit` node in `task_loop.body`. `--phase` and `--task` are optional; auto-resolved from the active in-progress phase/task when omitted. |
 | `commit_completed` | `--commit-hash <hash> --pushed <true\|false> [--phase <N>] [--task <N>]` | After Source Control Agent completes. Extract `commitHash` and `pushed` from the agent's `## Commit Result` JSON block. `--phase` and `--task` are optional; auto-resolved when omitted. |
 | `pr_requested` | *(none)* | Signaled internally after `final_review_completed` when `auto_pr: always` and `pr_url` is **undefined** (absent from state — not yet attempted). A `null` value means PR creation was attempted but no URL is available; `null` does **not** re-trigger `pr_requested`. Validation checkpoint before Source Control Agent spawn in PR mode. |
 | `pr_created` | `--pr-url <url>` *(optional)* | After Source Control Agent completes PR creation. Extract `pr_url` and `pr_number` from the agent's `## PR Result` JSON block. On success, signal with `--pr-url <url>`. On failure (`pr_url` is `null` in the result), signal `pr_created` **without** the `--pr-url` flag — the pipeline CLI will omit `pr_url` from context and the mutation handler will coalesce it to `null`. Writes `pr_url` to `state.pipeline.source_control`. |
-| `phase_report_started` | *(none)* | Before Tactical Planner spawn (phase report). Transitions `phase_report.status` to `in_progress`. See action #6 two-step protocol. |
+| `phase_report_started` | *(none)* | Before Tactical Planner spawn (phase report). Transitions `phase_report.status` to `in_progress`. See action #7 two-step protocol. |
 | `phase_report_created` | `--doc-path <path>` | After Tactical Planner finishes phase report |
-| `phase_review_started` | *(none)* | Before Reviewer spawn (phase-level). Transitions `phase_review.status` to `in_progress`. See action #7 two-step protocol. |
+| `phase_review_started` | *(none)* | Before Reviewer spawn (phase-level). Transitions `phase_review.status` to `in_progress`. See action #8 two-step protocol. |
 | `phase_review_completed` | `--doc-path <path>` | After Reviewer finishes phase review |
 | `gate_mode_set` | `--gate-mode task\|phase\|autonomous` | After operator selects gate mode |
 | `gate_approved` | `--gate-type task\|phase` | After human approves a gate |
 | `gate_rejected` | `--gate-type task\|phase --reason <text>` | After human rejects a gate |
-| `final_review_started` | *(none)* | Before Reviewer spawn (final review). Transitions `final_review.status` to `in_progress`. See action #8 two-step protocol. |
+| `final_review_started` | *(none)* | Before Reviewer spawn (final review). Transitions `final_review.status` to `in_progress`. See action #9 two-step protocol. |
 | `final_review_completed` | `--doc-path <path>` | After final reviewer finishes |
 | `final_approved` | *(none)* | After human approves final review |
 | `final_rejected` | *(none)* | After human rejects final review |

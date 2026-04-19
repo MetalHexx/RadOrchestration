@@ -1,6 +1,6 @@
 # Task Review
 
-Self-contained workflow for task-level code review (Action #9, `spawn_code_reviewer`). Do not load other review docs — everything you need is below.
+Self-contained workflow for task-level code review (Action #6, `spawn_code_reviewer`). Do not load other review docs — everything you need is below.
 
 ## Review Mindset
 
