@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { processEvent } from '../../lib/engine.js';
+import { getMutation } from '../../lib/mutations.js';
 import {
   createMockIO,
   createMockIOWithConfig,
   createConfig,
+  DEFAULT_CONFIG,
   DOC_STORE,
   PROJECT_DIR,
   completePlanningSteps,
@@ -18,6 +20,8 @@ import {
   TASKS_2,
 } from '../fixtures/parity-states.js';
 import type {
+  PipelineState,
+  PipelineTemplate,
   StepNodeState,
   GateNodeState,
   ForEachPhaseNodeState,
@@ -31,6 +35,43 @@ beforeEach(() => {
     delete DOC_STORE[key];
   }
 });
+
+// ── Minimal template stub for direct-mutation tests ──────────────────────────
+// Used only by Iter-4 requirements mutation tests that bypass processEvent;
+// mutations accept the template as a parameter but only the planning-step
+// handlers examined here ignore it.
+const emptyTemplate: PipelineTemplate = {
+  template: { id: 'test-stub', version: '1.0', description: 'direct-mutation stub' },
+  nodes: [],
+};
+
+function makeStateWithRequirements(reqStatus: 'not_started' | 'in_progress'): PipelineState {
+  return {
+    $schema: 'orchestration-state-v5',
+    project: { name: 'REQ-TEST', created: '2026-04-18T00:00:00Z', updated: '2026-04-18T00:00:00Z' },
+    config: {
+      gate_mode: 'autonomous',
+      limits: {
+        max_phases: 5,
+        max_tasks_per_phase: 10,
+        max_retries_per_task: 3,
+        max_consecutive_review_rejections: 3,
+      },
+      source_control: { auto_commit: 'never', auto_pr: 'never' },
+    },
+    pipeline: { gate_mode: null, source_control: null, current_tier: 'planning', halt_reason: null },
+    graph: {
+      template_id: 'default',
+      status: 'in_progress',
+      current_node_path: null,
+      nodes: {
+        requirements: { kind: 'step', status: reqStatus, doc_path: null, retries: 0 },
+        master_plan: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+        plan_approval_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+      },
+    },
+  };
+}
 
 // ── Shared autonomous config ──────────────────────────────────────────────────
 
@@ -46,7 +87,7 @@ const config = createConfig({
 // ── [CONTRACT] State Mutations — Planning step mutations ──────────────────────
 
 describe('[CONTRACT] State Mutations — Planning step mutations', () => {
-  it('master_plan_started: master_plan.status=in_progress and graph.status=in_progress', () => {
+  it('master_plan_started: master_plan.status=in_progress and graph.status NOT re-flipped', () => {
     const io = createMockIO(null);
     processEvent('start', PROJECT_DIR, {}, io); // scaffold
     const result = processEvent('master_plan_started', PROJECT_DIR, {}, io); // standard route applies mutation
@@ -56,7 +97,53 @@ describe('[CONTRACT] State Mutations — Planning step mutations', () => {
     expect(mpNode.status).toBe('in_progress');
     expect(io.currentState!.graph.status).toBe('in_progress');
     expect(result.mutations_applied.some((m) => m.includes('master_plan') && m.includes('in_progress'))).toBe(true);
+    // Iter 4 relocated the graph.status hook from master_plan_started → requirements_started
+    expect(result.mutations_applied.some((m) => m.includes('graph.status'))).toBe(false);
+  });
+
+  // Requirements events are not yet routable through processEvent (full.yml has
+  // no requirements node in its eventIndex); Iter 9 completes default.yml. Until
+  // then, exercise the mutation registry directly — the mutation registration is
+  // what this contract covers.
+  it('requirements_started: requirements.status=in_progress, graph.status flipped to in_progress', () => {
+    const state = makeStateWithRequirements('not_started');
+    state.graph.status = 'not_started';
+
+    const mutation = getMutation('requirements_started')!;
+    expect(mutation).toBeTypeOf('function');
+    const result = mutation(state, {}, DEFAULT_CONFIG, emptyTemplate);
+
+    const reqNode = result.state.graph.nodes['requirements'] as StepNodeState;
+    expect(reqNode.status).toBe('in_progress');
+    expect(result.state.graph.status).toBe('in_progress');
+    expect(result.mutations_applied.some((m) => m.includes('requirements') && m.includes('in_progress'))).toBe(true);
     expect(result.mutations_applied.some((m) => m.includes('graph.status'))).toBe(true);
+  });
+
+  it('master_plan_started after requirements_started: no graph.status mutation entry (relocated)', () => {
+    const state = makeStateWithRequirements('in_progress');
+    state.graph.status = 'in_progress';
+
+    const mutation = getMutation('master_plan_started')!;
+    const result = mutation(state, {}, DEFAULT_CONFIG, emptyTemplate);
+
+    // master_plan_started no longer logs a graph.status mutation — the hook relocated to requirements_started
+    expect(result.mutations_applied.some((m) => m.includes('graph.status'))).toBe(false);
+    // And graph.status stays in_progress (no regression)
+    expect(result.state.graph.status).toBe('in_progress');
+  });
+
+  it('requirements_completed: requirements.status=completed and doc_path set', () => {
+    const state = makeStateWithRequirements('in_progress');
+    const docPath = '/tmp/requirements-doc.md';
+
+    const mutation = getMutation('requirements_completed')!;
+    const result = mutation(state, { doc_path: docPath }, DEFAULT_CONFIG, emptyTemplate);
+
+    const reqNode = result.state.graph.nodes['requirements'] as StepNodeState;
+    expect(reqNode.status).toBe('completed');
+    expect(reqNode.doc_path).toBe(docPath);
+    expect(result.mutations_applied.some((m) => m.includes('requirements') && m.includes('completed'))).toBe(true);
   });
 
   it('master_plan_completed: master_plan.status=completed and doc_path set', () => {

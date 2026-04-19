@@ -84,6 +84,7 @@ const mutationRegistry = new Map<string, MutationFn>();
 // ── Planning _started mutations ───────────────────────────────────────────────
 
 const planningStartedSteps: Array<[string, string]> = [
+  [EVENTS.REQUIREMENTS_STARTED, 'requirements'],
   [EVENTS.MASTER_PLAN_STARTED, 'master_plan'],
 ];
 
@@ -96,7 +97,7 @@ for (const [eventName, nodeId] of planningStartedSteps) {
     node.status = 'in_progress';
     mutations_applied.push(`set ${nodeId}.status = in_progress`);
 
-    if (eventName === EVENTS.MASTER_PLAN_STARTED) {
+    if (eventName === EVENTS.REQUIREMENTS_STARTED) {
       cloned.graph.status = 'in_progress';
       mutations_applied.push('set graph.status = in_progress');
     }
@@ -108,6 +109,7 @@ for (const [eventName, nodeId] of planningStartedSteps) {
 // ── Planning _completed mutations ─────────────────────────────────────────────
 
 const planningCompletedSteps: Array<[string, string]> = [
+  [EVENTS.REQUIREMENTS_COMPLETED, 'requirements'],
   [EVENTS.MASTER_PLAN_COMPLETED, 'master_plan'],
 ];
 

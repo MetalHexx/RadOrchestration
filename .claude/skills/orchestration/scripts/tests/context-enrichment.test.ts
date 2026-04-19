@@ -50,6 +50,34 @@ function stateWithNullSourceControl(): PipelineState {
   return state;
 }
 
+// ── Planning spawn actions (Iter 4: spawn_requirements added) ────────────────
+
+describe('enrichActionContext — planning spawn actions', () => {
+  it('spawn_requirements returns { step: "requirements" }', () => {
+    const state = createScaffoldedState();
+    const result = enrichActionContext({
+      action: 'spawn_requirements',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result).toEqual({ step: 'requirements' });
+  });
+
+  it('spawn_master_plan returns { step: "master_plan" }', () => {
+    const state = createScaffoldedState();
+    const result = enrichActionContext({
+      action: 'spawn_master_plan',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result).toEqual({ step: 'master_plan' });
+  });
+});
+
 // ── invoke_source_control_commit ──────────────────────────────────────────────
 
 describe('enrichActionContext — invoke_source_control_commit', () => {

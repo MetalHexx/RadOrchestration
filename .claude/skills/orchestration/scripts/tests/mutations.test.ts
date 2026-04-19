@@ -129,6 +129,8 @@ const baseTemplate: PipelineTemplate = {
 
 describe('getMutation — planning events', () => {
   const planningEvents = [
+    'requirements_started',
+    'requirements_completed',
     'master_plan_started',
     'master_plan_completed',
   ];
@@ -161,7 +163,28 @@ describe('getMutation — unknown events', () => {
   });
 });
 
-// ── master_plan_started (also sets graph.status) ─────────────────────────────
+// ── requirements_started (Iter 4: new first planning step; owns graph.status flip) ─
+
+describe('requirements_started mutation', () => {
+  it('sets requirements.status to in_progress', () => {
+    const state = makeState();
+    // makeState() fixture predates Iter 4 (no `requirements` node); inject one.
+    state.graph.nodes['requirements'] = { kind: 'step', status: 'not_started', doc_path: null, retries: 0 };
+    const mutation = getMutation('requirements_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.graph.nodes['requirements'].status).toBe('in_progress');
+  });
+
+  it('sets graph.status to in_progress', () => {
+    const state = makeState();
+    state.graph.nodes['requirements'] = { kind: 'step', status: 'not_started', doc_path: null, retries: 0 };
+    const mutation = getMutation('requirements_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.graph.status).toBe('in_progress');
+  });
+});
+
+// ── master_plan_started (Iter 4: no longer sets graph.status) ────────────────
 
 describe('master_plan_started mutation', () => {
   it('sets master_plan.status to in_progress', () => {
@@ -171,11 +194,13 @@ describe('master_plan_started mutation', () => {
     expect(result.state.graph.nodes['master_plan'].status).toBe('in_progress');
   });
 
-  it('sets graph.status to in_progress', () => {
+  it('does NOT set graph.status (relocated to requirements_started in Iter 4)', () => {
     const state = makeState();
     const mutation = getMutation('master_plan_started')!;
     const result = mutation(state, {}, baseConfig, baseTemplate);
-    expect(result.state.graph.status).toBe('in_progress');
+    // graph.status in the fixture starts as 'not_started'; master_plan_started no longer flips it
+    expect(result.state.graph.status).toBe('not_started');
+    expect(result.mutations_applied.some((m) => m.includes('graph.status'))).toBe(false);
   });
 
   it('does not mutate the original state', () => {

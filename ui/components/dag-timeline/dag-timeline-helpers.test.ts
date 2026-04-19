@@ -178,12 +178,13 @@ test("case-insensitive: lowercase -task- segment parses correctly", () => {
 
 console.log("\ngroupNodesBySection tests\n");
 
-test("all 11 NODE_SECTION_MAP keys produce 4 sections in correct order with correct counts", () => {
+test("all 12 NODE_SECTION_MAP keys produce 4 sections in correct order with correct counts", () => {
   const allNodes = {
     prd: stepNode,
     research: stepNode,
     design: stepNode,
     architecture: stepNode,
+    requirements: stepNode,
     master_plan: stepNode,
     plan_approval_gate: gateNode,
     gate_mode_selection: gateNode,
@@ -196,7 +197,7 @@ test("all 11 NODE_SECTION_MAP keys produce 4 sections in correct order with corr
   const result = groupNodesBySection(allNodes);
   assert.strictEqual(result.length, 4);
   assert.strictEqual(result[0].label, "Planning");
-  assert.strictEqual(result[0].entries.length, 5);
+  assert.strictEqual(result[0].entries.length, 6);
   assert.strictEqual(result[1].label, "Gates");
   assert.strictEqual(result[1].entries.length, 2);
   assert.strictEqual(result[2].label, "Execution");
@@ -220,6 +221,63 @@ test("only Planning keys returns single-element array with label Planning", () =
 test("unknown node IDs are silently excluded from all groups", () => {
   const result = groupNodesBySection({ unknown_step: stepNode, another_unknown: gateNode });
   assert.deepStrictEqual(result, []);
+});
+
+test("Iter 4: default.yml partial template (requirements + master_plan + plan_approval_gate) groups correctly — requirements before master_plan in Planning section", () => {
+  // Simulates a fresh project scaffolded from default.yml: 2 planning steps + 1 gate.
+  // groupNodesBySection preserves insertion order of the input NodesRecord within each section,
+  // and default.yml declares `requirements` before `master_plan`.
+  const result = groupNodesBySection({
+    requirements: stepNode,
+    master_plan: stepNode,
+    plan_approval_gate: gateNode,
+  });
+  assert.strictEqual(result.length, 2);
+  assert.strictEqual(result[0].label, "Planning");
+  assert.strictEqual(result[0].entries.length, 2);
+  assert.strictEqual(result[0].entries[0][0], "requirements");
+  assert.strictEqual(result[0].entries[1][0], "master_plan");
+  assert.strictEqual(result[1].label, "Gates");
+  assert.strictEqual(result[1].entries[0][0], "plan_approval_gate");
+});
+
+test("Iter 4: in_progress requirements node renders under Planning with in_progress status", () => {
+  const inProgressStep = { ...stepNode, status: "in_progress" as const };
+  const result = groupNodesBySection({
+    requirements: inProgressStep,
+    master_plan: stepNode,
+    plan_approval_gate: gateNode,
+  });
+  const planningSection = result.find((g) => g.label === "Planning")!;
+  const [reqId, reqNode] = planningSection.entries[0];
+  assert.strictEqual(reqId, "requirements");
+  assert.strictEqual(reqNode.status, "in_progress");
+});
+
+test("Iter 4: legacy full.yml state (no requirements node) still groups correctly — no crashes, no missing-key warnings", () => {
+  // A pre-Iter-4 state.json scaffolded from full.yml does NOT contain a `requirements` node.
+  // groupNodesBySection must render cleanly without the new node.
+  const legacyNodes = {
+    prd: stepNode,
+    research: stepNode,
+    design: stepNode,
+    architecture: stepNode,
+    master_plan: stepNode,
+    plan_approval_gate: gateNode,
+    gate_mode_selection: gateNode,
+    phase_loop: forEachPhaseNode,
+    final_review: stepNode,
+    pr_gate: gateNode,
+    final_approval_gate: gateNode,
+  };
+  const result = groupNodesBySection(legacyNodes);
+  assert.strictEqual(result.length, 4);
+  // Planning section: all 5 legacy steps, no `requirements` entry
+  const planningSection = result.find((g) => g.label === "Planning")!;
+  const planningIds = planningSection.entries.map(([id]) => id);
+  assert.strictEqual(planningSection.entries.length, 5);
+  assert.ok(!planningIds.includes("requirements"), "legacy state should not have requirements");
+  assert.ok(planningIds.includes("master_plan"), "legacy state must still have master_plan");
 });
 
 test("section order is Planning → Gates → Execution → Completion regardless of insertion order", () => {

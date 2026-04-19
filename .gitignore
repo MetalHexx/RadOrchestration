@@ -3,3 +3,6 @@ node_modules/
 .vscode/mcp.json
 
 .vscode/settings.json
+
+# Ephemeral test log artifacts — never commit
+*-tests.log

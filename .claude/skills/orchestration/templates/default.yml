@@ -1,0 +1,52 @@
+# Lean planning pipeline producing Requirements + Master Plan.
+# Execution-tier wiring (per-phase / per-task loops, code review, phase review,
+# final review, source control) lands in Iter 9.
+template:
+  id: default
+  version: "1.0.0"
+  description: "Lean planning pipeline — Requirements → Master Plan → Plan Approval Gate. Execution tier completes in Iter 9."
+
+# ── Display & Routing Fields ─────────────────────────────────────────────────
+# Informational field (not consumed by the v5 DAG engine at runtime):
+#
+#   label            - Human-readable display name for each node. The engine
+#                      uses the `id` field for node identity and routing.
+#
+# Consumed field (read by the v5 DAG engine at runtime):
+#
+#   action_if_needed - On gate nodes, specifies the action to dispatch when
+#                      the gate is active.
+# ─────────────────────────────────────────────────────────────────────────────
+
+nodes:
+
+  # ── Planning Steps ────────────────────────────────────────────────────────
+
+  - id: requirements
+    kind: step
+    label: "Requirements"
+    action: spawn_requirements
+    events: { started: requirements_started, completed: requirements_completed }
+    context: { step: requirements }
+    doc_output_field: doc_path
+    depends_on: []
+
+  - id: master_plan
+    kind: step
+    label: "Master Plan"
+    action: spawn_master_plan
+    events: { started: master_plan_started, completed: master_plan_completed }
+    context: { step: master_plan }
+    doc_output_field: doc_path
+    depends_on: [requirements]
+
+  # ── Plan Approval Gate ────────────────────────────────────────────────────
+
+  - id: plan_approval_gate
+    kind: gate
+    label: "Plan Approval Gate"
+    mode_ref: human_gates.after_planning
+    action_if_needed: request_plan_approval
+    approved_event: plan_approved
+    auto_approve_modes: []
+    depends_on: [master_plan]

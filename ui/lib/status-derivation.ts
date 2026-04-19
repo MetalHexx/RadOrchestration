@@ -3,9 +3,15 @@ import type { NodesRecord, GraphStatus, PlanningStatus, ExecutionStatus } from '
 
 /**
  * Derive a v4-compatible PlanningStatus from v5 graph root nodes.
+ * Only considers planning steps that exist in the state — a legacy project
+ * scaffolded from full.yml has no `requirements` node, and a new project from
+ * default.yml has no `research`/`prd`/`design`/`architecture`. A step that
+ * isn't scaffolded must not block overall planning completion.
  */
 export function derivePlanningStatus(nodes: NodesRecord): PlanningStatus {
-  const statuses = PLANNING_STEP_ORDER.map((key) => nodes[key]?.status ?? 'not_started');
+  const presentSteps = PLANNING_STEP_ORDER.filter((key) => nodes[key] !== undefined);
+  if (presentSteps.length === 0) return 'not_started';
+  const statuses = presentSteps.map((key) => nodes[key].status);
 
   if (statuses.every((s) => s === 'completed')) {
     return 'complete';

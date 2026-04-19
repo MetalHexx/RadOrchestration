@@ -91,6 +91,39 @@ test('returns not_started when a planning node has failed status (intentional fa
   assert.strictEqual(derivePlanningStatus(nodes), 'not_started');
 });
 
+// ─── Iter 4: default.yml partial templates + legacy-project regression ──────
+
+test('Iter 4: new-project nodes (requirements + master_plan completed) → complete', () => {
+  const nodes: NodesRecord = {
+    requirements: makeStepNode('completed'),
+    master_plan: makeStepNode('completed'),
+  };
+  assert.strictEqual(derivePlanningStatus(nodes), 'complete');
+});
+
+test('Iter 4: requirements in_progress → in_progress (status-transition check)', () => {
+  const nodes: NodesRecord = {
+    requirements: makeStepNode('in_progress'),
+    master_plan: makeStepNode('not_started'),
+  };
+  assert.strictEqual(derivePlanningStatus(nodes), 'in_progress');
+});
+
+test('Iter 4: requirements completed + master_plan in_progress → in_progress', () => {
+  const nodes: NodesRecord = {
+    requirements: makeStepNode('completed'),
+    master_plan: makeStepNode('in_progress'),
+  };
+  assert.strictEqual(derivePlanningStatus(nodes), 'in_progress');
+});
+
+test('Iter 4: legacy state.json without requirements (all 5 legacy planning completed) still → complete', () => {
+  // Pre-Iter-4 projects scaffolded from full.yml have no `requirements` node.
+  // The status derivation must NOT block completion just because `requirements` is absent.
+  const nodes = makePlanningNodes('completed');
+  assert.strictEqual(derivePlanningStatus(nodes), 'complete');
+});
+
 // ─── deriveExecutionStatus ───────────────────────────────────────────────────
 
 console.log('deriveExecutionStatus');

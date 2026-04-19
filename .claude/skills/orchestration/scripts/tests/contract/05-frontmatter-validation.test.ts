@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { processEvent } from '../../lib/engine.js';
+import { validateFrontmatter } from '../../lib/frontmatter-validators.js';
 import {
   createMockIOWithConfig,
   createConfig,
@@ -70,6 +71,42 @@ function driveToPhaseReview() {
   processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
   return io;
 }
+
+// ── Group 0 (Iter 4): requirement_count (requirements_completed) ─────────────
+// Direct validator tests — requirements_completed is not yet routable through
+// processEvent (full.yml has no requirements node in its eventIndex). Iter 9
+// completes default.yml. Until then, exercise validateFrontmatter directly.
+
+describe('[CONTRACT] Frontmatter — requirement_count (requirements_completed)', () => {
+  const docPath = '/tmp/REQ-TEST/REQ-TEST-REQUIREMENTS.md';
+
+  it('valid positive integer passes', () => {
+    const err = validateFrontmatter('requirements_completed', { requirement_count: 3 }, docPath);
+    expect(err).toBeNull();
+  });
+
+  it('missing requirement_count → error', () => {
+    const err = validateFrontmatter('requirements_completed', {}, docPath);
+    expect(err).not.toBeNull();
+    expect(err?.error).toBe('Missing required field');
+    expect(err?.field).toBe('requirement_count');
+    expect(err?.event).toBe('requirements_completed');
+  });
+
+  it('requirement_count: 0 → invalid (positive-integer means > 0)', () => {
+    const err = validateFrontmatter('requirements_completed', { requirement_count: 0 }, docPath);
+    expect(err).not.toBeNull();
+    expect(err?.error).toBe('Invalid value: requirement_count must be a positive integer');
+    expect(err?.field).toBe('requirement_count');
+  });
+
+  it("requirement_count: 'three' → invalid (not a number)", () => {
+    const err = validateFrontmatter('requirements_completed', { requirement_count: 'three' }, docPath);
+    expect(err).not.toBeNull();
+    expect(err?.error).toBe('Invalid value: requirement_count must be a positive integer');
+    expect(err?.field).toBe('requirement_count');
+  });
+});
 
 // ── Group 1: tasks (phase_plan_created) ──────────────────────────────────────
 
