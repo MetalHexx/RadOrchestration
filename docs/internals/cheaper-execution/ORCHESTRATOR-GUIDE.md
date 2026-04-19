@@ -112,8 +112,14 @@ The plan should cover, in whatever structure reads well:
 > 8. Update `docs/internals/CHEAPER-EXECUTION-REFACTOR-PROGRESS.md`: append a Progression Log entry (3–5 lines, high-signal, link commits and PR), append a Deviation entry if execution diverged from this plan, update the "Status at a Glance" and "Branches & Worktrees" tables.
 > 9. DO NOT edit `docs/internals/CHEAPER-EXECUTION-REFACTOR.md`. All divergence lives in the progress tracker.
 > 10. Push the iteration branch to origin and open a PR from `feat/iter-N-<slug>` → `feat/cheaper-execution`. Do NOT merge locally. PR body summarizes what landed and links the progression log entry.
+> 11. Enter the automated PR-review cycle (Copilot reviewer):
+>     - **Wait for Copilot's first pass.** When Copilot is mid-review the "re-request review" recycle button is absent on the PR; that button reappearing is the signal the pass is done. Use `/loop 5m` to poll the PR every 5 minutes — skip iterations where the recycle button isn't yet visible.
+>     - **Read comments via the `/source-control` skill.** Do NOT trust Copilot's comments at face value. For each comment, read the surrounding code, understand the problem deeply, and consider downstream effects of any proposed fix.
+>     - **Stay in scope of the plan.** If a comment requests something out of scope or too complex / risky to address in this iteration, DO NOT fix it. Log it in the progress tracker's "Open Items Surfaced During Execution" section with a one-line context, then resolve the comment in the PR thread with a brief explanation pointing at the log entry.
+>     - **For each comment you act on**: dispatch subagents — baseline tests first (capture a fresh log), then a `coder` to write the change, then a `reviewer` to review the diff. Respond to the PR comment explaining the resolution, then resolve the comment.
+>     - **Re-request Copilot's review** (recycle button) after each batch of fixes. Loop until either (a) Copilot's latest pass returns clean, OR (b) remaining comments are noise / out-of-scope (all logged), OR (c) you've completed 5 cycles. Past 5 cycles, only continue if Copilot is still surfacing genuinely useful suggestions.
 >
-> Exit when the PR URL is posted and the progress tracker is updated. Leave the worktree in place for the user to verify, merge, and clean up.
+> Exit when the PR is in a clean state (or remaining comments have been triaged into the progress log) AND the progress tracker is updated. Leave the worktree in place for the user to verify, merge, and clean up.
 
 ## Step 7 — Exit plan mode, launch the worktree
 
