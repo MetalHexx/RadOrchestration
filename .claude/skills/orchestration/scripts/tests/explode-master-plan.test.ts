@@ -11,11 +11,9 @@ import {
   phaseFilename,
   taskFilename,
 } from '../lib/explode-master-plan.js';
-import { getMutation } from '../lib/mutations.js';
 import { writeState, readState } from '../lib/state-io.js';
 import type {
   PipelineState,
-  StepNodeState,
   ForEachPhaseNodeState,
 } from '../lib/types.js';
 
@@ -162,6 +160,30 @@ describe('parseMasterPlan — parser cases', () => {
     expect(parsed.phases[1]!.tasks[1]!.id).toBe('P02-T02');
   });
 
+  // Regression: task-less phase followed by another phase must preserve its body.
+  // Previously, the parse loop pre-captured body + wiped currentBodyLines before
+  // flushPhase() ran, causing flushPhase() to overwrite the captured body with
+  // an empty string when it re-evaluated tasks.length === 0. See lib/explode-master-plan.ts.
+  it('task-less phase followed by another phase preserves its body content', () => {
+    const body = [
+      '## P01: Empty Phase',
+      '',
+      'Phase prose here.',
+      '',
+      '## P02: Second Phase',
+      '',
+      '### P02-T01: First',
+      '',
+      'Body.',
+    ].join('\n');
+    const fpath = writeTempMasterPlan(body);
+    const parsed = parseMasterPlan(fpath);
+    expect(parsed.phases).toHaveLength(2);
+    expect(parsed.phases[0]!.tasks).toHaveLength(0);
+    // The key assertion: task-less phase body must be preserved, not wiped.
+    expect(parsed.phases[0]!.body.trim()).toBe('Phase prose here.');
+  });
+
   it('round-trip identity: parse → explode → re-parse emitted phase plans preserves task ids and counts', () => {
     const projectName = 'ROUNDTRIP';
     const parsed1 = parseMasterPlan(WELL_FORMED);
@@ -283,64 +305,10 @@ describe('explodeMasterPlan — re-run integration', () => {
 });
 
 // ── Recovery loop integration ─────────────────────────────────────────────────
-
-describe('explosion recovery loop — mutation integration', () => {
-  it('explosion_failed mutation on a fresh state stores parse_error and increments parse_retry_count to 1', () => {
-    const state = makeMinimalStateForExplosion('FIX');
-    const parseError = { line: 10, expected: 'phase heading', found: '## Bad', message: 'malformed' };
-    const mutation = getMutation('explosion_failed')!;
-    const result = mutation(state, { parse_error: parseError }, {} as any, { template: { id: 't', version: '1', description: '' }, nodes: [] });
-
-    const mp = result.state.graph.nodes['master_plan'] as StepNodeState;
-    expect(mp.parse_retry_count).toBe(1);
-    expect(mp.last_parse_error).toEqual(parseError);
-    expect(mp.status).toBe('in_progress');
-
-    const ex = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
-    expect(ex.status).toBe('not_started');
-
-    expect(result.state.graph.status).not.toBe('halted');
-  });
-
-  it('explosion_failed → then explosion_completed: recovery state fully cleared', () => {
-    let state = makeMinimalStateForExplosion('RECOVER');
-    const parseError = { line: 5, expected: 'x', found: 'y', message: 'bad' };
-    const failMutation = getMutation('explosion_failed')!;
-    state = failMutation(state, { parse_error: parseError }, {} as any, { template: { id: 't', version: '1', description: '' }, nodes: [] }).state;
-
-    // Now success.
-    const completeMutation = getMutation('explosion_completed')!;
-    const result = completeMutation(state, { doc_path: '/tmp/master-plan.md' }, {} as any, { template: { id: 't', version: '1', description: '' }, nodes: [] });
-
-    const mp = result.state.graph.nodes['master_plan'] as StepNodeState;
-    expect(mp.last_parse_error).toBeNull();
-    expect(mp.parse_retry_count).toBe(0);
-
-    const ex = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
-    expect(ex.status).toBe('completed');
-    expect(ex.doc_path).toBe('/tmp/master-plan.md');
-  });
-
-  it('4 consecutive explosion_failed events: 4th exceeds cap=3 → graph.status=halted, explode_master_plan.status=failed, halt_reason populated', () => {
-    let state = makeMinimalStateForExplosion('CAP');
-    const parseError = { line: 1, expected: 'x', found: 'y', message: 'still broken' };
-    const mutation = getMutation('explosion_failed')!;
-    const emptyTpl = { template: { id: 't', version: '1', description: '' }, nodes: [] };
-
-    for (let i = 0; i < 4; i++) {
-      state = mutation(state, { parse_error: parseError }, {} as any, emptyTpl).state;
-    }
-
-    const mp = state.graph.nodes['master_plan'] as StepNodeState;
-    expect(mp.parse_retry_count).toBe(4);
-
-    const ex = state.graph.nodes['explode_master_plan'] as StepNodeState;
-    expect(ex.status).toBe('failed');
-
-    expect(state.graph.status).toBe('halted');
-    expect(state.pipeline.halt_reason).toContain('cap=3');
-  });
-});
+// Explosion mutation contract tests (explosion_completed / explosion_failed 1st /
+// explosion_failed 4th-cap-exceeded) live in tests/contract/06-state-mutations.test.ts
+// per the Iter 5 plan directive. They use the shared `makeStateWithExplosion`
+// factory and standard contract-test style (DEFAULT_CONFIG, emptyTemplate).
 
 // ── Filename helpers ──────────────────────────────────────────────────────────
 

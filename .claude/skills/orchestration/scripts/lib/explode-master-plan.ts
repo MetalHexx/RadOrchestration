@@ -154,12 +154,9 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
         });
       }
       if (currentPhase !== null) {
-        // Before opening the new phase, capture the current phase body if no tasks yet,
-        // then close the current phase.
-        if (currentPhase.tasks.length === 0) {
-          currentPhase.body = currentBodyLines.join('\n').trimEnd();
-          currentBodyLines = [];
-        }
+        // Close the current phase. flushPhase() is the single owner of body
+        // capture — it handles both task-bearing and task-less phases correctly
+        // using the still-populated currentBodyLines.
         flushPhase();
       } else {
         // First phase — the lines accumulated so far are the preamble.
