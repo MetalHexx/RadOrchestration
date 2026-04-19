@@ -33,8 +33,8 @@ These are the exact event names passed to `--event`:
 | Event | Flags (besides `--event` and `--project-dir`) | When to Signal |
 |-------|-----------------------------------------------|----------------|
 | `start` | *(none)* | First call (new project), cold start, or context compaction recovery |
-| `master_plan_started` | *(none)* | Before Tactical Planner spawn (master plan). Transitions `graph.nodes.master_plan.status` to `in_progress`. See action #1 two-step protocol. |
-| `master_plan_completed` | `--doc-path <path>` | After Tactical Planner finishes (master plan) |
+| `master_plan_started` | *(none)* | Before Planner spawn (master plan). Transitions `graph.nodes.master_plan.status` to `in_progress`. See action #1 two-step protocol. |
+| `master_plan_completed` | `--doc-path <path>` | After Planner finishes (master plan) |
 | `plan_approved` | *(none)* | After human approves master plan |
 | `plan_rejected` | *(none)* | After human rejects master plan |
 | `source_control_init` | `--branch <name> --base-branch <name> --worktree-path <path> --auto-commit <always\|never> --auto-pr <always\|never> [--remote-url <url>] [--compare-url <url>]` | After `rad-execute-parallel` creates the worktree. One-time initialization that persists source control context to `pipeline.source_control` in state. Remote and compare URLs are optional; omitted or empty values are stored as `null`. |
