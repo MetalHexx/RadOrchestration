@@ -43,6 +43,12 @@ The `@planner` router already has a `create_requirements` row from Iter 1 — it
 - **UI tests**:
   - Add a fixture test rendering a scratch state.json with `requirements` node present; assert it groups under Planning and renders status correctly.
   - Add a status-transition test covering `requirements_started` → `requirements_completed` event flow's UI reflection.
+- **Manual browser smoke (REQUIRED, not optional)**: once the UI changes have landed, the inner session must build and run the UI (`cd ui && npm run build && npm run dev`), open the dev server in a browser, and visually verify:
+  1. A scratch / fixture project carrying a `requirements` node renders it in the DAG timeline grouped under "Planning," ordered before `master_plan`.
+  2. Status transitions render correctly across `not_started → in_progress → completed`.
+  3. A pre-existing legacy completed project (any state.json without a `requirements` node) still renders cleanly — no missing-node warnings, no layout regressions.
+  4. No new console errors or warnings vs. the baseline.
+  Capture a screenshot or short note of the verified state in the iteration's commit / PR description. The UI-test fixture coverage is necessary but not sufficient; this manual smoke is what catches rendering regressions that pass typecheck + unit tests.
 
 ## Code Surface
 
@@ -84,6 +90,7 @@ The `@planner` router already has a `create_requirements` row from Iter 1 — it
 - `@planner` with `spawn_requirements` dispatch writes `{NAME}-REQUIREMENTS.md` to the project dir with valid frontmatter.
 - Scratch project drives `requirements` → `master_plan` → `plan_approval_gate` end-to-end under `default.yml`.
 - UI renders the new `requirements` node in the "Planning" section alongside `master_plan`.
+- **Manual browser smoke completed**: UI built + dev server run; new requirements node verified visually in a fresh project; legacy state.json verified to still render without regressions; PR description records the verification (screenshot or terse note).
 - Brainstorm skill memory refs point at Requirements + Master Plan, not the legacy five-doc set.
 
 ## Open Questions
