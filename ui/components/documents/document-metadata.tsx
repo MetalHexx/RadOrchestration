@@ -48,7 +48,7 @@ export function stringifyFrontmatterItem(item: unknown): string {
   return String(item);
 }
 
-function formatValue(
+export function formatValue(
   key: string,
   value: unknown
 ): { text?: string; items?: string[]; className?: string } {

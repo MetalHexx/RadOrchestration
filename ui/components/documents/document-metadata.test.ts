@@ -8,7 +8,7 @@
  * tasks: [{ id, title }, ...]).
  */
 import assert from "node:assert";
-import { stringifyFrontmatterItem } from "./document-metadata";
+import { stringifyFrontmatterItem, formatValue } from "./document-metadata";
 
 let passed = 0;
 let failed = 0;
@@ -66,6 +66,55 @@ test("stringifyFrontmatterItem object skips null/undefined values", () => {
 
 test("stringifyFrontmatterItem empty object returns empty string", () => {
   assert.strictEqual(stringifyFrontmatterItem({}), "");
+});
+
+// ─── formatValue — Array / Object branches (regression: Iter 5 phase plans) ──
+
+test("formatValue with array of objects returns { items: [...] } (regression: tasks frontmatter)", () => {
+  // Regression: phase-plan frontmatter `tasks: [{id, title}, ...]` was rendered
+  // as `[object Object],[object Object]` because formatValue used String() directly.
+  const result = formatValue("tasks", [
+    { id: "T01", title: "Scaffold" },
+    { id: "T02", title: "Wire up" },
+  ]);
+  assert.deepStrictEqual(result.items, [
+    "id: T01, title: Scaffold",
+    "id: T02, title: Wire up",
+  ]);
+  assert.strictEqual(result.text, undefined);
+});
+
+test("formatValue with array of primitives returns { items: [...] }", () => {
+  const result = formatValue("requirement_tags", ["FR-1", "FR-2"]);
+  assert.deepStrictEqual(result.items, ["FR-1", "FR-2"]);
+});
+
+test("formatValue with empty array returns { items: [] }", () => {
+  const result = formatValue("tasks", []);
+  assert.deepStrictEqual(result.items, []);
+});
+
+test("formatValue with plain object returns { text } (key: value pairs)", () => {
+  const result = formatValue("meta", { a: 1, b: "x" });
+  assert.strictEqual(result.text, "a: 1, b: x");
+  assert.strictEqual(result.items, undefined);
+});
+
+test("formatValue with primitive string returns { text }", () => {
+  const result = formatValue("project", "ITER5-E2E-SMOKE");
+  assert.strictEqual(result.text, "ITER5-E2E-SMOKE");
+  assert.strictEqual(result.items, undefined);
+});
+
+test("formatValue status value carries className for color", () => {
+  const result = formatValue("status", "failed");
+  assert.strictEqual(result.text, "failed");
+  assert.ok(result.className?.includes("red"), `expected red className, got ${result.className}`);
+});
+
+test("formatValue date key formats a valid ISO date", () => {
+  const result = formatValue("created", "2026-04-19T00:00:00.000Z");
+  assert.ok(result.text && result.text !== "2026-04-19T00:00:00.000Z", "date should be formatted");
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

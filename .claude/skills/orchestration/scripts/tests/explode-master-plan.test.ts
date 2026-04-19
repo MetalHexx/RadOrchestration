@@ -232,7 +232,7 @@ describe('parseMasterPlan — parser cases', () => {
     // inline one already present in the body) must be gone. We allow inline "Requirements:"
     // text from the master plan body itself, but not a standalone trailing line.
     const trailingReqLines = body.match(/^\*\*Requirements\*\*:.*$/gm) ?? [];
-    expect(trailingReqLines.length).toBeLessThanOrEqual(0);
+    expect(trailingReqLines.length).toBe(0);
   });
 
   it('emitted phase doc body is the master-plan section verbatim, no "Phase Objective" wrapper', () => {
