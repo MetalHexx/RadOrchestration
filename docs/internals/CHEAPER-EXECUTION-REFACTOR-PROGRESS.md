@@ -62,7 +62,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 1 | Document formats (Requirements + Execution Plan) | Complete | 2026-04-17 | 2026-04-17 |
 | 2 | Rename Execution Plan → Master Plan | Complete | 2026-04-18 | 2026-04-18 |
 | 3 | Remove upstream planning (PRD/Research/Design/Architecture) | Complete | 2026-04-18 | 2026-04-18 |
-| 4 | Requirements pipeline node | Not started | — | — |
+| 4 | Requirements pipeline node | Awaiting merge | 2026-04-18 | 2026-04-18 |
 | 5 | Explosion script + state.json pre-seeding | Not started | — | — |
 | 6 | Prompt regression harness | Not started | — | — |
 | 7 | Remove per-phase/per-task planning | Not started | — | — |
@@ -74,7 +74,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 13 | Rad-plan-audit overhaul | Not started | — | — |
 | 14 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 4 / 15 iterations complete. Design realigned 2026-04-18 for gutting-first approach.
+**Overall**: 5 / 15 iterations complete. Design realigned 2026-04-18 for gutting-first approach.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -95,7 +95,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 1 | `feat/iter-1-doc-formats` | `C:\dev\orchestration\v3-worktrees\feat-iter-1-doc-formats` | Merged | `08bf2ff` | #51 |
 | 2 | `feat/iter-2-rename-to-master-plan` | `C:\dev\orchestration\v3-worktrees\feat-iter-2-rename-to-master-plan` | Awaiting merge | — | [#53](https://github.com/MetalHexx/RadOrchestation/pull/53) |
 | 3 | `feat/iter-3-remove-upstream-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning` | Awaiting merge | — | [#54](https://github.com/MetalHexx/RadOrchestation/pull/54) |
-| 4 | — | — | Not created | — | — |
+| 4 | `feat/iter-4-requirements-pipeline-node` | `C:\dev\orchestration\v3-worktrees\feat-iter-4-requirements-pipeline-node` | Awaiting merge | — | *(pending push)* |
 | 5 | — | — | Not created | — | — |
 | 6 | — | — | Not created | — | — |
 | 7 | — | — | Not created | — | — |
@@ -230,6 +230,20 @@ Format:
 - `action-event-reference.md` row 5 retargeted: `tactical-planner` → `planner`; `spawn_master_plan` wired. Dead `spawn_master_plan` row stripped from `tactical-planner.md`. Vocabulary purge across 6 internal skill docs.
 - Commits: `69599ec` (main), `04dffa5` (corrective). PR: [#53](https://github.com/MetalHexx/RadOrchestation/pull/53).
 
+### 2026-04-18 — Iteration 4 — Requirements pipeline node + partial `default.yml`
+
+- Branch: `feat/iter-4-requirements-pipeline-node` off `feat/cheaper-execution` @ `6649841` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-4-requirements-pipeline-node`). Flat naming, consistent with iter-0/1/2/3.
+- Engine surface: added `SPAWN_REQUIREMENTS` to `NEXT_ACTIONS` and `REQUIREMENTS_STARTED` / `REQUIREMENTS_COMPLETED` to `EVENTS` in `constants.ts`. `planningStartedSteps` / `planningCompletedSteps` in `mutations.ts` prepend `requirements` entries. `PLANNING_SPAWN_STEPS` in `context-enrichment.ts` gains `spawn_requirements: 'requirements'`. New `requirements_completed` validator rule in `frontmatter-validators.ts` requires `requirement_count` as positive integer.
+- `graph.status = 'in_progress'` hook relocated: `MASTER_PLAN_STARTED` → `REQUIREMENTS_STARTED` (mechanical, matches Iter 3's prior `RESEARCH_STARTED` → `MASTER_PLAN_STARTED` move). `master_plan_started` no longer logs the flip.
+- New template: `.claude/skills/orchestration/templates/default.yml` — 3 partial nodes (`requirements` → `master_plan` → `plan_approval_gate`). Loads cleanly via `loadTemplate` (which filters the misnamed `unreachable_node` warning on the terminal gate). Template-validator test asserts loader success + node id order. Execution-tier wiring (phase_loop, task_loop, reviews) lands in Iter 9.
+- Agent routing: `planner.md` router row renamed `create_requirements` → `spawn_requirements` (the 1-route-per-action convention re-established by Iter 3).
+- UI surface: added `requirements` to `PlanningStepName` union + `PLANNING_STEP_ORDER` array in `ui/types/state.ts`; added `requirements: 'Planning'` to `NODE_SECTION_MAP` in `dag-timeline-helpers.ts`. Three `Record<PlanningStepName, string>` consumers (`document-ordering.ts` STEP_TITLES × 2, `planning-checklist.tsx` STEP_DISPLAY_NAMES) gained the new entry as a TypeScript exhaustiveness consequence. `derivePlanningStatus` updated to filter absent planning steps so a legacy state.json missing `requirements` still derives as `complete` (see Deviations).
+- Brainstorm skill ripple: `project-memory.md`, `BRAINSTORMING.md` template, and `project-series.md` replace legacy 5-doc canonical set (PRD / Research / Architecture) with Requirements + Master Plan pair. Zero `PRD.md` / `RESEARCH-FINDINGS.md` / `ARCHITECTURE.md` refs left in `.claude/skills/brainstorm/`.
+- Reference docs: `action-event-reference.md` gains row 1 for `spawn_requirements`; downstream action rows renumbered 2→18. Event table gains `requirements_started` / `requirements_completed` rows documenting the `graph.status` relocation. `pipeline-guide.md` needed no change (generic requirements example was already in place).
+- Tests: +15 new vitest cases across `constants.test.ts`, `static-compliance.test.ts`, `contract/05-frontmatter-validation.test.ts`, `contract/06-state-mutations.test.ts`, `mutations.test.ts`, `mutations-negative-path.test.ts`, `context-enrichment.test.ts`, `template-validator.test.ts`. +7 UI node-test cases across `dag-timeline-helpers.test.ts` and `status-derivation.test.ts` (status/ordering + status-transition + legacy-project regression). Suite totals: orchestration 46 files / 1170 pass / 1 todo (baseline 1154); UI 152 pass / 3 fail (baseline unchanged — 3 pre-existing failures); installer 399 pass / 0 fail.
+- Corrective commit: `plan_rejected` mutation guarded against missing `phase_loop` (see Deviations — surfaced by code-quality review pass).
+- Commits: `8c95b96` (main), `4c07f3e` (corrective). PR: pending push.
+
 ### 2026-04-18 — Iteration 3 — Remove upstream planning (PRD / Research / Design / Architecture)
 
 - Branch: `feat/iter-3-remove-upstream-planning` off `feat/cheaper-execution` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning`).
@@ -260,6 +274,27 @@ Format:
 - **Execution did**: The `graph.status = 'in_progress'` hook moved from `RESEARCH_STARTED` to `MASTER_PLAN_STARTED`, because `master_plan` is now the first planning step.
 - **Why**: Behavior-preserving mechanical consequence — without the move, no event would ever set `graph.status` to `in_progress` after the planning tier starts.
 - **Impact**: Covered by updated test in `contract/06-state-mutations.test.ts`.
+
+### 2026-04-18 — Iteration 4 — `plan_rejected` guarded against missing `phase_loop`
+
+- **Plan said**: Scope deliberately left phase/task loop nodes for Iter 9. The plan's list of critical files did not include `plan_rejected` mutation edits.
+- **Execution did**: Added an existence guard before touching `phase_loop` in the `plan_rejected` mutation handler (`mutations.ts`). Previously the handler unconditionally asserted `phase_loop.kind === 'for_each_phase'` and would throw on any `default.yml`-scaffolded project — crashing on a legitimate user "reject" action. Added a regression test that mimics a default.yml state (deletes `phase_loop` from the fixture) and confirms the mutation runs cleanly.
+- **Why**: Iter 4's goal is "a fresh project on default.yml walks planning end-to-end." plan_rejected is a valid exit from that walk. Code-quality review surfaced the latent crash before PR.
+- **Impact**: 2-line change in mutations.ts + 1 new test. No behavioural change for full.yml / quick.yml projects (phase_loop still gets reset).
+
+### 2026-04-18 — Iteration 4 — Exhaustiveness ripples on `PlanningStepName` widening
+
+- **Plan said**: Step 7 noted that `document-ordering.ts` and `status-derivation.ts` "pick up the new entry automatically once the array is updated. No edits to those two files."
+- **Execution did**: Three files were touched as required exhaustiveness ripples when `PlanningStepName` gained `requirements`: `ui/lib/document-ordering.ts` (STEP_TITLES + STEP_TITLES_V5 records), `ui/components/planning/planning-checklist.tsx` (STEP_DISPLAY_NAMES record), and a semantic fix in `ui/lib/status-derivation.ts`. Each `Record<PlanningStepName, string>` consumer requires every union member as a TypeScript compile-time constraint. The `status-derivation.ts` edit is semantic (filter absent planning steps) to prevent a legacy-project regression: a pre-Iter-4 state.json scaffolded from full.yml has no `requirements` node, and the original "every step completed" check would treat the absent node as `not_started` and never derive `complete`.
+- **Why**: Plan assumed the consumers only depended on the array iteration. They also depend on the union's exhaustiveness. Legacy-project regression was caught by a new UI test targeting that scenario.
+- **Impact**: Three minor file edits (one-line additions to two records, one-line addition to a third, filter guard in status-derivation) plus four UI tests covering the legacy state.json case. Type surface stays clean.
+
+### 2026-04-18 — Iteration 4 — Partial `default.yml` validates via loader, not `validateTemplate`
+
+- **Plan said**: "Validator confirms partial templates pass — a 3-node `step → step → gate` is legal. No `template-validator.ts` changes needed."
+- **Execution did**: No change to `template-validator.ts`. The template-validator's `unreachable_node` check actually rejects any node that has `depends_on` and is not referenced by any sibling — which catches legitimate terminal leaves like `plan_approval_gate`. But `template-loader.ts` already filters `unreachable_node` errors with an explanatory comment ("in practice, terminal steps in each scope are valid leaf nodes"). The new `template-validator.test.ts` test for `default.yml` uses `loadTemplate` (engine's actual call path) and separately asserts `validateTemplate`'s hard-error list excludes `unreachable_node`.
+- **Why**: Plan assumed the validator would pass `step → step → gate` outright. It doesn't — but the engine tolerates the warning at load time, so the partial template loads and runs correctly anyway. No change to production behaviour, only to how the Iter 4 regression test is written.
+- **Impact**: Test phrasing differs slightly from the plan's sketch. Engine behaviour is unchanged.
 
 ### 2026-04-17 — Iteration 1 — Commit step omitted from Execution Plan tasks
 
