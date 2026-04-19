@@ -272,7 +272,6 @@ async function main() {
     // Self-test passes when exactly the expected errors surface (masterPlanPath=null, so no
     // companion doc is loaded). Expected: wrong-type, total_phases mismatch, total_tasks mismatch,
     // P01 missing description, P02 missing description, P02-T01 missing description (6 total).
-    console.log('Note: referential integrity check skipped in self-test mode (no companion requirements doc).');
     const expected = result.errors.length === 6;
     process.exit(expected ? 0 : 1);
   }

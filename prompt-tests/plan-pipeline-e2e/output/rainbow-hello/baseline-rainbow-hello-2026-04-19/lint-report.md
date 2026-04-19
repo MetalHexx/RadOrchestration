@@ -5,17 +5,17 @@
 ## Requirements doc lint
 
 ```
-lint-requirements: <run-folder>/baseline-rainbow-hello-2026-04-19-REQUIREMENTS.md
+lint-requirements: C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness\prompt-tests\plan-pipeline-e2e\output\rainbow-hello\baseline-rainbow-hello-2026-04-19\baseline-rainbow-hello-2026-04-19-REQUIREMENTS.md
   blocks: 8  errors: 0  warnings: 0
-{"linter":"lint-requirements","ok":true,"errors":[],"warnings":[],"blockCount":8}
+{"linter":"lint-requirements","source":"C:\\dev\\orchestration\\v3-worktrees\\feat-iter-6-prompt-harness\\prompt-tests\\plan-pipeline-e2e\\output\\rainbow-hello\\baseline-rainbow-hello-2026-04-19\\baseline-rainbow-hello-2026-04-19-REQUIREMENTS.md","ok":true,"errors":[],"warnings":[],"blockCount":8}
 ```
 
 ## Master Plan lint (with referential integrity against companion Requirements doc)
 
 ```
-lint-master-plan: <run-folder>/baseline-rainbow-hello-2026-04-19-MASTER-PLAN.md
+lint-master-plan: C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness\prompt-tests\plan-pipeline-e2e\output\rainbow-hello\baseline-rainbow-hello-2026-04-19\baseline-rainbow-hello-2026-04-19-MASTER-PLAN.md
   phases: 3  tasks: 6  errors: 0  warnings: 0
-{"linter":"lint-master-plan","ok":true,"errors":[],"warnings":[],"phaseCount":3,"taskCount":6}
+{"linter":"lint-master-plan","source":"C:\\dev\\orchestration\\v3-worktrees\\feat-iter-6-prompt-harness\\prompt-tests\\plan-pipeline-e2e\\output\\rainbow-hello\\baseline-rainbow-hello-2026-04-19\\baseline-rainbow-hello-2026-04-19-MASTER-PLAN.md","ok":true,"errors":[],"warnings":[],"phaseCount":3,"taskCount":6}
 ```
 
 ## Self-test: lint-requirements
@@ -31,6 +31,7 @@ lint-requirements: <self-test>
   ERROR  frontmatter.requirement_count (5) != actual block count (3)
   ERROR  FR-1: duplicate ID
   ERROR  FR-2: gap in ID sequence (missing)
+{"linter":"lint-requirements","source":"<self-test>","ok":false,"errors":["frontmatter: expected `type: requirements`, got `not_requirements`","FR-1: missing body description sentence under heading","FR-3: missing body description sentence under heading","frontmatter.requirement_count (5) != actual block count (3)","FR-1: duplicate ID","FR-2: gap in ID sequence (missing)"],"warnings":[],"blockCount":3}
 ```
 
 ## Self-test: lint-master-plan
@@ -47,5 +48,5 @@ lint-master-plan: <self-test>
   ERROR  P02: missing phase description sentence under heading
   ERROR  P02-T01: missing task description sentence under heading
   WARN   companion requirements doc not found alongside master plan; skipping referential integrity check
-Note: referential integrity check skipped in self-test mode (no companion requirements doc).
+{"linter":"lint-master-plan","source":"<self-test>","ok":false,"errors":["frontmatter: expected `type: master_plan`, got `not_master_plan`","frontmatter.total_phases (3) != actual phase count (2)","frontmatter.total_tasks (5) != actual task count (2)","P01: missing phase description sentence under heading","P02: missing phase description sentence under heading","P02-T01: missing task description sentence under heading"],"warnings":["companion requirements doc not found alongside master plan; skipping referential integrity check"],"phaseCount":2,"taskCount":2}
 ```
