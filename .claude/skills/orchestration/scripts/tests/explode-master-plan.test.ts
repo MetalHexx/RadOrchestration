@@ -25,6 +25,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_DIR = path.join(__dirname, 'fixtures', 'master-plans');
 const WELL_FORMED = path.join(FIXTURE_DIR, 'well-formed.md');
 const MALFORMED = path.join(FIXTURE_DIR, 'malformed.md');
+const WITH_FRONTMATTER_MALFORMED = path.join(FIXTURE_DIR, 'with-frontmatter-malformed.md');
 
 // ── Temp dir helpers ──────────────────────────────────────────────────────────
 
@@ -255,6 +256,27 @@ describe('parseMasterPlan — parser cases', () => {
     expect(body).not.toContain('## Phase Objective');
     // Tasks enumeration still lands.
     expect(body).toContain('## Tasks');
+  });
+
+  // Regression: ParseError.line must be FILE-ABSOLUTE, not body-relative.
+  // `readDocument` strips the YAML frontmatter block before the parser sees the body; real
+  // Master Plans carry ~8-14 lines of frontmatter. If the parser reports body-relative lines,
+  // the recovery-loop guidance misleads the planner ("fix line 3" points at the wrong place
+  // once the frontmatter is considered). The fixture has a 9-line frontmatter block and a
+  // malformed `## P1:` heading on file-line 13 (= body-line 4).
+  it('ParseError.line is file-absolute (accounts for YAML frontmatter offset), not body-relative', () => {
+    let caught: ParseError | null = null;
+    try {
+      parseMasterPlan(WITH_FRONTMATTER_MALFORMED);
+    } catch (err) {
+      caught = err as ParseError;
+    }
+    expect(caught).not.toBeNull();
+    // File-absolute line: the malformed `## P1:` heading is on file-line 13 of
+    // the fixture. Body-relative would be 4 — that's the bug we're guarding against.
+    expect(caught!.line).toBe(13);
+    expect(caught!.found).toContain('P1:');
+    expect(caught!.expected).toContain('P{NN}');
   });
 
   it('task heading before any phase heading throws ParseError with "before any phase heading" message', () => {

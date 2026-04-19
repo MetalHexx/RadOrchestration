@@ -313,7 +313,11 @@ test("Iter 5: pre-seeded iterations — phase_loop node with explode_master_plan
       { index: 1, status: "not_started" as const, nodes: { phase_planning: { kind: "step" as const, status: "completed" as const, doc_path: "phases/MYAPP-PHASE-02-CORE.md", retries: 0 } }, corrective_tasks: [], commit_hash: null },
     ],
   };
-  const completedExplode = { ...stepNode, status: "completed" as const, doc_path: "MYAPP-MASTER-PLAN.md" };
+  // Iter 5 mutation intentionally keeps explode_master_plan.doc_path null to avoid a spurious
+  // Doc link in the UI — the "document" for this step is the child phase-plan files, not a
+  // Master Plan copy. Fixture mirrors that semantic so any regression that sets doc_path on
+  // the completed explode node will be caught here rather than masked by drift.
+  const completedExplode = { ...stepNode, status: "completed" as const, doc_path: null };
   const result = groupNodesBySection({
     requirements: stepNode,
     master_plan: stepNode,

@@ -30,11 +30,23 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 /**
- * Render a frontmatter value for display. Returns either a plain text string
- * (simple primitives) or a string[] bulleted list (arrays / objects). The
- * naive previous implementation used `String(value)` unconditionally, which
- * produced "[object Object],[object Object]" for arrays of objects — a
- * pre-existing sloppiness surfaced by the Iter 5 phase-plan frontmatter
+ * Stringify a single frontmatter value to a plain `string`.
+ *
+ * Always returns `string` — never an array. The string[] bulleted-list shape
+ * (`items: [...]`) is produced by `formatValue` below, which calls this helper
+ * once per element when the top-level value is an array.
+ *
+ * Handles:
+ *   - `null` / `undefined` → ""
+ *   - `Date` instances (YAML timestamps parsed by gray-matter / js-yaml) →
+ *     localized date string, or "" if the Date is invalid
+ *   - flat objects → `key: value, key: value` pairs, with nested objects
+ *     JSON-stringified and nested Dates localized
+ *   - primitives (number, boolean, string) → `String(item)`
+ *
+ * The naive previous implementation used `String(value)` unconditionally,
+ * which produced "[object Object],[object Object]" for arrays of objects —
+ * a pre-existing sloppiness surfaced by the Iter 5 phase-plan frontmatter
  * (tasks: [{ id, title }, ...]).
  */
 export function stringifyFrontmatterItem(item: unknown): string {

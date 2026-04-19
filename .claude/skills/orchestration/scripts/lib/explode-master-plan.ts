@@ -89,13 +89,65 @@ const LOOKS_LIKE_PHASE_RE = /^##\s+(P\d|Phase\b)/i;
 const LOOKS_LIKE_TASK_RE = /^###\s+P\d/;
 
 /**
+ * Compute the number of lines in the YAML frontmatter block at the top of `raw`,
+ * including the opening `---` line, the YAML body, and the closing `---` line.
+ * Returns 0 when `raw` has no frontmatter (i.e. does not start with `---\n`).
+ *
+ * This MUST track the exact shape `readDocument` strips (see state-io.ts), so that
+ * `frontmatterOffset + body_line = file_line`.
+ */
+function computeFrontmatterOffset(raw: string): number {
+  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!match) return 0;
+  // match[0] is the full frontmatter block including the trailing newline (if any)
+  // after the closing `---`. Count lines consumed from column 1 through the END of
+  // the closing `---` line. `readDocument` leaves the body starting on the line
+  // immediately after that — hence we return the number of lines up to and
+  // including the closing `---`.
+  const block = match[0];
+  // Strip a single trailing \r?\n (the one AFTER the closing `---`, which belongs
+  // to the separator between frontmatter and body, not to a frontmatter line).
+  const withoutTrailingNewline = block.replace(/\r?\n$/, '');
+  return withoutTrailingNewline.split(/\r?\n/).length;
+}
+
+/**
  * Split a master plan text into frontmatter + preamble (= body before first phase) + parsed phases/tasks.
  *
  * Parse-only, no filesystem side effects. Throws ParseError on malformed input.
+ *
+ * ParseError `line` numbers are FILE-ABSOLUTE (1-based from the top of the raw
+ * file on disk), not body-relative. Real Master Plans carry ~8-14 lines of YAML
+ * frontmatter which `readDocument` strips before parsing; reporting a
+ * body-relative line would mislead the recovery-loop guidance when the planner
+ * is told to "fix line N". We compute the frontmatter line count from the raw
+ * file and offset every thrown line number accordingly.
  */
 export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
+  // Read raw first so we can measure the frontmatter offset; ENOENT → same
+  // missing-file ParseError that readDocument's null branch used to produce.
+  let raw: string;
+  try {
+    raw = fs.readFileSync(masterPlanPath, 'utf-8');
+  } catch (err: unknown) {
+    const code = (err as { code?: string } | null)?.code;
+    if (code === 'ENOENT') {
+      throw new ParseError({
+        line: 0,
+        expected: 'Master Plan file at ' + masterPlanPath,
+        found: 'missing file',
+        message: `Master Plan file not found at ${masterPlanPath}`,
+      });
+    }
+    throw err;
+  }
+
+  const frontmatterOffset = computeFrontmatterOffset(raw);
+
   const doc = readDocument(masterPlanPath);
   if (doc === null) {
+    // Defensive — readFileSync above succeeded, so readDocument should only be
+    // null if the file vanished mid-call. Treat as missing-file.
     throw new ParseError({
       line: 0,
       expected: 'Master Plan file at ' + masterPlanPath,
@@ -106,7 +158,8 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
 
   const frontmatter = doc.frontmatter;
   const body = doc.content;
-  // We track 1-based line numbers in error messages relative to the body (not the frontmatter).
+  // Body line numbers are 1-based (i + 1). File-absolute line = body line +
+  // frontmatterOffset. All ParseError.line values are emitted file-absolute.
   const lines = body.split(/\r?\n/);
 
   const phases: ParsedPhase[] = [];
@@ -140,7 +193,10 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? '';
-    const lineNumber = i + 1;
+    // File-absolute 1-based line number. The body starts on the file line just
+    // after the closing `---` of the frontmatter (when present), so we add
+    // frontmatterOffset (= 0 for frontmatter-less files) to the body index.
+    const lineNumber = i + 1 + frontmatterOffset;
 
     const phaseMatch = line.match(PHASE_HEADING_RE);
     if (phaseMatch) {
@@ -243,8 +299,11 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
   flushPhase();
 
   if (phases.length === 0) {
+    // Point at the first body line (= first file line after frontmatter). For
+    // frontmatter-less files this is line 1; for files with frontmatter it's
+    // the line where a phase heading would have naturally started.
     throw new ParseError({
-      line: 1,
+      line: frontmatterOffset + 1,
       expected: 'at least one "## P{NN}:" phase heading',
       found: 'no phase headings',
       message: 'Master Plan contains no parseable phase headings',
