@@ -360,22 +360,6 @@ Format:
 - **Suggested owner**: A later iteration, possibly the one that introduces a conformance-check agent.
 - **2026-04-18 resolution**: Addressed by Iter 13 (Rad-plan-audit overhaul). The audit is rewritten for a single purpose — Requirements ↔ Master Plan conformance. Both forward coverage (every Requirements ID cited by ≥1 Master Plan task) and backward resolution (every Master Plan tag resolves to a block) land in the iteration.
 
-### 2026-04-19 — UI `node.doc_path !== null` check lets `undefined` through
-
-- **Context**: Iter 5 UI smoke surfaced a case where a step node with no `doc_path` field at all (vs. `doc_path: null` explicitly) still rendered a broken "Doc" link. `dag-node-row.tsx:80` checked `node.doc_path !== null` which evaluates truthy for `undefined`.
-- **2026-04-19 resolution**: Fixed in the Iter 5 scope. `dag-node-row.tsx` check tightened to `doc_path != null && doc_path !== ''` (catches null, undefined, and empty string) with matching fix in the keyboard handler. Regression tests added in `dag-node-row.test.ts`.
-
-### 2026-04-19 — Frontmatter viewer renders array values as `[object Object]`
-
-- **Context**: Iter 5 UI smoke showed that the DocumentDrawer's frontmatter pane rendered the `tasks` array in phase plan frontmatter as the literal string `[object Object],[object Object]` because the viewer coerced values with `String()` unconditionally.
-- **2026-04-19 resolution**: Fixed in the Iter 5 scope. `document-metadata.tsx` gained a new `stringifyFrontmatterItem` helper that handles primitives, flat objects (`key: value` pairs), arrays (bulleted list), and nested objects (JSON). NEW `document-metadata.test.ts` covers the helper (9 cases).
-
-### 2026-04-19 — Step-node `events.failed` not registered by engine event index (recovery loop dispatch gap)
-
-- **Context**: Surfaced by Copilot round-2 review on PR #56. The engine's `template-loader.ts:buildEventIndex` registers only `events.started` + `events.completed` for `step`-kind nodes. It does NOT register `events.failed`. `default.yml` declares `failed: explosion_failed` on the `explode_master_plan` step, but `processEvent` (engine.ts:341) rejects any event not in the index with `"Unknown event: explosion_failed"`. Iter 5's parse-failure recovery loop mutation handler is correctly registered via `mutationRegistry.set(EVENTS.EXPLOSION_FAILED, …)`, and the contract + integration tests pass because they call `getMutation('explosion_failed')` directly — bypassing `processEvent`. End-to-end dispatch through the orchestrator would hit the "Unknown event" rejection.
-- **Why unresolved in Iter 5**: The fix requires extending `NodeDef.events` on step nodes to accept an optional `failed` field, extending `buildEventIndex` to register it when present, and updating related template-loader / template-validator tests. That's a new engine capability — out of Iter 5's original scope (which called for wiring the recovery *mutation*, not extending the template event-dispatch surface). The recovery loop is not observed by any live planner run today; the UI smoke and all tests pass without exercising the processEvent dispatch path for this event.
-- **Suggested owner**: A near-term follow-up iteration (candidate: part of Iter 14 explosion-retry configurability, since that iteration already touches the recovery surface), or a small standalone micro-fix under a new `events.failed` engine-support iteration. The fix itself is ~15-20 lines across `types.ts`, `template-loader.ts`, and one test. Low blast radius (additive; only affects nodes that declare `events.failed`).
-
 ---
 
 ## Retrospective Notes
