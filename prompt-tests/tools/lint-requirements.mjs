@@ -129,8 +129,9 @@ async function runFile(docPath) {
 }
 
 function selfTestFixture() {
-  // Deliberately malformed: missing frontmatter key, bad type, missing body,
-  // wrong count, duplicate + gap.
+  // Deliberately malformed fixture. Exercises: wrong `type` value,
+  // missing body description under two headings, `requirement_count`
+  // mismatch, duplicate ID (FR-1), gap in ID sequence (FR-2 missing).
   return `---
 project: "SELFTEST"
 type: not_requirements

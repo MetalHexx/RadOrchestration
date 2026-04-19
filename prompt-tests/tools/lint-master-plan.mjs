@@ -106,6 +106,16 @@ function countSentences(descriptionLines) {
 
 async function findCompanionRequirements(masterPlanPath) {
   const dir = path.dirname(masterPlanPath);
+  const base = path.basename(masterPlanPath);
+  // Primary: derive the exact filename from the master plan basename.
+  if (base.endsWith('-MASTER-PLAN.md')) {
+    const derived = path.join(dir, base.replace(/-MASTER-PLAN\.md$/, '-REQUIREMENTS.md'));
+    try {
+      await readFile(derived, 'utf8'); // cheapest existence check we already import
+      return derived;
+    } catch { /* fall through to scan */ }
+  }
+  // Fallback: first `*-REQUIREMENTS.md` in the directory.
   let entries;
   try {
     entries = await readdir(dir);
