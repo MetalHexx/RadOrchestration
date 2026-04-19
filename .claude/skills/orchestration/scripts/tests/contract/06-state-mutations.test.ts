@@ -652,6 +652,9 @@ describe('[CONTRACT] State Mutations — Explosion script mutations (Iter 5)', (
       parseRetryCount: 1,
       lastParseError: null,
     });
+    // Simulate stale doc_path from legacy state
+    (state.graph.nodes['explode_master_plan'] as StepNodeState).doc_path = '/tmp/stale.md';
+
     const mutation = getMutation('explosion_failed')!;
     // No parse_error in context at all
     const result = mutation(state, {}, DEFAULT_CONFIG, emptyTemplate);
@@ -662,6 +665,7 @@ describe('[CONTRACT] State Mutations — Explosion script mutations (Iter 5)', (
 
     const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
     expect(explodeNode.status).toBe('failed');
+    expect(explodeNode.doc_path).toBeNull();
 
     expect(result.state.graph.status).toBe('halted');
     expect(result.state.pipeline.halt_reason).toBeTruthy();
@@ -676,6 +680,9 @@ describe('[CONTRACT] State Mutations — Explosion script mutations (Iter 5)', (
       parseRetryCount: 2,
       lastParseError: null,
     });
+    // Simulate stale doc_path from legacy state
+    (state.graph.nodes['explode_master_plan'] as StepNodeState).doc_path = '/tmp/stale.md';
+
     // Missing `line` field — shape validation must reject this.
     const malformed = { expected: 'x', found: 'y', message: 'm' } as unknown as { line: number; expected: string; found: string; message: string };
     const mutation = getMutation('explosion_failed')!;
@@ -684,6 +691,9 @@ describe('[CONTRACT] State Mutations — Explosion script mutations (Iter 5)', (
     const mpNode = result.state.graph.nodes['master_plan'] as StepNodeState;
     // Counter NOT incremented — still 2 (prior value), not 3.
     expect(mpNode.parse_retry_count).toBe(2);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.doc_path).toBeNull();
 
     expect(result.state.graph.status).toBe('halted');
     expect(result.state.pipeline.halt_reason).toContain('dispatch');
