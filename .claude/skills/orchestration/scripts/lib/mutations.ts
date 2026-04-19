@@ -198,8 +198,7 @@ mutationRegistry.set(EVENTS.EXPLOSION_FAILED, (state, context, _config, _templat
       typeof parseError.expected !== 'string' ||
       typeof parseError.found !== 'string' ||
       typeof parseError.message !== 'string') {
-    const explodeNode2 = resolveNodeState(cloned, 'explode_master_plan', 'top') as StepNodeState;
-    explodeNode2.status = 'failed';
+    explodeNode.status = 'failed';
     cloned.graph.status = 'halted';
     cloned.pipeline.halt_reason =
       'Explosion dispatch error: explosion_failed received without a valid parse_error payload. ' +
