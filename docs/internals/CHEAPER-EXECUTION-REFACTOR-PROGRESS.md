@@ -379,6 +379,12 @@ Format:
 - **Suggested owner**: A later iteration, possibly the one that introduces a conformance-check agent.
 - **2026-04-18 resolution**: Addressed by Iter 13 (Rad-plan-audit overhaul). The audit is rewritten for a single purpose — Requirements ↔ Master Plan conformance. Both forward coverage (every Requirements ID cited by ≥1 Master Plan task) and backward resolution (every Master Plan tag resolves to a block) land in the iteration.
 
+### 2026-04-19 — Prompt-harness linter frontmatter coverage (Iter 6 Copilot R6-3 / R6-5)
+
+- **Context**: During PR #57's round-6 Copilot review, two comments asked the Iter-6 linters to add `author` + `approved_at` (requirements) and `status` + `created` + `author` (master plan) to `REQUIRED_FRONTMATTER`. Declined in-iteration because the Iter 6 companion (`docs/internals/cheaper-execution/iter-06-prompt-harness.md`) explicitly marks those fields as informational-only and instructs the linter to ignore them.
+- **Why unresolved**: The plan's scope boundary is deliberate — the linters validate the load-bearing contract only. Broadening coverage would re-open the "which fields are load-bearing" question that the Iter 6 design locked. A separate iteration can revisit if the template contract tightens.
+- **Suggested owner**: A future iteration — likely alongside Iter 13 (Rad-plan-audit overhaul) or whichever later work retightens the frontmatter contract on the template side.
+
 ---
 
 ## Retrospective Notes
