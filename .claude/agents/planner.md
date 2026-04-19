@@ -32,8 +32,8 @@ workflow based on the orchestrator action:
 
 | Orchestrator Action | Workflow Path |
 |---------------------|---------------|
-| `create_requirements` | `references/requirements/workflow.md` |
-| `spawn_master_plan` | `references/master-plan/workflow.md` |
+| `spawn_requirements` | `references/requirements/workflow.md` |
+| `spawn_master_plan`  | `references/master-plan/workflow.md`  |
 
 Each workflow file is self-contained — it does NOT inherit from
 `references/shared/guidelines.md` or `references/shared/self-review.md`. The

@@ -176,6 +176,25 @@ describe('plan_rejected mutation', () => {
     expect(mutations_applied.some(m => m.includes('plan_approval_gate'))).toBe(true);
     expect(mutations_applied.some(m => m.includes('phase_loop'))).toBe(true);
   });
+
+  // Iter 4: default.yml is a partial planning-only template with no phase_loop.
+  // plan_rejected must still run cleanly — just reset master_plan + plan_approval_gate.
+  it('does not throw when phase_loop is absent (default.yml partial template)', () => {
+    const state = makeState();
+    // Remove phase_loop to mimic a state scaffolded from default.yml (no execution tier yet).
+    delete (state.graph.nodes as Record<string, unknown>)['phase_loop'];
+    const mutation = getMutation('plan_rejected')!;
+    const { state: result, mutations_applied } = mutation(state, {}, baseConfig, baseTemplate);
+
+    // master_plan + plan_approval_gate still reset
+    expect((result.graph.nodes['master_plan'] as StepNodeState).status).toBe('not_started');
+    expect((result.graph.nodes['plan_approval_gate'] as GateNodeState).gate_active).toBe(false);
+
+    // No phase_loop entry in mutations_applied (skipped, not crashed)
+    expect(mutations_applied.some(m => m.includes('phase_loop'))).toBe(false);
+    // And no phase_loop resurrected in state
+    expect(result.graph.nodes['phase_loop']).toBeUndefined();
+  });
 });
 
 // ── gate_rejected ─────────────────────────────────────────────────────────────

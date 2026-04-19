@@ -7,7 +7,7 @@ export type PlanningStatus = 'not_started' | 'in_progress' | 'complete';
 // v4: only 3 values — 'failed' and 'skipped' removed
 export type PlanningStepStatus = 'not_started' | 'in_progress' | 'complete';
 
-export type PlanningStepName = 'research' | 'prd' | 'design' | 'architecture' | 'master_plan';
+export type PlanningStepName = 'research' | 'prd' | 'design' | 'architecture' | 'requirements' | 'master_plan';
 
 export type ExecutionStatus = 'not_started' | 'in_progress' | 'complete' | 'halted';
 
@@ -32,7 +32,7 @@ export type PhaseReviewAction = 'advanced' | 'corrective_tasks_issued' | 'halted
 // ─── Planning Step Order ─────────────────────────────────────────────────────
 
 export const PLANNING_STEP_ORDER: readonly PlanningStepName[] = [
-  'research', 'prd', 'design', 'architecture', 'master_plan'
+  'research', 'prd', 'design', 'architecture', 'requirements', 'master_plan'
 ] as const;
 
 export const NODE_ID_PHASE_LOOP = 'phase_loop';

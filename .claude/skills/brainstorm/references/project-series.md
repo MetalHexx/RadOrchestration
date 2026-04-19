@@ -54,7 +54,7 @@ At the top of each brainstorming doc (after Related Projects), include:
 
 - Omit "Previous" for the first project in a series.
 - Use "not yet planned" for Next when future scope is uncertain.
-- Link to the richest available doc (PRD if it exists, else BRAINSTORMING).
+- Link to the richest available doc (Requirements if it exists, else BRAINSTORMING).
 
 ### Dependency Graph
 

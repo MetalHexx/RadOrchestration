@@ -10,10 +10,10 @@ created: "{ISO-DATE}"
 
 <!--
   Optional. Include when related or predecessor projects exist.
-  Link to the richest available doc (PRD > Master Plan > Brainstorming).
+  Link to the richest available doc (Requirements > Master Plan > Brainstorming).
 -->
 
-- [{RELATED-PROJECT}](../{RELATED-PROJECT}/{RELATED-PROJECT}-PRD.md) — {one-line: what it established or why it's relevant}
+- [{RELATED-PROJECT}](../{RELATED-PROJECT}/{RELATED-PROJECT}-REQUIREMENTS.md) — {one-line: what it established or why it's relevant}
 
 ## Series Context
 
