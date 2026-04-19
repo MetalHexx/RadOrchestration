@@ -179,7 +179,7 @@ describe('validateStateSchema', () => {
 
   // ── Iter 5: explosion-script additive fields ────────────────────────────────
 
-  it('state with master_plan.last_parse_error + parse_retry_count + iteration.doc_path validates successfully (Iter 5 additive)', () => {
+  it('state with master_plan.last_parse_error + parse_retry_count validates successfully (Iter 5 additive)', () => {
     const state = makeMinimalState();
     state.graph.nodes.master_plan = {
       kind: 'step',
@@ -194,6 +194,34 @@ describe('validateStateSchema', () => {
       },
       parse_retry_count: 1,
     } as any;
+    // Iter 5 seeds pre-completed phase_planning step nodes inside each phase iteration.
+    // doc_path lives on that child step node, NOT on the iteration itself.
+    state.graph.nodes.phase_loop = {
+      kind: 'for_each_phase',
+      status: 'not_started',
+      iterations: [
+        {
+          index: 0,
+          status: 'not_started',
+          nodes: {
+            phase_planning: {
+              kind: 'step',
+              status: 'completed',
+              doc_path: 'phases/FOO-PHASE-01-BAR.md',
+              retries: 0,
+            },
+          },
+          corrective_tasks: [],
+          commit_hash: null,
+        },
+      ],
+    } as any;
+    const errors = validateStateSchema(state);
+    expect(errors).toEqual([]);
+  });
+
+  it('iteration.doc_path is rejected by the schema (Iter 5 removed this field in favor of child-node seeding)', () => {
+    const state = makeMinimalState();
     state.graph.nodes.phase_loop = {
       kind: 'for_each_phase',
       status: 'not_started',
@@ -204,12 +232,15 @@ describe('validateStateSchema', () => {
           nodes: {},
           corrective_tasks: [],
           commit_hash: null,
-          doc_path: 'phases/FOO-PHASE-01-BAR.md',
+          doc_path: 'phases/FOO-PHASE-01-BAR.md', // removed in Iter 5
         },
       ],
     } as any;
     const errors = validateStateSchema(state);
-    expect(errors).toEqual([]);
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    const extraPropError = errors.find(e => e.includes('doc_path'));
+    expect(extraPropError).toBeDefined();
+    expect(extraPropError!).toMatch(/^\[schema\] /);
   });
 
   it('legacy state.json (no doc_path / last_parse_error / parse_retry_count) still validates (backwards-compat)', () => {

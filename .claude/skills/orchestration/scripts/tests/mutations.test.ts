@@ -1799,7 +1799,7 @@ describe('explosion_completed mutation', () => {
     expect(getMutation('explosion_completed')).toBeTypeOf('function');
   });
 
-  it('marks explode_master_plan completed, stores doc_path, clears master_plan recovery state', () => {
+  it('marks explode_master_plan completed, leaves doc_path null, clears master_plan recovery state', () => {
     const state = makeStateWithExplodeNode({
       parseRetryCount: 2,
       lastParseError: { line: 1, expected: 'e', found: 'f', message: 'm' },
@@ -1808,7 +1808,9 @@ describe('explosion_completed mutation', () => {
     const result = mutation(state, { doc_path: '/tmp/mp.md' }, baseConfig, baseTemplate);
     const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
     expect(explodeNode.status).toBe('completed');
-    expect(explodeNode.doc_path).toBe('/tmp/mp.md');
+    // explode step produces no doc of its own; context.doc_path (= master plan path) is NOT stored here
+    // because master_plan.doc_path already carries that value.
+    expect(explodeNode.doc_path).toBeNull();
     const mpNode = result.state.graph.nodes['master_plan'] as StepNodeState;
     expect(mpNode.last_parse_error).toBeNull();
     expect(mpNode.parse_retry_count).toBe(0);

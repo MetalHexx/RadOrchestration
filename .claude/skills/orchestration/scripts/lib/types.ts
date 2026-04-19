@@ -179,7 +179,6 @@ export interface IterationEntry {
   nodes: Record<string, NodeState>;
   corrective_tasks: CorrectiveTaskEntry[];
   commit_hash: string | null; // per-task commit hash, set by COMMIT_COMPLETED mutation
-  doc_path?: string | null;   // pre-seeded by explosion script; optional for legacy / lazy-authoring paths
 }
 
 export interface ForEachPhaseNodeState extends BaseNodeState {

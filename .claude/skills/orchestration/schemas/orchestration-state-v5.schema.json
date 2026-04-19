@@ -395,14 +395,6 @@
             { "type": "string" },
             { "type": "null" }
           ]
-        },
-        "doc_path": {
-          "title": "Document Path",
-          "description": "Path to the phase/task plan document for this iteration. Pre-seeded at plan-approval time by the explosion script, or null if not yet populated (legacy or lazy authoring path).",
-          "oneOf": [
-            { "type": "string" },
-            { "type": "null" }
-          ]
         }
       }
     },

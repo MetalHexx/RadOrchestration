@@ -153,10 +153,6 @@ mutationRegistry.set(EVENTS.EXPLOSION_COMPLETED, (state, context, _config, _temp
   node.status = 'completed';
   mutations_applied.push('set explode_master_plan.status = completed');
 
-  const docPath = context.doc_path ?? null;
-  (node as StepNodeState).doc_path = docPath;
-  mutations_applied.push(`set explode_master_plan.doc_path = ${docPath ?? 'null'}`);
-
   // Clear any recovery state on master_plan — success wipes the slate.
   const masterPlanNode = resolveNodeState(cloned, 'master_plan', 'top') as StepNodeState;
   if (masterPlanNode.last_parse_error !== null && masterPlanNode.last_parse_error !== undefined) {

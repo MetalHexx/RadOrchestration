@@ -263,7 +263,6 @@ export interface IterationEntry {
   nodes: NodesRecord;
   corrective_tasks: CorrectiveTaskEntry[];
   commit_hash?: string | null;
-  doc_path?: string | null;               // pre-seeded by explosion script; optional for legacy / lazy-authoring paths
 }
 
 export interface CorrectiveTaskEntry {

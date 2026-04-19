@@ -536,7 +536,7 @@ describe('[CONTRACT] State Mutations — Gate approved mutations', () => {
 // ── [CONTRACT] State Mutations — Explosion script mutations (Iter 5) ──────────
 
 describe('[CONTRACT] State Mutations — Explosion script mutations (Iter 5)', () => {
-  it('explosion_completed: explode_master_plan.status=completed, doc_path set, clears master_plan.last_parse_error + resets parse_retry_count', () => {
+  it('explosion_completed: explode_master_plan.status=completed, doc_path remains null, clears master_plan.last_parse_error + resets parse_retry_count', () => {
     const state = makeStateWithExplosion({
       masterPlanStatus: 'completed',
       explodeStatus: 'in_progress',
@@ -549,7 +549,9 @@ describe('[CONTRACT] State Mutations — Explosion script mutations (Iter 5)', (
 
     const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
     expect(explodeNode.status).toBe('completed');
-    expect(explodeNode.doc_path).toBe('/tmp/master-plan.md');
+    // The explode step does not produce a doc; master_plan.doc_path already points at the master plan.
+    // Assigning context.doc_path here would duplicate the link, so the mutation leaves doc_path untouched (null).
+    expect(explodeNode.doc_path).toBeNull();
 
     const mpNode = result.state.graph.nodes['master_plan'] as StepNodeState;
     expect(mpNode.last_parse_error).toBeNull();

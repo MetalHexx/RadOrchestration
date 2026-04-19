@@ -8,6 +8,7 @@ import type {
   IterationEntry,
   ForEachPhaseNodeState,
   ForEachTaskNodeState,
+  StepNodeState,
 } from './types.js';
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -533,13 +534,18 @@ function seedIterations(
     const taskLoopIterations: IterationEntry[] = [];
     for (let j = 0; j < phase.tasks.length; j++) {
       const taskFile = emittedTaskFiles[taskFilePointer++] ?? null;
+      const taskHandoffNode: StepNodeState = {
+        kind: 'step',
+        status: 'completed',
+        doc_path: taskFile,
+        retries: 0,
+      };
       taskLoopIterations.push({
         index: j,
         status: 'not_started',
-        nodes: {},
+        nodes: { task_handoff: taskHandoffNode },
         corrective_tasks: [],
         commit_hash: null,
-        doc_path: taskFile,
       });
     }
     const taskLoop: ForEachTaskNodeState = {
@@ -548,13 +554,19 @@ function seedIterations(
       iterations: taskLoopIterations,
     };
 
+    const phasePlanningNode: StepNodeState = {
+      kind: 'step',
+      status: 'completed',
+      doc_path: phaseFile,
+      retries: 0,
+    };
+
     const phaseEntry: IterationEntry = {
       index: i,
       status: 'not_started',
-      nodes: { task_loop: taskLoop },
+      nodes: { phase_planning: phasePlanningNode, task_loop: taskLoop },
       corrective_tasks: [],
       commit_hash: null,
-      doc_path: phaseFile,
     };
     phaseLoop.iterations.push(phaseEntry);
   }
