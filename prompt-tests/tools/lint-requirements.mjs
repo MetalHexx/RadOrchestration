@@ -137,11 +137,6 @@ function lint(text, sourceLabel) {
   return { errors, warnings, blockCount: blocks.length, source: sourceLabel };
 }
 
-async function runFile(docPath) {
-  const text = await readFile(docPath, 'utf8');
-  return lint(text, docPath);
-}
-
 function selfTestFixture() {
   // Deliberately malformed fixture. Exercises: wrong `type` value,
   // missing body description under two headings, `requirement_count`
