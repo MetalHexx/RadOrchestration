@@ -64,7 +64,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 3 | Remove upstream planning (PRD/Research/Design/Architecture) | Complete | 2026-04-18 | 2026-04-18 |
 | 4 | Requirements pipeline node | Complete | 2026-04-18 | 2026-04-18 |
 | 5 | Explosion script + state.json pre-seeding | Awaiting merge | 2026-04-19 | 2026-04-19 |
-| 6 | Prompt regression harness | Not started | — | — |
+| 6 | Prompt regression harness | Awaiting merge | 2026-04-19 | 2026-04-19 |
 | 7 | Remove per-phase/per-task planning | Not started | — | — |
 | 8 | phase_review absorbs phase_report | Not started | — | — |
 | 9 | Complete `default.yml` | Not started | — | — |
@@ -75,7 +75,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 14 | Explosion-retry configurability | Not started | — | — |
 | 15 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 6 / 16 iterations complete (Iter 5 awaiting PR merge). Design realigned 2026-04-18 for gutting-first approach. Iter 14 (explosion-retry configurability) inserted 2026-04-19 during Iter 5 planning when the retry cap was deferred from baked-in to configurable.
+**Overall**: 7 / 16 iterations complete (Iters 5 + 6 awaiting PR merge). Design realigned 2026-04-18 for gutting-first approach. Iter 14 (explosion-retry configurability) inserted 2026-04-19 during Iter 5 planning when the retry cap was deferred from baked-in to configurable.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -98,7 +98,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 3 | `feat/iter-3-remove-upstream-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning` | Awaiting merge | — | [#54](https://github.com/MetalHexx/RadOrchestation/pull/54) |
 | 4 | `feat/iter-4-requirements-pipeline-node` | `C:\dev\orchestration\v3-worktrees\feat-iter-4-requirements-pipeline-node` | Awaiting merge | — | [#55](https://github.com/MetalHexx/RadOrchestation/pull/55) |
 | 5 | `feat/iter-5-explosion-script` | `C:\dev\orchestration\v3-worktrees\feat-iter-5-explosion-script` | Awaiting merge | — | [#56](https://github.com/MetalHexx/RadOrchestation/pull/56) |
-| 6 | — | — | Not created | — | — |
+| 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Awaiting merge | — | [#57](https://github.com/MetalHexx/RadOrchestation/pull/57) |
 | 7 | — | — | Not created | — | — |
 | 8 | — | — | Not created | — | — |
 | 9 | — | — | Not created | — | — |
@@ -259,6 +259,18 @@ Format:
 - Commits: `f74555a` (initial Iter 5), `a5aa1f1` (review-corrective on initial), `3c41c34` (scope extension: child-node seeding + drop explode doc_path), `bd41ebf` (scope-extension review-corrective: iter-07 companion + test fixture cleanup), `1d90e42` (iter-11 companion alignment), `cfcd2a5` (relative doc_path paths), `d9c4d0c` (rendering cleanup + UI null check + frontmatter array rendering), `7a644ef` (forwardRef on 5 badge components), `4207cd3` (progress tracker + final corrective). PR: [#56](https://github.com/MetalHexx/RadOrchestation/pull/56).
 - See "Open Items Surfaced During Execution" for three follow-ups: explosion script writes absolute paths instead of relative; UI `node.doc_path !== null` check lets `undefined` through; frontmatter viewer renders array values as `[object Object]`.
 
+### 2026-04-19 — Iteration 6 — Prompt regression harness scaffold + inaugural rainbow-hello baseline
+
+- Branch: `feat/iter-6-prompt-harness` off `feat/cheaper-execution` @ `4500203` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness`).
+- New top-level `prompt-tests/` tree (sibling to `docs/`, `installer/`, `ui/`, `.claude/`) — operator-run planning-pipeline regression harness. Does not load on every Claude session. Dependency-free (no `package.json`).
+- Two standalone linters (`prompt-tests/tools/lint-{requirements,master-plan}.mjs`, Node builtins only): validate frontmatter, body-description presence per block, ID contiguity, ~500-token whitespace heuristic, and (for master-plan) referential integrity against the companion Requirements doc. Each supports `--self-test` against an in-memory malformed fixture asserting exact error counts (6 each).
+- `_runner.md` prompt — goal-oriented (mirrors `ORCHESTRATOR-GUIDE.md`). Drives a fresh Claude session as a simulated orchestrator through `requirements → master_plan → explode_master_plan`, halts at `plan_approval_gate` (gate never approved). Runs linters and emits `lint-report.md` + `run-notes.md`. Documents the `default_template: "ask"` config quirk that requires `--template default` on the first call, and the `path.basename(--project-dir)` mechanism for project-name derivation.
+- `.gitignore` rule ignores all run outputs except the two tracked baseline artifacts (`lint-report.md` + `run-notes.md`) under `baseline-*`-named folders. Pattern narrowed to `/prompt-tests/plan-pipeline-e2e/output/*/*/**` because git cannot re-include files under an excluded directory (plan's literal suggestion didn't permit the `!` exceptions to fire — see Deviations).
+- Inaugural baseline run executed against the `rainbow-hello` fixture in the same iteration. 8 requirements, 3 phases, 6 tasks emitted; explosion script succeeded first try (`parse_retry_count = 0`); all 9 pre-seeded iteration doc_paths (`phase_planning` / `task_handoff`) set correctly. Both linters return zero errors on the run docs and exactly 6 errors each on self-test. Commits only `lint-report.md` + `run-notes.md`; everything else under the baseline folder stays untracked.
+- Tests: orchestration 47 files / 1220 pass / 1 todo (baseline unchanged — harness sits outside `.claude/` / `ui/` / `installer/` / `scripts/`, no test-tree edits); UI 157 tests / 154 pass / 3 pre-existing failures (baseline unchanged); installer 399 pass / 0 fail. Zero test count delta.
+- UI smoke: N/A — no UI surface touched.
+- Commits: `f534247` (scaffold), `b890c18` (review-corrective — dead code, tightened self-test thresholds, project-name stability, narrowed `.gitkeep` exception), `a9cb44c` (inaugural baseline artifacts), `211c34a` (progress tracker). PR: [#57](https://github.com/MetalHexx/RadOrchestation/pull/57).
+
 ### 2026-04-18 — Iteration 3 — Remove upstream planning (PRD / Research / Design / Architecture)
 
 - Branch: `feat/iter-3-remove-upstream-planning` off `feat/cheaper-execution` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning`).
@@ -318,6 +330,13 @@ Format:
 - **Why**: The Iter 7 "mechanical seam" is preserved — the explosion script still pre-populates what the authoring agents would have populated; Iter 7 can still delete those agents. But it does so by filling in the existing node shape rather than introducing a new field, so the UI "just works" through the existing rendering path. Two sources of truth collapsed to one.
 - **Impact**: Iter 7's scope narrows — no UI rewire needed, just agent deletion + enrichment path confirmation. Commit `3c41c34` (main pivot) + `bd41ebf` + `1d90e42` (companion + test alignment) + `<pending>` (relative-paths fix for seeded doc_paths).
 
+### 2026-04-19 — Iteration 6 — `.gitignore` pattern narrowed to enable `!` re-include
+
+- **Plan said**: `/prompt-tests/**/output/**` with narrower `!` exceptions for `.gitkeep`, `lint-report.md`, `run-notes.md`.
+- **Execution did**: Widest ignore rule replaced with `/prompt-tests/plan-pipeline-e2e/output/*/*/**` (ignores files two levels deep into a run folder rather than the entire `output/` subtree). The `.gitkeep` exception was also later narrowed from `**/.gitkeep` to `*/.gitkeep` at review-fix time to stop re-including nested run-folder `.gitkeep`s.
+- **Why**: Git cannot re-include files whose ancestor directory is matched by a directory-style pattern. The plan's literal glob would have suppressed `output/<fixture>/baseline-*/` entirely, making the `!` exceptions inert. Narrowing the base pattern leaves `output/` and `output/<fixture>/` un-ignored so the `!lint-report.md` / `!run-notes.md` exceptions resolve correctly. The narrowing also scopes the rule to the `plan-pipeline-e2e` behavior — future harness behaviors will need their own gitignore lines.
+- **Impact**: Cosmetic. `git check-ignore -v` confirms the intended files are tracked and everything else in the run folder stays untracked. The `.gitignore` carries an inline comment explaining the constraint.
+
 ### 2026-04-17 — Iteration 1 — Commit step omitted from Execution Plan tasks
 
 - **Design said**: Plan described `code` tasks with a 4-step RED-GREEN TDD shape and left open whether a commit step should be appended.
@@ -359,6 +378,12 @@ Format:
 - **Why unresolved**: Needs a design decision on whether the check lives as a standalone skill / agent mode (mirrors `rad-plan-audit`) or as a cheap CLI script invoked by the planner's workflow. Also overlaps with the future conformance-check agent mentioned in the design doc.
 - **Suggested owner**: A later iteration, possibly the one that introduces a conformance-check agent.
 - **2026-04-18 resolution**: Addressed by Iter 13 (Rad-plan-audit overhaul). The audit is rewritten for a single purpose — Requirements ↔ Master Plan conformance. Both forward coverage (every Requirements ID cited by ≥1 Master Plan task) and backward resolution (every Master Plan tag resolves to a block) land in the iteration.
+
+### 2026-04-19 — Prompt-harness linter frontmatter coverage (Iter 6 Copilot R6-3 / R6-5)
+
+- **Context**: During PR #57's round-6 Copilot review, two comments asked the Iter-6 linters to add `author` + `approved_at` (requirements) and `status` + `created` + `author` (master plan) to `REQUIRED_FRONTMATTER`. Declined in-iteration because the Iter 6 companion (`docs/internals/cheaper-execution/iter-06-prompt-harness.md`) explicitly marks those fields as informational-only and instructs the linter to ignore them.
+- **Why unresolved**: The plan's scope boundary is deliberate — the linters validate the load-bearing contract only. Broadening coverage would re-open the "which fields are load-bearing" question that the Iter 6 design locked. A separate iteration can revisit if the template contract tightens.
+- **Suggested owner**: A future iteration — likely alongside Iter 13 (Rad-plan-audit overhaul) or whichever later work retightens the frontmatter contract on the template side.
 
 ---
 

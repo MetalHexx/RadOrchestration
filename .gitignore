@@ -6,3 +6,14 @@ node_modules/
 
 # Ephemeral test log artifacts — never commit
 *-tests.log
+
+# Prompt harness — run outputs ignored by default.
+# NOTE: git ignore cannot re-include files if an ancestor directory is excluded
+# by a directory-matching pattern. The rules below ignore run-folder CONTENTS
+# (files at least two levels under output/) while leaving the fixture-specific
+# directory (`output/<fixture>/`) un-ignored, so `!` exceptions below can
+# re-include specific files under otherwise-ignored run folders.
+/prompt-tests/plan-pipeline-e2e/output/*/*/**
+!/prompt-tests/plan-pipeline-e2e/output/*/.gitkeep
+!/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-*/lint-report.md
+!/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-*/run-notes.md
