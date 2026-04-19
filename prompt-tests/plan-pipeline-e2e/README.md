@@ -51,4 +51,4 @@ If any of the above fails, the run is a regression — stop, surface to the oper
 
 ## Inaugural baseline
 
-The first-ever committed run lives at `output/rainbow-hello/baseline-<timestamp>/`. The `.gitignore` at the repo root re-includes only `lint-report.md` and `run-notes.md` from `baseline-*` folders; everything else (state.json, per-phase/per-task docs, planner output) stays untracked. Regenerate on each run.
+The first-ever committed run lives at `output/rainbow-hello/baseline-<timestamp>/`. The inaugural baseline's `lint-report.md` and `run-notes.md` are the only files committed from the run folder. The repo-root `.gitignore` re-includes them via a fixture-specific exception on `output/rainbow-hello/baseline-*/...`. Future fixtures will need their own gitignore exceptions.

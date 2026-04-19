@@ -214,7 +214,9 @@ async function main() {
   // R1 — Use repo-relative source label for stable cross-machine output.
   const abs = path.resolve(arg);
   const rel = path.relative(process.cwd(), abs);
-  const sourceLabel = rel.includes('..') ? arg : rel.split(path.sep).join('/');
+  // Detect escape-cwd by path segments, not string contains.
+  const escapesCwd = rel === '..' || rel.startsWith('..' + path.sep) || rel.startsWith('../');
+  const sourceLabel = escapesCwd ? arg : rel.split(path.sep).join('/');
   const text = await readFile(abs, 'utf8');
   const result = lint(text, sourceLabel);
   process.exit(printReport(result));

@@ -8,7 +8,7 @@
 //   node lint-master-plan.mjs --self-test
 // Exit 0 on pass, 1 on errors. Last stdout line is a JSON summary.
 
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -118,7 +118,7 @@ async function findCompanionRequirements(masterPlanPath) {
   if (base.endsWith('-MASTER-PLAN.md')) {
     const derived = path.join(dir, base.replace(/-MASTER-PLAN\.md$/, '-REQUIREMENTS.md'));
     try {
-      await readFile(derived, 'utf8'); // cheapest existence check we already import
+      await stat(derived);
       return derived;
     } catch { /* fall through to scan */ }
   }
@@ -339,7 +339,9 @@ async function main() {
   // R4 — Use repo-relative source label for stable cross-machine output.
   const abs = path.resolve(arg);
   const rel = path.relative(process.cwd(), abs);
-  const sourceLabel = rel.includes('..') ? arg : rel.split(path.sep).join('/');
+  // Detect escape-cwd by path segments, not string contains.
+  const escapesCwd = rel === '..' || rel.startsWith('..' + path.sep) || rel.startsWith('../');
+  const sourceLabel = escapesCwd ? arg : rel.split(path.sep).join('/');
   const text = await readFile(abs, 'utf8');
   const result = await lint(text, sourceLabel, abs);
   process.exit(printReport(result));
