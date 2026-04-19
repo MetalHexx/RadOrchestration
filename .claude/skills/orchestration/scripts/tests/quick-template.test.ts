@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { loadTemplate } from '../lib/template-loader.js';
-import { NEXT_ACTIONS } from '../lib/constants.js';
 import type { NodeDef } from '../lib/types.js';
 
 const QUICK_YML_PATH = new URL('../../templates/quick.yml', import.meta.url)
@@ -27,31 +26,6 @@ function collectIds(nodes: NodeDef[]): string[] {
     }
   }
   return ids;
-}
-
-/** Recursively collect all action / action_if_needed values from a NodeDef array. */
-function collectActions(nodes: NodeDef[]): string[] {
-  const actions: string[] = [];
-  for (const node of nodes) {
-    if ('action' in node && typeof node.action === 'string') {
-      actions.push(node.action);
-    }
-    if ('action_if_needed' in node && typeof node.action_if_needed === 'string') {
-      actions.push(node.action_if_needed);
-    }
-    if ('body' in node && Array.isArray(node.body)) {
-      actions.push(...collectActions(node.body as NodeDef[]));
-    }
-    if ('branches' in node && node.branches) {
-      const branches = node.branches as { true?: NodeDef[]; false?: NodeDef[] };
-      if (Array.isArray(branches.true)) actions.push(...collectActions(branches.true));
-      if (Array.isArray(branches.false)) actions.push(...collectActions(branches.false));
-    }
-    if ('children' in node && Array.isArray(node.children)) {
-      actions.push(...collectActions(node.children as NodeDef[]));
-    }
-  }
-  return actions;
 }
 
 /** Recursively find a node by ID in a NodeDef array. */

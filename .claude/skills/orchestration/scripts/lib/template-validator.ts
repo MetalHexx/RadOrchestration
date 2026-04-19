@@ -140,9 +140,9 @@ export function validateTemplate(
   template: PipelineTemplate,
   templateId: string,
 ): ValidationResult {
-  // Deprecated templates skip validation — their action/event references may
-  // point at removed handlers, but they're kept on disk for legacy state.json
-  // rendering only (never dispatched for new projects).
+  // Deprecated templates skip validation — they may still be selected by the
+  // engine (e.g. full.yml is the default resolver fallback) but are being phased
+  // out. Kept on disk for backwards compatibility and legacy state.json rendering.
   if (template.template.status === 'deprecated') {
     return { valid: true, errors: [], warnings: [] };
   }
