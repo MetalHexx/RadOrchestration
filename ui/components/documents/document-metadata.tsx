@@ -29,12 +29,43 @@ const STATUS_COLORS: Record<string, string> = {
   not_started: "text-muted-foreground",
 };
 
-function formatValue(key: string, value: unknown): { text: string; className?: string } {
+/**
+ * Render a frontmatter value for display. Returns either a plain text string
+ * (simple primitives) or a string[] bulleted list (arrays / objects). The
+ * naive previous implementation used `String(value)` unconditionally, which
+ * produced "[object Object],[object Object]" for arrays of objects — a
+ * pre-existing sloppiness surfaced by the Iter 5 phase-plan frontmatter
+ * (tasks: [{ id, title }, ...]).
+ */
+export function stringifyFrontmatterItem(item: unknown): string {
+  if (item === null || item === undefined) return "";
+  if (typeof item === "object") {
+    const entries = Object.entries(item as Record<string, unknown>)
+      .filter(([, v]) => v !== null && v !== undefined)
+      .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`);
+    return entries.join(", ");
+  }
+  return String(item);
+}
+
+function formatValue(
+  key: string,
+  value: unknown
+): { text?: string; items?: string[]; className?: string } {
   if (DATE_KEYS.has(key) && typeof value === "string") {
     const date = new Date(value);
     if (!isNaN(date.getTime())) {
       return { text: date.toLocaleDateString() };
     }
+  }
+
+  if (Array.isArray(value)) {
+    const items = value.map((v) => stringifyFrontmatterItem(v)).filter((s) => s.length > 0);
+    return { items };
+  }
+
+  if (value !== null && typeof value === "object") {
+    return { text: stringifyFrontmatterItem(value) };
   }
 
   const strValue = String(value);
@@ -72,13 +103,27 @@ export function DocumentMetadata({ frontmatter }: DocumentMetadataProps) {
       <CardContent>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
           {entries.map(([key, value]) => {
-            const { text, className } = formatValue(key, value);
+            const { text, items, className } = formatValue(key, value);
             return (
               <div key={key} className="contents">
                 <dt className="text-muted-foreground font-medium">
                   {formatKey(key)}
                 </dt>
-                <dd className={className}>{text}</dd>
+                <dd className={className}>
+                  {items !== undefined ? (
+                    items.length === 0 ? (
+                      <span className="text-muted-foreground italic">(none)</span>
+                    ) : (
+                      <ul className="list-disc list-inside space-y-0.5">
+                        {items.map((item, idx) => (
+                          <li key={idx}>{item}</li>
+                        ))}
+                      </ul>
+                    )
+                  ) : (
+                    text
+                  )}
+                </dd>
               </div>
             );
           })}

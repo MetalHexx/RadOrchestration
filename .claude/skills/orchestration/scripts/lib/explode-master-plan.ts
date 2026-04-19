@@ -340,9 +340,7 @@ function renderPhaseBody(phase: ParsedPhase): string {
   const header = `# Phase ${phase.index}: ${phase.title}`;
   const sections: string[] = [header, ''];
   if (phase.body.trim().length > 0) {
-    sections.push('## Phase Objective', '', phase.body.trim(), '');
-  } else {
-    sections.push('## Phase Objective', '', '_(to be expanded from the Master Plan)_', '');
+    sections.push(phase.body.trim(), '');
   }
   sections.push('## Tasks', '');
   if (phase.tasks.length === 0) {
@@ -361,16 +359,10 @@ function renderTaskBody(task: ParsedTask): string {
   const tidx = String(task.taskIndex).padStart(2, '0');
   const header = `# P${pidx}-T${tidx}: ${task.title}`;
   const sections: string[] = [header, ''];
-  sections.push('## Objective', '');
-  sections.push(`_(extracted from Master Plan body below)_`, '');
-  sections.push('## Body', '');
   if (task.body.trim().length > 0) {
     sections.push(task.body.trim());
   } else {
     sections.push('_(empty body in Master Plan)_');
-  }
-  if (task.requirementTags.length > 0) {
-    sections.push('', `**Requirements**: ${task.requirementTags.join(', ')}`);
   }
   return sections.join('\n');
 }

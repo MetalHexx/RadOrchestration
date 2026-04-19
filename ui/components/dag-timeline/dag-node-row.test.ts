@@ -40,7 +40,7 @@ function computePaddingLeft(depth: number): number {
 }
 
 function shouldRenderDocLink(node: StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState): boolean {
-  return node.kind === 'step' && node.doc_path !== null;
+  return node.kind === 'step' && node.doc_path != null && node.doc_path !== '';
 }
 
 function shouldRenderBranchIndicator(node: StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState): boolean {
@@ -197,6 +197,28 @@ test('renders DocumentLink for step node with non-null doc_path', () => {
 
 test('does NOT render DocumentLink for step node with null doc_path', () => {
   assert.strictEqual(shouldRenderDocLink(stepNodeNoDoc), false);
+});
+
+test('does NOT render DocumentLink for step node with undefined doc_path (malformed state.json omits the field)', () => {
+  // Regression guard: the original `!== null` check let `undefined` through,
+  // so nodes that omitted doc_path entirely still rendered a broken "Doc" link.
+  const stepNodeUndefinedDoc = {
+    kind: 'step',
+    status: 'not_started',
+    retries: 0,
+    // doc_path field intentionally omitted.
+  } as unknown as StepNodeState;
+  assert.strictEqual(shouldRenderDocLink(stepNodeUndefinedDoc), false);
+});
+
+test('does NOT render DocumentLink for step node with empty-string doc_path', () => {
+  const stepNodeEmptyDoc: StepNodeState = {
+    kind: 'step',
+    status: 'not_started',
+    doc_path: '',
+    retries: 0,
+  };
+  assert.strictEqual(shouldRenderDocLink(stepNodeEmptyDoc), false);
 });
 
 test('does NOT render DocumentLink for gate node', () => {

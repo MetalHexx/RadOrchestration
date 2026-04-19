@@ -46,7 +46,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
     event.preventDefault();
     if (hasGate && gateButtonRef.current !== null) {
       gateButtonRef.current.click();
-    } else if (node.kind === 'step' && node.doc_path !== null) {
+    } else if (node.kind === 'step' && node.doc_path != null && node.doc_path !== '') {
       onDocClick(node.doc_path);
     }
   }, [hasGate, node, onDocClick]);
@@ -77,7 +77,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
           <NodeStatusBadge status={branchBadgeStatus} label={branchLabel} />
         </span>
       )}
-      {node.kind === 'step' && node.doc_path !== null && (
+      {node.kind === 'step' && node.doc_path != null && node.doc_path !== '' && (
         <DocumentLink path={node.doc_path} label="Doc" onDocClick={onDocClick} tabIndex={-1} />
       )}
       {gateConfig !== null && (

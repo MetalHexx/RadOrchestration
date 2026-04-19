@@ -210,6 +210,48 @@ describe('parseMasterPlan — parser cases', () => {
     }
   });
 
+  it('emitted task doc body is the master-plan section verbatim, no Objective/Body wrappers, no duplicated Requirements line', () => {
+    const projectName = 'RENDER';
+    const result = explodeMasterPlan({
+      projectDir: TMP_DIR,
+      masterPlanPath: WELL_FORMED,
+      projectName,
+      nowIso: '2026-04-18T00:00:00.000Z',
+    });
+    const taskFile = result.emittedTaskFiles[0]!; // P01-T01
+    const content = fs.readFileSync(taskFile, 'utf-8');
+    // Strip frontmatter block, then trim leading blank lines.
+    const body = content.replace(/^---\n[\s\S]*?\n---\n/, '').replace(/^\s+/, '');
+    // The H1 is the only heading the renderer adds — no "## Objective", "## Body",
+    // "_(extracted from Master Plan body below)_", or re-appended "**Requirements**:" line.
+    expect(body).toMatch(/^# P01-T01: /);
+    expect(body).not.toContain('## Objective');
+    expect(body).not.toContain('## Body');
+    expect(body).not.toContain('(extracted from Master Plan body below)');
+    // The trailing duplicated Requirements line (added by the old renderer in addition to the
+    // inline one already present in the body) must be gone. We allow inline "Requirements:"
+    // text from the master plan body itself, but not a standalone trailing line.
+    const trailingReqLines = body.match(/^\*\*Requirements\*\*:.*$/gm) ?? [];
+    expect(trailingReqLines.length).toBeLessThanOrEqual(0);
+  });
+
+  it('emitted phase doc body is the master-plan section verbatim, no "Phase Objective" wrapper', () => {
+    const projectName = 'RENDERP';
+    const result = explodeMasterPlan({
+      projectDir: TMP_DIR,
+      masterPlanPath: WELL_FORMED,
+      projectName,
+      nowIso: '2026-04-18T00:00:00.000Z',
+    });
+    const phaseFile = result.emittedPhaseFiles[0]!;
+    const content = fs.readFileSync(phaseFile, 'utf-8');
+    const body = content.replace(/^---\n[\s\S]*?\n---\n/, '').replace(/^\s+/, '');
+    expect(body).toMatch(/^# Phase 1: /);
+    expect(body).not.toContain('## Phase Objective');
+    // Tasks enumeration still lands.
+    expect(body).toContain('## Tasks');
+  });
+
   it('task heading before any phase heading throws ParseError with "before any phase heading" message', () => {
     const body = [
       '### P01-T01: Orphan',
