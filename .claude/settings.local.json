@@ -16,7 +16,8 @@
       "Bash(mkdir -p 'C:\\\\Users\\\\Metal\\\\.claude\\\\skills\\\\create-worktree-plan-mode\\\\scripts')",
       "Read(//c/Users/Metal/.claude/skills/**)",
       "Bash(cp 'C:\\\\dev\\\\orchestration\\\\v3\\\\.claude\\\\skills\\\\rad-execute-parallel\\\\scripts\\\\create-worktree.js' 'C:\\\\Users\\\\Metal\\\\.claude\\\\skills\\\\create-worktree-plan-mode\\\\scripts\\\\create-worktree.js')",
-      "Bash(cp 'C:\\\\dev\\\\orchestration\\\\v3\\\\.claude\\\\skills\\\\rad-execute-parallel\\\\scripts\\\\launch-claude.js' 'C:\\\\Users\\\\Metal\\\\.claude\\\\skills\\\\create-worktree-plan-mode\\\\scripts\\\\launch-claude.js')"
+      "Bash(cp 'C:\\\\dev\\\\orchestration\\\\v3\\\\.claude\\\\skills\\\\rad-execute-parallel\\\\scripts\\\\launch-claude.js' 'C:\\\\Users\\\\Metal\\\\.claude\\\\skills\\\\create-worktree-plan-mode\\\\scripts\\\\launch-claude.js')",
+      "Bash(git fetch *)"
     ],
     "additionalDirectories": [
       "/dev/orchestration-projects"
