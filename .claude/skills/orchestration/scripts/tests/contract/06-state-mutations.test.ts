@@ -645,6 +645,50 @@ describe('[CONTRACT] State Mutations — Explosion script mutations (Iter 5)', (
     expect(result.mutations_applied.some((m) => m.includes('explode_master_plan.doc_path = null'))).toBe(true);
   });
 
+  it('explosion_failed (missing parse_error): halts with dispatch-error halt_reason, does NOT increment parse_retry_count', () => {
+    const state = makeStateWithExplosion({
+      masterPlanStatus: 'completed',
+      explodeStatus: 'in_progress',
+      parseRetryCount: 1,
+      lastParseError: null,
+    });
+    const mutation = getMutation('explosion_failed')!;
+    // No parse_error in context at all
+    const result = mutation(state, {}, DEFAULT_CONFIG, emptyTemplate);
+
+    const mpNode = result.state.graph.nodes['master_plan'] as StepNodeState;
+    // Counter NOT incremented — still 1 (prior value), not 2.
+    expect(mpNode.parse_retry_count).toBe(1);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('failed');
+
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toBeTruthy();
+    expect(result.state.pipeline.halt_reason).toContain('dispatch');
+    expect(result.mutations_applied.some((m) => m.includes('invalid dispatch'))).toBe(true);
+  });
+
+  it('explosion_failed (malformed parse_error — missing line): halts with dispatch-error, does NOT increment parse_retry_count', () => {
+    const state = makeStateWithExplosion({
+      masterPlanStatus: 'completed',
+      explodeStatus: 'in_progress',
+      parseRetryCount: 2,
+      lastParseError: null,
+    });
+    // Missing `line` field — shape validation must reject this.
+    const malformed = { expected: 'x', found: 'y', message: 'm' } as unknown as { line: number; expected: string; found: string; message: string };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: malformed }, DEFAULT_CONFIG, emptyTemplate);
+
+    const mpNode = result.state.graph.nodes['master_plan'] as StepNodeState;
+    // Counter NOT incremented — still 2 (prior value), not 3.
+    expect(mpNode.parse_retry_count).toBe(2);
+
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('dispatch');
+  });
+
   it('explosion_failed: processEvent routes it out-of-band and the recovery mutation fires end-to-end (integration)', () => {
     // Regression for PR #56 Copilot finding: `explosion_failed` was returning
     // "Unknown event" because step-level `failed` events aren't registered by

@@ -183,6 +183,11 @@ describe('validateTemplate', () => {
       expect(explode).toBeDefined();
       expect(explode!.kind).toBe('step');
       expect((explode as any).action).toBe('explode_master_plan');
+      // The explode step produces no single doc (outputs are phases/*.md, tasks/*.md,
+      // seeded iterations). doc_output_field MUST be absent — otherwise preRead would
+      // require context.doc_path on explosion_completed and try to validate a
+      // non-existent doc. See pre-reads.ts early-return when doc_output_field is absent.
+      expect((explode as any).doc_output_field).toBeUndefined();
       expect((explode as any).events.started).toBe('explosion_started');
       expect((explode as any).events.completed).toBe('explosion_completed');
       // `failed` is NOT declared on the step — `explosion_failed` is routed via

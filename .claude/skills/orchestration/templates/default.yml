@@ -49,7 +49,6 @@ nodes:
     # `explosion_failed` through the out-of-band path instead of the template event index.
     events: { started: explosion_started, completed: explosion_completed }
     context: { step: explode_master_plan }
-    doc_output_field: doc_path
     depends_on: [master_plan]
 
   # ── Plan Approval Gate ────────────────────────────────────────────────────

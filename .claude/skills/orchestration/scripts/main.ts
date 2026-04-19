@@ -10,7 +10,7 @@ import {
   readDocument,
   ensureDirectories,
 } from './lib/state-io.js';
-import type { EventContext, IOAdapter, PipelineResult } from './lib/types.js';
+import type { EventContext, IOAdapter, ParseErrorDetail, PipelineResult } from './lib/types.js';
 
 // ── Argument Parsing ──────────────────────────────────────────────────────────
 
@@ -117,6 +117,27 @@ export function run(argv: string[]): void {
     if (args['compare-url'] !== undefined) context.compare_url = args['compare-url'];
     if (args['pr-url'] !== undefined) context.pr_url = args['pr-url'];
     if (args['template'] !== undefined) context.template = args['template'];
+
+    if (args['parse-error'] !== undefined) {
+      let parsed: ParseErrorDetail;
+      try {
+        parsed = JSON.parse(args['parse-error']);
+      } catch (e) {
+        process.exitCode = 1;
+        process.stdout.write(JSON.stringify(makeErrorResult(
+          `Invalid JSON for --parse-error: ${(e as Error).message}`, event, orchRoot), null, 2) + '\n');
+        return;
+      }
+      if (typeof parsed.line !== 'number' || typeof parsed.expected !== 'string' ||
+          typeof parsed.found !== 'string' || typeof parsed.message !== 'string') {
+        process.exitCode = 1;
+        process.stdout.write(JSON.stringify(makeErrorResult(
+          `Invalid --parse-error shape: expected { line: number, expected: string, found: string, message: string }`,
+          event, orchRoot), null, 2) + '\n');
+        return;
+      }
+      context.parse_error = parsed;
+    }
 
     // Build IOAdapter from state-io named exports
     const io: IOAdapter = {

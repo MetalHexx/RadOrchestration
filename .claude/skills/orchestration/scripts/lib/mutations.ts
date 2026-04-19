@@ -12,6 +12,7 @@ import type {
   ForEachPhaseNodeState,
   ForEachPhaseNodeDef,
   ForEachTaskNodeDef,
+  ParseErrorDetail,
   PipelineTemplate,
 } from './types.js';
 import { EVENTS, VALID_VERDICTS, REVIEW_VERDICTS } from './constants.js';
@@ -188,7 +189,28 @@ mutationRegistry.set(EVENTS.EXPLOSION_FAILED, (state, context, _config, _templat
   const explodeNode = resolveNodeState(cloned, 'explode_master_plan', 'top') as StepNodeState;
 
   // context.parse_error carries { line, expected, found, message } from the explosion CLI wrapper.
-  const parseError = (context.parse_error ?? null) as StepNodeState['last_parse_error'];
+  // Hard-error on missing / malformed parse_error — a dispatch-layer bug, not a recoverable parse
+  // failure. Silently tolerating a null here would let retry_count climb toward the cap with
+  // last_parse_error = null, yielding an "unknown parse error" halt that gives the planner
+  // nothing actionable to fix.
+  const parseError = context.parse_error as ParseErrorDetail | undefined;
+  if (!parseError || typeof parseError.line !== 'number' ||
+      typeof parseError.expected !== 'string' ||
+      typeof parseError.found !== 'string' ||
+      typeof parseError.message !== 'string') {
+    const explodeNode2 = resolveNodeState(cloned, 'explode_master_plan', 'top') as StepNodeState;
+    explodeNode2.status = 'failed';
+    cloned.graph.status = 'halted';
+    cloned.pipeline.halt_reason =
+      'Explosion dispatch error: explosion_failed received without a valid parse_error payload. ' +
+      'This is a programmer error — the orchestrator or CLI wrapper must pass --parse-error with ' +
+      '{ line, expected, found, message }. See main.ts argument handling.';
+    mutations_applied.push('set explode_master_plan.status = failed (invalid dispatch)');
+    mutations_applied.push('set graph.status = halted (dispatch error)');
+    mutations_applied.push('set pipeline.halt_reason (dispatch error)');
+    return { state: cloned, mutations_applied };
+  }
+
   masterPlanNode.last_parse_error = parseError;
   mutations_applied.push(
     parseError
