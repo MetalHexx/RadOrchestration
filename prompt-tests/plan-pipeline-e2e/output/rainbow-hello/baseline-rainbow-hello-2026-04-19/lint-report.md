@@ -5,17 +5,17 @@
 ## Requirements doc lint
 
 ```
-lint-requirements: C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness\prompt-tests\plan-pipeline-e2e\output\rainbow-hello\baseline-rainbow-hello-2026-04-19\baseline-rainbow-hello-2026-04-19-REQUIREMENTS.md
+lint-requirements: prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-rainbow-hello-2026-04-19/baseline-rainbow-hello-2026-04-19-REQUIREMENTS.md
   blocks: 8  errors: 0  warnings: 0
-{"linter":"lint-requirements","source":"C:\\dev\\orchestration\\v3-worktrees\\feat-iter-6-prompt-harness\\prompt-tests\\plan-pipeline-e2e\\output\\rainbow-hello\\baseline-rainbow-hello-2026-04-19\\baseline-rainbow-hello-2026-04-19-REQUIREMENTS.md","ok":true,"errors":[],"warnings":[],"blockCount":8}
+{"linter":"lint-requirements","source":"prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-rainbow-hello-2026-04-19/baseline-rainbow-hello-2026-04-19-REQUIREMENTS.md","ok":true,"errors":[],"warnings":[],"blockCount":8}
 ```
 
 ## Master Plan lint (with referential integrity against companion Requirements doc)
 
 ```
-lint-master-plan: C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness\prompt-tests\plan-pipeline-e2e\output\rainbow-hello\baseline-rainbow-hello-2026-04-19\baseline-rainbow-hello-2026-04-19-MASTER-PLAN.md
+lint-master-plan: prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-rainbow-hello-2026-04-19/baseline-rainbow-hello-2026-04-19-MASTER-PLAN.md
   phases: 3  tasks: 6  errors: 0  warnings: 0
-{"linter":"lint-master-plan","source":"C:\\dev\\orchestration\\v3-worktrees\\feat-iter-6-prompt-harness\\prompt-tests\\plan-pipeline-e2e\\output\\rainbow-hello\\baseline-rainbow-hello-2026-04-19\\baseline-rainbow-hello-2026-04-19-MASTER-PLAN.md","ok":true,"errors":[],"warnings":[],"phaseCount":3,"taskCount":6}
+{"linter":"lint-master-plan","source":"prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-rainbow-hello-2026-04-19/baseline-rainbow-hello-2026-04-19-MASTER-PLAN.md","ok":true,"errors":[],"warnings":[],"phaseCount":3,"taskCount":6}
 ```
 
 ## Self-test: lint-requirements

@@ -86,6 +86,15 @@ function lint(text, sourceLabel) {
     errors.push(`frontmatter: expected \`type: requirements\`, got \`${frontmatter.type}\``);
   }
 
+  // R2 — Require requirement_count to be a positive integer.
+  if ('requirement_count' in frontmatter) {
+    const v = frontmatter.requirement_count;
+    const isPositiveInt = typeof v === 'number' && Number.isInteger(v) && v > 0;
+    if (!isPositiveInt) {
+      errors.push(`frontmatter.requirement_count: expected positive integer, got \`${JSON.stringify(v)}\``);
+    }
+  }
+
   const blocks = collectBlocks(body ?? '');
   for (const block of blocks) {
     const label = `${block.kind}-${block.num}`;
@@ -98,8 +107,13 @@ function lint(text, sourceLabel) {
     }
   }
 
-  if (typeof frontmatter.requirement_count === 'number' && frontmatter.requirement_count !== blocks.length) {
-    errors.push(`frontmatter.requirement_count (${frontmatter.requirement_count}) != actual block count (${blocks.length})`);
+  // Only check the count mismatch when the value is a valid positive integer.
+  if ('requirement_count' in frontmatter) {
+    const v = frontmatter.requirement_count;
+    const isPositiveInt = typeof v === 'number' && Number.isInteger(v) && v > 0;
+    if (isPositiveInt && v !== blocks.length) {
+      errors.push(`frontmatter.requirement_count (${v}) != actual block count (${blocks.length})`);
+    }
   }
 
   // Gap / duplicate detection per ID kind.
@@ -182,13 +196,32 @@ async function main() {
   if (arg === '--self-test') {
     const result = lint(selfTestFixture(), '<self-test>');
     printReport(result);
-    // Self-test PASSES the script when it finds exactly the expected errors.
+    // R3 — Self-test compares exact error SET, not just count.
     // Expected: wrong-type, FR-1 missing description, FR-3 missing description,
     // requirement_count mismatch, FR-1 duplicate, FR-2 gap (6 total).
-    const expected = result.errors.length === 6;
-    process.exit(expected ? 0 : 1);
+    const EXPECTED_ERRORS = [
+      'frontmatter: expected `type: requirements`, got `not_requirements`',
+      'FR-1: missing body description sentence under heading',
+      'FR-3: missing body description sentence under heading',
+      'frontmatter.requirement_count (5) != actual block count (3)',
+      'FR-1: duplicate ID',
+      'FR-2: gap in ID sequence (missing)',
+    ].sort();
+    const actual = [...result.errors].sort();
+    const match = actual.length === EXPECTED_ERRORS.length && actual.every((e, i) => e === EXPECTED_ERRORS[i]);
+    if (!match) {
+      console.error('self-test: error set mismatch');
+      console.error('  expected:', JSON.stringify(EXPECTED_ERRORS));
+      console.error('  actual:  ', JSON.stringify(actual));
+    }
+    process.exit(match ? 0 : 1);
   }
-  const result = await runFile(path.resolve(arg));
+  // R1 — Use repo-relative source label for stable cross-machine output.
+  const abs = path.resolve(arg);
+  const rel = path.relative(process.cwd(), abs);
+  const sourceLabel = rel.includes('..') ? arg : rel.split(path.sep).join('/');
+  const text = await readFile(abs, 'utf8');
+  const result = lint(text, sourceLabel);
   process.exit(printReport(result));
 }
 

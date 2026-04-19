@@ -39,10 +39,12 @@ function parseFrontmatter(text) {
   return { frontmatter: fm, body: text.slice(end + 4) };
 }
 
-// Returns { phases: [{ id, title, description, tasks: [{ id, title, description, refs }], refs }] }
+// Returns { phases: [{ id, title, description, tasks: [{ id, title, description, refs }], refs }], orphanTasks: [] }
+// R8 — orphanTasks collects task headings that appear before any phase heading.
 function parseStructure(body) {
   const lines = (body ?? '').split(/\r?\n/);
   const phases = [];
+  const orphanTasks = [];
   let phase = null;
   let task = null;
   let buffer = [];
@@ -67,7 +69,12 @@ function parseStructure(body) {
     if (taskMatch) {
       flushBuffer();
       task = { id: `${taskMatch[1]}-${taskMatch[2]}`, title: taskMatch[3].trim(), descriptionLines: [], refs: new Set() };
-      if (phase) phase.tasks.push(task);
+      if (phase) {
+        phase.tasks.push(task);
+      } else {
+        // R8 — task heading before any phase heading; track as orphan.
+        orphanTasks.push(task);
+      }
       continue;
     }
     buffer.push(line);
@@ -82,7 +89,7 @@ function parseStructure(body) {
     }
   }
   flushBuffer();
-  return phases;
+  return { phases, orphanTasks };
 }
 
 function countSentences(descriptionLines) {
@@ -156,14 +163,39 @@ async function lint(text, sourceLabel, masterPlanPath) {
     errors.push(`frontmatter: expected \`type: master_plan\`, got \`${frontmatter.type}\``);
   }
 
-  const phases = parseStructure(body);
+  // R7 — Require total_phases and total_tasks to be positive integers.
+  for (const key of ['total_phases', 'total_tasks']) {
+    if (key in frontmatter) {
+      const v = frontmatter[key];
+      const isPositiveInt = typeof v === 'number' && Number.isInteger(v) && v > 0;
+      if (!isPositiveInt) {
+        errors.push(`frontmatter.${key}: expected positive integer, got \`${JSON.stringify(v)}\``);
+      }
+    }
+  }
+
+  const { phases, orphanTasks } = parseStructure(body);
   const taskCount = phases.reduce((acc, p) => acc + p.tasks.length, 0);
 
-  if (typeof frontmatter.total_phases === 'number' && frontmatter.total_phases !== phases.length) {
-    errors.push(`frontmatter.total_phases (${frontmatter.total_phases}) != actual phase count (${phases.length})`);
+  // Only check the count mismatches when the values are valid positive integers.
+  if ('total_phases' in frontmatter) {
+    const v = frontmatter.total_phases;
+    const isPositiveInt = typeof v === 'number' && Number.isInteger(v) && v > 0;
+    if (isPositiveInt && v !== phases.length) {
+      errors.push(`frontmatter.total_phases (${v}) != actual phase count (${phases.length})`);
+    }
   }
-  if (typeof frontmatter.total_tasks === 'number' && frontmatter.total_tasks !== taskCount) {
-    errors.push(`frontmatter.total_tasks (${frontmatter.total_tasks}) != actual task count (${taskCount})`);
+  if ('total_tasks' in frontmatter) {
+    const v = frontmatter.total_tasks;
+    const isPositiveInt = typeof v === 'number' && Number.isInteger(v) && v > 0;
+    if (isPositiveInt && v !== taskCount) {
+      errors.push(`frontmatter.total_tasks (${v}) != actual task count (${taskCount})`);
+    }
+  }
+
+  // R8 — Flag orphan task headings (task before first phase).
+  for (const t of orphanTasks) {
+    errors.push(`task ${t.id}: heading found before first phase`);
   }
 
   // Phase ID contiguity (P01, P02, ...).
@@ -220,8 +252,12 @@ async function lint(text, sourceLabel, masterPlanPath) {
 }
 
 function selfTestFixture() {
-  // Deliberately malformed: wrong type, phase/task count mismatch, missing
-  // description, phantom requirement ref.
+  // Deliberately malformed. Exercises: wrong `type` value, total_phases
+  // mismatch, total_tasks mismatch, missing phase descriptions (P01, P02),
+  // missing task description (P02-T01). Also contains a phantom requirement
+  // ref (FR-99) — NOT exercised in --self-test mode because masterPlanPath
+  // is null and the referential-integrity check is skipped (the "companion
+  // doc not found" warning fires instead).
   return `---
 project: "SELFTEST"
 type: not_master_plan
@@ -279,15 +315,33 @@ async function main() {
   if (arg === '--self-test') {
     const result = await lint(selfTestFixture(), '<self-test>', null);
     printReport(result);
-    // Self-test passes when exactly the expected errors surface (masterPlanPath=null, so no
-    // companion doc is loaded). Expected: wrong-type, total_phases mismatch, total_tasks mismatch,
+    // R5 — Self-test compares exact error SET, not just count.
+    // Expected: wrong-type, total_phases mismatch, total_tasks mismatch,
     // P01 missing description, P02 missing description, P02-T01 missing description (6 total).
-    const expected = result.errors.length === 6;
-    process.exit(expected ? 0 : 1);
+    // masterPlanPath=null so referential integrity is skipped; companion-not-found fires as warning.
+    const EXPECTED_ERRORS = [
+      'frontmatter: expected `type: master_plan`, got `not_master_plan`',
+      'frontmatter.total_phases (3) != actual phase count (2)',
+      'frontmatter.total_tasks (5) != actual task count (2)',
+      'P01: missing phase description sentence under heading',
+      'P02: missing phase description sentence under heading',
+      'P02-T01: missing task description sentence under heading',
+    ].sort();
+    const actual = [...result.errors].sort();
+    const match = actual.length === EXPECTED_ERRORS.length && actual.every((e, i) => e === EXPECTED_ERRORS[i]);
+    if (!match) {
+      console.error('self-test: error set mismatch');
+      console.error('  expected:', JSON.stringify(EXPECTED_ERRORS));
+      console.error('  actual:  ', JSON.stringify(actual));
+    }
+    process.exit(match ? 0 : 1);
   }
+  // R4 — Use repo-relative source label for stable cross-machine output.
   const abs = path.resolve(arg);
+  const rel = path.relative(process.cwd(), abs);
+  const sourceLabel = rel.includes('..') ? arg : rel.split(path.sep).join('/');
   const text = await readFile(abs, 'utf8');
-  const result = await lint(text, abs, abs);
+  const result = await lint(text, sourceLabel, abs);
   process.exit(printReport(result));
 }
 
