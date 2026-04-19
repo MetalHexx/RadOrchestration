@@ -44,6 +44,9 @@ export const NEXT_ACTIONS = Object.freeze({
   SPAWN_REQUIREMENTS: 'spawn_requirements',
   SPAWN_MASTER_PLAN: 'spawn_master_plan',
 
+  // Planning scripts
+  EXPLODE_MASTER_PLAN: 'explode_master_plan',
+
   // Human gates
   REQUEST_PLAN_APPROVAL: 'request_plan_approval',
   GATE_TASK: 'gate_task',
@@ -76,6 +79,9 @@ export const EVENTS = Object.freeze({
   REQUIREMENTS_COMPLETED: 'requirements_completed',
   MASTER_PLAN_STARTED: 'master_plan_started',
   MASTER_PLAN_COMPLETED: 'master_plan_completed',
+  EXPLOSION_STARTED: 'explosion_started',
+  EXPLOSION_COMPLETED: 'explosion_completed',
+  EXPLOSION_FAILED: 'explosion_failed',
 
   // ── Gate approved events ──────────────────────────────────────────────
   PLAN_APPROVED: 'plan_approved',
@@ -127,6 +133,9 @@ export const OUT_OF_BAND_EVENTS = new Set<string>([
   'halt',
   'gate_mode_set',
   'source_control_init',
+  // Parse-failure recovery loop: step-level `failed` events are not template-indexed
+  // by buildEventIndex, so routing `explosion_failed` requires the out-of-band path.
+  'explosion_failed',
 ]);
 
 export const REVIEW_VERDICTS = Object.freeze({

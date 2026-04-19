@@ -193,6 +193,32 @@
             { "type": "string" },
             { "type": "null" }
           ]
+        },
+        "last_parse_error": {
+          "title": "Last Parse Error",
+          "description": "Structured error info from the most recent failed Master Plan parse attempt by the explosion script. Populated on explosion_failed, cleared on explosion_completed. Used by the planner's recovery branch to self-correct.",
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["line", "expected", "found", "message"],
+              "properties": {
+                "line": { "type": "integer", "minimum": 1 },
+                "expected": { "type": "string" },
+                "found": { "type": "string" },
+                "message": { "type": "string" }
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "parse_retry_count": {
+          "title": "Parse Retry Count",
+          "description": "Number of times the explosion script's parser has rejected the planner's Master Plan output for this node. Reset to 0 on explosion_completed. Hardcoded cap of 3 enforced in the explosion_failed mutation handler.",
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "null" }
+          ]
         }
       }
     },

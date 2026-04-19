@@ -34,7 +34,7 @@ TDD / DRY / YAGNI principles get an explicit section in the skill workflow. The 
 ## Scope Deliberately Untouched
 
 - Corrective-cycle MUTATIONS (how a `changes_requested` verdict produces a corrective iteration entry, how the walker re-enters the executor for the correction) — Iter 12 handles all engine-level cycle wiring.
-- `context-enrichment.ts` — `execute_task` enrichment (post-Iter-7 rewire: reads from `taskIter.doc_path`) passes the handoff path and `is_correction`, `corrective_index`, `previous_review`, `reason` fields (see lines 211-219 + task-loop enrichment at lines 189-209 pre-Iter-7). The new correction-mode executor consumes these context fields as already provided.
+- `context-enrichment.ts` — `execute_task` enrichment (post-Iter-7 rewire: reads from `taskIter.nodes['task_handoff'].doc_path`) passes the handoff path and `is_correction`, `corrective_index`, `previous_review`, `reason` fields (see lines 211-219 + task-loop enrichment at lines 189-209 pre-Iter-7). The new correction-mode executor consumes these context fields as already provided.
 - Source-control skill — commits remain in its purview. The executor does not call git directly.
 - `rad-plan-audit` — still legacy; Iter 13.
 

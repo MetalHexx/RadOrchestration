@@ -29,12 +29,76 @@ const STATUS_COLORS: Record<string, string> = {
   not_started: "text-muted-foreground",
 };
 
-function formatValue(key: string, value: unknown): { text: string; className?: string } {
+/**
+ * Stringify a single frontmatter value to a plain `string`.
+ *
+ * Always returns `string` — never an array. The string[] bulleted-list shape
+ * (`items: [...]`) is produced by `formatValue` below, which calls this helper
+ * once per element when the top-level value is an array.
+ *
+ * Handles:
+ *   - `null` / `undefined` → ""
+ *   - `Date` instances (YAML timestamps parsed by gray-matter / js-yaml) →
+ *     localized date string, or "" if the Date is invalid
+ *   - flat objects → `key: value, key: value` pairs, with nested objects
+ *     JSON-stringified and nested Dates localized
+ *   - primitives (number, boolean, string) → `String(item)`
+ *
+ * The naive previous implementation used `String(value)` unconditionally,
+ * which produced "[object Object],[object Object]" for arrays of objects —
+ * a pre-existing sloppiness surfaced by the Iter 5 phase-plan frontmatter
+ * (tasks: [{ id, title }, ...]).
+ */
+export function stringifyFrontmatterItem(item: unknown): string {
+  if (item === null || item === undefined) return "";
+  // YAML timestamps are parsed by gray-matter / js-yaml into Date objects.
+  // Without this guard, `typeof dateInstance === "object"` would fall through
+  // to the generic-object branch and render `Object.entries(date)` → "".
+  if (item instanceof Date) {
+    return isNaN(item.getTime()) ? "" : item.toLocaleDateString();
+  }
+  if (typeof item === "object") {
+    const entries = Object.entries(item as Record<string, unknown>)
+      .filter(([, v]) => v !== null && v !== undefined)
+      .map(([k, v]) => {
+        if (v instanceof Date) {
+          return `${k}: ${isNaN(v.getTime()) ? "" : v.toLocaleDateString()}`;
+        }
+        return `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`;
+      });
+    return entries.join(", ");
+  }
+  return String(item);
+}
+
+export function formatValue(
+  key: string,
+  value: unknown
+): { text?: string; items?: string[]; className?: string } {
+  // YAML timestamps (e.g. `created: 2026-04-19`) are parsed by gray-matter / js-yaml
+  // into Date instances, not strings. Handle them first so the downstream
+  // `typeof === "object"` branch doesn't swallow them into an empty render.
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) {
+      return { text: "" };
+    }
+    return { text: value.toLocaleDateString() };
+  }
+
   if (DATE_KEYS.has(key) && typeof value === "string") {
     const date = new Date(value);
     if (!isNaN(date.getTime())) {
       return { text: date.toLocaleDateString() };
     }
+  }
+
+  if (Array.isArray(value)) {
+    const items = value.map((v) => stringifyFrontmatterItem(v)).filter((s) => s.length > 0);
+    return { items };
+  }
+
+  if (value !== null && typeof value === "object") {
+    return { text: stringifyFrontmatterItem(value) };
   }
 
   const strValue = String(value);
@@ -72,13 +136,27 @@ export function DocumentMetadata({ frontmatter }: DocumentMetadataProps) {
       <CardContent>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
           {entries.map(([key, value]) => {
-            const { text, className } = formatValue(key, value);
+            const { text, items, className } = formatValue(key, value);
             return (
               <div key={key} className="contents">
                 <dt className="text-muted-foreground font-medium">
                   {formatKey(key)}
                 </dt>
-                <dd className={className}>{text}</dd>
+                <dd className={className}>
+                  {items !== undefined ? (
+                    items.length === 0 ? (
+                      <span className="text-muted-foreground italic">(none)</span>
+                    ) : (
+                      <ul className="list-disc list-inside space-y-0.5">
+                        {items.map((item, idx) => (
+                          <li key={idx}>{item}</li>
+                        ))}
+                      </ul>
+                    )
+                  ) : (
+                    text
+                  )}
+                </dd>
               </div>
             );
           })}

@@ -366,6 +366,105 @@ describe('pipeline CLI — run()', () => {
     expect(result.context.error).toBe('unexpected failure');
   });
 
+  // ── --parse-error JSON flag (Iter 5 explosion dispatch) ────────────────────
+
+  it('valid --parse-error JSON is parsed and passed to processEvent as context.parse_error', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    const parseError = { line: 5, expected: 'x', found: 'y', message: 'm' };
+    run([...BASE_ARGS, '--parse-error', JSON.stringify(parseError)]);
+
+    expect(mockProcessEvent).toHaveBeenCalledOnce();
+    const [, , context] = mockProcessEvent.mock.calls[0];
+    expect(context.parse_error).toEqual(parseError);
+  });
+
+  it('invalid --parse-error JSON returns success: false with structured error mentioning --parse-error', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    process.exitCode = undefined as unknown as number;
+    run([...BASE_ARGS, '--parse-error', '{ not valid json']);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toContain('--parse-error');
+    expect(result.error?.message).toContain('Invalid JSON');
+    expect(process.exitCode).toBe(1);
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
+
+  it('valid JSON with wrong --parse-error shape returns success: false with structured error', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    process.exitCode = undefined as unknown as number;
+    // Missing `line` field (and `line` must be number)
+    run([...BASE_ARGS, '--parse-error', JSON.stringify({ expected: 'x', found: 'y', message: 'm' })]);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toContain('--parse-error');
+    expect(result.error?.message).toContain('shape');
+    expect(process.exitCode).toBe(1);
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
+
+  it('--parse-error with float line (1.5) is rejected as invalid shape', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    process.exitCode = undefined as unknown as number;
+    run([...BASE_ARGS, '--parse-error', JSON.stringify({ line: 1.5, expected: 'x', found: 'y', message: 'm' })]);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toContain('--parse-error');
+    expect(result.error?.message).toContain('shape');
+    expect(process.exitCode).toBe(1);
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
+
+  it('--parse-error with negative line (-1) is rejected as invalid shape', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    process.exitCode = undefined as unknown as number;
+    run([...BASE_ARGS, '--parse-error', JSON.stringify({ line: -1, expected: 'x', found: 'y', message: 'm' })]);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toContain('--parse-error');
+    expect(result.error?.message).toContain('shape');
+    expect(process.exitCode).toBe(1);
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
+
+  it('--parse-error with zero line (0) is rejected as invalid shape', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    process.exitCode = undefined as unknown as number;
+    run([...BASE_ARGS, '--parse-error', JSON.stringify({ line: 0, expected: 'x', found: 'y', message: 'm' })]);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toContain('--parse-error');
+    expect(result.error?.message).toContain('shape');
+    expect(process.exitCode).toBe(1);
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
+
+  it('--parse-error with literal null value is rejected with clear error message (no crash)', () => {
+    mockProcessEvent.mockReturnValue(MOCK_SUCCESS);
+
+    process.exitCode = undefined as unknown as number;
+    run([...BASE_ARGS, '--parse-error', 'null']);
+
+    const result = capturedJson();
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toContain('--parse-error');
+    expect(result.error?.message).toContain('expected an object');
+    expect(result.error?.message).toContain('null');
+    expect(process.exitCode).toBe(1);
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
+
   // ── Pretty-printed JSON output ──────────────────────────────────────────────
 
   it('success output is pretty-printed JSON with 2-space indent and trailing newline', () => {

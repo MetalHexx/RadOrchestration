@@ -111,16 +111,16 @@ describe('any type audit', () => {
 // ── 3. Action count freeze ───────────────────────────────────────────────────
 
 describe('Action count freeze', () => {
-  it('NEXT_ACTIONS has exactly 18 keys', () => {
-    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(18);
+  it('NEXT_ACTIONS has exactly 19 keys', () => {
+    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(19);
   });
 });
 
 // ── 4. Event count freeze ────────────────────────────────────────────────────
 
 describe('Event count freeze', () => {
-  it('EVENTS has exactly 32 keys', () => {
-    expect(Object.keys(EVENTS)).toHaveLength(32);
+  it('EVENTS has exactly 35 keys', () => {
+    expect(Object.keys(EVENTS)).toHaveLength(35);
   });
 });
 

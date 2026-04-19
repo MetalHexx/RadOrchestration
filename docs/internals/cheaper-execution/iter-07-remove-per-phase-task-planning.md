@@ -4,11 +4,11 @@
 
 ## Overview
 
-With Iter 5's explosion script in place, phase-plan and task-handoff documents exist on disk before the execution loop starts — no per-iteration agent authoring is needed. This iteration gutes the legacy path: the tactical-planner agent, its `rad-create-plans` workflow folders, the per-loop authoring nodes (`phase_planning`, `task_handoff`), their actions / events / mutations, and their context-enrichment blocks all go.
+With Iter 5's explosion script in place, phase-plan and task-handoff documents exist on disk before the execution loop starts — no per-iteration agent authoring is needed. This iteration guts the legacy path: the tactical-planner agent, its `rad-create-plans` workflow folders, the per-loop authoring nodes (`phase_planning`, `task_handoff`), their actions / events / mutations, and their context-enrichment blocks all go.
 
-The trickiest bit is the `execute_task` action's context enrichment (`context-enrichment.ts:211-219`). Today it reads a `task_handoff` node's `doc_path` from the task iteration. After this iteration, the task iteration has no `task_handoff` child node — but it does have its own `doc_path` populated by the explosion script (Iter 5). The enrichment rewires to read that pre-seeded path.
+The trickiest bit is the `execute_task` action's context enrichment (`context-enrichment.ts:211-219`). Today it reads a `task_handoff` node's `doc_path` from the task iteration via an in-loop authoring step. After this iteration, authoring is gone — but the task iteration still carries a pre-seeded `task_handoff` child step node at `taskIter.nodes['task_handoff']` (populated by the explosion script in Iter 5, status `completed`). The enrichment continues to read `taskIter.nodes['task_handoff'].doc_path`; the only change is that the value arrives via pre-seeding rather than via an authoring dispatch.
 
-`dag-walker.ts` has two `phase_planning` references that need attention: (a) `resolveDocRefInScope` at line 124 hardcodes a `phase_planning` lookup for `$.current_phase.{field}` template refs — a template-resolution helper, not corrective-cycle logic; (b) the actual phase-level corrective re-planning path at lines 171-194 walks the phase body against `iteration.nodes` and re-enters `create_phase_plan` via `phase_planning.status === 'in_progress'` (per the line-174 comment). Both break after `phase_planning` is removed from loop bodies. This iteration stubs the corrective re-planning logic (Iter 12 replaces it with corrective-task-append) and simplifies the doc-ref helper.
+`dag-walker.ts` has two `phase_planning` references that need attention: (a) `resolveDocRefInScope` at line 124 hardcodes a `phase_planning` lookup for `$.current_phase.{field}` template refs — a template-resolution helper, not corrective-cycle logic; (b) the actual phase-level corrective re-planning path at lines 171-194 walks the phase body against `iteration.nodes` and re-enters `create_phase_plan` via `phase_planning.status === 'in_progress'` (per the line-174 comment). The corrective re-planning path breaks after the in-loop `phase_planning` authoring node is removed; this iteration stubs it (Iter 12 replaces it with corrective-task-append). Helper (a) remains valid — the explosion script still seeds a `phase_planning` child step node with `doc_path` on each phase iteration, so the `scopeNodes['phase_planning'].doc_path` lookup continues to resolve; no change required.
 
 Phase-plan and task-handoff document contracts — and their validators — stay. Docs still exist and are still consumed downstream. What changes is the authoring surface.
 
@@ -31,10 +31,10 @@ Phase-plan and task-handoff document contracts — and their validators — stay
   - Remove `'create_task_handoff'` from `TASK_LEVEL_ACTIONS` set (line ~83)
   - Remove the `create_phase_plan` special-case block (lines ~115-130)
   - Remove the `create_task_handoff` special-case block (lines ~182-209)
-  - Rewire the `execute_task` special-case block (lines ~211-219): instead of reading `taskIter.nodes['task_handoff'].doc_path`, read `taskIter.doc_path` directly (pre-seeded by the explosion script in Iter 5)
+  - The `execute_task` special-case block (lines ~211-219) keeps reading `taskIter.nodes['task_handoff'].doc_path`; the only change is that the `task_handoff` child step is now pre-seeded by the explosion script in Iter 5 (status `completed`) rather than authored per-loop. No code change expected here unless the surrounding block needs touching as collateral from removing the separate `create_task_handoff` special case above.
 - In `dag-walker.ts`:
   - **Lines 171-194** (phase-level corrective re-planning): stub the branch. Currently this path walks the phase body against `iteration.nodes` and relies on `phase_planning.status === 'in_progress'` to drive `create_phase_plan` dispatch. With `phase_planning` removed, replace the branch body with a short-term halt (operator message "Phase-level corrective flow will be rewired in Iter 12") until Iter 12 swaps it for the corrective-task-append path.
-  - **Line 124** (`resolveDocRefInScope`): hardcoded `scopeNodes['phase_planning']` lookup for `$.current_phase.{field}` template refs. After `phase_planning` is gone from bodies, either (a) rewire to read from the phase iteration's own `doc_path` (populated by the explosion script in Iter 5), or (b) deprecate the `$.current_phase.` ref syntax and have `default.yml`'s `task_loop` use a different source. Iteration planner picks; (a) preserves template compatibility.
+  - **Line 124** (`resolveDocRefInScope`): hardcoded `scopeNodes['phase_planning']` lookup for `$.current_phase.{field}` template refs. After the in-loop `phase_planning` authoring node is gone, this helper still resolves because the explosion script (Iter 5) pre-seeds a `phase_planning` child step node on each phase iteration (status `completed`, `doc_path` populated). Confirm at iteration start that the helper's assumed shape (`scopeNodes['phase_planning'].doc_path`) still matches the seeded node; no rewire expected.
 - Remove `phase_planning` body node from `full.yml`'s `phase_loop.body` and `task_handoff` body node from `full.yml`'s `task_loop.body`. (`full.yml` is already deprecated from Iter 3; these edits just keep it syntactically tidy.)
 
 ## Scope Deliberately Untouched
@@ -66,7 +66,7 @@ Phase-plan and task-handoff document contracts — and their validators — stay
 - Engine:
   - `.claude/skills/orchestration/scripts/lib/constants.ts` (actions + events)
   - `.claude/skills/orchestration/scripts/lib/mutations.ts:189` (phaseExecStartedSteps) + `:450` (task_handoff_created handler) + any related individual handlers
-  - `.claude/skills/orchestration/scripts/lib/context-enrichment.ts:76, :83, :115-130, :182-219` (action sets + special-case blocks + execute_task rewire)
+  - `.claude/skills/orchestration/scripts/lib/context-enrichment.ts:76, :83, :115-130, :182-219` (action sets + special-case blocks; `execute_task` block keeps reading `taskIter.nodes['task_handoff'].doc_path` — now pre-seeded by Iter 5)
   - `.claude/skills/orchestration/scripts/lib/dag-walker.ts:124` (doc-ref helper `resolveDocRefInScope`) + `:171-194` (phase-level corrective re-planning branch)
 - Template: `.claude/skills/orchestration/templates/full.yml` (body-node removals; file is already deprecated)
 - Tests:
@@ -82,7 +82,7 @@ Phase-plan and task-handoff document contracts — and their validators — stay
 
 ## Dependencies
 
-- **Depends on**: Iter 5 — the explosion script must be writing task iteration `doc_path` at seed time, otherwise the rewired `execute_task` enrichment reads undefined.
+- **Depends on**: Iter 5 — the explosion script must be pre-seeding a `task_handoff` child step node (with `doc_path` populated) inside each task iteration, otherwise the `execute_task` enrichment reads `undefined` at `taskIter.nodes['task_handoff'].doc_path`. Likewise the phase-iteration `phase_planning` child must be seeded for the `resolveDocRefInScope` helper at `dag-walker.ts:124`.
 - **Blocks**: Iter 8 — phase_report absorption is cleaner once the per-phase/task authoring layer is gone (no overlapping mutation registrations).
 
 ## Testing Discipline
@@ -95,7 +95,7 @@ Phase-plan and task-handoff document contracts — and their validators — stay
 
 - Full test suite green vs. baseline.
 - `grep -rn "tactical-planner\|create_phase_plan\|create_task_handoff\|phase_planning_started\|task_handoff_created" .claude/` returns zero matches outside the cheaper-execution design-doc corpus.
-- `context-enrichment.ts` has no references to `create_phase_plan`, `create_task_handoff`, or a `task_handoff` nested node.
+- `context-enrichment.ts` has no references to `create_phase_plan` or `create_task_handoff` (authoring actions gone). The `execute_task` block still reads the task iteration's `task_handoff` child (now pre-seeded by Iter 5) — that reference is retained by design.
 - `rad-create-plans/SKILL.md` references only `@planner`; `shared/` concept is gone.
 - `rad-execute/SKILL.md` speaks in `@planner` vocabulary (no `Tactical Planner`).
 - A scratch project on `default.yml` (partial; through Iter 5) drives to the plan_approval_gate, then (simulated) through a single task's executor using the pre-seeded task-handoff file.
@@ -104,4 +104,4 @@ Phase-plan and task-handoff document contracts — and their validators — stay
 
 - **Corrective cycle stub**: once `dag-walker.ts:171-194` is stubbed, phase-level corrective cycles temporarily have no re-entry point. How should the walker behave until Iter 12 wires the corrective-task-append path — no-op (skip), halt (forced manual intervention), or warn-and-continue? Halt is safest (makes the regression loud); iteration planner confirms.
 - **`task_handoff_created` mutation responsibility transfer**: the existing handler does task-iteration-entry management (advancing `iterations[].index`, status). Some of that logic likely needs to migrate to the explosion-script's pre-seeding pass. Audit `mutations.ts:450` during planning and identify which side-effects move vs. which are obsolete.
-- **Order of edits within this iteration**: the `execute_task` enrichment rewire (reading from `taskIter.doc_path`) depends on the explosion script (Iter 5) actually seeding that field. Verify at iteration start that explosion is seeding `doc_path` correctly; if not, fix there first.
+- **Order of edits within this iteration**: the `execute_task` enrichment path (reading from `taskIter.nodes['task_handoff'].doc_path`) depends on the explosion script (Iter 5) pre-seeding that child step node. Verify at iteration start that the seeded `task_handoff` child node is present with `doc_path` populated; if not, fix there first.

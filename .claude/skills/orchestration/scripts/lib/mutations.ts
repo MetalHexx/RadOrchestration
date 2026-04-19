@@ -12,6 +12,7 @@ import type {
   ForEachPhaseNodeState,
   ForEachPhaseNodeDef,
   ForEachTaskNodeDef,
+  ParseErrorDetail,
   PipelineTemplate,
 } from './types.js';
 import { EVENTS, VALID_VERDICTS, REVIEW_VERDICTS } from './constants.js';
@@ -129,6 +130,133 @@ for (const [eventName, nodeId] of planningCompletedSteps) {
     return { state: cloned, mutations_applied };
   });
 }
+
+// ── explosion_started mutation ────────────────────────────────────────────────
+
+mutationRegistry.set(EVENTS.EXPLOSION_STARTED, (state, _context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const node = resolveNodeState(cloned, 'explode_master_plan', 'top');
+  node.status = 'in_progress';
+  mutations_applied.push('set explode_master_plan.status = in_progress');
+
+  // Defensive: explicitly clear any stale doc_path on the explode node, matching the
+  // idempotency guard in explosion_completed, cap-exceeded, and invalid-dispatch branches.
+  // A state.json produced by an older version may carry a lingering value. Clearing to null
+  // guarantees the UI doesn't render a spurious "Doc" link WHILE the explode step is in progress.
+  (node as StepNodeState).doc_path = null;
+  mutations_applied.push('set explode_master_plan.doc_path = null');
+
+  return { state: cloned, mutations_applied };
+});
+
+// ── explosion_completed mutation (clears parse-failure recovery state) ────────
+
+mutationRegistry.set(EVENTS.EXPLOSION_COMPLETED, (state, _context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const node = resolveNodeState(cloned, 'explode_master_plan', 'top');
+  node.status = 'completed';
+  mutations_applied.push('set explode_master_plan.status = completed');
+
+  // Defensive: explicitly clear any stale doc_path on the explode node. The script
+  // itself never writes a doc_path here (its output is phases/ + tasks/ + seeded
+  // iterations, not a single doc), but a state.json produced by an older version
+  // of this handler may carry a lingering value. Setting to null guarantees the
+  // UI doesn't render a spurious "Doc" link on a re-run or after upgrade.
+  (node as StepNodeState).doc_path = null;
+  mutations_applied.push('set explode_master_plan.doc_path = null');
+
+  // Clear any recovery state on master_plan — success wipes the slate.
+  const masterPlanNode = resolveNodeState(cloned, 'master_plan', 'top') as StepNodeState;
+  if (masterPlanNode.last_parse_error !== null && masterPlanNode.last_parse_error !== undefined) {
+    masterPlanNode.last_parse_error = null;
+    mutations_applied.push('cleared master_plan.last_parse_error');
+  }
+  masterPlanNode.parse_retry_count = 0;
+  mutations_applied.push('reset master_plan.parse_retry_count = 0');
+
+  return { state: cloned, mutations_applied };
+});
+
+// ── explosion_failed mutation (parse-failure recovery loop; cap=3) ────────────
+
+// Hardcoded for Iter 5; configurability is Iter 14.
+const MAX_PARSE_RETRIES = 3;
+
+mutationRegistry.set(EVENTS.EXPLOSION_FAILED, (state, context, _config, _template): MutationResult => {
+  const cloned = structuredClone(state);
+  const mutations_applied: string[] = [];
+
+  const masterPlanNode = resolveNodeState(cloned, 'master_plan', 'top') as StepNodeState;
+  const explodeNode = resolveNodeState(cloned, 'explode_master_plan', 'top') as StepNodeState;
+
+  // context.parse_error carries { line, expected, found, message } from the explosion CLI wrapper.
+  // Hard-error on missing / malformed parse_error — a dispatch-layer bug, not a recoverable parse
+  // failure. Silently tolerating a null here would let retry_count climb toward the cap with
+  // last_parse_error = null, yielding an "unknown parse error" halt that gives the planner
+  // nothing actionable to fix.
+  const parseError = context.parse_error as ParseErrorDetail | undefined;
+  if (!parseError || !Number.isInteger(parseError.line) || parseError.line < 1 ||
+      typeof parseError.expected !== 'string' ||
+      typeof parseError.found !== 'string' ||
+      typeof parseError.message !== 'string') {
+    explodeNode.status = 'failed';
+    explodeNode.doc_path = null;
+    cloned.graph.status = 'halted';
+    cloned.pipeline.halt_reason =
+      'Explosion dispatch error: explosion_failed received without a valid parse_error payload. ' +
+      'This is a programmer error — the orchestrator or CLI wrapper must pass --parse-error with ' +
+      '{ line, expected, found, message }. See main.ts argument handling.';
+    mutations_applied.push('set explode_master_plan.status = failed (invalid dispatch)');
+    mutations_applied.push('set explode_master_plan.doc_path = null (invalid dispatch)');
+    mutations_applied.push('set graph.status = halted (dispatch error)');
+    mutations_applied.push('set pipeline.halt_reason (dispatch error)');
+    return { state: cloned, mutations_applied };
+  }
+
+  masterPlanNode.last_parse_error = parseError;
+  mutations_applied.push(
+    `set master_plan.last_parse_error = { line: ${parseError.line}, ... }`
+  );
+
+  const previousCount = masterPlanNode.parse_retry_count ?? 0;
+  const nextCount = previousCount + 1;
+  masterPlanNode.parse_retry_count = nextCount;
+  mutations_applied.push(`set master_plan.parse_retry_count = ${nextCount}`);
+
+  if (nextCount > MAX_PARSE_RETRIES) {
+    // Cap exceeded — halt. The orchestrator surfaces this via the log-error skill.
+    explodeNode.status = 'failed';
+    mutations_applied.push(`set explode_master_plan.status = failed (parse retry cap ${MAX_PARSE_RETRIES} exceeded)`);
+    // Defensive: explicitly clear any stale doc_path on the explode node, mirroring the
+    // idempotency fix in the explosion_completed path. An upgraded state.json may carry
+    // a lingering value from an older handler; null guarantees the UI doesn't render
+    // a spurious "Doc" link on the halted node.
+    (explodeNode as StepNodeState).doc_path = null;
+    mutations_applied.push('set explode_master_plan.doc_path = null');
+    cloned.graph.status = 'halted';
+    mutations_applied.push('set graph.status = halted');
+    const reasonMsg = parseError.message;
+    cloned.pipeline.halt_reason =
+      `Explosion parser rejected planner output ${nextCount} times (cap=${MAX_PARSE_RETRIES}). ` +
+      `Manual intervention required. Last error: ${reasonMsg}`;
+    mutations_applied.push(`set pipeline.halt_reason (parse retry cap exceeded)`);
+    return { state: cloned, mutations_applied };
+  }
+
+  // Recoverable — reset and re-spawn the planner.
+  explodeNode.status = 'not_started';
+  (explodeNode as StepNodeState).doc_path = null;
+  mutations_applied.push('set explode_master_plan.status = not_started');
+  mutations_applied.push('set explode_master_plan.doc_path = null (recovery reset)');
+  masterPlanNode.status = 'in_progress';
+  mutations_applied.push('set master_plan.status = in_progress (recovery re-spawn)');
+
+  return { state: cloned, mutations_applied };
+});
 
 // ── Gate approved mutations ───────────────────────────────────────────────────
 

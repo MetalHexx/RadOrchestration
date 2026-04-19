@@ -35,6 +35,32 @@ becomes task-local and action-oriented.
    DD ID that must be addressed in the Master Plan. Every ID should land in
    at least one task. Unaddressed IDs = incomplete plan.
 
+1a. **If a previous attempt failed the explosion script's parser, self-correct
+    before re-drafting.**
+
+    Read `state.graph.nodes.master_plan.last_parse_error` from `state.json`. If
+    it is non-null, a previous attempt at this Master Plan failed the explosion
+    script's parser. The field is structured:
+    `{ line, expected, found, message }`.
+
+    - Read the previous Master Plan at
+      `state.graph.nodes.master_plan.doc_path` to see the prior output.
+    - Fix the SPECIFIC issue identified by the parse error. Do not re-engineer
+      the entire plan; address the formatting failure at the indicated line.
+      Common parse failures:
+        - `## P{NN}:` heading with missing / single-digit phase number.
+        - `### P{NN}-T{MM}:` heading with a malformed id (e.g. `T-X`, `TX`).
+        - Task heading appearing before any phase heading.
+        - Task heading whose phase id does not match its enclosing phase.
+    - Re-emit the Master Plan with the correction. Other content stays as
+      before unless explicitly impacted by the formatting fix.
+    - The recovery loop has a hardcoded cap of 3 retries. After the cap, the
+      pipeline halts via `log-error` for manual intervention. Do not attempt
+      new approaches on retry 3+; focus narrowly on fixing the exact parse
+      error.
+
+    If `last_parse_error` is null, skip this step and proceed normally.
+
 2. Do targeted codebase discovery. Identify exact file paths you will create
    or modify, exact commands the test suite accepts, the testing framework in
    use, and any existing patterns the plan must follow. Grep / Glob / Read —

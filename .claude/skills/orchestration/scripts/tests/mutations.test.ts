@@ -1718,3 +1718,186 @@ describe('source_control_init mutation', () => {
     expect(result.mutations_applied.length).toBeGreaterThan(0);
   });
 });
+
+// ── Iter 5 — Explosion script mutations ─────────────────────────────────────
+
+/**
+ * Minimal state with explode_master_plan node wired into top-level graph, mirroring
+ * default.yml's 4-node planning chain. Used by the explosion mutation tests below.
+ */
+function makeStateWithExplodeNode(opts: {
+  masterPlanStatus?: 'not_started' | 'in_progress' | 'completed';
+  explodeStatus?: 'not_started' | 'in_progress' | 'completed' | 'failed';
+  parseRetryCount?: number;
+  lastParseError?: { line: number; expected: string; found: string; message: string } | null;
+} = {}): PipelineState {
+  const {
+    masterPlanStatus = 'completed',
+    explodeStatus = 'in_progress',
+    parseRetryCount = 0,
+    lastParseError = null,
+  } = opts;
+  return {
+    $schema: 'orchestration-state-v5',
+    project: { name: 'EXPLODE', created: '2026-04-18T00:00:00Z', updated: '2026-04-18T00:00:00Z' },
+    config: {
+      gate_mode: 'autonomous',
+      limits: {
+        max_phases: 5,
+        max_tasks_per_phase: 10,
+        max_retries_per_task: 3,
+        max_consecutive_review_rejections: 3,
+      },
+      source_control: { auto_commit: 'never', auto_pr: 'never' },
+    },
+    pipeline: { gate_mode: null, source_control: null, current_tier: 'planning', halt_reason: null },
+    graph: {
+      template_id: 'default',
+      status: 'in_progress',
+      current_node_path: null,
+      nodes: {
+        requirements: { kind: 'step', status: 'completed', doc_path: '/tmp/req.md', retries: 0 },
+        master_plan: {
+          kind: 'step',
+          status: masterPlanStatus,
+          doc_path: '/tmp/master-plan.md',
+          retries: 0,
+          last_parse_error: lastParseError,
+          parse_retry_count: parseRetryCount,
+        },
+        explode_master_plan: { kind: 'step', status: explodeStatus, doc_path: null, retries: 0 },
+        plan_approval_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+      },
+    },
+  };
+}
+
+describe('explosion_started mutation', () => {
+  it('is registered', () => {
+    expect(getMutation('explosion_started')).toBeTypeOf('function');
+  });
+
+  it('flips explode_master_plan to in_progress', () => {
+    const state = makeStateWithExplodeNode({ explodeStatus: 'not_started' });
+    const mutation = getMutation('explosion_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('in_progress');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeStateWithExplodeNode({ explodeStatus: 'not_started' });
+    const mutation = getMutation('explosion_started')!;
+    mutation(state, {}, baseConfig, baseTemplate);
+    const explodeNode = state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('not_started');
+  });
+});
+
+describe('explosion_completed mutation', () => {
+  it('is registered', () => {
+    expect(getMutation('explosion_completed')).toBeTypeOf('function');
+  });
+
+  it('marks explode_master_plan completed, leaves doc_path null, clears master_plan recovery state', () => {
+    const state = makeStateWithExplodeNode({
+      parseRetryCount: 2,
+      lastParseError: { line: 1, expected: 'e', found: 'f', message: 'm' },
+    });
+    const mutation = getMutation('explosion_completed')!;
+    const result = mutation(state, { doc_path: '/tmp/mp.md' }, baseConfig, baseTemplate);
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('completed');
+    // explode step produces no doc of its own; context.doc_path (= master plan path) is NOT stored here
+    // because master_plan.doc_path already carries that value.
+    expect(explodeNode.doc_path).toBeNull();
+    const mpNode = result.state.graph.nodes['master_plan'] as StepNodeState;
+    expect(mpNode.last_parse_error).toBeNull();
+    expect(mpNode.parse_retry_count).toBe(0);
+  });
+
+  it('no-op on recovery state when there was no prior parse failure', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 0, lastParseError: null });
+    const mutation = getMutation('explosion_completed')!;
+    const result = mutation(state, { doc_path: '/tmp/mp.md' }, baseConfig, baseTemplate);
+    const mpNode = result.state.graph.nodes['master_plan'] as StepNodeState;
+    expect(mpNode.last_parse_error).toBeNull();
+    expect(mpNode.parse_retry_count).toBe(0);
+  });
+});
+
+describe('explosion_failed mutation', () => {
+  it('is registered', () => {
+    expect(getMutation('explosion_failed')).toBeTypeOf('function');
+  });
+
+  it('1st failure: increments parse_retry_count to 1, stores error, resets explode_master_plan to not_started, flips master_plan back to in_progress', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 0 });
+    const parseError = { line: 42, expected: 'phase heading', found: 'task heading', message: 'at line 42' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: parseError }, baseConfig, baseTemplate);
+
+    const mpNode = result.state.graph.nodes['master_plan'] as StepNodeState;
+    expect(mpNode.status).toBe('in_progress');
+    expect(mpNode.parse_retry_count).toBe(1);
+    expect(mpNode.last_parse_error).toEqual(parseError);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('not_started');
+
+    expect(result.state.graph.status).not.toBe('halted');
+  });
+
+  it('4th failure (cap=3 exceeded): halts the graph with halt_reason and explode_master_plan.status=failed', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 3 });
+    const parseError = { line: 99, expected: 'x', found: 'y', message: 'irrecoverable' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: parseError }, baseConfig, baseTemplate);
+
+    const mpNode = result.state.graph.nodes['master_plan'] as StepNodeState;
+    expect(mpNode.parse_retry_count).toBe(4);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('failed');
+
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toBeTruthy();
+    expect(result.state.pipeline.halt_reason).toContain('cap=3');
+  });
+
+  it('parse_error with float line (1.5) triggers dispatch-error halt', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 0 });
+    const malformedError = { line: 1.5, expected: 'x', found: 'y', message: 'error' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: malformedError }, baseConfig, baseTemplate);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('failed');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('dispatch error');
+  });
+
+  it('parse_error with negative line (-1) triggers dispatch-error halt', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 0 });
+    const malformedError = { line: -1, expected: 'x', found: 'y', message: 'error' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: malformedError }, baseConfig, baseTemplate);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('failed');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('dispatch error');
+  });
+
+  it('parse_error with zero line (0) triggers dispatch-error halt', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 0 });
+    const malformedError = { line: 0, expected: 'x', found: 'y', message: 'error' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: malformedError }, baseConfig, baseTemplate);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('failed');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('dispatch error');
+  });
+});

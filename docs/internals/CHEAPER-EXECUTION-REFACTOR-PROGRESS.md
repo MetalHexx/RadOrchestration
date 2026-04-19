@@ -63,7 +63,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 2 | Rename Execution Plan → Master Plan | Complete | 2026-04-18 | 2026-04-18 |
 | 3 | Remove upstream planning (PRD/Research/Design/Architecture) | Complete | 2026-04-18 | 2026-04-18 |
 | 4 | Requirements pipeline node | Complete | 2026-04-18 | 2026-04-18 |
-| 5 | Explosion script + state.json pre-seeding | Not started | — | — |
+| 5 | Explosion script + state.json pre-seeding | Awaiting merge | 2026-04-19 | 2026-04-19 |
 | 6 | Prompt regression harness | Not started | — | — |
 | 7 | Remove per-phase/per-task planning | Not started | — | — |
 | 8 | phase_review absorbs phase_report | Not started | — | — |
@@ -75,7 +75,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 14 | Explosion-retry configurability | Not started | — | — |
 | 15 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 5 / 16 iterations complete. Design realigned 2026-04-18 for gutting-first approach. Iter 14 (explosion-retry configurability) inserted 2026-04-19 during Iter 5 planning when the retry cap was deferred from baked-in to configurable.
+**Overall**: 6 / 16 iterations complete (Iter 5 awaiting PR merge). Design realigned 2026-04-18 for gutting-first approach. Iter 14 (explosion-retry configurability) inserted 2026-04-19 during Iter 5 planning when the retry cap was deferred from baked-in to configurable.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -97,7 +97,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 2 | `feat/iter-2-rename-to-master-plan` | `C:\dev\orchestration\v3-worktrees\feat-iter-2-rename-to-master-plan` | Awaiting merge | — | [#53](https://github.com/MetalHexx/RadOrchestation/pull/53) |
 | 3 | `feat/iter-3-remove-upstream-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning` | Awaiting merge | — | [#54](https://github.com/MetalHexx/RadOrchestation/pull/54) |
 | 4 | `feat/iter-4-requirements-pipeline-node` | `C:\dev\orchestration\v3-worktrees\feat-iter-4-requirements-pipeline-node` | Awaiting merge | — | [#55](https://github.com/MetalHexx/RadOrchestation/pull/55) |
-| 5 | — | — | Not created | — | — |
+| 5 | `feat/iter-5-explosion-script` | `C:\dev\orchestration\v3-worktrees\feat-iter-5-explosion-script` | Awaiting merge | — | [#56](https://github.com/MetalHexx/RadOrchestation/pull/56) |
 | 6 | — | — | Not created | — | — |
 | 7 | — | — | Not created | — | — |
 | 8 | — | — | Not created | — | — |
@@ -246,6 +246,19 @@ Format:
 - Corrective commit: `plan_rejected` mutation guarded against missing `phase_loop` (see Deviations — surfaced by code-quality review pass).
 - Commits: `8c95b96` (main), `4c07f3e` (corrective). PR: [#55](https://github.com/MetalHexx/RadOrchestation/pull/55).
 
+### 2026-04-19 — Iteration 5 — Explosion script + state pre-seeding + parse-failure recovery loop
+
+- Branch: `feat/iter-5-explosion-script` off `feat/cheaper-execution` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-5-explosion-script`).
+- New explosion script (`.claude/skills/orchestration/scripts/lib/explode-master-plan.ts` + CLI wrapper `scripts/explode-master-plan.ts`): parses approved Master Plan's `## P{NN}:` / `### P{NN}-T{MM}:` headings, emits `{NAME}-PHASE-{NN}-{TITLE}.md` / `{NAME}-TASK-P{NN}-T{MM}-{TITLE}.md` to `phases/` + `tasks/`, and seeds `state.graph.nodes.phase_loop.iterations[]` + nested `task_loop.iterations[]`. Parse-first (no filesystem side effects on malformed input); wipes-and-backups existing `phases/`+`tasks/` to `backups/{ISO}/` on re-run; exit codes `0/1/2` for success / real-error / parse-error.
+- Parse-failure recovery loop: new `EXPLOSION_FAILED` event + mutation handler resets `explode_master_plan` to `not_started`, flips `master_plan` back to `in_progress`, stores structured `last_parse_error` on master_plan node, increments `parse_retry_count`. Cap = 3; 4th consecutive failure halts via `graph.status = 'halted'` + log-error. Planner workflow gained a "step 1a" branch that reads `last_parse_error` and fixes the specific issue on re-spawn. `explosion_completed` handler clears both recovery fields.
+- Engine surface: +1 action (`EXPLODE_MASTER_PLAN`), +3 events (`EXPLOSION_STARTED/COMPLETED/FAILED`) in `constants.ts`. `default.yml` grew from 3 to 4 nodes (`requirements → master_plan → explode_master_plan → plan_approval_gate`), with `plan_approval_gate.depends_on` retargeted. Schema additions (`StepNodeState.last_parse_error` + `parse_retry_count`) — purely additive, legacy state still validates.
+- UI surface: added `explode_master_plan` to `PlanningStepName` union + `PLANNING_STEP_ORDER` + `NODE_SECTION_MAP` + `STEP_TITLES`/`STEP_TITLES_V5` + `STEP_DISPLAY_NAMES` exhaustiveness ripples. No new rendering code — the existing DAG timeline renders the new node as a step in the Planning section automatically.
+- **Scope extension within this iteration**: after the initial implementation, UI smoke surfaced two issues. (1) Explode Master Plan node showed a spurious "Doc" link pointing at the master plan path — the `explosion_completed` mutation was storing `doc_path = context.doc_path` per the original plan. (2) Pre-seeded iterations (with `nodes: {}` empty) didn't surface their doc_path in the UI because the UI renders Doc links on child step nodes, not on `iteration.doc_path`. Pivoted: explosion script now seeds `iteration.nodes.phase_planning` (or `task_handoff` for tasks) as a completed step node carrying doc_path — matches legacy completed projects; UI renders Doc links automatically via existing `DAGNodeRow`. `iteration.doc_path` removed from schema + types entirely. Explode Master Plan mutation no longer assigns `doc_path`. See Deviation entry dated 2026-04-19.
+- Tests: orchestration 47 files / 1198 pass / 1 todo (baseline 1170 — net +28 new tests); UI 152 pass / 3 pre-existing failures (unchanged); installer 399 pass / 0 fail. New coverage: ≥6 parser cases + 2 re-run integration (success + malformed-aborts-no-side-effects) + 3 recovery-loop integration (single failure / success-clears / cap-exceeded) + 3 explosion mutation contract tests + schema/compat tests.
+- End-to-end UI smoke: ran the explosion CLI against a fresh `ITER5-E2E-SMOKE` project (2 phases × 2 tasks). All 8 docs (requirements + master plan + 2 phases + 4 tasks) render and open from the DAG timeline. Explode Master Plan node renders as Completed with no Doc link. Legacy `AGENT-CLEANUP` unchanged — zero regressions.
+- Commits: `f74555a` (initial Iter 5), `a5aa1f1` (review-corrective on initial), `3c41c34` (scope extension: child-node seeding + drop explode doc_path), `bd41ebf` (scope-extension review-corrective: iter-07 companion + test fixture cleanup), `1d90e42` (iter-11 companion alignment), `cfcd2a5` (relative doc_path paths), `d9c4d0c` (rendering cleanup + UI null check + frontmatter array rendering), `7a644ef` (forwardRef on 5 badge components), `4207cd3` (progress tracker + final corrective). PR: [#56](https://github.com/MetalHexx/RadOrchestation/pull/56).
+- See "Open Items Surfaced During Execution" for three follow-ups: explosion script writes absolute paths instead of relative; UI `node.doc_path !== null` check lets `undefined` through; frontmatter viewer renders array values as `[object Object]`.
+
 ### 2026-04-18 — Iteration 3 — Remove upstream planning (PRD / Research / Design / Architecture)
 
 - Branch: `feat/iter-3-remove-upstream-planning` off `feat/cheaper-execution` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning`).
@@ -297,6 +310,13 @@ Format:
 - **Execution did**: No change to `template-validator.ts`. The template-validator's `unreachable_node` check actually rejects any node that has `depends_on` and is not referenced by any sibling — which catches legitimate terminal leaves like `plan_approval_gate`. But `template-loader.ts` already filters `unreachable_node` errors with an explanatory comment ("in practice, terminal steps in each scope are valid leaf nodes"). The new `template-validator.test.ts` test for `default.yml` uses `loadTemplate` (engine's actual call path) and separately asserts `validateTemplate`'s hard-error list excludes `unreachable_node`.
 - **Why**: Plan assumed the validator would pass `step → step → gate` outright. It doesn't — but the engine tolerates the warning at load time, so the partial template loads and runs correctly anyway. No change to production behaviour, only to how the Iter 4 regression test is written.
 - **Impact**: Test phrasing differs slightly from the plan's sketch. Engine behaviour is unchanged.
+
+### 2026-04-19 — Iteration 5 — Child step node seeding replaces `iteration.doc_path`
+
+- **Design said**: Iter 5 companion introduced a new `iteration.doc_path` field as the "mechanical seam that unlocks Iter 7's removal of the per-iteration authoring agents." The explosion script would seed each iteration's `doc_path` directly; Iter 7 would later pivot the UI + enrichment to read from it.
+- **Execution did**: After the initial implementation passed tests, the UI smoke surfaced that no rendering code consumes `iteration.doc_path` — the UI renders Doc links via `DAGNodeRow` on child step nodes inside `iteration.nodes`, and `iteration.nodes: {}` left nothing to render. Pivoted: explosion script now seeds each iteration's `nodes` with a completed `phase_planning` (or `task_handoff`) step node carrying `doc_path`. Matches what legacy completed projects look like; the existing UI renders Doc links with zero code change. `iteration.doc_path` removed from schema + scripts types + UI types + all tests. `explosion_completed` mutation also stopped writing `doc_path` on the explode node (was set to master plan path — redundant + rendered as a spurious Doc link in the UI). Iter 7 companion + Iter 11 companion updated in the same pass to reference the new `taskIter.nodes['task_handoff'].doc_path` path.
+- **Why**: The Iter 7 "mechanical seam" is preserved — the explosion script still pre-populates what the authoring agents would have populated; Iter 7 can still delete those agents. But it does so by filling in the existing node shape rather than introducing a new field, so the UI "just works" through the existing rendering path. Two sources of truth collapsed to one.
+- **Impact**: Iter 7's scope narrows — no UI rewire needed, just agent deletion + enrichment path confirmation. Commit `3c41c34` (main pivot) + `bd41ebf` + `1d90e42` (companion + test alignment) + `<pending>` (relative-paths fix for seeded doc_paths).
 
 ### 2026-04-17 — Iteration 1 — Commit step omitted from Execution Plan tasks
 

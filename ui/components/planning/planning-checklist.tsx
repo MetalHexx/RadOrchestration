@@ -17,6 +17,7 @@ const STEP_DISPLAY_NAMES: Record<PlanningStepName, string> = {
   architecture: "Architecture",
   requirements: "Requirements",
   master_plan: "Master Plan",
+  explode_master_plan: "Phase/Task Generation",
 };
 
 const STEP_STATUS_BADGE: Record<PlanningStepStatus, { label: string; cssVar: string; isSpinning: boolean; isComplete?: boolean; hideLabel?: boolean }> = {

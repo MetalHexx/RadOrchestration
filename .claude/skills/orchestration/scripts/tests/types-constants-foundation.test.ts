@@ -228,17 +228,18 @@ describe('OUT_OF_BAND_EVENTS', () => {
     expect(OUT_OF_BAND_EVENTS).toBeInstanceOf(Set);
   });
 
-  it('has exactly 6 entries', () => {
-    expect(OUT_OF_BAND_EVENTS.size).toBe(6);
+  it('has exactly 7 entries', () => {
+    expect(OUT_OF_BAND_EVENTS.size).toBe(7);
   });
 
-  it('contains all 6 out-of-band event strings', () => {
+  it('contains all 7 out-of-band event strings', () => {
     expect(OUT_OF_BAND_EVENTS.has('plan_rejected')).toBe(true);
     expect(OUT_OF_BAND_EVENTS.has('gate_rejected')).toBe(true);
     expect(OUT_OF_BAND_EVENTS.has('final_rejected')).toBe(true);
     expect(OUT_OF_BAND_EVENTS.has('halt')).toBe(true);
     expect(OUT_OF_BAND_EVENTS.has('gate_mode_set')).toBe(true);
     expect(OUT_OF_BAND_EVENTS.has('source_control_init')).toBe(true);
+    expect(OUT_OF_BAND_EVENTS.has('explosion_failed')).toBe(true);
   });
 });
 

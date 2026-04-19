@@ -132,11 +132,21 @@ export interface BaseNodeState {
   status: NodeStatus;
 }
 
+export interface ParseErrorDetail {
+  line: number;
+  expected: string;
+  found: string;
+  message: string;
+}
+
 export interface StepNodeState extends BaseNodeState {
   kind: 'step';
   doc_path: string | null;
   retries: number;
   verdict?: string | null;
+  // Populated on explosion_failed, cleared on explosion_completed. Specific to master_plan.
+  last_parse_error?: ParseErrorDetail | null;
+  parse_retry_count?: number | null;
 }
 
 export interface GateNodeState extends BaseNodeState {
@@ -291,6 +301,9 @@ export interface EventContext {
   total_phases?: number;
   tasks?: unknown[];
   exit_criteria_met?: boolean;
+
+  // ── Iter 5 — explosion script recovery payload ──
+  parse_error?: ParseErrorDetail;
 }
 
 // Orchestration Config (from orchestration.yml)
