@@ -155,9 +155,9 @@ describe('pipeline CLI — run()', () => {
   it('successful engine call writes valid PipelineResult JSON to stdout', () => {
     const successResult: PipelineResult = {
       success: true,
-      action: 'spawn_research',
-      context: { step: 'research' },
-      mutations_applied: ['set research.status = in_progress'],
+      action: 'spawn_master_plan',
+      context: { step: 'master_plan' },
+      mutations_applied: ['set master_plan.status = in_progress'],
       orchRoot: '.github',
     };
     mockProcessEvent.mockReturnValue(successResult);
@@ -166,8 +166,8 @@ describe('pipeline CLI — run()', () => {
 
     const result = capturedJson();
     expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_research');
-    expect(result.mutations_applied).toEqual(['set research.status = in_progress']);
+    expect(result.action).toBe('spawn_master_plan');
+    expect(result.mutations_applied).toEqual(['set master_plan.status = in_progress']);
     expect(result.orchRoot).toBe('.github');
   });
 
@@ -262,9 +262,9 @@ describe('pipeline CLI — run()', () => {
   it('success response contains exactly the required fields', () => {
     const successResult: PipelineResult = {
       success: true,
-      action: 'spawn_research',
-      context: { step: 'research' },
-      mutations_applied: ['set research.status = in_progress'],
+      action: 'spawn_master_plan',
+      context: { step: 'master_plan' },
+      mutations_applied: ['set master_plan.status = in_progress'],
       orchRoot: '.github',
     };
     mockProcessEvent.mockReturnValue(successResult);

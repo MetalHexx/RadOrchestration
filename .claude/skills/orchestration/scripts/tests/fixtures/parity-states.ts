@@ -101,7 +101,7 @@ export function seedDoc(docPath: string, extraFrontmatter: Record<string, unknow
 
 // ── Complete planning steps helper ────────────────────────────────────────────
 
-const PLANNING_STEP_ORDER = ['research', 'prd', 'design', 'architecture', 'master_plan'] as const;
+const PLANNING_STEP_ORDER = ['master_plan'] as const;
 
 export function completePlanningSteps(state: PipelineState, through: string): void {
   const throughIndex = PLANNING_STEP_ORDER.indexOf(through as (typeof PLANNING_STEP_ORDER)[number]);

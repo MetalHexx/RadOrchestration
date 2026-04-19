@@ -58,7 +58,7 @@ After this iteration: no code path spawns a product-manager, architect, ux-desig
   - `.claude/skills/orchestration/scripts/tests/engine.test.ts`, `dag-walker.test.ts`, `event-routing-integration.test.ts`, `execution-integration.test.ts`
   - `.claude/skills/orchestration/scripts/tests/context-enrichment.test.ts`
 - Ripple surfaces (verified at plan time):
-  - `.claude/skills/orchestration/validate/lib/checks/agents.js` — **no edit required**. Validator discovers agent files dynamically from `.claude/agents/`; no hardcoded roster. Deleting the 4 files just shrinks the discovered set.
+  - `.claude/skills/orchestration/validate/lib/checks/agents.js` — **no edit required**. Validator scans for `.agent.md` suffix; all agents in this repo use the `.md` extension so none were ever in the validator's discovered set regardless of this deletion.
   - `.claude/skills/rad-create-plans/SKILL.md:30-33` — agent-routing table: drop the 4 rows for `product-manager` / `research` / `ux-designer` / `architect`.
   - `.claude/skills/rad-plan/SKILL.md:3` — drop "Research through Master Plan" from the description; check the body for any planning-step listing that names the 4 stages.
   - `.claude/skills/orchestration/references/action-event-reference.md:11-14` — drop the 4 rows for `spawn_research` / `spawn_prd` / `spawn_design` / `spawn_architecture` (rows 1-4 in the action table).

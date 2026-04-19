@@ -108,10 +108,6 @@ function seedDoc(docPath: string, extraFrontmatter: Record<string, unknown> = {}
 }
 
 const DOC_PATHS = {
-  research: path.join(PROJECT_DIR, 'docs', 'research.md'),
-  prd: path.join(PROJECT_DIR, 'docs', 'prd.md'),
-  design: path.join(PROJECT_DIR, 'docs', 'design.md'),
-  architecture: path.join(PROJECT_DIR, 'docs', 'architecture.md'),
   masterPlan: path.join(PROJECT_DIR, 'docs', 'master-plan.md'),
   phasePlan: (phase: number) => path.join(PROJECT_DIR, 'phases', `phase-${phase}-plan.md`),
   taskHandoff: (phase: number, task: number) =>
@@ -135,26 +131,6 @@ const TASKS_FIXTURE = [
 function drivePlanningTier(io: MockIO): PipelineResult {
   // Init scaffold
   processEvent('start', PROJECT_DIR, {}, io);
-  // research in_progress
-  processEvent('research_started', PROJECT_DIR, {}, io);
-  // research completed
-  seedDoc(DOC_PATHS.research);
-  processEvent('research_completed', PROJECT_DIR, { doc_path: DOC_PATHS.research }, io);
-
-  // prd
-  processEvent('prd_started', PROJECT_DIR, {}, io);
-  seedDoc(DOC_PATHS.prd);
-  processEvent('prd_completed', PROJECT_DIR, { doc_path: DOC_PATHS.prd }, io);
-
-  // design
-  processEvent('design_started', PROJECT_DIR, {}, io);
-  seedDoc(DOC_PATHS.design);
-  processEvent('design_completed', PROJECT_DIR, { doc_path: DOC_PATHS.design }, io);
-
-  // architecture
-  processEvent('architecture_started', PROJECT_DIR, {}, io);
-  seedDoc(DOC_PATHS.architecture);
-  processEvent('architecture_completed', PROJECT_DIR, { doc_path: DOC_PATHS.architecture }, io);
 
   // master_plan
   processEvent('master_plan_started', PROJECT_DIR, {}, io);
@@ -451,7 +427,6 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // ── Final state assertions ───────────────────────────────────────────
     // Verify all top-level nodes completed
     const nodes = io.currentState!.graph.nodes;
-    expect((nodes['research'] as StepNodeState).status).toBe('completed');
     expect((nodes['master_plan'] as StepNodeState).status).toBe('completed');
     expect((nodes['plan_approval_gate'] as GateNodeState).status).toBe('completed');
     expect((nodes['phase_loop'] as ForEachPhaseNodeState).status).toBe('completed');

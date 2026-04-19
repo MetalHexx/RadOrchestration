@@ -117,6 +117,7 @@ export interface TemplateHeader {
   id: string;
   version: string;
   description: string;
+  status?: 'deprecated';
 }
 
 export interface PipelineTemplate {

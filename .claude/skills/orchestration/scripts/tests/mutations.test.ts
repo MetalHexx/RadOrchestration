@@ -129,14 +129,6 @@ const baseTemplate: PipelineTemplate = {
 
 describe('getMutation — planning events', () => {
   const planningEvents = [
-    'research_started',
-    'research_completed',
-    'prd_started',
-    'prd_completed',
-    'design_started',
-    'design_completed',
-    'architecture_started',
-    'architecture_completed',
     'master_plan_started',
     'master_plan_completed',
   ];
@@ -169,34 +161,34 @@ describe('getMutation — unknown events', () => {
   });
 });
 
-// ── research_started (also sets graph.status) ─────────────────────────────────
+// ── master_plan_started (also sets graph.status) ─────────────────────────────
 
-describe('research_started mutation', () => {
-  it('sets research.status to in_progress', () => {
+describe('master_plan_started mutation', () => {
+  it('sets master_plan.status to in_progress', () => {
     const state = makeState();
-    const mutation = getMutation('research_started')!;
+    const mutation = getMutation('master_plan_started')!;
     const result = mutation(state, {}, baseConfig, baseTemplate);
-    expect(result.state.graph.nodes['research'].status).toBe('in_progress');
+    expect(result.state.graph.nodes['master_plan'].status).toBe('in_progress');
   });
 
   it('sets graph.status to in_progress', () => {
     const state = makeState();
-    const mutation = getMutation('research_started')!;
+    const mutation = getMutation('master_plan_started')!;
     const result = mutation(state, {}, baseConfig, baseTemplate);
     expect(result.state.graph.status).toBe('in_progress');
   });
 
   it('does not mutate the original state', () => {
     const state = makeState();
-    const mutation = getMutation('research_started')!;
+    const mutation = getMutation('master_plan_started')!;
     mutation(state, {}, baseConfig, baseTemplate);
-    expect(state.graph.nodes['research'].status).toBe('not_started');
+    expect(state.graph.nodes['master_plan'].status).toBe('not_started');
     expect(state.graph.status).toBe('not_started');
   });
 
   it('returns a non-empty mutations_applied array', () => {
     const state = makeState();
-    const mutation = getMutation('research_started')!;
+    const mutation = getMutation('master_plan_started')!;
     const result = mutation(state, {}, baseConfig, baseTemplate);
     expect(result.mutations_applied.length).toBeGreaterThan(0);
   });
@@ -206,10 +198,6 @@ describe('research_started mutation', () => {
 
 describe('planning _started mutations', () => {
   const startedCases: Array<[string, string]> = [
-    ['research_started', 'research'],
-    ['prd_started', 'prd'],
-    ['design_started', 'design'],
-    ['architecture_started', 'architecture'],
     ['master_plan_started', 'master_plan'],
   ];
 
@@ -241,10 +229,6 @@ describe('planning _started mutations', () => {
 
 describe('planning _completed mutations', () => {
   const completedCases: Array<[string, string]> = [
-    ['research_completed', 'research'],
-    ['prd_completed', 'prd'],
-    ['design_completed', 'design'],
-    ['architecture_completed', 'architecture'],
     ['master_plan_completed', 'master_plan'],
   ];
 

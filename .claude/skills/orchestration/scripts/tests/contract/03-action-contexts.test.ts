@@ -60,48 +60,18 @@ describe('[CONTRACT] Action Contexts — formatTaskId helper', () => {
   });
 });
 
-// ── [CONTRACT] Planning spawn actions (full template: prd → research → design → …) ──
+// ── [CONTRACT] Planning spawn actions (full template: master_plan only) ──
 
 describe('[CONTRACT] Action Contexts — planning spawn actions (full template)', () => {
-  // Note: step order is template-specific. The full template starts with prd,
-  // followed by research. A different template (e.g. quick) may reorder these.
-
-  it('first action is spawn_prd (prd is first node in full template)', () => {
+  it('first action is spawn_master_plan (master_plan is first planning node in full template)', () => {
     const io = createMockIO(null);
     const result = processEvent('start', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_prd');
-    expect(result.context).toEqual({ step: 'prd' });
+    expect(result.action).toBe('spawn_master_plan');
+    expect(result.context).toEqual({ step: 'master_plan' });
   });
 
-  it('spawn_research returns { step: "research" } (research follows prd in full template)', () => {
-    const io = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('research_started', PROJECT_DIR, {}, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_research');
-    expect(result.context).toEqual({ step: 'research' });
-  });
-
-  it('spawn_design returns { step: "design" } (after completing prd)', () => {
-    const io = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('design_started', PROJECT_DIR, {}, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_design');
-    expect(result.context).toEqual({ step: 'design' });
-  });
-
-  it('spawn_architecture returns { step: "architecture" } (after completing design)', () => {
-    const io = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('architecture_started', PROJECT_DIR, {}, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_architecture');
-    expect(result.context).toEqual({ step: 'architecture' });
-  });
-
-  it('spawn_master_plan returns { step: "master_plan" } (after completing architecture)', () => {
+  it('spawn_master_plan returns { step: "master_plan" }', () => {
     const io = createMockIO(null);
     processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
@@ -315,7 +285,6 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
     const io = createMockIO(null);
     processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
-    completePlanningSteps(state, 'architecture');
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
     const mpDocPath = '/tmp/master_plan.md';
     seedDoc(mpDocPath);

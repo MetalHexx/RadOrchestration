@@ -166,7 +166,7 @@ describe('validator – validateState', () => {
   describe('invalid node statuses', () => {
     it('detects invalid status on top-level step node', () => {
       const state = makeMinimalState();
-      (state.graph.nodes['research'] as any).status = 'active';
+      (state.graph.nodes['master_plan'] as any).status = 'active';
       const errors = validateState(null, state, DEFAULT_CONFIG, TEMPLATE);
       expect(errors.length).toBeGreaterThan(0);
       expect(errors.some(e => e.includes('active'))).toBe(true);
@@ -376,10 +376,10 @@ describe('validator – validateState', () => {
   describe('node kind matches template', () => {
     it('detects kind mismatch between state and template', () => {
       const state = makeMinimalState();
-      // research is a 'step' in the template — change it to 'gate'
-      (state.graph.nodes['research'] as any).kind = 'gate';
+      // master_plan is a 'step' in the template — change it to 'gate'
+      (state.graph.nodes['master_plan'] as any).kind = 'gate';
       const errors = validateState(null, state, DEFAULT_CONFIG, TEMPLATE);
-      expect(errors.some(e => e.includes('research') && e.includes('gate') && e.includes('step'))).toBe(true);
+      expect(errors.some(e => e.includes('master_plan') && e.includes('gate') && e.includes('step'))).toBe(true);
     });
 
     it('detects kind mismatch for node nested inside for_each_phase body iteration', () => {
@@ -436,18 +436,18 @@ describe('validator – validateState', () => {
 describe('validator – status transitions', () => {
   it('illegal: skipped → in_progress produces validation error', () => {
     const prev = makeMinimalState();
-    (prev.graph.nodes['research'] as StepNodeState).status = 'skipped';
+    (prev.graph.nodes['master_plan'] as StepNodeState).status = 'skipped';
     const proposed = structuredClone(prev);
-    (proposed.graph.nodes['research'] as StepNodeState).status = 'in_progress';
+    (proposed.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
     const errors = validateState(prev, proposed, DEFAULT_CONFIG, TEMPLATE);
     expect(errors.some(e => e.includes('skipped') && e.includes('in_progress'))).toBe(true);
   });
 
   it('illegal: halted → completed produces validation error', () => {
     const prev = makeMinimalState();
-    (prev.graph.nodes['research'] as StepNodeState).status = 'halted';
+    (prev.graph.nodes['master_plan'] as StepNodeState).status = 'halted';
     const proposed = structuredClone(prev);
-    (proposed.graph.nodes['research'] as StepNodeState).status = 'completed';
+    (proposed.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
     const errors = validateState(prev, proposed, DEFAULT_CONFIG, TEMPLATE);
     expect(errors.some(e => e.includes('halted') && e.includes('completed'))).toBe(true);
   });
@@ -455,27 +455,27 @@ describe('validator – status transitions', () => {
   it('legal: not_started → completed produces no error', () => {
     const prev = makeMinimalState();
     const proposed = structuredClone(prev);
-    (proposed.graph.nodes['research'] as StepNodeState).status = 'completed';
+    (proposed.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
     const errors = validateState(prev, proposed, DEFAULT_CONFIG, TEMPLATE);
-    expect(errors.some(e => e.includes('Illegal status transition') && e.includes('research'))).toBe(false);
+    expect(errors.some(e => e.includes('Illegal status transition') && e.includes('master_plan'))).toBe(false);
   });
 
   it('legal: completed → not_started produces no error (plan_rejected reset)', () => {
     const prev = makeMinimalState();
-    (prev.graph.nodes['research'] as StepNodeState).status = 'completed';
+    (prev.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
     const proposed = structuredClone(prev);
-    (proposed.graph.nodes['research'] as StepNodeState).status = 'not_started';
+    (proposed.graph.nodes['master_plan'] as StepNodeState).status = 'not_started';
     const errors = validateState(prev, proposed, DEFAULT_CONFIG, TEMPLATE);
-    expect(errors.some(e => e.includes('Illegal status transition') && e.includes('research'))).toBe(false);
+    expect(errors.some(e => e.includes('Illegal status transition') && e.includes('master_plan'))).toBe(false);
   });
 
   it('legal: completed → in_progress produces no error (rejection re-entry)', () => {
     const prev = makeMinimalState();
-    (prev.graph.nodes['research'] as StepNodeState).status = 'completed';
+    (prev.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
     const proposed = structuredClone(prev);
-    (proposed.graph.nodes['research'] as StepNodeState).status = 'in_progress';
+    (proposed.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
     const errors = validateState(prev, proposed, DEFAULT_CONFIG, TEMPLATE);
-    expect(errors.some(e => e.includes('Illegal status transition') && e.includes('research'))).toBe(false);
+    expect(errors.some(e => e.includes('Illegal status transition') && e.includes('master_plan'))).toBe(false);
   });
 
   it('null previous state (init) produces no transition errors', () => {
@@ -514,15 +514,15 @@ describe('validator – status transitions', () => {
     processEvent('start', PROJECT_DIR, {}, initIO);
     const scaffolded = initIO.currentState!;
 
-    // Corrupt the previous state so 'research' is skipped
+    // Corrupt the previous state so 'master_plan' is skipped
     const corrupted = structuredClone(scaffolded);
-    (corrupted.graph.nodes['research'] as StepNodeState).status = 'skipped';
+    (corrupted.graph.nodes['master_plan'] as StepNodeState).status = 'skipped';
 
-    // Proposed state (what research_started would produce) has research as in_progress
-    // We simulate this by feeding the engine a previous state with research=skipped
-    // so when research_started fires and sets it to in_progress, validation catches it
+    // Proposed state (what master_plan_started would produce) has master_plan as in_progress
+    // We simulate this by feeding the engine a previous state with master_plan=skipped
+    // so when master_plan_started fires and sets it to in_progress, validation catches it
     const io = createMockIO(corrupted);
-    const result = processEvent('research_started', PROJECT_DIR, {}, io);
+    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(false);
     expect(io.writeCalls.length).toBe(0);
   });
@@ -533,14 +533,12 @@ describe('validator – status transitions', () => {
 describe('validator – engine integration', () => {
   it('engine returns success: false and does NOT write state when validation fails', () => {
     // Create a state with an invalid node status to trigger validation failure
-    // Corrupt a node that the prd_started mutation won't touch (design, not prd)
+    // Corrupt a node that the master_plan_started mutation won't touch (final_review, not master_plan)
     const state = makeMinimalState();
     state.graph.status = 'in_progress';
-    (state.graph.nodes['research'] as StepNodeState).status = 'completed';
-    (state.graph.nodes['research'] as StepNodeState).doc_path = '/tmp/test.md';
-    (state.graph.nodes['design'] as any).status = 'invalid_bogus';
+    (state.graph.nodes['final_review'] as any).status = 'invalid_bogus';
     const io = createMockIO(state);
-    const result = processEvent('prd_started', PROJECT_DIR, {}, io);
+    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
     expect(io.writeCalls.length).toBe(0);
@@ -552,9 +550,9 @@ describe('validator – engine integration', () => {
     processEvent('start', PROJECT_DIR, {}, initIO);
     const scaffoldedState = initIO.currentState!;
 
-    // Now process research_started with existing state (standard route)
+    // Now process master_plan_started with existing state (standard route)
     const io = createMockIO(scaffoldedState);
-    const result = processEvent('research_started', PROJECT_DIR, {}, io);
+    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(io.writeCalls.length).toBe(1);
   });

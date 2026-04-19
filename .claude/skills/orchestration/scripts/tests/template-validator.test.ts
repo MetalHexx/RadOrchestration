@@ -153,4 +153,20 @@ describe('validateTemplate', () => {
       expect(cycleErr!.detail.cycle_nodes).toContain('body-b');
     });
   });
+
+  describe('deprecated templates', () => {
+    it('skips validation for a deprecated template even when nodes are structurally invalid', () => {
+      const deprecatedTemplate: PipelineTemplate = {
+        template: { id: 'foo', version: '1', description: 'd', status: 'deprecated' },
+        nodes: [
+          // Invalid nodes: cycle + dangling ref — would normally fail validation
+          makeStep('a', ['b']),
+          makeStep('b', ['a']),
+          makeStep('x', ['nonexistent']),
+        ],
+      };
+      const result = validateTemplate(deprecatedTemplate, 'foo');
+      expect(result).toEqual({ valid: true, errors: [], warnings: [] });
+    });
+  });
 });

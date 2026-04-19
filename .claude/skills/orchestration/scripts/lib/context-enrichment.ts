@@ -66,10 +66,6 @@ export function resolveActiveTaskIndex(state: PipelineState, phaseIndex: number)
 }
 
 const PLANNING_SPAWN_STEPS: Record<string, string> = {
-  spawn_research: 'research',
-  spawn_prd: 'prd',
-  spawn_design: 'design',
-  spawn_architecture: 'architecture',
   spawn_master_plan: 'master_plan',
 };
 
