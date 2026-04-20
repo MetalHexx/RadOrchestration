@@ -88,12 +88,6 @@ created: "{ISO-DATE}"
 
 - {Item 1}
 
-## Master Plan Adjustment Recommendations
-
-{Does the reviewer recommend adjusting the master plan based on what was learned? Empty list is fine.}
-
-- {Recommendation 1}
-
 ## Recommendations for Next Phase
 
 <!-- Advisory recommendations for the next phase. Distinct from Carry-Forward Items (required handling). -->
