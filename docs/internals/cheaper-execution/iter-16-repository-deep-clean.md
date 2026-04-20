@@ -1,10 +1,10 @@
-# Iter 15 — Repository deep clean
+# Iter 16 — Repository deep clean
 
-> **Validation Preface**: this iteration is a tail-end audit, not a code change with a fixed scope. The outer planner reaches Iter 15 *after* Iters 0-14 have all landed. The planner's job is to investigate the codebase **as it stands** — fresh — and surface every residue of removed/changed concepts that earlier iterations missed. The companion is intentionally light. The plan file does the heavy lifting.
+> **Validation Preface**: this iteration is a tail-end audit, not a code change with a fixed scope. The outer planner reaches Iter 16 *after* Iters 0-15 have all landed. The planner's job is to investigate the codebase **as it stands** — fresh — and surface every residue of removed/changed concepts that earlier iterations missed. The companion is intentionally light. The plan file does the heavy lifting.
 
 ## Why this exists
 
-The Cheaper Execution Refactor spans 14 active iterations of "delete + ripple as you go." Even with disciplined per-iteration cleanup, 14 iterations of cumulative surface-area drift leave residue:
+The Cheaper Execution Refactor spans many iterations of "delete + ripple as you go" (including the orchestrator-mediation redesign that reshaped corrective cycles mid-flight). Even with disciplined per-iteration cleanup, that much cumulative surface-area drift leaves residue:
 
 - Stale doc framings (the document still reads as if the removed concept exists).
 - Dead code paths that no caller exercises.
@@ -15,13 +15,13 @@ The Cheaper Execution Refactor spans 14 active iterations of "delete + ripple as
 - Mermaid / ASCII diagrams that didn't get refreshed when the underlying flow changed.
 - Skill metadata (descriptions, keywords) describing capabilities that are gone.
 
-This iteration sweeps for all of it before the public-facing docs iteration (Iter 16) refreshes `/docs/`. Cleaning internals first means Iter 16 documents a stable end state.
+This iteration sweeps for all of it before the public-facing docs iteration (Iter 17) refreshes `/docs/`. Cleaning internals first means Iter 17 documents a stable end state.
 
 ## Scope (intent — finalized at planning time)
 
 The outer planner for this iteration **investigates the codebase fresh** and produces a self-contained plan file that enumerates findings and corrections. Investigation should cover, at minimum:
 
-- Every concept removed across Iters 0-14 (agents, actions, events, workflows, mutation handlers, validator rules, schema fields, template nodes, doc types, vocabulary).
+- Every concept removed across Iters 0-15 (agents, actions, events, workflows, mutation handlers, validator rules, schema fields, template nodes, doc types, vocabulary).
 - Every concept renamed (e.g., execution_plan → master_plan in Iter 2).
 - Every behavior whose semantics shifted (e.g., `phase_planning` / `task_handoff` shifted from authoring nodes to doc-carrier nodes after Iter 5/7).
 - Documentation that *reads stale* even when no symbol is wrong (framing-stale issues).
@@ -34,7 +34,7 @@ The outer planner for this iteration **investigates the codebase fresh** and pro
 
 ## Scope Deliberately Untouched
 
-- `/docs/` and root-level `README.md` — Iter 16 owns the public-facing docs refresh. Cleaning internals first means Iter 16 documents a stable end state.
+- `/docs/` and root-level `README.md` — Iter 17 owns the public-facing docs refresh. Cleaning internals first means Iter 17 documents a stable end state.
 - `archive/` — inactive; not refactor-relevant.
 - Anything in `node_modules/`.
 - New feature work — pure cleanup iteration, no behavior changes.
@@ -58,8 +58,8 @@ Determined at planning time. Likely includes (but is not limited to):
 
 ## Dependencies
 
-- **Depends on**: Iters 0-14 all landed and verified. Cleanup can only sweep what's already been removed.
-- **Blocks**: Iter 16 — public docs refresh consumes the cleaned codebase as its source of truth.
+- **Depends on**: Iters 0-15 all landed and verified. Cleanup can only sweep what's already been removed.
+- **Blocks**: Iter 17 — public docs refresh consumes the cleaned codebase as its source of truth.
 
 ## Testing Discipline
 
@@ -71,13 +71,13 @@ Determined at planning time. Likely includes (but is not limited to):
 ## Exit Criteria
 
 - Full test suite green vs. baseline.
-- Codebase carries no residue (string OR semantic) from anything removed/changed across Iters 0-14, modulo `/docs/` (Iter 16) and `archive/`.
+- Codebase carries no residue (string OR semantic) from anything removed/changed across Iters 0-15, modulo `/docs/` (Iter 17) and `archive/`.
 - All cross-references resolve. No dangling links.
 - Skill / agent / reference docs read coherently in a post-refactor world (framing aligned, not just symbol-correct).
 - Test fixtures encode only states that occur in the post-refactor pipeline.
 
 ## Open Questions — to resolve at planning time
 
-- **Subagent army or sequential investigation?** The Iter 7 planning used 6 parallel agents per major repo area. Iter 15 will likely use the same pattern (or expand it) but the planner can right-size based on the residue actually expected.
+- **Subagent army or sequential investigation?** The Iter 7 planning used 6 parallel agents per major repo area. Iter 16 will likely use the same pattern (or expand it) but the planner can right-size based on the residue actually expected.
 - **How to handle judgment-call findings?** Some cleanup will be obviously correct; some will be 50/50 (e.g., "is this comment stale or just historically accurate?"). The plan file should distinguish "apply" from "surface for user judgment."
 - **Bookend test** — should the iteration end with a fresh independent agent reading the cleaned codebase to confirm coherence, or just trust the in-iteration audit + tests? Decide at planning time based on how much was touched.

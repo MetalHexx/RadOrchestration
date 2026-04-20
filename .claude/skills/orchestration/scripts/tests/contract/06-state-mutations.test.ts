@@ -338,7 +338,7 @@ describe('[CONTRACT] State Mutations — Phase review completed mutations', () =
     expect(result.mutations_applied.some((m) => m.includes('verdict'))).toBe(true);
   });
 
-  // Skipped in Iter 7; Iter 12 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-12-corrective-cycles.md.
+  // Skipped in Iter 7; Iter 11 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.
   // The mutation-side behavior is still exercised by tests/mutations-phase-corrective.test.ts; this contract
   // test goes through the full engine and the post-mutation walker now throws (dag-walker.ts:171-179).
   it.skip('phase_review_completed (changes_requested): corrective task injected at phase level', () => {

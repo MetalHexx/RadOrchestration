@@ -90,7 +90,7 @@ describe('[REGRESSION] Auto-resolution — phase_report_created without phase co
 });
 
 describe('[REGRESSION] Auto-resolution — phase_review_completed changes_requested without phase context', () => {
-  // Skipped in Iter 7; Iter 12 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-12-corrective-cycles.md.
+  // Skipped in Iter 7; Iter 11 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.
   // Mutation-side auto-resolution is still exercised by mutations-phase-corrective.test.ts; this integration
   // test goes through the full engine and the post-mutation walker now throws (dag-walker.ts:171-179).
   it.skip('injects phase-level corrective entry into the active iteration when phase is omitted', () => {

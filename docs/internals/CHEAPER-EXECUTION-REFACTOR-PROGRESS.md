@@ -68,19 +68,18 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 7 | Remove per-phase/per-task planning | Complete | 2026-04-19 | 2026-04-20 |
 | 8 | phase_review absorbs phase_report | Not started | — | — |
 | 9 | Complete `default.yml` | Not started | — | — |
-| 10 | Code-review rework (task/phase/final) | Not started | — | — |
-| 11 | Execute-coding-task rework + correction sections | Not started | — | — |
-| 12 | Corrective cycle wiring | Not started | — | — |
-| 13 | Rad-plan-audit overhaul | Not started | — | — |
-| 14 | Explosion-retry configurability | Not started | — | — |
-| 15 | Repository deep clean | Not started | — | — |
-| 16 | Public-facing docs refresh | Not started | — | — |
+| 10 | Task-level corrective cycles (orchestrator mediation) | Not started | — | — |
+| 11 | Phase-level corrective cycles | Not started | — | — |
+| 12 | Code-review rework (task/phase/final) | Not started | — | — |
+| 13 | Execute-coding-task rework | Not started | — | — |
+| 14 | Rad-plan-audit overhaul | Not started | — | — |
+| 15 | Explosion-retry configurability | Not started | — | — |
+| 16 | Repository deep clean | Not started | — | — |
+| 17 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 8 / 17 iterations complete. Design realigned 2026-04-18 for gutting-first approach. Iter 14 (explosion-retry configurability) inserted 2026-04-19 during Iter 5 planning when the retry cap was deferred from baked-in to configurable. Iter 15 (Repository deep clean) inserted 2026-04-19 during Iter 7 planning to sweep cumulative residue from 14 iterations of "delete + ripple" before the public-facing docs refresh (now Iter 16).
+**Overall**: 8 / 18 iterations complete. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
 
 **Legend**: Not started → In progress → Blocked → Complete
-
-**Note on renumbering**: this status table uses the post-realignment iteration numbering (0-14). The Progression Log entries below for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ are new.
 
 ---
 
@@ -399,31 +398,31 @@ Format:
 - **Context**: Iteration 1 ships the two new doc formats without any author-time check that every FR/NFR/AD/DD in `REQUIREMENTS.md` is addressed by at least one task in `EXECUTION-PLAN.md`. Coverage is enforced only implicitly (workflow guidance, YAGNI inline tagging). `rad-plan-audit` was explicitly scoped out of Iter-1.
 - **Why unresolved**: Needs a design decision on whether the check lives as a standalone skill / agent mode (mirrors `rad-plan-audit`) or as a cheap CLI script invoked by the planner's workflow. Also overlaps with the future conformance-check agent mentioned in the design doc.
 - **Suggested owner**: A later iteration, possibly the one that introduces a conformance-check agent.
-- **2026-04-18 resolution**: Addressed by Iter 13 (Rad-plan-audit overhaul). The audit is rewritten for a single purpose — Requirements ↔ Master Plan conformance. Both forward coverage (every Requirements ID cited by ≥1 Master Plan task) and backward resolution (every Master Plan tag resolves to a block) land in the iteration.
+- **2026-04-18 resolution**: Absorbed into the Rad-plan-audit overhaul iteration (currently Iter 14). The audit is rewritten for a single purpose — Requirements ↔ Master Plan conformance. Both forward coverage (every Requirements ID cited by ≥1 Master Plan task) and backward resolution (every Master Plan tag resolves to a block) land in that iteration.
 
 ### 2026-04-20 — Multi-round corrective-context persistence test (Iter 7 carry-forward)
 
 - **Context**: Iter 7 deleted the `create_task_handoff` enrichment block and the test `'corrective fields persist across consecutive changes_requested verdicts'` in `contract/09-corrective-cycles.test.ts` that verified `is_correction` / `previous_review` fields still resolve on the second corrective cycle. `context-enrichment.test.ts` covers the `spawn_code_reviewer` single-round case (~lines 683–698) but no test exercises multi-round persistence at task scope.
 - **Why unresolved**: Low risk for Iter 7 since the `spawn_code_reviewer` enrichment path itself is unchanged. But the gap is real — a regression in corrective_index accumulation across retries would go uncaught.
-- **Suggested owner**: Iter 8 (phase_review absorbs phase_report) or Iter 10 (code-review rework) — whichever first touches the corrective cycle shape.
+- **Suggested owner**: Iter 8 (phase_review absorbs phase_report), Iter 10 (task-level corrective cycles), or Iter 12 (code-review rework) — whichever first touches the corrective cycle shape. Under the corrective-cycles redesign, Iter 10 is the most natural landing spot since the mediation wiring directly governs `corrective_index` accumulation.
 
 ### 2026-04-20 — `.agents/skills/pipeline-changes/references/pipeline-internals.md` ripple unexecuted (Iter 7 carry-forward)
 
 - **Context**: Iter 7 companion + plan listed updating this file's Mermaid diagrams to replace `task_handoff_created` + `phase_plan_created` event refs. The file does not exist anywhere in this worktree or the integration branch — likely lives in a different worktree or was renamed/moved in a prior iteration and the companion wasn't updated.
 - **Why unresolved**: File physically unavailable during Iter 7 execution. Documentation-only (Mermaid diagrams) with no executable consequence.
-- **Suggested owner**: Iter 15 (repository deep clean) or Iter 16 (public-facing docs refresh) — both of those sweep cumulative residue and would naturally pick up a stale Mermaid reference if/when the file reappears.
+- **Suggested owner**: Iter 16 (repository deep clean) or Iter 17 (public-facing docs refresh) — both of those sweep cumulative residue and would naturally pick up a stale Mermaid reference if/when the file reappears.
 
 ### 2026-04-20 — `fs-reader.ts` discoverProjects concurrency cap (Iter 7 Copilot review C1)
 
 - **Context**: Iter 7 parallelized `discoverProjects` via `Promise.all(entries.map(...))` — unbounded concurrency. Copilot flagged theoretical EMFILE / IO-contention risk at large workspace sizes.
 - **Why unresolved**: 107 projects renders in ~37ms with no issues. The risk surfaces at ~1000+ projects on OSes with strict file-descriptor limits (Linux default 1024; Windows default >10k). Iter 7's plan explicitly deferred "sidebar virtualization + project-count cap" to a later iteration. A bounded semaphore (e.g. concurrency = 20) would be trivial but premature without observable evidence of the EMFILE risk.
-- **Suggested owner**: A future UI-performance iteration, or fold into Iter 15 (repository deep clean) if sweeping similar scale concerns.
+- **Suggested owner**: A future UI-performance iteration, or fold into Iter 16 (repository deep clean) if sweeping similar scale concerns.
 
 ### 2026-04-19 — Prompt-harness linter frontmatter coverage (Iter 6 Copilot R6-3 / R6-5)
 
 - **Context**: During PR #57's round-6 Copilot review, two comments asked the Iter-6 linters to add `author` + `approved_at` (requirements) and `status` + `created` + `author` (master plan) to `REQUIRED_FRONTMATTER`. Declined in-iteration because the Iter 6 companion (`docs/internals/cheaper-execution/iter-06-prompt-harness.md`) explicitly marks those fields as informational-only and instructs the linter to ignore them.
 - **Why unresolved**: The plan's scope boundary is deliberate — the linters validate the load-bearing contract only. Broadening coverage would re-open the "which fields are load-bearing" question that the Iter 6 design locked. A separate iteration can revisit if the template contract tightens.
-- **Suggested owner**: A future iteration — likely alongside Iter 13 (Rad-plan-audit overhaul) or whichever later work retightens the frontmatter contract on the template side.
+- **Suggested owner**: A future iteration — likely alongside Iter 14 (Rad-plan-audit overhaul) or whichever later work retightens the frontmatter contract on the template side.
 
 ---
 

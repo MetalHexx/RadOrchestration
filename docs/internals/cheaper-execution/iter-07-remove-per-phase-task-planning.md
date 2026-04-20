@@ -8,7 +8,7 @@ With Iter 5's explosion script in place, phase-plan and task-handoff documents e
 
 The trickiest bit is the `execute_task` action's context enrichment (`context-enrichment.ts:211-219`). Today it reads a `task_handoff` node's `doc_path` from the task iteration via an in-loop authoring step. After this iteration, authoring is gone — but the task iteration still carries a pre-seeded `task_handoff` child step node at `taskIter.nodes['task_handoff']` (populated by the explosion script in Iter 5, status `completed`). The enrichment continues to read `taskIter.nodes['task_handoff'].doc_path`; the only change is that the value arrives via pre-seeding rather than via an authoring dispatch.
 
-`dag-walker.ts` has two `phase_planning` references that need attention: (a) `resolveDocRefInScope` at line 124 hardcodes a `phase_planning` lookup for `$.current_phase.{field}` template refs — a template-resolution helper, not corrective-cycle logic; (b) the actual phase-level corrective re-planning path at lines 171-194 walks the phase body against `iteration.nodes` and re-enters `create_phase_plan` via `phase_planning.status === 'in_progress'` (per the line-174 comment). The corrective re-planning path breaks after the in-loop `phase_planning` authoring node is removed; this iteration stubs it (Iter 12 replaces it with corrective-task-append). Helper (a) remains valid — the explosion script still seeds a `phase_planning` child step node with `doc_path` on each phase iteration, so the `scopeNodes['phase_planning'].doc_path` lookup continues to resolve; no change required.
+`dag-walker.ts` has two `phase_planning` references that need attention: (a) `resolveDocRefInScope` at line 124 hardcodes a `phase_planning` lookup for `$.current_phase.{field}` template refs — a template-resolution helper, not corrective-cycle logic; (b) the actual phase-level corrective re-planning path at lines 171-194 walks the phase body against `iteration.nodes` and re-enters `create_phase_plan` via `phase_planning.status === 'in_progress'` (per the line-174 comment). The corrective re-planning path breaks after the in-loop `phase_planning` authoring node is removed; this iteration stubs it (Iter 11 replaces it with corrective-task-append under the orchestrator-mediation redesign). Helper (a) remains valid — the explosion script still seeds a `phase_planning` child step node with `doc_path` on each phase iteration, so the `scopeNodes['phase_planning'].doc_path` lookup continues to resolve; no change required.
 
 Phase-plan and task-handoff document contracts — and their validators — stay. Docs still exist and are still consumed downstream. What changes is the authoring surface.
 
@@ -37,17 +37,17 @@ Phase-plan and task-handoff document contracts — and their validators — stay
     ```ts
     throw new Error(
       'Phase-level corrective re-planning branch unreachable post-Iter 7. ' +
-      'Iter 12 will rewire this via corrective-task-append. See iter-12-corrective-cycles.md.'
+      'Iter 11 will rewire this via corrective-task-append. See iter-11-phase-corrective-cycles.md.'
     );
     ```
-    Loud-at-runtime + quiet-in-CI: the 4 tests that exercise this branch get `it.skip()` with comments pointing at Iter 12 (see Scope §"Test surgery" below). Mutation-side tests for `phase_review_completed` stay green and prove state-shape work isn't regressing.
+    Loud-at-runtime + quiet-in-CI: the 4 tests that exercise this branch get `it.skip()` with comments pointing at Iter 11 (see Scope §"Test surgery" below). Mutation-side tests for `phase_review_completed` stay green and prove state-shape work isn't regressing.
   - **Line 124** (`resolveDocRefInScope`): hardcoded `scopeNodes['phase_planning']` lookup for `$.current_phase.{field}` template refs. After the in-loop `phase_planning` authoring node is gone, this helper still resolves because the explosion script (Iter 5) pre-seeds a `phase_planning` child step node on each phase iteration (status `completed`, `doc_path` populated). Confirm at iteration start that the helper's assumed shape (`scopeNodes['phase_planning'].doc_path`) still matches the seeded node; no rewire expected.
 - **Strip dead body nodes from deprecated templates** (re-added 2026-04-19): once Iter 7 removes the action/event string constants, the body-node references in `full.yml` and `quick.yml` become genuine dead code (not cosmetic drift) — the strings they cite no longer exist anywhere. Per the refactor's "excommunicate as you go" standing principle, strip them now. Defense in depth beyond the `status: deprecated` validator sentinel.
   - `.claude/skills/orchestration/templates/full.yml` — remove `phase_planning` body node from `phase_loop.body` and `task_handoff` body node from `task_loop.body`.
   - `.claude/skills/orchestration/templates/quick.yml` — same edits (Iter 9 will delete `quick.yml` entirely; symmetric strip keeps the integration branch clean in the interim).
 - **Test surgery** (added 2026-04-19, planning-time):
   - **Delete** `.claude/skills/orchestration/scripts/tests/parity.test.ts` entirely. Pre-Iter-7 it had 48 `it()` blocks; ~36 break under the constants/event removals above. Surviving narrative coverage is fully redundant with the `tests/contract/` suite + integration tests (`engine.test.ts`, `execution-integration.test.ts`, `corrective-integration.test.ts`, `event-routing-integration.test.ts`). Net delta: ~–48 tests; logged as expected.
-  - **`it.skip()` 4 tests** that exercise the phase-level corrective re-planning branch (which the stub above makes unreachable). Each gets a one-line comment pointing at Iter 12:
+  - **`it.skip()` 4 tests** that exercise the phase-level corrective re-planning branch (which the stub above makes unreachable). Each gets a one-line comment pointing at Iter 11:
     - `tests/dag-walker.test.ts:1590` — `'phase-level corrective with task body nodes: walker returns first task body action'`
     - `tests/dag-walker.test.ts:1622` — `'phase-level corrective completion: advances iteration when all corrective body nodes done'`
     - `tests/dag-walker.test.ts:1663` — `'phase-level halted corrective returns display_halted'`
@@ -79,7 +79,7 @@ Phase-plan and task-handoff document contracts — and their validators — stay
 
 ## Scope Deliberately Untouched
 
-- `phase_plan_created` and `task_handoff_created` validator rules in `frontmatter-validators.ts` (if any exist for the latter) stay — the docs still exist, still get read by downstream consumers (executor reads task-handoff; phase-review reads phase-plan in Iter 10).
+- `phase_plan_created` and `task_handoff_created` validator rules in `frontmatter-validators.ts` (if any exist for the latter) stay — the docs still exist, still get read by downstream consumers (executor reads task-handoff; phase-review reads phase-plan in Iter 12).
 - `pre-reads.ts` — generic; consumers' reads continue to work against the same doc paths.
 - `default.yml` phase/task loop bodies — don't yet contain `phase_planning` / `task_handoff` body nodes; nothing to remove. Iter 9 finalizes the body shape.
 - Phase-plan and task-handoff document FORMATS stay — only the authoring source changes (explosion script vs. tactical-planner).
@@ -111,7 +111,7 @@ Phase-plan and task-handoff document contracts — and their validators — stay
 - Templates: `.claude/skills/orchestration/templates/full.yml` + `.claude/skills/orchestration/templates/quick.yml` — strip dead body nodes (`phase_planning` from phase_loop.body; `task_handoff` from task_loop.body) per Scope §"Strip dead body nodes"
 - Tests:
   - **Delete entirely**: `.claude/skills/orchestration/scripts/tests/parity.test.ts` (~48 it() blocks; redundant post-Iter-7 — see Scope §"Test surgery")
-  - **Skip 4 tests** (`it.skip` pending Iter 12 corrective rewire — see Scope §"Test surgery"): `tests/dag-walker.test.ts:1590,1622,1663` and `tests/corrective-integration.test.ts:510`
+  - **Skip 4 tests** (`it.skip` pending Iter 11 corrective rewire — see Scope §"Test surgery"): `tests/dag-walker.test.ts:1590,1622,1663` and `tests/corrective-integration.test.ts:510`
   - **Edit/trim**: `.claude/skills/orchestration/scripts/tests/mutations.test.ts`, `mutations-negative-path.test.ts`, `context-enrichment.test.ts`, `execution-integration.test.ts`, `event-routing-integration.test.ts`, `engine.test.ts` (right-size as the underlying constants/handlers/blocks are removed)
   - **Edit**: `.claude/skills/orchestration/scripts/tests/contract/02-event-names.test.ts`, `03-action-contexts.test.ts`, `06-state-mutations.test.ts`, `09-corrective-cycles.test.ts` (drop the deleted action/event references)
   - **Untouched**: `mutations-phase-corrective.test.ts` (mutation-side coverage, still valid)
@@ -155,7 +155,7 @@ Phase-plan and task-handoff document contracts — and their validators — stay
 
 ## Open Questions — resolved at planning time (2026-04-19)
 
-- ✅ **Corrective cycle stub**: locked → **throw an explicit error** at `dag-walker.ts:171-194` (form inlined in Scope above). Loud-at-runtime; the 4 tests that exercise this branch get `it.skip()` with comments pointing at Iter 12. Mutation-side tests stay green.
+- ✅ **Corrective cycle stub**: locked → **throw an explicit error** at `dag-walker.ts:171-194` (form inlined in Scope above). Loud-at-runtime; the 4 tests that exercise this branch get `it.skip()` with comments pointing at Iter 11. Mutation-side tests stay green.
 - ✅ **`task_handoff_created` mutation responsibility transfer**: verified at planning time — the handler at `mutations.ts:572` only sets node status `completed` + writes `doc_path`. It does NOT pre-advance task iteration status. Iter 5's pre-seeding already creates the `task_handoff` child with `status: completed` + `doc_path` at explosion time. Removal is safe; no side-effect migration needed.
 - ✅ **Order of edits**: also verified — explosion script (`scripts/lib/explode-master-plan.ts:603-615`) seeds `task_handoff` child node with `status: 'completed'` + relative `doc_path`. The `execute_task` enrichment block (`context-enrichment.ts:208-215`) reads it as `taskIter.nodes['task_handoff'].doc_path`. No fix needed — the seam is in place.
 
@@ -166,7 +166,7 @@ This companion was amended on 2026-04-19 during Iter 7 outer-session brainstormi
 - Line numbers updated to verified-against-live-code values (mutations.ts:311 + 572; context-enrichment.ts:73, 80, 112-127, 179-206, 208-215).
 - `agents.js` ripple removed (no hardcoded roster; agents are auto-discovered).
 - Stub form for `dag-walker.ts:171-194` specified as `throw` with exact code.
-- Test surgery section added (parity.test.ts deletion + 4 it.skip tests with file:line + Iter 12 pointers).
+- Test surgery section added (parity.test.ts deletion + 4 it.skip tests with file:line + Iter 11 pointers).
 - `full.yml` body-node strip dropped, then **re-added 2026-04-19** along with symmetric `quick.yml` strip — the dead body-node references become genuine dead code post-Iter-7 (cited action/event strings no longer exist anywhere); per "excommunicate as you go" standing principle, strip both.
 - Cross-reference migration added: corrective-filename pattern moves from `phase-plan/workflow.md:135-150` → `orchestration/references/document-conventions.md`. 3 cross-refs in code-review subskills + generate-phase-report updated.
 - 4 additional ripples surfaced by deep validation scan: `context.md:18` (agent-table row), `document-conventions.md:34` (author field), `_runner.md:70` (sentinel drop), `document-metadata.{tsx,test.ts}` (comment tidy).
@@ -175,4 +175,4 @@ This companion was amended on 2026-04-19 during Iter 7 outer-session brainstormi
 - UI perf-fix smoke ownership clarified: inner agent runs the dev server locally from the worktree (`ui/.env.local` with `WORKSPACE_ROOT=C:\dev\orchestration-projects` + `ORCH_ROOT` pointing at the worktree's `.claude`) and verifies in a browser. Explicit pass criterion: <2s render time on 107 projects.
 - Open Questions resolved.
 
-A companion note added to `iter-12-corrective-cycles.md` enumerates the 4 skipped tests so the Iter 12 planner has zero rediscovery cost.
+A companion note added to `iter-11-phase-corrective-cycles.md` enumerates the 4 skipped tests so the Iter 11 planner has zero rediscovery cost.

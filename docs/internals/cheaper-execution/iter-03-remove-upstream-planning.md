@@ -29,7 +29,7 @@ After this iteration: no code path spawns a product-manager, architect, ux-desig
 - `scaffold.ts` / `types.ts` — generic; no legacy literals to edit.
 - `dag-walker.ts` — generic walker; the line-124 hardcoded `'phase_planning'` reference is an Iter 7 concern (per-phase/task planning removal).
 - UI `NODE_SECTION_MAP` (`ui/components/dag-timeline/dag-timeline-helpers.ts:108-120`) and `PLANNING_STEP_ORDER` (`ui/types/state.ts:34-36`) keep their legacy entries so historical state.json still renders.
-- Public-facing docs under `/docs/` — deferred to Iter 14.
+- Public-facing docs under `/docs/` — deferred to Iter 17.
 
 ## UI Impact
 

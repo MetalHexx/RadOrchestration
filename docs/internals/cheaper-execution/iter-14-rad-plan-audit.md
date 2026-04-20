@@ -1,4 +1,4 @@
-# Iter 13 — Rad-plan-audit overhaul
+# Iter 14 — Rad-plan-audit overhaul
 
 > **Validation Preface**: Before planning this iteration, the planner agent MUST validate this doc against live code — file paths, symbol names, and line numbers can drift. Run a quick grep / glob pass on the Code Surface section below. Any mismatch → log a deviation in [`CHEAPER-EXECUTION-REFACTOR-PROGRESS.md`](../CHEAPER-EXECUTION-REFACTOR-PROGRESS.md) before proceeding. Do not plan on stale assumptions.
 
@@ -52,8 +52,8 @@ Both lists being empty is the pass condition. Either list populated means the pl
 
 ## Dependencies
 
-- **Depends on**: Iter 12 — not strictly, but the pipeline should be stable end-to-end before narrowing the audit skill's scope. An operator invoking the audit during an in-flight refactor shouldn't see behavior drift mid-scope.
-- **Blocks**: Iter 14 — the public-facing docs refresh covers mentions of `rad-plan-audit` in docs/ root files; cleaner to overhaul the skill first, then align the docs.
+- **Depends on**: Iter 13 — not strictly, but the pipeline should be stable end-to-end before narrowing the audit skill's scope. An operator invoking the audit during an in-flight refactor shouldn't see behavior drift mid-scope.
+- **Blocks**: Iter 17 — the public-facing docs refresh covers mentions of `rad-plan-audit` in docs/ root files; cleaner to overhaul the skill first, then align the docs.
 
 ## Testing Discipline
 

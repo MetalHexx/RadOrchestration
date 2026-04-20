@@ -1587,7 +1587,7 @@ describe('phase-level corrective task walking', () => {
     gateDef('task_gate', 'human_gates.execution_mode', 'gate_task', ['auto'], { depends_on: ['code_review'] }),
   ];
 
-  // Skipped in Iter 7; Iter 12 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-12-corrective-cycles.md.
+  // Skipped in Iter 7; Iter 11 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.
   it.skip('phase-level corrective with task body nodes: walker returns first task body action', () => {
     const phaseBody: NodeDef[] = [
       stepDef('phase_planning', 'create_phase_plan'),
@@ -1620,7 +1620,7 @@ describe('phase-level corrective task walking', () => {
     expect(correctiveEntry.status).toBe('in_progress');
   });
 
-  // Skipped in Iter 7; Iter 12 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-12-corrective-cycles.md.
+  // Skipped in Iter 7; Iter 11 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.
   it.skip('phase-level corrective completion: advances iteration when all corrective body nodes done', () => {
     const phaseBody: NodeDef[] = [
       stepDef('phase_planning', 'create_phase_plan'),
@@ -1662,7 +1662,7 @@ describe('phase-level corrective task walking', () => {
     expect(result).toEqual({ action: 'create_phase_plan', context: {} });
   });
 
-  // Skipped in Iter 7; Iter 12 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-12-corrective-cycles.md.
+  // Skipped in Iter 7; Iter 11 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.
   it.skip('phase-level halted corrective returns display_halted', () => {
     const phaseBody: NodeDef[] = [
       stepDef('phase_planning', 'create_phase_plan'),

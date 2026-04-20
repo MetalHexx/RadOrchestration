@@ -69,7 +69,7 @@ After this iteration: a scratch project runs end-to-end on `default.yml` from br
 ## Dependencies
 
 - **Depends on**: Iter 8 — phase_review is expected to carry the absorbed phase_report duties; `default.yml` wires the expanded phase_review (not two separate post-task steps).
-- **Blocks**: Iter 10 — code-review rework benefits from having `default.yml` as the target pipeline for review-flow testing.
+- **Blocks**: Iter 10 — task-level corrective cycles need `default.yml`'s execution phase (task_loop + code_review + task_gate) wired end-to-end so the mediation flow can be exercised against a real pipeline. Iter 12's code-review rework also benefits from this baseline.
 
 ## Testing Discipline
 

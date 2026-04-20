@@ -1,10 +1,10 @@
-# Iter 14 — Public-facing docs refresh
+# Iter 17 — Public-facing docs refresh
 
 > **Validation Preface**: Before planning this iteration, the planner agent MUST validate this doc against live code — file paths, symbol names, and line numbers can drift. Run a quick grep / glob pass on the Code Surface section below. Any mismatch → log a deviation in [`CHEAPER-EXECUTION-REFACTOR-PROGRESS.md`](../CHEAPER-EXECUTION-REFACTOR-PROGRESS.md) before proceeding. Do not plan on stale assumptions.
 
 ## Overview
 
-All prior iterations deliberately deferred updates to root-level public-facing documentation under `/docs/`. This iteration catches everything up in one coherent pass. The scope is bounded: only top-level `/docs/*.md` files (not `/docs/internals/` — those are internal dev notes updated within their relevant iteration's ripples). The ten root public docs describe user-facing concepts — agent roster, pipeline flow, template structure, configuration, etc. — and they've drifted from reality through Iters 2-13.
+All prior iterations deliberately deferred updates to root-level public-facing documentation under `/docs/`. This iteration catches everything up in one coherent pass. The scope is bounded: only top-level `/docs/*.md` files (not `/docs/internals/` — those are internal dev notes updated within their relevant iteration's ripples). The ten root public docs describe user-facing concepts — agent roster, pipeline flow, template structure, configuration, etc. — and they've drifted from reality across Iters 2-16.
 
 There is no pipeline-engine work in this iteration. It's purely documentation: grep for removed concepts, replace with current-reality language, make sure cross-references between docs stay consistent. The payoff is that external readers (operators, new contributors) landing in `/docs/` after this iteration see a coherent picture of the post-refactor system, not a half-retired one.
 
@@ -14,6 +14,7 @@ There is no pipeline-engine work in this iteration. It's purely documentation: g
   - Remove from roster: `product-manager`, `architect`, `ux-designer`, `research`, `tactical-planner`.
   - Confirm: `planner`, `coder`, `coder-senior`, `coder-junior`, `reviewer`, `orchestrator`, `source-control`, `brainstormer`, and any other retained agents are accurate.
   - Update `planner` description to cover both modes: Requirements authoring AND Master Plan authoring (inlined planning artifact).
+  - Update `orchestrator` description to reflect its expanded mediator role under the corrective-cycles redesign (Iters 10–11): reads review docs on `changes_requested`, judges findings, writes addenda, authors fresh corrective task handoffs. Narrow write surface — never writes project source or tests.
 - Update `/docs/pipeline.md`:
   - Remove references to the 5-upstream-doc flow (PRD → Research → Design → Architecture → Master Plan).
   - Replace with the Requirements → Master Plan → Explode → phase/task execution flow.
@@ -22,13 +23,13 @@ There is no pipeline-engine work in this iteration. It's purely documentation: g
   - `default.yml` is the canonical template. `full.yml` listed as deprecated (kept for legacy state.json rendering). `quick.yml` removed.
   - Remove any language describing quick/full as user-selectable template choices.
 - Update `/docs/configuration.md`:
-  - Add entries for `max_phase_review_retries` and `max_final_review_retries` (Iter 12 additions).
-  - Update state.json reference to mention pre-seeded iterations and `is_cleanup` marker.
+  - Update state.json reference to mention pre-seeded iterations (Iter 5) and the flat `corrective_tasks[]` append pattern used by the orchestrator-mediation corrective cycles (Iters 10–11). Same `max_retries_per_task` budget bounds both task-scope and phase-scope corrective arrays; no new retry-limit fields are added by this refactor.
+  - Document corrective task handoff naming conventions: task-scope `{NAME}-TASK-P{NN}-T{NN}-{TITLE}-C{N}.md`; phase-scope `{NAME}-TASK-P{NN}-PHASE-C{N}.md`.
 - Update `/docs/skills.md`:
   - Remove: `generate-phase-report` (Iter 8 deletion).
   - Update: `rad-create-plans` (no longer includes PRD/Research/Design/Architecture/Master-Plan/Phase-Plan/Task-Handoff/Shared workflows; only Requirements + Master Plan).
   - Update: `code-review` (describe task/phase/final modes with diff-based inputs).
-  - Update: `execute-coding-task` (handoff-only input + correction mode + TDD/DRY/YAGNI).
+  - Update: `execute-coding-task` (handoff-only input + TDD/DRY/YAGNI; corrective handoffs consumed under the same uniform contract as originals).
   - Update: `rad-plan-audit` (single purpose: Requirements ↔ Master Plan conformance).
   - Confirm: `brainstorm`, `source-control`, `configure-system`, `log-error`, `run-tests`, `create-agent`, `create-skill`, `rad-plan`, `rad-execute`, `rad-execute-parallel`, `rad-review-cycle` — reflect current state.
 - Update `/docs/project-structure.md`:
@@ -45,9 +46,9 @@ There is no pipeline-engine work in this iteration. It's purely documentation: g
 
 ## Scope Deliberately Untouched
 
-- `/docs/internals/*.md` — internal dev notes. Any refactor-driven updates to these land in the relevant iteration's ripples. Iter 14 does NOT touch internals.
-- Pipeline code, skill code, templates, schemas — all stable by Iter 14.
-- `docs/internals/CHEAPER-EXECUTION-REFACTOR.md` + companions — these ARE this refactor's own authoring notes; they're updated by the refactor itself, not by Iter 14.
+- `/docs/internals/*.md` — internal dev notes. Any refactor-driven updates to these land in the relevant iteration's ripples. Iter 17 does NOT touch internals.
+- Pipeline code, skill code, templates, schemas — all stable by Iter 17.
+- `docs/internals/CHEAPER-EXECUTION-REFACTOR.md` + companions — these ARE this refactor's own authoring notes; they're updated by the refactor itself, not by Iter 17.
 
 ## UI Impact
 
@@ -72,7 +73,7 @@ There is no pipeline-engine work in this iteration. It's purely documentation: g
 
 ## Dependencies
 
-- **Depends on**: Iter 13 — the system should be in its terminal refactored state before refreshing public docs.
+- **Depends on**: Iter 16 — repository deep clean lands the internally-consistent end state; this iteration then documents it for external readers.
 - **Blocks**: nothing — this is the tail iteration.
 
 ## Testing Discipline

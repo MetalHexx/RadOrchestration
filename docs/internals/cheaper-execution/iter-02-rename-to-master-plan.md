@@ -49,7 +49,7 @@ Sequence matters — delete first, then rename into the empty slot:
 - `mutations.ts` — handlers for `master_plan_started` / `master_plan_completed` stay (they reference the `master_plan` node id, which is unchanged).
 - `pre-reads.ts` — the `extractMasterPlanDocPath` helper stays (reads `graph.nodes.master_plan.doc_path`).
 - `default.yml` — does not exist yet; building starts in Iter 4. No template work here.
-- `docs/*.md` (public-facing) — deferred to Iter 14.
+- `docs/*.md` (public-facing) — deferred to Iter 17.
 
 ## UI Impact
 

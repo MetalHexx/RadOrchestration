@@ -51,7 +51,7 @@ The script runs as a new pipeline action (`explode_master_plan`) between `master
   - `last_parse_error` (`{ line: number, expected: string, found: string, message: string } | null`) on the `master_plan` node-state shape.
   - `parse_retry_count` (`integer | null`, default 0) on the `master_plan` node-state shape.
   All three additive only — legacy state.json without these fields stays valid. The existing `nodes: NodesRecord` schema already permits an empty object.
-- `frontmatter-validators.ts`: NO change needed. The existing `phase_plan_created` rule only validates `tasks: [...]` non-empty array; it doesn't constrain the `author` field, so script-authored docs pass. Skip the `task_handoff_created` rule entirely — defer to Iter 13 (`rad-plan-audit` overhaul) which owns conformance.
+- `frontmatter-validators.ts`: NO change needed. The existing `phase_plan_created` rule only validates `tasks: [...]` non-empty array; it doesn't constrain the `author` field, so script-authored docs pass. Skip the `task_handoff_created` rule entirely — defer to Iter 14 (`rad-plan-audit` overhaul) which owns conformance.
 - Add `explode_master_plan` to `default.yml` between `master_plan` and `plan_approval_gate`. The 4-node `step → step → step → gate` chain validates because `template-loader.ts` already filters the misnamed `unreachable_node` warning on terminal gates (per Iter 4's deviation log).
 - Add `explode_master_plan` → `Planning` to UI `NODE_SECTION_MAP`. Add `explode_master_plan` to `PlanningStepName` union and `PLANNING_STEP_ORDER` in `ui/types/state.ts` — three downstream `Record<PlanningStepName, string>` consumers (`document-ordering.ts` STEP_TITLES + STEP_TITLES_V5, `planning-checklist.tsx` STEP_DISPLAY_NAMES) require exhaustiveness updates as TypeScript compile-time consequences (per Iter 4's pattern).
 
@@ -62,7 +62,7 @@ The script runs as a new pipeline action (`explode_master_plan`) between `master
 - `scaffold.ts` — iteration seeding happens at explosion time, not scaffold time.
 - The `context-enrichment.ts` enrichment blocks for `create_task_handoff` / `create_phase_plan` are still present — Iter 7 removes them. Verified at plan time; explosion does not interact with those blocks.
 - `main.ts` subcommand routing — not added. The CLI wrapper is a sibling script.
-- New `task_handoff_created` validator rule — not added. Conformance is Iter 13's job.
+- New `task_handoff_created` validator rule — not added. Conformance is Iter 14's job.
 - **Explosion-retry configurability** — NOT in this iteration. The retry cap is a hardcoded constant. A new iteration (slotted before public-facing docs in the timeline) introduces `orchestration.yml` config field + validator rule + `/configure-system` skill prompt + installer interactive prompt. Defer to that iteration so the configuration UX (skill workflow, installer prompt ergonomics, validator bounds) gets proper attention.
 - Tactical-planner authoring path (`create_phase_plan` / `create_task_handoff` actions + agent) — still present. Iter 7 removes it. For Iter 5, the explosion script and the legacy authoring path both produce phase/task files; only `default.yml` triggers the explosion.
 
@@ -144,7 +144,7 @@ Resolved at plan time:
 - **Explosion trigger** — RESOLVED: explicit pipeline step `explode_master_plan`. Orchestrator runs the script as a Bash subprocess via the standard "next action" path, then dispatches `explosion_completed` / `explosion_failed` via `--event`. No `main.ts` subcommand routing added.
 - **Event naming** — LOCKED: `explosion_started` / `explosion_completed` / `explosion_failed`. Verified clean, no conflicts.
 - **State.json seeding semantics during corrective cycles** — RESOLVED: wipe-and-re-seed (with full move-to-backup of `phases/` + `tasks/` for safety). Parse-first ordering protects against malformed re-plan leaving the user with no docs.
-- **Task-handoff frontmatter validation strength** — RESOLVED: no `task_handoff_created` rule introduced this iteration. Conformance (cross-doc requirement-ID coverage) is Iter 13's job.
+- **Task-handoff frontmatter validation strength** — RESOLVED: no `task_handoff_created` rule introduced this iteration. Conformance (cross-doc requirement-ID coverage) is Iter 14's job.
 - **Failure surface** — RESOLVED: split. Parse failure → `explosion_failed` event → planner self-correction loop. Real failure (filesystem / permissions / script's own emitted-doc validation) → script throws → orchestrator surfaces via `log-error` skill → halt.
 
 Deferred (revisit during the configurability iteration before public-facing docs):

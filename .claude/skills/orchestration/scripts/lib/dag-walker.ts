@@ -169,13 +169,13 @@ function walkForEachIterations(
       }
 
       // Phase-level corrective re-planning: unreachable post-Iter 7. The legacy
-      // per-phase authoring path was removed in Iter 7; Iter 12 will rewire this
-      // branch via corrective-task-append. See docs/internals/cheaper-execution/iter-12-corrective-cycles.md.
+      // per-phase authoring path was removed in Iter 7; Iter 11 will rewire this
+      // branch via corrective-task-append. See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.
       if (fepDef.kind === 'for_each_phase' && Object.keys(latestCorrective.nodes).length === 0) {
         const haltReason =
           'Phase-level corrective re-planning branch unreachable post-Iter 7. ' +
-          'Iter 12 will rewire this via corrective-task-append. ' +
-          'See docs/internals/cheaper-execution/iter-12-corrective-cycles.md.';
+          'Iter 11 will rewire this via corrective-task-append. ' +
+          'See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.';
         iteration.status = NODE_STATUSES.HALTED;
         latestCorrective.status = NODE_STATUSES.HALTED;
         state.graph.status = GRAPH_STATUSES.HALTED;

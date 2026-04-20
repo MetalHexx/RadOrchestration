@@ -514,7 +514,7 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
     }
   });
 
-  // Skipped in Iter 7; Iter 12 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-12-corrective-cycles.md.
+  // Skipped in Iter 7; Iter 11 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.
   it.skip('phase-level corrective loop — phase review changes_requested → re-planning → complete → advances', () => {
     const io = createMockIO(null, makeConfig());
     let result: PipelineResult;

@@ -45,7 +45,7 @@ The pipeline is re-pointed from `full.yml` to a new `default.yml`. `full.yml` be
 - Collapse five planning artifacts into two: Requirements + Master Plan.
 - Eliminate agent-authored phase plans and task handoffs. A deterministic script explodes the Master Plan into the existing per-phase and per-task document shapes on disk.
 - Pre-populate `state.json` so the UI and orchestrator see every phase and task from plan approval onward.
-- Redefine corrective cycles to amend existing task handoffs with dated correction sections, not spawn separate Code Review Report documents.
+- Redefine corrective cycles around orchestrator mediation: on a `changes_requested` review, the orchestrator judges each finding, writes an addendum to the review doc, and (if warranted) authors a fresh, self-contained corrective task handoff. Corrective handoffs live under `tasks/` as new files; the reviewer's original document is never rewritten. Task and phase scopes share the same flat `corrective_tasks[]` append pattern.
 - Redefine task / phase / final review to consume commit-SHA-range diffs + Requirements (and, for phase review, the phase plan) with strict FR/NFR/AD/DD conformance.
 - Excommunicate removed concepts — every reference (code, internal skill docs, validation scripts, installer, SKILL.md routes) is purged in the same iteration that removes the concept. Public-facing docs under `/docs/` catch up in a final dedicated iteration.
 - Retire `full.yml` in place as a deprecated historical artifact. Remove `quick.yml`.
@@ -57,15 +57,16 @@ The pipeline is re-pointed from `full.yml` to a new `default.yml`. `full.yml` be
 - Lifting Requirements authoring into the brainstormer (see §5 Future Direction).
 - Resuming in-flight `full.yml` projects. Legacy projects are viewable, not resumable.
 - Changing the v5 DAG walker kinds (`for_each_phase`, `for_each_task`). Loop authoring is preserved; pre-population seeds children up front.
+- Final-level corrective cycles. Final review keeps its strict-conformance role as a backstop, but no retry mechanism, cleanup-phase injection, or final-scope mediation is wired. Any future addition is a separate design (see §5).
 
 ### Standing Design Principles
 
 These apply across every iteration and are not revisited per-iteration unless a companion explicitly calls out a deviation.
 
 - **Additive schema strategy**: the `orchestration-state-v5.schema.json` evolves with additive, optional fields only. No v5 → v6 bump. No migrator for legacy state.json. Old state files remain valid; they simply don't carry new fields.
-- **Master Plan immutability after approval**: once the plan-approval gate fires, the Master Plan is immutable. Corrective flows amend task-handoff files with `## Correction N — YYYY-MM-DD — <title>` sections (task-level) or append corrective tasks to phase iterations (phase-level) or inject a `P{N+1}-CLEANUP` phase (final-level). Re-authoring the Master Plan requires a replan cycle.
+- **Master Plan immutability after approval**: once the plan-approval gate fires, the Master Plan is immutable. Corrective flows do not rewrite the Master Plan, the phase plan, or the original task handoff — instead, the orchestrator authors a fresh corrective task handoff under `tasks/` (new file, `C{N}` suffix) and appends a corrective entry to the hosting iteration's flat `corrective_tasks[]` array. Task-scope and phase-scope use the same pattern; final scope has no corrective path. Re-authoring the Master Plan itself requires a replan cycle.
 - **Minimum-diff on pipeline scripts**: where a concept is renamed or refocused rather than deleted (e.g., Master Plan → Master Plan), the pipeline's node ids, action names, event names, and state.json keys stay unchanged. Artifact content and authoring agents change; the engine's structural vocabulary is preserved.
-- **Excommunicate as you go**: when an iteration removes a concept, every reference in the same surface area (code, internal skill docs, validation scripts, installer, tests) is updated in that same iteration. Public-facing docs under `/docs/` are the only deliberate exception — they catch up in Iter 14.
+- **Excommunicate as you go**: when an iteration removes a concept, every reference in the same surface area (code, internal skill docs, validation scripts, installer, tests) is updated in that same iteration. Public-facing docs under `/docs/` are the only deliberate exception — they catch up in Iter 17.
 - **UI iterations require manual browser smoke**: any iteration that touches `ui/` ships with a live verification step — boot the dev server, render a fixture / scratch project, confirm the new surface renders, transitions are correct, no new console errors, and a legacy state.json still renders cleanly. Unit tests cover correctness; the smoke catches rendering regressions tests can't see. The dev server requires a hand-written `ui/.env.local` containing `WORKSPACE_ROOT=<absolute path>` and `ORCH_ROOT=.claude` (the installer normally writes this — see `installer/lib/env-generator.js` for the exact shape). The plan file inlines the env.local snippet so the inner session doesn't have to rediscover it.
 
 ---
@@ -93,13 +94,13 @@ requirements
 **Removed nodes**: `prd`, `research`, `design`, `architecture`, `phase_planning` (inside phase_loop), `task_handoff` (inside task_loop), `phase_report`.
 **Template identifier**: `default.yml`. `full.yml` retained deprecated; `quick.yml` deleted.
 
-Per-iteration design specs live in [`cheaper-execution/`](./cheaper-execution/), one file per iteration (iter-02 through iter-14). Each companion is self-contained — the planning agent for that iteration reads only its own companion and validates it against live code before planning.
+Per-iteration design specs live in [`cheaper-execution/`](./cheaper-execution/), one file per iteration (iter-02 through iter-17). Each companion is self-contained — the planning agent for that iteration reads only its own companion and validates it against live code before planning. The corrective-cycles iterations (Iters 10–11) additionally rest on the architectural source-of-truth at [`CORRECTIVE-CYCLES-REDESIGN.md`](./CORRECTIVE-CYCLES-REDESIGN.md), but the companions themselves inline everything the planner needs — the redesign doc is a reference, not a required read.
 
 ---
 
 ## 4. Iteration Timeline
 
-Working principle: each iteration owns a vertical slice. When a concept is removed, every reference (installer, orchestration validation script, orchestration skill docs, `rad-create-plans` SKILL.md routes, tests) is updated in the same iteration. Public-facing docs under `/docs/` are deliberately deferred to a final dedicated iteration (Iter 14). Each iteration boundary leaves the test suite green and the repo free of half-retired concepts.
+Working principle: each iteration owns a vertical slice. When a concept is removed, every reference (installer, orchestration validation script, orchestration skill docs, `rad-create-plans` SKILL.md routes, tests) is updated in the same iteration. Public-facing docs under `/docs/` are deliberately deferred to a final dedicated iteration (Iter 17). Each iteration boundary leaves the test suite green and the repo free of half-retired concepts.
 
 **Testing discipline (applies to every iteration)**: capture a full test-suite baseline log at the start of the iteration (before any edits), then re-run the full suite before exit and diff against that baseline. "Full test suite" means all three test trees run in sequence — they use different runners and there is no unified root script today, so the iteration planner runs each and concatenates the logs:
 - `.claude/skills/orchestration/scripts/` — vitest (`npm test` from that directory)
@@ -182,59 +183,69 @@ Finishes `default.yml` with the full execution-phase node tree: phase_loop witho
 
 **Exit**: test suite green; scratch project runs end-to-end on `default.yml` to final approval; no `quick.yml` anywhere.
 
-### Iter 10 — Code-review rework (task / phase / final)
+### Iter 10 — Task-level corrective cycles (orchestrator mediation)
 
-**Companion**: [iter-10-code-review-rework.md](./cheaper-execution/iter-10-code-review-rework.md)
+**Companion**: [iter-10-task-corrective-cycles.md](./cheaper-execution/iter-10-task-corrective-cycles.md)
+**Architectural reference**: [CORRECTIVE-CYCLES-REDESIGN.md](./CORRECTIVE-CYCLES-REDESIGN.md)
 
-Rewrites all three `code-review/` subskills (task-review, phase-review, final-review) for strict FR/NFR/AD/DD conformance against scoped, diff-based inputs read via commit-SHA ranges. Task-review: handoff only. Phase-review: Requirements + phase-plan + phase-commit diff. Final-review: Requirements + cumulative branch diff. Any unsatisfied requirement → `changes_requested`.
+Elevates the orchestrator from dispatcher to mediator for task-level review cycles. When `code_review` returns `changes_requested`, the orchestrator reads the review doc, judges each finding (action vs. decline, with cross-artifact rationale), writes an addendum to the review doc capturing each disposition, and — if at least one finding is actioned — authors a fresh, self-contained corrective task handoff under `tasks/` (`{NAME}-TASK-P{NN}-T{NN}-{TITLE}-C{N}.md`). `CODE_REVIEW_COMPLETED` rewires from auto-birth-on-verdict to birth-on-handoff-path; corrective entries carry a pre-completed `task_handoff` sub-node pointing at the authored file. Reviewer workflows shed prior-review reads and the expected-corrections mechanism — reviewers become stateless across attempts. New `orchestration/references/corrective-playbook.md` documents the mediation flow end-to-end. Budget stays `max_retries_per_task` — no new config knobs.
+
+**Exit**: test suite green; scratch task with a deliberately broken first attempt round-trips through orchestrator mediation → corrective handoff → fix commit → reviewer re-approval, with the review doc carrying an addendum that records each finding's disposition.
+
+### Iter 11 — Phase-level corrective cycles
+
+**Companion**: [iter-11-phase-corrective-cycles.md](./cheaper-execution/iter-11-phase-corrective-cycles.md)
+**Architectural reference**: [CORRECTIVE-CYCLES-REDESIGN.md](./CORRECTIVE-CYCLES-REDESIGN.md)
+
+Extends the Iter-10 mediation pattern to phase scope. On `phase_review changes_requested`, the orchestrator authors a phase-scope corrective task handoff (`{NAME}-TASK-P{NN}-PHASE-C{N}.md`) and appends it to `phase_iteration.corrective_tasks[]`. The walker re-enters the phase iteration for just that corrective task using the standard task-body (executor → commit → code_review → task_gate); once its task-level review approves, the phase iteration completes — **phase_review does not re-run**. `PHASE_REVIEW_COMPLETED` sheds the legacy phase-iteration-reset block, the stubbed `dag-walker.ts:171-194` branch is rewired for append-only re-entry, `COMMIT_COMPLETED` gains phase-scope corrective routing, `spawn_code_reviewer` enrichment is extended to resolve SHAs against phase-scope correctives, and the four dag-walker / corrective-integration tests skipped in Iter 7 are un-skipped against the new contract. Closes the `dag-walker.ts:124` stub. Same `max_retries_per_task` budget bounds phase-iteration arrays.
+
+**Exit**: test suite green; scratch project with a failing `phase_review` round-trips through orchestrator mediation → phase-scope corrective task → task-level review approval → phase iteration completes without `phase_review` re-running.
+
+### Iter 12 — Code-review rework (task / phase / final)
+
+**Companion**: [iter-12-code-review-rework.md](./cheaper-execution/iter-12-code-review-rework.md)
+
+Rewrites all three `code-review/` subskills for strict FR/NFR/AD/DD conformance against scoped, diff-based inputs read via commit-SHA ranges. Task-review: handoff only (requirements inlined). Phase-review: Requirements + phase-plan + phase-commit diff. Final-review: Requirements + cumulative branch diff (new enrichment adds base/head SHAs to `spawn_final_reviewer`). Any unsatisfied requirement → `changes_requested`. Stateless-reviewer contract and workflow simplification (dropping Corrective-review checks and prior-review reads) already landed with the mediation work in Iters 10–11; this iteration focuses purely on diff-based scoping and strict conformance.
 
 **Exit**: test suite green; each review mode flags a deliberately broken fixture and approves a clean one.
 
-### Iter 11 — Execute-coding-task rework + correction sections
+### Iter 13 — Execute-coding-task rework
 
-**Companion**: [iter-11-executor-rework.md](./cheaper-execution/iter-11-executor-rework.md)
+**Companion**: [iter-13-executor-rework.md](./cheaper-execution/iter-13-executor-rework.md)
 
-Rewrites `execute-coding-task` to read only the task-handoff (no upstream docs). Adds correction mode: executor reads the task-handoff's appended `## Correction N — YYYY-MM-DD — <title>` section plus the prior commit's diff for context. TDD / DRY / YAGNI principles become explicit skill-level rules. Commit cadence stays owned by the existing source-control step.
+Rewrites `execute-coding-task` to read only the task-handoff (no upstream docs). Orchestrator-authored corrective handoffs (from Iters 10–11) are self-sufficient — same shape as original handoffs — so the executor reads them under a single uniform contract with no mode branching. TDD / DRY / YAGNI principles become explicit skill-level rules. Commit cadence stays owned by the existing source-control step.
 
-**Exit**: test suite green; corrective cycle round-trips using only the task-handoff doc (reviewer flags → executor reads correction → fix commits → reviewer approves).
+**Exit**: test suite green; executor produces a clean fix commit from an orchestrator-authored corrective handoff without reading any upstream planning docs.
 
-### Iter 12 — Corrective cycle wiring (phase-level + final-level)
+### Iter 14 — Rad-plan-audit overhaul
 
-**Companion**: [iter-12-corrective-cycles.md](./cheaper-execution/iter-12-corrective-cycles.md)
-
-Adds two new `orchestration.yml` limits (`max_phase_review_retries` = 2, `max_final_review_retries` = 1) with full roundtrip support across state schema, installer, configure-system, and UI config editor. Makes corrective-task seeding template-aware. Phase-review `changes_requested` appends a corrective task (no re-planning). Final-review `changes_requested` injects a `P{N+1}-CLEANUP` phase on first miss. Closes the `dag-walker.ts:124` stub from Iter 7.
-
-**Exit**: test suite green; all three retry-budget boundaries (task/phase/final) exercise correctly; new limit fields roundtrip through the config stack.
-
-### Iter 13 — Rad-plan-audit overhaul
-
-**Companion**: [iter-13-rad-plan-audit.md](./cheaper-execution/iter-13-rad-plan-audit.md)
+**Companion**: [iter-14-rad-plan-audit.md](./cheaper-execution/iter-14-rad-plan-audit.md)
 
 Rewrites `rad-plan-audit` for a single purpose: conformance between Requirements and Master Plan. Forward coverage (every Requirements ID cited by ≥1 Master Plan task) + backward resolution (every Master Plan tag resolves to a Requirements block). Deletes legacy audit modes covering removed upstream doc types.
 
 **Exit**: test suite green; audit flags a deliberately unaddressed requirement and passes on a correctly-cited plan.
 
-### Iter 14 — Explosion-retry configurability
+### Iter 15 — Explosion-retry configurability
 
-**Companion**: [iter-14-explosion-retry-config.md](./cheaper-execution/iter-14-explosion-retry-config.md)
+**Companion**: [iter-15-explosion-retry-config.md](./cheaper-execution/iter-15-explosion-retry-config.md)
 
 Surfaces the explosion-script's parse-retry cap (hardcoded constant in Iter 5) as a tunable config field. New `explosion_max_retries` in `orchestration.yml` + validator rule for bounds + `/configure-system` skill prompt + interactive installer prompt. Touches three trees (engine, skill, installer) — kept separate from Iter 5 so the configuration UX (skill workflow, prompt copy, validator bounds) gets proper attention. Also revisits where the retry counter lives in `state.json` (provisional location chosen in Iter 5).
 
 **Exit**: setting `explosion_max_retries: N` in `orchestration.yml` is honored by the recovery loop; `/configure-system` and installer correctly read/write the field; validator rejects out-of-bounds values.
 
-### Iter 15 — Repository deep clean
+### Iter 16 — Repository deep clean
 
-**Companion**: [iter-15-repository-deep-clean.md](./cheaper-execution/iter-15-repository-deep-clean.md)
+**Companion**: [iter-16-repository-deep-clean.md](./cheaper-execution/iter-16-repository-deep-clean.md)
 
-Tail-end audit of the entire repository (excluding `/docs/`) for residue from removed/changed concepts across Iters 0-14: stale doc framings, dead code paths, test fixtures encoding shapes that no longer occur, orphaned imports/types, comments referencing removed concepts, dangling cross-references, stale Mermaid diagrams. The outer planner investigates the codebase fresh and produces a self-contained findings + corrections plan; the inner session applies findings AND looks for additional tidying as it edits each surface. Cleaning internals first means Iter 16 (public docs) documents a stable end state.
+Tail-end audit of the entire repository (excluding `/docs/`) for residue from removed/changed concepts across Iters 0–15: stale doc framings, dead code paths, test fixtures encoding shapes that no longer occur, orphaned imports/types, comments referencing removed concepts, dangling cross-references, stale Mermaid diagrams. The outer planner investigates the codebase fresh and produces a self-contained findings + corrections plan; the inner session applies findings AND looks for additional tidying as it edits each surface. Cleaning internals first means Iter 17 (public docs) documents a stable end state.
 
 **Exit**: codebase carries no string OR semantic residue from removed/changed concepts; all cross-references resolve; full test suite green; UI manual smoke clean if `ui/` touched.
 
-### Iter 16 — Public-facing docs refresh
+### Iter 17 — Public-facing docs refresh
 
-**Companion**: [iter-16-public-docs.md](./cheaper-execution/iter-16-public-docs.md)
+**Companion**: [iter-17-public-docs.md](./cheaper-execution/iter-17-public-docs.md)
 
-Catches root-level `/docs/*.md` and `README.md` up to post-refactor reality in a single coherent pass — agent roster, pipeline flow, template choices, skill list, document types. All prior iterations deliberately deferred `/docs/` updates to this tail iteration. No code changes; grep-hygiene checks confirm removed concepts don't linger.
+Catches root-level `/docs/*.md` and `README.md` up to post-refactor reality in a single coherent pass — agent roster (including the orchestrator's expanded mediator role), pipeline flow, template choices, skill list, document types (including corrective-handoff naming conventions and review-addendum format). All prior iterations deliberately deferred `/docs/` updates to this tail iteration. No code changes; grep-hygiene checks confirm removed concepts don't linger.
 
 **Exit**: zero grep matches for removed concepts in `/docs/`; cross-references between public docs are internally consistent.
 
@@ -247,3 +258,6 @@ Noted so the current design doesn't foreclose them.
 - **Requirements authoring moves into the brainstormer.** A later project will produce the Requirements doc from the brainstormer agent rather than a dedicated pipeline step. The current design keeps the Requirements workflow self-contained so it can move earlier without pipeline coupling.
 - **DAG flattening for cross-plan parallelization.** When cross-plan parallelization becomes a real need, the `for_each_*` loop kinds can be replaced with statically generated node graphs. The seed-children approach taken here is compatible with a later flattening — state shape stays similar.
 - **Tombstone / soft-delete for requirements.** Not planned. Requirements are locked at plan approval; changes require replanning.
+- **Final-level corrective cycles.** This refactor deliberately leaves final review as a backstop without a retry loop. A future design could wire final-scope correctives (e.g., cleanup-phase injection or a final-level mediation variant) if integration bugs routinely escape phase-scope gates. The state schema's additive posture keeps this reversible.
+- **Adversarial / fresh-eyes review modes.** Strict FR/NFR/AD/DD conformance is the default under this refactor. A looser, fresh-eyes mode — scoped to catch classes of defect that strict-conformance reviews miss by design — is deferred. Would attach as an additional review variant rather than a replacement.
+- **Orchestrator upward-flip authority.** The mediator can decline findings (filter down) but cannot elevate an `approved` verdict into `changes_requested`. Reviewer approvals propagate untouched. Expanding orchestrator authority beyond filtering is out of scope and would require a separate design pass on reviewer/orchestrator roles.

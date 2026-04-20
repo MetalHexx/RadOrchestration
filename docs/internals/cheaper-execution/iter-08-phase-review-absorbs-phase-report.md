@@ -22,7 +22,7 @@ After this iteration: phase_review emits one artifact (verdict + phase summary i
 - In `context-enrichment.ts`:
   - Remove `'generate_phase_report'` from `PHASE_LEVEL_ACTIONS` set (line ~76-81)
   - Remove the `generate_phase_report` special-case enrichment block (lines ~156-163)
-  - Simplify the `spawn_phase_reviewer` enrichment block (lines ~132-154): remove the `phaseReport` node lookup and `phase_report_doc` field. The phase review agent now reads only its own inputs (Requirements + phase-plan + commit-SHA diff per Iter 10's rework).
+  - Simplify the `spawn_phase_reviewer` enrichment block (lines ~132-154): remove the `phaseReport` node lookup and `phase_report_doc` field. The phase review agent now reads only its own inputs (Requirements + phase-plan + commit-SHA diff per Iter 12's rework).
 - Expand `.claude/skills/code-review/phase-review/workflow.md` + `template.md`:
   - Workflow captures both: (a) structured phase summary (task outcomes, corrections applied, diff stats, risk notes) and (b) conformance verdict with `exit_criteria_met` field.
   - Template output carries both sections in one frontmatter-tagged doc.
@@ -31,7 +31,7 @@ After this iteration: phase_review emits one artifact (verdict + phase summary i
 ## Scope Deliberately Untouched
 
 - `phase_review_completed` validator rule in `frontmatter-validators.ts` stays — the expanded skill still emits this event; the rule's `verdict` + `exit_criteria_met` fields still apply.
-- The rewiring of `phase_review`'s review semantics (diff-based input, strict conformance) is Iter 10's concern. This iteration only does the absorption, not the input-surface rework.
+- The rewiring of `phase_review`'s review semantics (diff-based input, strict conformance) is Iter 12's concern. The stateless-reviewer contract and workflow simplification (dropping Corrective-review checks) land in Iter 11 as part of the phase-level corrective cycles work. This iteration only does the phase-report absorption.
 - `default.yml` — phase_loop body is still being built; by the time Iter 9 wires it, phase_report is already gone from the node vocabulary.
 
 ## UI Impact

@@ -1,4 +1,4 @@
-# Iter 14 — Explosion-retry configurability
+# Iter 15 — Explosion-retry configurability
 
 > **Status**: Stub. Created during Iter 5 planning when the explosion-retry cap was deferred from being baked-in to being configurable. This iteration is intentionally light on detail — the planner agent that picks this up will brainstorm the design with the user before writing the inner-session plan.
 >
@@ -45,7 +45,7 @@ These are deliberately left open — they need user input before the design is l
 ## Dependencies
 
 - **Depends on**: Iter 5 (recovery loop exists with hardcoded cap).
-- **Blocks**: Iter 15 (public-facing docs refresh) — the public docs should describe the configurable field, not the hardcoded constant.
+- **Blocks**: Iter 17 (public-facing docs refresh) — the public docs should describe the configurable field, not the hardcoded constant.
 
 ## Discussion notes for future planner
 

@@ -1,6 +1,8 @@
-# Iter 10 — Code-review rework (task / phase / final)
+# Iter 12 — Code-review rework (task / phase / final)
 
 > **Validation Preface**: Before planning this iteration, the planner agent MUST validate this doc against live code — file paths, symbol names, and line numbers can drift. Run a quick grep / glob pass on the Code Surface section below. Any mismatch → log a deviation in [`CHEAPER-EXECUTION-REFACTOR-PROGRESS.md`](../CHEAPER-EXECUTION-REFACTOR-PROGRESS.md) before proceeding. Do not plan on stale assumptions.
+
+> **Scope note**: The stateless-reviewer contract and the corresponding workflow simplifications (removing the Corrective-review check, the Corrective Review Context section, prior-review reads, and the expected-corrections mechanism) land in Iters 10–11 as part of the orchestrator-mediation work. This iteration's scope is focused: diff-based scoped inputs and strict FR/NFR/AD/DD conformance. Reviewers emit verdicts and exit; corrective authoring is entirely the orchestrator's job.
 
 ## Overview
 
@@ -13,15 +15,14 @@ Each mode has different inputs:
 
 Commit SHAs are already available in state.json — `context-enrichment.ts`'s existing `spawn_phase_reviewer` block computes `phase_first_sha` / `phase_head_sha` from task iterations (lines 138-147). `spawn_code_reviewer` computes `head_sha` (lines 221-237). The inputs the reviewer needs are already enriched; this iteration just aligns the skill workflows with what's already being passed.
 
-Any unmet requirement triggers `changes_requested`. The verdict is strict — no "mostly met" middle ground. The ripple into Iter 11 (correction-section amending) closes the loop on how changes get communicated back.
+Any unmet requirement triggers `changes_requested`. The verdict is strict — no "mostly met" middle ground. What happens after `changes_requested` is already wired by Iters 10–11: the orchestrator mediates the review, authors a fresh corrective task handoff, and the pipeline appends a corrective entry. This iteration is the review-authoring half of that contract; the mediation half lives upstream of here.
 
 ## Scope
 
 - Rewrite `.claude/skills/code-review/task-review/workflow.md`:
   - Input: task-handoff doc path (via existing `handoff_doc` context field from `execute_task` enrichment).
   - Read the inlined FR/NFR/AD/DD tags. For each, check the diff at `head_sha` satisfies the tag's intent.
-  - Output: `type: task_review` doc with `verdict: approved | changes_requested | rejected`, per-tag findings.
-  - On `changes_requested`: amend the task-handoff with a `## Correction N — YYYY-MM-DD — <short title>` section (Iter 11 formalizes the amending mechanism).
+  - Output: `type: task_review` doc with `verdict: approved | changes_requested | rejected`, per-tag findings. The reviewer never rewrites the task-handoff; corrective authoring is the orchestrator's job (Iters 10–11).
 - Rewrite `.claude/skills/code-review/phase-review/workflow.md` (carries over from Iter 8's absorption):
   - Inputs: Requirements doc path, phase-plan doc path, `phase_first_sha`, `phase_head_sha` (all already in context via existing enrichment).
   - Build diff: `git diff <phase_first_sha>^..<phase_head_sha>`.
@@ -39,10 +40,10 @@ Any unmet requirement triggers `changes_requested`. The verdict is strict — no
 
 ## Scope Deliberately Untouched
 
-- The corrective-cycle MECHANISM (how `changes_requested` produces a corrective iteration in state.json) — that's Iter 12. Iter 10 only amends the handoff with a correction section; Iter 11 formalizes the amending; Iter 12 wires the append-task behavior.
-- Frontmatter validator rules for `code_review_completed` / `phase_review_completed` — existing rules (`verdict` non-null; `exit_criteria_met` non-null) still apply. The docs' structured content grows, but the validated fields don't change yet.
-- Executor skill — Iter 11 is separate.
-- `rad-plan-audit` — still the legacy behavior; Iter 13 overhauls it.
+- The corrective-cycle MECHANISM (orchestrator mediation, corrective-task birth, walker re-entry, `task_handoff` sub-node synthesis) — all owned by Iters 10–11. This iteration changes what reviewers read and how they judge, nothing about how corrections get birthed and walked.
+- Frontmatter validator rules for `code_review_completed` / `phase_review_completed` — the reviewer-authored `verdict` / `exit_criteria_met` fields remain validated as today; orchestrator-added fields (`effective_outcome`, `orchestrator_mediated`) are validated as part of Iters 10–11's work.
+- Executor skill — Iter 13 rewrites it.
+- `rad-plan-audit` — Iter 14.
 
 ## UI Impact
 
@@ -75,14 +76,14 @@ Any unmet requirement triggers `changes_requested`. The verdict is strict — no
   - `.claude/skills/orchestration/scripts/tests/contract/05-frontmatter-validation.test.ts` (verdict checks)
   - Integration tests that exercise spawn_code_reviewer / spawn_phase_reviewer / spawn_final_reviewer
 - Ripple surfaces:
-  - `.claude/skills/rad-review-cycle/SKILL.md` — phrasing updates if it references "review reports" as separate artifacts (Iter 11's correction-section change makes this implicit, but the review-cycle skill's own vocabulary may drift)
+  - `.claude/skills/rad-review-cycle/SKILL.md` — phrasing updates if its vocabulary drifted against the diff-based-conformance shape
   - `.claude/skills/orchestration/references/action-event-reference.md` — update the review step entries
   - `.claude/skills/rad-create-plans/SKILL.md` — if review docs are listed as "rad-created" doc types (they may or may not be; verify)
 
 ## Dependencies
 
-- **Depends on**: Iter 9 — `default.yml` in place with full phase/task loop wiring, so end-to-end review flow has a pipeline to run on.
-- **Blocks**: Iter 11 — the executor rework (correction-mode reading) assumes the code-reviewer amends the task-handoff with correction sections, which Iter 10 establishes.
+- **Depends on**: Iter 11 — phase-level corrective cycles complete the mediation wiring. Review workflows for task + phase reviews will have been simplified (stateless contract, expected-corrections removed) in Iters 10–11; this iteration's rewrite builds on that baseline.
+- **Blocks**: Iter 13 — the executor rewrite assumes this iteration's diff-based, strict-conformance verdict shape is stable.
 
 ## Testing Discipline
 
@@ -97,11 +98,10 @@ Any unmet requirement triggers `changes_requested`. The verdict is strict — no
 - Each review-mode workflow, run against its "clean" fixture, returns `verdict: approved`.
 - Final-review doc output contains at least one finding per FR/NFR/AD/DD in the fixture's Requirements doc (proving full conformance sweep).
 - Phase-review doc output contains both the absorbed phase-summary section AND the conformance verdict (Iter 8's consolidation is still intact).
-- Task-review amends the task-handoff with a `## Correction N — YYYY-MM-DD — <title>` section on `changes_requested`.
+- Task-review never modifies the task-handoff file. On `changes_requested`, it emits its review doc and exits — the orchestrator handles authoring any corrective handoff (per Iters 10–11).
 
 ## Open Questions
 
 - **Final-review SHA enrichment**: `spawn_final_reviewer` is currently in `EMPTY_CONTEXT_ACTIONS` (`context-enrichment.ts:93`). It may need enrichment to pass base + head SHAs for the cumulative diff. Iteration planner decides: either add a new enrichment block OR have the final-reviewer skill derive SHAs from git + state.json unaided.
-- **Correction-section ownership boundary**: task-review amends the handoff in Iter 10. But Iter 11 formalizes the correction-section mechanism (executor reads them; template reserves a location). Does Iter 10's amending need to match that template convention, or can it be "author as you like; Iter 11 standardizes"? Recommend Iter 10 lands the format agreement (Correction heading pattern) so Iter 11 has a stable contract.
 - **Quality sweep scope**: how deep should the "lightweight quality sweep" go? TODO-grep + diff-stat review vs. semantic analysis? Lean minimal; strict conformance is the primary signal.
 - **Phase-review diff range correctness**: `phase_first_sha` from the first task's commit may miss any phase-setup commits that land before the first task. Audit during iteration — the current enrichment assumes first-task-commit == phase-start-commit, which is usually true but not guaranteed.

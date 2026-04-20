@@ -30,7 +30,7 @@ The `@planner` router already has a `create_requirements` row from Iter 1 — it
 - `pre-reads.ts` — generic; the new event gets read by the existing `preRead` function when dispatched. A `requirements_completed`-specific pre-read block is only needed if the Requirements doc's frontmatter needs inspection beyond what the new rule covers — likely not.
 - Phase/task loop nodes — still absent from `default.yml`; added in Iter 9.
 - `full.yml` — untouched. It's deprecated as of Iter 3.
-- Public docs — deferred to Iter 14.
+- Public docs — deferred to Iter 17.
 
 ## UI Impact
 
