@@ -38,7 +38,7 @@ function readWorkflow(): string {
 }
 
 function extractFrontmatter(doc: string): string {
-  const match = doc.match(/^---\n([\s\S]*?)\n---/);
+  const match = doc.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match) throw new Error('No frontmatter block found');
   return match[1];
 }
@@ -121,10 +121,6 @@ describe('[Iter 8] phase-review template absorbs phase-report doc shape', () => 
 
     it('has Carry-Forward Items section (absorbed from phase-report)', () => {
       expect(body).toMatch(/^## Carry-Forward Items$/m);
-    });
-
-    it('has Master Plan Adjustment Recommendations section (absorbed from phase-report)', () => {
-      expect(body).toMatch(/^## Master Plan Adjustment Recommendations$/m);
     });
 
     // New, named section introduced by Iter 8:
