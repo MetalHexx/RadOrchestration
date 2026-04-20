@@ -42,7 +42,9 @@ Phase-plan and task-handoff document contracts — and their validators — stay
     ```
     Loud-at-runtime + quiet-in-CI: the 4 tests that exercise this branch get `it.skip()` with comments pointing at Iter 12 (see Scope §"Test surgery" below). Mutation-side tests for `phase_review_completed` stay green and prove state-shape work isn't regressing.
   - **Line 124** (`resolveDocRefInScope`): hardcoded `scopeNodes['phase_planning']` lookup for `$.current_phase.{field}` template refs. After the in-loop `phase_planning` authoring node is gone, this helper still resolves because the explosion script (Iter 5) pre-seeds a `phase_planning` child step node on each phase iteration (status `completed`, `doc_path` populated). Confirm at iteration start that the helper's assumed shape (`scopeNodes['phase_planning'].doc_path`) still matches the seeded node; no rewire expected.
-- ~~Remove `phase_planning` / `task_handoff` body nodes from `full.yml`~~ — DROPPED 2026-04-19. `full.yml` is deprecated and never executes; the dead body-node instructions are harmless. Skipping the cosmetic strip avoids touching the deprecated template at all.
+- **Strip dead body nodes from deprecated templates** (re-added 2026-04-19): once Iter 7 removes the action/event string constants, the body-node references in `full.yml` and `quick.yml` become genuine dead code (not cosmetic drift) — the strings they cite no longer exist anywhere. Per the refactor's "excommunicate as you go" standing principle, strip them now. Defense in depth beyond the `status: deprecated` validator sentinel.
+  - `.claude/skills/orchestration/templates/full.yml` — remove `phase_planning` body node from `phase_loop.body` and `task_handoff` body node from `task_loop.body`.
+  - `.claude/skills/orchestration/templates/quick.yml` — same edits (Iter 9 will delete `quick.yml` entirely; symmetric strip keeps the integration branch clean in the interim).
 - **Test surgery** (added 2026-04-19, planning-time):
   - **Delete** `.claude/skills/orchestration/scripts/tests/parity.test.ts` entirely. Pre-Iter-7 it had 48 `it()` blocks; ~36 break under the constants/event removals above. Surviving narrative coverage is fully redundant with the `tests/contract/` suite + integration tests (`engine.test.ts`, `execution-integration.test.ts`, `corrective-integration.test.ts`, `event-routing-integration.test.ts`). Net delta: ~–48 tests; logged as expected.
   - **`it.skip()` 4 tests** that exercise the phase-level corrective re-planning branch (which the stub above makes unreachable). Each gets a one-line comment pointing at Iter 12:
@@ -99,7 +101,7 @@ Phase-plan and task-handoff document contracts — and their validators — stay
   - `.claude/skills/orchestration/scripts/lib/mutations.ts:311` (phaseExecStartedSteps) + `:572` (TASK_HANDOFF_CREATED handler) — verified 2026-04-19; no separate `_started` individual handlers exist
   - `.claude/skills/orchestration/scripts/lib/context-enrichment.ts:73, :80, :112-127, :179-206` (action sets + special-case blocks; `execute_task` block at `:208-215` keeps reading `taskIter.nodes['task_handoff'].doc_path` — now pre-seeded by Iter 5)
   - `.claude/skills/orchestration/scripts/lib/dag-walker.ts:124` (doc-ref helper `resolveDocRefInScope` — keeps working because explosion script seeds `phase_planning` child) + `:171-194` (phase-level corrective re-planning branch — stubbed via `throw`)
-- ~~Template: `.claude/skills/orchestration/templates/full.yml`~~ — NOT TOUCHED (see Scope; deprecated template's dead body-node instructions are harmless)
+- Templates: `.claude/skills/orchestration/templates/full.yml` + `.claude/skills/orchestration/templates/quick.yml` — strip dead body nodes (`phase_planning` from phase_loop.body; `task_handoff` from task_loop.body) per Scope §"Strip dead body nodes"
 - Tests:
   - **Delete entirely**: `.claude/skills/orchestration/scripts/tests/parity.test.ts` (~48 it() blocks; redundant post-Iter-7 — see Scope §"Test surgery")
   - **Skip 4 tests** (`it.skip` pending Iter 12 corrective rewire — see Scope §"Test surgery"): `tests/dag-walker.test.ts:1590,1622,1663` and `tests/corrective-integration.test.ts:510`
@@ -117,6 +119,7 @@ Phase-plan and task-handoff document contracts — and their validators — stay
   - `.claude/skills/code-review/{phase-review,task-review}/workflow.md` + `.claude/skills/generate-phase-report/SKILL.md` — corrective-filename cross-refs updated to new location in `document-conventions.md`
   - `prompt-tests/plan-pipeline-e2e/_runner.md` — drop `tactical-planner` sentinel
   - `ui/components/documents/document-metadata.{tsx,test.ts}` — tidy comment phrasing
+  - `.agents/skills/pipeline-changes/references/pipeline-internals.md` (lines ~58, 74) — update Mermaid diagrams to drop `task_handoff_created` + `phase_plan_created` event refs (replace with the post-Iter-7 transitions; documentation only, no executable consequence)
 
 ## Dependencies
 
@@ -152,7 +155,7 @@ This companion was amended on 2026-04-19 during Iter 7 outer-session brainstormi
 - `agents.js` ripple removed (no hardcoded roster; agents are auto-discovered).
 - Stub form for `dag-walker.ts:171-194` specified as `throw` with exact code.
 - Test surgery section added (parity.test.ts deletion + 4 it.skip tests with file:line + Iter 12 pointers).
-- `full.yml` body-node strip dropped (deprecated template never executes; cosmetic strip not worth the touch).
+- `full.yml` body-node strip dropped, then **re-added 2026-04-19** along with symmetric `quick.yml` strip — the dead body-node references become genuine dead code post-Iter-7 (cited action/event strings no longer exist anywhere); per "excommunicate as you go" standing principle, strip both.
 - Cross-reference migration added: corrective-filename pattern moves from `phase-plan/workflow.md:135-150` → `orchestration/references/document-conventions.md`. 3 cross-refs in code-review subskills + generate-phase-report updated.
 - 4 additional ripples surfaced by deep validation scan: `context.md:18` (agent-table row), `document-conventions.md:34` (author field), `_runner.md:70` (sentinel drop), `document-metadata.{tsx,test.ts}` (comment tidy).
 - UI perf fix (`fs-reader.ts` `discoverProjects` async + per-project try/catch) folded in — surfaced during planning-time UI smoke against the user's 107-project workspace, where state.json size growth from Iter 5's pre-seeding now blocks the renderer for 10–15s.
