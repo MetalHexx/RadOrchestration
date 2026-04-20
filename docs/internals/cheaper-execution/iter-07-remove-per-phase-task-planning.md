@@ -51,6 +51,18 @@ Phase-plan and task-handoff document contracts — and their validators — stay
     - `tests/dag-walker.test.ts:1663` — `'phase-level halted corrective returns display_halted'`
     - `tests/corrective-integration.test.ts:510` — `'phase-level corrective loop — phase review changes_requested → re-planning → complete → advances'`
   - **Do not touch** the 14+ tests in `tests/mutations-phase-corrective.test.ts` (they cover the mutation-side state-shape change, not the walker branch — they remain valid).
+- **Cross-reference migration** (added 2026-04-19, surfaced during deep validation scan): the corrective-filename `-C{N}.md` pattern (Iter 0's standardization) currently lives at `rad-create-plans/references/phase-plan/workflow.md:135-150` — gets deleted with the `phase-plan/` folder. Three other skills cross-reference it. Migration:
+  - **Move** the pattern section into `.claude/skills/orchestration/references/document-conventions.md` (already a filename-patterns doc).
+  - **Update 3 cross-refs** to point at the new location:
+    - `.claude/skills/code-review/phase-review/workflow.md`
+    - `.claude/skills/code-review/task-review/workflow.md`
+    - `.claude/skills/generate-phase-report/SKILL.md`
+  - Net: ~15-line section move + 3 link updates. No DRY violation; pattern stays alive.
+- **Additional ripples** (added 2026-04-19, surfaced during deep validation scan):
+  - `.claude/skills/orchestration/references/context.md:18` — delete the tactical-planner agent-table row.
+  - `.claude/skills/orchestration/references/document-conventions.md:34` — update author-field reference `tactical-planner-agent` → `explosion-script` (Iter 5's new author convention).
+  - `prompt-tests/plan-pipeline-e2e/_runner.md:70` — drop the `tactical-planner` "wrong-template-detected" sentinel. Engine throws on unknown actions; runner already asserts on state.json shape (requirements/master_plan/explode_master_plan all completed) which is a stronger check.
+  - `ui/components/documents/document-metadata.tsx:49` + `ui/components/documents/document-metadata.test.ts:74` — tidy "phase-plan frontmatter" comments where the phrasing reads as misleading post-Iter-7.
 - **Out-of-scope-but-folded UI perf fix** (added 2026-04-19, surfaced during planning-time UI smoke):
   - `ui/lib/fs-reader.ts` `discoverProjects` (lines ~115-196) currently reads + parses every project's `state.json` **sequentially**. Pre-Iter-5 this was ~2 KB per project so the loop was instant; post-Iter-5 state.json is ~50–200 KB (pre-seeded iterations + nested nodes), and at >100 projects the loop blocks the renderer for 10–15 s.
   - **Fix**: parallelize via `Promise.all(entries.map(...))` with **per-project try/catch** so one malformed state.json doesn't poison the whole list. ~10 lines.
@@ -101,7 +113,10 @@ Phase-plan and task-handoff document contracts — and their validators — stay
   - ~~`.claude/skills/orchestration/validate/lib/checks/agents.js`~~ — REMOVED (validation report 2026-04-19: no hardcoded roster; agents are auto-discovered via `listFiles(agentsDir, '.agent.md')`. Deleting the agent file is sufficient.)
   - `.claude/skills/rad-create-plans/SKILL.md` (agent-routing table now shows only `@planner`; references to `shared/` concept removed)
   - `.claude/skills/rad-execute/SKILL.md` (stop referencing "Tactical Planner")
-  - `.claude/skills/orchestration/references/{action-event-reference, document-conventions, pipeline-guide}.md`
+  - `.claude/skills/orchestration/references/{action-event-reference, document-conventions, pipeline-guide, context}.md` — `context.md` added 2026-04-19 (agent-table row); `document-conventions.md` carries both vocabulary purge AND the migrated corrective-filename pattern section
+  - `.claude/skills/code-review/{phase-review,task-review}/workflow.md` + `.claude/skills/generate-phase-report/SKILL.md` — corrective-filename cross-refs updated to new location in `document-conventions.md`
+  - `prompt-tests/plan-pipeline-e2e/_runner.md` — drop `tactical-planner` sentinel
+  - `ui/components/documents/document-metadata.{tsx,test.ts}` — tidy comment phrasing
 
 ## Dependencies
 
@@ -138,6 +153,8 @@ This companion was amended on 2026-04-19 during Iter 7 outer-session brainstormi
 - Stub form for `dag-walker.ts:171-194` specified as `throw` with exact code.
 - Test surgery section added (parity.test.ts deletion + 4 it.skip tests with file:line + Iter 12 pointers).
 - `full.yml` body-node strip dropped (deprecated template never executes; cosmetic strip not worth the touch).
+- Cross-reference migration added: corrective-filename pattern moves from `phase-plan/workflow.md:135-150` → `orchestration/references/document-conventions.md`. 3 cross-refs in code-review subskills + generate-phase-report updated.
+- 4 additional ripples surfaced by deep validation scan: `context.md:18` (agent-table row), `document-conventions.md:34` (author field), `_runner.md:70` (sentinel drop), `document-metadata.{tsx,test.ts}` (comment tidy).
 - UI perf fix (`fs-reader.ts` `discoverProjects` async + per-project try/catch) folded in — surfaced during planning-time UI smoke against the user's 107-project workspace, where state.json size growth from Iter 5's pre-seeding now blocks the renderer for 10–15s.
 - Open Questions resolved.
 
