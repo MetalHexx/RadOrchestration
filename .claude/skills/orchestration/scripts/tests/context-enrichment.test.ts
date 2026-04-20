@@ -602,9 +602,9 @@ describe('enrichActionContext — spawn_phase_reviewer', () => {
 
 // ── corrective_index exposure (PR #50 follow-up) ──────────────────────────────
 //
-// Regression coverage: skill docs for task-review, phase-review, and phase-report
-// instruct the agent to read `corrective_index` from the event context.
-// Context-enrichment must actually provide it for the corresponding spawn actions.
+// Regression coverage: skill docs for task-review and phase-review instruct the
+// agent to read `corrective_index` from the event context. Context-enrichment
+// must actually provide it for the corresponding spawn actions.
 
 describe('enrichActionContext — corrective_index exposure', () => {
   function phaseIterWith(overrides: {

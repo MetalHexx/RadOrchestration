@@ -52,7 +52,7 @@ The same `-C{N}` suffix rule applies to Code Reviews and Phase Reviews. Each pro
 | total_phases | integer | Count of `## PNN:` phase headings in the Master Plan body | Master Plan |
 | total_tasks | integer | Count of `### PNN-TMM:` task headings in the Master Plan body | Master Plan |
 | verdict | string | `"approved"` \| `"changes_requested"` \| `"rejected"` | Code Review, Phase Review |
-| severity | string | `"none"` \| `"minor"` \| `"critical"` | Code Review, Phase Review |
+| severity | string | `"none"` \| `"low"` \| `"medium"` \| `"high"` | Code Review, Phase Review |
 | exit_criteria_met | boolean | `true` \| `false` | Phase Review |
 
 **`status` field values by document type:**

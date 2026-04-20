@@ -147,7 +147,9 @@ describe('[Iter 8] phase-review template absorbs phase-report doc shape', () => 
     });
 
     it('workflow step aggregates Task Results from Code Reviews + state.json', () => {
-      expect(workflow).toMatch(/Task Results.*(state\.json|retry)/s);
+      const aggregateStep = workflow.match(/Aggregate phase data[\s\S]*?(?=\n\d+\.|\n## )/)?.[0] ?? '';
+      expect(aggregateStep).toMatch(/Task Results/);
+      expect(aggregateStep).toMatch(/state\.json|retry/);
     });
 
     it('workflow step mentions Files Changed aggregation', () => {
