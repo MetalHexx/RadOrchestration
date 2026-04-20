@@ -34,10 +34,15 @@ The outer planner for this iteration **investigates the codebase fresh** and pro
 
 ## Scope Deliberately Untouched
 
-- `/docs/` and root-level `README.md` — Iter 17 owns the public-facing docs refresh. Cleaning internals first means Iter 17 documents a stable end state.
+- `/docs/*.md` (root public-facing) and root-level `README.md` — Iter 17 owns the public-facing docs refresh. Cleaning internals first means Iter 17 documents a stable end state.
+- `docs/internals/CHEAPER-EXECUTION-REFACTOR.md`, `CHEAPER-EXECUTION-REFACTOR-PROGRESS.md`, `CORRECTIVE-CYCLES-REDESIGN.md`, and everything under `docs/internals/cheaper-execution/` — these are the refactor's own authoring notes; they're maintained by the refactor itself, not swept as residue.
 - `archive/` — inactive; not refactor-relevant.
 - Anything in `node_modules/`.
 - New feature work — pure cleanup iteration, no behavior changes.
+
+## Scope Explicitly Included (scope-gap closers)
+
+- **`docs/internals/*.md` (non-refactor-authoring files)** — e.g., `scripts.md`, `system-architecture.md`, `validation.md`, `dependency-model.md`, `template-architecture-refactor.md`, etc. These document stable system behavior and have drifted as earlier iterations removed actions/events/agents without rippling. Iter 17 explicitly excludes internals; this iteration is the natural home. Audit against current code; remove stale references to deleted actions (`spawn_research`, `spawn_prd`, `spawn_design`, `spawn_architecture`, `create_phase_plan`, `create_task_handoff`, `generate_phase_report`), deleted events (`phase_planning_started`, `phase_plan_created`, `task_handoff_started`, `task_handoff_created`), and deleted agents (`product-manager`, `architect`, `ux-designer`, `research`, `tactical-planner`).
 
 ## UI Impact
 
@@ -55,6 +60,7 @@ Determined at planning time. Likely includes (but is not limited to):
 - `ui/**` — UI consumers of state.json.
 - `installer/**` + `.claude/skills/orchestration/{config,schemas,validate}/**` — config, schemas, validators.
 - `.agents/**` + `prompt-tests/**` + root configs — external tooling, harness fixtures, hidden CI/hooks.
+- `docs/internals/*.md` (non-refactor-authoring files) — stable-behavior internal docs accumulated drift across Iters 0–15 without iteration-time ripples. Known stale at iteration start: `scripts.md` (pipeline actions/events table references removed symbols); expect others to surface during investigation.
 
 ## Dependencies
 
