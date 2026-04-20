@@ -81,7 +81,6 @@ function makePlanningCompletedState(): PipelineState {
               nodes: {
                 phase_planning: { kind: 'step', status: 'completed', doc_path: '/path/phase-plan.md', retries: 0 },
                 task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
-                phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
               },

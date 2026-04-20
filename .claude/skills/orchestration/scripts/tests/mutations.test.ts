@@ -73,7 +73,6 @@ function makeState(): PipelineState {
               nodes: {
                 phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
                 phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-                phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 task_loop: {
                   kind: 'for_each_task',
@@ -505,13 +504,13 @@ describe('resolveNodeState', () => {
 // halt, gate_mode_set, source_control_init — also have mutations (see describe blocks below).
 
 describe('getMutation — new T03 events', () => {
+  // Post-Iter 8: phase_report_started / phase_report_created removed
+  // (phase_review absorbed phase_report).
   const newEvents = [
     'execution_started',
     'task_completed',
     'code_review_started',
     'code_review_completed',
-    'phase_report_started',
-    'phase_report_created',
     'phase_review_started',
     'phase_review_completed',
     'final_review_started',
@@ -532,8 +531,9 @@ describe('getMutation — new T03 events', () => {
 // ── phase execution _started mutations ───────────────────────────────────────
 
 describe('phase execution _started mutations', () => {
+  // Post-Iter 8: phase_report_started removed; phase_review_started is the only
+  // phase-scoped _started event remaining.
   const cases: Array<[string, string]> = [
-    ['phase_report_started', 'phase_report'],
     ['phase_review_started', 'phase_review'],
   ];
 
@@ -561,38 +561,7 @@ describe('phase execution _started mutations', () => {
   }
 });
 
-// ── phase_report_created mutation ──────────────────────────────────────────
-
-describe('phase_report_created mutation', () => {
-  it('sets phase_report.status to completed at phase scope', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_report_created')!;
-    const result = mutation(state, { phase: 1, doc_path: '/path/report.md' }, baseConfig, baseTemplate);
-    expect(getPhaseNode(result.state, 'phase_report').status).toBe('completed');
-  });
-
-  it('stores doc_path from context', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_report_created')!;
-    const result = mutation(state, { phase: 1, doc_path: '/path/report.md' }, baseConfig, baseTemplate);
-    const node = getPhaseNode(result.state, 'phase_report') as StepNodeState;
-    expect(node.doc_path).toBe('/path/report.md');
-  });
-
-  it('does not mutate original state', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_report_created')!;
-    mutation(state, { phase: 1, doc_path: '/path/report.md' }, baseConfig, baseTemplate);
-    expect(getPhaseNode(state, 'phase_report').status).toBe('not_started');
-  });
-
-  it('returns non-empty mutations_applied', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_report_created')!;
-    const result = mutation(state, { phase: 1, doc_path: '/path/report.md' }, baseConfig, baseTemplate);
-    expect(result.mutations_applied.length).toBeGreaterThan(0);
-  });
-});
+// Post-Iter 8: phase_report_created mutation removed — phase_review absorbed phase_report; phase_review_completed owns the single post-task-loop doc + verdict.
 
 // ── phase_review_completed mutation ──────────────────────────────────────────
 
@@ -1290,7 +1259,6 @@ function makeIterationNodes() {
   return {
     phase_gate: { kind: 'gate' as const, status: 'not_started' as const, gate_active: false },
     phase_planning: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
-    phase_report: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
     phase_review: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
     task_loop: {
       kind: 'for_each_task' as const,
@@ -1341,22 +1309,24 @@ function makeMultiIterationState(): PipelineState {
 }
 
 describe('multi-iteration phase mutation (phase ≥ 2)', () => {
-  it('phase_report_started with { phase: 2 } sets iterations[1].nodes.phase_report.status to in_progress', () => {
+  // Post-Iter 8: phase_report_started removed; phase_review_started is the only
+  // phase-scoped _started event remaining.
+  it('phase_review_started with { phase: 2 } sets iterations[1].nodes.phase_review.status to in_progress', () => {
     const state = makeMultiIterationState();
-    const mutation = getMutation('phase_report_started')!;
+    const mutation = getMutation('phase_review_started')!;
     const result = mutation(state, { phase: 2 }, baseConfig, baseTemplate);
     const phaseLoop = result.state.graph.nodes['phase_loop'];
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
-    expect(phaseLoop.iterations[1].nodes['phase_report'].status).toBe('in_progress');
+    expect(phaseLoop.iterations[1].nodes['phase_review'].status).toBe('in_progress');
   });
 
   it('does not affect iteration[0] when phase: 2', () => {
     const state = makeMultiIterationState();
-    const mutation = getMutation('phase_report_started')!;
+    const mutation = getMutation('phase_review_started')!;
     const result = mutation(state, { phase: 2 }, baseConfig, baseTemplate);
     const phaseLoop = result.state.graph.nodes['phase_loop'];
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
-    expect(phaseLoop.iterations[0].nodes['phase_report'].status).toBe('not_started');
+    expect(phaseLoop.iterations[0].nodes['phase_review'].status).toBe('not_started');
   });
 });
 

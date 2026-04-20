@@ -105,7 +105,9 @@ describe('parseTemplateToGraph', () => {
     assert.ok(phaseLoopChildren.length > 0, 'phase_loop has no children');
     const childIds = phaseLoopChildren.map(n => n.id);
     assert.ok(childIds.includes('task_loop'), 'task_loop should be child of phase_loop');
-    assert.ok(childIds.includes('phase_report'), 'phase_report should be child of phase_loop');
+    // Post-Iter 8: phase_report body node removed (phase_review absorbed phase_report);
+    // phase_review is the remaining post-task-loop step body node.
+    assert.ok(childIds.includes('phase_review'), 'phase_review should be child of phase_loop');
   });
 
   it('child nodes inside conditional branches have parentId set to the conditional node id', () => {

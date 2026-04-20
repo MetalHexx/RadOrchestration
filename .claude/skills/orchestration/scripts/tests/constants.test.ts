@@ -151,9 +151,10 @@ describe('NEXT_ACTIONS', () => {
     }).toThrow(TypeError);
   });
 
-  it('has exactly 17 keys', () => {
+  it('has exactly 16 keys', () => {
     // Post-Iter 7: CREATE_PHASE_PLAN + CREATE_TASK_HANDOFF removed (per-loop authoring deleted).
-    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(17);
+    // Post-Iter 8: GENERATE_PHASE_REPORT removed (phase_review absorbed phase_report).
+    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(16);
   });
 
   it('has expected keys', () => {
@@ -161,7 +162,7 @@ describe('NEXT_ACTIONS', () => {
       'SPAWN_REQUIREMENTS', 'SPAWN_MASTER_PLAN', 'EXPLODE_MASTER_PLAN',
       'REQUEST_PLAN_APPROVAL', 'GATE_TASK', 'GATE_PHASE', 'ASK_GATE_MODE', 'REQUEST_FINAL_APPROVAL',
       'EXECUTE_TASK', 'SPAWN_CODE_REVIEWER',
-      'GENERATE_PHASE_REPORT', 'SPAWN_PHASE_REVIEWER', 'SPAWN_FINAL_REVIEWER',
+      'SPAWN_PHASE_REVIEWER', 'SPAWN_FINAL_REVIEWER',
       'INVOKE_SOURCE_CONTROL_COMMIT', 'INVOKE_SOURCE_CONTROL_PR',
       'DISPLAY_HALTED', 'DISPLAY_COMPLETE',
     ];
@@ -181,7 +182,6 @@ describe('NEXT_ACTIONS', () => {
     expect(NEXT_ACTIONS.REQUEST_FINAL_APPROVAL).toBe('request_final_approval');
     expect(NEXT_ACTIONS.EXECUTE_TASK).toBe('execute_task');
     expect(NEXT_ACTIONS.SPAWN_CODE_REVIEWER).toBe('spawn_code_reviewer');
-    expect(NEXT_ACTIONS.GENERATE_PHASE_REPORT).toBe('generate_phase_report');
     expect(NEXT_ACTIONS.SPAWN_PHASE_REVIEWER).toBe('spawn_phase_reviewer');
     expect(NEXT_ACTIONS.SPAWN_FINAL_REVIEWER).toBe('spawn_final_reviewer');
     expect(NEXT_ACTIONS.INVOKE_SOURCE_CONTROL_COMMIT).toBe('invoke_source_control_commit');
@@ -202,10 +202,11 @@ describe('EVENTS', () => {
     }).toThrow(TypeError);
   });
 
-  it('has exactly 31 keys', () => {
+  it('has exactly 29 keys', () => {
     // Post-Iter 7: PHASE_PLANNING_STARTED / PHASE_PLAN_CREATED /
     // TASK_HANDOFF_STARTED / TASK_HANDOFF_CREATED removed (4 events).
-    expect(Object.keys(EVENTS)).toHaveLength(31);
+    // Post-Iter 8: PHASE_REPORT_STARTED / PHASE_REPORT_CREATED removed (2 events).
+    expect(Object.keys(EVENTS)).toHaveLength(29);
   });
 
   it('has expected keys', () => {
@@ -216,7 +217,6 @@ describe('EVENTS', () => {
       'PLAN_APPROVED', 'TASK_GATE_APPROVED', 'PHASE_GATE_APPROVED', 'FINAL_APPROVED',
       'EXECUTION_STARTED', 'TASK_COMPLETED',
       'CODE_REVIEW_STARTED', 'CODE_REVIEW_COMPLETED',
-      'PHASE_REPORT_STARTED', 'PHASE_REPORT_CREATED',
       'PHASE_REVIEW_STARTED', 'PHASE_REVIEW_COMPLETED',
       'FINAL_REVIEW_STARTED', 'FINAL_REVIEW_COMPLETED',
       'COMMIT_STARTED', 'COMMIT_COMPLETED',
@@ -244,8 +244,6 @@ describe('EVENTS', () => {
     expect(EVENTS.TASK_COMPLETED).toBe('task_completed');
     expect(EVENTS.CODE_REVIEW_STARTED).toBe('code_review_started');
     expect(EVENTS.CODE_REVIEW_COMPLETED).toBe('code_review_completed');
-    expect(EVENTS.PHASE_REPORT_STARTED).toBe('phase_report_started');
-    expect(EVENTS.PHASE_REPORT_CREATED).toBe('phase_report_created');
     expect(EVENTS.PHASE_REVIEW_STARTED).toBe('phase_review_started');
     expect(EVENTS.PHASE_REVIEW_COMPLETED).toBe('phase_review_completed');
     expect(EVENTS.FINAL_REVIEW_STARTED).toBe('final_review_started');

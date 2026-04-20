@@ -656,7 +656,6 @@ describe('engine – processEvent', () => {
           status: 'in_progress',
           nodes: {
             phase_planning: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-plan.md', retries: 0 },
-            phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
             task_loop: {
@@ -696,7 +695,6 @@ describe('engine – processEvent', () => {
           status: 'in_progress',
           nodes: {
             phase_planning: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-plan.md', retries: 0 },
-            phase_report: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-report.md', retries: 0 },
             phase_review: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-review.md', retries: 0 },
             phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
             task_loop: {
@@ -976,7 +974,6 @@ describe('wrappedReadDocument – relative path resolution', () => {
         nodes: {
           phase_planning: { kind: 'step', status: 'completed', doc_path: 'tasks/PHASE-PLAN.md', retries: 0 },
           task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
-          phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
         },
@@ -1035,7 +1032,6 @@ describe('wrappedReadDocument – relative path resolution', () => {
         nodes: {
           phase_planning: { kind: 'step', status: 'completed', doc_path: traversalPath, retries: 0 },
           task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
-          phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
         },
@@ -1070,7 +1066,6 @@ describe('auto-resolution in mutation handler loops', () => {
         nodes: {
           phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
-          phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
         },
@@ -1111,7 +1106,6 @@ describe('auto-resolution in mutation handler loops', () => {
               },
             ],
           },
-          phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
         },
@@ -1123,8 +1117,10 @@ describe('auto-resolution in mutation handler loops', () => {
   }
 
   describe('phase auto-resolution success', () => {
+    // Post-Iter 8: phase_report_started / phase_review_started was the pair of
+    // phase-scoped _started events. phase_report_started is gone; only
+    // phase_review_started remains.
     for (const [eventName, nodeId] of [
-      ['phase_report_started', 'phase_report'],
       ['phase_review_started', 'phase_review'],
     ] as const) {
       it(`${eventName} succeeds without context.phase when one in_progress phase iteration exists`, () => {
@@ -1160,13 +1156,13 @@ describe('auto-resolution in mutation handler loops', () => {
   });
 
   describe('DX-1 error — phase scope, no iterations', () => {
-    it('phase_report_started fails with DX-1 error when phase_loop.iterations is empty', () => {
+    it('phase_review_started fails with DX-1 error when phase_loop.iterations is empty', () => {
       const state = makeScaffoldedState();
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       phaseLoop.status = 'in_progress';
       phaseLoop.iterations = [];
       const io = createMockIO(state);
-      const result = processEvent('phase_report_started', PROJECT_DIR, {}, io);
+      const result = processEvent('phase_review_started', PROJECT_DIR, {}, io);
       expect(result.success).toBe(false);
       const errorMsg = String(result.context.error);
       expect(errorMsg).toContain('Cannot apply mutation for');
@@ -1189,7 +1185,7 @@ describe('auto-resolution in mutation handler loops', () => {
   });
 
   describe('explicit context.phase takes precedence', () => {
-    it('phase_report_started targets the explicitly provided phase, not the auto-resolved one', () => {
+    it('phase_review_started targets the explicitly provided phase, not the auto-resolved one', () => {
       const state = makeScaffoldedState();
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       phaseLoop.status = 'in_progress';
@@ -1201,7 +1197,6 @@ describe('auto-resolution in mutation handler loops', () => {
           nodes: {
             phase_planning: { kind: 'step', status: 'completed', doc_path: '/tmp/p1.md', retries: 0 },
             task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
-            phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
           },
@@ -1214,7 +1209,6 @@ describe('auto-resolution in mutation handler loops', () => {
           nodes: {
             phase_planning: { kind: 'step', status: 'completed', doc_path: '/tmp/p2.md', retries: 0 },
             task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
-            phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
           },
@@ -1224,13 +1218,13 @@ describe('auto-resolution in mutation handler loops', () => {
       ];
       const io = createMockIO(state);
       // Explicitly target phase 2 (index 1)
-      const result = processEvent('phase_report_started', PROJECT_DIR, { phase: 2 }, io);
+      const result = processEvent('phase_review_started', PROJECT_DIR, { phase: 2 }, io);
       expect(result.success).toBe(true);
       const updatedPhaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       // Phase 2 (index 1) should be in_progress
-      expect((updatedPhaseLoop.iterations[1].nodes['phase_report'] as StepNodeState).status).toBe('in_progress');
+      expect((updatedPhaseLoop.iterations[1].nodes['phase_review'] as StepNodeState).status).toBe('in_progress');
       // Phase 1 (index 0) should remain not_started
-      expect((updatedPhaseLoop.iterations[0].nodes['phase_report'] as StepNodeState).status).toBe('not_started');
+      expect((updatedPhaseLoop.iterations[0].nodes['phase_review'] as StepNodeState).status).toBe('not_started');
     });
   });
 });

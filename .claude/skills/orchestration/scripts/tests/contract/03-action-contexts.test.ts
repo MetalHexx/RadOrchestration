@@ -10,7 +10,6 @@ import {
   driveTaskWith,
   driveToReviewTier,
   codeReviewDoc,
-  phaseReportDoc,
   phaseReviewDoc,
 } from '../fixtures/parity-states.js';
 import type { StepNodeState } from '../../lib/types.js';
@@ -80,36 +79,19 @@ describe('[CONTRACT] Action Contexts — planning spawn actions (full template)'
 // ── [CONTRACT] Phase-level execution actions ──────────────────────────────────
 
 describe('[CONTRACT] Action Contexts — phase-level execution actions', () => {
-  it('generate_phase_report returns { phase_number: 1, phase_id: "P01" }', () => {
+  it('spawn_phase_reviewer returns { phase_number: 1, phase_id: "P01", phase_first_sha, phase_head_sha }', () => {
     const io = driveToExecutionWithConfig(config, 1, 2);
     driveTaskWith(io, 1, 1);
-    // With both tasks complete and autonomous mode, second driveTaskWith returns generate_phase_report
+    // With both tasks complete and autonomous mode, second driveTaskWith returns spawn_phase_reviewer (post-Iter 8)
     const result = driveTaskWith(io, 1, 2);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('generate_phase_report');
-    expect(result.context).toEqual(expect.objectContaining({
-      phase_number: 1,
-      phase_id: 'P01',
-    }));
-  });
-
-  it('spawn_phase_reviewer returns { phase_number: 1, phase_id: "P01", phase_report_doc, phase_first_sha, phase_head_sha }', () => {
-    const io = driveToExecutionWithConfig(config, 1, 2);
-    driveTaskWith(io, 1, 1);
-    driveTaskWith(io, 1, 2);
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    const result = processEvent('phase_report_created', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReportDoc(1),
-    }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_phase_reviewer');
     expect(result.context).toEqual(expect.objectContaining({
       phase_number: 1,
       phase_id: 'P01',
     }));
-    expect(typeof result.context.phase_report_doc).toBe('string');
-    expect((result.context.phase_report_doc as string).length).toBeGreaterThan(0);
+    // phase_report_doc was dropped post-Iter 8 (phase_review absorbs phase_report).
+    expect(result.context).not.toHaveProperty('phase_report_doc');
     expect(
       typeof result.context.phase_first_sha === 'string' || result.context.phase_first_sha === null,
     ).toBe(true);
@@ -130,11 +112,6 @@ describe('[CONTRACT] Action Contexts — phase-level execution actions', () => {
     const io = driveToExecutionWithConfig(taskConfig, 1);
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReportDoc(1),
-    }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     const result = processEvent('phase_review_completed', PROJECT_DIR, {

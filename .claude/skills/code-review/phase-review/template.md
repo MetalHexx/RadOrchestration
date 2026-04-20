@@ -16,6 +16,20 @@ created: "{ISO-DATE}"
 
 {2-3 sentences. Holistic assessment of the phase.}
 
+## Task Results
+
+| # | Task | Status | Retries | Key Outcome |
+|---|------|--------|---------|-------------|
+| T1 | {Title} | ✅ Complete | 0 | {One-line summary} |
+| T2 | {Title} | ✅ Complete | 1 | {One-line summary} |
+| T3 | {Title} | ⚠️ Partial | 2 | {One-line summary} |
+
+## Exit Criteria Assessment
+
+| # | Criterion | Verified |
+|---|-----------|----------|
+| 1 | {From phase plan} | ✅/❌ |
+
 ## Integration Assessment
 
 | Check | Status | Notes |
@@ -25,11 +39,11 @@ created: "{ISO-DATE}"
 | Contracts honored across tasks | ✅/❌ | {Note} |
 | No orphaned code | ✅/❌ | {Note} |
 
-## Exit Criteria Verification
+## Cross-Task Issues
 
-| # | Criterion | Verified |
-|---|-----------|----------|
-| 1 | {From phase plan} | ✅/❌ |
+| # | Scope | Severity | Issue | Recommendation |
+|---|-------|----------|-------|---------------|
+| 1 | T1 ↔ T3 | low/medium/high | {Integration issue} | {Fix} |
 
 ## Independent Quality Assessment
 
@@ -41,11 +55,21 @@ created: "{ISO-DATE}"
 
 <!-- If no independent findings, replace the table with: "No issues found beyond conformance check." -->
 
-## Cross-Task Issues
+## Files Changed (Phase Total)
 
-| # | Scope | Severity | Issue | Recommendation |
-|---|-------|----------|-------|---------------|
-| 1 | T1 ↔ T3 | low/medium/high | {Integration issue} | {Fix} |
+| Action | Count | Key Files |
+|--------|-------|-----------|
+| Created | {NUMBER} | `{path}`, ... |
+| Modified | {NUMBER} | `{path}`, ... |
+
+## Issues & Resolutions
+
+<!-- Task-scoped issues from the Code Reviews and how they were resolved (including through retries).
+     Distinct from Cross-Task Issues (integration-seam-specific) above. -->
+
+| Issue | Severity | Task | Resolution |
+|-------|----------|------|------------|
+| {Issue} | low | T2 | Resolved via retry |
 
 ## Test & Build Summary
 
@@ -53,6 +77,19 @@ created: "{ISO-DATE}"
 - **Build**: ✅ Pass / ❌ Fail
 - **Coverage**: {X}% (if measurable)
 
+## Corrections Applied
+
+<!-- EMPTY on first-time reviews. On corrective reviews, list what was fixed from the previous review and how. -->
+<!-- Leave the section heading in place even when empty so the section is always findable. -->
+
+## Carry-Forward Items
+
+{Items the next phase must address. Empty list is fine.}
+
+- {Item 1}
+
 ## Recommendations for Next Phase
+
+<!-- Advisory recommendations for the next phase. Distinct from Carry-Forward Items (required handling). -->
 
 - {Recommendation 1}

@@ -545,7 +545,7 @@ function walkNodes(
           }
 
           if (tasksValue.length === 0) {
-            // Zero tasks — complete immediately (v4 parity: resolvePhaseExecuting → generate_phase_report)
+            // Zero tasks — complete immediately.
             fetState.status = NODE_STATUSES.COMPLETED;
             continue;
           }

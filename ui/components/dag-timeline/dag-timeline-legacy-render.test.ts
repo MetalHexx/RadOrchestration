@@ -87,9 +87,16 @@ function makeLegacyPhaseIteration(index: number): IterationEntry {
   };
 }
 
-function makeForwardCompatPhaseIteration(index: number): IterationEntry {
-  // Forward-compat shape: default.yml body has no phase_planning / task_handoff.
-  // Execution proceeds directly; iteration-name fallbacks kick in.
+// makeForwardCompatPhaseIteration consolidated into makePostIter8PhaseIteration (Iter-8 corrective
+// pass): after dropping the now-retired phase_report node the two fixtures were structurally
+// identical, so the forward-compat helper was removed. The name "forward-compat" still
+// conceptually applies — it means "no pre-Iter-7 phase_planning / task_handoff nodes" — but the
+// canonical fixture for that shape is makePostIter8PhaseIteration.
+
+function makePostIter8PhaseIteration(index: number): IterationEntry {
+  // Post-Iter-8 shape: phase_report body node is gone (phase_review absorbs it).
+  // New projects write this shape; the UI must render it cleanly with one fewer
+  // post-task-loop body node in phase_loop iterations.
   return {
     index,
     status: 'in_progress',
@@ -115,7 +122,7 @@ function makeForwardCompatPhaseIteration(index: number): IterationEntry {
           },
         ],
       },
-      phase_report: stepState('not_started'),
+      // No phase_report — phase_review covers both the verdict and the structured summary.
       phase_review: stepState('not_started'),
       phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
     },
@@ -196,7 +203,7 @@ test('(A) legacy deriveCurrentPhase: reads phase_planning.doc_path for the activ
 });
 
 test('(B) forward-compat iteration without phase_planning: iteration-name fallback returns "Phase N"', () => {
-  const iteration = makeForwardCompatPhaseIteration(0);
+  const iteration = makePostIter8PhaseIteration(0);
   assert.strictEqual(iteration.nodes['phase_planning'], undefined);
   // Code under test reads doc_path via (phaseNode && 'doc_path' in phaseNode)
   // — when the node is absent, fallback label "Phase N" is produced.
@@ -207,7 +214,7 @@ test('(B) forward-compat iteration without phase_planning: iteration-name fallba
 });
 
 test('(B) forward-compat task iteration without task_handoff: fallback returns "Task N"', () => {
-  const iteration = makeForwardCompatPhaseIteration(0);
+  const iteration = makePostIter8PhaseIteration(0);
   const taskLoop = iteration.nodes['task_loop'];
   assert.ok(taskLoop.kind === 'for_each_task');
   const taskIter = taskLoop.iterations[0];
@@ -219,7 +226,7 @@ test('(B) forward-compat task iteration without task_handoff: fallback returns "
 });
 
 test('(B) forward-compat top-level nodes: groupNodesBySection behaves identically (no regression)', () => {
-  const iterations = [makeForwardCompatPhaseIteration(0)];
+  const iterations = [makePostIter8PhaseIteration(0)];
   const nodes = makeTopLevelNodes(iterations);
   const groups = groupNodesBySection(nodes);
   const labels = groups.map((g) => g.label);
@@ -234,6 +241,53 @@ test('(A) legacy state renders with no thrown exceptions even when phase_plannin
   const phaseNode = iteration.nodes['phase_planning'] as StepNodeState;
   const name = parsePhaseNameFromDocPath(phaseNode.doc_path, iteration.index);
   assert.strictEqual(name, 'Phase 1');
+});
+
+// ─── Iter-8 tests — phase_report legacy rendering + new-shape rendering ──────
+
+test('(Iter-8 legacy) iteration fixture preserves completed phase_report body node and top-level grouping is unaffected', () => {
+  // Post-Iter-8 state.json from a pre-Iter-8 project run still carries
+  // phase_report as a body node. This is a pure-logic test (no DOM): it
+  // verifies the fixture shape the UI renderer will see, and that top-level
+  // section grouping (NODE_SECTION_MAP consumers) is unaffected because
+  // phase_report sits inside phase_loop.body — not at the top level. The
+  // polymorphic body renderer that actually paints the node is exercised by
+  // higher-level component tests elsewhere.
+  const iteration = makeLegacyPhaseIteration(0);
+  const phaseReport = iteration.nodes['phase_report'] as StepNodeState;
+  assert.strictEqual(phaseReport.kind, 'step');
+  assert.strictEqual(phaseReport.status, 'completed');
+  assert.strictEqual(phaseReport.doc_path, 'reports/MYPROJ-PHASE-REPORT-P01-SETUP.md');
+
+  const iterations = [iteration];
+  const nodes = makeTopLevelNodes(iterations);
+  const groups = groupNodesBySection(nodes);
+  const labels = groups.map((g) => g.label);
+  assert.deepStrictEqual(labels, ['Planning', 'Gates', 'Execution', 'Completion']);
+});
+
+test('(Iter-8 new shape) iteration WITHOUT phase_report body node renders cleanly — one fewer post-task-loop node', () => {
+  // Post-Iter-8 new-shape state.json omits phase_report entirely. Only
+  // phase_review + phase_gate remain as post-task-loop body nodes.
+  const iteration = makePostIter8PhaseIteration(0);
+  assert.strictEqual(iteration.nodes['phase_report'], undefined);
+  assert.ok(iteration.nodes['phase_review']);
+  assert.ok(iteration.nodes['phase_gate']);
+
+  // Count post-task-loop body nodes (excluding task_loop itself): expect 2
+  // (phase_review + phase_gate), vs. 3 in the legacy shape
+  // (phase_report + phase_review + phase_gate).
+  const bodyNodeIds = Object.keys(iteration.nodes).filter((id) => id !== 'task_loop');
+  assert.strictEqual(bodyNodeIds.length, 2);
+  assert.ok(bodyNodeIds.includes('phase_review'));
+  assert.ok(bodyNodeIds.includes('phase_gate'));
+
+  // Top-level grouping unaffected.
+  const iterations = [iteration];
+  const nodes = makeTopLevelNodes(iterations);
+  const groups = groupNodesBySection(nodes);
+  const labels = groups.map((g) => g.label);
+  assert.deepStrictEqual(labels, ['Planning', 'Gates', 'Execution', 'Completion']);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

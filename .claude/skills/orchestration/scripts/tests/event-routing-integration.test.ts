@@ -14,7 +14,7 @@ import {
   driveTaskWith,
   driveToReviewTier,
   codeReviewDoc,
-  phaseReportDoc,
+  phaseReviewDoc,
 } from './fixtures/parity-states.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -60,10 +60,14 @@ describe('task_completed routes through template event index', () => {
   });
 });
 
-// ── phase_report_created integration test ────────────────────────────────────
+// ── phase_review_completed integration test ─────────────────────────────────
+// Post-Iter 8: phase_review absorbed phase_report. The former
+// `phase_report_created routes through template event index` smoke is replaced
+// by the phase_review_completed event, which is now the sole post-task-loop
+// doc-emission event.
 
-describe('phase_report_created routes through template event index', () => {
-  it('phase_report_created with appropriate state processes correctly → success: true', () => {
+describe('phase_review_completed routes through template event index', () => {
+  it('phase_review_completed with appropriate state processes correctly → success: true', () => {
     // driveToExecutionWithConfig pre-seeds phase_planning + task_handoff and creates 2 task iterations
     const io = driveToExecutionWithConfig(config, 1, 2);
 
@@ -71,14 +75,16 @@ describe('phase_report_created routes through template event index', () => {
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
 
-    // Drive phase report start
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
+    // Drive phase review start
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReviewDoc(1));
 
-    // Call phase_report_created — the event under test
-    const result = processEvent('phase_report_created', PROJECT_DIR, {
+    // Call phase_review_completed — the event under test
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1,
-      doc_path: phaseReportDoc(1),
+      doc_path: phaseReviewDoc(1),
+      verdict: 'approved',
+      exit_criteria_met: true,
     }, io);
 
     expect(result.success).toBe(true);

@@ -112,8 +112,9 @@ describe('any type audit', () => {
 
 describe('Action count freeze', () => {
   // Post-Iter 7: CREATE_PHASE_PLAN + CREATE_TASK_HANDOFF removed → 17 keys.
-  it('NEXT_ACTIONS has exactly 17 keys', () => {
-    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(17);
+  // Post-Iter 8: GENERATE_PHASE_REPORT removed (phase_review absorbed phase_report) → 16 keys.
+  it('NEXT_ACTIONS has exactly 16 keys', () => {
+    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(16);
   });
 });
 
@@ -122,8 +123,9 @@ describe('Action count freeze', () => {
 describe('Event count freeze', () => {
   // Post-Iter 7: PHASE_PLANNING_STARTED / PHASE_PLAN_CREATED / TASK_HANDOFF_STARTED /
   // TASK_HANDOFF_CREATED removed (4 events) → 31 keys.
-  it('EVENTS has exactly 31 keys', () => {
-    expect(Object.keys(EVENTS)).toHaveLength(31);
+  // Post-Iter 8: PHASE_REPORT_STARTED / PHASE_REPORT_CREATED removed (2 events) → 29 keys.
+  it('EVENTS has exactly 29 keys', () => {
+    expect(Object.keys(EVENTS)).toHaveLength(29);
   });
 });
 

@@ -185,8 +185,6 @@ export const taskHandoffDoc = (phase: number, task: number): string =>
   path.posix.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`);
 export const codeReviewDoc = (phase: number, task: number): string =>
   path.posix.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`);
-export const phaseReportDoc = (phase: number): string =>
-  path.posix.join(PROJECT_DIR, 'phases', `phase-${phase}-report.md`);
 export const phaseReviewDoc = (phase: number): string =>
   path.posix.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`);
 
@@ -344,13 +342,10 @@ export function driveTaskWith(io: MockIO, phase: number, task: number): Pipeline
 // ── Drive phase review approval helper ────────────────────────────────────────
 
 /**
- * Drives phase report + review + gate approval to phase completion.
+ * Drives phase review + gate approval to phase completion.
+ * Post-Iter 8: phase_review absorbed phase_report; only one doc emitted.
  */
 export function drivePhaseReviewApproval(io: MockIO, phase: number): PipelineResult {
-  processEvent('phase_report_started', PROJECT_DIR, { phase }, io);
-  seedDoc(phaseReportDoc(phase));
-  processEvent('phase_report_created', PROJECT_DIR, { phase, doc_path: phaseReportDoc(phase) }, io);
-
   processEvent('phase_review_started', PROJECT_DIR, { phase }, io);
   seedDoc(phaseReviewDoc(phase));
   let result = processEvent('phase_review_completed', PROJECT_DIR, {
@@ -418,12 +413,7 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
     }
   }
 
-  // Phase report + review
-  processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-  const prDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-report.md');
-  seedDoc(prDoc);
-  processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: prDoc }, io);
-
+  // Phase review (post-Iter 8: phase_report absorbed into phase_review)
   processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
   const prvDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-review.md');
   seedDoc(prvDoc);

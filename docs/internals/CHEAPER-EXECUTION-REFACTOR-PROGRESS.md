@@ -66,7 +66,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 5 | Explosion script + state.json pre-seeding | Complete | 2026-04-19 | 2026-04-19 |
 | 6 | Prompt regression harness | Complete | 2026-04-19 | 2026-04-19 |
 | 7 | Remove per-phase/per-task planning | Complete | 2026-04-19 | 2026-04-20 |
-| 8 | phase_review absorbs phase_report | Not started | — | — |
+| 8 | phase_review absorbs phase_report | Complete | 2026-04-20 | 2026-04-20 |
 | 9 | Complete `default.yml` | Not started | — | — |
 | 10 | Task-level corrective cycles (orchestrator mediation) | Not started | — | — |
 | 11 | Phase-level corrective cycles | Not started | — | — |
@@ -77,7 +77,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 16 | Repository deep clean | Not started | — | — |
 | 17 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 8 / 18 iterations complete. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
+**Overall**: 9 / 18 iterations complete. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -100,7 +100,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 5 | `feat/iter-5-explosion-script` | `C:\dev\orchestration\v3-worktrees\feat-iter-5-explosion-script` | Merged | `4500203` | [#56](https://github.com/MetalHexx/RadOrchestation/pull/56) |
 | 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Merged | `82333f1` | [#57](https://github.com/MetalHexx/RadOrchestation/pull/57) |
 | 7 | `feat/iter-7-remove-per-phase-task-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning` | Merged | `ff05ce2` | [#58](https://github.com/MetalHexx/RadOrchestation/pull/58) |
-| 8 | — | — | Not created | — | — |
+| 8 | `feat/iter-8-phase-review-absorbs-phase-report` | `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report` | Awaiting merge | — | [#59](https://github.com/MetalHexx/RadOrchestation/pull/59) |
 | 9 | — | — | Not created | — | — |
 | 10 | — | — | Not created | — | — |
 | 11 | — | — | Not created | — | — |
@@ -272,6 +272,17 @@ Format:
 - UI smoke: N/A — no UI surface touched.
 - Commits: `f534247` (scaffold), `b890c18` (review-corrective — dead code, tightened self-test thresholds, project-name stability, narrowed `.gitkeep` exception), `a9cb44c` (inaugural baseline artifacts), `211c34a` (progress tracker). PR: [#57](https://github.com/MetalHexx/RadOrchestation/pull/57).
 
+### 2026-04-20 — Iteration 8 — phase_review absorbs phase_report
+
+- Branch: `feat/iter-8-phase-review-absorbs-phase-report` off `feat/cheaper-execution` @ `f29c3db` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report`). Structured summary shape = option (b) — phase-report's 7 sections threaded INTO phase-review's template, named "Corrections Applied" section empty-on-first-review.
+- Engine retirement: deleted `.claude/skills/generate-phase-report/` (SKILL + template); stripped `GENERATE_PHASE_REPORT` action + `PHASE_REPORT_STARTED`/`PHASE_REPORT_CREATED` events from `constants.ts` (17 → 16 actions, 31 → 29 events); removed `phaseExecDocSteps` block + `phase_report` from the `CHANGES_REQUESTED` reset list in `mutations.ts`; dropped `generate_phase_report` from `PHASE_LEVEL_ACTIONS` and stripped `phase_report_doc` from `spawn_phase_reviewer` enrichment in `context-enrichment.ts`; `full.yml` lost its `phase_report` body node (`phase_review.depends_on` → `[task_loop]`).
+- Skill expansion: `code-review/phase-review/{workflow,template}.md` rewritten. Workflow gained an Aggregate-phase-data step (pulls Task Results, Files Changed, Issues & Resolutions, Carry-Forward); Inputs table lost Iter-3 residue (PRD / Architecture / Design rows). Template now emits 13 sections ending with Corrections Applied / Carry-Forward / Recommendations. One artifact, `type: phase_review`, drop-in replacement for both prior docs. (Note: Master Plan Adjustment Recommendations section was dropped by user in `aa2cc82` — not part of the final absorbed shape.)
+- Deletions with intent: **Iter-0 `phase_report_created` fallback-behavior regression test in `contract/09-corrective-cycles.test.ts` deleted alongside the handler** (intentional removal, not regression — consumer of the deleted mutation vanished). Sweep also retired Phase Report rows in `document-conventions.md` and the stale `Action #8` number in phase-review workflow header.
+- Tests: orchestration 47 files / 1123 pass / 7 skip / 1 todo (baseline 46/1119/7/1 — net +1 file, +4 pass; 25-test shape suite `phase-review-doc-shape.test.ts` added, offsetting ~20 removed dead-action/event cases). UI 156 pass / 3 pre-existing fail / 159 total (baseline unchanged; two new dag-timeline-legacy-render tests cover legacy `phase_report` body-node rendering + new-shape render). Installer 399 pass / 0 fail (unchanged).
+- Reviews: 1 conformance pass (green) + 1 independent quality pass (3 findings + 2 nits applied) + 5 Copilot rounds. Exit on R5 clean + adversarial-R5 nits-only. Pre-emptive adversarial reviewer between Copilot rounds caught 4 findings before Copilot did (R1 severity vocab match, R2 orchestrator.md narrative, R3 tracker placeholder, R4 MPA ripple). Declined items: two `~1` parentless-commit edge-case comments (R1 C2/C3) as pre-existing workflow text from base branch `ff05ce2`, one severity-taxonomy inline-note suggestion (R3 C1) as redundant hygiene.
+- Carry-forward to Iter 17 (public docs refresh): `docs/agents.md`, `docs/templates.md`, `docs/skills.md`, `docs/internals/scripts.md` all retain stale Phase Report references — explicitly deferred per plan.
+- Commits: `9255084` (main), `b3e4428` (review-corrective), `c053b68` (tracker), `c49a7c9` (PR link fill-in), `da83279` (pre-emptive Copilot-style fixes), `20ce0a1` (Copilot Round 2 corrective), `aa2cc82` (user-authored: drop Master Plan Adjustment Recommendations section), `ed505d2` (Copilot Round 3 corrective — CRLF regex + template-section-delete ripple), `85c09d5` (tracker SHA fill-in), `79bb1ba` (MPA ripple in action-event-reference + tracker bullet), plus this tracker-finalization commit. PR: [#59](https://github.com/MetalHexx/RadOrchestation/pull/59).
+
 ### 2026-04-20 — Iteration 7 — Remove per-phase/per-task planning (tactical-planner + phase-plan/task-handoff + UI discoverProjects parallelization)
 
 - Branch: `feat/iter-7-remove-per-phase-task-planning` off `feat/cheaper-execution` @ `5f3ae07` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning`).
@@ -417,6 +428,12 @@ Format:
 - **Context**: Iter 7 parallelized `discoverProjects` via `Promise.all(entries.map(...))` — unbounded concurrency. Copilot flagged theoretical EMFILE / IO-contention risk at large workspace sizes.
 - **Why unresolved**: 107 projects renders in ~37ms with no issues. The risk surfaces at ~1000+ projects on OSes with strict file-descriptor limits (Linux default 1024; Windows default >10k). Iter 7's plan explicitly deferred "sidebar virtualization + project-count cap" to a later iteration. A bounded semaphore (e.g. concurrency = 20) would be trivial but premature without observable evidence of the EMFILE risk.
 - **Suggested owner**: A future UI-performance iteration, or fold into Iter 16 (repository deep clean) if sweeping similar scale concerns.
+
+### 2026-04-20 — Stale Action # references in review workflows (Iter 8 adversarial R5)
+
+- **Context**: During Iter 8 R5 adversarial review, three pre-existing stale action-number references surfaced — `.claude/agents/reviewer.md:3` (task review "Action #6" / phase review "Action #8" / final review "Action #9"), `.claude/skills/code-review/task-review/workflow.md:3` ("Action #6"), `.claude/skills/code-review/final-review/workflow.md:3` ("Action #9"). Post-Iter-8 the correct numbers are #4 / #5 / #6.
+- **Why unresolved**: These files were not touched by Iter 8 and the stale references predate it (inherited from Iter 3/4/7 renumbering cycles). Copilot did not flag them across all 5 rounds. Fixing them in-iteration would expand scope beyond `phase_review absorbs phase_report` and trigger another Copilot review against unrelated files.
+- **Suggested owner**: Iter 17 (public-facing docs refresh) — natural landing spot since that iteration sweeps documentation for cumulative residue. Three one-line edits.
 
 ### 2026-04-19 — Prompt-harness linter frontmatter coverage (Iter 6 Copilot R6-3 / R6-5)
 

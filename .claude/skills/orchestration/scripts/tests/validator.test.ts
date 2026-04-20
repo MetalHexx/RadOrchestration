@@ -384,15 +384,15 @@ describe('validator – validateState', () => {
 
     it('detects kind mismatch for node nested inside for_each_phase body iteration', () => {
       const state = makeMinimalState();
-      // phase_report is a 'step' in the template body of phase_loop — inject an iteration with wrong kind
+      // phase_review is a 'step' in the template body of phase_loop — inject an iteration with wrong kind
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       phaseLoop.iterations.push(makeIterationEntry(0, {
         nodes: {
-          phase_report: { kind: 'gate', status: 'not_started', gate_active: false } as any,
+          phase_review: { kind: 'gate', status: 'not_started', gate_active: false } as any,
         },
       }));
       const errors = validateState(null, state, DEFAULT_CONFIG, TEMPLATE);
-      expect(errors.some(e => e.includes('phase_report') && e.includes('gate') && e.includes('step'))).toBe(true);
+      expect(errors.some(e => e.includes('phase_review') && e.includes('gate') && e.includes('step'))).toBe(true);
     });
   });
 

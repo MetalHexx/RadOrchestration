@@ -114,7 +114,6 @@ const DOC_PATHS = {
     path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`),
   codeReview: (phase: number, task: number) =>
     path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`),
-  phaseReport: (phase: number) => path.join(PROJECT_DIR, 'phases', `phase-${phase}-report.md`),
   phaseReview: (phase: number) => path.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`),
   finalReview: path.join(PROJECT_DIR, 'docs', 'final-review.md'),
 };
@@ -255,16 +254,11 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
 }
 
 /**
- * Drives post-task-loop phase steps: report, review, gate.
+ * Drives post-task-loop phase steps: review, gate.
  * Returns the result of the last event for the phase.
  */
 function drivePhasePostTasks(io: MockIO, phase: number): PipelineResult {
   const ctx = { phase };
-
-  processEvent('phase_report_started', PROJECT_DIR, ctx, io);
-  const reportDoc = DOC_PATHS.phaseReport(phase);
-  seedDoc(reportDoc);
-  processEvent('phase_report_created', PROJECT_DIR, { ...ctx, doc_path: reportDoc }, io);
 
   processEvent('phase_review_started', PROJECT_DIR, ctx, io);
   const reviewDoc = DOC_PATHS.phaseReview(phase);
@@ -339,8 +333,8 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // ── Phase 1, Task 2 ──────────────────────────────────────────────────
     result = driveTask(io, 1, 2);
     expect(result.success).toBe(true);
-    // task_gate auto-approves → task_loop completes → phase_report
-    expect(result.action).toBe('generate_phase_report');
+    // task_gate auto-approves → task_loop completes → phase_review (post-Iter 8)
+    expect(result.action).toBe('spawn_phase_reviewer');
 
     // Verify task_gate for task 2 completed
     {
@@ -391,7 +385,7 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // ── Phase 2, Task 2 ──────────────────────────────────────────────────
     result = driveTask(io, 2, 2);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('generate_phase_report');
+    expect(result.action).toBe('spawn_phase_reviewer');
 
     // ── Phase 2 post-task steps ──────────────────────────────────────────
     result = drivePhasePostTasks(io, 2);
@@ -642,14 +636,9 @@ describe('Execution-tier integration — gate mode variations', () => {
     // Phase 1, Task 2
     result = driveTask(io, 1, 2);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('generate_phase_report');
+    expect(result.action).toBe('spawn_phase_reviewer');
 
-    // Drive phase report + review
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    const reportDoc = DOC_PATHS.phaseReport(1);
-    seedDoc(reportDoc);
-    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: reportDoc }, io);
-
+    // Drive phase review (post-Iter 8: phase_report absorbed into phase_review)
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     const reviewDoc = DOC_PATHS.phaseReview(1);
     seedDoc(reviewDoc);
@@ -887,7 +876,7 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
       expect(review.status).toBe('not_started');
     }
 
-    // Complete task 2 → task_loop completes → phase_report
+    // Complete task 2 → task_loop completes → phase_review
     processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 2 }, io);
     processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 2 }, io);
     processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 2 }, io);
@@ -914,9 +903,9 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
       result = processEvent('task_gate_approved', PROJECT_DIR, { phase: 1, task: 2 }, io);
     }
 
-    // task_loop completes → generate_phase_report
+    // task_loop completes → spawn_phase_reviewer (post-Iter 8)
     expect(result.success).toBe(true);
-    expect(result.action).toBe('generate_phase_report');
+    expect(result.action).toBe('spawn_phase_reviewer');
 
     // Verify both task iterations completed
     {

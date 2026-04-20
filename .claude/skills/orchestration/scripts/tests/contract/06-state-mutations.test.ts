@@ -13,7 +13,6 @@ import {
   driveToExecutionWithConfig,
   driveTaskWith,
   codeReviewDoc,
-  phaseReportDoc,
   phaseReviewDoc,
 } from '../fixtures/parity-states.js';
 import type {
@@ -313,9 +312,6 @@ describe('[CONTRACT] State Mutations — Phase review completed mutations', () =
     const io = driveToExecutionWithConfig(config, 1, 2);
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     return io;
@@ -415,9 +411,6 @@ describe('[CONTRACT] State Mutations — Gate approved mutations', () => {
     // driveTaskWith approves task gate if it fires (task mode fires task gate)
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     // In task mode, phase_review_completed fires gate_phase

@@ -10,7 +10,6 @@ import {
   driveToExecutionWithConfig,
   driveTaskWith,
   codeReviewDoc,
-  phaseReportDoc,
   phaseReviewDoc,
 } from '../fixtures/parity-states.js';
 import type {
@@ -78,11 +77,8 @@ function driveTaskToCodeReview(io: MockIO, phase: number, task: number, verdict:
   }, io);
 }
 
-/** Drives phase report and review through to phase_review_completed with the given verdict. */
+/** Drives phase review through to phase_review_completed with the given verdict. */
 function driveToPhaseReviewCompleted(io: MockIO, verdict: string) {
-  processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-  seedDoc(phaseReportDoc(1));
-  processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
   processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
   seedDoc(phaseReviewDoc(1));
   return processEvent('phase_review_completed', PROJECT_DIR, {
@@ -110,13 +106,13 @@ function getPhaseGateState(io: MockIO, phase: number): GateNodeState {
 describe('[CONTRACT] Gate Behavior — Autonomous mode, task gate', () => {
 
   it('auto-approves when code_review verdict = "approved"', () => {
-    // Single-task phase so task_gate auto-approval advances directly to generate_phase_report.
+    // Single-task phase so task_gate auto-approval advances directly to spawn_phase_reviewer (post-Iter 8).
     const io = driveToExecutionWithConfig(autonomousConfig(), 1, 1);
     const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
     expect(result.success).toBe(true);
     expect(result.action).not.toBe('gate_task');
-    expect(result.action).toBe('generate_phase_report');
+    expect(result.action).toBe('spawn_phase_reviewer');
 
     const gate = getTaskGateState(io, 1, 1);
     expect(gate.gate_active).toBe(false);

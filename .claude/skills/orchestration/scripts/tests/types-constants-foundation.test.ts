@@ -140,9 +140,7 @@ describe('EVENTS — renamed v5 keys to v4 canonical names', () => {
     expect(EVENTS.TASK_COMPLETED).toBe('task_completed');
   });
 
-  it('PHASE_REPORT_CREATED is "phase_report_created"', () => {
-    expect(EVENTS.PHASE_REPORT_CREATED).toBe('phase_report_created');
-  });
+  // Post-Iter 8: PHASE_REPORT_CREATED removed (phase_review absorbed phase_report).
 
   it('FINAL_APPROVED is "final_approved"', () => {
     expect(EVENTS.FINAL_APPROVED).toBe('final_approved');
