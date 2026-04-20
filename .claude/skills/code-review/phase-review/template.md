@@ -69,7 +69,7 @@ created: "{ISO-DATE}"
 
 | Issue | Severity | Task | Resolution |
 |-------|----------|------|------------|
-| {Issue} | minor | T2 | Resolved via retry |
+| {Issue} | low | T2 | Resolved via retry |
 
 ## Test & Build Summary
 

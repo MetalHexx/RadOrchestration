@@ -245,19 +245,20 @@ test('(A) legacy state renders with no thrown exceptions even when phase_plannin
 
 // ─── Iter-8 tests — phase_report legacy rendering + new-shape rendering ──────
 
-test('(Iter-8 legacy) iteration with a completed phase_report body node still renders: node + doc_path preserved', () => {
+test('(Iter-8 legacy) iteration fixture preserves completed phase_report body node and top-level grouping is unaffected', () => {
   // Post-Iter-8 state.json from a pre-Iter-8 project run still carries
-  // phase_report as a body node. The UI must continue to render it with its
-  // Doc link — NODE_SECTION_MAP does not list phase_report (body nodes aren't
-  // top-level), so the polymorphic body renderer picks it up.
+  // phase_report as a body node. This is a pure-logic test (no DOM): it
+  // verifies the fixture shape the UI renderer will see, and that top-level
+  // section grouping (NODE_SECTION_MAP consumers) is unaffected because
+  // phase_report sits inside phase_loop.body — not at the top level. The
+  // polymorphic body renderer that actually paints the node is exercised by
+  // higher-level component tests elsewhere.
   const iteration = makeLegacyPhaseIteration(0);
   const phaseReport = iteration.nodes['phase_report'] as StepNodeState;
   assert.strictEqual(phaseReport.kind, 'step');
   assert.strictEqual(phaseReport.status, 'completed');
   assert.strictEqual(phaseReport.doc_path, 'reports/MYPROJ-PHASE-REPORT-P01-SETUP.md');
 
-  // Top-level grouping is unaffected — phase_report lives inside phase_loop.body,
-  // not at the top level.
   const iterations = [iteration];
   const nodes = makeTopLevelNodes(iterations);
   const groups = groupNodesBySection(nodes);
