@@ -233,13 +233,15 @@ Surfaces the explosion-script's parse-retry cap (hardcoded constant in Iter 5) a
 
 **Exit**: setting `explosion_max_retries: N` in `orchestration.yml` is honored by the recovery loop; `/configure-system` and installer correctly read/write the field; validator rejects out-of-bounds values.
 
-### Iter 16 — Repository deep clean
+### Iter 16 — Repository deep clean + v4 legacy sunset
 
 **Companion**: [iter-16-repository-deep-clean.md](./cheaper-execution/iter-16-repository-deep-clean.md)
 
-Tail-end audit of the entire repository (excluding `/docs/`) for residue from removed/changed concepts across Iters 0–15: stale doc framings, dead code paths, test fixtures encoding shapes that no longer occur, orphaned imports/types, comments referencing removed concepts, dangling cross-references, stale Mermaid diagrams. The outer planner investigates the codebase fresh and produces a self-contained findings + corrections plan; the inner session applies findings AND looks for additional tidying as it edits each surface. Cleaning internals first means Iter 17 (public docs) documents a stable end state.
+Tail-end audit of the entire repository (excluding `/docs/` public-facing) for residue from removed/changed concepts across Iters 0–15: stale doc framings, dead code paths, test fixtures encoding shapes that no longer occur, orphaned imports/types, comments referencing removed concepts, dangling cross-references, stale Mermaid diagrams. The outer planner investigates the codebase fresh and produces a self-contained findings + corrections plan; the inner session applies findings AND looks for additional tidying as it edits each surface. Cleaning internals first means Iter 17 (public docs) documents a stable end state.
 
-**Exit**: codebase carries no string OR semantic residue from removed/changed concepts; all cross-references resolve; full test suite green; UI manual smoke clean if `ui/` touched.
+Scope additionally absorbs the **v4 legacy sunset** (decision 2026-04-20, greenfield posture, no live v4 projects to preserve): delete `migrate-to-v5.ts` + `fix-ghost-v5.ts` + their tests, prune `schemas/legacy/`, and rename the `$schema` identifier in state.json from `orchestration-state-v4` to `orchestration-state-v5` across type literals, fixtures, and docs.
+
+**Exit**: codebase carries no string OR semantic residue from removed/changed concepts; no v4 migration surface remains; `$schema` identifier aligned with filename; all cross-references resolve; full test suite green; UI manual smoke clean if `ui/` touched.
 
 ### Iter 17 — Public-facing docs refresh
 
