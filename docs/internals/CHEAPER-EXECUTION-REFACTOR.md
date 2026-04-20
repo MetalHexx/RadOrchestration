@@ -222,9 +222,17 @@ Surfaces the explosion-script's parse-retry cap (hardcoded constant in Iter 5) a
 
 **Exit**: setting `explosion_max_retries: N` in `orchestration.yml` is honored by the recovery loop; `/configure-system` and installer correctly read/write the field; validator rejects out-of-bounds values.
 
-### Iter 15 — Public-facing docs refresh
+### Iter 15 — Repository deep clean
 
-**Companion**: [iter-15-public-docs.md](./cheaper-execution/iter-15-public-docs.md)
+**Companion**: [iter-15-repository-deep-clean.md](./cheaper-execution/iter-15-repository-deep-clean.md)
+
+Tail-end audit of the entire repository (excluding `/docs/`) for residue from removed/changed concepts across Iters 0-14: stale doc framings, dead code paths, test fixtures encoding shapes that no longer occur, orphaned imports/types, comments referencing removed concepts, dangling cross-references, stale Mermaid diagrams. The outer planner investigates the codebase fresh and produces a self-contained findings + corrections plan; the inner session applies findings AND looks for additional tidying as it edits each surface. Cleaning internals first means Iter 16 (public docs) documents a stable end state.
+
+**Exit**: codebase carries no string OR semantic residue from removed/changed concepts; all cross-references resolve; full test suite green; UI manual smoke clean if `ui/` touched.
+
+### Iter 16 — Public-facing docs refresh
+
+**Companion**: [iter-16-public-docs.md](./cheaper-execution/iter-16-public-docs.md)
 
 Catches root-level `/docs/*.md` and `README.md` up to post-refactor reality in a single coherent pass — agent roster, pipeline flow, template choices, skill list, document types. All prior iterations deliberately deferred `/docs/` updates to this tail iteration. No code changes; grep-hygiene checks confirm removed concepts don't linger.
 

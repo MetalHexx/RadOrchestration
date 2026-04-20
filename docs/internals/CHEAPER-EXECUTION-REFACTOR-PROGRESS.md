@@ -63,8 +63,8 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 2 | Rename Execution Plan → Master Plan | Complete | 2026-04-18 | 2026-04-18 |
 | 3 | Remove upstream planning (PRD/Research/Design/Architecture) | Complete | 2026-04-18 | 2026-04-18 |
 | 4 | Requirements pipeline node | Complete | 2026-04-18 | 2026-04-18 |
-| 5 | Explosion script + state.json pre-seeding | Awaiting merge | 2026-04-19 | 2026-04-19 |
-| 6 | Prompt regression harness | Awaiting merge | 2026-04-19 | 2026-04-19 |
+| 5 | Explosion script + state.json pre-seeding | Complete | 2026-04-19 | 2026-04-19 |
+| 6 | Prompt regression harness | Complete | 2026-04-19 | 2026-04-19 |
 | 7 | Remove per-phase/per-task planning | Not started | — | — |
 | 8 | phase_review absorbs phase_report | Not started | — | — |
 | 9 | Complete `default.yml` | Not started | — | — |
@@ -73,9 +73,10 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 12 | Corrective cycle wiring | Not started | — | — |
 | 13 | Rad-plan-audit overhaul | Not started | — | — |
 | 14 | Explosion-retry configurability | Not started | — | — |
-| 15 | Public-facing docs refresh | Not started | — | — |
+| 15 | Repository deep clean | Not started | — | — |
+| 16 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 7 / 16 iterations complete (Iters 5 + 6 awaiting PR merge). Design realigned 2026-04-18 for gutting-first approach. Iter 14 (explosion-retry configurability) inserted 2026-04-19 during Iter 5 planning when the retry cap was deferred from baked-in to configurable.
+**Overall**: 7 / 17 iterations complete. Design realigned 2026-04-18 for gutting-first approach. Iter 14 (explosion-retry configurability) inserted 2026-04-19 during Iter 5 planning when the retry cap was deferred from baked-in to configurable. Iter 15 (Repository deep clean) inserted 2026-04-19 during Iter 7 planning to sweep cumulative residue from 14 iterations of "delete + ripple" before the public-facing docs refresh (now Iter 16).
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -97,8 +98,8 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 2 | `feat/iter-2-rename-to-master-plan` | `C:\dev\orchestration\v3-worktrees\feat-iter-2-rename-to-master-plan` | Awaiting merge | — | [#53](https://github.com/MetalHexx/RadOrchestation/pull/53) |
 | 3 | `feat/iter-3-remove-upstream-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning` | Awaiting merge | — | [#54](https://github.com/MetalHexx/RadOrchestation/pull/54) |
 | 4 | `feat/iter-4-requirements-pipeline-node` | `C:\dev\orchestration\v3-worktrees\feat-iter-4-requirements-pipeline-node` | Awaiting merge | — | [#55](https://github.com/MetalHexx/RadOrchestation/pull/55) |
-| 5 | `feat/iter-5-explosion-script` | `C:\dev\orchestration\v3-worktrees\feat-iter-5-explosion-script` | Awaiting merge | — | [#56](https://github.com/MetalHexx/RadOrchestation/pull/56) |
-| 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Awaiting merge | — | [#57](https://github.com/MetalHexx/RadOrchestation/pull/57) |
+| 5 | `feat/iter-5-explosion-script` | `C:\dev\orchestration\v3-worktrees\feat-iter-5-explosion-script` | Merged | `4500203` | [#56](https://github.com/MetalHexx/RadOrchestation/pull/56) |
+| 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Merged | `82333f1` | [#57](https://github.com/MetalHexx/RadOrchestation/pull/57) |
 | 7 | — | — | Not created | — | — |
 | 8 | — | — | Not created | — | — |
 | 9 | — | — | Not created | — | — |
@@ -108,6 +109,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 13 | — | — | Not created | — | — |
 | 14 | — | — | Not created | — | — |
 | 15 | — | — | Not created | — | — |
+| 16 | — | — | Not created | — | — |
 
 **State values**: `Not created` → `Worktree active` → `Awaiting merge` → `Merged` → `Worktree removed`
 
@@ -270,6 +272,13 @@ Format:
 - Tests: orchestration 47 files / 1220 pass / 1 todo (baseline unchanged — harness sits outside `.claude/` / `ui/` / `installer/` / `scripts/`, no test-tree edits); UI 157 tests / 154 pass / 3 pre-existing failures (baseline unchanged); installer 399 pass / 0 fail. Zero test count delta.
 - UI smoke: N/A — no UI surface touched.
 - Commits: `f534247` (scaffold), `b890c18` (review-corrective — dead code, tightened self-test thresholds, project-name stability, narrowed `.gitkeep` exception), `a9cb44c` (inaugural baseline artifacts), `211c34a` (progress tracker). PR: [#57](https://github.com/MetalHexx/RadOrchestation/pull/57).
+
+### 2026-04-19 — Iter 15 inserted (Repository deep clean), public docs refresh shifts to Iter 16
+
+- During Iter 7 planning, the cumulative-residue risk after 14 "delete + ripple as you go" iterations surfaced as worth a dedicated sweep before the public-facing docs refresh consumes the codebase as its source of truth.
+- New companion: `docs/internals/cheaper-execution/iter-15-repository-deep-clean.md` — light-on-detail intent doc; the outer planner audits the codebase fresh at iteration time and produces the self-contained execution plan. Inner-session scope: apply enumerated findings AND look for additional tidying opportunities while editing each surface.
+- Existing public-docs companion renamed: `iter-14-public-docs.md` → `iter-16-public-docs.md` (filename was already inconsistent with the "Iter 15" label in the design doc — the rename to iter-15 had been skipped when Iter 14 explosion-retry was inserted; this fixes both issues at once).
+- Design doc + this tracker updated to show 17 total iterations.
 
 ### 2026-04-18 — Iteration 3 — Remove upstream planning (PRD / Research / Design / Architecture)
 
