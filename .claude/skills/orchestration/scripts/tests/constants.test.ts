@@ -151,7 +151,7 @@ describe('NEXT_ACTIONS', () => {
     }).toThrow(TypeError);
   });
 
-  it('has exactly 19 keys', () => {
+  it('has exactly 17 keys', () => {
     // Post-Iter 7: CREATE_PHASE_PLAN + CREATE_TASK_HANDOFF removed (per-loop authoring deleted).
     expect(Object.keys(NEXT_ACTIONS)).toHaveLength(17);
   });
