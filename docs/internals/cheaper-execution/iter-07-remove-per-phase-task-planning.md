@@ -69,6 +69,13 @@ Phase-plan and task-handoff document contracts — and their validators — stay
   - `ui/lib/fs-reader.ts` `discoverProjects` (lines ~115-196) currently reads + parses every project's `state.json` **sequentially**. Pre-Iter-5 this was ~2 KB per project so the loop was instant; post-Iter-5 state.json is ~50–200 KB (pre-seeded iterations + nested nodes), and at >100 projects the loop blocks the renderer for 10–15 s.
   - **Fix**: parallelize via `Promise.all(entries.map(...))` with **per-project try/catch** so one malformed state.json doesn't poison the whole list. ~10 lines.
   - **Why fold here**: Iter 7 already needs UI smoke for legacy-state regression coverage; verifying against the user's real 107-project workspace doubles as the test for this fix. Sidebar virtualization + project-count cap are deferred to Open Items — not scoped here.
+  - **Smoke ownership**: inner agent runs the dev server **locally** from inside the worktree's `ui/` and verifies in a browser. The user's workspace (`C:\dev\orchestration-projects` — ~107 projects) is the smoke target; the inner agent does NOT hand the smoke off to the user.
+  - **`.env.local` setup**: create `ui/.env.local` (gitignored — never commit) with the format produced by `installer/lib/env-generator.js`:
+    ```
+    WORKSPACE_ROOT=C:\dev\orchestration-projects
+    ORCH_ROOT=C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning\.claude
+    ```
+    `WORKSPACE_ROOT` points at the user's real workspace so the 107 projects are visible. `ORCH_ROOT` points at the worktree's `.claude` so the iteration's engine + skill changes are exercised. Pass time-to-render of the project list as the explicit pass criterion: <2s on the 107-project workspace (vs. the pre-fix 10–15s hang).
 
 ## Scope Deliberately Untouched
 
@@ -113,7 +120,12 @@ Phase-plan and task-handoff document contracts — and their validators — stay
   - New unit test in `ui/` covering: malformed state.json doesn't poison the Promise.all; result order stable; large fixture list (e.g., 50 projects) returns
 - Ripple surfaces:
   - ~~`.claude/skills/orchestration/validate/lib/checks/agents.js`~~ — REMOVED (validation report 2026-04-19: no hardcoded roster; agents are auto-discovered via `listFiles(agentsDir, '.agent.md')`. Deleting the agent file is sufficient.)
-  - `.claude/skills/rad-create-plans/SKILL.md` (agent-routing table now shows only `@planner`; references to `shared/` concept removed)
+  - `.claude/skills/rad-create-plans/SKILL.md` — **5 specific edits required** (deleting `shared/` cascades through the doc's framing, not just the routing table):
+    1. **Frontmatter `description`** (line 3): currently reads "most routes load shared conventions first, planner (Requirements / Master Plan) routes are self-contained" — reframe to describe what the skill does without the shared-vs-self-contained distinction (since `shared/` no longer exists, every route is self-contained).
+    2. **Intro paragraph** (line 9): same framing as the description — rewrite without the "most routes load shared guidelines... planner routes are self-contained and skip `references/shared/`" qualifier.
+    3. **"When to Use" list** (lines 13-16): the Requirements bullet ends with "(supported — self-contained workflow, does not load `shared/`)". Drop the parenthetical qualifier (every workflow is self-contained now). Also delete the `Phase Plan` and `Task Handoff` bullets — those workflows are deleted in this iteration.
+    4. **"Load Sequence" section** (lines 18-23): steps 1 and 2 reference the deleted `shared/guidelines.md` + `shared/self-review.md` — delete both. Renumber the routing step to be the only step (or restructure as a brief routing-only section without the "Load Sequence" framing, since there's no longer a sequence — just routing).
+    5. **Routing table** (lines 24-27): delete the `tactical-planner` row entirely. On the `planner` row, drop the trailing qualifier "Both workflows are self-contained and do NOT inherit from `references/shared/`" (no longer meaningful).
   - `.claude/skills/rad-execute/SKILL.md` (stop referencing "Tactical Planner")
   - `.claude/skills/orchestration/references/{action-event-reference, document-conventions, pipeline-guide, context}.md` — `context.md` added 2026-04-19 (agent-table row); `document-conventions.md` carries both vocabulary purge AND the migrated corrective-filename pattern section
   - `.claude/skills/code-review/{phase-review,task-review}/workflow.md` + `.claude/skills/generate-phase-report/SKILL.md` — corrective-filename cross-refs updated to new location in `document-conventions.md`
@@ -159,6 +171,8 @@ This companion was amended on 2026-04-19 during Iter 7 outer-session brainstormi
 - Cross-reference migration added: corrective-filename pattern moves from `phase-plan/workflow.md:135-150` → `orchestration/references/document-conventions.md`. 3 cross-refs in code-review subskills + generate-phase-report updated.
 - 4 additional ripples surfaced by deep validation scan: `context.md:18` (agent-table row), `document-conventions.md:34` (author field), `_runner.md:70` (sentinel drop), `document-metadata.{tsx,test.ts}` (comment tidy).
 - UI perf fix (`fs-reader.ts` `discoverProjects` async + per-project try/catch) folded in — surfaced during planning-time UI smoke against the user's 107-project workspace, where state.json size growth from Iter 5's pre-seeding now blocks the renderer for 10–15s.
+- `rad-create-plans/SKILL.md` ripple expanded from a one-liner to 5 enumerated edits — deleting `shared/` cascades through the doc's frontmatter description, intro paragraph, "When to Use" list, "Load Sequence" section, and routing table. Without enumeration, the inner agent risks a half-rewrite that leaves stale framing referencing the deleted folder.
+- UI perf-fix smoke ownership clarified: inner agent runs the dev server locally from the worktree (`ui/.env.local` with `WORKSPACE_ROOT=C:\dev\orchestration-projects` + `ORCH_ROOT` pointing at the worktree's `.claude`) and verifies in a browser. Explicit pass criterion: <2s render time on 107 projects.
 - Open Questions resolved.
 
 A companion note added to `iter-12-corrective-cycles.md` enumerates the 4 skipped tests so the Iter 12 planner has zero rediscovery cost.
