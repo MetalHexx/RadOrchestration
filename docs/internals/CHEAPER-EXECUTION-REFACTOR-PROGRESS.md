@@ -99,7 +99,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 4 | `feat/iter-4-requirements-pipeline-node` | `C:\dev\orchestration\v3-worktrees\feat-iter-4-requirements-pipeline-node` | Awaiting merge | — | [#55](https://github.com/MetalHexx/RadOrchestation/pull/55) |
 | 5 | `feat/iter-5-explosion-script` | `C:\dev\orchestration\v3-worktrees\feat-iter-5-explosion-script` | Merged | `4500203` | [#56](https://github.com/MetalHexx/RadOrchestation/pull/56) |
 | 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Merged | `82333f1` | [#57](https://github.com/MetalHexx/RadOrchestation/pull/57) |
-| 7 | `feat/iter-7-remove-per-phase-task-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning` | Awaiting merge | — | — |
+| 7 | `feat/iter-7-remove-per-phase-task-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning` | Merged | `ff05ce2` | [#58](https://github.com/MetalHexx/RadOrchestation/pull/58) |
 | 8 | — | — | Not created | — | — |
 | 9 | — | — | Not created | — | — |
 | 10 | — | — | Not created | — | — |
@@ -283,7 +283,7 @@ Format:
 - Tests: orchestration 46 files / 1120 pass / 6 skip / 1 todo (baseline 1220/0/1 — net –100 pass / +6 skip / –94 total; over-trim accepted by all 4 review rounds as legitimate removal of dead action/event references, no retained-behavior coverage lost). UI 156 pass / 3 pre-existing fail / +2 tests (baseline 154/3/157). Installer 399 pass (unchanged).
 - UI smoke (run from worktree against user's 107-project workspace): project list renders in **~37ms** (baseline 10–15s hang — >250× improvement); legacy `AGENT-CLEANUP` project DAG renders with 5 `phase_planning` + `task_handoff` body nodes intact; only pre-existing skeleton hydration warning in console (not Iter-7 related).
 - Review cycles: 3 initial reviewers (conformance / code-quality / Copilot-style) + 3 follow-up rounds (Copilot-style nits + conformance recheck + final sanity) with corrective coders between each round. Net: 4 review rounds, ~11 small fixes absorbed inline (dead imports, stale action counts, comment/path consistency, ordering robustness).
-- Commits: pending (Step 7).
+- Merge commit: `ff05ce2`. PR: [#58](https://github.com/MetalHexx/RadOrchestation/pull/58).
 
 ### 2026-04-19 — Iter 15 inserted (Repository deep clean), public docs refresh shifts to Iter 16
 
