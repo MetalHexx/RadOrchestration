@@ -1,0 +1,240 @@
+/**
+ * Regression tests for DAG timeline rendering against post-Iter-7 state shapes.
+ *
+ * Two fixture families are covered:
+ *   (A) Legacy state.json — iterations carry `phase_planning` + `task_handoff`
+ *       body nodes alongside the new post-Iter-7 nodes. The timeline must still
+ *       derive iteration names, group sections, and surface statuses without
+ *       raising or dropping entries.
+ *   (B) Forward-compat state.json — iterations omit the legacy body nodes
+ *       entirely (default.yml shape). Fallback labels kick in for iteration
+ *       names; section grouping remains unchanged.
+ *
+ * These tests exercise pure logic — no DOM/JSX rendering, same pattern as
+ * sibling `.test.ts` files in this directory.
+ *
+ * Run with: npx tsx ui/components/dag-timeline/dag-timeline-legacy-render.test.ts
+ */
+import assert from 'node:assert';
+import {
+  groupNodesBySection,
+  parsePhaseNameFromDocPath,
+  parseTaskNameFromDocPath,
+  deriveCurrentPhase,
+} from './dag-timeline-helpers';
+import type {
+  NodesRecord,
+  ForEachPhaseNodeState,
+  IterationEntry,
+  StepNodeState,
+} from '@/types/state';
+
+let passed = 0;
+let failed = 0;
+
+function test(name: string, fn: () => void) {
+  try {
+    fn();
+    console.log(`  \u2713 ${name}`);
+    passed++;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`  \u2717 ${name}\n    ${msg}`);
+    failed++;
+  }
+}
+
+// ─── Shared helpers ──────────────────────────────────────────────────────────
+
+function stepState(status: StepNodeState['status'], doc_path: string | null = null): StepNodeState {
+  return { kind: 'step', status, doc_path, retries: 0 };
+}
+
+function makeLegacyPhaseIteration(index: number): IterationEntry {
+  // Legacy shape: phase_planning + task_handoff body nodes populated alongside
+  // execution nodes. Mirrors state.json written by pre-Iter-7 project runs.
+  return {
+    index,
+    status: 'completed',
+    corrective_tasks: [],
+    commit_hash: null,
+    nodes: {
+      phase_planning: stepState('completed', 'phases/MYPROJ-PHASE-01-SETUP.md'),
+      task_loop: {
+        kind: 'for_each_task',
+        status: 'completed',
+        iterations: [
+          {
+            index: 0,
+            status: 'completed',
+            corrective_tasks: [],
+            commit_hash: 'abc1234',
+            nodes: {
+              task_handoff: stepState('completed', 'tasks/MYPROJ-TASK-P01-T01-AUTH.md'),
+              task_executor: stepState('completed'),
+              commit_gate: { kind: 'conditional', status: 'completed', branch_taken: 'true' },
+              commit: stepState('completed'),
+              code_review: stepState('completed', 'reports/MYPROJ-CODE-REVIEW-P01-T01-AUTH.md'),
+              task_gate: { kind: 'gate', status: 'completed', gate_active: false },
+            },
+          },
+        ],
+      },
+      phase_report: stepState('completed', 'reports/MYPROJ-PHASE-REPORT-P01-SETUP.md'),
+      phase_review: stepState('completed', 'reports/MYPROJ-PHASE-REVIEW-P01-SETUP.md'),
+      phase_gate: { kind: 'gate', status: 'completed', gate_active: false },
+    },
+  };
+}
+
+function makeForwardCompatPhaseIteration(index: number): IterationEntry {
+  // Forward-compat shape: default.yml body has no phase_planning / task_handoff.
+  // Execution proceeds directly; iteration-name fallbacks kick in.
+  return {
+    index,
+    status: 'in_progress',
+    corrective_tasks: [],
+    commit_hash: null,
+    nodes: {
+      task_loop: {
+        kind: 'for_each_task',
+        status: 'in_progress',
+        iterations: [
+          {
+            index: 0,
+            status: 'in_progress',
+            corrective_tasks: [],
+            commit_hash: null,
+            nodes: {
+              task_executor: stepState('in_progress'),
+              commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
+              commit: stepState('not_started'),
+              code_review: stepState('not_started'),
+              task_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+            },
+          },
+        ],
+      },
+      phase_report: stepState('not_started'),
+      phase_review: stepState('not_started'),
+      phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+    },
+  };
+}
+
+function makeTopLevelNodes(phaseLoopIterations: IterationEntry[]): NodesRecord {
+  const phaseLoop: ForEachPhaseNodeState = {
+    kind: 'for_each_phase',
+    status: 'in_progress',
+    iterations: phaseLoopIterations,
+  };
+  return {
+    requirements: stepState('completed', 'MYPROJ-REQUIREMENTS.md'),
+    master_plan: stepState('completed', 'MYPROJ-MASTER-PLAN.md'),
+    explode_master_plan: stepState('completed'),
+    plan_approval_gate: { kind: 'gate', status: 'completed', gate_active: false },
+    gate_mode_selection: { kind: 'gate', status: 'completed', gate_active: false },
+    phase_loop: phaseLoop,
+    final_review: stepState('not_started'),
+    pr_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
+    final_approval_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+  };
+}
+
+// ─── Tests ───────────────────────────────────────────────────────────────────
+
+console.log('\nDAG timeline — legacy-state rendering regression\n');
+
+test('(A) legacy iteration with phase_planning + task_handoff: iteration name parsed from phase_planning.doc_path', () => {
+  const iteration = makeLegacyPhaseIteration(0);
+  const phaseNode = iteration.nodes['phase_planning'] as StepNodeState;
+  const name = parsePhaseNameFromDocPath(phaseNode.doc_path, iteration.index);
+  // Formatter preserves all-uppercase tokens verbatim (>1 char).
+  assert.strictEqual(name, 'Phase 1 \u2014 SETUP');
+});
+
+test('(A) legacy task iteration: iteration name parsed from task_handoff.doc_path', () => {
+  const iteration = makeLegacyPhaseIteration(0);
+  const taskLoop = iteration.nodes['task_loop'];
+  assert.ok(taskLoop.kind === 'for_each_task');
+  const taskHandoff = taskLoop.iterations[0].nodes['task_handoff'] as StepNodeState;
+  const name = parseTaskNameFromDocPath(taskHandoff.doc_path, 0);
+  assert.strictEqual(name, 'Task 1 \u2014 AUTH');
+});
+
+test('(A) legacy top-level nodes: groupNodesBySection emits Planning/Gates/Execution/Completion with all entries intact', () => {
+  const iterations = [makeLegacyPhaseIteration(0)];
+  const nodes = makeTopLevelNodes(iterations);
+  const groups = groupNodesBySection(nodes);
+
+  const byLabel = new Map(groups.map((g) => [g.label, g]));
+  assert.ok(byLabel.has('Planning'));
+  assert.ok(byLabel.has('Gates'));
+  assert.ok(byLabel.has('Execution'));
+  assert.ok(byLabel.has('Completion'));
+
+  const planningIds = byLabel.get('Planning')!.entries.map(([id]) => id);
+  assert.ok(planningIds.includes('requirements'));
+  assert.ok(planningIds.includes('master_plan'));
+  assert.ok(planningIds.includes('explode_master_plan'));
+
+  const executionIds = byLabel.get('Execution')!.entries.map(([id]) => id);
+  assert.deepStrictEqual(executionIds, ['phase_loop']);
+});
+
+test('(A) legacy deriveCurrentPhase: reads phase_planning.doc_path for the active iteration', () => {
+  // deriveCurrentPhase picks the first `in_progress` iteration; flip status.
+  const iter = makeLegacyPhaseIteration(0);
+  iter.status = 'in_progress';
+  const phaseLoop: ForEachPhaseNodeState = {
+    kind: 'for_each_phase',
+    status: 'in_progress',
+    iterations: [iter],
+  };
+  const label = deriveCurrentPhase(phaseLoop);
+  assert.strictEqual(label, 'Phase 1 \u2014 SETUP');
+});
+
+test('(B) forward-compat iteration without phase_planning: iteration-name fallback returns "Phase N"', () => {
+  const iteration = makeForwardCompatPhaseIteration(0);
+  assert.strictEqual(iteration.nodes['phase_planning'], undefined);
+  // Code under test reads doc_path via (phaseNode && 'doc_path' in phaseNode)
+  // — when the node is absent, fallback label "Phase N" is produced.
+  const phaseNode = iteration.nodes['phase_planning'];
+  const docPath = phaseNode && 'doc_path' in phaseNode ? phaseNode.doc_path : null;
+  const name = parsePhaseNameFromDocPath(docPath, iteration.index);
+  assert.strictEqual(name, 'Phase 1');
+});
+
+test('(B) forward-compat task iteration without task_handoff: fallback returns "Task N"', () => {
+  const iteration = makeForwardCompatPhaseIteration(0);
+  const taskLoop = iteration.nodes['task_loop'];
+  assert.ok(taskLoop.kind === 'for_each_task');
+  const taskIter = taskLoop.iterations[0];
+  assert.strictEqual(taskIter.nodes['task_handoff'], undefined);
+  const taskNode = taskIter.nodes['task_handoff'];
+  const docPath = taskNode && 'doc_path' in taskNode ? taskNode.doc_path : null;
+  const name = parseTaskNameFromDocPath(docPath, taskIter.index);
+  assert.strictEqual(name, 'Task 1');
+});
+
+test('(B) forward-compat top-level nodes: groupNodesBySection behaves identically (no regression)', () => {
+  const iterations = [makeForwardCompatPhaseIteration(0)];
+  const nodes = makeTopLevelNodes(iterations);
+  const groups = groupNodesBySection(nodes);
+  const labels = groups.map((g) => g.label);
+  assert.deepStrictEqual(labels, ['Planning', 'Gates', 'Execution', 'Completion']);
+});
+
+test('(A) legacy state renders with no thrown exceptions even when phase_planning.doc_path is null', () => {
+  // Edge case — legacy project with phase_planning seeded but doc_path cleared
+  // (e.g., corrective cycle reset). Must not throw.
+  const iteration = makeLegacyPhaseIteration(0);
+  (iteration.nodes['phase_planning'] as StepNodeState).doc_path = null;
+  const phaseNode = iteration.nodes['phase_planning'] as StepNodeState;
+  const name = parsePhaseNameFromDocPath(phaseNode.doc_path, iteration.index);
+  assert.strictEqual(name, 'Phase 1');
+});
+
+console.log(`\n${passed} passed, ${failed} failed`);
+if (failed > 0) process.exitCode = 1;

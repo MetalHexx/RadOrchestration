@@ -148,11 +148,14 @@ describe('Planning-tier integration — full sequence', () => {
     }
 
     // ── Step 4: plan_approved ────────────────────────────────────────────
-    // With total_phases: 1, the walker expands the phase_loop and returns
-    // the first phase action (create_phase_plan)
+    // Post-Iter 7: with phase_planning + task_handoff body nodes removed from
+    // full.yml, the walker can no longer expand task_loop without an explosion
+    // script seeding phase_planning.doc_path. The plan_approval_gate still
+    // closes correctly; the next action is null (walker stalls — production
+    // pipeline would have invoked the explosion script before reaching here).
     result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');
+    expect(result.action).toBeNull();
     {
       const g = io.currentState!.graph.nodes['plan_approval_gate'] as GateNodeState;
       expect(g.status).toBe('completed');

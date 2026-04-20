@@ -68,10 +68,10 @@ test("stringifyFrontmatterItem empty object returns empty string", () => {
   assert.strictEqual(stringifyFrontmatterItem({}), "");
 });
 
-// ─── formatValue — Array / Object branches (regression: Iter 5 phase plans) ──
+// ─── formatValue — Array / Object branches (regression: array-of-objects frontmatter) ──
 
 test("formatValue with array of objects returns { items: [...] } (regression: tasks frontmatter)", () => {
-  // Regression: phase-plan frontmatter `tasks: [{id, title}, ...]` was rendered
+  // Regression: Phase Plan frontmatter `tasks: [{id, title}, ...]` was rendered
   // as `[object Object],[object Object]` because formatValue used String() directly.
   const result = formatValue("tasks", [
     { id: "T01", title: "Scaffold" },

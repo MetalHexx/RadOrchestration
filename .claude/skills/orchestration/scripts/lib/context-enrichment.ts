@@ -71,14 +71,12 @@ const PLANNING_SPAWN_STEPS: Record<string, string> = {
 };
 
 const PHASE_LEVEL_ACTIONS = new Set([
-  'create_phase_plan',
   'generate_phase_report',
   'spawn_phase_reviewer',
   'gate_phase',
 ]);
 
 const TASK_LEVEL_ACTIONS = new Set([
-  'create_task_handoff',
   'execute_task',
   'spawn_code_reviewer',
   'gate_task',
@@ -108,23 +106,6 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
     const phaseNumber = resolveActivePhaseIndex(state);
     const phase_id = formatPhaseId(phaseNumber);
     const base: Record<string, unknown> = { ...walkerContext, phase_number: phaseNumber, phase_id };
-
-    if (action === 'create_phase_plan') {
-      const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
-      const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
-      const phaseReview = phaseIter?.nodes['phase_review'] as StepNodeState | undefined;
-
-      if (phaseIter && phaseIter.corrective_tasks.length > 0) {
-        return {
-          ...base,
-          is_correction: true,
-          corrective_index: phaseIter.corrective_tasks.length,
-          previous_review: phaseReview?.doc_path ?? '',
-        };
-      }
-
-      return base;  // Normal path — no is_correction field
-    }
 
     if (action === 'spawn_phase_reviewer') {
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
@@ -175,35 +156,6 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       task_number: taskNumber,
       task_id,
     };
-
-    if (action === 'create_task_handoff') {
-      const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
-      const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
-      const taskLoop = phaseIter?.nodes['task_loop'] as ForEachTaskNodeState | undefined;
-      const taskIter = taskLoop?.iterations[taskNumber - 1];
-      const correctives = taskIter?.corrective_tasks ?? [];
-
-      if (correctives.length === 0) {
-        return { ...base, is_correction: false };
-      }
-
-      // Corrective path — find the last code review
-      const lastCompleted = [...correctives].reverse().find(ct => ct.status === 'completed');
-      let reviewNode: StepNodeState | undefined;
-      if (lastCompleted) {
-        reviewNode = lastCompleted.nodes['code_review'] as StepNodeState | undefined;
-      } else {
-        reviewNode = taskIter?.nodes['code_review'] as StepNodeState | undefined;
-      }
-
-      return {
-        ...base,
-        is_correction: true,
-        corrective_index: correctives.length,
-        previous_review: reviewNode?.doc_path ?? '',
-        reason: correctives[correctives.length - 1]?.reason ?? '',
-      };
-    }
 
     if (action === 'execute_task') {
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;

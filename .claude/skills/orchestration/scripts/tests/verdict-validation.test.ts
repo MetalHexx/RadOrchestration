@@ -10,8 +10,6 @@ import {
   seedDoc,
   driveToExecutionWithConfig,
   driveToReviewTier,
-  phasePlanDoc,
-  taskHandoffDoc,
   codeReviewDoc,
   phaseReportDoc,
   phaseReviewDoc,
@@ -40,15 +38,13 @@ const config = createConfig({
 });
 
 // ── Helper: drive state to code_review_started ────────────────────────────────
+//
+// Post-Iter 7: phase_planning + task_handoff are pre-seeded by
+// driveToExecutionWithConfig (Iter 5 explosion-script behavior). This helper
+// assumes the io is already positioned at execute_task.
 
 function driveToCodeReview(io: ReturnType<typeof createMockIOWithConfig>): void {
-  processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-  seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-  processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
   const ctx = { phase: 1, task: 1 };
-  processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-  seedDoc(taskHandoffDoc(1, 1));
-  processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
   processEvent('execution_started', PROJECT_DIR, ctx, io);
   processEvent('task_completed', PROJECT_DIR, ctx, io);
   processEvent('code_review_started', PROJECT_DIR, ctx, io);

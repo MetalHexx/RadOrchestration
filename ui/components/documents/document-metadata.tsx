@@ -46,8 +46,8 @@ const STATUS_COLORS: Record<string, string> = {
  *
  * The naive previous implementation used `String(value)` unconditionally,
  * which produced "[object Object],[object Object]" for arrays of objects —
- * a pre-existing sloppiness surfaced by the Iter 5 phase-plan frontmatter
- * (tasks: [{ id, title }, ...]).
+ * a pre-existing sloppiness surfaced by Phase Plan frontmatter that carries
+ * a `tasks: [{ id, title }, ...]` array.
  */
 export function stringifyFrontmatterItem(item: unknown): string {
   if (item === null || item === undefined) return "";

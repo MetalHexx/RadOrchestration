@@ -9,8 +9,6 @@ import {
   seedDoc,
   driveToExecutionWithConfig,
   driveTaskWith,
-  phasePlanDoc,
-  taskHandoffDoc,
   codeReviewDoc,
   phaseReportDoc,
   phaseReviewDoc,
@@ -64,19 +62,13 @@ function askConfig() {
 }
 
 // ── Drive helpers ─────────────────────────────────────────────────────────────
-
-/** Drives phase 1 planning with one task. */
-function drivePhasePlanning(io: MockIO): void {
-  processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-  seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-  processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-}
+//
+// Post-Iter 7: phase_planning + task_handoff are pre-seeded by
+// driveToExecutionWithConfig (Iter 5 explosion-script behavior). No per-phase /
+// per-task authoring events need to be driven by tests.
 
 /** Drives a task through to code_review_completed with the given verdict. */
 function driveTaskToCodeReview(io: MockIO, phase: number, task: number, verdict: string) {
-  processEvent('task_handoff_started', PROJECT_DIR, { phase, task }, io);
-  seedDoc(taskHandoffDoc(phase, task));
-  processEvent('task_handoff_created', PROJECT_DIR, { phase, task, doc_path: taskHandoffDoc(phase, task) }, io);
   processEvent('execution_started', PROJECT_DIR, { phase, task }, io);
   processEvent('task_completed', PROJECT_DIR, { phase, task }, io);
   processEvent('code_review_started', PROJECT_DIR, { phase, task }, io);
@@ -118,8 +110,8 @@ function getPhaseGateState(io: MockIO, phase: number): GateNodeState {
 describe('[CONTRACT] Gate Behavior — Autonomous mode, task gate', () => {
 
   it('auto-approves when code_review verdict = "approved"', () => {
-    const io = driveToExecutionWithConfig(autonomousConfig(), 1);
-    drivePhasePlanning(io);
+    // Single-task phase so task_gate auto-approval advances directly to generate_phase_report.
+    const io = driveToExecutionWithConfig(autonomousConfig(), 1, 1);
     const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
     expect(result.success).toBe(true);
@@ -132,8 +124,7 @@ describe('[CONTRACT] Gate Behavior — Autonomous mode, task gate', () => {
   });
 
   it('unrecognized verdict halts pipeline (code_review_completed with "approve")', () => {
-    const io = driveToExecutionWithConfig(autonomousConfig(), 1);
-    drivePhasePlanning(io);
+    const io = driveToExecutionWithConfig(autonomousConfig(), 1, 1);
     const result = driveTaskToCodeReview(io, 1, 1, 'approve');
 
     expect(result.success).toBe(true);
@@ -148,8 +139,7 @@ describe('[CONTRACT] Gate Behavior — Autonomous mode, task gate', () => {
 describe('[CONTRACT] Gate Behavior — Autonomous mode, phase gate', () => {
 
   it('auto-approves when phase_review verdict = "approved"', () => {
-    const io = driveToExecutionWithConfig(autonomousConfig(), 1);
-    drivePhasePlanning(io);
+    const io = driveToExecutionWithConfig(autonomousConfig(), 1, 1);
     // driveTaskWith uses verdict='approved' → task gate auto-approves (autonomous)
     driveTaskWith(io, 1, 1);
     const result = driveToPhaseReviewCompleted(io, 'approved');
@@ -163,8 +153,7 @@ describe('[CONTRACT] Gate Behavior — Autonomous mode, phase gate', () => {
   });
 
   it('unrecognized verdict halts pipeline (phase_review_completed with "approve")', () => {
-    const io = driveToExecutionWithConfig(autonomousConfig(), 1);
-    drivePhasePlanning(io);
+    const io = driveToExecutionWithConfig(autonomousConfig(), 1, 1);
     driveTaskWith(io, 1, 1);
     const result = driveToPhaseReviewCompleted(io, 'approve');
 
@@ -181,7 +170,6 @@ describe('[CONTRACT] Gate Behavior — Phase mode', () => {
 
   it('task gate auto-approves unconditionally ("phase" in auto_approve_modes: [phase])', () => {
     const io = driveToExecutionWithConfig(phaseConfig(), 1);
-    drivePhasePlanning(io);
     // verdict is irrelevant — phase mode unconditionally auto-approves task gate
     const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
@@ -194,8 +182,7 @@ describe('[CONTRACT] Gate Behavior — Phase mode', () => {
   });
 
   it('phase gate fires ("phase" not in auto_approve_modes: [])', () => {
-    const io = driveToExecutionWithConfig(phaseConfig(), 1);
-    drivePhasePlanning(io);
+    const io = driveToExecutionWithConfig(phaseConfig(), 1, 1);
     // In phase mode task gate auto-approves — driveTaskWith handles either case
     driveTaskWith(io, 1, 1);
     const result = driveToPhaseReviewCompleted(io, 'approved');
@@ -214,7 +201,6 @@ describe('[CONTRACT] Gate Behavior — Task mode', () => {
 
   it('task gate fires ("task" not in auto_approve_modes: [phase])', () => {
     const io = driveToExecutionWithConfig(taskConfig(), 1);
-    drivePhasePlanning(io);
     const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
     expect(result.success).toBe(true);
@@ -225,8 +211,7 @@ describe('[CONTRACT] Gate Behavior — Task mode', () => {
   });
 
   it('phase gate fires ("task" not in auto_approve_modes: [])', () => {
-    const io = driveToExecutionWithConfig(taskConfig(), 1);
-    drivePhasePlanning(io);
+    const io = driveToExecutionWithConfig(taskConfig(), 1, 1);
     // In task mode, task gate fires — driveTaskWith approves it
     driveTaskWith(io, 1, 1);
     const result = driveToPhaseReviewCompleted(io, 'approved');
@@ -243,7 +228,6 @@ describe('[CONTRACT] Gate Behavior — Ask mode', () => {
   it('returns ask_gate_mode when execution_mode is ask and pipeline.gate_mode is null', () => {
     // ask mode + pipeline.gate_mode=null → walker returns ask_gate_mode before activating gate
     const io = driveToExecutionWithConfig(askConfig(), 1);
-    drivePhasePlanning(io);
     const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
     expect(result.success).toBe(true);
@@ -299,7 +283,6 @@ describe('[CONTRACT] Gate Behavior — Gate mode precedence', () => {
     // Override pipeline.gate_mode to simulate operator having chosen 'phase' mode
     io.currentState!.pipeline.gate_mode = 'phase';
 
-    drivePhasePlanning(io);
     const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
     expect(result.success).toBe(true);

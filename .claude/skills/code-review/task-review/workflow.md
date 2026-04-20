@@ -36,7 +36,7 @@ Task Review reads only the inputs below — do NOT load the PRD, Architecture, D
     - Normal (first-time): `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md`
     - Corrective: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}-C{corrective_index}.md`
 
-    The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) review is preserved, not overwritten. (See `rad-create-plans/references/phase-plan/workflow.md` lines 135–150 for the shared pattern.)
+    The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) review is preserved, not overwritten. (See `orchestration/references/document-conventions.md` → "Corrective Filename Suffix" for the shared pattern.)
 
 ## Conformance Checklist Categories
 

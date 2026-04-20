@@ -10,16 +10,11 @@ import {
   DOC_STORE,
   PROJECT_DIR,
   seedDoc,
-  completePlanningSteps,
   driveToExecutionWithConfig,
   driveTaskWith,
-  drivePhaseReviewApproval,
   driveToReviewTier,
-  phasePlanDoc,
-  taskHandoffDoc,
   codeReviewDoc,
   phaseReportDoc,
-  phaseReviewDoc,
 } from './fixtures/parity-states.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -51,18 +46,10 @@ const config = createConfig({
 
 describe('task_completed routes through template event index', () => {
   it('task_completed with in-progress task state processes correctly → success: true, action not null', () => {
+    // driveToExecutionWithConfig pre-seeds phase_planning + task_handoff per Iter 5 explosion behavior
     const io = driveToExecutionWithConfig(config, 1);
 
-    // Drive phase 1 planning with one task
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-
-    // Drive to execution_started
     const ctx = { phase: 1, task: 1 };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
 
     // Call task_completed — the event under test
@@ -77,15 +64,12 @@ describe('task_completed routes through template event index', () => {
 
 describe('phase_report_created routes through template event index', () => {
   it('phase_report_created with appropriate state processes correctly → success: true', () => {
-    const io = driveToExecutionWithConfig(config, 1);
+    // driveToExecutionWithConfig pre-seeds phase_planning + task_handoff and creates 2 task iterations
+    const io = driveToExecutionWithConfig(config, 1, 2);
 
-    // Drive phase 1 planning with one task
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-
-    // Drive task 1 through completion (task gate approved inside driveTaskWith)
+    // Drive both tasks through completion (task gate approved inside driveTaskWith)
     driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
 
     // Drive phase report start
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
@@ -150,16 +134,11 @@ describe('routing priority', () => {
   });
 
   it('gate_approved --gate-type task resolves alias before template index lookup → success: true', () => {
-    // Drive to the point where task_gate is active (code review completed, gate fires)
+    // Drive to the point where task_gate is active (code review completed, gate fires).
+    // driveToExecutionWithConfig pre-seeds phase_planning + task_handoff per Iter 5.
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
 
     const ctx = { phase: 1, task: 1 };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
     processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);

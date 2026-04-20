@@ -283,149 +283,6 @@ describe('resolveActiveTaskIndex', () => {
   });
 });
 
-// ── create_phase_plan enrichment ──────────────────────────────────────────────
-
-describe('enrichActionContext — create_phase_plan', () => {
-  it('includes is_correction: true and corrective_index: 1 when corrective_tasks.length === 1', () => {
-    const state = createScaffoldedState();
-    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-    phaseLoop.iterations = [
-      {
-        index: 0,
-        status: 'in_progress',
-        nodes: {
-          phase_review: {
-            kind: 'step',
-            status: 'completed',
-            doc_path: 'reports/PROJ-PHASE-REVIEW-P01.md',
-            retries: 0,
-          } as StepNodeState,
-        },
-        corrective_tasks: [
-          {
-            index: 1,
-            reason: 'changes_requested',
-            injected_after: 'phase_review',
-            status: 'not_started',
-            nodes: {},
-            commit_hash: null,
-          },
-        ],
-        commit_hash: null,
-      },
-    ];
-    const result = enrichActionContext({
-      action: 'create_phase_plan',
-      walkerContext: {},
-      state,
-      config,
-      cliContext: {},
-    });
-    expect(result.is_correction).toBe(true);
-    expect(result.corrective_index).toBe(1);
-  });
-
-  it('includes corrective_index: 2 when corrective_tasks.length === 2', () => {
-    const state = createScaffoldedState();
-    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-    phaseLoop.iterations = [
-      {
-        index: 0,
-        status: 'in_progress',
-        nodes: {},
-        corrective_tasks: [
-          {
-            index: 1,
-            reason: 'changes_requested',
-            injected_after: 'phase_review',
-            status: 'completed',
-            nodes: {},
-            commit_hash: null,
-          },
-          {
-            index: 2,
-            reason: 'changes_requested',
-            injected_after: 'phase_review',
-            status: 'not_started',
-            nodes: {},
-            commit_hash: null,
-          },
-        ],
-        commit_hash: null,
-      },
-    ];
-    const result = enrichActionContext({
-      action: 'create_phase_plan',
-      walkerContext: {},
-      state,
-      config,
-      cliContext: {},
-    });
-    expect(result.corrective_index).toBe(2);
-  });
-
-  it('does NOT include is_correction or corrective_index when corrective_tasks is empty', () => {
-    const state = createScaffoldedState();
-    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-    phaseLoop.iterations = [
-      {
-        index: 0,
-        status: 'in_progress',
-        nodes: {},
-        corrective_tasks: [],
-        commit_hash: null,
-      },
-    ];
-    const result = enrichActionContext({
-      action: 'create_phase_plan',
-      walkerContext: {},
-      state,
-      config,
-      cliContext: {},
-    });
-    expect(result).not.toHaveProperty('is_correction');
-    expect(result).not.toHaveProperty('corrective_index');
-  });
-
-  it('includes previous_review with the phase review doc_path when corrective', () => {
-    const state = createScaffoldedState();
-    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-    phaseLoop.iterations = [
-      {
-        index: 0,
-        status: 'in_progress',
-        nodes: {
-          phase_review: {
-            kind: 'step',
-            status: 'completed',
-            doc_path: 'reports/PROJ-PHASE-REVIEW-P01.md',
-            retries: 0,
-          } as StepNodeState,
-        },
-        corrective_tasks: [
-          {
-            index: 1,
-            reason: 'changes_requested',
-            injected_after: 'phase_review',
-            status: 'not_started',
-            nodes: {},
-            commit_hash: null,
-          },
-        ],
-        commit_hash: null,
-      },
-    ];
-    const result = enrichActionContext({
-      action: 'create_phase_plan',
-      walkerContext: {},
-      state,
-      config,
-      cliContext: {},
-    });
-    expect(result.previous_review).toBe('reports/PROJ-PHASE-REVIEW-P01.md');
-  });
-});
-
 // ── request_final_approval ────────────────────────────────────────────────────
 
 describe('enrichActionContext — request_final_approval', () => {
@@ -745,10 +602,9 @@ describe('enrichActionContext — spawn_phase_reviewer', () => {
 
 // ── corrective_index exposure (PR #50 follow-up) ──────────────────────────────
 //
-// Regression coverage: skill docs for task-handoff, task-review, phase-review, and
-// phase-report instruct the agent to read `corrective_index` from the event context.
-// Context-enrichment must actually provide it for the corresponding spawn/create actions,
-// mirroring the existing create_phase_plan contract.
+// Regression coverage: skill docs for task-review, phase-review, and phase-report
+// instruct the agent to read `corrective_index` from the event context.
+// Context-enrichment must actually provide it for the corresponding spawn actions.
 
 describe('enrichActionContext — corrective_index exposure', () => {
   function phaseIterWith(overrides: {
@@ -840,34 +696,6 @@ describe('enrichActionContext — corrective_index exposure', () => {
     });
     expect(result.is_correction).toBe(true);
     expect(result.corrective_index).toBe(2);
-  });
-
-  it('create_task_handoff: includes corrective_index when a corrective cycle is active', () => {
-    const state = phaseIterWith({
-      taskCorrectives: [{ index: 1, status: 'in_progress' }],
-    });
-    const result = enrichActionContext({
-      action: 'create_task_handoff',
-      walkerContext: {},
-      state,
-      config,
-      cliContext: {},
-    });
-    expect(result.is_correction).toBe(true);
-    expect(result.corrective_index).toBe(1);
-  });
-
-  it('create_task_handoff: omits corrective_index on the normal (non-corrective) path', () => {
-    const state = phaseIterWith({ taskCorrectives: [] });
-    const result = enrichActionContext({
-      action: 'create_task_handoff',
-      walkerContext: {},
-      state,
-      config,
-      cliContext: {},
-    });
-    expect(result.is_correction).toBe(false);
-    expect(result).not.toHaveProperty('corrective_index');
   });
 
   it('spawn_phase_reviewer: exposes corrective_index during a phase-level corrective cycle', () => {

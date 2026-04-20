@@ -44,7 +44,7 @@ You are the backstop. Task reviews already vetted each commit in isolation again
     - Normal (first-time): `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`
     - Corrective: `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}-C{corrective_index}.md`
 
-    The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) review is preserved, not overwritten. (See `rad-create-plans/references/phase-plan/workflow.md` lines 135–150 for the shared pattern.)
+    The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) review is preserved, not overwritten. (See `orchestration/references/document-conventions.md` → "Corrective Filename Suffix" for the shared pattern.)
 
 ## Conformance Checklist Categories
 

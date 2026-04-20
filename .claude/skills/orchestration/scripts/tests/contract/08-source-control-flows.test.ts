@@ -7,10 +7,7 @@ import {
   seedDoc,
   DOC_STORE,
   PROJECT_DIR,
-  phasePlanDoc,
-  taskHandoffDoc,
   codeReviewDoc,
-  TASKS_2,
 } from '../fixtures/parity-states.js';
 
 beforeEach(() => {
@@ -50,14 +47,8 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
       base_branch: 'main',
       worktree_path: '/tmp/worktree',
     }, io);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
     // Drive task manually to reach commit_gate at task scope
     const ctx = { phase: 1, task: 1 };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
     processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
@@ -81,14 +72,8 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
 
   it('defaults branch and worktree_path to empty string when state.pipeline.source_control is null', () => {
     const io = driveToExecutionWithConfig(commitConfig, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
     // Drive task manually to reach commit_gate at task scope
     const ctx = { phase: 1, task: 1 };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
     processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
@@ -108,14 +93,8 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
 
   it('multi-task phase: resolves correct phase identifiers and task ref on first task commit', () => {
     const io = driveToExecutionWithConfig(commitConfig, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
     // Drive Task 1 manually to capture commit action
     const ctx = { phase: 1, task: 1 };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
     processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);

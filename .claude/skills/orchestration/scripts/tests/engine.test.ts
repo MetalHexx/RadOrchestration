@@ -468,11 +468,10 @@ describe('engine – processEvent', () => {
   describe('Mutation error', () => {
     it('does not write state if mutation throws', () => {
       const state = makeScaffoldedState();
-      // Create a state where a mutation will fail — e.g. resolveNodeState for a non-existent node
-      // We'll test an event that resolves to a node in a scope that doesn't exist
-      // task_handoff_started needs phase/task context with iterations, which we haven't set up
+      // Create a state where a mutation will fail — e.g. resolveNodeState for a non-existent node.
+      // execution_started needs phase/task context with iterations, which we haven't set up.
       const io = createMockIO(state);
-      const result = processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+      const result = processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
 
       // Should fail because phase_loop has no iterations
       expect(result.success).toBe(false);
@@ -636,9 +635,9 @@ describe('engine – processEvent', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
 
-      // task_handoff_started with context.phase=1 causes the mutation to throw
-      // because the phase_loop has no iterations in the scaffolded state
-      const result = processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+      // execution_started with context.phase=1 causes the mutation to throw
+      // because the phase_loop has no iterations in the scaffolded state.
+      const result = processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
 
       expect(result.success).toBe(false);
       expect(typeof result.context.error).toBe('string');
@@ -1004,7 +1003,7 @@ describe('wrappedReadDocument – relative path resolution', () => {
 
     expect(result.success).toBe(true);
     // task_loop expansion succeeded → walker entered the task iteration → first action
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('execute_task');
 
     // Verify io.readDocument was called with the resolved absolute path (not the raw relative one)
     expect(readDocSpy).toHaveBeenCalledWith(resolvedPath);
@@ -1125,7 +1124,6 @@ describe('auto-resolution in mutation handler loops', () => {
 
   describe('phase auto-resolution success', () => {
     for (const [eventName, nodeId] of [
-      ['phase_planning_started', 'phase_planning'],
       ['phase_report_started', 'phase_report'],
       ['phase_review_started', 'phase_review'],
     ] as const) {
@@ -1144,7 +1142,6 @@ describe('auto-resolution in mutation handler loops', () => {
 
   describe('task auto-resolution success', () => {
     for (const [eventName, nodeId] of [
-      ['task_handoff_started', 'task_handoff'],
       ['execution_started', 'task_executor'],
       ['code_review_started', 'code_review'],
     ] as const) {
@@ -1163,13 +1160,13 @@ describe('auto-resolution in mutation handler loops', () => {
   });
 
   describe('DX-1 error — phase scope, no iterations', () => {
-    it('phase_planning_started fails with DX-1 error when phase_loop.iterations is empty', () => {
+    it('phase_report_started fails with DX-1 error when phase_loop.iterations is empty', () => {
       const state = makeScaffoldedState();
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       phaseLoop.status = 'in_progress';
       phaseLoop.iterations = [];
       const io = createMockIO(state);
-      const result = processEvent('phase_planning_started', PROJECT_DIR, {}, io);
+      const result = processEvent('phase_report_started', PROJECT_DIR, {}, io);
       expect(result.success).toBe(false);
       const errorMsg = String(result.context.error);
       expect(errorMsg).toContain('Cannot apply mutation for');
@@ -1179,11 +1176,11 @@ describe('auto-resolution in mutation handler loops', () => {
   });
 
   describe('DX-1 error — task scope, no task iterations', () => {
-    it('task_handoff_started fails with DX-1 error when task_loop.iterations is empty but context.phase is provided', () => {
+    it('execution_started fails with DX-1 error when task_loop.iterations is empty but context.phase is provided', () => {
       const state = makeStateWithPhaseIteration('in_progress');
       // Provide context.phase so the phase branch is skipped; task_loop has no iterations
       const io = createMockIO(state);
-      const result = processEvent('task_handoff_started', PROJECT_DIR, { phase: 1 }, io);
+      const result = processEvent('execution_started', PROJECT_DIR, { phase: 1 }, io);
       expect(result.success).toBe(false);
       const errorMsg = String(result.context.error);
       expect(errorMsg).toContain('no active task');
@@ -1192,7 +1189,7 @@ describe('auto-resolution in mutation handler loops', () => {
   });
 
   describe('explicit context.phase takes precedence', () => {
-    it('phase_planning_started targets the explicitly provided phase, not the auto-resolved one', () => {
+    it('phase_report_started targets the explicitly provided phase, not the auto-resolved one', () => {
       const state = makeScaffoldedState();
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       phaseLoop.status = 'in_progress';
@@ -1202,7 +1199,7 @@ describe('auto-resolution in mutation handler loops', () => {
           index: 0,
           status: 'in_progress',
           nodes: {
-            phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            phase_planning: { kind: 'step', status: 'completed', doc_path: '/tmp/p1.md', retries: 0 },
             task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
             phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
@@ -1215,7 +1212,7 @@ describe('auto-resolution in mutation handler loops', () => {
           index: 1,
           status: 'not_started',
           nodes: {
-            phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            phase_planning: { kind: 'step', status: 'completed', doc_path: '/tmp/p2.md', retries: 0 },
             task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
             phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
@@ -1227,13 +1224,13 @@ describe('auto-resolution in mutation handler loops', () => {
       ];
       const io = createMockIO(state);
       // Explicitly target phase 2 (index 1)
-      const result = processEvent('phase_planning_started', PROJECT_DIR, { phase: 2 }, io);
+      const result = processEvent('phase_report_started', PROJECT_DIR, { phase: 2 }, io);
       expect(result.success).toBe(true);
       const updatedPhaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       // Phase 2 (index 1) should be in_progress
-      expect((updatedPhaseLoop.iterations[1].nodes['phase_planning'] as StepNodeState).status).toBe('in_progress');
+      expect((updatedPhaseLoop.iterations[1].nodes['phase_report'] as StepNodeState).status).toBe('in_progress');
       // Phase 1 (index 0) should remain not_started
-      expect((updatedPhaseLoop.iterations[0].nodes['phase_planning'] as StepNodeState).status).toBe('not_started');
+      expect((updatedPhaseLoop.iterations[0].nodes['phase_report'] as StepNodeState).status).toBe('not_started');
     });
   });
 });

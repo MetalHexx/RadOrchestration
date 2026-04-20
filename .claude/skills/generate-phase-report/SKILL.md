@@ -11,7 +11,7 @@ Generate a Phase Report after all tasks in a phase are complete. Summarizes phas
 ## When to Use This Skill
 
 - After all tasks in a phase have been completed and reviewed
-- When the Orchestrator spawns the Tactical Planner to summarize a phase
+- When the Orchestrator spawns the Planner to summarize a phase
 - When determining carry-forward items for the next phase
 
 ## Inputs Required
@@ -37,7 +37,7 @@ Generate a Phase Report after all tasks in a phase are complete. Summarizes phas
     - Normal (first-time): `{PROJECT-DIR}/reports/{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md`
     - Corrective: `{PROJECT-DIR}/reports/{NAME}-PHASE-REPORT-P{NN}-{TITLE}-C{corrective_index}.md`
 
-    The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) report is preserved, not overwritten. (See `rad-create-plans/references/phase-plan/workflow.md` lines 135–150 for the shared pattern.)
+    The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) report is preserved, not overwritten. (See `orchestration/references/document-conventions.md` → "Corrective Filename Suffix" for the shared pattern.)
 
 ## Key Rules
 

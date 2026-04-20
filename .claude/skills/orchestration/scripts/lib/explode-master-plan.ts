@@ -527,13 +527,8 @@ export function explodeMasterPlan(opts: ExplodeOptions): ExplodeResult {
       const tname = taskFilename(projectName, task);
       const tpath = path.join(tasksDir, tname);
       const tfront = buildTaskFrontmatter({ projectName, task, createdIso: nowIso });
-      // task_handoff_created has no rule today; validator returns null → pass.
-      const terr = validateFrontmatter('task_handoff_created', tfront, tpath);
-      if (terr !== null) {
-        throw new Error(
-          `Explosion emitter produced invalid task frontmatter for ${tname}: ${terr.error} (field: ${terr.field})`,
-        );
-      }
+      // No frontmatter validator rule exists for task handoffs — fields are built
+      // locally from deterministic inputs by buildTaskFrontmatter.
       fs.writeFileSync(tpath, renderDoc(tfront, renderTaskBody(task)), 'utf-8');
       emittedTaskFiles.push(tpath);
     }

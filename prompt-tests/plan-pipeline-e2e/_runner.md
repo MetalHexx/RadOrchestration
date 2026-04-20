@@ -67,7 +67,7 @@ Loop per the Action Routing Table:
 
 - On `spawn_requirements` / `spawn_master_plan` — spawn `@planner` with the action's context. The agent writes the output doc per `rad-create-plans`; capture the `doc_path` from its return. Then signal the paired `*_completed` event with `--doc-path <absolute-path>`.
 - On `explode_master_plan` — shell out to the explosion script per action #2a in the routing table. On exit 0 signal `explosion_completed`; on exit 2 signal `explosion_failed --parse-error '<json>'` (same structured payload the script emits). On exit 1 **halt and surface to the operator** — do not invent a recovery.
-- On any other action that implies an agent spawn other than `@planner` (executor, reviewer, tactical-planner, source-control) — the default template does not emit those. If you see one, the pipeline is on the wrong template. Halt and surface.
+- On any other action that implies an agent spawn other than `@planner` (executor, reviewer, source-control) — the default template does not emit those. If you see one, the pipeline is on the wrong template. Halt and surface.
 - The two-step `_started` → action-return protocol is mandatory. Do not short-circuit it even though you are simulating.
 
 **Halt signal**: `result.action === "request_plan_approval"`. Do not signal `plan_approved`. The run has produced everything the harness needs — requirements, master plan, and exploded phase/task files — before the gate.

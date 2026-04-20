@@ -506,10 +506,6 @@ describe('resolveNodeState', () => {
 
 describe('getMutation — new T03 events', () => {
   const newEvents = [
-    'phase_planning_started',
-    'phase_plan_created',
-    'task_handoff_started',
-    'task_handoff_created',
     'execution_started',
     'task_completed',
     'code_review_started',
@@ -537,7 +533,6 @@ describe('getMutation — new T03 events', () => {
 
 describe('phase execution _started mutations', () => {
   const cases: Array<[string, string]> = [
-    ['phase_planning_started', 'phase_planning'],
     ['phase_report_started', 'phase_report'],
     ['phase_review_started', 'phase_review'],
   ];
@@ -564,39 +559,6 @@ describe('phase execution _started mutations', () => {
       expect(result.mutations_applied.length).toBeGreaterThan(0);
     });
   }
-});
-
-// ── phase_plan_created mutation ───────────────────────────────────────────────
-
-describe('phase_plan_created mutation', () => {
-  it('sets phase_planning.status to completed at phase scope', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_plan_created')!;
-    const result = mutation(state, { phase: 1, doc_path: '/path/plan.md' }, baseConfig, baseTemplate);
-    expect(getPhaseNode(result.state, 'phase_planning').status).toBe('completed');
-  });
-
-  it('stores doc_path from context', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_plan_created')!;
-    const result = mutation(state, { phase: 1, doc_path: '/path/plan.md' }, baseConfig, baseTemplate);
-    const node = getPhaseNode(result.state, 'phase_planning') as StepNodeState;
-    expect(node.doc_path).toBe('/path/plan.md');
-  });
-
-  it('does not mutate original state', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_plan_created')!;
-    mutation(state, { phase: 1, doc_path: '/path/plan.md' }, baseConfig, baseTemplate);
-    expect(getPhaseNode(state, 'phase_planning').status).toBe('not_started');
-  });
-
-  it('returns non-empty mutations_applied', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_plan_created')!;
-    const result = mutation(state, { phase: 1, doc_path: '/path/plan.md' }, baseConfig, baseTemplate);
-    expect(result.mutations_applied.length).toBeGreaterThan(0);
-  });
 });
 
 // ── phase_report_created mutation ──────────────────────────────────────────
@@ -759,7 +721,6 @@ describe('phase_review_completed — corrective injection', () => {
 
 describe('task execution _started mutations', () => {
   const cases: Array<[string, string]> = [
-    ['task_handoff_started', 'task_handoff'],
     ['execution_started', 'task_executor'],
     ['code_review_started', 'code_review'],
   ];
@@ -786,39 +747,6 @@ describe('task execution _started mutations', () => {
       expect(result.mutations_applied.length).toBeGreaterThan(0);
     });
   }
-});
-
-// ── task_handoff_created mutation ─────────────────────────────────────────────
-
-describe('task_handoff_created mutation', () => {
-  it('sets task_handoff.status to completed at task scope', () => {
-    const state = makeState();
-    const mutation = getMutation('task_handoff_created')!;
-    const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
-    expect(getTaskNode(result.state, 'task_handoff').status).toBe('completed');
-  });
-
-  it('stores doc_path from context', () => {
-    const state = makeState();
-    const mutation = getMutation('task_handoff_created')!;
-    const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
-    const node = getTaskNode(result.state, 'task_handoff') as StepNodeState;
-    expect(node.doc_path).toBe('/path/handoff.md');
-  });
-
-  it('does not mutate original state', () => {
-    const state = makeState();
-    const mutation = getMutation('task_handoff_created')!;
-    mutation(state, { phase: 1, task: 1, doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
-    expect(getTaskNode(state, 'task_handoff').status).toBe('not_started');
-  });
-
-  it('returns non-empty mutations_applied', () => {
-    const state = makeState();
-    const mutation = getMutation('task_handoff_created')!;
-    const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
-    expect(result.mutations_applied.length).toBeGreaterThan(0);
-  });
 });
 
 // ── task_completed mutation ──────────────────────────────────────────────
@@ -948,7 +876,11 @@ describe('code_review_completed mutation', () => {
 
 // ── code_review_completed — corrective injection ──────────────────────────────
 
-// Template fixture with for_each_phase → for_each_task body containing the 4 task body nodes
+// Template fixture with for_each_phase → for_each_task body containing the 4 task body nodes.
+// The `task_handoff` node is kept here as a test-only scaffold: it exercises the
+// mutation's scaffoldNodeState loop over step + gate kinds. Production templates
+// post-Iter-7 no longer carry a `task_handoff` body node (pre-seeded by the
+// explosion script); this fixture does not imply otherwise.
 function makeTemplateWithTaskBody(): PipelineTemplate {
   return {
     template: { id: 'full', version: '1.0', description: 'Full pipeline' },
@@ -1409,46 +1341,46 @@ function makeMultiIterationState(): PipelineState {
 }
 
 describe('multi-iteration phase mutation (phase ≥ 2)', () => {
-  it('phase_planning_started with { phase: 2 } sets iterations[1].nodes.phase_planning.status to in_progress', () => {
+  it('phase_report_started with { phase: 2 } sets iterations[1].nodes.phase_report.status to in_progress', () => {
     const state = makeMultiIterationState();
-    const mutation = getMutation('phase_planning_started')!;
+    const mutation = getMutation('phase_report_started')!;
     const result = mutation(state, { phase: 2 }, baseConfig, baseTemplate);
     const phaseLoop = result.state.graph.nodes['phase_loop'];
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
-    expect(phaseLoop.iterations[1].nodes['phase_planning'].status).toBe('in_progress');
+    expect(phaseLoop.iterations[1].nodes['phase_report'].status).toBe('in_progress');
   });
 
   it('does not affect iteration[0] when phase: 2', () => {
     const state = makeMultiIterationState();
-    const mutation = getMutation('phase_planning_started')!;
+    const mutation = getMutation('phase_report_started')!;
     const result = mutation(state, { phase: 2 }, baseConfig, baseTemplate);
     const phaseLoop = result.state.graph.nodes['phase_loop'];
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
-    expect(phaseLoop.iterations[0].nodes['phase_planning'].status).toBe('not_started');
+    expect(phaseLoop.iterations[0].nodes['phase_report'].status).toBe('not_started');
   });
 });
 
 describe('multi-iteration task mutation (task ≥ 2)', () => {
-  it('task_handoff_started with { phase: 1, task: 2 } sets iterations[0].task_loop.iterations[1].task_handoff to in_progress', () => {
+  it('execution_started with { phase: 1, task: 2 } sets iterations[0].task_loop.iterations[1].task_executor to in_progress', () => {
     const state = makeMultiIterationState();
-    const mutation = getMutation('task_handoff_started')!;
+    const mutation = getMutation('execution_started')!;
     const result = mutation(state, { phase: 1, task: 2 }, baseConfig, baseTemplate);
     const phaseLoop = result.state.graph.nodes['phase_loop'];
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
     if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
-    expect(taskLoop.iterations[1].nodes['task_handoff'].status).toBe('in_progress');
+    expect(taskLoop.iterations[1].nodes['task_executor'].status).toBe('in_progress');
   });
 
   it('does not affect task iteration[0] when task: 2', () => {
     const state = makeMultiIterationState();
-    const mutation = getMutation('task_handoff_started')!;
+    const mutation = getMutation('execution_started')!;
     const result = mutation(state, { phase: 1, task: 2 }, baseConfig, baseTemplate);
     const phaseLoop = result.state.graph.nodes['phase_loop'];
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
     if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
-    expect(taskLoop.iterations[0].nodes['task_handoff'].status).toBe('not_started');
+    expect(taskLoop.iterations[0].nodes['task_executor'].status).toBe('not_started');
   });
 });
 
