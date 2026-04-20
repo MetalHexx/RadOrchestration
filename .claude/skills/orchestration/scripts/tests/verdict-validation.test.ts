@@ -11,7 +11,6 @@ import {
   driveToExecutionWithConfig,
   driveToReviewTier,
   codeReviewDoc,
-  phaseReportDoc,
   phaseReviewDoc,
 } from './fixtures/parity-states.js';
 
@@ -62,9 +61,6 @@ function driveToPhaseReview(io: ReturnType<typeof createMockIOWithConfig>): void
     verdict: 'approved',
   }, io);
 
-  processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-  seedDoc(phaseReportDoc(1));
-  processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
   processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
   seedDoc(phaseReviewDoc(1), { exit_criteria_met: true });
 }

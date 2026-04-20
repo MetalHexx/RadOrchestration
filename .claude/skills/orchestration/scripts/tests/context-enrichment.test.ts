@@ -619,12 +619,6 @@ describe('enrichActionContext — corrective_index exposure', () => {
         index: 0,
         status: 'in_progress',
         nodes: {
-          phase_report: {
-            kind: 'step',
-            status: 'completed',
-            doc_path: 'reports/PROJ-PHASE-REPORT-P01.md',
-            retries: 0,
-          } as StepNodeState,
           task_loop: {
             kind: 'for_each_task',
             status: 'in_progress',
@@ -715,32 +709,6 @@ describe('enrichActionContext — corrective_index exposure', () => {
     const state = phaseIterWith({ correctivePhaseCount: 0 });
     const result = enrichActionContext({
       action: 'spawn_phase_reviewer',
-      walkerContext: {},
-      state,
-      config,
-      cliContext: {},
-    });
-    expect(result).not.toHaveProperty('is_correction');
-    expect(result).not.toHaveProperty('corrective_index');
-  });
-
-  it('generate_phase_report: exposes corrective_index during a phase-level corrective cycle', () => {
-    const state = phaseIterWith({ correctivePhaseCount: 1 });
-    const result = enrichActionContext({
-      action: 'generate_phase_report',
-      walkerContext: {},
-      state,
-      config,
-      cliContext: {},
-    });
-    expect(result.is_correction).toBe(true);
-    expect(result.corrective_index).toBe(1);
-  });
-
-  it('generate_phase_report: omits corrective fields on first-time report', () => {
-    const state = phaseIterWith({ correctivePhaseCount: 0 });
-    const result = enrichActionContext({
-      action: 'generate_phase_report',
       walkerContext: {},
       state,
       config,

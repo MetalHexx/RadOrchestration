@@ -14,16 +14,18 @@ describe('loadTemplate', () => {
       expect(result.template.template.version).toBe('1.0.0');
     });
 
-    it('returns exactly 21 entries in the event index', () => {
+    it('returns exactly 19 entries in the event index', () => {
       // Post-Iter 7: 4 events removed (phase_planning_started/_plan_created/
       // task_handoff_started/_created) — explosion script (Iter 5) pre-seeds
       // those nodes; per-loop authoring events are gone.
+      // Post-Iter 8: 2 more removed (phase_report_started/_created) — phase_review
+      // absorbed phase_report.
       const result = loadTemplate(FULL_YML_PATH);
-      expect(result.eventIndex.size).toBe(21);
+      expect(result.eventIndex.size).toBe(19);
     });
   });
 
-  describe('event index — all 21 mappings', () => {
+  describe('event index — all 19 mappings', () => {
     const result = loadTemplate(FULL_YML_PATH);
     const { eventIndex } = result;
 
@@ -37,8 +39,6 @@ describe('loadTemplate', () => {
       ['code_review_started',              'code_review',         'started',   'phase_loop.body.task_loop.body.code_review'],
       ['code_review_completed',            'code_review',         'completed', 'phase_loop.body.task_loop.body.code_review'],
       ['task_gate_approved',               'task_gate',           'approved',  'phase_loop.body.task_loop.body.task_gate'],
-      ['phase_report_started',             'phase_report',        'started',   'phase_loop.body.phase_report'],
-      ['phase_report_created',           'phase_report',        'completed', 'phase_loop.body.phase_report'],
       ['phase_review_started',             'phase_review',        'started',   'phase_loop.body.phase_review'],
       ['phase_review_completed',           'phase_review',        'completed', 'phase_loop.body.phase_review'],
       ['phase_gate_approved',              'phase_gate',          'approved',  'phase_loop.body.phase_gate'],

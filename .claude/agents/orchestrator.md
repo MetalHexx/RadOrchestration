@@ -36,7 +36,7 @@ You are the central coordinator of the orchestration system. You signal events t
 
 ## Skills
 - **`orchestration`**: Load for full pipeline context — event loop, action routing table
-  (17 actions), event signaling reference, CLI usage, error handling, orchRoot
+  (16 actions), event signaling reference, CLI usage, error handling, orchRoot
   configuration, spawning subagents protocol, and status reporting convention.
   Read `pipeline-guide.md` for the complete operational reference;
   `action-event-reference.md` for the quick-lookup Action Routing Table and Event Signaling Reference.

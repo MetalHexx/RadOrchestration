@@ -57,7 +57,6 @@ function makeState(): PipelineState {
               nodes: {
                 phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
                 phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-                phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 task_loop: {
                   kind: 'for_each_task',
@@ -151,19 +150,6 @@ describe('phase_review_completed — corrective re-planning', () => {
     const taskLoop = getPhaseNode(result.state, 'task_loop');
     if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected kind');
     expect(taskLoop.iterations).toHaveLength(0);
-  });
-
-  it('resets phase_report to not_started and clears doc_path and verdict', () => {
-    const state = makeState();
-    const phaseReport = getPhaseIteration(state).nodes['phase_report'] as StepNodeState;
-    phaseReport.status = 'completed';
-    phaseReport.doc_path = '/report.md';
-    phaseReport.verdict = 'approved';
-    const result = mutation(state, { phase: 1, verdict: 'changes_requested' }, baseConfig, baseTemplate);
-    const node = getPhaseNode(result.state, 'phase_report') as StepNodeState;
-    expect(node.status).toBe('not_started');
-    expect(node.doc_path).toBeNull();
-    expect(node.verdict).toBeNull();
   });
 
   it('resets phase_review to not_started and clears verdict but preserves doc_path', () => {

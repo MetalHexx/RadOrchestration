@@ -309,7 +309,6 @@ mutationRegistry.set(EVENTS.FINAL_APPROVED, (state, _context, _config, _template
 // ── Phase execution _started mutations ───────────────────────────────────────
 
 const phaseExecStartedSteps: Array<[string, string]> = [
-  [EVENTS.PHASE_REPORT_STARTED, 'phase_report'],
   [EVENTS.PHASE_REVIEW_STARTED, 'phase_review'],
 ];
 
@@ -330,53 +329,6 @@ for (const [eventName, nodeId] of phaseExecStartedSteps) {
         `Pass --phase <N> to specify the phase explicitly.`
       );
     }
-
-    return { state: cloned, mutations_applied };
-  });
-}
-
-// ── Phase execution _completed mutations (store doc_path) ─────────────────────
-
-const phaseExecDocSteps: Array<[string, string]> = [
-  [EVENTS.PHASE_REPORT_CREATED, 'phase_report'],
-];
-
-for (const [eventName, nodeId] of phaseExecDocSteps) {
-  mutationRegistry.set(eventName, (state, context, _config, _template): MutationResult => {
-    const cloned = structuredClone(state);
-    const mutations_applied: string[] = [];
-
-    let phase = context.phase;
-    if (phase === undefined) {
-      try {
-        phase = resolveActivePhaseIndex(cloned);
-      } catch (err) {
-        const detail = err instanceof Error ? err.message : String(err);
-        throw new Error(
-          `Cannot apply mutation for "${eventName}": failed to resolve the active phase from state.\n` +
-          `${detail}\n` +
-          `Pass --phase <N> to specify the phase explicitly.`
-        );
-      }
-    }
-
-    let node: NodeState;
-    try {
-      node = resolveNodeState(cloned, nodeId, 'phase', phase);
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      throw new Error(
-        `Cannot apply mutation for "${eventName}": could not resolve node "${nodeId}" for phase ${phase}.\n` +
-        `${detail}\n` +
-        `Pass --phase <N> to specify an existing phase explicitly.`
-      );
-    }
-    node.status = 'completed';
-    mutations_applied.push(`set ${nodeId}.status = completed`);
-
-    const docPath = context.doc_path ?? null;
-    (node as StepNodeState).doc_path = docPath;
-    mutations_applied.push(`set ${nodeId}.doc_path = ${docPath ?? 'null'}`);
 
     return { state: cloned, mutations_applied };
   });
@@ -456,7 +408,7 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
     }
 
     // Reset downstream nodes
-    for (const nodeId of ['phase_report', 'phase_review', 'phase_gate']) {
+    for (const nodeId of ['phase_review', 'phase_gate']) {
       const n = iteration.nodes[nodeId];
       n.status = 'not_started';
       if (n.kind === 'step') {

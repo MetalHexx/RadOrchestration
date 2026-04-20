@@ -12,7 +12,6 @@ import {
   driveTaskWith,
   seedExplosionStateFor,
   codeReviewDoc,
-  phaseReportDoc,
   phaseReviewDoc,
 } from '../fixtures/parity-states.js';
 import type { StepNodeState } from '../../lib/types.js';
@@ -56,9 +55,6 @@ function driveToPhaseReview() {
   const io = driveToExecutionWithConfig(config, 1);
   driveTaskWith(io, 1, 1);
   driveTaskWith(io, 1, 2);
-  processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-  seedDoc(phaseReportDoc(1));
-  processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
   processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
   return io;
 }

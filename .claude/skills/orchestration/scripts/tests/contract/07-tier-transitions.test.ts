@@ -79,7 +79,7 @@ describe('[CONTRACT] Tier Transitions — task cycle to next task', () => {
     }));
   });
 
-  it('code_review_completed (approved) on last task → generate_phase_report', () => {
+  it('code_review_completed (approved) on last task → spawn_phase_reviewer (post-Iter 8)', () => {
     const io = driveToExecutionWithConfig(config, 1, 2);
 
     driveTaskWith(io, 1, 1);
@@ -95,13 +95,13 @@ describe('[CONTRACT] Tier Transitions — task cycle to next task', () => {
       verdict: 'approved',
     }, io);
 
-    // Task gate fires before advancing to phase report (even in autonomous mode)
+    // Task gate fires before advancing to phase review (even in autonomous mode)
     if (result.action === 'gate_task') {
       result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
     }
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('generate_phase_report');
+    expect(result.action).toBe('spawn_phase_reviewer');
     expect(result.context).toEqual(expect.objectContaining({
       phase_number: 1,
     }));

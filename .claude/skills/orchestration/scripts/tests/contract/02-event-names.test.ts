@@ -13,7 +13,6 @@ import {
   driveToReviewTier,
   seedExplosionStateFor,
   codeReviewDoc,
-  phaseReportDoc,
   phaseReviewDoc,
 } from '../fixtures/parity-states.js';
 import type { StepNodeState } from '../../lib/types.js';
@@ -131,9 +130,6 @@ describe('[CONTRACT] Event Names — gate events', () => {
     const io = driveToExecutionWithConfig(taskGateConfig, 1);
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     const gateResult = processEvent('phase_review_completed', PROJECT_DIR, {
@@ -215,37 +211,13 @@ describe('[CONTRACT] Event Names — task execution events', () => {
 // ── [CONTRACT] Event Names — phase review events ──────────────────────────────
 
 describe('[CONTRACT] Event Names — phase review events', () => {
-  it('phase_report_started is a valid v5 event', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    driveTaskWith(io, 1, 1);
-    driveTaskWith(io, 1, 2);
-    const result = processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
-
-  it('phase_report_created is a valid v5 event', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    driveTaskWith(io, 1, 1);
-    driveTaskWith(io, 1, 2);
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    const result = processEvent('phase_report_created', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReportDoc(1),
-    }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
+  // Post-Iter 8: phase_report_started / phase_report_created are no longer valid events.
+  // phase_review absorbed phase_report; the phase-review event pair covers both shapes.
 
   it('phase_review_started is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(config, 1);
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReportDoc(1),
-    }, io);
     const result = processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
@@ -255,11 +227,6 @@ describe('[CONTRACT] Event Names — phase review events', () => {
     const io = driveToExecutionWithConfig(config, 1);
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReportDoc(1),
-    }, io);
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
     const result = processEvent('phase_review_completed', PROJECT_DIR, {

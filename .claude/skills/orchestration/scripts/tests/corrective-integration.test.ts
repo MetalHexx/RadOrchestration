@@ -115,7 +115,6 @@ const DOC_PATHS = {
     path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`),
   codeReview: (phase: number, task: number) =>
     path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`),
-  phaseReport: (phase: number) => path.join(PROJECT_DIR, 'phases', `phase-${phase}-report.md`),
   phaseReview: (phase: number) => path.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`),
   finalReview: path.join(PROJECT_DIR, 'docs', 'final-review.md'),
 };
@@ -296,16 +295,12 @@ function driveCorrectiveTask(
 }
 
 /**
- * Drives post-task-loop phase steps: report, review, gate.
+ * Drives post-task-loop phase steps: review, gate.
  * Returns the result of the last event for the phase.
+ * Post-Iter 8: phase_review absorbs phase_report — only one doc emitted.
  */
 function drivePhasePostTasks(io: MockIO, phase: number): PipelineResult {
   const ctx = { phase };
-
-  processEvent('phase_report_started', PROJECT_DIR, ctx, io);
-  const reportDoc = DOC_PATHS.phaseReport(phase);
-  seedDoc(reportDoc);
-  processEvent('phase_report_created', PROJECT_DIR, { ...ctx, doc_path: reportDoc }, io);
 
   processEvent('phase_review_started', PROJECT_DIR, ctx, io);
   const reviewDoc = DOC_PATHS.phaseReview(phase);
@@ -334,11 +329,6 @@ function drivePhasePostTasksWithVerdict(
   verdict: string,
 ): PipelineResult {
   const ctx = { phase };
-
-  processEvent('phase_report_started', PROJECT_DIR, ctx, io);
-  const reportDoc = DOC_PATHS.phaseReport(phase);
-  seedDoc(reportDoc);
-  processEvent('phase_report_created', PROJECT_DIR, { ...ctx, doc_path: reportDoc }, io);
 
   processEvent('phase_review_started', PROJECT_DIR, ctx, io);
   const reviewDoc = DOC_PATHS.phaseReview(phase);
@@ -617,9 +607,10 @@ describe('Corrective-tier integration — validator enforcement', () => {
 
     const writeCountBefore = io.writeCalls.length;
 
-    // Fire a subsequent event — mutation sets phase_report to in_progress,
+    // Fire a subsequent event — mutation sets phase_review to in_progress,
     // validator sees completed phase_loop with in_progress child → rejects.
-    const result = processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
+    // (Post-Iter 8: phase_review_started is the first post-task-loop _started event.)
+    const result = processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     expect(result.success).toBe(false);
 
     // No state write should have occurred

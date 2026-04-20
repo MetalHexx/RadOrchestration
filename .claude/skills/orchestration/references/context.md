@@ -15,7 +15,7 @@ This workspace contains a **document-driven agent orchestration system** built o
 |-------|---------|
 | `@brainstormer` | Collaboratively brainstorms and refines project ideas — standalone, outside the pipeline |
 | `@orchestrator` | Coordinates the pipeline — spawns agents, reads state, asks human questions. **Never writes files.** |
-| `@planner` | Authors the lean Requirements ledger and inlined Master Plan via `rad-create-plans`; generates Phase Reports via `generate-phase-report` |
+| `@planner` | Authors the lean Requirements ledger and inlined Master Plan via `rad-create-plans` |
 | `@coder` | Executes coding tasks from self-contained task handoffs |
 | `@coder-junior` | Executes simpler coding tasks with additional guardrails |
 | `@coder-senior` | Executes complex coding tasks with expanded autonomy |

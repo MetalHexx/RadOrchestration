@@ -71,7 +71,6 @@ const PLANNING_SPAWN_STEPS: Record<string, string> = {
 };
 
 const PHASE_LEVEL_ACTIONS = new Set([
-  'generate_phase_report',
   'spawn_phase_reviewer',
   'gate_phase',
 ]);
@@ -110,8 +109,6 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
     if (action === 'spawn_phase_reviewer') {
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
       const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
-      const phaseReport = phaseIter?.nodes['phase_report'] as StepNodeState | undefined;
-      const phase_report_doc = phaseReport?.doc_path ?? '';
 
       const taskLoop = phaseIter?.nodes['task_loop'] as ForEachTaskNodeState | undefined;
       const taskIters = taskLoop?.iterations ?? [];
@@ -128,16 +125,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         ? { is_correction: true, corrective_index: phaseIter.corrective_tasks.length }
         : {};
 
-      return { ...base, phase_report_doc, phase_first_sha, phase_head_sha, ...correctiveFields };
-    }
-
-    if (action === 'generate_phase_report') {
-      const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
-      const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
-      if (phaseIter && phaseIter.corrective_tasks.length > 0) {
-        return { ...base, is_correction: true, corrective_index: phaseIter.corrective_tasks.length };
-      }
-      return base;
+      return { ...base, phase_first_sha, phase_head_sha, ...correctiveFields };
     }
 
     return base;

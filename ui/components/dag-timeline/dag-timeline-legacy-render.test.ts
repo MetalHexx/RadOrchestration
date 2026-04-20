@@ -122,6 +122,42 @@ function makeForwardCompatPhaseIteration(index: number): IterationEntry {
   };
 }
 
+function makePostIter8PhaseIteration(index: number): IterationEntry {
+  // Post-Iter-8 shape: phase_report body node is gone (phase_review absorbs it).
+  // New projects write this shape; the UI must render it cleanly with one fewer
+  // post-task-loop body node in phase_loop iterations.
+  return {
+    index,
+    status: 'in_progress',
+    corrective_tasks: [],
+    commit_hash: null,
+    nodes: {
+      task_loop: {
+        kind: 'for_each_task',
+        status: 'in_progress',
+        iterations: [
+          {
+            index: 0,
+            status: 'in_progress',
+            corrective_tasks: [],
+            commit_hash: null,
+            nodes: {
+              task_executor: stepState('in_progress'),
+              commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
+              commit: stepState('not_started'),
+              code_review: stepState('not_started'),
+              task_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+            },
+          },
+        ],
+      },
+      // No phase_report — phase_review covers both the verdict and the structured summary.
+      phase_review: stepState('not_started'),
+      phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+    },
+  };
+}
+
 function makeTopLevelNodes(phaseLoopIterations: IterationEntry[]): NodesRecord {
   const phaseLoop: ForEachPhaseNodeState = {
     kind: 'for_each_phase',
@@ -234,6 +270,52 @@ test('(A) legacy state renders with no thrown exceptions even when phase_plannin
   const phaseNode = iteration.nodes['phase_planning'] as StepNodeState;
   const name = parsePhaseNameFromDocPath(phaseNode.doc_path, iteration.index);
   assert.strictEqual(name, 'Phase 1');
+});
+
+// ─── Iter-8 tests — phase_report legacy rendering + new-shape rendering ──────
+
+test('(Iter-8 legacy) iteration with a completed phase_report body node still renders: node + doc_path preserved', () => {
+  // Post-Iter-8 state.json from a pre-Iter-8 project run still carries
+  // phase_report as a body node. The UI must continue to render it with its
+  // Doc link — NODE_SECTION_MAP does not list phase_report (body nodes aren't
+  // top-level), so the polymorphic body renderer picks it up.
+  const iteration = makeLegacyPhaseIteration(0);
+  const phaseReport = iteration.nodes['phase_report'] as StepNodeState;
+  assert.strictEqual(phaseReport.kind, 'step');
+  assert.strictEqual(phaseReport.status, 'completed');
+  assert.strictEqual(phaseReport.doc_path, 'reports/MYPROJ-PHASE-REPORT-P01-SETUP.md');
+
+  // Top-level grouping is unaffected — phase_report lives inside phase_loop.body,
+  // not at the top level.
+  const iterations = [iteration];
+  const nodes = makeTopLevelNodes(iterations);
+  const groups = groupNodesBySection(nodes);
+  const labels = groups.map((g) => g.label);
+  assert.deepStrictEqual(labels, ['Planning', 'Gates', 'Execution', 'Completion']);
+});
+
+test('(Iter-8 new shape) iteration WITHOUT phase_report body node renders cleanly — one fewer post-task-loop node', () => {
+  // Post-Iter-8 new-shape state.json omits phase_report entirely. Only
+  // phase_review + phase_gate remain as post-task-loop body nodes.
+  const iteration = makePostIter8PhaseIteration(0);
+  assert.strictEqual(iteration.nodes['phase_report'], undefined);
+  assert.ok(iteration.nodes['phase_review']);
+  assert.ok(iteration.nodes['phase_gate']);
+
+  // Count post-task-loop body nodes (excluding task_loop itself): expect 2
+  // (phase_review + phase_gate), vs. 3 in the legacy shape
+  // (phase_report + phase_review + phase_gate).
+  const bodyNodeIds = Object.keys(iteration.nodes).filter((id) => id !== 'task_loop');
+  assert.strictEqual(bodyNodeIds.length, 2);
+  assert.ok(bodyNodeIds.includes('phase_review'));
+  assert.ok(bodyNodeIds.includes('phase_gate'));
+
+  // Top-level grouping unaffected.
+  const iterations = [iteration];
+  const nodes = makeTopLevelNodes(iterations);
+  const groups = groupNodesBySection(nodes);
+  const labels = groups.map((g) => g.label);
+  assert.deepStrictEqual(labels, ['Planning', 'Gates', 'Execution', 'Completion']);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

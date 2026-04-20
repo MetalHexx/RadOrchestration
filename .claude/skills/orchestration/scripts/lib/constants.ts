@@ -57,7 +57,6 @@ export const NEXT_ACTIONS = Object.freeze({
   // Execution agent spawns
   EXECUTE_TASK: 'execute_task',
   SPAWN_CODE_REVIEWER: 'spawn_code_reviewer',
-  GENERATE_PHASE_REPORT: 'generate_phase_report',
   SPAWN_PHASE_REVIEWER: 'spawn_phase_reviewer',
   SPAWN_FINAL_REVIEWER: 'spawn_final_reviewer',
 
@@ -94,8 +93,6 @@ export const EVENTS = Object.freeze({
   CODE_REVIEW_COMPLETED: 'code_review_completed',
 
   // ── Phase review events ───────────────────────────────────────────────
-  PHASE_REPORT_STARTED: 'phase_report_started',
-  PHASE_REPORT_CREATED: 'phase_report_created',
   PHASE_REVIEW_STARTED: 'phase_review_started',
   PHASE_REVIEW_COMPLETED: 'phase_review_completed',
 

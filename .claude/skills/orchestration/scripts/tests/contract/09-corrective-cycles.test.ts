@@ -7,12 +7,9 @@ import {
   seedDoc,
   driveToExecutionWithConfig,
   driveTaskWith,
-  codeReviewDoc,
-  phaseReportDoc,
   phaseReviewDoc,
 } from '../fixtures/parity-states.js';
-import type { MockIO } from '../fixtures/parity-states.js';
-import type { StepNodeState, ForEachPhaseNodeState, PipelineResult } from '../../lib/types.js';
+import type { StepNodeState, ForEachPhaseNodeState } from '../../lib/types.js';
 
 // ── Clear DOC_STORE between tests ─────────────────────────────────────────────
 
@@ -38,56 +35,16 @@ const config = createConfig({
 // driveToExecutionWithConfig. Action-context tests for create_task_handoff /
 // create_phase_plan are gone — those actions no longer exist. Mutation-side
 // corrective coverage remains in mutations-phase-corrective.test.ts.
-
-/**
- * Drives a single task through execute → review with a configurable verdict string.
- */
-function driveTaskWithVerdict(
-  io: MockIO,
-  phase: number,
-  task: number,
-  verdict: string,
-): PipelineResult {
-  const ctx = { phase, task };
-  processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('task_completed', PROJECT_DIR, ctx, io);
-  processEvent('code_review_started', PROJECT_DIR, ctx, io);
-  const review = codeReviewDoc(phase, task);
-  seedDoc(review);
-  return processEvent('code_review_completed', PROJECT_DIR, {
-    ...ctx, doc_path: review, verdict,
-  }, io);
-}
+//
+// Post-Iter 8: the Iter-0 `phase_report_created` auto-resolution regression test
+// (previously the only consumer of the local driveTaskWithVerdict helper) was
+// deleted alongside the generate_phase_report handler.
 
 // ── [REGRESSION] Auto-resolution when phase context is omitted ─────────────────
-
-describe('[REGRESSION] Auto-resolution — phase_report_created without phase context', () => {
-  it('succeeds with empty context after a task-level corrective cycle', () => {
-    const io = driveToExecutionWithConfig(config, 1, 2);
-
-    // Task 1 through a corrective cycle: changes_requested then approved
-    driveTaskWithVerdict(io, 1, 1, 'changes_requested');
-    driveTaskWithVerdict(io, 1, 1, 'approved');
-
-    // Task 2 normal
-    driveTaskWith(io, 1, 2);
-
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-
-    // Fire phase_report_created with NO phase in context — auto-resolution must kick in.
-    const result = processEvent('phase_report_created', PROJECT_DIR, {
-      doc_path: phaseReportDoc(1),
-    }, io);
-
-    expect(result.success).toBe(true);
-    const state = io.currentState!;
-    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-    const phaseReport = phaseLoop.iterations[0].nodes['phase_report'] as StepNodeState;
-    expect(phaseReport.status).toBe('completed');
-    expect(phaseReport.doc_path).toBe(phaseReportDoc(1));
-  });
-});
+//
+// Post-Iter 8: the Iter-0 `phase_report_created` fallback-behavior regression test was
+// deleted alongside the generate_phase_report handler. Intentional removal documented in
+// the progression log.
 
 describe('[REGRESSION] Auto-resolution — phase_review_completed changes_requested without phase context', () => {
   // Skipped in Iter 7; Iter 11 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.
@@ -98,12 +55,6 @@ describe('[REGRESSION] Auto-resolution — phase_review_completed changes_reques
 
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReportDoc(1),
-    }, io);
 
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
@@ -138,12 +89,6 @@ describe('[REGRESSION] Auto-resolution — phase_review_completed approved witho
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
 
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReportDoc(1),
-    }, io);
-
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
 
@@ -166,41 +111,12 @@ describe('[REGRESSION] Auto-resolution — phase_review_completed approved witho
 
 // ── [REGRESSION] Actionable error when phase cannot be resolved (PR #50 follow-up) ─
 
-describe('[REGRESSION] phase_report_created with nonexistent phase throws actionable error', () => {
-  it('wraps resolveNodeState failure in a clear "Cannot apply mutation" error naming the node and phase', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-
-    driveTaskWith(io, 1, 1);
-    driveTaskWith(io, 1, 2);
-
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-
-    // Fire phase_report_created with an explicit phase that doesn't exist in state.
-    const result = processEvent('phase_report_created', PROJECT_DIR, {
-      phase: 99,
-      doc_path: phaseReportDoc(1),
-    }, io);
-
-    expect(result.success).toBe(false);
-    expect(result.error?.message).toMatch(/Cannot apply mutation for "phase_report_created"/);
-    expect(result.error?.message).toMatch(/phase_report/);
-    expect(result.error?.message).toMatch(/phase 99/);
-  });
-});
-
 describe('[REGRESSION] phase_review_completed with nonexistent phase throws actionable error', () => {
   it('wraps resolveNodeState failure in a clear "Cannot apply mutation" error naming phase_review and phase', () => {
     const io = driveToExecutionWithConfig(config, 1);
 
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phaseReportDoc(1));
-    processEvent('phase_report_created', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReportDoc(1),
-    }, io);
 
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReviewDoc(1));
