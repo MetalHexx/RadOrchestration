@@ -17,16 +17,22 @@ After this iteration: phase_review emits one artifact (verdict + phase summary i
   - Action: `GENERATE_PHASE_REPORT`
   - Events: `PHASE_REPORT_STARTED`, `PHASE_REPORT_CREATED`
 - In `mutations.ts`:
-  - Remove `[EVENTS.PHASE_REPORT_STARTED, 'phase_report']` from `phaseExecStartedSteps` (line ~189)
-  - Remove the individual `phase_report_created` handler (wherever it lives; the Iter-0 fix referenced this handler)
+  - Remove `[EVENTS.PHASE_REPORT_STARTED, 'phase_report']` from `phaseExecStartedSteps` (symbol anchor; leaves the remaining `[PHASE_REVIEW_STARTED, 'phase_review']` entry).
+  - Delete `phaseExecDocSteps` array + its for-loop outright — `PHASE_REPORT_CREATED` is its only entry, so the registration block becomes dead.
+  - In `phase_review_completed`'s `CHANGES_REQUESTED` branch: strip `'phase_report'` from the `for (const nodeId of ['phase_report', 'phase_review', 'phase_gate'])` reset list. This branch is stubbed on the walker side post-Iter-7 but its state-shape reset is still exercised by `mutations-phase-corrective.test.ts`.
 - In `context-enrichment.ts`:
-  - Remove `'generate_phase_report'` from `PHASE_LEVEL_ACTIONS` set (line ~76-81)
-  - Remove the `generate_phase_report` special-case enrichment block (lines ~156-163)
-  - Simplify the `spawn_phase_reviewer` enrichment block (lines ~132-154): remove the `phaseReport` node lookup and `phase_report_doc` field. The phase review agent now reads only its own inputs (Requirements + phase-plan + commit-SHA diff per Iter 12's rework).
+  - Remove `'generate_phase_report'` from `PHASE_LEVEL_ACTIONS` set.
+  - Remove the `generate_phase_report` special-case enrichment block.
+  - Simplify the `spawn_phase_reviewer` enrichment block: remove the `phaseReport` node lookup + `phase_report_doc` field from the returned context. Phase review no longer reads a pre-authored report; Iter 12 will further rework this for diff-based strict conformance.
+- In `dag-walker.ts`: update the v4-parity comment on the zero-tasks-phase branch — drop the `generate_phase_report` reference.
 - Expand `.claude/skills/code-review/phase-review/workflow.md` + `template.md`:
-  - Workflow captures both: (a) structured phase summary (task outcomes, corrections applied, diff stats, risk notes) and (b) conformance verdict with `exit_criteria_met` field.
-  - Template output carries both sections in one frontmatter-tagged doc.
-- Remove `phase_report` body node from `full.yml`'s `phase_loop.body` (if still present — `full.yml` is already deprecated; this keeps it syntactically tidy).
+  - **Absorption shape**: thread the phase-report template's 7 sections (Summary, Task Results, Exit Criteria Assessment, Files Changed, Issues & Resolutions, Carry-Forward Items, Master Plan Adjustments) INTO the phase-review template, merging with existing sections where they overlap (Summary, Exit Criteria → existing "Exit Criteria Verification"). New content lands as distinct sections for what doesn't overlap (Task Results, Files Changed, Carry-Forward Items, Master Plan Adjustments).
+  - **Corrections Applied section**: distinct named section that makes corrective-cycle work easy to find. Renders empty on first-time reviews; populated on corrective re-reviews with what was fixed and how.
+  - **Incidental cleanup** (Iter-3 residue): phase-review/workflow.md's Inputs table still lists PRD / Architecture / Design (removed in Iter 3) + Phase Report (removed by this iteration). Drop all four rows as part of the workflow edit; this file would otherwise stay stale until Iter 12/16 touched it.
+  - Workflow output carries one frontmatter-tagged doc (`type: phase_review`, unchanged) with both the verdict shape and the structured summary shape.
+- Remove `phase_report` body node from `full.yml`'s `phase_loop.body` and retarget the `phase_review.depends_on: [phase_report]` to `[task_loop]`. `full.yml` is deprecated but must still be syntactically valid so it loads under the deprecated-skip path.
+- `@planner` agent (`.claude/agents/planner.md`): remove the `generate_phase_report` routing table row + the narrative line describing Phase Report generation.
+- References: scrub `generate_phase_report` / `phase_report_*` vocabulary from `action-event-reference.md` (action row, 2 event rows, phase auto-resolution note), `context.md` (planner row description), `code-review/SKILL.md` (phase-review inputs row — drop `phase_report_doc`), and `orchestration/SKILL.md` action count if it still cites the old number. Cheaper-execution design-doc corpus is exempt.
 
 ## Scope Deliberately Untouched
 
@@ -48,21 +54,37 @@ After this iteration: phase_review emits one artifact (verdict + phase summary i
 
 ## Code Surface
 
-- Skill (delete entirely): `.claude/skills/generate-phase-report/`
-- Skill (expand): `.claude/skills/code-review/phase-review/workflow.md` + `.claude/skills/code-review/phase-review/template.md`
-- Engine:
-  - `.claude/skills/orchestration/scripts/lib/constants.ts` (action + events removal)
-  - `.claude/skills/orchestration/scripts/lib/mutations.ts:189` (phaseExecStartedSteps) + individual handler (search for `PHASE_REPORT_CREATED`)
-  - `.claude/skills/orchestration/scripts/lib/context-enrichment.ts:76, :156-163, :132-154` (set entry, block, enrichment simplification)
-- Template: `.claude/skills/orchestration/templates/full.yml` (remove phase_report body node; file is deprecated)
-- Tests:
-  - `.claude/skills/orchestration/scripts/tests/mutations.test.ts`, `mutations-phase-corrective.test.ts`
-  - `.claude/skills/orchestration/scripts/tests/context-enrichment.test.ts`
-  - `.claude/skills/orchestration/scripts/tests/contract/06-state-mutations.test.ts`
-- Ripple surfaces:
-  - `.claude/skills/orchestration/validate/lib/checks/skills.js` (drop generate-phase-report from expected skill roster)
-  - `.claude/skills/orchestration/references/{action-event-reference, document-conventions, pipeline-guide}.md`
-  - `.claude/skills/code-review/SKILL.md` (note that phase-review emits two concerns in one doc)
+Line numbers are drift-prone; the plan file should re-resolve with grep at planning time. Symbol anchors below.
+
+- **Skill (delete entirely)**: `.claude/skills/generate-phase-report/` (SKILL.md + templates/PHASE-REPORT.md)
+- **Skill (expand)**: `.claude/skills/code-review/phase-review/workflow.md` + `.claude/skills/code-review/phase-review/template.md`
+- **Agent**: `.claude/agents/planner.md` — routing row for `generate_phase_report` + narrative reference
+- **Engine**:
+  - `.claude/skills/orchestration/scripts/lib/constants.ts` — `NEXT_ACTIONS.GENERATE_PHASE_REPORT`, `EVENTS.PHASE_REPORT_STARTED`, `EVENTS.PHASE_REPORT_CREATED`
+  - `.claude/skills/orchestration/scripts/lib/mutations.ts` — `phaseExecStartedSteps` entry, `phaseExecDocSteps` array + its for-loop (dies outright), `CHANGES_REQUESTED`-branch reset list in `phase_review_completed`
+  - `.claude/skills/orchestration/scripts/lib/context-enrichment.ts` — `PHASE_LEVEL_ACTIONS` set, `spawn_phase_reviewer` block (drop `phase_report_doc`), `generate_phase_report` block (delete)
+  - `.claude/skills/orchestration/scripts/lib/dag-walker.ts` — zero-tasks-phase comment referencing `generate_phase_report`
+- **Template**: `.claude/skills/orchestration/templates/full.yml` — delete `phase_report` body node + fix `phase_review.depends_on`
+- **Tests** (not exhaustive — the plan's first action is a grep sweep):
+  - Engine: `constants.test.ts`, `context-enrichment.test.ts`, `mutations.test.ts`, `mutations-negative-path.test.ts`, `mutations-phase-corrective.test.ts`, `engine.test.ts`, `execution-integration.test.ts`, `event-routing-integration.test.ts`, `corrective-integration.test.ts`, `verdict-validation.test.ts`, `template-loader.test.ts`, `e2e-template-selection.test.ts`, `fixtures/parity-states.ts`
+  - Contract: `02-event-names.test.ts`, `03-action-contexts.test.ts` (phase_report_doc assertion), `04-gate-behavior.test.ts`, `06-state-mutations.test.ts`, `07-tier-transitions.test.ts`, `09-corrective-cycles.test.ts`
+  - Dag-walker: skip any scaffolding that uses invented `create_phase_report` action names (those are abstract walker fixtures, not referencing the real action; leave untouched).
+  - UI: Iter 7's `dag-timeline-legacy-render.test.ts` already covers `phase_report` legacy rendering. Extend if the grep sweep surfaces coverage gaps; otherwise no new UI tests required.
+- **Ripple surfaces**:
+  - `.claude/skills/orchestration/references/action-event-reference.md` — action table row 5, event table `phase_report_started` / `phase_report_created`, phase auto-resolution note.
+  - `.claude/skills/orchestration/references/context.md` — `@planner` row description.
+  - `.claude/skills/code-review/SKILL.md` — phase-review inputs row (drop `phase_report_doc`).
+  - `.claude/skills/orchestration/SKILL.md` — action count if cited.
+  - `.claude/skills/orchestration/validate/lib/checks/skills.js` — if it carries an expected skill roster (verify at planning time; no reference to generate-phase-report surfaced in current grep, so may be a no-op).
+
+## Test Sweep Posture
+
+User directive for this iteration: **comprehensive sweep, no dead code, no breaking tests, no half-removed vocabulary**. The plan's first action after baseline capture is a two-step grep sweep across the entire repo:
+
+1. `grep -rn "generate_phase_report\|generate-phase-report\|phase_report_started\|phase_report_created\|phase_report_doc\|GENERATE_PHASE_REPORT\|PHASE_REPORT_STARTED\|PHASE_REPORT_CREATED" .claude/ ui/ installer/ docs/internals/` excluding the cheaper-execution design corpus.
+2. `grep -rn "phase_report" .claude/ ui/ installer/` — this MUST return only the UI legacy-rendering paths (`ui/types/state.ts`, `ui/lib/document-ordering.ts`, `ui/components/execution/phase-card.tsx`, `ui/components/dag-timeline/...`, and their tests) + the legacy v4 schema / migrator files (which Iter 16 sunsets). Every engine-side match must be gone.
+
+Inventory the matches at plan-write time; every hit becomes a deletion or an explicit "intentionally retained (legacy rendering)" note.
 
 ## Dependencies
 
@@ -82,8 +104,11 @@ After this iteration: phase_review emits one artifact (verdict + phase summary i
 - A simulated phase-review run emits one artifact that passes both the conformance-verdict shape check AND the structured-summary shape check.
 - No code path references a `phase_report` node in state.json.
 
-## Open Questions
+## Resolved at Planning Time (2026-04-20)
 
-- **Structured phase summary schema**: what exactly does the expanded phase-review output look like? One-doc-two-sections, or frontmatter-rich with both fields? Iteration planner defines the exact shape. Reference: the current `generate-phase-report/templates/` is the starting point for what content the summary must cover.
-- **Iter-0 regression test fate**: three tests were added in Iter 0 to cover the corrective-cycle auto-resolution fix. One of them (`phase_report_created after a task-level corrective cycle with empty context`) becomes irrelevant when the handler is deleted. Record the intentional removal in the progress tracker; don't let it look like a regression.
-- **Phase review doc type**: currently `phase_review` produces its own doc type (`phase_review`) with `verdict` + `exit_criteria_met`. Does absorbing phase_report change the `type` field? Lean: keep `type: phase_review`, add a structured-summary section inside. Confirm during planning.
+- **Structured phase summary shape**: **Option (b)** — thread phase-report's 7 sections INTO phase-review's existing template, merging where they overlap and adding distinct sections for what doesn't. A named **Corrections Applied** section makes corrective-cycle work easy to find (empty on first-time reviews).
+- **Phase review doc type**: stays `type: phase_review`. Frontmatter carries existing `verdict` + `exit_criteria_met` fields; body absorbs the summary sections. No new doctype, no validator rule changes.
+- **Iter-0 regression test fate**: the `phase_report_created` auto-resolution regression test is deleted alongside the handler it tested. Not a regression — intentional removal. Logged in progress tracker at iteration exit.
+- **`spawn_phase_reviewer` enrichment simplification**: happens in Iter 8, not deferred. Drops `phase_report_doc` from context now; the `contract/03-action-contexts.test.ts` assertion updates to match. Iter 12 handles the further rework for diff-based strict conformance.
+- **Incidental cleanup of Iter-3 residue** (PRD / Architecture / Design refs in phase-review/workflow.md Inputs table): applied in Iter 8 since the file is being edited anyway. Cheap, reduces confusion; Iter 12 rewrites the file further but would otherwise inherit stale framing.
+- **V4 legacy sunset**: out of scope for Iter 8 — deferred to Iter 16 (repository deep clean), which absorbs the v4 migrator + legacy schema + `$schema` identifier rename (v4 → v5) as a scoped addition.
