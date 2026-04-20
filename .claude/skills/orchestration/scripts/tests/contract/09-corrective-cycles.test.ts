@@ -36,15 +36,7 @@ const config = createConfig({
 // create_phase_plan are gone — those actions no longer exist. Mutation-side
 // corrective coverage remains in mutations-phase-corrective.test.ts.
 //
-// Post-Iter 8: the Iter-0 `phase_report_created` auto-resolution regression test
-// (previously the only consumer of the local driveTaskWithVerdict helper) was
-// deleted alongside the generate_phase_report handler.
-
-// ── [REGRESSION] Auto-resolution when phase context is omitted ─────────────────
-//
-// Post-Iter 8: the Iter-0 `phase_report_created` fallback-behavior regression test was
-// deleted alongside the generate_phase_report handler. Intentional removal documented in
-// the progression log.
+// Post-Iter 8: the Iter-0 `phase_report_created` auto-resolution regression test was deleted alongside the generate_phase_report handler — intentional removal documented in the progression log.
 
 describe('[REGRESSION] Auto-resolution — phase_review_completed changes_requested without phase context', () => {
   // Skipped in Iter 7; Iter 11 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.

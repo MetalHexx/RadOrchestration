@@ -1,6 +1,6 @@
 # Phase Review
 
-Self-contained workflow for phase-level review (Action #8, `spawn_phase_reviewer`). Do not load other review docs — everything you need is below.
+Self-contained workflow for phase-level review (Action #5, `spawn_phase_reviewer`). Do not load other review docs — everything you need is below.
 
 ## Your Job
 

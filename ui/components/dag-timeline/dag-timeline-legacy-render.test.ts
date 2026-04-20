@@ -87,40 +87,11 @@ function makeLegacyPhaseIteration(index: number): IterationEntry {
   };
 }
 
-function makeForwardCompatPhaseIteration(index: number): IterationEntry {
-  // Forward-compat shape: default.yml body has no phase_planning / task_handoff.
-  // Execution proceeds directly; iteration-name fallbacks kick in.
-  return {
-    index,
-    status: 'in_progress',
-    corrective_tasks: [],
-    commit_hash: null,
-    nodes: {
-      task_loop: {
-        kind: 'for_each_task',
-        status: 'in_progress',
-        iterations: [
-          {
-            index: 0,
-            status: 'in_progress',
-            corrective_tasks: [],
-            commit_hash: null,
-            nodes: {
-              task_executor: stepState('in_progress'),
-              commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
-              commit: stepState('not_started'),
-              code_review: stepState('not_started'),
-              task_gate: { kind: 'gate', status: 'not_started', gate_active: false },
-            },
-          },
-        ],
-      },
-      phase_report: stepState('not_started'),
-      phase_review: stepState('not_started'),
-      phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
-    },
-  };
-}
+// makeForwardCompatPhaseIteration consolidated into makePostIter8PhaseIteration (Iter-8 corrective
+// pass): after dropping the now-retired phase_report node the two fixtures were structurally
+// identical, so the forward-compat helper was removed. The name "forward-compat" still
+// conceptually applies — it means "no pre-Iter-7 phase_planning / task_handoff nodes" — but the
+// canonical fixture for that shape is makePostIter8PhaseIteration.
 
 function makePostIter8PhaseIteration(index: number): IterationEntry {
   // Post-Iter-8 shape: phase_report body node is gone (phase_review absorbs it).
@@ -232,7 +203,7 @@ test('(A) legacy deriveCurrentPhase: reads phase_planning.doc_path for the activ
 });
 
 test('(B) forward-compat iteration without phase_planning: iteration-name fallback returns "Phase N"', () => {
-  const iteration = makeForwardCompatPhaseIteration(0);
+  const iteration = makePostIter8PhaseIteration(0);
   assert.strictEqual(iteration.nodes['phase_planning'], undefined);
   // Code under test reads doc_path via (phaseNode && 'doc_path' in phaseNode)
   // — when the node is absent, fallback label "Phase N" is produced.
@@ -243,7 +214,7 @@ test('(B) forward-compat iteration without phase_planning: iteration-name fallba
 });
 
 test('(B) forward-compat task iteration without task_handoff: fallback returns "Task N"', () => {
-  const iteration = makeForwardCompatPhaseIteration(0);
+  const iteration = makePostIter8PhaseIteration(0);
   const taskLoop = iteration.nodes['task_loop'];
   assert.ok(taskLoop.kind === 'for_each_task');
   const taskIter = taskLoop.iterations[0];
@@ -255,7 +226,7 @@ test('(B) forward-compat task iteration without task_handoff: fallback returns "
 });
 
 test('(B) forward-compat top-level nodes: groupNodesBySection behaves identically (no regression)', () => {
-  const iterations = [makeForwardCompatPhaseIteration(0)];
+  const iterations = [makePostIter8PhaseIteration(0)];
   const nodes = makeTopLevelNodes(iterations);
   const groups = groupNodesBySection(nodes);
   const labels = groups.map((g) => g.label);

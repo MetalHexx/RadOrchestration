@@ -561,9 +561,7 @@ describe('phase execution _started mutations', () => {
   }
 });
 
-// ── phase_report_created mutation ──────────────────────────────────────────
-// Post-Iter 8: removed. phase_review absorbed phase_report.
-// The phase_review_completed mutation owns the single post-task-loop doc + verdict.
+// Post-Iter 8: phase_report_created mutation removed — phase_review absorbed phase_report; phase_review_completed owns the single post-task-loop doc + verdict.
 
 // ── phase_review_completed mutation ──────────────────────────────────────────
 
