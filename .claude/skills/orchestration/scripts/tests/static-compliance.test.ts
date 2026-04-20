@@ -111,16 +111,19 @@ describe('any type audit', () => {
 // ── 3. Action count freeze ───────────────────────────────────────────────────
 
 describe('Action count freeze', () => {
-  it('NEXT_ACTIONS has exactly 19 keys', () => {
-    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(19);
+  // Post-Iter 7: CREATE_PHASE_PLAN + CREATE_TASK_HANDOFF removed → 17 keys.
+  it('NEXT_ACTIONS has exactly 17 keys', () => {
+    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(17);
   });
 });
 
 // ── 4. Event count freeze ────────────────────────────────────────────────────
 
 describe('Event count freeze', () => {
-  it('EVENTS has exactly 35 keys', () => {
-    expect(Object.keys(EVENTS)).toHaveLength(35);
+  // Post-Iter 7: PHASE_PLANNING_STARTED / PHASE_PLAN_CREATED / TASK_HANDOFF_STARTED /
+  // TASK_HANDOFF_CREATED removed (4 events) → 31 keys.
+  it('EVENTS has exactly 31 keys', () => {
+    expect(Object.keys(EVENTS)).toHaveLength(31);
   });
 });
 

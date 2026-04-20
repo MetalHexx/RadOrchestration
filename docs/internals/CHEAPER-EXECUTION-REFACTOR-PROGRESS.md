@@ -65,7 +65,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 4 | Requirements pipeline node | Complete | 2026-04-18 | 2026-04-18 |
 | 5 | Explosion script + state.json pre-seeding | Complete | 2026-04-19 | 2026-04-19 |
 | 6 | Prompt regression harness | Complete | 2026-04-19 | 2026-04-19 |
-| 7 | Remove per-phase/per-task planning | Not started | — | — |
+| 7 | Remove per-phase/per-task planning | Complete | 2026-04-19 | 2026-04-20 |
 | 8 | phase_review absorbs phase_report | Not started | — | — |
 | 9 | Complete `default.yml` | Not started | — | — |
 | 10 | Code-review rework (task/phase/final) | Not started | — | — |
@@ -76,7 +76,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 15 | Repository deep clean | Not started | — | — |
 | 16 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 7 / 17 iterations complete. Design realigned 2026-04-18 for gutting-first approach. Iter 14 (explosion-retry configurability) inserted 2026-04-19 during Iter 5 planning when the retry cap was deferred from baked-in to configurable. Iter 15 (Repository deep clean) inserted 2026-04-19 during Iter 7 planning to sweep cumulative residue from 14 iterations of "delete + ripple" before the public-facing docs refresh (now Iter 16).
+**Overall**: 8 / 17 iterations complete. Design realigned 2026-04-18 for gutting-first approach. Iter 14 (explosion-retry configurability) inserted 2026-04-19 during Iter 5 planning when the retry cap was deferred from baked-in to configurable. Iter 15 (Repository deep clean) inserted 2026-04-19 during Iter 7 planning to sweep cumulative residue from 14 iterations of "delete + ripple" before the public-facing docs refresh (now Iter 16).
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -100,7 +100,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 4 | `feat/iter-4-requirements-pipeline-node` | `C:\dev\orchestration\v3-worktrees\feat-iter-4-requirements-pipeline-node` | Awaiting merge | — | [#55](https://github.com/MetalHexx/RadOrchestation/pull/55) |
 | 5 | `feat/iter-5-explosion-script` | `C:\dev\orchestration\v3-worktrees\feat-iter-5-explosion-script` | Merged | `4500203` | [#56](https://github.com/MetalHexx/RadOrchestation/pull/56) |
 | 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Merged | `82333f1` | [#57](https://github.com/MetalHexx/RadOrchestation/pull/57) |
-| 7 | — | — | Not created | — | — |
+| 7 | `feat/iter-7-remove-per-phase-task-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning` | Awaiting merge | — | — |
 | 8 | — | — | Not created | — | — |
 | 9 | — | — | Not created | — | — |
 | 10 | — | — | Not created | — | — |
@@ -273,6 +273,19 @@ Format:
 - UI smoke: N/A — no UI surface touched.
 - Commits: `f534247` (scaffold), `b890c18` (review-corrective — dead code, tightened self-test thresholds, project-name stability, narrowed `.gitkeep` exception), `a9cb44c` (inaugural baseline artifacts), `211c34a` (progress tracker). PR: [#57](https://github.com/MetalHexx/RadOrchestation/pull/57).
 
+### 2026-04-20 — Iteration 7 — Remove per-phase/per-task planning (tactical-planner + phase-plan/task-handoff + UI discoverProjects parallelization)
+
+- Branch: `feat/iter-7-remove-per-phase-task-planning` off `feat/cheaper-execution` @ `5f3ae07` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning`).
+- Deleted the tactical-planner agent + `rad-create-plans/references/{phase-plan,task-handoff,shared}/` workflow folders. Removed 2 actions (`CREATE_PHASE_PLAN`, `CREATE_TASK_HANDOFF`) + 4 events (`PHASE_PLANNING_STARTED`, `PHASE_PLAN_CREATED`, `TASK_HANDOFF_STARTED`, `TASK_HANDOFF_CREATED`) from `constants.ts`; trimmed `phaseExecStartedSteps` + removed the `TASK_HANDOFF_CREATED` handler in `mutations.ts`; removed `create_phase_plan` + `create_task_handoff` special-case blocks from `context-enrichment.ts` (the `execute_task` block still reads the explosion-seeded `taskIter.nodes['task_handoff'].doc_path`). `dag-walker.ts:171–179` phase-level corrective re-planning branch stubbed with an explicit `throw` pointing at Iter 12.
+- Templates: stripped dead `phase_planning` / `task_handoff` body nodes from `full.yml` + `quick.yml` (depends_on references retargeted; Iter 9 will delete `quick.yml`).
+- Doc migrations + ripples: corrective-filename `-C{N}.md` section moved from `phase-plan/workflow.md` into `orchestration/references/document-conventions.md`; 3 cross-refs updated (code-review phase-review + task-review workflows, generate-phase-report SKILL). 5 enumerated edits to `rad-create-plans/SKILL.md` (frontmatter, intro, When-to-Use, Load Sequence → routing-only, routing table). `orchestration/SKILL.md` action count updated `20 → 17`. `orchestrator.md` action-table references updated `20 → 17` (2 sites). `action-event-reference.md` rows + event signaling table trimmed; `document-conventions.md:49` author field `tactical-planner-agent → explosion-script`; `context.md:18` agent row removed; `prompt-tests/plan-pipeline-e2e/_runner.md:70` tactical-planner sentinel dropped; `document-metadata.tsx:49` + `.test.ts` comment phrasing tidied. Retained `frontmatter-validators.ts` `phase_plan_created` rule with an explanatory "dead-but-intentional" comment (docs still exist, downstream consumers still read them).
+- UI perf fix (folded in during planning-time smoke): `ui/lib/fs-reader.ts` `discoverProjects` parallelized via `Promise.all(entries.map(...))` with per-project `try/catch` so one malformed state.json can't poison the list (`hasBrainstorming` resolution moved inside the per-project try for ordering robustness). Also fixed `getConfigPath` `path.join → path.resolve` so absolute `ORCH_ROOT` resolves correctly (aligns with `installer/lib/env-generator.js`'s documented contract). New regression tests: malformed-isolation / order-stability / 50-project fixture (`fs-reader-discover-parallel.test.ts`); legacy DAG renders with `phase_planning` + `task_handoff` body nodes + forward-compat (`dag-timeline-legacy-render.test.ts`).
+- Test surgery: deleted `parity.test.ts` (~1620 lines of narrative coverage redundant with contract + integration suites); `it.skip()` 4 walker-corrective tests (`dag-walker.test.ts` ×3, `corrective-integration.test.ts` ×1) with explicit Iter-12 pointer comments; 2 additional engine-level tests skipped (`contract/06-state-mutations.test.ts:344`, `contract/09-corrective-cycles.test.ts:96`) that drive the full engine and hit the stubbed walker branch; action/event reference trims across `mutations.test.ts`, `mutations-negative-path.test.ts`, `context-enrichment.test.ts`, `execution-integration.test.ts`, `event-routing-integration.test.ts`, `engine.test.ts`, and contract suites 02–10. New integration test asserts a scratch project drives `requirements → master_plan → explode_master_plan` → executor reads pre-seeded task-handoff and completes the task with zero authoring events.
+- Tests: orchestration 46 files / 1120 pass / 6 skip / 1 todo (baseline 1220/0/1 — net –100 pass / +6 skip / –94 total; over-trim accepted by all 4 review rounds as legitimate removal of dead action/event references, no retained-behavior coverage lost). UI 156 pass / 3 pre-existing fail / +2 tests (baseline 154/3/157). Installer 399 pass (unchanged).
+- UI smoke (run from worktree against user's 107-project workspace): project list renders in **~37ms** (baseline 10–15s hang — >250× improvement); legacy `AGENT-CLEANUP` project DAG renders with 5 `phase_planning` + `task_handoff` body nodes intact; only pre-existing skeleton hydration warning in console (not Iter-7 related).
+- Review cycles: 3 initial reviewers (conformance / code-quality / Copilot-style) + 3 follow-up rounds (Copilot-style nits + conformance recheck + final sanity) with corrective coders between each round. Net: 4 review rounds, ~11 small fixes absorbed inline (dead imports, stale action counts, comment/path consistency, ordering robustness).
+- Commits: pending (Step 7).
+
 ### 2026-04-19 — Iter 15 inserted (Repository deep clean), public docs refresh shifts to Iter 16
 
 - During Iter 7 planning, the cumulative-residue risk after 14 "delete + ripple as you go" iterations surfaced as worth a dedicated sweep before the public-facing docs refresh consumes the codebase as its source of truth.
@@ -387,6 +400,24 @@ Format:
 - **Why unresolved**: Needs a design decision on whether the check lives as a standalone skill / agent mode (mirrors `rad-plan-audit`) or as a cheap CLI script invoked by the planner's workflow. Also overlaps with the future conformance-check agent mentioned in the design doc.
 - **Suggested owner**: A later iteration, possibly the one that introduces a conformance-check agent.
 - **2026-04-18 resolution**: Addressed by Iter 13 (Rad-plan-audit overhaul). The audit is rewritten for a single purpose — Requirements ↔ Master Plan conformance. Both forward coverage (every Requirements ID cited by ≥1 Master Plan task) and backward resolution (every Master Plan tag resolves to a block) land in the iteration.
+
+### 2026-04-20 — Multi-round corrective-context persistence test (Iter 7 carry-forward)
+
+- **Context**: Iter 7 deleted the `create_task_handoff` enrichment block and the test `'corrective fields persist across consecutive changes_requested verdicts'` in `contract/09-corrective-cycles.test.ts` that verified `is_correction` / `previous_review` fields still resolve on the second corrective cycle. `context-enrichment.test.ts` covers the `spawn_code_reviewer` single-round case (~lines 683–698) but no test exercises multi-round persistence at task scope.
+- **Why unresolved**: Low risk for Iter 7 since the `spawn_code_reviewer` enrichment path itself is unchanged. But the gap is real — a regression in corrective_index accumulation across retries would go uncaught.
+- **Suggested owner**: Iter 8 (phase_review absorbs phase_report) or Iter 10 (code-review rework) — whichever first touches the corrective cycle shape.
+
+### 2026-04-20 — `.agents/skills/pipeline-changes/references/pipeline-internals.md` ripple unexecuted (Iter 7 carry-forward)
+
+- **Context**: Iter 7 companion + plan listed updating this file's Mermaid diagrams to replace `task_handoff_created` + `phase_plan_created` event refs. The file does not exist anywhere in this worktree or the integration branch — likely lives in a different worktree or was renamed/moved in a prior iteration and the companion wasn't updated.
+- **Why unresolved**: File physically unavailable during Iter 7 execution. Documentation-only (Mermaid diagrams) with no executable consequence.
+- **Suggested owner**: Iter 15 (repository deep clean) or Iter 16 (public-facing docs refresh) — both of those sweep cumulative residue and would naturally pick up a stale Mermaid reference if/when the file reappears.
+
+### 2026-04-20 — `fs-reader.ts` discoverProjects concurrency cap (Iter 7 Copilot review C1)
+
+- **Context**: Iter 7 parallelized `discoverProjects` via `Promise.all(entries.map(...))` — unbounded concurrency. Copilot flagged theoretical EMFILE / IO-contention risk at large workspace sizes.
+- **Why unresolved**: 107 projects renders in ~37ms with no issues. The risk surfaces at ~1000+ projects on OSes with strict file-descriptor limits (Linux default 1024; Windows default >10k). Iter 7's plan explicitly deferred "sidebar virtualization + project-count cap" to a later iteration. A bounded semaphore (e.g. concurrency = 20) would be trivial but premature without observable evidence of the EMFILE risk.
+- **Suggested owner**: A future UI-performance iteration, or fold into Iter 15 (repository deep clean) if sweeping similar scale concerns.
 
 ### 2026-04-19 — Prompt-harness linter frontmatter coverage (Iter 6 Copilot R6-3 / R6-5)
 

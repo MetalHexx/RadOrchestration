@@ -31,7 +31,7 @@ import { scaffoldNodeState } from './scaffold.js';
  *
  * Examples:
  *   ("phase_loop.body.task_loop.body.code_review", {phase:1, task:2}) → "phase_loop[0].task_loop[1].code_review"
- *   ("phase_loop.body.phase_planning", {phase:2}) → "phase_loop[1].phase_planning"
+ *   ("phase_loop.body.phase_review", {phase:2}) → "phase_loop[1].phase_review"
  *   ("research", {}) → "research"
  */
 export function resolveNodeStatePath(
@@ -168,29 +168,19 @@ function walkForEachIterations(
         latestCorrective.status = NODE_STATUSES.IN_PROGRESS;
       }
 
-      // Phase-level corrective re-planning: corrective entry has empty nodes ({}).
-      // Tasks are re-created by phase planning, not scaffolded upfront. Walk the
-      // regular phase body against iteration.nodes so the walker re-enters
-      // create_phase_plan via phase_planning.status === 'in_progress'.
+      // Phase-level corrective re-planning: unreachable post-Iter 7. The legacy
+      // per-phase authoring path was removed in Iter 7; Iter 12 will rewire this
+      // branch via corrective-task-append. See docs/internals/cheaper-execution/iter-12-corrective-cycles.md.
       if (fepDef.kind === 'for_each_phase' && Object.keys(latestCorrective.nodes).length === 0) {
-        const phaseBodyResult = walkNodes(fepDef.body, iteration.nodes, config, state, readDocument);
-        if (phaseBodyResult !== null) {
-          return phaseBodyResult;
-        }
-        const allPhaseBodyDone = fepDef.body.every((bn) => {
-          const bnState = iteration.nodes[bn.id];
-          return (
-            bnState !== undefined &&
-            (bnState.status === NODE_STATUSES.COMPLETED ||
-              bnState.status === NODE_STATUSES.SKIPPED)
-          );
-        });
-        if (allPhaseBodyDone) {
-          latestCorrective.status = NODE_STATUSES.COMPLETED;
-          iteration.status = NODE_STATUSES.COMPLETED;
-          continue;
-        }
-        return null;
+        const haltReason =
+          'Phase-level corrective re-planning branch unreachable post-Iter 7. ' +
+          'Iter 12 will rewire this via corrective-task-append. ' +
+          'See docs/internals/cheaper-execution/iter-12-corrective-cycles.md.';
+        iteration.status = NODE_STATUSES.HALTED;
+        latestCorrective.status = NODE_STATUSES.HALTED;
+        state.graph.status = GRAPH_STATUSES.HALTED;
+        state.pipeline.halt_reason = haltReason;
+        return { action: NEXT_ACTIONS.DISPLAY_HALTED, context: { details: haltReason } };
       }
 
       // Derive correct body defs for corrective walking

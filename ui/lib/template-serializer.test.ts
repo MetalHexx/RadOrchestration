@@ -104,8 +104,8 @@ describe('parseTemplateToGraph', () => {
     const phaseLoopChildren = graph.nodes.filter(n => n.parentId === 'phase_loop');
     assert.ok(phaseLoopChildren.length > 0, 'phase_loop has no children');
     const childIds = phaseLoopChildren.map(n => n.id);
-    assert.ok(childIds.includes('phase_planning'), 'phase_planning should be child of phase_loop');
     assert.ok(childIds.includes('task_loop'), 'task_loop should be child of phase_loop');
+    assert.ok(childIds.includes('phase_report'), 'phase_report should be child of phase_loop');
   });
 
   it('child nodes inside conditional branches have parentId set to the conditional node id', () => {
@@ -360,9 +360,9 @@ describe('recursive nesting', () => {
     assert.strictEqual(taskLoop.parentId, 'phase_loop');
   });
 
-  it('nodes inside task_loop body (task_handoff, task_executor, code_review, commit_gate, task_gate) have parentId: task_loop', () => {
+  it('nodes inside task_loop body (task_executor, code_review, commit_gate, task_gate) have parentId: task_loop', () => {
     const graph = parseTemplateToGraph(FULL_YAML);
-    for (const id of ['task_handoff', 'task_executor', 'code_review', 'commit_gate', 'task_gate']) {
+    for (const id of ['task_executor', 'code_review', 'commit_gate', 'task_gate']) {
       const node = graph.nodes.find(n => n.id === id);
       assert.ok(node, `${id} not found`);
       assert.strictEqual(node.parentId, 'task_loop', `${id} should have parentId: task_loop`);

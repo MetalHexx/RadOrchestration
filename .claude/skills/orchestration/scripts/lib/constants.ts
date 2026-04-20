@@ -55,8 +55,6 @@ export const NEXT_ACTIONS = Object.freeze({
   REQUEST_FINAL_APPROVAL: 'request_final_approval',
 
   // Execution agent spawns
-  CREATE_PHASE_PLAN: 'create_phase_plan',
-  CREATE_TASK_HANDOFF: 'create_task_handoff',
   EXECUTE_TASK: 'execute_task',
   SPAWN_CODE_REVIEWER: 'spawn_code_reviewer',
   GENERATE_PHASE_REPORT: 'generate_phase_report',
@@ -89,13 +87,7 @@ export const EVENTS = Object.freeze({
   PHASE_GATE_APPROVED: 'phase_gate_approved',
   FINAL_APPROVED: 'final_approved',
 
-  // ── Phase execution events ────────────────────────────────────────────
-  PHASE_PLANNING_STARTED: 'phase_planning_started',
-  PHASE_PLAN_CREATED: 'phase_plan_created',
-
   // ── Task execution events ─────────────────────────────────────────────
-  TASK_HANDOFF_STARTED: 'task_handoff_started',
-  TASK_HANDOFF_CREATED: 'task_handoff_created',
   EXECUTION_STARTED: 'execution_started',
   TASK_COMPLETED: 'task_completed',
   CODE_REVIEW_STARTED: 'code_review_started',

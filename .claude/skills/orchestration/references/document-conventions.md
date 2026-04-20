@@ -18,6 +18,21 @@ Covers all documents produced during pipeline execution. Planning documents (Mas
 | Phase Report | reports/ | `{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REPORT-P01-SETUP.md` |
 | Phase Review | reports/ | `{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REVIEW-P01-SETUP.md` |
 
+### Corrective Filename Suffix
+
+When a producing skill re-authors a document during a corrective cycle, append the suffix `-C{corrective_index}` immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) document is preserved, not overwritten.
+
+- Normal (first-time): `{NAME}-PHASE-{NN}-{TITLE}.md`
+- Corrective: `{NAME}-PHASE-{NN}-{TITLE}-C{corrective_index}.md`
+
+| Scenario | Filename |
+|----------|----------|
+| Original plan | `MYPROJ-PHASE-02-SETUP.md` |
+| First correction | `MYPROJ-PHASE-02-SETUP-C1.md` |
+| Second correction | `MYPROJ-PHASE-02-SETUP-C2.md` |
+
+The same `-C{N}` suffix rule applies to Code Reviews, Phase Reviews, and Phase Reports. Each producing skill's workflow cross-references this section for the shared pattern.
+
 ## Frontmatter Field Reference
 
 | Field | Type | Valid Values | Used In |
@@ -31,7 +46,7 @@ Covers all documents produced during pipeline execution. Planning documents (Mas
 | skills | array | Skill folder names from `.claude/skills/` | Task Handoff |
 | estimated_files | integer | Estimated file count (e.g., `3`) | Task Handoff |
 | tasks | array | List of `{id, title}` objects | Phase Plan |
-| author | string | Agent name (e.g., `"tactical-planner-agent"`, `"planner-agent"`) | Phase Plan, Phase Report, Phase Review, Code Review, Requirements, Master Plan |
+| author | string | Agent or script name (e.g., `"planner-agent"`, `"explosion-script"`) | Phase Plan, Phase Report, Phase Review, Code Review, Requirements, Master Plan |
 | created | string | ISO 8601 date-time (e.g., `"2026-01-15T00:00:00.000Z"`) or ISO 8601 date (e.g., `"2026-01-15"`) | Phase Plan, Phase Report, Phase Review, Code Review, Requirements, Master Plan |
 | approved_at | string \| null | ISO 8601 date-time or `null` until a human gate approves the doc | Requirements |
 | requirement_count | integer | Total FR + NFR + AD + DD blocks in the doc body (e.g., `12`) | Requirements |

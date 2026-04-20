@@ -309,7 +309,6 @@ mutationRegistry.set(EVENTS.FINAL_APPROVED, (state, _context, _config, _template
 // ── Phase execution _started mutations ───────────────────────────────────────
 
 const phaseExecStartedSteps: Array<[string, string]> = [
-  [EVENTS.PHASE_PLANNING_STARTED, 'phase_planning'],
   [EVENTS.PHASE_REPORT_STARTED, 'phase_report'],
   [EVENTS.PHASE_REVIEW_STARTED, 'phase_review'],
 ];
@@ -339,7 +338,6 @@ for (const [eventName, nodeId] of phaseExecStartedSteps) {
 // ── Phase execution _completed mutations (store doc_path) ─────────────────────
 
 const phaseExecDocSteps: Array<[string, string]> = [
-  [EVENTS.PHASE_PLAN_CREATED, 'phase_planning'],
   [EVENTS.PHASE_REPORT_CREATED, 'phase_report'],
 ];
 
@@ -441,7 +439,11 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
   if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED) {
     const iteration = resolvePhaseIteration(cloned, phase);
 
-    // Reset phase_planning to not_started so the walker returns create_phase_plan
+    // Reset the phase-iteration's pre-seeded phase_planning child to not_started
+    // so the walker re-enters the phase body. Post-Iter-7 the walker branch that
+    // consumed this state is stubbed to throw (see dag-walker.ts:171-179); Iter 12
+    // will rewire corrective phase re-planning via corrective-task-append.
+    // The state-shape reset remains valid and is exercised by mutations-phase-corrective.test.ts.
     const phasePlanningNode = iteration.nodes['phase_planning'];
     phasePlanningNode.status = 'not_started';
     (phasePlanningNode as StepNodeState).doc_path = null;
@@ -499,7 +501,6 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
 // ── Task execution _started mutations ────────────────────────────────────────
 
 const taskStartedSteps: Array<[string, string]> = [
-  [EVENTS.TASK_HANDOFF_STARTED, 'task_handoff'],
   [EVENTS.EXECUTION_STARTED, 'task_executor'],
   [EVENTS.CODE_REVIEW_STARTED, 'code_review'],
 ];
@@ -566,58 +567,6 @@ for (const [eventName, nodeId] of taskStartedSteps) {
     return { state: cloned, mutations_applied };
   });
 }
-
-// ── task_handoff_created (stores doc_path) ────────────────────────────────────
-
-mutationRegistry.set(EVENTS.TASK_HANDOFF_CREATED, (state, context, _config, _template): MutationResult => {
-  const cloned = structuredClone(state);
-  const mutations_applied: string[] = [];
-
-  let phase = context.phase;
-  if (phase === undefined) {
-    try {
-      phase = resolveActivePhaseIndex(cloned);
-    } catch {
-      throw new Error(
-        `Cannot apply mutation for "task_handoff_created": no active phase could be resolved from state.\n` +
-        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
-        `Pass --phase <N> to specify the phase explicitly.`
-      );
-    }
-  }
-
-  let task = context.task;
-  if (task === undefined) {
-    try {
-      task = resolveActiveTaskIndex(cloned, phase);
-    } catch {
-      throw new Error(
-        `Cannot apply mutation for "task_handoff_created": no active task could be resolved from state for phase ${phase}.\n` +
-        `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
-        `Pass --task <N> to specify the task explicitly.`
-      );
-    }
-  }
-
-  let node: NodeState;
-  try {
-    node = resolveNodeState(cloned, 'task_handoff', 'task', phase, task);
-  } catch {
-    throw new Error(
-      `Cannot apply mutation for "task_handoff_created": failed to resolve task_handoff node for phase ${phase}, task ${task}.\n` +
-      `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
-      `Pass --phase <N> and/or --task <N> to specify explicitly.`
-    );
-  }
-  node.status = 'completed';
-  mutations_applied.push('set task_handoff.status = completed');
-
-  const docPath = context.doc_path ?? null;
-  (node as StepNodeState).doc_path = docPath;
-  mutations_applied.push(`set task_handoff.doc_path = ${docPath ?? 'null'}`);
-
-  return { state: cloned, mutations_applied };
-});
 
 // ── task_completed ───────────────────────────────────────────────────────
 

@@ -12,7 +12,6 @@ import type {
   ConditionalNodeState,
   ForEachPhaseNodeState,
   ForEachTaskNodeState,
-  CorrectiveTaskEntry,
 } from '../lib/types.js';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -127,8 +126,56 @@ const TASKS_FIXTURE = [
 ];
 
 /**
- * Drives the planning tier from init through plan_approved.
- * Returns the MockIO with state ready for execution-tier events.
+ * Pre-seeds phase_planning + task_handoff iteration child nodes (mirroring the
+ * Iter 5 explosion-script post-condition) so the walker can advance into the
+ * execution tier without per-loop authoring events.
+ */
+function seedExplosionState(io: MockIO, phaseTasks: Array<typeof TASKS_FIXTURE>): void {
+  const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+  for (let pIdx = 0; pIdx < phaseTasks.length; pIdx++) {
+    const phaseNum = pIdx + 1;
+    const phaseDoc = DOC_PATHS.phasePlan(phaseNum);
+    seedDoc(phaseDoc, { tasks: phaseTasks[pIdx] });
+
+    const phaseIter = phaseLoop.iterations[pIdx];
+    phaseIter.nodes['phase_planning'] = {
+      kind: 'step',
+      status: 'completed',
+      doc_path: phaseDoc,
+      retries: 0,
+    };
+
+    const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState;
+    taskLoop.iterations = phaseTasks[pIdx].map((_, tIdx) => {
+      const handoffDoc = DOC_PATHS.taskHandoff(phaseNum, tIdx + 1);
+      seedDoc(handoffDoc);
+      return {
+        index: tIdx,
+        status: 'not_started' as const,
+        nodes: {
+          task_handoff: {
+            kind: 'step' as const,
+            status: 'completed' as const,
+            doc_path: handoffDoc,
+            retries: 0,
+          },
+          task_executor: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+          commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
+          commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+          code_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+          task_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+        },
+        corrective_tasks: [],
+        commit_hash: null,
+      };
+    });
+  }
+}
+
+/**
+ * Drives the planning tier from init through plan_approved AND the post-Iter-5
+ * explosion-script seeding, leaving the pipeline at the first execution action
+ * (`execute_task`). Returns that first result.
  */
 function drivePlanningTier(io: MockIO): PipelineResult {
   // Init scaffold
@@ -139,22 +186,21 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   seedDoc(DOC_PATHS.masterPlan, { total_phases: 2, total_tasks: 4 });
   processEvent('master_plan_completed', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 
-  // plan_approved → triggers phase_loop expansion
-  return processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+  // plan_approved → triggers phase_loop expansion on the next walker invocation
+  processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+
+  // Mirror Iter 5's explosion seeding then re-walk so subsequent events see
+  // a state shape consistent with post-explosion production.
+  seedExplosionState(io, [TASKS_FIXTURE, TASKS_FIXTURE]);
+  return processEvent('start', PROJECT_DIR, {}, io);
 }
 
 /**
- * Drives one task through the full started → handoff → execute → review cycle.
- * Returns the result of the final code_review_completed event.
+ * Drives one task through execute → review (approve). Post-Iter 7: no
+ * task_handoff events; handoff is pre-seeded by seedExplosionState.
  */
 function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
   const ctx = { phase, task };
-
-  processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-
-  const handoffDoc = DOC_PATHS.taskHandoff(phase, task);
-  seedDoc(handoffDoc);
-  processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
 
   processEvent('execution_started', PROJECT_DIR, ctx, io);
   processEvent('task_completed', PROJECT_DIR, ctx, io);
@@ -184,8 +230,7 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
 }
 
 /**
- * Drives a task through handoff → execute → code review with a configurable verdict.
- * Used for the initial task drive before corrective injection.
+ * Drives a task through execute → code review with a configurable verdict.
  */
 function driveTaskWithVerdict(
   io: MockIO,
@@ -194,12 +239,6 @@ function driveTaskWithVerdict(
   verdict: string,
 ): PipelineResult {
   const ctx = { phase, task };
-
-  processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-
-  const handoffDoc = DOC_PATHS.taskHandoff(phase, task);
-  seedDoc(handoffDoc);
-  processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
 
   processEvent('execution_started', PROJECT_DIR, ctx, io);
   processEvent('task_completed', PROJECT_DIR, ctx, io);
@@ -216,9 +255,9 @@ function driveTaskWithVerdict(
 }
 
 /**
- * Drives a corrective task through the same handoff → execute → review cycle.
- * The events use the same {phase, task} context because the engine's mutations
- * route to the latest corrective task's nodes via resolveNodeState.
+ * Drives a corrective task through execute → review. The events use the same
+ * {phase, task} context because the engine's mutations route to the latest
+ * corrective task's nodes via resolveNodeState.
  */
 function driveCorrectiveTask(
   io: MockIO,
@@ -228,12 +267,6 @@ function driveCorrectiveTask(
   verdict: string,
 ): PipelineResult {
   const ctx = { phase, task };
-
-  processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-
-  const handoffDoc = DOC_PATHS.taskHandoff(phase, task);
-  seedDoc(handoffDoc);
-  processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
 
   processEvent('execution_started', PROJECT_DIR, ctx, io);
   processEvent('task_completed', PROJECT_DIR, ctx, io);
@@ -334,20 +367,12 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     // ── Planning tier ────────────────────────────────────────────────────
     result = drivePlanningTier(io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');
-
-    // ── Phase 1 setup ────────────────────────────────────────────────────
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
+    expect(result.action).toBe('execute_task');
 
     // ── Phase 1, Task 1 — drive with changes_requested ──────────────────
     result = driveTaskWithVerdict(io, 1, 1, 'changes_requested');
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('execute_task');
 
     // Verify corrective entry was created
     {
@@ -366,7 +391,7 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     result = driveCorrectiveTask(io, 1, 1, 1, 'approved');
     expect(result.success).toBe(true);
     // task_gate auto-approves → corrective completes → iteration completes → next task
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('execute_task');
 
     // Verify corrective entry completed and iteration completed
     {
@@ -387,22 +412,16 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     drivePlanningTier(io);
 
     // Phase 1 setup
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
 
     // Task 1 — first changes_requested
     result = driveTaskWithVerdict(io, 1, 1, 'changes_requested');
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('execute_task');
 
     // Corrective task 1 — also changes_requested
     result = driveCorrectiveTask(io, 1, 1, 1, 'changes_requested');
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('execute_task');
 
     // Verify two corrective entries
     {
@@ -417,7 +436,7 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     // Corrective task 2 — approve
     result = driveCorrectiveTask(io, 1, 1, 2, 'approved');
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('execute_task');
 
     // Verify iteration completed and walker advanced to task 2
     {
@@ -436,12 +455,6 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     drivePlanningTier(io);
 
     // Phase 1 setup
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
 
     // Task 1 — first changes_requested (injects corrective 1)
     driveTaskWithVerdict(io, 1, 1, 'changes_requested');
@@ -477,12 +490,6 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     drivePlanningTier(io);
 
     // Phase 1 setup
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
 
     // Task 1 — rejected
     result = driveTaskWithVerdict(io, 1, 1, 'rejected');
@@ -507,19 +514,14 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
     }
   });
 
-  it('phase-level corrective loop — phase review changes_requested → re-planning → complete → advances', () => {
+  // Skipped in Iter 7; Iter 12 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-12-corrective-cycles.md.
+  it.skip('phase-level corrective loop — phase review changes_requested → re-planning → complete → advances', () => {
     const io = createMockIO(null, makeConfig());
     let result: PipelineResult;
 
     drivePlanningTier(io);
 
     // ── Phase 1 — first pass: complete all tasks normally ────────────────
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
 
     driveTask(io, 1, 1);
     driveTask(io, 1, 2);
@@ -527,7 +529,7 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
     // ── Phase review with changes_requested → corrective re-planning ─────
     result = drivePhasePostTasksWithVerdict(io, 1, 'changes_requested');
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');  // walker re-enters phase planning
+    expect(result.action).toBe('execute_task');
     expect(result.context['previous_review']).toBeTruthy();  // doc_path preserved through reset
 
     // Verify phase-level corrective entry created with empty nodes
@@ -549,14 +551,8 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
     }
 
     // ── Phase 1 — corrective pass: re-run phase planning and tasks ───────
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    result = processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('execute_task');
 
     driveTask(io, 1, 1);
     driveTask(io, 1, 2);
@@ -573,7 +569,7 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
     }
 
     // Walker should advance to phase 2
-    expect(result.action).toBe('create_phase_plan');
+    expect(result.action).toBe('execute_task');
   });
 
   it('phase review rejected halts — rejected verdict → display_halted, graph halted', () => {
@@ -583,12 +579,6 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
     drivePlanningTier(io);
 
     // Phase 1 — complete all tasks normally
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
 
     driveTask(io, 1, 1);
     driveTask(io, 1, 2);
@@ -621,15 +611,15 @@ describe('Corrective-tier integration — validator enforcement', () => {
     // Drive planning tier to get a valid state
     drivePlanningTier(io);
 
-    // Manually corrupt: set phase_loop to 'completed' while children are still in_progress/not_started
-    // This violates the checkCompletedParentChildren invariant
+    // Manually corrupt: set phase_loop to 'completed' while children are still in_progress/not_started.
+    // This violates the checkCompletedParentChildren invariant.
     (io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState).status = 'completed';
 
     const writeCountBefore = io.writeCalls.length;
 
-    // Fire a subsequent event — mutation sets phase_planning to in_progress,
-    // validator sees completed phase_loop with in_progress child → rejects
-    const result = processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+    // Fire a subsequent event — mutation sets phase_report to in_progress,
+    // validator sees completed phase_loop with in_progress child → rejects.
+    const result = processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     expect(result.success).toBe(false);
 
     // No state write should have occurred

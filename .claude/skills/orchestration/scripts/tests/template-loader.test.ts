@@ -14,13 +14,16 @@ describe('loadTemplate', () => {
       expect(result.template.template.version).toBe('1.0.0');
     });
 
-    it('returns exactly 25 entries in the event index', () => {
+    it('returns exactly 21 entries in the event index', () => {
+      // Post-Iter 7: 4 events removed (phase_planning_started/_plan_created/
+      // task_handoff_started/_created) — explosion script (Iter 5) pre-seeds
+      // those nodes; per-loop authoring events are gone.
       const result = loadTemplate(FULL_YML_PATH);
-      expect(result.eventIndex.size).toBe(25);
+      expect(result.eventIndex.size).toBe(21);
     });
   });
 
-  describe('event index — all 25 mappings', () => {
+  describe('event index — all 21 mappings', () => {
     const result = loadTemplate(FULL_YML_PATH);
     const { eventIndex } = result;
 
@@ -29,10 +32,6 @@ describe('loadTemplate', () => {
       ['master_plan_completed',            'master_plan',         'completed', 'master_plan'],
       ['plan_approved',                    'plan_approval_gate',  'approved',  'plan_approval_gate'],
       ['gate_mode_set',                     'gate_mode_selection', 'approved',  'gate_mode_selection'],
-      ['phase_planning_started',                      'phase_planning',      'started',   'phase_loop.body.phase_planning'],
-      ['phase_plan_created',               'phase_planning',      'completed', 'phase_loop.body.phase_planning'],
-      ['task_handoff_started',             'task_handoff',        'started',   'phase_loop.body.task_loop.body.task_handoff'],
-      ['task_handoff_created',             'task_handoff',        'completed', 'phase_loop.body.task_loop.body.task_handoff'],
       ['execution_started',                'task_executor',       'started',   'phase_loop.body.task_loop.body.task_executor'],
       ['task_completed',              'task_executor',       'completed', 'phase_loop.body.task_loop.body.task_executor'],
       ['code_review_started',              'code_review',         'started',   'phase_loop.body.task_loop.body.code_review'],

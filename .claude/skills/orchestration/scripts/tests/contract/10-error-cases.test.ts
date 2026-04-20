@@ -8,7 +8,8 @@ import {
   completePlanningSteps,
   seedDoc,
   driveToExecutionWithConfig,
-  phasePlanDoc,
+  driveTaskWith,
+  codeReviewDoc,
 } from '../fixtures/parity-states.js';
 import type { StepNodeState } from '../../lib/types.js';
 
@@ -40,10 +41,16 @@ function driveToApprovalReadiness() {
   return io;
 }
 
-/** Returns MockIO positioned for phase_plan_created. */
-function driveToPhaseCreated() {
+/**
+ * Returns MockIO positioned for code_review_completed (T1, P1).
+ * Used by error-shape tests that need a `_completed` event with doc_path.
+ */
+function driveToCodeReviewReadiness() {
   const io = driveToExecutionWithConfig(config, 1);
-  processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
+  const ctx = { phase: 1, task: 1 };
+  processEvent('execution_started', PROJECT_DIR, ctx, io);
+  processEvent('task_completed', PROJECT_DIR, ctx, io);
+  processEvent('code_review_started', PROJECT_DIR, ctx, io);
   return io;
 }
 
@@ -85,19 +92,19 @@ describe('[CONTRACT] Error shape — doc_path derivation: doc_path not set in st
 
 describe('[CONTRACT] Error shape — validation error structure', () => {
   it('returns all PipelineResult fields on a validation failure', () => {
-    const io = driveToPhaseCreated();
-    seedDoc(phasePlanDoc(1), { tasks: 'not-an-array' });
+    const io = driveToCodeReviewReadiness();
+    seedDoc(codeReviewDoc(1, 1), { /* missing verdict */ });
     const result = processEvent(
-      'phase_plan_created',
+      'code_review_completed',
       PROJECT_DIR,
-      { phase: 1, doc_path: phasePlanDoc(1) },
+      { phase: 1, task: 1, doc_path: codeReviewDoc(1, 1) },
       io,
     );
     expect(result.success).toBe(false);
     expect(result.action).toBe(null);
-    expect(result.error?.message).toBe('Invalid value: tasks must be an array');
-    expect(result.error?.event).toBe('phase_plan_created');
-    expect(result.error?.field).toBe('tasks');
+    expect(result.error?.message).toBe('Missing required field');
+    expect(result.error?.event).toBe('code_review_completed');
+    expect(result.error?.field).toBe('verdict');
     expect(typeof result.context.error).toBe('string');
     expect(result.mutations_applied).toEqual([]);
   });
@@ -106,9 +113,9 @@ describe('[CONTRACT] Error shape — validation error structure', () => {
 // ── Group 5 — Missing doc_path for a _completed event ────────────────────────
 
 describe('[CONTRACT] Error shape — missing doc_path for completed event', () => {
-  it('returns structured error when doc_path is omitted for phase_plan_created', () => {
-    const io = driveToPhaseCreated();
-    const result = processEvent('phase_plan_created', PROJECT_DIR, { phase: 1 }, io);
+  it('returns structured error when doc_path is omitted for code_review_completed', () => {
+    const io = driveToCodeReviewReadiness();
+    const result = processEvent('code_review_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe(
       "Pre-read failed: missing required field 'doc_path' in event context",
@@ -121,11 +128,11 @@ describe('[CONTRACT] Error shape — missing doc_path for completed event', () =
 
 describe('[CONTRACT] Error shape — document not found', () => {
   it('returns structured error when doc at doc_path cannot be read', () => {
-    const io = driveToPhaseCreated();
+    const io = driveToCodeReviewReadiness();
     const result = processEvent(
-      'phase_plan_created',
+      'code_review_completed',
       PROJECT_DIR,
-      { phase: 1, doc_path: '/nonexistent/doc.md' },
+      { phase: 1, task: 1, doc_path: '/nonexistent/doc.md' },
       io,
     );
     expect(result.success).toBe(false);

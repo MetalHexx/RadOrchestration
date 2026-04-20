@@ -9,7 +9,7 @@ user-invocable: true
 You are an orchestrator. You'll be using the `orchestration` skill for this project.  Read the skill  and prepare to use it to run the execution pipeline.
 
 # Approve plan
-The Master Plan is complete. As a human reviewer, I have approved the plan and am ready to execute.  Have the Tactical Planner mark the plan as approved and begin execution of the project.
+The Master Plan is complete. As a human reviewer, I have approved the plan and am ready to execute. Mark the plan as approved and begin execution of the project.
 
 # Execute Plan
 Execute the project according to the approved Master Plan using the proper execution pipeline.

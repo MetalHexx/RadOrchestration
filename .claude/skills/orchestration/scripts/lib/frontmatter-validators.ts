@@ -39,6 +39,9 @@ const VALIDATION_RULES: Record<string, FrontmatterValidationRule[]> = {
       expected: 'a positive integer',
     },
   ],
+  // Retained post-Iter 7: event no longer fires, but the phase-plan document
+  // contract is still live (explosion-script-authored; consumed downstream).
+  // Keeps the rule shape as a schema reference for the existing doc format.
   phase_plan_created: [
     {
       field: 'tasks',

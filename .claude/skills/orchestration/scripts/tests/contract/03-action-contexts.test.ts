@@ -5,17 +5,13 @@ import {
   createConfig,
   DOC_STORE,
   PROJECT_DIR,
-  completePlanningSteps,
   seedDoc,
   driveToExecutionWithConfig,
   driveTaskWith,
   driveToReviewTier,
-  phasePlanDoc,
-  taskHandoffDoc,
   codeReviewDoc,
   phaseReportDoc,
   phaseReviewDoc,
-  TASKS_2,
 } from '../fixtures/parity-states.js';
 import type { StepNodeState } from '../../lib/types.js';
 import { formatPhaseId, formatTaskId } from '../../lib/context-enrichment.js';
@@ -84,24 +80,11 @@ describe('[CONTRACT] Action Contexts — planning spawn actions (full template)'
 // ── [CONTRACT] Phase-level execution actions ──────────────────────────────────
 
 describe('[CONTRACT] Action Contexts — phase-level execution actions', () => {
-  it('create_phase_plan returns { phase_number: 1, phase_id: "P01" }', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    const result = processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');
-    expect(result.context).toEqual(expect.objectContaining({
-      phase_number: 1,
-      phase_id: 'P01',
-    }));
-  });
-
   it('generate_phase_report returns { phase_number: 1, phase_id: "P01" }', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    // With one task and autonomous mode, driveTaskWith returns generate_phase_report
-    const result = driveTaskWith(io, 1, 1);
+    const io = driveToExecutionWithConfig(config, 1, 2);
+    driveTaskWith(io, 1, 1);
+    // With both tasks complete and autonomous mode, second driveTaskWith returns generate_phase_report
+    const result = driveTaskWith(io, 1, 2);
     expect(result.success).toBe(true);
     expect(result.action).toBe('generate_phase_report');
     expect(result.context).toEqual(expect.objectContaining({
@@ -111,11 +94,9 @@ describe('[CONTRACT] Action Contexts — phase-level execution actions', () => {
   });
 
   it('spawn_phase_reviewer returns { phase_number: 1, phase_id: "P01", phase_report_doc, phase_first_sha, phase_head_sha }', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+    const io = driveToExecutionWithConfig(config, 1, 2);
     driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
     const result = processEvent('phase_report_created', PROJECT_DIR, {
@@ -147,10 +128,8 @@ describe('[CONTRACT] Action Contexts — phase-level execution actions', () => {
       source_control: { auto_commit: 'never' },
     });
     const io = driveToExecutionWithConfig(taskConfig, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
     driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
     processEvent('phase_report_created', PROJECT_DIR, {
@@ -173,34 +152,10 @@ describe('[CONTRACT] Action Contexts — phase-level execution actions', () => {
 // ── [CONTRACT] Task-level execution actions ───────────────────────────────────
 
 describe('[CONTRACT] Action Contexts — task-level execution actions', () => {
-  it('create_task_handoff returns { phase_number: 1, phase_id: "P01", task_number: 1, task_id: "P01-T01", is_correction: false }', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
-    const result = processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1, doc_path: phasePlanDoc(1),
-    }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
-    expect(result.context).toEqual(expect.objectContaining({
-      phase_number: 1,
-      phase_id: 'P01',
-      task_number: 1,
-      task_id: 'P01-T01',
-      is_correction: false,
-    }));
-  });
-
   it('execute_task returns { phase_number: 1, phase_id: "P01", task_number: 1, task_id: "P01-T01", handoff_doc }', () => {
+    // driveToExecutionWithConfig pre-seeds task_handoff with doc_path; walker advances directly to execute_task.
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    const result = processEvent('task_handoff_created', PROJECT_DIR, {
-      phase: 1, task: 1, doc_path: taskHandoffDoc(1, 1),
-    }, io);
+    const result = processEvent('start', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('execute_task');
     expect(result.context).toEqual(expect.objectContaining({
@@ -215,14 +170,6 @@ describe('[CONTRACT] Action Contexts — task-level execution actions', () => {
 
   it('spawn_code_reviewer returns { phase_number: 1, phase_id: "P01", task_number: 1, task_id: "P01-T01" }', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, {
-      phase: 1, task: 1, doc_path: taskHandoffDoc(1, 1),
-    }, io);
     processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
     processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
     processEvent('commit_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
@@ -249,15 +196,8 @@ describe('[CONTRACT] Action Contexts — task-level execution actions', () => {
       source_control: { auto_commit: 'never' },
     });
     const io = driveToExecutionWithConfig(taskConfig, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
     // Drive manually to code_review_completed without approving the gate
     const ctx = { phase: 1, task: 1 };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    const handoffDoc = taskHandoffDoc(1, 1);
-    seedDoc(handoffDoc);
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
     processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
@@ -360,12 +300,6 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
 describe('[CONTRACT] Action Contexts — display_halted', () => {
   it('display_halted context includes details as a string', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, { phase: 1, task: 1, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
     processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
     processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 1 }, io);

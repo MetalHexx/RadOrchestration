@@ -11,12 +11,10 @@ import {
   driveToExecutionWithConfig,
   driveTaskWith,
   driveToReviewTier,
-  phasePlanDoc,
-  taskHandoffDoc,
+  seedExplosionStateFor,
   codeReviewDoc,
   phaseReportDoc,
   phaseReviewDoc,
-  TASKS_2,
 } from '../fixtures/parity-states.js';
 import type { StepNodeState } from '../../lib/types.js';
 
@@ -104,18 +102,18 @@ describe('[CONTRACT] Event Names — gate events', () => {
     seedDoc(mpDoc, { total_phases: 1, total_tasks: 2 });
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
     expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
+    // Post-Iter 7: phase_loop expanded by the walker but task_loop resolution
+    // requires phase_planning.doc_path (pre-seeded by the explosion script).
+    // Without seeding, the walker stalls at task_loop expansion; with seeding,
+    // it advances into execute_task.
+    seedExplosionStateFor(io, 1);
+    const afterSeed = processEvent('start', PROJECT_DIR, {}, io);
+    expect(afterSeed.action).not.toBeNull();
   });
 
   it('task_gate_approved is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(taskGateConfig, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
     const ctx = { phase: 1, task: 1 };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
     processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
@@ -131,10 +129,8 @@ describe('[CONTRACT] Event Names — gate events', () => {
 
   it('phase_gate_approved is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(taskGateConfig, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
     driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
     processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
@@ -169,65 +165,16 @@ describe('[CONTRACT] Event Names — gate events', () => {
   });
 });
 
-// ── [CONTRACT] Event Names — phase execution events ───────────────────────────
-
-describe('[CONTRACT] Event Names — phase execution events', () => {
-  it('phase_planning_started is a valid v5 event', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    const result = processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
-
-  it('phase_plan_created is a valid v5 event', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    const result = processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1, doc_path: phasePlanDoc(1),
-    }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
-});
-
 // ── [CONTRACT] Event Names — task execution events ────────────────────────────
+//
+// Post-Iter 7: phase_planning_started / phase_plan_created / task_handoff_started /
+// task_handoff_created are no longer valid events. The explosion script (Iter 5)
+// pre-seeds phase_planning + task_handoff child step nodes; downstream consumers
+// read those pre-seeded nodes via context-enrichment, so authoring events are gone.
 
 describe('[CONTRACT] Event Names — task execution events', () => {
-  it('task_handoff_started is a valid v5 event', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    const result = processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
-
-  it('task_handoff_created is a valid v5 event', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    const result = processEvent('task_handoff_created', PROJECT_DIR, {
-      phase: 1, task: 1, doc_path: taskHandoffDoc(1, 1),
-    }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
-  });
-
   it('execution_started is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, {
-      phase: 1, task: 1, doc_path: taskHandoffDoc(1, 1),
-    }, io);
     const result = processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
@@ -235,14 +182,6 @@ describe('[CONTRACT] Event Names — task execution events', () => {
 
   it('task_completed is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, {
-      phase: 1, task: 1, doc_path: taskHandoffDoc(1, 1),
-    }, io);
     processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
     const result = processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
     expect(result.success).toBe(true);
@@ -251,14 +190,6 @@ describe('[CONTRACT] Event Names — task execution events', () => {
 
   it('code_review_started is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, {
-      phase: 1, task: 1, doc_path: taskHandoffDoc(1, 1),
-    }, io);
     processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
     processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
     const result = processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
@@ -269,14 +200,6 @@ describe('[CONTRACT] Event Names — task execution events', () => {
   it('code_review_completed is a valid v5 event', () => {
     // Autonomous mode: no task gate fires, code_review_completed advances to next state
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, {
-      phase: 1, task: 1, doc_path: taskHandoffDoc(1, 1),
-    }, io);
     processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
     processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
     processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
@@ -294,10 +217,8 @@ describe('[CONTRACT] Event Names — task execution events', () => {
 describe('[CONTRACT] Event Names — phase review events', () => {
   it('phase_report_started is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
     driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
     const result = processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
@@ -305,10 +226,8 @@ describe('[CONTRACT] Event Names — phase review events', () => {
 
   it('phase_report_created is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
     driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
     const result = processEvent('phase_report_created', PROJECT_DIR, {
@@ -320,10 +239,8 @@ describe('[CONTRACT] Event Names — phase review events', () => {
 
   it('phase_review_started is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
     driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
     processEvent('phase_report_created', PROJECT_DIR, {
@@ -336,10 +253,8 @@ describe('[CONTRACT] Event Names — phase review events', () => {
 
   it('phase_review_completed is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
     driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
     processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
     seedDoc(phaseReportDoc(1));
     processEvent('phase_report_created', PROJECT_DIR, {
@@ -381,14 +296,8 @@ describe('[CONTRACT] Event Names — final review events', () => {
 describe('[CONTRACT] Event Names — source control events', () => {
   it('commit_started is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(commitConfig, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
     // Drive task manually up to task_completed to reach commit_gate (commit runs before code_review)
     const ctx = { phase: 1, task: 1 };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
     const r = processEvent('task_completed', PROJECT_DIR, ctx, io);
     expect(r.action).toBe('invoke_source_control_commit');
@@ -399,14 +308,8 @@ describe('[CONTRACT] Event Names — source control events', () => {
 
   it('commit_completed is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(commitConfig, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
     // Drive task manually up to task_completed to reach commit_gate (commit runs before code_review)
     const ctx = { phase: 1, task: 1 };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
     const r = processEvent('task_completed', PROJECT_DIR, ctx, io);
     expect(r.action).toBe('invoke_source_control_commit');

@@ -5,7 +5,7 @@ title: "{PHASE-TITLE}"
 status: "complete|partial|failed"
 tasks_completed: {NUMBER}
 tasks_total: {NUMBER}
-author: "tactical-planner-agent"
+author: "planner-agent"
 created: "{ISO-DATE}"
 ---
 

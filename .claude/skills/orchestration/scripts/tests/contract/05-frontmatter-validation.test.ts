@@ -10,12 +10,10 @@ import {
   seedDoc,
   driveToExecutionWithConfig,
   driveTaskWith,
-  phasePlanDoc,
-  taskHandoffDoc,
+  seedExplosionStateFor,
   codeReviewDoc,
   phaseReportDoc,
   phaseReviewDoc,
-  TASKS_2,
 } from '../fixtures/parity-states.js';
 import type { StepNodeState } from '../../lib/types.js';
 
@@ -36,23 +34,17 @@ const config = createConfig({
 });
 
 // ── Drive helpers ─────────────────────────────────────────────────────────────
-
-/** Returns MockIO positioned for phase_plan_created. */
-function driveToPhaseCreated() {
-  const io = driveToExecutionWithConfig(config, 1);
-  processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-  return io;
-}
+//
+// Post-Iter 7: phase_planning + task_handoff are pre-seeded by
+// driveToExecutionWithConfig (Iter 5 explosion-script behavior). Frontmatter
+// validation tests for phase_plan_created are gone — that event no longer
+// exists. The validator rule (`tasks` is non-empty array) is enforced at
+// explosion time by the parser; covered by parseMasterPlan tests.
 
 /** Returns MockIO positioned for code_review_completed (T1, P1). */
 function driveToCodeReview() {
-  const io = driveToPhaseCreated();
-  seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
-  processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+  const io = driveToExecutionWithConfig(config, 1);
   const ctx = { phase: 1, task: 1 };
-  processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-  seedDoc(taskHandoffDoc(1, 1));
-  processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
   processEvent('execution_started', PROJECT_DIR, ctx, io);
   processEvent('task_completed', PROJECT_DIR, ctx, io);
   processEvent('code_review_started', PROJECT_DIR, ctx, io);
@@ -61,10 +53,9 @@ function driveToCodeReview() {
 
 /** Returns MockIO positioned for phase_review_completed. */
 function driveToPhaseReview() {
-  const io = driveToPhaseCreated();
-  seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-  processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+  const io = driveToExecutionWithConfig(config, 1);
   driveTaskWith(io, 1, 1);
+  driveTaskWith(io, 1, 2);
   processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
   seedDoc(phaseReportDoc(1));
   processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
@@ -105,45 +96,6 @@ describe('[CONTRACT] Frontmatter — requirement_count (requirements_completed)'
     expect(err).not.toBeNull();
     expect(err?.error).toBe('Invalid value: requirement_count must be a positive integer');
     expect(err?.field).toBe('requirement_count');
-  });
-});
-
-// ── Group 1: tasks (phase_plan_created) ──────────────────────────────────────
-
-describe('[CONTRACT] Frontmatter — tasks (phase_plan_created)', () => {
-  it('valid non-empty array passes', () => {
-    const io = driveToPhaseCreated();
-    seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-    const result = processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    expect(result.success).toBe(true);
-  });
-
-  it('missing tasks → error', () => {
-    const io = driveToPhaseCreated();
-    seedDoc(phasePlanDoc(1), {});
-    const result = processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    expect(result.success).toBe(false);
-    expect(result.error?.message).toBe('Missing required field');
-    expect(result.error?.field).toBe('tasks');
-    expect(result.error?.event).toBe('phase_plan_created');
-  });
-
-  it('tasks is not an array → error', () => {
-    const io = driveToPhaseCreated();
-    seedDoc(phasePlanDoc(1), { tasks: 'not-an-array' });
-    const result = processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    expect(result.success).toBe(false);
-    expect(result.error?.message).toBe('Invalid value: tasks must be an array');
-    expect(result.error?.field).toBe('tasks');
-  });
-
-  it('empty array → error', () => {
-    const io = driveToPhaseCreated();
-    seedDoc(phasePlanDoc(1), { tasks: [] });
-    const result = processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-    expect(result.success).toBe(false);
-    expect(result.error?.message).toBe('Invalid value: tasks must be a non-empty array');
-    expect(result.error?.field).toBe('tasks');
   });
 });
 
@@ -253,7 +205,12 @@ describe('[CONTRACT] Frontmatter — total_phases (plan_approved)', () => {
     seedDoc(mpDoc, { total_phases: 2, total_tasks: 4 });
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
     expect(result.success).toBe(true);
-    expect(result.action).not.toBeNull();
+    // Post-Iter 7: phase_loop is expanded by the walker on plan_approved, but
+    // task_loop resolution requires phase_planning.doc_path (pre-seeded by the
+    // explosion script). Seed + re-walk so the walker can advance.
+    seedExplosionStateFor(io, 2);
+    const afterSeed = processEvent('start', PROJECT_DIR, {}, io);
+    expect(afterSeed.action).not.toBeNull();
   });
 
   it('zero → no phases expanded', () => {
