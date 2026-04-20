@@ -100,7 +100,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 5 | `feat/iter-5-explosion-script` | `C:\dev\orchestration\v3-worktrees\feat-iter-5-explosion-script` | Merged | `4500203` | [#56](https://github.com/MetalHexx/RadOrchestation/pull/56) |
 | 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Merged | `82333f1` | [#57](https://github.com/MetalHexx/RadOrchestation/pull/57) |
 | 7 | `feat/iter-7-remove-per-phase-task-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning` | Merged | `ff05ce2` | [#58](https://github.com/MetalHexx/RadOrchestation/pull/58) |
-| 8 | `feat/iter-8-phase-review-absorbs-phase-report` | `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report` | Awaiting merge | — | _(pending push)_ |
+| 8 | `feat/iter-8-phase-review-absorbs-phase-report` | `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report` | Awaiting merge | — | [#59](https://github.com/MetalHexx/RadOrchestation/pull/59) |
 | 9 | — | — | Not created | — | — |
 | 10 | — | — | Not created | — | — |
 | 11 | — | — | Not created | — | — |
@@ -281,7 +281,7 @@ Format:
 - Tests: orchestration 47 files / 1123 pass / 7 skip / 1 todo (baseline 46/1119/7/1 — net +1 file, +4 pass; 25-test shape suite `phase-review-doc-shape.test.ts` added, offsetting ~20 removed dead-action/event cases). UI 156 pass / 3 pre-existing fail / 159 total (baseline unchanged; two new dag-timeline-legacy-render tests cover legacy `phase_report` body-node rendering + new-shape render). Installer 399 pass / 0 fail (unchanged).
 - Reviews: 1 conformance pass (green, no gaps) + 1 independent quality pass (3 findings + 2 nits, all applied by corrective coder). No further rounds needed.
 - Carry-forward to Iter 17 (public docs refresh): `docs/agents.md`, `docs/templates.md`, `docs/skills.md`, `docs/internals/scripts.md` all retain stale Phase Report references — explicitly deferred per plan.
-- Commits: `9255084` (main), `b3e4428` (review-corrective). PR: _(pending push)_.
+- Commits: `9255084` (main), `b3e4428` (review-corrective), `c053b68` (tracker). PR: [#59](https://github.com/MetalHexx/RadOrchestation/pull/59).
 
 ### 2026-04-20 — Iteration 7 — Remove per-phase/per-task planning (tactical-planner + phase-plan/task-handoff + UI discoverProjects parallelization)
 
