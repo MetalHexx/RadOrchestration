@@ -413,6 +413,12 @@ Format:
 - **Why unresolved**: File physically unavailable during Iter 7 execution. Documentation-only (Mermaid diagrams) with no executable consequence.
 - **Suggested owner**: Iter 15 (repository deep clean) or Iter 16 (public-facing docs refresh) — both of those sweep cumulative residue and would naturally pick up a stale Mermaid reference if/when the file reappears.
 
+### 2026-04-20 — `fs-reader.ts` discoverProjects concurrency cap (Iter 7 Copilot review C1)
+
+- **Context**: Iter 7 parallelized `discoverProjects` via `Promise.all(entries.map(...))` — unbounded concurrency. Copilot flagged theoretical EMFILE / IO-contention risk at large workspace sizes.
+- **Why unresolved**: 107 projects renders in ~37ms with no issues. The risk surfaces at ~1000+ projects on OSes with strict file-descriptor limits (Linux default 1024; Windows default >10k). Iter 7's plan explicitly deferred "sidebar virtualization + project-count cap" to a later iteration. A bounded semaphore (e.g. concurrency = 20) would be trivial but premature without observable evidence of the EMFILE risk.
+- **Suggested owner**: A future UI-performance iteration, or fold into Iter 15 (repository deep clean) if sweeping similar scale concerns.
+
 ### 2026-04-19 — Prompt-harness linter frontmatter coverage (Iter 6 Copilot R6-3 / R6-5)
 
 - **Context**: During PR #57's round-6 Copilot review, two comments asked the Iter-6 linters to add `author` + `approved_at` (requirements) and `status` + `created` + `author` (master plan) to `REQUIRED_FRONTMATTER`. Declined in-iteration because the Iter 6 companion (`docs/internals/cheaper-execution/iter-06-prompt-harness.md`) explicitly marks those fields as informational-only and instructs the linter to ignore them.
