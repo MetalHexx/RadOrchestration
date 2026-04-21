@@ -423,12 +423,16 @@ describe('depends_on ↔ edges round-trip', () => {
     assert.ok(edge, 'edge master_plan → plan_approval_gate not found');
   });
 
-  it('task_gate depends on commit_gate → one unlabeled edge exists', () => {
+  it('task_gate depends on code_review → one unlabeled edge exists', () => {
+    // Prior to iter-3, task_gate.depends_on was ['code_review', 'commit_gate'];
+    // the iter-3 template refactor narrowed it to ['code_review']. This test
+    // now verifies the live single-dependency round-trip instead of the stale
+    // commit_gate → task_gate edge that no longer exists in full.yml.
     const graph = parseTemplateToGraph(FULL_YAML);
     const edge = graph.edges.find(
-      e => e.source === 'commit_gate' && e.target === 'task_gate' && e.label === undefined
+      e => e.source === 'code_review' && e.target === 'task_gate' && e.label === undefined
     );
-    assert.ok(edge, 'edge commit_gate → task_gate not found');
+    assert.ok(edge, 'edge code_review → task_gate not found');
   });
 
   it('after round-trip, depends_on arrays in re-parsed YAML match originals', () => {
@@ -437,15 +441,19 @@ describe('depends_on ↔ edges round-trip', () => {
     const serialized = serializeGraphToYaml(graph, fullMeta);
     const reparsed = parseYamlRaw(serialized) as any;
 
-    // architecture.depends_on should be ['design']
-    const architecture = findYamlNode(reparsed.nodes, 'architecture');
-    assert.ok(architecture, 'architecture not found in re-parsed YAML');
-    assert.deepStrictEqual(architecture.depends_on, ['design']);
+    // Prior to iter-3 this asserted on `architecture` (depends_on: ['design']),
+    // but the iter-3 template refactor removed the architecture node. The
+    // replacement gate_mode_selection exercises the same round-trip contract:
+    // a top-level node whose depends_on is a single-element array of strings.
+    const gateModeSelection = findYamlNode(reparsed.nodes, 'gate_mode_selection');
+    assert.ok(gateModeSelection, 'gate_mode_selection not found in re-parsed YAML');
+    assert.deepStrictEqual(gateModeSelection.depends_on, ['plan_approval_gate']);
 
-    // task_gate.depends_on should be ['code_review', 'commit_gate']
+    // task_gate.depends_on should be ['code_review'] (iter-3 narrowed this from
+    // the prior ['code_review', 'commit_gate']).
     const taskGate = findYamlNode(reparsed.nodes, 'task_gate');
     assert.ok(taskGate, 'task_gate not found in re-parsed YAML');
-    assert.deepStrictEqual(taskGate.depends_on, ['code_review', 'commit_gate']);
+    assert.deepStrictEqual(taskGate.depends_on, ['code_review']);
   });
 });
 
