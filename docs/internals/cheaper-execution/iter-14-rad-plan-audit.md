@@ -1,82 +1,177 @@
-# Iter 14 — Rad-plan-audit overhaul
+# Iter 14 — Rad-plan-audit pipeline node
 
 > **Validation Preface**: Before planning this iteration, the planner agent MUST validate this doc against live code — file paths, symbol names, and line numbers can drift. Run a quick grep / glob pass on the Code Surface section below. Any mismatch → log a deviation in [`CHEAPER-EXECUTION-REFACTOR-PROGRESS.md`](../CHEAPER-EXECUTION-REFACTOR-PROGRESS.md) before proceeding. Do not plan on stale assumptions.
 
+> **Scope note**: The *corrective loop* half of the audit — replan path with audit-feedback context fed back into the planner's re-spawn — is split to [iter-18-plan-replan-cycle.md](./iter-18-plan-replan-cycle.md). Iter-14 delivers the audit node, doc, and UI rendering only. Human reads findings at the plan-approval gate and chooses approve or reject; today's blind-reject behavior (`plan_rejected` mutation) stays unchanged in this iteration.
+
 ## Overview
 
-The legacy `rad-plan-audit` skill audits the full 5-doc planning corpus (PRD + Research + Design + Architecture + Master Plan) for cross-document cohesion. Under the new pipeline, only two planning docs exist: Requirements and Master Plan. The audit collapses to a single, strict purpose: confirm every FR/NFR/AD/DD in the Requirements doc is cited by at least one task in the Master Plan, and every requirement tag cited in the Master Plan resolves to a block in the Requirements doc.
+The legacy `rad-plan-audit` skill audited the full 5-doc planning corpus (PRD + Research + Design + Architecture + Master Plan) for cross-document cohesion. Under the new pipeline, only two planning docs exist (Requirements + Master Plan), and the explosion script produces per-phase + per-task handoff docs from the Master Plan. This iteration rewrites `rad-plan-audit` as a **first-class pipeline node** that runs between `explode_master_plan` and `request_plan_approval`, producing a structured audit report the human reads at the approval gate.
 
-This iteration rewrites the skill's `SKILL.md` and any `references/` content to exactly this scope. Legacy audit modes — any mode that checked PRD ↔ Design consistency, Research ↔ Architecture traceability, etc. — go. Tests matching those removed audits either delete or rewrite.
+The audit operates on three dimensions:
 
-The audit runs in two directions:
-- **Forward coverage**: every Requirements ID appears in ≥1 Master Plan task. Output: list of uncovered requirements.
-- **Backward resolution**: every tag cited in the Master Plan (e.g., `(FR-3)`, `(AD-2)`) exists as a block in Requirements. Output: list of dangling references.
+- **Cross-document cohesion** — every Requirements ID cited by ≥1 task; every tag citation resolves to a Requirements block.
+- **Task well-formedness (structural)** — File Targets present; requirements inlined (block text, not just tag ref); every step ends in ≥1 requirement tag; `code` tasks honor the 4-step RED-GREEN shape; `task_type` declared.
+- **Authoring quality (anti-patterns)** — placeholder language; vague directives; "write tests for the above"; "similar to Task N" refs; test-quality anti-patterns; undefined refs; steps describing *what* without *how*.
 
-Both lists being empty is the pass condition. Either list populated means the plan has a cohesion gap.
+Framing: TDD / DRY / YAGNI. Each principle maps onto the check categories (TDD → RED-GREEN; DRY → no cross-task "similar to Task N" refs + task handoffs self-contained; YAGNI → no placeholder language + scope matches requirement tags). Mirrors superpowers' `DRY. YAGNI. TDD.` top-line discipline.
+
+The skill operates in **two modes** — *pipeline-spawned* (new action `spawn_plan_auditor` fires post-explosion; the `planner` agent runs in audit mode) and *user-invocable* (operator runs the skill ad-hoc from agent chat for re-audits after hand-edits or legacy-project audits). Both modes share the same 14-check catalog and output format.
 
 ## Scope
 
-- Rewrite `.claude/skills/rad-plan-audit/SKILL.md`:
-  - Input contract: `{PROJECT-DIR}/{NAME}-REQUIREMENTS.md` and `{PROJECT-DIR}/{NAME}-MASTER-PLAN.md`.
-  - Workflow: parse Requirements (list every `### (FR|NFR|AD|DD)-\d+:` heading), parse Master Plan (grep every `(FR|NFR|AD|DD)-\d+` tag citation across all task step bullets).
-  - Forward coverage check: for each Requirements ID, confirm ≥1 citation in Master Plan.
-  - Backward resolution check: for each Master Plan tag citation, confirm the tag resolves to a Requirements block.
-  - Output format: a structured report doc (or inline stdout) with two sections — "Uncovered Requirements" and "Dangling References." Both empty = pass.
-- Review `.claude/skills/rad-plan-audit/references/`: delete any reference subdoc covering legacy audit modes (PRD audits, Design ↔ Requirements consistency, Research traceability). Retain anything relevant to Requirements ↔ Master Plan conformance.
-- Update `.claude/skills/rad-plan-audit/SKILL.md` description and invocation examples to reflect the new single purpose.
+- **Skill rewrite** — `.claude/skills/rad-plan-audit/SKILL.md` + `references/`:
+  - Dual-mode (pipeline-spawned + user-invocable). Mode-specific inputs resolved from spawn context (pipeline) or arguments (user).
+  - 14 check catalog: 5 structural + 7 anti-pattern + 2 cross-document.
+  - TDD / DRY / YAGNI framing section names the three principles and maps findings to them.
+  - Output: `{PROJECT-DIR}/reports/{NAME}-PLAN-AUDIT.md` with frontmatter (`verdict: pass | issues_found`, `max_severity: none | minor | important | critical`) + structured body grouping findings by severity with per-finding location, description, and fix suggestion.
+  - Shared authoring rules: references `.claude/skills/rad-create-plans/references/master-plan/workflow.md` (iter-13 adds anti-pattern-awareness rules there) as source of truth for "well-formed." Single spec, two skills (author + audit).
+  - Legacy `references/` directory: delete any file covering removed audit modes (PRD audits, Research ↔ Architecture traceability, Design consistency, etc.).
+
+- **New pipeline node** — `plan_audit` between `explode_master_plan` and `request_plan_approval`:
+  - New action `spawn_plan_auditor` (Agent spawn, two-step protocol like existing `spawn_*` actions). Spawned agent: `planner` in audit mode — no new agent type.
+  - New events: `plan_audit_started` (transitions node status to `in_progress`), `plan_audit_completed --doc-path <path>` (finalizes node; writes `doc_path` + `verdict` + `max_severity` to state).
+  - State schema: new `plan_audit` step node with `status`, `doc_path`, `verdict`, `max_severity`.
+  - Context enrichment: new branch for `spawn_plan_auditor` resolves Requirements doc + phase docs + task handoff docs from state and passes to agent context.
+  - Mutation: `PLAN_AUDIT_COMPLETED` handler — marks node completed, stores doc_path + verdict + max_severity on state (for UI badge consumption).
+  - Frontmatter validator: new rule set for `plan_audit_completed` — `verdict` enum (`pass | issues_found`), `max_severity` enum (`none | minor | important | critical`); both required.
+  - `default.yml`: insert `plan_audit` step between `explode_master_plan` and `plan_approval_gate`.
+
+- **Orchestration skill updates** — `.claude/skills/orchestration/`:
+  - `SKILL.md` — orchestrator roster picks up new action + events.
+  - `references/action-event-reference.md` — new action row; new event rows.
+  - `references/pipeline-guide.md` — flow notes acknowledging new node position.
+  - `references/document-conventions.md` — filename pattern row for `{NAME}-PLAN-AUDIT.md`.
+
+- **UI rendering** — `ui/`:
+  - New node rendering in `/projects` DAG timeline, between `explode_master_plan` and `plan_approval_gate`. Mirrors `requirements` / `master_plan` node shape.
+  - New step row in `/process-editor` step list.
+  - Doc-link rendering (clickable link to `{NAME}-PLAN-AUDIT.md`, same pattern as existing planning doc links).
+  - Tri-color severity badge on the `plan_audit` step:
+    - **Green**: `verdict: pass` (no findings)
+    - **Yellow**: `verdict: issues_found` with `max_severity: minor` or `important`
+    - **Red**: `verdict: issues_found` with `max_severity: critical`
+  - Badge component: reuse `ui/components/badges/severity-badge.tsx` or compose a thin `plan-audit-badge.tsx` wrapper — iteration planner decides.
+  - Legacy projects without `plan_audit` node render gracefully (no regression).
+
+## Check Catalog (14 dimensions)
+
+**Structural (5)** — mechanical; `critical` severity by default:
+
+1. File Targets section present on every task handoff.
+2. Requirements inlined (full block text, not just tag reference) on every task.
+3. Every task step ends in ≥1 requirement tag (FR-N / NFR-N / AD-N / DD-N).
+4. `code` tasks have the 4-step RED-GREEN shape (write failing test → run & confirm fail → implement → run & confirm pass) per `rad-create-plans/references/master-plan/workflow.md:132–140`.
+5. Every task declares `task_type` (`code` / `doc` / `config` / `infra`).
+
+**Anti-pattern (7)** — semantic; `important` or `minor` severity (iteration planner assigns per check):
+
+1. Placeholder language ("TBD", "TODO", "implement later", "will be figured out", "fill in details").
+2. Vague directives without specifics ("add appropriate error handling", "handle edge cases").
+3. "Write tests for the above" without actual test code / commands.
+4. "Similar to Task N" references (violates the self-contained handoff contract iter-13 locks).
+5. Test-quality anti-patterns in task-authored test shapes — test-only methods in production code, opaque mocks, assertions that only verify mock behavior. Mirrors iter-13's executor-facing gate (preventive at authoring time).
+6. Undefined references — task cites a function / file / type not in its File Targets or a prior task's outputs.
+7. Steps describing *what* without *how* — missing code snippets / commands where the task is a `code` task.
+
+**Cross-document (2)** — `critical` severity:
+
+1. Forward coverage: every Requirements ID (FR-N / NFR-N / AD-N / DD-N) cited by ≥1 task step or phase `**Requirements:**` line.
+2. Backward resolution: every tag citation in phase docs + task handoffs resolves to a Requirements block.
 
 ## Scope Deliberately Untouched
 
-- No pipeline engine changes. `rad-plan-audit` remains a user-invocable skill, not a pipeline-embedded step.
-- No changes to the Requirements or Master Plan formats themselves — those are stable from Iters 2 + 4.
-- No changes to the explosion script — it produces task-handoff files with inlined tags; this audit reads the Master Plan directly, not the exploded outputs.
+- **Auto-correct / inline plan edits** — audit is report-only. Human reads findings at the approval gate and decides approve or reject.
+- **Replan event + context carry-forward** — split to [iter-18-plan-replan-cycle.md](./iter-18-plan-replan-cycle.md). Today's `plan_rejected` behavior (blind re-author; see `mutations.ts:1218`) stays unchanged in iter-14.
+- **Explosion-fidelity check** (Master Plan ↔ exploded docs divergence) — covered by `explode-master-plan.ts`'s own tests. Out of audit scope.
+- **Authoring-time preventive rules** — iter-13 lands those in `rad-create-plans/references/master-plan/workflow.md`. Iter-14 references that file as spec; no edits to it from iter-14.
+- **Iteration / retry cap on re-audits** — audit loops through the human approval gate; no automatic re-audit loop needs a cap.
 
 ## UI Impact
 
-- **Active-project rendering**: none. `rad-plan-audit` is a user-invocable skill, not a pipeline-embedded step. Its output is a standalone report doc; the pipeline's state.json is unaffected.
-- **Legacy-project read-only rendering**: none.
-- **UI surfaces touched**: none.
-- **UI tests**: none required by this iteration.
+- **Active-project rendering**: new `plan_audit` DAG node renders in `/projects` timeline between `explode_master_plan` and `plan_approval_gate`. Clickable doc link. Tri-color severity badge reflects `verdict` + `max_severity` frontmatter.
+- **Process-editor**: new row for `plan_audit` step in the `/process-editor` step list (enable/disable toggle follows existing pattern for other pipeline steps).
+- **Legacy-project rendering**: legacy `state.json` without `plan_audit` node renders without regression — the DAG timeline omits the node; no missing-node warnings.
+- **UI surfaces touched**:
+  - New or extended DAG node component under `ui/components/dashboard/`.
+  - New or extended `/process-editor` step row.
+  - Badge component — reuse `severity-badge.tsx` or compose `plan-audit-badge.tsx`.
+- **UI tests**:
+  - Badge rendering: all four state combinations (pass → green; minor → yellow; important → yellow; critical → red).
+  - DAG node render with clickable doc link.
+  - Legacy-project fixture (no `plan_audit` node) renders without errors.
 
 ## Code Surface
 
-- Skill: `.claude/skills/rad-plan-audit/SKILL.md`
-- Skill references (audit and prune): `.claude/skills/rad-plan-audit/references/` (inventory during planning; delete legacy mode files)
+- Skill: `.claude/skills/rad-plan-audit/SKILL.md` + `references/`
+- Engine (`.claude/skills/orchestration/scripts/lib/`):
+  - `constants.ts` — add ACTION entry + EVENT entries
+  - `context-enrichment.ts` — add enrichment branch for `spawn_plan_auditor`
+  - `mutations.ts` — add `PLAN_AUDIT_COMPLETED` handler
+  - `frontmatter-validators.ts` — add `plan_audit_completed` rule set
+  - `actions.ts` — add action type
+  - `events.ts` — add event type literals
+  - `engine.ts` / walker — wire new node into DAG traversal
+- State schema: `.claude/skills/orchestration/schemas/` — new node kind (if a new node kind is warranted; otherwise reuse `step` kind)
+- Config template: `.claude/skills/orchestration/config/default.yml` — new step between `explode_master_plan` and `plan_approval_gate`
+- Orchestration references:
+  - `.claude/skills/orchestration/SKILL.md`
+  - `.claude/skills/orchestration/references/action-event-reference.md`
+  - `.claude/skills/orchestration/references/pipeline-guide.md`
+  - `.claude/skills/orchestration/references/document-conventions.md`
+- Ripple surfaces (read-only):
+  - `.claude/skills/rad-create-plans/references/master-plan/workflow.md` — iter-13 adds preventive authoring rules; iter-14 references the same file as audit spec (no edits from iter-14)
+- UI (`ui/`):
+  - DAG timeline component
+  - `/process-editor` step list component
+  - Badge component (new or extended)
+  - Document-ordering / doc-link renderer (confirm `plan_audit` doc path surfaces correctly)
 - Tests:
-  - Any existing tests under `.claude/skills/orchestration/scripts/tests/` that reference rad-plan-audit behavior
-  - New fixture tests: a Requirements + Master Plan pair where every ID is cited (passes); a pair with one uncovered FR (flags); a pair with one dangling NFR reference in a task step (flags).
-- Ripple surfaces:
-  - `.claude/skills/orchestration/validate/lib/checks/skills.js` — skill roster still lists rad-plan-audit; no change needed
-  - `.claude/skills/orchestration/references/action-event-reference.md` — audit skill invocation documentation
-  - `.claude/skills/rad-plan/SKILL.md` if it references `rad-plan-audit` as a post-planning step (verify)
+  - `scripts/tests/constants.test.ts` — new action + event constants
+  - `scripts/tests/context-enrichment.test.ts` — new enrichment branch
+  - `scripts/tests/mutations.test.ts` — new mutation handler
+  - `scripts/tests/contract/05-frontmatter-validation.test.ts` — new rule set (`verdict` + `max_severity` enums)
+  - `scripts/tests/contract/02-event-names.test.ts` — new event names
+  - `scripts/tests/engine.test.ts` / `event-routing-integration.test.ts` — pipeline routing (`explode_master_plan` → `plan_audit` → `plan_approval_gate`)
+  - New audit-fixture tests under `.claude/skills/orchestration/scripts/tests/fixtures/plan-audit/` — at least 6 fixture pairs spanning cross-document / structural / anti-pattern dimensions; each dimension has one `pass` case + one `issues_found` case.
+  - Grep-based contract test: SKILL.md body retains key language blocks (dual-mode description, 14-check catalog, TDD/DRY/YAGNI framing, reports/ output path).
+  - UI tests: badge rendering + DAG node render + legacy compatibility.
+- Prompt harness:
+  - New `prompt-tests/plan-audit-e2e/` fixture exercises the node end-to-end — runner drives a project through explosion → plan_audit spawn → audit doc written → verdict surfaces in state → `plan_approval_gate` renders badge correctly. Inaugural baseline captured at iteration exit.
 
 ## Dependencies
 
-- **Depends on**: Iter 13 — not strictly, but the pipeline should be stable end-to-end before narrowing the audit skill's scope. An operator invoking the audit during an in-flight refactor shouldn't see behavior drift mid-scope.
-- **Blocks**: Iter 17 — the public-facing docs refresh covers mentions of `rad-plan-audit` in docs/ root files; cleaner to overhaul the skill first, then align the docs.
+- **Depends on**: iter-13. Iter-14 inherits iter-13's invariants (tag-on-every-step, 4-step RED-GREEN, File Targets mandatory, test-quality anti-patterns rejected) as audit checks. The preventive counterpart at `rad-create-plans/references/master-plan/workflow.md` (iter-13) must land first so iter-14 can reference it as spec.
+- **Blocks**: iter-17 — public-docs refresh covers `rad-plan-audit`; cleaner for iter-14's overhaul to complete first so docs reflect the final shape.
+- **Forward pointer**: [iter-18-plan-replan-cycle.md](./iter-18-plan-replan-cycle.md) — replan event + context carry-forward lands there, depending on iter-14's audit doc + state fields.
 
 ## Testing Discipline
 
-- **Baseline first**: full suite + log + SHA.
-- **Re-run before exit**: full suite green; diff against baseline. Removed legacy-audit-mode tests are expected; new conformance-check tests are added.
-- **Fixture test suite** — at least 4 fixtures:
-  - Happy path: Requirements (3 FRs, 2 NFRs, 1 AD) × Master Plan citing all 6. Audit passes.
-  - Uncovered FR: Requirements includes FR-7; Master Plan never cites it. Audit flags FR-7 as uncovered.
-  - Dangling citation: Master Plan cites `(AD-5)` but Requirements has no AD-5. Audit flags AD-5 as dangling.
-  - Mixed failure: both above in one pair. Audit flags both.
+- **Baseline first**: full suite + log + SHA across all three trees (scripts, ui, installer).
+- **Re-run before exit**: full suite green; diff against baseline; no baseline-passing test regresses.
+- **Fixture test suite** — at least 6 pairs under `scripts/tests/fixtures/plan-audit/`:
+  - **Cross-document**: happy path (all tags covered + resolved) + broken (uncovered FR, dangling NFR citation).
+  - **Structural**: happy path (all 5 invariants honored) + broken (missing File Targets on a task, missing step tag, `code` task lacking RED-GREEN shape).
+  - **Anti-pattern**: happy path (clean authoring) + broken (placeholder language + vague directives + undefined ref + test-quality anti-pattern across multiple tasks).
+- **Contract tests**: grep-based assertion that SKILL.md body retains key language blocks — dual-mode description, 14-check catalog, TDD/DRY/YAGNI framing, `reports/` output path. Catches prose drift in the future.
+- **Prompt harness**: `plan-audit-e2e/` fixture runs green; inaugural baseline captured; verdict + max_severity surface correctly in state; UI badge renders the expected color.
+- **UI smoke** (per orchestrator-guide requirement for `ui/`-touching iterations): browser verification of new DAG node + badge colors across all four state combinations + doc link clickability + legacy-project render stability.
+
+## Writing Discipline
+
+The SKILL.md rewrite must be **high-signal and cohesive** — not dense, repetitive, or over-bulleted. Collapse overlapping rules rather than listing each. If a rule is implied by another rule already present, it does not need its own bullet. Applies to the planner's SKILL.md output, not to this companion doc. (Carried over from iter-13.)
 
 ## Exit Criteria
 
-- Full test suite green vs. baseline.
-- `rad-plan-audit/SKILL.md` workflow covers only Requirements ↔ Master Plan conformance; no mentions of PRD, Research, Design, Architecture as audit subjects.
-- Fixture tests pass: all four scenarios above produce the expected audit output.
-- `.claude/skills/rad-plan-audit/references/` contains no files covering removed legacy audit modes.
-- `grep -rn "PRD\|Research Doc\|Design Doc\|Architecture Doc" .claude/skills/rad-plan-audit/` returns zero matches (confirms legacy-mode references are fully cleaned from the skill surface).
-- Invoking `rad-plan-audit` on a real finished project (e.g., a rainbow-hello output from the prompt harness) produces a coherent report.
-
-## Open Questions
-
-- **Output format**: structured doc file written to `{PROJECT-DIR}/` or stdout report? Lean file so it can be committed and reviewed; iteration planner decides.
-- **Audit invocation**: is `rad-plan-audit` expected to run automatically as part of the pipeline (e.g., after `explode_master_plan`), or strictly user-invoked? Legacy was user-invoked. Recommend keep user-invoked; pipeline's existing validator handles frontmatter, and strict conformance at the pipeline gate would require the audit to be deterministic-enough for a CI-style gate, which it probably isn't yet.
-- **Tag citation locations**: Master Plan's tag citations appear in task steps (e.g., `- [ ] **Step 1: Write the failing test (FR-1)**`), phase `**Requirements:**` lines, and potentially task `**Requirements:**` lines. The audit must grep all three. Clarify the exact parsing surface during planning.
-- **Multi-project audit**: does the skill handle multiple projects (e.g., audit all projects under a base path)? Legacy scope unclear. Lean: single-project audit; multi-project is a future concern.
+- Full test suite green vs. baseline across all three trees.
+- New pipeline node wired end-to-end: action + events + enrichment + mutation + validator + state schema + `default.yml` step. Pipeline routes correctly: `explode_master_plan` → `plan_audit` → `plan_approval_gate`.
+- `rad-plan-audit/SKILL.md` rewrite covers 14 check dimensions with TDD / DRY / YAGNI framing and dual-mode (pipeline-spawned + user-invocable) support.
+- `rad-plan-audit/references/` cleaned of files covering removed legacy audit modes. `grep -rn "PRD\|Research Doc\|Design Doc\|Architecture Doc" .claude/skills/rad-plan-audit/` returns zero matches.
+- Audit doc at `{PROJECT-DIR}/reports/{NAME}-PLAN-AUDIT.md` with frontmatter `verdict` + `max_severity`; structured body groups findings by severity with per-finding location, description, and fix suggestion.
+- Fixture tests: 6+ pairs pass. Broken fixtures produce `issues_found` with correct severity; clean fixtures produce `pass`.
+- UI renders new DAG node with clickable doc-link and tri-color severity badge (green / yellow / red). All four frontmatter state combinations map to the expected color. Legacy projects render without regression.
+- Orchestration skill references updated: `SKILL.md`, `action-event-reference.md`, `pipeline-guide.md`, `document-conventions.md`.
+- Grep-based contract test covering SKILL.md key language blocks passes.
+- `plan-audit-e2e/` prompt-harness fixture runs green; inaugural baseline committed.
+- SKILL.md rewrite honors the Writing Discipline directive (high-signal, cohesive, not dense / repetitive) — verified during reviewer pass.
+- Forward pointer to [iter-18-plan-replan-cycle.md](./iter-18-plan-replan-cycle.md) present for the replan-cycle half.

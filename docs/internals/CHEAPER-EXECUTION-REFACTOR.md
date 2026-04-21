@@ -217,13 +217,13 @@ Rewrites `execute-coding-task` to read only the task-handoff (no upstream docs).
 
 **Exit**: test suite green; executor produces a clean fix commit from an orchestrator-authored corrective handoff without reading any upstream planning docs.
 
-### Iter 14 — Rad-plan-audit overhaul
+### Iter 14 — Rad-plan-audit pipeline node
 
 **Companion**: [iter-14-rad-plan-audit.md](./cheaper-execution/iter-14-rad-plan-audit.md)
 
-Rewrites `rad-plan-audit` for a single purpose: conformance between Requirements and Master Plan. Forward coverage (every Requirements ID cited by ≥1 Master Plan task) + backward resolution (every Master Plan tag resolves to a Requirements block). Deletes legacy audit modes covering removed upstream doc types.
+Rewrites `rad-plan-audit` as a **first-class pipeline node** between `explode_master_plan` and `request_plan_approval`. Audits 14 dimensions: 5 structural task-invariants inherited from iter-13 (File Targets, inlined requirements, tag-per-step, 4-step RED-GREEN, `task_type`), 7 authoring anti-patterns (placeholder language, vague directives, test-quality anti-patterns, etc.), and 2 cross-document conformance checks (forward coverage + backward resolution). Binary verdict (`pass | issues_found`) + tiered severity (`critical | important | minor`). Dual-mode skill: pipeline-spawned (new action `spawn_plan_auditor`) + user-invocable. UI renders a new DAG node with clickable doc-link and a tri-color severity badge (green / yellow / red). Authoring rules shared with `rad-create-plans` (iter-13) as single source of truth. TDD / DRY / YAGNI framing. Replan-with-context half split to iter-18.
 
-**Exit**: test suite green; audit flags a deliberately unaddressed requirement and passes on a correctly-cited plan.
+**Exit**: new pipeline node wired end-to-end (action + events + enrichment + mutation + validator + `default.yml` step); audit doc at `reports/{NAME}-PLAN-AUDIT.md`; 6+ fixture pairs across cross-document / structural / anti-pattern dimensions all pass; UI badge renders correct color across all four state combinations; legacy projects render without regression.
 
 ### Iter 15 — Explosion-retry configurability
 
@@ -250,6 +250,16 @@ Scope additionally absorbs the **v4 legacy sunset** (decision 2026-04-20, greenf
 Catches root-level `/docs/*.md` and `README.md` up to post-refactor reality in a single coherent pass — agent roster (including the orchestrator's expanded mediator role), pipeline flow, template choices, skill list, document types (including corrective-handoff naming conventions and review-addendum format). All prior iterations deliberately deferred `/docs/` updates to this tail iteration. No code changes; grep-hygiene checks confirm removed concepts don't linger.
 
 **Exit**: zero grep matches for removed concepts in `/docs/`; cross-references between public docs are internally consistent.
+
+### Iter 18 — Plan-replan cycle (human-driven corrective loop)
+
+**Companion**: [iter-18-plan-replan-cycle.md](./cheaper-execution/iter-18-plan-replan-cycle.md)
+
+Split from iter-14 during brainstorming on 2026-04-21. Adds a replan event + lightweight chat-invoked skill + context carry-forward of audit findings (or operator notes) into the next master-plan spawn's enrichment. Either replaces today's blind `plan_rejected` re-author path (single loop-back event with optional feedback payload) or coexists alongside it — decision punted to re-brainstorm. Pipeline-acknowledged; UI surfaces a Replan affordance on the approval gate (informational; actual action is chat-invoked).
+
+**Status**: Brainstorming — scope is preliminary; requires re-brainstorm before planning. Open questions on event shape (replace vs coexist), context-payload form (path vs pre-digested), UI affordance shape (two-way vs three-way gate), and lightweight skill location. Depends on iter-14.
+
+**Exit**: operator-approved replan from agent chat signals the new event with audit feedback; planner re-spawn receives replan context via enrichment; `plan_audit` re-runs on the revised master plan; UI accurately reflects the replan state transition.
 
 ---
 
