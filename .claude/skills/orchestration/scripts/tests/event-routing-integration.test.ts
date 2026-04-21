@@ -106,7 +106,11 @@ describe('code_review_completed routes through template event index — Iter 10 
     expect(result.action).toBe('execute_task');
     // Enrichment routes handoff_doc to the birthed corrective's synthesized task_handoff
     expect(result.context['handoff_doc']).toBe(handoffPath);
-    expect(result.mutations_applied).toContain('injected corrective task 1 (changes_requested)');
+    // Iter 11: the CODE_REVIEW_COMPLETED mutation's mutations_applied log now
+    // includes the derived scope (via `resolveHostingIteration`). On a
+    // task-scope corrective birth the log string is
+    // `injected corrective task N (changes_requested, scope=task)`.
+    expect(result.mutations_applied).toContain('injected corrective task 1 (changes_requested, scope=task)');
   });
 
   it('mediated filter-down (raw changes_requested + effective approved) wires through → no corrective, state records approved', () => {
@@ -179,6 +183,103 @@ describe('phase_review_completed routes through template event index', () => {
     }, io);
 
     expect(result.success).toBe(true);
+  });
+});
+
+// ── phase_review_completed (Iter 11 mediation) wiring tests ─────────────────
+//
+// Parallel of the iter-10 code_review_completed wiring block above — pins
+// the mediation contract flowing through the event index end-to-end.
+
+describe('phase_review_completed routes through template event index — Iter 11 mediation', () => {
+  it('approved verdict wires through event index → no mediation fields, no corrective', () => {
+    const io = driveToExecutionWithConfig(config, 1, 2);
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    seedDoc(phaseReviewDoc(1), { verdict: 'approved', exit_criteria_met: true });
+
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1,
+      doc_path: phaseReviewDoc(1),
+      verdict: 'approved',
+      exit_criteria_met: true,
+    }, io);
+
+    expect(result.success).toBe(true);
+  });
+
+  it('mediated changes_requested with handoff path wires through → phase corrective birthed, handoff_doc routes to PHASE-C1', () => {
+    const io = driveToExecutionWithConfig(config, 1, 2);
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+
+    const handoffPath = 'tasks/X-TASK-P01-PHASE-C1.md';
+    seedDoc(phaseReviewDoc(1), {
+      verdict: 'changes_requested',
+      exit_criteria_met: false,
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: handoffPath,
+    });
+
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1,
+      doc_path: phaseReviewDoc(1),
+    }, io);
+
+    expect(result.success).toBe(true);
+    // Walker dispatches execute_task after mediation (corrective's synthesized
+    // task_handoff is pre-completed).
+    expect(result.action).toBe('execute_task');
+    // Enrichment routes handoff_doc to the birthed phase corrective's
+    // synthesized task_handoff.
+    expect(result.context['handoff_doc']).toBe(handoffPath);
+    // task_id sentinel is propagated through enrichment.
+    expect(result.context['task_id']).toBe('P01-PHASE');
+    expect(result.context['task_number']).toBeNull();
+    // mutations_applied log shape — injected phase corrective task 1.
+    expect(result.mutations_applied).toContain('injected phase corrective task 1 (changes_requested)');
+  });
+
+  it('mediated filter-down (raw changes_requested + effective approved) wires through → no phase corrective, state records approved', () => {
+    const io = driveToExecutionWithConfig(config, 1, 2);
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+
+    seedDoc(phaseReviewDoc(1), {
+      verdict: 'changes_requested',
+      exit_criteria_met: false,
+      orchestrator_mediated: true,
+      effective_outcome: 'approved',
+    });
+
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1,
+      doc_path: phaseReviewDoc(1),
+    }, io);
+
+    expect(result.success).toBe(true);
+    expect(result.mutations_applied).toContain('set phase_review.verdict = approved');
+    expect(result.mutations_applied.some(m => m.startsWith('injected phase corrective'))).toBe(false);
+  });
+
+  it('validator rejects raw changes_requested with missing mediation fields → success: false', () => {
+    const io = driveToExecutionWithConfig(config, 1, 2);
+    driveTaskWith(io, 1, 1);
+    driveTaskWith(io, 1, 2);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+
+    seedDoc(phaseReviewDoc(1), { verdict: 'changes_requested', exit_criteria_met: false });
+
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1,
+      doc_path: phaseReviewDoc(1),
+    }, io);
+
+    expect(result.success).toBe(false);
   });
 });
 

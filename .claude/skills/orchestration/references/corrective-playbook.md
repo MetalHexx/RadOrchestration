@@ -1,6 +1,6 @@
 # Corrective Playbook
 
-Orchestrator-only mediation guide. Load this document at the start of every task-scope corrective cycle. It is self-contained — no other reference document is required to execute a mediation cycle beyond the review doc, the project's Requirements file, and the original Task Handoff.
+Orchestrator-only mediation guide. Load this document at the start of every corrective cycle (task-scope or phase-scope). It is self-contained — no other reference document is required to execute a mediation cycle beyond the review doc, the project's Requirements file, the Phase Plan (for phase-scope cycles), and the original Task Handoff (task-scope) or the phase's Task Handoffs (phase-scope).
 
 ---
 
@@ -15,6 +15,24 @@ Mediation fires **only** on a raw `verdict: changes_requested` from the reviewer
 | `rejected` | Halt immediately. No addendum. No mediation. |
 
 The orchestrator **never** flips an `approved` verdict to `changes_requested`. Direction is one-way: mediation can resolve `changes_requested` → `approved` (when all findings are declined), but never the reverse.
+
+---
+
+## Scope: Task vs. Phase
+
+Mediation fires identically on task-scope reviews (`code_review_completed`) and phase-scope reviews (`phase_review_completed`). The per-finding judgment, addendum shape, additive frontmatter, corrective Task Handoff authoring, and budget enforcement are the same at both scopes. The differences are small:
+
+| Aspect | Task scope | Phase scope |
+|--------|-----------|-------------|
+| Trigger event | `code_review_completed` | `phase_review_completed` |
+| Source inputs for judgment | Task Handoff, Requirements | Phase Plan, Requirements, all Task Handoffs in the phase, cumulative phase diff |
+| Corrective handoff filename | `tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}-C{N}.md` | `tasks/{NAME}-TASK-P{NN}-PHASE-C{N}.md` |
+| Budget source array | `taskIter.corrective_tasks` | `phaseIter.corrective_tasks` |
+| Frontmatter `corrective_scope` | `"task"` | `"phase"` |
+
+**Hosting iteration derivation.** The hosting iteration is derived automatically from where the reviewed node lives in state — the orchestrator does not author a scope hint. For `phase_review_completed` the host is always the current phase iteration. For `code_review_completed`, the mutation uses **ancestor-derivation**: if the completed `code_review` node lives under an active entry of `phaseIter.corrective_tasks[*].nodes`, the new corrective appends to `phaseIter.corrective_tasks` (corrective-of-a-phase-scope-corrective); otherwise it appends to `taskIter.corrective_tasks` (task scope, or corrective-of-a-task-scope-corrective). The orchestrator treats all findings the same way regardless of which iteration hosts them — the routing is the engine's job, not yours.
+
+**Single-pass phase_review.** `phase_review` runs exactly once per phase iteration. After a phase-scope corrective's own task-level code review approves, the phase iteration completes directly — the pipeline does not re-dispatch `spawn_phase_reviewer`.
 
 ---
 
@@ -73,6 +91,68 @@ Disposition is `decline` when **any** of the following hold:
 ### Default bias: action over decline
 
 When in doubt, lean toward `action`. Reviewer authority is the baseline. Decline only when you have clear evidence the finding is out-of-scope, inaccurate, or speculative.
+
+---
+
+## Phase-Scope Mediation
+
+Fires on `phase_review_completed` with raw `verdict: changes_requested`. The core flow — budget check, per-finding judgment, addendum authoring, corrective handoff authoring, signaling — matches task scope. The deltas below cover the differences.
+
+### When it fires
+
+Only after a phase reviewer emits `verdict: changes_requested`. Approved and rejected phase verdicts bypass mediation and propagate untouched (rejected halts the pipeline; approved advances past the phase).
+
+### Per-finding judgment inputs
+
+Phase reviewers flag cross-task issues — contract drift at task seams, orphan exports, conflicting patterns, unmet exit criteria. For each finding, gather:
+
+1. **File and line reference** — read the actual source at that location.
+2. **Requirement traceability** — look up the referenced requirement IDs (FR/NFR/AD/DD) in `{NAME}-REQUIREMENTS.md`.
+3. **Phase Plan exit criteria** — re-read the Phase Plan's exit criteria section. A phase-scope finding should trace either to an exit criterion or to a requirement the phase collectively owes.
+4. **Task Handoffs in the phase** — re-read the Acceptance Criteria and File Targets of the task(s) implicated. The finding may cross a seam between two tasks.
+5. **Cumulative phase diff** — `git diff <phase_first_sha>~1..<phase_head_sha>` (fallback: `git diff HEAD` when SHAs are null). Verify the cited behaviour against the actual diff, not against per-task handoff intent.
+
+### Cross-artifact scan emphasis
+
+Phase reviewers naturally raise cross-task findings, and the cross-artifact scan carries more weight here than at task scope. Before declining, confirm the piece isn't owned by a later phase in the Master Plan. If the phase's collective contract owed the piece, the finding is `action`.
+
+### Action vs. decline criteria
+
+Same bar as task scope — action when the finding cites a real deviation, traces to an inlined requirement or phase exit criterion, and a bounded fix exists; decline when out-of-scope, speculative, or factually incorrect. Default bias remains action over decline.
+
+### Single-pass phase_review clause
+
+`phase_review` runs exactly once per phase iteration. Once the phase-scope corrective's task-level code review approves, the phase iteration completes — the pipeline does **not** re-dispatch `spawn_phase_reviewer`. There is no phase-review corrective filename form; the `-C{N}` sentinel lives on the corrective Task Handoff and on the task-level code review filename only.
+
+### Budget banner
+
+The `Attempt N of M` banner uses `phaseIter.corrective_tasks.length` (not `taskIter.corrective_tasks.length`): N = `phaseIter.corrective_tasks.length + 1`, M = `max_retries_per_task`. Budget exhaustion behaviour is identical to task scope — addendum + no handoff + clean halt.
+
+### Corrective handoff filename
+
+```
+tasks/{NAME}-TASK-P{NN}-PHASE-C{N}.md
+```
+
+The `PHASE` token replaces the `T{NN}-{TITLE}` segment. N = `phaseIter.corrective_tasks.length + 1` at authoring time.
+
+### Frontmatter
+
+Same core shape as the task-scope corrective handoff. Two fields differ:
+
+```yaml
+corrective_scope: phase
+```
+
+`corrective_index` is 1-based against `phaseIter.corrective_tasks.length + 1`. No `task` field is required — the corrective applies to the whole phase, not a single task.
+
+### Handoff body
+
+Same self-contained preamble-then-steps shape as task scope. The preamble describes the phase-scope intent (what the phase collectively owes — integration, cross-task contracts, exit criteria) and the steps enumerate the actioned findings as concrete implementation instructions. No references to prior reviews, prior corrective attempts, or delta reasoning. A coder reading the handoff should execute the work without loading the phase review doc or any task handoff.
+
+### Signaling
+
+After authoring the addendum and (when applicable) the corrective handoff, signal `phase_review_completed --doc-path <path-to-phase-review-doc>`. The pipeline reads the phase review doc's frontmatter — `effective_outcome` and `corrective_handoff_path` — to birth the corrective or advance the pipeline normally.
 
 ---
 
