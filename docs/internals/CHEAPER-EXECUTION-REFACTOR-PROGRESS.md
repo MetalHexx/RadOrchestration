@@ -70,14 +70,14 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 9 | Complete `default.yml` | Complete | 2026-04-20 | 2026-04-20 |
 | 10 | Task-level corrective cycles (orchestrator mediation) | Merged | 2026-04-20 | 2026-04-20 |
 | 11 | Phase-level corrective cycles | Complete | 2026-04-21 | 2026-04-21 |
-| 12 | Code-review rework (task/phase/final) | Not started | — | — |
+| 12 | Code-review rework (task/phase/final) | In progress | 2026-04-21 | — |
 | 13 | Execute-coding-task rework | Not started | — | — |
 | 14 | Rad-plan-audit overhaul | Not started | — | — |
 | 15 | Explosion-retry configurability | Not started | — | — |
 | 16 | Repository deep clean | Not started | — | — |
 | 17 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 11 / 18 iterations complete; Iter 12 next. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
+**Overall**: 11 / 18 iterations complete; Iter 12 in flight (PR-open phase). Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -104,7 +104,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 9 | `feat/iter-9-complete-default-yml` | `C:\dev\orchestration\v3-worktrees\feat-iter-9-complete-default-yml` | Merged | `4ee1ea1` | [#60](https://github.com/MetalHexx/RadOrchestation/pull/60) |
 | 10 | `feat/iter-10-task-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-10-task-corrective-cycles` | Merged | `3b85095` | [#61](https://github.com/MetalHexx/RadOrchestation/pull/61) |
 | 11 | `feat/iter-11-phase-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-11-phase-corrective-cycles` | Merged | `6140a9a` | [#62](https://github.com/MetalHexx/RadOrchestation/pull/62) |
-| 12 | — | — | Not created | — | — |
+| 12 | `feat/iter-12-code-review-rework` | `C:\dev\orchestration\v3-worktrees\feat-iter-12-code-review-rework` | Awaiting merge | — | — |
 | 13 | — | — | Not created | — | — |
 | 14 | — | — | Not created | — | — |
 | 15 | — | — | Not created | — | — |
@@ -182,6 +182,27 @@ Format:
 - **Why**: <reason the deviation was necessary>
 - **Impact**: <downstream effects, if any>
 ```
+
+### 2026-04-21 — Iteration 12 — Review-rework fixtures authored programmatically in TypeScript (not on-disk `.md` trees)
+
+- **Plan said**: "Six fixture pairs under `.claude/skills/orchestration/scripts/tests/fixtures/review-rework/`" with each fixture folder carrying `{NAME}-REQUIREMENTS.md`, `{NAME}-MASTER-PLAN.md`, `{NAME}-PHASE-01-{TITLE}.md`, task handoffs, source files, and an expected-output template — parallel on-disk `.md` trees per fixture.
+- **Execution did**: Six subdirectories (`task-review/clean`, `task-review/broken`, `phase-review/clean`, `phase-review/broken`, `final-review/clean`, `final-review/broken`) exist but are empty. All fixture data is colocated in `scripts/tests/fixtures/review-rework/index.ts` as a TypeScript registry — each fixture is an object literal declaring commit structure, doc content, expected frontmatter, and expected audit rows. The `review-rework-fixtures.test.ts` driver uses this registry via the `git-fixture` helper.
+- **Why**: Keeps fixture declaration + driver colocated — one source of truth. Avoids parallel `.md` + `.ts` trees drifting out of sync. Each fixture reads as one object literal rather than a folder of separately-authored files. The plan's intent (exercise validator + enrichment against synthesised diffs) is fully met — the only lost surface is human readability of fixtures as markdown, which is offset by the object-literal-per-fixture density.
+- **Impact**: Six empty subdirectories in the tree (structural placeholders — can be removed in a follow-up cleanup). Plan-conformance reviewer flagged the deviation; accepted + logged here. Git-fixture helper signature matches the plan exactly.
+
+### 2026-04-21 — Iteration 12 — First harness run surfaced two fixture bugs; fixture polished before inaugural baseline
+
+- **Plan said**: Inaugural harness run should land all 10 pass criteria green on first attempt.
+- **Execution did**: First harness run honestly returned `verdict: changes_requested` at final review because NFR-2 (README at project root with `## API` section) was declared in the Requirements doc but not delivered by any task. The phase plan said "deferred to the final review pass" — deferring doesn't deliver. Additionally, `_runner.md` pass criteria #3 and #10 referenced FR-1 in T2's audit, but T2's Task Handoff inlines FR-2 + NFR-1 + AD-1 (FR-1 is T1's slice). A second run after the fixture + runner-spec polish landed all 10 pass criteria green.
+- **Why**: Fixture authoring gap caught by the harness behaving honestly — exactly the signal MUST-LAND-CLEAN asked for. Instead of relaxing pass criteria or papering over, patched the root cause: added `README.md` to fixture root (project-scaffold content; no per-task delivery needed); reworded criteria to match T2's actual inlined requirement set. Reviewer stopping correctly (rather than marking undelivered NFR as `met`) validates the iter-12 strict final-scope contract.
+- **Impact**: Fixture + runner polish in follow-up commit `480c1d0` after initial `a8e25f6`. Net inaugural baseline is now genuine; all 10 criteria green; confirms the strict `met | missing` semantics at final scope.
+
+### 2026-04-21 — Iteration 12 — Harness orchestrator subagent lacked real Agent-tool dispatch; reviewer/coder roles simulated in-session
+
+- **Plan said**: `_runner.md` instructs "spawn `@reviewer`" and "spawn `@coder`" as distinct subagent dispatches.
+- **Execution did**: The dispatched `orchestrator` subagent reported its tool list lacked the Agent tool (despite the agent definition listing it). Reviewer + coder roles were performed inline by the orchestrator subagent rather than via real sub-subagent dispatch. Pipeline.js calls, event routing, mutation handlers, and state transitions were all exercised against the real engine — only the agent-to-agent spawn path was simulated.
+- **Why**: Subagent tool visibility — the Agent tool appears to be deferred behind ToolSearch in some sessions; the inner orchestrator didn't know to call ToolSearch to surface it. Shape-based pass criteria still went green (the iter-12 contract is about workflow outputs, audit-table structure, validator behaviour, enrichment shapes — all exercised legitimately by inline authoring against the specs). Multi-agent dispatch path is validated elsewhere by the iter-10/11 harnesses, which were driven from primary sessions.
+- **Impact**: Inaugural baseline is legitimate for iter-12's content scope; weaker fidelity for multi-agent dispatch. Noted as an open item for future harness runs — drive from primary session OR instruct inner orchestrator to call ToolSearch for Agent surfacing.
 
 ### 2026-04-21 — Iteration 11 — `titleForPhaseCorrectiveChild` helper added instead of using `titleForPhaseChild` directly
 
@@ -314,7 +335,25 @@ Format:
 - UI smoke: N/A — no UI surface touched.
 - Commits: `f534247` (scaffold), `b890c18` (review-corrective — dead code, tightened self-test thresholds, project-name stability, narrowed `.gitkeep` exception), `a9cb44c` (inaugural baseline artifacts), `211c34a` (progress tracker). PR: [#57](https://github.com/MetalHexx/RadOrchestation/pull/57).
 
-### 2026-04-21 — Iteration 11 — Phase-level corrective cycles (orchestrator mediation)
+### 2026-04-21 — Iteration 12 — Code-review rework (task/phase/final)
+
+- Branch: `feat/iter-12-code-review-rework` off `feat/cheaper-execution` @ `18654de` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-12-code-review-rework`). Flat branch name per the iter-8+ convention.
+- Review-workflow rewrites: all three modes (task / phase / final) are now diff-based with a per-requirement audit table and scope-aware status enums — task + phase emit `on-track | drift | regression`; final emits strict `met | missing`. Severity + verdict enums unchanged (UI badge contract preserved). "Implementer's report is not evidence" framing carried into all three workflows. Conformance-first pass runs the audit; lean quality sweep runs second (TODO/FIXME grep, diff-stat, orphaned scaffolding, decomposition / file-size / SRP).
+- Final-review becomes stateless (parallels iter-10/11): dropped PRD / Architecture / Design input rows (iter-3 deletions caught up), dropped `Previous Final Review` input, dropped `Corrective Review Context` section, dropped the "During corrective reviews…" verdict-rules line. Save path moved to `{PROJECT-DIR}/reports/{NAME}-FINAL-REVIEW.md` (was project root).
+- Phase-review dropped Master Plan input row; tag resolution now direct from the Phase Plan's `**Requirements:**` line.
+- Engine: `context-enrichment.ts` removed `spawn_final_reviewer` from `EMPTY_CONTEXT_ACTIONS` and added a peer enrichment branch computing `project_base_sha` + `project_head_sha` from state iteration commits (first + last non-null `commit_hash` across phases/tasks/correctives, traversal-order). Auto-commit=off falls back to null SHAs → reviewer uses `git diff HEAD`. No new state fields.
+- Validator: `frontmatter-validators.ts` gained `final_review_completed` rule set (verdict enum check only; final-review mediation is out of iter-12 scope — no new mediation fields). `code_review_completed` + `phase_review_completed` rules preserved from iter-10/11.
+- Playbook: `corrective-playbook.md` gained **Tiered Conformance Model** + **Finding Disposition by Status** sections at the top. All iter-10/11 content preserved verbatim. `orchestrator.md` picked up a one-sentence tiered-reasoning note in the Mediation Flow paragraph. `rad-review-cycle/SKILL.md` had a light vocabulary sweep.
+- UI: `final-review-section.tsx` derives `documentName` from `finalReview.doc_path` basename so the `reports/` prefix from the save-path move flows through naturally (fallback to legacy filename when `doc_path` is null). `document-ordering.test.ts` v5 fixtures updated to `reports/FINAL-REVIEW.md`. `dashboard-integration.test.ts` gained a new test pinning the basename-derivation contract.
+- Prompt harness (`prompt-tests/code-review-rework-e2e/`): new `conformance-tiered` fixture — 1-phase / 2-task project with deliberate cross-task drift on FR-2 (T2 consumes `getColors()` as Promise; T1 contract is synchronous `Color[]`). Runner drives the full cycle: task review changes_requested → orchestrator mediation → corrective handoff → re-review approved → phase review approved → final review approved (all 5 requirements `met` in audit). Inaugural baseline under `output/conformance-tiered/baseline-conformance-tiered-2026-04-21/run-notes.md`; all 10 shape-based pass criteria green on the inaugural run. PR #64's round-2 review cycle later added an 11th criterion (pipeline-level validator-health check on `final_review_completed`); the post-review-cycle harness re-run captures a baseline against all 11 criteria.
+- Test-fixture helper: `scripts/tests/helpers/git-fixture.ts` synthesizes a temp git repo with seeded commits via `execFileSync`. Six fixture pairs (approved + changes_requested × task/phase/final) authored programmatically in `scripts/tests/fixtures/review-rework/index.ts` rather than parallel on-disk `.md` trees (see Deviations).
+- Tests: orchestration 46 files / 1298 pass / 1 skip / 1 todo (baseline 1243/1/1 — net +55 new tests: 7 enrichment + 10 frontmatter + 5 event-routing + 32 review-rework-fixture + 1 multi-phase null-prefix edge case). UI 157 pass / 3 pre-existing dag-timeline baseline fails (baseline 156/3 — net +1 new test). Installer 399 pass / 0 fail (unchanged — no installer edits in scope).
+- Reviews: 1 plan-conformance pass + 1 code-quality pass (both `changes_requested`, 8 low/medium findings between them — none critical). Accepted 7 fixes via a `coder` subagent: `document-conventions.md` verdict "Used In" column extended with Final Review; `context-enrichment.ts` comment tightening + new multi-phase null-prefix test; `_runner.md` line 155 `F-1` → `FR-2` typo; `review-rework-fixtures.test.ts` negative-assert strengthening + test rename; `dashboard-integration.test.ts` simulation disclaimer comment; `git-fixture.ts` removed unused top-level `files` option; `final-review-section.tsx` path invariant comment. Declined 3 items (programmatic fixture layout kept as logged deviation; inaugural baseline is a pending task, not a gap; stale plan-doc "Action #9" reference is cosmetic).
+- Fixture polish (surfaced by first harness run): first harness run exposed two fixture bugs before the final review could go green — NFR-2 (README) was declared but undelivered; runner pass criteria #3 and #10 referenced FR-1 which isn't in T2's Task Handoff (T2 inlines FR-2 + NFR-1 + AD-1). Added `README.md` to fixture root (satisfies NFR-2 as project-scaffold content); reworded criteria to match T2's actual inlined set. Second harness run landed all 10 pass criteria green. See Deviations.
+- UI smoke verification deferred to user hand-verification (see `user-instructions.md`): the harness run folder is not a standard UI workspace layout (no `.claude/skills/orchestration/config/orchestration.yml` under `WORKSPACE_ROOT`), and the global orchestration.yml's `base_path` is absolute (`C:\dev\orchestration-projects`) — so pointing the UI at the harness output requires either a config override or copying the run folder into the shared projects directory, both scope creep for a smoke test. Iter-12 UI contract (doc_path-basename derivation) is covered by new unit test in `dashboard-integration.test.ts` + existing `document-ordering.test.ts` + `fs-reader-v5.test.ts`.
+- Commits: `a8e25f6` (main rewrite + corrective fixes), `480c1d0` (fixture polish + inaugural baseline), tracker commit pending. PR: pending.
+
+
 
 - Branch: `feat/iter-11-phase-corrective-cycles` off `feat/cheaper-execution` @ `14ae5ce` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-11-phase-corrective-cycles`). Flat branch name per the iter-8+ convention.
 - Semantic flip at phase scope: `PHASE_REVIEW_COMPLETED` births phase-scope correctives from `effective_outcome === 'changes_requested'` + a non-empty `corrective_handoff_path`, mirroring iter-10's task-scope contract. The previous reset block (`phase_planning`, `task_loop.iterations`, `phase_review`, `phase_gate` all reset to `not_started`) is gone — phase iterations are now append-only like task iterations. The synthesized pre-completed `task_handoff` sub-node on each phase-scope corrective carries the orchestrator-supplied handoff path; body nodes are scaffolded via `findTaskLoopBodyDefs` so the walker enters the corrective with handoff pre-resolved.
@@ -525,6 +564,18 @@ Format:
 - **Context**: During PR #57's round-6 Copilot review, two comments asked the Iter-6 linters to add `author` + `approved_at` (requirements) and `status` + `created` + `author` (master plan) to `REQUIRED_FRONTMATTER`. Declined in-iteration because the Iter 6 companion (`docs/internals/cheaper-execution/iter-06-prompt-harness.md`) explicitly marks those fields as informational-only and instructs the linter to ignore them.
 - **Why unresolved**: The plan's scope boundary is deliberate — the linters validate the load-bearing contract only. Broadening coverage would re-open the "which fields are load-bearing" question that the Iter 6 design locked. A separate iteration can revisit if the template contract tightens.
 - **Suggested owner**: A future iteration — likely alongside Iter 14 (Rad-plan-audit overhaul) or whichever later work retightens the frontmatter contract on the template side.
+
+### 2026-04-21 — Iteration-scoped "rework" in long-lived artifact names (Iter 12)
+
+- **Context**: Iter 12 introduced `prompt-tests/code-review-rework-e2e/`, `scripts/tests/fixtures/review-rework/`, and `scripts/tests/review-rework-fixtures.test.ts`. The word "rework" is iteration-scoped — describes the iter-12 action, not an enduring property of the artifact. Once iter-12 merges, these artifacts continue to be the active code-review coverage for the project, and "rework" will read as historical rather than descriptive.
+- **Why unresolved**: Rename blocked by sandbox-permission denial during iter-12 execution. Renaming crosses folder-move boundaries that the sandbox classified as scope creep. Suggested target names: `prompt-tests/code-review-e2e/`, `scripts/tests/fixtures/code-review/`, `scripts/tests/code-review-fixtures.test.ts`. Also requires path-reference updates in `_runner.md`, `README.md`, `user-instructions.md`, `run-notes.md`, imports in the test file, `.gitignore`, and this tracker entry.
+- **Suggested owner**: A post-merge cleanup commit on `feat/cheaper-execution` (small, mechanical — git mv + one grep-and-replace pass), OR Iter 16 (Repository deep clean), whichever comes first.
+
+### 2026-04-21 — Harness orchestrator subagent Agent-tool surfacing (Iter 12 carry-forward)
+
+- **Context**: Iter 12's code-review-rework-e2e runner instructs the orchestrator role to "spawn @reviewer" / "spawn @coder" subagents. When the runner is driven by a subagent-level orchestrator (rather than the primary session), the Agent tool may not be surfaced, forcing inline role simulation — which weakens multi-agent-dispatch fidelity of the baseline.
+- **Why unresolved**: Not an iter-12 architectural concern — the iter-12 contract (workflow outputs, audit-table shape, validator rules, enrichment contracts) is validated by inline authoring against specs. But as a harness-run hygiene rule, the runner's preamble should say: "If driving via a subagent, the orchestrator must call `ToolSearch select:Agent` at session start to surface the Agent tool for `@reviewer` + `@coder` dispatch. Alternatively, drive from the primary session."
+- **Suggested owner**: A later iteration that re-runs the harness with real multi-agent dispatch, OR Iter 16/17 for harness-documentation hygiene.
 
 ### 2026-04-20 — `full.yml` banner wording stale post-Iter-9
 

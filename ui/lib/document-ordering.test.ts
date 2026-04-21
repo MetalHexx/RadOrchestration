@@ -680,23 +680,25 @@ test('gate and conditional nodes are skipped (no documents produced)', () => {
 });
 
 test('final_review root step node produces review category with Final Review title', () => {
+  // Simplified test fixture — production uses reports/{NAME}-FINAL-REVIEW.md
+  // but the path-move assertion only cares about the reports/ prefix.
   const state = makeV5State({
-    final_review: { kind: 'step', status: 'completed', doc_path: 'reviews/FINAL-REVIEW.md', retries: 0 },
+    final_review: { kind: 'step', status: 'completed', doc_path: 'reports/FINAL-REVIEW.md', retries: 0 },
   });
 
   const docs = getOrderedDocsV5(state, 'TEST');
   assert.strictEqual(docs.length, 1);
   assert.strictEqual(docs[0].title, 'Final Review');
   assert.strictEqual(docs[0].category, 'review');
-  assert.strictEqual(docs[0].path, 'reviews/FINAL-REVIEW.md');
+  assert.strictEqual(docs[0].path, 'reports/FINAL-REVIEW.md');
 });
 
 test('error log from allFiles is appended with error-log category after graph docs', () => {
   const state = makeV5State({
-    final_review: { kind: 'step', status: 'completed', doc_path: 'reviews/FINAL-REVIEW.md', retries: 0 },
+    final_review: { kind: 'step', status: 'completed', doc_path: 'reports/FINAL-REVIEW.md', retries: 0 },
   });
 
-  const allFiles = ['reviews/FINAL-REVIEW.md', 'TEST-ERROR-LOG.md'];
+  const allFiles = ['reports/FINAL-REVIEW.md', 'TEST-ERROR-LOG.md'];
   const docs = getOrderedDocsV5(state, 'TEST', allFiles);
 
   assert.strictEqual(docs.length, 2);

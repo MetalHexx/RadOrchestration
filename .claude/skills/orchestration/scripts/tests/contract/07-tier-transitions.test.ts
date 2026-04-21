@@ -142,7 +142,10 @@ describe('[CONTRACT] Tier Transitions — phase completion to next phase', () =>
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_final_reviewer');
-    expect(result.context).toEqual({});
+    // Iter-12: spawn_final_reviewer context carries project_base_sha +
+    // project_head_sha derived from iteration commit_hash values. In this
+    // fixture (auto_commit: 'never'), no commits exist, so both are null.
+    expect(result.context).toEqual({ project_base_sha: null, project_head_sha: null });
   });
 
   it('final_approved → display_complete', () => {
@@ -155,8 +158,8 @@ describe('[CONTRACT] Tier Transitions — phase completion to next phase', () =>
 
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     const frDocPath = '/tmp/final-review.md';
-    seedDoc(frDocPath);
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
+    seedDoc(frDocPath, { verdict: 'approved' });
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
     const result = processEvent('final_approved', PROJECT_DIR, {}, io);
 
     expect(result.success).toBe(true);

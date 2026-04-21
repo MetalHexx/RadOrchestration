@@ -26,6 +26,7 @@ interface FinalReviewSectionInputs {
   finalReview: {
     status: FinalReviewStatus;
     report_doc: string | null;
+    doc_path?: string | null;
     human_approved: boolean;
   };
   projectName: string;
@@ -70,6 +71,8 @@ function simulatePlanningSection(inputs: PlanningSectionInputs): {
 }
 
 // ---------- FinalReviewSection simulation ----------
+// Behavioral simulation, not a component-render test. If FinalReviewSection
+// changes its `documentName` derivation, this simulation must be updated in lockstep.
 
 function simulateFinalReviewSection(inputs: FinalReviewSectionInputs): {
   rendersNull: boolean;
@@ -98,13 +101,19 @@ function simulateFinalReviewSection(inputs: FinalReviewSectionInputs): {
   }
 
   if (pipelineTier === "review") {
+    // Iter-12: documentName is derived from finalReview.doc_path (basename)
+    // when present, falling back to the legacy filename shape otherwise. This
+    // mirrors the component's path-move support for reports/{NAME}-FINAL-REVIEW.md.
+    const derivedName = finalReview.doc_path
+      ? finalReview.doc_path.split("/").pop() ?? `${projectName}-FINAL-REVIEW.md`
+      : `${projectName}-FINAL-REVIEW.md`;
     return {
       rendersNull: false,
       approveButton: {
         rendered: true,
         gateEvent: "final_approved",
         projectName,
-        documentName: `${projectName}-FINAL-REVIEW.md`,
+        documentName: derivedName,
         label: "Approve Final Review",
         className: "mt-1",
       },
@@ -208,6 +217,25 @@ test("FinalReviewSection renders ApproveGateButton with gateEvent='final_approve
     assert.strictEqual(result.approveButton.documentName, "MY-PROJECT-FINAL-REVIEW.md");
     assert.strictEqual(result.approveButton.label, "Approve Final Review");
     assert.strictEqual(result.approveButton.className, "mt-1");
+  }
+});
+
+test("FinalReviewSection derives documentName from finalReview.doc_path (basename) when provided [Iter-12]", () => {
+  const result = simulateFinalReviewSection({
+    finalReview: {
+      status: "complete",
+      report_doc: "report.md",
+      doc_path: "reports/MY-PROJECT-FINAL-REVIEW.md",
+      human_approved: false,
+    },
+    projectName: "MY-PROJECT",
+    pipelineTier: "review",
+  });
+  assert.strictEqual(result.approveButton.rendered, true);
+  if (result.approveButton.rendered) {
+    // Basename stripped from reports/ prefix — the display name in the
+    // confirm dialog stays user-readable without embedding the subdirectory.
+    assert.strictEqual(result.approveButton.documentName, "MY-PROJECT-FINAL-REVIEW.md");
   }
 });
 

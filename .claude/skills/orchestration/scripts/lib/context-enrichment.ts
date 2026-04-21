@@ -84,7 +84,6 @@ const TASK_LEVEL_ACTIONS = new Set([
 const EMPTY_CONTEXT_ACTIONS = new Set([
   'request_plan_approval',
   'ask_gate_mode',
-  'spawn_final_reviewer',
   'display_complete',
 ]);
 
@@ -289,6 +288,42 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
     return {
       ...walkerContext,
       pr_url: state.pipeline.source_control?.pr_url ?? null,
+    };
+  }
+
+  // Iter 12 — spawn_final_reviewer enrichment. Derive project-wide diff SHAs
+  // from iteration commit hashes across the whole pipeline. Traversal order:
+  // phases in index order → tasks in index order → task-correctives in index
+  // order → then phase-correctives (per phase). `project_base_sha` is commits[0]
+  // (first in traversal order); `project_head_sha` is commits[last]. The
+  // pipeline invariant ensures phase correctives always land after all task
+  // commits within a phase. Both null when no commits exist (auto-commit=off).
+  if (action === 'spawn_final_reviewer') {
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
+    const commits: string[] = [];
+    const phaseIterations = phaseLoop?.iterations ?? [];
+    for (const phaseIter of phaseIterations) {
+      const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState | undefined;
+      const taskIterations = taskLoop?.iterations ?? [];
+      for (const taskIter of taskIterations) {
+        if (taskIter.commit_hash != null) commits.push(taskIter.commit_hash);
+        for (const ct of taskIter.corrective_tasks ?? []) {
+          if (ct.commit_hash != null) commits.push(ct.commit_hash);
+        }
+      }
+      // Phase correctives are appended after task commits because phase_review fires only after all task iterations complete, making phase correctives chronologically last within a phase.
+      for (const ct of phaseIter.corrective_tasks ?? []) {
+        if (ct.commit_hash != null) commits.push(ct.commit_hash);
+      }
+    }
+
+    const project_base_sha = commits.length > 0 ? commits[0] : null;
+    const project_head_sha = commits.length > 0 ? commits[commits.length - 1] : null;
+
+    return {
+      ...walkerContext,
+      project_base_sha,
+      project_head_sha,
     };
   }
 

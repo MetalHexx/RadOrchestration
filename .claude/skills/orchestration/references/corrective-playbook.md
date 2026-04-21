@@ -4,6 +4,69 @@ Orchestrator-only mediation guide. Load this document at the start of every corr
 
 ---
 
+## Tiered Conformance Model
+
+Iter 12 introduced a per-requirement audit table at every review scope with scope-aware status semantics. Before reading any finding, understand what the reviewer's status enum actually means at the scope you are mediating — the same row shape carries different implications at task, phase, and final scope.
+
+### Scope-aware status enum
+
+| Scope | Status Enum | Meaning |
+|-------|-------------|---------|
+| Task (`code_review_completed`) | `on-track \| drift \| regression` | The reviewer audited each FR/NFR/AD/DD tag inlined in the Task Handoff. On-track = the task's slice is correct; drift = the task's slice deviates from the handoff's contract; regression = the task broke something that previously worked. |
+| Phase (`phase_review_completed`) | `on-track \| drift \| regression` | The reviewer audited each FR/NFR/AD/DD tag from the Phase Plan's `**Requirements:**` line against the cumulative phase diff. On-track = the phase's cumulative slice is correct; drift = cumulative deviation (typically cross-task contract drift); regression = phase broke something that previously worked. |
+| Final (`final_review_completed`) | `met \| missing` | The reviewer audited every FR/NFR/AD/DD tag in the Requirements doc against the cumulative project diff. Strict — the project either delivers the requirement or it does not. Final-review corrective cycles are not wired in iter-12; mediation does not fire on this event. |
+
+### What on-track means at task and phase scope
+
+On-track is **informational only** — it tells you the reviewed slice of the requirement is correct. It does **not** mean the requirement is complete project-wide. A requirement can remain on-track across several tasks before it becomes `met` at final scope. On-track rows therefore carry severity `none` in almost all cases and do not escalate the verdict.
+
+Rare exception: if the task or phase under review was supposed to **fully satisfy** a requirement (i.e., the Task Handoff or Phase Plan said "deliver FR-3 in full"), but the reviewer marked the row on-track with severity `low` because the slice is cleanly built but incomplete, treat this as drift during mediation. The orchestrator reads the handoff / phase plan to decide whether the scope owed completion — the reviewer may have been conservative with the status. Cite this reasoning explicitly in the addendum.
+
+### How drift differs from regression
+
+| Status | Meaning | Orchestrator Action |
+|--------|---------|---------------------|
+| `drift` | The diff deviates from what the scope was supposed to deliver (wrong contract, missing piece, wrong behaviour at a task seam). | **Action** unless cross-artifact scan shows the piece legitimately belongs elsewhere. Bounded corrective handoff. |
+| `regression` | The diff breaks something that previously worked (test failure, deleted export that other code imports, behaviour change outside the declared scope). | **Action + flagged critical in the corrective preamble.** The coder needs to know this is a repair of a break, not a forward-progress increment. |
+
+### Severity is orthogonal to status
+
+The severity column records the **impact** of the finding; the status column records the **relationship to the scope contract**. A low-severity drift row is still drift (action it). A high-severity on-track row is rare but possible (a quality-sweep finding that happens to land on a scoped requirement, e.g., a security concern in a file implementing FR-3). Evaluate each independently during judgment.
+
+---
+
+## Finding Disposition by Status
+
+For each row in the review's audit table, the disposition is preselected by the status enum — but you validate the judgment against the sources before committing.
+
+| Status | Default Disposition | When to Override |
+|--------|--------------------|--------------------|
+| `on-track` (task/phase) | **decline** — "tracking for later scope" | Override to `action` only when the scope under review was supposed to fully satisfy the requirement but the reviewer marked on-track-but-incomplete. Cite the Task Handoff / Phase Plan language that owed completion. Also override to `action` when a quality-sweep finding with severity `high` lands on this row — severity `high` trumps informational status regardless of scope completeness. |
+| `drift` (task/phase) | **action** | Override to `decline` only when cross-artifact scan proves the piece legitimately belongs to a later phase or another task's contract. Cite the Master Plan or sibling Task Handoff. |
+| `regression` (task/phase) | **action + flagged critical** | Override to `decline` only when the "break" is a deliberate planned deletion (very rare). Confirm against the Phase Plan / Requirements doc. |
+| `met` (final) | n/a — no mediation at final scope | — |
+| `missing` (final) | n/a — no mediation at final scope | — |
+
+### Disposition addendum format
+
+Each Finding Dispositions row must cite **(tier, reasoning)** — not just `action` / `decline`. Example rows for a task-scope mediation:
+
+```markdown
+| Finding ID | Disposition | Reason |
+|------------|-------------|--------|
+| F-1 | action (drift) | Return-type mismatch on `getColors()` — Task Handoff FR-2 explicitly specifies `string[]`; diff returns `Promise<string[]>`. Bounded to src/colors.ts. |
+| F-2 | action (regression) | Deleted export `formatDate` imported by sibling module — break traceable to T2 diff line 42; fix: restore export or update sibling call site. Flagged critical. |
+| F-3 | decline (on-track) | FR-5 is owned by P02-T03 per Master Plan cross-reference; this task's slice is correct. Tracking for later scope. |
+```
+
+The status enum appears in parentheses after the disposition verb. The Reason column explains **why** the disposition is correct — requirement traceability, scope boundary, cross-artifact evidence. Never reference a prior attempt's code in the reason — the addendum records orchestrator judgment, not code history.
+
+### On-track findings and the corrective handoff
+
+When all drift and regression findings are actioned but on-track rows are also present, **do NOT** include the on-track rows in the corrective handoff's scope. On-track is tracking-only; the handoff should only enumerate the actioned findings (drift + regression). Keep the corrective narrow — a coder working against the handoff should fix exactly what drifted, not pick up work that was correctly scoped to a later task.
+
+---
+
 ## When the Orchestrator Engages
 
 Mediation fires **only** on a raw `verdict: changes_requested` from the reviewer. The full decision tree:

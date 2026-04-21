@@ -211,7 +211,13 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
     expect(result.context).toEqual({});
   });
 
-  it('spawn_final_reviewer returns {}', () => {
+  it('spawn_final_reviewer returns { project_base_sha: null, project_head_sha: null } (no commits)', () => {
+    // Iter-12: spawn_final_reviewer moved off EMPTY_CONTEXT_ACTIONS and now
+    // derives `project_base_sha` + `project_head_sha` at enrichment time from
+    // iteration commit_hash values across the whole pipeline. In this fixture
+    // (driveToReviewTier with auto_commit: 'never') no task commits exist, so
+    // both SHAs are null and the reviewer falls back to `git diff HEAD` +
+    // untracked files.
     const reviewConfig = createConfig({
       human_gates: {
         after_planning: true,
@@ -224,7 +230,7 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
     const result = processEvent('final_review_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_final_reviewer');
-    expect(result.context).toEqual({});
+    expect(result.context).toEqual({ project_base_sha: null, project_head_sha: null });
   });
 
   it('request_final_approval returns { pr_url: null } when no source control is populated', () => {
@@ -239,8 +245,8 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
     const io = driveToReviewTier(reviewConfig);
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     const frDocPath = '/tmp/final-review.md';
-    seedDoc(frDocPath);
-    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
+    seedDoc(frDocPath, { verdict: 'approved' });
+    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('request_final_approval');
     expect(result.context).toEqual({ pr_url: null });
@@ -258,8 +264,8 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
     const io = driveToReviewTier(reviewConfig);
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     const frDocPath = '/tmp/final-review.md';
-    seedDoc(frDocPath);
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
+    seedDoc(frDocPath, { verdict: 'approved' });
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
     const result = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');
