@@ -669,61 +669,131 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
   (node as StepNodeState).doc_path = docPath;
   mutations_applied.push(`set code_review.doc_path = ${docPath ?? 'null'}`);
 
-  const verdict = context.verdict ?? null;
-  (node as StepNodeState).verdict = verdict;
-  mutations_applied.push(`set code_review.verdict = ${verdict ?? 'null'}`);
+  const rawVerdict = context.verdict ?? null;
 
-  if (verdict !== null && !VALID_VERDICTS.has(verdict as string)) {
+  // Iter 10 — orchestrator mediation contract. `effective_outcome` (supplied by
+  // the orchestrator's addendum on `changes_requested` reviews) is the
+  // routing-authoritative verdict when present; it overrides the reviewer's
+  // raw verdict for state-write purposes. Approved/rejected verdicts pass
+  // through unmediated (effective_outcome absent). See the iter-10 plan for
+  // the full contract.
+  const effectiveOutcome = (context as Record<string, unknown>).effective_outcome as string | undefined;
+  const correctiveHandoffPath = (context as Record<string, unknown>).corrective_handoff_path as string | undefined;
+  const verdictForState = (effectiveOutcome !== undefined && effectiveOutcome !== null)
+    ? effectiveOutcome
+    : rawVerdict;
+
+  (node as StepNodeState).verdict = verdictForState;
+  mutations_applied.push(`set code_review.verdict = ${verdictForState ?? 'null'}`);
+
+  // Unknown-verdict halt — evaluates against the raw verdict, since that is
+  // what the reviewer produced and what the halt_reason message is keyed to.
+  if (rawVerdict !== null && !VALID_VERDICTS.has(rawVerdict as string)) {
     cloned.graph.status = 'halted';
-    cloned.pipeline.halt_reason = `Unrecognized verdict '${verdict}' in code_review_completed`;
+    cloned.pipeline.halt_reason = `Unrecognized verdict '${rawVerdict}' in code_review_completed`;
     return {
       state: cloned,
       mutations_applied: [
         ...mutations_applied,
-        `set graph.status = halted (unrecognized verdict '${verdict}')`,
+        `set graph.status = halted (unrecognized verdict '${rawVerdict}')`,
       ],
     };
   }
 
-  // Verdict routing
-  if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED) {
+  // Routing-authoritative verdict for the corrective birth / halt decision.
+  const routingVerdict = verdictForState;
+
+  if (routingVerdict === REVIEW_VERDICTS.CHANGES_REQUESTED) {
+    // Birth-on-handoff-path: the orchestrator's mediation must have authored
+    // a corrective Task Handoff and supplied its path. The validator is the
+    // primary enforcer of this contract; the mutation hard-errors only when
+    // the validator was bypassed (e.g., a unit-test constructs the context
+    // without going through pre-reads).
+    if (typeof correctiveHandoffPath !== 'string' || correctiveHandoffPath.trim().length === 0) {
+      throw new Error(
+        'code_review_completed: effective_outcome=changes_requested requires a non-empty corrective_handoff_path. ' +
+        'This indicates the orchestrator mediation contract was bypassed — the validator should have caught this. ' +
+        'Ensure the review doc frontmatter carries { orchestrator_mediated: true, effective_outcome, corrective_handoff_path }.'
+      );
+    }
+
     const iteration = resolveTaskIteration(cloned, phase, task);
     const correctiveCount = iteration.corrective_tasks.length;
     const maxRetries = config.limits.max_retries_per_task;
 
-    if (correctiveCount < maxRetries) {
-      const bodyDefs = findTaskLoopBodyDefs(template);
-      if (bodyDefs.length === 0) {
-        throw new Error('findTaskLoopBodyDefs: no for_each_task body found in template');
-      }
-      const nodes: Record<string, NodeState> = {};
-      for (const bodyDef of bodyDefs) {
-        nodes[bodyDef.id] = scaffoldNodeState(bodyDef);
-      }
-      const entry: CorrectiveTaskEntry = {
-        index: correctiveCount + 1,
-        reason: context.reason ?? 'Code review requested changes',
-        injected_after: 'code_review',
-        status: 'not_started',
-        nodes,
-        commit_hash: null,
-      };
-      iteration.corrective_tasks.push(entry);
-      mutations_applied.push(`injected corrective task ${entry.index} (changes_requested)`);
-      mutations_applied.push(`corrective_tasks.length = ${iteration.corrective_tasks.length}`);
-    } else {
+    if (correctiveCount >= maxRetries) {
+      // Budget exhausted but a handoff path was supplied — the orchestrator's
+      // soft contract says "do not author a handoff on exhaustion", so this is
+      // a contract violation (either a rogue orchestrator or a stale state).
+      // Hard-error via a halt so the operator sees it, per the plan's
+      // mutation-side backstop requirement.
       iteration.status = 'halted';
       cloned.graph.status = 'halted';
-      mutations_applied.push('set task_iteration.status = halted (retry budget exhausted)');
+      cloned.pipeline.halt_reason =
+        `Retry budget exhausted for task (max_retries_per_task=${maxRetries}) but a ` +
+        `corrective_handoff_path was supplied. The orchestrator must not author a ` +
+        `corrective handoff on exhaustion — this is a contract violation.`;
+      mutations_applied.push('set task_iteration.status = halted (retry budget exhausted; handoff path supplied)');
       mutations_applied.push('set graph.status = halted');
+      mutations_applied.push('set pipeline.halt_reason (budget exhausted with supplied handoff path)');
+      return { state: cloned, mutations_applied };
     }
-  } else if (verdict === REVIEW_VERDICTS.REJECTED) {
+
+    const bodyDefs = findTaskLoopBodyDefs(template);
+    if (bodyDefs.length === 0) {
+      throw new Error('findTaskLoopBodyDefs: no for_each_task body found in template');
+    }
+    const nodes: Record<string, NodeState> = {};
+    for (const bodyDef of bodyDefs) {
+      nodes[bodyDef.id] = scaffoldNodeState(bodyDef);
+    }
+    // Pre-complete the task_handoff sub-node at the orchestrator-supplied path.
+    // Mirrors the post-explosion seeding shape (explode-master-plan.ts:598-610):
+    // subsequent walker entry into this corrective sees a completed handoff and
+    // proceeds directly to execute_task, skipping any handoff-authoring step.
+    nodes['task_handoff'] = {
+      kind: 'step',
+      status: 'completed',
+      doc_path: correctiveHandoffPath,
+      retries: 0,
+    };
+
+    const entry: CorrectiveTaskEntry = {
+      index: correctiveCount + 1,
+      reason: context.reason ?? 'Code review requested changes',
+      injected_after: 'code_review',
+      status: 'not_started',
+      nodes,
+      commit_hash: null,
+    };
+    iteration.corrective_tasks.push(entry);
+    mutations_applied.push(`injected corrective task ${entry.index} (changes_requested)`);
+    mutations_applied.push(`set corrective_task[${entry.index}].task_handoff.doc_path = ${correctiveHandoffPath}`);
+    mutations_applied.push(`corrective_tasks.length = ${iteration.corrective_tasks.length}`);
+  } else if (routingVerdict === REVIEW_VERDICTS.REJECTED) {
     const iteration = resolveTaskIteration(cloned, phase, task);
     iteration.status = 'halted';
     cloned.graph.status = 'halted';
     mutations_applied.push('set task_iteration.status = halted (rejected verdict)');
     mutations_applied.push('set graph.status = halted');
+  } else if (
+    rawVerdict === REVIEW_VERDICTS.CHANGES_REQUESTED &&
+    routingVerdict !== REVIEW_VERDICTS.CHANGES_REQUESTED &&
+    routingVerdict !== REVIEW_VERDICTS.APPROVED
+  ) {
+    // Defensive: raw changes_requested with no / bogus effective_outcome.
+    // The validator should have rejected this; if we hit it, the contract
+    // was bypassed.
+    throw new Error(
+      'code_review_completed: raw verdict=changes_requested without a valid effective_outcome. ' +
+      'The orchestrator mediation contract was bypassed — ensure the review doc carries ' +
+      'orchestrator_mediated=true and effective_outcome ∈ {approved, changes_requested}.'
+    );
   }
+  // effective_outcome === 'approved' (with raw verdict=changes_requested) and
+  // raw verdict=approved both fall through here with no corrective birth —
+  // the mediation filter-down / raw approved paths are symmetric at the
+  // state-mutation level.
 
   return { state: cloned, mutations_applied };
 });

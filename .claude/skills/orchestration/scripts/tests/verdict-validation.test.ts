@@ -137,13 +137,25 @@ describe('code_review_completed — verdict validation', () => {
   it('valid changes_requested verdict injects corrective task, not halted', () => {
     const io = driveToExecutionWithConfig(config, 1);
     driveToCodeReview(io);
+    // Iter 10 — re-seed the review doc with the mediation contract fields so
+    // the pre-read frontmatter validator accepts the changes_requested verdict.
+    const correctiveHandoffPath = 'tasks/corrective-P01-T01-C1.md';
+    seedDoc(codeReviewDoc(1, 1), {
+      verdict: 'changes_requested',
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: correctiveHandoffPath,
+    });
 
     const result = processEvent('code_review_completed', PROJECT_DIR, {
       phase: 1,
       task: 1,
       doc_path: codeReviewDoc(1, 1),
       verdict: 'changes_requested',
-    }, io);
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: correctiveHandoffPath,
+    } as Record<string, unknown>, io);
 
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.status).not.toBe('halted');

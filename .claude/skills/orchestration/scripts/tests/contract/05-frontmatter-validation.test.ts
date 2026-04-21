@@ -125,6 +125,194 @@ describe('[CONTRACT] Frontmatter — verdict (code_review_completed)', () => {
   });
 });
 
+// ── Group 2b (Iter 10): conditional orchestrator-mediation contract ──────────
+//
+// Direct validateFrontmatter tests for the three verdict branches × valid /
+// invalid orchestrator-field combinations. These exercise the `when` predicate
+// the Iter-10 plan introduced — the same predicate is used by the consumer
+// loop to skip rules that don't apply to the current frontmatter shape.
+
+describe('[CONTRACT] Frontmatter — code_review_completed orchestrator mediation (Iter 10)', () => {
+  const docPath = '/tmp/code-review.md';
+
+  // verdict=approved — mediation fields must be absent
+  describe('verdict=approved branch', () => {
+    it('approved with no mediation fields → passes', () => {
+      const err = validateFrontmatter('code_review_completed', { verdict: 'approved' }, docPath);
+      expect(err).toBeNull();
+    });
+
+    it('approved with orchestrator_mediated=true → rejected (mediation fields forbidden on raw approved)', () => {
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'approved',
+        orchestrator_mediated: true,
+      }, docPath);
+      expect(err).not.toBeNull();
+      expect(err?.field).toBe('orchestrator_mediated');
+      expect(err?.error).toContain('absent');
+    });
+
+    it('approved with effective_outcome set → rejected', () => {
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'approved',
+        effective_outcome: 'approved',
+      }, docPath);
+      expect(err).not.toBeNull();
+      expect(err?.field).toBe('effective_outcome');
+      expect(err?.error).toContain('absent');
+    });
+
+    it('approved with corrective_handoff_path set → rejected', () => {
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'approved',
+        corrective_handoff_path: 'tasks/ghost-C1.md',
+      }, docPath);
+      expect(err).not.toBeNull();
+      expect(err?.field).toBe('corrective_handoff_path');
+      expect(err?.error).toContain('absent');
+    });
+  });
+
+  // verdict=rejected — mediation fields must be absent
+  describe('verdict=rejected branch', () => {
+    it('rejected with no mediation fields → passes', () => {
+      const err = validateFrontmatter('code_review_completed', { verdict: 'rejected' }, docPath);
+      expect(err).toBeNull();
+    });
+
+    it('rejected with orchestrator_mediated=true → rejected', () => {
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'rejected',
+        orchestrator_mediated: true,
+      }, docPath);
+      expect(err).not.toBeNull();
+      expect(err?.field).toBe('orchestrator_mediated');
+    });
+  });
+
+  // verdict=changes_requested — the conditional contract applies
+  describe('verdict=changes_requested branch', () => {
+    it('fully valid: mediated + effective_outcome=changes_requested + corrective_handoff_path → passes', () => {
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'changes_requested',
+        orchestrator_mediated: true,
+        effective_outcome: 'changes_requested',
+        corrective_handoff_path: 'tasks/X-C1.md',
+      }, docPath);
+      expect(err).toBeNull();
+    });
+
+    it('fully valid: mediated filter-down — effective_outcome=approved + NO handoff path → passes', () => {
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'changes_requested',
+        orchestrator_mediated: true,
+        effective_outcome: 'approved',
+      }, docPath);
+      expect(err).toBeNull();
+    });
+
+    it('missing orchestrator_mediated → rejected', () => {
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'changes_requested',
+        effective_outcome: 'changes_requested',
+        corrective_handoff_path: 'tasks/X-C1.md',
+      }, docPath);
+      expect(err).not.toBeNull();
+      expect(err?.field).toBe('orchestrator_mediated');
+      expect(err?.error).toBe('Missing required field');
+    });
+
+    it('orchestrator_mediated=false → rejected (must be true)', () => {
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'changes_requested',
+        orchestrator_mediated: false,
+        effective_outcome: 'changes_requested',
+        corrective_handoff_path: 'tasks/X-C1.md',
+      }, docPath);
+      expect(err).not.toBeNull();
+      expect(err?.field).toBe('orchestrator_mediated');
+      expect(err?.error).toContain('true');
+    });
+
+    it('missing effective_outcome → rejected', () => {
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'changes_requested',
+        orchestrator_mediated: true,
+      }, docPath);
+      expect(err).not.toBeNull();
+      expect(err?.field).toBe('effective_outcome');
+      expect(err?.error).toBe('Missing required field');
+    });
+
+    it('invalid effective_outcome value (e.g., "rejected") → rejected', () => {
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'changes_requested',
+        orchestrator_mediated: true,
+        effective_outcome: 'rejected',
+      }, docPath);
+      expect(err).not.toBeNull();
+      expect(err?.field).toBe('effective_outcome');
+    });
+
+    it('effective_outcome=changes_requested with missing corrective_handoff_path → rejected', () => {
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'changes_requested',
+        orchestrator_mediated: true,
+        effective_outcome: 'changes_requested',
+      }, docPath);
+      expect(err).not.toBeNull();
+      expect(err?.field).toBe('corrective_handoff_path');
+      expect(err?.error).toBe('Missing required field');
+    });
+
+    it('effective_outcome=changes_requested with empty-string corrective_handoff_path → rejected', () => {
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'changes_requested',
+        orchestrator_mediated: true,
+        effective_outcome: 'changes_requested',
+        corrective_handoff_path: '',
+      }, docPath);
+      expect(err).not.toBeNull();
+      expect(err?.field).toBe('corrective_handoff_path');
+    });
+
+    it('effective_outcome=approved with corrective_handoff_path present → rejected (must be absent)', () => {
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'changes_requested',
+        orchestrator_mediated: true,
+        effective_outcome: 'approved',
+        corrective_handoff_path: 'tasks/ghost-C1.md',
+      }, docPath);
+      expect(err).not.toBeNull();
+      expect(err?.field).toBe('corrective_handoff_path');
+      expect(err?.error).toContain('absent');
+    });
+  });
+
+  // `when` predicate — skip-case coverage
+  describe('when-predicate skip behavior', () => {
+    it('rules gated on verdict=changes_requested do not fire when verdict=approved', () => {
+      // An approved review doc that omits every mediation field is valid even
+      // though several rules reference those field names — their `when`
+      // predicates return false for verdict=approved, so the rules are skipped.
+      const err = validateFrontmatter('code_review_completed', { verdict: 'approved' }, docPath);
+      expect(err).toBeNull();
+    });
+
+    it('rule gated on effective_outcome=changes_requested (handoff-path-required) does not fire on filter-down', () => {
+      // verdict=changes_requested + effective_outcome=approved → the
+      // "corrective_handoff_path required" rule is gated on
+      // effective_outcome=changes_requested and skipped here; no error.
+      const err = validateFrontmatter('code_review_completed', {
+        verdict: 'changes_requested',
+        orchestrator_mediated: true,
+        effective_outcome: 'approved',
+      }, docPath);
+      expect(err).toBeNull();
+    });
+  });
+});
+
 // ── Group 3: verdict (phase_review_completed) ─────────────────────────────────
 
 describe('[CONTRACT] Frontmatter — verdict (phase_review_completed)', () => {

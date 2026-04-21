@@ -150,6 +150,26 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
       const taskLoop = phaseIter?.nodes['task_loop'] as ForEachTaskNodeState | undefined;
       const taskIter = taskLoop?.iterations[taskNumber - 1];
+
+      // Iter 10 — when a task-scope corrective is active (last entry with
+      // status `not_started` or `in_progress`), route handoff_doc to the
+      // corrective's pre-completed `task_handoff` sub-node instead of the
+      // original iteration's. Completed correctives fall through to the
+      // original handoff — they don't route subsequent execution.
+      const correctives = taskIter?.corrective_tasks ?? [];
+      const activeCorrective = correctives.length > 0
+        ? correctives[correctives.length - 1]
+        : undefined;
+      if (
+        activeCorrective &&
+        (activeCorrective.status === 'not_started' || activeCorrective.status === 'in_progress')
+      ) {
+        const correctiveHandoff = activeCorrective.nodes['task_handoff'] as StepNodeState | undefined;
+        if (correctiveHandoff && typeof correctiveHandoff.doc_path === 'string' && correctiveHandoff.doc_path.length > 0) {
+          return { ...base, handoff_doc: correctiveHandoff.doc_path };
+        }
+      }
+
       const taskHandoff = taskIter?.nodes['task_handoff'] as StepNodeState | undefined;
       const handoff_doc = taskHandoff?.doc_path ?? '';
       return { ...base, handoff_doc };

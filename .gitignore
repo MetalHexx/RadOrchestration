@@ -17,3 +17,10 @@ node_modules/
 !/prompt-tests/plan-pipeline-e2e/output/*/.gitkeep
 !/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-*/lint-report.md
 !/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-*/run-notes.md
+
+# Prompt harness — corrective-mediation-e2e.
+# Same structure as plan-pipeline-e2e: ignore run-folder contents, re-include
+# the inaugural-baseline run-notes.md under baseline-* folders.
+/prompt-tests/corrective-mediation-e2e/output/*/*/**
+!/prompt-tests/corrective-mediation-e2e/output/*/.gitkeep
+!/prompt-tests/corrective-mediation-e2e/output/broken-colors/baseline-*/run-notes.md
