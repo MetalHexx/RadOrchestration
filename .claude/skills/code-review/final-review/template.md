@@ -16,9 +16,24 @@ created: "{ISO-DATE}"
 
 {3-5 sentences. Overall project assessment covering scope delivery, architectural quality, test health, and readiness for merge.}
 
-## Architectural Integrity
+## Per-Requirement Audit
 
-<!-- During corrective reviews, deviations matching previous review items are expected corrections and should not be flagged. -->
+<!-- One row per FR/NFR/AD/DD tag in {NAME}-REQUIREMENTS.md.
+     Status enum (final scope, strict): met | missing.
+       - met: the cumulative project delivers this requirement in full.
+         Concrete evidence exists in the diff or working tree.
+       - missing: the cumulative project does not deliver this requirement,
+         or delivers only a partial slice that does not satisfy the
+         requirement's acceptance criteria.
+     Severity enum: low | medium | high | none. A `missing` requirement is a
+     medium-severity finding at minimum. -->
+
+| Requirement ID | Status | Severity | Evidence | Notes |
+|----------------|--------|----------|----------|-------|
+| FR-1 | met | none | `src/foo.ts` implements the contract | — |
+| NFR-2 | missing | medium | No implementation found in cumulative diff | Needs a handoff or corrective pass |
+
+## Architectural Integrity
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
@@ -27,14 +42,6 @@ created: "{ISO-DATE}"
 | Data flow | ✅/⚠️/❌ | {Assessment} |
 | Error propagation | ✅/⚠️/❌ | {Assessment} |
 | Dependency graph | ✅/⚠️/❌ | {Assessment} |
-
-## Requirement Coverage
-
-<!-- Evaluate every requirement from the PRD. Each row should map to a specific requirement. -->
-
-| Requirement | Covered? | Evidence | Notes |
-|-------------|----------|----------|-------|
-| {Requirement from PRD} | ✅/❌ | {Where/how it is implemented} | {Any caveats} |
 
 ## Cross-Phase Integration
 
@@ -51,12 +58,13 @@ created: "{ISO-DATE}"
 
 ## Independent Quality Assessment
 
-<!-- Findings from the skeptical pass — evaluating correctness independent of planning documents. -->
-<!-- The Scope column indicates which phase(s)/module(s) are affected by each finding. -->
+<!-- Findings from the quality sweep — evaluated against the cumulative project
+     diff, not the per-phase reviews. The implementer's reports are not
+     evidence. Scope column indicates affected phase(s)/module(s). -->
 
 | Finding | Severity | Scope | Evidence | Suggestion |
 |---------|----------|-------|----------|------------|
-| {What was found} | low/medium/high | {Phase(s)/module(s) affected} | {Concrete evidence} | {Specific fix} |
+| {What was found} | low/medium/high | {Phase(s)/module(s) affected} | {Concrete evidence from the cumulative diff} | {Specific fix} |
 
 <!-- If no independent findings, replace the table with: "No issues found beyond conformance checks." -->
 

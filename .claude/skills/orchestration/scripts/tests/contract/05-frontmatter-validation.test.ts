@@ -574,6 +574,88 @@ describe('[CONTRACT] Frontmatter — exit_criteria_met (phase_review_completed)'
   });
 });
 
+// ── Group 4b (Iter 12): verdict (final_review_completed) ──────────────────────
+//
+// Iter 12 adds a `final_review_completed` validator rule enforcing the verdict
+// enum at the pre-read boundary. Mediation fields are NOT part of the
+// final-review contract (final-review corrective cycles are out of scope), so
+// only the verdict enum is checked — parallel in shape to the verdict-only
+// portion of the iter-10 code_review_completed contract.
+
+describe('[CONTRACT] Frontmatter — verdict (final_review_completed)', () => {
+  const docPath = '/tmp/FINAL/FINAL-REVIEW.md';
+
+  it("verdict: 'approved' passes", () => {
+    const err = validateFrontmatter('final_review_completed', { verdict: 'approved' }, docPath);
+    expect(err).toBeNull();
+  });
+
+  it("verdict: 'changes_requested' passes (no mediation fields required)", () => {
+    const err = validateFrontmatter('final_review_completed', { verdict: 'changes_requested' }, docPath);
+    expect(err).toBeNull();
+  });
+
+  it("verdict: 'rejected' passes", () => {
+    const err = validateFrontmatter('final_review_completed', { verdict: 'rejected' }, docPath);
+    expect(err).toBeNull();
+  });
+
+  it('missing verdict → error', () => {
+    const err = validateFrontmatter('final_review_completed', {}, docPath);
+    expect(err).not.toBeNull();
+    expect(err?.error).toBe('Missing required field');
+    expect(err?.field).toBe('verdict');
+    expect(err?.event).toBe('final_review_completed');
+  });
+
+  it("verdict: 'approvd' (typo) → invalid enum error", () => {
+    const err = validateFrontmatter('final_review_completed', { verdict: 'approvd' }, docPath);
+    expect(err).not.toBeNull();
+    expect(err?.error).toContain("must be one of 'approved', 'changes_requested', 'rejected'");
+    expect(err?.field).toBe('verdict');
+    expect(err?.event).toBe('final_review_completed');
+  });
+
+  it("verdict: 'APPROVED' (wrong case) → invalid enum error (no case normalization)", () => {
+    const err = validateFrontmatter('final_review_completed', { verdict: 'APPROVED' }, docPath);
+    expect(err).not.toBeNull();
+    expect(err?.field).toBe('verdict');
+  });
+
+  it("verdict: 'approved ' (trailing whitespace) → invalid enum error (no trimming)", () => {
+    const err = validateFrontmatter('final_review_completed', { verdict: 'approved ' }, docPath);
+    expect(err).not.toBeNull();
+    expect(err?.field).toBe('verdict');
+  });
+
+  it("verdict: null → missing-field error (coerceNull path)", () => {
+    const err = validateFrontmatter('final_review_completed', { verdict: null }, docPath);
+    expect(err).not.toBeNull();
+    expect(err?.error).toBe('Missing required field');
+    expect(err?.field).toBe('verdict');
+  });
+
+  it("verdict: 'null' string is coerced to null and reported as missing", () => {
+    const err = validateFrontmatter('final_review_completed', { verdict: 'null' }, docPath);
+    expect(err).not.toBeNull();
+    expect(err?.error).toBe('Missing required field');
+    expect(err?.field).toBe('verdict');
+  });
+
+  it('mediation fields on a final-review doc are ignored (not validated)', () => {
+    // Final-review validator does NOT enforce mediation fields in iter-12.
+    // Stray mediation-shaped fields alongside a valid verdict pass the
+    // validator so any downstream interest can be expressed in a future
+    // iteration without a breaking migration.
+    const err = validateFrontmatter('final_review_completed', {
+      verdict: 'approved',
+      orchestrator_mediated: true,
+      effective_outcome: 'approved',
+    }, docPath);
+    expect(err).toBeNull();
+  });
+});
+
 // ── Group 5: total_phases (plan_approved) ─────────────────────────────────────
 
 describe('[CONTRACT] Frontmatter — total_phases (plan_approved)', () => {

@@ -600,6 +600,207 @@ describe('enrichActionContext — spawn_phase_reviewer', () => {
   });
 });
 
+// ── spawn_final_reviewer (Iter 12) ────────────────────────────────────────────
+//
+// Iter 12 removes `spawn_final_reviewer` from `EMPTY_CONTEXT_ACTIONS` and adds
+// a dedicated enrichment branch that derives `project_base_sha` +
+// `project_head_sha` from iteration commit_hash values across the whole
+// pipeline (all phases, all tasks, all corrective tasks at either scope).
+// When no commits exist (auto_commit=off, nothing committed), both fields are
+// null and the reviewer falls back to `git diff HEAD` + untracked files.
+
+describe('enrichActionContext — spawn_final_reviewer (Iter 12)', () => {
+  interface TaskSpec {
+    commit_hash: string | null;
+    correctives?: Array<{ index: number; commit_hash: string | null }>;
+  }
+  interface PhaseSpec {
+    tasks: TaskSpec[];
+    correctives?: Array<{ index: number; commit_hash: string | null }>;
+  }
+
+  function multiPhaseState(phases: PhaseSpec[]): PipelineState {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = phases.map((phase, phaseIdx) => ({
+      index: phaseIdx,
+      status: 'completed',
+      nodes: {
+        task_loop: {
+          kind: 'for_each_task',
+          status: 'completed',
+          iterations: phase.tasks.map((task, taskIdx) => ({
+            index: taskIdx,
+            status: 'completed',
+            nodes: {},
+            corrective_tasks: (task.correctives ?? []).map(c => ({
+              index: c.index,
+              reason: 'changes_requested',
+              injected_after: 'code_review',
+              status: 'completed',
+              nodes: {},
+              commit_hash: c.commit_hash,
+            })),
+            commit_hash: task.commit_hash,
+          })),
+        } as ForEachTaskNodeState,
+      },
+      corrective_tasks: (phase.correctives ?? []).map(c => ({
+        index: c.index,
+        reason: 'changes_requested',
+        injected_after: 'phase_review',
+        status: 'completed',
+        nodes: {},
+        commit_hash: c.commit_hash,
+      })),
+      commit_hash: null,
+    }));
+    return state;
+  }
+
+  it('derives project_base_sha from first task commit and project_head_sha from last task commit', () => {
+    const state = multiPhaseState([
+      { tasks: [{ commit_hash: 'sha1' }, { commit_hash: 'sha2' }] },
+      { tasks: [{ commit_hash: 'sha3' }, { commit_hash: 'sha4' }] },
+    ]);
+    const result = enrichActionContext({
+      action: 'spawn_final_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.project_base_sha).toBe('sha1');
+    expect(result.project_head_sha).toBe('sha4');
+  });
+
+  it('includes task-scope corrective commits when deriving head_sha', () => {
+    const state = multiPhaseState([
+      {
+        tasks: [
+          { commit_hash: 'sha1' },
+          {
+            commit_hash: 'sha2',
+            correctives: [
+              { index: 1, commit_hash: 'sha2_c1' },
+            ],
+          },
+        ],
+      },
+    ]);
+    const result = enrichActionContext({
+      action: 'spawn_final_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.project_base_sha).toBe('sha1');
+    expect(result.project_head_sha).toBe('sha2_c1');
+  });
+
+  it('includes phase-scope corrective commits when deriving head_sha', () => {
+    const state = multiPhaseState([
+      {
+        tasks: [{ commit_hash: 'sha1' }, { commit_hash: 'sha2' }],
+        correctives: [{ index: 1, commit_hash: 'phase_c1' }],
+      },
+    ]);
+    const result = enrichActionContext({
+      action: 'spawn_final_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.project_base_sha).toBe('sha1');
+    expect(result.project_head_sha).toBe('phase_c1');
+  });
+
+  it('returns both SHAs null when no task commits exist (auto-commit=off)', () => {
+    const state = multiPhaseState([
+      { tasks: [{ commit_hash: null }, { commit_hash: null }] },
+    ]);
+    const result = enrichActionContext({
+      action: 'spawn_final_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.project_base_sha).toBeNull();
+    expect(result.project_head_sha).toBeNull();
+  });
+
+  it('returns both SHAs null when phase_loop has no iterations', () => {
+    const state = createScaffoldedState();
+    const result = enrichActionContext({
+      action: 'spawn_final_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.project_base_sha).toBeNull();
+    expect(result.project_head_sha).toBeNull();
+  });
+
+  it('single-commit project yields project_base_sha === project_head_sha', () => {
+    const state = multiPhaseState([
+      { tasks: [{ commit_hash: 'only' }] },
+    ]);
+    const result = enrichActionContext({
+      action: 'spawn_final_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.project_base_sha).toBe('only');
+    expect(result.project_head_sha).toBe('only');
+  });
+
+  it('skips tasks with null commit_hash while preserving committed ones', () => {
+    const state = multiPhaseState([
+      {
+        tasks: [
+          { commit_hash: null }, // task never committed
+          { commit_hash: 'sha_only' },
+          { commit_hash: null },
+        ],
+      },
+    ]);
+    const result = enrichActionContext({
+      action: 'spawn_final_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.project_base_sha).toBe('sha_only');
+    expect(result.project_head_sha).toBe('sha_only');
+  });
+
+  it('skips phase 1 when all its commits are null and picks up phase 2 commits', () => {
+    // Phase 1 had no successful task commits (auto-commit=off or all tasks
+    // failed before committing). Phase 2 has real commits. base_sha must be
+    // phase 2's first commit; head_sha must be phase 2's last commit.
+    const state = multiPhaseState([
+      { tasks: [{ commit_hash: null }, { commit_hash: null }] },
+      { tasks: [{ commit_hash: 'p2_sha1' }, { commit_hash: 'p2_sha2' }] },
+    ]);
+    const result = enrichActionContext({
+      action: 'spawn_final_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.project_base_sha).toBe('p2_sha1');
+    expect(result.project_head_sha).toBe('p2_sha2');
+  });
+});
+
 // ── corrective_index exposure (PR #50 follow-up) ──────────────────────────────
 //
 // Regression coverage: skill docs for task-review and phase-review instruct the

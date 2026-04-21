@@ -283,6 +283,81 @@ describe('phase_review_completed routes through template event index — Iter 11
   });
 });
 
+// ── final_review_completed (Iter 12 validator contract) wiring tests ─────────
+
+describe('final_review_completed routes through template event index — Iter 12 validator', () => {
+  it('approved verdict wires through event index → success', () => {
+    const io = driveToReviewTier(config);
+    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const frDocPath = '/tmp/test-final-review-approved.md';
+    seedDoc(frDocPath, { verdict: 'approved' });
+    const result = processEvent('final_review_completed', PROJECT_DIR, {
+      doc_path: frDocPath,
+      verdict: 'approved',
+    }, io);
+    expect(result.success).toBe(true);
+    expect(result.mutations_applied).toContain('set final_review.verdict = approved');
+    // Tier advances to 'review' on approved verdict per the mutation.
+    expect(io.currentState!.pipeline.current_tier).toBe('review');
+  });
+
+  it('changes_requested verdict wires through event index → success (no mediation fields required at final scope)', () => {
+    const io = driveToReviewTier(config);
+    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const frDocPath = '/tmp/test-final-review-changes.md';
+    // No mediation fields — final-review mediation is out of scope in iter-12.
+    seedDoc(frDocPath, { verdict: 'changes_requested' });
+    const result = processEvent('final_review_completed', PROJECT_DIR, {
+      doc_path: frDocPath,
+      verdict: 'changes_requested',
+    }, io);
+    expect(result.success).toBe(true);
+    expect(result.mutations_applied).toContain('set final_review.verdict = changes_requested');
+    // Tier does NOT advance to review on a non-approved verdict.
+    expect(io.currentState!.pipeline.current_tier).not.toBe('review');
+  });
+
+  it('rejected verdict wires through event index → success', () => {
+    const io = driveToReviewTier(config);
+    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const frDocPath = '/tmp/test-final-review-rejected.md';
+    seedDoc(frDocPath, { verdict: 'rejected' });
+    const result = processEvent('final_review_completed', PROJECT_DIR, {
+      doc_path: frDocPath,
+      verdict: 'rejected',
+    }, io);
+    expect(result.success).toBe(true);
+    expect(result.mutations_applied).toContain('set final_review.verdict = rejected');
+  });
+
+  it('validator rejects missing verdict → success: false', () => {
+    const io = driveToReviewTier(config);
+    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const frDocPath = '/tmp/test-final-review-missing.md';
+    seedDoc(frDocPath); // no verdict
+    const result = processEvent('final_review_completed', PROJECT_DIR, {
+      doc_path: frDocPath,
+    }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('verdict');
+    expect(result.error?.event).toBe('final_review_completed');
+  });
+
+  it('validator rejects typo verdict → success: false (no downstream halt)', () => {
+    const io = driveToReviewTier(config);
+    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const frDocPath = '/tmp/test-final-review-typo.md';
+    seedDoc(frDocPath, { verdict: 'approvd' });
+    const result = processEvent('final_review_completed', PROJECT_DIR, {
+      doc_path: frDocPath,
+      verdict: 'approvd',
+    }, io);
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('verdict');
+    expect(io.currentState!.graph.status).not.toBe('halted');
+  });
+});
+
 // ── final_approved integration test ──────────────────────────────────────────
 
 describe('final_approved routes through template event index', () => {

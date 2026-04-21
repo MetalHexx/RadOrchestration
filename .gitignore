@@ -31,3 +31,10 @@ node_modules/
 /prompt-tests/phase-review-mediation-e2e/output/*/*/**
 !/prompt-tests/phase-review-mediation-e2e/output/*/.gitkeep
 !/prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/baseline-*/run-notes.md
+
+# Prompt harness — code-review-rework-e2e (iter-12).
+# Same structure as above: ignore run-folder contents, re-include the
+# inaugural-baseline run-notes.md under baseline-* folders.
+/prompt-tests/code-review-rework-e2e/output/*/*/**
+!/prompt-tests/code-review-rework-e2e/output/*/.gitkeep
+!/prompt-tests/code-review-rework-e2e/output/conformance-tiered/baseline-*/run-notes.md
