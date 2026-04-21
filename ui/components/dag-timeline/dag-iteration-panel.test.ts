@@ -417,17 +417,34 @@ test('dag-iteration-panel.tsx forwards iteration.corrective_tasks to DAGCorrecti
   );
   // The corrective_tasks forwarding must NOT be inside a parentKind conditional block
   // (i.e., it appears once unconditionally for both for_each_phase and for_each_task).
+  //
+  // Robust check: (1) <DAGCorrectiveTaskGroup occurs exactly once in the file — a
+  // branched-by-parentKind rendering would produce TWO invocations (one per branch).
+  // (2) No gating pattern appears anywhere before the forwarding line — regardless
+  // of distance — scanning the full file up to the forwarding point rather than a
+  // fixed window. This catches gating nested several blocks up (e.g. an IIFE or
+  // helper that wraps the JSX later in a refactor).
+  const invocationMatches = iterationPanelSource.match(/<DAGCorrectiveTaskGroup\b/g) ?? [];
+  assert.strictEqual(
+    invocationMatches.length,
+    1,
+    `<DAGCorrectiveTaskGroup must appear exactly once in dag-iteration-panel.tsx (a per-parentKind branch would have two); found ${invocationMatches.length}`
+  );
   const lines = iterationPanelSource.split(/\r?\n/);
   const forwardingLine = lines.findIndex((l) => l.includes('correctiveTasks={iteration.corrective_tasks}'));
   assert.ok(forwardingLine >= 0, 'correctiveTasks forwarding line must exist');
-  // Check the forwarding is not nested inside a parentKind === 'for_each_task' guard
-  // by verifying it is NOT preceded (within 5 lines) by a for_each_task branch condition.
-  const windowStart = Math.max(0, forwardingLine - 5);
-  const precedingLines = lines.slice(windowStart, forwardingLine).join('\n');
-  assert.ok(
-    !precedingLines.includes("parentKind === 'for_each_task'"),
-    "corrective_tasks forwarding must not be gated on parentKind === 'for_each_task'"
-  );
+  const precedingText = lines.slice(0, forwardingLine).join('\n');
+  const gatingPatterns = [
+    /parentKind\s*===\s*['"]for_each_task['"]\s*&&\s*\(?\s*<DAGCorrectiveTaskGroup/,
+    /parentKind\s*!==\s*['"]for_each_phase['"]\s*&&\s*\(?\s*<DAGCorrectiveTaskGroup/,
+    /parentKind\s*===\s*['"]for_each_task['"]\s*\?\s*<DAGCorrectiveTaskGroup/,
+  ];
+  for (const pat of gatingPatterns) {
+    assert.ok(
+      !pat.test(precedingText + '\n' + lines[forwardingLine]),
+      `corrective_tasks forwarding must not be gated on parentKind (matched: ${pat})`
+    );
+  }
 });
 
 test('dag-corrective-task-group.tsx does NOT contain projectName= or gateActive=', () => {
