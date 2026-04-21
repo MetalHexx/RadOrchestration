@@ -6,4 +6,4 @@ Prompt-harness regression for the `execute-coding-task` skill introduced in Iter
 
 | Fixture | Shape |
 |---------|-------|
-| `tdd-slip` | Tiny string-utility library (`capitalize`, `reverse`). Each handoff carries one deliberately ambiguous step, one step that tempts an out-of-scope edit (`src/utils.js` outside File Targets), and one step prescribing a test-only method shape to exercise the anti-pattern carve-out. The C1 corrective handoff is pre-authored with an identical shape so original and corrective hit the same execution path. |
+| `tdd-slip` | Tiny string-utility library — `capitalize` in the original handoff, `sentenceCase` in the C1 corrective. Each handoff carries one deliberately ambiguous step, one step that tempts an out-of-scope edit (`src/utils.js` outside File Targets), and one step prescribing a test-only method shape to exercise the anti-pattern carve-out. The C1 corrective handoff is pre-authored with an identical shape so original and corrective hit the same execution path. |

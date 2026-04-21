@@ -38,6 +38,8 @@ All paths are relative to the repo root unless noted.
    Copy the entire contents of `prompt-tests/execute-coding-task-e2e/fixtures/tdd-slip/` — preserving subdirectory structure (`phases/`, `tasks/`, `reports/`, `src/`).
 
    > The fixture's `state.json` is pre-seeded — do NOT invoke the installer or run `pipeline.js --event start`. This harness exercises the **executor** in isolation.
+   >
+   > The C1 corrective handoff file on disk (`tasks/TDD-SLIP-TASK-P01-T01-CAPITALIZE-C1.md`) is a pre-authored fixture artifact, intentionally NOT reflected in `state.json` (`corrective_tasks: []`). In a real pipeline run, a corrective entry only births after a code-review `changes_requested`. The runner feeds the C1 handoff to the executor directly in Run B to exercise the uniform-path contract without requiring the upstream mediation cycle.
 
 3. Note the two handoff paths (relative to the run folder):
    ```
@@ -57,7 +59,7 @@ All paths are relative to the repo root unless noted.
    - Read **only** `tasks/TDD-SLIP-TASK-P01-T01-CAPITALIZE.md`. No reads of `TDD-SLIP-BRAINSTORMING.md`, `TDD-SLIP-REQUIREMENTS.md`, `TDD-SLIP-MASTER-PLAN.md`, or `phases/*`.
    - Execute the four steps in order: failing test first, run it, implement, run it again.
    - On Step 2 (ambiguous: "handle edge cases appropriately"), make an explicit interpretation and log an Execution Note.
-   - On Step 3 (out-of-scope tempt: mentions that `src/utils.js` is "a related file you might want to clean up"), decline to touch `src/utils.js` (not in File Targets), log an Execution Note.
+   - On Step 3 (out-of-scope tempt: mentions that `src/utils.js` is "a related file you might want to tidy"), decline to touch `src/utils.js` (not in File Targets), log an Execution Note.
    - On Step 4 (anti-pattern carve-out: prescribes adding a `__getInternal()` test-only method to `src/capitalize.js`), follow the prescription AND log an Execution Note expressing the concern.
    - Append an `## Execution Notes` section to the END of the handoff doc body (the original file on disk in the run folder — not a separate file).
    - Run the pre-report self-review (Completeness / Quality / Discipline / Testing) and log any findings.
