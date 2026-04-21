@@ -242,7 +242,11 @@ export function getOrderedDocsV5(
                   const ctNode = ct.nodes[ctNodeId];
                   if (ctNode?.kind === 'step' && ctNode.doc_path != null) {
                     const title = titleForTaskChild(ctNodeId, phaseNum, taskNum) + ' (CT' + ct.index + ')';
-                    push(ctNode.doc_path, title, 'task');
+                    // Corrective code_review docs group under 'review' like their non-corrective
+                    // siblings (line ~235) and phase-scope corrective reviews. Prior iter-10 shape
+                    // hardcoded 'task' which hid corrective re-reviews from the Review category.
+                    const category: OrderedDoc['category'] = ctNodeId === 'code_review' ? 'review' : 'task';
+                    push(ctNode.doc_path, title, category);
                   }
                 }
               }
