@@ -363,7 +363,12 @@ describe('preRead — code_review_completed: orchestrator-mediation frontmatter 
     expect(ctx.corrective_handoff_path).toBe('tasks/X-P01-T01-C1.md');
   });
 
-  it('propagates validator rejection when mediation contract is violated (missing corrective_handoff_path)', () => {
+  it('passes mediated changes_requested with no corrective_handoff_path (budget-exhausted halt signal; validator now accepts, mutation halts)', () => {
+    // Iter 10 (post-adversarial correction): effective_outcome=changes_requested
+    // with NO corrective_handoff_path is the orchestrator's budget-exhausted
+    // halt signal per the corrective-playbook. The validator accepts it; the
+    // mutation converts it into a clean pipeline halt. pre-reads simply
+    // propagates the fields onto event context.
     const context = baseContext({ event: 'code_review_completed', doc_path: ABS_DOC_PATH });
     const entry = codeReviewEntry();
     const readDocument: IOAdapter['readDocument'] = vi.fn().mockReturnValue({
@@ -371,7 +376,28 @@ describe('preRead — code_review_completed: orchestrator-mediation frontmatter 
         verdict: 'changes_requested',
         orchestrator_mediated: true,
         effective_outcome: 'changes_requested',
-        // corrective_handoff_path intentionally missing — validator must reject.
+        // corrective_handoff_path intentionally absent — budget-exhausted signal.
+      },
+      content: '# review',
+    });
+
+    const result = preRead('code_review_completed', context, readDocument, PROJECT_DIR, {}, entry);
+
+    expect(result.error).toBeUndefined();
+    const ctx = result.context as Record<string, unknown>;
+    expect(ctx.effective_outcome).toBe('changes_requested');
+    expect(ctx.corrective_handoff_path).toBeUndefined();
+  });
+
+  it('propagates validator rejection when corrective_handoff_path is whitespace-only', () => {
+    const context = baseContext({ event: 'code_review_completed', doc_path: ABS_DOC_PATH });
+    const entry = codeReviewEntry();
+    const readDocument: IOAdapter['readDocument'] = vi.fn().mockReturnValue({
+      frontmatter: {
+        verdict: 'changes_requested',
+        orchestrator_mediated: true,
+        effective_outcome: 'changes_requested',
+        corrective_handoff_path: '   ',
       },
       content: '# review',
     });
@@ -380,8 +406,6 @@ describe('preRead — code_review_completed: orchestrator-mediation frontmatter 
 
     expect(result.error).toBeDefined();
     expect(result.error!.field).toBe('corrective_handoff_path');
-    expect(result.error!.message).toContain('Missing required field');
-    expect(result.error!.event).toBe('code_review_completed');
   });
 
   it('passes through raw approved verdict with no mediation fields (valid contract)', () => {

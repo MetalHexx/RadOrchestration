@@ -102,6 +102,7 @@ Corrective Handoff: tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}-C{N}.md
 - `N` (attempt number) = `corrective_tasks.length + 1` at the time of authoring. On first mediation cycle, `corrective_tasks` is empty, so N = 1.
 - `M` = `max_retries_per_task` from `orchestration.yml`.
 - The disposition table must have one row per finding in the review.
+- **Reason column**: focus on requirement traceability and scope boundary — "traces to FR-N," "outside this task's File Targets," "belongs to P02-T03 per cross-artifact scan." **Do not reference the prior attempt's implementation** (no "the reviewer noted a regression from …", no "the previous coder missed …"). The addendum explains the orchestrator's judgment, not the code's history.
 - `Effective Outcome` line is always present.
 - `Corrective Handoff` line is present **only** when `effective_outcome === 'changes_requested'` (at least one finding is actioned and budget is not exhausted).
 - When all findings are declined, write `Effective Outcome: approved` and omit the `Corrective Handoff` line.

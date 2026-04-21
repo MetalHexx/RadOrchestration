@@ -254,18 +254,24 @@ describe('[CONTRACT] Frontmatter — code_review_completed orchestrator mediatio
       expect(err?.field).toBe('effective_outcome');
     });
 
-    it('effective_outcome=changes_requested with missing corrective_handoff_path → rejected', () => {
+    it('effective_outcome=changes_requested with missing corrective_handoff_path → accepted (budget-exhausted halt signal)', () => {
+      // Iter-10 adversarial correction: absence of corrective_handoff_path
+      // is the orchestrator's budget-exhausted halt signal per the
+      // corrective-playbook. The validator accepts this; the mutation halts
+      // the pipeline with a descriptive halt_reason (see mutations.ts
+      // budget-exhausted halt branch + mutations-negative-path.test.ts).
       const err = validateFrontmatter('code_review_completed', {
         verdict: 'changes_requested',
         orchestrator_mediated: true,
         effective_outcome: 'changes_requested',
       }, docPath);
-      expect(err).not.toBeNull();
-      expect(err?.field).toBe('corrective_handoff_path');
-      expect(err?.error).toBe('Missing required field');
+      expect(err).toBeNull();
     });
 
-    it('effective_outcome=changes_requested with empty-string corrective_handoff_path → rejected', () => {
+    it('effective_outcome=changes_requested with empty-string corrective_handoff_path → rejected (whitespace invalid when present)', () => {
+      // When corrective_handoff_path IS supplied it must be a non-empty
+      // string. Empty / whitespace-only is rejected so the orchestrator
+      // cannot accidentally produce an invalid-but-present path.
       const err = validateFrontmatter('code_review_completed', {
         verdict: 'changes_requested',
         orchestrator_mediated: true,

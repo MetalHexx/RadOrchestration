@@ -419,45 +419,56 @@ function taskBodyTemplate(): PipelineTemplate {
 }
 
 describe('code_review_completed (Iter 10) — mutation-side backstop hard errors', () => {
-  it('effective_outcome=changes_requested with no corrective_handoff_path → throws "contract bypassed" error', () => {
+  it('effective_outcome=changes_requested with no corrective_handoff_path → clean halt (budget-exhausted signal)', () => {
     const state = makeExecutionState();
     const mutation = getMutation('code_review_completed')!;
-    expect(() =>
-      mutation(
-        state,
-        {
-          phase: 1,
-          task: 1,
-          doc_path: '/r.md',
-          verdict: 'changes_requested',
-          orchestrator_mediated: true,
-          effective_outcome: 'changes_requested',
-        } as Record<string, unknown>,
-        baseConfig,
-        taskBodyTemplate(),
-      ),
-    ).toThrow(/corrective_handoff_path/);
+    const result = mutation(
+      state,
+      {
+        phase: 1,
+        task: 1,
+        doc_path: '/r.md',
+        verdict: 'changes_requested',
+        orchestrator_mediated: true,
+        effective_outcome: 'changes_requested',
+      } as Record<string, unknown>,
+      baseConfig,
+      taskBodyTemplate(),
+    );
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toMatch(/budget-exhausted halt signal|no corrective_handoff_path/);
+    const phaseLoop = result.state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+    if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected');
+    expect(taskLoop.iterations[0].status).toBe('halted');
+    expect(taskLoop.iterations[0].corrective_tasks).toHaveLength(0);
   });
 
-  it('effective_outcome=changes_requested with empty-string corrective_handoff_path → throws', () => {
+  it('effective_outcome=changes_requested with whitespace-only corrective_handoff_path → clean halt (treated as no handoff)', () => {
     const state = makeExecutionState();
     const mutation = getMutation('code_review_completed')!;
-    expect(() =>
-      mutation(
-        state,
-        {
-          phase: 1,
-          task: 1,
-          doc_path: '/r.md',
-          verdict: 'changes_requested',
-          orchestrator_mediated: true,
-          effective_outcome: 'changes_requested',
-          corrective_handoff_path: '   ',
-        } as Record<string, unknown>,
-        baseConfig,
-        taskBodyTemplate(),
-      ),
-    ).toThrow(/corrective_handoff_path/);
+    const result = mutation(
+      state,
+      {
+        phase: 1,
+        task: 1,
+        doc_path: '/r.md',
+        verdict: 'changes_requested',
+        orchestrator_mediated: true,
+        effective_outcome: 'changes_requested',
+        corrective_handoff_path: '   ',
+      } as Record<string, unknown>,
+      baseConfig,
+      taskBodyTemplate(),
+    );
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toBeTruthy();
+    const phaseLoop = result.state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
+    if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected');
+    expect(taskLoop.iterations[0].corrective_tasks).toHaveLength(0);
   });
 
   it('effective_outcome=approved with corrective_handoff_path present → mutation tolerates (approved filter-down births no corrective)', () => {

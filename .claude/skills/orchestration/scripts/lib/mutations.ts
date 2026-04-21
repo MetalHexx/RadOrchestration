@@ -704,22 +704,31 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
   const routingVerdict = verdictForState;
 
   if (routingVerdict === REVIEW_VERDICTS.CHANGES_REQUESTED) {
-    // Birth-on-handoff-path: the orchestrator's mediation must have authored
-    // a corrective Task Handoff and supplied its path. The validator is the
-    // primary enforcer of this contract; the mutation hard-errors only when
-    // the validator was bypassed (e.g., a unit-test constructs the context
-    // without going through pre-reads).
-    if (typeof correctiveHandoffPath !== 'string' || correctiveHandoffPath.trim().length === 0) {
-      throw new Error(
-        'code_review_completed: effective_outcome=changes_requested requires a non-empty corrective_handoff_path. ' +
-        'This indicates the orchestrator mediation contract was bypassed — the validator should have caught this. ' +
-        'Ensure the review doc frontmatter carries { orchestrator_mediated: true, effective_outcome, corrective_handoff_path }.'
-      );
-    }
-
     const iteration = resolveTaskIteration(cloned, phase, task);
     const correctiveCount = iteration.corrective_tasks.length;
     const maxRetries = config.limits.max_retries_per_task;
+    const hasHandoffPath = typeof correctiveHandoffPath === 'string'
+      && correctiveHandoffPath.trim().length > 0;
+
+    // No handoff path supplied — this is the orchestrator's budget-exhausted
+    // halt signal per the corrective-playbook budget-check contract. Produce a
+    // clean halt with a descriptive halt_reason. Note: an orchestrator that
+    // forgot to supply a handoff when budget was available would also land
+    // here, which is acceptable — the halt message names both possibilities
+    // so the operator can investigate. The fail-loud beats silent corruption.
+    if (!hasHandoffPath) {
+      iteration.status = 'halted';
+      cloned.graph.status = 'halted';
+      cloned.pipeline.halt_reason =
+        `code_review_completed: effective_outcome=changes_requested with no corrective_handoff_path. ` +
+        `This is the orchestrator's budget-exhausted halt signal (corrective_tasks.length=${correctiveCount}, ` +
+        `max_retries_per_task=${maxRetries}). If budget was not exhausted, the orchestrator omitted ` +
+        `the handoff path in error — check the review addendum.`;
+      mutations_applied.push('set task_iteration.status = halted (effective_outcome=changes_requested, no handoff)');
+      mutations_applied.push('set graph.status = halted');
+      mutations_applied.push('set pipeline.halt_reason (budget-exhausted halt signal)');
+      return { state: cloned, mutations_applied };
+    }
 
     if (correctiveCount >= maxRetries) {
       // Budget exhausted but a handoff path was supplied — the orchestrator's
@@ -774,8 +783,12 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
     const iteration = resolveTaskIteration(cloned, phase, task);
     iteration.status = 'halted';
     cloned.graph.status = 'halted';
+    cloned.pipeline.halt_reason =
+      `Code review rejected (task): reviewer issued a 'rejected' verdict. ` +
+      `Rejected verdicts halt the pipeline with no corrective cycle — no retry is attempted.`;
     mutations_applied.push('set task_iteration.status = halted (rejected verdict)');
     mutations_applied.push('set graph.status = halted');
+    mutations_applied.push('set pipeline.halt_reason (reviewer rejected verdict)');
   } else if (
     rawVerdict === REVIEW_VERDICTS.CHANGES_REQUESTED &&
     routingVerdict !== REVIEW_VERDICTS.CHANGES_REQUESTED &&

@@ -87,11 +87,20 @@ const VALIDATION_RULES: Record<string, FrontmatterValidationRule[]> = {
       expected: "'approved' or 'changes_requested'",
       when: (fm) => fm.verdict === 'changes_requested',
     },
+    // When effective_outcome is changes_requested, corrective_handoff_path is
+    // OPTIONAL. Absence is the orchestrator's budget-exhausted halt signal —
+    // the mutation reads effective_outcome=changes_requested + no handoff path
+    // as "orchestrator declined to author a handoff because budget is blown"
+    // and converts it into a clean pipeline halt. When supplied, the path must
+    // be a non-empty string (whitespace-only is rejected).
     {
       field: 'corrective_handoff_path',
       validate: (v) => typeof v === 'string' && v.trim().length > 0,
-      expected: 'a non-empty string (required when effective_outcome is changes_requested)',
-      when: (fm) => fm.verdict === 'changes_requested' && fm.effective_outcome === 'changes_requested',
+      expected: 'a non-empty string when supplied',
+      when: (fm) => fm.verdict === 'changes_requested'
+        && fm.effective_outcome === 'changes_requested'
+        && fm.corrective_handoff_path !== undefined
+        && fm.corrective_handoff_path !== null,
     },
     {
       field: 'corrective_handoff_path',

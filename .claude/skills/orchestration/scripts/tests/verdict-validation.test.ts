@@ -175,8 +175,9 @@ describe('code_review_completed — verdict validation', () => {
 
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.status).toBe('halted');
-    // halt_reason is not set by the guard (it's set by the routing branch)
-    expect(io.currentState!.pipeline.halt_reason).toBeNull();
+    // Iter-10 correction: the rejected-verdict routing branch now sets a
+    // descriptive halt_reason for operator consistency with other halt sites.
+    expect(io.currentState!.pipeline.halt_reason).toMatch(/rejected verdict|Code review rejected/);
   });
 
   it('null verdict is rejected at the pre-read boundary', () => {
