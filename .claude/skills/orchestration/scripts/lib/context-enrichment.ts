@@ -239,7 +239,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
           ...base,
           head_sha,
           is_correction: true,
-          corrective_index: phaseCTs.length,
+          corrective_index: activePhaseCorrective.index,
         };
       }
 
@@ -253,7 +253,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         ? (activeCorrective.commit_hash ?? null)
         : (taskIter?.commit_hash ?? null);
       const correctiveFields = activeCorrective
-        ? { is_correction: true, corrective_index: correctives.length }
+        ? { is_correction: true, corrective_index: activeCorrective.index }
         : {};
       return { ...base, head_sha, ...correctiveFields };
     }
