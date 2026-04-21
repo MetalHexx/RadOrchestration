@@ -679,13 +679,18 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
   // the full contract.
   const effectiveOutcome = (context as Record<string, unknown>).effective_outcome as string | undefined;
   const correctiveHandoffPath = (context as Record<string, unknown>).corrective_handoff_path as string | undefined;
-  // Gate effective_outcome usage to raw changes_requested verdicts. Validator
-  // enforces the same contract (effective_outcome mustBeAbsent on approved /
-  // rejected), but this gate is a defense-in-depth guard — if validation is
-  // bypassed (test harness, malformed CLI context, future refactor), a raw
-  // approved review cannot be silently overwritten to changes_requested and
-  // birth a corrective.
+  const orchestratorMediated = (context as Record<string, unknown>).orchestrator_mediated;
+  // Gate effective_outcome usage to the full frontmatter mediation contract:
+  // raw verdict must be changes_requested AND orchestrator_mediated must be
+  // true AND effective_outcome must be present. Validator enforces the same
+  // contract (orchestrator_mediated required when verdict=changes_requested,
+  // mustBeAbsent otherwise), but this gate is a defense-in-depth guard — if
+  // validation is bypassed (test harness, malformed CLI context, future
+  // refactor), a raw approved review cannot be silently overwritten to
+  // changes_requested by a stray effective_outcome field, and a missing
+  // orchestrator_mediated flag cannot route via the mediation path.
   const mediationActive = rawVerdict === REVIEW_VERDICTS.CHANGES_REQUESTED
+    && orchestratorMediated === true
     && effectiveOutcome !== undefined
     && effectiveOutcome !== null;
   const verdictForState = mediationActive ? effectiveOutcome : rawVerdict;
