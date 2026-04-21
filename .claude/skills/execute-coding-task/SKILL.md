@@ -25,7 +25,7 @@ Original handoffs (emitted by the explosion script) and corrective handoffs (aut
 ## Workflow
 
 1. **Read the handoff** at `handoff_doc` end-to-end before touching code.
-2. **Understand** the Objective, Context, File Targets, and Test Requirements.
+2. **Understand** the Intent, Requirements, File Targets, Steps, Acceptance, and any other section the handoff carries. Handoffs vary in section names — read what the document actually uses.
 3. **Implement** step-by-step in the order written. Match inlined contracts exactly (signatures, return types, design tokens).
 4. **Test** — run the test suite and record actual output. Do not assume results.
 5. **Self-review** (see "Pre-report self-review" below) before emitting `task_completed`.
@@ -83,7 +83,7 @@ After running terminal commands inside a project subdirectory, restore working d
 | Artifact | Path | Format |
 |----------|------|--------|
 | Source code | File Targets entries (Create / Modify) | Language-specific |
-| Tests | Test Requirements entries | Language-specific |
+| Tests | Paths derived from the handoff's Steps / Acceptance (or whichever section specifies tests) | Language-specific |
 | Execution Notes (optional) | Appended to end of `handoff_doc` under `## Execution Notes` | Markdown |
 
 ## Quality standards
