@@ -49,9 +49,13 @@ export interface ReviewReworkFixture {
    */
   expectedFrontmatter: Record<string, unknown>;
   /**
-   * Representative audit rows — one row per fixture. Tests assert the
-   * fixture's prose matches the declared outcome (e.g., the broken
-   * task-review fixture carries one drift row at severity: medium).
+   * Representative audit rows — one row per scoped requirement the fixture
+   * exercises (e.g., each FR/NFR/AD tag inlined into the Task Handoff for
+   * task-scope fixtures, or each Phase-Plan-scoped tag for phase-scope,
+   * or each Requirements-doc tag for final-scope). Tests assert the fixture's
+   * declared audit shape matches the expected verdict outcome (e.g., the
+   * broken task-review fixture carries one drift row at severity: medium
+   * alongside on-track rows for the other inlined requirements).
    */
   expectedAuditRows: FixtureAuditRow[];
 }

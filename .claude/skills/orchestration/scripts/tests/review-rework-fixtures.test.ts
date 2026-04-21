@@ -2,7 +2,7 @@
  * Review-Rework Fixtures (Iter 12)
  *
  * Unit-level coverage for the six fixture pairs under
- * `scripts/tests/fixtures/review-rework/`. Each fixture is rehydrated into a
+ * `.claude/skills/orchestration/scripts/tests/fixtures/review-rework/`. Each fixture is rehydrated into a
  * synthesized git repo via the git-fixture helper; tests confirm the engine
  * contract (frontmatter validator behaviour + enrichment-level diff shape)
  * matches the fixture's declared outcome.
