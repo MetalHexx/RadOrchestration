@@ -27,6 +27,10 @@ function findNode(nodes: NodeDef[], id: string): NodeDef | undefined {
         if (found) return found;
       }
     }
+    if ('children' in node && Array.isArray((node as { children?: NodeDef[] }).children)) {
+      const found = findNode((node as { children: NodeDef[] }).children, id);
+      if (found) return found;
+    }
   }
   return undefined;
 }
