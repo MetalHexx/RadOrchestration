@@ -96,7 +96,7 @@ Keep the flip narrowly scoped to load-bearing engine fallbacks + their matched t
 
 **New tests:**
 
-- End-to-end happy-path smoke: a scratch project drives `default.yml` from brainstorm simulation to `final_approval_gate`.
+- End-to-end happy-path smoke: a scratch project drives `default.yml` from brainstorm simulation through `final_approved` to `display_complete`.
 - `default.yml` template-loader test — parses cleanly, all node ids resolve, exec-phase nodes present.
 
 **Process editor health check (user-flagged):**

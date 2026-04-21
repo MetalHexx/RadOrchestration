@@ -4,8 +4,8 @@ import type { PipelineState, OrchestrationConfig, TemplateResolution } from './t
 
 /**
  * Resolves which template to use.
- * Priority: state.graph.template_id → CLI --template → config.default_template → "full"
- * When default_template is "ask", treat as absent and fall through to "full".
+ * Priority: state.graph.template_id → CLI --template → config.default_template → "default"
+ * When default_template is "ask", treat as absent and fall through to "default".
  */
 export function resolveTemplateName(
   state: PipelineState | null,
@@ -27,7 +27,7 @@ export function resolveTemplateName(
     templateName = config.default_template;
     source = 'config';
   } else {
-    templateName = 'full';
+    templateName = 'default';
     source = 'default';
   }
 

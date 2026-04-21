@@ -11,8 +11,8 @@ const FULL_YAML = readFileSync(
   join(__dirname, '../../.claude/skills/orchestration/templates/full.yml'),
   'utf-8'
 );
-const QUICK_YAML = readFileSync(
-  join(__dirname, '../../.claude/skills/orchestration/templates/quick.yml'),
+const DEFAULT_YAML = readFileSync(
+  join(__dirname, '../../.claude/skills/orchestration/templates/default.yml'),
   'utf-8'
 );
 
@@ -40,8 +40,8 @@ describe('computeTemplateLayout', () => {
       }
     });
 
-    it('all nodes have finite x and y >= 0 after layout with quick.yml', () => {
-      const { nodes, edges } = parseTemplateToGraph(QUICK_YAML);
+    it('all nodes have finite x and y >= 0 after layout with default.yml', () => {
+      const { nodes, edges } = parseTemplateToGraph(DEFAULT_YAML);
       const result = computeTemplateLayout(nodes, edges);
       assert.ok(result.nodes.length > 0, 'expected at least one node');
       for (const node of result.nodes) {
@@ -260,8 +260,8 @@ describe('computeTemplateLayout', () => {
       assert.strictEqual(result.edges.length, edges.length, 'edge count changed after layout');
     });
 
-    it('edge count is preserved for quick.yml', () => {
-      const { nodes, edges } = parseTemplateToGraph(QUICK_YAML);
+    it('edge count is preserved for default.yml', () => {
+      const { nodes, edges } = parseTemplateToGraph(DEFAULT_YAML);
       const result = computeTemplateLayout(nodes, edges);
       assert.strictEqual(result.edges.length, edges.length, 'edge count changed after layout');
     });
@@ -276,8 +276,8 @@ describe('computeTemplateLayout', () => {
       }
     });
 
-    it('edges are structurally identical (same id, source, target) for quick.yml', () => {
-      const { nodes, edges } = parseTemplateToGraph(QUICK_YAML);
+    it('edges are structurally identical (same id, source, target) for default.yml', () => {
+      const { nodes, edges } = parseTemplateToGraph(DEFAULT_YAML);
       const result = computeTemplateLayout(nodes, edges);
       for (let i = 0; i < edges.length; i++) {
         assert.strictEqual(result.edges[i].id, edges[i].id, `edge[${i}] id changed`);

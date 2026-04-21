@@ -65,11 +65,11 @@ describe('resolveTemplateName', () => {
 
   it('returns source: state when state exists — even when CLI and config are also provided', () => {
     tmpDir = makeTempDir();
-    const state = makeState('quick');
+    const state = makeState('state-template');
     const config = makeConfig({ default_template: 'custom' });
     const result = resolveTemplateName(state, 'cli-template', config, tmpDir, '/some/templates');
     expect(result.source).toBe('state');
-    expect(result.templateName).toBe('quick');
+    expect(result.templateName).toBe('state-template');
   });
 
   it('returns source: cli when state is null and CLI name is provided', () => {
@@ -82,26 +82,26 @@ describe('resolveTemplateName', () => {
 
   it('returns source: config when state is null, CLI is undefined, and config has a valid default_template', () => {
     tmpDir = makeTempDir();
-    const config = makeConfig({ default_template: 'quick' });
+    const config = makeConfig({ default_template: 'custom-config' });
     const result = resolveTemplateName(null, undefined, config, tmpDir, '/some/templates');
     expect(result.source).toBe('config');
-    expect(result.templateName).toBe('quick');
+    expect(result.templateName).toBe('custom-config');
   });
 
-  it('returns source: default and templateName: "full" when state is null, CLI is undefined, and config.default_template is empty string', () => {
+  it('returns source: default and templateName: "default" when state is null, CLI is undefined, and config.default_template is empty string', () => {
     tmpDir = makeTempDir();
     const config = makeConfig({ default_template: '' });
     const result = resolveTemplateName(null, undefined, config, tmpDir, '/some/templates');
     expect(result.source).toBe('default');
-    expect(result.templateName).toBe('full');
+    expect(result.templateName).toBe('default');
   });
 
-  it('returns source: default and templateName: "full" when config.default_template is "ask"', () => {
+  it('returns source: default and templateName: "default" when config.default_template is "ask"', () => {
     tmpDir = makeTempDir();
     const config = makeConfig({ default_template: 'ask' });
     const result = resolveTemplateName(null, undefined, config, tmpDir, '/some/templates');
     expect(result.source).toBe('default');
-    expect(result.templateName).toBe('full');
+    expect(result.templateName).toBe('default');
   });
 });
 
@@ -142,7 +142,7 @@ describe('resolveTemplatePath', () => {
     // global case (new temp dir without template.yml)
     const tmpDir2 = makeTempDir();
     try {
-      const globalResult = resolveTemplatePath('quick', tmpDir2, '/abs/templates');
+      const globalResult = resolveTemplatePath('custom', tmpDir2, '/abs/templates');
       expect(path.isAbsolute(globalResult.path)).toBe(true);
     } finally {
       fs.rmSync(tmpDir2, { recursive: true, force: true });
@@ -201,8 +201,8 @@ describe('snapshotTemplate', () => {
     const dest = path.join(projectDir, 'template.yml');
     fs.writeFileSync(dest, 'old content');
 
-    const newContent = 'template:\n  id: quick\n';
-    const sourcePath = path.join(sourceDir, 'quick.yml');
+    const newContent = 'template:\n  id: default\n';
+    const sourcePath = path.join(sourceDir, 'default.yml');
     fs.writeFileSync(sourcePath, newContent);
 
     snapshotTemplate(sourcePath, projectDir);
@@ -228,10 +228,10 @@ describe('listAvailableTemplates', () => {
     const templatesDir = path.join(orchRoot, 'skills/orchestration/templates');
     fs.mkdirSync(templatesDir, { recursive: true });
     fs.writeFileSync(path.join(templatesDir, 'full.yml'), '');
-    fs.writeFileSync(path.join(templatesDir, 'quick.yml'), '');
+    fs.writeFileSync(path.join(templatesDir, 'default.yml'), '');
 
     const result = listAvailableTemplates(orchRoot);
-    expect(result.sort()).toEqual(['full', 'quick'].sort());
+    expect(result.sort()).toEqual(['default', 'full'].sort());
   });
 
   it('returns an empty array when the templates directory does not exist', () => {
