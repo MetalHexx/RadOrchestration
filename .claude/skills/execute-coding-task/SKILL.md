@@ -1,6 +1,6 @@
 ---
 name: execute-coding-task
-description: 'Execute a single coding task end-to-end from a self-contained task-handoff document. The handoff is the sole input; no upstream planning docs are read.'
+description: 'Execute a single task end-to-end from a self-contained task-handoff document. Supports `code` (with mandatory RED-GREEN) and `doc` / `config` / `infra` task types, plus handoffs that declare no explicit task type. The handoff is the sole input; no upstream planning docs are read.'
 user-invocable: false
 ---
 
