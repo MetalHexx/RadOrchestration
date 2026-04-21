@@ -50,8 +50,6 @@ Do NOT create `state.json`, `orchestration.yml`, or `template.yml` yourself. The
 
 Invoke `pipeline.js` from the repo root (the entry auto-installs dependencies on first run). The run folder you created is `--project-dir` for every call.
 
-> **Config quirk — read once, then act.** The system-wide config at `.claude/skills/orchestration/config/orchestration.yml` currently has `default_template: "ask"`. When the resolver sees `ask` with no project-local `template.yml` and no CLI `--template`, it falls through to `full.yml` — **not** `default.yml`. You must pass `--template default` on the first call so the engine snapshots the lean planning template into the run folder. Subsequent calls inherit `template_id` from state and do not need the flag.
-
 Initial call — use `--event start` to scaffold state. The engine rejects any non-`start` event when `state.json` does not yet exist.
 
 ```
@@ -67,7 +65,7 @@ Loop per the Action Routing Table:
 
 - On `spawn_requirements` / `spawn_master_plan` — spawn `@planner` with the action's context. The agent writes the output doc per `rad-create-plans`; capture the `doc_path` from its return. Then signal the paired `*_completed` event with `--doc-path <absolute-path>`.
 - On `explode_master_plan` — shell out to the explosion script per action #2a in the routing table. On exit 0 signal `explosion_completed`; on exit 2 signal `explosion_failed --parse-error '<json>'` (same structured payload the script emits). On exit 1 **halt and surface to the operator** — do not invent a recovery.
-- On any other action that implies an agent spawn other than `@planner` (executor, reviewer, source-control) — the default template does not emit those. If you see one, the pipeline is on the wrong template. Halt and surface.
+- On any other action that implies an agent spawn other than `@planner` (executor, reviewer, source-control) — the default template DOES emit these during its execution tier, but this harness halts at the `request_plan_approval` gate BEFORE any of those fire. If you see one of those actions before the halt signal, the harness state is off-script (state file was edited, or the gate was approved out-of-band). Halt and surface.
 - The two-step `_started` → action-return protocol is mandatory. Do not short-circuit it even though you are simulating.
 
 **Halt signal**: `result.action === "request_plan_approval"`. Do not signal `plan_approved`. The run has produced everything the harness needs — requirements, master plan, and exploded phase/task files — before the gate.

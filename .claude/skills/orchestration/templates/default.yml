@@ -1,10 +1,7 @@
-# Lean planning pipeline producing Requirements + Master Plan.
-# Execution-tier wiring (per-phase / per-task loops, code review, phase review,
-# final review, source control) lands in Iter 9.
 template:
   id: default
   version: "1.0.0"
-  description: "Lean planning pipeline — Requirements → Master Plan → Plan Approval Gate. Execution tier completes in Iter 9."
+  description: "Canonical orchestration pipeline — Requirements → Master Plan → Explode → execution loop (tasks + phase review) → Final Review → PR → Final Approval."
 
 # ── Display & Routing Fields ─────────────────────────────────────────────────
 # Informational field (not consumed by the v5 DAG engine at runtime):
@@ -61,3 +58,128 @@ nodes:
     approved_event: plan_approved
     auto_approve_modes: []
     depends_on: [explode_master_plan]
+
+  # ── Gate Mode Selection ───────────────────────────────────────────────────
+
+  - id: gate_mode_selection
+    kind: gate
+    label: "Gate Mode Selection"
+    mode_ref: human_gates.execution_mode
+    action_if_needed: gate_task
+    approved_event: gate_mode_set
+    auto_approve_modes: [task, phase, autonomous]
+    depends_on: [plan_approval_gate]
+
+  # ── Phase Execution Loop ──────────────────────────────────────────────────
+
+  - id: phase_loop
+    kind: for_each_phase
+    label: "Phase Execution Loop"
+    source_doc_ref: "$.nodes.master_plan.doc_path"
+    total_field: total_phases
+    depends_on: [gate_mode_selection]
+    body:
+
+      - id: task_loop
+        kind: for_each_task
+        label: "Task Execution Loop"
+        source_doc_ref: "$.current_phase.doc_path"
+        tasks_field: tasks
+        depends_on: []
+        body:
+
+          - id: task_executor
+            kind: step
+            label: "Execute Task"
+            action: execute_task
+            events: { started: execution_started, completed: task_completed }
+            depends_on: []
+
+          - id: commit_gate
+            kind: conditional
+            label: "Auto-Commit"
+            condition:
+              config_ref: source_control.auto_commit
+              operator: neq
+              value: never
+            branches:
+              true:
+                - id: commit
+                  kind: step
+                  label: "Source Control Commit"
+                  action: invoke_source_control_commit
+                  events: { started: commit_started, completed: commit_completed }
+                  depends_on: []
+              false: []
+            depends_on: [task_executor]
+
+          - id: code_review
+            kind: step
+            label: "Code Review"
+            action: spawn_code_reviewer
+            events: { started: code_review_started, completed: code_review_completed }
+            doc_output_field: doc_path
+            depends_on: [commit_gate]
+
+          - id: task_gate
+            kind: gate
+            label: "Task Review Gate"
+            mode_ref: human_gates.execution_mode
+            action_if_needed: gate_task
+            approved_event: task_gate_approved
+            auto_approve_modes: [phase, autonomous]
+            depends_on: [code_review]
+
+      - id: phase_review
+        kind: step
+        label: "Phase Review"
+        action: spawn_phase_reviewer
+        events: { started: phase_review_started, completed: phase_review_completed }
+        doc_output_field: doc_path
+        depends_on: [task_loop]
+
+      - id: phase_gate
+        kind: gate
+        label: "Phase Review Gate"
+        mode_ref: human_gates.execution_mode
+        action_if_needed: gate_phase
+        approved_event: phase_gate_approved
+        auto_approve_modes: []   # in autonomous mode, the walker's verdict-based auto-approve bypasses this gate when predecessor verdict === 'approved'
+        depends_on: [phase_review]
+
+  # ── Final Review ──────────────────────────────────────────────────────────
+
+  - id: final_review
+    kind: step
+    label: "Final Review"
+    action: spawn_final_reviewer
+    events: { started: final_review_started, completed: final_review_completed }
+    doc_output_field: doc_path
+    depends_on: [phase_loop]
+
+  - id: pr_gate
+    kind: conditional
+    label: "Auto-PR Gate"
+    condition:
+      config_ref: source_control.auto_pr
+      operator: neq
+      value: never
+    branches:
+      true:
+        - id: final_pr
+          kind: step
+          label: "Source Control PR"
+          action: invoke_source_control_pr
+          events: { started: pr_requested, completed: pr_created }
+          depends_on: []
+      false: []
+    depends_on: [final_review]
+
+  - id: final_approval_gate
+    kind: gate
+    label: "Final Approval Gate"
+    mode_ref: human_gates.after_final_review
+    action_if_needed: request_final_approval
+    approved_event: final_approved
+    auto_approve_modes: []
+    depends_on: [pr_gate]

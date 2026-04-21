@@ -12,8 +12,8 @@ const FULL_YAML = readFileSync(
   join(__dirname, '../../.claude/skills/orchestration/templates/full.yml'),
   'utf-8'
 );
-const QUICK_YAML = readFileSync(
-  join(__dirname, '../../.claude/skills/orchestration/templates/quick.yml'),
+const DEFAULT_YAML = readFileSync(
+  join(__dirname, '../../.claude/skills/orchestration/templates/default.yml'),
   'utf-8'
 );
 
@@ -53,8 +53,8 @@ describe('parseTemplateToGraph', () => {
     assert.ok(graph.nodes.length > 0, 'nodes should not be empty');
   });
 
-  it('parsing quick.yml produces a TemplateGraph with nodes and edges arrays', () => {
-    const graph = parseTemplateToGraph(QUICK_YAML);
+  it('parsing default.yml produces a TemplateGraph with nodes and edges arrays', () => {
+    const graph = parseTemplateToGraph(DEFAULT_YAML);
     assert.ok(Array.isArray(graph.nodes), 'nodes should be an array');
     assert.ok(Array.isArray(graph.edges), 'edges should be an array');
     assert.ok(graph.nodes.length > 0, 'nodes should not be empty');
@@ -195,10 +195,10 @@ describe('serializeGraphToYaml', () => {
     assert.ok(reparsed !== null && typeof reparsed === 'object');
   });
 
-  it('serializing quick.yml graph produces valid parseable YAML', () => {
-    const graph = parseTemplateToGraph(QUICK_YAML);
-    const quickMeta = (parseYamlRaw(QUICK_YAML) as any).template;
-    const serialized = serializeGraphToYaml(graph, quickMeta);
+  it('serializing default.yml graph produces valid parseable YAML', () => {
+    const graph = parseTemplateToGraph(DEFAULT_YAML);
+    const defaultMeta = (parseYamlRaw(DEFAULT_YAML) as any).template;
+    const serialized = serializeGraphToYaml(graph, defaultMeta);
     assert.ok(typeof serialized === 'string' && serialized.length > 0);
     const reparsed = parseYamlRaw(serialized);
     assert.ok(reparsed !== null && typeof reparsed === 'object');
@@ -240,11 +240,11 @@ describe('round-trip fidelity', () => {
     assert.deepStrictEqual(roundTripped, original);
   });
 
-  it('quick.yml round-trip: parse → serialize → re-parse deepStrictEquals original parse', () => {
-    const graph = parseTemplateToGraph(QUICK_YAML);
-    const quickMeta = (parseYamlRaw(QUICK_YAML) as any).template;
-    const serialized = serializeGraphToYaml(graph, quickMeta);
-    const original = parseYamlRaw(QUICK_YAML) as any;
+  it('default.yml round-trip: parse → serialize → re-parse deepStrictEquals original parse', () => {
+    const graph = parseTemplateToGraph(DEFAULT_YAML);
+    const defaultMeta = (parseYamlRaw(DEFAULT_YAML) as any).template;
+    const serialized = serializeGraphToYaml(graph, defaultMeta);
+    const original = parseYamlRaw(DEFAULT_YAML) as any;
     const roundTripped = parseYamlRaw(serialized);
     // Serializer only preserves id/version/description on template metadata;
     // fields like `status` are not round-tripped, so strip them before comparing.

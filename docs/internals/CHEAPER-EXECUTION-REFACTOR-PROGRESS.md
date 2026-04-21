@@ -67,7 +67,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 6 | Prompt regression harness | Complete | 2026-04-19 | 2026-04-19 |
 | 7 | Remove per-phase/per-task planning | Complete | 2026-04-19 | 2026-04-20 |
 | 8 | phase_review absorbs phase_report | Complete | 2026-04-20 | 2026-04-20 |
-| 9 | Complete `default.yml` | Not started | — | — |
+| 9 | Complete `default.yml` | Complete | 2026-04-20 | 2026-04-20 |
 | 10 | Task-level corrective cycles (orchestrator mediation) | Not started | — | — |
 | 11 | Phase-level corrective cycles | Not started | — | — |
 | 12 | Code-review rework (task/phase/final) | Not started | — | — |
@@ -77,7 +77,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 16 | Repository deep clean | Not started | — | — |
 | 17 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 9 / 18 iterations complete. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
+**Overall**: 10 / 18 iterations complete. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -101,7 +101,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Merged | `82333f1` | [#57](https://github.com/MetalHexx/RadOrchestation/pull/57) |
 | 7 | `feat/iter-7-remove-per-phase-task-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning` | Merged | `ff05ce2` | [#58](https://github.com/MetalHexx/RadOrchestation/pull/58) |
 | 8 | `feat/iter-8-phase-review-absorbs-phase-report` | `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report` | Awaiting merge | — | [#59](https://github.com/MetalHexx/RadOrchestation/pull/59) |
-| 9 | — | — | Not created | — | — |
+| 9 | `feat/iter-9-complete-default-yml` | `C:\dev\orchestration\v3-worktrees\feat-iter-9-complete-default-yml` | Awaiting merge | — | [#60](https://github.com/MetalHexx/RadOrchestation/pull/60) |
 | 10 | — | — | Not created | — | — |
 | 11 | — | — | Not created | — | — |
 | 12 | — | — | Not created | — | — |
@@ -272,6 +272,17 @@ Format:
 - UI smoke: N/A — no UI surface touched.
 - Commits: `f534247` (scaffold), `b890c18` (review-corrective — dead code, tightened self-test thresholds, project-name stability, narrowed `.gitkeep` exception), `a9cb44c` (inaugural baseline artifacts), `211c34a` (progress tracker). PR: [#57](https://github.com/MetalHexx/RadOrchestation/pull/57).
 
+### 2026-04-20 — Iteration 9 — Complete `default.yml`
+
+- Branch: `feat/iter-9-complete-default-yml` off `feat/cheaper-execution` @ `89cc1d2`. Execution-phase node tree copied 1:1 from post-Iter-8 `full.yml` — `gate_mode_selection` → `phase_loop { task_loop { task_executor → commit_gate → code_review → task_gate } → phase_review → phase_gate }` → `final_review` → `pr_gate` → `final_approval_gate`. `default.yml` not stamped `status: deprecated` (canonical template); header description updated.
+- Engine fallback flipped `"full"` → `"default"` at the five plan-enumerated sites (`template-resolver.ts` jsdoc + hardcoded fallback, `state-io.ts` `DEFAULT_CONFIG`, two `template-resolver.test.ts` assertions, `ui/app/process-editor/page.tsx` `templateId`). Scope Boundary held — ~35 `'full'` fixture references across mutations/walker/integration tests untouched per plan.
+- Deletions: `templates/quick.yml` + `tests/quick-template.test.ts` gone; UI fixture tests (`template-serializer.test.ts`, `template-layout.test.ts`) swapped second fixture `quick.yml` → `default.yml`; `rad-plan/SKILL.md` full/quick picker collapsed to a single "use default" fallback; minor comment/config ripples in `orchestration.yml`, `orchestration/SKILL.md`, `mutations.ts`, `prompt-tests/plan-pipeline-e2e/_runner.md`.
+- Test surgery: `e2e-template-selection.test.ts` fully rewritten around default.yml resolution (with `full.yml` escape-hatch cases retained); `template-loader.test.ts` gained a `default.yml shape` describe block; added a keystone end-to-end smoke test driving a mock project on default.yml from `start` through `final_approved` to `display_complete` with every top-level node reaching `completed`.
+- Tests: orchestration 46 files / 1126 pass / 7 skip / 1 todo (baseline 47/1122/7/1 — net +4 pass after `quick`-test removals are offset by default.yml shape + smoke + resolution cases). UI 156 / 3 pre-existing fail / 159 total (unchanged — the three failing tests all reference full.yml's pre-Iter-8 shape, carry-forward). Installer 399 pass (unchanged — no template references).
+- Retained deliberate (per plan): `full.yml` stays on disk as a deprecated escape hatch; v4 migrator (`migrate-to-v5.ts` + its test files) left hardcoded to `'full'` since v4 states legitimately came from full.yml (Iter 16 scope); `ui/lib/template-api-helpers.test.ts` generic `isValidTemplateId('quick')` string-validation left as-is.
+- Reviews: 1 conformance pass + 1 quality pass (both clean, no must-fix). Copilot cycle R1→R4 on PR #60 exited on R4 clean — R1 surfaced 4 comments (2 portability/comment fixes applied; 2 declined as architectural pushback against the Iter 5/7 explosion-seeding design and against adding abstraction for a single-consumer helper), R2+R3 each a single nit fixed in one commit.
+- Commits: `ba2053a` (main) + tracker + 3 small Copilot-cycle fixes. PR: [#60](https://github.com/MetalHexx/RadOrchestation/pull/60).
+
 ### 2026-04-20 — Iteration 8 — phase_review absorbs phase_report
 
 - Branch: `feat/iter-8-phase-review-absorbs-phase-report` off `feat/cheaper-execution` @ `f29c3db` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report`). Structured summary shape = option (b) — phase-report's 7 sections threaded INTO phase-review's template, named "Corrections Applied" section empty-on-first-review.
@@ -440,6 +451,12 @@ Format:
 - **Context**: During PR #57's round-6 Copilot review, two comments asked the Iter-6 linters to add `author` + `approved_at` (requirements) and `status` + `created` + `author` (master plan) to `REQUIRED_FRONTMATTER`. Declined in-iteration because the Iter 6 companion (`docs/internals/cheaper-execution/iter-06-prompt-harness.md`) explicitly marks those fields as informational-only and instructs the linter to ignore them.
 - **Why unresolved**: The plan's scope boundary is deliberate — the linters validate the load-bearing contract only. Broadening coverage would re-open the "which fields are load-bearing" question that the Iter 6 design locked. A separate iteration can revisit if the template contract tightens.
 - **Suggested owner**: A future iteration — likely alongside Iter 14 (Rad-plan-audit overhaul) or whichever later work retightens the frontmatter contract on the template side.
+
+### 2026-04-20 — `full.yml` banner wording stale post-Iter-9
+
+- **Context**: `full.yml:2` banner says "Remains the default template fallback until Iter 9; kept for backwards compatibility." Post-Iter-9 the fallback is now `default.yml` and `full.yml` is a deprecated escape hatch only — the "Remains the default template fallback" phrasing is factually wrong. Surfaced during Iter-9 quality review.
+- **Why unresolved**: Iter 9 plan explicitly said "The existing `status: deprecated` stamp + banner comments stay exactly as they are" to avoid scope creep into a file the iteration deliberately didn't touch. One-line fix but not worth violating the scope-boundary discipline for.
+- **Suggested owner**: Iter 16 (Repository deep clean) or Iter 17 (public docs refresh) — whichever next re-sweeps template files for vocabulary consistency.
 
 ---
 

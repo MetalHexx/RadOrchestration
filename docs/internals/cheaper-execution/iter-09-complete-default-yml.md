@@ -54,17 +54,54 @@ After this iteration: a scratch project runs end-to-end on `default.yml` from br
 
 ## Code Surface
 
-- Template: `.claude/skills/orchestration/templates/default.yml` (add execution-phase nodes)
-- Template (delete): `.claude/skills/orchestration/templates/quick.yml`
-- UI: `ui/app/process-editor/page.tsx:17` (templateId literal)
-- Skill: `.claude/skills/rad-plan/SKILL.md` (drop quick/full selection UI)
-- Ripple surfaces:
-  - `.claude/skills/orchestration/validate/lib/checks/config.js` + any check that enumerates expected templates
-  - `.claude/skills/orchestration/scripts/tests/e2e-template-selection.test.ts` — rewrites expected; selection between full/quick goes away
-  - `.claude/skills/orchestration/scripts/tests/execution-integration.test.ts`, `parity.test.ts` (if present), integration fixtures
-  - `installer/lib/cli.js` + `installer/lib/config-generator.js` — any reference to quick.yml by name
-  - `.claude/skills/orchestration/references/{action-event-reference, document-conventions, pipeline-guide}.md` — template refs
-- Tests (new): an end-to-end happy-path smoke test drives a scratch project on `default.yml` from brainstorm simulation to `final_approval_gate`.
+**Primary edits:**
+
+- Template: `.claude/skills/orchestration/templates/default.yml` — add execution-phase nodes (shape copied from `full.yml`, already retargeted by Iter 8's `phase_review.depends_on: [task_loop]`).
+- Template (delete): `.claude/skills/orchestration/templates/quick.yml`.
+- UI: `ui/app/process-editor/page.tsx:17` — `templateId="full"` → `"default"`.
+- Skill: `.claude/skills/rad-plan/SKILL.md` — drop quick/full selection Step 1; Step 1 collapses to: CLI `--template` → config `default_template` (non-`ask`) → `"default"`. Custom template names remain supported.
+
+**Engine fallback flips (engine-correctness — critical for "default.yml is canonical" exit criterion):**
+
+- `.claude/skills/orchestration/scripts/lib/template-resolver.ts` — hardcoded `"full"` final fallback at line 30 (and matching jsdoc lines 7–8) → `"default"`.
+- `.claude/skills/orchestration/scripts/lib/state-io.ts:32` — `DEFAULT_CONFIG.default_template: 'full'` → `'default'` (the zero-config in-memory default).
+- `template-resolver.test.ts:95–104` — two fallback assertions (`default_template: ''` → templateName `"full"`; `default_template: 'ask'` → templateName `"full"`) flip to `"default"`. ~4 assertion updates. These are the only test assertions that directly exercise the fallback literal; DO NOT mass-replace `'full'` across other test fixtures.
+
+**Scope boundary for the `"full"` → `"default"` flip (important — don't cascade):**
+
+Keep the flip narrowly scoped to load-bearing engine fallbacks + their matched tests. Do **not** mass-replace `'full'` across ~35 other test files that use it as a fixture value — `full.yml` stays on disk (retained deprecated per Iter 3), so those fixtures remain valid coverage.
+
+- **Leave unchanged** — `default_template: 'full'` in ~20 test-config helpers (`mutations*.test.ts`, `dag-walker.test.ts`, `engine.test.ts`, etc.). They're shape-complete fixtures, not fallback assertions.
+- **Leave unchanged** — `template_id: 'full'` in state fixtures across ~15 files. Those tests exercise full.yml loading (deprecated but still on disk). This is valid regression coverage.
+- **Leave unchanged** — `migrate-to-v5.ts` + `migrate-to-v5.test.ts` + `migrated-state-integration.test.ts` hardcoded `'full'`. V4 states legitimately came from full.yml; flipping would be historically inaccurate. V4 migrator sunset is Iter 16's scope.
+- **Leave unchanged** — `ui/lib/document-ordering.test.ts:415` + `ui/lib/template-api-helpers.test.ts:85` (isolated `'full'` as generic template-name fixture).
+
+**Ripples (actually present in tree — grep-verified):**
+
+- `.claude/skills/orchestration/config/orchestration.yml:14` — comment `# full | quick | <custom-name> | ask` → drop `quick`.
+- `.claude/skills/orchestration/SKILL.md:33` — "Pipeline templates (`full.yml`, `quick.yml`)" → "(`default.yml`, `full.yml`)".
+- `.claude/skills/orchestration/scripts/lib/mutations.ts:983` — comment references `full.yml, quick.yml`; update for `quick.yml` removal.
+- `prompt-tests/plan-pipeline-e2e/_runner.md:53` — "Config quirk — read once, then act" note explaining `ask` → `full.yml` fallback. The quirk goes away post-Iter-9 (fallback is now `default.yml`). Simplify or remove the note; `--template default` first-call workaround no longer needed.
+- `.claude/skills/orchestration/scripts/tests/e2e-template-selection.test.ts` — rewrite. Quick/full selection matrix collapses; replace with coverage of the new fallback chain (state → CLI → config → `"default"`) and the `ask` resolution path.
+- `.claude/skills/orchestration/scripts/tests/quick-template.test.ts` — **delete entirely** (103-line file dedicated to quick.yml structural assertions).
+- `ui/lib/template-serializer.test.ts` + `ui/lib/template-layout.test.ts` — swap `quick.yml` fixture → `default.yml`. Post-Iter-9 `default.yml` has the full execution shape, so it's a meaningful second fixture alongside `full.yml`; coverage stays comparable.
+- Other tests that reference `template_id: 'full'` / `template: 'full'` as fixture content (e.g. `ui/lib/document-ordering.test.ts:415`, `ui/lib/template-api-helpers.test.ts:85`) — leave as-is; they assert generic template-name handling, not canonical-template behavior.
+
+**Ripples dropped from the original companion (no matches in live tree — the companion was guessing):**
+
+- `.claude/skills/orchestration/validate/lib/checks/config.js` — validates `orchestration.yml` schema only, does not enumerate templates. No edit needed.
+- `installer/lib/cli.js` + `installer/lib/config-generator.js` — zero `quick.yml` references. Installer is clean.
+- `parity.test.ts` — deleted in Iter 7; no such file.
+- `.claude/skills/orchestration/references/{action-event-reference, document-conventions, pipeline-guide}.md` — no actionable `quick`/`full` specific references (greps clean).
+
+**New tests:**
+
+- End-to-end happy-path smoke: a scratch project drives `default.yml` from brainstorm simulation through `final_approved` to `display_complete`.
+- `default.yml` template-loader test — parses cleanly, all node ids resolve, exec-phase nodes present.
+
+**Process editor health check (user-flagged):**
+
+- Per user: the process editor view may currently be broken. **Iter 9 scope includes verifying the editor renders `default.yml` end-to-end and fixing any rendering regressions found in the UI smoke step.** If broken: add the fix + a regression test in-iteration rather than deferring.
 
 ## Dependencies
 
