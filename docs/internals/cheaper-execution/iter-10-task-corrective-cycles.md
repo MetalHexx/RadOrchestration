@@ -52,7 +52,7 @@ The commit is architectural but contained. The orchestrator's read-only constrai
     - If `effective_outcome = changes_requested` → `corrective_handoff_path` required, non-empty string pointing at an existing file under `tasks/`
     - If `effective_outcome = approved` → `corrective_handoff_path` must be absent
   - `verdict = rejected` → `orchestrator_mediated`, `effective_outcome`, `corrective_handoff_path` all absent. Pipeline halts. (Same as today — reviewer authority for severe rejections.)
-- **UI**: additive — render an `orchestrator_mediated: true` badge on `code_review` step nodes. Natural slot is `ui/components/dag-timeline/dag-node-row.tsx` around the existing `NodeStatusBadge` render (roughly line 74-79). Keep it additive — no existing badge logic changes, and a review doc without the flag renders exactly as today. Addendum section renders via the existing markdown viewer; frontmatter viewer renders the new scalar fields with the existing scalar code path.
+- **UI**: no UI changes in iter-10. The review doc's `## Orchestrator Addendum` section renders through the existing markdown viewer; new scalar frontmatter fields render through the existing frontmatter viewer. Legacy `state.json` continues to render unchanged. A decorative "mediated" badge was considered and deferred — the addendum is the real audit artifact, and a later UI pass will design visual signals from evidence once real mediated reviews exist to look at.
 
 **Scope Deliberately Untouched (iter-10 out of scope):**
 
@@ -77,7 +77,14 @@ The commit is architectural but contained. The orchestrator's read-only constrai
 
 ## UI Impact
 
-Additive render only. Task-scope corrective tasks already render via `dag-corrective-task-group.tsx`. Review docs with `orchestrator_mediated: true` gain a small badge alongside the existing status badge on the `code_review` row. Addendum markdown renders through the existing doc viewer. No breaking shape changes; legacy `state.json` (no mediation fields) renders exactly as today — this is the canary to protect during smoke.
+**No UI code changes in iter-10.** The UI is naturally compatible with the mediated-review shape because everything new rides existing viewers:
+
+- Review-doc `## Orchestrator Addendum` section renders through the existing markdown viewer.
+- New scalar frontmatter fields (`orchestrator_mediated`, `effective_outcome`, `corrective_handoff_path`, `corrective_index`, `corrective_scope`, `budget_max`, `budget_remaining`) render through the existing frontmatter viewer's scalar path.
+- Task-scope corrective tasks already render via `dag-corrective-task-group.tsx` — iter-10 populates them from a new source but the shape the UI consumes is unchanged.
+- Legacy `state.json` (no mediation fields) renders exactly as today — this is the canary to protect during smoke.
+
+A decorative "mediated" badge was considered at planning time and explicitly deferred: partial signal (only fires on mediated reviews), not actionable (just opens the doc, which the existing Doc link already does), and the real audit trail is the addendum. A future iteration (iter-12 or later, once mediated reviews exist to look at) will revisit UI signals from evidence rather than speculation.
 
 Phase-corrective UI rendering (`dag-iteration-panel` group for phase-scope correctives) is iter-11 territory and explicitly untouched here.
 
@@ -103,7 +110,6 @@ Validated line numbers as of `feat/cheaper-execution` @ `7a74b1a` (post iter-9 m
 | `.claude/skills/orchestration/scripts/lib/context-enrichment.ts` | `execute_task` enrichment lines 148-156 | When an active task-scope corrective exists (`taskIter.corrective_tasks[].find(ct => ct.status in ('not_started', 'in_progress'))`), return its `task_handoff.doc_path` as `handoff_doc`. Else fall through to today's lookup. |
 | `.claude/skills/orchestration/scripts/lib/frontmatter-validators.ts` | `VALIDATION_RULES.code_review_completed` (~line 52-58) | Replace the single `verdict` rule with the conditional contract described under "Frontmatter contract" above. May require extending the rule shape from "list of required fields" to "conditional rule set" — call out in the plan whether this is an extension of `FrontmatterValidationRule` or a custom validator function registered per event. |
 | `.claude/skills/code-review/task-review/workflow.md` | step 4 (line 31); Corrective Review Context section (lines 70-76); verdict-rules note (line 98); optionally Inputs row at line 23 | Remove the three corrective-related references. Clarify or remove the `Previous Code Review` Inputs row (decide at planning time). Keep everything else. |
-| `ui/components/dag-timeline/dag-node-row.tsx` | around lines 74-79 | Additive mediated badge — guarded render on `node.verdict_doc_frontmatter?.orchestrator_mediated === true` or equivalent. Badge copy, styling, and frontmatter exposure path are a plan-time decision; keep minimal and reversible. |
 
 **Helpers to reference but not modify:**
 
@@ -172,7 +178,7 @@ Test surfaces, by blast radius:
 
 **UI:**
 
-- `ui/components/dag-timeline/*.test.ts` — add a test for the mediated-badge render on a review node when frontmatter carries `orchestrator_mediated: true`. Legacy-render canary (`dag-timeline-legacy-render.test.ts`) must not regress.
+- No UI code changes in iter-10 (see UI Impact). Legacy-render canary (`dag-timeline-legacy-render.test.ts`) must still pass unchanged — if it regresses, something in the pipeline output shape drifted and needs investigation before merge.
 
 **Installer:**
 
@@ -188,7 +194,7 @@ Scratch project with a deliberately broken first coder attempt. Round-trip:
 4. Walker dispatches `execute_task` on the corrective; enrichment routes `handoff_doc` to the corrective handoff.
 5. Coder implements the fix; commit fires; `spawn_code_reviewer` dispatches; reviewer re-reviews stateless and approves.
 6. Task iteration completes. Task gate advances.
-7. UI smoke: mediated badge renders on the `code_review` node; addendum visible in the doc viewer; corrective task group renders `C1`.
+7. UI smoke (behavioral only — no new UI code): addendum visible in the doc viewer; corrective task group renders `C1`; legacy `state.json` renders unchanged.
 
 Second smoke variant: orchestrator declines all findings on mediation → no corrective handoff authored → `effective_outcome = approved` → pipeline advances as if the reviewer had approved. Addendum is still written (audit trail). No corrective entry appears.
 
@@ -205,7 +211,7 @@ Third smoke variant: budget exhaustion (set `max_retries_per_task: 1` in the scr
 - Task-review workflow is stateless across attempts (no Corrective-review check, no Corrective Review Context, no expected-corrections verdict note).
 - `document-conventions.md` lists the task-scope corrective Task Handoff filename row + 7 new frontmatter fields.
 - Scratch-project smoke completes all three variants (happy-path correction / decline-all / budget-exhaustion halt).
-- UI smoke: mediated badge renders; addendum reads cleanly; legacy state.json renders unchanged.
+- UI smoke (no new UI code): addendum reads cleanly; legacy state.json renders unchanged; corrective task group renders correctly.
 - No phase-scope handler / walker / workflow / test file touched — carve is clean for iter-11.
 
 ## Open Questions
@@ -213,7 +219,7 @@ Third smoke variant: budget exhaustion (set `max_retries_per_task: 1` in the scr
 All planning-time ambiguity resolved with the user at brainstorm time (2026-04-20):
 
 - **Signaling mechanism**: frontmatter-only. No new CLI flags. Pipeline pre-reads fields; validator fail-fast on contract breach; orchestrator self-corrects on the next turn.
-- **UI mediated badge**: include in iter-10 (additive, minimal). Not deferred.
+- **UI mediated badge**: deferred. Partial signal, not actionable, and the addendum section is the real audit artifact. A future iteration will revisit UI once mediated reviews exist to design from.
 - **Budget**: `max_retries_per_task` from `orchestration.yml` (default 5). Unchanged, no new knob.
 - **Companion shape**: flesh out for execution-readiness; plan file remains self-contained for the inner session.
 
