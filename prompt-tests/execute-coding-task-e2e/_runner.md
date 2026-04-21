@@ -22,7 +22,7 @@ You are NOT simulating a full pipeline. You do not drive `pipeline.js`, do not s
 | Input | Value | Notes |
 |-------|-------|-------|
 | Fixture name | `tdd-slip` | `prompt-tests/execute-coding-task-e2e/fixtures/tdd-slip/` |
-| Run folder | `prompt-tests/execute-coding-task-e2e/output/tdd-slip/baseline-tdd-slip-<YYYY-MM-DD>/` | Use today's date. The `baseline-tdd-slip-` prefix is required for the `.gitignore` exception. |
+| Run folder | `prompt-tests/execute-coding-task-e2e/output/tdd-slip/baseline-tdd-slip-<YYYY-MM-DD>/` | Use today's date. The folder name must start with `baseline-` for the `.gitignore` exception to re-include `run-notes.md` + `lint-report.md`; `baseline-tdd-slip-<DATE>` is the convention used by sibling harnesses. |
 
 All paths are relative to the repo root unless noted.
 

@@ -10,7 +10,7 @@ After the executor has run against both handoffs, capture grep evidence for each
   - `grep -c "^## Execution Notes$" tasks/TDD-SLIP-TASK-P01-T01-CAPITALIZE.md` → `1`
   - `grep -c "^## Execution Notes$" tasks/TDD-SLIP-TASK-P01-T01-CAPITALIZE-C1.md` → `1`
 - Pass criterion #3 — File Targets discipline:
-  - `diff src/utils.js ../../fixtures/tdd-slip/src/utils.js` → empty (identical)
+  - `diff src/utils.js ../../../fixtures/tdd-slip/src/utils.js` → empty (identical)
 - Pass criterion #4 — RED-GREEN ordering:
   - Capture the sequence of `Write` / `Bash node --test` tool invocations from the executor's transcript — production-file Write events must all follow the first failing `node --test` invocation.
 - Pass criterion #5 — Anti-pattern carve-out:
