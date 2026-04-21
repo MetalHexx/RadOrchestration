@@ -35,7 +35,7 @@ All paths are relative to the repo root unless noted.
 
 ## Setup
 
-1. Choose a run-folder name: `baseline-conformance-tiered-<YYYY-MM-DD>` (e.g., `baseline-conformance-tiered-2026-04-21` for the inaugural run). This name becomes `state.project.name` — the engine derives the project name from `path.basename(--project-dir)`.
+1. Choose a run-folder name: `baseline-conformance-tiered-<YYYY-MM-DD>` (e.g., `baseline-conformance-tiered-2026-04-21` for the inaugural run). This name becomes the run-folder's directory name on disk. Because the fixture ships a pre-seeded `state.json`, the engine loads that state on `start` and does **not** derive `state.project.name` from `path.basename(--project-dir)` (that derivation only fires on the scaffold path when no `state.json` exists). The pre-seeded `state.project.name` is `conformance-tiered` and stays that value regardless of the run-folder name.
 
 2. Create the run folder and copy the fixture into it:
    ```

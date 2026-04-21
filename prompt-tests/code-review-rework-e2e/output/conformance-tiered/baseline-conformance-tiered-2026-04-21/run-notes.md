@@ -83,4 +83,6 @@ Reviewers fall back to working-tree diff (`git diff HEAD` + untracked files). Be
 | 9 | State: task_loop[1].corrective_tasks.length === 1; phase_loop[0].corrective_tasks.length === 0. | ✅ | Confirmed against `state.json` post-run. |
 | 10 | Orchestrator addendum on first T2 review cites tier (drift) + reasoning + actioned=true for FR-2; NFR-1 + AD-1 declined with 'tracking for later scope'. | ✅ | Addendum table has three rows with parenthesized status tiers `(drift)`, `(on-track)`, `(on-track)` and dispositions `action` / `decline` / `decline`; decline reasons end with "Tracking for later scope." |
 
-All 10 criteria green.
+All 10 criteria green (inaugural baseline).
+
+> **Note — test-spec strengthening post-baseline**: PR #64's round-2 review cycle strengthened the harness spec with an 11th pass criterion (pipeline-level validator-health check on `final_review_completed`). This inaugural baseline predates that criterion and therefore verifies only the original 10. The next harness run will capture an updated baseline verifying all 11 criteria.
