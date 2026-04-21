@@ -20,19 +20,16 @@ Task Review reads only the inputs below — do NOT load the PRD, Architecture, D
 | `head_sha` | Spawn context | Commit hash of the just-made task commit. `null` when `source_control.auto_commit` is `never`. |
 | Diff | `git diff <head_sha>~1..<head_sha>` (or `git diff HEAD` + untracked files when `head_sha` is null) | The actual change under review — scope for the skeptical pass |
 | Source files | Files listed in Task Handoff's File Targets | Read only when the diff requires surrounding context |
-| Previous Code Review | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` | Previous review (if corrective task — may not exist) |
-| Corrective Task Handoff | Task Handoff for the corrective task | Corrective handoff (if corrective task — may not exist) |
 
 ## Workflow
 
 1. Read the Task Handoff — this is the complete conformance contract. Every FR-N, NFR-N, AD-N, and DD-N element that applies to this task is inlined there. Do not load other planning documents.
 2. **Scope the diff**: if `head_sha` is provided in spawn context, run `git diff <head_sha>~1..<head_sha>`. Otherwise (auto-commit is off) run `git diff HEAD` and read any untracked files listed in the Task Handoff's File Targets.
 3. Run tests and verify the build passes — do not accept "tests passed" on faith.
-4. **Corrective-review check**: If a previous Code Review exists for this task, read it (and the corrective task handoff, if present) to identify expected corrections. Deviations from the original plan that address issues in the previous review are expected corrections — do NOT flag them as conformance failures.
-5. **Conformance pass**: Compare the implementation against the Task Handoff using the 7-category checklist (see categories below). Core question: "Did we build what we intended?" Verify that the implementation satisfies the FR-N, NFR-N, AD-N, and DD-N elements inlined in the Task Handoff. Read full files from File Targets when the diff alone is insufficient to confirm conformance (e.g., to verify an export survived or a signature is still correct).
-6. **Skeptical pass** (Independent Quality Assessment): Read the diff line by line. Don't trust that it works because the handoff says it should — the handoff describes intent, the diff shows reality. Find what the implementer missed: bugs, edge cases, silent failures, defensive gaps. Apply code-smell detection without anchoring to the plan. Read full files only when the diff requires surrounding context.
-7. Apply verdict rules (see Verdict Rules section below) — highest severity across both passes determines verdict.
-8. Fill in the output template at [./template.md](./template.md) and save based on corrective status:
+4. **Conformance pass**: Compare the implementation against the Task Handoff using the 7-category checklist (see categories below). Core question: "Did we build what we intended?" Verify that the implementation satisfies the FR-N, NFR-N, AD-N, and DD-N elements inlined in the Task Handoff. Read full files from File Targets when the diff alone is insufficient to confirm conformance (e.g., to verify an export survived or a signature is still correct).
+5. **Skeptical pass** (Independent Quality Assessment): Read the diff line by line. Don't trust that it works because the handoff says it should — the handoff describes intent, the diff shows reality. Find what the implementer missed: bugs, edge cases, silent failures, defensive gaps. Apply code-smell detection without anchoring to the plan. Read full files only when the diff requires surrounding context.
+6. Apply verdict rules (see Verdict Rules section below) — highest severity across both passes determines verdict.
+7. Fill in the output template at [./template.md](./template.md) and save based on corrective status:
     - Normal (first-time): `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md`
     - Corrective: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}-C{corrective_index}.md`
 
@@ -67,14 +64,6 @@ The following categories are starting points, not an exhaustive checklist. Look 
 | Scope creep | Changes touching files outside the Task Handoff's File Targets | Edit to an unrelated helper "while I was there" |
 | Undocumented diff | Lines changed without a purpose tied to the task objective | Refactor of formatting or naming mixed into a functional change |
 
-## Corrective Review Context
-
-A corrective review occurs when reviewing a submission that follows a previous review with a `changes_requested` verdict.
-
-- **Previous review cross-reference**: Read the previous review document (and corrective task handoff, when present) to identify which issues were raised and which deviations were explicitly requested.
-- **Expected corrections rule**: Deviations from the original plan that directly address issues identified in the previous review are **expected corrections** — do NOT flag them as conformance failures.
-- **New deviations rule**: Deviations unrelated to the previous review's issues should still be flagged normally through the standard conformance and skeptical passes.
-
 ## Quality Standards
 
 - Code compiles and all tests pass — zero tolerance for build or test failures.
@@ -95,7 +84,6 @@ The highest-severity finding across both passes (conformance + skeptical) determ
 
 - Severity levels: **low** (cosmetic, style), **medium** (functional issue, missing coverage), **high** (security vulnerability, data loss risk, architectural violation). The `severity` frontmatter field records the highest finding severity across both passes, or `none` when no findings were raised.
 - Skeptical-pass findings use the same severity levels as conformance findings and CAN escalate the verdict.
-- During corrective reviews, deviations matching previous review issues are expected corrections and do not affect the verdict.
 
 ## Output
 

@@ -718,3 +718,141 @@ describe('enrichActionContext — corrective_index exposure', () => {
     expect(result).not.toHaveProperty('corrective_index');
   });
 });
+
+// ── [Iter 10] execute_task handoff routing to active task-scope corrective ────
+//
+// The mutation births a corrective entry with a pre-completed `task_handoff`
+// sub-node at the orchestrator-supplied path. Context-enrichment's
+// `execute_task` branch must prefer this over the original iteration's
+// `task_handoff` when the last corrective is active (not_started or
+// in_progress). Completed correctives fall through to the original handoff.
+
+describe('enrichActionContext — execute_task: active corrective handoff routing', () => {
+  const ORIG_HANDOFF = 'tasks/original-P01-T01.md';
+  const C1_HANDOFF = 'tasks/corrective-P01-T01-C1.md';
+  const C2_HANDOFF = 'tasks/corrective-P01-T01-C2.md';
+
+  function stateWithCorrectives(correctives: Array<{
+    index: number;
+    status: 'not_started' | 'in_progress' | 'completed';
+    doc_path: string;
+  }>): PipelineState {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [
+      {
+        index: 0,
+        status: 'in_progress',
+        nodes: {
+          task_loop: {
+            kind: 'for_each_task',
+            status: 'in_progress',
+            iterations: [
+              {
+                index: 0,
+                status: 'in_progress',
+                nodes: {
+                  task_handoff: {
+                    kind: 'step',
+                    status: 'completed',
+                    doc_path: ORIG_HANDOFF,
+                    retries: 0,
+                  } as StepNodeState,
+                },
+                corrective_tasks: correctives.map(c => ({
+                  index: c.index,
+                  reason: 'changes_requested',
+                  injected_after: 'code_review',
+                  status: c.status,
+                  nodes: {
+                    task_handoff: {
+                      kind: 'step',
+                      status: 'completed',
+                      doc_path: c.doc_path,
+                      retries: 0,
+                    } as StepNodeState,
+                  },
+                  commit_hash: null,
+                })),
+                commit_hash: null,
+              },
+            ],
+          } as ForEachTaskNodeState,
+        },
+        corrective_tasks: [],
+        commit_hash: null,
+      },
+    ];
+    return state;
+  }
+
+  it('no correctives → handoff_doc reads from original task_handoff', () => {
+    const state = stateWithCorrectives([]);
+    const result = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.handoff_doc).toBe(ORIG_HANDOFF);
+  });
+
+  it('active corrective (not_started) → handoff_doc routes to corrective task_handoff.doc_path', () => {
+    const state = stateWithCorrectives([
+      { index: 1, status: 'not_started', doc_path: C1_HANDOFF },
+    ]);
+    const result = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.handoff_doc).toBe(C1_HANDOFF);
+  });
+
+  it('active corrective (in_progress) → handoff_doc routes to corrective task_handoff.doc_path', () => {
+    const state = stateWithCorrectives([
+      { index: 1, status: 'in_progress', doc_path: C1_HANDOFF },
+    ]);
+    const result = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.handoff_doc).toBe(C1_HANDOFF);
+  });
+
+  it('multiple correctives, last is active → handoff_doc routes to the last entry', () => {
+    const state = stateWithCorrectives([
+      { index: 1, status: 'completed', doc_path: C1_HANDOFF },
+      { index: 2, status: 'in_progress', doc_path: C2_HANDOFF },
+    ]);
+    const result = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.handoff_doc).toBe(C2_HANDOFF);
+  });
+
+  it('all correctives completed → handoff_doc falls back to original task_handoff', () => {
+    const state = stateWithCorrectives([
+      { index: 1, status: 'completed', doc_path: C1_HANDOFF },
+      { index: 2, status: 'completed', doc_path: C2_HANDOFF },
+    ]);
+    const result = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.handoff_doc).toBe(ORIG_HANDOFF);
+  });
+});

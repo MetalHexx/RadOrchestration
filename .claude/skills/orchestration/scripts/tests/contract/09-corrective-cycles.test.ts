@@ -7,9 +7,10 @@ import {
   seedDoc,
   driveToExecutionWithConfig,
   driveTaskWith,
+  codeReviewDoc,
   phaseReviewDoc,
 } from '../fixtures/parity-states.js';
-import type { StepNodeState, ForEachPhaseNodeState } from '../../lib/types.js';
+import type { StepNodeState, ForEachPhaseNodeState, ForEachTaskNodeState } from '../../lib/types.js';
 
 // ── Clear DOC_STORE between tests ─────────────────────────────────────────────
 
@@ -98,6 +99,77 @@ describe('[REGRESSION] Auto-resolution — phase_review_completed approved witho
     expect(phaseReview.status).toBe('completed');
     expect(phaseReview.verdict).toBe('approved');
     expect(phaseReview.doc_path).toBe(phaseReviewDoc(1));
+  });
+});
+
+// ── [ITER 10] Orchestrator mediation — effective_outcome overrides raw verdict ─
+
+describe('[ITER 10] code_review_completed — orchestrator filter-down: approved effective_outcome births no corrective', () => {
+  it('raw verdict=changes_requested + effective_outcome=approved → no corrective entry birthed, state records approved', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+    const ctx = { phase: 1, task: 1 };
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    // The orchestrator judged all findings as decline — filter-down to approved.
+    // Validator contract: verdict=changes_requested + effective_outcome=approved,
+    // NO corrective_handoff_path (forbidden when effective_outcome=approved).
+    seedDoc(codeReviewDoc(1, 1), {
+      verdict: 'changes_requested',
+      orchestrator_mediated: true,
+      effective_outcome: 'approved',
+    });
+
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: codeReviewDoc(1, 1),
+      verdict: 'changes_requested',
+      orchestrator_mediated: true,
+      effective_outcome: 'approved',
+    } as Record<string, unknown>, io);
+
+    expect(result.success).toBe(true);
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    // No corrective birthed.
+    expect(taskLoop.iterations[0].corrective_tasks).toHaveLength(0);
+    // Routing-authoritative state: code_review.verdict records the effective outcome.
+    const codeReviewNode = taskLoop.iterations[0].nodes['code_review'] as StepNodeState;
+    expect(codeReviewNode.verdict).toBe('approved');
+    expect(io.currentState!.graph.status).not.toBe('halted');
+  });
+});
+
+describe('[ITER 10] code_review_completed — effective_outcome overrides raw verdict in state write', () => {
+  it('state.code_review.verdict mirrors effective_outcome, not the reviewer raw verdict', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+    const ctx = { phase: 1, task: 1 };
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    const correctiveHandoffPath = 'tasks/corrective-P01-T01-C1.md';
+    seedDoc(codeReviewDoc(1, 1), {
+      verdict: 'changes_requested',
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: correctiveHandoffPath,
+    });
+
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: codeReviewDoc(1, 1),
+      verdict: 'changes_requested',
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: correctiveHandoffPath,
+    } as Record<string, unknown>, io);
+
+    expect(result.success).toBe(true);
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const codeReviewNode = taskLoop.iterations[0].nodes['code_review'] as StepNodeState;
+    // effective_outcome is what hits state — routing-authoritative.
+    expect(codeReviewNode.verdict).toBe('changes_requested');
   });
 });
 

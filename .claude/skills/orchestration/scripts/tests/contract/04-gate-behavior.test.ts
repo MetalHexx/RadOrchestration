@@ -119,14 +119,19 @@ describe('[CONTRACT] Gate Behavior — Autonomous mode, task gate', () => {
     expect(gate.status).toBe('completed');
   });
 
-  it('unrecognized verdict halts pipeline (code_review_completed with "approve")', () => {
+  it('unrecognized verdict rejected at validator stage (code_review_completed with "approve")', () => {
+    // Iter-10 Copilot R3 hardening: verdict rule now validates the enum
+    // exactly. Typos like "approve" are caught as structured frontmatter
+    // errors before reaching the mutation — earlier + more actionable than
+    // the prior mutation-level unknown-verdict halt.
     const io = driveToExecutionWithConfig(autonomousConfig(), 1, 1);
     const result = driveTaskToCodeReview(io, 1, 1, 'approve');
 
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('display_halted');
-    expect(io.currentState!.graph.status).toBe('halted');
-    expect(io.currentState!.pipeline.halt_reason).toContain('approve');
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('verdict');
+    expect(result.error?.event).toBe('code_review_completed');
+    // Graph does not halt — validator rejection is recoverable.
+    expect(io.currentState!.graph.status).not.toBe('halted');
   });
 });
 

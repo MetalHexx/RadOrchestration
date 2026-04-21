@@ -14,7 +14,7 @@ This workspace contains a **document-driven agent orchestration system** built o
 | Agent | Purpose |
 |-------|---------|
 | `@brainstormer` | Collaboratively brainstorms and refines project ideas — standalone, outside the pipeline |
-| `@orchestrator` | Coordinates the pipeline — spawns agents, reads state, asks human questions. **Never writes files.** |
+| `@orchestrator` | Coordinates the pipeline — spawns agents, reads state, asks human questions. **Writes only**: `## Orchestrator Addendum` section + additive frontmatter on existing Code Review docs, and corrective Task Handoff files under `tasks/`. |
 | `@planner` | Authors the lean Requirements ledger and inlined Master Plan via `rad-create-plans` |
 | `@coder` | Executes coding tasks from self-contained task handoffs |
 | `@coder-junior` | Executes simpler coding tasks with additional guardrails |
