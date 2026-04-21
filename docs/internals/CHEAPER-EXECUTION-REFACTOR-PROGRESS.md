@@ -69,7 +69,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 8 | phase_review absorbs phase_report | Complete | 2026-04-20 | 2026-04-20 |
 | 9 | Complete `default.yml` | Complete | 2026-04-20 | 2026-04-20 |
 | 10 | Task-level corrective cycles (orchestrator mediation) | Merged | 2026-04-20 | 2026-04-20 |
-| 11 | Phase-level corrective cycles | Awaiting merge | 2026-04-21 | 2026-04-21 |
+| 11 | Phase-level corrective cycles | Complete | 2026-04-21 | 2026-04-21 |
 | 12 | Code-review rework (task/phase/final) | Not started | — | — |
 | 13 | Execute-coding-task rework | Not started | — | — |
 | 14 | Rad-plan-audit overhaul | Not started | — | — |
@@ -77,7 +77,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 16 | Repository deep clean | Not started | — | — |
 | 17 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 11 / 18 iterations complete; Iter 11 awaiting merge. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
+**Overall**: 11 / 18 iterations complete; Iter 12 next. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -103,7 +103,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 8 | `feat/iter-8-phase-review-absorbs-phase-report` | `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report` | Merged | `d5d45f3` | [#59](https://github.com/MetalHexx/RadOrchestation/pull/59) |
 | 9 | `feat/iter-9-complete-default-yml` | `C:\dev\orchestration\v3-worktrees\feat-iter-9-complete-default-yml` | Merged | `4ee1ea1` | [#60](https://github.com/MetalHexx/RadOrchestation/pull/60) |
 | 10 | `feat/iter-10-task-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-10-task-corrective-cycles` | Merged | `3b85095` | [#61](https://github.com/MetalHexx/RadOrchestation/pull/61) |
-| 11 | `feat/iter-11-phase-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-11-phase-corrective-cycles` | Awaiting merge | — | [#62](https://github.com/MetalHexx/RadOrchestation/pull/62) |
+| 11 | `feat/iter-11-phase-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-11-phase-corrective-cycles` | Merged | `6140a9a` | [#62](https://github.com/MetalHexx/RadOrchestation/pull/62) |
 | 12 | — | — | Not created | — | — |
 | 13 | — | — | Not created | — | — |
 | 14 | — | — | Not created | — | — |
