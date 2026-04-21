@@ -1,0 +1,33 @@
+version: "1.0"
+
+# Fixture-local orchestration.yml for the tdd-slip harness.
+# Kept minimal: only the fields that matter for the executor-only harness.
+# The runner does NOT drive pipeline.js — the executor is spawned manually
+# against each handoff — so this file is mostly documentary. It is included
+# for parity with the other prompt-tests fixtures and so a future operator
+# could opt into a pipeline-driven run without reconfiguring.
+
+system:
+  orch_root: ".claude"
+
+projects:
+  base_path: "."
+  naming: "SCREAMING_CASE"
+
+default_template: "default"
+
+limits:
+  max_phases: 10
+  max_tasks_per_phase: 8
+  max_retries_per_task: 5
+  max_consecutive_review_rejections: 3
+
+human_gates:
+  after_planning: true
+  execution_mode: "autonomous"
+  after_final_review: true
+
+source_control:
+  auto_commit: "never"
+  auto_pr: "never"
+  provider: "github"

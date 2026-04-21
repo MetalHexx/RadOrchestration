@@ -451,6 +451,67 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     }
   });
 
+  // Iter 13 — uniform handoff contract. The coder agent's enriched context for
+  // `execute_task` has the same shape whether the active iteration is the
+  // original task or a corrective (C1). Only `handoff_doc` differs — pointing
+  // at the original path vs the corrective path. No upstream-planning-doc
+  // fields participate at either position on the corrective cycle.
+  it('original and corrective handoffs hit same execution path — identical enrichment shape, no upstream-doc reads', () => {
+    const io = createMockIO(null, makeConfig());
+    const config = makeConfig();
+
+    // ── Planning tier — drives to the first execute_task on the original ──
+    const planningResult = drivePlanningTier(io);
+    expect(planningResult.action).toBe('execute_task');
+
+    // ── Capture enrichment at ORIGINAL iteration (no correctives yet) ──
+    const originalCtx = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state: io.currentState!,
+      config,
+      cliContext: {},
+    });
+
+    // ── Drive original through code_review with changes_requested → births C1 ──
+    const afterReview = driveTaskWithVerdict(io, 1, 1, 'changes_requested');
+    expect(afterReview.action).toBe('execute_task');
+
+    // ── Capture enrichment at CORRECTIVE iteration (C1 active, not yet done) ──
+    const correctiveCtx = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state: io.currentState!,
+      config,
+      cliContext: {},
+    });
+
+    // ── Identical key set — same execution path, no mode branching ──
+    const originalKeys = Object.keys(originalCtx).sort();
+    const correctiveKeys = Object.keys(correctiveCtx).sort();
+    expect(correctiveKeys).toEqual(originalKeys);
+
+    // ── Every key matches by value EXCEPT handoff_doc ──
+    for (const key of originalKeys) {
+      if (key === 'handoff_doc') continue;
+      expect(correctiveCtx[key]).toEqual(originalCtx[key]);
+    }
+
+    // ── handoff_doc differs — original path vs C1 corrective path ──
+    expect(originalCtx.handoff_doc).toBe(DOC_PATHS.taskHandoff(1, 1));
+    expect(correctiveCtx.handoff_doc).toBe(DOC_PATHS.correctiveHandoff(1, 1, 1));
+    expect(correctiveCtx.handoff_doc).not.toEqual(originalCtx.handoff_doc);
+
+    // ── Neither context carries any upstream-planning-doc field ──
+    for (const ctx of [originalCtx, correctiveCtx]) {
+      expect(ctx).not.toHaveProperty('requirements_doc');
+      expect(ctx).not.toHaveProperty('master_plan_doc');
+      expect(ctx).not.toHaveProperty('prd_doc');
+      expect(ctx).not.toHaveProperty('design_doc');
+      expect(ctx).not.toHaveProperty('architecture_doc');
+    }
+  });
+
   it('multiple retries then approval — two changes_requested → two corrective entries → second approved → advances', () => {
     const io = createMockIO(null, makeConfig());
     const config = makeConfig();

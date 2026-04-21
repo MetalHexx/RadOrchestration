@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
+import { enrichActionContext } from '../lib/context-enrichment.js';
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -465,6 +466,44 @@ describe('Execution-tier integration — complete pipeline run', () => {
     expect((nodes['pr_gate'] as ConditionalNodeState).status).toBe('completed');
 
     expect(io.currentState!.graph.status).toBe('completed');
+  });
+
+  // Iter 13 — executor reads ONLY the task-handoff. The enriched context for
+  // `execute_task` carries `handoff_doc` and the phase/task identifiers — and
+  // NOTHING that names an upstream planning doc (Requirements / Master Plan /
+  // PRD / Design / Architecture). Guards against executor-contract regressions
+  // if future enrichment code accidentally surfaces upstream doc paths.
+  it('execute_task enrichment passes handoff_doc ONLY — no upstream-doc fields', () => {
+    const io = createMockIO(null, makeConfig());
+    const config = makeConfig();
+
+    // Drive to first execute_task so the walker has resolved the active
+    // phase/task and the pre-seeded task_handoff doc_path is readable.
+    const result = drivePlanningTier(io);
+    expect(result.action).toBe('execute_task');
+
+    const ctx = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state: io.currentState!,
+      config,
+      cliContext: {},
+    });
+
+    // Present — the handoff doc path and the identity fields the coder needs.
+    expect(ctx).toHaveProperty('handoff_doc');
+    expect(ctx.handoff_doc).toBe(DOC_PATHS.taskHandoff(1, 1));
+    expect(ctx).toHaveProperty('phase_number', 1);
+    expect(ctx).toHaveProperty('phase_id', 'P01');
+    expect(ctx).toHaveProperty('task_number', 1);
+    expect(ctx).toHaveProperty('task_id', 'P01-T01');
+
+    // Absent — no upstream planning-doc fields may leak into the coder context.
+    expect(ctx).not.toHaveProperty('requirements_doc');
+    expect(ctx).not.toHaveProperty('master_plan_doc');
+    expect(ctx).not.toHaveProperty('prd_doc');
+    expect(ctx).not.toHaveProperty('design_doc');
+    expect(ctx).not.toHaveProperty('architecture_doc');
   });
 
   // Post-Iter 7: scratch project drives requirements-style flow and verifies that

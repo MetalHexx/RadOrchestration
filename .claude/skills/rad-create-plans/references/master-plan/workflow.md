@@ -138,6 +138,7 @@ becomes task-local and action-oriented.
    - Non-code tasks (`doc`, `config`, `infra`) use an author-chosen step
      shape. No TDD required, but every step must still reference at least
      one requirement ID.
+   - Test-quality anti-patterns during `code`-task authoring: no test-only methods in production code; no opaque mocks without documented purpose; no assertions that verify only mock behavior. These hide the test/production gap. Handoffs emitted from this plan inherit these constraints.
    - No placeholders. "TBD" / "implement later" / "similar to task N" /
      "as needed" — all prohibited. If you can't write it exactly, you
      aren't ready to write the plan.

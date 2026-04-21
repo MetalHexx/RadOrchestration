@@ -278,6 +278,10 @@ tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}-C{N}.md
 
 where `N = corrective_tasks.length + 1` at authoring time. Example: if `corrective_tasks` is empty (first mediation cycle), the file is `-C1.md`.
 
+### Code-task RED-GREEN shape
+
+For `code`-type corrective handoffs, the 4-step RED-GREEN shape is mandatory: (1) write the failing test; (2) run and confirm it fails; (3) implement minimal code; (4) run and confirm it passes. Mirrors the explosion-script `code`-task shape (`rad-create-plans/references/master-plan/workflow.md:132–140`). `doc`/`config`/`infra` correctives follow author-chosen step shapes; every step still ends in a requirement tag.
+
 ### Frontmatter
 
 Same core shape as an original Task Handoff, plus four additional fields:

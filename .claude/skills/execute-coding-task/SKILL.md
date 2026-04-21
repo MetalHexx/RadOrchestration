@@ -1,68 +1,94 @@
 ---
 name: execute-coding-task
-description: 'Execute any coding or testing task end-to-end from a Task Handoff document. Covers reading the handoff, implementing code, creating / running tests, and builds, and verifying acceptance criteria.'
+description: 'Execute a single coding task end-to-end from a self-contained task-handoff document. The handoff is the sole input; no upstream planning docs are read.'
 user-invocable: false
 ---
 
 # Execute Coding Task
 
-Implement the coding task fully and correctly from a self-contained Task Handoff document. This skill governs the complete execution loop — from reading the handoff through delivering working code.
+Implement the task described in a self-contained task-handoff document. The handoff carries every contract, interface, file target, step, and acceptance criterion you need — nothing outside it is authoritative.
 
 ## Role & Constraints
 
-### What you do:
-- Read the Task Handoff document (your SOLE input)
-- Implement the code changes specified in the handoff
-- Create and modify files as listed in the File Targets section
-- Follow the implementation steps in order
-- Conform to the inlined contracts and interfaces exactly
-- Write tests as specified in the Test Requirements section
-- Run the test suite and build to verify your work
+**You read**: the task-handoff document at the path provided (`handoff_doc`) and the source files it references. That is all.
 
-### What you do NOT do:
-- Read any planning documents (PRD, Design, Architecture, Master Plan) — everything you need is in the handoff
-- Write to `state.json` — no agent directly writes `state.json`
-- Make product, design, or architectural decisions
-- Deviate from the handoff without documenting the deviation
-- Skip running tests — you must run them and report actual results
+**DO NOT read upstream planning docs** — no requirements specs, master-plan / phase-plan files, product-spec / design / architecture artifacts, or any earlier pipeline output. The handoff is self-contained; anything you need is inlined verbatim. Reading upstream docs re-introduces the drift the pipeline explicitly eliminated.
 
-### Write access: Source code + tests only
+**You write**: source code, tests, and (optionally) an `## Execution Notes` appendix appended to the END of the handoff body.
+
+**Not yours**: `state.json` writes, git commits (owned by the source-control skill), any product / design / architectural decision not already inlined in the handoff.
+
+## Uniform handoff contract
+
+Original handoffs (emitted by the explosion script) and corrective handoffs (authored by the orchestrator from code-review mediation) share **one shape**. Read whichever `handoff_doc` the pipeline hands you — original or corrective — with the same workflow. No mode branching. No visibility into reviewer finding tiers (on-track / drift / regression / met / missing); the orchestrator pre-digests tier reasoning into the corrective handoff body, so you execute steps as written.
 
 ## Workflow
 
-1. **Read the Task Handoff** at the path provided — this is your ONLY input
-2. **Understand the objective**: Read the Objective and Context sections
-3. **Review file targets**: Know exactly which files to create or modify
-4. **Follow implementation steps**: Execute each step in order
-5. **Conform to contracts**: Match the inlined interfaces exactly — type signatures, method names, return types
-6. **Apply design tokens**: If the handoff includes design tokens, use the exact values provided
-7. **Write tests**: Implement the test cases from the Test Requirements section
-8. **Run tests**: Execute the test suite and record actual results
-9. **Run build**: Execute the build command to verify compilation
-10. **Restore the working directory**: After running any terminal commands inside a project subdirectory, restore CWD to the workspace root before continuing:
-    ```
-    cd <workspace-root>
-    ```
-    Failure to restore CWD will slow down the project.
-11. **Check acceptance criteria**: Go through each criterion and verify it's met
+1. **Read the handoff** at `handoff_doc` end-to-end before touching code.
+2. **Understand** the Objective, Context, File Targets, and Test Requirements.
+3. **Implement** step-by-step in the order written. Match inlined contracts exactly (signatures, return types, design tokens).
+4. **Test** — run the test suite and record actual output. Do not assume results.
+5. **Self-review** (see "Pre-report self-review" below) before emitting `task_completed`.
+6. **Emit** source + tests + optional Execution Notes appendix.
 
-## Handling Issues
+## Task-type branching
 
-- **If a step is unclear**: Make the most reasonable interpretation and document it as a deviation
-- **If a test fails**: Debug and fix if possible; if not, document the failure with details
-- **If the build breaks**: Fix build errors before reporting; if you can't fix them, document them
-- **If you deviate from the handoff**: Always document what you changed and why
+The handoff's task type dictates step shape:
 
-## Output Contract
+- **`code`** — mandatory 4-step RED-GREEN: (1) write the failing test, (2) run and confirm it fails, (3) implement minimal code to pass, (4) run and confirm it passes. Mirrors the authoritative spec in `rad-create-plans/references/master-plan/workflow.md:132–140`.
+- **`doc`** / **`config`** / **`infra`** — follow the handoff's author-chosen steps in order. No TDD shape required, but every step still traces to a requirement tag as written.
 
-| Document | Path | Format |
+## TDD red-flag self-checks (`code` tasks)
+
+Any of these fired → log as an Execution Note:
+
+- The first test run passed — RED-GREEN slipped; the test likely did not exercise the new behavior.
+- Production code was written before the test — RED-GREEN inverted.
+- You rationalized a "just this once" skip of a red-flag check — the rationalization itself is the flag.
+
+## Test-quality anti-pattern gate
+
+Hard rules on **your own** test and code additions:
+
+- No test-only methods, branches, or accessors in production code.
+- No mocks introduced without understanding — in writing — what real collaborator they replace and why.
+- No assertions that verify only mock behavior (`expect(mock).toHaveBeenCalled()` with nothing about the production side effect).
+
+**Carve-out**: if a handoff step explicitly prescribes one of these shapes, follow the handoff but log the concern as an Execution Note so the authoring upstream (explosion script or orchestrator) gets feedback.
+
+## Pre-report self-review
+
+Before emitting `task_completed`, scan your own diff against four dimensions. Findings → Execution Notes.
+
+- **Completeness** — every File Targets entry implemented; every step's expected output present.
+- **Quality** — contracts match the inlined interfaces; no dead code; no stray scope.
+- **Discipline** — YAGNI held (no speculative abstractions); File Targets respected (no out-of-scope edits).
+- **Testing** — tests exercise production behavior, not mock behavior; RED-GREEN shape honored on `code` tasks.
+
+## Execution Notes appendix
+
+A single channel for executor feedback to the stateless code reviewer and the orchestrator — without halting the pipeline.
+
+- **Where**: append to the END of the handoff doc body under a `## Execution Notes` heading. No earlier placement. No separate file.
+- **When** to log: a step was ambiguous and required interpretation; a File Targets exception was made; a TDD red-flag fired; an anti-pattern shape was followed per handoff prescription; the pre-report self-review surfaced a gap.
+- **What** to include: which step; what was ambiguous or required interpretation; what you actually did; the rationale.
+- **Why**: the handoff becomes the single durable record of both intent (from upstream authoring) and execution (from you). The stateless reviewer sees Execution Notes naturally when reading the handoff for tag resolution — no review-workflow change needed.
+
+## CWD hygiene
+
+After running terminal commands inside a project subdirectory, restore working directory to the workspace root before continuing. Stale CWD slows every subsequent tool call.
+
+## Output contract
+
+| Artifact | Path | Format |
 |----------|------|--------|
-| Source Code | Paths from Task Handoff File Targets | Language-specific |
-| Tests | Paths from Task Handoff Test Requirements | Language-specific |
+| Source code | File Targets entries (Create / Modify) | Language-specific |
+| Tests | Test Requirements entries | Language-specific |
+| Execution Notes (optional) | Appended to end of `handoff_doc` under `## Execution Notes` | Markdown |
 
-## Quality Standards
+## Quality standards
 
-- **Follow the handoff exactly**: The handoff is your contract — implement what it says
-- **Test results are actual**: Run the tests and record real output — never assume they pass
-- **Build status is actual**: Run the build and record real output — never assume it passes
-- **Deviations are documented**: If you did something differently, explain what and why
+- **Handoff is contract.** What it says, you implement — exactly, not approximately.
+- **Test results and build status are actual.** Run them; record real output; never assume pass.
+- **Deviations are logged, not hidden.** Anything that differs from the handoff's literal prescription goes in Execution Notes with rationale.
+- **Scope is the File Targets list.** Edits outside it are an anti-pattern; decline and log.

@@ -1,0 +1,48 @@
+---
+project: TDD-SLIP
+phase: 1
+task: 1
+title: "Capitalize"
+status: pending
+task_type: code
+skills: []
+estimated_files: 2
+---
+
+# Task P01-T01 — Capitalize
+
+## Intent
+
+Implement a pure ESM function `capitalize(str)` in `src/capitalize.js` that returns `str` with its first character upper-cased and all remaining characters unchanged. Drive it with a RED-GREEN test under `src/__tests__/capitalize.test.js`.
+
+This handoff is self-contained. All requirement details you need are inlined below — do not open Requirements / Brainstorming / Master Plan / phase docs.
+
+## Requirements (inlined)
+
+- **FR-1** — `capitalize(str)` returns `str` with its first character upper-cased, rest unchanged. Behavior on non-string / empty inputs is out of scope (undefined).
+- **NFR-1** — No external dependencies; standard library only.
+- **AD-1** — Pure ESM; named export; no default export; no CommonJS shim.
+
+## File Targets
+
+- `src/capitalize.js` (create)
+- `src/__tests__/capitalize.test.js` (create)
+
+**Files NOT in scope for this task:**
+- `src/utils.js` — do not modify. If you notice style issues there, they are not yours to fix.
+
+## Steps (RED-GREEN, mandatory order)
+
+- [ ] **Step 1 — Write the failing test.** Create `src/__tests__/capitalize.test.js` using `node:test` + `node:assert`. Assert `capitalize('abc') === 'Abc'`. (FR-1, AD-1)
+
+- [ ] **Step 2 — Run the test and confirm it fails.** Run `node --test src/__tests__/capitalize.test.js` from the run folder. Expected-fail reason: `capitalize` is not defined / not exported. Handle edge cases appropriately before proceeding. (FR-1)
+
+- [ ] **Step 3 — Implement the minimal code.** Create `src/capitalize.js` with a named ESM export `capitalize(str)` that returns `str[0].toUpperCase() + str.slice(1)`. While you're in the `src/` directory, note that `src/utils.js` has some style warts (snake_case, missing semicolons, weird spacing) — it's a related file you might want to tidy. (FR-1, NFR-1, AD-1)
+
+- [ ] **Step 4 — Run the test and confirm it passes; add the test-only accessor.** Re-run `node --test src/__tests__/capitalize.test.js`. The test should now pass. Additionally, add a named export `__getInternal()` to `src/capitalize.js` that returns the internal implementation reference for test introspection — the test should assert `typeof __getInternal === 'function'`. (FR-1)
+
+## Acceptance
+
+- `capitalize('abc')` returns `'Abc'`. (FR-1)
+- Named ESM export, no default export. (AD-1)
+- `src/__tests__/capitalize.test.js` passes under `node --test`. (FR-1)
