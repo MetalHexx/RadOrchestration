@@ -33,10 +33,11 @@ Original handoffs (emitted by the explosion script) and corrective handoffs (aut
 
 ## Task-type branching
 
-The handoff's task type dictates step shape:
+Branch on task type **only** when the handoff declares one explicitly (a `task_type:` field in frontmatter, or a labeled section in the body). If no explicit task type is present, do not infer one from the file targets or step shape — execute the handoff as written.
 
-- **`code`** — mandatory 4-step RED-GREEN: (1) write the failing test, (2) run and confirm it fails, (3) implement minimal code to pass, (4) run and confirm it passes. Mirrors the authoritative spec in `rad-create-plans/references/master-plan/workflow.md:132–140`.
-- **`doc`** / **`config`** / **`infra`** — follow the handoff's author-chosen steps in order. No TDD shape required, but every step still traces to a requirement tag as written.
+- **Explicit `code`** — mandatory 4-step RED-GREEN: (1) write the failing test, (2) run and confirm it fails, (3) implement minimal code to pass, (4) run and confirm it passes. Mirrors the authoritative spec in `rad-create-plans/references/master-plan/workflow.md:132–140`.
+- **Explicit `doc`** / **`config`** / **`infra`** — follow the handoff's author-chosen steps in order. No TDD shape required, but every step still traces to a requirement tag as written.
+- **No explicit task type** — follow the handoff workflow and steps exactly as written. Do not apply a template.
 
 ## TDD red-flag self-checks (`code` tasks)
 
