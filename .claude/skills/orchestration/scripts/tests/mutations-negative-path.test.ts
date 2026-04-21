@@ -555,3 +555,150 @@ describe('code_review_completed (Iter 10) — mutation-side backstop hard errors
     );
   });
 });
+
+// ── Iter 11 — phase_review_completed mediation-contract hard errors ──────────
+//
+// Parallel of the iter-10 code_review backstop tests above, but at phase scope.
+// The validator is the primary enforcer (see 05-frontmatter-validation.test.ts);
+// these tests pin the mutation-side backstops when the validator is bypassed.
+
+describe('phase_review_completed (Iter 11) — mutation-side backstop hard errors', () => {
+  // Phase-scope test fixture — reuse the execution state shape but with the
+  // phase_review in_progress (parallels the iter-10 makeExecutionState helper).
+  function makePhaseReviewState(): PipelineState {
+    const state = makeState();
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
+    phaseLoop.status = 'in_progress';
+    phaseLoop.iterations[0].status = 'in_progress';
+    phaseLoop.iterations[0].nodes['phase_review'] = {
+      kind: 'step',
+      status: 'in_progress',
+      doc_path: null,
+      retries: 0,
+    };
+    return state;
+  }
+
+  it('effective_outcome=changes_requested with no corrective_handoff_path at phase scope → clean halt with budget-exhausted reason', () => {
+    const state = makePhaseReviewState();
+    const mutation = getMutation('phase_review_completed')!;
+    const result = mutation(
+      state,
+      {
+        phase: 1,
+        doc_path: '/r.md',
+        verdict: 'changes_requested',
+        exit_criteria_met: false,
+        orchestrator_mediated: true,
+        effective_outcome: 'changes_requested',
+      } as Record<string, unknown>,
+      baseConfig,
+      taskBodyTemplate(),
+    );
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toMatch(/budget-exhausted halt signal|no corrective_handoff_path/);
+    // Halt reason explicitly names phase scope.
+    expect(result.state.pipeline.halt_reason).toContain('phase');
+    const phaseLoop = result.state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
+    expect(phaseLoop.iterations[0].status).toBe('halted');
+    expect(phaseLoop.iterations[0].corrective_tasks).toHaveLength(0);
+  });
+
+  it('effective_outcome=changes_requested with whitespace-only corrective_handoff_path at phase scope → clean halt (treated as no handoff)', () => {
+    const state = makePhaseReviewState();
+    const mutation = getMutation('phase_review_completed')!;
+    const result = mutation(
+      state,
+      {
+        phase: 1,
+        doc_path: '/r.md',
+        verdict: 'changes_requested',
+        exit_criteria_met: false,
+        orchestrator_mediated: true,
+        effective_outcome: 'changes_requested',
+        corrective_handoff_path: '   ',
+      } as Record<string, unknown>,
+      baseConfig,
+      taskBodyTemplate(),
+    );
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toMatch(/budget-exhausted halt signal|no corrective_handoff_path/);
+    const phaseLoop = result.state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
+    expect(phaseLoop.iterations[0].corrective_tasks).toHaveLength(0);
+  });
+
+  it('budget exhausted + corrective_handoff_path supplied at phase scope → hard error halt with descriptive reason', () => {
+    const state = makePhaseReviewState();
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
+    const iteration = phaseLoop.iterations[0];
+    for (let i = 0; i < baseConfig.limits.max_retries_per_task; i++) {
+      iteration.corrective_tasks.push({
+        index: i + 1,
+        reason: 'prior',
+        injected_after: 'phase_review',
+        status: 'not_started',
+        nodes: {},
+        commit_hash: null,
+      });
+    }
+
+    const mutation = getMutation('phase_review_completed')!;
+    const result = mutation(
+      state,
+      {
+        phase: 1,
+        doc_path: '/r.md',
+        verdict: 'changes_requested',
+        exit_criteria_met: false,
+        orchestrator_mediated: true,
+        effective_outcome: 'changes_requested',
+        corrective_handoff_path: 'tasks/exhausted-P01-PHASE-C4.md',
+      } as Record<string, unknown>,
+      baseConfig,
+      taskBodyTemplate(),
+    );
+
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('Retry budget exhausted');
+    expect(result.state.pipeline.halt_reason).toContain('corrective_handoff_path');
+    // Phase iteration halted, budget unchanged (no new birth).
+    const finalPhaseLoop = result.state.graph.nodes['phase_loop'];
+    if (finalPhaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
+    expect(finalPhaseLoop.iterations[0].status).toBe('halted');
+    expect(finalPhaseLoop.iterations[0].corrective_tasks).toHaveLength(
+      baseConfig.limits.max_retries_per_task,
+    );
+  });
+
+  it('effective_outcome=approved with corrective_handoff_path present at phase scope → mutation tolerates (filter-down no-op; validator catches it)', () => {
+    // Layered-responsibility contract: validator catches this (see
+    // 05-frontmatter-validation.test.ts). Mutation sees routingVerdict=approved,
+    // takes the no-op branch. No corrective birthed, no halt.
+    const state = makePhaseReviewState();
+    const mutation = getMutation('phase_review_completed')!;
+    const result = mutation(
+      state,
+      {
+        phase: 1,
+        doc_path: '/r.md',
+        verdict: 'changes_requested',
+        exit_criteria_met: false,
+        orchestrator_mediated: true,
+        effective_outcome: 'approved',
+        corrective_handoff_path: 'tasks/ghost-P01-PHASE-C1.md',
+      } as Record<string, unknown>,
+      baseConfig,
+      taskBodyTemplate(),
+    );
+    const phaseLoop = result.state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
+    expect(phaseLoop.iterations[0].corrective_tasks).toHaveLength(0);
+    expect(result.state.graph.status).not.toBe('halted');
+    const phaseReview = phaseLoop.iterations[0].nodes['phase_review'] as StepNodeState;
+    expect(phaseReview.verdict).toBe('approved');
+  });
+});

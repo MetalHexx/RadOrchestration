@@ -436,3 +436,123 @@ describe('preRead — code_review_completed: orchestrator-mediation frontmatter 
     expect(result.error!.field).toBe('orchestrator_mediated');
   });
 });
+
+// ── Iter 11 — phase_review_completed: orchestrator-mediation frontmatter ─────
+//
+// Parallels the iter-10 code_review_completed block above. The new phase-scope
+// mediation contract surfaces `orchestrator_mediated` + `effective_outcome` +
+// `corrective_handoff_path` via pre-reads onto the event context.
+
+describe('preRead — phase_review_completed: orchestrator-mediation frontmatter propagation (Iter 11)', () => {
+  function phaseReviewEntry(): EventIndexEntry {
+    return {
+      nodeDef: {
+        id: 'phase_review',
+        kind: 'step',
+        action: 'spawn_phase_reviewer',
+        events: {
+          started: 'phase_review_started',
+          completed: 'phase_review_completed',
+        },
+        doc_output_field: 'doc_path',
+      },
+      eventPhase: 'completed',
+      templatePath: 'phase_loop.body.phase_review',
+    };
+  }
+
+  it('surfaces orchestrator_mediated + effective_outcome + corrective_handoff_path onto event context', () => {
+    const context = baseContext({ event: 'phase_review_completed', doc_path: ABS_DOC_PATH });
+    const entry = phaseReviewEntry();
+    const readDocument: IOAdapter['readDocument'] = vi.fn().mockReturnValue({
+      frontmatter: {
+        verdict: 'changes_requested',
+        exit_criteria_met: false,
+        orchestrator_mediated: true,
+        effective_outcome: 'changes_requested',
+        corrective_handoff_path: 'tasks/X-P01-PHASE-C1.md',
+      },
+      content: '# phase review',
+    });
+
+    const result = preRead('phase_review_completed', context, readDocument, PROJECT_DIR, {}, entry);
+
+    expect(result.error).toBeUndefined();
+    const ctx = result.context as Record<string, unknown>;
+    expect(ctx.verdict).toBe('changes_requested');
+    expect(ctx.exit_criteria_met).toBe(false);
+    expect(ctx.orchestrator_mediated).toBe(true);
+    expect(ctx.effective_outcome).toBe('changes_requested');
+    expect(ctx.corrective_handoff_path).toBe('tasks/X-P01-PHASE-C1.md');
+  });
+
+  it('passes mediated changes_requested with no corrective_handoff_path (budget-exhausted halt signal; validator accepts, mutation halts)', () => {
+    const context = baseContext({ event: 'phase_review_completed', doc_path: ABS_DOC_PATH });
+    const entry = phaseReviewEntry();
+    const readDocument: IOAdapter['readDocument'] = vi.fn().mockReturnValue({
+      frontmatter: {
+        verdict: 'changes_requested',
+        exit_criteria_met: false,
+        orchestrator_mediated: true,
+        effective_outcome: 'changes_requested',
+        // corrective_handoff_path intentionally absent — budget-exhausted signal.
+      },
+      content: '# phase review',
+    });
+
+    const result = preRead('phase_review_completed', context, readDocument, PROJECT_DIR, {}, entry);
+
+    expect(result.error).toBeUndefined();
+    const ctx = result.context as Record<string, unknown>;
+    expect(ctx.effective_outcome).toBe('changes_requested');
+    expect(ctx.corrective_handoff_path).toBeUndefined();
+  });
+
+  it('propagates validator rejection when corrective_handoff_path is whitespace-only', () => {
+    const context = baseContext({ event: 'phase_review_completed', doc_path: ABS_DOC_PATH });
+    const entry = phaseReviewEntry();
+    const readDocument: IOAdapter['readDocument'] = vi.fn().mockReturnValue({
+      frontmatter: {
+        verdict: 'changes_requested',
+        exit_criteria_met: false,
+        orchestrator_mediated: true,
+        effective_outcome: 'changes_requested',
+        corrective_handoff_path: '   ',
+      },
+      content: '# phase review',
+    });
+
+    const result = preRead('phase_review_completed', context, readDocument, PROJECT_DIR, {}, entry);
+
+    expect(result.error).toBeDefined();
+    expect(result.error!.field).toBe('corrective_handoff_path');
+  });
+
+  it('passes through raw approved verdict with no mediation fields (valid contract)', () => {
+    const context = baseContext({ event: 'phase_review_completed', doc_path: ABS_DOC_PATH });
+    const entry = phaseReviewEntry();
+    const readDocument: IOAdapter['readDocument'] = vi.fn().mockReturnValue({
+      frontmatter: { verdict: 'approved', exit_criteria_met: true },
+      content: '# phase review',
+    });
+
+    const result = preRead('phase_review_completed', context, readDocument, PROJECT_DIR, {}, entry);
+
+    expect(result.error).toBeUndefined();
+    expect((result.context as Record<string, unknown>).verdict).toBe('approved');
+  });
+
+  it('rejects raw approved verdict with orchestrator_mediated set (forbidden on non-mediated paths)', () => {
+    const context = baseContext({ event: 'phase_review_completed', doc_path: ABS_DOC_PATH });
+    const entry = phaseReviewEntry();
+    const readDocument: IOAdapter['readDocument'] = vi.fn().mockReturnValue({
+      frontmatter: { verdict: 'approved', exit_criteria_met: true, orchestrator_mediated: true },
+      content: '# phase review',
+    });
+
+    const result = preRead('phase_review_completed', context, readDocument, PROJECT_DIR, {}, entry);
+
+    expect(result.error).toBeDefined();
+    expect(result.error!.field).toBe('orchestrator_mediated');
+  });
+});

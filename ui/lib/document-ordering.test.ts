@@ -567,6 +567,106 @@ test('corrective task step nodes append CT suffix with task category', () => {
   assert.strictEqual(docs[1].path, 'tasks/T01-CT1.md');
 });
 
+test('phase-scope corrective task step nodes append Phase-CN suffix with correct categories', () => {
+  // Mirrors the task-scope corrective test above but for phaseIter.corrective_tasks.
+  // Exercises the additive phase-scope loop added to document-ordering.ts in Iter-11.
+  const state = makeV5State({
+    phase_loop: {
+      kind: 'for_each_phase',
+      status: 'in_progress',
+      iterations: [
+        {
+          index: 0,
+          status: 'in_progress',
+          nodes: {
+            phase_planning: { kind: 'step', status: 'completed', doc_path: 'phases/P01-PLAN.md', retries: 0 },
+            phase_review: { kind: 'step', status: 'completed', doc_path: 'reports/P01-PHASE-REVIEW.md', retries: 0 },
+          },
+          corrective_tasks: [
+            {
+              index: 1,
+              reason: 'Phase review requested changes',
+              injected_after: 'phase_review',
+              status: 'completed',
+              nodes: {
+                task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/PROJ-TASK-P01-PHASE-C1.md', retries: 0 },
+                code_review: { kind: 'step', status: 'completed', doc_path: 'reports/PROJ-CODE-REVIEW-P01-PHASE-C1.md', retries: 0 },
+              },
+              commit_hash: null,
+            },
+          ],
+          commit_hash: null,
+        },
+      ],
+    },
+  });
+
+  const docs = getOrderedDocsV5(state, 'TEST');
+  // Expect: phase_planning, phase_review, then two phase-scope corrective docs
+  assert.strictEqual(docs.length, 4);
+  assert.strictEqual(docs[0].title, 'Phase 1 Plan');
+  assert.strictEqual(docs[1].title, 'Phase 1 Review');
+  assert.strictEqual(docs[2].title, 'Phase 1 Plan (Phase-C1)');
+  assert.strictEqual(docs[2].category, 'phase');
+  assert.strictEqual(docs[2].path, 'tasks/PROJ-TASK-P01-PHASE-C1.md');
+  assert.strictEqual(docs[3].title, 'Phase 1 Review (Phase-C1)');
+  assert.strictEqual(docs[3].category, 'review');
+  assert.strictEqual(docs[3].path, 'reports/PROJ-CODE-REVIEW-P01-PHASE-C1.md');
+});
+
+test('phase-scope corrective docs are sorted by corrective index and interleave correctly with task docs', () => {
+  // Two phase-scope correctives (index 1 + index 2), stored out of order.
+  // Ensures the sort((a, b) => a.index - b.index) in the loop is exercised.
+  const state = makeV5State({
+    phase_loop: {
+      kind: 'for_each_phase',
+      status: 'in_progress',
+      iterations: [
+        {
+          index: 0,
+          status: 'in_progress',
+          nodes: {
+            phase_review: { kind: 'step', status: 'completed', doc_path: 'reports/P01-PHASE-REVIEW.md', retries: 0 },
+          },
+          corrective_tasks: [
+            // Intentionally out of order: index 2 before index 1
+            {
+              index: 2,
+              reason: 'Phase review second round',
+              injected_after: 'phase_review',
+              status: 'completed',
+              nodes: {
+                task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/PROJ-TASK-P01-PHASE-C2.md', retries: 0 },
+              },
+              commit_hash: null,
+            },
+            {
+              index: 1,
+              reason: 'Phase review first round',
+              injected_after: 'phase_review',
+              status: 'completed',
+              nodes: {
+                task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/PROJ-TASK-P01-PHASE-C1.md', retries: 0 },
+              },
+              commit_hash: null,
+            },
+          ],
+          commit_hash: null,
+        },
+      ],
+    },
+  });
+
+  const docs = getOrderedDocsV5(state, 'TEST');
+  // phase_review, then corrective C1 (index 1) before C2 (index 2)
+  assert.strictEqual(docs.length, 3);
+  assert.strictEqual(docs[0].title, 'Phase 1 Review');
+  assert.strictEqual(docs[1].title, 'Phase 1 Plan (Phase-C1)');
+  assert.strictEqual(docs[1].path, 'tasks/PROJ-TASK-P01-PHASE-C1.md');
+  assert.strictEqual(docs[2].title, 'Phase 1 Plan (Phase-C2)');
+  assert.strictEqual(docs[2].path, 'tasks/PROJ-TASK-P01-PHASE-C2.md');
+});
+
 test('gate and conditional nodes are skipped (no documents produced)', () => {
   const state = makeV5State({
     plan_approval_gate: { kind: 'gate', status: 'not_started', gate_active: false },

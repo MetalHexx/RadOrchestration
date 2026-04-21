@@ -14,7 +14,8 @@ Covers all documents produced during pipeline execution. Planning documents (Mas
 | Error Log | — (root) | `{NAME}-ERROR-LOG.md` | `MYAPP-ERROR-LOG.md` |
 | Phase Plan | phases/ | `{NAME}-PHASE-{NN}-{TITLE}.md` | `MYAPP-PHASE-01-SETUP.md` |
 | Task Handoff | tasks/ | `{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-TASK-P01-T02-AUTH.md` |
-| Corrective Task Handoff | tasks/ | `{NAME}-TASK-P{NN}-T{NN}-{TITLE}-C{N}.md` | `MYAPP-TASK-P01-T02-AUTH-C1.md` |
+| Corrective Task Handoff (task scope) | tasks/ | `{NAME}-TASK-P{NN}-T{NN}-{TITLE}-C{N}.md` | `MYAPP-TASK-P01-T02-AUTH-C1.md` |
+| Corrective Task Handoff (phase scope) | tasks/ | `{NAME}-TASK-P{NN}-PHASE-C{N}.md` | `MYAPP-TASK-P01-PHASE-C1.md` |
 | Code Review | reports/ | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-CODE-REVIEW-P01-T02-AUTH.md` |
 | Phase Review | reports/ | `{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REVIEW-P01-SETUP.md` |
 
@@ -31,9 +32,13 @@ When a producing skill re-authors a document during a corrective cycle, append t
 | First correction | `MYPROJ-PHASE-02-SETUP-C1.md` |
 | Second correction | `MYPROJ-PHASE-02-SETUP-C2.md` |
 | Original task handoff | `MYPROJ-TASK-P01-T02-AUTH.md` |
-| Corrective task handoff (first) | `MYPROJ-TASK-P01-T02-AUTH-C1.md` |
+| Corrective task handoff (task scope, first) | `MYPROJ-TASK-P01-T02-AUTH-C1.md` |
+| Corrective task handoff (phase scope, first) | `MYPROJ-TASK-P01-PHASE-C1.md` |
+| Code review of a phase-scope corrective (first) | `MYPROJ-CODE-REVIEW-P01-PHASE-C1.md` |
 
-The `-C{N}` suffix rule applies to Task Handoffs, Code Reviews, and Phase Reviews. For Task Handoffs, the corrective handoff is authored by the orchestrator during mediation — not by a coder or planner. Each producing skill's workflow cross-references this section for the shared pattern.
+The `-C{N}` suffix rule applies to Task Handoffs and task-level Code Reviews. It does NOT apply to Phase Reviews — under Iter 11's single-pass clause, a phase iteration runs `phase_review` exactly once; its corrective cycle is carried entirely by task-level re-reviews of the phase-sentinel Task Handoff (see "Phase-scope sentinel form" below). For Task Handoffs, the corrective handoff is authored by the orchestrator during mediation — not by a coder or planner. Each producing skill's workflow cross-references this section for the shared pattern.
+
+**Phase-scope sentinel form.** When the orchestrator mediates a `phase_review` and the effective outcome is `changes_requested`, the authored corrective Task Handoff substitutes the `PHASE` token for the `T{NN}-{TITLE}` segment: `{NAME}-TASK-P{NN}-PHASE-C{N}.md`. The token signals that the corrective applies to phase-scope exit-criteria or cross-task integration — not a single task. The same sentinel carries through to the corresponding task-level code review filename: `{NAME}-CODE-REVIEW-P{NN}-PHASE-C{N}.md`. The corresponding state entry lives under `phaseIter.corrective_tasks[]`, not `taskIter.corrective_tasks[]`.
 
 ## Frontmatter Field Reference
 
@@ -57,11 +62,11 @@ The `-C{N}` suffix rule applies to Task Handoffs, Code Reviews, and Phase Review
 | verdict | string | `"approved"` \| `"changes_requested"` \| `"rejected"` | Code Review, Phase Review |
 | severity | string | `"none"` \| `"low"` \| `"medium"` \| `"high"` | Code Review, Phase Review |
 | exit_criteria_met | boolean | `true` \| `false` | Phase Review |
-| orchestrator_mediated | boolean | `true` (only value that appears) | Code Review |
-| effective_outcome | string | `"approved"` \| `"changes_requested"` | Code Review |
-| corrective_handoff_path | string | Path to corrective Task Handoff (present only when `effective_outcome === "changes_requested"`) | Code Review |
+| orchestrator_mediated | boolean | `true` (only value that appears) | Code Review, Phase Review |
+| effective_outcome | string | `"approved"` \| `"changes_requested"` | Code Review, Phase Review |
+| corrective_handoff_path | string | Path to corrective Task Handoff (present only when `effective_outcome === "changes_requested"`) | Code Review, Phase Review |
 | corrective_index | integer | 1-based corrective attempt index (e.g., `1`) | Corrective Task Handoff |
-| corrective_scope | string | `"task"` (for Iter-10; `"phase"` reserved for Iter-11) | Corrective Task Handoff |
+| corrective_scope | string | `"task"` \| `"phase"` | Corrective Task Handoff |
 | budget_max | integer | Value of `max_retries_per_task` at authoring time | Corrective Task Handoff |
 | budget_remaining | integer | Informational remaining retry budget at authoring time | Corrective Task Handoff |
 

@@ -24,3 +24,10 @@ node_modules/
 /prompt-tests/corrective-mediation-e2e/output/*/*/**
 !/prompt-tests/corrective-mediation-e2e/output/*/.gitkeep
 !/prompt-tests/corrective-mediation-e2e/output/broken-colors/baseline-*/run-notes.md
+
+# Prompt harness — phase-review-mediation-e2e.
+# Same structure as above: ignore run-folder contents, re-include the
+# inaugural-baseline run-notes.md under baseline-* folders.
+/prompt-tests/phase-review-mediation-e2e/output/*/*/**
+!/prompt-tests/phase-review-mediation-e2e/output/*/.gitkeep
+!/prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/baseline-*/run-notes.md

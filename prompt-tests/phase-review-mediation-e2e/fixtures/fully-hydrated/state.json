@@ -1,0 +1,490 @@
+{
+  "$schema": "orchestration-state-v5",
+  "project": {
+    "name": "fully-hydrated",
+    "created": "2026-04-21T00:00:00.000Z",
+    "updated": "2026-04-21T00:00:00.000Z"
+  },
+  "config": {
+    "gate_mode": "autonomous",
+    "limits": {
+      "max_phases": 10,
+      "max_tasks_per_phase": 8,
+      "max_retries_per_task": 5,
+      "max_consecutive_review_rejections": 3
+    },
+    "source_control": {
+      "auto_commit": "never",
+      "auto_pr": "never"
+    }
+  },
+  "pipeline": {
+    "gate_mode": "autonomous",
+    "source_control": null,
+    "current_tier": "execution",
+    "halt_reason": null
+  },
+  "graph": {
+    "template_id": "default",
+    "status": "in_progress",
+    "current_node_path": "phase_loop[1].phase_gate",
+    "nodes": {
+      "requirements": {
+        "kind": "step",
+        "status": "completed",
+        "doc_path": "FULLY-HYDRATED-REQUIREMENTS.md",
+        "retries": 0
+      },
+      "master_plan": {
+        "kind": "step",
+        "status": "completed",
+        "doc_path": "FULLY-HYDRATED-MASTER-PLAN.md",
+        "retries": 0,
+        "parse_retry_count": 0
+      },
+      "explode_master_plan": {
+        "kind": "step",
+        "status": "completed",
+        "doc_path": null,
+        "retries": 0
+      },
+      "plan_approval_gate": {
+        "kind": "gate",
+        "status": "completed",
+        "gate_active": false
+      },
+      "gate_mode_selection": {
+        "kind": "gate",
+        "status": "completed",
+        "gate_active": false
+      },
+      "phase_loop": {
+        "kind": "for_each_phase",
+        "status": "in_progress",
+        "iterations": [
+          {
+            "index": 0,
+            "status": "completed",
+            "nodes": {
+              "phase_planning": {
+                "kind": "step",
+                "status": "completed",
+                "doc_path": "phases/FULLY-HYDRATED-PHASE-01-CORE.md",
+                "retries": 0
+              },
+              "task_loop": {
+                "kind": "for_each_task",
+                "status": "completed",
+                "iterations": [
+                  {
+                    "index": 0,
+                    "status": "completed",
+                    "nodes": {
+                      "task_handoff": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T01-FOUNDATION.md",
+                        "retries": 0
+                      },
+                      "task_executor": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": null,
+                        "retries": 0
+                      },
+                      "commit_gate": {
+                        "kind": "conditional",
+                        "status": "completed",
+                        "branch_taken": "false"
+                      },
+                      "code_review": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": "reports/FULLY-HYDRATED-CODE-REVIEW-P01-T01-FOUNDATION.md",
+                        "retries": 0,
+                        "verdict": "changes_requested"
+                      },
+                      "task_gate": {
+                        "kind": "gate",
+                        "status": "completed",
+                        "gate_active": false
+                      }
+                    },
+                    "corrective_tasks": [
+                      {
+                        "index": 1,
+                        "reason": "Code review requested changes",
+                        "injected_after": "code_review",
+                        "status": "completed",
+                        "nodes": {
+                          "task_handoff": {
+                            "kind": "step",
+                            "status": "completed",
+                            "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T01-FOUNDATION-C1.md",
+                            "retries": 0
+                          },
+                          "task_executor": {
+                            "kind": "step",
+                            "status": "completed",
+                            "doc_path": null,
+                            "retries": 0
+                          },
+                          "commit_gate": {
+                            "kind": "conditional",
+                            "status": "completed",
+                            "branch_taken": "false"
+                          },
+                          "code_review": {
+                            "kind": "step",
+                            "status": "completed",
+                            "doc_path": "reports/FULLY-HYDRATED-CODE-REVIEW-P01-T01-FOUNDATION-C1.md",
+                            "retries": 0,
+                            "verdict": "approved"
+                          },
+                          "task_gate": {
+                            "kind": "gate",
+                            "status": "completed",
+                            "gate_active": false
+                          }
+                        },
+                        "commit_hash": null
+                      }
+                    ],
+                    "commit_hash": null
+                  },
+                  {
+                    "index": 1,
+                    "status": "completed",
+                    "nodes": {
+                      "task_handoff": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T02-PARSER.md",
+                        "retries": 0
+                      },
+                      "task_executor": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": null,
+                        "retries": 0
+                      },
+                      "commit_gate": {
+                        "kind": "conditional",
+                        "status": "completed",
+                        "branch_taken": "false"
+                      },
+                      "code_review": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": "reports/FULLY-HYDRATED-CODE-REVIEW-P01-T02-PARSER.md",
+                        "retries": 0,
+                        "verdict": "approved"
+                      },
+                      "task_gate": {
+                        "kind": "gate",
+                        "status": "completed",
+                        "gate_active": false
+                      }
+                    },
+                    "corrective_tasks": [],
+                    "commit_hash": null
+                  },
+                  {
+                    "index": 2,
+                    "status": "completed",
+                    "nodes": {
+                      "task_handoff": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T03-RENDERER.md",
+                        "retries": 0
+                      },
+                      "task_executor": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": null,
+                        "retries": 0
+                      },
+                      "commit_gate": {
+                        "kind": "conditional",
+                        "status": "completed",
+                        "branch_taken": "false"
+                      },
+                      "code_review": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": "reports/FULLY-HYDRATED-CODE-REVIEW-P01-T03-RENDERER.md",
+                        "retries": 0,
+                        "verdict": "changes_requested"
+                      },
+                      "task_gate": {
+                        "kind": "gate",
+                        "status": "completed",
+                        "gate_active": false
+                      }
+                    },
+                    "corrective_tasks": [
+                      {
+                        "index": 1,
+                        "reason": "Code review requested changes",
+                        "injected_after": "code_review",
+                        "status": "completed",
+                        "nodes": {
+                          "task_handoff": {
+                            "kind": "step",
+                            "status": "completed",
+                            "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T03-RENDERER-C1.md",
+                            "retries": 0
+                          },
+                          "task_executor": {
+                            "kind": "step",
+                            "status": "completed",
+                            "doc_path": null,
+                            "retries": 0
+                          },
+                          "commit_gate": {
+                            "kind": "conditional",
+                            "status": "completed",
+                            "branch_taken": "false"
+                          },
+                          "code_review": {
+                            "kind": "step",
+                            "status": "completed",
+                            "doc_path": "reports/FULLY-HYDRATED-CODE-REVIEW-P01-T03-RENDERER-C1.md",
+                            "retries": 0,
+                            "verdict": "changes_requested"
+                          },
+                          "task_gate": {
+                            "kind": "gate",
+                            "status": "completed",
+                            "gate_active": false
+                          }
+                        },
+                        "commit_hash": null
+                      },
+                      {
+                        "index": 2,
+                        "reason": "Code review requested changes",
+                        "injected_after": "code_review",
+                        "status": "completed",
+                        "nodes": {
+                          "task_handoff": {
+                            "kind": "step",
+                            "status": "completed",
+                            "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T03-RENDERER-C2.md",
+                            "retries": 0
+                          },
+                          "task_executor": {
+                            "kind": "step",
+                            "status": "completed",
+                            "doc_path": null,
+                            "retries": 0
+                          },
+                          "commit_gate": {
+                            "kind": "conditional",
+                            "status": "completed",
+                            "branch_taken": "false"
+                          },
+                          "code_review": {
+                            "kind": "step",
+                            "status": "completed",
+                            "doc_path": "reports/FULLY-HYDRATED-CODE-REVIEW-P01-T03-RENDERER-C2.md",
+                            "retries": 0,
+                            "verdict": "approved"
+                          },
+                          "task_gate": {
+                            "kind": "gate",
+                            "status": "completed",
+                            "gate_active": false
+                          }
+                        },
+                        "commit_hash": null
+                      }
+                    ],
+                    "commit_hash": null
+                  }
+                ]
+              },
+              "phase_review": {
+                "kind": "step",
+                "status": "completed",
+                "doc_path": "reports/FULLY-HYDRATED-PHASE-REVIEW-P01-CORE.md",
+                "retries": 0,
+                "verdict": "changes_requested"
+              },
+              "phase_gate": {
+                "kind": "gate",
+                "status": "completed",
+                "gate_active": false
+              }
+            },
+            "corrective_tasks": [
+              {
+                "index": 1,
+                "reason": "Phase review requested changes",
+                "injected_after": "phase_review",
+                "status": "completed",
+                "nodes": {
+                  "task_handoff": {
+                    "kind": "step",
+                    "status": "completed",
+                    "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-PHASE-C1.md",
+                    "retries": 0
+                  },
+                  "task_executor": {
+                    "kind": "step",
+                    "status": "completed",
+                    "doc_path": null,
+                    "retries": 0
+                  },
+                  "commit_gate": {
+                    "kind": "conditional",
+                    "status": "completed",
+                    "branch_taken": "false"
+                  },
+                  "code_review": {
+                    "kind": "step",
+                    "status": "completed",
+                    "doc_path": "reports/FULLY-HYDRATED-CODE-REVIEW-P01-PHASE-C1.md",
+                    "retries": 0,
+                    "verdict": "changes_requested"
+                  },
+                  "task_gate": {
+                    "kind": "gate",
+                    "status": "completed",
+                    "gate_active": false
+                  }
+                },
+                "commit_hash": null
+              },
+              {
+                "index": 2,
+                "reason": "Code review requested changes",
+                "injected_after": "code_review",
+                "status": "completed",
+                "nodes": {
+                  "task_handoff": {
+                    "kind": "step",
+                    "status": "completed",
+                    "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-PHASE-C2.md",
+                    "retries": 0
+                  },
+                  "task_executor": {
+                    "kind": "step",
+                    "status": "completed",
+                    "doc_path": null,
+                    "retries": 0
+                  },
+                  "commit_gate": {
+                    "kind": "conditional",
+                    "status": "completed",
+                    "branch_taken": "false"
+                  },
+                  "code_review": {
+                    "kind": "step",
+                    "status": "completed",
+                    "doc_path": "reports/FULLY-HYDRATED-CODE-REVIEW-P01-PHASE-C2.md",
+                    "retries": 0,
+                    "verdict": "approved"
+                  },
+                  "task_gate": {
+                    "kind": "gate",
+                    "status": "completed",
+                    "gate_active": false
+                  }
+                },
+                "commit_hash": null
+              }
+            ],
+            "commit_hash": null
+          },
+          {
+            "index": 1,
+            "status": "completed",
+            "nodes": {
+              "phase_planning": {
+                "kind": "step",
+                "status": "completed",
+                "doc_path": "phases/FULLY-HYDRATED-PHASE-02-POLISH.md",
+                "retries": 0
+              },
+              "task_loop": {
+                "kind": "for_each_task",
+                "status": "completed",
+                "iterations": [
+                  {
+                    "index": 0,
+                    "status": "completed",
+                    "nodes": {
+                      "task_handoff": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": "tasks/FULLY-HYDRATED-TASK-P02-T01-DOCS.md",
+                        "retries": 0
+                      },
+                      "task_executor": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": null,
+                        "retries": 0
+                      },
+                      "commit_gate": {
+                        "kind": "conditional",
+                        "status": "completed",
+                        "branch_taken": "false"
+                      },
+                      "code_review": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": "reports/FULLY-HYDRATED-CODE-REVIEW-P02-T01-DOCS.md",
+                        "retries": 0,
+                        "verdict": "approved"
+                      },
+                      "task_gate": {
+                        "kind": "gate",
+                        "status": "completed",
+                        "gate_active": false
+                      }
+                    },
+                    "corrective_tasks": [],
+                    "commit_hash": null
+                  }
+                ]
+              },
+              "phase_review": {
+                "kind": "step",
+                "status": "completed",
+                "doc_path": "reports/FULLY-HYDRATED-PHASE-REVIEW-P02-POLISH.md",
+                "retries": 0,
+                "verdict": "approved"
+              },
+              "phase_gate": {
+                "kind": "gate",
+                "status": "completed",
+                "gate_active": false
+              }
+            },
+            "corrective_tasks": [],
+            "commit_hash": null
+          }
+        ]
+      },
+      "final_review": {
+        "kind": "step",
+        "status": "not_started",
+        "doc_path": null,
+        "retries": 0
+      },
+      "pr_gate": {
+        "kind": "conditional",
+        "status": "not_started",
+        "branch_taken": null
+      },
+      "final_approval_gate": {
+        "kind": "gate",
+        "status": "not_started",
+        "gate_active": false
+      }
+    }
+  }
+}

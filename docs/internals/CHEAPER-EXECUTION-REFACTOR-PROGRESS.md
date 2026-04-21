@@ -68,8 +68,8 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 7 | Remove per-phase/per-task planning | Complete | 2026-04-19 | 2026-04-20 |
 | 8 | phase_review absorbs phase_report | Complete | 2026-04-20 | 2026-04-20 |
 | 9 | Complete `default.yml` | Complete | 2026-04-20 | 2026-04-20 |
-| 10 | Task-level corrective cycles (orchestrator mediation) | Awaiting merge | 2026-04-20 | 2026-04-20 |
-| 11 | Phase-level corrective cycles | Not started | — | — |
+| 10 | Task-level corrective cycles (orchestrator mediation) | Merged | 2026-04-20 | 2026-04-20 |
+| 11 | Phase-level corrective cycles | Awaiting merge | 2026-04-21 | 2026-04-21 |
 | 12 | Code-review rework (task/phase/final) | Not started | — | — |
 | 13 | Execute-coding-task rework | Not started | — | — |
 | 14 | Rad-plan-audit overhaul | Not started | — | — |
@@ -77,7 +77,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 16 | Repository deep clean | Not started | — | — |
 | 17 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 10 / 18 iterations complete; Iter 10 awaiting merge. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
+**Overall**: 11 / 18 iterations complete; Iter 11 awaiting merge. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -102,8 +102,8 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 7 | `feat/iter-7-remove-per-phase-task-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning` | Merged | `ff05ce2` | [#58](https://github.com/MetalHexx/RadOrchestation/pull/58) |
 | 8 | `feat/iter-8-phase-review-absorbs-phase-report` | `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report` | Merged | `d5d45f3` | [#59](https://github.com/MetalHexx/RadOrchestation/pull/59) |
 | 9 | `feat/iter-9-complete-default-yml` | `C:\dev\orchestration\v3-worktrees\feat-iter-9-complete-default-yml` | Merged | `4ee1ea1` | [#60](https://github.com/MetalHexx/RadOrchestation/pull/60) |
-| 10 | `feat/iter-10-task-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-10-task-corrective-cycles` | Awaiting merge | — | [#61](https://github.com/MetalHexx/RadOrchestation/pull/61) |
-| 11 | — | — | Not created | — | — |
+| 10 | `feat/iter-10-task-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-10-task-corrective-cycles` | Merged | `3b85095` | [#61](https://github.com/MetalHexx/RadOrchestation/pull/61) |
+| 11 | `feat/iter-11-phase-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-11-phase-corrective-cycles` | Awaiting merge | — | [#62](https://github.com/MetalHexx/RadOrchestation/pull/62) |
 | 12 | — | — | Not created | — | — |
 | 13 | — | — | Not created | — | — |
 | 14 | — | — | Not created | — | — |
@@ -182,6 +182,27 @@ Format:
 - **Why**: <reason the deviation was necessary>
 - **Impact**: <downstream effects, if any>
 ```
+
+### 2026-04-21 — Iteration 11 — `titleForPhaseCorrectiveChild` helper added instead of using `titleForPhaseChild` directly
+
+- **Plan said**: Plan line 207 proposed `const title = titleForPhaseChild(ctNodeId, phaseNum) + ' (Phase-C' + ct.index + ')'` — calling `titleForPhaseChild` directly in the new phase-scope corrective emission loop in `ui/lib/document-ordering.ts`.
+- **Execution did**: A dedicated `titleForPhaseCorrectiveChild` helper was introduced (maps phase-scope corrective body-def IDs `task_handoff` → "Phase N Plan" and `code_review` → "Phase N Review", with fallback to `titleForPhaseChild` for other IDs).
+- **Why**: `titleForPhaseChild` on a phase-scope corrective's `task_handoff` node ID yields "Task Handoff" or similar (the task-body node name), not the phase-scope semantic the UI should display. The phase-scope corrective's `task_handoff` IS the corrective's phase-level plan — "Phase N Plan (Phase-C1)" reads correctly; "Task Handoff (Phase-C1)" would be confusing. The concurrent UI-tests subagent asserted the plan/review naming explicitly. The helper keeps semantic intent aligned with the DAG's conceptual model.
+- **Impact**: One additional exported helper in `document-ordering.ts` (~10 lines). Unit tests cover both the helper output and the resulting suffixed titles.
+
+### 2026-04-21 — Iteration 11 — `corrective_index` uses `activeEntry.index` not `correctives.length` (defensive fix post-review)
+
+- **Plan said**: Plan lines 164 and 167-176 specified `corrective_index: phaseCTs.length` for phase-scope and `corrective_index: correctives.length` for task-scope enrichment on `spawn_code_reviewer`.
+- **Execution did**: Both expressions were changed to `corrective_index: activeEntry.index` (where `activeEntry` is the resolved active corrective entry) in a follow-up corrective commit (`1f0375d`). The task-scope edit is intentional; values are numerically equal today (both 1-based contiguous arrays) so no iter-10 test regressed.
+- **Why**: Code-quality reviewer's M2 finding. `.length` and `.index` are numerically equal at birth today but `length` conveys the wrong intent — we want the index of the specific active corrective entry, not a count of the array. If a future refactor re-enters a completed corrective without growing the array, the two would diverge and reviewers would receive a misleading index. Tying to `activeEntry.index` makes the intent explicit and prevents that class of drift.
+- **Impact**: 2-line fix in `context-enrichment.ts`. Zero behaviour change today; all tests still green. Task-scope iter-10 tests preserved.
+
+### 2026-04-21 — Iteration 11 — Runner fixture state.json uses `orchestration-state-v5.schema.json` (plan text said v4)
+
+- **Plan said**: Plan section "State shape pre-cooking guidance" referenced validation against `state-v4.schema.json`.
+- **Execution did**: Both fixture state.json files (`colors-greet-mismatch` runner + `fully-hydrated` showcase) use `"$schema": "orchestration-state-v5"` and were validated against `orchestration-state-v5.schema.json`.
+- **Why**: The live schema in the tree is v5; the `legacy/` subdir holds v4 for migration reference only. The iter-10 `broken-colors` fixture and all live state.json files use v5. Plan text was stale from an earlier design pass.
+- **Impact**: Cosmetic — documentation wording in the plan. Fixtures validate correctly against the live schema.
 
 ### 2026-04-20 — Iteration 10 — `effective_outcome=approved` + handoff path treated as mutation no-op, not hard error
 
@@ -292,6 +313,23 @@ Format:
 - Tests: orchestration 47 files / 1220 pass / 1 todo (baseline unchanged — harness sits outside `.claude/` / `ui/` / `installer/` / `scripts/`, no test-tree edits); UI 157 tests / 154 pass / 3 pre-existing failures (baseline unchanged); installer 399 pass / 0 fail. Zero test count delta.
 - UI smoke: N/A — no UI surface touched.
 - Commits: `f534247` (scaffold), `b890c18` (review-corrective — dead code, tightened self-test thresholds, project-name stability, narrowed `.gitkeep` exception), `a9cb44c` (inaugural baseline artifacts), `211c34a` (progress tracker). PR: [#57](https://github.com/MetalHexx/RadOrchestation/pull/57).
+
+### 2026-04-21 — Iteration 11 — Phase-level corrective cycles (orchestrator mediation)
+
+- Branch: `feat/iter-11-phase-corrective-cycles` off `feat/cheaper-execution` @ `14ae5ce` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-11-phase-corrective-cycles`). Flat branch name per the iter-8+ convention.
+- Semantic flip at phase scope: `PHASE_REVIEW_COMPLETED` births phase-scope correctives from `effective_outcome === 'changes_requested'` + a non-empty `corrective_handoff_path`, mirroring iter-10's task-scope contract. The previous reset block (`phase_planning`, `task_loop.iterations`, `phase_review`, `phase_gate` all reset to `not_started`) is gone — phase iterations are now append-only like task iterations. The synthesized pre-completed `task_handoff` sub-node on each phase-scope corrective carries the orchestrator-supplied handoff path; body nodes are scaffolded via `findTaskLoopBodyDefs` so the walker enters the corrective with handoff pre-resolved.
+- Ancestor-derivation routing: new `resolveHostingIteration(state, phase, task): { iteration, scope }` helper in `mutations.ts` makes `CODE_REVIEW_COMPLETED` route corrective-of-corrective by looking at WHERE the just-reviewed `code_review` node lives — if under `phaseIter.corrective_tasks[K].nodes`, the new corrective appends to `phaseIter.corrective_tasks`; else to `taskIter.corrective_tasks`. No new event fields, no orchestrator-authored scope hint. `mutations_applied` log entries now carry `scope=task` / `scope=phase` suffixes for observability. Iter-10 task-scope behaviour preserved identically when `scope === 'task'`.
+- `COMMIT_COMPLETED` gains a phase-scope-first branch: active phaseIter corrective takes `commit_hash` first; task-scope routing preserved as fall-through. `dag-walker.ts`'s iter-7 empty-nodes halt stub is gone — unreachable under iter-11's pre-seeded-nodes invariant.
+- Enrichment (`context-enrichment.ts`): `execute_task` + `spawn_code_reviewer` gained phase-scope-first branches (checked BEFORE existing task-scope corrective paths). `TASK_LEVEL_ACTIONS` base context overrides `task_number` → null and `task_id` → `${phase_id}-PHASE` when a phase-scope corrective is active — the sentinel propagates through coder/reviewer spawn contexts so the `-PHASE-C{N}.md` filename derivation is self-describing. `spawn_phase_reviewer` enrichment unchanged (its existing `is_correction`/`corrective_index` defensive branch stays for reversibility).
+- Validator (`frontmatter-validators.ts`): `phase_review_completed` rules extended with iter-10-parallel conditional mediation contract via existing `when` + `mustBeAbsent` machinery — `orchestrator_mediated: true` required on raw `changes_requested`; `effective_outcome ∈ {approved, changes_requested}`; `corrective_handoff_path` required iff `effective_outcome === 'changes_requested'`; all three mediation fields `mustBeAbsent: true` on raw approved/rejected.
+- Docs + playbook: `corrective-playbook.md` reframed for both scopes — opening no longer says "task-scope" narrowly; new "Scope: Task vs. Phase" note plus a full "Phase-Scope Mediation" section added; all existing task-scope content preserved. `phase-review/workflow.md` shed stateless-breaking clauses (Previous Phase Review row removed, step 6 corrective-review check removed, Corrective Review Context section removed, both corrective save-path rows removed); `Requirements` inputs row added. `task-review/workflow.md` documents the phase-sentinel code-review filename derivation rule (reviewer derives `-CODE-REVIEW-P{NN}-PHASE-C{N}.md` from `task_id: P{NN}-PHASE`). `document-conventions.md` adds the phase-sentinel Task Handoff row + `corrective_scope` enum now `"task" | "phase"`; removes the obsolete `PHASE-REVIEW-...-C{N}.md` row (iter-11's single-pass clause: `phase_review` does NOT re-run after the corrective's task-level re-review approves).
+- UI: `ui/lib/document-ordering.ts` emits phase-scope corrective doc_paths with a `(Phase-C{N})` title suffix via a new `titleForPhaseCorrectiveChild` helper mapping `task_handoff` → "Phase N Plan" and `code_review` → "Phase N Review" (see Deviations). `DAGIterationPanel` was already generic enough to render the phase-scope CT groups without component-file edits.
+- Prompt harness (`prompt-tests/phase-review-mediation-e2e/`): two fixtures. `colors-greet-mismatch` is runner-driven — two-task cross-task contract drift (`makeColors()` returns strings; `greet()` expects objects); phase review catches the integration bug; mediation cycle converges in one round. `fully-hydrated` is a static UI showcase: T1 with 1 task-scope corrective, T2 clean, T3 with 2 task-scope correctives, plus 2 phase-scope correctives where phase-scope C1 itself was mediated (exercises ancestor-derivation at phase scope). Inaugural baseline run under `output/colors-greet-mismatch/baseline-colors-greet-mismatch-2026-04-21/run-notes.md`; all 10 shape-based pass criteria green; reset block confirmed gone; single-pass clause honored; task_id = `P01-PHASE` sentinel threaded through every dispatch.
+- Iter 7 carry-forward resolved: 3 previously-skipped phase-corrective walker tests in `dag-walker.test.ts` (~1591/1624/1666) un-skipped + rewritten for pre-seeded-nodes semantics. 1 phase-corrective e2e test in `corrective-integration.test.ts` un-skipped + rewritten for append-only semantics. 1 auto-resolution regression in `contract/09-corrective-cycles.test.ts`, 1 in `contract/06-state-mutations.test.ts` un-skipped. All 6 walker-test skips carried from iter-7 are now live.
+- Tests: orchestration 46 files / 1241 pass / 1 skip / 1 todo (baseline 1167/7/1 — net +74 pass / −6 skip via un-skips and new phase-scope coverage across mutations.test.ts, mutations-phase-corrective.test.ts (rewrite), dag-walker.test.ts, corrective-integration.test.ts, contract/05 + 06 + 09, mutations-negative-path.test.ts, event-routing-integration.test.ts, pre-reads.test.ts, context-enrichment.test.ts, verdict-validation.test.ts, phase-review-doc-shape.test.ts — the docs-assertion test for the now-removed `-C{N}` save-path row was deleted with the contract it asserted). UI 156 pass / 3 pre-existing fail / 159 total (unchanged — 11 new phase-scope rendering tests in document-ordering, dag-iteration-panel, dag-timeline-legacy-render all green). Installer 399 pass (unchanged).
+- UI visual verification via Claude-in-Chrome MCP against the fully-hydrated fixture: DAG timeline expands fully (62 rows), Phase 1 renders T1+CT1, T2, T3+CT1+CT2 under task_loop AND phase-scope CT1+CT2 as siblings below; Phase 2 renders clean. Phase review doc drawer shows its `Orchestrator Addendum` with Finding Dispositions + Effective Outcome + Corrective Handoff + Attempt banner. Phase-scope CT1 code-review drawer shows its own addendum (exercises ancestor-derivation path). Legacy BROKEN-COLORS fixture renders identically to pre-iter-11. Console clean except a pre-existing Dashlane browser-extension hydration warning. Evidence noted in ephemeral `ui-verification-2026-04-21.md` (not committed).
+- Reviews: 1 plan-conformance pass (CLEAN) + 1 code-quality pass (MINOR_ISSUES, no blockers). Applied one defensive fix (M2: `corrective_index` now uses `activeEntry.index` not `correctives.length` — semantic correctness even though values are equal today). Declined M1 (resolveActiveTaskIndex fallback is not a bug — phase-scope-first early returns protect all reachable paths), M3 (plan explicitly mandates the `'code_review' in last.nodes` discriminator), M4 (plan called for both test files).
+- Commits: `a4b4305` (main), `1f0375d` (M2 defensive fix), `a4e22ef` (inaugural harness baseline), `5f54265` (tracker). PR: [#62](https://github.com/MetalHexx/RadOrchestation/pull/62).
 
 ### 2026-04-20 — Iteration 10 — Task-level corrective cycles (orchestrator mediation)
 

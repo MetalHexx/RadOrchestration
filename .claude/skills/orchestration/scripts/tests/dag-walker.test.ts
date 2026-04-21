@@ -1587,15 +1587,21 @@ describe('phase-level corrective task walking', () => {
     gateDef('task_gate', 'human_gates.execution_mode', 'gate_task', ['auto'], { depends_on: ['code_review'] }),
   ];
 
-  // Skipped in Iter 7; Iter 11 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.
-  it.skip('phase-level corrective with task body nodes: walker returns first task body action', () => {
+  // Iter 11 — phase-scope corrective pre-seeded with task-body nodes +
+  // synthesized completed task_handoff. Walker enters the corrective and
+  // returns the first not-yet-completed action (task_executor's execute_task,
+  // because task_handoff is already completed).
+  it('phase-level corrective with pre-seeded nodes: walker returns first not-completed task body action', () => {
     const phaseBody: NodeDef[] = [
       stepDef('phase_planning', 'create_phase_plan'),
       forEachTaskDef('task_loop', taskBodyDefs, { depends_on: ['phase_planning'] }),
       stepDef('phase_review', 'create_phase_review', { depends_on: ['task_loop'] }),
     ];
     const correctiveEntry = makeCorrectiveEntry(1, 'not_started', {
-      task_handoff: stepState('not_started'),
+      // Iter 11: pre-seeded-nodes semantics — task_handoff is synthesized as
+      // completed by the mutation (birth-on-handoff-path). The other task-body
+      // nodes are scaffolded as not_started.
+      task_handoff: stepState('completed'),
       task_executor: stepState('not_started'),
       code_review: stepState('not_started'),
       task_gate: gateState('not_started', false),
@@ -1616,12 +1622,15 @@ describe('phase-level corrective task walking', () => {
 
     const result = walkDAG(state, template, config);
 
-    expect(result).toEqual({ action: 'create_task_handoff', context: {} });
+    // task_handoff is completed → walker skips it and lands on task_executor.
+    expect(result).toEqual({ action: 'execute_task', context: {} });
     expect(correctiveEntry.status).toBe('in_progress');
   });
 
-  // Skipped in Iter 7; Iter 11 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.
-  it.skip('phase-level corrective completion: advances iteration when all corrective body nodes done', () => {
+  // Iter 11 — phase-scope corrective completion: all pre-seeded body nodes
+  // done → walker marks the corrective completed, marks the phase iteration
+  // completed, and advances to the next phase iteration.
+  it('phase-level corrective completion: advances iteration when all corrective body nodes done', () => {
     const phaseBody: NodeDef[] = [
       stepDef('phase_planning', 'create_phase_plan'),
       forEachTaskDef('task_loop', taskBodyDefs, { depends_on: ['phase_planning'] }),
@@ -1644,8 +1653,25 @@ describe('phase-level corrective task walking', () => {
           phase_review: stepState('completed'),
         }, [correctiveEntry]),
         makeIteration(1, 'not_started', {
-          phase_planning: stepState('not_started'),
-          task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
+          phase_planning: stepState('completed'),
+          task_loop: {
+            kind: 'for_each_task',
+            status: 'not_started',
+            iterations: [
+              {
+                index: 0,
+                status: 'not_started',
+                nodes: {
+                  task_handoff: stepState('completed'),
+                  task_executor: stepState('not_started'),
+                  code_review: stepState('not_started'),
+                  task_gate: gateState('not_started', false),
+                },
+                corrective_tasks: [],
+                commit_hash: null,
+              },
+            ],
+          },
           phase_review: stepState('not_started'),
         }),
       ]),
@@ -1657,13 +1683,14 @@ describe('phase-level corrective task walking', () => {
     expect(correctiveEntry.status).toBe('completed');
     const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     expect(fepState.iterations[0].status).toBe('completed');
-    // Should advance to next iteration
+    // Walker advances past the completed iteration to the next phase's first
+    // not-completed action. Phase 2's task_handoff is pre-seeded completed, so
+    // the walker lands on execute_task.
     expect(fepState.iterations[1].status).toBe('in_progress');
-    expect(result).toEqual({ action: 'create_phase_plan', context: {} });
+    expect(result).toEqual({ action: 'execute_task', context: {} });
   });
 
-  // Skipped in Iter 7; Iter 11 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.
-  it.skip('phase-level halted corrective returns display_halted', () => {
+  it('phase-level halted corrective returns display_halted', () => {
     const phaseBody: NodeDef[] = [
       stepDef('phase_planning', 'create_phase_plan'),
       forEachTaskDef('task_loop', taskBodyDefs, { depends_on: ['phase_planning'] }),
