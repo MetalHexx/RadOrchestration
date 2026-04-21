@@ -145,14 +145,15 @@ Do NOT approve the final human gate. The harness exits once `final_review_comple
    - `reports/CONFORMANCE-TIERED-PHASE-REVIEW-P01-CORE-FLOW.md`
    - `reports/CONFORMANCE-TIERED-FINAL-REVIEW.md`
 2. **Final-review save path is under `reports/`** — regression-check: the old project-root path (`CONFORMANCE-TIERED-FINAL-REVIEW.md` at repo root) is NOT used.
-3. First T2 review: `verdict: changes_requested`, one drift finding on FR-2, audit table shows FR-2 drift + NFR-1 on-track + AD-1 on-track (the three requirements inlined into T2's Task Handoff).
+3. First T2 review: `verdict: changes_requested`, one drift finding on FR-2, audit table shows FR-2 drift + AD-1 on-track + NFR-1 on-track (the three requirements inlined into T2's Task Handoff, in the handoff's authored order).
 4. T2 re-review: `verdict: approved`, all audit rows on-track.
 5. Phase review: `verdict: approved`, `exit_criteria_met: true`.
 6. Final review: `verdict: approved`; audit table enumerates every Requirements-doc FR/NFR/AD/DD with status `met`.
 7. Final-review doc body does NOT reference PRD / Architecture / Design docs.
 8. Final-review doc does NOT reference a previous final review.
 9. State check: `state.graph.nodes.phase_loop.iterations[0].task_loop.iterations[1].corrective_tasks.length === 1` (one task-scope corrective); `state.graph.nodes.phase_loop.iterations[0].corrective_tasks.length === 0` (no phase-scope corrective needed).
-10. Orchestrator addendum on the first T2 review cites tier (drift) + reasoning + actioned=true for FR-2; NFR-1 and AD-1 on-track rows are declined with 'tracking for later scope'.
+10. Orchestrator addendum on the first T2 review: the Finding Dispositions table uses parenthesized tier enums per playbook — FR-2 row disposition reads `action (drift)` with reasoning; AD-1 + NFR-1 rows read `decline (on-track)` with "tracking for later scope" in the Reason column.
+11. Pipeline-level validator health: the harness signals `final_review_completed` successfully (validator accepts the verdict frontmatter — no `pre_read_validation_error` surfaced on the event); the `final_review` state node transitions to `completed` with `verdict: approved`. This is the iter-12 validator regression guard.
 
 ---
 
@@ -170,9 +171,9 @@ Write `run-notes.md` in the run folder summarizing:
 - Final state values:
   - `state.graph.nodes.phase_loop.iterations[0].task_loop.iterations[1].corrective_tasks.length` (expect 1)
   - `state.graph.nodes.phase_loop.iterations[0].corrective_tasks.length` (expect 0)
-  - `state.graph.status`
-  - `state.pipeline.current_tier`
-- Which of the 10 pass criteria are green (explicit yes/no for each).
+  - `state.graph.status` (expect `in_progress` — halted at `final_approval_gate` per runner Step 9 do-not-approve constraint)
+  - `state.pipeline.current_tier` (expect `review` — walker is at the final-review approval gate when halted)
+- Which of the 11 pass criteria are green (explicit yes/no for each).
 
 ---
 

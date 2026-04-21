@@ -8,9 +8,9 @@ End-to-end harness exercising the iter-12 code-review rework across all three re
 
 See `_runner.md` for the runner prompt driving the cycle. `user-instructions.md` covers operator hand-verification after the automated run completes.
 
-## Pass criteria (10)
+## Pass criteria (11)
 
-See `_runner.md` → Pass Criteria for the shape-based exit checks. All 10 must be green or the run halts and surfaces to the operator — do not relax criteria.
+See `_runner.md` → Pass Criteria for the shape-based exit checks. All 11 must be green or the run halts and surfaces to the operator — do not relax criteria.
 
 ## Folder layout
 

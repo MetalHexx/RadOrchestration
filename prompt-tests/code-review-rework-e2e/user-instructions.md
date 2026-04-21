@@ -12,7 +12,7 @@ prompt-tests/code-review-rework-e2e/output/conformance-tiered/baseline-conforman
 
 Confirm:
 
-- All 10 pass criteria are explicitly marked green.
+- All 11 pass criteria are explicitly marked green.
 - The event trace shows the full cycle: `start` → `spawn_code_reviewer` (T2) → mediation → corrective coder spawn → `spawn_code_reviewer` (re-review, approved) → `spawn_phase_reviewer` → `spawn_final_reviewer` → `request_final_approval` (or equivalent final-tier action).
 - No unexpected halts, error messages, or "action: null" stalls outside the documented resume point.
 
