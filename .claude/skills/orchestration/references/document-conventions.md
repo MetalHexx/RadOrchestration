@@ -18,6 +18,7 @@ Covers all documents produced during pipeline execution. Planning documents (Mas
 | Corrective Task Handoff (phase scope) | tasks/ | `{NAME}-TASK-P{NN}-PHASE-C{N}.md` | `MYAPP-TASK-P01-PHASE-C1.md` |
 | Code Review | reports/ | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-CODE-REVIEW-P01-T02-AUTH.md` |
 | Phase Review | reports/ | `{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REVIEW-P01-SETUP.md` |
+| Final Review | reports/ | `{NAME}-FINAL-REVIEW.md` | `MYAPP-FINAL-REVIEW.md` |
 
 ### Corrective Filename Suffix
 
@@ -59,7 +60,7 @@ The `-C{N}` suffix rule applies to Task Handoffs and task-level Code Reviews. It
 | requirement_count | integer | Total FR + NFR + AD + DD blocks in the doc body (e.g., `12`) | Requirements |
 | total_phases | integer | Count of `## PNN:` phase headings in the Master Plan body | Master Plan |
 | total_tasks | integer | Count of `### PNN-TMM:` task headings in the Master Plan body | Master Plan |
-| verdict | string | `"approved"` \| `"changes_requested"` \| `"rejected"` | Code Review, Phase Review |
+| verdict | string | `"approved"` \| `"changes_requested"` \| `"rejected"` | Code Review, Phase Review, Final Review |
 | severity | string | `"none"` \| `"low"` \| `"medium"` \| `"high"` | Code Review, Phase Review |
 | exit_criteria_met | boolean | `true` \| `false` | Phase Review |
 | orchestrator_mediated | boolean | `true` (only value that appears) | Code Review, Phase Review |

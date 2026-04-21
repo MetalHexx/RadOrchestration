@@ -227,6 +227,22 @@ const VALIDATION_RULES: Record<string, FrontmatterValidationRule[]> = {
       mustBeAbsent: true,
     },
   ],
+  // Iter 12 — final_review_completed verdict enum check. Final-review
+  // corrective cycles are out of scope (final review is strict-verdict-only;
+  // no orchestrator mediation is wired for it). The validator enforces that
+  // the reviewer always supplies a valid verdict; mediation fields
+  // (`orchestrator_mediated`, `effective_outcome`, `corrective_handoff_path`)
+  // are not checked here because they are not part of the final-review
+  // contract. A future iteration that wires final-review mediation can extend
+  // this rule set with conditional mediation-field rules parallel to the
+  // iter-10 code_review_completed + iter-11 phase_review_completed shape.
+  final_review_completed: [
+    {
+      field: 'verdict',
+      validate: (v) => typeof v === 'string' && (v === 'approved' || v === 'changes_requested' || v === 'rejected'),
+      expected: "one of 'approved', 'changes_requested', 'rejected'",
+    },
+  ],
 };
 
 /**

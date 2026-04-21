@@ -61,7 +61,19 @@ export function FinalReviewSection({ finalReview, projectName, pipelineTier, onD
             <ApproveGateButton
               gateEvent="final_approved"
               projectName={projectName}
-              documentName={`${projectName}-FINAL-REVIEW.md`}
+              // Iter-12: Final-review documents moved from project root to
+              // `reports/{NAME}-FINAL-REVIEW.md`. Rebuild the document name
+              // from node state's doc_path (basename only — ApproveGateButton
+              // expects a filename, not a full path). Fall back to the
+              // legacy filename shape if doc_path is null so the approve
+              // button stays functional when state hasn't been mutated yet
+              // (e.g., during in-progress render before the completion event).
+              documentName={
+                finalReview.doc_path
+                  // doc_path is always POSIX-style (engine-produced) — no Windows-separator normalization needed.
+                  ? finalReview.doc_path.split("/").pop() ?? `${projectName}-FINAL-REVIEW.md`
+                  : `${projectName}-FINAL-REVIEW.md`
+              }
               label="Approve Final Review"
               className="mt-1"
             />

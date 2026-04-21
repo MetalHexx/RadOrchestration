@@ -128,8 +128,8 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_pr', () => {
     }, io);
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     const frDocPath = '/tmp/final-review.md';
-    seedDoc(frDocPath);
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
+    seedDoc(frDocPath, { verdict: 'approved' });
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
     const result = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_pr');
@@ -144,8 +144,8 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_pr', () => {
     const io = driveToReviewTier(prConfig);
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     const frDocPath = '/tmp/final-review.md';
-    seedDoc(frDocPath);
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
+    seedDoc(frDocPath, { verdict: 'approved' });
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
     const result = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_pr');

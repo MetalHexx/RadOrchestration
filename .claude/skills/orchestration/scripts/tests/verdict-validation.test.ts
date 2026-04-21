@@ -307,39 +307,52 @@ describe('phase_review_completed — verdict validation', () => {
 // ── final_review_completed verdict validation ──────────────────────────────────
 
 describe('final_review_completed — verdict validation', () => {
-  it('typo verdict halts the pipeline', () => {
+  // Iter-12: final_review_completed now runs the pre-read frontmatter
+  // validator with a `verdict` enum rule (approved / changes_requested /
+  // rejected), parallel to iter-10 code_review_completed and iter-11
+  // phase_review_completed. Typos no longer slip through to the mutation's
+  // unknown-verdict halt — they are caught as structured frontmatter errors
+  // at the pre-read boundary. Mediation fields are out of scope; only the
+  // verdict enum is enforced.
+  it('typo verdict returns a structured frontmatter error (validator-stage rejection)', () => {
     const io = driveToFinalReview();
     const finalReviewDoc = path.posix.join(PROJECT_DIR, 'final-review.md');
-    seedDoc(finalReviewDoc);
+    seedDoc(finalReviewDoc, { verdict: 'approvd' });
 
     const result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: finalReviewDoc,
       verdict: 'approvd',
     }, io);
 
-    expect(result.success).toBe(true);
-    expect(io.currentState!.graph.status).toBe('halted');
-    expect(io.currentState!.pipeline.halt_reason).toContain('approvd');
-    expect(io.currentState!.pipeline.halt_reason).toContain('final_review_completed');
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('verdict');
+    expect(result.error?.event).toBe('final_review_completed');
+    // Graph does NOT halt — validator rejection is recoverable by the
+    // operator (fix the frontmatter typo, re-signal the event).
+    expect(io.currentState!.graph.status).not.toBe('halted');
   });
 
-  it('typo verdict returns display_halted action', () => {
+  it('typo verdict does not reach the mutation halt branch', () => {
     const io = driveToFinalReview();
     const finalReviewDoc = path.posix.join(PROJECT_DIR, 'final-review.md');
-    seedDoc(finalReviewDoc);
+    seedDoc(finalReviewDoc, { verdict: 'approvd' });
 
     const result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: finalReviewDoc,
       verdict: 'approvd',
     }, io);
 
-    expect(result.action).toBe('display_halted');
+    // Old contract: action would be `display_halted` (mutation halted with
+    // unknown-verdict reason). New contract: validator rejects upfront so the
+    // action is null and halt_reason stays null.
+    expect(result.action).not.toBe('display_halted');
+    expect(io.currentState!.pipeline.halt_reason).toBeNull();
   });
 
   it('valid approved verdict does not halt', () => {
     const io = driveToFinalReview();
     const finalReviewDoc = path.posix.join(PROJECT_DIR, 'final-review.md');
-    seedDoc(finalReviewDoc);
+    seedDoc(finalReviewDoc, { verdict: 'approved' });
 
     const result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: finalReviewDoc,
@@ -351,7 +364,7 @@ describe('final_review_completed — verdict validation', () => {
     expect(io.currentState!.pipeline.current_tier).toBe('review');
   });
 
-  it('null verdict does not trigger the guard', () => {
+  it('null verdict is rejected at the pre-read boundary', () => {
     const io = driveToFinalReview();
     const finalReviewDoc = path.posix.join(PROJECT_DIR, 'final-review.md');
     seedDoc(finalReviewDoc);
@@ -361,7 +374,9 @@ describe('final_review_completed — verdict validation', () => {
       verdict: null as unknown as string,
     }, io);
 
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('verdict');
+    expect(result.error?.event).toBe('final_review_completed');
     expect(io.currentState!.graph.status).not.toBe('halted');
   });
 });

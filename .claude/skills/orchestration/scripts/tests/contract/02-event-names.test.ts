@@ -153,8 +153,8 @@ describe('[CONTRACT] Event Names — gate events', () => {
     const io = driveToReviewTier(reviewConfig);
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     const frDocPath = '/tmp/final-review.md';
-    seedDoc(frDocPath);
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
+    seedDoc(frDocPath, { verdict: 'approved' });
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
     const result = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
@@ -251,8 +251,8 @@ describe('[CONTRACT] Event Names — final review events', () => {
     const io = driveToReviewTier(config);
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     const frDocPath = '/tmp/final-review.md';
-    seedDoc(frDocPath);
-    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
+    seedDoc(frDocPath, { verdict: 'approved' });
+    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
@@ -290,8 +290,8 @@ describe('[CONTRACT] Event Names — source control events', () => {
     const io = driveToReviewTier(prConfig);
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     const frDocPath = '/tmp/final-review.md';
-    seedDoc(frDocPath);
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
+    seedDoc(frDocPath, { verdict: 'approved' });
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
     const invokeResult = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(invokeResult.action).toBe('invoke_source_control_pr');
     const result = processEvent('pr_requested', PROJECT_DIR, {}, io);
@@ -303,8 +303,8 @@ describe('[CONTRACT] Event Names — source control events', () => {
     const io = driveToReviewTier(prConfig);
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     const frDocPath = '/tmp/final-review.md';
-    seedDoc(frDocPath);
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
+    seedDoc(frDocPath, { verdict: 'approved' });
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
     const invokeResult = processEvent('final_approved', PROJECT_DIR, {}, io);
     expect(invokeResult.action).toBe('invoke_source_control_pr');
     processEvent('pr_requested', PROJECT_DIR, {}, io);
@@ -371,8 +371,8 @@ describe('[CONTRACT] Event Names — OOB events', () => {
     const io = driveToReviewTier(config);
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     const frDocPath = '/tmp/final-review.md';
-    seedDoc(frDocPath);
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
+    seedDoc(frDocPath, { verdict: 'approved' });
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
     const result = processEvent('final_rejected', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();

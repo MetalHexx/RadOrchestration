@@ -8,9 +8,10 @@ user-invocable: true
 ## Lets execute this sequence:
 >Each subagent should report to the human operator the issues that were found or repaired on every pass. 
 >Always run tests and run builds to ensure the fixes didn't break the build.
+>Reviewer subagents should work **diff-based** — compare the current diff (or branch vs. its base) against the project's inlined requirements (FR/NFR/AD/DD). Do not accept per-task "tests passed" summaries on faith; the implementer's report is not evidence, the diff is.
 
 ### Phase 1: Fix any carry forward items from the project
-- Use a reviewer subagent look at all the review reports throughout the {project-name} project and find any lingering items that did not get repaired. Create a list of items to look into.  
+- Use a reviewer subagent look at all the review reports throughout the {project-name} project and find any lingering items that did not get repaired. Create a list of items to look into.  Treat per-requirement audit rows with status `drift` or `regression` as actionable; `on-track` rows are informational unless the prior scope owed full completion.
 - Spawn coder subagents to repair the issues, if any.  make sure to include updating and running tests!
 - Spawn a reviewer agent to do an indenpendent skeptical review of the changes. Run tests!
 - Coder should fix any issues found by the reviewer
@@ -19,7 +20,7 @@ user-invocable: true
 
 ### Phase 2: Do an further independent reviews of all the project code
 Once all review items have been completed:
-- Have a reviewer do a full skeptical pass of the code looking for code smells for any code that was written in the {project-name} project and create a list  of corrections.
+- Have a reviewer do a full skeptical pass of the code looking for code smells for any code that was written in the {project-name} project and create a list  of corrections.  The skeptical pass is diff-based — read the branch's cumulative diff against its base, not a file-tree snapshot.
 - Have another coder review that these  are valid changes. make sure to include updating and running tests!
 - Once we have a final list of good cleanup  to do, have a coder  implement the changes.
 - Have a reviewer review the final changes. Run tests!
