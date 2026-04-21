@@ -105,7 +105,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 10 | `feat/iter-10-task-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-10-task-corrective-cycles` | Merged | `3b85095` | [#61](https://github.com/MetalHexx/RadOrchestation/pull/61) |
 | 11 | `feat/iter-11-phase-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-11-phase-corrective-cycles` | Merged | `6140a9a` | [#62](https://github.com/MetalHexx/RadOrchestation/pull/62) |
 | 12 | `feat/iter-12-code-review-rework` | `C:\dev\orchestration\v3-worktrees\feat-iter-12-code-review-rework` | Merged | `1030620` | [#64](https://github.com/MetalHexx/RadOrchestation/pull/64) |
-| 13 | `feat/iter-13-executor-rework` | `C:\dev\orchestration\v3-worktrees\feat-iter-13-executor-rework` | Awaiting merge | — | _pending_ |
+| 13 | `feat/iter-13-executor-rework` | `C:\dev\orchestration\v3-worktrees\feat-iter-13-executor-rework` | Awaiting merge | — | [#65](https://github.com/MetalHexx/RadOrchestation/pull/65) |
 | 14 | — | — | Not created | — | — |
 | 15 | — | — | Not created | — | — |
 | 16 | — | — | Not created | — | — |
@@ -174,7 +174,7 @@ Append new entries at the bottom. Format:
 - Ripples: `corrective-playbook.md` gains `### Code-task RED-GREEN shape` subsection; `master-plan/workflow.md` gains one sub-bullet on test-quality anti-patterns; `action-event-reference.md` row 3 tightened to `handoff_doc`-only enrichment cell; `rad-execute/SKILL.md` audit clean (zero edits).
 - Tests: E1/E2 integration assertions — execute_task enrichment carries `handoff_doc` only; original and corrective contexts have identical key shape. E3 new `execute-coding-task-contract.test.ts` grep-locks SKILL.md prose anchors. E4 new `prompt-tests/execute-coding-task-e2e/` harness with fixture `tdd-slip` (pre-seeded at execute_task ready, back-to-back original + C1 runs; inaugural baseline captured as a placeholder — see Deviations).
 - Scripts tree: 1298 → 1317 passed (+19 from new tests). UI + installer unchanged. Baseline diff clean.
-- Commits: `ef5f5d9` (main) + follow-up fixups after dual-reviewer pass. PR: _pending_.
+- Commits: `ef5f5d9` (main) + `f9cd00e` (pre-PR corrective from dual-reviewer pass). PR: [#65](https://github.com/MetalHexx/RadOrchestation/pull/65), plus 6 Copilot-cycle fixups (`2a1f982`, `83e4076`, `ba18726`, `13297bb`, `9f77dae`, `ef08545`, `382e0ff`). Cycle terminated at R7 per two-consecutive-nits-only criterion.
 
 ---
 
