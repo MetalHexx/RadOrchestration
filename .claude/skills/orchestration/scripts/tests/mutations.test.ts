@@ -1472,6 +1472,45 @@ describe('code_review_completed — Iter 11 ancestor-derivation', () => {
     expect(result.state.graph.status).toBe('halted');
     expect(result.state.pipeline.halt_reason).toContain('phase');
   });
+
+  it('scope=phase: rejected verdict halts the PHASE iteration, not the task iteration', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    seedPhaseScopeCorrectiveWithReview(state, '/reports/CR-P01-PHASE-C1.md');
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/reports/CR-P01-PHASE-C1.md', verdict: 'rejected' },
+      baseConfig,
+      template,
+    );
+    const resultPhaseIter = getPhaseIteration(result.state);
+    const resultTaskIter = getTaskIteration(result.state);
+    // Phase iteration halts because the reviewed code_review lives under a
+    // phase-scope corrective; ancestor-derivation selects phaseIter.
+    expect(resultPhaseIter.status).toBe('halted');
+    expect(resultTaskIter.status).not.toBe('halted');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('scope=phase');
+    expect(result.mutations_applied.some(m => /phase_iteration\.status = halted \(rejected verdict, scope=phase\)/.test(m))).toBe(true);
+  });
+
+  it('scope=task (iter-10 preserved): rejected verdict halts the TASK iteration when no phase-scope corrective is active', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/r.md', verdict: 'rejected' },
+      baseConfig,
+      template,
+    );
+    const resultPhaseIter = getPhaseIteration(result.state);
+    const resultTaskIter = getTaskIteration(result.state);
+    expect(resultTaskIter.status).toBe('halted');
+    expect(resultPhaseIter.status).not.toBe('halted');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('scope=task');
+    expect(result.mutations_applied.some(m => /task_iteration\.status = halted \(rejected verdict, scope=task\)/.test(m))).toBe(true);
+  });
 });
 
 // ── commit_completed — Iter 11 phase-scope-first routing ─────────────────────

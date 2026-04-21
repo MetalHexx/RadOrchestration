@@ -926,13 +926,18 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
     mutations_applied.push(`set corrective_task[${entry.index}].task_handoff.doc_path = ${trimmedHandoffPath}`);
     mutations_applied.push(`corrective_tasks.length = ${iteration.corrective_tasks.length} (scope=${scope})`);
   } else if (routingVerdict === REVIEW_VERDICTS.REJECTED) {
-    const iteration = resolveTaskIteration(cloned, phase, task);
+    // Iter 11 — the rejected verdict must halt the hosting iteration, not the
+    // task iteration unconditionally. When a phase-scope corrective's code
+    // review returns `rejected`, we halt the phase iteration (its ancestor)
+    // rather than a stale-default task iteration. Uses the same
+    // ancestor-derivation helper that the `changes_requested` branch uses.
+    const { iteration, scope } = resolveHostingIteration(cloned, phase, task);
     iteration.status = 'halted';
     cloned.graph.status = 'halted';
     cloned.pipeline.halt_reason =
-      `Code review rejected (task): reviewer issued a 'rejected' verdict. ` +
+      `Code review rejected (scope=${scope}): reviewer issued a 'rejected' verdict. ` +
       `Rejected verdicts halt the pipeline with no corrective cycle — no retry is attempted.`;
-    mutations_applied.push('set task_iteration.status = halted (rejected verdict)');
+    mutations_applied.push(`set ${scope === 'phase' ? 'phase_iteration' : 'task_iteration'}.status = halted (rejected verdict, scope=${scope})`);
     mutations_applied.push('set graph.status = halted');
     mutations_applied.push('set pipeline.halt_reason (reviewer rejected verdict)');
   } else if (
