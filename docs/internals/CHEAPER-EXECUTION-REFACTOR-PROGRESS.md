@@ -77,7 +77,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 16 | Repository deep clean | Not started | — | — |
 | 17 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 13 / 18 iterations complete; Iter 13 awaiting merge. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
+**Overall**: 13 / 18 iterations complete (Iter 13 awaiting merge; Branches table carries the merge state). Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
 
 **Legend**: Not started → In progress → Blocked → Complete
 

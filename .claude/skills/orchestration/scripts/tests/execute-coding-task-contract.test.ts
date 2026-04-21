@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,7 +28,13 @@ const SKILL_PATH = path.resolve(
 );
 
 describe('execute-coding-task/SKILL.md — executor contract anchors', () => {
-  const content = fs.readFileSync(SKILL_PATH, 'utf8');
+  let content = '';
+
+  beforeAll(() => {
+    // Read inside beforeAll (not describe scope) so a missing / unreadable
+    // file surfaces as a normal test failure rather than a module-load throw.
+    content = fs.readFileSync(SKILL_PATH, 'utf8');
+  });
 
   it('is readable and non-empty', () => {
     expect(content.length).toBeGreaterThan(0);
