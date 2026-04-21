@@ -468,12 +468,13 @@ describe('Execution-tier integration — complete pipeline run', () => {
     expect(io.currentState!.graph.status).toBe('completed');
   });
 
-  // Iter 13 — executor reads ONLY the task-handoff. The enriched context for
-  // `execute_task` carries `handoff_doc` and the phase/task identifiers — and
-  // NOTHING that names an upstream planning doc (Requirements / Master Plan /
-  // PRD / Design / Architecture). Guards against executor-contract regressions
-  // if future enrichment code accidentally surfaces upstream doc paths.
-  it('execute_task enrichment passes handoff_doc ONLY — no upstream-doc fields', () => {
+  // Iter 13 — for executor enrichment, `handoff_doc` is the only doc-path
+  // input. The enriched context for `execute_task` still carries the
+  // phase/task identifiers, but NOTHING that names an upstream planning doc
+  // (Requirements / Master Plan / PRD / Design / Architecture). Guards
+  // against executor-contract regressions if future enrichment code
+  // accidentally surfaces upstream doc paths.
+  it('execute_task enrichment exposes handoff_doc as the only doc-path field — no upstream-doc fields', () => {
     const config = makeConfig();
     const io = createMockIO(null, config);
 

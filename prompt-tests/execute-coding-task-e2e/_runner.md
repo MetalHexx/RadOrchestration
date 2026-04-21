@@ -35,7 +35,7 @@ All paths are relative to the repo root unless noted.
    ```
    prompt-tests/execute-coding-task-e2e/output/tdd-slip/<RUN-FOLDER>/
    ```
-   Copy the entire contents of `prompt-tests/execute-coding-task-e2e/fixtures/tdd-slip/` — preserving subdirectory structure (`phases/`, `tasks/`, `reports/`, `src/`).
+   Copy the entire contents of `prompt-tests/execute-coding-task-e2e/fixtures/tdd-slip/` — including root-level files (`state.json`, `orchestration.yml`, `template.yml`, `package.json`, the three documentary `TDD-SLIP-*.md` decoys) and preserving subdirectory structure (`phases/`, `tasks/`, `reports/`, `src/`). The `package.json` sets `"type": "module"` so `node --test` treats the `.js` handoff targets as ESM — matching the `AD-1` (Pure ESM) constraint both handoffs inline.
 
    > The fixture's `state.json` is pre-seeded — do NOT invoke the installer or run `pipeline.js --event start`. This harness exercises the **executor** in isolation.
    >

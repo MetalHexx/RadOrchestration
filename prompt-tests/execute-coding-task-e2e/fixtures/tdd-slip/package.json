@@ -1,0 +1,6 @@
+{
+  "name": "tdd-slip-fixture",
+  "private": true,
+  "type": "module",
+  "description": "Fixture module config for execute-coding-task-e2e/tdd-slip. The runner copies this file into the run folder so node --test treats the .js handoff targets as ESM (matching the 'Pure ESM; named export' AD-1 constraint inlined in both handoffs)."
+}

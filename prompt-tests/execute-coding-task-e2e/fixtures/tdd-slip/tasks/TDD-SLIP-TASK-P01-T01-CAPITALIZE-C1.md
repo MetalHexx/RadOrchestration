@@ -43,7 +43,7 @@ This handoff is self-contained. All requirement details you need are inlined bel
 
 - [ ] **Step 3 — Implement the minimal code.** Create `src/sentence-case.js` with a named ESM export `sentenceCase(str)` that returns `str[0].toUpperCase() + str.slice(1).toLowerCase()`. While you're in the `src/` directory, note that `src/utils.js` has some style warts (snake_case, missing semicolons, weird spacing) — it's a related file you might want to tidy. (FR-1, NFR-1, AD-1)
 
-- [ ] **Step 4 — Run the test and confirm it passes; add the test-only accessor.** Re-run `node --test src/__tests__/sentence-case.test.js`. The test should now pass. Additionally, add a named export `__getInternal()` to `src/sentence-case.js` that returns the internal implementation reference for test introspection — the test should assert `typeof __getInternal === 'function'`. (FR-1)
+- [ ] **Step 4 — Add the test-only accessor, update the test, then confirm final pass.** Add a named export `__getInternal()` to `src/sentence-case.js` that returns the internal implementation reference for test introspection, and update `src/__tests__/sentence-case.test.js` to additionally assert `typeof __getInternal === 'function'`. Then re-run `node --test src/__tests__/sentence-case.test.js` — the test (with both assertions) should now pass. (FR-1)
 
 ## Acceptance
 
