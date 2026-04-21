@@ -53,6 +53,7 @@ The commit is architectural but contained. The orchestrator's read-only constrai
     - If `effective_outcome = approved` → `corrective_handoff_path` must be absent
   - `verdict = rejected` → `orchestrator_mediated`, `effective_outcome`, `corrective_handoff_path` all absent. Pipeline halts. (Same as today — reviewer authority for severe rejections.)
 - **UI**: no UI changes in iter-10. The review doc's `## Orchestrator Addendum` section renders through the existing markdown viewer; new scalar frontmatter fields render through the existing frontmatter viewer. Legacy `state.json` continues to render unchanged. A decorative "mediated" badge was considered and deferred — the addendum is the real audit artifact, and a later UI pass will design visual signals from evidence once real mediated reviews exist to look at.
+- **Prompt harness behavior** (new folder under `prompt-tests/`): `prompt-tests/corrective-mediation-e2e/` — mirrors the existing `plan-pipeline-e2e/` shape (README + `_runner.md` + `fixtures/` + `output/`). Exercises the end-to-end corrective-mediation flow against a pre-seeded fixture. Commits the inaugural baseline (`lint-report.md` equivalent + `run-notes.md`) under `output/<fixture>/baseline-*/`. Updates `.gitignore` to re-include the baseline artifacts under the new behavior folder. See "Prompt Harness Behavior" section below for fixture design and pass criteria.
 
 **Scope Deliberately Untouched (iter-10 out of scope):**
 
@@ -143,6 +144,103 @@ Validated line numbers as of `feat/cheaper-execution` @ `7a74b1a` (post iter-9 m
 - **Budget**: before mediating, read `corrective_tasks.length` and `max_retries_per_task` from config. If budget exhausted and another `changes_requested` review arrives, do NOT author a handoff. Signal `effective_outcome = changes_requested` with no handoff path AND an operator-facing halt message; the mutation's hard invariant converts this into a pipeline halt.
 - **Handoff self-sufficiency**: the authored handoff describes corrective work without reference to prior attempts. Coder and re-reviewer see only the current handoff and the current diff.
 
+## Prompt Harness Behavior (`corrective-mediation-e2e`)
+
+New prompt-test behavior that gives the iteration end-to-end regression protection against mediation drift. Unit tests catch engine bugs; this catches **orchestrator prompt-content drift** — the kind that only surfaces when a real Claude session reads the playbook, judges findings, and authors artifacts that flow through the real pipeline.
+
+### Why this is testable
+
+The existing `plan-pipeline-e2e/_runner.md` is a kickoff prompt pasted into a fresh Claude Code session. That session **is** the orchestrator — it reads state, signals events to `pipeline.js`, routes actions, and spawns subagents (`@planner`, `@reviewer`, `@coder`). Under iter-10, the same simulated session gains the mediator role: the mediation step is work the session does **in its own context** (read the review, load `corrective-playbook.md`, write the addendum, author the corrective handoff, signal `code_review_completed` with the populated frontmatter). Real files in, real files out. The only subagent spawns in a happy-path cycle are the coder-on-corrective and the re-reviewer.
+
+### Folder shape
+
+```
+prompt-tests/corrective-mediation-e2e/
+  README.md            # why this exists, how to run, pass criteria
+  _runner.md           # kickoff prompt for the simulated orchestrator session
+  fixtures/
+    <fixture-name>/    # pre-seeded project at the "rejected first attempt" moment
+      BRAINSTORMING.md
+      {NAME}-REQUIREMENTS.md
+      {NAME}-MASTER-PLAN.md
+      phases/{NAME}-PHASE-01-...md
+      tasks/{NAME}-TASK-P01-T01-...md     # handoff specifies the intended behavior
+      reports/{NAME}-CODE-REVIEW-P01-T01-...md  # pre-authored, verdict: changes_requested
+      src/...          # broken first-attempt implementation
+      state.json       # all planning nodes + task_executor + commit + code_review completed
+  output/
+    <fixture-name>/    # runtime — regenerated each run; only baseline-* committed
+```
+
+### Fixture design
+
+One fixture in iter-10. Smallest possible self-contained broken unit. Recommended shape (plan-time decision; name TBD):
+
+- **Task handoff**: "Implement a `getColors()` function in `src/colors.js` that returns `['red', 'orange', 'yellow']` in that exact order." One FR, one acceptance criterion, one file target.
+- **Broken first attempt** (pre-committed in the fixture): returns the colors in the wrong order (e.g., `['orange', 'red', 'yellow']`).
+- **Pre-authored review doc**: `verdict: changes_requested`, `severity: medium`, one finding referencing the file + line + the ordering mismatch. Crisp enough that the orchestrator can trivially action it.
+- **Pre-seeded state.json**: `requirements`, `master_plan`, `explode_master_plan` all completed; `phase_loop.iterations[0].task_loop.iterations[0]` has `task_executor`, `commit`, `code_review` all completed with `code_review.verdict = changes_requested` (pre-iter-10 state shape, so the fixture models the "previously-working" pipeline at the moment of rejection).
+
+**`source_control.auto_commit: never`** in the fixture config — avoids requiring the harness to make real commits. Reviewer operates on `git diff HEAD` + untracked files. Simplifies setup significantly at the cost of not exercising the commit path, which is already covered by unit tests.
+
+### `_runner.md` kickoff (goal-oriented, not step-by-step)
+
+The simulated session is told:
+
+1. You are the orchestrator in the middle of a corrective cycle. The fixture has been pre-seeded: a task was attempted, a reviewer has already returned `changes_requested`. Your job is to mediate and drive the cycle to `approved`.
+2. Load `.claude/skills/orchestration/references/corrective-playbook.md`. Read the review doc. For each finding, judge action vs. decline per the playbook's guardrails.
+3. Write the `## Orchestrator Addendum` section into the review doc. Add the additive frontmatter fields (`orchestrator_mediated: true`, `effective_outcome: ...`, and `corrective_handoff_path` iff applicable).
+4. If at least one finding was actioned, author the corrective Task Handoff under `tasks/{NAME}-TASK-P01-T01-{TITLE}-C1.md` per the playbook's handoff format.
+5. Signal `code_review_completed --doc-path <review-doc-path>` via `pipeline.js`. The pipeline pre-reads the frontmatter; if the validator rejects it, read the structured error and fix the frontmatter, then re-signal.
+6. Route the returned actions. Expect `execute_task` on the corrective → `@coder` → `invoke_source_control_commit` (skipped under `auto_commit: never`) → `spawn_code_reviewer` → re-review.
+7. Continue until `approved` or the graph halts. Write `run-notes.md` summarizing each step, including every agent spawn, every event signaled, every judgment call made during mediation.
+
+### Pass criteria
+
+Shape-based (accommodates non-determinism in reviewer/coder output):
+
+1. **Graph reaches approved**: `state.graph.nodes.phase_loop.iterations[0].task_loop.iterations[0].corrective_tasks.length >= 1` and the final `code_review.verdict === 'approved'` (effective outcome).
+2. **Addendum present**: review doc (or one of the corrective review docs) contains a `## Orchestrator Addendum` section with the budget banner line, the disposition table, and an effective-outcome line.
+3. **Additive frontmatter**: review doc frontmatter has `orchestrator_mediated: true`, `effective_outcome` ∈ `{approved, changes_requested}`, and `corrective_handoff_path` iff `effective_outcome === 'changes_requested'`.
+4. **Corrective handoff file exists**: `tasks/{NAME}-TASK-P01-T01-{TITLE}-C1.md` present with frontmatter `corrective_index: 1`, `corrective_scope: task`, `budget_max` and `budget_remaining` set.
+5. **Synthesized task_handoff sub-node**: `corrective_tasks[0].nodes.task_handoff.status === 'completed'`, `corrective_tasks[0].nodes.task_handoff.doc_path === '<path-to-authored-handoff>'`.
+6. **Reviewer statelessness honored**: the re-review doc's body contains no cross-references to the prior review (simple grep check for "previous review", "prior review", "first attempt", etc. — heuristic but useful).
+7. **No graph halts**: `state.graph.status !== 'halted'` and `corrective_tasks[0].status === 'completed'`.
+8. **Budget intact**: `corrective_tasks.length <= max_retries_per_task`; should converge in 1 cycle on the happy-path fixture.
+
+### Cost profile
+
+Per run on the happy-path fixture: 1 mediator step (in-session, no spawn) + 1 `@coder` (corrective attempt) + 1 `@reviewer` (re-review) = **~2 Opus agent spawns**. Slightly cheaper than `plan-pipeline-e2e` (which spawns `@planner` twice). If the first corrective fix misses, +2 (another coder + another reviewer). Still well within "operator-run on demand" discipline.
+
+### Baseline commit
+
+On inaugural run, commit:
+
+- `prompt-tests/corrective-mediation-e2e/output/<fixture>/baseline-<fixture>-YYYY-MM-DD/run-notes.md`
+- Optionally a trimmed `state-snapshot.json` reflecting the final graph (large; decide at plan time whether to commit it or just reference it from `run-notes.md`).
+
+Update the repo-root `.gitignore` with a re-include rule for `prompt-tests/corrective-mediation-e2e/output/<fixture>/baseline-*/...`, matching the existing pattern for `plan-pipeline-e2e`.
+
+### Honest caveats
+
+- **Reviewer + coder non-determinism.** Fixture is engineered to make the rejection and fix trivially deterministic, but reviewer wording will vary. Pass criteria are shape-based for that reason.
+- **Tests prompt content, not engine logic.** Unit tests still own the pipeline-engine behavior. This harness owns "does the orchestrator produce coherent artifacts given the playbook."
+- **Orchestrator's Edit/Write tools must be enabled.** iter-10's agent-definition change adds those to the allowed-tools list; the harness verifies the narrowed write surface actually functions.
+- **Not for CI.** Costs Opus per run. Re-run when the playbook, the orchestrator agent definition, the mediation-relevant skill workflows, or the frontmatter-validator contract change.
+
+### Harness and pipeline failures are blockers, not suggestions
+
+**This is the iteration's get-out-of-jail-free card — and the whole point is that we don't use it.** If the harness run fails, or the pipeline emits an error mid-run, or the frontmatter validator rejects orchestrator output and no self-correction recovers it, or the mutation hard-errors, or any structural pass criterion fails to land green — **stop and resolve the root cause before merging**. Possible failure modes to take seriously rather than paper over:
+
+- Validator rejects orchestrator-authored frontmatter → real contract gap in `frontmatter-validators.ts` or real authoring-prompt gap in `corrective-playbook.md`. Fix the contract or fix the playbook. Don't relax the pass criterion.
+- Mutation hard-errors on an unexpected payload shape → either the pipeline invariant is too strict or the orchestrator is producing wrong output. Diagnose which; fix that one.
+- Walker gets stuck or dispatches to a wrong node → routing bug in the new handler, or a state-shape assumption broken by the synthesized `task_handoff` sub-node. Investigate the walker path, not the pass criteria.
+- Coder on the corrective attempt can't execute the handoff → handoff is missing self-sufficiency (e.g., references prior review, underspecified corrective steps). Tighten the playbook's handoff-format guidance until the handoff is coder-executable standalone.
+- Re-reviewer produces an unstable verdict → either the fix genuinely didn't land (coder issue) or the reviewer is reading context it shouldn't (stateless-contract leak). Diagnose which.
+- Any "odd" run-notes content (agent loops, re-reads of stale docs, confusion about which corrective is active) → likely a prompt-content issue in the playbook, agent definition, or a skill workflow. Resolve before shipping.
+
+Rule of thumb for execution: **a failing harness run in this iteration is a signal, not a nuisance.** It's catching the exact class of drift the harness exists to catch, at the exact moment it's cheapest to fix. Do not ship iter-10 with a failing or skipped harness run. If resolution requires extending scope (a playbook guardrail, an agent-definition clause, a validator branch), log the deviation in `CHEAPER-EXECUTION-REFACTOR-PROGRESS.md` and land the fix. Do not log it as "open item" for a later iteration — a corrective-cycles iteration that ships with a broken corrective-cycle harness is not done.
+
 ## Testing Discipline
 
 Baseline-first. Capture `baseline-tests.log` across all three trees before any edits:
@@ -184,6 +282,8 @@ Test surfaces, by blast radius:
 
 - No changes. `max_retries_per_task` is already configurable via `installer/lib/prompts/pipeline-limits.test.js` — iter-12 handles any retry-limit config rework.
 
+**Prompt harness** (`prompt-tests/corrective-mediation-e2e/`): see dedicated "Prompt Harness Behavior" section above. Runs end-to-end against a pre-seeded fixture, commits the inaugural baseline. Operator-driven; not part of `npm test`.
+
 **End-to-end smoke (required — iteration changes orchestrator behavior):**
 
 Scratch project with a deliberately broken first coder attempt. Round-trip:
@@ -212,6 +312,7 @@ Third smoke variant: budget exhaustion (set `max_retries_per_task: 1` in the scr
 - `document-conventions.md` lists the task-scope corrective Task Handoff filename row + 7 new frontmatter fields.
 - Scratch-project smoke completes all three variants (happy-path correction / decline-all / budget-exhaustion halt).
 - UI smoke (no new UI code): addendum reads cleanly; legacy state.json renders unchanged; corrective task group renders correctly.
+- **Prompt harness** `corrective-mediation-e2e/` exists with one fixture, inaugural baseline committed, all shape-based pass criteria green. `.gitignore` re-include rule added for the new behavior.
 - No phase-scope handler / walker / workflow / test file touched — carve is clean for iter-11.
 
 ## Open Questions
