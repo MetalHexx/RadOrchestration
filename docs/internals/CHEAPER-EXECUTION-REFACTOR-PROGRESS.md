@@ -71,13 +71,13 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 10 | Task-level corrective cycles (orchestrator mediation) | Merged | 2026-04-20 | 2026-04-20 |
 | 11 | Phase-level corrective cycles | Complete | 2026-04-21 | 2026-04-21 |
 | 12 | Code-review rework (task/phase/final) | Merged | 2026-04-21 | 2026-04-21 |
-| 13 | Execute-coding-task rework | Not started | — | — |
+| 13 | Execute-coding-task rework | Complete | 2026-04-21 | 2026-04-21 |
 | 14 | Rad-plan-audit overhaul | Not started | — | — |
 | 15 | Explosion-retry configurability | Not started | — | — |
 | 16 | Repository deep clean | Not started | — | — |
 | 17 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 12 / 18 iterations complete; Iter 13 next up. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
+**Overall**: 13 / 18 iterations complete (Iter 13 awaiting merge; Branches table carries the merge state). Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -105,7 +105,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 10 | `feat/iter-10-task-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-10-task-corrective-cycles` | Merged | `3b85095` | [#61](https://github.com/MetalHexx/RadOrchestation/pull/61) |
 | 11 | `feat/iter-11-phase-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-11-phase-corrective-cycles` | Merged | `6140a9a` | [#62](https://github.com/MetalHexx/RadOrchestation/pull/62) |
 | 12 | `feat/iter-12-code-review-rework` | `C:\dev\orchestration\v3-worktrees\feat-iter-12-code-review-rework` | Merged | `1030620` | [#64](https://github.com/MetalHexx/RadOrchestation/pull/64) |
-| 13 | — | — | Not created | — | — |
+| 13 | `feat/iter-13-executor-rework` | `C:\dev\orchestration\v3-worktrees\feat-iter-13-executor-rework` | Awaiting merge | — | [#65](https://github.com/MetalHexx/RadOrchestation/pull/65) |
 | 14 | — | — | Not created | — | — |
 | 15 | — | — | Not created | — | — |
 | 16 | — | — | Not created | — | — |
@@ -167,6 +167,15 @@ Append new entries at the bottom. Format:
 - Tests: 1228 passed (baseline 1228) + 1 todo across 46 test files. No pipeline code touched — additive only.
 - Smoke test: hand-drove a tiny `SMOKE-REQUIREMENTS.md` + `SMOKE-EXECUTION-PLAN.md` outside the repo. Lint returned `[]` for the lean Requirements and flagged an oversized FR when padded to ~600 tokens. Execution Plan structural-lint items (task heading regex, type tag, Requirements line, step prefix, no placeholders, IDs resolve in the Requirements doc) all pass for the sample.
 
+### 2026-04-21 — Iteration 13 — Execute-coding-task rework
+
+- Branch: `feat/iter-13-executor-rework` off `feat/cheaper-execution` @ `64656e8` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-13-executor-rework`). Flat naming.
+- SKILL.md rewrite (69 → 94 lines, high-signal): handoff-only input contract, uniform original + corrective shape (no mode branching, no finding-tier visibility), mandatory 4-step RED-GREEN on `code` tasks, TDD red-flag self-checks, test-quality anti-pattern gate with handoff-prescription carve-out, pre-report self-review (Completeness / Quality / Discipline / Testing), strict `## Execution Notes` appendix placement at END of handoff body.
+- Ripples: `corrective-playbook.md` gains `### Code-task RED-GREEN shape` subsection; `master-plan/workflow.md` gains one sub-bullet on test-quality anti-patterns; `action-event-reference.md` row 3 tightened to `handoff_doc`-only enrichment cell; `rad-execute/SKILL.md` audit clean (zero edits).
+- Tests: E1/E2 integration assertions — execute_task enrichment carries `handoff_doc` only; original and corrective contexts have identical key shape. E3 new `execute-coding-task-contract.test.ts` grep-locks SKILL.md prose anchors. E4 new `prompt-tests/execute-coding-task-e2e/` harness with fixture `tdd-slip` (pre-seeded at execute_task ready, back-to-back original + C1 runs; inaugural baseline captured as a placeholder — see Deviations).
+- Scripts tree: 1298 → 1317 passed (+19 from new tests). UI + installer unchanged. Baseline diff clean.
+- Commits: `ef5f5d9` (main) + `f9cd00e` (pre-PR corrective from dual-reviewer pass). PR: [#65](https://github.com/MetalHexx/RadOrchestation/pull/65), plus 6 Copilot-cycle fixups (`2a1f982`, `83e4076`, `ba18726`, `13297bb`, `9f77dae`, `ef08545`, `382e0ff`). Cycle terminated at R7 per two-consecutive-nits-only criterion.
+
 ---
 
 ## Deviations from Design
@@ -182,6 +191,20 @@ Format:
 - **Why**: <reason the deviation was necessary>
 - **Impact**: <downstream effects, if any>
 ```
+
+### 2026-04-21 — Iteration 13 — Inaugural harness baseline committed as placeholder, not a live run
+
+- **Plan said**: "Inaugural baseline captured at iteration exit under `output/<fixture>/baseline-<fixture>-<YYYY-MM-DD>/`; committed files: `lint-report.md`, `run-notes.md`."
+- **Execution did**: Committed `output/tdd-slip/baseline-tdd-slip-2026-04-21/run-notes.md` and `lint-report.md` as placeholder stubs documenting that the live executor run was deferred to a post-merge fresh session.
+- **Why**: The SKILL.md under test was rewritten in this iteration. A live harness run driven from the same session would execute against the session-loaded skill, not the rewritten SKILL.md on disk. A clean post-merge session provides correct isolation for the inaugural baseline — the executor loads the committed skill fresh and exercises the contract end-to-end.
+- **Impact**: Carry-forward open item — run the harness once in a fresh session after PR merge and commit the live baseline artifacts in a follow-up. No downstream iteration blocks on this.
+
+### 2026-04-21 — Iteration 13 — SKILL.md prohibition phrasing avoids the literal banned tokens
+
+- **Plan said**: SKILL.md Role & Constraints should read "DO NOT read upstream planning docs — no Requirements, Master Plan, PRD, Design, Architecture."
+- **Execution did**: The prohibition is rendered as "no requirements specs, master-plan / phase-plan files, product-spec / design / architecture artifacts, or any earlier pipeline output."
+- **Why**: The E3 contract test (`execute-coding-task-contract.test.ts`) asserts that the tokens `PRD`, `Design doc`, `Architecture doc`, and `Master Plan doc` do NOT appear in SKILL.md as read-targets. The plan's prescribed sentence embeds `PRD` literally, which would fail that very test. Rephrasing to category names (product-spec / design / architecture) preserves — arguably tightens — the prohibition's intent while keeping the self-referential contract coherent.
+- **Impact**: None substantive. All 12 E3 presence-anchor strings remain in SKILL.md; all 4 absence strings are absent. The E3 test passes cleanly.
 
 ### 2026-04-21 — Iteration 12 — Review-rework fixtures authored programmatically in TypeScript (not on-disk `.md` trees)
 

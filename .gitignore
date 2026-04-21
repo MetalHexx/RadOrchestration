@@ -38,3 +38,11 @@ node_modules/
 /prompt-tests/code-review-rework-e2e/output/*/*/**
 !/prompt-tests/code-review-rework-e2e/output/*/.gitkeep
 !/prompt-tests/code-review-rework-e2e/output/conformance-tiered/baseline-*/run-notes.md
+
+# Prompt harness — execute-coding-task-e2e (iter-13).
+# Same structure as above: ignore run-folder contents, re-include the
+# inaugural-baseline run-notes.md + lint-report.md under baseline-* folders.
+/prompt-tests/execute-coding-task-e2e/output/*/*/**
+!/prompt-tests/execute-coding-task-e2e/output/*/.gitkeep
+!/prompt-tests/execute-coding-task-e2e/output/tdd-slip/baseline-*/lint-report.md
+!/prompt-tests/execute-coding-task-e2e/output/tdd-slip/baseline-*/run-notes.md
