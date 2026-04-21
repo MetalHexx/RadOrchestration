@@ -253,7 +253,7 @@ Test surfaces, by blast radius:
 
 **High-impact rework (core corrective-flow tests):**
 
-- `scripts/tests/mutations.test.ts` — `code_review_completed` handler tests (lines 501-562) shift from auto-birth-on-verdict to birth-on-handoff-path semantics. Ensure all three branches (approved / changes_requested+handoff / changes_requested+no-handoff / rejected) have coverage. `findTaskLoopBodyDefs` error-handling test (line ~1006-1007) still applies.
+- `scripts/tests/mutations.test.ts` — `code_review_completed mutation` describe (line ~807) and `code_review_completed — corrective injection` describe (line ~890) shift from auto-birth-on-verdict to birth-on-handoff-path semantics. Ensure all four branches (approved / changes_requested+handoff / changes_requested+no-handoff / rejected) have coverage. `findTaskLoopBodyDefs` error-handling test (line ~1003-1007) still applies.
 - `scripts/tests/corrective-integration.test.ts` — task-corrective flows (lines 353-497 cover single, multiple, budget, rejected). Rewrite for handoff-path-driven birth; add a synthesized `task_handoff` assertion on each corrective entry. Phase-corrective test at lines 508-563 stays skipped (iter-11).
 - `scripts/tests/contract/09-corrective-cycles.test.ts` — contract expansion for the birth-on-handoff-path contract. Auto-resolution tests (lines 78-127) remain valid; add a test asserting no corrective is birthed when `effective_outcome = approved`.
 - `scripts/tests/context-enrichment.test.ts` — `handoff_doc` lookup tests. Today `execute_task` enrichment is tested in `contract/03-action-contexts.test.ts` (confirm at plan time). Add a case: active task-scope corrective → `handoff_doc` resolves to the corrective's `task_handoff.doc_path`.
