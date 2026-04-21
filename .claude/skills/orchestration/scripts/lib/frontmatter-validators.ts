@@ -145,8 +145,11 @@ const VALIDATION_RULES: Record<string, FrontmatterValidationRule[]> = {
   // `changes_requested`, the orchestrator's mediation addendum MUST supply
   // `orchestrator_mediated`, `effective_outcome`, and (iff effective_outcome is
   // `changes_requested`) `corrective_handoff_path`. When verdict is `approved`
-  // or `rejected`, all three mediation fields must be absent. See
-  // ok-write-the-plan-vast-thacker.md for the contract rationale.
+  // or `rejected`, all three mediation fields must be absent. The mutation
+  // layer is `mutations.ts` PHASE_REVIEW_COMPLETED; the operator-facing write
+  // surface + judgment rubric lives in
+  // `.claude/skills/orchestration/references/corrective-playbook.md` (Phase-
+  // Scope Mediation section).
   phase_review_completed: [
     {
       field: 'verdict',
