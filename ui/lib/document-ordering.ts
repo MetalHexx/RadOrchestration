@@ -255,7 +255,9 @@ export function getOrderedDocsV5(
             const ctNode = ct.nodes[ctNodeId];
             if (ctNode?.kind === 'step' && ctNode.doc_path != null) {
               const title = titleForPhaseCorrectiveChild(ctNodeId, phaseNum) + ' (Phase-C' + ct.index + ')';
-              const category: OrderedDoc['category'] = ctNodeId.includes('review') ? 'review' : 'phase';
+              // Explicit id check (not `includes('review')`) keeps categorization stable
+              // if future corrective body nodes happen to contain the 'review' substring.
+              const category: OrderedDoc['category'] = ctNodeId === 'code_review' ? 'review' : 'phase';
               push(ctNode.doc_path, title, category);
             }
           }

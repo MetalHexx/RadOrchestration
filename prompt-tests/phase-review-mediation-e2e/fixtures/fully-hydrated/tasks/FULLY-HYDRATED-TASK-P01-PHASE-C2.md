@@ -14,10 +14,14 @@ budget_remaining: 3
 # Task P01-PHASE-C2 — Phase-Scope Corrective 2
 
 ## Intent
-Follow-up fix in `src/renderer.js` surfaced by the code review of the P01-PHASE-C1 corrective. The ancestor-derivation logic correctly identified phaseIter as the hosting iteration for this corrective (the code_review under phaseIter.corrective_tasks[0] lives at phase scope).
+Harden `src/renderer.js` so its integration with the Phase 1 parser and foundation modules is robust against boundary inputs — specifically the cases where the render pipeline receives an empty input array, a single-element input, and inputs where the element content is the empty string. These shapes must produce defined, stable output matching the module's documented return contract (no thrown exceptions, no `undefined` leaks in the rendered output string).
 
 ## File Targets
 - `src/renderer.js`
 
 ## Acceptance Criteria
-- Integration test wired by the previous corrective still passes; edge cases flagged in the C1 code review are handled.
+- `render([])` returns the empty-result sentinel defined by FR-3 without throwing.
+- `render([x])` for a non-empty string `x` returns the single-element rendered form specified by FR-3.
+- `render([''])` produces a rendered form that does NOT contain a literal `undefined` or empty-gap artifact; pick a behaviour documented in FR-3 (e.g., skip, or render as the configured empty-cell token).
+- Existing passing integration paths for multi-element inputs continue to produce byte-identical output.
+- No new exports, no new files, no changes to `src/parser.js` or `src/foundation.js`.
