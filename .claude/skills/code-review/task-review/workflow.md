@@ -31,9 +31,10 @@ Task Review reads only the inputs below — do NOT load the PRD, Architecture, D
 6. Apply verdict rules (see Verdict Rules section below) — highest severity across both passes determines verdict.
 7. Fill in the output template at [./template.md](./template.md) and save based on corrective status:
     - Normal (first-time): `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md`
-    - Corrective: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}-C{corrective_index}.md`
+    - Task-scope corrective: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}-C{corrective_index}.md`
+    - Phase-scope corrective: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-PHASE-C{corrective_index}.md`
 
-    The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) review is preserved, not overwritten. (See `orchestration/references/document-conventions.md` → "Corrective Filename Suffix" for the shared pattern.)
+    **Derivation rule.** Read `task_id` from the spawn context. When `task_id` has the form `P{NN}-T{NN}` (e.g., `P01-T02`), use the task-scope filename form. When `task_id` has the form `P{NN}-PHASE` (e.g., `P01-PHASE`), use the phase-scope sentinel form — the review covers a phase-scope corrective, not a single task. The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) review is preserved, not overwritten. (See `orchestration/references/document-conventions.md` → "Corrective Filename Suffix" for the shared pattern.)
 
 ## Conformance Checklist Categories
 
@@ -90,4 +91,5 @@ The highest-severity finding across both passes (conformance + skeptical) determ
 - **Template**: [./template.md](./template.md)
 - **Save path**:
   - Normal: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md`
-  - Corrective: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}-C{corrective_index}.md`
+  - Task-scope corrective: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}-C{corrective_index}.md`
+  - Phase-scope corrective: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-PHASE-C{corrective_index}.md` (when `task_id` matches `P{NN}-PHASE`)

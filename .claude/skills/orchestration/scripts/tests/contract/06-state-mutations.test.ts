@@ -391,21 +391,69 @@ describe('[CONTRACT] State Mutations — Phase review completed mutations', () =
     expect(result.mutations_applied.some((m) => m.includes('verdict'))).toBe(true);
   });
 
-  // Skipped in Iter 7; Iter 11 rewires corrective cycles via corrective-task-append. See docs/internals/cheaper-execution/iter-11-phase-corrective-cycles.md.
-  // The mutation-side behavior is still exercised by tests/mutations-phase-corrective.test.ts; this contract
-  // test goes through the full engine and the post-mutation walker now throws (dag-walker.ts:171-179).
-  it.skip('phase_review_completed (changes_requested): corrective task injected at phase level', () => {
+  // Iter 11 — un-skipped. Mediated changes_requested with handoff path →
+  // corrective appended to phaseIter.corrective_tasks (append-only).
+  it('phase_review_completed (changes_requested): corrective task injected at phase level', () => {
     const io = driveToPhaseReviewPosition();
+    const correctiveHandoffPath = 'tasks/PHASE-CORRECTIVE-C1.md';
+    seedDoc(phaseReviewDoc(1), {
+      verdict: 'changes_requested',
+      exit_criteria_met: false,
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: correctiveHandoffPath,
+    });
 
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
-      phase: 1, doc_path: phaseReviewDoc(1), verdict: 'changes_requested', exit_criteria_met: false,
-    }, io);
+      phase: 1,
+      doc_path: phaseReviewDoc(1),
+      verdict: 'changes_requested',
+      exit_criteria_met: false,
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: correctiveHandoffPath,
+    } as Record<string, unknown>, io);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const phaseIter = phaseLoop.iterations[0];
     expect(phaseIter.corrective_tasks.length).toBeGreaterThanOrEqual(1);
-    expect(result.mutations_applied.some((m) => m.includes('corrective'))).toBe(true);
+    // Iter 11 append-only — phase_planning / task_loop NOT reset.
+    const phasePlanning = phaseIter.nodes['phase_planning'] as StepNodeState;
+    expect(phasePlanning.status).toBe('completed');
+    // Synthesized task_handoff pre-completed at the orchestrator path.
+    const handoff = phaseIter.corrective_tasks[0].nodes['task_handoff'] as StepNodeState;
+    expect(handoff.doc_path).toBe(correctiveHandoffPath);
+    expect(result.mutations_applied.some((m) => m.includes('corrective') || m.includes('phase corrective'))).toBe(true);
+  });
+
+  // Iter 11 — mutation contract: handoff-path-driven birth + ancestor-derivation log.
+  it('phase_review_completed (changes_requested): mutation log reports phase corrective count + handoff path', () => {
+    const io = driveToPhaseReviewPosition();
+    const correctiveHandoffPath = 'tasks/PHASE-CORRECTIVE-C1.md';
+    seedDoc(phaseReviewDoc(1), {
+      verdict: 'changes_requested',
+      exit_criteria_met: false,
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: correctiveHandoffPath,
+    });
+
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1,
+      doc_path: phaseReviewDoc(1),
+      verdict: 'changes_requested',
+      exit_criteria_met: false,
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: correctiveHandoffPath,
+    } as Record<string, unknown>, io);
+
+    expect(result.success).toBe(true);
+    // The mutation log emits the birth entry AND the handoff-path assignment.
+    expect(result.mutations_applied.some(m => /injected phase corrective task 1 \(changes_requested\)/.test(m))).toBe(true);
+    expect(result.mutations_applied.some(m => /phase_corrective_task\[1\]\.task_handoff\.doc_path = /.test(m))).toBe(true);
+    expect(result.mutations_applied.some(m => /phase corrective_tasks\.length = 1/.test(m))).toBe(true);
   });
 
   it('phase_review_completed (rejected): graph.status=halted', () => {

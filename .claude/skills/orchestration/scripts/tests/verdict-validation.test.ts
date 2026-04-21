@@ -209,9 +209,17 @@ describe('code_review_completed — verdict validation', () => {
 // ── phase_review_completed verdict validation ──────────────────────────────────
 
 describe('phase_review_completed — verdict validation', () => {
-  it('typo verdict halts the pipeline', () => {
+  // Iter-11 hardening: the phase_review verdict rule now validates the exact
+  // enum (approved / changes_requested / rejected) rather than just "defined."
+  // Typos no longer slip through to the mutation's unknown-verdict halt —
+  // they are caught as structured frontmatter errors at the pre-read boundary.
+  // Parallels the iter-10 change for code_review_completed above.
+  it('typo verdict returns a structured frontmatter error (validator-stage rejection)', () => {
     const io = driveToExecutionWithConfig(config, 1);
     driveToPhaseReview(io);
+    // Re-seed the review doc with the typo so pre-reads sees it during the
+    // frontmatter validation pass.
+    seedDoc(phaseReviewDoc(1), { verdict: 'approvd', exit_criteria_met: true });
 
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1,
@@ -219,15 +227,18 @@ describe('phase_review_completed — verdict validation', () => {
       verdict: 'approvd',
     }, io);
 
-    expect(result.success).toBe(true);
-    expect(io.currentState!.graph.status).toBe('halted');
-    expect(io.currentState!.pipeline.halt_reason).toContain('approvd');
-    expect(io.currentState!.pipeline.halt_reason).toContain('phase_review_completed');
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('verdict');
+    expect(result.error?.event).toBe('phase_review_completed');
+    // Graph does NOT halt — validator rejection is recoverable by the
+    // operator (fix the frontmatter typo, re-signal the event).
+    expect(io.currentState!.graph.status).not.toBe('halted');
   });
 
-  it('typo verdict returns display_halted action', () => {
+  it('typo verdict does not reach the mutation halt branch', () => {
     const io = driveToExecutionWithConfig(config, 1);
     driveToPhaseReview(io);
+    seedDoc(phaseReviewDoc(1), { verdict: 'approvd', exit_criteria_met: true });
 
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1,
@@ -235,7 +246,11 @@ describe('phase_review_completed — verdict validation', () => {
       verdict: 'approvd',
     }, io);
 
-    expect(result.action).toBe('display_halted');
+    // Old contract: action would be `display_halted` (mutation halted with
+    // unknown-verdict reason). Iter-11 contract: validator rejects upfront so
+    // the action is null and halt_reason stays null.
+    expect(result.action).not.toBe('display_halted');
+    expect(io.currentState!.pipeline.halt_reason).toBeNull();
   });
 
   it('valid approved verdict does not halt', () => {
@@ -252,6 +267,40 @@ describe('phase_review_completed — verdict validation', () => {
 
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.status).not.toBe('halted');
+  });
+
+  it('valid rejected verdict halts via existing routing, not the guard', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+    driveToPhaseReview(io);
+    seedDoc(phaseReviewDoc(1), { verdict: 'rejected', exit_criteria_met: false });
+
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1,
+      doc_path: phaseReviewDoc(1),
+      verdict: 'rejected',
+    }, io);
+
+    expect(result.success).toBe(true);
+    expect(io.currentState!.graph.status).toBe('halted');
+    // Iter-11 correction: the rejected-verdict routing branch now sets a
+    // descriptive halt_reason for operator consistency with other halt sites.
+    expect(io.currentState!.pipeline.halt_reason).toMatch(/rejected verdict|Phase review rejected/);
+  });
+
+  it('null verdict is rejected at the pre-read boundary', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+    driveToPhaseReview(io);
+    // Re-seed with null verdict to ensure frontmatter propagation finds it.
+    seedDoc(phaseReviewDoc(1), { exit_criteria_met: true });
+
+    const result = processEvent('phase_review_completed', PROJECT_DIR, {
+      phase: 1,
+      doc_path: phaseReviewDoc(1),
+      verdict: null as unknown as string,
+    }, io);
+
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('verdict');
   });
 });
 

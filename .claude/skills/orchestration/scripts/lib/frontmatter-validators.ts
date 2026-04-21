@@ -140,16 +140,88 @@ const VALIDATION_RULES: Record<string, FrontmatterValidationRule[]> = {
       mustBeAbsent: true,
     },
   ],
+  // Iter 11 — conditional orchestrator-mediation contract (parallels iter-10
+  // code_review_completed). `verdict` is the reviewer's raw verdict; when it is
+  // `changes_requested`, the orchestrator's mediation addendum MUST supply
+  // `orchestrator_mediated`, `effective_outcome`, and (iff effective_outcome is
+  // `changes_requested`) `corrective_handoff_path`. When verdict is `approved`
+  // or `rejected`, all three mediation fields must be absent. See
+  // ok-write-the-plan-vast-thacker.md for the contract rationale.
   phase_review_completed: [
     {
       field: 'verdict',
-      validate: (v) => v != null,
-      expected: 'a defined value',
+      // Validate the raw verdict is exactly one of the three allowed values —
+      // no trimming, no case normalization. A typo or stray whitespace
+      // (e.g., "approved ") would otherwise slip past the conditional
+      // mediation rules (which gate on exact-string match of
+      // 'changes_requested') and surface as a later runtime halt from the
+      // mutation's unknown-verdict branch instead of a structured frontmatter
+      // error. Fail early here with a clear field-specific message so the
+      // operator can fix the frontmatter and re-signal the event.
+      validate: (v) => typeof v === 'string' && (v === 'approved' || v === 'changes_requested' || v === 'rejected'),
+      expected: "one of 'approved', 'changes_requested', 'rejected'",
     },
     {
       field: 'exit_criteria_met',
       validate: (v) => v !== undefined && v !== null,
       expected: 'a defined value',
+    },
+    // verdict === 'changes_requested' branch — mediation fields required
+    {
+      field: 'orchestrator_mediated',
+      validate: (v) => v === true,
+      expected: 'true (orchestrator mediation required for changes_requested verdicts)',
+      when: (fm) => fm.verdict === 'changes_requested',
+    },
+    {
+      field: 'effective_outcome',
+      validate: (v) => v === 'approved' || v === 'changes_requested',
+      expected: "'approved' or 'changes_requested'",
+      when: (fm) => fm.verdict === 'changes_requested',
+    },
+    // When effective_outcome is changes_requested, corrective_handoff_path is
+    // OPTIONAL. Absence is the orchestrator's budget-exhausted halt signal —
+    // the mutation reads effective_outcome=changes_requested + no handoff path
+    // as "orchestrator declined to author a handoff because budget is blown"
+    // and converts it into a clean pipeline halt. When supplied, the path must
+    // be a non-empty string (whitespace-only is rejected).
+    {
+      field: 'corrective_handoff_path',
+      validate: (v) => typeof v === 'string' && v.trim().length > 0,
+      expected: 'a non-empty string when supplied',
+      when: (fm) => fm.verdict === 'changes_requested'
+        && fm.effective_outcome === 'changes_requested'
+        && fm.corrective_handoff_path !== undefined
+        && fm.corrective_handoff_path !== null,
+    },
+    {
+      field: 'corrective_handoff_path',
+      validate: () => true,
+      expected: 'absent (must be omitted when effective_outcome is approved)',
+      when: (fm) => fm.verdict === 'changes_requested' && fm.effective_outcome === 'approved',
+      mustBeAbsent: true,
+    },
+    // verdict ∈ {'approved','rejected'} branch — mediation fields must be absent
+    {
+      field: 'orchestrator_mediated',
+      validate: () => true,
+      expected: 'absent (only permitted on changes_requested verdicts)',
+      when: (fm) => fm.verdict === 'approved' || fm.verdict === 'rejected',
+      mustBeAbsent: true,
+    },
+    {
+      field: 'effective_outcome',
+      validate: () => true,
+      expected: 'absent (only permitted on changes_requested verdicts)',
+      when: (fm) => fm.verdict === 'approved' || fm.verdict === 'rejected',
+      mustBeAbsent: true,
+    },
+    {
+      field: 'corrective_handoff_path',
+      validate: () => true,
+      expected: 'absent (only permitted on changes_requested verdicts)',
+      when: (fm) => fm.verdict === 'approved' || fm.verdict === 'rejected',
+      mustBeAbsent: true,
     },
   ],
 };

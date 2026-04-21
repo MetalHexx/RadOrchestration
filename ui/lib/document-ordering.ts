@@ -156,6 +156,15 @@ function titleForPhaseChild(childId: string, phaseNum: number): string {
   return capitalize(childId);
 }
 
+function titleForPhaseCorrectiveChild(childId: string, phaseNum: number): string {
+  // Phase-scope correctives scaffold the same body-def node IDs as task-scope
+  // iterations (`task_handoff`, `code_review`), but at phase scope `task_handoff`
+  // is the corrective plan for the phase and `code_review` is its review.
+  if (childId === 'task_handoff') return `Phase ${phaseNum} Plan`;
+  if (childId === 'code_review') return `Phase ${phaseNum} Review`;
+  return titleForPhaseChild(childId, phaseNum);
+}
+
 function titleForTaskChild(taskNodeId: string, phaseNum: number, taskNum: number): string {
   if (taskNodeId === 'task_handoff') return `P${phaseNum}-T${taskNum} Handoff`;
   if (taskNodeId === 'code_review') return `P${phaseNum}-T${taskNum} Review`;
@@ -226,6 +235,16 @@ export function getOrderedDocsV5(
                   }
                 }
               }
+            }
+          }
+        }
+        const sortedPhaseCTs = [...iteration.corrective_tasks].sort((a, b) => a.index - b.index);
+        for (const ct of sortedPhaseCTs) {
+          for (const [ctNodeId, ctNode] of Object.entries(ct.nodes)) {
+            if (ctNode.kind === 'step' && ctNode.doc_path != null) {
+              const title = titleForPhaseCorrectiveChild(ctNodeId, phaseNum) + ' (Phase-C' + ct.index + ')';
+              const category: OrderedDoc['category'] = ctNodeId.includes('review') ? 'review' : 'phase';
+              push(ctNode.doc_path, title, category);
             }
           }
         }

@@ -856,3 +856,260 @@ describe('enrichActionContext — execute_task: active corrective handoff routin
     expect(result.handoff_doc).toBe(ORIG_HANDOFF);
   });
 });
+
+// ── [Iter 11] phase-scope corrective enrichment routing ─────────────────────
+//
+// Phase-scope-first detection: when an active phase-scope corrective exists
+// on `phaseIter.corrective_tasks`, enrichment routes `handoff_doc` /
+// `head_sha` / `is_correction` / `corrective_index` to that entry BEFORE
+// checking task-scope correctives. Also overrides `task_number` to null and
+// `task_id` to `${phase_id}-PHASE` on TASK_LEVEL_ACTIONS base context.
+
+describe('enrichActionContext — Iter 11 phase-scope corrective routing', () => {
+  const PHASE_C1_HANDOFF = 'tasks/X-P01-PHASE-C1.md';
+  const PHASE_C2_HANDOFF = 'tasks/X-P01-PHASE-C2.md';
+  const ORIG_TASK_HANDOFF = 'tasks/original-P01-T01.md';
+
+  /**
+   * Build a state where phaseIter has a phase-scope corrective whose status +
+   * doc path + commit_hash are controllable. The underlying taskIter is
+   * present (with its own original task_handoff) so fall-through behaviour
+   * is observable.
+   */
+  function statePhaseCorrective(opts: {
+    phaseCorrectives: Array<{
+      index: number;
+      status: 'not_started' | 'in_progress' | 'completed';
+      doc_path: string;
+      commit_hash?: string | null;
+    }>;
+    taskCorrectives?: Array<{
+      index: number;
+      status: 'not_started' | 'in_progress' | 'completed';
+      doc_path: string;
+    }>;
+  }): PipelineState {
+    const state = createScaffoldedState();
+    const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    phaseLoop.iterations = [
+      {
+        index: 0,
+        status: 'in_progress',
+        nodes: {
+          task_loop: {
+            kind: 'for_each_task',
+            status: 'in_progress',
+            iterations: [
+              {
+                index: 0,
+                status: 'in_progress',
+                nodes: {
+                  task_handoff: {
+                    kind: 'step',
+                    status: 'completed',
+                    doc_path: ORIG_TASK_HANDOFF,
+                    retries: 0,
+                  } as StepNodeState,
+                },
+                corrective_tasks: (opts.taskCorrectives ?? []).map(c => ({
+                  index: c.index,
+                  reason: 'changes_requested',
+                  injected_after: 'code_review',
+                  status: c.status,
+                  nodes: {
+                    task_handoff: {
+                      kind: 'step',
+                      status: 'completed',
+                      doc_path: c.doc_path,
+                      retries: 0,
+                    } as StepNodeState,
+                  },
+                  commit_hash: null,
+                })),
+                commit_hash: 'task_base_commit',
+              },
+            ],
+          } as ForEachTaskNodeState,
+        },
+        corrective_tasks: opts.phaseCorrectives.map(c => ({
+          index: c.index,
+          reason: 'Phase review requested changes',
+          injected_after: 'phase_review',
+          status: c.status,
+          nodes: {
+            task_handoff: {
+              kind: 'step',
+              status: 'completed',
+              doc_path: c.doc_path,
+              retries: 0,
+            } as StepNodeState,
+          },
+          commit_hash: c.commit_hash ?? null,
+        })),
+        commit_hash: null,
+      },
+    ];
+    return state;
+  }
+
+  it('execute_task: active phase-scope corrective → handoff_doc routes to phase corrective task_handoff.doc_path', () => {
+    const state = statePhaseCorrective({
+      phaseCorrectives: [{ index: 1, status: 'not_started', doc_path: PHASE_C1_HANDOFF }],
+    });
+    const result = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.handoff_doc).toBe(PHASE_C1_HANDOFF);
+  });
+
+  it('execute_task: active phase-scope corrective wins over active task-scope corrective (phase-scope-first)', () => {
+    const state = statePhaseCorrective({
+      phaseCorrectives: [{ index: 1, status: 'in_progress', doc_path: PHASE_C1_HANDOFF }],
+      taskCorrectives: [{ index: 1, status: 'in_progress', doc_path: 'tasks/task-scope-C1.md' }],
+    });
+    const result = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.handoff_doc).toBe(PHASE_C1_HANDOFF);
+  });
+
+  it('execute_task: multiple phase correctives, last is active → routes to last', () => {
+    const state = statePhaseCorrective({
+      phaseCorrectives: [
+        { index: 1, status: 'completed', doc_path: PHASE_C1_HANDOFF },
+        { index: 2, status: 'in_progress', doc_path: PHASE_C2_HANDOFF },
+      ],
+    });
+    const result = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.handoff_doc).toBe(PHASE_C2_HANDOFF);
+  });
+
+  it('execute_task: all phase correctives completed → falls through to task-scope routing', () => {
+    const state = statePhaseCorrective({
+      phaseCorrectives: [
+        { index: 1, status: 'completed', doc_path: PHASE_C1_HANDOFF },
+        { index: 2, status: 'completed', doc_path: PHASE_C2_HANDOFF },
+      ],
+    });
+    const result = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    // Falls through to task-scope → original task_handoff (no active task
+    // corrective).
+    expect(result.handoff_doc).toBe(ORIG_TASK_HANDOFF);
+  });
+
+  it('spawn_code_reviewer: active phase-scope corrective → head_sha from phase corrective commit_hash + is_correction + corrective_index', () => {
+    const state = statePhaseCorrective({
+      phaseCorrectives: [{ index: 1, status: 'in_progress', doc_path: PHASE_C1_HANDOFF, commit_hash: 'phase_c1_sha' }],
+    });
+    const result = enrichActionContext({
+      action: 'spawn_code_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.head_sha).toBe('phase_c1_sha');
+    expect(result.is_correction).toBe(true);
+    expect(result.corrective_index).toBe(1);
+  });
+
+  it('spawn_code_reviewer: phase-scope corrective wins over task-scope corrective', () => {
+    const state = statePhaseCorrective({
+      phaseCorrectives: [{ index: 1, status: 'in_progress', doc_path: PHASE_C1_HANDOFF, commit_hash: 'phase_c1_sha' }],
+      taskCorrectives: [{ index: 1, status: 'in_progress', doc_path: 'tasks/task-scope-C1.md' }],
+    });
+    const result = enrichActionContext({
+      action: 'spawn_code_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.head_sha).toBe('phase_c1_sha');
+    expect(result.corrective_index).toBe(1);
+  });
+
+  it('spawn_code_reviewer: corrective_index tracks phase corrective count', () => {
+    const state = statePhaseCorrective({
+      phaseCorrectives: [
+        { index: 1, status: 'completed', doc_path: PHASE_C1_HANDOFF, commit_hash: 'sha1' },
+        { index: 2, status: 'in_progress', doc_path: PHASE_C2_HANDOFF, commit_hash: 'sha2' },
+      ],
+    });
+    const result = enrichActionContext({
+      action: 'spawn_code_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.corrective_index).toBe(2);
+    expect(result.head_sha).toBe('sha2');
+  });
+
+  it('TASK_LEVEL_ACTIONS base context: task_number → null and task_id → ${phase_id}-PHASE when phase-scope corrective is active', () => {
+    const state = statePhaseCorrective({
+      phaseCorrectives: [{ index: 1, status: 'in_progress', doc_path: PHASE_C1_HANDOFF }],
+    });
+    const result = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.task_number).toBeNull();
+    expect(result.task_id).toBe('P01-PHASE');
+  });
+
+  it('TASK_LEVEL_ACTIONS base context: sentinel applies to spawn_code_reviewer too', () => {
+    const state = statePhaseCorrective({
+      phaseCorrectives: [{ index: 1, status: 'in_progress', doc_path: PHASE_C1_HANDOFF, commit_hash: 'sha' }],
+    });
+    const result = enrichActionContext({
+      action: 'spawn_code_reviewer',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    expect(result.task_number).toBeNull();
+    expect(result.task_id).toBe('P01-PHASE');
+  });
+
+  it('TASK_LEVEL_ACTIONS base context: sentinel does NOT apply when phase corrective is completed (falls through to regular task-scope)', () => {
+    const state = statePhaseCorrective({
+      phaseCorrectives: [{ index: 1, status: 'completed', doc_path: PHASE_C1_HANDOFF }],
+    });
+    const result = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state,
+      config,
+      cliContext: {},
+    });
+    // No active phase corrective → regular task_id.
+    expect(result.task_id).toBe('P01-T01');
+    expect(result.task_number).toBe(1);
+  });
+});

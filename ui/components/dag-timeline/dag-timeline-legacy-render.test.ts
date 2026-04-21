@@ -290,5 +290,119 @@ test('(Iter-8 new shape) iteration WITHOUT phase_report body node renders cleanl
   assert.deepStrictEqual(labels, ['Planning', 'Gates', 'Execution', 'Completion']);
 });
 
+// ─── Iter-11 tests — phase-scope corrective rendering ────────────────────────
+
+// Parallel to makeLegacyPhaseIteration: a for_each_phase IterationEntry carrying
+// a populated phaseIter.corrective_tasks[0] with synthesized pre-completed
+// task_handoff + scaffolded body nodes (code_review). Mirrors the Iter-11
+// PHASE_REVIEW_COMPLETED birth-on-handoff-path shape.
+function makePhaseCorrectiveIteration(index: number): IterationEntry {
+  return {
+    index,
+    status: 'in_progress',
+    corrective_tasks: [
+      {
+        index: 1,
+        reason: 'Phase review requested changes',
+        injected_after: 'phase_review',
+        status: 'in_progress',
+        nodes: {
+          // Synthesized pre-completed task_handoff (birth-on-handoff-path semantics)
+          task_handoff: stepState('completed', 'tasks/MYPROJ-TASK-P01-PHASE-C1.md'),
+          // Scaffolded body node
+          code_review: stepState('not_started'),
+        },
+        commit_hash: null,
+      },
+    ],
+    commit_hash: null,
+    nodes: {
+      phase_planning: stepState('completed', 'phases/MYPROJ-PHASE-01-SETUP.md'),
+      task_loop: {
+        kind: 'for_each_task',
+        status: 'completed',
+        iterations: [
+          {
+            index: 0,
+            status: 'completed',
+            corrective_tasks: [],
+            commit_hash: 'abc1234',
+            nodes: {
+              task_handoff: stepState('completed', 'tasks/MYPROJ-TASK-P01-T01-AUTH.md'),
+              task_executor: stepState('completed'),
+              commit_gate: { kind: 'conditional', status: 'completed', branch_taken: 'true' },
+              commit: stepState('completed'),
+              code_review: stepState('completed', 'reports/MYPROJ-CODE-REVIEW-P01-T01-AUTH.md'),
+              task_gate: { kind: 'gate', status: 'completed', gate_active: false },
+            },
+          },
+        ],
+      },
+      phase_review: stepState('in_progress', 'reports/MYPROJ-PHASE-REVIEW-P01-SETUP.md'),
+      phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+    },
+  };
+}
+
+test('(Iter-11) phase-scope corrective iteration has corrective_tasks.length === 1', () => {
+  const iteration = makePhaseCorrectiveIteration(0);
+  assert.strictEqual(iteration.corrective_tasks.length, 1);
+  const corrective = iteration.corrective_tasks[0];
+  assert.strictEqual(corrective.index, 1);
+  assert.strictEqual(corrective.injected_after, 'phase_review');
+  assert.strictEqual(corrective.reason, 'Phase review requested changes');
+});
+
+test('(Iter-11) phase-scope corrective task_handoff is pre-completed with correct doc_path', () => {
+  // Validates the synthesized pre-completed task_handoff sub-node shape that
+  // PHASE_REVIEW_COMPLETED injects at birth-on-handoff-path.
+  const iteration = makePhaseCorrectiveIteration(0);
+  const corrective = iteration.corrective_tasks[0];
+  assert.ok('task_handoff' in corrective.nodes, 'task_handoff must be present in corrective.nodes');
+  const handoff = corrective.nodes['task_handoff'] as StepNodeState;
+  assert.strictEqual(handoff.kind, 'step');
+  assert.strictEqual(handoff.status, 'completed');
+  assert.strictEqual(handoff.doc_path, 'tasks/MYPROJ-TASK-P01-PHASE-C1.md');
+});
+
+test('(Iter-11) phase-scope corrective has scaffolded code_review body node', () => {
+  // Validates the scaffolded (not_started) code_review body node shape.
+  const iteration = makePhaseCorrectiveIteration(0);
+  const corrective = iteration.corrective_tasks[0];
+  assert.ok('code_review' in corrective.nodes, 'code_review must be present in corrective.nodes');
+  const codeReview = corrective.nodes['code_review'] as StepNodeState;
+  assert.strictEqual(codeReview.kind, 'step');
+  assert.strictEqual(codeReview.status, 'not_started');
+});
+
+test('(Iter-11) phase-scope corrective iteration: top-level groupNodesBySection still emits Planning/Gates/Execution/Completion', () => {
+  // Regression guard: adding a phase-scope corrective iteration must not affect
+  // the top-level section grouping (phase_loop stays in Execution).
+  const iterations = [makePhaseCorrectiveIteration(0)];
+  const nodes = makeTopLevelNodes(iterations);
+  const groups = groupNodesBySection(nodes);
+  const labels = groups.map((g) => g.label);
+  assert.deepStrictEqual(labels, ['Planning', 'Gates', 'Execution', 'Completion']);
+  const executionIds = groups.find((g) => g.label === 'Execution')!.entries.map(([id]) => id);
+  assert.deepStrictEqual(executionIds, ['phase_loop']);
+});
+
+test('(Iter-11) phase-scope corrective iteration: phase_planning.doc_path parsed correctly', () => {
+  const iteration = makePhaseCorrectiveIteration(0);
+  const phaseNode = iteration.nodes['phase_planning'] as StepNodeState;
+  const name = parsePhaseNameFromDocPath(phaseNode.doc_path, iteration.index);
+  // Fallback to "Phase 1" if token not parseable; "SETUP" token produces "Phase 1 — SETUP"
+  assert.strictEqual(name, 'Phase 1 — SETUP');
+});
+
+test('(Iter-11) legacy canary still passes: makeLegacyPhaseIteration is unchanged and corrective_tasks is empty', () => {
+  // Explicit check that the legacy canary fixture is unmodified.
+  const iteration = makeLegacyPhaseIteration(0);
+  assert.strictEqual(iteration.corrective_tasks.length, 0);
+  assert.strictEqual(iteration.status, 'completed');
+  const phaseNode = iteration.nodes['phase_planning'] as StepNodeState;
+  assert.strictEqual(phaseNode.doc_path, 'phases/MYPROJ-PHASE-01-SETUP.md');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exitCode = 1;

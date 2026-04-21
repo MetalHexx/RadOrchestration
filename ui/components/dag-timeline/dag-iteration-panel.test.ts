@@ -30,6 +30,8 @@ import {
 import type {
   NodeState,
   ForEachTaskNodeState,
+  IterationEntry,
+  CorrectiveTaskEntry,
 } from '@/types/state';
 
 let passed = 0;
@@ -285,6 +287,79 @@ test('taskLoopIterationWithCorrective corrective task commit_hash is null', () =
   assert.strictEqual(correctiveTask.commit_hash, null);
 });
 
+// ─── Phase-scope corrective forwarding ──────────────────────────────────────
+
+// DAGIterationPanel is generic over parentKind ('for_each_phase' | 'for_each_task').
+// It always forwards iteration.corrective_tasks to <DAGCorrectiveTaskGroup> regardless
+// of parentKind. This block verifies the structural wiring at fixture + source-text level.
+
+test('phase-scope corrective iteration fixture has corrective_tasks.length === 1', () => {
+  // A for_each_phase IterationEntry carrying a synthesized phase-scope corrective
+  // (task_handoff pre-completed + code_review scaffolded body node).
+  const phaseCorrectiveIteration: IterationEntry = {
+    index: 0,
+    status: 'in_progress',
+    corrective_tasks: [
+      {
+        index: 1,
+        reason: 'Phase review requested changes',
+        injected_after: 'phase_review',
+        status: 'in_progress',
+        nodes: {
+          task_handoff: {
+            kind: 'step',
+            status: 'completed',
+            doc_path: 'tasks/PROJ-TASK-P01-PHASE-C1.md',
+            retries: 0,
+          },
+          code_review: {
+            kind: 'step',
+            status: 'not_started',
+            doc_path: null,
+            retries: 0,
+          },
+        },
+        commit_hash: null,
+      },
+    ],
+    nodes: {
+      phase_review: { kind: 'step', status: 'in_progress', doc_path: 'reports/PROJ-PHASE-REVIEW-P01.md', retries: 0 },
+    },
+    commit_hash: null,
+  };
+
+  assert.strictEqual(phaseCorrectiveIteration.corrective_tasks.length, 1);
+  const corrective = phaseCorrectiveIteration.corrective_tasks[0];
+  assert.strictEqual(corrective.index, 1);
+  assert.strictEqual(corrective.injected_after, 'phase_review');
+  assert.strictEqual(corrective.reason, 'Phase review requested changes');
+  assert.ok('task_handoff' in corrective.nodes);
+  assert.ok('code_review' in corrective.nodes);
+  assert.strictEqual((corrective.nodes['task_handoff'] as NodeState & { doc_path?: string | null }).doc_path, 'tasks/PROJ-TASK-P01-PHASE-C1.md');
+});
+
+test('phase-scope corrective task nodes contain synthesized pre-completed task_handoff step node', () => {
+  const corrective: CorrectiveTaskEntry = {
+    index: 1,
+    reason: 'Phase review requested changes',
+    injected_after: 'phase_review',
+    status: 'in_progress',
+    nodes: {
+      task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/PROJ-TASK-P01-PHASE-C1.md', retries: 0 },
+      code_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+    },
+    commit_hash: null,
+  };
+
+  const taskHandoff = corrective.nodes['task_handoff'];
+  assert.ok(taskHandoff !== undefined);
+  assert.strictEqual(taskHandoff.kind, 'step');
+  // Pre-completed synthesized task_handoff has status 'completed' and a non-null doc_path.
+  const handoffStep = taskHandoff as { kind: 'step'; status: string; doc_path: string | null; retries: number };
+  assert.strictEqual(handoffStep.status, 'completed');
+  assert.notStrictEqual(handoffStep.doc_path, null);
+});
+
 // ─── Source-text: no projectName / gateActive forwarding into iteration scope ─
 
 const __filename = fileURLToPath(import.meta.url);
@@ -325,6 +400,33 @@ test('dag-iteration-panel.tsx <DAGNodeRow> elements do NOT forward projectName o
     hasGateForwardingOnDAGNodeRow(iterationPanelSource),
     false,
     'dag-iteration-panel.tsx must NOT forward projectName or gateActive on any <DAGNodeRow> — iteration-internal gate nodes (task_gate, phase_gate) are intentionally out of scope'
+  );
+});
+
+test('dag-iteration-panel.tsx forwards iteration.corrective_tasks to DAGCorrectiveTaskGroup (phase-scope wiring)', () => {
+  // Verifies the panel unconditionally forwards corrective_tasks to the group
+  // component, meaning phase-scope corrective entries surface identically to
+  // task-scope ones — no parentKind guard on the forwarding call.
+  assert.ok(
+    iterationPanelSource.includes('<DAGCorrectiveTaskGroup'),
+    'sanity: iteration panel must render <DAGCorrectiveTaskGroup>'
+  );
+  assert.ok(
+    iterationPanelSource.includes('correctiveTasks={iteration.corrective_tasks}'),
+    'iteration panel must forward iteration.corrective_tasks to DAGCorrectiveTaskGroup'
+  );
+  // The corrective_tasks forwarding must NOT be inside a parentKind conditional block
+  // (i.e., it appears once unconditionally for both for_each_phase and for_each_task).
+  const lines = iterationPanelSource.split(/\r?\n/);
+  const forwardingLine = lines.findIndex((l) => l.includes('correctiveTasks={iteration.corrective_tasks}'));
+  assert.ok(forwardingLine >= 0, 'correctiveTasks forwarding line must exist');
+  // Check the forwarding is not nested inside a parentKind === 'for_each_task' guard
+  // by verifying it is NOT preceded (within 5 lines) by a for_each_task branch condition.
+  const windowStart = Math.max(0, forwardingLine - 5);
+  const precedingLines = lines.slice(windowStart, forwardingLine).join('\n');
+  assert.ok(
+    !precedingLines.includes("parentKind === 'for_each_task'"),
+    "corrective_tasks forwarding must not be gated on parentKind === 'for_each_task'"
   );
 });
 

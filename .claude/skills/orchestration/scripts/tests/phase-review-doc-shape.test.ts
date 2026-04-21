@@ -156,8 +156,11 @@ describe('[Iter 8] phase-review template absorbs phase-report doc shape', () => 
       expect(workflow).toMatch(/Carry-Forward Items/);
     });
 
-    it('workflow preserves the corrective save-path suffix rule (-C{N}.md)', () => {
-      expect(workflow).toMatch(/-C\{corrective_index\}\.md/);
-    });
+    // Iter 11: the `-C{corrective_index}.md` corrective save-path rows were
+    // removed from `phase-review/workflow.md` per the single-pass clause —
+    // `phase_review` runs exactly once per phase iteration under iter-11, so
+    // there is no corrective phase-review doc filename form. The test that
+    // asserted the rows' presence is deleted here; the filename-removal
+    // assertion lives in the document-conventions workflow coverage.
   });
 });

@@ -145,9 +145,51 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       task_id,
     };
 
+    // Iter 11 — phase-scope corrective sentinel. When a phase-scope corrective
+    // is active (last entry on phaseIter.corrective_tasks with status
+    // `not_started` or `in_progress`), override `task_number` to null and
+    // `task_id` to `${phase_id}-PHASE`. This propagates through to the
+    // coder/reviewer spawn contexts so the correct filename sentinel
+    // (`-PHASE-C{N}.md`) is derivable and the value is self-describing in logs.
+    const phaseLoopForSentinel = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
+    const phaseIterForSentinel = phaseLoopForSentinel?.iterations[phaseNumber - 1];
+    const phaseCorrectives = phaseIterForSentinel?.corrective_tasks ?? [];
+    const phaseCorrectiveActive = phaseCorrectives.length > 0 &&
+      (phaseCorrectives[phaseCorrectives.length - 1].status === 'not_started' ||
+       phaseCorrectives[phaseCorrectives.length - 1].status === 'in_progress');
+    if (phaseCorrectiveActive) {
+      base.task_number = null;
+      base.task_id = `${phase_id}-PHASE`;
+    }
+
     if (action === 'execute_task') {
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
       const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
+
+      // Iter 11 — phase-scope-first. When a phase-scope corrective is active
+      // (last entry on phaseIter.corrective_tasks with status `not_started` or
+      // `in_progress`), route handoff_doc to that corrective's pre-completed
+      // `task_handoff` sub-node. Checked BEFORE the task-scope corrective path
+      // so a phase-scope corrective's handoff takes precedence even when the
+      // underlying task iteration itself has correctives.
+      const phaseCTs = phaseIter?.corrective_tasks ?? [];
+      const activePhaseCorrective = phaseCTs.length > 0 ? phaseCTs[phaseCTs.length - 1] : undefined;
+      if (
+        activePhaseCorrective &&
+        (activePhaseCorrective.status === 'not_started' || activePhaseCorrective.status === 'in_progress')
+      ) {
+        const phaseCorrectiveHandoff = activePhaseCorrective.nodes['task_handoff'] as StepNodeState | undefined;
+        const phaseCorrectiveDocPath =
+          typeof phaseCorrectiveHandoff?.doc_path === 'string'
+            ? phaseCorrectiveHandoff.doc_path.trim()
+            : '';
+        if (phaseCorrectiveDocPath.length > 0) {
+          // Return the stored path unchanged (not the trimmed copy) so downstream
+          // consumers see the value exactly as the mutation wrote it.
+          return { ...base, handoff_doc: phaseCorrectiveHandoff!.doc_path };
+        }
+      }
+
       const taskLoop = phaseIter?.nodes['task_loop'] as ForEachTaskNodeState | undefined;
       const taskIter = taskLoop?.iterations[taskNumber - 1];
 
@@ -182,6 +224,25 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
     if (action === 'spawn_code_reviewer') {
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
       const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
+
+      // Iter 11 — phase-scope-first. When a phase-scope corrective is active,
+      // route head_sha to the phase-scope corrective's commit_hash and flag
+      // is_correction + corrective_index from phaseIter. Checked BEFORE the
+      // task-scope corrective path.
+      const phaseCTs = phaseIter?.corrective_tasks ?? [];
+      const activePhaseCorrective = phaseCTs.slice().reverse().find(
+        ct => ct.status === 'in_progress' || ct.status === 'not_started'
+      );
+      if (activePhaseCorrective) {
+        const head_sha = activePhaseCorrective.commit_hash ?? null;
+        return {
+          ...base,
+          head_sha,
+          is_correction: true,
+          corrective_index: phaseCTs.length,
+        };
+      }
+
       const taskLoop = phaseIter?.nodes['task_loop'] as ForEachTaskNodeState | undefined;
       const taskIter = taskLoop?.iterations[taskNumber - 1];
       const correctives = taskIter?.corrective_tasks ?? [];

@@ -19,13 +19,13 @@ You are the backstop. Task reviews already vetted each commit in isolation again
 | Input | Source | Description |
 |-------|--------|-------------|
 | Master Plan | `{NAME}-MASTER-PLAN.md` | Phase/task structure, exit criteria |
+| Requirements | `{NAME}-REQUIREMENTS.md` | FRs/NFRs/ADs/DDs used for cross-task integration and exit-criteria checks |
 | Phase Plan | `{NAME}-PHASE-{NN}-{TITLE}.md` | Exit criteria, task outline |
 | All Code Reviews | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` (all tasks) | Per-task review verdicts and issues |
 | `phase_first_sha` | Spawn context | First task's initial commit. `null` when auto-commit is off. |
 | `phase_head_sha` | Spawn context | Last committed SHA of the phase (corrective-aware). `null` when auto-commit is off. |
 | Cumulative diff | `git diff <phase_first_sha>~1..<phase_head_sha>` (fallback: `git diff HEAD` + untracked files when either SHA is null) | Scope for the skeptical pass + Files Changed aggregation |
 | Source Code | Files produced in this phase | Read only when the diff requires surrounding context |
-| Previous Phase Review | `{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | Previous phase review (if corrective — may not exist) |
 | `state.json` | Pipeline state file | Source for per-task retry counts (corrective_tasks length) used in the Task Results table |
 
 ## Workflow
@@ -39,15 +39,10 @@ You are the backstop. Task reviews already vetted each commit in isolation again
    - Files Changed: aggregate from cumulative diff (created vs modified counts + key paths).
    - Issues & Resolutions: compile from Code Reviews (task-scoped issues and how they were resolved, including through retries).
    - Carry-Forward Items: concrete issues the next phase must handle.
-6. **Corrective-review check**: If a previous Phase Review exists, read it to identify expected corrections. Deviations from the original plan that address issues in the previous phase review are expected corrections — do NOT flag them.
-7. **Conformance pass**: The Phase Plan sets exit criteria — verify each one against what's actually checked in. If a criterion isn't verifiable from the current codebase, mark it failed; do not infer. Assess cross-task integration using the 4-category checklist (see categories below). Do NOT re-verify requirement conformance at task scope — task reviewers already did that. Your unique value is what spans tasks.
-8. **Skeptical pass** (Independent Quality Assessment): Read the cumulative phase diff line by line. Don't trust that modules integrate because the code reviews say they do — the code reviews describe per-task intent, the diff shows how the tasks actually fit together. Your job is to find what slipped through the seams between tasks: contract drift where a later task's call site doesn't match an earlier task's new signature; exports that no other task imports; conflicting patterns where T1 and T3 solved similar problems differently. Read full files only when the diff alone is insufficient to confirm a finding.
-9. Apply verdict rules (see Verdict Rules section below) — highest severity across both passes determines verdict. Set `exit_criteria_met` frontmatter field to `true` only when ALL exit criteria are verified as met; `false` otherwise.
-10. Fill in the output template at [./template.md](./template.md) and save based on corrective status:
-    - Normal (first-time): `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`
-    - Corrective: `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}-C{corrective_index}.md`
-
-    The `-C{N}` suffix is appended immediately before `.md`. Read `corrective_index` from the event context — do not query the filesystem. The original (non-corrective) review is preserved, not overwritten. (See `orchestration/references/document-conventions.md` → "Corrective Filename Suffix" for the shared pattern.)
+6. **Conformance pass**: The Phase Plan sets exit criteria — verify each one against what's actually checked in. If a criterion isn't verifiable from the current codebase, mark it failed; do not infer. Assess cross-task integration using the 4-category checklist (see categories below). Do NOT re-verify requirement conformance at task scope — task reviewers already did that. Your unique value is what spans tasks.
+7. **Skeptical pass** (Independent Quality Assessment): Read the cumulative phase diff line by line. Don't trust that modules integrate because the code reviews say they do — the code reviews describe per-task intent, the diff shows how the tasks actually fit together. Your job is to find what slipped through the seams between tasks: contract drift where a later task's call site doesn't match an earlier task's new signature; exports that no other task imports; conflicting patterns where T1 and T3 solved similar problems differently. Read full files only when the diff alone is insufficient to confirm a finding.
+8. Apply verdict rules (see Verdict Rules section below) — highest severity across both passes determines verdict. Set `exit_criteria_met` frontmatter field to `true` only when ALL exit criteria are verified as met; `false` otherwise.
+9. Fill in the output template at [./template.md](./template.md) and save to `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`.
 
 ## Conformance Checklist Categories
 
@@ -76,14 +71,6 @@ The following categories are starting points, not an exhaustive checklist. Look 
 | Dead-on-arrival exports | Exports added in one task that no other task in the phase imports | T1 adds `export function helperX`; grep across T2–T4 diffs shows zero imports |
 | Approved-but-integrated-wrong | Every task review was approved, but the cumulative diff reveals the tasks don't fit together | T1 returns ISO date strings; T3 parses dates expecting Unix timestamps — each task review passed against its own handoff |
 
-## Corrective Review Context
-
-A corrective review occurs when reviewing a submission that follows a previous review with a `changes_requested` verdict.
-
-- **Previous review cross-reference**: Read the previous phase review document to identify which issues were raised and which deviations were explicitly requested.
-- **Expected corrections rule**: Deviations from the original plan that directly address issues identified in the previous review are **expected corrections** — do NOT flag them as conformance failures.
-- **New deviations rule**: Deviations unrelated to the previous review's issues should still be flagged normally through the standard conformance and skeptical passes.
-
 ## Quality Standards
 
 - Code compiles and all tests pass — zero tolerance for build or test failures.
@@ -105,11 +92,8 @@ The highest-severity finding across both passes (conformance + skeptical) determ
 
 - Severity levels: **low** (cosmetic, style), **medium** (functional issue, missing coverage), **high** (security vulnerability, data loss risk, architectural violation). The `severity` frontmatter field records the highest finding severity across both passes, or `none` when no findings were raised.
 - Skeptical-pass findings use the same severity levels as conformance findings and CAN escalate the verdict.
-- During corrective reviews, deviations matching previous review issues are expected corrections and do not affect the verdict.
 
 ## Output
 
 - **Template**: [./template.md](./template.md)
-- **Save path**:
-  - Normal: `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`
-  - Corrective: `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}-C{corrective_index}.md`
+- **Save path**: `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`

@@ -153,15 +153,20 @@ describe('[CONTRACT] Gate Behavior — Autonomous mode, phase gate', () => {
     expect(gate.status).toBe('completed');
   });
 
-  it('unrecognized verdict halts pipeline (phase_review_completed with "approve")', () => {
+  it('unrecognized verdict rejected at pre-read boundary (phase_review_completed with "approve")', () => {
+    // Iter 11: the phase_review verdict rule now validates the exact enum at
+    // the pre-read boundary (parallels iter-10 code_review change). A typo
+    // no longer slips through to the mutation's unknown-verdict halt — it
+    // surfaces as a structured frontmatter error instead.
     const io = driveToExecutionWithConfig(autonomousConfig(), 1, 1);
     driveTaskWith(io, 1, 1);
     const result = driveToPhaseReviewCompleted(io, 'approve');
 
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('display_halted');
-    expect(io.currentState!.graph.status).toBe('halted');
-    expect(io.currentState!.pipeline.halt_reason).toContain('approve');
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('verdict');
+    expect(result.error?.event).toBe('phase_review_completed');
+    // Graph does not halt — validator rejection is recoverable.
+    expect(io.currentState!.graph.status).not.toBe('halted');
   });
 });
 
