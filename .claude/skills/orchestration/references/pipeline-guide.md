@@ -128,7 +128,7 @@ The pipeline result always includes:
 
 ### Corrective Mediation on `code_review_completed`
 
-When the pipeline resolves action #4 (`spawn_code_reviewer`) and the reviewer returns a raw `verdict: changes_requested`, the orchestrator enters an in-session mediation flow **before** signaling `code_review_completed` to the pipeline. The full mediation procedure — per-finding judgment, addendum authoring, corrective Task Handoff creation, and budget enforcement — is defined in [`references/corrective-playbook.md`](references/corrective-playbook.md). When the reviewer returns `approved`, the event propagates to the pipeline untouched. When the reviewer returns `rejected`, the pipeline halts immediately with no mediation. The orchestrator never flips an `approved` verdict to `changes_requested`.
+When the pipeline resolves action #4 (`spawn_code_reviewer`) and the reviewer returns a raw `verdict: changes_requested`, the orchestrator enters an in-session mediation flow **before** signaling `code_review_completed` to the pipeline. The full mediation procedure — per-finding judgment, addendum authoring, corrective Task Handoff creation, and budget enforcement — is defined in [`references/corrective-playbook.md`](references/corrective-playbook.md). When the reviewer returns `approved`, the orchestrator signals `code_review_completed` with no mediation fields and the event propagates normally. When the reviewer returns `rejected`, the orchestrator signals `code_review_completed` immediately (no mediation), and the mutation routes the rejected verdict into a clean pipeline halt. The orchestrator never flips an `approved` verdict to `changes_requested`.
 
 ## Error Handling
 

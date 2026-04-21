@@ -679,9 +679,16 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
   // the full contract.
   const effectiveOutcome = (context as Record<string, unknown>).effective_outcome as string | undefined;
   const correctiveHandoffPath = (context as Record<string, unknown>).corrective_handoff_path as string | undefined;
-  const verdictForState = (effectiveOutcome !== undefined && effectiveOutcome !== null)
-    ? effectiveOutcome
-    : rawVerdict;
+  // Gate effective_outcome usage to raw changes_requested verdicts. Validator
+  // enforces the same contract (effective_outcome mustBeAbsent on approved /
+  // rejected), but this gate is a defense-in-depth guard — if validation is
+  // bypassed (test harness, malformed CLI context, future refactor), a raw
+  // approved review cannot be silently overwritten to changes_requested and
+  // birth a corrective.
+  const mediationActive = rawVerdict === REVIEW_VERDICTS.CHANGES_REQUESTED
+    && effectiveOutcome !== undefined
+    && effectiveOutcome !== null;
+  const verdictForState = mediationActive ? effectiveOutcome : rawVerdict;
 
   (node as StepNodeState).verdict = verdictForState;
   mutations_applied.push(`set code_review.verdict = ${verdictForState ?? 'null'}`);

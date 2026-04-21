@@ -165,8 +165,12 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         (activeCorrective.status === 'not_started' || activeCorrective.status === 'in_progress')
       ) {
         const correctiveHandoff = activeCorrective.nodes['task_handoff'] as StepNodeState | undefined;
-        if (correctiveHandoff && typeof correctiveHandoff.doc_path === 'string' && correctiveHandoff.doc_path.length > 0) {
-          return { ...base, handoff_doc: correctiveHandoff.doc_path };
+        const correctiveDocPath =
+          typeof correctiveHandoff?.doc_path === 'string' ? correctiveHandoff.doc_path.trim() : '';
+        if (correctiveDocPath.length > 0) {
+          // Return the stored path unchanged (not the trimmed copy) so downstream
+          // consumers see the value exactly as the mutation wrote it.
+          return { ...base, handoff_doc: correctiveHandoff!.doc_path };
         }
       }
 
