@@ -980,9 +980,9 @@ mutationRegistry.set(EVENTS.PLAN_REJECTED, (state, _context, _config, _template)
   (planGateNode as GateNodeState).gate_active = false;
   mutations_applied.push('set plan_approval_gate.gate_active = false');
 
-  // phase_loop is only present on templates that declare it (full.yml, quick.yml).
-  // default.yml (Iter 4) is a partial planning-only template with no phase_loop;
-  // plan_rejected is a legitimate exit path there, so skip the reset silently.
+  // phase_loop is only present on templates that declare it (default.yml, full.yml).
+  // Planning-only templates (no phase_loop declared) treat plan_rejected as a
+  // legitimate exit path, so skip the reset silently.
   const phaseLoopNode = cloned.graph.nodes['phase_loop'];
   if (phaseLoopNode !== undefined) {
     if (phaseLoopNode.kind !== 'for_each_phase') {

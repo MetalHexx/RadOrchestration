@@ -14,7 +14,7 @@ export default function ProcessEditorPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
       <main id="main-content" className="flex-1 flex flex-col overflow-hidden">
-        <ReadOnlyCanvas templateId="full" />
+        <ReadOnlyCanvas templateId="default" />
       </main>
     </div>
   );

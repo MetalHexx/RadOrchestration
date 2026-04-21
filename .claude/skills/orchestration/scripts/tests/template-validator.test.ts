@@ -160,14 +160,24 @@ describe('validateTemplate', () => {
     });
   });
 
-  describe('default.yml (Iter 5 partial template)', () => {
-    it('loads via template-loader without throwing — 4 nodes: requirements → master_plan → explode_master_plan → plan_approval_gate', () => {
+  describe('default.yml (Iter 9 canonical template)', () => {
+    it('loads via template-loader without throwing — 9 top-level nodes covering the full pipeline', () => {
       // loadTemplate is what the engine actually calls; it filters tolerable
       // unreachable_node warnings for leaf terminals (see template-loader.ts).
       // This asserts default.yml is loadable end-to-end in the engine's path.
       const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'default.yml'));
       const ids = template.nodes.map((n) => n.id);
-      expect(ids).toEqual(['requirements', 'master_plan', 'explode_master_plan', 'plan_approval_gate']);
+      expect(ids).toEqual([
+        'requirements',
+        'master_plan',
+        'explode_master_plan',
+        'plan_approval_gate',
+        'gate_mode_selection',
+        'phase_loop',
+        'final_review',
+        'pr_gate',
+        'final_approval_gate',
+      ]);
     });
 
     it('has no structural defects (cycles, dangling refs, invalid kinds) — unreachable-leaf warnings are tolerated', () => {
