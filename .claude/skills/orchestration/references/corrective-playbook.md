@@ -104,8 +104,9 @@ Corrective Handoff: tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}-C{N}.md
 - The disposition table must have one row per finding in the review.
 - **Reason column**: focus on requirement traceability and scope boundary — "traces to FR-N," "outside this task's File Targets," "belongs to P02-T03 per cross-artifact scan." **Do not reference the prior attempt's implementation** (no "the reviewer noted a regression from …", no "the previous coder missed …"). The addendum explains the orchestrator's judgment, not the code's history.
 - `Effective Outcome` line is always present.
-- `Corrective Handoff` line is present **only** when `effective_outcome === 'changes_requested'` (at least one finding is actioned and budget is not exhausted).
+- `Corrective Handoff` line is present **only** when `effective_outcome === 'changes_requested'` **AND the retry budget is not exhausted** (at least one finding is actioned and a handoff is being authored).
 - When all findings are declined, write `Effective Outcome: approved` and omit the `Corrective Handoff` line.
+- **On budget exhaustion**: `effective_outcome` remains `changes_requested` (there are still valid findings) but the `Corrective Handoff` line is **omitted** — the mutation converts this combination into a clean pipeline halt. See the Budget Check section above.
 - Write this addendum on **every** mediation cycle, including decline-all cycles. Never write an addendum on raw-approved reviews.
 
 ### Additive frontmatter

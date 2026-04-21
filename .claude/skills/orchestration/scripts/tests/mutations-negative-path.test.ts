@@ -463,7 +463,7 @@ describe('code_review_completed (Iter 10) — mutation-side backstop hard errors
       taskBodyTemplate(),
     );
     expect(result.state.graph.status).toBe('halted');
-    expect(result.state.pipeline.halt_reason).toBeTruthy();
+    expect(result.state.pipeline.halt_reason).toMatch(/budget-exhausted halt signal|no corrective_handoff_path/);
     const phaseLoop = result.state.graph.nodes['phase_loop'];
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];

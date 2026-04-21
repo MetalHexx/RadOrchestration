@@ -557,7 +557,11 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     }
   });
 
-  it('budget exhaustion halts — max_retries_per_task corrective entries + another changes_requested → halted', () => {
+  it('budget exhaustion — rogue orchestrator supplies handoff anyway → contract-violation halt', () => {
+    // This test exercises the mutation-side BACKSTOP halt branch: the
+    // orchestrator incorrectly authored a handoff after budget was exhausted
+    // (violates the playbook's soft contract). The mutation halts with a
+    // halt_reason calling out the contract violation.
     const io = createMockIO(null, makeConfig({ max_retries_per_task: 2 }));
     let result: PipelineResult;
 
@@ -579,10 +583,13 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     }
 
     // Corrective task 2 — changes_requested again → budget exhausted → halted
+    // (rogue-orchestrator path: driveCorrectiveTask always supplies a handoff
+    // path, so this hits the contract-violation backstop, not the clean halt).
     result = driveCorrectiveTask(io, 1, 1, 2, 'changes_requested');
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_halted');
     expect(io.currentState!.graph.status).toBe('halted');
+    expect(io.currentState!.pipeline.halt_reason).toMatch(/contract violation|budget exhausted/);
 
     // Verify iteration is halted
     {
@@ -590,6 +597,66 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
       const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
       expect(taskLoop.iterations[0].status).toBe('halted');
     }
+  });
+
+  it('budget exhaustion — orchestrator correctly omits handoff → clean halt (canonical playbook path)', () => {
+    // This test exercises the CANONICAL clean-halt path: after budget is
+    // exhausted, the orchestrator follows the playbook and signals
+    // code_review_completed with effective_outcome=changes_requested but NO
+    // corrective_handoff_path. The validator accepts the absence; the
+    // mutation converts it into a clean pipeline halt with a descriptive
+    // halt_reason naming the budget-exhausted signal. This is the path the
+    // playbook documents as production behavior; the rogue-orchestrator
+    // backstop test above covers the contract-violation branch.
+    const io = createMockIO(null, makeConfig({ max_retries_per_task: 2 }));
+    let result: PipelineResult;
+
+    drivePlanningTier(io);
+
+    // Drive to budget exhaustion (2 correctives = max_retries_per_task).
+    driveTaskWithVerdict(io, 1, 1, 'changes_requested');
+    driveCorrectiveTask(io, 1, 1, 1, 'changes_requested');
+
+    {
+      const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+      const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+      expect(taskLoop.iterations[0].corrective_tasks).toHaveLength(2);
+    }
+
+    // Now drive the next code_review cycle manually WITHOUT supplying a
+    // corrective_handoff_path — simulating the orchestrator following the
+    // playbook's budget-exhaustion protocol.
+    const ctx = { phase: 1, task: 1 };
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+
+    const reviewDoc = DOC_PATHS.codeReview(1, 1);
+    const reviewFrontmatter = {
+      verdict: 'changes_requested',
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      // corrective_handoff_path intentionally omitted — budget-exhausted signal.
+    };
+    seedDoc(reviewDoc, reviewFrontmatter);
+    result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: reviewDoc,
+      ...reviewFrontmatter,
+    } as Record<string, unknown>, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('display_halted');
+    expect(io.currentState!.graph.status).toBe('halted');
+    expect(io.currentState!.pipeline.halt_reason).toMatch(/no corrective_handoff_path|budget exhausted/);
+
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const taskIter = taskLoop.iterations[0];
+    expect(taskIter.status).toBe('halted');
+    // Critically: no new corrective should have been birthed (the handoff
+    // omission is the halt signal, not a request to scaffold another cycle).
+    expect(taskIter.corrective_tasks).toHaveLength(2);
   });
 
   it('code review rejected halts — rejected verdict → display_halted, graph halted', () => {

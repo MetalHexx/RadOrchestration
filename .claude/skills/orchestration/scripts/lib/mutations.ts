@@ -721,9 +721,10 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
       cloned.graph.status = 'halted';
       cloned.pipeline.halt_reason =
         `code_review_completed: effective_outcome=changes_requested with no corrective_handoff_path. ` +
-        `This is the orchestrator's budget-exhausted halt signal (corrective_tasks.length=${correctiveCount}, ` +
-        `max_retries_per_task=${maxRetries}). If budget was not exhausted, the orchestrator omitted ` +
-        `the handoff path in error — check the review addendum.`;
+        `Possible causes: (1) budget exhausted ` +
+        `(corrective_tasks.length=${correctiveCount}, max_retries_per_task=${maxRetries}) — ` +
+        `this is the expected halt per the corrective-playbook; ` +
+        `(2) orchestrator omitted the handoff path in error — check the review addendum.`;
       mutations_applied.push('set task_iteration.status = halted (effective_outcome=changes_requested, no handoff)');
       mutations_applied.push('set graph.status = halted');
       mutations_applied.push('set pipeline.halt_reason (budget-exhausted halt signal)');
