@@ -60,6 +60,97 @@ describe('task_completed routes through template event index', () => {
   });
 });
 
+// ── code_review_completed (Iter 10 mediation) wiring tests ───────────────────
+
+describe('code_review_completed routes through template event index — Iter 10 mediation', () => {
+  it('approved verdict wires through event index → no mediation fields, no corrective', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+    const ctx = { phase: 1, task: 1 };
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    seedDoc(codeReviewDoc(1, 1), { verdict: 'approved' });
+
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: codeReviewDoc(1, 1),
+      verdict: 'approved',
+    }, io);
+
+    expect(result.success).toBe(true);
+    // No corrective birth on approved
+    // (detailed corrective shape assertions live in corrective-integration.test.ts)
+  });
+
+  it('mediated changes_requested with handoff path wires through → corrective birthed, handoff_doc routes to C1', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+    const ctx = { phase: 1, task: 1 };
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+
+    const handoffPath = 'tasks/CORRECTIVE-C1.md';
+    seedDoc(codeReviewDoc(1, 1), {
+      verdict: 'changes_requested',
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: handoffPath,
+    });
+
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: codeReviewDoc(1, 1),
+    }, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('execute_task');
+    // Enrichment routes handoff_doc to the birthed corrective's synthesized task_handoff
+    expect(result.context['handoff_doc']).toBe(handoffPath);
+    expect(result.mutations_applied).toContain('injected corrective task 1 (changes_requested)');
+  });
+
+  it('mediated filter-down (raw changes_requested + effective approved) wires through → no corrective, state records approved', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+    const ctx = { phase: 1, task: 1 };
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+
+    seedDoc(codeReviewDoc(1, 1), {
+      verdict: 'changes_requested',
+      orchestrator_mediated: true,
+      effective_outcome: 'approved',
+    });
+
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: codeReviewDoc(1, 1),
+    }, io);
+
+    expect(result.success).toBe(true);
+    expect(result.mutations_applied).toContain('set code_review.verdict = approved');
+    // No corrective birth when orchestrator filters down to approved
+    expect(result.mutations_applied.some(m => m.startsWith('injected corrective'))).toBe(false);
+  });
+
+  it('validator rejects raw changes_requested with missing mediation fields → success: false', () => {
+    const io = driveToExecutionWithConfig(config, 1);
+    const ctx = { phase: 1, task: 1 };
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+
+    seedDoc(codeReviewDoc(1, 1), { verdict: 'changes_requested' });
+
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: codeReviewDoc(1, 1),
+    }, io);
+
+    expect(result.success).toBe(false);
+  });
+});
+
 // ── phase_review_completed integration test ─────────────────────────────────
 // Post-Iter 8: phase_review absorbed phase_report. The former
 // `phase_report_created routes through template event index` smoke is replaced

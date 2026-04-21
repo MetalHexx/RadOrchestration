@@ -16,7 +16,7 @@ Full routing reference lives at `.claude/skills/orchestration/references/pipelin
 
 ## How state routes — sidebar
 
-The fixture's `state.json` has `code_review.status = in_progress` with the review doc already on disk at `reports/BROKEN-COLORS-CODE-REVIEW-P01-T01-GET-COLORS.md`. The pipeline's `start` walker re-enters the graph from the current position and returns `action: spawn_code_reviewer` at the in-progress node — this is the mediation entry point.
+The fixture's `state.json` has `code_review.status = in_progress` with the review doc already on disk at `reports/BROKEN-COLORS-CODE-REVIEW-P01-T01-GET-COLORS.md`. The pipeline's `start` event is a no-op in this state — the walker does NOT re-emit an action for a node whose status is already `in_progress`, so `start` returns `action: null`. That is the correct "mediation entry point" signal: the pipeline is waiting for the orchestrator to signal `code_review_completed` (with mediation fields in the review-doc frontmatter) as the completion of the already-spawned review.
 
 The orchestrator's mediation happens **out-of-band** of any pipeline event: read the review doc, judge the findings, write the `## Orchestrator Addendum`, append the additive frontmatter fields (`orchestrator_mediated`, `effective_outcome`, `corrective_handoff_path`), and author the corrective Task Handoff under `tasks/`. Only after all of that is done does the orchestrator signal `code_review_completed --doc-path <review-doc>`. No new event type is introduced — mediation is reflected solely through the frontmatter fields the pipeline reads from the review doc.
 
@@ -60,9 +60,9 @@ node .claude/skills/orchestration/scripts/pipeline.js \
   --config prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER>/orchestration.yml
 ```
 
-Expected return: `{ "action": "spawn_code_reviewer", ... }`. The walker re-enters at `code_review` (status `in_progress`) and returns the action for that node. This is the mediation entry point — you do NOT spawn a reviewer subagent yet.
+Expected return: `{ "action": null, "context": {}, "mutations_applied": [], ... }`. This is the correct resume signal — the walker does NOT emit an action for a node already in `in_progress` status, so `start` is effectively a state-load + schema-validate no-op. You do NOT spawn a reviewer subagent; the review doc already exists on disk. Proceed to Step 2 (mediation).
 
-If the pipeline returns anything other than `spawn_code_reviewer`, halt and surface to the operator — the fixture state is off-script.
+If the pipeline returns anything other than `action: null` (e.g., `spawn_code_reviewer`, an error, or a different action), halt and surface to the operator — the fixture state is off-script.
 
 ### Step 2 — Recognize resume
 
