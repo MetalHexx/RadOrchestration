@@ -28,10 +28,6 @@ Implement the greeting formatter at `src/greet.ts` that consumes `getColors()` s
 
 This task owns `src/greet.ts` exclusively. No barrel index file.
 
-### NFR-1: Synchronous public API (task-scoped slice)
-
-`greet`'s return type MUST be `string`, not `Promise<string>`.
-
 ## File Targets
 
 - `src/greet.ts` — new file.

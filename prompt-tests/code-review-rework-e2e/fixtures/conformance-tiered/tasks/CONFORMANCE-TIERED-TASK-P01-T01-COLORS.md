@@ -24,10 +24,6 @@ The `getColors` function MUST return `['red', 'orange', 'yellow']` in that order
 
 This task owns `src/colors.ts` exclusively. No barrel index file.
 
-### NFR-1: Synchronous public API (task-scoped slice)
-
-Exported functions MUST be synchronous.
-
 ## File Targets
 
 - `src/colors.ts` — new file.

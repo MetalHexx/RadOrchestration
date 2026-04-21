@@ -68,15 +68,16 @@ Signal `code_review_started` (two-step protocol), then spawn `@reviewer` with th
 
 **Expected outcome:**
 - `verdict: changes_requested`
-- Audit table: FR-1 on-track, FR-2 drift (severity medium) — cross-task contract mismatch. The T2 source consumes `getColors()` assuming a `Promise<Color[]>` return, but T1's contract (per the Requirements doc) is synchronous `Color[]`.
+- Audit table has two rows (the requirements inlined in T2's handoff, in authored order): FR-2 drift (severity medium) + AD-1 on-track. The T2 source consumes `getColors()` as if it were a Promise and returns `Promise<string>`, violating FR-2's synchronous-consumption contract.
 - One `drift` row maps to FR-2 in the audit table.
+- NFR-1 is cross-cutting and intentionally NOT inlined in T2's handoff — it is evaluated at phase and final scope only. If the reviewer fabricates an NFR-1 row at task scope anyway, that is a skill/agent issue (the task-scope audit should enumerate only what the handoff inlines). Flag and continue — the pipeline is not affected.
 
 ### Step 3 — Orchestrator mediation (in-session)
 
 Load `.claude/skills/orchestration/references/corrective-playbook.md`. Apply the **Tiered Conformance Model** + **Finding Disposition by Status** sections:
 
 - **Budget check**: `phaseIter.iterations[0].task_loop.iterations[1].corrective_tasks.length === 0`. Budget not exhausted.
-- **Per-finding judgment**: FR-2 drift row traces to the Task Handoff's inlined FR-2 contract. Disposition: `action (drift)`. On-track row (FR-1): `decline (on-track) — tracking for later scope`.
+- **Per-finding judgment**: FR-2 drift row traces to the Task Handoff's inlined FR-2 contract. Disposition: `action (drift)`. AD-1 on-track: `decline (on-track) — tracking for later scope`.
 - Author addendum + additive frontmatter on the existing review doc.
 - Author corrective Task Handoff at `tasks/CONFORMANCE-TIERED-TASK-P01-T02-GREETING-C1.md` with `corrective_index: 1`, `corrective_scope: task`, `budget_max: 5`, `budget_remaining: 4`.
 
@@ -104,7 +105,7 @@ Signal `code_review_started`, spawn a fresh `@reviewer` (stateless — no prior 
 
 **Expected outcome:**
 - `verdict: approved`
-- All audit rows `on-track` (FR-1 + FR-2).
+- All audit rows `on-track` (the re-review audits the corrective handoff's inlined requirements — at minimum FR-2).
 
 Signal `code_review_completed` with `--doc-path <path-to-C1-review>`. Expected next action: walker advances to `spawn_phase_reviewer` (task gate auto-approves in autonomous mode).
 
@@ -145,14 +146,14 @@ Do NOT approve the final human gate. The harness exits once `final_review_comple
    - `reports/CONFORMANCE-TIERED-PHASE-REVIEW-P01-CORE-FLOW.md`
    - `reports/CONFORMANCE-TIERED-FINAL-REVIEW.md`
 2. **Final-review save path is under `reports/`** — regression-check: the old project-root path (`CONFORMANCE-TIERED-FINAL-REVIEW.md` at repo root) is NOT used.
-3. First T2 review: `verdict: changes_requested`, one drift finding on FR-2, audit table shows FR-2 drift + AD-1 on-track + NFR-1 on-track (the three requirements inlined into T2's Task Handoff, in the handoff's authored order).
+3. First T2 review: `verdict: changes_requested`, one drift finding on FR-2, audit table shows FR-2 drift + AD-1 on-track (the two requirements inlined into T2's Task Handoff, in the handoff's authored order). The reviewer must NOT fabricate an NFR-1 row at task scope — NFR-1 is cross-cutting and inlined only at phase/final scope; task-scope audits must enumerate only what the handoff inlines.
 4. T2 re-review: `verdict: approved`, all audit rows on-track.
 5. Phase review: `verdict: approved`, `exit_criteria_met: true`.
 6. Final review: `verdict: approved`; audit table enumerates every Requirements-doc FR/NFR/AD/DD with status `met`.
 7. Final-review doc body does NOT reference PRD / Architecture / Design docs.
 8. Final-review doc does NOT reference a previous final review.
 9. State check: `state.graph.nodes.phase_loop.iterations[0].task_loop.iterations[1].corrective_tasks.length === 1` (one task-scope corrective); `state.graph.nodes.phase_loop.iterations[0].corrective_tasks.length === 0` (no phase-scope corrective needed).
-10. Orchestrator addendum on the first T2 review: the Finding Dispositions table uses parenthesized tier enums per playbook — FR-2 row disposition reads `action (drift)` with reasoning; AD-1 + NFR-1 rows read `decline (on-track)` with "tracking for later scope" in the Reason column.
+10. Orchestrator addendum on the first T2 review: the Finding Dispositions table uses parenthesized tier enums per playbook — FR-2 row disposition reads `action (drift)` with reasoning; AD-1 row reads `decline (on-track)` with "tracking for later scope" in the Reason column.
 11. Pipeline-level validator health: the harness signals `final_review_completed` successfully (validator accepts the verdict frontmatter — no `pre_read_validation_error` surfaced on the event); the `final_review` state node transitions to `completed` with `verdict: approved`. This is the iter-12 validator regression guard.
 
 ---
