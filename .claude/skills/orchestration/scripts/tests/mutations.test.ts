@@ -887,13 +887,49 @@ function getTaskIteration(state: PipelineState): IterationEntry {
   return taskLoop.iterations[0];
 }
 
+// ── Mediation context helpers (Iter 10) ──────────────────────────────────────
+// After the Iter-10 contract flip, `changes_requested` verdicts must be
+// accompanied by orchestrator-mediation fields on the event context. These
+// helpers keep the fixture composition clean and highlight the contract at
+// each call site.
+
+function mediatedChangesRequestedCtx(
+  handoffPath: string,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    verdict: 'changes_requested',
+    orchestrator_mediated: true,
+    effective_outcome: 'changes_requested',
+    corrective_handoff_path: handoffPath,
+    ...overrides,
+  };
+}
+
+function mediatedApprovedCtx(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    verdict: 'changes_requested',
+    orchestrator_mediated: true,
+    effective_outcome: 'approved',
+    ...overrides,
+  };
+}
+
 describe('code_review_completed — corrective injection', () => {
   const mutation = getMutation('code_review_completed')!;
 
-  it('changes_requested with budget available injects one CorrectiveTaskEntry with correct shape', () => {
+  it('effective_outcome=changes_requested with handoff path + budget available injects one CorrectiveTaskEntry with correct shape', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
-    const result = mutation(state, { phase: 1, task: 1, doc_path: '/r.md', verdict: 'changes_requested' }, baseConfig, template);
+    const handoffPath = 'tasks/BROKEN-COLORS-TASK-P01-T01-GET-COLORS-C1.md';
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/r.md', ...mediatedChangesRequestedCtx(handoffPath) },
+      baseConfig,
+      template,
+    );
     const iteration = getTaskIteration(result.state);
     expect(iteration.corrective_tasks).toHaveLength(1);
     const entry = iteration.corrective_tasks[0] as CorrectiveTaskEntry;
@@ -904,43 +940,119 @@ describe('code_review_completed — corrective injection', () => {
     expect(Object.keys(entry.nodes)).toHaveLength(4);
   });
 
-  it('scaffolded nodes have correct shape — task_handoff is step, task_gate is gate', () => {
+  it('synthesized task_handoff sub-node is pre-completed at the orchestrator-supplied path', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
-    const result = mutation(state, { phase: 1, task: 1, doc_path: '/r.md', verdict: 'changes_requested' }, baseConfig, template);
+    const handoffPath = 'tasks/BROKEN-COLORS-TASK-P01-T01-GET-COLORS-C1.md';
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/r.md', ...mediatedChangesRequestedCtx(handoffPath) },
+      baseConfig,
+      template,
+    );
     const entry = getTaskIteration(result.state).corrective_tasks[0] as CorrectiveTaskEntry;
-    expect(entry.nodes['task_handoff']).toEqual({ kind: 'step', status: 'not_started', doc_path: null, retries: 0 });
+    // Iter 10 synthesized shape — matches the post-explosion task_handoff pattern
+    // (explode-master-plan.ts:598-610) so the walker's execute_task branch sees
+    // a completed handoff and skips authoring.
+    expect(entry.nodes['task_handoff']).toEqual({
+      kind: 'step',
+      status: 'completed',
+      doc_path: handoffPath,
+      retries: 0,
+    });
     expect(entry.nodes['task_gate']).toEqual({ kind: 'gate', status: 'not_started', gate_active: false });
   });
 
-  it('changes_requested with budget exhausted halts iteration and graph, no new entry added', () => {
+  it('code_review.verdict is written as effective_outcome (not raw verdict) when mediated', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    const handoffPath = 'tasks/X-TASK-P01-T01-C1.md';
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/r.md', ...mediatedChangesRequestedCtx(handoffPath) },
+      baseConfig,
+      template,
+    );
+    // Effective outcome is `changes_requested` → that's what hits state.
+    expect((getTaskNode(result.state, 'code_review') as StepNodeState).verdict).toBe('changes_requested');
+  });
+
+  it('effective_outcome=approved (mediated filter-down) births no corrective, writes approved to state', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/r.md', ...mediatedApprovedCtx() },
+      baseConfig,
+      template,
+    );
+    const iteration = getTaskIteration(result.state);
+    expect(iteration.corrective_tasks).toHaveLength(0);
+    // Routing verdict is the effective outcome — state records `approved`.
+    expect((getTaskNode(result.state, 'code_review') as StepNodeState).verdict).toBe('approved');
+    expect(result.state.graph.status).not.toBe('halted');
+  });
+
+  it('budget exhausted + supplied handoff path → hard-error halt with descriptive reason', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
     // Pre-fill corrective_tasks to max (3)
     const iteration = getTaskIteration(state);
     for (let i = 0; i < 3; i++) {
-      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {}, commit_hash: null });
+      iteration.corrective_tasks.push({
+        index: i + 1,
+        reason: 'prior',
+        injected_after: 'code_review',
+        status: 'not_started',
+        nodes: {},
+        commit_hash: null,
+      });
     }
-    const result = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/exhausted-C4.md') },
+      baseConfig,
+      template,
+    );
     const resultIteration = getTaskIteration(result.state);
     expect(resultIteration.corrective_tasks).toHaveLength(3);
     expect(resultIteration.status).toBe('halted');
     expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('Retry budget exhausted');
   });
 
-  it('budget boundary — retries = max - 1 still injects a corrective entry', () => {
+  it('budget boundary — corrective_tasks.length = max - 1 still injects (shape assertions)', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
-    // Pre-fill to max - 1 (2 entries)
     const iteration = getTaskIteration(state);
     for (let i = 0; i < 2; i++) {
-      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {}, commit_hash: null });
+      iteration.corrective_tasks.push({
+        index: i + 1,
+        reason: 'prior',
+        injected_after: 'code_review',
+        status: 'not_started',
+        nodes: {},
+        commit_hash: null,
+      });
     }
-    const result = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/X-C3.md') },
+      baseConfig,
+      template,
+    );
     const resultIteration = getTaskIteration(result.state);
     expect(resultIteration.corrective_tasks).toHaveLength(3);
     expect(resultIteration.status).not.toBe('halted');
     expect(result.state.graph.status).not.toBe('halted');
+    // Synthesized task_handoff on the newly birthed entry
+    const newest = resultIteration.corrective_tasks[2];
+    expect(newest.nodes['task_handoff']).toEqual({
+      kind: 'step',
+      status: 'completed',
+      doc_path: 'tasks/X-C3.md',
+      retries: 0,
+    });
   });
 
   it('rejected verdict halts iteration and graph, adds no corrective entry', () => {
@@ -962,22 +1074,39 @@ describe('code_review_completed — corrective injection', () => {
     expect(getTaskNode(result.state, 'code_review').status).toBe('completed');
   });
 
-  it('multiple corrections on same task produce entries with consecutive indices', () => {
+  it('multiple corrections on same task produce entries with consecutive indices and distinct handoff paths', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
-    const result1 = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
-    const result2 = mutation(result1.state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const result1 = mutation(
+      state,
+      { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/X-C1.md') },
+      baseConfig,
+      template,
+    );
+    const result2 = mutation(
+      result1.state,
+      { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/X-C2.md') },
+      baseConfig,
+      template,
+    );
     const iteration = getTaskIteration(result2.state);
     expect(iteration.corrective_tasks).toHaveLength(2);
     expect(iteration.corrective_tasks[0].index).toBe(1);
     expect(iteration.corrective_tasks[1].index).toBe(2);
+    expect((iteration.corrective_tasks[0].nodes['task_handoff'] as StepNodeState).doc_path).toBe('tasks/X-C1.md');
+    expect((iteration.corrective_tasks[1].nodes['task_handoff'] as StepNodeState).doc_path).toBe('tasks/X-C2.md');
   });
 
   it('original iteration nodes are untouched after corrective injection', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
     const originalNodeKeys = Object.keys(getTaskIteration(state).nodes);
-    const result = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/X-C1.md') },
+      baseConfig,
+      template,
+    );
     const resultNodeKeys = Object.keys(getTaskIteration(result.state).nodes);
     expect(resultNodeKeys).toEqual(originalNodeKeys);
   });
@@ -986,25 +1115,40 @@ describe('code_review_completed — corrective injection', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
     const originalCorLen = getTaskIteration(state).corrective_tasks.length;
-    mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    mutation(
+      state,
+      { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/X-C1.md') },
+      baseConfig,
+      template,
+    );
     expect(getTaskIteration(state).corrective_tasks.length).toBe(originalCorLen);
     expect(state.graph.status).toBe('not_started');
   });
 
   it('all verdict paths return non-empty mutations_applied', () => {
-    const verdicts = ['approved', 'changes_requested', 'rejected'];
-    for (const verdict of verdicts) {
+    const cases: Array<Record<string, unknown>> = [
+      { verdict: 'approved' },
+      mediatedChangesRequestedCtx('tasks/X-C1.md'),
+      { verdict: 'rejected' },
+    ];
+    for (const ctx of cases) {
       const state = makeState();
-      const result = mutation(state, { phase: 1, task: 1, verdict }, baseConfig, makeTemplateWithTaskBody());
+      const result = mutation(state, { phase: 1, task: 1, ...ctx }, baseConfig, makeTemplateWithTaskBody());
       expect(result.mutations_applied.length).toBeGreaterThan(0);
     }
   });
 
-  it('throws when template has no for_each_task body', () => {
+  it('throws when template has no for_each_task body (with mediation handoff supplied)', () => {
     const emptyTemplate = { ...makeTemplateWithTaskBody(), nodes: [] };
     const state = makeState();
-    expect(() => mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, emptyTemplate))
-      .toThrow('findTaskLoopBodyDefs: no for_each_task body found in template');
+    expect(() =>
+      mutation(
+        state,
+        { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/X-C1.md') },
+        baseConfig,
+        emptyTemplate,
+      ),
+    ).toThrow('findTaskLoopBodyDefs: no for_each_task body found in template');
   });
 });
 

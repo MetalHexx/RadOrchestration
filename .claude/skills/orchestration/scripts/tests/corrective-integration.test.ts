@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
+import { enrichActionContext } from '../lib/context-enrichment.js';
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -113,6 +114,8 @@ const DOC_PATHS = {
   phasePlan: (phase: number) => path.join(PROJECT_DIR, 'phases', `phase-${phase}-plan.md`),
   taskHandoff: (phase: number, task: number) =>
     path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`),
+  correctiveHandoff: (phase: number, task: number, corrective: number) =>
+    path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff-C${corrective}.md`),
   codeReview: (phase: number, task: number) =>
     path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`),
   phaseReview: (phase: number) => path.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`),
@@ -229,7 +232,35 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
 }
 
 /**
+ * Iter 10 — build the review-doc frontmatter for a given raw verdict.
+ * On `changes_requested` the orchestrator's mediation contract requires
+ * `orchestrator_mediated: true`, `effective_outcome`, and (iff the
+ * effective_outcome is `changes_requested`) a `corrective_handoff_path`.
+ * Approved / rejected verdicts pass through with no mediation fields.
+ */
+function buildReviewFrontmatter(
+  verdict: string,
+  opts: { effectiveOutcome?: string; correctiveHandoffPath?: string } = {},
+): Record<string, unknown> {
+  const base: Record<string, unknown> = { verdict };
+  if (verdict === 'changes_requested') {
+    const effective = opts.effectiveOutcome ?? 'changes_requested';
+    base.orchestrator_mediated = true;
+    base.effective_outcome = effective;
+    if (effective === 'changes_requested' && opts.correctiveHandoffPath) {
+      base.corrective_handoff_path = opts.correctiveHandoffPath;
+    }
+  }
+  return base;
+}
+
+/**
  * Drives a task through execute → code review with a configurable verdict.
+ * On `changes_requested`, automatically allocates a corrective handoff path at
+ * C1 (this is the first corrective for the task) — the orchestrator mediation
+ * contract requires both the frontmatter fields AND the same fields echoed onto
+ * the event context (they flow from frontmatter via pre-reads in production,
+ * but integration tests pass them both via seedDoc + processEvent context).
  */
 function driveTaskWithVerdict(
   io: MockIO,
@@ -245,24 +276,32 @@ function driveTaskWithVerdict(
   processEvent('code_review_started', PROJECT_DIR, ctx, io);
 
   const reviewDoc = DOC_PATHS.codeReview(phase, task);
-  seedDoc(reviewDoc);
+  const correctiveHandoffPath = verdict === 'changes_requested'
+    ? DOC_PATHS.correctiveHandoff(phase, task, 1)
+    : undefined;
+  const reviewFrontmatter = buildReviewFrontmatter(verdict, {
+    correctiveHandoffPath,
+  });
+  seedDoc(reviewDoc, reviewFrontmatter);
   return processEvent('code_review_completed', PROJECT_DIR, {
     ...ctx,
     doc_path: reviewDoc,
-    verdict,
-  }, io);
+    ...reviewFrontmatter,
+  } as Record<string, unknown>, io);
 }
 
 /**
  * Drives a corrective task through execute → review. The events use the same
  * {phase, task} context because the engine's mutations route to the latest
- * corrective task's nodes via resolveNodeState.
+ * corrective task's nodes via resolveNodeState. Looks up the current
+ * corrective count off state to compute the next C-index for the review's
+ * `corrective_handoff_path`.
  */
 function driveCorrectiveTask(
   io: MockIO,
   phase: number,
   task: number,
-  _corrective: number,
+  corrective: number,
   verdict: string,
 ): PipelineResult {
   const ctx = { phase, task };
@@ -273,12 +312,21 @@ function driveCorrectiveTask(
   processEvent('code_review_started', PROJECT_DIR, ctx, io);
 
   const reviewDoc = DOC_PATHS.codeReview(phase, task);
-  seedDoc(reviewDoc);
+  // On `changes_requested`, the next corrective index is (corrective + 1)
+  // because `corrective` is the index of the corrective that just completed.
+  const nextCorrectiveIndex = corrective + 1;
+  const correctiveHandoffPath = verdict === 'changes_requested'
+    ? DOC_PATHS.correctiveHandoff(phase, task, nextCorrectiveIndex)
+    : undefined;
+  const reviewFrontmatter = buildReviewFrontmatter(verdict, {
+    correctiveHandoffPath,
+  });
+  seedDoc(reviewDoc, reviewFrontmatter);
   let result = processEvent('code_review_completed', PROJECT_DIR, {
     ...ctx,
     doc_path: reviewDoc,
-    verdict,
-  }, io);
+    ...reviewFrontmatter,
+  } as Record<string, unknown>, io);
 
   // If commit conditional fires, drive commit events at task scope
   if (result.action === 'invoke_source_control_commit') {
@@ -364,7 +412,7 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     expect(result.success).toBe(true);
     expect(result.action).toBe('execute_task');
 
-    // Verify corrective entry was created
+    // Verify corrective entry was created and synthesized task_handoff is pre-completed
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
@@ -375,6 +423,14 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
       expect(ct.injected_after).toBe('code_review');
       expect(ct.reason).toBe('Code review requested changes');
       expect(ct.status).toBe('in_progress'); // walker promotes not_started → in_progress
+      // Iter 10 — synthesized task_handoff shape (birth-on-handoff-path).
+      const taskHandoff = ct.nodes['task_handoff'] as StepNodeState;
+      expect(taskHandoff).toEqual({
+        kind: 'step',
+        status: 'completed',
+        doc_path: DOC_PATHS.correctiveHandoff(1, 1, 1),
+        retries: 0,
+      });
     }
 
     // ── Drive corrective task 1 with approve ─────────────────────────────
@@ -397,18 +453,53 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
 
   it('multiple retries then approval — two changes_requested → two corrective entries → second approved → advances', () => {
     const io = createMockIO(null, makeConfig());
+    const config = makeConfig();
     let result: PipelineResult;
 
     drivePlanningTier(io);
 
     // Phase 1 setup
 
-    // Task 1 — first changes_requested
+    // Task 1 — first changes_requested → births corrective 1
     result = driveTaskWithVerdict(io, 1, 1, 'changes_requested');
     expect(result.success).toBe(true);
     expect(result.action).toBe('execute_task');
 
-    // Corrective task 1 — also changes_requested
+    // Iter 10 multi-round persistence: after corrective 1 is born, enriching
+    // execute_task must surface the corrective's synthesized task_handoff path
+    // as handoff_doc (not the original iteration's handoff). This is the
+    // guarantee the v7 carry-forward test was parked on; Iter 10 resolves it.
+    {
+      const enrichedExec = enrichActionContext({
+        action: 'execute_task',
+        walkerContext: {},
+        state: io.currentState!,
+        config,
+        cliContext: {},
+      });
+      expect(enrichedExec.handoff_doc).toBe(DOC_PATHS.correctiveHandoff(1, 1, 1));
+      // spawn_code_reviewer enrichment exposes corrective_index for round 1
+      const enrichedReviewer = enrichActionContext({
+        action: 'spawn_code_reviewer',
+        walkerContext: {},
+        state: io.currentState!,
+        config,
+        cliContext: {},
+      });
+      expect(enrichedReviewer.is_correction).toBe(true);
+      expect(enrichedReviewer.corrective_index).toBe(1);
+      // Synthesized task_handoff shape on corrective 1
+      const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+      const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+      expect((taskLoop.iterations[0].corrective_tasks[0].nodes['task_handoff'] as StepNodeState)).toEqual({
+        kind: 'step',
+        status: 'completed',
+        doc_path: DOC_PATHS.correctiveHandoff(1, 1, 1),
+        retries: 0,
+      });
+    }
+
+    // Corrective task 1 — also changes_requested → births corrective 2
     result = driveCorrectiveTask(io, 1, 1, 1, 'changes_requested');
     expect(result.success).toBe(true);
     expect(result.action).toBe('execute_task');
@@ -421,6 +512,34 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
       expect(iteration.corrective_tasks).toHaveLength(2);
       expect(iteration.corrective_tasks[0].index).toBe(1);
       expect(iteration.corrective_tasks[1].index).toBe(2);
+      // Synthesized handoffs — each corrective carries its own path.
+      expect((iteration.corrective_tasks[0].nodes['task_handoff'] as StepNodeState).doc_path)
+        .toBe(DOC_PATHS.correctiveHandoff(1, 1, 1));
+      expect((iteration.corrective_tasks[1].nodes['task_handoff'] as StepNodeState).doc_path)
+        .toBe(DOC_PATHS.correctiveHandoff(1, 1, 2));
+    }
+
+    // Iter 10 round-2 persistence: after the second corrective is born and
+    // becomes the active one, execute_task enrichment routes handoff_doc to
+    // the C2 path; spawn_code_reviewer's corrective_index advances to 2.
+    {
+      const enrichedExec = enrichActionContext({
+        action: 'execute_task',
+        walkerContext: {},
+        state: io.currentState!,
+        config,
+        cliContext: {},
+      });
+      expect(enrichedExec.handoff_doc).toBe(DOC_PATHS.correctiveHandoff(1, 1, 2));
+      const enrichedReviewer = enrichActionContext({
+        action: 'spawn_code_reviewer',
+        walkerContext: {},
+        state: io.currentState!,
+        config,
+        cliContext: {},
+      });
+      expect(enrichedReviewer.is_correction).toBe(true);
+      expect(enrichedReviewer.corrective_index).toBe(2);
     }
 
     // Corrective task 2 — approve
@@ -438,7 +557,11 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     }
   });
 
-  it('budget exhaustion halts — max_retries_per_task corrective entries + another changes_requested → halted', () => {
+  it('budget exhaustion — rogue orchestrator supplies handoff anyway → contract-violation halt', () => {
+    // This test exercises the mutation-side BACKSTOP halt branch: the
+    // orchestrator incorrectly authored a handoff after budget was exhausted
+    // (violates the playbook's soft contract). The mutation halts with a
+    // halt_reason calling out the contract violation.
     const io = createMockIO(null, makeConfig({ max_retries_per_task: 2 }));
     let result: PipelineResult;
 
@@ -460,10 +583,13 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     }
 
     // Corrective task 2 — changes_requested again → budget exhausted → halted
+    // (rogue-orchestrator path: driveCorrectiveTask always supplies a handoff
+    // path, so this hits the contract-violation backstop, not the clean halt).
     result = driveCorrectiveTask(io, 1, 1, 2, 'changes_requested');
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_halted');
     expect(io.currentState!.graph.status).toBe('halted');
+    expect(io.currentState!.pipeline.halt_reason).toMatch(/contract violation|budget exhausted/);
 
     // Verify iteration is halted
     {
@@ -471,6 +597,66 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
       const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
       expect(taskLoop.iterations[0].status).toBe('halted');
     }
+  });
+
+  it('budget exhaustion — orchestrator correctly omits handoff → clean halt (canonical playbook path)', () => {
+    // This test exercises the CANONICAL clean-halt path: after budget is
+    // exhausted, the orchestrator follows the playbook and signals
+    // code_review_completed with effective_outcome=changes_requested but NO
+    // corrective_handoff_path. The validator accepts the absence; the
+    // mutation converts it into a clean pipeline halt with a descriptive
+    // halt_reason naming the budget-exhausted signal. This is the path the
+    // playbook documents as production behavior; the rogue-orchestrator
+    // backstop test above covers the contract-violation branch.
+    const io = createMockIO(null, makeConfig({ max_retries_per_task: 2 }));
+    let result: PipelineResult;
+
+    drivePlanningTier(io);
+
+    // Drive to budget exhaustion (2 correctives = max_retries_per_task).
+    driveTaskWithVerdict(io, 1, 1, 'changes_requested');
+    driveCorrectiveTask(io, 1, 1, 1, 'changes_requested');
+
+    {
+      const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+      const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+      expect(taskLoop.iterations[0].corrective_tasks).toHaveLength(2);
+    }
+
+    // Now drive the next code_review cycle manually WITHOUT supplying a
+    // corrective_handoff_path — simulating the orchestrator following the
+    // playbook's budget-exhaustion protocol.
+    const ctx = { phase: 1, task: 1 };
+    processEvent('execution_started', PROJECT_DIR, ctx, io);
+    processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+
+    const reviewDoc = DOC_PATHS.codeReview(1, 1);
+    const reviewFrontmatter = {
+      verdict: 'changes_requested',
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      // corrective_handoff_path intentionally omitted — budget-exhausted signal.
+    };
+    seedDoc(reviewDoc, reviewFrontmatter);
+    result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: reviewDoc,
+      ...reviewFrontmatter,
+    } as Record<string, unknown>, io);
+
+    expect(result.success).toBe(true);
+    expect(result.action).toBe('display_halted');
+    expect(io.currentState!.graph.status).toBe('halted');
+    expect(io.currentState!.pipeline.halt_reason).toMatch(/no corrective_handoff_path|budget exhausted/);
+
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const taskIter = taskLoop.iterations[0];
+    expect(taskIter.status).toBe('halted');
+    // Critically: no new corrective should have been birthed (the handoff
+    // omission is the halt signal, not a request to scaffold another cycle).
+    expect(taskIter.corrective_tasks).toHaveLength(2);
   });
 
   it('code review rejected halts — rejected verdict → display_halted, graph halted', () => {

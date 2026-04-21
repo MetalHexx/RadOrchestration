@@ -68,7 +68,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 7 | Remove per-phase/per-task planning | Complete | 2026-04-19 | 2026-04-20 |
 | 8 | phase_review absorbs phase_report | Complete | 2026-04-20 | 2026-04-20 |
 | 9 | Complete `default.yml` | Complete | 2026-04-20 | 2026-04-20 |
-| 10 | Task-level corrective cycles (orchestrator mediation) | Not started | — | — |
+| 10 | Task-level corrective cycles (orchestrator mediation) | Awaiting merge | 2026-04-20 | 2026-04-20 |
 | 11 | Phase-level corrective cycles | Not started | — | — |
 | 12 | Code-review rework (task/phase/final) | Not started | — | — |
 | 13 | Execute-coding-task rework | Not started | — | — |
@@ -77,7 +77,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 16 | Repository deep clean | Not started | — | — |
 | 17 | Public-facing docs refresh | Not started | — | — |
 
-**Overall**: 10 / 18 iterations complete. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
+**Overall**: 10 / 18 iterations complete; Iter 10 awaiting merge. Status table reflects the current iteration numbering; historical progression-log entries for "Iteration 0" and "Iteration 1" refer to the same iterations in their original numbering (no shift). Iteration numbers 2+ have been renumbered across two design passes — the gutting-first realignment (2026-04-18) and the corrective-cycles redesign that inserted task- and phase-level corrective iterations at slots 10 and 11 (2026-04-20). See [`CHEAPER-EXECUTION-REFACTOR.md`](./CHEAPER-EXECUTION-REFACTOR.md) for the authoritative timeline.
 
 **Legend**: Not started → In progress → Blocked → Complete
 
@@ -100,9 +100,9 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 5 | `feat/iter-5-explosion-script` | `C:\dev\orchestration\v3-worktrees\feat-iter-5-explosion-script` | Merged | `4500203` | [#56](https://github.com/MetalHexx/RadOrchestation/pull/56) |
 | 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Merged | `82333f1` | [#57](https://github.com/MetalHexx/RadOrchestation/pull/57) |
 | 7 | `feat/iter-7-remove-per-phase-task-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning` | Merged | `ff05ce2` | [#58](https://github.com/MetalHexx/RadOrchestation/pull/58) |
-| 8 | `feat/iter-8-phase-review-absorbs-phase-report` | `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report` | Awaiting merge | — | [#59](https://github.com/MetalHexx/RadOrchestation/pull/59) |
-| 9 | `feat/iter-9-complete-default-yml` | `C:\dev\orchestration\v3-worktrees\feat-iter-9-complete-default-yml` | Awaiting merge | — | [#60](https://github.com/MetalHexx/RadOrchestation/pull/60) |
-| 10 | — | — | Not created | — | — |
+| 8 | `feat/iter-8-phase-review-absorbs-phase-report` | `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report` | Merged | `d5d45f3` | [#59](https://github.com/MetalHexx/RadOrchestation/pull/59) |
+| 9 | `feat/iter-9-complete-default-yml` | `C:\dev\orchestration\v3-worktrees\feat-iter-9-complete-default-yml` | Merged | `4ee1ea1` | [#60](https://github.com/MetalHexx/RadOrchestation/pull/60) |
+| 10 | `feat/iter-10-task-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-10-task-corrective-cycles` | Awaiting merge | — | [#61](https://github.com/MetalHexx/RadOrchestation/pull/61) |
 | 11 | — | — | Not created | — | — |
 | 12 | — | — | Not created | — | — |
 | 13 | — | — | Not created | — | — |
@@ -182,6 +182,27 @@ Format:
 - **Why**: <reason the deviation was necessary>
 - **Impact**: <downstream effects, if any>
 ```
+
+### 2026-04-20 — Iteration 10 — `effective_outcome=approved` + handoff path treated as mutation no-op, not hard error
+
+- **Plan said**: Lines 113 and 294 explicitly list `effective_outcome = approved` with `corrective_handoff_path` present as a mutation-layer "hard-error case" (return structured `ValidationError`).
+- **Execution did**: The mutation logic in `mutations.ts` CODE_REVIEW_COMPLETED routes `routingVerdict = 'approved'` and falls through all corrective-birth branches without throwing. The validator in `frontmatter-validators.ts` remains the sole enforcer of this contract. A test in `mutations-negative-path.test.ts` pins this layered-responsibility design.
+- **Why**: Dual enforcement (validator rejects before mutation runs; mutation also throws if somehow bypassed) creates duplicated logic that can drift. The validator's `mustBeAbsent` rule already hard-errors this case with a structured `ValidationError`. The mutation layer reserves its hard-error backstop for cases where the validator's signal is structurally ambiguous — e.g., `effective_outcome=changes_requested` without a handoff path, which would silently no-op the corrective birth; that's where the mutation throws. For the symmetric "effective=approved + handoff present" case, the effective outcome is unambiguous (no corrective), and the stray handoff path is harmless at mutation time.
+- **Impact**: Internal consistency preserved. Validator is the single source of truth for "forbidden combination" contracts. No user-facing behavior change (the validator rejects the input before the mutation ever sees it in production paths).
+
+### 2026-04-20 — Iteration 10 — `FrontmatterValidationRule` gained a `mustBeAbsent?: boolean` flag beyond the plan's `when?` predicate
+
+- **Plan said**: Line 107 — extend the interface with an optional `when?: (frontmatter) => boolean` predicate; wrap validation in `if (rule.when == null || rule.when(frontmatter)) { ... }`.
+- **Execution did**: Added `when?` as specified AND added an additive `mustBeAbsent?: boolean` flag. Rules flagged with `mustBeAbsent: true` fire only when the field IS present (inverse of the normal presence+validate flow).
+- **Why**: The plan's "field must NOT exist" semantics cannot be expressed cleanly with just `when` + `validate`. Using `when` alone forces the rule to skip when the field is absent — but the check needs to run precisely when the field IS absent-or-present-but-wrong. The `mustBeAbsent` flag gives a clean declarative path: "this rule verifies field absence." The existing `when` predicate then scopes WHICH verdict branch the absence rule applies to (approved vs. rejected). Logic reads naturally at rule-definition time and the validator loop is readable.
+- **Impact**: Additive interface extension. All existing rules continue to work unchanged (no `mustBeAbsent` → normal presence+validate flow). New rule type documented via a comment at the interface definition.
+
+### 2026-04-20 — Iteration 10 — `engine.test.ts` wiring tests folded into `event-routing-integration.test.ts`
+
+- **Plan said**: Line 296 — add wiring tests to both `scripts/tests/engine.test.ts` AND `scripts/tests/event-routing-integration.test.ts` for the new `code_review_completed` frontmatter shape.
+- **Execution did**: Added 4 wiring tests to `event-routing-integration.test.ts` covering approved / mediated-changes_requested / mediated filter-down / validator-reject paths. Did NOT add parallel tests to `engine.test.ts`.
+- **Why**: `engine.test.ts` tests the engine's generic routing mechanics (action dispatch, pre-read / mutate / post-validate flow, OOB event handling). `event-routing-integration.test.ts` tests event→mutation→enrichment wiring end-to-end through `processEvent` — the integration-scope match for this iteration's change. Adding the same `code_review_completed` mediated-shape coverage in both files would be duplicative with no new signal. The engine's generic wiring is already exercised by the existing `plan_approved` + `master_plan_completed` tests in `engine.test.ts`; iter-10 doesn't change the routing mechanics, only the validator contract + mutation logic (both covered by the new tests).
+- **Impact**: Coverage intent from the plan is preserved; the test file location choice differs from the literal plan spec.
 
 ### 2026-04-17 — Iteration 0 — `code_review_completed` already fixed pre-refactor
 
@@ -271,6 +292,20 @@ Format:
 - Tests: orchestration 47 files / 1220 pass / 1 todo (baseline unchanged — harness sits outside `.claude/` / `ui/` / `installer/` / `scripts/`, no test-tree edits); UI 157 tests / 154 pass / 3 pre-existing failures (baseline unchanged); installer 399 pass / 0 fail. Zero test count delta.
 - UI smoke: N/A — no UI surface touched.
 - Commits: `f534247` (scaffold), `b890c18` (review-corrective — dead code, tightened self-test thresholds, project-name stability, narrowed `.gitkeep` exception), `a9cb44c` (inaugural baseline artifacts), `211c34a` (progress tracker). PR: [#57](https://github.com/MetalHexx/RadOrchestation/pull/57).
+
+### 2026-04-20 — Iteration 10 — Task-level corrective cycles (orchestrator mediation)
+
+- Branch: `feat/iter-10-task-corrective-cycles` off `feat/cheaper-execution` @ `4ca7a58` (worktree at `C:\dev\orchestration\v3-worktrees\feat-iter-10-task-corrective-cycles`). Flat branch name (not nested `feat/cheaper-execution/iter-10`) per the iter-8 convention to avoid git ref-tree collisions.
+- Semantic flip: `CODE_REVIEW_COMPLETED` births task-scope correctives from `effective_outcome === 'changes_requested'` + a non-empty `corrective_handoff_path` (both supplied by the orchestrator's mediation addendum on the review doc), not from the reviewer's raw `verdict`. The synthesized `task_handoff` sub-node on each corrective (`{ kind: 'step', status: 'completed', doc_path: <C1 path>, retries: 0 }`) mirrors the Iter-5 explosion-seeding shape so the walker enters the corrective with handoff pre-resolved. `code_review.verdict` state field now records the `effective_outcome` when mediated; raw verdicts (approved / rejected) pass through unchanged.
+- Validator conditional contract (`frontmatter-validators.ts`): `FrontmatterValidationRule` gained `when?: (frontmatter) => boolean` per plan + an additive `mustBeAbsent?: boolean` flag (needed for "field must NOT exist" semantics — see Deviations). On `code_review_completed`: raw `changes_requested` requires `orchestrator_mediated: true` + `effective_outcome`; handoff path required iff `effective_outcome = changes_requested`; mediation fields forbidden on raw `approved`/`rejected`. Every invalid combination produces a structured `ValidationError`.
+- Enrichment: `execute_task` now prefers the active task-scope corrective's `task_handoff.doc_path` for the `handoff_doc` context field, falling through to the original iteration's handoff when no corrective is active. `spawn_code_reviewer` unchanged (phase-scope branch is Iter-11 carve).
+- Orchestrator agent + skill docs: narrow write-surface opened (orchestrator.md + context.md) — `Write`/`Edit`/`TodoWrite` added to tools; unconditional "never writes files" replaced with scoped permission to (a) append `## Orchestrator Addendum` section + additive frontmatter to existing Code Review docs and (b) author corrective Task Handoffs under `tasks/`. New `references/corrective-playbook.md` is the self-contained mediation guide (engagement rules, per-finding judgment inputs, cross-artifact scan, action/decline criteria, addendum shape, corrective handoff format, budget, `/clear` context-hygiene clause). `action-event-reference.md` + `pipeline-guide.md` cross-linked; `document-conventions.md` gained the task-scope corrective Task Handoff filename row + 7 new frontmatter fields.
+- Stateless reviewer: `code-review/task-review/workflow.md` lost the Corrective-review check (step 4), the Corrective Review Context section, the expected-corrections verdict note, and both `Previous Code Review` + `Corrective Task Handoff` Inputs rows. Reviewer now stateless across attempts — re-review is written to a `-C{N}` suffixed doc with no access to the prior review.
+- Prompt harness (`prompt-tests/corrective-mediation-e2e/`): new `broken-colors` fixture (1 phase / 1 task / 1 FR; pre-seeded state at `code_review.status = in_progress` with raw changes_requested review). Fixture ships a local `orchestration.yml` with `auto_commit: never` + `auto_pr: never` so the conditional `commit_gate` + `pr_gate` route to their false branches; runner passes `--config <run-folder>/orchestration.yml` on every pipeline call. Inaugural baseline at `output/broken-colors/baseline-broken-colors-2026-04-20/run-notes.md` committed — smoke-verified end-to-end against real `pipeline.js` in-session (hand-simulated `@coder` fix + re-review to keep token spend bounded; all 8 shape-based pass criteria green: corrective birthed, handoff_doc routes to C1, `is_correction: true` + `corrective_index: 1` surfaced on re-review enrichment, re-review verdict approved, walker advances past task_gate). Retroactive `user-instructions.md` added to `plan-pipeline-e2e/` establishing the hand-verification pattern.
+- Iter 7 carry-forward resolved: multi-round corrective-context persistence extended in place in `corrective-integration.test.ts` "multiple retries then approval" test — `enrichActionContext('execute_task', ...)` assertions after each corrective birth verify `handoff_doc` resolves to the active C{N} handoff; `spawn_code_reviewer` enrichment returns the correct `corrective_index` per round. No new test file.
+- Tests: orchestration 46 files / 1165 pass / 7 skip / 1 todo (baseline 46/1126/7/1 — net +39 pass across mutations, corrective-integration, context-enrichment, pre-reads, verdict-validation, and contract suites 05/06/09 + event-routing-integration Iter-10 wiring tests). UI 156 pass / 3 pre-existing fail / 159 total (unchanged). Installer 399 pass / 0 fail (unchanged).
+- Reviews: 1 plan-conformance pass (`changes_requested` — flagged 2 items) + 1 code-quality pass (`changes_requested` — flagged 1 critical). Corrections absorbed in `cd645e8`: (1) `_runner.md` Step 1 expected return corrected from `action: spawn_code_reviewer` to `action: null` (walker does NOT re-emit actions for in-progress nodes — the smoke confirmed this; prior wording would have caused a future operator to incorrectly halt a correct run), (2) 4 Iter-10 wiring tests added to `event-routing-integration.test.ts` covering approved / mediated-changes_requested / mediated filter-down / validator-reject paths.
+- Commits: `06f05de` (main), `cd645e8` (review correctives), `c2e24c8` (tracker). PR: [#61](https://github.com/MetalHexx/RadOrchestation/pull/61).
 
 ### 2026-04-20 — Iteration 9 — Complete `default.yml`
 
@@ -427,6 +462,7 @@ Format:
 - **Context**: Iter 7 deleted the `create_task_handoff` enrichment block and the test `'corrective fields persist across consecutive changes_requested verdicts'` in `contract/09-corrective-cycles.test.ts` that verified `is_correction` / `previous_review` fields still resolve on the second corrective cycle. `context-enrichment.test.ts` covers the `spawn_code_reviewer` single-round case (~lines 683–698) but no test exercises multi-round persistence at task scope.
 - **Why unresolved**: Low risk for Iter 7 since the `spawn_code_reviewer` enrichment path itself is unchanged. But the gap is real — a regression in corrective_index accumulation across retries would go uncaught.
 - **Suggested owner**: Iter 8 (phase_review absorbs phase_report), Iter 10 (task-level corrective cycles), or Iter 12 (code-review rework) — whichever first touches the corrective cycle shape. Under the corrective-cycles redesign, Iter 10 is the most natural landing spot since the mediation wiring directly governs `corrective_index` accumulation.
+- **2026-04-20 resolution**: Resolved in Iter 10. The "multiple retries then approval" test in `corrective-integration.test.ts` (the 2-corrective drive) was extended in place with `enrichActionContext('execute_task', ...)` assertions after each corrective birth — verifying `handoff_doc` resolves to the active C{N} path across rounds — plus `spawn_code_reviewer` enrichment assertions that `corrective_index` advances correctly per round. No new test file was added; the extension folded into the existing multi-corrective driver. Regression on `corrective_index` accumulation or `handoff_doc` routing across rounds would now fail this test.
 
 ### 2026-04-20 — `.agents/skills/pipeline-changes/references/pipeline-internals.md` ripple unexecuted (Iter 7 carry-forward)
 

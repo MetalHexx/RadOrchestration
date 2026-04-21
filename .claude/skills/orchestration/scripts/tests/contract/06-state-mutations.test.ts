@@ -271,10 +271,23 @@ describe('[CONTRACT] State Mutations — Code review completed mutations', () =>
   it('code_review_completed (changes_requested): verdict=changes_requested, corrective task injected', () => {
     const io = driveToCodeReviewPosition();
     const ctx = { phase: 1, task: 1 };
+    // Iter 10 — re-seed with mediation contract fields for the pre-read validator.
+    const correctiveHandoffPath = 'tasks/corrective-P01-T01-C1.md';
+    seedDoc(codeReviewDoc(1, 1), {
+      verdict: 'changes_requested',
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: correctiveHandoffPath,
+    });
 
     const result = processEvent('code_review_completed', PROJECT_DIR, {
-      ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'changes_requested',
-    }, io);
+      ...ctx,
+      doc_path: codeReviewDoc(1, 1),
+      verdict: 'changes_requested',
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: correctiveHandoffPath,
+    } as Record<string, unknown>, io);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -283,7 +296,51 @@ describe('[CONTRACT] State Mutations — Code review completed mutations', () =>
     const taskIterCorrectives = taskLoop.iterations[0].corrective_tasks;
     expect(codeReviewNode.verdict).toBe('changes_requested');
     expect(taskIterCorrectives.length).toBeGreaterThanOrEqual(1);
+    // Synthesized task_handoff on the newly birthed corrective
+    const correctiveHandoff = taskIterCorrectives[0].nodes['task_handoff'] as StepNodeState;
+    expect(correctiveHandoff).toEqual({
+      kind: 'step',
+      status: 'completed',
+      doc_path: correctiveHandoffPath,
+      retries: 0,
+    });
     expect(result.mutations_applied.some((m) => m.includes('corrective') || m.includes('changes_requested'))).toBe(true);
+  });
+
+  it('code_review_completed (Iter 10 — birth on handoff path): corrective task_handoff sub-node pre-completed at supplied path', () => {
+    const io = driveToCodeReviewPosition();
+    const ctx = { phase: 1, task: 1 };
+    const correctiveHandoffPath = 'tasks/corrective-P01-T01-C1.md';
+    seedDoc(codeReviewDoc(1, 1), {
+      verdict: 'changes_requested',
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: correctiveHandoffPath,
+    });
+
+    const result = processEvent('code_review_completed', PROJECT_DIR, {
+      ...ctx,
+      doc_path: codeReviewDoc(1, 1),
+      verdict: 'changes_requested',
+      orchestrator_mediated: true,
+      effective_outcome: 'changes_requested',
+      corrective_handoff_path: correctiveHandoffPath,
+    } as Record<string, unknown>, io);
+
+    expect(result.success).toBe(true);
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    const corrective = taskLoop.iterations[0].corrective_tasks[0];
+    // Synthesized task_handoff sub-node — status=completed, doc_path=supplied path
+    const correctiveHandoff = corrective.nodes['task_handoff'] as StepNodeState;
+    expect(correctiveHandoff).toEqual({
+      kind: 'step',
+      status: 'completed',
+      doc_path: correctiveHandoffPath,
+      retries: 0,
+    });
+    // Mutation-applied log should reference the birth + handoff-path write.
+    expect(result.mutations_applied.some((m) => m.includes('task_handoff.doc_path'))).toBe(true);
   });
 
   it('code_review_completed (rejected): verdict=rejected, graph.status=halted', () => {

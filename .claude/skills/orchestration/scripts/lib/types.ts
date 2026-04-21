@@ -304,6 +304,14 @@ export interface EventContext {
 
   // ── Iter 5 — explosion script recovery payload ──
   parse_error?: ParseErrorDetail;
+
+  // ── Iter 10 — orchestrator mediation contract for code_review_completed ──
+  // Carried on the review doc's frontmatter (appended by orchestrator addendum)
+  // and surfaced onto event context via pre-reads. Only `changes_requested`
+  // raw verdicts carry these; approved/rejected pass through with all three absent.
+  orchestrator_mediated?: boolean;
+  effective_outcome?: string;
+  corrective_handoff_path?: string;
 }
 
 // Orchestration Config (from orchestration.yml)
