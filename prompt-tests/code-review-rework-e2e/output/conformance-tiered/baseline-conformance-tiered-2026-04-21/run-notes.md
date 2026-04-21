@@ -1,4 +1,4 @@
-# Run Notes — Baseline `conformance-tiered` (2026-04-21, re-run)
+# Run Notes — Baseline `conformance-tiered` (2026-04-21)
 
 - **Run folder:** `prompt-tests/code-review-rework-e2e/output/conformance-tiered/baseline-conformance-tiered-2026-04-21/`
 - **Fixture:** `prompt-tests/code-review-rework-e2e/fixtures/conformance-tiered/`
@@ -26,7 +26,7 @@
 | Agent | Doc input | Mode |
 |-------|-----------|------|
 | `@reviewer` | `tasks/CONFORMANCE-TIERED-TASK-P01-T02-GREETING.md` | task (T2 first review) |
-| `@coder` | `tasks/CONFORMANCE-TIERED-TASK-P01-T02-GREETING-C1.md` | corrective execution |
+| `@coder-junior` | `tasks/CONFORMANCE-TIERED-TASK-P01-T02-GREETING-C1.md` | corrective execution |
 | `@reviewer` | `tasks/CONFORMANCE-TIERED-TASK-P01-T02-GREETING-C1.md` | task (T2 re-review) |
 | `@reviewer` | `phases/CONFORMANCE-TIERED-PHASE-01-CORE-FLOW.md` | phase |
 | `@reviewer` | `CONFORMANCE-TIERED-REQUIREMENTS.md` | final |
@@ -45,9 +45,8 @@ Budget check: `max_retries_per_task=5`; `task_loop.iterations[1].corrective_task
 |------------|-------------|------|--------|
 | FR-2 | action | drift | Handoff-inlined FR-2 mandates synchronous consumption of `getColors()` and `string` return. Diff returned `Promise<string>` and awaited a non-Promise — direct contract violation. Bounded to `src/greet.ts` per File Targets. |
 | AD-1 | decline | on-track | Only `src/greet.ts` added; no barrel index. The task's slice is correct. Tracking for later scope. |
-| NFR-1 | action | drift | Handoff-inlined NFR-1 explicitly forbids `Promise<string>` as `greet`'s return type. Diff declared `Promise<string>` — direct type-level violation. Same root fix as FR-2; bundled into the single corrective handoff. |
 
-Two findings actioned, one declined → one corrective handoff birthed.
+One finding actioned, one declined → one corrective handoff birthed. NFR-1 is correctly absent from the task-scope audit — it is cross-cutting and only inlined at phase/final scope (post-fixture adjustment).
 
 ## SHA derivations observed
 
@@ -78,27 +77,17 @@ auto_commit=off throughout. All review-doc frontmatter carries `reviewed_base_sh
 |---|-----------|--------|
 | 1 | Four review docs exist at expected save paths | PASS |
 | 2 | Final-review save path under `reports/` (not at project root) | PASS |
-| 3 | First T2 review: `verdict: changes_requested`, **one** drift on FR-2, audit shows FR-2 drift + AD-1 on-track + NFR-1 on-track (handoff order) | DEVIATION — see below |
+| 3 | First T2 review: `verdict: changes_requested`, **one** drift on FR-2, audit shows FR-2 drift + AD-1 on-track (handoff order) | PASS |
 | 4 | T2 re-review: `verdict: approved`, all rows on-track | PASS |
 | 5 | Phase review: `verdict: approved`, `exit_criteria_met: true` | PASS |
 | 6 | Final review: `verdict: approved`; audit enumerates every Requirements-doc FR/NFR/AD/DD as `met` | PASS |
-| 7 | Final-review body does NOT reference PRD / Architecture / Design docs | PASS (grep NONE_FOUND) |
+| 7 | Final-review body does NOT reference PRD / Architecture / Design docs | PASS |
 | 8 | Final-review body does NOT reference a previous final review | PASS |
 | 9 | State corrective_tasks counts: task=1, phase=0 | PASS |
-| 10 | Orchestrator addendum uses parenthesized tier enums; FR-2 `action (drift)`, AD-1/NFR-1 `decline (on-track)` with tracking-for-later-scope reason | DEVIATION — see below |
+| 10 | Orchestrator addendum uses parenthesized tier enums; FR-2 `action (drift)`, AD-1 `decline (on-track)` with tracking-for-later-scope reason | PASS |
 | 11 | Validator health: `final_review_completed` accepted; `final_review` → `completed` with `verdict: approved`; no `pre_read_validation_error` surfaced | PASS |
 
-### Pass-criterion deviations — criteria #3 and #10
-
-Both deviations trace to a single honest reviewer call on the first T2 review: the reviewer flagged **NFR-1 as `drift` (severity medium)** rather than `on-track`.
-
-Reviewer's reasoning (per the emitted review doc): The T2 Task Handoff inlines NFR-1 with the explicit line — "`greet`'s return type MUST be `string`, not `Promise<string>`." The delivered code declared return type `Promise<string>`, which is a direct type-level violation of the inlined NFR-1 contract, independent of the FR-2 synchronous-consumption violation. The reviewer flagged the two as separate drift rows.
-
-The pass criteria were authored expecting only FR-2 to drift (treating NFR-1's task-scoped slice as "informational" since the same root fix covers it). That's a defensible bar — but so is the reviewer's. Per the runner's own instruction ("Apply honest judgment — this is a real review, not a scripted one"), I did not ask the reviewer to revise.
-
-Orchestrator consequence: with NFR-1 drift on the table, the addendum's NFR-1 row reads `action (drift)` instead of `decline (on-track)`. FR-2 + NFR-1 were bundled into a single corrective handoff (per playbook: one handoff per mediation cycle). The fix — remove `async`, remove `await`, remove the cast, restore the reference shape — covers both findings with a one-line rewrite. Pipeline flow was unaffected: `corrective_tasks.length` still incremented to 1, the re-review passed cleanly, and both phase and final review sailed through with all rows on-track / met.
-
-**Net assessment:** The pipeline is functionally green end-to-end (criteria 1, 2, 4–9, 11 all pass). Criteria 3 and 10 fail in a way that reflects *more faithful reviewer behavior*, not a regression. Operator should decide whether to (a) relax the fixture's expected shape on criteria 3/10 to accept NFR-1 drift as a valid honest call, (b) tighten the T2 handoff so NFR-1's inlined text doesn't so directly call out the return type (making NFR-1's slice genuinely informational), or (c) accept per-run variance and document both shapes as valid.
+All 11 pass criteria green. The 2026-04-21 re-run validates the fixture adjustment that dropped redundant task-scope NFR-1 inlining — reviewer produced the clean two-row task-scope audit (FR-2 drift + AD-1 on-track) without any cross-cutting fabrication, and NFR-1 was correctly evaluated as `on-track` at phase scope and `met` at final scope.
 
 ## Artifacts on disk
 
@@ -116,7 +105,7 @@ tasks/
 
 src/
 ├── colors.ts   (unchanged from fixture — T1 baseline)
-└── greet.ts    (rewritten by @coder during C1 — synchronous, 5 lines)
+└── greet.ts    (rewritten by @coder-junior during C1 — synchronous, 5 lines)
 ```
 
 ## Exit
