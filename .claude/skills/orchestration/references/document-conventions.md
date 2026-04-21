@@ -36,7 +36,7 @@ When a producing skill re-authors a document during a corrective cycle, append t
 | Corrective task handoff (phase scope, first) | `MYPROJ-TASK-P01-PHASE-C1.md` |
 | Code review of a phase-scope corrective (first) | `MYPROJ-CODE-REVIEW-P01-PHASE-C1.md` |
 
-The `-C{N}` suffix rule applies to Task Handoffs, Code Reviews, and Phase Reviews. For Task Handoffs, the corrective handoff is authored by the orchestrator during mediation — not by a coder or planner. Each producing skill's workflow cross-references this section for the shared pattern.
+The `-C{N}` suffix rule applies to Task Handoffs and task-level Code Reviews. It does NOT apply to Phase Reviews — under Iter 11's single-pass clause, a phase iteration runs `phase_review` exactly once; its corrective cycle is carried entirely by task-level re-reviews of the phase-sentinel Task Handoff (see "Phase-scope sentinel form" below). For Task Handoffs, the corrective handoff is authored by the orchestrator during mediation — not by a coder or planner. Each producing skill's workflow cross-references this section for the shared pattern.
 
 **Phase-scope sentinel form.** When the orchestrator mediates a `phase_review` and the effective outcome is `changes_requested`, the authored corrective Task Handoff substitutes the `PHASE` token for the `T{NN}-{TITLE}` segment: `{NAME}-TASK-P{NN}-PHASE-C{N}.md`. The token signals that the corrective applies to phase-scope exit-criteria or cross-task integration — not a single task. The same sentinel carries through to the corresponding task-level code review filename: `{NAME}-CODE-REVIEW-P{NN}-PHASE-C{N}.md`. The corresponding state entry lives under `phaseIter.corrective_tasks[]`, not `taskIter.corrective_tasks[]`.
 

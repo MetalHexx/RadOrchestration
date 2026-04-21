@@ -134,6 +134,16 @@ export function getAdjacentDocs(
 
 // ─── v5 helpers ──────────────────────────────────────────────────────────────
 
+// Corrective entries emit in a fixed order (plan-then-review) regardless of
+// the object key order produced by the scaffolder or by JSON round-trip.
+// JS Object.entries is insertion-ordered per spec, but relying on that makes
+// the sidebar order coupled to how the engine builds/serializes ct.nodes —
+// any future refactor that rebuilds the map from a different seed would flip
+// the emitted sequence. A fixed array removes the coupling. `task_executor`,
+// `commit_gate`, `task_gate` have no doc_path and are skipped by the caller's
+// `doc_path != null` check, so omitting them here is safe.
+const CORRECTIVE_DOC_EMIT_ORDER = ['task_handoff', 'code_review'] as const;
+
 const STEP_TITLES_V5: Record<PlanningStepName, string> = {
   research: 'Research Findings',
   prd: 'PRD',
@@ -228,8 +238,9 @@ export function getOrderedDocsV5(
               }
               const sortedCTs = [...taskIter.corrective_tasks].sort((a, b) => a.index - b.index);
               for (const ct of sortedCTs) {
-                for (const [ctNodeId, ctNode] of Object.entries(ct.nodes)) {
-                  if (ctNode.kind === 'step' && ctNode.doc_path != null) {
+                for (const ctNodeId of CORRECTIVE_DOC_EMIT_ORDER) {
+                  const ctNode = ct.nodes[ctNodeId];
+                  if (ctNode?.kind === 'step' && ctNode.doc_path != null) {
                     const title = titleForTaskChild(ctNodeId, phaseNum, taskNum) + ' (CT' + ct.index + ')';
                     push(ctNode.doc_path, title, 'task');
                   }
@@ -240,8 +251,9 @@ export function getOrderedDocsV5(
         }
         const sortedPhaseCTs = [...iteration.corrective_tasks].sort((a, b) => a.index - b.index);
         for (const ct of sortedPhaseCTs) {
-          for (const [ctNodeId, ctNode] of Object.entries(ct.nodes)) {
-            if (ctNode.kind === 'step' && ctNode.doc_path != null) {
+          for (const ctNodeId of CORRECTIVE_DOC_EMIT_ORDER) {
+            const ctNode = ct.nodes[ctNodeId];
+            if (ctNode?.kind === 'step' && ctNode.doc_path != null) {
               const title = titleForPhaseCorrectiveChild(ctNodeId, phaseNum) + ' (Phase-C' + ct.index + ')';
               const category: OrderedDoc['category'] = ctNodeId.includes('review') ? 'review' : 'phase';
               push(ctNode.doc_path, title, category);

@@ -1,10 +1,12 @@
 version: "1.0"
 
-# Fixture-local orchestration.yml for the colors-greet-mismatch harness.
-# Kept minimal: only the fields that matter for the phase-corrective mediation cycle.
-# The runner must pass `--config <path-to-this-file>` on every pipeline call
-# so the walker sees auto_commit: never (which routes commit_gate to the
-# false branch; the fixture uses no real commits).
+# Fixture-local orchestration.yml for the fully-hydrated UI showcase fixture.
+# Kept minimal: only the fields that matter for UI discovery. The fully-hydrated
+# fixture is NOT runner-driven — its state.json is pre-cooked end-to-end, so
+# no pipeline.js invocations read this config. It exists to (a) make the
+# fixture folder structurally uniform with the runner-driven
+# colors-greet-mismatch fixture, (b) set auto_commit / auto_pr defaults that
+# match what the pre-cooked state.json was authored against.
 
 system:
   orch_root: ".claude"
