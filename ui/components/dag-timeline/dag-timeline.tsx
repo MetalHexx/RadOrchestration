@@ -73,7 +73,18 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
     )
       .map((el) => el.dataset.rowKey)
       .filter((k): k is string => typeof k === 'string' && k.length > 0);
-    if (renderedKeys.length === 0) return;
+    if (renderedKeys.length === 0) {
+      // SSE-late row arrival: DOM hasn't painted rows yet but the top-level
+      // keyset is known. Reseed from focusableRowKeys when the focused key is
+      // null or stale so the listbox stays Tab-enterable on first render.
+      if (
+        focusableRowKeys.length > 0 &&
+        (focusedRowKey === null || !focusableRowKeys.includes(focusedRowKey))
+      ) {
+        setFocusedRowKey(focusableRowKeys[0]);
+      }
+      return;
+    }
     if (focusedRowKey === null || !renderedKeys.includes(focusedRowKey)) {
       setFocusedRowKey(renderedKeys[0]);
     }
