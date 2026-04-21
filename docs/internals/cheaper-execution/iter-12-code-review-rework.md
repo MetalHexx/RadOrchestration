@@ -67,10 +67,10 @@ Any unmet requirement triggers `changes_requested`. The verdict is strict — no
   - `.claude/skills/code-review/phase-review/workflow.md` + `template.md`
   - `.claude/skills/code-review/final-review/workflow.md` + `template.md`
   - `.claude/skills/code-review/SKILL.md`
-- Engine (review-time enrichment already exists; verify no changes needed):
-  - `.claude/skills/orchestration/scripts/lib/context-enrichment.ts:132-154` (spawn_phase_reviewer — post-Iter-8 simplification)
-  - `.claude/skills/orchestration/scripts/lib/context-enrichment.ts:221-237` (spawn_code_reviewer — head_sha already computed)
-  - `.claude/skills/orchestration/scripts/lib/context-enrichment.ts:93` (spawn_final_reviewer — in EMPTY_CONTEXT_ACTIONS currently; may need head_sha enrichment added — see Open Questions)
+- Engine (review-time enrichment — line numbers post-iter-11):
+  - `.claude/skills/orchestration/scripts/lib/context-enrichment.ts:109-129` (spawn_phase_reviewer — post-Iter-8 simplification)
+  - `.claude/skills/orchestration/scripts/lib/context-enrichment.ts:224-258` (spawn_code_reviewer — head_sha already computed; iter-11 added phase-scope-first branch)
+  - `.claude/skills/orchestration/scripts/lib/context-enrichment.ts:87` (spawn_final_reviewer — in EMPTY_CONTEXT_ACTIONS currently; iter-12 moves it out and adds project_base_sha / project_head_sha enrichment — see Open Questions; decision locked at planning: derive both SHAs at enrichment from existing iteration commit_hash values)
 - Fixtures: review-mode test fixtures with commit-SHA-range inputs live under `.claude/skills/orchestration/scripts/tests/fixtures/`. Add a `git-fixture` helper if one doesn't exist for synthesizing test commit ranges.
 - Tests:
   - `.claude/skills/orchestration/scripts/tests/contract/05-frontmatter-validation.test.ts` (verdict checks)
