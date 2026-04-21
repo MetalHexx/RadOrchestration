@@ -20,7 +20,7 @@ code_review (in_progress, changes_requested) →
                     code_review_completed (approved) ← HALT
 ```
 
-The fixture is pre-seeded at the mediation entry point: `code_review.status = in_progress`, the review doc already on disk with `verdict: changes_requested` and no orchestrator addendum yet. The harness starts the pipeline with `--event start`, receives `action: spawn_code_reviewer` (the walker re-enters at the in-progress node), and the orchestrator then performs its mediation out-of-band before signaling `code_review_completed`.
+The fixture is pre-seeded at the mediation entry point: `code_review.status = in_progress`, the review doc already on disk with `verdict: changes_requested` and no orchestrator addendum yet. The harness starts the pipeline with `--event start`, which returns `action: null` because the walker does not re-emit actions for nodes already `in_progress` — that `null` is the correct "mediation entry point" signal. The orchestrator then performs its mediation out-of-band (read review doc → write addendum + additive frontmatter → author corrective Task Handoff) before signaling `code_review_completed`.
 
 Drift in any of these surfaces is caught:
 
