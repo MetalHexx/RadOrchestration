@@ -132,6 +132,27 @@ No orchestrator-authored scope hint, no new event payload field, no mutation-sid
 - **`ui/components/dag-timeline/dag-iteration-panel.test.ts`** — add a test asserting `DAGIterationPanel` with `parentKind: 'for_each_phase'` and a populated `iteration.corrective_tasks` passes the array to `DAGCorrectiveTaskGroup`. Unit-scope coverage, minimal fixture.
 - **`ui/lib/document-ordering.test.ts`** — add a test asserting a phase-scope corrective's doc_paths appear in the ordered document list with the `(Phase-C{N})` title suffix. Mirror the existing task-scope corrective test.
 
+### Fully-hydrated showcase fixture (UI visual verification)
+
+The `_runner.md` happy-path harness drives exactly one phase-scope corrective from `changes_requested` → `approved`. That is automated correctness coverage. It does NOT exercise the visual density of a real project with mixed task-scope and phase-scope correctives stacked in the same state tree.
+
+**Deliverable**: a separate, pre-cooked fully-hydrated fixture under `prompt-tests/phase-review-mediation-e2e/fixtures/fully-hydrated/` that the UI is pointed at during in-implementation manual verification. This fixture is NOT driven by the runner — it is a static state snapshot with all on-disk artifacts present, engineered to showcase every rendering dimension simultaneously. Suggested shape:
+
+- **Phase 1**: three tasks.
+  - T1 — one task-scope corrective (T1-C1) that approved. Renders `CT1` group under T1 iteration.
+  - T2 — clean first pass. Renders no corrective group.
+  - T3 — two task-scope correctives (T3-C1, T3-C2) before approving. Renders `CT1` + `CT2` groups stacked under T3 iteration.
+  - Phase review ran → returned `changes_requested` (mediated).
+  - Phase-scope corrective PHASE-C1 was authored; its own task-level code review came back `changes_requested` (mediated again — exercises the ancestor-derivation path for corrective-of-corrective at phase scope).
+  - Phase-scope corrective PHASE-C2 was authored and approved.
+  - Phase iteration marked completed. Renders `Phase-C1` + `Phase-C2` groups stacked under Phase 1 iteration.
+- **Phase 2**: one task, clean, completed. Demonstrates the "no correctives" phase rendering isn't disturbed.
+- **Final review**: not yet dispatched. Graph status: `in_progress`. Keeps the fixture representative of a real mid-project state.
+
+All documents on disk (requirements, master plan, phase plans, task handoffs — original + both layers of correctives — and code review docs + one phase review doc with its Orchestrator Addendum). State.json references every doc_path. The fixture is static — no runner driver. The UI points at it during implementation and during `user-instructions.md` hand-verification.
+
+Pass criterion for this fixture (added to the harness's pass criteria list): mounted in the browser, the DAG timeline renders every corrective group, every mediated review doc, every sentinel filename without layout issues, and the document sidebar lists every doc_path with sensible titles including `(CT{N})` and `(Phase-C{N})` suffixes. Operator / agent eyeballs cohesion.
+
 ### In-implementation manual verification (dev server)
 
 During iter-11 implementation, after the UI change lands, the implementing agent must boot the UI and visually verify phase-scope correctives render inside the phase iteration card, following the same visual pattern as task-scope correctives inside task iteration cards. Concrete steps:
@@ -162,7 +183,8 @@ Validated line numbers as of `feat/cheaper-execution` @ `3b85095` (post iter-10 
 - `prompt-tests/phase-review-mediation-e2e/README.md`
 - `prompt-tests/phase-review-mediation-e2e/_runner.md`
 - `prompt-tests/phase-review-mediation-e2e/user-instructions.md`
-- `prompt-tests/phase-review-mediation-e2e/fixtures/<fixture-name>/…` (pre-seeded project artifacts + state.json at the "phase_review returned changes_requested" moment)
+- `prompt-tests/phase-review-mediation-e2e/fixtures/<fixture-name>/…` (pre-seeded project artifacts + state.json at the "phase_review returned changes_requested" moment — runner-driven happy path)
+- `prompt-tests/phase-review-mediation-e2e/fixtures/fully-hydrated/…` (static showcase fixture — mixed task-scope + phase-scope correctives, NOT runner-driven, for UI visual verification)
 - `prompt-tests/phase-review-mediation-e2e/output/<fixture-name>/.gitkeep`
 - `prompt-tests/phase-review-mediation-e2e/output/<fixture-name>/baseline-<fixture-name>-YYYY-MM-DD/run-notes.md` — inaugural baseline committed on first successful run.
 
