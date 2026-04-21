@@ -102,7 +102,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 7 | `feat/iter-7-remove-per-phase-task-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning` | Merged | `ff05ce2` | [#58](https://github.com/MetalHexx/RadOrchestation/pull/58) |
 | 8 | `feat/iter-8-phase-review-absorbs-phase-report` | `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report` | Merged | `d5d45f3` | [#59](https://github.com/MetalHexx/RadOrchestation/pull/59) |
 | 9 | `feat/iter-9-complete-default-yml` | `C:\dev\orchestration\v3-worktrees\feat-iter-9-complete-default-yml` | Merged | `4ee1ea1` | [#60](https://github.com/MetalHexx/RadOrchestation/pull/60) |
-| 10 | `feat/iter-10-task-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-10-task-corrective-cycles` | Awaiting merge | — | _(to be opened — feat/iter-10-task-corrective-cycles → feat/cheaper-execution)_ |
+| 10 | `feat/iter-10-task-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-10-task-corrective-cycles` | Awaiting merge | — | [#61](https://github.com/MetalHexx/RadOrchestation/pull/61) |
 | 11 | — | — | Not created | — | — |
 | 12 | — | — | Not created | — | — |
 | 13 | — | — | Not created | — | — |
@@ -305,7 +305,7 @@ Format:
 - Iter 7 carry-forward resolved: multi-round corrective-context persistence extended in place in `corrective-integration.test.ts` "multiple retries then approval" test — `enrichActionContext('execute_task', ...)` assertions after each corrective birth verify `handoff_doc` resolves to the active C{N} handoff; `spawn_code_reviewer` enrichment returns the correct `corrective_index` per round. No new test file.
 - Tests: orchestration 46 files / 1165 pass / 7 skip / 1 todo (baseline 46/1126/7/1 — net +39 pass across mutations, corrective-integration, context-enrichment, pre-reads, verdict-validation, and contract suites 05/06/09 + event-routing-integration Iter-10 wiring tests). UI 156 pass / 3 pre-existing fail / 159 total (unchanged). Installer 399 pass / 0 fail (unchanged).
 - Reviews: 1 plan-conformance pass (`changes_requested` — flagged 2 items) + 1 code-quality pass (`changes_requested` — flagged 1 critical). Corrections absorbed in `cd645e8`: (1) `_runner.md` Step 1 expected return corrected from `action: spawn_code_reviewer` to `action: null` (walker does NOT re-emit actions for in-progress nodes — the smoke confirmed this; prior wording would have caused a future operator to incorrectly halt a correct run), (2) 4 Iter-10 wiring tests added to `event-routing-integration.test.ts` covering approved / mediated-changes_requested / mediated filter-down / validator-reject paths.
-- Commits: `06f05de` (main), `cd645e8` (review correctives + tracker finalization). PR: _(to be opened — feat/iter-10-task-corrective-cycles → feat/cheaper-execution)_.
+- Commits: `06f05de` (main), `cd645e8` (review correctives), `c2e24c8` (tracker). PR: [#61](https://github.com/MetalHexx/RadOrchestation/pull/61).
 
 ### 2026-04-20 — Iteration 9 — Complete `default.yml`
 
