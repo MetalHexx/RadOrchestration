@@ -714,8 +714,13 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
     const iteration = resolveTaskIteration(cloned, phase, task);
     const correctiveCount = iteration.corrective_tasks.length;
     const maxRetries = config.limits.max_retries_per_task;
-    const hasHandoffPath = typeof correctiveHandoffPath === 'string'
-      && correctiveHandoffPath.trim().length > 0;
+    // Normalize the handoff path via trim so a value like " tasks/foo.md " is
+    // stored without the stray whitespace. The non-empty-after-trim check
+    // still gates the halt branch; the trimmed value is what lands in state.
+    const trimmedHandoffPath = typeof correctiveHandoffPath === 'string'
+      ? correctiveHandoffPath.trim()
+      : '';
+    const hasHandoffPath = trimmedHandoffPath.length > 0;
 
     // No handoff path supplied — this is the orchestrator's budget-exhausted
     // halt signal per the corrective-playbook budget-check contract. Produce a
@@ -771,7 +776,7 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
     nodes['task_handoff'] = {
       kind: 'step',
       status: 'completed',
-      doc_path: correctiveHandoffPath,
+      doc_path: trimmedHandoffPath,
       retries: 0,
     };
 
@@ -785,7 +790,7 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
     };
     iteration.corrective_tasks.push(entry);
     mutations_applied.push(`injected corrective task ${entry.index} (changes_requested)`);
-    mutations_applied.push(`set corrective_task[${entry.index}].task_handoff.doc_path = ${correctiveHandoffPath}`);
+    mutations_applied.push(`set corrective_task[${entry.index}].task_handoff.doc_path = ${trimmedHandoffPath}`);
     mutations_applied.push(`corrective_tasks.length = ${iteration.corrective_tasks.length}`);
   } else if (routingVerdict === REVIEW_VERDICTS.REJECTED) {
     const iteration = resolveTaskIteration(cloned, phase, task);

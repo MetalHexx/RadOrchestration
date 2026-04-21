@@ -71,8 +71,14 @@ const VALIDATION_RULES: Record<string, FrontmatterValidationRule[]> = {
   code_review_completed: [
     {
       field: 'verdict',
-      validate: (v) => v != null,
-      expected: 'a defined value',
+      // Validate the raw verdict is one of the three allowed values, trimmed.
+      // A typo or stray whitespace (e.g., "approved ") would otherwise skip
+      // the conditional mediation rules (which gate on exact-string match of
+      // 'changes_requested') and surface as a later runtime halt from the
+      // mutation's unknown-verdict branch instead of a structured frontmatter
+      // error. Fail early here with a clear field-specific message.
+      validate: (v) => typeof v === 'string' && (v === 'approved' || v === 'changes_requested' || v === 'rejected'),
+      expected: "one of 'approved', 'changes_requested', 'rejected'",
     },
     // verdict === 'changes_requested' branch — mediation fields required
     {

@@ -87,7 +87,11 @@ function driveToFinalReview(): ReturnType<typeof createMockIOWithConfig> {
 // ── code_review_completed verdict validation ───────────────────────────────────
 
 describe('code_review_completed — verdict validation', () => {
-  it('typo verdict halts the pipeline', () => {
+  // Iter-10 Copilot R3 hardening: the verdict rule now validates the exact
+  // enum (approved / changes_requested / rejected) rather than just "defined."
+  // Typos no longer slip through to the mutation's unknown-verdict halt —
+  // they are caught as structured frontmatter errors at the pre-read boundary.
+  it('typo verdict returns a structured frontmatter error (validator-stage rejection)', () => {
     const io = driveToExecutionWithConfig(config, 1);
     driveToCodeReview(io);
 
@@ -98,13 +102,15 @@ describe('code_review_completed — verdict validation', () => {
       verdict: 'approvd',
     }, io);
 
-    expect(result.success).toBe(true);
-    expect(io.currentState!.graph.status).toBe('halted');
-    expect(io.currentState!.pipeline.halt_reason).toContain('approvd');
-    expect(io.currentState!.pipeline.halt_reason).toContain('code_review_completed');
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('verdict');
+    expect(result.error?.event).toBe('code_review_completed');
+    // Graph does NOT halt — validator rejection is recoverable by the
+    // operator (fix the frontmatter typo, re-signal the event).
+    expect(io.currentState!.graph.status).not.toBe('halted');
   });
 
-  it('typo verdict returns display_halted action', () => {
+  it('typo verdict does not reach the mutation halt branch', () => {
     const io = driveToExecutionWithConfig(config, 1);
     driveToCodeReview(io);
 
@@ -115,7 +121,11 @@ describe('code_review_completed — verdict validation', () => {
       verdict: 'approvd',
     }, io);
 
-    expect(result.action).toBe('display_halted');
+    // Old contract: action would be `display_halted` (mutation halted with
+    // unknown-verdict reason). New contract: validator rejects upfront so the
+    // action is null and halt_reason stays null.
+    expect(result.action).not.toBe('display_halted');
+    expect(io.currentState!.pipeline.halt_reason).toBeNull();
   });
 
   it('valid approved verdict does not halt', () => {
