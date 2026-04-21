@@ -101,7 +101,7 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 | 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Merged | `82333f1` | [#57](https://github.com/MetalHexx/RadOrchestation/pull/57) |
 | 7 | `feat/iter-7-remove-per-phase-task-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning` | Merged | `ff05ce2` | [#58](https://github.com/MetalHexx/RadOrchestation/pull/58) |
 | 8 | `feat/iter-8-phase-review-absorbs-phase-report` | `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report` | Awaiting merge | — | [#59](https://github.com/MetalHexx/RadOrchestation/pull/59) |
-| 9 | `feat/iter-9-complete-default-yml` | `C:\dev\orchestration\v3-worktrees\feat-iter-9-complete-default-yml` | Awaiting merge | — | — |
+| 9 | `feat/iter-9-complete-default-yml` | `C:\dev\orchestration\v3-worktrees\feat-iter-9-complete-default-yml` | Awaiting merge | — | [#60](https://github.com/MetalHexx/RadOrchestation/pull/60) |
 | 10 | — | — | Not created | — | — |
 | 11 | — | — | Not created | — | — |
 | 12 | — | — | Not created | — | — |
@@ -281,7 +281,7 @@ Format:
 - Tests: orchestration 46 files / 1126 pass / 7 skip / 1 todo / 1134 total (baseline 47/1122/7/1/1130 — net −1 file, +4 pass; `-6` from `quick-template.test.ts` delete, `-2` quick-specific cases removed from e2e rewrite, `+6` default.yml shape tests, `+1` end-to-end smoke, `+5` new template-resolution cases). UI 156 pass / 3 pre-existing fail / 159 total (baseline unchanged — the two `template-serializer.test.ts` failures and the `dag-timeline.test.ts` failure all reference full.yml's pre-Iter-8 shape and are untouched by this iteration; carry-forward). Installer 399 pass / 0 fail (unchanged — no template references in installer).
 - Retained deliberate (per plan): `full.yml` stays on disk as an escape hatch with existing `status: deprecated` banner intact; v4 migrator (`migrate-to-v5.ts` + its test files) left hardcoded to `'full'` since v4 states legitimately came from full.yml (Iter 16 scope); `ui/lib/template-api-helpers.test.ts:86` generic `isValidTemplateId('quick')` string-validation test left as-is.
 - Reviews: 1 conformance pass + 1 independent quality pass, both clean (no must-fix findings). Two nice-to-fix items noted and deliberately left alone — `DOC_STORE` module-scoping in the e2e smoke test (single-test describe, `beforeEach` clears; safe), and the stale `full.yml:2` banner line ("Remains the default template fallback until Iter 9") which is now factually wrong but the plan explicitly said "banner comments stay exactly as they are" (logged as Open Item for cleanup-iteration owner).
-- Commits: `ba2053a` (main implementation) plus this tracker-finalization commit. PR: <pending — opened after commit>.
+- Commits: `ba2053a` (main implementation), `9ce280a` (tracker), plus this PR-link fill-in commit. PR: [#60](https://github.com/MetalHexx/RadOrchestation/pull/60).
 
 ### 2026-04-20 — Iteration 8 — phase_review absorbs phase_report
 
