@@ -366,7 +366,7 @@ describe('e2e: default_template config resolution', () => {
 // pr_created → final_approved → display_complete.
 
 describe('e2e: default.yml full-pipeline smoke test', () => {
-  const PROJECT_DIR = '/tmp/test-project/DEFAULT-YML-E2E';
+  let PROJECT_DIR: string;
   const DOC_STORE: Record<string, { frontmatter: Record<string, unknown>; content: string }> = {};
 
   function seedDoc(docPath: string, extraFrontmatter: Record<string, unknown> = {}): void {
@@ -396,8 +396,15 @@ describe('e2e: default.yml full-pipeline smoke test', () => {
   }
 
   beforeEach(() => {
+    PROJECT_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'DEFAULT-YML-E2E-'));
     for (const key of Object.keys(DOC_STORE)) {
       delete DOC_STORE[key];
+    }
+  });
+
+  afterEach(() => {
+    if (PROJECT_DIR && fs.existsSync(PROJECT_DIR)) {
+      fs.rmSync(PROJECT_DIR, { recursive: true, force: true });
     }
   });
 
@@ -442,9 +449,12 @@ describe('e2e: default.yml full-pipeline smoke test', () => {
     result = processEvent('plan_approved', PROJECT_DIR, { doc_path: masterPlanDoc }, io);
     expect(result.success).toBe(true);
 
-    // ── Simulate the explosion script's pre-seeding of phase_planning +
-    // task_handoff child step nodes (Iter 5 behavior). The walker needs these
-    // to advance task_loop expansion after phase_loop iterations are created.
+    // ── Seed the per-iteration state this smoke test needs after plan_approved:
+    // explosion script's pre-seeding (phase_planning node on each phase iteration;
+    // task_handoff node on each task iteration) PLUS the task-loop body-node states
+    // (task_executor / commit_gate / code_review / task_gate) that the walker
+    // otherwise scaffolds via real mutations. Keeping this hand-authored keeps the
+    // smoke test isolated from the explosion script integration path.
     const phaseLoop0 = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     expect(phaseLoop0.iterations).toHaveLength(1);
     const phaseIter = phaseLoop0.iterations[0];
