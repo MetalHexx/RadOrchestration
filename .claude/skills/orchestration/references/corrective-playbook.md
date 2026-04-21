@@ -41,7 +41,7 @@ For each row in the review's audit table, the disposition is preselected by the 
 
 | Status | Default Disposition | When to Override |
 |--------|--------------------|--------------------|
-| `on-track` (task/phase) | **decline** — "tracking for later scope" | Override to `action` only when the scope under review was supposed to fully satisfy the requirement but the reviewer marked on-track-but-incomplete. Cite the Task Handoff / Phase Plan language that owed completion. |
+| `on-track` (task/phase) | **decline** — "tracking for later scope" | Override to `action` only when the scope under review was supposed to fully satisfy the requirement but the reviewer marked on-track-but-incomplete. Cite the Task Handoff / Phase Plan language that owed completion. Also override to `action` when a quality-sweep finding with severity `high` lands on this row — severity `high` trumps informational status regardless of scope completeness. |
 | `drift` (task/phase) | **action** | Override to `decline` only when cross-artifact scan proves the piece legitimately belongs to a later phase or another task's contract. Cite the Master Plan or sibling Task Handoff. |
 | `regression` (task/phase) | **action + flagged critical** | Override to `decline` only when the "break" is a deliberate planned deletion (very rare). Confirm against the Phase Plan / Requirements doc. |
 | `met` (final) | n/a — no mediation at final scope | — |

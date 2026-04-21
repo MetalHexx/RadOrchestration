@@ -11,7 +11,7 @@ user-invocable: true
 >Reviewer subagents should work **diff-based** — compare the current diff (or branch vs. its base) against the project's inlined requirements (FR/NFR/AD/DD). Do not accept per-task "tests passed" summaries on faith; the implementer's report is not evidence, the diff is.
 
 ### Phase 1: Fix any carry forward items from the project
-- Use a reviewer subagent look at all the review reports throughout the {project-name} project and find any lingering items that did not get repaired. Create a list of items to look into.  Treat per-requirement audit rows with status `drift` or `regression` as actionable; `on-track` rows are informational unless the prior scope owed full completion.
+- Use a reviewer subagent to look at all the review reports throughout the {project-name} project and find any lingering items that did not get repaired. Create a list of items to look into.  Treat per-requirement audit rows with status `drift` or `regression` as actionable; `on-track` rows are informational unless the prior scope owed full completion.
 - Spawn coder subagents to repair the issues, if any.  make sure to include updating and running tests!
 - Spawn a reviewer agent to do an indenpendent skeptical review of the changes. Run tests!
 - Coder should fix any issues found by the reviewer

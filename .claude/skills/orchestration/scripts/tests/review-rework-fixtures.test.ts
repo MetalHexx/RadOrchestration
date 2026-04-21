@@ -101,12 +101,9 @@ describe.each(REVIEW_REWORK_FIXTURES)('[review-rework] fixture %#', (fixture: Re
   it(`${fixture.id} — the expected frontmatter matches the pre-read validator's verdict (clean passes, broken rejected with structured error)`, () => {
     const event = eventNameFor(fixture.scope);
     const err = validateFrontmatter(event, fixture.expectedFrontmatter, '/tmp/fixture-review.md');
-    // For phase scope with changes_requested, the validator also requires
-    // mediation fields when verdict is changes_requested — the fixture's
-    // declared frontmatter is the *reviewer's* raw output, so we strip the
-    // mediation contract expectations here by substituting an approved
-    // verdict variant that the validator will accept unconditionally. See
-    // the assertion in the following test for the verdict-shape check.
+    // Raw changes_requested frontmatter (pre-mediation shape): the validator
+    // requires orchestrator_mediated: true on changes_requested verdicts at
+    // task + phase scope. Assert rejection on the missing mediation field.
     if (fixture.scope === 'phase' && fixture.outcome === 'changes_requested') {
       // The reviewer's raw changes_requested verdict requires the
       // orchestrator to supply mediation fields before the validator passes.

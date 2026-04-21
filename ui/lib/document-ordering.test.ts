@@ -680,11 +680,8 @@ test('gate and conditional nodes are skipped (no documents produced)', () => {
 });
 
 test('final_review root step node produces review category with Final Review title', () => {
-  // Iter-12: final-review docs live under reports/{NAME}-FINAL-REVIEW.md
-  // (parallel to task + phase reviews). doc_path flows directly from node
-  // state — the document-ordering layer is path-agnostic, so the move is
-  // transparent to it, but the fixture is updated to reflect the new canonical
-  // placement.
+  // Simplified test fixture — production uses reports/{NAME}-FINAL-REVIEW.md
+  // but the path-move assertion only cares about the reports/ prefix.
   const state = makeV5State({
     final_review: { kind: 'step', status: 'completed', doc_path: 'reports/FINAL-REVIEW.md', retries: 0 },
   });

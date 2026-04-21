@@ -33,7 +33,7 @@ For each of the four review docs, confirm:
 ### 3a. Start the UI dev server
 
 - Kill any process on port 3000:
-  - Windows: `netstat -ano | grep :3000` then `taskkill /PID <pid> /F`.
+  - Windows: **Note** — this assumes Git Bash or WSL — the `grep` command isn't available in cmd or PowerShell. Run: `netstat -ano | grep :3000` then `taskkill /PID <pid> /F`.
   - Unix: `lsof -i :3000` then `kill <pid>`.
 - Create `ui/.env.local` if absent, per `installer/lib/env-generator.js`:
   ```

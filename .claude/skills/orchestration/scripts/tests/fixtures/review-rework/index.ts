@@ -37,8 +37,6 @@ export interface ReviewReworkFixture {
   requirementsDoc: string;
   /** Phase Plan content (phase + final scopes only). */
   phasePlanDoc?: string;
-  /** Master Plan content (phase + final scopes only). */
-  masterPlanDoc?: string;
   /**
    * Task handoff contents by relative path. Keyed so the test can assert the
    * set matches the commit sequence's `tasks/` layout.
@@ -181,8 +179,6 @@ const PHASE_REVIEW_CLEAN: ReviewReworkFixture = {
     '# PHASE-CLEAN Requirements\n\n' +
     '## FR-1: Palette source\n`getColors` returns `Color[]` synchronously.\n\n' +
     '## FR-2: Greeting formatter\n`greet(name)` consumes `getColors()` output and embeds the comma-joined palette.\n',
-  masterPlanDoc:
-    '---\nproject: "PHASE-CLEAN"\ntype: "master_plan"\nstatus: "approved"\nauthor: "planner-agent"\ncreated: "2026-04-21"\ntotal_phases: 1\ntotal_tasks: 2\n---\n\n# PHASE-CLEAN Master Plan\n\n## P01: Core flow\n\n### P01-T01: Colors\n### P01-T02: Greeting\n',
   phasePlanDoc:
     '---\nproject: "PHASE-CLEAN"\nphase: 1\ntitle: "Core flow"\nstatus: "active"\ntasks:\n  - id: "P01-T01"\n    title: "Colors"\n  - id: "P01-T02"\n    title: "Greeting"\nauthor: "explosion-script"\ncreated: "2026-04-21"\n---\n\n# Phase 01: Core flow\n\n**Requirements:** FR-1, FR-2\n\nExit criteria: tests pass and the greeting embeds the palette.\n',
   taskHandoffs: {
@@ -238,8 +234,6 @@ const PHASE_REVIEW_BROKEN: ReviewReworkFixture = {
     '# PHASE-BROKEN Requirements\n\n' +
     '## FR-1: Palette source\n`getColors` returns `Color[]` synchronously.\n\n' +
     '## FR-2: Greeting formatter\n`greet(name)` consumes `getColors()` output and embeds the comma-joined palette.\n',
-  masterPlanDoc:
-    '---\nproject: "PHASE-BROKEN"\ntype: "master_plan"\nstatus: "approved"\nauthor: "planner-agent"\ncreated: "2026-04-21"\ntotal_phases: 1\ntotal_tasks: 2\n---\n\n# PHASE-BROKEN Master Plan\n\n## P01: Core flow\n',
   phasePlanDoc:
     '---\nproject: "PHASE-BROKEN"\nphase: 1\ntitle: "Core flow"\nstatus: "active"\ntasks:\n  - id: "P01-T01"\n    title: "Colors"\n  - id: "P01-T02"\n    title: "Greeting"\nauthor: "explosion-script"\ncreated: "2026-04-21"\n---\n\n# Phase 01: Core flow\n\n**Requirements:** FR-1, FR-2\n\nExit criteria: tests pass and the greeting embeds the palette.\n',
   taskHandoffs: {
@@ -309,8 +303,6 @@ const FINAL_REVIEW_CLEAN: ReviewReworkFixture = {
     '## FR-3: Deterministic ordering\nPalette order is red, orange, yellow.\n\n' +
     '## NFR-1: Synchronous API\nPublic API is synchronous.\n\n' +
     '## NFR-2: Public-API documentation\nPublic API is documented in the README.\n',
-  masterPlanDoc:
-    '---\nproject: "FINAL-CLEAN"\ntype: "master_plan"\nstatus: "approved"\nauthor: "planner-agent"\ncreated: "2026-04-21"\ntotal_phases: 1\ntotal_tasks: 3\n---\n\n# FINAL-CLEAN Master Plan\n\n## P01: All work\n',
   expectedFrontmatter: {
     project: 'FINAL-CLEAN',
     verdict: 'approved',
@@ -362,8 +354,6 @@ const FINAL_REVIEW_BROKEN: ReviewReworkFixture = {
     '## FR-3: Deterministic ordering\nPalette order is red, orange, yellow.\n\n' +
     '## NFR-1: Synchronous API\nPublic API is synchronous.\n\n' +
     '## NFR-2: Public-API documentation\nPublic API is documented in a README.md at the repo root.\n',
-  masterPlanDoc:
-    '---\nproject: "FINAL-BROKEN"\ntype: "master_plan"\nstatus: "approved"\nauthor: "planner-agent"\ncreated: "2026-04-21"\ntotal_phases: 1\ntotal_tasks: 2\n---\n\n# FINAL-BROKEN Master Plan\n',
   expectedFrontmatter: {
     project: 'FINAL-BROKEN',
     verdict: 'changes_requested',

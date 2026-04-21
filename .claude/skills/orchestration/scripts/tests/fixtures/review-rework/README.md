@@ -6,24 +6,20 @@ Six fixture pairs — `clean` + `broken` per review scope (task / phase / final)
 
 ```
 review-rework/
-  index.ts                      # Shared driver + fixture registry
-  task-review/
-    clean/                      # Diff satisfies FR-1 + FR-2; expect verdict: approved, all rows on-track
-    broken/                     # Diff regresses FR-2; expect verdict: changes_requested with one drift finding
-  phase-review/
-    clean/                      # Cumulative 2-task diff satisfies both requirements; expect verdict: approved
-    broken/                     # T1 returns X, T2 consumes Y — cross-task contract drift; expect verdict: changes_requested with drift
-  final-review/
-    clean/                      # Cumulative branch diff fully satisfies every FR/NFR; expect verdict: approved, all rows met
-    broken/                     # Cumulative diff misses NFR-2 entirely; expect verdict: changes_requested with missing
+  index.ts                      # Fixture registry + TypeScript declarations
+  task-review/clean/            # (structural placeholder)
+  task-review/broken/           # (structural placeholder)
+  phase-review/clean/           # (structural placeholder)
+  phase-review/broken/          # (structural placeholder)
+  final-review/clean/           # (structural placeholder)
+  final-review/broken/          # (structural placeholder)
 ```
 
-Each fixture folder carries:
-
-- `{NAME}-REQUIREMENTS.md` — FR/NFR ledger inlined by the fixture driver.
-- Phase / final fixtures also carry `{NAME}-MASTER-PLAN.md` and `{NAME}-PHASE-01-{TITLE}.md` plus task handoffs.
-- Source file snapshots (content strings) rehydrated into temp-repo commits by the driver.
-- `expected.json` — the fixture's expected verdict + representative audit-table rows, consumed by the test to assert correctness.
+All fixture data is authored in `index.ts` as `ReviewReworkFixture` objects. Each fixture declares:
+- Commit sequence (messages + file contents to rehydrate in temp git repo).
+- Planning-doc content (requirements, phase plan, task handoffs) as inlined strings.
+- Expected frontmatter shape (verdict, severity, audit fields).
+- Expected audit-table rows (representative sample of outcome — e.g., one drift row for broken fixtures).
 
 ## Design rationale
 
