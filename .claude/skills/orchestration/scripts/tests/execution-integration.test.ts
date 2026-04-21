@@ -474,8 +474,8 @@ describe('Execution-tier integration — complete pipeline run', () => {
   // PRD / Design / Architecture). Guards against executor-contract regressions
   // if future enrichment code accidentally surfaces upstream doc paths.
   it('execute_task enrichment passes handoff_doc ONLY — no upstream-doc fields', () => {
-    const io = createMockIO(null, makeConfig());
     const config = makeConfig();
+    const io = createMockIO(null, config);
 
     // Drive to first execute_task so the walker has resolved the active
     // phase/task and the pre-seeded task_handoff doc_path is readable.

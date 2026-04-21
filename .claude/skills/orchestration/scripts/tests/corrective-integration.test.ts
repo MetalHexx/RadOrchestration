@@ -457,8 +457,8 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
   // at the original path vs the corrective path. No upstream-planning-doc
   // fields participate at either position on the corrective cycle.
   it('original and corrective handoffs hit same execution path — identical enrichment shape, no upstream-doc reads', () => {
-    const io = createMockIO(null, makeConfig());
     const config = makeConfig();
+    const io = createMockIO(null, config);
 
     // ── Planning tier — drives to the first execute_task on the original ──
     const planningResult = drivePlanningTier(io);
