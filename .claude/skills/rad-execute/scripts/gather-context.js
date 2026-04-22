@@ -116,10 +116,11 @@ repoRoot = path.resolve(repoRoot);
 const repoName = path.basename(repoRoot);
 const repoParent = path.dirname(repoRoot);
 
-// Current branch
+// Current branch — `git branch --show-current` returns "" (not an error)
+// in detached HEAD state, so coalesce empty string to "HEAD" too.
 let currentBranch;
 try {
-  currentBranch = git(['branch', '--show-current']);
+  currentBranch = git(['branch', '--show-current']) || 'HEAD';
 } catch {
   currentBranch = 'HEAD';
 }
