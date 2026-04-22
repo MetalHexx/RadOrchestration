@@ -520,6 +520,23 @@ test('dag-iteration-panel.tsx <DocumentLink> does NOT pass tabIndex (keyboard ac
   );
 });
 
+test('dag-iteration-panel.tsx <ExternalLink> does NOT pass tabIndex (keyboard accessibility — same rationale as DocumentLink)', () => {
+  // Same rationale as the DocumentLink case above: the iteration header <div> has NO
+  // row-level focus wiring (no tabIndex, no keydown handler), so keyboard users must
+  // reach the commit link via natural tab order. The original tabIndex={-1} was
+  // carried over from an earlier shape where ExternalLink was nested inside
+  // AccordionTrigger (a <button>); post-restructure it is a sibling of the header
+  // text and tabIndex={-1} now makes the link keyboard-unreachable. DAGNodeRow's
+  // own ExternalLink/DocumentLink still use tabIndex={-1} because the row owns the
+  // roving tabindex + keydown handler — the header does not.
+  const extLinkMatch = iterationPanelSource.match(/<ExternalLink\b[\s\S]*?\/>/);
+  assert.ok(extLinkMatch, 'iteration panel must contain a self-closing <ExternalLink ... /> element');
+  assert.ok(
+    !/tabIndex\s*=/.test(extLinkMatch[0]),
+    '<ExternalLink> in the iteration header must NOT pass tabIndex — relying on the default lets keyboard users tab to the commit link (the header has no row-level keydown handler like DAGNodeRow does)'
+  );
+});
+
 test('dag-corrective-task-group.tsx does NOT contain projectName= or gateActive=', () => {
   assert.ok(correctiveTaskGroupSource.includes('<DAGNodeRow'), 'sanity: corrective task group should contain a <DAGNodeRow element');
   assert.ok(

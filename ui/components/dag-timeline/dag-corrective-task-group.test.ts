@@ -253,6 +253,23 @@ test('dag-corrective-task-group.tsx <DocumentLink> does NOT pass tabIndex (keybo
   );
 });
 
+test('dag-corrective-task-group.tsx <ExternalLink> does NOT pass tabIndex (keyboard accessibility — same rationale as DocumentLink)', () => {
+  // Same rationale as the DocumentLink case above. ExternalLink is a sibling of
+  // AccordionTrigger (not nested inside it — enforced by the segment-scan test), so
+  // the trigger does not own its focus. The surrounding <div> has no row-level focus
+  // wiring (no tabIndex, no keydown handler). If ExternalLink were tabIndex={-1}, a
+  // keyboard-only user would have NO path to open the commit link. The original
+  // tabIndex={-1} was carried over from an earlier shape where ExternalLink was
+  // nested inside AccordionTrigger; post-restructure it is a sibling and the
+  // override now breaks keyboard reachability.
+  const extLinkMatch = correctiveTaskGroupSource.match(/<ExternalLink\b[\s\S]*?\/>/);
+  assert.ok(extLinkMatch, 'corrective task group must contain a self-closing <ExternalLink ... /> element');
+  assert.ok(
+    !/tabIndex\s*=/.test(extLinkMatch[0]),
+    '<ExternalLink> in the corrective header must NOT pass tabIndex — the AccordionTrigger consumes Enter/Space so a keyboard user must reach the commit link via natural tab order'
+  );
+});
+
 test('dag-corrective-task-group.tsx <DocumentLink> renders OUTSIDE <AccordionTrigger> (no nested interactive controls)', () => {
   // AccordionTrigger renders AccordionPrimitive.Trigger, which is a <button>.
   // DocumentLink renders a <button>. Nesting <button> inside <button> is invalid HTML

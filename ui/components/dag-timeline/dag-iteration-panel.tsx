@@ -138,11 +138,14 @@ export function DAGIterationPanel({
         )}
         {commitData !== null && (
           commitData.href !== null ? (
+            // No tabIndex override: this header <div> has no row-level focus
+            // wiring (unlike DAGNodeRow, which owns a roving tabindex + keydown
+            // handler), so keyboard users must reach the commit link via
+            // natural tab order. Same rationale as DocumentLink above.
             <ExternalLink
               href={commitData.href}
               label={commitData.label}
               icon="external-link"
-              tabIndex={-1}
             />
           ) : (
             <span className="text-xs font-mono text-muted-foreground">

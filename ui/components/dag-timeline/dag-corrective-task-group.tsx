@@ -80,11 +80,15 @@ export function DAGCorrectiveTaskGroup({
                 )}
                 {commitData !== null && (
                   commitData.href !== null ? (
+                    // No tabIndex override: rendered OUTSIDE AccordionTrigger
+                    // (see header comment). The trigger consumes Enter/Space
+                    // for expand/collapse, so keyboard users must reach this
+                    // link via natural tab order. Same rationale as
+                    // DocumentLink above.
                     <ExternalLink
                       href={commitData.href}
                       label={commitData.label}
                       icon="external-link"
-                      tabIndex={-1}
                     />
                   ) : (
                     <span className="text-xs font-mono text-muted-foreground">
