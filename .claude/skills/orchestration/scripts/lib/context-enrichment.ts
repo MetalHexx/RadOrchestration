@@ -178,12 +178,10 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         (activePhaseCorrective.status === 'not_started' || activePhaseCorrective.status === 'in_progress')
       ) {
         const phaseCorrectiveDoc = activePhaseCorrective.doc_path;
-        const phaseCorrectiveDocPath =
-          typeof phaseCorrectiveDoc === 'string' ? phaseCorrectiveDoc.trim() : '';
-        if (phaseCorrectiveDocPath.length > 0) {
+        if (typeof phaseCorrectiveDoc === 'string' && phaseCorrectiveDoc.trim().length > 0) {
           // Return the stored path unchanged (not the trimmed copy) so downstream
           // consumers see the value exactly as the mutation wrote it.
-          return { ...base, handoff_doc: phaseCorrectiveDoc! };
+          return { ...base, handoff_doc: phaseCorrectiveDoc };
         }
       }
 
@@ -204,12 +202,10 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         (activeCorrective.status === 'not_started' || activeCorrective.status === 'in_progress')
       ) {
         const correctiveDoc = activeCorrective.doc_path;
-        const correctiveDocPath =
-          typeof correctiveDoc === 'string' ? correctiveDoc.trim() : '';
-        if (correctiveDocPath.length > 0) {
+        if (typeof correctiveDoc === 'string' && correctiveDoc.trim().length > 0) {
           // Return the stored path unchanged (not the trimmed copy) so downstream
           // consumers see the value exactly as the mutation wrote it.
-          return { ...base, handoff_doc: correctiveDoc! };
+          return { ...base, handoff_doc: correctiveDoc };
         }
       }
 

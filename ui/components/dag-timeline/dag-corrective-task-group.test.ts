@@ -193,14 +193,15 @@ const correctiveTaskGroupSource = readFileSync(join(__dirname, 'dag-corrective-t
 test('dag-corrective-task-group.tsx imports DocumentLink from @/components/documents', () => {
   // Post-unify, CorrectiveTaskEntry.doc_path replaces the synthesized task_handoff step node
   // that used to own the Doc button via DAGNodeRow. The group component must import DocumentLink
-  // so its AccordionTrigger can render a Doc link off entry.doc_path.
+  // so its accordion header row can render a Doc link off entry.doc_path. DocumentLink renders
+  // as a SIBLING of AccordionTrigger (not nested inside it) to avoid invalid nested <button>s.
   assert.ok(
     /import\s+\{[^}]*DocumentLink[^}]*\}\s+from\s+['"]@\/components\/documents['"]/.test(correctiveTaskGroupSource),
-    'corrective task group must import DocumentLink so the accordion trigger can render a Doc link when entry.doc_path resolves'
+    'corrective task group must import DocumentLink so the accordion header row can render a Doc link when entry.doc_path resolves'
   );
 });
 
-test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path} label="Doc" onDocClick={onDocClick} /> in the accordion trigger', () => {
+test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path} label="Doc" onDocClick={onDocClick} /> in the accordion header row', () => {
   // Mirrors the iteration-panel pattern (dag-iteration-panel.tsx:132-138): post-unify corrective
   // handoff docs are carried on CorrectiveTaskEntry.doc_path and entry.nodes can be empty, so
   // the group component itself must render the Doc button off entry.doc_path to keep corrective
