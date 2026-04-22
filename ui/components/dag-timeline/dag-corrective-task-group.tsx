@@ -68,10 +68,22 @@ export function DAGCorrectiveTaskGroup({
                 whole header band still reacts to hover as before.
               */}
               <div className="flex items-center gap-2 py-2 px-3 rounded-md hover:bg-accent/50">
-                <AccordionTrigger className="hover:no-underline flex-1 gap-2 items-center py-0 border-0">
-                  <span className="text-sm font-medium">{buildTriggerText(entry.index)}</span>
-                  <NodeStatusBadge status={entry.status} />
-                </AccordionTrigger>
+                {/*
+                  flex-1 lives on this wrapper <div> — NOT on AccordionTrigger's className —
+                  because AccordionTrigger renders AccordionPrimitive.Header (hardcoded
+                  className="flex" in ui/components/ui/accordion.tsx) wrapping the inner
+                  Trigger <button>. The Header is therefore the actual flex item in THIS row,
+                  and the className prop is applied to the inner Trigger. Putting flex-1 on
+                  the Trigger is a no-op for the row layout; it must sit on a wrapper that is
+                  a real direct child of this flex row so the Doc/commit link siblings are
+                  pushed to the right edge.
+                */}
+                <div className="flex-1">
+                  <AccordionTrigger className="hover:no-underline gap-2 items-center py-0 border-0">
+                    <span className="text-sm font-medium">{buildTriggerText(entry.index)}</span>
+                    <NodeStatusBadge status={entry.status} />
+                  </AccordionTrigger>
+                </div>
                 {entry.doc_path != null && entry.doc_path !== '' && (
                   // Rendered OUTSIDE AccordionTrigger — see header comment. No tabIndex
                   // override: the trigger consumes Enter/Space for expand/collapse, so

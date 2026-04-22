@@ -250,7 +250,7 @@ test('dag-corrective-task-group.tsx <DocumentLink> does NOT pass tabIndex (keybo
   assert.ok(docLinkMatch, 'corrective task group must contain a self-closing <DocumentLink ... /> element');
   assert.ok(
     !/tabIndex\s*=/.test(docLinkMatch[0]),
-    '<DocumentLink> in the corrective accordion trigger must NOT pass tabIndex — the AccordionTrigger consumes Enter/Space so a keyboard user must reach the Doc link via natural tab order'
+    '<DocumentLink> in the corrective accordion header row must NOT pass tabIndex — the AccordionTrigger consumes Enter/Space so a keyboard user must reach the Doc link via natural tab order'
   );
 });
 
