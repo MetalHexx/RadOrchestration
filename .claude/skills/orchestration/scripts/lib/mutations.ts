@@ -1361,7 +1361,7 @@ mutationRegistry.set(EVENTS.SOURCE_CONTROL_INIT, (state, context, _config, _temp
   cloned.pipeline.source_control = {
     branch: branch as string,
     base_branch: baseBranch as string,
-    worktree_path: (context.worktree_path as string) ?? '.',
+    worktree_path: (context.worktree_path as string | undefined)?.trim() || '.',
     auto_commit: autoCommit,
     auto_pr: autoPr,
     remote_url: normalizeOptionalUrl(context.remote_url),

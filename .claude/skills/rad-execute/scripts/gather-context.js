@@ -71,14 +71,16 @@ function parseSimpleYaml(content) {
 }
 
 /**
- * Returns true when the parsed state object has a populated
- * `pipeline.source_control` (a non-null object). Any other shape —
- * missing, null, wrong type — returns false, letting callers treat
- * the project as "needs initialization."
+ * Returns true when the parsed state object has a fully populated
+ * `pipeline.source_control` with the auto fields set. Any other shape —
+ * missing, null, wrong type, array, or missing auto fields — returns false,
+ * letting callers treat the project as "needs initialization."
  */
 function isSourceControlInitialized(state) {
   const sc = state && state.pipeline && state.pipeline.source_control;
-  return !!sc && typeof sc === 'object';
+  return !!sc && typeof sc === 'object' && !Array.isArray(sc) &&
+    typeof sc.auto_commit === 'string' && sc.auto_commit !== '' &&
+    typeof sc.auto_pr === 'string' && sc.auto_pr !== '';
 }
 
 function parseArgs(argv) {
@@ -155,9 +157,9 @@ const orchRootGuess = path.resolve(__dirname, '..', '..', '..');  // scripts →
 const configPath = path.join(orchRootGuess, 'skills', 'orchestration', 'config', 'orchestration.yml');
 
 let orchRoot = '.claude';
-let projectsBasePath = path.join(repoRoot, '.claude', 'projects');
 let configAutoCommit = 'ask';
 let configAutoPr = 'ask';
+let _explicitProjectsBasePath = null;
 
 if (fs.existsSync(configPath)) {
   try {
@@ -169,7 +171,7 @@ if (fs.existsSync(configPath)) {
     }
     if (yaml['projects.base_path']) {
       const raw = yaml['projects.base_path'];
-      projectsBasePath = path.isAbsolute(raw) ? raw : path.resolve(repoRoot, raw);
+      _explicitProjectsBasePath = path.isAbsolute(raw) ? raw : path.resolve(repoRoot, raw);
     }
     if (yaml['source_control.auto_commit']) {
       configAutoCommit = yaml['source_control.auto_commit'];
@@ -181,6 +183,10 @@ if (fs.existsSync(configPath)) {
     // Use defaults on parse failure
   }
 }
+
+// Default derives from orchRoot so a custom orch_root without an explicit
+// projects.base_path still resolves to the right location.
+const projectsBasePath = _explicitProjectsBasePath ?? path.join(repoRoot, orchRoot, 'projects');
 
 // ─── Remote URL ─────────────────────────────────────────────────────────────
 

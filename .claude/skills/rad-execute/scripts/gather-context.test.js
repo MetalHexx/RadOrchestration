@@ -239,8 +239,40 @@ describe('isSourceControlInitialized', () => {
     assert.equal(isSourceControlInitialized(state), true);
   });
 
-  it('returns true even when the object is minimal (trusts the pipeline mutation)', () => {
-    assert.equal(isSourceControlInitialized({ pipeline: { source_control: {} } }), true);
+  it('returns false when auto_commit / auto_pr are missing (empty object)', () => {
+    assert.equal(isSourceControlInitialized({ pipeline: { source_control: {} } }), false);
+  });
+
+  it('returns false when source_control is an array', () => {
+    assert.equal(isSourceControlInitialized({ pipeline: { source_control: [] } }), false);
+  });
+
+  it('returns false when auto_commit is present but auto_pr is missing', () => {
+    assert.equal(
+      isSourceControlInitialized({ pipeline: { source_control: { auto_commit: 'always' } } }),
+      false
+    );
+  });
+
+  it('returns false when auto_pr is present but auto_commit is missing', () => {
+    assert.equal(
+      isSourceControlInitialized({ pipeline: { source_control: { auto_pr: 'never' } } }),
+      false
+    );
+  });
+
+  it('returns false when auto_commit is an empty string', () => {
+    assert.equal(
+      isSourceControlInitialized({ pipeline: { source_control: { auto_commit: '', auto_pr: 'never' } } }),
+      false
+    );
+  });
+
+  it('returns false when auto_pr is an empty string', () => {
+    assert.equal(
+      isSourceControlInitialized({ pipeline: { source_control: { auto_commit: 'always', auto_pr: '' } } }),
+      false
+    );
   });
 });
 
