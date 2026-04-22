@@ -939,6 +939,51 @@ describe('for_each_phase handling', () => {
     expect(fepState.iterations[1].status).toBe('not_started');
     expect(Object.keys(fepState.iterations[1].nodes)).toEqual([]);
   });
+
+  it('preserves already-present body nodes when scaffolding missing ones on first in_progress transition', () => {
+    const body = [
+      stepDef('plan_phase', 'create_phase_plan'),
+      stepDef('do_work', 'spawn_worker', { depends_on: ['plan_phase'] }),
+      stepDef('finalize', 'spawn_finalizer', { depends_on: ['do_work'] }),
+    ];
+    const template = makeTemplate([forEachPhaseDef('phase_loop', body)]);
+    // Pre-seed iteration with ONE of the three body nodes already completed.
+    // The walker must scaffold the missing two without clobbering the present one.
+    const preSeeded = {
+      kind: 'step' as const,
+      status: 'completed' as const,
+      doc_path: '/projects/TEST/plan.md',
+      retries: 0,
+    };
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'not_started', { plan_phase: preSeeded }),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    // Walker advanced past the completed plan_phase to do_work.
+    expect(result).toEqual({ action: 'spawn_worker', context: {} });
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const iter = fepState.iterations[0];
+    // The pre-seeded node retained its completed state + doc_path verbatim.
+    expect(iter.nodes['plan_phase']).toBe(preSeeded);
+    // Missing nodes were scaffolded as not_started step defaults.
+    expect(iter.nodes['do_work']).toEqual({
+      kind: 'step',
+      status: 'not_started',
+      doc_path: null,
+      retries: 0,
+    });
+    expect(iter.nodes['finalize']).toEqual({
+      kind: 'step',
+      status: 'not_started',
+      doc_path: null,
+      retries: 0,
+    });
+  });
 });
 
 // ── for_each_task tests ─────────────────────────────────────────────────────────────────────────────

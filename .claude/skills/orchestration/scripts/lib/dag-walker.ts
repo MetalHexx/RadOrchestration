@@ -110,8 +110,12 @@ function resolveStateRef(ref: string, graphState: GraphState): unknown {
 }
 
 /**
- * Resolves a source_doc_ref within a scope. Handles "$.current_phase.doc_path"
- * by reading from the enclosing phase iteration's `doc_path` field.
+ * Resolves a source_doc_ref within a scope. Handles the literal ref
+ * "$.current_phase.doc_path" by reading from the enclosing phase
+ * iteration's `doc_path` field. Any other `$.current_phase.*` ref falls
+ * through to `resolveStateRef`, which reads the global graph and will
+ * silently return `undefined` — if a future template adds a new
+ * `$.current_phase.<field>` ref, extend this function explicitly.
  */
 function resolveDocRefInScope(
   ref: string,
