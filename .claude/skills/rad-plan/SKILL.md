@@ -41,10 +41,7 @@ I have project goals I'd like to develop into a full scale plan.
 - Show the user the concise results of each audit iteration, and any changes you make to the plan based on the feedback.
 
 ## Step 5: Finalize the plan
-- Produce an audit summary that includes the results of the audit iterations.
-- Use the `askQuestions` tool to:
-  - If the plan is ready and passed the audit cleanup, give the user the option to execute the plan.
-    - Give them 2 options "Execute Plan in current branch / worktree" or "Execute the plan in a new branch / worktree".
-      - **Current branch**: Follow the `rad-execute` skill — approve and begin execution immediately.
-      - **New worktree**: Follow the `rad-execute-parallel` skill — set up the worktree and follow users choices. Stop there. Do NOT begin execution. The user will run `/rad-execute` manually.
-  - If the plan has unresolved issues, ask the user if they want to execute the plan anyway or if they want to continue iterating on the audit.
+- Use the `askQuestions` tool to ask the user how they want to proceed and execute the plan:
+- Give them 2 options "Execute Plan in current branch / worktree" or "Execute the plan in a new branch / worktree".
+  - **Current branch**: Follow the `rad-execute` skill — approve and begin execution immediately.
+  - **New worktree**: Follow the `rad-execute-parallel` skill — set up the worktree and follow user's choices. Stop there. Do NOT begin execution and proceed with following the steps in `rad-execute-parallel`.

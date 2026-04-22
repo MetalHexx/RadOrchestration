@@ -156,8 +156,10 @@ After all answers are returned, derive these values:
 | `branchName` | `{projectName}` |
 | `worktreePath` | `{repoParent}/{repoName}-worktrees/{projectName}` |
 | `baseBranch` | `branch_from` answer |
-| `resolvedAutoCommit` | `auto_commit` answer, or `configAutoCommit` if it wasn't `"ask"` |
-| `resolvedAutoPr` | `auto_pr` answer, or `configAutoPr` if it wasn't `"ask"` |
+| `resolvedAutoCommit` | `auto_commit` answer (`yes` → `always`, `no` → `never`), or `configAutoCommit` if it wasn't `"ask"` |
+| `resolvedAutoPr` | `auto_pr` answer (`yes` → `always`, `no` → `never`), or `configAutoPr` if it wasn't `"ask"` |
+
+> The `source_control_init` pipeline event also accepts `yes`/`no` directly and normalizes them — the conversion here is kept for clarity.
 
 **If the user chose "Use the existing worktree":**
 - Set `worktreePath` = `existingWorktreePath`, `branchName` = `existingBranch`

@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
 import { enrichActionContext } from '../lib/context-enrichment.js';
+import { initSourceControlForTests } from './fixtures/parity-states.js';
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -194,7 +195,16 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   // the walker can advance through phase_loop in a single pass.
   seedExplosionState(io, [TASKS_FIXTURE, TASKS_FIXTURE]);
 
-  return processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+
+  // commit_gate / pr_gate read state.pipeline.source_control (state_ref).
+  // Init before the walker first evaluates commit_gate. See
+  // initSourceControlForTests for the "ask" → "always" normalization rationale.
+  initSourceControlForTests(io, io.readConfig());
+
+  return result.action === 'ask_gate_mode'
+    ? result
+    : processEvent('start', PROJECT_DIR, {}, io);
 }
 
 /**
@@ -271,6 +281,8 @@ describe('Execution-tier integration — complete pipeline run', () => {
     let result: PipelineResult;
 
     // ── Planning tier (drives master_plan + plan_approved + explosion seeding) ──
+    // drivePlanningTier also fires source_control_init so commit_gate /
+    // pr_gate (state_ref) can evaluate on the first post-plan walker tick.
     result = drivePlanningTier(io);
     expect(result.success).toBe(true);
     // Post-unify: iterations carry doc_path directly; walker scaffolds body
@@ -404,17 +416,6 @@ describe('Execution-tier integration — complete pipeline run', () => {
       expect(prGate.branch_taken).toBe('true');
       expect(prGate.status).toBe('in_progress');
     }
-
-    // ── source_control_init ──────────────────────────────────────────────
-    result = processEvent('source_control_init', PROJECT_DIR, {
-      branch: 'feature/test-branch',
-      base_branch: 'main',
-      worktree_path: '.',
-      auto_commit: 'always',
-      auto_pr: 'always',
-      remote_url: 'https://github.com/test/repo',
-    }, io);
-    expect(result.success).toBe(true);
 
     // ── pr_requested ────────────────────────────────────────
     result = processEvent('pr_requested', PROJECT_DIR, {}, io);

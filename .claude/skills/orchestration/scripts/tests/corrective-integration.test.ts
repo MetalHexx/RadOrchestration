@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
 import { enrichActionContext } from '../lib/context-enrichment.js';
+import { initSourceControlForTests } from './fixtures/parity-states.js';
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -188,7 +189,16 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   // Seed explosion state BEFORE plan_approved so the walker's first pass
   // after plan_approved advances through phase_loop in a single walk.
   seedExplosionState(io, [TASKS_FIXTURE, TASKS_FIXTURE]);
-  return processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+
+  // commit_gate / pr_gate read state.pipeline.source_control (state_ref).
+  // Init before the walker first evaluates commit_gate. See
+  // initSourceControlForTests for the "ask" → "always" normalization rationale.
+  initSourceControlForTests(io, io.readConfig());
+
+  return result.action === 'ask_gate_mode'
+    ? result
+    : processEvent('start', PROJECT_DIR, {}, io);
 }
 
 /**

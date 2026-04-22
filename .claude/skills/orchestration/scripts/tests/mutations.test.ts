@@ -2150,10 +2150,12 @@ describe('gate_mode_set mutation', () => {
 // ── source_control_init mutation ──────────────────────────────────────────────
 
 describe('source_control_init mutation', () => {
+  const reqCtx = { auto_commit: 'never', auto_pr: 'never' };
+
   it('creates pipeline.source_control with branch and base_branch', () => {
     const state = makeState();
     const mutation = getMutation('source_control_init')!;
-    const result = mutation(state, { branch: 'feature/my-branch', base_branch: 'main' }, baseConfig, baseTemplate);
+    const result = mutation(state, { branch: 'feature/my-branch', base_branch: 'main', ...reqCtx }, baseConfig, baseTemplate);
     const sc = result.state.pipeline.source_control;
     expect(sc).not.toBeNull();
     expect(sc!.branch).toBe('feature/my-branch');
@@ -2163,14 +2165,14 @@ describe('source_control_init mutation', () => {
   it('defaults worktree_path to "." when not provided', () => {
     const state = makeState();
     const mutation = getMutation('source_control_init')!;
-    const result = mutation(state, { branch: 'b', base_branch: 'main' }, baseConfig, baseTemplate);
+    const result = mutation(state, { branch: 'b', base_branch: 'main', ...reqCtx }, baseConfig, baseTemplate);
     expect(result.state.pipeline.source_control!.worktree_path).toBe('.');
   });
 
   it('throws when branch is missing', () => {
     const state = makeState();
     const mutation = getMutation('source_control_init')!;
-    expect(() => mutation(state, { base_branch: 'main' }, baseConfig, baseTemplate)).toThrow(
+    expect(() => mutation(state, { base_branch: 'main', ...reqCtx }, baseConfig, baseTemplate)).toThrow(
       /--branch/
     );
   });
@@ -2178,7 +2180,7 @@ describe('source_control_init mutation', () => {
   it('throws when base_branch is missing', () => {
     const state = makeState();
     const mutation = getMutation('source_control_init')!;
-    expect(() => mutation(state, { branch: 'feature/x' }, baseConfig, baseTemplate)).toThrow(
+    expect(() => mutation(state, { branch: 'feature/x', ...reqCtx }, baseConfig, baseTemplate)).toThrow(
       /--base-branch/
     );
   });
@@ -2186,14 +2188,14 @@ describe('source_control_init mutation', () => {
   it('does not mutate original state', () => {
     const state = makeState();
     const mutation = getMutation('source_control_init')!;
-    mutation(state, { branch: 'b', base_branch: 'main' }, baseConfig, baseTemplate);
+    mutation(state, { branch: 'b', base_branch: 'main', ...reqCtx }, baseConfig, baseTemplate);
     expect(state.pipeline.source_control).toBeNull();
   });
 
   it('returns non-empty mutations_applied', () => {
     const state = makeState();
     const mutation = getMutation('source_control_init')!;
-    const result = mutation(state, { branch: 'b', base_branch: 'main' }, baseConfig, baseTemplate);
+    const result = mutation(state, { branch: 'b', base_branch: 'main', ...reqCtx }, baseConfig, baseTemplate);
     expect(result.mutations_applied.length).toBeGreaterThan(0);
   });
 });

@@ -221,7 +221,7 @@ describe('source_control_init mutation', () => {
     const state = makeState();
     const result = mutation(
       state,
-      { branch: 'feature/x', base_branch: 'main' },
+      { branch: 'feature/x', base_branch: 'main', auto_commit: 'never', auto_pr: 'never' },
       baseConfig,
       baseTemplate,
     );
@@ -235,40 +235,46 @@ describe('source_control_init mutation', () => {
     const state = makeState();
     const result = mutation(
       state,
-      { branch: 'feature/x', base_branch: 'main' },
+      { branch: 'feature/x', base_branch: 'main', auto_commit: 'never', auto_pr: 'never' },
       baseConfig,
       baseTemplate,
     );
     expect(result.state.pipeline.source_control!.worktree_path).toBe('.');
   });
 
-  it('missing optional auto_commit defaults to "never"', () => {
+  it('missing auto_commit throws descriptive error', () => {
     const state = makeState();
-    const result = mutation(
-      state,
-      { branch: 'feature/x', base_branch: 'main' },
-      baseConfig,
-      baseTemplate,
+    expect(() =>
+      mutation(
+        state,
+        { branch: 'feature/x', base_branch: 'main', auto_pr: 'never' },
+        baseConfig,
+        baseTemplate,
+      ),
+    ).toThrowError(
+      /source_control_init: auto_commit must be one of "always" \| "yes" \| "never" \| "no", got undefined/,
     );
-    expect(result.state.pipeline.source_control!.auto_commit).toBe('never');
   });
 
-  it('missing optional auto_pr defaults to "never"', () => {
+  it('missing auto_pr throws descriptive error', () => {
     const state = makeState();
-    const result = mutation(
-      state,
-      { branch: 'feature/x', base_branch: 'main' },
-      baseConfig,
-      baseTemplate,
+    expect(() =>
+      mutation(
+        state,
+        { branch: 'feature/x', base_branch: 'main', auto_commit: 'never' },
+        baseConfig,
+        baseTemplate,
+      ),
+    ).toThrowError(
+      /source_control_init: auto_pr must be one of "always" \| "yes" \| "never" \| "no", got undefined/,
     );
-    expect(result.state.pipeline.source_control!.auto_pr).toBe('never');
   });
 
   it('mutations_applied includes "created pipeline.source_control"', () => {
     const state = makeState();
     const result = mutation(
       state,
-      { branch: 'feature/x', base_branch: 'main' },
+      { branch: 'feature/x', base_branch: 'main', auto_commit: 'never', auto_pr: 'never' },
       baseConfig,
       baseTemplate,
     );
@@ -277,7 +283,12 @@ describe('source_control_init mutation', () => {
 
   it('original state is not mutated (immutability)', () => {
     const state = makeState();
-    mutation(state, { branch: 'feature/x', base_branch: 'main' }, baseConfig, baseTemplate);
+    mutation(
+      state,
+      { branch: 'feature/x', base_branch: 'main', auto_commit: 'never', auto_pr: 'never' },
+      baseConfig,
+      baseTemplate,
+    );
     expect(state.pipeline.source_control).toBeNull();
   });
 
@@ -285,13 +296,222 @@ describe('source_control_init mutation', () => {
     const state = makeStateWithSourceControl({ branch: 'old-branch', base_branch: 'develop' });
     const result = mutation(
       state,
-      { branch: 'new-branch', base_branch: 'main' },
+      { branch: 'new-branch', base_branch: 'main', auto_commit: 'never', auto_pr: 'never' },
       baseConfig,
       baseTemplate,
     );
     const sc = result.state.pipeline.source_control!;
     expect(sc.branch).toBe('new-branch');
     expect(sc.base_branch).toBe('main');
+  });
+
+  // ── remote_url / compare_url normalization ───────────────────────────────────
+
+  describe('remote_url / compare_url normalization', () => {
+    const baseCtx = {
+      branch: 'feature/x',
+      base_branch: 'main',
+      auto_commit: 'never',
+      auto_pr: 'never',
+    };
+
+    it('remote_url empty string "" is stored as null', () => {
+      const state = makeState();
+      const result = mutation(
+        state,
+        { ...baseCtx, remote_url: '' },
+        baseConfig,
+        baseTemplate,
+      );
+      expect(result.state.pipeline.source_control!.remote_url).toBeNull();
+    });
+
+    it('remote_url whitespace-only "   " is stored as null', () => {
+      const state = makeState();
+      const result = mutation(
+        state,
+        { ...baseCtx, remote_url: '   ' },
+        baseConfig,
+        baseTemplate,
+      );
+      expect(result.state.pipeline.source_control!.remote_url).toBeNull();
+    });
+
+    it('remote_url undefined is stored as null', () => {
+      const state = makeState();
+      const result = mutation(state, { ...baseCtx }, baseConfig, baseTemplate);
+      expect(result.state.pipeline.source_control!.remote_url).toBeNull();
+    });
+
+    it('compare_url empty string "" is stored as null', () => {
+      const state = makeState();
+      const result = mutation(
+        state,
+        { ...baseCtx, compare_url: '' },
+        baseConfig,
+        baseTemplate,
+      );
+      expect(result.state.pipeline.source_control!.compare_url).toBeNull();
+    });
+
+    it('compare_url whitespace-only "   " is stored as null', () => {
+      const state = makeState();
+      const result = mutation(
+        state,
+        { ...baseCtx, compare_url: '   ' },
+        baseConfig,
+        baseTemplate,
+      );
+      expect(result.state.pipeline.source_control!.compare_url).toBeNull();
+    });
+  });
+
+  // ── auto_commit / auto_pr normalization ─────────────────────────────────────
+
+  describe('auto_commit / auto_pr normalization', () => {
+    const baseCtx = { branch: 'feature/x', base_branch: 'main' };
+
+    it('auto_commit "yes" normalizes to "always"', () => {
+      const state = makeState();
+      const result = mutation(
+        state,
+        { ...baseCtx, auto_commit: 'yes', auto_pr: 'never' },
+        baseConfig,
+        baseTemplate,
+      );
+      expect(result.state.pipeline.source_control!.auto_commit).toBe('always');
+    });
+
+    it('auto_commit "YES" (case-insensitive) normalizes to "always"', () => {
+      const state = makeState();
+      const result = mutation(
+        state,
+        { ...baseCtx, auto_commit: 'YES', auto_pr: 'never' },
+        baseConfig,
+        baseTemplate,
+      );
+      expect(result.state.pipeline.source_control!.auto_commit).toBe('always');
+    });
+
+    it('auto_commit "no" normalizes to "never"', () => {
+      const state = makeState();
+      const result = mutation(
+        state,
+        { ...baseCtx, auto_commit: 'no', auto_pr: 'never' },
+        baseConfig,
+        baseTemplate,
+      );
+      expect(result.state.pipeline.source_control!.auto_commit).toBe('never');
+    });
+
+    it('auto_commit "always" passes through unchanged', () => {
+      const state = makeState();
+      const result = mutation(
+        state,
+        { ...baseCtx, auto_commit: 'always', auto_pr: 'never' },
+        baseConfig,
+        baseTemplate,
+      );
+      expect(result.state.pipeline.source_control!.auto_commit).toBe('always');
+    });
+
+    it('auto_commit "never" passes through unchanged', () => {
+      const state = makeState();
+      const result = mutation(
+        state,
+        { ...baseCtx, auto_commit: 'never', auto_pr: 'never' },
+        baseConfig,
+        baseTemplate,
+      );
+      expect(result.state.pipeline.source_control!.auto_commit).toBe('never');
+    });
+
+    it('auto_commit "ask" throws descriptive error', () => {
+      const state = makeState();
+      expect(() =>
+        mutation(
+          state,
+          { ...baseCtx, auto_commit: 'ask', auto_pr: 'never' },
+          baseConfig,
+          baseTemplate,
+        ),
+      ).toThrowError(
+        /source_control_init: auto_commit must be one of "always" \| "yes" \| "never" \| "no", got "ask"/,
+      );
+    });
+
+    it('auto_commit "maybe" throws descriptive error', () => {
+      const state = makeState();
+      expect(() =>
+        mutation(
+          state,
+          { ...baseCtx, auto_commit: 'maybe', auto_pr: 'never' },
+          baseConfig,
+          baseTemplate,
+        ),
+      ).toThrowError(/source_control_init: auto_commit must be one of/);
+    });
+
+    it('auto_commit empty string throws descriptive error', () => {
+      const state = makeState();
+      expect(() =>
+        mutation(
+          state,
+          { ...baseCtx, auto_commit: '', auto_pr: 'never' },
+          baseConfig,
+          baseTemplate,
+        ),
+      ).toThrowError(/source_control_init: auto_commit must be one of/);
+    });
+
+    it('auto_pr "yes" normalizes to "always"', () => {
+      const state = makeState();
+      const result = mutation(
+        state,
+        { ...baseCtx, auto_commit: 'never', auto_pr: 'yes' },
+        baseConfig,
+        baseTemplate,
+      );
+      expect(result.state.pipeline.source_control!.auto_pr).toBe('always');
+    });
+
+    it('auto_pr "NO" normalizes to "never" (case-insensitive)', () => {
+      const state = makeState();
+      const result = mutation(
+        state,
+        { ...baseCtx, auto_commit: 'never', auto_pr: 'NO' },
+        baseConfig,
+        baseTemplate,
+      );
+      expect(result.state.pipeline.source_control!.auto_pr).toBe('never');
+    });
+
+    it('auto_pr "ask" throws descriptive error', () => {
+      const state = makeState();
+      expect(() =>
+        mutation(
+          state,
+          { ...baseCtx, auto_commit: 'never', auto_pr: 'ask' },
+          baseConfig,
+          baseTemplate,
+        ),
+      ).toThrowError(
+        /source_control_init: auto_pr must be one of "always" \| "yes" \| "never" \| "no", got "ask"/,
+      );
+    });
+
+    it('rejected input leaves state unchanged (throws before mutating)', () => {
+      const state = makeState();
+      expect(() =>
+        mutation(
+          state,
+          { ...baseCtx, auto_commit: 'ask', auto_pr: 'never' },
+          baseConfig,
+          baseTemplate,
+        ),
+      ).toThrow();
+      expect(state.pipeline.source_control).toBeNull();
+    });
   });
 });
 

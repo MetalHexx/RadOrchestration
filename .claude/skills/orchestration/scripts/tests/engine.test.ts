@@ -785,7 +785,7 @@ describe('out-of-band event routing', () => {
   // Context required per event (events that need specific context to succeed)
   const OOB_EVENT_CONTEXTS: Record<string, Record<string, string>> = {
     gate_mode_set: { gate_mode: 'task' },
-    source_control_init: { branch: 'main', base_branch: 'main' },
+    source_control_init: { branch: 'main', base_branch: 'main', auto_commit: 'never', auto_pr: 'never' },
   };
 
   for (const oobEvent of OOB_EVENTS) {
@@ -802,7 +802,7 @@ describe('out-of-band event routing', () => {
   const REAL_OOB_EVENTS = ['plan_rejected', 'gate_rejected', 'final_rejected', 'halt', 'gate_mode_set', 'source_control_init'] as const;
   const REAL_OOB_CONTEXTS: Record<string, Record<string, string>> = {
     gate_mode_set: { gate_mode: 'task' },
-    source_control_init: { branch: 'main', base_branch: 'main' },
+    source_control_init: { branch: 'main', base_branch: 'main', auto_commit: 'never', auto_pr: 'never' },
   };
   for (const oobEvent of REAL_OOB_EVENTS) {
     it(`${oobEvent} result includes non-empty mutations_applied (real implementation, not stub)`, () => {

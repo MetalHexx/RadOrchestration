@@ -1309,23 +1309,63 @@ mutationRegistry.set(EVENTS.GATE_MODE_SET, (state, context, _config, _template):
 
 // ── source_control_init mutation ──────────────────────────────────────────────
 
-mutationRegistry.set(EVENTS.SOURCE_CONTROL_INIT, (state, context, _config, _template): MutationResult => {
-  const cloned = structuredClone(state);
+/**
+ * Normalize an optional URL value to a trimmed string or `null`.
+ *
+ * Non-string, empty, or whitespace-only values are stored as `null`,
+ * matching the contract documented in action-event-reference.md: "omitted
+ * or empty values are stored as null".
+ */
+function normalizeOptionalUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  return trimmed === '' ? null : trimmed;
+}
 
+/**
+ * Normalize an auto_commit / auto_pr input value to the canonical
+ * `"always" | "never"` form stored on `pipeline.source_control`.
+ *
+ * Accepts (case-insensitive) `"always"` or `"yes"` → `"always"`, and
+ * `"never"` or `"no"` → `"never"`. Any other value — including `"ask"`,
+ * empty string, or missing — throws a descriptive error naming the field
+ * and the rejected raw value.
+ */
+function normalizeAutoSetting(field: 'auto_commit' | 'auto_pr', raw: unknown): 'always' | 'never' {
+  if (typeof raw !== 'string') {
+    throw new Error(
+      `source_control_init: ${field} must be one of "always" | "yes" | "never" | "no", got ${raw === undefined ? 'undefined' : JSON.stringify(raw)}`,
+    );
+  }
+  const v = raw.trim().toLowerCase();
+  if (v === 'always' || v === 'yes') return 'always';
+  if (v === 'never' || v === 'no') return 'never';
+  throw new Error(
+    `source_control_init: ${field} must be one of "always" | "yes" | "never" | "no", got ${JSON.stringify(raw)}`,
+  );
+}
+
+mutationRegistry.set(EVENTS.SOURCE_CONTROL_INIT, (state, context, _config, _template): MutationResult => {
   const branch = context.branch;
   const baseBranch = context.base_branch;
   if (!branch || !baseBranch) {
     throw new Error('source_control_init requires --branch and --base-branch');
   }
 
+  // Validate + normalize auto_commit / auto_pr BEFORE mutating state so a
+  // rejected input leaves state untouched.
+  const autoCommit = normalizeAutoSetting('auto_commit', context.auto_commit);
+  const autoPr = normalizeAutoSetting('auto_pr', context.auto_pr);
+
+  const cloned = structuredClone(state);
   cloned.pipeline.source_control = {
     branch: branch as string,
     base_branch: baseBranch as string,
-    worktree_path: (context.worktree_path as string) ?? '.',
-    auto_commit: (context.auto_commit as string) ?? 'never',
-    auto_pr: (context.auto_pr as string) ?? 'never',
-    remote_url: (context.remote_url as string) ?? null,
-    compare_url: (context.compare_url as string) ?? null,
+    worktree_path: (context.worktree_path as string | undefined)?.trim() || '.',
+    auto_commit: autoCommit,
+    auto_pr: autoPr,
+    remote_url: normalizeOptionalUrl(context.remote_url),
+    compare_url: normalizeOptionalUrl(context.compare_url),
     pr_url: null,
   };
 

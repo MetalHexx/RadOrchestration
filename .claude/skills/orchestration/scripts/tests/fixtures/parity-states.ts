@@ -303,12 +303,50 @@ export function driveToExecutionWithConfig(
     io.currentState!.pipeline.gate_mode = null;
   }
 
+  // Mirror the production handshake: `source_control_init` must fire before the
+  // walker first evaluates commit_gate / pr_gate (which now read state_ref).
+  // Resolve auto_commit / auto_pr from the caller's config, mapping `ask` → `always`
+  // so integration tests that leave them at the default still fire the gate's true
+  // branch (matching pre-state-ref semantics where `"ask" !== "never"`).
+  // Tests exercising the false branch supply `never` explicitly.
+  initSourceControlForTests(io, config);
+
   // Mirror Iter 5's explosion seeding then re-walk so subsequent events see
   // a state shape consistent with post-explosion production.
   seedExplosionStateFor(io, totalPhases, tasksPerPhase);
   processEvent('start', PROJECT_DIR, {}, io);
 
   return io;
+}
+
+/**
+ * Initialize pipeline.source_control for integration tests whose walker will
+ * evaluate commit_gate / pr_gate (state_ref: pipeline.source_control.*).
+ *
+ * Normalization mirrors the pre-state-ref behavior of `config_ref`: any value
+ * other than the canonical `"never" | "no"` is treated as `"always"` so that
+ * commit_gate / pr_gate's `neq "never"` predicate fires. Previously tests that
+ * left `auto_commit` at the `"ask"` default relied on `config_ref` reading it
+ * literally — `"ask" !== "never"` → commit step fires. The normalization
+ * preserves that semantics under state_ref.
+ */
+export function initSourceControlForTests(io: MockIO, config: OrchestrationConfig): void {
+  const toNormalized = (raw: string | undefined): 'always' | 'never' => {
+    const v = (raw ?? '').trim().toLowerCase();
+    return v === 'never' || v === 'no' ? 'never' : 'always';
+  };
+  processEvent(
+    'source_control_init',
+    PROJECT_DIR,
+    {
+      branch: 'feature/test-branch',
+      base_branch: 'main',
+      worktree_path: '.',
+      auto_commit: toNormalized(config.source_control.auto_commit),
+      auto_pr: toNormalized(config.source_control.auto_pr),
+    },
+    io,
+  );
 }
 
 // ── Drive single task helper ──────────────────────────────────────────────────
@@ -389,6 +427,9 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
     processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io);
     io.currentState!.pipeline.gate_mode = null;
   }
+
+  // commit_gate / pr_gate now read state_ref; init before the walker evaluates them.
+  initSourceControlForTests(io, config);
 
   // Mirror Iter 5's explosion-script seeding (phase_planning + task_handoff
   // child nodes pre-completed) and re-walk to advance into the execution tier.
