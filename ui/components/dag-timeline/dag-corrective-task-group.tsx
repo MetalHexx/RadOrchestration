@@ -55,16 +55,27 @@ export function DAGCorrectiveTaskGroup({
 
           return (
             <AccordionItem key={entry.index} value={String(entry.index)}>
-              <AccordionTrigger className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center">
-                <span className="text-sm font-medium">{buildTriggerText(entry.index)}</span>
-                <NodeStatusBadge status={entry.status} />
+              {/*
+                Header row — AccordionTrigger wraps ONLY the text + status badge so that
+                DocumentLink (a <button>) and ExternalLink (an <a>) render as SIBLINGS of
+                the trigger, not nested inside it. Nesting interactive controls inside a
+                <button> is invalid HTML and breaks click/keyboard behavior (clicking the
+                Doc link would also toggle the accordion, and ARIA/focus is undefined).
+                Mirrors the clean pattern already in dag-iteration-panel.tsx:126-153, which
+                uses a plain <div> header with sibling links.
+
+                Hover/padding/rounded classes are lifted onto the outer row <div> so the
+                whole header band still reacts to hover as before.
+              */}
+              <div className="flex items-center gap-2 py-2 px-3 rounded-md hover:bg-accent/50">
+                <AccordionTrigger className="hover:no-underline flex-1 gap-2 items-center py-0 border-0">
+                  <span className="text-sm font-medium">{buildTriggerText(entry.index)}</span>
+                  <NodeStatusBadge status={entry.status} />
+                </AccordionTrigger>
                 {entry.doc_path != null && entry.doc_path !== '' && (
-                  // Mirrors the iteration-panel pattern (dag-iteration-panel.tsx:132-138):
-                  // post-unify, CorrectiveTaskEntry.doc_path carries the corrective handoff
-                  // doc path (entry.nodes can be empty), so the group itself renders the Doc
-                  // button. No tabIndex override — the AccordionTrigger consumes Enter/Space
-                  // for expand/collapse, so keyboard users must reach this link via natural
-                  // tab order.
+                  // Rendered OUTSIDE AccordionTrigger — see header comment. No tabIndex
+                  // override: the trigger consumes Enter/Space for expand/collapse, so
+                  // keyboard users reach this link via natural tab order.
                   <DocumentLink path={entry.doc_path} label="Doc" onDocClick={onDocClick} />
                 )}
                 {commitData !== null && (
@@ -81,7 +92,7 @@ export function DAGCorrectiveTaskGroup({
                     </span>
                   )
                 )}
-              </AccordionTrigger>
+              </div>
               <AccordionContent>
                 {compatibleNodes.map(([childNodeId, childNode]) => {
                   const childKey = buildCorrectiveChildNodeId(parentNodeId, entry.index, childNodeId);

@@ -253,6 +253,35 @@ test('dag-corrective-task-group.tsx <DocumentLink> does NOT pass tabIndex (keybo
   );
 });
 
+test('dag-corrective-task-group.tsx <DocumentLink> renders OUTSIDE <AccordionTrigger> (no nested interactive controls)', () => {
+  // AccordionTrigger renders AccordionPrimitive.Trigger, which is a <button>.
+  // DocumentLink renders a <button>. Nesting <button> inside <button> is invalid HTML
+  // and breaks click/keyboard behavior (the inner click bubbles and toggles the accordion,
+  // ARIA/focus is undefined). The Doc link MUST be a sibling of AccordionTrigger, not a
+  // child. Enforce the invariant by scanning every AccordionTrigger span in the source
+  // and asserting <DocumentLink appears in NONE of them.
+  //
+  // Approach: split the source on </AccordionTrigger>. Each segment except the last ends
+  // with a trigger's body; within each such segment find the nearest preceding
+  // <AccordionTrigger and check the body between them for <DocumentLink.
+  const segments = correctiveTaskGroupSource.split('</AccordionTrigger>');
+  // Skip the final segment — it is the tail after the last closing tag (no matching open).
+  for (let i = 0; i < segments.length - 1; i++) {
+    const seg = segments[i];
+    const openIdx = seg.lastIndexOf('<AccordionTrigger');
+    assert.ok(openIdx >= 0, `segment ${i} missing matching <AccordionTrigger open tag`);
+    const triggerBody = seg.slice(openIdx);
+    assert.ok(
+      !/<DocumentLink\b/.test(triggerBody),
+      `<DocumentLink> must NOT render inside <AccordionTrigger> — invalid nested <button> breaks HTML + click/keyboard (Copilot R6). Found inside AccordionTrigger segment ${i}.`
+    );
+    assert.ok(
+      !/<ExternalLink\b/.test(triggerBody),
+      `<ExternalLink> must NOT render inside <AccordionTrigger> — invalid nested <a> inside <button> breaks HTML + click/keyboard (Copilot R6). Found inside AccordionTrigger segment ${i}.`
+    );
+  }
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
