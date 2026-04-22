@@ -330,7 +330,7 @@ export function driveToExecutionWithConfig(
  * literally — `"ask" !== "never"` → commit step fires. The normalization
  * preserves that semantics under state_ref.
  */
-function initSourceControlForTests(io: MockIO, config: OrchestrationConfig): void {
+export function initSourceControlForTests(io: MockIO, config: OrchestrationConfig): void {
   const toNormalized = (raw: string | undefined): 'always' | 'never' => {
     const v = (raw ?? '').trim().toLowerCase();
     return v === 'never' || v === 'no' ? 'never' : 'always';

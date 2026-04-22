@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
 import { enrichActionContext } from '../lib/context-enrichment.js';
+import { initSourceControlForTests } from './fixtures/parity-states.js';
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -190,28 +191,10 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   seedExplosionState(io, [TASKS_FIXTURE, TASKS_FIXTURE]);
   const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 
-  // commit_gate / pr_gate now read state.pipeline.source_control (state_ref).
-  // Fire source_control_init before the walker first evaluates commit_gate.
-  // Normalization mirrors the pre-state-ref `config_ref` behavior — only
-  // explicit `"never"` / `"no"` skips the gate. Re-walk so callers see the
-  // advanced execution action.
-  const cfg = io.readConfig();
-  const toNormalized = (raw: string | undefined): 'always' | 'never' => {
-    const v = (raw ?? '').trim().toLowerCase();
-    return v === 'never' || v === 'no' ? 'never' : 'always';
-  };
-  processEvent(
-    'source_control_init',
-    PROJECT_DIR,
-    {
-      branch: 'feature/test-branch',
-      base_branch: 'main',
-      worktree_path: '.',
-      auto_commit: toNormalized(cfg.source_control.auto_commit),
-      auto_pr: toNormalized(cfg.source_control.auto_pr),
-    },
-    io,
-  );
+  // commit_gate / pr_gate read state.pipeline.source_control (state_ref).
+  // Init before the walker first evaluates commit_gate. See
+  // initSourceControlForTests for the "ask" → "always" normalization rationale.
+  initSourceControlForTests(io, io.readConfig());
 
   return result.action === 'ask_gate_mode'
     ? result

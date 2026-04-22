@@ -1310,6 +1310,19 @@ mutationRegistry.set(EVENTS.GATE_MODE_SET, (state, context, _config, _template):
 // ── source_control_init mutation ──────────────────────────────────────────────
 
 /**
+ * Normalize an optional URL value to a trimmed string or `null`.
+ *
+ * Non-string, empty, or whitespace-only values are stored as `null`,
+ * matching the contract documented in action-event-reference.md: "omitted
+ * or empty values are stored as null".
+ */
+function normalizeOptionalUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+/**
  * Normalize an auto_commit / auto_pr input value to the canonical
  * `"always" | "never"` form stored on `pipeline.source_control`.
  *
@@ -1351,8 +1364,8 @@ mutationRegistry.set(EVENTS.SOURCE_CONTROL_INIT, (state, context, _config, _temp
     worktree_path: (context.worktree_path as string) ?? '.',
     auto_commit: autoCommit,
     auto_pr: autoPr,
-    remote_url: (context.remote_url as string) ?? null,
-    compare_url: (context.compare_url as string) ?? null,
+    remote_url: normalizeOptionalUrl(context.remote_url),
+    compare_url: normalizeOptionalUrl(context.compare_url),
     pr_url: null,
   };
 

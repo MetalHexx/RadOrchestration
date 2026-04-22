@@ -11,7 +11,7 @@ Detailed reference for the `rad-execute` orchestrator when `sourceControlInitial
 | `projectDir` | `projectDir` from script output (used as `--project-dir` for the pipeline CLI) |
 | `worktree_path` | `repoRoot` from script output |
 | `branch` | `currentBranch` from script output |
-| `base_branch` | Prompt user (see `branch_from` schema below). Default = `defaultBranch` from script output. |
+| `base_branch` | Prompt user with a free-form `base_branch` question; default = `defaultBranch` from script output. |
 | `auto_commit` | If `configAutoCommit === "ask"`, prompt with the `auto_commit` schema. Otherwise pass `configAutoCommit` through unchanged. |
 | `auto_pr` | If `configAutoPr === "ask"`, prompt with the `auto_pr` schema. Otherwise pass `configAutoPr` through unchanged. |
 | `remote_url` | `remoteUrl` from script output. May be `""` — if empty, omit the `--remote-url` flag. |
@@ -21,29 +21,7 @@ The `source_control_init` pipeline mutation normalizes `yes` → `always` and `n
 
 ## Question schemas
 
-Build one `askQuestions` call containing only the questions whose condition is met (i.e., the `base_branch` question always, plus the `auto_commit`/`auto_pr` questions only when config is `"ask"`).
-
-### `branch_from`
-
-```json
-{
-  "header": "branch_from",
-  "question": "Which branch should the worktree branch off from?",
-  "options": [
-    {
-      "label": "origin/{defaultBranch}",
-      "recommended": true,
-      "description": "Default branch — clean, stable starting point"
-    },
-    {
-      "label": "{currentBranch}",
-      "description": "Your current branch — carry forward in-progress work"
-    },
-    { "label": "Custom", "description": "Type any branch name, tag, or commit ref" }
-  ],
-  "allowFreeformInput": true
-}
-```
+Use `askQuestions` tool when auto_commit or auto_pr are set to `"ask"` to prompt the user with the following schemas. Only prompt for the relevant question(s) based on which fields need resolution.
 
 ### `auto_commit` — only if `configAutoCommit === "ask"`
 
