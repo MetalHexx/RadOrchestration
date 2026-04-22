@@ -984,6 +984,45 @@ describe('for_each_phase handling', () => {
       retries: 0,
     });
   });
+
+  it('self-heals a CHEAPER-PIPELINE-TEST-1-era stall: scaffolds missing body nodes when iteration.status is already in_progress with empty nodes', () => {
+    const body = [
+      stepDef('plan_phase', 'create_phase_plan'),
+      stepDef('do_work', 'spawn_worker', { depends_on: ['plan_phase'] }),
+    ];
+    const template = makeTemplate([forEachPhaseDef('phase_loop', body)]);
+    // Simulate the stalled state: iteration.status was flipped to in_progress
+    // by the original buggy walker, but body nodes were never scaffolded
+    // because the iteration came in with empty nodes and the old scaffold-only-on-not-started
+    // path was skipped on re-entry.
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'in_progress', {}),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    // Self-heal: walker scaffolded the missing body nodes and returned
+    // the first body node's action instead of stalling at action=null.
+    expect(result).toEqual({ action: 'create_phase_plan', context: {} });
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const iter = fepState.iterations[0];
+    expect(Object.keys(iter.nodes)).toEqual(['plan_phase', 'do_work']);
+    expect(iter.nodes['plan_phase']).toEqual({
+      kind: 'step',
+      status: 'not_started',
+      doc_path: null,
+      retries: 0,
+    });
+    expect(iter.nodes['do_work']).toEqual({
+      kind: 'step',
+      status: 'not_started',
+      doc_path: null,
+      retries: 0,
+    });
+  });
 });
 
 // ── for_each_task tests ─────────────────────────────────────────────────────────────────────────────

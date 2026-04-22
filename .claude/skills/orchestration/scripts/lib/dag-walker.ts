@@ -149,13 +149,20 @@ function walkForEachIterations(
     }
     if (iteration.status === NODE_STATUSES.NOT_STARTED) {
       iteration.status = NODE_STATUSES.IN_PROGRESS;
-      // Scaffold any missing body nodes on first in_progress transition.
-      // Iterate in template declaration order so iteration.nodes keys
-      // are inserted in that order (the UI renders by insertion order).
-      for (const bodyDef of fepDef.body) {
-        if (!(bodyDef.id in iteration.nodes)) {
-          iteration.nodes[bodyDef.id] = scaffoldNodeState(bodyDef);
-        }
+    }
+
+    // Scaffold any missing body nodes before walking into the iteration.
+    // Runs whether we just transitioned to in_progress or re-entered an
+    // already-in-progress iteration (self-heals CHEAPER-PIPELINE-TEST-1-era
+    // stall states where the iteration had status=in_progress but
+    // iteration.nodes was empty or partial). Iterate in template
+    // declaration order so iteration.nodes keys are inserted in that
+    // order (the UI renders by insertion order). Idempotent: the
+    // `in iteration.nodes` guard makes this a no-op for iterations
+    // already fully populated.
+    for (const bodyDef of fepDef.body) {
+      if (!(bodyDef.id in iteration.nodes)) {
+        iteration.nodes[bodyDef.id] = scaffoldNodeState(bodyDef);
       }
     }
 
