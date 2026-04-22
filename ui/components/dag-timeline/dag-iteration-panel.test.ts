@@ -274,7 +274,7 @@ test('taskLoopIterationWithCorrective corrective task carries doc_path directly'
   assert.ok(found !== undefined);
   const forEachTask = found[1] as ForEachTaskNodeState;
   const correctiveTask = forEachTask.iterations[0].corrective_tasks[0];
-  assert.strictEqual(correctiveTask.doc_path, '/tasks/t1-fix.md');
+  assert.strictEqual(correctiveTask.doc_path, 'tasks/t1-fix.md');
 });
 
 test('taskLoopIterationWithCorrective corrective task commit_hash is null', () => {

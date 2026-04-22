@@ -155,16 +155,27 @@ function walkForEachIterations(
     // Runs whether we just transitioned to in_progress or re-entered an
     // already-in-progress iteration (self-heals CHEAPER-PIPELINE-TEST-1-era
     // stall states where the iteration had status=in_progress but
-    // iteration.nodes was empty or partial). Iterate in template
-    // declaration order so iteration.nodes keys are inserted in that
-    // order (the UI renders by insertion order). Idempotent: the
-    // `in iteration.nodes` guard makes this a no-op for iterations
-    // already fully populated.
+    // iteration.nodes was empty or partial).
+    //
+    // Rebuild iteration.nodes in template declaration order so the UI
+    // (which renders by insertion order) sees a consistent layout whether
+    // the iteration was pre-seeded, partially seeded, or fully scaffolded
+    // here. Existing node states are preserved verbatim; missing ones are
+    // scaffolded fresh. Any extra keys present in iteration.nodes but not
+    // in the template body (e.g., `commit` — scaffolded by walkNodes into
+    // the parent iteration's nodes when a conditional branch is taken at
+    // `commit_gate`) are preserved AFTER the body defs so their in-flight
+    // state is not clobbered on re-entry.
+    const orderedNodes: Record<string, NodeState> = {};
     for (const bodyDef of fepDef.body) {
-      if (!(bodyDef.id in iteration.nodes)) {
-        iteration.nodes[bodyDef.id] = scaffoldNodeState(bodyDef);
+      orderedNodes[bodyDef.id] = iteration.nodes[bodyDef.id] ?? scaffoldNodeState(bodyDef);
+    }
+    for (const key of Object.keys(iteration.nodes)) {
+      if (!(key in orderedNodes)) {
+        orderedNodes[key] = iteration.nodes[key];
       }
     }
+    iteration.nodes = orderedNodes;
 
     // Corrective path routing: walk corrective task nodes instead of body nodes
     if (iteration.corrective_tasks.length > 0) {

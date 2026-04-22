@@ -1023,6 +1023,39 @@ describe('for_each_phase handling', () => {
       retries: 0,
     });
   });
+
+  it('preserves template declaration order when scaffolding around a pre-seeded LATER body node (UI render order consistency)', () => {
+    const body = [
+      stepDef('plan_phase', 'create_phase_plan'),
+      stepDef('do_work', 'spawn_worker', { depends_on: ['plan_phase'] }),
+      stepDef('finalize', 'spawn_finalizer', { depends_on: ['do_work'] }),
+    ];
+    const template = makeTemplate([forEachPhaseDef('phase_loop', body)]);
+    // Pre-seed ONLY the last body node. Naive insertion would yield
+    // [finalize, plan_phase, do_work]; the walker must produce the
+    // template-declaration order [plan_phase, do_work, finalize].
+    const preSeeded = {
+      kind: 'step' as const,
+      status: 'completed' as const,
+      doc_path: null,
+      retries: 0,
+    };
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'in_progress', { finalize: preSeeded }),
+      ]),
+    });
+    const config = makeConfig();
+
+    walkDAG(state, template, config);
+
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const iter = fepState.iterations[0];
+    // Template declaration order — NOT JS insertion order from the raw pre-seed.
+    expect(Object.keys(iter.nodes)).toEqual(['plan_phase', 'do_work', 'finalize']);
+    // Pre-seeded node state preserved verbatim.
+    expect(iter.nodes['finalize']).toEqual(preSeeded);
+  });
 });
 
 // ── for_each_task tests ─────────────────────────────────────────────────────────────────────────────
