@@ -4,11 +4,13 @@ Self-contained workflow for task-level code review (Action #4, `spawn_code_revie
 
 ## Review Mindset
 
-- **The implementer's report is not evidence.** "Tests passed," "acceptance criteria met," "requirement X implemented" — these describe intent. You review **the diff**. Run the tests yourself. Open the files yourself. Confirm each claim against the code, not the summary.
+- **The diff is truth. The handoff is intent.** The implementer's report — including Execution Notes — is not evidence. "Tests passed," "acceptance criteria met," "requirement X implemented" describe intent. You review **the diff**. Run the tests yourself. Open the files yourself. If a sentence in your review would read identically whether you had run the diff or not, delete it.
+- **No copy-paste from the Task Handoff.** Summarizing prescribed content is not review output. When the handoff prescribes file content verbatim, show the comparison mechanism (diff command, byte range), not a restatement of the prescription.
 - Skepticism is required, not optional. Reviewers who assume good work miss real bugs.
 - Every finding must include a concrete fix — never flag a problem without offering a path forward.
 - Before recommending a new feature, test, or abstraction, verify it's actually needed. Grep the codebase for real usage. Don't invent work.
 - Use binary assessments for checklist cells: ✅ pass, ⚠️ concern, ❌ fail. Use the tiered status enum (`on-track | drift | regression`) for per-requirement audit rows.
+- **Finding IDs & evidence** are mandatory per the [SKILL.md](../SKILL.md) Finding-ID Scheme and Evidence Contract. Every finding row carries `F-N`, `File:Line`, and concrete `Evidence`.
 
 ## Inputs
 
@@ -16,18 +18,19 @@ Task Review reads only the inputs below — do NOT load the Requirements doc, Ma
 
 | Input | Source | Description |
 |-------|--------|-------------|
-| Task Handoff | `{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | Task requirements, contracts, acceptance criteria. Inlines every FR/NFR/AD/DD tag scoped to this task. This is the complete conformance contract. |
+| Task Handoff | `{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | Task requirements, contracts, acceptance criteria, and **File Targets list** (gated in workflow step 3). Inlines every FR/NFR/AD/DD tag scoped to this task. This is the complete conformance contract. |
 | `head_sha` | Spawn context | Commit hash of the just-made task commit. `null` when `source_control.auto_commit` is `never` or no commit has been made. |
-| Diff | `git diff <head_sha>~1..<head_sha>` (or `git diff HEAD` + untracked files when `head_sha` is null) | The actual change under review. Scope for both the conformance pass and the quality sweep. |
+| Diff | `git diff <head_sha>~1..<head_sha>` (or `git diff HEAD` + untracked files when `head_sha` is null) | The actual change under review. Scope for both the conformance pass and the quality sweep. Always run `git diff --stat` alongside — its exact output populates the template's `## Scope` section. |
 | Source files | Files listed in Task Handoff's File Targets | Read only when the diff requires surrounding context to verify a finding. |
 
 ## Workflow
 
-1. **Read the Task Handoff** — this is the complete conformance contract. Every FR-N, NFR-N, AD-N, and DD-N element scoped to this task is inlined there. Enumerate the requirement IDs — you will audit each one.
-2. **Scope the diff.** If `head_sha` is provided in spawn context, run `git diff <head_sha>~1..<head_sha>`. Otherwise (auto-commit is off) run `git diff HEAD` and read any untracked files listed in the Task Handoff's File Targets.
-3. **Run the tests and verify the build.** Do not accept "tests passed" from the Task Handoff or any prior report on faith. Execute the test runner yourself; capture actual numbers for the template.
-4. **Conformance pass (first)** — the tiered per-requirement audit. For every FR/NFR/AD/DD tag inlined in the Task Handoff, evaluate whether the diff delivers what this task owes and write one audit-table row:
-   - **`on-track`** — the diff's contribution to this requirement is correct for what the task's slice was supposed to deliver. (On-track does NOT mean the requirement is fully complete project-wide — just that this task's slice is correct. A requirement may remain on-track across several tasks before final review marks it `met`.)
+1. **Read the Task Handoff** — this is the complete conformance contract. Every FR-N, NFR-N, AD-N, and DD-N element scoped to this task is inlined there. Enumerate the requirement IDs — you will audit each one. Also enumerate the **File Targets** list — you will gate against it in step 3.
+2. **Scope the diff.** If `head_sha` is provided in spawn context, run `git diff <head_sha>~1..<head_sha>` and `git diff --stat <head_sha>~1..<head_sha>`. Otherwise (auto-commit is off) run `git diff HEAD` + `git diff --stat HEAD` and read any untracked files listed in the Task Handoff's File Targets. Capture the exact command(s) run, the `--stat` output, and any untracked-file paths — these populate the `## Scope` section of the template.
+3. **File Targets gate.** Enumerate the File Targets declared in the Task Handoff. Confirm each declared target was modified (or created) in the diff. Flag any declared target **not** modified, and any file **outside** the declared File Targets that was modified (scope creep). These become findings if present.
+4. **Run the tests and verify the build.** Do not accept "tests passed" from the Task Handoff or any prior report on faith. Execute the test runner yourself. Capture the exact command run and the output — including **named test results**, not just a count — for the `## Test Execution` section of the template. "8 tests pass" is not acceptable; "8/8 pass: `colorize > …`, `cli > positional argument …`, …" is.
+5. **Conformance pass (first)** — the tiered per-requirement audit. For every FR/NFR/AD/DD tag inlined in the Task Handoff, evaluate whether the diff delivers what this task owes and write one audit-table row carrying `F-N`, `File:Line`, `Evidence`, status, severity, finding, and fix:
+   - **`on-track`** — the diff's contribution to this requirement is correct for what the task's slice was supposed to deliver. (On-track does NOT mean the requirement is fully complete project-wide — just that this task's slice is correct. A requirement may remain on-track across several tasks before final review marks it `met`.) Even on-track rows carry evidence — a file range or representative code quote proving the slice is correct.
    - **`drift`** — the diff deviates from what the Task Handoff says the task should deliver for this requirement (wrong contract, missing piece, wrong behaviour). Drift findings drive orchestrator mediation.
    - **`regression`** — the diff breaks something that previously worked (test failure, deleted export that sibling code imports, behaviour change outside the task's declared scope). Regression findings drive orchestrator mediation and are flagged critical.
 
@@ -35,17 +38,17 @@ Task Review reads only the inputs below — do NOT load the Requirements doc, Ma
 
    Read full files from File Targets when the diff alone is insufficient to confirm conformance (e.g., to verify an export survived, a signature is unchanged, or a previously-passing test still passes).
 
-5. **Quality sweep (second)** — the Independent Quality Assessment. Read the diff line by line without anchoring to the plan. Find what the implementer missed: bugs, edge cases, silent failures, defensive gaps. Apply code-smell detection from the table below. **Lean quality checks** to run explicitly:
-   - **TODO / FIXME scan** — grep the diff for `TODO`, `FIXME`, `HACK`, `XXX`. Any left behind is a finding.
-   - **Diff stat** — count lines added per file. Any file gaining disproportionate size for the stated task owes a single-responsibility check; flag decomposition / file-size smells when a single file balloons.
-   - **Orphaned scaffolding** — new exports, helpers, or classes that no caller imports. Dead-on-arrival abstractions are findings even when tests pass.
+6. **Quality sweep (second) — read the diff without the handoff open.** Deliberately set the Task Handoff aside. Read the diff line by line independent of prescribed intent. Find what the implementer missed: bugs, edge cases, silent failures, defensive gaps. Apply code-smell detection from the table below. Each quality-sweep finding is a new `F-N` row with the same evidence contract (`File:Line`, `Evidence`). **Lean quality checks** to run explicitly — each must be itemized with evidence (command run + result), even when clean:
+   - **TODO / FIXME scan** — grep the diff for `TODO`, `FIXME`, `HACK`, `XXX`. Record the grep command and its output (empty or hits).
+   - **Diff stat** — use the exact `git diff --stat` output captured in step 2. Flag any file gaining disproportionate size for the stated task; decomposition / single-responsibility concerns follow.
+   - **Orphaned scaffolding** — grep the codebase for callers of each new export. Record the grep command and result.
    - **Decomposition / file-size / single-responsibility** — when a function or file grows past reasonable density, evaluate whether the task's intent justifies the bloat or whether decomposition is warranted.
 
-   Findings from this pass merge into the same table as conformance findings — highest severity wins.
+   After the table, write one short **falsification paragraph** (2-4 sentences) describing the evidence you looked for that would have flipped the verdict and confirming that evidence was absent (or present and cited). This is your independence declaration — it is mandatory, even when there are zero findings.
 
-6. **Apply verdict rules** (see Verdict Rules section below). The verdict enum is unchanged: `approved | changes_requested | rejected`. Highest severity across both passes determines the verdict.
+7. **Apply verdict rules** (see Verdict Rules section below). The verdict enum is unchanged: `approved | changes_requested | rejected`. Highest severity across both passes determines the verdict. **The verdict line must cite the driving finding:** for `approved`, cite "no findings ≥ low severity; all audit rows on-track"; for `changes_requested` / `rejected`, name the driving `F-N`(s) and status.
 
-7. **Fill in the output template** at [./template.md](./template.md) and save based on corrective status:
+8. **Fill in the output template** at [./template.md](./template.md) and save based on corrective status:
    - Normal (first-time): `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md`
    - Task-scope corrective: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}-C{corrective_index}.md`
    - Phase-scope corrective: `{PROJECT-DIR}/reports/{NAME}-CODE-REVIEW-P{NN}-PHASE-C{corrective_index}.md`
