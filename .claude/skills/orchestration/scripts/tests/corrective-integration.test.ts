@@ -188,7 +188,34 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   // Seed explosion state BEFORE plan_approved so the walker's first pass
   // after plan_approved advances through phase_loop in a single walk.
   seedExplosionState(io, [TASKS_FIXTURE, TASKS_FIXTURE]);
-  return processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+
+  // commit_gate / pr_gate now read state.pipeline.source_control (state_ref).
+  // Fire source_control_init before the walker first evaluates commit_gate.
+  // Normalization mirrors the pre-state-ref `config_ref` behavior — only
+  // explicit `"never"` / `"no"` skips the gate. Re-walk so callers see the
+  // advanced execution action.
+  const cfg = io.readConfig();
+  const toNormalized = (raw: string | undefined): 'always' | 'never' => {
+    const v = (raw ?? '').trim().toLowerCase();
+    return v === 'never' || v === 'no' ? 'never' : 'always';
+  };
+  processEvent(
+    'source_control_init',
+    PROJECT_DIR,
+    {
+      branch: 'feature/test-branch',
+      base_branch: 'main',
+      worktree_path: '.',
+      auto_commit: toNormalized(cfg.source_control.auto_commit),
+      auto_pr: toNormalized(cfg.source_control.auto_pr),
+    },
+    io,
+  );
+
+  return result.action === 'ask_gate_mode'
+    ? result
+    : processEvent('start', PROJECT_DIR, {}, io);
 }
 
 /**

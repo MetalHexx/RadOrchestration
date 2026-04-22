@@ -449,6 +449,19 @@ describe('e2e: default.yml full-pipeline smoke test', () => {
     result = processEvent('plan_approved', PROJECT_DIR, { doc_path: masterPlanDoc }, io);
     expect(result.success).toBe(true);
 
+    // ── source_control_init ────────────────────────────────────────────────
+    // commit_gate + pr_gate now read state.pipeline.source_control, so init
+    // must fire before the walker first evaluates commit_gate.
+    result = processEvent('source_control_init', PROJECT_DIR, {
+      branch: 'feature/test-branch',
+      base_branch: 'main',
+      worktree_path: '.',
+      auto_commit: 'always',
+      auto_pr: 'always',
+      remote_url: 'https://github.com/test/repo',
+    }, io);
+    expect(result.success).toBe(true);
+
     // ── Seed the per-iteration state this smoke test needs after plan_approved:
     // explosion script's pre-seeding (phase_planning node on each phase iteration;
     // task_handoff node on each task iteration) PLUS the task-loop body-node states
@@ -577,16 +590,6 @@ describe('e2e: default.yml full-pipeline smoke test', () => {
     expect(result.action).toBe('invoke_source_control_pr');
 
     // ── pr_requested → pr_created ──────────────────────────────────────────
-    result = processEvent('source_control_init', PROJECT_DIR, {
-      branch: 'feature/test-branch',
-      base_branch: 'main',
-      worktree_path: '.',
-      auto_commit: 'always',
-      auto_pr: 'always',
-      remote_url: 'https://github.com/test/repo',
-    }, io);
-    expect(result.success).toBe(true);
-
     result = processEvent('pr_requested', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
 

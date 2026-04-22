@@ -99,7 +99,7 @@ nodes:
             kind: conditional
             label: "Auto-Commit"
             condition:
-              config_ref: source_control.auto_commit
+              state_ref: pipeline.source_control.auto_commit
               operator: neq
               value: never
             branches:
@@ -161,7 +161,7 @@ nodes:
     kind: conditional
     label: "Auto-PR Gate"
     condition:
-      config_ref: source_control.auto_pr
+      state_ref: pipeline.source_control.auto_pr
       operator: neq
       value: never
     branches:

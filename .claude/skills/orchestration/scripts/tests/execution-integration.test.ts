@@ -194,7 +194,37 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   // the walker can advance through phase_loop in a single pass.
   seedExplosionState(io, [TASKS_FIXTURE, TASKS_FIXTURE]);
 
-  return processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+
+  // commit_gate / pr_gate now read state.pipeline.source_control (state_ref).
+  // Init before the walker can first evaluate commit_gate. Normalization
+  // mirrors the pre-state-ref behavior of `config_ref` — only explicit
+  // `"never"` / `"no"` skips the gate; anything else (including defaults) maps
+  // to `"always"` so commit_gate / pr_gate's `neq "never"` predicate fires.
+  const cfg = io.readConfig();
+  const toNormalized = (raw: string | undefined): 'always' | 'never' => {
+    const v = (raw ?? '').trim().toLowerCase();
+    return v === 'never' || v === 'no' ? 'never' : 'always';
+  };
+  processEvent(
+    'source_control_init',
+    PROJECT_DIR,
+    {
+      branch: 'feature/test-branch',
+      base_branch: 'main',
+      worktree_path: '.',
+      auto_commit: toNormalized(cfg.source_control.auto_commit),
+      auto_pr: toNormalized(cfg.source_control.auto_pr),
+    },
+    io,
+  );
+
+  // Re-walk so the caller sees the post-init execution action unchanged.
+  // (source_control_init alone does not advance the graph; we still need the
+  // walker tick that plan_approved produced.)
+  return result.action === 'ask_gate_mode'
+    ? result
+    : processEvent('start', PROJECT_DIR, {}, io);
 }
 
 /**
@@ -271,6 +301,8 @@ describe('Execution-tier integration — complete pipeline run', () => {
     let result: PipelineResult;
 
     // ── Planning tier (drives master_plan + plan_approved + explosion seeding) ──
+    // drivePlanningTier also fires source_control_init so commit_gate /
+    // pr_gate (state_ref) can evaluate on the first post-plan walker tick.
     result = drivePlanningTier(io);
     expect(result.success).toBe(true);
     // Post-unify: iterations carry doc_path directly; walker scaffolds body
@@ -404,17 +436,6 @@ describe('Execution-tier integration — complete pipeline run', () => {
       expect(prGate.branch_taken).toBe('true');
       expect(prGate.status).toBe('in_progress');
     }
-
-    // ── source_control_init ──────────────────────────────────────────────
-    result = processEvent('source_control_init', PROJECT_DIR, {
-      branch: 'feature/test-branch',
-      base_branch: 'main',
-      worktree_path: '.',
-      auto_commit: 'always',
-      auto_pr: 'always',
-      remote_url: 'https://github.com/test/repo',
-    }, io);
-    expect(result.success).toBe(true);
 
     // ── pr_requested ────────────────────────────────────────
     result = processEvent('pr_requested', PROJECT_DIR, {}, io);

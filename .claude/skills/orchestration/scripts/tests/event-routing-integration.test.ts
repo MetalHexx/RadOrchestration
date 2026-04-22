@@ -468,7 +468,7 @@ describe('OOB events bypass template event index', () => {
   // Context required for events that need specific fields to succeed
   const OOB_CONTEXTS: Record<string, Record<string, string>> = {
     gate_mode_set: { gate_mode: 'task' },
-    source_control_init: { branch: 'main', base_branch: 'main' },
+    source_control_init: { branch: 'main', base_branch: 'main', auto_commit: 'never', auto_pr: 'never' },
   };
 
   // explosion_failed requires the default.yml template (has explode_master_plan node).
