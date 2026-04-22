@@ -4,7 +4,7 @@ import { DAGNodeRow } from './dag-node-row';
 import { NodeStatusBadge } from './node-status-badge';
 import { DAGCorrectiveTaskGroup } from './dag-corrective-task-group';
 import { DAGLoopNode } from './dag-loop-node';
-import { ExternalLink } from '@/components/documents';
+import { DocumentLink, ExternalLink } from '@/components/documents';
 import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath } from './dag-timeline-helpers';
 import type { IterationEntry } from '@/types/state';
 
@@ -63,17 +63,18 @@ export function DAGIterationPanel({
   // browsed via the UI keep their labels.
   let iterationName: string;
   let isFallback: boolean;
+  let docPath: string | null;
 
   if (parentKind === 'for_each_phase') {
     const phaseNode = iteration.nodes['phase_planning'];
     const legacyDocPath = (phaseNode && 'doc_path' in phaseNode) ? phaseNode.doc_path : null;
-    const docPath = iteration.doc_path ?? legacyDocPath ?? null;
+    docPath = iteration.doc_path ?? legacyDocPath ?? null;
     isFallback = !docPath;
     iterationName = parsePhaseNameFromDocPath(docPath, iterationIndex);
   } else {
     const taskNode = iteration.nodes['task_handoff'];
     const legacyDocPath = (taskNode && 'doc_path' in taskNode) ? taskNode.doc_path : null;
-    const docPath = iteration.doc_path ?? legacyDocPath ?? null;
+    docPath = iteration.doc_path ?? legacyDocPath ?? null;
     isFallback = !docPath;
     iterationName = parseTaskNameFromDocPath(docPath, iterationIndex);
   }
@@ -128,6 +129,13 @@ export function DAGIterationPanel({
           {iterationName}
         </span>
         <NodeStatusBadge status={iteration.status} />
+        {iteration.doc_path != null && iteration.doc_path !== '' && (
+          // Gate on iteration.doc_path (new shape) only — NOT on the combined `docPath` that
+          // includes the legacy `phase_planning` / `task_handoff` fallback. Legacy projects
+          // already render a Doc button on those synthetic child rows via DAGNodeRow; adding
+          // a second one here would duplicate the link on every pre-unify completed project.
+          <DocumentLink path={iteration.doc_path} label="Doc" onDocClick={onDocClick} />
+        )}
         {commitData !== null && (
           commitData.href !== null ? (
             <ExternalLink

@@ -451,6 +451,75 @@ test('dag-iteration-panel.tsx forwards iteration.corrective_tasks to DAGCorrecti
   }
 });
 
+// ─── Doc button rendering (post-unify: iteration.doc_path owns the link) ─────
+
+test('dag-iteration-panel.tsx imports DocumentLink from @/components/documents', () => {
+  assert.ok(
+    /import\s+\{[^}]*DocumentLink[^}]*\}\s+from\s+['"]@\/components\/documents['"]/.test(iterationPanelSource),
+    'iteration panel must import DocumentLink so the header row can render a Doc link when iteration.doc_path resolves'
+  );
+});
+
+test('dag-iteration-panel.tsx renders a <DocumentLink path={iteration.doc_path} label="Doc" onDocClick={onDocClick} /> — new-shape only', () => {
+  // Iterations lost their synthetic phase_planning / task_handoff child step nodes in the
+  // explode-scaffold-unify refactor. Those children used to own the Doc button via DAGNodeRow.
+  // Post-unify, the iteration panel itself must render the Doc button off iteration.doc_path.
+  //
+  // IMPORTANT: the Doc button is gated on iteration.doc_path (new shape) directly, NOT on the
+  // combined `docPath` that includes the legacy phase_planning / task_handoff fallback. Legacy
+  // projects still render a Doc button on those synthetic child rows via DAGNodeRow; adding a
+  // second one from the iteration header would duplicate the link on every pre-unify project.
+  assert.ok(
+    iterationPanelSource.includes('<DocumentLink'),
+    'iteration panel must render <DocumentLink> for the iteration\'s doc link'
+  );
+  assert.ok(
+    /<DocumentLink\s+path=\{iteration\.doc_path\}/.test(iterationPanelSource),
+    '<DocumentLink> path prop must be iteration.doc_path (new-shape only), NOT the combined docPath — otherwise legacy projects show a duplicate Doc button on top of the one DAGNodeRow already renders for the phase_planning / task_handoff child row'
+  );
+  assert.ok(
+    /<DocumentLink[^/]*label="Doc"/.test(iterationPanelSource),
+    '<DocumentLink> label prop must be "Doc" to match DAGNodeRow idiom'
+  );
+  assert.ok(
+    /<DocumentLink[^/]*onDocClick=\{onDocClick\}/.test(iterationPanelSource),
+    '<DocumentLink> must forward the onDocClick prop plumbed through to the iteration panel'
+  );
+});
+
+test('dag-iteration-panel.tsx gates <DocumentLink> on iteration.doc_path (new shape only — no render on legacy fallback, no render on null/empty)', () => {
+  // The panel must not render the Doc button when iteration.doc_path is absent — the legacy
+  // fallback path already has a Doc button on the phase_planning / task_handoff child row.
+  // Double-rendering would ship two buttons that open the same document on every legacy project.
+  // The gate uses `iteration.doc_path != null && iteration.doc_path !== ''` to mirror the
+  // existing DAGNodeRow:80 pattern (`node.doc_path != null && node.doc_path !== ''`).
+  const lines = iterationPanelSource.split(/\r?\n/);
+  const docLinkLineIdx = lines.findIndex((l) => l.includes('<DocumentLink'));
+  assert.ok(docLinkLineIdx > 0, 'DocumentLink line must exist');
+  // Scan the preceding 6 lines for the gate expression (headroom for the explanatory comment).
+  const precedingWindow = lines.slice(Math.max(0, docLinkLineIdx - 6), docLinkLineIdx).join('\n');
+  assert.ok(
+    /iteration\.doc_path\s*!=\s*null/.test(precedingWindow),
+    'DocumentLink must be gated on `iteration.doc_path != null` (new shape only, not the legacy-fallback-inclusive `docPath` variable)'
+  );
+});
+
+test('dag-iteration-panel.tsx <DocumentLink> does NOT pass tabIndex (keyboard accessibility — default tabIndex=0 so users can tab to it)', () => {
+  // DAGNodeRow passes tabIndex={-1} because the row div itself is focusable and a keydown
+  // handler opens the doc on Enter/Space — that closed pattern keeps roving tabindex intact.
+  // The iteration panel header has no such row-level focus wiring: the header <div> is not
+  // focusable and has no keydown handler. If the DocumentLink here were tabIndex={-1}, a
+  // keyboard-only user would have NO path to open the iteration doc (the AccordionTrigger
+  // above consumes Enter/Space to expand/collapse the loop, not to open the doc).
+  // Therefore this DocumentLink must use the default tab order.
+  const docLinkMatch = iterationPanelSource.match(/<DocumentLink\b[^>]*\/>/);
+  assert.ok(docLinkMatch, 'iteration panel must contain a self-closing <DocumentLink ... /> element');
+  assert.ok(
+    !/tabIndex\s*=/.test(docLinkMatch[0]),
+    '<DocumentLink> in the iteration header must NOT pass tabIndex — relying on the default lets keyboard users tab to the Doc button (the header has no row-level keydown handler like DAGNodeRow does)'
+  );
+});
+
 test('dag-corrective-task-group.tsx does NOT contain projectName= or gateActive=', () => {
   assert.ok(correctiveTaskGroupSource.includes('<DAGNodeRow'), 'sanity: corrective task group should contain a <DAGNodeRow element');
   assert.ok(

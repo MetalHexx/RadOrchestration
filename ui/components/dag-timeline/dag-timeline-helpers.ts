@@ -199,7 +199,8 @@ export function deriveCurrentPhase(
   if (!activeIteration) return null;
 
   const phasePlanningNode = activeIteration.nodes.phase_planning;
-  const docPath = phasePlanningNode?.kind === 'step' ? phasePlanningNode.doc_path : null;
+  const legacyDocPath = phasePlanningNode?.kind === 'step' ? phasePlanningNode.doc_path : null;
+  const docPath = activeIteration.doc_path ?? legacyDocPath ?? null;
 
   return parsePhaseNameFromDocPath(docPath, activeIteration.index);
 }
