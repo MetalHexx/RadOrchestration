@@ -1,55 +1,133 @@
 # Full Audit — Complete Planning Set Review
 
-Review the entire planning document set for codebase accuracy and cross-document cohesion.
+Audit the planning set for codebase accuracy, cross-document cohesion,
+and explosion-readiness. The set is exactly two documents:
+
+1. `{NAME}-REQUIREMENTS.md` — the FR / NFR / AD / DD ledger.
+2. `{NAME}-MASTER-PLAN.md` — the inlined phase + task plan, tagged with
+   requirement IDs.
+
+Phase Plans and Task Handoffs are deterministic explosion artifacts and
+are out of scope for this audit.
 
 ## Inputs
 
-1. **All planning documents** — read in the pipeline order  defined by the current process template. These are the primary source of truth for the audit.
-2. **Existing source files** — files the docs reference as already existing. These are ground truth.
+1. **Both planning documents** — read in order: Requirements first, then
+   Master Plan. Order lets you trace IDs forward into the plan and
+   backward from plan citations.
+2. **Existing source files** — files the docs claim already exist.
+   These are ground truth for Part 1.
+
+## Authority
+
+You are a reporter, not an editor. You do **not** modify the Requirements
+doc or the Master Plan. You produce a structured report. The orchestrator
+receives the report and dispatches a planner subagent with Edit rights to
+apply fixes (see [corrections-workflow.md](./corrections-workflow.md)).
 
 ## Workflow
 
-### Step 1: Read all planning documents
+### Step 1: Read both planning documents
 
-Read every doc **in pipeline order**. Reading in order lets you trace the dependency chain and spot where drift enters.
+Read Requirements, then Master Plan. As you read, build a mental
+inventory of:
 
-As you read, note:
-- Numbered requirements (FR-*, NFR-*)
-- Contracts and interfaces (exact shapes, language-specific syntax)
-- Components and design tokens
-- Phase outlines and exit criteria
-- Module map and file paths
-- Anything marked frozen, sacred, or NFR
-- Frontmatter fields (`total_phases` in Master Plan, `tasks` array in Phase Plans)
+- Every FR / NFR / AD / DD ID defined in Requirements.
+- Every ID cited in the Master Plan — phase `**Requirements:**` lines,
+  task `**Requirements:**` lines, inline step tags.
+- Contracts and interfaces (exact shapes).
+- Phase and task headings, `**Task type:**` / `**Files:**` blocks.
+- Anything marked frozen, sacred, or NFR-constrained.
+- Frontmatter fields (`requirement_count` in Requirements,
+  `total_phases` / `total_tasks` in Master Plan).
 
 ### Step 2: Read existing source files
 
-Identify files the docs claim already exist — current dependencies, modified modules, unchanged modules. Read each one. Skip files that exist only as planned additions.
+Identify files the docs claim already exist — current dependencies,
+modules cited as "modify" targets, referenced paths. Read each one.
+Skip planned additions.
 
-### Step 3: Accuracy checks
+### Step 3: Accuracy checks — Part 1
 
-Apply [rubric §1](./audit-rubric.md#part-1-codebase-accuracy-docs-vs-code) across all documents. For every claim about existing code, verify against the source. Confirm the doc is claiming the thing *already exists* before recording a finding.
+Apply [rubric Part 1](./audit-rubric.md#part-1-codebase-accuracy-docs-vs-code).
+For every claim about existing code, verify against the source. Confirm
+the doc is claiming the thing *already exists* before recording a
+finding.
 
-### Step 4: Cohesion checks
+### Step 4: Cohesion checks — Part 2
 
-Apply [rubric §2](./audit-rubric.md#part-2-cross-document-cohesion-docs-vs-docs) across the full document set (or available docs give the process template used):
+Apply [rubric Part 2](./audit-rubric.md#part-2-cross-document-cohesion-docs-vs-docs):
 
-- §2.1 Requirement Traceability
-- §2.2 Design ↔ Architecture Alignment
-- §2.3 Master Plan Alignment
-- §2.4 Contract Consistency
-- §2.5 Scope Alignment
-- §2.6 Terminology Consistency
+- §2.1 Requirement Coverage — IDs flow both directions, phase roll-ups
+  are consistent.
+- §2.2 Contract Consistency — interfaces, module responsibilities, file
+  paths, and frozen contracts match across both docs.
+- §2.3 Terminology Consistency — named artifacts are spelled and cased
+  identically.
 
-### Step 5: Report
+### Step 4.5: Buildability checks — Part 3
 
-Use the [finding format](./audit-rubric.md#finding-format) from the rubric. Organize findings by dimension.
+Apply [rubric Part 3](./audit-rubric.md#part-3-buildability-explosion-readiness):
 
-Zero findings: *"Audit complete. No findings — the planning set is accurate and cohesive."*
+- Tag coverage, tag justification, tag validity.
+- Phase + task heading shape (mandatory `**Task type:**`,
+  `**Requirements:**`, `**Files:**` lines).
+- `code`-task RED-GREEN shape (exactly 4 steps).
+- No placeholders (`TBD`, `TODO`, `FIXME`, `implement later`,
+  `similar to`, `as needed`).
+- Grounded file paths (`Modify:` / `Delete:` paths exist; `Create:`
+  parent dirs exist).
+
+### Step 5: Write the structured report
+
+The report is a Markdown document with frontmatter and a findings table.
+
+**Frontmatter:**
+
+```yaml
+---
+project: "{PROJECT-NAME}"
+type: plan_audit_report
+verdict: approved        # or: issues_found
+findings_count: 0        # total rows in the table
+created: "{YYYY-MM-DD}"
+author: "plan-auditor"
+---
+```
+
+**Body:**
+
+- `# {PROJECT-NAME} — Plan Audit Report`
+- One short paragraph summarizing what was audited (the two doc paths).
+- A findings table using the [finding format](./audit-rubric.md#finding-format).
+  Group rows by pillar (Part 1, Part 2, Part 3) using an H2 per pillar
+  when any findings land in that pillar. If no findings land in a
+  pillar, omit its section.
+- A final `## Verdict` heading with a single line: `approved` or
+  `issues_found` — matching the frontmatter.
+
+**Zero findings case:** frontmatter `verdict: approved`,
+`findings_count: 0`, body `## Verdict` line `approved`, and a single
+sentence body: *"Audit complete. No findings — the planning set is
+accurate, cohesive, and explosion-ready."*
+
+**Findings case:** frontmatter `verdict: issues_found`, `findings_count:
+N`, body contains the per-pillar tables, and `## Verdict` line
+`issues_found`.
+
+The orchestrator keys the next step off the `verdict` field — approved
+proceeds, issues_found dispatches the planner corrections workflow.
 
 ## Quality Bar
 
-- **Zero false positives** — planned additions are not accuracy bugs; stylistic preferences are not cohesion issues
-- **Both dimensions covered** — accuracy AND cohesion checks, not just one
-- **Traceable findings** — every finding cites specific text in specific docs with specific evidence
-- **Uncertainty defaults to no-flag** — a false positive damages trust more than a missed low-severity issue
+- **Calibration first.** Only flag issues that would block a coder.
+  Stylistic preferences are not findings.
+- **Every finding has evidence.** `File:Line` into the planning doc plus
+  a quoted fragment or a pair of conflicting quotes. No paraphrase.
+- **Every finding cites ground truth.** Part 1: source-code citation.
+  Parts 2/3: the authoritative doc location or the structural rule
+  being violated.
+- **Uncertainty defaults to no-flag.** A false positive damages trust
+  more than a missed low-severity issue.
+- **Do not edit the planning docs.** You are a reporter. The planner
+  subagent is the only role with Edit rights to the plan.

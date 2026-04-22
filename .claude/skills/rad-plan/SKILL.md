@@ -30,15 +30,38 @@ I have project goals I'd like to develop into a full scale plan.
 - Start the planning pipeline and call needed CLI parameters to start the planning process, passing the chosen template as an argument (e.g., `--template default`).
 
 ## Step 4: Audit the plan
-- Use the `rad-plan-audit` tool to audit the generated plan for completeness, correctness, and alignment with the project goals.  
-- Run the audit up to 3 times in a loop using a fresh subagent to ensure unbiased feedback.
-- Don't feel the need to review 3 times if the plan is already in good shape after 1 or 2 iterations. 
--  Use your judgment to decide when to stop iterating.
-  - If you still spot problems after 3 iterations, halt, go to Step 5.
-- When prompting the subagent, 
-  - Tell them the name of all the planning docs to check based on the template used.
-  - Ask them to use the `rad-plan-audit` tool for auditing instructions.
-- Show the user the concise results of each audit iteration, and any changes you make to the plan based on the feedback.
+- Dispatch a fresh subagent with the `rad-plan-audit` skill (full-audit
+  mode) to audit the Requirements doc and the Master Plan. Give the
+  subagent both doc paths and instruct it to follow
+  `.claude/skills/rad-plan-audit/references/full-audit.md`. The subagent
+  returns a structured report with frontmatter `verdict: approved` or
+  `verdict: issues_found`. The auditor does NOT edit either planning
+  doc — it reports.
+- If `verdict: approved`: proceed to Step 5.
+- If `verdict: issues_found`:
+    1. Dispatch the `planner` agent with the audit report path, the
+       Requirements doc path, and the Master Plan path, instructing it
+       to follow the corrections workflow at
+       `.claude/skills/rad-plan-audit/references/corrections-workflow.md`.
+       The planner applies fixes inline and returns a short summary of
+       actioned and declined findings.
+    2. Re-invoke the explosion script to regenerate `phases/` and
+       `tasks/` from the corrected Master Plan:
+
+           npx tsx .claude/skills/orchestration/scripts/explode-master-plan.ts \
+             --project-dir <project-dir> \
+             --master-plan <master-plan-path> \
+             --project-name <project-name>
+
+       The script auto-backs-up the pre-correction `phases/` and
+       `tasks/` into `backups/{ISO-timestamp}/` and resets
+       `state.graph.nodes.phase_loop` before re-seeding — nothing is
+       overwritten destructively. On exit code `2` (parse failure in
+       the corrected Master Plan), halt and surface the structured
+       `parse_error` JSON to the user — do not retry in-skill.
+- Show the user the concise audit report, the planner's corrections
+  summary, and (when re-exploded) the backup directory path.
+- Single pass, no re-audit after corrections.
 
 ## Step 5: Finalize the plan
 - Use the `askQuestions` tool to ask the user how they want to proceed and execute the plan:
