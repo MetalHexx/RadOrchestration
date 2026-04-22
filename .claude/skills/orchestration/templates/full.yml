@@ -1,5 +1,5 @@
 # DEPRECATED — legacy 4-stage upstream planning pipeline (PRD → Research → Design → Architecture → Master Plan).
-# Replaced by default.yml (Iter 9). Remains the default template fallback until Iter 9; kept for backwards compatibility.
+# Replaced by default.yml (Iter 9); kept for backwards compatibility.
 #
 # NOTE: post-unify (iter-14), `task_loop.source_doc_ref: "$.current_phase.doc_path"` resolves
 # from the enclosing phase iteration's `doc_path` field (pre-seeded by the explosion script).
