@@ -3,7 +3,7 @@
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { DAGNodeRow } from './dag-node-row';
 import { NodeStatusBadge } from './node-status-badge';
-import { ExternalLink } from '@/components/documents';
+import { DocumentLink, ExternalLink } from '@/components/documents';
 import { getCommitLinkData, filterCompatibleNodes } from './dag-timeline-helpers';
 import type { CorrectiveTaskEntry } from '@/types/state';
 
@@ -58,6 +58,15 @@ export function DAGCorrectiveTaskGroup({
               <AccordionTrigger className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center">
                 <span className="text-sm font-medium">{buildTriggerText(entry.index)}</span>
                 <NodeStatusBadge status={entry.status} />
+                {entry.doc_path != null && entry.doc_path !== '' && (
+                  // Mirrors the iteration-panel pattern (dag-iteration-panel.tsx:132-138):
+                  // post-unify, CorrectiveTaskEntry.doc_path carries the corrective handoff
+                  // doc path (entry.nodes can be empty), so the group itself renders the Doc
+                  // button. No tabIndex override — the AccordionTrigger consumes Enter/Space
+                  // for expand/collapse, so keyboard users must reach this link via natural
+                  // tab order.
+                  <DocumentLink path={entry.doc_path} label="Doc" onDocClick={onDocClick} />
+                )}
                 {commitData !== null && (
                   commitData.href !== null ? (
                     <ExternalLink

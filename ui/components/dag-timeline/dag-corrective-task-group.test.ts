@@ -6,6 +6,9 @@
  * Helper functions are exported from dag-corrective-task-group.tsx for testability.
  */
 import assert from "node:assert";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import {
   buildCorrectiveChildNodeId,
   buildTriggerText,
@@ -179,6 +182,75 @@ test('multiple corrective tasks produce correct trigger text for each', () => {
 // CHILD_DEPTH constant
 test('CORRECTIVE_CHILD_DEPTH is 2', () => {
   assert.strictEqual(CORRECTIVE_CHILD_DEPTH, 2);
+});
+
+// ─── Doc button rendering (post-unify: entry.doc_path owns the link) ─────────
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const correctiveTaskGroupSource = readFileSync(join(__dirname, 'dag-corrective-task-group.tsx'), 'utf-8');
+
+test('dag-corrective-task-group.tsx imports DocumentLink from @/components/documents', () => {
+  // Post-unify, CorrectiveTaskEntry.doc_path replaces the synthesized task_handoff step node
+  // that used to own the Doc button via DAGNodeRow. The group component must import DocumentLink
+  // so its AccordionTrigger can render a Doc link off entry.doc_path.
+  assert.ok(
+    /import\s+\{[^}]*DocumentLink[^}]*\}\s+from\s+['"]@\/components\/documents['"]/.test(correctiveTaskGroupSource),
+    'corrective task group must import DocumentLink so the accordion trigger can render a Doc link when entry.doc_path resolves'
+  );
+});
+
+test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path} label="Doc" onDocClick={onDocClick} /> in the accordion trigger', () => {
+  // Mirrors the iteration-panel pattern (dag-iteration-panel.tsx:132-138): post-unify corrective
+  // handoff docs are carried on CorrectiveTaskEntry.doc_path and entry.nodes can be empty, so
+  // the group component itself must render the Doc button off entry.doc_path to keep corrective
+  // handoffs accessible from the timeline now that the synthetic task_handoff step node is gone.
+  assert.ok(
+    correctiveTaskGroupSource.includes('<DocumentLink'),
+    'corrective task group must render <DocumentLink> for the corrective task\'s doc link'
+  );
+  assert.ok(
+    /<DocumentLink\s+path=\{entry\.doc_path\}/.test(correctiveTaskGroupSource),
+    '<DocumentLink> path prop must be entry.doc_path (the new CorrectiveTaskEntry.doc_path field)'
+  );
+  assert.ok(
+    /<DocumentLink[^/]*label="Doc"/.test(correctiveTaskGroupSource),
+    '<DocumentLink> label prop must be "Doc" to match the iteration-panel / DAGNodeRow idiom'
+  );
+  assert.ok(
+    /<DocumentLink[^/]*onDocClick=\{onDocClick\}/.test(correctiveTaskGroupSource),
+    '<DocumentLink> must forward the onDocClick prop plumbed through to the corrective task group'
+  );
+});
+
+test('dag-corrective-task-group.tsx gates <DocumentLink> on entry.doc_path (no render when null/empty)', () => {
+  // Gate expression mirrors dag-iteration-panel.tsx:132 exactly:
+  //   entry.doc_path != null && entry.doc_path !== ''
+  // No render when doc_path is absent — a completed-without-handoff-doc corrective task would
+  // show an empty Doc button otherwise.
+  const lines = correctiveTaskGroupSource.split(/\r?\n/);
+  const docLinkLineIdx = lines.findIndex((l) => l.includes('<DocumentLink'));
+  assert.ok(docLinkLineIdx > 0, 'DocumentLink line must exist');
+  // Scan the preceding 10 lines for the gate expression (headroom for an explanatory comment block).
+  const precedingWindow = lines.slice(Math.max(0, docLinkLineIdx - 10), docLinkLineIdx).join('\n');
+  assert.ok(
+    /entry\.doc_path\s*!=\s*null/.test(precedingWindow),
+    'DocumentLink must be gated on `entry.doc_path != null` so corrective tasks without a handoff doc do not render an empty Doc button'
+  );
+});
+
+test('dag-corrective-task-group.tsx <DocumentLink> does NOT pass tabIndex (keyboard accessibility — default tab order required)', () => {
+  // The AccordionTrigger consumes Enter/Space to expand/collapse the corrective task panel.
+  // If DocumentLink were tabIndex={-1} (as DAGNodeRow uses internally to preserve roving
+  // tabindex), a keyboard-only user would have NO path to open the corrective handoff doc.
+  // Same rationale as dag-iteration-panel.tsx — header-level DocumentLinks must use default
+  // tab order.
+  const docLinkMatch = correctiveTaskGroupSource.match(/<DocumentLink\b[^>]*\/>/);
+  assert.ok(docLinkMatch, 'corrective task group must contain a self-closing <DocumentLink ... /> element');
+  assert.ok(
+    !/tabIndex\s*=/.test(docLinkMatch[0]),
+    '<DocumentLink> in the corrective accordion trigger must NOT pass tabIndex — the AccordionTrigger consumes Enter/Space so a keyboard user must reach the Doc link via natural tab order'
+  );
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
