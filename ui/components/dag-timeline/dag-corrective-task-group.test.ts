@@ -271,6 +271,26 @@ test('dag-corrective-task-group.tsx <ExternalLink> does NOT pass tabIndex (keybo
   );
 });
 
+test('dag-corrective-task-group.tsx <AccordionTrigger> className contains w-full (full-band clickable area, regression guard for Copilot R11)', () => {
+  // Post-R6 the Doc/commit links moved to sibling positions outside the trigger, which required
+  // a flex-1 wrapper <div> around the trigger so the Trigger's inner <button> no longer spans
+  // the full row width on its own. Without `w-full`, the <button>'s click target collapses to
+  // its content's intrinsic width — clicking the padded whitespace to the right of the status
+  // badge (but still inside the flex-1 column) would no longer toggle the accordion. This is
+  // the UX/a11y regression Copilot R11 flagged. Guard the className so a future edit doesn't
+  // silently re-introduce the narrow-trigger bug.
+  const triggerMatch = correctiveTaskGroupSource.match(/<AccordionTrigger\b[^>]*>/);
+  assert.ok(triggerMatch, 'corrective task group must contain an <AccordionTrigger> element');
+  assert.ok(
+    /className="[^"]*\bw-full\b[^"]*"/.test(triggerMatch[0]),
+    '<AccordionTrigger> className must contain `w-full` so the trigger <button> fills its flex-1 wrapper (Copilot R11 regression guard)'
+  );
+  assert.ok(
+    /className="[^"]*\bpy-2\b[^"]*"/.test(triggerMatch[0]),
+    '<AccordionTrigger> className must carry vertical padding (`py-2`) so the click/focus band matches the pre-R6 full-row size (Copilot R11 regression guard)'
+  );
+});
+
 test('dag-corrective-task-group.tsx <DocumentLink> renders OUTSIDE <AccordionTrigger> (no nested interactive controls)', () => {
   // AccordionTrigger renders AccordionPrimitive.Trigger, which is a <button>.
   // DocumentLink renders a <button>. Nesting <button> inside <button> is invalid HTML

@@ -64,10 +64,12 @@ export function DAGCorrectiveTaskGroup({
                 Mirrors the clean pattern already in dag-iteration-panel.tsx:126-153, which
                 uses a plain <div> header with sibling links.
 
-                Hover/padding/rounded classes are lifted onto the outer row <div> so the
-                whole header band still reacts to hover as before.
+                Hover/rounded classes sit on the outer row <div> so the whole header band
+                (trigger + sibling links) reacts to hover as a single unit. Padding lives on
+                the AccordionTrigger itself (not the outer row) so the full padded band is
+                part of the <button>'s click/focus target — see the inner comment below.
               */}
-              <div className="flex items-center gap-2 py-2 px-3 rounded-md hover:bg-accent/50">
+              <div className="flex items-center gap-2 rounded-md hover:bg-accent/50">
                 {/*
                   flex-1 lives on this wrapper <div> — NOT on AccordionTrigger's className —
                   because AccordionTrigger renders AccordionPrimitive.Header (hardcoded
@@ -77,9 +79,20 @@ export function DAGCorrectiveTaskGroup({
                   the Trigger is a no-op for the row layout; it must sit on a wrapper that is
                   a real direct child of this flex row so the Doc/commit link siblings are
                   pushed to the right edge.
+
+                  Padding + w-full live on the Trigger (not the outer row) so that the entire
+                  padded band of the flex-1 column is part of the <button>'s click/focus
+                  target. Pre-R6 the whole row WAS a <button>; post-R6 (when Doc/commit links
+                  had to become siblings to avoid nested interactive controls) padding briefly
+                  moved onto the outer <div> and the click area shrank to the Trigger's
+                  content height — Copilot R11 flagged that as a UX/a11y regression. Moving
+                  padding + w-full back onto the Trigger restores the pre-R6 full-band
+                  clickable behavior while keeping DocumentLink / ExternalLink outside the
+                  trigger. Hover/rounded stay on the outer row so the entire header band
+                  (trigger + sibling links) still reacts to hover as a single unit.
                 */}
                 <div className="flex-1">
-                  <AccordionTrigger className="hover:no-underline gap-2 items-center py-0 border-0">
+                  <AccordionTrigger className="hover:no-underline gap-2 items-center py-2 px-3 border-0 w-full">
                     <span className="text-sm font-medium">{buildTriggerText(entry.index)}</span>
                     <NodeStatusBadge status={entry.status} />
                   </AccordionTrigger>
