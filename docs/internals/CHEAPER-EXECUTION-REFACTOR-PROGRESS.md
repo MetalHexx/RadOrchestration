@@ -200,6 +200,13 @@ Format:
 - **Impact**: <downstream effects, if any>
 ```
 
+### 2026-04-21 — Explosion-scaffold-unify — Human-authored UI follow-up restoring Doc button + current-phase label for new-shape projects
+
+- **Plan said**: The only UI change in scope is `dag-iteration-panel.tsx` label derivation with a legacy fallback (plan Phase 3). No other UI wiring touched.
+- **Execution did**: A follow-up commit `4bedbcc` (human-authored, pre-existing agent window) added three things the plan did not anticipate: (1) renders a `<DocumentLink path={iteration.doc_path} label="Doc" onDocClick={onDocClick} />` in the iteration header, gated on `iteration.doc_path != null && !== ''` (new-shape only, so legacy projects don't get a duplicate link on top of the one DAGNodeRow renders for the `phase_planning` / `task_handoff` child row); (2) updated `dag-timeline-helpers.ts:deriveCurrentPhase` to read `activeIteration.doc_path` first with a legacy `phase_planning` fallback, mirroring the panel's precedence; (3) added 5 new tests — 3 source-text assertions on the panel (DocumentLink import, new-shape-only gate, no tabIndex prop) and 2 behaviour cases on `deriveCurrentPhase` (new shape + mixed-shape precedence).
+- **Why**: Discovered while piloting MAGIC-8-BALL on this branch — the unify refactor removed the synthetic `phase_planning` / `task_handoff` child step nodes that previously owned the Doc button via DAGNodeRow, but the panel was only updated to read `iteration.doc_path` for the label. Net effect: the Doc button disappeared from every phase/task iteration row for post-unify projects, and `ProjectHeader`'s current-phase label fell through to the "Phase N" fallback once a new-shape phase went in_progress. Both surfaces needed a one-line update to walk the new field before the legacy one.
+- **Impact**: UI fully restored for new-shape projects. Accessibility detail: the iteration-header DocumentLink intentionally omits `tabIndex={-1}` (unlike DAGNodeRow's) because the header has no row-level keydown handler to programmatically open the doc — keyboard users need the default tab order to reach the button. Tests: UI suite still 160 pass (ui test fixtures were already iterationally updated in the original commit).
+
 ### 2026-04-21 — Iteration 13 — Inaugural harness baseline committed as placeholder, not a live run
 
 - **Plan said**: "Inaugural baseline captured at iteration exit under `output/<fixture>/baseline-<fixture>-<YYYY-MM-DD>/`; committed files: `lint-report.md`, `run-notes.md`."
