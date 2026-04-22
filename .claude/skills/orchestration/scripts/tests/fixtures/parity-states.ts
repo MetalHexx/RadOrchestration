@@ -205,6 +205,12 @@ const TASK_FIXTURES = [
  * `doc_path = taskHandoffDoc(p, t)` directly. Body nodes are not scaffolded;
  * the walker scaffolds them on first in_progress transition.
  *
+ * PRECONDITION: The phase_loop must already be expanded with iterations, and
+ * each iteration's `nodes.task_loop` must already be scaffolded. This is
+ * guaranteed by walker-driven expansion (e.g., after `plan_approved` event).
+ * Call this helper only after such expansion; failing to do so will result in
+ * `Cannot read properties of undefined` errors on iteration access.
+ *
  * `tasksPerPhase` defaults to 2 — the shape most integration tests expect.
  * Tests that exercise single-task gate behavior pass `1` explicitly.
  */
@@ -220,6 +226,17 @@ export function seedExplosionStateFor(
   }
   const tasks = TASK_FIXTURES.slice(0, tasksPerPhase);
   const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+
+  // Validate precondition: phase_loop must have iterations and each must have task_loop scaffolded.
+  if (!phaseLoop?.iterations?.length || phaseLoop.iterations.length < totalPhases) {
+    throw new Error(
+      `seedExplosionStateFor: phase_loop must have at least ${totalPhases} iterations ` +
+      `(has ${phaseLoop?.iterations?.length ?? 0}). Call this helper AFTER walker-driven ` +
+      `expansion (e.g., processEvent('plan_approved', ...)) which pre-seeds iterations and ` +
+      `nodes.task_loop per the template body.`,
+    );
+  }
+
   for (let pIdx = 0; pIdx < totalPhases; pIdx++) {
     const phaseNum = pIdx + 1;
     const phaseDoc = phasePlanDoc(phaseNum);
@@ -227,6 +244,14 @@ export function seedExplosionStateFor(
 
     const phaseIter = phaseLoop.iterations[pIdx];
     phaseIter.doc_path = phaseDoc;
+
+    // Validate that task_loop exists on this phase iteration.
+    if (!phaseIter.nodes['task_loop']) {
+      throw new Error(
+        `seedExplosionStateFor: phase iteration ${pIdx} missing 'task_loop' node. ` +
+        `Ensure walker expansion (e.g., processEvent('plan_approved', ...)) has run before calling.`,
+      );
+    }
 
     const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState;
     taskLoop.iterations = tasks.map((_, tIdx) => {
