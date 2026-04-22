@@ -176,6 +176,14 @@ Append new entries at the bottom. Format:
 - Scripts tree: 1298 → 1317 passed (+19 from new tests). UI + installer unchanged. Baseline diff clean.
 - Commits: `ef5f5d9` (main) + `f9cd00e` (pre-PR corrective from dual-reviewer pass). PR: [#65](https://github.com/MetalHexx/RadOrchestation/pull/65), plus 6 Copilot-cycle fixups (`2a1f982`, `83e4076`, `ba18726`, `13297bb`, `9f77dae`, `ef08545`, `382e0ff`). Cycle terminated at R7 per two-consecutive-nits-only criterion.
 
+### 2026-04-21 — Explosion-scaffold-unify — Walker stall fix + doc_path promoted to iteration
+
+- Branch: `feat/explosion-scaffold-unify` off `feat/cheaper-execution` (worktree at `C:\dev\orchestration\v3-worktrees\feat-explosion-scaffold-unify`). Drove the stall discovered end-to-end in CHEAPER-PIPELINE-TEST-1: explosion pre-seeded iteration shells the walker couldn't progress, so every autonomous run stalled at `action: null` until hand-patched.
+- Fix: promoted `doc_path` to a first-class optional field on `IterationEntry` + `CorrectiveTaskEntry` (types, schema, UI types mirror). Removed synthetic `phase_planning` + `task_handoff` step nodes from both the explosion seeding (`explode-master-plan.ts:seedIterations`) and the corrective-injection path (`mutations.ts` phase + task scope). Walker's `walkForEachIterations` now scaffolds missing body nodes on each iteration's first in_progress transition, so explosion-pre-seeded empty shells resolve transparently. `resolveDocRefInScope` reads `$.current_phase.doc_path` from the enclosing iteration via a threaded `currentIteration` param.
+- Consumer ripples: `context-enrichment.ts` task-handoff routing (3 sites) now reads `doc_path` directly off the iteration entry or corrective entry. UI `dag-iteration-panel.tsx` has a back-compat fallback to the legacy synthetic-node shape for existing completed projects.
+- Test delta: backend 1317 → 1319 pass (+2 walker regression tests for pre-seeded-shell stall scenario); UI 160 → 160 pass (fixture rewrites only); installer 399 → 399 pass. Prompt-test state.json baselines (5 fixtures) rewritten to the new shape and verified against the schema.
+- Docs: `action-event-reference.md` Action #2a rewritten (iterations carry doc_path directly; no synthetic child nodes seeded). `full.yml` deprecation banner softened — stall risk is gone.
+
 ---
 
 ## Deviations from Design

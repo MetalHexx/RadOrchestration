@@ -125,69 +125,60 @@ const TASKS_FIXTURE = [
 ];
 
 /**
- * Pre-seeds `phase_planning` (phase iter) + `task_handoff` (task iter) child step nodes
- * with `status: 'completed'` and a `doc_path`, mirroring what the explosion script
- * (Iter 5) does at planning time. The task_loop iteration list is populated for
- * each phase using the supplied tasks fixture so the dag-walker doesn't need to
- * resolve tasks via doc-frontmatter expansion. Task body nodes (executor, gates,
- * etc.) are scaffolded as `not_started` so the walker can advance through them.
- *
- * Required post-Iter 7 because the in-loop `phase_planning` / `task_handoff`
- * authoring nodes were removed; downstream consumers (dag-walker doc-ref helper,
- * execute_task context enrichment) read the pre-seeded child nodes instead.
+ * Mirrors the production explosion script: wipes and re-seeds phase_loop with
+ * one iteration per entry in `phaseTasks`. Each phase iteration carries
+ * `doc_path = DOC_PATHS.phasePlan(n)` and a task_loop whose iterations carry
+ * `doc_path = DOC_PATHS.taskHandoff(p, t)` directly. Body nodes are not
+ * pre-scaffolded; the walker scaffolds them on each iteration's first
+ * in_progress transition.
  */
 function seedExplosionState(io: MockIO, phaseTasks: Array<typeof TASKS_FIXTURE>): void {
   const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+  phaseLoop.iterations = [];
+  phaseLoop.status = 'not_started';
   for (let pIdx = 0; pIdx < phaseTasks.length; pIdx++) {
     const phaseNum = pIdx + 1;
     const phaseDoc = DOC_PATHS.phasePlan(phaseNum);
     seedDoc(phaseDoc, { tasks: phaseTasks[pIdx] });
 
-    const phaseIter = phaseLoop.iterations[pIdx];
-    phaseIter.nodes['phase_planning'] = {
-      kind: 'step',
-      status: 'completed',
-      doc_path: phaseDoc,
-      retries: 0,
+    const taskLoop: ForEachTaskNodeState = {
+      kind: 'for_each_task',
+      status: 'not_started',
+      iterations: phaseTasks[pIdx].map((_, tIdx) => {
+        const handoffDoc = DOC_PATHS.taskHandoff(phaseNum, tIdx + 1);
+        seedDoc(handoffDoc);
+        return {
+          index: tIdx,
+          status: 'not_started' as const,
+          nodes: {},
+          corrective_tasks: [],
+          doc_path: handoffDoc,
+          commit_hash: null,
+        };
+      }),
     };
 
-    const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState;
-    taskLoop.iterations = phaseTasks[pIdx].map((_, tIdx) => {
-      const handoffDoc = DOC_PATHS.taskHandoff(phaseNum, tIdx + 1);
-      seedDoc(handoffDoc);
-      return {
-        index: tIdx,
-        status: 'not_started' as const,
-        nodes: {
-          task_handoff: {
-            kind: 'step' as const,
-            status: 'completed' as const,
-            doc_path: handoffDoc,
-            retries: 0,
-          },
-          task_executor: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-          commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
-          commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-          code_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-          task_gate: { kind: 'gate', status: 'not_started', gate_active: false },
-        },
-        corrective_tasks: [],
-        commit_hash: null,
-      };
+    phaseLoop.iterations.push({
+      index: pIdx,
+      status: 'not_started',
+      nodes: { task_loop: taskLoop },
+      corrective_tasks: [],
+      doc_path: phaseDoc,
+      commit_hash: null,
     });
   }
 }
 
 /**
- * Drives the planning tier from init through plan_approved. Mirrors Iter 5's
- * explosion-script seeding (phase_planning + task_handoff completed child nodes)
- * once `phase_loop` has been expanded by the walker, so subsequent test events
- * see the same state shape they would post-explosion in production.
+ * Drives the planning tier from init through plan_approved. Seeds the
+ * explosion state (phase iterations + task iterations with `doc_path` on each)
+ * before plan_approved fires, so the walker's first pass after plan_approved
+ * advances directly into the execution tier without a re-walk workaround.
  *
  * In 'autonomous' / 'task' / 'phase' gate modes, returns the first execution
  * action (`execute_task`). In 'ask' mode the walker halts at the
- * `gate_mode_selection` gate before phase_loop expansion happens; the test must
- * dispatch `gate_mode_set` and then call `seedExplosionState` itself.
+ * `gate_mode_selection` gate before advancing; the test must dispatch
+ * `gate_mode_set` itself.
  */
 function drivePlanningTier(io: MockIO): PipelineResult {
   // Init scaffold
@@ -198,25 +189,12 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   seedDoc(DOC_PATHS.masterPlan, { total_phases: 2, total_tasks: 4 });
   processEvent('master_plan_completed', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 
-  // plan_approved → triggers phase_loop expansion on the next walker invocation
-  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
-
-  // If phase_loop did not expand (e.g., 'ask' mode halted at gate_mode_selection),
-  // return early without seeding — the caller will drive the gate event and
-  // call seedExplosionState themselves.
-  const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-  if (phaseLoop.iterations.length === 0) {
-    return result;
-  }
-
-  // Mirror Iter 5's explosion-script seeding: populate phase_planning + task_handoff
-  // child nodes with status: 'completed' and doc_path so the walker can resolve
-  // task_loop tasks from $.current_phase.doc_path and execute_task can read the
-  // pre-seeded handoff_doc.
+  // Mirror the production explosion script: seed phase_loop iterations with
+  // doc_path on each iteration + task_loop.iterations BEFORE plan_approved so
+  // the walker can advance through phase_loop in a single pass.
   seedExplosionState(io, [TASKS_FIXTURE, TASKS_FIXTURE]);
 
-  // Re-trigger the walker now that explosion seeding is in place.
-  return processEvent('start', PROJECT_DIR, {}, io);
+  return processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 }
 
 /**
@@ -295,8 +273,8 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // ── Planning tier (drives master_plan + plan_approved + explosion seeding) ──
     result = drivePlanningTier(io);
     expect(result.success).toBe(true);
-    // Post-Iter 7: with phase_planning + task_handoff pre-seeded as completed by
-    // the explosion script, the walker advances directly to the first task executor.
+    // Post-unify: iterations carry doc_path directly; walker scaffolds body
+    // nodes and advances straight to the first task executor.
     expect(result.action).toBe('execute_task');
 
     // ── Verify phase_loop expansion + explosion seeding ──────────────────
@@ -306,11 +284,11 @@ describe('Execution-tier integration — complete pipeline run', () => {
       expect(phaseLoop.iterations).toHaveLength(2);
       expect(phaseLoop.iterations[0].index).toBe(0);
       expect(phaseLoop.iterations[1].index).toBe(1);
-      // phase_planning + task_loop iterations seeded by seedExplosionState
-      expect(phaseLoop.iterations[0].nodes['phase_planning'].status).toBe('completed');
+      // Each phase iteration carries doc_path directly; task iterations do too.
+      expect(phaseLoop.iterations[0].doc_path).toBe(DOC_PATHS.phasePlan(1));
       const taskLoop0 = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
       expect(taskLoop0.iterations).toHaveLength(2);
-      expect(taskLoop0.iterations[0].nodes['task_handoff'].status).toBe('completed');
+      expect(taskLoop0.iterations[0].doc_path).toBe(DOC_PATHS.taskHandoff(1, 1));
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -533,19 +511,16 @@ describe('Execution-tier integration — complete pipeline run', () => {
     signal('master_plan_started');
     seedDoc(DOC_PATHS.masterPlan, { total_phases: 1, total_tasks: 1 });
     signal('master_plan_completed', { doc_path: DOC_PATHS.masterPlan });
-    signal('plan_approved', { doc_path: DOC_PATHS.masterPlan });
 
-    // Simulate the explosion-script's pre-seeding of phase_planning + task_handoff
-    // child step nodes. (In production Iter 5 + Iter 2a wiring handles this via
-    // the explode_master_plan action; the test covers the shape the walker sees
-    // afterward.)
+    // Simulate the explosion-script's pre-seeding: iterations carry doc_path
+    // directly. Seed before plan_approved so the walker's first pass after
+    // plan_approved advances straight into execute_task.
     const oneTask = [{ id: 'T01', title: 'Task 1' }];
     seedExplosionState(io, [oneTask]);
 
-    // Re-trigger walker post-seeding and drive the single task through execution
-    const postSeed = signal('start');
-    expect(postSeed.success).toBe(true);
-    expect(postSeed.action).toBe('execute_task');
+    const planApproved = signal('plan_approved', { doc_path: DOC_PATHS.masterPlan });
+    expect(planApproved.success).toBe(true);
+    expect(planApproved.action).toBe('execute_task');
 
     const ctx = { phase: 1, task: 1 };
     signal('execution_started', ctx);
@@ -579,13 +554,12 @@ describe('Execution-tier integration — complete pipeline run', () => {
       expect(dispatched).not.toContain(evt);
     }
 
-    // And the execute_task context reads the pre-seeded handoff doc (via the
-    // execute_task enrichment block in context-enrichment.ts).
+    // And the execute_task context reads the pre-seeded handoff doc from the
+    // task iteration's doc_path (see execute_task enrichment in
+    // context-enrichment.ts).
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
-    const taskHandoffNode = taskLoop.iterations[0].nodes['task_handoff'] as StepNodeState;
-    expect(taskHandoffNode.status).toBe('completed');
-    expect(taskHandoffNode.doc_path).toBe(DOC_PATHS.taskHandoff(1, 1));
+    expect(taskLoop.iterations[0].doc_path).toBe(DOC_PATHS.taskHandoff(1, 1));
   });
 });
 

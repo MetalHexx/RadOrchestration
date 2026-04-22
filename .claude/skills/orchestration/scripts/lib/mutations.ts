@@ -484,16 +484,6 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
     for (const bodyDef of bodyDefs) {
       nodes[bodyDef.id] = scaffoldNodeState(bodyDef);
     }
-    // Pre-complete the task_handoff sub-node at the orchestrator-supplied path.
-    // Mirrors the iter-10 code_review corrective birth shape: subsequent walker
-    // entry into this corrective sees a completed handoff and proceeds directly
-    // to execute_task, skipping any handoff-authoring step.
-    nodes['task_handoff'] = {
-      kind: 'step',
-      status: 'completed',
-      doc_path: trimmedHandoffPath,
-      retries: 0,
-    };
 
     const entry: CorrectiveTaskEntry = {
       index: correctiveCount + 1,
@@ -501,11 +491,12 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
       injected_after: 'phase_review',
       status: 'not_started',
       nodes,
+      doc_path: trimmedHandoffPath,
       commit_hash: null,
     };
     iteration.corrective_tasks.push(entry);
     mutations_applied.push(`injected phase corrective task ${entry.index} (changes_requested)`);
-    mutations_applied.push(`set phase_corrective_task[${entry.index}].task_handoff.doc_path = ${trimmedHandoffPath}`);
+    mutations_applied.push(`set phase_corrective_task[${entry.index}].doc_path = ${trimmedHandoffPath}`);
     mutations_applied.push(`phase corrective_tasks.length = ${iteration.corrective_tasks.length}`);
   } else if (routingVerdict === REVIEW_VERDICTS.REJECTED) {
     const iteration = resolvePhaseIteration(cloned, phase);
@@ -902,16 +893,6 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
     for (const bodyDef of bodyDefs) {
       nodes[bodyDef.id] = scaffoldNodeState(bodyDef);
     }
-    // Pre-complete the task_handoff sub-node at the orchestrator-supplied path.
-    // Mirrors the post-explosion seeding shape (explode-master-plan.ts:598-610):
-    // subsequent walker entry into this corrective sees a completed handoff and
-    // proceeds directly to execute_task, skipping any handoff-authoring step.
-    nodes['task_handoff'] = {
-      kind: 'step',
-      status: 'completed',
-      doc_path: trimmedHandoffPath,
-      retries: 0,
-    };
 
     const entry: CorrectiveTaskEntry = {
       index: correctiveCount + 1,
@@ -919,11 +900,12 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
       injected_after: 'code_review',
       status: 'not_started',
       nodes,
+      doc_path: trimmedHandoffPath,
       commit_hash: null,
     };
     iteration.corrective_tasks.push(entry);
     mutations_applied.push(`injected corrective task ${entry.index} (changes_requested, scope=${scope})`);
-    mutations_applied.push(`set corrective_task[${entry.index}].task_handoff.doc_path = ${trimmedHandoffPath}`);
+    mutations_applied.push(`set corrective_task[${entry.index}].doc_path = ${trimmedHandoffPath}`);
     mutations_applied.push(`corrective_tasks.length = ${iteration.corrective_tasks.length} (scope=${scope})`);
   } else if (routingVerdict === REVIEW_VERDICTS.REJECTED) {
     // Iter 11 — the rejected verdict must halt the hosting iteration, not the

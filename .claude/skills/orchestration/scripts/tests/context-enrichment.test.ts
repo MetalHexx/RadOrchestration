@@ -952,29 +952,17 @@ describe('enrichActionContext — execute_task: active corrective handoff routin
               {
                 index: 0,
                 status: 'in_progress',
-                nodes: {
-                  task_handoff: {
-                    kind: 'step',
-                    status: 'completed',
-                    doc_path: ORIG_HANDOFF,
-                    retries: 0,
-                  } as StepNodeState,
-                },
+                nodes: {},
                 corrective_tasks: correctives.map(c => ({
                   index: c.index,
                   reason: 'changes_requested',
                   injected_after: 'code_review',
                   status: c.status,
-                  nodes: {
-                    task_handoff: {
-                      kind: 'step',
-                      status: 'completed',
-                      doc_path: c.doc_path,
-                      retries: 0,
-                    } as StepNodeState,
-                  },
+                  nodes: {},
+                  doc_path: c.doc_path,
                   commit_hash: null,
                 })),
+                doc_path: ORIG_HANDOFF,
                 commit_hash: null,
               },
             ],
@@ -1104,29 +1092,17 @@ describe('enrichActionContext — Iter 11 phase-scope corrective routing', () =>
               {
                 index: 0,
                 status: 'in_progress',
-                nodes: {
-                  task_handoff: {
-                    kind: 'step',
-                    status: 'completed',
-                    doc_path: ORIG_TASK_HANDOFF,
-                    retries: 0,
-                  } as StepNodeState,
-                },
+                nodes: {},
                 corrective_tasks: (opts.taskCorrectives ?? []).map(c => ({
                   index: c.index,
                   reason: 'changes_requested',
                   injected_after: 'code_review',
                   status: c.status,
-                  nodes: {
-                    task_handoff: {
-                      kind: 'step',
-                      status: 'completed',
-                      doc_path: c.doc_path,
-                      retries: 0,
-                    } as StepNodeState,
-                  },
+                  nodes: {},
+                  doc_path: c.doc_path,
                   commit_hash: null,
                 })),
+                doc_path: ORIG_TASK_HANDOFF,
                 commit_hash: 'task_base_commit',
               },
             ],
@@ -1137,14 +1113,8 @@ describe('enrichActionContext — Iter 11 phase-scope corrective routing', () =>
           reason: 'Phase review requested changes',
           injected_after: 'phase_review',
           status: c.status,
-          nodes: {
-            task_handoff: {
-              kind: 'step',
-              status: 'completed',
-              doc_path: c.doc_path,
-              retries: 0,
-            } as StepNodeState,
-          },
+          nodes: {},
+          doc_path: c.doc_path,
           commit_hash: c.commit_hash ?? null,
         })),
         commit_hash: null,

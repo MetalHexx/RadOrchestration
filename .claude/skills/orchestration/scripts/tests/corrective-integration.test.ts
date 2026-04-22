@@ -128,55 +128,52 @@ const TASKS_FIXTURE = [
 ];
 
 /**
- * Pre-seeds phase_planning + task_handoff iteration child nodes (mirroring the
- * Iter 5 explosion-script post-condition) so the walker can advance into the
- * execution tier without per-loop authoring events.
+ * Mirrors the explosion script post-condition: wipes and re-seeds phase_loop
+ * with one iteration per entry in `phaseTasks`. Each phase iteration carries
+ * `doc_path` directly, and each task iteration carries `doc_path` directly.
+ * Body nodes are not pre-scaffolded — the walker scaffolds them on first
+ * in_progress transition.
  */
 function seedExplosionState(io: MockIO, phaseTasks: Array<typeof TASKS_FIXTURE>): void {
   const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+  phaseLoop.iterations = [];
+  phaseLoop.status = 'not_started';
   for (let pIdx = 0; pIdx < phaseTasks.length; pIdx++) {
     const phaseNum = pIdx + 1;
     const phaseDoc = DOC_PATHS.phasePlan(phaseNum);
     seedDoc(phaseDoc, { tasks: phaseTasks[pIdx] });
 
-    const phaseIter = phaseLoop.iterations[pIdx];
-    phaseIter.nodes['phase_planning'] = {
-      kind: 'step',
-      status: 'completed',
-      doc_path: phaseDoc,
-      retries: 0,
+    const taskLoop: ForEachTaskNodeState = {
+      kind: 'for_each_task',
+      status: 'not_started',
+      iterations: phaseTasks[pIdx].map((_, tIdx) => {
+        const handoffDoc = DOC_PATHS.taskHandoff(phaseNum, tIdx + 1);
+        seedDoc(handoffDoc);
+        return {
+          index: tIdx,
+          status: 'not_started' as const,
+          nodes: {},
+          corrective_tasks: [],
+          doc_path: handoffDoc,
+          commit_hash: null,
+        };
+      }),
     };
 
-    const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState;
-    taskLoop.iterations = phaseTasks[pIdx].map((_, tIdx) => {
-      const handoffDoc = DOC_PATHS.taskHandoff(phaseNum, tIdx + 1);
-      seedDoc(handoffDoc);
-      return {
-        index: tIdx,
-        status: 'not_started' as const,
-        nodes: {
-          task_handoff: {
-            kind: 'step' as const,
-            status: 'completed' as const,
-            doc_path: handoffDoc,
-            retries: 0,
-          },
-          task_executor: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-          commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
-          commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-          code_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-          task_gate: { kind: 'gate', status: 'not_started', gate_active: false },
-        },
-        corrective_tasks: [],
-        commit_hash: null,
-      };
+    phaseLoop.iterations.push({
+      index: pIdx,
+      status: 'not_started',
+      nodes: { task_loop: taskLoop },
+      corrective_tasks: [],
+      doc_path: phaseDoc,
+      commit_hash: null,
     });
   }
 }
 
 /**
- * Drives the planning tier from init through plan_approved AND the post-Iter-5
- * explosion-script seeding, leaving the pipeline at the first execution action
+ * Drives the planning tier from init through plan_approved AND the explosion
+ * seeding, leaving the pipeline at the first execution action
  * (`execute_task`). Returns that first result.
  */
 function drivePlanningTier(io: MockIO): PipelineResult {
@@ -188,13 +185,10 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   seedDoc(DOC_PATHS.masterPlan, { total_phases: 2, total_tasks: 4 });
   processEvent('master_plan_completed', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 
-  // plan_approved → triggers phase_loop expansion on the next walker invocation
-  processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
-
-  // Mirror Iter 5's explosion seeding then re-walk so subsequent events see
-  // a state shape consistent with post-explosion production.
+  // Seed explosion state BEFORE plan_approved so the walker's first pass
+  // after plan_approved advances through phase_loop in a single walk.
   seedExplosionState(io, [TASKS_FIXTURE, TASKS_FIXTURE]);
-  return processEvent('start', PROJECT_DIR, {}, io);
+  return processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 }
 
 /**
@@ -423,14 +417,8 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
       expect(ct.injected_after).toBe('code_review');
       expect(ct.reason).toBe('Code review requested changes');
       expect(ct.status).toBe('in_progress'); // walker promotes not_started → in_progress
-      // Iter 10 — synthesized task_handoff shape (birth-on-handoff-path).
-      const taskHandoff = ct.nodes['task_handoff'] as StepNodeState;
-      expect(taskHandoff).toEqual({
-        kind: 'step',
-        status: 'completed',
-        doc_path: DOC_PATHS.correctiveHandoff(1, 1, 1),
-        retries: 0,
-      });
+      // Corrective entry carries the handoff path directly on doc_path.
+      expect(ct.doc_path).toBe(DOC_PATHS.correctiveHandoff(1, 1, 1));
     }
 
     // ── Drive corrective task 1 with approve ─────────────────────────────
@@ -549,15 +537,11 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
       });
       expect(enrichedReviewer.is_correction).toBe(true);
       expect(enrichedReviewer.corrective_index).toBe(1);
-      // Synthesized task_handoff shape on corrective 1
+      // Corrective 1 carries the supplied handoff path directly on doc_path.
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
-      expect((taskLoop.iterations[0].corrective_tasks[0].nodes['task_handoff'] as StepNodeState)).toEqual({
-        kind: 'step',
-        status: 'completed',
-        doc_path: DOC_PATHS.correctiveHandoff(1, 1, 1),
-        retries: 0,
-      });
+      expect(taskLoop.iterations[0].corrective_tasks[0].doc_path)
+        .toBe(DOC_PATHS.correctiveHandoff(1, 1, 1));
     }
 
     // Corrective task 1 — also changes_requested → births corrective 2
@@ -573,11 +557,9 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
       expect(iteration.corrective_tasks).toHaveLength(2);
       expect(iteration.corrective_tasks[0].index).toBe(1);
       expect(iteration.corrective_tasks[1].index).toBe(2);
-      // Synthesized handoffs — each corrective carries its own path.
-      expect((iteration.corrective_tasks[0].nodes['task_handoff'] as StepNodeState).doc_path)
-        .toBe(DOC_PATHS.correctiveHandoff(1, 1, 1));
-      expect((iteration.corrective_tasks[1].nodes['task_handoff'] as StepNodeState).doc_path)
-        .toBe(DOC_PATHS.correctiveHandoff(1, 1, 2));
+      // Each corrective carries its own handoff path directly on doc_path.
+      expect(iteration.corrective_tasks[0].doc_path).toBe(DOC_PATHS.correctiveHandoff(1, 1, 1));
+      expect(iteration.corrective_tasks[1].doc_path).toBe(DOC_PATHS.correctiveHandoff(1, 1, 2));
     }
 
     // Iter 10 round-2 persistence: after the second corrective is born and
@@ -871,10 +853,10 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
       expect(ct.injected_after).toBe('phase_review');
       expect(ct.reason).toBe('Phase review requested changes');
       expect(ct.status).toBe('in_progress'); // walker promotes not_started → in_progress
-      // Synthesized task_handoff pre-completed at the orchestrator path.
-      expect((ct.nodes['task_handoff'] as StepNodeState).doc_path).toBe(handoffPath);
-      // Iter 11 append-only: phase_planning / task_loop are NOT reset.
-      expect(iteration.nodes['phase_planning'].status).toBe('completed');
+      // Corrective entry carries the handoff path directly on doc_path.
+      expect(ct.doc_path).toBe(handoffPath);
+      // Iter 11 append-only: phase iteration's doc_path + task_loop NOT reset.
+      expect(iteration.doc_path).toBeDefined();
       const taskLoop = iteration.nodes['task_loop'] as ForEachTaskNodeState;
       expect(taskLoop.iterations).toHaveLength(2);
       expect(taskLoop.iterations[0].status).toBe('completed');
@@ -944,8 +926,8 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
       expect(phaseIter.corrective_tasks).toHaveLength(2);
       expect(phaseIter.corrective_tasks[0].index).toBe(1);
       expect(phaseIter.corrective_tasks[1].index).toBe(2);
-      expect((phaseIter.corrective_tasks[0].nodes['task_handoff'] as StepNodeState).doc_path).toBe(h1);
-      expect((phaseIter.corrective_tasks[1].nodes['task_handoff'] as StepNodeState).doc_path).toBe(h2);
+      expect(phaseIter.corrective_tasks[0].doc_path).toBe(h1);
+      expect(phaseIter.corrective_tasks[1].doc_path).toBe(h2);
 
       // Task-scope has no correctives (ancestor-derivation routed to phase).
       const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState;

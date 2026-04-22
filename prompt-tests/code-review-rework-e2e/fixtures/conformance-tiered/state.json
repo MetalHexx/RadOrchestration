@@ -66,12 +66,6 @@
             "index": 0,
             "status": "in_progress",
             "nodes": {
-              "phase_planning": {
-                "kind": "step",
-                "status": "completed",
-                "doc_path": "phases/CONFORMANCE-TIERED-PHASE-01-CORE-FLOW.md",
-                "retries": 0
-              },
               "task_loop": {
                 "kind": "for_each_task",
                 "status": "in_progress",
@@ -80,12 +74,6 @@
                     "index": 0,
                     "status": "completed",
                     "nodes": {
-                      "task_handoff": {
-                        "kind": "step",
-                        "status": "completed",
-                        "doc_path": "tasks/CONFORMANCE-TIERED-TASK-P01-T01-COLORS.md",
-                        "retries": 0
-                      },
                       "task_executor": {
                         "kind": "step",
                         "status": "completed",
@@ -111,18 +99,13 @@
                       }
                     },
                     "corrective_tasks": [],
+                    "doc_path": "tasks/CONFORMANCE-TIERED-TASK-P01-T01-COLORS.md",
                     "commit_hash": null
                   },
                   {
                     "index": 1,
                     "status": "in_progress",
                     "nodes": {
-                      "task_handoff": {
-                        "kind": "step",
-                        "status": "completed",
-                        "doc_path": "tasks/CONFORMANCE-TIERED-TASK-P01-T02-GREETING.md",
-                        "retries": 0
-                      },
                       "task_executor": {
                         "kind": "step",
                         "status": "completed",
@@ -147,6 +130,7 @@
                       }
                     },
                     "corrective_tasks": [],
+                    "doc_path": "tasks/CONFORMANCE-TIERED-TASK-P01-T02-GREETING.md",
                     "commit_hash": null
                   }
                 ]
@@ -164,6 +148,7 @@
               }
             },
             "corrective_tasks": [],
+            "doc_path": "phases/CONFORMANCE-TIERED-PHASE-01-CORE-FLOW.md",
             "commit_hash": null
           }
         ]

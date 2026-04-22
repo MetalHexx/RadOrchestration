@@ -19,6 +19,7 @@ import type {
   ForEachTaskNodeDef,
   ForEachTaskNodeState,
   GraphState,
+  IterationEntry,
 } from './types.js';
 import { NODE_STATUSES, NEXT_ACTIONS, GRAPH_STATUSES } from './constants.js';
 import { evaluateCondition } from './condition-evaluator.js';
@@ -109,21 +110,16 @@ function resolveStateRef(ref: string, graphState: GraphState): unknown {
 }
 
 /**
- * Resolves a source_doc_ref within a scope's node map. Handles
- * "$.current_phase.{field}" by reading from the sibling "phase_planning" node.
- * NOTE: {field} must be a single-level key (e.g., "doc_path"). Nested dot-paths
- * like "metadata.doc_path" are treated as a single key, not navigated.
+ * Resolves a source_doc_ref within a scope. Handles "$.current_phase.doc_path"
+ * by reading from the enclosing phase iteration's `doc_path` field.
  */
 function resolveDocRefInScope(
   ref: string,
-  scopeNodes: Record<string, NodeState>,
   graphState: GraphState,
+  currentIteration: IterationEntry | undefined,
 ): unknown {
-  if (ref.startsWith('$.current_phase.')) {
-    const field = ref.slice('$.current_phase.'.length);
-    const phaseNode = scopeNodes['phase_planning'];
-    if (!phaseNode) return undefined;
-    return (phaseNode as unknown as Record<string, unknown>)[field];
+  if (ref === '$.current_phase.doc_path') {
+    return currentIteration?.doc_path ?? undefined;
   }
   return resolveStateRef(ref, graphState);
 }
@@ -149,6 +145,14 @@ function walkForEachIterations(
     }
     if (iteration.status === NODE_STATUSES.NOT_STARTED) {
       iteration.status = NODE_STATUSES.IN_PROGRESS;
+      // Scaffold any missing body nodes on first in_progress transition.
+      // Iterate in template declaration order so iteration.nodes keys
+      // are inserted in that order (the UI renders by insertion order).
+      for (const bodyDef of fepDef.body) {
+        if (!(bodyDef.id in iteration.nodes)) {
+          iteration.nodes[bodyDef.id] = scaffoldNodeState(bodyDef);
+        }
+      }
     }
 
     // Corrective path routing: walk corrective task nodes instead of body nodes
@@ -177,7 +181,7 @@ function walkForEachIterations(
         correctiveBodyDefs = fepDef.body;
       }
 
-      const correctiveResult = walkNodes(correctiveBodyDefs, latestCorrective.nodes, config, state, readDocument);
+      const correctiveResult = walkNodes(correctiveBodyDefs, latestCorrective.nodes, config, state, readDocument, iteration);
       if (correctiveResult !== null) {
         return correctiveResult;
       }
@@ -197,7 +201,7 @@ function walkForEachIterations(
       return null;
     }
 
-    const bodyResult = walkNodes(fepDef.body, iteration.nodes, config, state, readDocument);
+    const bodyResult = walkNodes(fepDef.body, iteration.nodes, config, state, readDocument, iteration);
     if (bodyResult !== null) {
       return bodyResult;
     }
@@ -229,6 +233,7 @@ function walkNodes(
   config: OrchestrationConfig,
   state: PipelineState,
   readDocument?: (docPath: string) => { frontmatter: Record<string, unknown> } | null,
+  currentIteration?: IterationEntry,
 ): WalkerResult | null {
   for (const nodeDef of nodeDefs) {
     const nodeState = nodes[nodeDef.id];
@@ -277,7 +282,7 @@ function walkNodes(
           condState.status = NODE_STATUSES.COMPLETED;
           continue;
         }
-        return walkNodes(branchNodes, nodes, config, state, readDocument);
+        return walkNodes(branchNodes, nodes, config, state, readDocument, currentIteration);
       }
 
       // Parallel in_progress: walk children sequentially
@@ -296,7 +301,7 @@ function walkNodes(
           parallelState.status = NODE_STATUSES.COMPLETED;
           continue;
         }
-        return walkNodes(parallelDef.children, parallelState.nodes, config, state, readDocument);
+        return walkNodes(parallelDef.children, parallelState.nodes, config, state, readDocument, currentIteration);
       }
 
       // for_each_phase in_progress: walk iterations sequentially
@@ -427,7 +432,7 @@ function walkNodes(
             nodes[branchNode.id] = scaffoldNodeState(branchNode);
           }
         }
-        return walkNodes(branchNodes, nodes, config, state, readDocument);
+        return walkNodes(branchNodes, nodes, config, state, readDocument, currentIteration);
       }
 
       // Parallel node
@@ -440,7 +445,7 @@ function walkNodes(
             parallelState.nodes[child.id] = scaffoldNodeState(child);
           }
         }
-        return walkNodes(parallelDef.children, parallelState.nodes, config, state, readDocument);
+        return walkNodes(parallelDef.children, parallelState.nodes, config, state, readDocument, currentIteration);
       }
 
       // for_each_phase node
@@ -474,7 +479,11 @@ function walkNodes(
           // Cap at configured limit to avoid unbounded expansion
           const cappedTotal = Math.min(totalValue, config.limits.max_phases);
 
-          // Create iterations with scaffolded body nodes
+          // Pre-scaffold body nodes on walker-driven expansion. This keeps
+          // the non-explosion (default.yml) flow consistent with existing
+          // fixture expectations. Explosion-pre-seeded iterations take the
+          // walkForEachIterations path, which also scaffolds missing body
+          // nodes on first in_progress transition.
           for (let i = 0; i < cappedTotal; i++) {
             const iterationNodes: Record<string, NodeState> = {};
             for (const bodyDef of fepDef.body) {
@@ -489,8 +498,12 @@ function walkNodes(
             });
           }
 
-          fepState.status = NODE_STATUSES.IN_PROGRESS;
         }
+
+        // Container transitions to in_progress once we're about to walk into
+        // iterations — whether they were just expanded or pre-seeded by the
+        // explosion script.
+        fepState.status = NODE_STATUSES.IN_PROGRESS;
 
         // Walk into first iteration (fall through to in_progress logic)
         const iterResult = walkForEachIterations(fepDef, fepState, config, state, readDocument);
@@ -512,8 +525,10 @@ function walkNodes(
             return null;
           }
 
-          // Resolve source_doc_ref within the current scope
-          const docPath = resolveDocRefInScope(fetDef.source_doc_ref, nodes, state.graph);
+          // Resolve source_doc_ref within the current scope. For
+          // "$.current_phase.doc_path" the doc_path is read from the enclosing
+          // phase iteration carried via currentIteration.
+          const docPath = resolveDocRefInScope(fetDef.source_doc_ref, state.graph, currentIteration);
           if (typeof docPath !== 'string') {
             return null;
           }
@@ -538,7 +553,8 @@ function walkNodes(
           // Cap at configured limit to avoid unbounded expansion
           const cappedLength = Math.min(tasksValue.length, config.limits.max_tasks_per_phase);
 
-          // Create one iteration per array element
+          // Pre-scaffold body nodes on walker-driven expansion. See the
+          // equivalent for_each_phase comment above.
           for (let i = 0; i < cappedLength; i++) {
             const iterationNodes: Record<string, NodeState> = {};
             for (const bodyDef of fetDef.body) {
@@ -553,8 +569,11 @@ function walkNodes(
             });
           }
 
-          fetState.status = NODE_STATUSES.IN_PROGRESS;
         }
+
+        // Container transitions to in_progress once we're about to walk into
+        // iterations — whether they were just expanded or pre-seeded.
+        fetState.status = NODE_STATUSES.IN_PROGRESS;
 
         // Walk into iterations
         const iterResult = walkForEachIterations(fetDef, fetState, config, state, readDocument);

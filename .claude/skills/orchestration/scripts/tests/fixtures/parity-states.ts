@@ -200,13 +200,10 @@ const TASK_FIXTURES = [
 ];
 
 /**
- * Pre-seeds `phase_planning` (phase iter) + `task_handoff` (task iter) child step
- * nodes with `status: 'completed'` and a `doc_path`, and populates the
- * `task_loop.iterations` list with scaffolded body nodes — mirroring what the
- * explosion script (Iter 5) does at planning time. Required post-Iter 7 since
- * the in-loop authoring nodes were removed; downstream consumers (dag-walker
- * doc-ref helper, execute_task context enrichment) read the pre-seeded child
- * nodes instead.
+ * Pre-seeds each phase iteration with `doc_path = phasePlanDoc(n)` and a
+ * scaffolded `task_loop` child; each task iteration carries
+ * `doc_path = taskHandoffDoc(p, t)` directly. Body nodes are not scaffolded;
+ * the walker scaffolds them on first in_progress transition.
  *
  * `tasksPerPhase` defaults to 2 — the shape most integration tests expect.
  * Tests that exercise single-task gate behavior pass `1` explicitly.
@@ -229,12 +226,7 @@ export function seedExplosionStateFor(
     seedDoc(phaseDoc, { tasks });
 
     const phaseIter = phaseLoop.iterations[pIdx];
-    phaseIter.nodes['phase_planning'] = {
-      kind: 'step',
-      status: 'completed',
-      doc_path: phaseDoc,
-      retries: 0,
-    };
+    phaseIter.doc_path = phaseDoc;
 
     const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState;
     taskLoop.iterations = tasks.map((_, tIdx) => {
@@ -243,20 +235,9 @@ export function seedExplosionStateFor(
       return {
         index: tIdx,
         status: 'not_started' as const,
-        nodes: {
-          task_handoff: {
-            kind: 'step' as const,
-            status: 'completed' as const,
-            doc_path: handoffDoc,
-            retries: 0,
-          },
-          task_executor: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-          commit_gate: { kind: 'conditional', status: 'not_started', branch_taken: null },
-          commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-          code_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-          task_gate: { kind: 'gate', status: 'not_started', gate_active: false },
-        },
+        nodes: {},
         corrective_tasks: [],
+        doc_path: handoffDoc,
         commit_hash: null,
       };
     });

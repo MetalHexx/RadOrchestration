@@ -57,18 +57,23 @@ export function DAGIterationPanel({
   const commitData = getCommitLinkData(iteration.commit_hash, repoBaseUrl);
   const correctiveGroupParentId = buildCorrectiveGroupParentId(parentNodeId, iterationIndex);
 
-  // Derive iteration name from child node doc path
+  // Derive iteration name from iteration.doc_path (post-unify) with a
+  // fallback to the legacy per-iteration synthetic nodes
+  // (`phase_planning` / `task_handoff`) so existing completed projects
+  // browsed via the UI keep their labels.
   let iterationName: string;
   let isFallback: boolean;
 
   if (parentKind === 'for_each_phase') {
     const phaseNode = iteration.nodes['phase_planning'];
-    const docPath = (phaseNode && 'doc_path' in phaseNode) ? phaseNode.doc_path : null;
+    const legacyDocPath = (phaseNode && 'doc_path' in phaseNode) ? phaseNode.doc_path : null;
+    const docPath = iteration.doc_path ?? legacyDocPath ?? null;
     isFallback = !docPath;
     iterationName = parsePhaseNameFromDocPath(docPath, iterationIndex);
   } else {
     const taskNode = iteration.nodes['task_handoff'];
-    const docPath = (taskNode && 'doc_path' in taskNode) ? taskNode.doc_path : null;
+    const legacyDocPath = (taskNode && 'doc_path' in taskNode) ? taskNode.doc_path : null;
+    const docPath = iteration.doc_path ?? legacyDocPath ?? null;
     isFallback = !docPath;
     iterationName = parseTaskNameFromDocPath(docPath, iterationIndex);
   }

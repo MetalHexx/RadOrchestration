@@ -388,6 +388,11 @@
             "$ref": "#/definitions/CorrectiveTaskEntry"
           }
         },
+        "doc_path": {
+          "title": "Iteration Doc Path",
+          "description": "Relative path to the authoring doc for this iteration (phase plan or task handoff). Optional; absent on iterations that have not yet been authored.",
+          "type": ["string", "null"]
+        },
         "commit_hash": {
           "title": "Commit Hash",
           "description": "Per-task commit hash set by the COMMIT_COMPLETED mutation, or null if no commit has been made for this iteration.",
@@ -430,6 +435,11 @@
           "title": "Corrective Task Nodes",
           "description": "Map of node IDs to their execution state for this corrective task.",
           "$ref": "#/definitions/NodesRecord"
+        },
+        "doc_path": {
+          "title": "Corrective Task Doc Path",
+          "description": "Relative path to the corrective task handoff doc. Optional; absent on entries that have not yet been authored.",
+          "type": ["string", "null"]
         },
         "commit_hash": {
           "title": "Commit Hash",

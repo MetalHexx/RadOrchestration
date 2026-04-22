@@ -296,18 +296,12 @@ describe('[CONTRACT] State Mutations — Code review completed mutations', () =>
     const taskIterCorrectives = taskLoop.iterations[0].corrective_tasks;
     expect(codeReviewNode.verdict).toBe('changes_requested');
     expect(taskIterCorrectives.length).toBeGreaterThanOrEqual(1);
-    // Synthesized task_handoff on the newly birthed corrective
-    const correctiveHandoff = taskIterCorrectives[0].nodes['task_handoff'] as StepNodeState;
-    expect(correctiveHandoff).toEqual({
-      kind: 'step',
-      status: 'completed',
-      doc_path: correctiveHandoffPath,
-      retries: 0,
-    });
+    // Corrective handoff path stored directly on the entry.
+    expect(taskIterCorrectives[0].doc_path).toBe(correctiveHandoffPath);
     expect(result.mutations_applied.some((m) => m.includes('corrective') || m.includes('changes_requested'))).toBe(true);
   });
 
-  it('code_review_completed (Iter 10 — birth on handoff path): corrective task_handoff sub-node pre-completed at supplied path', () => {
+  it('code_review_completed (Iter 10 — birth on handoff path): corrective doc_path set to supplied path', () => {
     const io = driveToCodeReviewPosition();
     const ctx = { phase: 1, task: 1 };
     const correctiveHandoffPath = 'tasks/corrective-P01-T01-C1.md';
@@ -331,16 +325,10 @@ describe('[CONTRACT] State Mutations — Code review completed mutations', () =>
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
     const corrective = taskLoop.iterations[0].corrective_tasks[0];
-    // Synthesized task_handoff sub-node — status=completed, doc_path=supplied path
-    const correctiveHandoff = corrective.nodes['task_handoff'] as StepNodeState;
-    expect(correctiveHandoff).toEqual({
-      kind: 'step',
-      status: 'completed',
-      doc_path: correctiveHandoffPath,
-      retries: 0,
-    });
-    // Mutation-applied log should reference the birth + handoff-path write.
-    expect(result.mutations_applied.some((m) => m.includes('task_handoff.doc_path'))).toBe(true);
+    // Corrective entry's doc_path is the supplied handoff path.
+    expect(corrective.doc_path).toBe(correctiveHandoffPath);
+    // Mutation-applied log references the doc_path write.
+    expect(result.mutations_applied.some((m) => m.includes('doc_path'))).toBe(true);
   });
 
   it('code_review_completed (rejected): verdict=rejected, graph.status=halted', () => {
@@ -418,12 +406,10 @@ describe('[CONTRACT] State Mutations — Phase review completed mutations', () =
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     const phaseIter = phaseLoop.iterations[0];
     expect(phaseIter.corrective_tasks.length).toBeGreaterThanOrEqual(1);
-    // Iter 11 append-only — phase_planning / task_loop NOT reset.
-    const phasePlanning = phaseIter.nodes['phase_planning'] as StepNodeState;
-    expect(phasePlanning.status).toBe('completed');
-    // Synthesized task_handoff pre-completed at the orchestrator path.
-    const handoff = phaseIter.corrective_tasks[0].nodes['task_handoff'] as StepNodeState;
-    expect(handoff.doc_path).toBe(correctiveHandoffPath);
+    // Iter 11 append-only — phase iteration's doc_path + task_loop NOT reset.
+    expect(phaseIter.doc_path).toBeDefined();
+    // Corrective handoff path stored directly on the entry.
+    expect(phaseIter.corrective_tasks[0].doc_path).toBe(correctiveHandoffPath);
     expect(result.mutations_applied.some((m) => m.includes('corrective') || m.includes('phase corrective'))).toBe(true);
   });
 
@@ -452,7 +438,7 @@ describe('[CONTRACT] State Mutations — Phase review completed mutations', () =
     expect(result.success).toBe(true);
     // The mutation log emits the birth entry AND the handoff-path assignment.
     expect(result.mutations_applied.some(m => /injected phase corrective task 1 \(changes_requested\)/.test(m))).toBe(true);
-    expect(result.mutations_applied.some(m => /phase_corrective_task\[1\]\.task_handoff\.doc_path = /.test(m))).toBe(true);
+    expect(result.mutations_applied.some(m => /phase_corrective_task\[1\]\.doc_path = /.test(m))).toBe(true);
     expect(result.mutations_applied.some(m => /phase corrective_tasks\.length = 1/.test(m))).toBe(true);
   });
 

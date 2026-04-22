@@ -204,7 +204,7 @@ describe('phase_review_completed — Iter 11 phase-scope corrective birth (appen
     expect(Object.keys(entry.nodes)).toHaveLength(4);
   });
 
-  it('synthesized task_handoff sub-node is pre-completed at the orchestrator-supplied path', () => {
+  it('corrective entry carries the orchestrator-supplied handoff path as doc_path', () => {
     const state = makeState();
     const handoffPath = 'tasks/TEST-TASK-P01-PHASE-C1.md';
     const result = mutation(
@@ -214,12 +214,8 @@ describe('phase_review_completed — Iter 11 phase-scope corrective birth (appen
       baseTemplate,
     );
     const entry = getPhaseIteration(result.state).corrective_tasks[0] as CorrectiveTaskEntry;
-    expect(entry.nodes['task_handoff']).toEqual({
-      kind: 'step',
-      status: 'completed',
-      doc_path: handoffPath,
-      retries: 0,
-    });
+    expect(entry.doc_path).toBe(handoffPath);
+    // Body-def scaffolded nodes remain not_started — no synthetic task_handoff.
     expect(entry.nodes['task_gate']).toEqual({ kind: 'gate', status: 'not_started', gate_active: false });
   });
 
@@ -234,7 +230,7 @@ describe('phase_review_completed — Iter 11 phase-scope corrective birth (appen
       baseTemplate,
     );
     const entry = getPhaseIteration(result.state).corrective_tasks[0] as CorrectiveTaskEntry;
-    expect((entry.nodes['task_handoff'] as StepNodeState).doc_path).toBe(trimmed);
+    expect(entry.doc_path).toBe(trimmed);
   });
 
   it('phase_review.verdict is written as effective_outcome (not raw verdict) when mediated', () => {
@@ -333,8 +329,8 @@ describe('phase_review_completed — Iter 11 phase-scope corrective birth (appen
     expect(iteration.corrective_tasks).toHaveLength(2);
     expect(iteration.corrective_tasks[0].index).toBe(1);
     expect(iteration.corrective_tasks[1].index).toBe(2);
-    expect((iteration.corrective_tasks[0].nodes['task_handoff'] as StepNodeState).doc_path).toBe('tasks/X-P01-PHASE-C1.md');
-    expect((iteration.corrective_tasks[1].nodes['task_handoff'] as StepNodeState).doc_path).toBe('tasks/X-P01-PHASE-C2.md');
+    expect(iteration.corrective_tasks[0].doc_path).toBe('tasks/X-P01-PHASE-C1.md');
+    expect(iteration.corrective_tasks[1].doc_path).toBe('tasks/X-P01-PHASE-C2.md');
   });
 
   it('uses context.reason in corrective entry when provided', () => {

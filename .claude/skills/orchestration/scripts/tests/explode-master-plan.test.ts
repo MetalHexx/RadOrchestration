@@ -16,7 +16,6 @@ import type {
   PipelineState,
   ForEachPhaseNodeState,
   ForEachTaskNodeState,
-  StepNodeState,
 } from '../lib/types.js';
 
 // ── Fixture locations ─────────────────────────────────────────────────────────
@@ -366,29 +365,22 @@ describe('explodeMasterPlan — re-run integration', () => {
     // The pre-seeded phaseLoop had status 'in_progress'; leaving it stale would contradict the
     // fresh not_started iterations below.
     expect(phaseLoop.status).toBe('not_started');
-    // iteration.doc_path is NOT seeded — doc paths live on child step nodes (phase_planning, task_handoff).
-    expect((phaseLoop.iterations[0] as any).doc_path).toBeUndefined();
-    // Phase-iteration child: pre-seeded completed phase_planning step node carrying the phase file path.
-    const phasePlanningNode = phaseLoop.iterations[0]!.nodes['phase_planning'] as StepNodeState;
-    expect(phasePlanningNode.kind).toBe('step');
-    expect(phasePlanningNode.status).toBe('completed');
-    expect(phasePlanningNode.retries).toBe(0);
+    // Phase iteration carries doc_path directly — no synthetic phase_planning child step.
     // doc_path values in state.json are RELATIVE with forward slashes — matches legacy convention
     // (phases/NAME-PHASE-NN-TITLE.md) and keeps state.json portable across platforms.
-    expect(phasePlanningNode.doc_path).toMatch(/^phases\//);
-    expect(phasePlanningNode.doc_path).not.toContain('\\');
-    expect(phasePlanningNode.doc_path).toContain(`${projectName}-PHASE-01-`);
-    // Task iterations populated.
-    const taskLoop = phaseLoop.iterations[0]!.nodes['task_loop'] as ForEachTaskNodeState;
+    const phaseIter = phaseLoop.iterations[0]!;
+    expect(phaseIter.doc_path).toMatch(/^phases\//);
+    expect(phaseIter.doc_path).not.toContain('\\');
+    expect(phaseIter.doc_path).toContain(`${projectName}-PHASE-01-`);
+    // No synthetic phase_planning node — the only seeded body node is task_loop.
+    expect(phaseIter.nodes['phase_planning']).toBeUndefined();
+    // Task iterations populated; each carries doc_path directly — no synthetic task_handoff child.
+    const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState;
     expect(taskLoop.iterations).toHaveLength(2);
-    expect((taskLoop.iterations[0] as any).doc_path).toBeUndefined();
-    // Task-iteration child: pre-seeded completed task_handoff step node carrying the task file path.
-    const taskHandoffNode = taskLoop.iterations[0]!.nodes['task_handoff'] as StepNodeState;
-    expect(taskHandoffNode.kind).toBe('step');
-    expect(taskHandoffNode.status).toBe('completed');
-    expect(taskHandoffNode.retries).toBe(0);
-    expect(taskHandoffNode.doc_path).toMatch(/^tasks\//);
-    expect(taskHandoffNode.doc_path).not.toContain('\\');
+    const taskIter = taskLoop.iterations[0]!;
+    expect(taskIter.doc_path).toMatch(/^tasks\//);
+    expect(taskIter.doc_path).not.toContain('\\');
+    expect(taskIter.nodes['task_handoff']).toBeUndefined();
   });
 
   it('malformed Master Plan on re-run: filesystem UNTOUCHED (no backup, no fresh emission)', () => {

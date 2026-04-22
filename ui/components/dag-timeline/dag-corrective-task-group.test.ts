@@ -144,10 +144,16 @@ test('filterCompatibleNodes returns empty array when nodes is {}', () => {
   assert.strictEqual(filterCompatibleNodes(taskWithNoNodes.nodes).length, 0);
 });
 
-test('non-empty correctiveTasks array renders the group', () => {
-  const result = filterCompatibleNodes(baseCorrectiveTask.nodes);
+test('non-empty corrective task nodes are filtered compatibly', () => {
+  const taskWithNode: CorrectiveTaskEntry = {
+    ...baseCorrectiveTask,
+    nodes: {
+      task_executor: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+    },
+  };
+  const result = filterCompatibleNodes(taskWithNode.nodes);
   assert.strictEqual(result.length, 1);
-  assert.strictEqual(result[0][0], 'task_handoff');
+  assert.strictEqual(result[0][0], 'task_executor');
 });
 
 // buildTriggerText

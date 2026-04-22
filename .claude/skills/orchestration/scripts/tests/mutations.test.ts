@@ -695,7 +695,7 @@ describe('phase_review_completed — Iter 11 corrective injection (append-only)'
     expect(Object.keys(entry.nodes)).toHaveLength(4); // 4 task-body nodes
   });
 
-  it('synthesized task_handoff sub-node is pre-completed at the orchestrator-supplied path', () => {
+  it('corrective entry carries the orchestrator-supplied handoff path as doc_path', () => {
     const state = makeState();
     const template = makeTemplateWithPhaseTaskBody();
     const handoffPath = 'tasks/TEST-TASK-P01-PHASE-C1.md';
@@ -706,15 +706,8 @@ describe('phase_review_completed — Iter 11 corrective injection (append-only)'
       template,
     );
     const entry = getPhaseIteration(result.state).corrective_tasks[0] as CorrectiveTaskEntry;
-    // Synthesized task_handoff matches the explode-master-plan seeding pattern
-    // so the walker's execute_task branch sees a completed handoff and skips
-    // authoring.
-    expect(entry.nodes['task_handoff']).toEqual({
-      kind: 'step',
-      status: 'completed',
-      doc_path: handoffPath,
-      retries: 0,
-    });
+    expect(entry.doc_path).toBe(handoffPath);
+    // Body-def scaffolded nodes remain not_started — no synthetic task_handoff.
     expect(entry.nodes['task_gate']).toEqual({ kind: 'gate', status: 'not_started', gate_active: false });
   });
 
@@ -835,8 +828,8 @@ describe('phase_review_completed — Iter 11 corrective injection (append-only)'
     expect(iteration.corrective_tasks).toHaveLength(2);
     expect(iteration.corrective_tasks[0].index).toBe(1);
     expect(iteration.corrective_tasks[1].index).toBe(2);
-    expect((iteration.corrective_tasks[0].nodes['task_handoff'] as StepNodeState).doc_path).toBe('tasks/X-P01-PHASE-C1.md');
-    expect((iteration.corrective_tasks[1].nodes['task_handoff'] as StepNodeState).doc_path).toBe('tasks/X-P01-PHASE-C2.md');
+    expect(iteration.corrective_tasks[0].doc_path).toBe('tasks/X-P01-PHASE-C1.md');
+    expect(iteration.corrective_tasks[1].doc_path).toBe('tasks/X-P01-PHASE-C2.md');
   });
 
   it('original phase iteration nodes are untouched after corrective injection (iter-11 append-only)', () => {
@@ -1151,7 +1144,7 @@ describe('code_review_completed — corrective injection', () => {
     expect(Object.keys(entry.nodes)).toHaveLength(4);
   });
 
-  it('synthesized task_handoff sub-node is pre-completed at the orchestrator-supplied path', () => {
+  it('corrective entry carries the orchestrator-supplied handoff path as doc_path', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
     const handoffPath = 'tasks/BROKEN-COLORS-TASK-P01-T01-GET-COLORS-C1.md';
@@ -1162,15 +1155,8 @@ describe('code_review_completed — corrective injection', () => {
       template,
     );
     const entry = getTaskIteration(result.state).corrective_tasks[0] as CorrectiveTaskEntry;
-    // Iter 10 synthesized shape — matches the post-explosion task_handoff pattern
-    // (explode-master-plan.ts:598-610) so the walker's execute_task branch sees
-    // a completed handoff and skips authoring.
-    expect(entry.nodes['task_handoff']).toEqual({
-      kind: 'step',
-      status: 'completed',
-      doc_path: handoffPath,
-      retries: 0,
-    });
+    expect(entry.doc_path).toBe(handoffPath);
+    // Body-def scaffolded nodes remain not_started — no synthetic task_handoff.
     expect(entry.nodes['task_gate']).toEqual({ kind: 'gate', status: 'not_started', gate_active: false });
   });
 
@@ -1256,14 +1242,9 @@ describe('code_review_completed — corrective injection', () => {
     expect(resultIteration.corrective_tasks).toHaveLength(3);
     expect(resultIteration.status).not.toBe('halted');
     expect(result.state.graph.status).not.toBe('halted');
-    // Synthesized task_handoff on the newly birthed entry
+    // Newest entry carries the supplied handoff path as doc_path.
     const newest = resultIteration.corrective_tasks[2];
-    expect(newest.nodes['task_handoff']).toEqual({
-      kind: 'step',
-      status: 'completed',
-      doc_path: 'tasks/X-C3.md',
-      retries: 0,
-    });
+    expect(newest.doc_path).toBe('tasks/X-C3.md');
   });
 
   it('rejected verdict halts iteration and graph, adds no corrective entry', () => {
@@ -1304,8 +1285,8 @@ describe('code_review_completed — corrective injection', () => {
     expect(iteration.corrective_tasks).toHaveLength(2);
     expect(iteration.corrective_tasks[0].index).toBe(1);
     expect(iteration.corrective_tasks[1].index).toBe(2);
-    expect((iteration.corrective_tasks[0].nodes['task_handoff'] as StepNodeState).doc_path).toBe('tasks/X-C1.md');
-    expect((iteration.corrective_tasks[1].nodes['task_handoff'] as StepNodeState).doc_path).toBe('tasks/X-C2.md');
+    expect(iteration.corrective_tasks[0].doc_path).toBe('tasks/X-C1.md');
+    expect(iteration.corrective_tasks[1].doc_path).toBe('tasks/X-C2.md');
   });
 
   it('original iteration nodes are untouched after corrective injection', () => {
@@ -1412,7 +1393,7 @@ describe('code_review_completed — Iter 11 ancestor-derivation', () => {
     const taskIter = getTaskIteration(result.state);
     expect(phaseIter.corrective_tasks).toHaveLength(0);
     expect(taskIter.corrective_tasks).toHaveLength(1);
-    expect((taskIter.corrective_tasks[0].nodes['task_handoff'] as StepNodeState).doc_path).toBe(handoffPath);
+    expect(taskIter.corrective_tasks[0].doc_path).toBe(handoffPath);
     // mutations_applied log includes scope=task
     expect(result.mutations_applied.some(m => /scope=task/.test(m))).toBe(true);
   });
@@ -1433,7 +1414,7 @@ describe('code_review_completed — Iter 11 ancestor-derivation', () => {
     // Hosting = phase → append to phaseIter.corrective_tasks (now 2 entries).
     expect(phaseIter.corrective_tasks).toHaveLength(2);
     expect(phaseIter.corrective_tasks[1].index).toBe(2);
-    expect((phaseIter.corrective_tasks[1].nodes['task_handoff'] as StepNodeState).doc_path).toBe(handoffPath);
+    expect(phaseIter.corrective_tasks[1].doc_path).toBe(handoffPath);
     // taskIter unchanged.
     expect(taskIter.corrective_tasks).toHaveLength(0);
     // mutations_applied log includes scope=phase

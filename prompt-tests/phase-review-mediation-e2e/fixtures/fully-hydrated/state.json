@@ -66,12 +66,6 @@
             "index": 0,
             "status": "completed",
             "nodes": {
-              "phase_planning": {
-                "kind": "step",
-                "status": "completed",
-                "doc_path": "phases/FULLY-HYDRATED-PHASE-01-CORE.md",
-                "retries": 0
-              },
               "task_loop": {
                 "kind": "for_each_task",
                 "status": "completed",
@@ -80,12 +74,6 @@
                     "index": 0,
                     "status": "completed",
                     "nodes": {
-                      "task_handoff": {
-                        "kind": "step",
-                        "status": "completed",
-                        "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T01-FOUNDATION.md",
-                        "retries": 0
-                      },
                       "task_executor": {
                         "kind": "step",
                         "status": "completed",
@@ -117,12 +105,6 @@
                         "injected_after": "code_review",
                         "status": "completed",
                         "nodes": {
-                          "task_handoff": {
-                            "kind": "step",
-                            "status": "completed",
-                            "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T01-FOUNDATION-C1.md",
-                            "retries": 0
-                          },
                           "task_executor": {
                             "kind": "step",
                             "status": "completed",
@@ -147,21 +129,17 @@
                             "gate_active": false
                           }
                         },
+                        "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T01-FOUNDATION-C1.md",
                         "commit_hash": null
                       }
                     ],
+                    "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T01-FOUNDATION.md",
                     "commit_hash": null
                   },
                   {
                     "index": 1,
                     "status": "completed",
                     "nodes": {
-                      "task_handoff": {
-                        "kind": "step",
-                        "status": "completed",
-                        "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T02-PARSER.md",
-                        "retries": 0
-                      },
                       "task_executor": {
                         "kind": "step",
                         "status": "completed",
@@ -187,18 +165,13 @@
                       }
                     },
                     "corrective_tasks": [],
+                    "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T02-PARSER.md",
                     "commit_hash": null
                   },
                   {
                     "index": 2,
                     "status": "completed",
                     "nodes": {
-                      "task_handoff": {
-                        "kind": "step",
-                        "status": "completed",
-                        "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T03-RENDERER.md",
-                        "retries": 0
-                      },
                       "task_executor": {
                         "kind": "step",
                         "status": "completed",
@@ -230,12 +203,6 @@
                         "injected_after": "code_review",
                         "status": "completed",
                         "nodes": {
-                          "task_handoff": {
-                            "kind": "step",
-                            "status": "completed",
-                            "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T03-RENDERER-C1.md",
-                            "retries": 0
-                          },
                           "task_executor": {
                             "kind": "step",
                             "status": "completed",
@@ -260,6 +227,7 @@
                             "gate_active": false
                           }
                         },
+                        "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T03-RENDERER-C1.md",
                         "commit_hash": null
                       },
                       {
@@ -268,12 +236,6 @@
                         "injected_after": "code_review",
                         "status": "completed",
                         "nodes": {
-                          "task_handoff": {
-                            "kind": "step",
-                            "status": "completed",
-                            "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T03-RENDERER-C2.md",
-                            "retries": 0
-                          },
                           "task_executor": {
                             "kind": "step",
                             "status": "completed",
@@ -298,9 +260,11 @@
                             "gate_active": false
                           }
                         },
+                        "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T03-RENDERER-C2.md",
                         "commit_hash": null
                       }
                     ],
+                    "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-T03-RENDERER.md",
                     "commit_hash": null
                   }
                 ]
@@ -325,12 +289,6 @@
                 "injected_after": "phase_review",
                 "status": "completed",
                 "nodes": {
-                  "task_handoff": {
-                    "kind": "step",
-                    "status": "completed",
-                    "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-PHASE-C1.md",
-                    "retries": 0
-                  },
                   "task_executor": {
                     "kind": "step",
                     "status": "completed",
@@ -355,6 +313,7 @@
                     "gate_active": false
                   }
                 },
+                "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-PHASE-C1.md",
                 "commit_hash": null
               },
               {
@@ -363,12 +322,6 @@
                 "injected_after": "code_review",
                 "status": "completed",
                 "nodes": {
-                  "task_handoff": {
-                    "kind": "step",
-                    "status": "completed",
-                    "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-PHASE-C2.md",
-                    "retries": 0
-                  },
                   "task_executor": {
                     "kind": "step",
                     "status": "completed",
@@ -393,21 +346,17 @@
                     "gate_active": false
                   }
                 },
+                "doc_path": "tasks/FULLY-HYDRATED-TASK-P01-PHASE-C2.md",
                 "commit_hash": null
               }
             ],
+            "doc_path": "phases/FULLY-HYDRATED-PHASE-01-CORE.md",
             "commit_hash": null
           },
           {
             "index": 1,
             "status": "completed",
             "nodes": {
-              "phase_planning": {
-                "kind": "step",
-                "status": "completed",
-                "doc_path": "phases/FULLY-HYDRATED-PHASE-02-POLISH.md",
-                "retries": 0
-              },
               "task_loop": {
                 "kind": "for_each_task",
                 "status": "completed",
@@ -416,12 +365,6 @@
                     "index": 0,
                     "status": "completed",
                     "nodes": {
-                      "task_handoff": {
-                        "kind": "step",
-                        "status": "completed",
-                        "doc_path": "tasks/FULLY-HYDRATED-TASK-P02-T01-DOCS.md",
-                        "retries": 0
-                      },
                       "task_executor": {
                         "kind": "step",
                         "status": "completed",
@@ -447,6 +390,7 @@
                       }
                     },
                     "corrective_tasks": [],
+                    "doc_path": "tasks/FULLY-HYDRATED-TASK-P02-T01-DOCS.md",
                     "commit_hash": null
                   }
                 ]
@@ -465,6 +409,7 @@
               }
             },
             "corrective_tasks": [],
+            "doc_path": "phases/FULLY-HYDRATED-PHASE-02-POLISH.md",
             "commit_hash": null
           }
         ]

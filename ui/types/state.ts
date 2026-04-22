@@ -262,6 +262,7 @@ export interface IterationEntry {
   status: NodeStatus;
   nodes: NodesRecord;
   corrective_tasks: CorrectiveTaskEntry[];
+  doc_path?: string | null;
   commit_hash?: string | null;
 }
 
@@ -271,6 +272,7 @@ export interface CorrectiveTaskEntry {
   injected_after: string;
   status: NodeStatus;
   nodes: NodesRecord;
+  doc_path?: string | null;
   commit_hash?: string | null;
 }
 

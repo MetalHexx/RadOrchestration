@@ -176,7 +176,7 @@ test('isLoopNode() returns true for the for_each_task node inside taskLoopIterat
 });
 
 test('isLoopNode() returns false for all non-loop nodes in taskLoopIteration.nodes', () => {
-  const nonLoopKeys = ['phase_planning', 'phase_report', 'phase_review', 'phase_gate'];
+  const nonLoopKeys = ['phase_report', 'phase_review', 'phase_gate'];
   for (const key of nonLoopKeys) {
     const node = taskLoopIteration.nodes[key];
     assert.ok(node !== undefined, `Expected node "${key}" to exist`);
@@ -184,12 +184,12 @@ test('isLoopNode() returns false for all non-loop nodes in taskLoopIteration.nod
   }
 });
 
-test('partitioning taskLoopIteration.nodes by isLoopNode() yields 1 loop node and 4 non-loop nodes', () => {
+test('partitioning taskLoopIteration.nodes by isLoopNode() yields 1 loop node and 3 non-loop nodes', () => {
   const entries = Object.entries(taskLoopIteration.nodes);
   const loopNodes = entries.filter(([, node]) => isLoopNode(node));
   const nonLoopNodes = entries.filter(([, node]) => !isLoopNode(node));
   assert.strictEqual(loopNodes.length, 1);
-  assert.strictEqual(nonLoopNodes.length, 4);
+  assert.strictEqual(nonLoopNodes.length, 3);
 });
 
 // ─── Compound node ID construction through nesting chain ─────────────────────
@@ -226,7 +226,7 @@ test('multi-level chaining: deeply nested corrective task ID construction', () =
 
 // ─── Nested state data safety ─────────────────────────────────────────────────
 
-test('traversing taskLoopIteration nested data completes without error and yields 5 child node keys', () => {
+test('traversing taskLoopIteration nested data completes without error and yields 4 child node keys', () => {
   const entries = Object.entries(taskLoopIteration.nodes);
   const found = entries.find(([, n]) => isLoopNode(n));
   assert.ok(found !== undefined);
@@ -234,7 +234,7 @@ test('traversing taskLoopIteration nested data completes without error and yield
   const innerKeys = Object.keys(forEachTask.iterations[0].nodes);
   assert.deepStrictEqual(
     innerKeys.sort(),
-    ['code_review', 'commit_gate', 'task_executor', 'task_gate', 'task_handoff'].sort()
+    ['code_review', 'commit_gate', 'task_executor', 'task_gate'].sort()
   );
 });
 
@@ -268,14 +268,13 @@ test('taskLoopIterationWithCorrective corrective task has reason "Code review fo
   assert.strictEqual(correctiveTask.reason, 'Code review found issues');
 });
 
-test('taskLoopIterationWithCorrective corrective task nodes contains a task_handoff step node', () => {
+test('taskLoopIterationWithCorrective corrective task carries doc_path directly', () => {
   const entries = Object.entries(taskLoopIterationWithCorrective.nodes);
   const found = entries.find(([, n]) => isLoopNode(n));
   assert.ok(found !== undefined);
   const forEachTask = found[1] as ForEachTaskNodeState;
   const correctiveTask = forEachTask.iterations[0].corrective_tasks[0];
-  assert.ok('task_handoff' in correctiveTask.nodes);
-  assert.strictEqual(correctiveTask.nodes['task_handoff'].kind, 'step');
+  assert.strictEqual(correctiveTask.doc_path, '/tasks/t1-fix.md');
 });
 
 test('taskLoopIterationWithCorrective corrective task commit_hash is null', () => {

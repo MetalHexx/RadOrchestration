@@ -170,6 +170,7 @@ export interface CorrectiveTaskEntry {
   injected_after: string;     // node ID that triggered injection (e.g., "code_review")
   status: NodeStatus;
   nodes: Record<string, NodeState>;
+  doc_path?: string | null;   // corrective task handoff doc (authored pre-injection)
   commit_hash: string | null; // per-corrective-task commit hash, set by COMMIT_COMPLETED mutation
 }
 
@@ -178,6 +179,7 @@ export interface IterationEntry {
   status: NodeStatus;
   nodes: Record<string, NodeState>;
   corrective_tasks: CorrectiveTaskEntry[];
+  doc_path?: string | null;   // iteration doc (phase plan or task handoff)
   commit_hash: string | null; // per-task commit hash, set by COMMIT_COMPLETED mutation
 }
 

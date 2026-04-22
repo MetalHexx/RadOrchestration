@@ -66,12 +66,6 @@
             "index": 0,
             "status": "in_progress",
             "nodes": {
-              "phase_planning": {
-                "kind": "step",
-                "status": "completed",
-                "doc_path": "phases/BROKEN-COLORS-PHASE-01-COLORS.md",
-                "retries": 0
-              },
               "task_loop": {
                 "kind": "for_each_task",
                 "status": "in_progress",
@@ -80,12 +74,6 @@
                     "index": 0,
                     "status": "in_progress",
                     "nodes": {
-                      "task_handoff": {
-                        "kind": "step",
-                        "status": "completed",
-                        "doc_path": "tasks/BROKEN-COLORS-TASK-P01-T01-GET-COLORS.md",
-                        "retries": 0
-                      },
                       "task_executor": {
                         "kind": "step",
                         "status": "completed",
@@ -110,6 +98,7 @@
                       }
                     },
                     "corrective_tasks": [],
+                    "doc_path": "tasks/BROKEN-COLORS-TASK-P01-T01-GET-COLORS.md",
                     "commit_hash": null
                   }
                 ]
@@ -127,6 +116,7 @@
               }
             },
             "corrective_tasks": [],
+            "doc_path": "phases/BROKEN-COLORS-PHASE-01-COLORS.md",
             "commit_hash": null
           }
         ]
