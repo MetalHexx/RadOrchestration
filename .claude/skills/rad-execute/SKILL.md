@@ -18,9 +18,9 @@ Execute the project according to the approved Master Plan using the proper execu
 
 Before the first pipeline tick, ensure `pipeline.source_control` is populated in `state.json`. The commit and PR gates read from this state — without it, the walker halts when it reaches either conditional.
 
-1. Read `state.json`. **If `pipeline.source_control` is not null, skip this section** — resume is ceremony-free.
-2. Otherwise, run `node {skillRoot}/scripts/gather-context.js` and parse its JSON output. `{skillRoot}` is the directory containing this SKILL.md.
-3. Follow [`references/source-control-init.md`](references/source-control-init.md) to resolve each init field (prompting only when needed) and fire the `source_control_init` pipeline event.
+1. Run `node {skillRoot}/scripts/gather-context.js --project-name {PROJECT_NAME}` and parse its JSON output. `{skillRoot}` is the directory containing this SKILL.md; `{PROJECT_NAME}` comes from the /rad-execute argument or conversation context.
+2. **If `sourceControlInitialized === true`, skip this section** — resume is ceremony-free.
+3. Otherwise, follow [`references/source-control-init.md`](references/source-control-init.md) to resolve each init field (prompting only when needed) and fire the `source_control_init` pipeline event.
 4. Proceed with execution.
 
 # Pipeline Error Handling

@@ -70,13 +70,36 @@ function parseSimpleYaml(content) {
   return result;
 }
 
+/**
+ * Returns true when the parsed state object has a populated
+ * `pipeline.source_control` (a non-null object). Any other shape —
+ * missing, null, wrong type — returns false, letting callers treat
+ * the project as "needs initialization."
+ */
+function isSourceControlInitialized(state) {
+  const sc = state && state.pipeline && state.pipeline.source_control;
+  return !!sc && typeof sc === 'object';
+}
+
+function parseArgs(argv) {
+  let projectName = null;
+  for (let i = 2; i < argv.length; i++) {
+    if (argv[i] === '--project-name' && i + 1 < argv.length) {
+      projectName = argv[++i];
+    }
+  }
+  return { projectName };
+}
+
 // ─── Exports (for testing) ───────────────────────────────────────────────────
 
-module.exports = { parseSimpleYaml, deriveRemoteUrl };
+module.exports = { parseSimpleYaml, deriveRemoteUrl, isSourceControlInitialized, parseArgs };
 
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 if (require.main !== module) return;
+
+const { projectName } = parseArgs(process.argv);
 
 let repoRoot;
 try {
@@ -168,6 +191,27 @@ try {
   // no remote configured or git error — keep remoteUrl = ''
 }
 
+// ─── State.json peek (optional, only when --project-name is passed) ─────────
+
+let projectDir = null;
+let sourceControlInitialized = null; // null = not checked (no --project-name)
+
+if (projectName) {
+  projectDir = path.join(projectsBasePath, projectName);
+  const stateJsonPath = path.join(projectDir, 'state.json');
+  if (fs.existsSync(stateJsonPath)) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(stateJsonPath, 'utf8'));
+      sourceControlInitialized = isSourceControlInitialized(parsed);
+    } catch {
+      // unparseable state → treat as uninitialized; pipeline will surface the real error downstream
+      sourceControlInitialized = false;
+    }
+  } else {
+    sourceControlInitialized = false;
+  }
+}
+
 outputAndExit({
   repoRoot,
   repoName,
@@ -179,5 +223,7 @@ outputAndExit({
   projectsBasePath,
   configAutoCommit,
   configAutoPr,
-  remoteUrl
+  remoteUrl,
+  projectDir,
+  sourceControlInitialized
 }, 0);

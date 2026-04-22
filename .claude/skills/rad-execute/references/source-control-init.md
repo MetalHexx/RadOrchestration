@@ -1,13 +1,14 @@
 # Source Control Initialization
 
-Detailed reference for the `rad-execute` orchestrator when `state.pipeline.source_control` is null and must be populated before the first pipeline tick.
+Detailed reference for the `rad-execute` orchestrator when `sourceControlInitialized` is `false` and `pipeline.source_control` must be populated before the first pipeline tick.
 
-**Prerequisite:** the caller has already run `node {skillRoot}/scripts/gather-context.js` and parsed its JSON output. `{skillRoot}` is the directory containing `rad-execute/SKILL.md`.
+**Prerequisite:** the caller has already run `node {skillRoot}/scripts/gather-context.js --project-name {PROJECT_NAME}` and parsed its JSON output (the `--project-name` flag tells the script to peek at `{projectDir}/state.json` and emit `sourceControlInitialized`). `{skillRoot}` is the directory containing `rad-execute/SKILL.md`.
 
 ## Field resolution
 
 | Init field | Source |
 |---|---|
+| `projectDir` | `projectDir` from script output (used as `--project-dir` for the pipeline CLI) |
 | `worktree_path` | `repoRoot` from script output |
 | `branch` | `currentBranch` from script output |
 | `base_branch` | Prompt user (see `branch_from` schema below). Default = `defaultBranch` from script output. |

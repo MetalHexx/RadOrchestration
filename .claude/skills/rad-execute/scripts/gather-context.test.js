@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { parseSimpleYaml, deriveRemoteUrl } = require('./gather-context');
+const { parseSimpleYaml, deriveRemoteUrl, isSourceControlInitialized, parseArgs } = require('./gather-context');
 
 // ─── parseSimpleYaml ────────────────────────────────────────────────────────
 
@@ -198,5 +198,69 @@ describe('deriveRemoteUrl', () => {
       deriveRemoteUrl('git@github.com:my-org/my.repo.name.git'),
       'https://github.com/my-org/my.repo.name'
     );
+  });
+});
+
+// ─── isSourceControlInitialized ─────────────────────────────────────────────
+
+describe('isSourceControlInitialized', () => {
+
+  it('returns false for null state', () => {
+    assert.equal(isSourceControlInitialized(null), false);
+  });
+
+  it('returns false for undefined state', () => {
+    assert.equal(isSourceControlInitialized(undefined), false);
+  });
+
+  it('returns false when pipeline is missing', () => {
+    assert.equal(isSourceControlInitialized({}), false);
+  });
+
+  it('returns false when pipeline.source_control is missing', () => {
+    assert.equal(isSourceControlInitialized({ pipeline: {} }), false);
+  });
+
+  it('returns false when pipeline.source_control is null', () => {
+    assert.equal(isSourceControlInitialized({ pipeline: { source_control: null } }), false);
+  });
+
+  it('returns true when pipeline.source_control is a populated object', () => {
+    const state = {
+      pipeline: {
+        source_control: {
+          branch: 'feature/x',
+          base_branch: 'main',
+          auto_commit: 'always',
+          auto_pr: 'never',
+        },
+      },
+    };
+    assert.equal(isSourceControlInitialized(state), true);
+  });
+
+  it('returns true even when the object is minimal (trusts the pipeline mutation)', () => {
+    assert.equal(isSourceControlInitialized({ pipeline: { source_control: {} } }), true);
+  });
+});
+
+// ─── parseArgs ──────────────────────────────────────────────────────────────
+
+describe('parseArgs', () => {
+
+  it('returns null projectName when no --project-name flag', () => {
+    assert.equal(parseArgs(['node', 'script.js']).projectName, null);
+  });
+
+  it('parses --project-name flag', () => {
+    assert.equal(parseArgs(['node', 'script.js', '--project-name', 'MY-PROJECT']).projectName, 'MY-PROJECT');
+  });
+
+  it('ignores unknown flags', () => {
+    assert.equal(parseArgs(['node', 'script.js', '--foo', 'bar']).projectName, null);
+  });
+
+  it('handles --project-name as the last arg with no value (treats as missing)', () => {
+    assert.equal(parseArgs(['node', 'script.js', '--project-name']).projectName, null);
   });
 });
