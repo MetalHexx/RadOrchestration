@@ -83,15 +83,13 @@ describe('[REGRESSION] Auto-resolution — phase_review_completed changes_reques
     // logic in dag-walker.ts). The mutation birthed the entry as not_started;
     // the walker sees it and flips status.
     expect(phaseIter.corrective_tasks[0].status).toBe('in_progress');
-    // Synthesized task_handoff pre-completed at the orchestrator-supplied path.
-    const handoff = phaseIter.corrective_tasks[0].nodes['task_handoff'] as StepNodeState;
-    expect(handoff.status).toBe('completed');
-    expect(handoff.doc_path).toBe(correctiveHandoffPath);
+    // Corrective handoff path stored directly on the entry.
+    expect(phaseIter.corrective_tasks[0].doc_path).toBe(correctiveHandoffPath);
 
-    // Iter 11 single-pass clause — phase_planning is NOT reset for re-planning.
-    const phasePlanning = phaseIter.nodes['phase_planning'] as StepNodeState;
-    expect(phasePlanning.status).toBe('completed');
-    expect(phasePlanning.doc_path).not.toBeNull();
+    // Iter 11 single-pass clause — phase iteration's doc_path is NOT reset
+    // for re-planning (the corrective injects alongside, not in place).
+    expect(phaseIter.doc_path).not.toBeNull();
+    expect(phaseIter.doc_path).toBeDefined();
   });
 });
 
@@ -352,7 +350,7 @@ describe('[ITER 11] code_review_completed — ancestor-derivation across scope c
     // phaseIter receives the new corrective (hosting=phase → append to phaseIter).
     expect(resultPhaseIter.corrective_tasks).toHaveLength(2);
     expect(resultPhaseIter.corrective_tasks[1].index).toBe(2);
-    expect((resultPhaseIter.corrective_tasks[1].nodes['task_handoff'] as StepNodeState).doc_path).toBe(nextHandoff);
+    expect(resultPhaseIter.corrective_tasks[1].doc_path).toBe(nextHandoff);
 
     // taskIter unchanged — no leakage into task-scope correctives.
     expect(resultTaskIter.corrective_tasks).toHaveLength(0);

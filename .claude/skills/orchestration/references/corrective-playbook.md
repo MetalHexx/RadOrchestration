@@ -117,12 +117,26 @@ Before reading any findings, check the retry budget:
 
 Work through each finding in the review doc individually. For each:
 
+### What the review doc guarantees
+
+The code-review skill (`.claude/skills/code-review/SKILL.md`, Evidence Contract + Finding-ID Scheme) structurally guarantees the fields below on every review doc. You key your judgment off these fields — if any are missing or inconsistent, the review is structurally invalid and mediation cannot proceed:
+
+- **`F-N` stable finding ID** on every row of every finding-bearing table (per-requirement audit + quality sweep). IDs are unique within the review doc and reset to `F-1` per doc (corrective reviews start fresh). Your disposition table keys on these IDs.
+- **`File:Line`** — concrete source pointer on every finding. Use it to read the actual source when verifying the reviewer's claim.
+- **`Evidence`** — quoted code, diff excerpt, test output, or grep result. If the reviewer wrote paraphrase instead of evidence, treat the row as under-supported — verify independently before actioning.
+- **`Requirement`** column on audit rows (and optionally on quality-sweep rows). Use it directly for requirement traceability; don't re-derive.
+- **`## Scope` section** — captures the exact `git diff` command run and `--stat` output, letting you confirm the reviewer scoped the correct commit range.
+- **`## Test Execution` section** — captures the exact test command run and named test output. Use it to resolve test-related findings without re-running the suite.
+- **Falsification paragraph** at the end of the quality sweep — documents the negative case the reviewer probed. Useful context when deciding whether a zero-finding review is trustworthy.
+
+**If the review doc is missing `F-N`, `File:Line`, or `Evidence`**, do not paper over the gap in your addendum. Flag the structural defect and escalate — a reviewer who skipped the evidence contract produced output the mediation loop cannot consume.
+
 ### Inputs to gather before judging
 
-1. **File and line reference** — read the actual source at that location.
-2. **Requirement traceability** — look up the requirement ID (e.g., `FR-3`) in `{NAME}-REQUIREMENTS.md`. If the finding cites no requirement ID, check whether the issue is traceable to an acceptance criterion in the Task Handoff.
+1. **File and line reference** — read the actual source at the `File:Line` the reviewer cited. Read the full function/block, not just the cited line.
+2. **Requirement traceability** — the reviewer's `Requirement` column gives you the FR/NFR/AD/DD ID directly. Confirm it against `{NAME}-REQUIREMENTS.md`. If the finding cites no requirement ID (quality-sweep with `—`), check whether the issue is traceable to an acceptance criterion in the Task Handoff.
 3. **Task Handoff section** — re-read the relevant section of the Task Handoff (Acceptance Criteria, File Targets, Implementation Notes).
-4. **Source or test in question** — read the full function/block, not just the cited line, to verify the claim is accurate.
+4. **Source or test in question** — read the full function/block, not just the cited line, to verify the claim is accurate. The reviewer's `Evidence` column should match what you see in the source; if it doesn't, the finding may be a misread (decline criterion).
 
 ### Cross-artifact scan before declining
 

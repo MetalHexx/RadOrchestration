@@ -1,11 +1,10 @@
 # DEPRECATED — legacy 4-stage upstream planning pipeline (PRD → Research → Design → Architecture → Master Plan).
-# Replaced by default.yml (Iter 9). Remains the default template fallback until Iter 9; kept for backwards compatibility.
+# Replaced by default.yml (Iter 9); kept for backwards compatibility.
 #
-# WARNING — STALL RISK (Iter 7):
-#   Body nodes `phase_planning` and `task_handoff` were stripped in Iter 7.
-#   `task_loop.source_doc_ref: "$.current_phase.doc_path"` has no seed without an explosion script.
-#   If selected via `--template full`, the pipeline will stall at `plan_approval_gate`
-#   unless the explosion script has pre-seeded state. Will be cleaned up in Iter 9.
+# NOTE: post-unify (iter-14), `task_loop.source_doc_ref: "$.current_phase.doc_path"` resolves
+# from the enclosing phase iteration's `doc_path` field (pre-seeded by the explosion script).
+# This template still lacks an explicit explosion step, so it only works when state has been
+# pre-seeded out-of-band.
 template:
   id: full
   version: "1.0.0"

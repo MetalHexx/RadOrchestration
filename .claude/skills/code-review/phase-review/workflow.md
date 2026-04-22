@@ -8,11 +8,13 @@ You are the backstop. Task reviews already vetted each commit in isolation again
 
 ## Review Mindset
 
-- **The implementer's reports are not evidence.** Per-task code reviews describe per-task intent. You review **the cumulative phase diff**. Run the tests yourself. Open the files yourself. A green column of task reviews does not mean the phase is green.
+- **The diff is truth. The per-task reviews are intent.** Per-task code reviews describe per-task intent. You review **the cumulative phase diff**. Run the tests yourself. Open the files yourself. A green column of task reviews does not mean the phase is green. If a sentence in your review would read identically whether you had run the cumulative diff or not, delete it.
+- **No copy-paste from the Phase Plan, per-task handoffs, or per-task reviews.** Your unique value is the cumulative view — summarizing upstream docs does not produce it.
 - Task reviews already vetted each commit in isolation. Your job is to see what they couldn't — the seams between tasks.
 - Skepticism is required, not optional. Four green task reviews do not equal a green phase.
 - Every finding must include a concrete fix — never flag a problem without offering a path forward.
 - Use binary assessments for checklist cells: ✅ pass, ⚠️ concern, ❌ fail. Use the tiered status enum (`on-track | drift | regression`) for per-requirement audit rows.
+- **Finding IDs & evidence** are mandatory per the [SKILL.md](../SKILL.md) Finding-ID Scheme and Evidence Contract. Every finding row carries `F-N`, `File:Line`, and concrete `Evidence`. Phase-scope quality findings additionally carry a `Seam / Scope` pointer (e.g., `T1↔T3`).
 
 ## Inputs
 
@@ -34,15 +36,15 @@ Phase Review reads only the inputs below — do NOT load the Master Plan (its co
 
 1. **Read the Phase Plan** — understand exit criteria, task outline, and the `**Requirements:**` line. Enumerate every FR/NFR/AD/DD tag listed there; each will get a row in the audit table.
 2. **Read the Requirements doc** — look up each phase-scoped tag to understand what the phase collectively owes.
-3. **Run the cumulative phase diff.** If both `phase_first_sha` and `phase_head_sha` are present, run `git diff <phase_first_sha>~1..<phase_head_sha>`. If either is `null`, fall back to `git diff HEAD` and read any untracked files listed in the phase's Task Handoff File Targets.
-4. **Run the tests and verify the build.** Do not accept "tests passed" from any per-task report on faith.
+3. **Run the cumulative phase diff.** If both `phase_first_sha` and `phase_head_sha` are present, run `git diff <phase_first_sha>~1..<phase_head_sha>` and `git diff --stat <phase_first_sha>~1..<phase_head_sha>`. If either is `null`, fall back to `git diff HEAD` + `git diff --stat HEAD` and read any untracked files listed in the phase's Task Handoff File Targets. Capture the exact command(s) run and the `--stat` output verbatim — these populate the template's `## Scope` section.
+4. **Run the tests and verify the build.** Do not accept "tests passed" from any per-task report on faith. Capture the exact command run and the output — including **named test results**, not just a count — for the template's `## Test Execution` section.
 5. **Aggregate phase data for the summary sections (Iter 8 phase-summary consolidation)**:
    - Task Results: from `state.json` retry counts (corrective_tasks length per task iteration) + commit-level outcomes observable in the diff.
    - Files Changed: aggregate from the cumulative diff (created vs modified counts + key paths).
    - Issues & Resolutions: task-scoped issues observable in the diff's history (including through retries).
    - Carry-Forward Items: concrete issues the next phase must handle.
-6. **Conformance pass (first)** — the tiered per-requirement audit. For every phase-scoped FR/NFR/AD/DD tag from the Phase Plan's `**Requirements:**` line, evaluate the cumulative diff and write one audit-table row:
-   - **`on-track`** — the phase's cumulative contribution to this requirement is correct for what the phase's slice was supposed to deliver. Does NOT mean the requirement is complete project-wide — just that this phase's slice is correct.
+6. **Conformance pass (first)** — the tiered per-requirement audit. For every phase-scoped FR/NFR/AD/DD tag from the Phase Plan's `**Requirements:**` line, evaluate the cumulative diff and write one audit-table row carrying `F-N`, `File:Line`, `Evidence`, status, severity, finding, and fix:
+   - **`on-track`** — the phase's cumulative contribution to this requirement is correct for what the phase's slice was supposed to deliver. Does NOT mean the requirement is complete project-wide — just that this phase's slice is correct. Even on-track rows carry evidence.
    - **`drift`** — the cumulative diff deviates from what the Phase Plan says the phase should deliver (cross-task contract mismatch, missing integration, wrong behaviour at a task seam). Drift findings drive orchestrator mediation.
    - **`regression`** — the cumulative diff breaks something that previously worked (test failure, deleted export that other code imports, behaviour change outside the phase's declared scope). Regression findings drive orchestrator mediation and are flagged critical.
 
@@ -50,17 +52,17 @@ Phase Review reads only the inputs below — do NOT load the Master Plan (its co
 
    Use the 4-category checklist below as a secondary aggregate view — the audit table is the per-requirement source of truth. Do NOT re-verify per-task requirement conformance that was already covered at task scope; your unique value is what spans tasks.
 
-7. **Quality sweep (second)** — the Independent Quality Assessment. Read the cumulative phase diff line by line. Don't trust that modules integrate because the per-task code reviews say they do — the reviews describe per-task intent, the diff shows how the tasks actually fit together. Your job is to find what slipped through the seams between tasks. **Lean quality checks**:
-   - **TODO / FIXME scan** — grep the cumulative diff for leftover placeholder markers.
-   - **Diff stat** — aggregate lines added per file across the phase. Flag any file that grew disproportionately.
-   - **Orphaned scaffolding / dead-on-arrival exports** — exports added in one task that no other task imports. Grep across the phase diff for each new export.
+7. **Quality sweep (second) — read the cumulative diff without the Phase Plan open.** Deliberately set the Phase Plan and per-task handoffs aside. Read the cumulative diff line by line. Don't trust that modules integrate because the per-task code reviews say they do — the reviews describe per-task intent, the diff shows how the tasks actually fit together. Find what slipped through the seams between tasks. Each finding is a new `F-N` row with `File:Line`, `Evidence`, and a `Seam / Scope` pointer (e.g., `T1↔T3`, `T2→T4`, or the affected file when within a single task's territory). **Lean quality checks** — each must be itemized with evidence (command run + result), even when clean:
+   - **TODO / FIXME scan** — grep the cumulative diff for leftover placeholder markers. Record the grep command and output.
+   - **Diff stat** — use the `git diff --stat` output captured in step 3. Flag any file that grew disproportionately across the phase.
+   - **Orphaned scaffolding / dead-on-arrival exports** — for each new export introduced anywhere in the phase, grep across the phase diff for callers. Record command and result.
    - **Decomposition / file-size / single-responsibility** — flag any file or function whose growth outpaces the phase's stated scope.
-   - **Cross-task contract drift** — a consumer in a later task whose call site doesn't match a producer's contract from an earlier task. Highest-value check at phase scope.
+   - **Cross-task contract drift** — a consumer in a later task whose call site doesn't match a producer's contract from an earlier task. Highest-value check at phase scope. Cite producer file:line and consumer file:line in the Evidence.
    - **Conflicting patterns** — two tasks solving similar problems differently; pattern divergence is a finding.
 
-   Findings from this pass merge into the same table as conformance findings — highest severity wins.
+   After the table, write one short **falsification paragraph** (2-4 sentences) describing the cross-task evidence you looked for that would have flipped the verdict and confirming whether you found it. Mandatory even when there are zero findings.
 
-8. **Apply verdict rules** (see Verdict Rules section below) — highest severity across both passes determines verdict. Set `exit_criteria_met` frontmatter field to `true` only when ALL exit criteria are verified as met; `false` otherwise.
+8. **Apply verdict rules** (see Verdict Rules section below) — highest severity across both passes determines verdict. Set `exit_criteria_met` frontmatter field to `true` only when ALL exit criteria are verified as met; `false` otherwise. **The verdict line must cite the driving finding and exit-criteria status:** for `approved`, cite "no findings ≥ low severity; all audit rows on-track; all exit criteria met"; for `changes_requested` / `rejected`, name the driving `F-N`(s) and status, plus any unmet exit criterion.
 9. **Fill in the output template** at [./template.md](./template.md) and save to `{PROJECT-DIR}/reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md`.
 
 ## Stateless Contract (Iter 10/11)

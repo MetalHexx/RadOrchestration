@@ -890,6 +890,172 @@ describe('for_each_phase handling', () => {
     expect(fepState.iterations).toHaveLength(0);
     expect(fepState.status).toBe('not_started');
   });
+
+  // Regression: the explosion script pre-seeds iteration shells in a shape
+  // that does not include the template body nodes. The walker must scaffold
+  // those missing body nodes on the iteration's first transition to
+  // in_progress, rather than stalling with action=null.
+  it('scaffolds missing body nodes when iterations are pre-seeded with empty nodes', () => {
+    const body = [
+      stepDef('plan_phase', 'create_phase_plan'),
+      stepDef('execute_phase', 'execute_phase', { depends_on: ['plan_phase'] }),
+    ];
+    const template = makeTemplate([
+      forEachPhaseDef('phase_loop', body),
+    ]);
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'not_started', {}),
+        makeIteration(1, 'not_started', {}),
+      ]),
+    });
+    const config = makeConfig();
+
+    // No readDocument callback — iterations are already pre-seeded.
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'create_phase_plan', context: {} });
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    expect(fepState.iterations[0].status).toBe('in_progress');
+    // Body nodes were scaffolded on first in_progress transition.
+    expect(fepState.iterations[0].nodes['plan_phase']).toEqual({
+      kind: 'step',
+      status: 'not_started',
+      doc_path: null,
+      retries: 0,
+    });
+    expect(fepState.iterations[0].nodes['execute_phase']).toEqual({
+      kind: 'step',
+      status: 'not_started',
+      doc_path: null,
+      retries: 0,
+    });
+    // Body-node keys are inserted in template declaration order.
+    expect(Object.keys(fepState.iterations[0].nodes)).toEqual([
+      'plan_phase',
+      'execute_phase',
+    ]);
+    // Later iterations remain not_started and un-scaffolded.
+    expect(fepState.iterations[1].status).toBe('not_started');
+    expect(Object.keys(fepState.iterations[1].nodes)).toEqual([]);
+  });
+
+  it('preserves already-present body nodes when scaffolding missing ones on first in_progress transition', () => {
+    const body = [
+      stepDef('plan_phase', 'create_phase_plan'),
+      stepDef('do_work', 'spawn_worker', { depends_on: ['plan_phase'] }),
+      stepDef('finalize', 'spawn_finalizer', { depends_on: ['do_work'] }),
+    ];
+    const template = makeTemplate([forEachPhaseDef('phase_loop', body)]);
+    // Pre-seed iteration with ONE of the three body nodes already completed.
+    // The walker must scaffold the missing two without clobbering the present one.
+    const preSeeded = {
+      kind: 'step' as const,
+      status: 'completed' as const,
+      doc_path: '/projects/TEST/plan.md',
+      retries: 0,
+    };
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'not_started', { plan_phase: preSeeded }),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    // Walker advanced past the completed plan_phase to do_work.
+    expect(result).toEqual({ action: 'spawn_worker', context: {} });
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const iter = fepState.iterations[0];
+    // The pre-seeded node retained its completed state + doc_path verbatim.
+    expect(iter.nodes['plan_phase']).toBe(preSeeded);
+    // Missing nodes were scaffolded as not_started step defaults.
+    expect(iter.nodes['do_work']).toEqual({
+      kind: 'step',
+      status: 'not_started',
+      doc_path: null,
+      retries: 0,
+    });
+    expect(iter.nodes['finalize']).toEqual({
+      kind: 'step',
+      status: 'not_started',
+      doc_path: null,
+      retries: 0,
+    });
+  });
+
+  it('self-heals a CHEAPER-PIPELINE-TEST-1-era stall: scaffolds missing body nodes when iteration.status is already in_progress with empty nodes', () => {
+    const body = [
+      stepDef('plan_phase', 'create_phase_plan'),
+      stepDef('do_work', 'spawn_worker', { depends_on: ['plan_phase'] }),
+    ];
+    const template = makeTemplate([forEachPhaseDef('phase_loop', body)]);
+    // Simulate the stalled state: iteration.status was flipped to in_progress
+    // by the original buggy walker, but body nodes were never scaffolded
+    // because the iteration came in with empty nodes and the old scaffold-only-on-not-started
+    // path was skipped on re-entry.
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'in_progress', {}),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    // Self-heal: walker scaffolded the missing body nodes and returned
+    // the first body node's action instead of stalling at action=null.
+    expect(result).toEqual({ action: 'create_phase_plan', context: {} });
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const iter = fepState.iterations[0];
+    expect(Object.keys(iter.nodes)).toEqual(['plan_phase', 'do_work']);
+    expect(iter.nodes['plan_phase']).toEqual({
+      kind: 'step',
+      status: 'not_started',
+      doc_path: null,
+      retries: 0,
+    });
+    expect(iter.nodes['do_work']).toEqual({
+      kind: 'step',
+      status: 'not_started',
+      doc_path: null,
+      retries: 0,
+    });
+  });
+
+  it('preserves template declaration order when scaffolding around a pre-seeded LATER body node (UI render order consistency)', () => {
+    const body = [
+      stepDef('plan_phase', 'create_phase_plan'),
+      stepDef('do_work', 'spawn_worker', { depends_on: ['plan_phase'] }),
+      stepDef('finalize', 'spawn_finalizer', { depends_on: ['do_work'] }),
+    ];
+    const template = makeTemplate([forEachPhaseDef('phase_loop', body)]);
+    // Pre-seed ONLY the last body node. Naive insertion would yield
+    // [finalize, plan_phase, do_work]; the walker must produce the
+    // template-declaration order [plan_phase, do_work, finalize].
+    const preSeeded = {
+      kind: 'step' as const,
+      status: 'completed' as const,
+      doc_path: null,
+      retries: 0,
+    };
+    const state = makeState({
+      phase_loop: forEachPhaseState('in_progress', [
+        makeIteration(0, 'in_progress', { finalize: preSeeded }),
+      ]),
+    });
+    const config = makeConfig();
+
+    walkDAG(state, template, config);
+
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const iter = fepState.iterations[0];
+    // Template declaration order — NOT JS insertion order from the raw pre-seed.
+    expect(Object.keys(iter.nodes)).toEqual(['plan_phase', 'do_work', 'finalize']);
+    // Pre-seeded node state preserved verbatim.
+    expect(iter.nodes['finalize']).toEqual(preSeeded);
+  });
 });
 
 // ── for_each_task tests ─────────────────────────────────────────────────────────────────────────────
@@ -980,21 +1146,19 @@ describe('for_each_task handling', () => {
     expect(fetState.iterations[1].status).toBe('not_started');
   });
 
-  it('resolves source_doc_ref via phase_planning sibling when ref is $.current_phase.doc_path', () => {
+  it('resolves source_doc_ref via iteration.doc_path when ref is $.current_phase.doc_path', () => {
     const phaseBody = [
-      stepDef('phase_planning', 'create_phase_plan'),
       forEachTaskDef('task_loop', [stepDef('task_handoff', 'create_task_handoff')]),
     ];
     const template = makeTemplate([
       forEachPhaseDef('phase_loop', phaseBody),
     ]);
+    const phaseIter = makeIteration(0, 'in_progress', {
+      task_loop: forEachTaskState('not_started'),
+    });
+    phaseIter.doc_path = '/projects/TEST/phase-plan.md';
     const state = makeState({
-      phase_loop: forEachPhaseState('in_progress', [
-        makeIteration(0, 'in_progress', {
-          phase_planning: { kind: 'step', status: 'completed', doc_path: '/projects/TEST/phase-plan.md', retries: 0 },
-          task_loop: forEachTaskState('not_started'),
-        }),
-      ]),
+      phase_loop: forEachPhaseState('in_progress', [phaseIter]),
     });
 
     const config = makeConfig();
@@ -1006,8 +1170,8 @@ describe('for_each_task handling', () => {
     const result = walkDAG(state, template, config, readDoc);
 
     expect(result).toEqual({ action: 'create_task_handoff', context: {} });
-    const phaseIter = (state.graph.nodes['phase_loop'] as ForEachPhaseNodeState).iterations[0];
-    const fetState = phaseIter.nodes['task_loop'] as ForEachTaskNodeState;
+    const fepState = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const fetState = fepState.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
     expect(fetState.iterations).toHaveLength(2);
   });
 
@@ -1207,6 +1371,41 @@ describe('for_each_task handling', () => {
     const fetState = state.graph.nodes['task_loop'] as ForEachTaskNodeState;
     expect(fetState.iterations).toHaveLength(0);
     expect(fetState.status).toBe('completed');
+  });
+
+  // Regression: same pre-seeded-shell scenario as for_each_phase — iteration
+  // shells carry no body nodes; walker must scaffold them on first in_progress
+  // transition instead of stalling at action=null.
+  it('scaffolds missing body nodes when task iterations are pre-seeded with empty nodes', () => {
+    const body = [
+      stepDef('task_executor', 'spawn_task_executor'),
+      stepDef('code_review', 'spawn_code_reviewer', { depends_on: ['task_executor'] }),
+    ];
+    const template = makeTemplate([
+      forEachTaskDef('task_loop', body, { source_doc_ref: '$.nodes.phase_plan.doc_path' }),
+    ]);
+    const state = makeState({
+      task_loop: forEachTaskState('in_progress', [
+        makeIteration(0, 'not_started', {}),
+      ]),
+    });
+    const config = makeConfig();
+
+    const result = walkDAG(state, template, config);
+
+    expect(result).toEqual({ action: 'spawn_task_executor', context: {} });
+    const fetState = state.graph.nodes['task_loop'] as ForEachTaskNodeState;
+    expect(fetState.iterations[0].status).toBe('in_progress');
+    expect(Object.keys(fetState.iterations[0].nodes)).toEqual([
+      'task_executor',
+      'code_review',
+    ]);
+    expect(fetState.iterations[0].nodes['task_executor']).toEqual({
+      kind: 'step',
+      status: 'not_started',
+      doc_path: null,
+      retries: 0,
+    });
   });
 });
 

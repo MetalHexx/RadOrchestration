@@ -963,7 +963,7 @@ describe('wrappedReadDocument – relative path resolution', () => {
     (state.graph.nodes['gate_mode_selection'] as GateNodeState).gate_active = false;
 
     // Set up phase_loop with one in-progress iteration.
-    // phase_planning is completed and has a RELATIVE doc_path.
+    // The phase iteration carries a RELATIVE doc_path directly.
     // task_loop has 0 iterations — the walker will call readDocument to expand it.
     const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     phaseLoop.status = 'in_progress';
@@ -972,12 +972,12 @@ describe('wrappedReadDocument – relative path resolution', () => {
         index: 0,
         status: 'in_progress',
         nodes: {
-          phase_planning: { kind: 'step', status: 'completed', doc_path: 'tasks/PHASE-PLAN.md', retries: 0 },
           task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
           phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
         },
         corrective_tasks: [],
+        doc_path: 'tasks/PHASE-PLAN.md',
         commit_hash: null,
       },
     ];
@@ -994,7 +994,7 @@ describe('wrappedReadDocument – relative path resolution', () => {
     const readDocSpy = vi.spyOn(io, 'readDocument');
 
     // Fire start event — walkDAG encounters task_loop with 0 iterations,
-    // reads phase_planning.doc_path ('tasks/PHASE-PLAN.md', relative),
+    // reads iteration.doc_path ('tasks/PHASE-PLAN.md', relative),
     // and wrappedReadDocument must resolve it to the absolute path.
     const result = processEvent('start', PROJECT_DIR, {}, io);
 
@@ -1019,9 +1019,10 @@ describe('wrappedReadDocument – relative path resolution', () => {
     (state.graph.nodes['gate_mode_selection'] as GateNodeState).status = 'completed';
     (state.graph.nodes['gate_mode_selection'] as GateNodeState).gate_active = false;
 
-    // phase_planning has a RELATIVE path that escapes the project directory.
-    // When the walker reaches task_loop (0 iterations) it calls wrappedReadDocument
-    // with phase_planning.doc_path, which must be rejected by the traversal guard.
+    // The phase iteration carries a RELATIVE doc_path that escapes the
+    // project directory. When the walker reaches task_loop (0 iterations) it
+    // calls wrappedReadDocument with iteration.doc_path, which must be
+    // rejected by the traversal guard.
     const traversalPath = '../../etc/passwd';
     const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     phaseLoop.status = 'in_progress';
@@ -1030,12 +1031,12 @@ describe('wrappedReadDocument – relative path resolution', () => {
         index: 0,
         status: 'in_progress',
         nodes: {
-          phase_planning: { kind: 'step', status: 'completed', doc_path: traversalPath, retries: 0 },
           task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
           phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
         },
         corrective_tasks: [],
+        doc_path: traversalPath,
         commit_hash: null,
       },
     ];

@@ -177,15 +177,11 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         activePhaseCorrective &&
         (activePhaseCorrective.status === 'not_started' || activePhaseCorrective.status === 'in_progress')
       ) {
-        const phaseCorrectiveHandoff = activePhaseCorrective.nodes['task_handoff'] as StepNodeState | undefined;
-        const phaseCorrectiveDocPath =
-          typeof phaseCorrectiveHandoff?.doc_path === 'string'
-            ? phaseCorrectiveHandoff.doc_path.trim()
-            : '';
-        if (phaseCorrectiveDocPath.length > 0) {
+        const phaseCorrectiveDoc = activePhaseCorrective.doc_path;
+        if (typeof phaseCorrectiveDoc === 'string' && phaseCorrectiveDoc.trim().length > 0) {
           // Return the stored path unchanged (not the trimmed copy) so downstream
           // consumers see the value exactly as the mutation wrote it.
-          return { ...base, handoff_doc: phaseCorrectiveHandoff!.doc_path };
+          return { ...base, handoff_doc: phaseCorrectiveDoc };
         }
       }
 
@@ -205,18 +201,15 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         activeCorrective &&
         (activeCorrective.status === 'not_started' || activeCorrective.status === 'in_progress')
       ) {
-        const correctiveHandoff = activeCorrective.nodes['task_handoff'] as StepNodeState | undefined;
-        const correctiveDocPath =
-          typeof correctiveHandoff?.doc_path === 'string' ? correctiveHandoff.doc_path.trim() : '';
-        if (correctiveDocPath.length > 0) {
+        const correctiveDoc = activeCorrective.doc_path;
+        if (typeof correctiveDoc === 'string' && correctiveDoc.trim().length > 0) {
           // Return the stored path unchanged (not the trimmed copy) so downstream
           // consumers see the value exactly as the mutation wrote it.
-          return { ...base, handoff_doc: correctiveHandoff!.doc_path };
+          return { ...base, handoff_doc: correctiveDoc };
         }
       }
 
-      const taskHandoff = taskIter?.nodes['task_handoff'] as StepNodeState | undefined;
-      const handoff_doc = taskHandoff?.doc_path ?? '';
+      const handoff_doc = taskIter?.doc_path ?? '';
       return { ...base, handoff_doc };
     }
 

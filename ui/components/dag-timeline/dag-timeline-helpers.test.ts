@@ -411,6 +411,46 @@ test("phase loop with in_progress iteration and doc_path returns parsed phase na
   assert.strictEqual(result, "Phase 1 \u2014 CORE SETUP");
 });
 
+test("phase loop with in_progress iteration using new shape (iteration.doc_path set, empty nodes) returns parsed phase name", () => {
+  // Post-explode-scaffold-unify shape: the iteration itself carries doc_path and
+  // has no synthetic phase_planning child node. deriveCurrentPhase must read
+  // iteration.doc_path first before falling back to the legacy phase_planning node.
+  const result = deriveCurrentPhase({
+    ...forEachPhaseNode,
+    status: "in_progress",
+    iterations: [
+      {
+        index: 0,
+        status: "in_progress",
+        doc_path: "phases/MY-PROJECT-PHASE-01-CORE-SETUP.md",
+        nodes: {},
+        corrective_tasks: [],
+      },
+    ],
+  });
+  assert.strictEqual(result, "Phase 1 — CORE SETUP");
+});
+
+test("phase loop with in_progress iteration carrying BOTH iteration.doc_path and legacy phase_planning prefers iteration.doc_path", () => {
+  // Mixed-shape edge case (shouldn't happen in practice but precedence must be deterministic).
+  const result = deriveCurrentPhase({
+    ...forEachPhaseNode,
+    status: "in_progress",
+    iterations: [
+      {
+        index: 0,
+        status: "in_progress",
+        doc_path: "phases/MY-PROJECT-PHASE-01-NEW-SHAPE.md",
+        nodes: {
+          phase_planning: { kind: "step", status: "completed", doc_path: "phases/MY-PROJECT-PHASE-01-LEGACY-SHAPE.md", retries: 0 },
+        },
+        corrective_tasks: [],
+      },
+    ],
+  });
+  assert.strictEqual(result, "Phase 1 — NEW SHAPE");
+});
+
 test("phase loop with in_progress iteration and null doc_path returns fallback Phase N", () => {
   const result = deriveCurrentPhase({
     ...forEachPhaseNode,

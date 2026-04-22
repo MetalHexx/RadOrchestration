@@ -220,7 +220,7 @@ describe('validateStateSchema', () => {
     expect(errors).toEqual([]);
   });
 
-  it('iteration.doc_path is rejected by the schema (Iter 5 removed this field in favor of child-node seeding)', () => {
+  it('iteration.doc_path is accepted by the schema (re-introduced post-unify for explosion seeding)', () => {
     const state = makeMinimalState();
     state.graph.nodes.phase_loop = {
       kind: 'for_each_phase',
@@ -232,15 +232,12 @@ describe('validateStateSchema', () => {
           nodes: {},
           corrective_tasks: [],
           commit_hash: null,
-          doc_path: 'phases/FOO-PHASE-01-BAR.md', // removed in Iter 5
+          doc_path: 'phases/FOO-PHASE-01-BAR.md',
         },
       ],
     } as any;
     const errors = validateStateSchema(state);
-    expect(errors.length).toBeGreaterThanOrEqual(1);
-    const extraPropError = errors.find(e => e.includes('doc_path'));
-    expect(extraPropError).toBeDefined();
-    expect(extraPropError!).toMatch(/^\[schema\] /);
+    expect(errors).toEqual([]);
   });
 
   it('legacy state.json (no doc_path / last_parse_error / parse_retry_count) still validates (backwards-compat)', () => {
