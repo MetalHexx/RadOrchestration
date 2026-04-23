@@ -52,10 +52,10 @@ async function run() {
     );
   });
 
-  await test('NAV_LINKS contains "/projects-v4" href', () => {
+  await test('NAV_LINKS does NOT contain "/projects-v4" href (hidden from nav)', () => {
     assert.ok(
-      sourceText.includes('"/projects-v4"') || sourceText.includes("'/projects-v4'"),
-      'app-header-shell.tsx must contain a NAV_LINKS entry with href="/projects-v4"'
+      !sourceText.includes('"/projects-v4"') && !sourceText.includes("'/projects-v4'"),
+      'app-header-shell.tsx must NOT contain a NAV_LINKS entry with href="/projects-v4" — v4 is hidden from the header'
     );
   });
 
