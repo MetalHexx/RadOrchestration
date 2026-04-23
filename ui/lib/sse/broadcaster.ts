@@ -57,7 +57,7 @@ export class SSEBroadcaster {
   }
 
   watcherCount(): number {
-    return 2;
+    return [this.fileWatcher, this.dirWatcher].filter(Boolean).length;
   }
 
   /** Test-only teardown. Production code never calls this (AD-3). */

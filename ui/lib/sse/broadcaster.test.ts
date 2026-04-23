@@ -29,3 +29,16 @@ test('subscribe / unsubscribe leave watcher count constant', async () => {
   await b.shutdownForTest();
   await rm(dir, { recursive: true, force: true });
 });
+
+test('watcherCount reflects live FSWatcher fields, not a hardcoded constant (NFR-1)', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'sse-b-'));
+  const b = new SSEBroadcaster({ projectsDir: dir, debounceMs: 50, heartbeatMs: 60_000 });
+  assert.strictEqual(b.watcherCount(), 2);
+  // Simulate one watcher being absent (failed init or disposed).
+  (b as unknown as { fileWatcher: unknown }).fileWatcher = undefined;
+  assert.strictEqual(b.watcherCount(), 1);
+  // Restore so shutdownForTest does not throw on close().
+  (b as unknown as { fileWatcher: unknown }).fileWatcher = { close: async () => {} };
+  await b.shutdownForTest();
+  await rm(dir, { recursive: true, force: true });
+});
