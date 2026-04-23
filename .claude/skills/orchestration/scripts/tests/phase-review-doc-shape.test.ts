@@ -86,16 +86,12 @@ describe('[Iter 8] phase-review template absorbs phase-report doc shape', () => 
       expect(body).toMatch(/^## Integration Assessment$/m);
     });
 
-    it('has Cross-Task Issues section', () => {
-      expect(body).toMatch(/^## Cross-Task Issues$/m);
-    });
-
     it('has Independent Quality Assessment section', () => {
       expect(body).toMatch(/^## Independent Quality Assessment$/m);
     });
 
-    it('has Test & Build Summary section', () => {
-      expect(body).toMatch(/^## Test & Build Summary$/m);
+    it('has Test Execution section', () => {
+      expect(body).toMatch(/^## Test Execution$/m);
     });
 
     it('has Recommendations for Next Phase section', () => {
@@ -138,14 +134,13 @@ describe('[Iter 8] phase-review template absorbs phase-report doc shape', () => 
       expect(workflow).not.toMatch(/\|\s*Phase Report\s*\|/);
     });
 
-    it('inputs table lists state.json (for retry counts in Task Results)', () => {
-      expect(workflow).toMatch(/state\.json/);
+    it('inputs table no longer lists state.json (workflow is diff-only)', () => {
+      expect(workflow).not.toMatch(/state\.json/);
     });
 
-    it('workflow step aggregates Task Results from Code Reviews + state.json', () => {
+    it('workflow step aggregates Task Results in the phase summary', () => {
       const aggregateStep = workflow.match(/Aggregate phase data[\s\S]*?(?=\n\d+\.|\n## )/)?.[0] ?? '';
       expect(aggregateStep).toMatch(/Task Results/);
-      expect(aggregateStep).toMatch(/state\.json|retry/);
     });
 
     it('workflow step mentions Files Changed aggregation', () => {
