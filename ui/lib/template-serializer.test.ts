@@ -319,14 +319,14 @@ describe('node kind coverage', () => {
     assert.ok('approved_event' in gate.data.meta, 'meta.approved_event missing');
   });
 
-  it('conditional nodes: commit_gate has kind=conditional, meta.condition is parseable JSON with config_ref/operator/value', () => {
+  it('conditional nodes: commit_gate has kind=conditional, meta.condition is parseable JSON with state_ref/operator/value', () => {
     const graph = parseTemplateToGraph(FULL_YAML);
     const cond = graph.nodes.find(n => n.id === 'commit_gate');
     assert.ok(cond, 'commit_gate node not found');
     assert.strictEqual(cond.data.kind, 'conditional');
     assert.ok('condition' in cond.data.meta, 'meta.condition missing');
     const condValue = JSON.parse(cond.data.meta.condition);
-    assert.ok(condValue.config_ref, 'condition.config_ref missing');
+    assert.ok(condValue.state_ref, 'condition.state_ref missing');
     assert.ok(condValue.operator, 'condition.operator missing');
     assert.ok(condValue.value !== undefined, 'condition.value missing');
   });
@@ -495,12 +495,12 @@ describe('meta field round-trip', () => {
     assert.deepStrictEqual(gateModeReparsed.auto_approve_modes, ['task', 'phase', 'autonomous']);
   });
 
-  it('conditional node condition (nested object) survives round-trip with config_ref, operator, value', () => {
+  it('conditional node condition (nested object) survives round-trip with state_ref, operator, value', () => {
     const graph = parseTemplateToGraph(FULL_YAML);
     const commitGate = graph.nodes.find(n => n.id === 'commit_gate');
     assert.ok(commitGate, 'commit_gate not found');
     const condition = JSON.parse(commitGate.data.meta.condition);
-    assert.strictEqual(condition.config_ref, 'source_control.auto_commit');
+    assert.strictEqual(condition.state_ref, 'pipeline.source_control.auto_commit');
     assert.strictEqual(condition.operator, 'neq');
     assert.strictEqual(condition.value, 'never');
 
