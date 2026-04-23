@@ -9,10 +9,7 @@ import {
   seedDoc,
   driveToExecutionWithConfig,
   driveTaskWith,
-  phasePlanDoc,
-  taskHandoffDoc,
   codeReviewDoc,
-  phaseReportDoc,
   phaseReviewDoc,
 } from '../fixtures/parity-states.js';
 import type {
@@ -64,19 +61,13 @@ function askConfig() {
 }
 
 // ── Drive helpers ─────────────────────────────────────────────────────────────
-
-/** Drives phase 1 planning with one task. */
-function drivePhasePlanning(io: MockIO): void {
-  processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-  seedDoc(phasePlanDoc(1), { tasks: [{ id: 'T01', title: 'Task 1' }] });
-  processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-}
+//
+// Post-Iter 7: phase_planning + task_handoff are pre-seeded by
+// driveToExecutionWithConfig (Iter 5 explosion-script behavior). No per-phase /
+// per-task authoring events need to be driven by tests.
 
 /** Drives a task through to code_review_completed with the given verdict. */
 function driveTaskToCodeReview(io: MockIO, phase: number, task: number, verdict: string) {
-  processEvent('task_handoff_started', PROJECT_DIR, { phase, task }, io);
-  seedDoc(taskHandoffDoc(phase, task));
-  processEvent('task_handoff_created', PROJECT_DIR, { phase, task, doc_path: taskHandoffDoc(phase, task) }, io);
   processEvent('execution_started', PROJECT_DIR, { phase, task }, io);
   processEvent('task_completed', PROJECT_DIR, { phase, task }, io);
   processEvent('code_review_started', PROJECT_DIR, { phase, task }, io);
@@ -86,11 +77,8 @@ function driveTaskToCodeReview(io: MockIO, phase: number, task: number, verdict:
   }, io);
 }
 
-/** Drives phase report and review through to phase_review_completed with the given verdict. */
+/** Drives phase review through to phase_review_completed with the given verdict. */
 function driveToPhaseReviewCompleted(io: MockIO, verdict: string) {
-  processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-  seedDoc(phaseReportDoc(1));
-  processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: phaseReportDoc(1) }, io);
   processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
   seedDoc(phaseReviewDoc(1));
   return processEvent('phase_review_completed', PROJECT_DIR, {
@@ -118,28 +106,32 @@ function getPhaseGateState(io: MockIO, phase: number): GateNodeState {
 describe('[CONTRACT] Gate Behavior — Autonomous mode, task gate', () => {
 
   it('auto-approves when code_review verdict = "approved"', () => {
-    const io = driveToExecutionWithConfig(autonomousConfig(), 1);
-    drivePhasePlanning(io);
+    // Single-task phase so task_gate auto-approval advances directly to spawn_phase_reviewer (post-Iter 8).
+    const io = driveToExecutionWithConfig(autonomousConfig(), 1, 1);
     const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
     expect(result.success).toBe(true);
     expect(result.action).not.toBe('gate_task');
-    expect(result.action).toBe('generate_phase_report');
+    expect(result.action).toBe('spawn_phase_reviewer');
 
     const gate = getTaskGateState(io, 1, 1);
     expect(gate.gate_active).toBe(false);
     expect(gate.status).toBe('completed');
   });
 
-  it('unrecognized verdict halts pipeline (code_review_completed with "approve")', () => {
-    const io = driveToExecutionWithConfig(autonomousConfig(), 1);
-    drivePhasePlanning(io);
+  it('unrecognized verdict rejected at validator stage (code_review_completed with "approve")', () => {
+    // Iter-10 Copilot R3 hardening: verdict rule now validates the enum
+    // exactly. Typos like "approve" are caught as structured frontmatter
+    // errors before reaching the mutation — earlier + more actionable than
+    // the prior mutation-level unknown-verdict halt.
+    const io = driveToExecutionWithConfig(autonomousConfig(), 1, 1);
     const result = driveTaskToCodeReview(io, 1, 1, 'approve');
 
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('display_halted');
-    expect(io.currentState!.graph.status).toBe('halted');
-    expect(io.currentState!.pipeline.halt_reason).toContain('approve');
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('verdict');
+    expect(result.error?.event).toBe('code_review_completed');
+    // Graph does not halt — validator rejection is recoverable.
+    expect(io.currentState!.graph.status).not.toBe('halted');
   });
 });
 
@@ -148,8 +140,7 @@ describe('[CONTRACT] Gate Behavior — Autonomous mode, task gate', () => {
 describe('[CONTRACT] Gate Behavior — Autonomous mode, phase gate', () => {
 
   it('auto-approves when phase_review verdict = "approved"', () => {
-    const io = driveToExecutionWithConfig(autonomousConfig(), 1);
-    drivePhasePlanning(io);
+    const io = driveToExecutionWithConfig(autonomousConfig(), 1, 1);
     // driveTaskWith uses verdict='approved' → task gate auto-approves (autonomous)
     driveTaskWith(io, 1, 1);
     const result = driveToPhaseReviewCompleted(io, 'approved');
@@ -162,16 +153,20 @@ describe('[CONTRACT] Gate Behavior — Autonomous mode, phase gate', () => {
     expect(gate.status).toBe('completed');
   });
 
-  it('unrecognized verdict halts pipeline (phase_review_completed with "approve")', () => {
-    const io = driveToExecutionWithConfig(autonomousConfig(), 1);
-    drivePhasePlanning(io);
+  it('unrecognized verdict rejected at pre-read boundary (phase_review_completed with "approve")', () => {
+    // Iter 11: the phase_review verdict rule now validates the exact enum at
+    // the pre-read boundary (parallels iter-10 code_review change). A typo
+    // no longer slips through to the mutation's unknown-verdict halt — it
+    // surfaces as a structured frontmatter error instead.
+    const io = driveToExecutionWithConfig(autonomousConfig(), 1, 1);
     driveTaskWith(io, 1, 1);
     const result = driveToPhaseReviewCompleted(io, 'approve');
 
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('display_halted');
-    expect(io.currentState!.graph.status).toBe('halted');
-    expect(io.currentState!.pipeline.halt_reason).toContain('approve');
+    expect(result.success).toBe(false);
+    expect(result.error?.field).toBe('verdict');
+    expect(result.error?.event).toBe('phase_review_completed');
+    // Graph does not halt — validator rejection is recoverable.
+    expect(io.currentState!.graph.status).not.toBe('halted');
   });
 });
 
@@ -181,7 +176,6 @@ describe('[CONTRACT] Gate Behavior — Phase mode', () => {
 
   it('task gate auto-approves unconditionally ("phase" in auto_approve_modes: [phase])', () => {
     const io = driveToExecutionWithConfig(phaseConfig(), 1);
-    drivePhasePlanning(io);
     // verdict is irrelevant — phase mode unconditionally auto-approves task gate
     const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
@@ -194,8 +188,7 @@ describe('[CONTRACT] Gate Behavior — Phase mode', () => {
   });
 
   it('phase gate fires ("phase" not in auto_approve_modes: [])', () => {
-    const io = driveToExecutionWithConfig(phaseConfig(), 1);
-    drivePhasePlanning(io);
+    const io = driveToExecutionWithConfig(phaseConfig(), 1, 1);
     // In phase mode task gate auto-approves — driveTaskWith handles either case
     driveTaskWith(io, 1, 1);
     const result = driveToPhaseReviewCompleted(io, 'approved');
@@ -214,7 +207,6 @@ describe('[CONTRACT] Gate Behavior — Task mode', () => {
 
   it('task gate fires ("task" not in auto_approve_modes: [phase])', () => {
     const io = driveToExecutionWithConfig(taskConfig(), 1);
-    drivePhasePlanning(io);
     const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
     expect(result.success).toBe(true);
@@ -225,8 +217,7 @@ describe('[CONTRACT] Gate Behavior — Task mode', () => {
   });
 
   it('phase gate fires ("task" not in auto_approve_modes: [])', () => {
-    const io = driveToExecutionWithConfig(taskConfig(), 1);
-    drivePhasePlanning(io);
+    const io = driveToExecutionWithConfig(taskConfig(), 1, 1);
     // In task mode, task gate fires — driveTaskWith approves it
     driveTaskWith(io, 1, 1);
     const result = driveToPhaseReviewCompleted(io, 'approved');
@@ -243,7 +234,6 @@ describe('[CONTRACT] Gate Behavior — Ask mode', () => {
   it('returns ask_gate_mode when execution_mode is ask and pipeline.gate_mode is null', () => {
     // ask mode + pipeline.gate_mode=null → walker returns ask_gate_mode before activating gate
     const io = driveToExecutionWithConfig(askConfig(), 1);
-    drivePhasePlanning(io);
     const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
     expect(result.success).toBe(true);
@@ -299,7 +289,6 @@ describe('[CONTRACT] Gate Behavior — Gate mode precedence', () => {
     // Override pipeline.gate_mode to simulate operator having chosen 'phase' mode
     io.currentState!.pipeline.gate_mode = 'phase';
 
-    drivePhasePlanning(io);
     const result = driveTaskToCodeReview(io, 1, 1, 'approved');
 
     expect(result.success).toBe(true);

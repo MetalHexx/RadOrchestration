@@ -126,6 +126,14 @@ The pipeline result always includes:
 - `context`: action-specific payload
 - `orchRoot`: the orchestration root path (use for subsequent calls)
 
+### Corrective Mediation on `code_review_completed`
+
+When the pipeline resolves action #4 (`spawn_code_reviewer`) and the reviewer returns a raw `verdict: changes_requested`, the orchestrator enters an in-session mediation flow **before** signaling `code_review_completed` to the pipeline. The full mediation procedure — per-finding judgment, addendum authoring, corrective Task Handoff creation, and budget enforcement — is defined in [`references/corrective-playbook.md`](references/corrective-playbook.md). When the reviewer returns `approved`, the orchestrator signals `code_review_completed` with no mediation fields and the event propagates normally. When the reviewer returns `rejected`, the orchestrator signals `code_review_completed` immediately (no mediation), and the mutation routes the rejected verdict into a clean pipeline halt. The orchestrator never flips an `approved` verdict to `changes_requested`.
+
+### Corrective Mediation on `phase_review_completed`
+
+When the pipeline resolves action #5 (`spawn_phase_reviewer`) and the reviewer returns a raw `verdict: changes_requested`, the orchestrator enters the same in-session mediation flow **before** signaling `phase_review_completed` to the pipeline. The structure mirrors the task-scope case: the orchestrator reads each finding against the Phase Plan, Requirements, task handoffs, and cumulative phase diff; writes a `## Orchestrator Addendum` section and additive frontmatter (`orchestrator_mediated`, `effective_outcome`, `corrective_handoff_path`) to the phase review doc; and — when at least one finding is actioned — authors a self-contained corrective Task Handoff under `tasks/` with a `-PHASE-` sentinel in the filename (`{NAME}-TASK-P{NN}-PHASE-C{N}.md`). The corrective appends to `phaseIter.corrective_tasks[]` (not `taskIter.corrective_tasks`). See [`references/corrective-playbook.md`](references/corrective-playbook.md) for the full procedure, including the single-pass phase_review clause and ancestor-derivation rule for corrective-of-corrective routing. When the reviewer returns `approved` or `rejected`, no mediation fires and the event propagates normally.
+
 ## Error Handling
 
 If the pipeline exits with code 1, the result contains error details:
@@ -184,9 +192,7 @@ When spawning a subagent, always provide:
 4. **Output expectations**: Where to save the output document (derive from project naming conventions)
 
 Example spawn instructions:
-> "Create the PRD for the MYAPP project. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that. Save the PRD to `{base_path}/MYAPP/MYAPP-PRD.md`."
-
-> "Research the codebase for the MYAPP project. Evidence-only — report file paths, patterns, constraints, and unknowns. Do not include recommendations. Read the PRD at `{base_path}/MYAPP/MYAPP-PRD.md`. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that too. Save the research findings to `{base_path}/MYAPP/MYAPP-RESEARCH-FINDINGS.md`."
+> "Create the requirements for the MYAPP project. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that. Save the requirements to `{base_path}/MYAPP/MYAPP-REQUIREMENTS.md`."
 
 ### Source Control — PR Mode
 

@@ -1,58 +1,52 @@
 # Self-Review — Planner-Time Audit
 
-Run this before finalizing your planning document. You are checking your own output for accuracy against the codebase and cohesion with upstream documents.
+Run this before saving your planning document. You are checking your own
+output for accuracy against the codebase and cohesion with the upstream
+doc. This is a checklist you run yourself — not a subagent dispatch.
 
 ## Scope
 
-- **Your document** — the doc you are creating or revising
-- **Upstream documents** — planning docs your document consumes (see dependency chain below)
-- **Existing source files** — files your document references as already existing
+The planning set has exactly two documents: Requirements and Master
+Plan. Pick the row that matches what you're writing.
 
-### Planning Dependency Chain
-
-| Document | Upstream Inputs |
-|----------|----------------|
-| PRD | Brainstorming doc *(if available)* |
-| Research Findings | PRD |
-| Design | PRD, Research Findings |
-| Architecture | PRD, Design, Research Findings |
-| Master Plan | PRD, Design, Architecture, Research Findings |
-| Phase Plan | Master Plan, Architecture, Design, PRD |
-| Task Handoff | Phase Plan, Architecture, Design |
+| You are writing | Upstream | Focus on |
+|-----------------|----------|----------|
+| Requirements | Brainstorming doc *(if present)* | §2.3 terminology; **§2.4 decision encapsulation (must not have forward references to Master Plan, phase plan, task handoff; no deferred-work verbs; no conditional decisions);** structural rules from `.claude/skills/rad-create-plans/references/requirements/workflow.md` step 7 (block shape, tags, no placeholders). |
+| Master Plan | Requirements doc | Part 1 (codebase accuracy), §2.1 (coverage), §2.3 (terminology) |
 
 ## Workflow
 
-1. **Identify upstream docs** from the dependency chain above.
-2. **Read each upstream doc** you haven't already read in this session.
-3. **Read existing source files** your document claims already exist.
-4. **Apply accuracy checks** — [rubric §1](./audit-rubric.md#part-1-codebase-accuracy-docs-vs-code). Verify every claim your doc makes about existing code (names, signatures, paths, types, behaviors).
-5. **Apply cohesion checks** — [rubric §2](./audit-rubric.md#part-2-cross-document-cohesion-docs-vs-docs). Verify your doc aligns with upstream docs. Focus on the subsections relevant to your document type:
+1. **Read upstream.** Read the Requirements doc (when writing the Master
+   Plan) or the Brainstorming doc if one exists (when writing
+   Requirements).
 
-   | You are writing | Focus on |
-   |----------------|----------|
-   | PRD | §2.1 — requirements are traceable to brainstorming document |
-   | Research Findings | §2.1, §2.6 — findings traceable to PRD, terminology consistent |
-   | Design | §2.2 — components map to PRD functional requirements |
-   | Architecture | §2.1, §2.2, §2.4 — modules cover all requirements, contracts are exact, design components have corresponding modules |
-   | Master Plan | §2.1, §2.5, §2.6 — key requirements and constraints trace to PRD, Architecture and Design docs.  Phase scopes cover all requirements, terminology is consistent |
-   | Phase Plan | §2.5, §2.6 — tasks trace to phase scope, terminology matches upstream docs |
-   | Task Handoff | §2.4, §2.6 — inlined contracts match Architecture exactly, terminology is consistent |
+2. **Read existing source.** For every claim your doc makes about code
+   that already exists — file paths, interface shapes, command names —
+   read the real source. Planned additions are not in scope.
 
-6. **Apply anti-duplication checks** (Research Findings and Design):
+3. **Apply the rubric.** Walk the focus pillars listed for your doc type
+   against the live rubric at [audit-rubric.md](./audit-rubric.md). The
+   calibration clause applies — only flag issues that would block a
+   coder.
 
-   **Research Findings**:
-   - Does any finding body restate requirement text from the PRD? → Remove restatement
-   - Does every finding add file paths, code patterns, constraints, or unknowns
-     not present in the PRD? → Remove findings that only restate PRD content
-   - Does any finding use "should," "recommend," or "consider"? → Remove
-     prescriptive language
-   - Does every finding have a traceability tag (`Relates to FR-N`)? → Add if missing
+4. **Fix inline before saving. No re-review.** If you find issues, fix
+   them in place and save. Do not dispatch a reviewer, do not write a
+   report. If you find a Requirements ID that no task covers, add the
+   task (or correct the phase breakdown). If you find a phantom tag,
+   delete or correct it.
 
-   **Design**:
-   - Do any User Flows merely linearize functional requirements into steps without
-     adding error recovery, branching logic, or state transitions? → Rewrite to add
-     unique interaction signal or remove the flow
-   - Do any component descriptions restate PRD requirement text instead of describing
-     the visual and interaction contract? → Rewrite to focus on design intent
-   - Do any component props include TypeScript types, file paths, or technology
-     choices? → Replace with conceptual descriptions
+## Master Plan — Part 3 emphasis
+
+Part 3 (Buildability) is the highest-value pass for Master Plan
+self-review because it fully determines whether the plan is executable. Before saving, confirm:
+
+- Every FR / NFR / AD / DD in the Requirements doc appears in at least
+  one task's `**Requirements:**` line.
+- Every tag cited anywhere in the Master Plan resolves to an ID block in
+  the Requirements doc.
+- Every step ends with at least one `(FR-N)` / `(NFR-N)` / `(AD-N)` /
+  `(DD-N)` tag.
+- Every `code`-type task has exactly four RED-GREEN steps.
+- No `TBD` / `TODO` / `similar to` / `as needed` language anywhere.
+- Is there anything that would cause a coder to ask you mid-build, "Wait, what does this mean?" If so, clarify it before saving.
+- If there is anything missing from the plan that would cause the plan to fail, add or remove it before saving.

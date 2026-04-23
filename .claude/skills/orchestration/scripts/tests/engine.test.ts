@@ -107,15 +107,15 @@ describe('engine – processEvent', () => {
   });
 
   describe('Init route (null state) — full template', () => {
-    // Note: assertions on the first action (spawn_prd) are full-template-specific.
-    // The full template starts with prd; other templates may differ.
-    it('scaffolds state from template and returns first action (spawn_prd in full template)', () => {
+    // Note: assertions on the first action (spawn_master_plan) are full-template-specific.
+    // The full template starts with master_plan; other templates may differ.
+    it('scaffolds state from template and returns first action (spawn_master_plan in full template)', () => {
       const io = createMockIO(null);
       const result = processEvent('start', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(true);
-      expect(result.action).toBe('spawn_prd');
-      expect(result.context).toEqual({ step: 'prd' });
+      expect(result.action).toBe('spawn_master_plan');
+      expect(result.context).toEqual({ step: 'master_plan' });
       expect(result.mutations_applied).toContain('scaffold_initial_state');
       expect(result.orchRoot).toBe(ORCH_ROOT);
     });
@@ -161,7 +161,7 @@ describe('engine – processEvent', () => {
       const nodes = io.currentState!.graph.nodes;
 
       // Planning steps
-      for (const nodeId of ['research', 'prd', 'design', 'architecture', 'master_plan']) {
+      for (const nodeId of ['master_plan']) {
         const node = nodes[nodeId] as StepNodeState;
         expect(node.kind).toBe('step');
         expect(node.status).toBe('not_started');
@@ -215,12 +215,12 @@ describe('engine – processEvent', () => {
   });
 
   describe('start event – init (null state)', () => {
-    it('scaffolds state and returns success: true with first action spawn_prd (full template)', () => {
+    it('scaffolds state and returns success: true with first action spawn_master_plan (full template)', () => {
       const io = createMockIO(null);
       const result = processEvent('start', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(true);
-      expect(result.action).toBe('spawn_prd');
+      expect(result.action).toBe('spawn_master_plan');
       expect(result.mutations_applied).toContain('scaffold_initial_state');
     });
 
@@ -251,20 +251,20 @@ describe('engine – processEvent', () => {
   describe('start event – cold-start / resume (state exists)', () => {
     it('returns success: true and the current pending action, persisting walker state', () => {
       const state = makeScaffoldedState();
-      // prd is not_started → walkDAG should find spawn_prd as first action
+      // master_plan is not_started → walkDAG should find spawn_master_plan as first action
       const io = createMockIO(state);
       const result = processEvent('start', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(true);
-      expect(result.action).toBe('spawn_prd');
+      expect(result.action).toBe('spawn_master_plan');
       expect(result.mutations_applied).toEqual([]);
       expect(io.writeCalls.length).toBe(1);
       expect(io.writeCalls[0].projectDir).toBe(PROJECT_DIR);
     });
 
-    it('returns the current pending action when research is in_progress', () => {
+    it('returns the current pending action when master_plan is in_progress', () => {
       const state = makeScaffoldedState();
-      (state.graph.nodes['research'] as StepNodeState).status = 'in_progress';
+      (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
 
       const io = createMockIO(state);
       const result = processEvent('start', PROJECT_DIR, {}, io);
@@ -282,7 +282,7 @@ describe('engine – processEvent', () => {
       const nodes = baseState.graph.nodes;
 
       // Satisfy all phase_loop dependencies
-      for (const id of ['research', 'prd', 'design', 'architecture', 'master_plan']) {
+      for (const id of ['master_plan']) {
         (nodes[id] as StepNodeState).status = 'completed';
       }
       const planGate = nodes['plan_approval_gate'] as GateNodeState;
@@ -325,9 +325,9 @@ describe('engine – processEvent', () => {
   });
 
   describe('null-state guard (non-start events)', () => {
-    it('research_started with null state returns success: false with structured error', () => {
+    it('master_plan_started with null state returns success: false with structured error', () => {
       const io = createMockIO(null);
-      const result = processEvent('research_started', PROJECT_DIR, {}, io);
+      const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(false);
       expect(result.action).toBeNull();
@@ -347,74 +347,43 @@ describe('engine – processEvent', () => {
     });
   });
 
-  describe('Standard route – research_started', () => {
-    it('sets research.status to in_progress and returns spawn_research', () => {
+  describe('Standard route – master_plan_started', () => {
+    it('sets master_plan.status to in_progress and returns spawn_master_plan', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
 
-      const result = processEvent('research_started', PROJECT_DIR, {}, io);
+      const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(true);
-      expect(result.action).toBe('spawn_research');
-      expect(result.context).toEqual({ step: 'research' });
+      expect(result.action).toBe('spawn_master_plan');
+      expect(result.context).toEqual({ step: 'master_plan' });
 
-      const researchNode = io.currentState!.graph.nodes['research'] as StepNodeState;
-      expect(researchNode.status).toBe('in_progress');
+      const mpNode = io.currentState!.graph.nodes['master_plan'] as StepNodeState;
+      expect(mpNode.status).toBe('in_progress');
     });
   });
 
-  describe('Standard route – research_completed', () => {
-    it('sets research.status to completed and returns next action spawn_prd', () => {
-      // Set up state where research is in_progress
+  describe('Standard route – master_plan_completed', () => {
+    it('sets master_plan.status to completed and returns next action request_plan_approval', () => {
+      // Set up state where master_plan is in_progress
       const state = makeScaffoldedState();
-      (state.graph.nodes['research'] as StepNodeState).status = 'in_progress';
+      (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
 
-      const docPath = path.posix.join(PROJECT_DIR, 'tasks', 'RESEARCH.md');
+      const docPath = path.posix.join(PROJECT_DIR, 'tasks', 'MASTER-PLAN.md');
       DOC_STORE[docPath] = {
-        frontmatter: { title: 'Research', status: 'completed' },
-        content: '# Research findings',
+        frontmatter: { title: 'Master Plan', status: 'completed', total_phases: 1 },
+        content: '# Master Plan',
       };
 
       const io = createMockIO(state);
-      const result = processEvent('research_completed', PROJECT_DIR, { doc_path: docPath }, io);
+      const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
 
       expect(result.success).toBe(true);
-      expect(result.action).toBe('spawn_prd');
-      expect(result.context).toEqual({ step: 'prd' });
+      expect(result.action).toBe('request_plan_approval');
 
-      const researchNode = io.currentState!.graph.nodes['research'] as StepNodeState;
-      expect(researchNode.status).toBe('completed');
-      expect(researchNode.doc_path).toBe(docPath);
-    });
-  });
-
-  describe('Standard route – started event', () => {
-    it('finds next sibling step whose depends_on are all completed', () => {
-      const state = makeScaffoldedState();
-      // Mark research as completed
-      (state.graph.nodes['research'] as StepNodeState).status = 'completed';
-      (state.graph.nodes['research'] as StepNodeState).doc_path = '/tmp/research.md';
-      // Mark prd as completed
-      (state.graph.nodes['prd'] as StepNodeState).status = 'completed';
-      (state.graph.nodes['prd'] as StepNodeState).doc_path = '/tmp/prd.md';
-
-      const docPath = '/tmp/design-doc.md';
-      DOC_STORE[docPath] = {
-        frontmatter: { title: 'Design' },
-        content: '# Design doc',
-      };
-
-      const io = createMockIO(state);
-      // design_started (design depends on prd which is completed)
-      // need state where design is not_started and prd is completed
-      // Fire design_started → should set design to in_progress and return spawn_design
-      const result = processEvent('design_started', PROJECT_DIR, {}, io);
-
-      expect(result.success).toBe(true);
-      expect(result.action).toBe('spawn_design');
-
-      const designNode = io.currentState!.graph.nodes['design'] as StepNodeState;
-      expect(designNode.status).toBe('in_progress');
+      const mpNode = io.currentState!.graph.nodes['master_plan'] as StepNodeState;
+      expect(mpNode.status).toBe('completed');
+      expect(mpNode.doc_path).toBe(docPath);
     });
   });
 
@@ -422,15 +391,7 @@ describe('engine – processEvent', () => {
     it('plan_approved flows through walkDAG gate, returns null action, persists state', () => {
       const state = makeScaffoldedState();
 
-      // Mark all planning steps as completed
-      (state.graph.nodes['research'] as StepNodeState).status = 'completed';
-      (state.graph.nodes['research'] as StepNodeState).doc_path = '/tmp/research.md';
-      (state.graph.nodes['prd'] as StepNodeState).status = 'completed';
-      (state.graph.nodes['prd'] as StepNodeState).doc_path = '/tmp/prd.md';
-      (state.graph.nodes['design'] as StepNodeState).status = 'completed';
-      (state.graph.nodes['design'] as StepNodeState).doc_path = '/tmp/design.md';
-      (state.graph.nodes['architecture'] as StepNodeState).status = 'completed';
-      (state.graph.nodes['architecture'] as StepNodeState).doc_path = '/tmp/arch.md';
+      // Mark master plan as completed
       (state.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
       (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/tmp/master-plan.md';
 
@@ -440,8 +401,8 @@ describe('engine – processEvent', () => {
 
       const io = createMockIO(state);
       DOC_STORE['/tmp/master-plan.md'] = {
-        frontmatter: { total_phases: 3 },
-        content: '---\ntotal_phases: 3\n---\n# Master Plan',
+        frontmatter: { total_phases: 3, total_tasks: 6 },
+        content: '---\ntotal_phases: 3\ntotal_tasks: 6\n---\n# Master Plan',
       };
       const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master-plan.md' }, io);
 
@@ -481,11 +442,11 @@ describe('engine – processEvent', () => {
   describe('Pre-read failure', () => {
     it('returns success: false with field: doc_path when doc_path missing on completed event', () => {
       const state = makeScaffoldedState();
-      (state.graph.nodes['research'] as StepNodeState).status = 'in_progress';
+      (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
 
       const io = createMockIO(state);
-      // research_completed requires doc_path because research has doc_output_field
-      const result = processEvent('research_completed', PROJECT_DIR, {}, io);
+      // master_plan_completed requires doc_path because master_plan has doc_output_field
+      const result = processEvent('master_plan_completed', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -495,10 +456,10 @@ describe('engine – processEvent', () => {
 
     it('does not write state on pre-read failure', () => {
       const state = makeScaffoldedState();
-      (state.graph.nodes['research'] as StepNodeState).status = 'in_progress';
+      (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
 
       const io = createMockIO(state);
-      processEvent('research_completed', PROJECT_DIR, {}, io);
+      processEvent('master_plan_completed', PROJECT_DIR, {}, io);
 
       expect(io.writeCalls.length).toBe(0);
     });
@@ -507,11 +468,10 @@ describe('engine – processEvent', () => {
   describe('Mutation error', () => {
     it('does not write state if mutation throws', () => {
       const state = makeScaffoldedState();
-      // Create a state where a mutation will fail — e.g. resolveNodeState for a non-existent node
-      // We'll test an event that resolves to a node in a scope that doesn't exist
-      // task_handoff_started needs phase/task context with iterations, which we haven't set up
+      // Create a state where a mutation will fail — e.g. resolveNodeState for a non-existent node.
+      // execution_started needs phase/task context with iterations, which we haven't set up.
       const io = createMockIO(state);
-      const result = processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+      const result = processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
 
       // Should fail because phase_loop has no iterations
       expect(result.success).toBe(false);
@@ -542,7 +502,7 @@ describe('engine – processEvent', () => {
       const originalUpdated = state.project.updated;
 
       const io = createMockIO(state);
-      processEvent('research_started', PROJECT_DIR, {}, io);
+      processEvent('master_plan_started', PROJECT_DIR, {}, io);
 
       const updatedState = io.currentState!;
       // The updated timestamp should be different (or at least set)
@@ -556,10 +516,10 @@ describe('engine – processEvent', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
 
-      processEvent('research_started', PROJECT_DIR, {}, io);
+      processEvent('master_plan_started', PROJECT_DIR, {}, io);
 
       const updatedState = io.currentState!;
-      expect(updatedState.graph.current_node_path).toBe('research');
+      expect(updatedState.graph.current_node_path).toBe('master_plan');
     });
   });
 
@@ -610,22 +570,14 @@ describe('engine – processEvent', () => {
     it('standard route validates state after walkDAG — does not write on failure', () => {
       const state = makeScaffoldedState();
 
-      // Mark all planning steps as completed
-      (state.graph.nodes['research'] as StepNodeState).status = 'completed';
-      (state.graph.nodes['research'] as StepNodeState).doc_path = '/tmp/research.md';
-      (state.graph.nodes['prd'] as StepNodeState).status = 'completed';
-      (state.graph.nodes['prd'] as StepNodeState).doc_path = '/tmp/prd.md';
-      (state.graph.nodes['design'] as StepNodeState).status = 'completed';
-      (state.graph.nodes['design'] as StepNodeState).doc_path = '/tmp/design.md';
-      (state.graph.nodes['architecture'] as StepNodeState).status = 'completed';
-      (state.graph.nodes['architecture'] as StepNodeState).doc_path = '/tmp/arch.md';
+      // Mark master_plan as completed
       (state.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
       (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/tmp/master-plan.md';
       (state.graph.nodes['plan_approval_gate'] as GateNodeState).status = 'not_started';
 
       // Provide a master plan doc that declares phases, so walkDAG can expand
       DOC_STORE['/tmp/master-plan.md'] = {
-        frontmatter: { total_phases: 5 },
+        frontmatter: { total_phases: 5, total_tasks: 10 },
         content: '# Master Plan',
       };
 
@@ -673,7 +625,7 @@ describe('engine – processEvent', () => {
       const io = createMockIO(state);
       vi.mocked(getMutation).mockReturnValueOnce(undefined);
 
-      const result = processEvent('research_started', PROJECT_DIR, {}, io);
+      const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(false);
       expect(result.context.error).toContain('No mutation registered for event:');
@@ -683,9 +635,9 @@ describe('engine – processEvent', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
 
-      // task_handoff_started with context.phase=1 causes the mutation to throw
-      // because the phase_loop has no iterations in the scaffolded state
-      const result = processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+      // execution_started with context.phase=1 causes the mutation to throw
+      // because the phase_loop has no iterations in the scaffolded state.
+      const result = processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
 
       expect(result.success).toBe(false);
       expect(typeof result.context.error).toBe('string');
@@ -704,7 +656,6 @@ describe('engine – processEvent', () => {
           status: 'in_progress',
           nodes: {
             phase_planning: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-plan.md', retries: 0 },
-            phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
             task_loop: {
@@ -744,7 +695,6 @@ describe('engine – processEvent', () => {
           status: 'in_progress',
           nodes: {
             phase_planning: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-plan.md', retries: 0 },
-            phase_report: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-report.md', retries: 0 },
             phase_review: { kind: 'step', status: 'completed', doc_path: '/tmp/phase-review.md', retries: 0 },
             phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
             task_loop: {
@@ -835,7 +785,7 @@ describe('out-of-band event routing', () => {
   // Context required per event (events that need specific context to succeed)
   const OOB_EVENT_CONTEXTS: Record<string, Record<string, string>> = {
     gate_mode_set: { gate_mode: 'task' },
-    source_control_init: { branch: 'main', base_branch: 'main' },
+    source_control_init: { branch: 'main', base_branch: 'main', auto_commit: 'never', auto_pr: 'never' },
   };
 
   for (const oobEvent of OOB_EVENTS) {
@@ -852,7 +802,7 @@ describe('out-of-band event routing', () => {
   const REAL_OOB_EVENTS = ['plan_rejected', 'gate_rejected', 'final_rejected', 'halt', 'gate_mode_set', 'source_control_init'] as const;
   const REAL_OOB_CONTEXTS: Record<string, Record<string, string>> = {
     gate_mode_set: { gate_mode: 'task' },
-    source_control_init: { branch: 'main', base_branch: 'main' },
+    source_control_init: { branch: 'main', base_branch: 'main', auto_commit: 'never', auto_pr: 'never' },
   };
   for (const oobEvent of REAL_OOB_EVENTS) {
     it(`${oobEvent} result includes non-empty mutations_applied (real implementation, not stub)`, () => {
@@ -1004,15 +954,7 @@ describe('wrappedReadDocument – relative path resolution', () => {
     // Set up state where task_loop needs to expand using phase_planning.doc_path
     const state = makeScaffoldedState();
 
-    // Mark all planning steps as completed
-    (state.graph.nodes['research'] as StepNodeState).status = 'completed';
-    (state.graph.nodes['research'] as StepNodeState).doc_path = '/tmp/research.md';
-    (state.graph.nodes['prd'] as StepNodeState).status = 'completed';
-    (state.graph.nodes['prd'] as StepNodeState).doc_path = '/tmp/prd.md';
-    (state.graph.nodes['design'] as StepNodeState).status = 'completed';
-    (state.graph.nodes['design'] as StepNodeState).doc_path = '/tmp/design.md';
-    (state.graph.nodes['architecture'] as StepNodeState).status = 'completed';
-    (state.graph.nodes['architecture'] as StepNodeState).doc_path = '/tmp/arch.md';
+    // Mark master_plan as completed
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
     (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/tmp/master-plan.md';
     (state.graph.nodes['plan_approval_gate'] as GateNodeState).status = 'completed';
@@ -1021,7 +963,7 @@ describe('wrappedReadDocument – relative path resolution', () => {
     (state.graph.nodes['gate_mode_selection'] as GateNodeState).gate_active = false;
 
     // Set up phase_loop with one in-progress iteration.
-    // phase_planning is completed and has a RELATIVE doc_path.
+    // The phase iteration carries a RELATIVE doc_path directly.
     // task_loop has 0 iterations — the walker will call readDocument to expand it.
     const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     phaseLoop.status = 'in_progress';
@@ -1030,13 +972,12 @@ describe('wrappedReadDocument – relative path resolution', () => {
         index: 0,
         status: 'in_progress',
         nodes: {
-          phase_planning: { kind: 'step', status: 'completed', doc_path: 'tasks/PHASE-PLAN.md', retries: 0 },
           task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
-          phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
         },
         corrective_tasks: [],
+        doc_path: 'tasks/PHASE-PLAN.md',
         commit_hash: null,
       },
     ];
@@ -1053,13 +994,13 @@ describe('wrappedReadDocument – relative path resolution', () => {
     const readDocSpy = vi.spyOn(io, 'readDocument');
 
     // Fire start event — walkDAG encounters task_loop with 0 iterations,
-    // reads phase_planning.doc_path ('tasks/PHASE-PLAN.md', relative),
+    // reads iteration.doc_path ('tasks/PHASE-PLAN.md', relative),
     // and wrappedReadDocument must resolve it to the absolute path.
     const result = processEvent('start', PROJECT_DIR, {}, io);
 
     expect(result.success).toBe(true);
     // task_loop expansion succeeded → walker entered the task iteration → first action
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('execute_task');
 
     // Verify io.readDocument was called with the resolved absolute path (not the raw relative one)
     expect(readDocSpy).toHaveBeenCalledWith(resolvedPath);
@@ -1071,14 +1012,6 @@ describe('wrappedReadDocument – relative path resolution', () => {
     // with one in-progress iteration where phase_planning has a traversal doc_path.
     const state = makeScaffoldedState();
 
-    (state.graph.nodes['research'] as StepNodeState).status = 'completed';
-    (state.graph.nodes['research'] as StepNodeState).doc_path = '/tmp/research.md';
-    (state.graph.nodes['prd'] as StepNodeState).status = 'completed';
-    (state.graph.nodes['prd'] as StepNodeState).doc_path = '/tmp/prd.md';
-    (state.graph.nodes['design'] as StepNodeState).status = 'completed';
-    (state.graph.nodes['design'] as StepNodeState).doc_path = '/tmp/design.md';
-    (state.graph.nodes['architecture'] as StepNodeState).status = 'completed';
-    (state.graph.nodes['architecture'] as StepNodeState).doc_path = '/tmp/arch.md';
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
     (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/tmp/master-plan.md';
     (state.graph.nodes['plan_approval_gate'] as GateNodeState).status = 'completed';
@@ -1086,9 +1019,10 @@ describe('wrappedReadDocument – relative path resolution', () => {
     (state.graph.nodes['gate_mode_selection'] as GateNodeState).status = 'completed';
     (state.graph.nodes['gate_mode_selection'] as GateNodeState).gate_active = false;
 
-    // phase_planning has a RELATIVE path that escapes the project directory.
-    // When the walker reaches task_loop (0 iterations) it calls wrappedReadDocument
-    // with phase_planning.doc_path, which must be rejected by the traversal guard.
+    // The phase iteration carries a RELATIVE doc_path that escapes the
+    // project directory. When the walker reaches task_loop (0 iterations) it
+    // calls wrappedReadDocument with iteration.doc_path, which must be
+    // rejected by the traversal guard.
     const traversalPath = '../../etc/passwd';
     const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
     phaseLoop.status = 'in_progress';
@@ -1097,13 +1031,12 @@ describe('wrappedReadDocument – relative path resolution', () => {
         index: 0,
         status: 'in_progress',
         nodes: {
-          phase_planning: { kind: 'step', status: 'completed', doc_path: traversalPath, retries: 0 },
           task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
-          phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
         },
         corrective_tasks: [],
+        doc_path: traversalPath,
         commit_hash: null,
       },
     ];
@@ -1134,7 +1067,6 @@ describe('auto-resolution in mutation handler loops', () => {
         nodes: {
           phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
-          phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
         },
@@ -1175,7 +1107,6 @@ describe('auto-resolution in mutation handler loops', () => {
               },
             ],
           },
-          phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
         },
@@ -1187,9 +1118,10 @@ describe('auto-resolution in mutation handler loops', () => {
   }
 
   describe('phase auto-resolution success', () => {
+    // Post-Iter 8: phase_report_started / phase_review_started was the pair of
+    // phase-scoped _started events. phase_report_started is gone; only
+    // phase_review_started remains.
     for (const [eventName, nodeId] of [
-      ['phase_planning_started', 'phase_planning'],
-      ['phase_report_started', 'phase_report'],
       ['phase_review_started', 'phase_review'],
     ] as const) {
       it(`${eventName} succeeds without context.phase when one in_progress phase iteration exists`, () => {
@@ -1207,7 +1139,6 @@ describe('auto-resolution in mutation handler loops', () => {
 
   describe('task auto-resolution success', () => {
     for (const [eventName, nodeId] of [
-      ['task_handoff_started', 'task_handoff'],
       ['execution_started', 'task_executor'],
       ['code_review_started', 'code_review'],
     ] as const) {
@@ -1226,13 +1157,13 @@ describe('auto-resolution in mutation handler loops', () => {
   });
 
   describe('DX-1 error — phase scope, no iterations', () => {
-    it('phase_planning_started fails with DX-1 error when phase_loop.iterations is empty', () => {
+    it('phase_review_started fails with DX-1 error when phase_loop.iterations is empty', () => {
       const state = makeScaffoldedState();
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       phaseLoop.status = 'in_progress';
       phaseLoop.iterations = [];
       const io = createMockIO(state);
-      const result = processEvent('phase_planning_started', PROJECT_DIR, {}, io);
+      const result = processEvent('phase_review_started', PROJECT_DIR, {}, io);
       expect(result.success).toBe(false);
       const errorMsg = String(result.context.error);
       expect(errorMsg).toContain('Cannot apply mutation for');
@@ -1242,11 +1173,11 @@ describe('auto-resolution in mutation handler loops', () => {
   });
 
   describe('DX-1 error — task scope, no task iterations', () => {
-    it('task_handoff_started fails with DX-1 error when task_loop.iterations is empty but context.phase is provided', () => {
+    it('execution_started fails with DX-1 error when task_loop.iterations is empty but context.phase is provided', () => {
       const state = makeStateWithPhaseIteration('in_progress');
       // Provide context.phase so the phase branch is skipped; task_loop has no iterations
       const io = createMockIO(state);
-      const result = processEvent('task_handoff_started', PROJECT_DIR, { phase: 1 }, io);
+      const result = processEvent('execution_started', PROJECT_DIR, { phase: 1 }, io);
       expect(result.success).toBe(false);
       const errorMsg = String(result.context.error);
       expect(errorMsg).toContain('no active task');
@@ -1255,7 +1186,7 @@ describe('auto-resolution in mutation handler loops', () => {
   });
 
   describe('explicit context.phase takes precedence', () => {
-    it('phase_planning_started targets the explicitly provided phase, not the auto-resolved one', () => {
+    it('phase_review_started targets the explicitly provided phase, not the auto-resolved one', () => {
       const state = makeScaffoldedState();
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       phaseLoop.status = 'in_progress';
@@ -1265,9 +1196,8 @@ describe('auto-resolution in mutation handler loops', () => {
           index: 0,
           status: 'in_progress',
           nodes: {
-            phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            phase_planning: { kind: 'step', status: 'completed', doc_path: '/tmp/p1.md', retries: 0 },
             task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
-            phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
           },
@@ -1278,9 +1208,8 @@ describe('auto-resolution in mutation handler loops', () => {
           index: 1,
           status: 'not_started',
           nodes: {
-            phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            phase_planning: { kind: 'step', status: 'completed', doc_path: '/tmp/p2.md', retries: 0 },
             task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] },
-            phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
             phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
           },
@@ -1290,13 +1219,13 @@ describe('auto-resolution in mutation handler loops', () => {
       ];
       const io = createMockIO(state);
       // Explicitly target phase 2 (index 1)
-      const result = processEvent('phase_planning_started', PROJECT_DIR, { phase: 2 }, io);
+      const result = processEvent('phase_review_started', PROJECT_DIR, { phase: 2 }, io);
       expect(result.success).toBe(true);
       const updatedPhaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       // Phase 2 (index 1) should be in_progress
-      expect((updatedPhaseLoop.iterations[1].nodes['phase_planning'] as StepNodeState).status).toBe('in_progress');
+      expect((updatedPhaseLoop.iterations[1].nodes['phase_review'] as StepNodeState).status).toBe('in_progress');
       // Phase 1 (index 0) should remain not_started
-      expect((updatedPhaseLoop.iterations[0].nodes['phase_planning'] as StepNodeState).status).toBe('not_started');
+      expect((updatedPhaseLoop.iterations[0].nodes['phase_review'] as StepNodeState).status).toBe('not_started');
     });
   });
 });

@@ -7,6 +7,8 @@ import type {
   IOAdapter,
   PipelineResult,
   StepNodeState,
+  ForEachPhaseNodeState,
+  ForEachTaskNodeState,
 } from '../../lib/types.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -101,7 +103,7 @@ export function seedDoc(docPath: string, extraFrontmatter: Record<string, unknow
 
 // ── Complete planning steps helper ────────────────────────────────────────────
 
-const PLANNING_STEP_ORDER = ['research', 'prd', 'design', 'architecture', 'master_plan'] as const;
+const PLANNING_STEP_ORDER = ['master_plan'] as const;
 
 export function completePlanningSteps(state: PipelineState, through: string): void {
   const throughIndex = PLANNING_STEP_ORDER.indexOf(through as (typeof PLANNING_STEP_ORDER)[number]);
@@ -183,24 +185,115 @@ export const taskHandoffDoc = (phase: number, task: number): string =>
   path.posix.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`);
 export const codeReviewDoc = (phase: number, task: number): string =>
   path.posix.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`);
-export const phaseReportDoc = (phase: number): string =>
-  path.posix.join(PROJECT_DIR, 'phases', `phase-${phase}-report.md`);
 export const phaseReviewDoc = (phase: number): string =>
   path.posix.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`);
+
+// ── Explosion-state seeding (mirrors Iter 5's explosion-script post-condition) ─
+
+const TASK_FIXTURES = [
+  { id: 'T01', title: 'Task 1' },
+  { id: 'T02', title: 'Task 2' },
+  { id: 'T03', title: 'Task 3' },
+  { id: 'T04', title: 'Task 4' },
+  { id: 'T05', title: 'Task 5' },
+  { id: 'T06', title: 'Task 6' },
+];
+
+/**
+ * Pre-seeds each phase iteration with `doc_path = phasePlanDoc(n)` and a
+ * scaffolded `task_loop` child; each task iteration carries
+ * `doc_path = taskHandoffDoc(p, t)` directly. Body nodes are not scaffolded;
+ * the walker scaffolds them on first in_progress transition.
+ *
+ * PRECONDITION: The phase_loop must already be expanded with iterations, and
+ * each iteration's `nodes.task_loop` must already be scaffolded. This is
+ * guaranteed by walker-driven expansion (e.g., after `plan_approved` event).
+ * Call this helper only after such expansion; failing to do so will result in
+ * `Cannot read properties of undefined` errors on iteration access.
+ *
+ * `tasksPerPhase` defaults to 2 — the shape most integration tests expect.
+ * Tests that exercise single-task gate behavior pass `1` explicitly.
+ */
+export function seedExplosionStateFor(
+  io: MockIO,
+  totalPhases: number,
+  tasksPerPhase = 2,
+): void {
+  if (tasksPerPhase < 1 || tasksPerPhase > TASK_FIXTURES.length) {
+    throw new Error(
+      `seedExplosionStateFor: tasksPerPhase must be between 1 and ${TASK_FIXTURES.length}, got ${tasksPerPhase}`,
+    );
+  }
+  const tasks = TASK_FIXTURES.slice(0, tasksPerPhase);
+  const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+
+  // Validate precondition: phase_loop must have iterations and each must have task_loop scaffolded.
+  if (!phaseLoop?.iterations?.length || phaseLoop.iterations.length < totalPhases) {
+    throw new Error(
+      `seedExplosionStateFor: phase_loop must have at least ${totalPhases} iterations ` +
+      `(has ${phaseLoop?.iterations?.length ?? 0}). Call this helper AFTER walker-driven ` +
+      `expansion (e.g., processEvent('plan_approved', ...)) which pre-seeds iterations and ` +
+      `nodes.task_loop per the template body.`,
+    );
+  }
+
+  for (let pIdx = 0; pIdx < totalPhases; pIdx++) {
+    const phaseNum = pIdx + 1;
+    const phaseDoc = phasePlanDoc(phaseNum);
+    seedDoc(phaseDoc, { tasks });
+
+    const phaseIter = phaseLoop.iterations[pIdx];
+    phaseIter.doc_path = phaseDoc;
+
+    // Validate that task_loop exists on this phase iteration.
+    if (!phaseIter.nodes['task_loop']) {
+      throw new Error(
+        `seedExplosionStateFor: phase iteration ${pIdx} missing 'task_loop' node. ` +
+        `Ensure walker expansion (e.g., processEvent('plan_approved', ...)) has run before calling.`,
+      );
+    }
+
+    const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState;
+    taskLoop.iterations = tasks.map((_, tIdx) => {
+      const handoffDoc = taskHandoffDoc(phaseNum, tIdx + 1);
+      seedDoc(handoffDoc);
+      return {
+        index: tIdx,
+        status: 'not_started' as const,
+        nodes: {},
+        corrective_tasks: [],
+        doc_path: handoffDoc,
+        commit_hash: null,
+      };
+    });
+  }
+}
 
 // ── Drive to execution tier helper ────────────────────────────────────────────
 
 /**
- * Scaffolds state, completes planning, seeds master plan, approves plan.
+ * Scaffolds state, completes planning, seeds master plan, approves plan, and
+ * mirrors the Iter 5 explosion-script seeding so the walker can advance into
+ * the execution tier without phase_planning / task_handoff authoring events.
  * Returns MockIO positioned at the execution tier.
+ *
+ * `tasksPerPhase` defaults to 2 — the shape most integration tests expect.
+ * Tests that exercise single-task gate behavior pass `1` explicitly.
  */
-export function driveToExecutionWithConfig(config: OrchestrationConfig, totalPhases = 1): MockIO {
+export function driveToExecutionWithConfig(
+  config: OrchestrationConfig,
+  totalPhases = 1,
+  tasksPerPhase = 2,
+): MockIO {
   const io = createMockIOWithConfig(null, config);
   processEvent('start', PROJECT_DIR, {}, io);
   const state = io.currentState!;
   completePlanningSteps(state, 'master_plan');
   const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-  seedDoc(mpDoc, { total_phases: totalPhases });
+  seedDoc(mpDoc, {
+    total_phases: totalPhases,
+    total_tasks: totalPhases * tasksPerPhase,
+  });
   const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
 
   // gate_mode_selection fires ask_gate_mode for ask configs.
@@ -210,20 +303,61 @@ export function driveToExecutionWithConfig(config: OrchestrationConfig, totalPha
     io.currentState!.pipeline.gate_mode = null;
   }
 
+  // Mirror the production handshake: `source_control_init` must fire before the
+  // walker first evaluates commit_gate / pr_gate (which now read state_ref).
+  // Resolve auto_commit / auto_pr from the caller's config, mapping `ask` → `always`
+  // so integration tests that leave them at the default still fire the gate's true
+  // branch (matching pre-state-ref semantics where `"ask" !== "never"`).
+  // Tests exercising the false branch supply `never` explicitly.
+  initSourceControlForTests(io, config);
+
+  // Mirror Iter 5's explosion seeding then re-walk so subsequent events see
+  // a state shape consistent with post-explosion production.
+  seedExplosionStateFor(io, totalPhases, tasksPerPhase);
+  processEvent('start', PROJECT_DIR, {}, io);
+
   return io;
+}
+
+/**
+ * Initialize pipeline.source_control for integration tests whose walker will
+ * evaluate commit_gate / pr_gate (state_ref: pipeline.source_control.*).
+ *
+ * Normalization mirrors the pre-state-ref behavior of `config_ref`: any value
+ * other than the canonical `"never" | "no"` is treated as `"always"` so that
+ * commit_gate / pr_gate's `neq "never"` predicate fires. Previously tests that
+ * left `auto_commit` at the `"ask"` default relied on `config_ref` reading it
+ * literally — `"ask" !== "never"` → commit step fires. The normalization
+ * preserves that semantics under state_ref.
+ */
+export function initSourceControlForTests(io: MockIO, config: OrchestrationConfig): void {
+  const toNormalized = (raw: string | undefined): 'always' | 'never' => {
+    const v = (raw ?? '').trim().toLowerCase();
+    return v === 'never' || v === 'no' ? 'never' : 'always';
+  };
+  processEvent(
+    'source_control_init',
+    PROJECT_DIR,
+    {
+      branch: 'feature/test-branch',
+      base_branch: 'main',
+      worktree_path: '.',
+      auto_commit: toNormalized(config.source_control.auto_commit),
+      auto_pr: toNormalized(config.source_control.auto_pr),
+    },
+    io,
+  );
 }
 
 // ── Drive single task helper ──────────────────────────────────────────────────
 
 /**
- * Drives a single task through handoff→execute→review(approve).
+ * Drives a single task through execute → review (approve). Post-Iter 7 the
+ * task_handoff authoring step is gone — the pre-seeded `task_handoff` child
+ * already carries `status: completed` + `doc_path`.
  */
 export function driveTaskWith(io: MockIO, phase: number, task: number): PipelineResult {
   const ctx = { phase, task };
-  processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-  const handoffDoc = taskHandoffDoc(phase, task);
-  seedDoc(handoffDoc);
-  processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
   processEvent('execution_started', PROJECT_DIR, ctx, io);
   processEvent('task_completed', PROJECT_DIR, ctx, io);
   processEvent('code_review_started', PROJECT_DIR, ctx, io);
@@ -252,13 +386,10 @@ export function driveTaskWith(io: MockIO, phase: number, task: number): Pipeline
 // ── Drive phase review approval helper ────────────────────────────────────────
 
 /**
- * Drives phase report + review + gate approval to phase completion.
+ * Drives phase review + gate approval to phase completion.
+ * Post-Iter 8: phase_review absorbed phase_report; only one doc emitted.
  */
 export function drivePhaseReviewApproval(io: MockIO, phase: number): PipelineResult {
-  processEvent('phase_report_started', PROJECT_DIR, { phase }, io);
-  seedDoc(phaseReportDoc(phase));
-  processEvent('phase_report_created', PROJECT_DIR, { phase, doc_path: phaseReportDoc(phase) }, io);
-
   processEvent('phase_review_started', PROJECT_DIR, { phase }, io);
   seedDoc(phaseReviewDoc(phase));
   let result = processEvent('phase_review_completed', PROJECT_DIR, {
@@ -287,23 +418,27 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
   const state = io.currentState!;
   completePlanningSteps(state, 'master_plan');
   const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-  seedDoc(mpDoc, { total_phases: 1 });
+  seedDoc(mpDoc, { total_phases: 1, total_tasks: 2 });
 
-  processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+  const planResult = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
 
-  // Phase 1 planning
-  processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-  const ppDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-plan.md');
-  seedDoc(ppDoc, { tasks: [{ id: 'T01', title: 'Task 1' }, { id: 'T02', title: 'Task 2' }] });
-  processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: ppDoc }, io);
+  // Pass through gate_mode_selection if present (ask mode)
+  if (planResult.action === 'ask_gate_mode') {
+    processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io);
+    io.currentState!.pipeline.gate_mode = null;
+  }
 
-  // Drive two tasks
+  // commit_gate / pr_gate now read state_ref; init before the walker evaluates them.
+  initSourceControlForTests(io, config);
+
+  // Mirror Iter 5's explosion-script seeding (phase_planning + task_handoff
+  // child nodes pre-completed) and re-walk to advance into the execution tier.
+  seedExplosionStateFor(io, 1, 2);
+  processEvent('start', PROJECT_DIR, {}, io);
+
+  // Drive two tasks (post-Iter 7: no task_handoff events; handoff is pre-seeded)
   for (const t of [1, 2]) {
     const ctx = { phase: 1, task: t };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    const thDoc = path.join(PROJECT_DIR, 'tasks', `p1-t${t}-handoff.md`);
-    seedDoc(thDoc);
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: thDoc }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
     processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
@@ -325,12 +460,7 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
     }
   }
 
-  // Phase report + review
-  processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-  const prDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-report.md');
-  seedDoc(prDoc);
-  processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: prDoc }, io);
-
+  // Phase review (post-Iter 8: phase_report absorbed into phase_review)
   processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
   const prvDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-review.md');
   seedDoc(prvDoc);

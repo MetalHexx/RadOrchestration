@@ -1,23 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { processEvent } from '../../lib/engine.js';
 import {
-  createMockIOWithConfig,
   createConfig,
   DOC_STORE,
   PROJECT_DIR,
-  completePlanningSteps,
   seedDoc,
   driveToExecutionWithConfig,
   driveTaskWith,
   drivePhaseReviewApproval,
-  phasePlanDoc,
-  taskHandoffDoc,
   codeReviewDoc,
-  phaseReportDoc,
-  phaseReviewDoc,
-  TASKS_2,
 } from '../fixtures/parity-states.js';
-import type { StepNodeState } from '../../lib/types.js';
 
 // ── Clear DOC_STORE between tests ─────────────────────────────────────────────
 
@@ -41,39 +33,19 @@ const config = createConfig({
 // ── [CONTRACT] Tier Transitions — planning to execution ───────────────────────
 
 describe('[CONTRACT] Tier Transitions — planning to execution', () => {
-  it('plan_approved → create_phase_plan for phase 1 (2 phases)', () => {
-    const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const state = io.currentState!;
-    completePlanningSteps(state, 'master_plan');
-    const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-    seedDoc(mpDoc, { total_phases: 2 });
-
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+  it('plan_approved → execute_task for phase 1 / task 1 (2 phases) — phase_planning + task_handoff pre-seeded', () => {
+    // driveToExecutionWithConfig pre-seeds the explosion-script post-condition,
+    // so the walker advances directly to execute_task.
+    const io = driveToExecutionWithConfig(config, 2);
+    const result = processEvent('start', PROJECT_DIR, {}, io);
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');
+    expect(result.action).toBe('execute_task');
     expect(result.context).toEqual(expect.objectContaining({
       phase_number: 1,
       phase_id: 'P01',
-    }));
-  });
-
-  it('plan_approved → first action targets phase 1 even with 3 phases', () => {
-    const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const state = io.currentState!;
-    completePlanningSteps(state, 'master_plan');
-    const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-    seedDoc(mpDoc, { total_phases: 3 });
-
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
-
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');
-    expect(result.context).toEqual(expect.objectContaining({
-      phase_number: 1,
-      phase_id: 'P01',
+      task_number: 1,
+      task_id: 'P01-T01',
     }));
   });
 });
@@ -81,16 +53,9 @@ describe('[CONTRACT] Tier Transitions — planning to execution', () => {
 // ── [CONTRACT] Tier Transitions — task cycle to next task ─────────────────────
 
 describe('[CONTRACT] Tier Transitions — task cycle to next task', () => {
-  it('code_review_completed (approved) on task 1 of 2 → create_task_handoff for task 2', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
-
+  it('code_review_completed (approved) on task 1 of 2 → execute_task for task 2', () => {
+    const io = driveToExecutionWithConfig(config, 1, 2);
     const ctx = { phase: 1, task: 1 };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    seedDoc(taskHandoffDoc(1, 1));
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 1) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
     processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
@@ -107,25 +72,19 @@ describe('[CONTRACT] Tier Transitions — task cycle to next task', () => {
     }
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('execute_task');
     expect(result.context).toEqual(expect.objectContaining({
       task_number: 2,
       task_id: 'P01-T02',
     }));
   });
 
-  it('code_review_completed (approved) on last task → generate_phase_report', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+  it('code_review_completed (approved) on last task → spawn_phase_reviewer (post-Iter 8)', () => {
+    const io = driveToExecutionWithConfig(config, 1, 2);
 
     driveTaskWith(io, 1, 1);
 
     const ctx = { phase: 1, task: 2 };
-    processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-    seedDoc(taskHandoffDoc(1, 2));
-    processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: taskHandoffDoc(1, 2) }, io);
     processEvent('execution_started', PROJECT_DIR, ctx, io);
     processEvent('task_completed', PROJECT_DIR, ctx, io);
     processEvent('code_review_started', PROJECT_DIR, ctx, io);
@@ -136,13 +95,13 @@ describe('[CONTRACT] Tier Transitions — task cycle to next task', () => {
       verdict: 'approved',
     }, io);
 
-    // Task gate fires before advancing to phase report (even in autonomous mode)
+    // Task gate fires before advancing to phase review (even in autonomous mode)
     if (result.action === 'gate_task') {
       result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
     }
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('generate_phase_report');
+    expect(result.action).toBe('spawn_phase_reviewer');
     expect(result.context).toEqual(expect.objectContaining({
       phase_number: 1,
     }));
@@ -152,21 +111,19 @@ describe('[CONTRACT] Tier Transitions — task cycle to next task', () => {
 // ── [CONTRACT] Tier Transitions — phase completion to next phase ──────────────
 
 describe('[CONTRACT] Tier Transitions — phase completion to next phase', () => {
-  it('phase_review_completed (approved) on phase 1 of 2 → create_phase_plan for phase 2', () => {
-    const io = driveToExecutionWithConfig(config, 2);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+  it('phase_review_completed (approved) on phase 1 of 2 → execute_task for phase 2', () => {
+    const io = driveToExecutionWithConfig(config, 2, 2);
 
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
 
     drivePhaseReviewApproval(io, 1);
 
-    const result = processEvent('phase_planning_started', PROJECT_DIR, { phase: 2 }, io);
+    // Walker advances directly into phase 2's first execute_task
+    const result = processEvent('start', PROJECT_DIR, {}, io);
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');
+    expect(result.action).toBe('execute_task');
     expect(result.context).toEqual(expect.objectContaining({
       phase_number: 2,
       phase_id: 'P02',
@@ -174,10 +131,7 @@ describe('[CONTRACT] Tier Transitions — phase completion to next phase', () =>
   });
 
   it('phase_review_completed (approved) on last phase → pipeline reaches review tier', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+    const io = driveToExecutionWithConfig(config, 1, 2);
 
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
@@ -188,14 +142,14 @@ describe('[CONTRACT] Tier Transitions — phase completion to next phase', () =>
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_final_reviewer');
-    expect(result.context).toEqual({});
+    // Iter-12: spawn_final_reviewer context carries project_base_sha +
+    // project_head_sha derived from iteration commit_hash values. In this
+    // fixture (auto_commit: 'never'), no commits exist, so both are null.
+    expect(result.context).toEqual({ project_base_sha: null, project_head_sha: null });
   });
 
   it('final_approved → display_complete', () => {
-    const io = driveToExecutionWithConfig(config, 1);
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(phasePlanDoc(1), { tasks: TASKS_2 });
-    processEvent('phase_plan_created', PROJECT_DIR, { phase: 1, doc_path: phasePlanDoc(1) }, io);
+    const io = driveToExecutionWithConfig(config, 1, 2);
 
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
@@ -204,8 +158,8 @@ describe('[CONTRACT] Tier Transitions — phase completion to next phase', () =>
 
     processEvent('final_review_started', PROJECT_DIR, {}, io);
     const frDocPath = '/tmp/final-review.md';
-    seedDoc(frDocPath);
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath }, io);
+    seedDoc(frDocPath, { verdict: 'approved' });
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
     const result = processEvent('final_approved', PROJECT_DIR, {}, io);
 
     expect(result.success).toBe(true);

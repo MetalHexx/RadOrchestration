@@ -118,6 +118,40 @@ export function run(argv: string[]): void {
     if (args['pr-url'] !== undefined) context.pr_url = args['pr-url'];
     if (args['template'] !== undefined) context.template = args['template'];
 
+    if (args['parse-error'] !== undefined) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(args['parse-error']);
+      } catch (e) {
+        process.exitCode = 1;
+        process.stdout.write(JSON.stringify(makeErrorResult(
+          `Invalid JSON for --parse-error: ${(e as Error).message}`, event, orchRoot), null, 2) + '\n');
+        return;
+      }
+      if (parsed === null || typeof parsed !== 'object') {
+        process.exitCode = 1;
+        process.stdout.write(JSON.stringify(makeErrorResult(
+          `Invalid --parse-error shape: expected an object, got ${parsed === null ? 'null' : typeof parsed}`,
+          event, orchRoot), null, 2) + '\n');
+        return;
+      }
+      const parsedRecord = parsed as Record<string, unknown>;
+      if (!Number.isInteger(parsedRecord.line) || (parsedRecord.line as number) < 1 || typeof parsedRecord.expected !== 'string' ||
+          typeof parsedRecord.found !== 'string' || typeof parsedRecord.message !== 'string') {
+        process.exitCode = 1;
+        process.stdout.write(JSON.stringify(makeErrorResult(
+          `Invalid --parse-error shape: expected { line: positive integer, expected: string, found: string, message: string }`,
+          event, orchRoot), null, 2) + '\n');
+        return;
+      }
+      context.parse_error = {
+        line: parsedRecord.line as number,
+        expected: parsedRecord.expected as string,
+        found: parsedRecord.found as string,
+        message: parsedRecord.message as string,
+      };
+    }
+
     // Build IOAdapter from state-io named exports
     const io: IOAdapter = {
       readState,

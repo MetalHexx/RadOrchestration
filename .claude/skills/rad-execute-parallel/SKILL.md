@@ -20,6 +20,7 @@ You are an orchestrator. You'll be using the `orchestration` skill for this proj
 | `scripts/find-projects.js` | `--projects-base-path <path> --repo-root <path> --project-name <name>` | Same shape, single-project lookup | Look up one project by name (worktree + master plan info) |
 | `scripts/create-worktree.js` | `--repo-root <path> --branch <name> --worktree-path <path> --base-branch <ref>` | `{ created, worktreePath, branch, baseBranch, pushed, remoteUrl, compareUrl, error, errorType }` | Create worktree, push branch, detect remote URL |
 | `scripts/inject-theme.js` | `--worktree-path <path>` | `{ theme, settingsPath, gitignorePath, error }` | Pick a random built-in VS Code theme, write `.vscode/settings.json`, add entry to `.gitignore` |
+| `scripts/launch-claude.js` | `--worktree-path <path> --projects-base-path <path> --prompt <string> [--permission-mode <mode>]` | `{ success, platform, permissionMode }` | Cross-platform terminal launcher: opens a new terminal window and starts Claude Code with a given prompt and permission mode (default `auto`) |
 
 All scripts output JSON to stdout. Exit codes: `0` = success, `1` = partial (created but push failed), `2` = failure.
 
@@ -48,3 +49,4 @@ Follow these steps in order. Run steps 1–2 silently — do not narrate or disp
 - **`scripts/find-projects.js`** — Project scanner: finds execution-ready projects, checks worktree status (standalone)
 - **`scripts/create-worktree.js`** — Worktree creation: git worktree add, branch push, remote URL detection (standalone)
 - **`scripts/inject-theme.js`** — Random VS Code theme injection: writes `.vscode/settings.json`, protects it with `.gitignore` (standalone)
+- **`scripts/launch-claude.js`** — Cross-platform terminal launcher: opens a new terminal window and starts Claude Code with a chosen `--permission-mode` (default `auto`)

@@ -488,4 +488,88 @@ describe('evaluateCondition', () => {
       ).toThrow("segment 'missing'");
     });
   });
+
+  describe('state_ref resolution for pipeline.source_control', () => {
+    function stateWithSourceControl(
+      auto_commit: 'always' | 'never',
+      auto_pr: 'always' | 'never',
+    ): PipelineState {
+      return {
+        ...baseState,
+        pipeline: {
+          ...baseState.pipeline,
+          source_control: {
+            branch: 'feature/x',
+            base_branch: 'main',
+            worktree_path: '.',
+            auto_commit,
+            auto_pr,
+            remote_url: null,
+            compare_url: null,
+            pr_url: null,
+          },
+        },
+      };
+    }
+
+    it('auto_commit = "always" + neq "never" → true (commit gate fires)', () => {
+      expect(
+        evaluateCondition(
+          { state_ref: 'pipeline.source_control.auto_commit', operator: 'neq', value: 'never' },
+          baseConfig,
+          stateWithSourceControl('always', 'never')
+        )
+      ).toBe(true);
+    });
+
+    it('auto_commit = "never" + neq "never" → false (commit gate skipped)', () => {
+      expect(
+        evaluateCondition(
+          { state_ref: 'pipeline.source_control.auto_commit', operator: 'neq', value: 'never' },
+          baseConfig,
+          stateWithSourceControl('never', 'never')
+        )
+      ).toBe(false);
+    });
+
+    it('auto_pr = "always" + neq "never" → true (PR gate fires)', () => {
+      expect(
+        evaluateCondition(
+          { state_ref: 'pipeline.source_control.auto_pr', operator: 'neq', value: 'never' },
+          baseConfig,
+          stateWithSourceControl('never', 'always')
+        )
+      ).toBe(true);
+    });
+
+    it('auto_pr = "never" + neq "never" → false (PR gate skipped)', () => {
+      expect(
+        evaluateCondition(
+          { state_ref: 'pipeline.source_control.auto_pr', operator: 'neq', value: 'never' },
+          baseConfig,
+          stateWithSourceControl('never', 'never')
+        )
+      ).toBe(false);
+    });
+
+    it('throws with clear path error when pipeline.source_control is null', () => {
+      expect(() =>
+        evaluateCondition(
+          { state_ref: 'pipeline.source_control.auto_commit', operator: 'neq', value: 'never' },
+          baseConfig,
+          baseState
+        )
+      ).toThrow("Cannot resolve path 'pipeline.source_control.auto_commit'");
+    });
+
+    it('null-source_control error blames the source_control segment', () => {
+      expect(() =>
+        evaluateCondition(
+          { state_ref: 'pipeline.source_control.auto_pr', operator: 'neq', value: 'never' },
+          baseConfig,
+          baseState
+        )
+      ).toThrow("segment 'source_control'");
+    });
+  });
 });

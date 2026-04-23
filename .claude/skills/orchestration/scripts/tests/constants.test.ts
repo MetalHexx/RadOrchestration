@@ -151,16 +151,18 @@ describe('NEXT_ACTIONS', () => {
     }).toThrow(TypeError);
   });
 
-  it('has exactly 21 keys', () => {
-    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(21);
+  it('has exactly 16 keys', () => {
+    // Post-Iter 7: CREATE_PHASE_PLAN + CREATE_TASK_HANDOFF removed (per-loop authoring deleted).
+    // Post-Iter 8: GENERATE_PHASE_REPORT removed (phase_review absorbed phase_report).
+    expect(Object.keys(NEXT_ACTIONS)).toHaveLength(16);
   });
 
   it('has expected keys', () => {
     const expectedKeys = [
-      'SPAWN_RESEARCH', 'SPAWN_PRD', 'SPAWN_DESIGN', 'SPAWN_ARCHITECTURE', 'SPAWN_MASTER_PLAN',
+      'SPAWN_REQUIREMENTS', 'SPAWN_MASTER_PLAN', 'EXPLODE_MASTER_PLAN',
       'REQUEST_PLAN_APPROVAL', 'GATE_TASK', 'GATE_PHASE', 'ASK_GATE_MODE', 'REQUEST_FINAL_APPROVAL',
-      'CREATE_PHASE_PLAN', 'CREATE_TASK_HANDOFF', 'EXECUTE_TASK', 'SPAWN_CODE_REVIEWER',
-      'GENERATE_PHASE_REPORT', 'SPAWN_PHASE_REVIEWER', 'SPAWN_FINAL_REVIEWER',
+      'EXECUTE_TASK', 'SPAWN_CODE_REVIEWER',
+      'SPAWN_PHASE_REVIEWER', 'SPAWN_FINAL_REVIEWER',
       'INVOKE_SOURCE_CONTROL_COMMIT', 'INVOKE_SOURCE_CONTROL_PR',
       'DISPLAY_HALTED', 'DISPLAY_COMPLETE',
     ];
@@ -170,21 +172,16 @@ describe('NEXT_ACTIONS', () => {
   });
 
   it('has expected values', () => {
-    expect(NEXT_ACTIONS.SPAWN_RESEARCH).toBe('spawn_research');
-    expect(NEXT_ACTIONS.SPAWN_PRD).toBe('spawn_prd');
-    expect(NEXT_ACTIONS.SPAWN_DESIGN).toBe('spawn_design');
-    expect(NEXT_ACTIONS.SPAWN_ARCHITECTURE).toBe('spawn_architecture');
+    expect(NEXT_ACTIONS.SPAWN_REQUIREMENTS).toBe('spawn_requirements');
     expect(NEXT_ACTIONS.SPAWN_MASTER_PLAN).toBe('spawn_master_plan');
+    expect(NEXT_ACTIONS.EXPLODE_MASTER_PLAN).toBe('explode_master_plan');
     expect(NEXT_ACTIONS.REQUEST_PLAN_APPROVAL).toBe('request_plan_approval');
     expect(NEXT_ACTIONS.GATE_TASK).toBe('gate_task');
     expect(NEXT_ACTIONS.GATE_PHASE).toBe('gate_phase');
     expect(NEXT_ACTIONS.ASK_GATE_MODE).toBe('ask_gate_mode');
     expect(NEXT_ACTIONS.REQUEST_FINAL_APPROVAL).toBe('request_final_approval');
-    expect(NEXT_ACTIONS.CREATE_PHASE_PLAN).toBe('create_phase_plan');
-    expect(NEXT_ACTIONS.CREATE_TASK_HANDOFF).toBe('create_task_handoff');
     expect(NEXT_ACTIONS.EXECUTE_TASK).toBe('execute_task');
     expect(NEXT_ACTIONS.SPAWN_CODE_REVIEWER).toBe('spawn_code_reviewer');
-    expect(NEXT_ACTIONS.GENERATE_PHASE_REPORT).toBe('generate_phase_report');
     expect(NEXT_ACTIONS.SPAWN_PHASE_REVIEWER).toBe('spawn_phase_reviewer');
     expect(NEXT_ACTIONS.SPAWN_FINAL_REVIEWER).toBe('spawn_final_reviewer');
     expect(NEXT_ACTIONS.INVOKE_SOURCE_CONTROL_COMMIT).toBe('invoke_source_control_commit');
@@ -205,23 +202,21 @@ describe('EVENTS', () => {
     }).toThrow(TypeError);
   });
 
-  it('has exactly 38 keys', () => {
-    expect(Object.keys(EVENTS)).toHaveLength(38);
+  it('has exactly 29 keys', () => {
+    // Post-Iter 7: PHASE_PLANNING_STARTED / PHASE_PLAN_CREATED /
+    // TASK_HANDOFF_STARTED / TASK_HANDOFF_CREATED removed (4 events).
+    // Post-Iter 8: PHASE_REPORT_STARTED / PHASE_REPORT_CREATED removed (2 events).
+    expect(Object.keys(EVENTS)).toHaveLength(29);
   });
 
   it('has expected keys', () => {
     const expectedKeys = [
-      'RESEARCH_STARTED', 'RESEARCH_COMPLETED',
-      'PRD_STARTED', 'PRD_COMPLETED',
-      'DESIGN_STARTED', 'DESIGN_COMPLETED',
-      'ARCHITECTURE_STARTED', 'ARCHITECTURE_COMPLETED',
+      'REQUIREMENTS_STARTED', 'REQUIREMENTS_COMPLETED',
       'MASTER_PLAN_STARTED', 'MASTER_PLAN_COMPLETED',
+      'EXPLOSION_STARTED', 'EXPLOSION_COMPLETED', 'EXPLOSION_FAILED',
       'PLAN_APPROVED', 'TASK_GATE_APPROVED', 'PHASE_GATE_APPROVED', 'FINAL_APPROVED',
-      'PHASE_PLANNING_STARTED', 'PHASE_PLAN_CREATED',
-      'TASK_HANDOFF_STARTED', 'TASK_HANDOFF_CREATED',
       'EXECUTION_STARTED', 'TASK_COMPLETED',
       'CODE_REVIEW_STARTED', 'CODE_REVIEW_COMPLETED',
-      'PHASE_REPORT_STARTED', 'PHASE_REPORT_CREATED',
       'PHASE_REVIEW_STARTED', 'PHASE_REVIEW_COMPLETED',
       'FINAL_REVIEW_STARTED', 'FINAL_REVIEW_COMPLETED',
       'COMMIT_STARTED', 'COMMIT_COMPLETED',
@@ -234,30 +229,21 @@ describe('EVENTS', () => {
   });
 
   it('has expected values', () => {
-    expect(EVENTS.RESEARCH_STARTED).toBe('research_started');
-    expect(EVENTS.RESEARCH_COMPLETED).toBe('research_completed');
-    expect(EVENTS.PRD_STARTED).toBe('prd_started');
-    expect(EVENTS.PRD_COMPLETED).toBe('prd_completed');
-    expect(EVENTS.DESIGN_STARTED).toBe('design_started');
-    expect(EVENTS.DESIGN_COMPLETED).toBe('design_completed');
-    expect(EVENTS.ARCHITECTURE_STARTED).toBe('architecture_started');
-    expect(EVENTS.ARCHITECTURE_COMPLETED).toBe('architecture_completed');
+    expect(EVENTS.REQUIREMENTS_STARTED).toBe('requirements_started');
+    expect(EVENTS.REQUIREMENTS_COMPLETED).toBe('requirements_completed');
     expect(EVENTS.MASTER_PLAN_STARTED).toBe('master_plan_started');
     expect(EVENTS.MASTER_PLAN_COMPLETED).toBe('master_plan_completed');
+    expect(EVENTS.EXPLOSION_STARTED).toBe('explosion_started');
+    expect(EVENTS.EXPLOSION_COMPLETED).toBe('explosion_completed');
+    expect(EVENTS.EXPLOSION_FAILED).toBe('explosion_failed');
     expect(EVENTS.PLAN_APPROVED).toBe('plan_approved');
     expect(EVENTS.TASK_GATE_APPROVED).toBe('task_gate_approved');
     expect(EVENTS.PHASE_GATE_APPROVED).toBe('phase_gate_approved');
     expect(EVENTS.FINAL_APPROVED).toBe('final_approved');
-    expect(EVENTS.PHASE_PLANNING_STARTED).toBe('phase_planning_started');
-    expect(EVENTS.PHASE_PLAN_CREATED).toBe('phase_plan_created');
-    expect(EVENTS.TASK_HANDOFF_STARTED).toBe('task_handoff_started');
-    expect(EVENTS.TASK_HANDOFF_CREATED).toBe('task_handoff_created');
     expect(EVENTS.EXECUTION_STARTED).toBe('execution_started');
     expect(EVENTS.TASK_COMPLETED).toBe('task_completed');
     expect(EVENTS.CODE_REVIEW_STARTED).toBe('code_review_started');
     expect(EVENTS.CODE_REVIEW_COMPLETED).toBe('code_review_completed');
-    expect(EVENTS.PHASE_REPORT_STARTED).toBe('phase_report_started');
-    expect(EVENTS.PHASE_REPORT_CREATED).toBe('phase_report_created');
     expect(EVENTS.PHASE_REVIEW_STARTED).toBe('phase_review_started');
     expect(EVENTS.PHASE_REVIEW_COMPLETED).toBe('phase_review_completed');
     expect(EVENTS.FINAL_REVIEW_STARTED).toBe('final_review_started');

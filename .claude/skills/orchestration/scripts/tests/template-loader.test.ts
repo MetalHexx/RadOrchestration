@@ -3,8 +3,37 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { loadTemplate } from '../lib/template-loader.js';
+import type { NodeDef } from '../lib/types.js';
 
 const FULL_YML_PATH = new URL('../../templates/full.yml', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const DEFAULT_YML_PATH = new URL('../../templates/default.yml', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+
+/** Recursively find a node by ID in a NodeDef array. */
+function findNode(nodes: NodeDef[], id: string): NodeDef | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if ('body' in node && Array.isArray(node.body)) {
+      const found = findNode(node.body as NodeDef[], id);
+      if (found) return found;
+    }
+    if ('branches' in node && node.branches) {
+      const branches = node.branches as { true?: NodeDef[]; false?: NodeDef[] };
+      if (Array.isArray(branches.true)) {
+        const found = findNode(branches.true, id);
+        if (found) return found;
+      }
+      if (Array.isArray(branches.false)) {
+        const found = findNode(branches.false, id);
+        if (found) return found;
+      }
+    }
+    if ('children' in node && Array.isArray((node as { children?: NodeDef[] }).children)) {
+      const found = findNode((node as { children: NodeDef[] }).children, id);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
 
 describe('loadTemplate', () => {
   describe('loading full.yml', () => {
@@ -14,40 +43,31 @@ describe('loadTemplate', () => {
       expect(result.template.template.version).toBe('1.0.0');
     });
 
-    it('returns exactly 33 entries in the event index', () => {
+    it('returns exactly 19 entries in the event index', () => {
+      // Post-Iter 7: 4 events removed (phase_planning_started/_plan_created/
+      // task_handoff_started/_created) — explosion script (Iter 5) pre-seeds
+      // those nodes; per-loop authoring events are gone.
+      // Post-Iter 8: 2 more removed (phase_report_started/_created) — phase_review
+      // absorbed phase_report.
       const result = loadTemplate(FULL_YML_PATH);
-      expect(result.eventIndex.size).toBe(33);
+      expect(result.eventIndex.size).toBe(19);
     });
   });
 
-  describe('event index — all 33 mappings', () => {
+  describe('event index — all 19 mappings', () => {
     const result = loadTemplate(FULL_YML_PATH);
     const { eventIndex } = result;
 
     const cases: Array<[string, string, string, string]> = [
-      ['research_started',                 'research',            'started',   'research'],
-      ['research_completed',               'research',            'completed', 'research'],
-      ['prd_started',                      'prd',                 'started',   'prd'],
-      ['prd_completed',                    'prd',                 'completed', 'prd'],
-      ['design_started',                   'design',              'started',   'design'],
-      ['design_completed',                 'design',              'completed', 'design'],
-      ['architecture_started',             'architecture',        'started',   'architecture'],
-      ['architecture_completed',           'architecture',        'completed', 'architecture'],
       ['master_plan_started',              'master_plan',         'started',   'master_plan'],
       ['master_plan_completed',            'master_plan',         'completed', 'master_plan'],
       ['plan_approved',                    'plan_approval_gate',  'approved',  'plan_approval_gate'],
       ['gate_mode_set',                     'gate_mode_selection', 'approved',  'gate_mode_selection'],
-      ['phase_planning_started',                      'phase_planning',      'started',   'phase_loop.body.phase_planning'],
-      ['phase_plan_created',               'phase_planning',      'completed', 'phase_loop.body.phase_planning'],
-      ['task_handoff_started',             'task_handoff',        'started',   'phase_loop.body.task_loop.body.task_handoff'],
-      ['task_handoff_created',             'task_handoff',        'completed', 'phase_loop.body.task_loop.body.task_handoff'],
       ['execution_started',                'task_executor',       'started',   'phase_loop.body.task_loop.body.task_executor'],
       ['task_completed',              'task_executor',       'completed', 'phase_loop.body.task_loop.body.task_executor'],
       ['code_review_started',              'code_review',         'started',   'phase_loop.body.task_loop.body.code_review'],
       ['code_review_completed',            'code_review',         'completed', 'phase_loop.body.task_loop.body.code_review'],
       ['task_gate_approved',               'task_gate',           'approved',  'phase_loop.body.task_loop.body.task_gate'],
-      ['phase_report_started',             'phase_report',        'started',   'phase_loop.body.phase_report'],
-      ['phase_report_created',           'phase_report',        'completed', 'phase_loop.body.phase_report'],
       ['phase_review_started',             'phase_review',        'started',   'phase_loop.body.phase_review'],
       ['phase_review_completed',           'phase_review',        'completed', 'phase_loop.body.phase_review'],
       ['phase_gate_approved',              'phase_gate',          'approved',  'phase_loop.body.phase_gate'],
@@ -228,6 +248,67 @@ describe('loadTemplate', () => {
       } finally {
         fs.unlinkSync(tmpFile);
       }
+    });
+  });
+
+  // ── default.yml shape — Iter 9 canonical template ───────────────────────
+  describe('default.yml shape (Iter 9 canonical)', () => {
+    it('loads default.yml without errors', () => {
+      expect(() => loadTemplate(DEFAULT_YML_PATH)).not.toThrow();
+    });
+
+    it('template header has id "default" and is NOT marked deprecated', () => {
+      const result = loadTemplate(DEFAULT_YML_PATH);
+      expect(result.template.template.id).toBe('default');
+      expect(result.template.template.version).toBe('1.0.0');
+      expect(result.template.template.description).toBeTruthy();
+      // default.yml is the canonical template — it must NOT carry the deprecated status.
+      expect((result.template.template as { status?: string }).status).not.toBe('deprecated');
+    });
+
+    it('all 9 expected top-level node ids are present in order', () => {
+      const result = loadTemplate(DEFAULT_YML_PATH);
+      const topLevelIds = result.template.nodes.map(n => n.id);
+      expect(topLevelIds).toEqual([
+        'requirements',
+        'master_plan',
+        'explode_master_plan',
+        'plan_approval_gate',
+        'gate_mode_selection',
+        'phase_loop',
+        'final_review',
+        'pr_gate',
+        'final_approval_gate',
+      ]);
+    });
+
+    it('phase_loop has kind: for_each_phase and contains task_loop + phase_review + phase_gate as body children', () => {
+      const result = loadTemplate(DEFAULT_YML_PATH);
+      const phaseLoop = findNode(result.template.nodes, 'phase_loop');
+      expect(phaseLoop).toBeDefined();
+      expect(phaseLoop!.kind).toBe('for_each_phase');
+      const body = (phaseLoop as { body?: NodeDef[] }).body;
+      expect(Array.isArray(body)).toBe(true);
+      const bodyIds = body!.map(n => n.id);
+      expect(bodyIds).toEqual(['task_loop', 'phase_review', 'phase_gate']);
+    });
+
+    it('task_loop body contains task_executor + commit_gate + code_review + task_gate in order', () => {
+      const result = loadTemplate(DEFAULT_YML_PATH);
+      const taskLoop = findNode(result.template.nodes, 'task_loop');
+      expect(taskLoop).toBeDefined();
+      expect(taskLoop!.kind).toBe('for_each_task');
+      const body = (taskLoop as { body?: NodeDef[] }).body;
+      expect(Array.isArray(body)).toBe(true);
+      const bodyIds = body!.map(n => n.id);
+      expect(bodyIds).toEqual(['task_executor', 'commit_gate', 'code_review', 'task_gate']);
+    });
+
+    it('phase_gate auto_approve_modes is empty (verdict-based auto-approve handles autonomous mode)', () => {
+      const result = loadTemplate(DEFAULT_YML_PATH);
+      const phaseGate = findNode(result.template.nodes, 'phase_gate');
+      expect(phaseGate).toBeDefined();
+      expect((phaseGate as { auto_approve_modes?: string[] }).auto_approve_modes).toEqual([]);
     });
   });
 });

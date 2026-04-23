@@ -66,15 +66,16 @@ export const baseCorrectiveTask: CorrectiveTaskEntry = {
   reason: 'Test reason',
   injected_after: 'task_executor',
   status: 'not_started',
-  nodes: { task_handoff: stepNode },
+  nodes: {},
+  doc_path: 'tasks/t1-fix.md',
   commit_hash: null,
 };
 
 export const taskLoopIteration: IterationEntry = {
   index: 0,
   status: 'completed',
+  doc_path: 'phases/p1-plan.md',
   nodes: {
-    phase_planning: stepNode,
     for_each_task: {
       kind: 'for_each_task',
       status: 'completed',
@@ -82,10 +83,10 @@ export const taskLoopIteration: IterationEntry = {
         {
           index: 0,
           status: 'completed',
+          doc_path: 'tasks/t1.md',
           nodes: {
-            task_handoff: { kind: 'step', status: 'completed', doc_path: '/tasks/t1.md', retries: 0 },
             task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
-            code_review: { kind: 'step', status: 'completed', doc_path: '/reviews/r1.md', retries: 0 },
+            code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/r1.md', retries: 0 },
             commit_gate: { kind: 'conditional', status: 'completed', branch_taken: 'true' },
             task_gate: { kind: 'gate', status: 'completed', gate_active: false },
           },
@@ -106,8 +107,8 @@ export const taskLoopIteration: IterationEntry = {
 export const taskLoopIterationWithCorrective: IterationEntry = {
   index: 0,
   status: 'completed',
+  doc_path: 'phases/p1-plan.md',
   nodes: {
-    phase_planning: stepNode,
     for_each_task: {
       kind: 'for_each_task',
       status: 'completed',
@@ -115,10 +116,10 @@ export const taskLoopIterationWithCorrective: IterationEntry = {
         {
           index: 0,
           status: 'completed',
+          doc_path: 'tasks/t1.md',
           nodes: {
-            task_handoff: { kind: 'step', status: 'completed', doc_path: '/tasks/t1.md', retries: 0 },
             task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
-            code_review: { kind: 'step', status: 'completed', doc_path: '/reviews/r1.md', retries: 0 },
+            code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/r1.md', retries: 0 },
             task_gate: { kind: 'gate', status: 'completed', gate_active: false },
           },
           corrective_tasks: [
@@ -127,7 +128,8 @@ export const taskLoopIterationWithCorrective: IterationEntry = {
               reason: 'Code review found issues',
               injected_after: 'code_review',
               status: 'completed',
-              nodes: { task_handoff: { kind: 'step', status: 'completed', doc_path: '/tasks/t1-fix.md', retries: 0 } },
+              nodes: {},
+              doc_path: 'tasks/t1-fix.md',
               commit_hash: null,
             },
           ],

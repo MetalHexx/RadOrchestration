@@ -73,7 +73,6 @@ function makeState(): PipelineState {
               nodes: {
                 phase_gate: { kind: 'gate', status: 'not_started', gate_active: false },
                 phase_planning: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
-                phase_report: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
                 task_loop: {
                   kind: 'for_each_task',
@@ -129,14 +128,8 @@ const baseTemplate: PipelineTemplate = {
 
 describe('getMutation — planning events', () => {
   const planningEvents = [
-    'research_started',
-    'research_completed',
-    'prd_started',
-    'prd_completed',
-    'design_started',
-    'design_completed',
-    'architecture_started',
-    'architecture_completed',
+    'requirements_started',
+    'requirements_completed',
     'master_plan_started',
     'master_plan_completed',
   ];
@@ -169,34 +162,57 @@ describe('getMutation — unknown events', () => {
   });
 });
 
-// ── research_started (also sets graph.status) ─────────────────────────────────
+// ── requirements_started (Iter 4: new first planning step; owns graph.status flip) ─
 
-describe('research_started mutation', () => {
-  it('sets research.status to in_progress', () => {
+describe('requirements_started mutation', () => {
+  it('sets requirements.status to in_progress', () => {
     const state = makeState();
-    const mutation = getMutation('research_started')!;
+    // makeState() fixture predates Iter 4 (no `requirements` node); inject one.
+    state.graph.nodes['requirements'] = { kind: 'step', status: 'not_started', doc_path: null, retries: 0 };
+    const mutation = getMutation('requirements_started')!;
     const result = mutation(state, {}, baseConfig, baseTemplate);
-    expect(result.state.graph.nodes['research'].status).toBe('in_progress');
+    expect(result.state.graph.nodes['requirements'].status).toBe('in_progress');
   });
 
   it('sets graph.status to in_progress', () => {
     const state = makeState();
-    const mutation = getMutation('research_started')!;
+    state.graph.nodes['requirements'] = { kind: 'step', status: 'not_started', doc_path: null, retries: 0 };
+    const mutation = getMutation('requirements_started')!;
     const result = mutation(state, {}, baseConfig, baseTemplate);
     expect(result.state.graph.status).toBe('in_progress');
+  });
+});
+
+// ── master_plan_started (Iter 4: no longer sets graph.status) ────────────────
+
+describe('master_plan_started mutation', () => {
+  it('sets master_plan.status to in_progress', () => {
+    const state = makeState();
+    const mutation = getMutation('master_plan_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    expect(result.state.graph.nodes['master_plan'].status).toBe('in_progress');
+  });
+
+  it('does NOT set graph.status (relocated to requirements_started in Iter 4)', () => {
+    const state = makeState();
+    const mutation = getMutation('master_plan_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    // graph.status in the fixture starts as 'not_started'; master_plan_started no longer flips it
+    expect(result.state.graph.status).toBe('not_started');
+    expect(result.mutations_applied.some((m) => m.includes('graph.status'))).toBe(false);
   });
 
   it('does not mutate the original state', () => {
     const state = makeState();
-    const mutation = getMutation('research_started')!;
+    const mutation = getMutation('master_plan_started')!;
     mutation(state, {}, baseConfig, baseTemplate);
-    expect(state.graph.nodes['research'].status).toBe('not_started');
+    expect(state.graph.nodes['master_plan'].status).toBe('not_started');
     expect(state.graph.status).toBe('not_started');
   });
 
   it('returns a non-empty mutations_applied array', () => {
     const state = makeState();
-    const mutation = getMutation('research_started')!;
+    const mutation = getMutation('master_plan_started')!;
     const result = mutation(state, {}, baseConfig, baseTemplate);
     expect(result.mutations_applied.length).toBeGreaterThan(0);
   });
@@ -206,10 +222,6 @@ describe('research_started mutation', () => {
 
 describe('planning _started mutations', () => {
   const startedCases: Array<[string, string]> = [
-    ['research_started', 'research'],
-    ['prd_started', 'prd'],
-    ['design_started', 'design'],
-    ['architecture_started', 'architecture'],
     ['master_plan_started', 'master_plan'],
   ];
 
@@ -241,10 +253,6 @@ describe('planning _started mutations', () => {
 
 describe('planning _completed mutations', () => {
   const completedCases: Array<[string, string]> = [
-    ['research_completed', 'research'],
-    ['prd_completed', 'prd'],
-    ['design_completed', 'design'],
-    ['architecture_completed', 'architecture'],
     ['master_plan_completed', 'master_plan'],
   ];
 
@@ -496,17 +504,13 @@ describe('resolveNodeState', () => {
 // halt, gate_mode_set, source_control_init — also have mutations (see describe blocks below).
 
 describe('getMutation — new T03 events', () => {
+  // Post-Iter 8: phase_report_started / phase_report_created removed
+  // (phase_review absorbed phase_report).
   const newEvents = [
-    'phase_planning_started',
-    'phase_plan_created',
-    'task_handoff_started',
-    'task_handoff_created',
     'execution_started',
     'task_completed',
     'code_review_started',
     'code_review_completed',
-    'phase_report_started',
-    'phase_report_created',
     'phase_review_started',
     'phase_review_completed',
     'final_review_started',
@@ -527,9 +531,9 @@ describe('getMutation — new T03 events', () => {
 // ── phase execution _started mutations ───────────────────────────────────────
 
 describe('phase execution _started mutations', () => {
+  // Post-Iter 8: phase_report_started removed; phase_review_started is the only
+  // phase-scoped _started event remaining.
   const cases: Array<[string, string]> = [
-    ['phase_planning_started', 'phase_planning'],
-    ['phase_report_started', 'phase_report'],
     ['phase_review_started', 'phase_review'],
   ];
 
@@ -557,71 +561,7 @@ describe('phase execution _started mutations', () => {
   }
 });
 
-// ── phase_plan_created mutation ───────────────────────────────────────────────
-
-describe('phase_plan_created mutation', () => {
-  it('sets phase_planning.status to completed at phase scope', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_plan_created')!;
-    const result = mutation(state, { phase: 1, doc_path: '/path/plan.md' }, baseConfig, baseTemplate);
-    expect(getPhaseNode(result.state, 'phase_planning').status).toBe('completed');
-  });
-
-  it('stores doc_path from context', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_plan_created')!;
-    const result = mutation(state, { phase: 1, doc_path: '/path/plan.md' }, baseConfig, baseTemplate);
-    const node = getPhaseNode(result.state, 'phase_planning') as StepNodeState;
-    expect(node.doc_path).toBe('/path/plan.md');
-  });
-
-  it('does not mutate original state', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_plan_created')!;
-    mutation(state, { phase: 1, doc_path: '/path/plan.md' }, baseConfig, baseTemplate);
-    expect(getPhaseNode(state, 'phase_planning').status).toBe('not_started');
-  });
-
-  it('returns non-empty mutations_applied', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_plan_created')!;
-    const result = mutation(state, { phase: 1, doc_path: '/path/plan.md' }, baseConfig, baseTemplate);
-    expect(result.mutations_applied.length).toBeGreaterThan(0);
-  });
-});
-
-// ── phase_report_created mutation ──────────────────────────────────────────
-
-describe('phase_report_created mutation', () => {
-  it('sets phase_report.status to completed at phase scope', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_report_created')!;
-    const result = mutation(state, { phase: 1, doc_path: '/path/report.md' }, baseConfig, baseTemplate);
-    expect(getPhaseNode(result.state, 'phase_report').status).toBe('completed');
-  });
-
-  it('stores doc_path from context', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_report_created')!;
-    const result = mutation(state, { phase: 1, doc_path: '/path/report.md' }, baseConfig, baseTemplate);
-    const node = getPhaseNode(result.state, 'phase_report') as StepNodeState;
-    expect(node.doc_path).toBe('/path/report.md');
-  });
-
-  it('does not mutate original state', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_report_created')!;
-    mutation(state, { phase: 1, doc_path: '/path/report.md' }, baseConfig, baseTemplate);
-    expect(getPhaseNode(state, 'phase_report').status).toBe('not_started');
-  });
-
-  it('returns non-empty mutations_applied', () => {
-    const state = makeState();
-    const mutation = getMutation('phase_report_created')!;
-    const result = mutation(state, { phase: 1, doc_path: '/path/report.md' }, baseConfig, baseTemplate);
-    expect(result.mutations_applied.length).toBeGreaterThan(0);
-  });
-});
+// Post-Iter 8: phase_report_created mutation removed — phase_review absorbed phase_report; phase_review_completed owns the single post-task-loop doc + verdict.
 
 // ── phase_review_completed mutation ──────────────────────────────────────────
 
@@ -664,7 +604,7 @@ describe('phase_review_completed mutation', () => {
   });
 });
 
-// ── phase_review_completed — corrective injection ─────────────────────────────
+// ── phase_review_completed — Iter 11 phase-scope corrective injection ─────────
 
 // Navigation helper: returns the phase IterationEntry for phase 1
 function getPhaseIteration(state: PipelineState): IterationEntry {
@@ -673,22 +613,181 @@ function getPhaseIteration(state: PipelineState): IterationEntry {
   return phaseLoop.iterations[0];
 }
 
-describe('phase_review_completed — corrective injection', () => {
+// ── Mediation context helpers (Iter 11 — phase scope) ────────────────────────
+// Parallels the task-scope iter-10 helpers below. Phase-scope mediation fields
+// are identical in shape: raw changes_requested + orchestrator_mediated +
+// effective_outcome + (iff effective=changes_requested) corrective_handoff_path.
+
+function mediatedPhaseChangesRequestedCtx(
+  handoffPath: string,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    verdict: 'changes_requested',
+    orchestrator_mediated: true,
+    effective_outcome: 'changes_requested',
+    corrective_handoff_path: handoffPath,
+    ...overrides,
+  };
+}
+
+function mediatedPhaseApprovedCtx(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    verdict: 'changes_requested',
+    orchestrator_mediated: true,
+    effective_outcome: 'approved',
+    ...overrides,
+  };
+}
+
+// Template fixture with for_each_phase → for_each_task body so the mutation's
+// `findTaskLoopBodyDefs` call in the corrective-birth branch resolves.
+function makeTemplateWithPhaseTaskBody(): PipelineTemplate {
+  return {
+    template: { id: 'full', version: '1.0', description: 'Full pipeline' },
+    nodes: [
+      {
+        kind: 'for_each_phase',
+        id: 'phase_loop',
+        source_doc_ref: 'master_plan',
+        total_field: 'phase_count',
+        body: [
+          {
+            kind: 'for_each_task',
+            id: 'task_loop',
+            source_doc_ref: 'phase_plan',
+            tasks_field: 'tasks',
+            body: [
+              { kind: 'step', id: 'task_handoff', action: 'create_task_handoff', events: { started: 'task_handoff_started', completed: 'task_handoff_created' } },
+              { kind: 'step', id: 'task_executor', action: 'execute_task', events: { started: 'execution_started', completed: 'task_completed' } },
+              { kind: 'step', id: 'code_review', action: 'spawn_code_reviewer', events: { started: 'code_review_started', completed: 'code_review_completed' } },
+              { kind: 'gate', id: 'task_gate', mode_ref: 'gate_mode', action_if_needed: 'gate_task', approved_event: 'task_gate_approved' },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+describe('phase_review_completed — Iter 11 corrective injection (append-only)', () => {
   const mutation = getMutation('phase_review_completed')!;
 
-  it('changes_requested injects one CorrectiveTaskEntry with correct shape', () => {
+  it('mediated changes_requested with handoff path + budget available injects one CorrectiveTaskEntry with correct shape', () => {
     const state = makeState();
-    const result = mutation(state, { phase: 1, doc_path: '/r.md', verdict: 'changes_requested' }, baseConfig, baseTemplate);
+    const template = makeTemplateWithPhaseTaskBody();
+    const handoffPath = 'tasks/TEST-TASK-P01-PHASE-C1.md';
+    const result = mutation(
+      state,
+      { phase: 1, doc_path: '/r.md', ...mediatedPhaseChangesRequestedCtx(handoffPath) },
+      baseConfig,
+      template,
+    );
     const iteration = getPhaseIteration(result.state);
     expect(iteration.corrective_tasks).toHaveLength(1);
     const entry = iteration.corrective_tasks[0] as CorrectiveTaskEntry;
     expect(entry.index).toBe(1);
-    expect(entry.status).toBe('in_progress');
+    expect(entry.status).toBe('not_started');
     expect(entry.reason).toBe('Phase review requested changes');
     expect(entry.injected_after).toBe('phase_review');
-    expect(Object.keys(entry.nodes)).toHaveLength(0);
-    expect((getPhaseNode(result.state, 'phase_review') as StepNodeState).verdict).toBeNull();
+    expect(Object.keys(entry.nodes)).toHaveLength(4); // 4 task-body nodes
+  });
+
+  it('corrective entry carries the orchestrator-supplied handoff path as doc_path', () => {
+    const state = makeState();
+    const template = makeTemplateWithPhaseTaskBody();
+    const handoffPath = 'tasks/TEST-TASK-P01-PHASE-C1.md';
+    const result = mutation(
+      state,
+      { phase: 1, doc_path: '/r.md', ...mediatedPhaseChangesRequestedCtx(handoffPath) },
+      baseConfig,
+      template,
+    );
+    const entry = getPhaseIteration(result.state).corrective_tasks[0] as CorrectiveTaskEntry;
+    expect(entry.doc_path).toBe(handoffPath);
+    // Body-def scaffolded nodes remain not_started — no synthetic task_handoff.
+    expect(entry.nodes['task_gate']).toEqual({ kind: 'gate', status: 'not_started', gate_active: false });
+  });
+
+  it('phase_review.verdict is written as effective_outcome (not raw verdict) when mediated', () => {
+    const state = makeState();
+    const template = makeTemplateWithPhaseTaskBody();
+    const handoffPath = 'tasks/X-P01-PHASE-C1.md';
+    const result = mutation(
+      state,
+      { phase: 1, doc_path: '/r.md', ...mediatedPhaseChangesRequestedCtx(handoffPath) },
+      baseConfig,
+      template,
+    );
+    expect((getPhaseNode(result.state, 'phase_review') as StepNodeState).verdict).toBe('changes_requested');
     expect((getPhaseNode(result.state, 'phase_review') as StepNodeState).doc_path).toBe('/r.md');
+  });
+
+  it('mediated filter-down (raw changes_requested + effective approved) births no corrective, writes approved to state', () => {
+    const state = makeState();
+    const template = makeTemplateWithPhaseTaskBody();
+    const result = mutation(
+      state,
+      { phase: 1, doc_path: '/r.md', ...mediatedPhaseApprovedCtx() },
+      baseConfig,
+      template,
+    );
+    const iteration = getPhaseIteration(result.state);
+    expect(iteration.corrective_tasks).toHaveLength(0);
+    expect((getPhaseNode(result.state, 'phase_review') as StepNodeState).verdict).toBe('approved');
+    expect(result.state.graph.status).not.toBe('halted');
+  });
+
+  it('changes_requested + no handoff path → clean halt (budget-exhausted signal)', () => {
+    const state = makeState();
+    const template = makeTemplateWithPhaseTaskBody();
+    const result = mutation(
+      state,
+      {
+        phase: 1,
+        doc_path: '/r.md',
+        verdict: 'changes_requested',
+        orchestrator_mediated: true,
+        effective_outcome: 'changes_requested',
+        // corrective_handoff_path intentionally omitted
+      } as Record<string, unknown>,
+      baseConfig,
+      template,
+    );
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toMatch(/budget-exhausted halt signal|no corrective_handoff_path/);
+    const iteration = getPhaseIteration(result.state);
+    expect(iteration.status).toBe('halted');
+    expect(iteration.corrective_tasks).toHaveLength(0);
+  });
+
+  it('budget exhausted + supplied handoff path → hard-error halt with descriptive reason', () => {
+    const state = makeState();
+    const template = makeTemplateWithPhaseTaskBody();
+    const iteration = getPhaseIteration(state);
+    for (let i = 0; i < 3; i++) {
+      iteration.corrective_tasks.push({
+        index: i + 1,
+        reason: 'prior',
+        injected_after: 'phase_review',
+        status: 'not_started',
+        nodes: {},
+        commit_hash: null,
+      });
+    }
+    const result = mutation(
+      state,
+      { phase: 1, ...mediatedPhaseChangesRequestedCtx('tasks/exhausted-P01-PHASE-C4.md') },
+      baseConfig,
+      template,
+    );
+    const resultIteration = getPhaseIteration(result.state);
+    expect(resultIteration.corrective_tasks).toHaveLength(3);
+    expect(resultIteration.status).toBe('halted');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('Retry budget exhausted');
   });
 
   it('rejected verdict halts phase iteration and graph, adds no corrective entry', () => {
@@ -710,39 +809,84 @@ describe('phase_review_completed — corrective injection', () => {
     expect(getPhaseNode(result.state, 'phase_review').status).toBe('completed');
   });
 
-  it('multiple changes_requested on same phase produce consecutive indices', () => {
+  it('multiple mediated corrections on same phase produce consecutive indices', () => {
     const state = makeState();
-    const result1 = mutation(state, { phase: 1, verdict: 'changes_requested' }, baseConfig, baseTemplate);
-    const result2 = mutation(result1.state, { phase: 1, verdict: 'changes_requested' }, baseConfig, baseTemplate);
+    const template = makeTemplateWithPhaseTaskBody();
+    const result1 = mutation(
+      state,
+      { phase: 1, doc_path: '/r.md', ...mediatedPhaseChangesRequestedCtx('tasks/X-P01-PHASE-C1.md') },
+      baseConfig,
+      template,
+    );
+    const result2 = mutation(
+      result1.state,
+      { phase: 1, doc_path: '/r.md', ...mediatedPhaseChangesRequestedCtx('tasks/X-P01-PHASE-C2.md') },
+      baseConfig,
+      template,
+    );
     const iteration = getPhaseIteration(result2.state);
     expect(iteration.corrective_tasks).toHaveLength(2);
     expect(iteration.corrective_tasks[0].index).toBe(1);
     expect(iteration.corrective_tasks[1].index).toBe(2);
+    expect(iteration.corrective_tasks[0].doc_path).toBe('tasks/X-P01-PHASE-C1.md');
+    expect(iteration.corrective_tasks[1].doc_path).toBe('tasks/X-P01-PHASE-C2.md');
   });
 
-  it('original phase iteration nodes are untouched after corrective injection', () => {
+  it('original phase iteration nodes are untouched after corrective injection (iter-11 append-only)', () => {
     const state = makeState();
+    const template = makeTemplateWithPhaseTaskBody();
     const originalNodeKeys = Object.keys(getPhaseIteration(state).nodes);
-    const result = mutation(state, { phase: 1, verdict: 'changes_requested' }, baseConfig, baseTemplate);
+    const result = mutation(
+      state,
+      { phase: 1, doc_path: '/r.md', ...mediatedPhaseChangesRequestedCtx('tasks/X-P01-PHASE-C1.md') },
+      baseConfig,
+      template,
+    );
     const resultNodeKeys = Object.keys(getPhaseIteration(result.state).nodes);
     expect(resultNodeKeys).toEqual(originalNodeKeys);
   });
 
   it('immutability — original state is never modified', () => {
     const state = makeState();
+    const template = makeTemplateWithPhaseTaskBody();
     const originalCorLen = getPhaseIteration(state).corrective_tasks.length;
-    mutation(state, { phase: 1, verdict: 'changes_requested' }, baseConfig, baseTemplate);
+    mutation(
+      state,
+      { phase: 1, doc_path: '/r.md', ...mediatedPhaseChangesRequestedCtx('tasks/X-P01-PHASE-C1.md') },
+      baseConfig,
+      template,
+    );
     expect(getPhaseIteration(state).corrective_tasks.length).toBe(originalCorLen);
     expect(state.graph.status).toBe('not_started');
   });
 
   it('all verdict paths return non-empty mutations_applied', () => {
-    const verdicts = ['approved', 'changes_requested', 'rejected'];
-    for (const verdict of verdicts) {
+    const cases: Array<Record<string, unknown>> = [
+      { verdict: 'approved' },
+      mediatedPhaseChangesRequestedCtx('tasks/X-P01-PHASE-C1.md'),
+      { verdict: 'rejected' },
+    ];
+    for (const ctx of cases) {
       const state = makeState();
-      const result = mutation(state, { phase: 1, verdict }, baseConfig, baseTemplate);
+      const result = mutation(state, { phase: 1, doc_path: '/r.md', ...ctx }, baseConfig, makeTemplateWithPhaseTaskBody());
       expect(result.mutations_applied.length).toBeGreaterThan(0);
     }
+  });
+
+  it('throws when template has no for_each_task body (with mediation handoff supplied)', () => {
+    const emptyTemplate: PipelineTemplate = {
+      template: { id: 'full', version: '1.0', description: 'Full pipeline' },
+      nodes: [],
+    };
+    const state = makeState();
+    expect(() =>
+      mutation(
+        state,
+        { phase: 1, doc_path: '/r.md', ...mediatedPhaseChangesRequestedCtx('tasks/X-P01-PHASE-C1.md') },
+        baseConfig,
+        emptyTemplate,
+      ),
+    ).toThrow('findTaskLoopBodyDefs: no for_each_task body found in template');
   });
 });
 
@@ -750,7 +894,6 @@ describe('phase_review_completed — corrective injection', () => {
 
 describe('task execution _started mutations', () => {
   const cases: Array<[string, string]> = [
-    ['task_handoff_started', 'task_handoff'],
     ['execution_started', 'task_executor'],
     ['code_review_started', 'code_review'],
   ];
@@ -777,39 +920,6 @@ describe('task execution _started mutations', () => {
       expect(result.mutations_applied.length).toBeGreaterThan(0);
     });
   }
-});
-
-// ── task_handoff_created mutation ─────────────────────────────────────────────
-
-describe('task_handoff_created mutation', () => {
-  it('sets task_handoff.status to completed at task scope', () => {
-    const state = makeState();
-    const mutation = getMutation('task_handoff_created')!;
-    const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
-    expect(getTaskNode(result.state, 'task_handoff').status).toBe('completed');
-  });
-
-  it('stores doc_path from context', () => {
-    const state = makeState();
-    const mutation = getMutation('task_handoff_created')!;
-    const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
-    const node = getTaskNode(result.state, 'task_handoff') as StepNodeState;
-    expect(node.doc_path).toBe('/path/handoff.md');
-  });
-
-  it('does not mutate original state', () => {
-    const state = makeState();
-    const mutation = getMutation('task_handoff_created')!;
-    mutation(state, { phase: 1, task: 1, doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
-    expect(getTaskNode(state, 'task_handoff').status).toBe('not_started');
-  });
-
-  it('returns non-empty mutations_applied', () => {
-    const state = makeState();
-    const mutation = getMutation('task_handoff_created')!;
-    const result = mutation(state, { phase: 1, task: 1, doc_path: '/path/handoff.md' }, baseConfig, baseTemplate);
-    expect(result.mutations_applied.length).toBeGreaterThan(0);
-  });
 });
 
 // ── task_completed mutation ──────────────────────────────────────────────
@@ -939,7 +1049,11 @@ describe('code_review_completed mutation', () => {
 
 // ── code_review_completed — corrective injection ──────────────────────────────
 
-// Template fixture with for_each_phase → for_each_task body containing the 4 task body nodes
+// Template fixture with for_each_phase → for_each_task body containing the 4 task body nodes.
+// The `task_handoff` node is kept here as a test-only scaffold: it exercises the
+// mutation's scaffoldNodeState loop over step + gate kinds. Production templates
+// post-Iter-7 no longer carry a `task_handoff` body node (pre-seeded by the
+// explosion script); this fixture does not imply otherwise.
 function makeTemplateWithTaskBody(): PipelineTemplate {
   return {
     template: { id: 'full', version: '1.0', description: 'Full pipeline' },
@@ -977,13 +1091,49 @@ function getTaskIteration(state: PipelineState): IterationEntry {
   return taskLoop.iterations[0];
 }
 
+// ── Mediation context helpers (Iter 10) ──────────────────────────────────────
+// After the Iter-10 contract flip, `changes_requested` verdicts must be
+// accompanied by orchestrator-mediation fields on the event context. These
+// helpers keep the fixture composition clean and highlight the contract at
+// each call site.
+
+function mediatedChangesRequestedCtx(
+  handoffPath: string,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    verdict: 'changes_requested',
+    orchestrator_mediated: true,
+    effective_outcome: 'changes_requested',
+    corrective_handoff_path: handoffPath,
+    ...overrides,
+  };
+}
+
+function mediatedApprovedCtx(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    verdict: 'changes_requested',
+    orchestrator_mediated: true,
+    effective_outcome: 'approved',
+    ...overrides,
+  };
+}
+
 describe('code_review_completed — corrective injection', () => {
   const mutation = getMutation('code_review_completed')!;
 
-  it('changes_requested with budget available injects one CorrectiveTaskEntry with correct shape', () => {
+  it('effective_outcome=changes_requested with handoff path + budget available injects one CorrectiveTaskEntry with correct shape', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
-    const result = mutation(state, { phase: 1, task: 1, doc_path: '/r.md', verdict: 'changes_requested' }, baseConfig, template);
+    const handoffPath = 'tasks/BROKEN-COLORS-TASK-P01-T01-GET-COLORS-C1.md';
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/r.md', ...mediatedChangesRequestedCtx(handoffPath) },
+      baseConfig,
+      template,
+    );
     const iteration = getTaskIteration(result.state);
     expect(iteration.corrective_tasks).toHaveLength(1);
     const entry = iteration.corrective_tasks[0] as CorrectiveTaskEntry;
@@ -994,43 +1144,107 @@ describe('code_review_completed — corrective injection', () => {
     expect(Object.keys(entry.nodes)).toHaveLength(4);
   });
 
-  it('scaffolded nodes have correct shape — task_handoff is step, task_gate is gate', () => {
+  it('corrective entry carries the orchestrator-supplied handoff path as doc_path', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
-    const result = mutation(state, { phase: 1, task: 1, doc_path: '/r.md', verdict: 'changes_requested' }, baseConfig, template);
+    const handoffPath = 'tasks/BROKEN-COLORS-TASK-P01-T01-GET-COLORS-C1.md';
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/r.md', ...mediatedChangesRequestedCtx(handoffPath) },
+      baseConfig,
+      template,
+    );
     const entry = getTaskIteration(result.state).corrective_tasks[0] as CorrectiveTaskEntry;
-    expect(entry.nodes['task_handoff']).toEqual({ kind: 'step', status: 'not_started', doc_path: null, retries: 0 });
+    expect(entry.doc_path).toBe(handoffPath);
+    // Body-def scaffolded nodes remain not_started — no synthetic task_handoff.
     expect(entry.nodes['task_gate']).toEqual({ kind: 'gate', status: 'not_started', gate_active: false });
   });
 
-  it('changes_requested with budget exhausted halts iteration and graph, no new entry added', () => {
+  it('code_review.verdict is written as effective_outcome (not raw verdict) when mediated', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    const handoffPath = 'tasks/X-TASK-P01-T01-C1.md';
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/r.md', ...mediatedChangesRequestedCtx(handoffPath) },
+      baseConfig,
+      template,
+    );
+    // Effective outcome is `changes_requested` → that's what hits state.
+    expect((getTaskNode(result.state, 'code_review') as StepNodeState).verdict).toBe('changes_requested');
+  });
+
+  it('effective_outcome=approved (mediated filter-down) births no corrective, writes approved to state', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/r.md', ...mediatedApprovedCtx() },
+      baseConfig,
+      template,
+    );
+    const iteration = getTaskIteration(result.state);
+    expect(iteration.corrective_tasks).toHaveLength(0);
+    // Routing verdict is the effective outcome — state records `approved`.
+    expect((getTaskNode(result.state, 'code_review') as StepNodeState).verdict).toBe('approved');
+    expect(result.state.graph.status).not.toBe('halted');
+  });
+
+  it('budget exhausted + supplied handoff path → hard-error halt with descriptive reason', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
     // Pre-fill corrective_tasks to max (3)
     const iteration = getTaskIteration(state);
     for (let i = 0; i < 3; i++) {
-      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {}, commit_hash: null });
+      iteration.corrective_tasks.push({
+        index: i + 1,
+        reason: 'prior',
+        injected_after: 'code_review',
+        status: 'not_started',
+        nodes: {},
+        commit_hash: null,
+      });
     }
-    const result = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/exhausted-C4.md') },
+      baseConfig,
+      template,
+    );
     const resultIteration = getTaskIteration(result.state);
     expect(resultIteration.corrective_tasks).toHaveLength(3);
     expect(resultIteration.status).toBe('halted');
     expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('Retry budget exhausted');
   });
 
-  it('budget boundary — retries = max - 1 still injects a corrective entry', () => {
+  it('budget boundary — corrective_tasks.length = max - 1 still injects (shape assertions)', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
-    // Pre-fill to max - 1 (2 entries)
     const iteration = getTaskIteration(state);
     for (let i = 0; i < 2; i++) {
-      iteration.corrective_tasks.push({ index: i + 1, reason: 'prior', injected_after: 'code_review', status: 'not_started', nodes: {}, commit_hash: null });
+      iteration.corrective_tasks.push({
+        index: i + 1,
+        reason: 'prior',
+        injected_after: 'code_review',
+        status: 'not_started',
+        nodes: {},
+        commit_hash: null,
+      });
     }
-    const result = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/X-C3.md') },
+      baseConfig,
+      template,
+    );
     const resultIteration = getTaskIteration(result.state);
     expect(resultIteration.corrective_tasks).toHaveLength(3);
     expect(resultIteration.status).not.toBe('halted');
     expect(result.state.graph.status).not.toBe('halted');
+    // Newest entry carries the supplied handoff path as doc_path.
+    const newest = resultIteration.corrective_tasks[2];
+    expect(newest.doc_path).toBe('tasks/X-C3.md');
   });
 
   it('rejected verdict halts iteration and graph, adds no corrective entry', () => {
@@ -1052,22 +1266,39 @@ describe('code_review_completed — corrective injection', () => {
     expect(getTaskNode(result.state, 'code_review').status).toBe('completed');
   });
 
-  it('multiple corrections on same task produce entries with consecutive indices', () => {
+  it('multiple corrections on same task produce entries with consecutive indices and distinct handoff paths', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
-    const result1 = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
-    const result2 = mutation(result1.state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const result1 = mutation(
+      state,
+      { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/X-C1.md') },
+      baseConfig,
+      template,
+    );
+    const result2 = mutation(
+      result1.state,
+      { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/X-C2.md') },
+      baseConfig,
+      template,
+    );
     const iteration = getTaskIteration(result2.state);
     expect(iteration.corrective_tasks).toHaveLength(2);
     expect(iteration.corrective_tasks[0].index).toBe(1);
     expect(iteration.corrective_tasks[1].index).toBe(2);
+    expect(iteration.corrective_tasks[0].doc_path).toBe('tasks/X-C1.md');
+    expect(iteration.corrective_tasks[1].doc_path).toBe('tasks/X-C2.md');
   });
 
   it('original iteration nodes are untouched after corrective injection', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
     const originalNodeKeys = Object.keys(getTaskIteration(state).nodes);
-    const result = mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/X-C1.md') },
+      baseConfig,
+      template,
+    );
     const resultNodeKeys = Object.keys(getTaskIteration(result.state).nodes);
     expect(resultNodeKeys).toEqual(originalNodeKeys);
   });
@@ -1076,25 +1307,281 @@ describe('code_review_completed — corrective injection', () => {
     const state = makeState();
     const template = makeTemplateWithTaskBody();
     const originalCorLen = getTaskIteration(state).corrective_tasks.length;
-    mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, template);
+    mutation(
+      state,
+      { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/X-C1.md') },
+      baseConfig,
+      template,
+    );
     expect(getTaskIteration(state).corrective_tasks.length).toBe(originalCorLen);
     expect(state.graph.status).toBe('not_started');
   });
 
   it('all verdict paths return non-empty mutations_applied', () => {
-    const verdicts = ['approved', 'changes_requested', 'rejected'];
-    for (const verdict of verdicts) {
+    const cases: Array<Record<string, unknown>> = [
+      { verdict: 'approved' },
+      mediatedChangesRequestedCtx('tasks/X-C1.md'),
+      { verdict: 'rejected' },
+    ];
+    for (const ctx of cases) {
       const state = makeState();
-      const result = mutation(state, { phase: 1, task: 1, verdict }, baseConfig, makeTemplateWithTaskBody());
+      const result = mutation(state, { phase: 1, task: 1, ...ctx }, baseConfig, makeTemplateWithTaskBody());
       expect(result.mutations_applied.length).toBeGreaterThan(0);
     }
   });
 
-  it('throws when template has no for_each_task body', () => {
+  it('throws when template has no for_each_task body (with mediation handoff supplied)', () => {
     const emptyTemplate = { ...makeTemplateWithTaskBody(), nodes: [] };
     const state = makeState();
-    expect(() => mutation(state, { phase: 1, task: 1, verdict: 'changes_requested' }, baseConfig, emptyTemplate))
-      .toThrow('findTaskLoopBodyDefs: no for_each_task body found in template');
+    expect(() =>
+      mutation(
+        state,
+        { phase: 1, task: 1, ...mediatedChangesRequestedCtx('tasks/X-C1.md') },
+        baseConfig,
+        emptyTemplate,
+      ),
+    ).toThrow('findTaskLoopBodyDefs: no for_each_task body found in template');
+  });
+});
+
+// ── code_review_completed — Iter 11 ancestor-derivation (corrective-of-corrective) ─
+//
+// When a code_review completes under an active phase-scope corrective, the
+// birthed corrective appends to `phaseIter.corrective_tasks` (hosting=phase).
+// When the code_review lives on a task iteration (the normal iter-10 case),
+// it appends to `taskIter.corrective_tasks` (hosting=task). The engine
+// derives hosting from WHERE the completed code_review node lives in state —
+// no orchestrator-supplied scope hint, no new event field.
+
+describe('code_review_completed — Iter 11 ancestor-derivation', () => {
+  const mutation = getMutation('code_review_completed')!;
+
+  // Helper: inject a phase-scope corrective containing a `code_review` node,
+  // simulating the engine state when a phase-scope corrective's task-level
+  // review has just completed. The phase corrective's `code_review` node
+  // lives inside its `nodes` map; `resolveHostingIteration` sees that node
+  // and routes the new corrective to phaseIter.
+  function seedPhaseScopeCorrectiveWithReview(state: PipelineState, codeReviewDocPath: string): void {
+    const phaseLoop = state.graph.nodes['phase_loop'];
+    if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected');
+    phaseLoop.iterations[0].corrective_tasks.push({
+      index: 1,
+      reason: 'Phase review requested changes',
+      injected_after: 'phase_review',
+      status: 'in_progress',
+      nodes: {
+        task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/X-P01-PHASE-C1.md', retries: 0 },
+        task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
+        code_review: { kind: 'step', status: 'completed', doc_path: codeReviewDocPath, retries: 0 },
+        task_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+      },
+      commit_hash: null,
+    });
+  }
+
+  it('scope=task (iter-10 preserved): no phase-scope corrective active → new corrective appends to taskIter.corrective_tasks', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    const handoffPath = 'tasks/X-P01-T01-C1.md';
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/r.md', ...mediatedChangesRequestedCtx(handoffPath) },
+      baseConfig,
+      template,
+    );
+    const phaseIter = getPhaseIteration(result.state);
+    const taskIter = getTaskIteration(result.state);
+    expect(phaseIter.corrective_tasks).toHaveLength(0);
+    expect(taskIter.corrective_tasks).toHaveLength(1);
+    expect(taskIter.corrective_tasks[0].doc_path).toBe(handoffPath);
+    // mutations_applied log includes scope=task
+    expect(result.mutations_applied.some(m => /scope=task/.test(m))).toBe(true);
+  });
+
+  it('scope=phase: active phase-scope corrective with code_review node → new corrective appends to phaseIter.corrective_tasks', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    seedPhaseScopeCorrectiveWithReview(state, '/reports/CODE-REVIEW-P01-PHASE-C1.md');
+    const handoffPath = 'tasks/X-P01-PHASE-C2.md';
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/reports/CODE-REVIEW-P01-PHASE-C1.md', ...mediatedChangesRequestedCtx(handoffPath) },
+      baseConfig,
+      template,
+    );
+    const phaseIter = getPhaseIteration(result.state);
+    const taskIter = getTaskIteration(result.state);
+    // Hosting = phase → append to phaseIter.corrective_tasks (now 2 entries).
+    expect(phaseIter.corrective_tasks).toHaveLength(2);
+    expect(phaseIter.corrective_tasks[1].index).toBe(2);
+    expect(phaseIter.corrective_tasks[1].doc_path).toBe(handoffPath);
+    // taskIter unchanged.
+    expect(taskIter.corrective_tasks).toHaveLength(0);
+    // mutations_applied log includes scope=phase
+    expect(result.mutations_applied.some(m => /scope=phase/.test(m))).toBe(true);
+  });
+
+  it('scope=phase: budget exhaustion at phase scope halts the PHASE iteration, not the task iteration', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    const phaseIter = getPhaseIteration(state);
+    // Pre-fill phase correctives to max (3 per baseConfig).
+    for (let i = 0; i < 3; i++) {
+      phaseIter.corrective_tasks.push({
+        index: i + 1,
+        reason: 'prior',
+        injected_after: 'phase_review',
+        status: i === 2 ? 'in_progress' : 'completed',
+        nodes: i === 2 ? {
+          task_handoff: { kind: 'step', status: 'completed', doc_path: `tasks/X-P01-PHASE-C${i + 1}.md`, retries: 0 },
+          code_review: { kind: 'step', status: 'completed', doc_path: `/reports/CR-P01-PHASE-C${i + 1}.md`, retries: 0 },
+        } : {},
+        commit_hash: null,
+      });
+    }
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/reports/CR-P01-PHASE-C3.md', ...mediatedChangesRequestedCtx('tasks/exhausted-PHASE-C4.md') },
+      baseConfig,
+      template,
+    );
+    // Phase iteration halted, not task.
+    const resultPhaseIter = getPhaseIteration(result.state);
+    const resultTaskIter = getTaskIteration(result.state);
+    expect(resultPhaseIter.status).toBe('halted');
+    expect(resultTaskIter.status).not.toBe('halted');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('phase');
+  });
+
+  it('scope=phase: rejected verdict halts the PHASE iteration, not the task iteration', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    seedPhaseScopeCorrectiveWithReview(state, '/reports/CR-P01-PHASE-C1.md');
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/reports/CR-P01-PHASE-C1.md', verdict: 'rejected' },
+      baseConfig,
+      template,
+    );
+    const resultPhaseIter = getPhaseIteration(result.state);
+    const resultTaskIter = getTaskIteration(result.state);
+    // Phase iteration halts because the reviewed code_review lives under a
+    // phase-scope corrective; ancestor-derivation selects phaseIter.
+    expect(resultPhaseIter.status).toBe('halted');
+    expect(resultTaskIter.status).not.toBe('halted');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('scope=phase');
+    expect(result.mutations_applied.some(m => /phase_iteration\.status = halted \(rejected verdict, scope=phase\)/.test(m))).toBe(true);
+  });
+
+  it('scope=task (iter-10 preserved): rejected verdict halts the TASK iteration when no phase-scope corrective is active', () => {
+    const state = makeState();
+    const template = makeTemplateWithTaskBody();
+    const result = mutation(
+      state,
+      { phase: 1, task: 1, doc_path: '/r.md', verdict: 'rejected' },
+      baseConfig,
+      template,
+    );
+    const resultPhaseIter = getPhaseIteration(result.state);
+    const resultTaskIter = getTaskIteration(result.state);
+    expect(resultTaskIter.status).toBe('halted');
+    expect(resultPhaseIter.status).not.toBe('halted');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('scope=task');
+    expect(result.mutations_applied.some(m => /task_iteration\.status = halted \(rejected verdict, scope=task\)/.test(m))).toBe(true);
+  });
+});
+
+// ── commit_completed — Iter 11 phase-scope-first routing ─────────────────────
+
+describe('commit_completed — Iter 11 phase-scope-first routing', () => {
+  const mutation = getMutation('commit_completed')!;
+
+  it('phase-scope-first: active phaseIter corrective takes commit_hash (task-scope has no active corrective)', () => {
+    const state = makeState();
+    const phaseIter = getPhaseIteration(state);
+    phaseIter.corrective_tasks.push({
+      index: 1,
+      reason: 'Phase review requested changes',
+      injected_after: 'phase_review',
+      status: 'in_progress',
+      nodes: {
+        task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/X-P01-PHASE-C1.md', retries: 0 },
+        task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
+        commit: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 },
+      },
+      commit_hash: null,
+    });
+    const result = mutation(state, { phase: 1, task: 1, commit_hash: 'phase-scope-hash' }, baseConfig, baseTemplate);
+    const resultPhaseIter = getPhaseIteration(result.state);
+    const resultTaskIter = getTaskIteration(result.state);
+    // commit_hash lands on the phase-scope corrective.
+    expect(resultPhaseIter.corrective_tasks[0].commit_hash).toBe('phase-scope-hash');
+    // Task-scope iteration commit_hash untouched.
+    expect(resultTaskIter.commit_hash).toBeNull();
+    expect(resultTaskIter.corrective_tasks).toHaveLength(0);
+  });
+
+  it('phase-scope-first: active phaseIter corrective still wins when task-scope also has an active corrective', () => {
+    const state = makeState();
+    const phaseIter = getPhaseIteration(state);
+    const taskIter = getTaskIteration(state);
+    phaseIter.corrective_tasks.push({
+      index: 1,
+      reason: 'Phase review requested changes',
+      injected_after: 'phase_review',
+      status: 'in_progress',
+      nodes: {
+        task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/X-P01-PHASE-C1.md', retries: 0 },
+        commit: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 },
+      },
+      commit_hash: null,
+    });
+    taskIter.corrective_tasks.push({
+      index: 1,
+      reason: 'prior task-scope corrective',
+      injected_after: 'code_review',
+      status: 'in_progress',
+      nodes: {},
+      commit_hash: null,
+    });
+    const result = mutation(state, { phase: 1, task: 1, commit_hash: 'phase-wins' }, baseConfig, baseTemplate);
+    const resultPhaseIter = getPhaseIteration(result.state);
+    const resultTaskIter = getTaskIteration(result.state);
+    expect(resultPhaseIter.corrective_tasks[0].commit_hash).toBe('phase-wins');
+    // Task-scope corrective does NOT receive the commit hash under phase-scope-first.
+    expect(resultTaskIter.corrective_tasks[0].commit_hash).toBeNull();
+  });
+
+  it('task-scope fallback: no active phaseIter corrective → commit_hash routes to task iteration (iter-10 preserved)', () => {
+    const state = makeState();
+    const result = mutation(state, { phase: 1, task: 1, commit_hash: 'task-scope-hash' }, baseConfig, baseTemplate);
+    const resultPhaseIter = getPhaseIteration(result.state);
+    const resultTaskIter = getTaskIteration(result.state);
+    expect(resultPhaseIter.corrective_tasks).toHaveLength(0);
+    expect(resultTaskIter.commit_hash).toBe('task-scope-hash');
+  });
+
+  it('task-scope fallback: completed phase correctives do NOT shadow task-scope routing', () => {
+    const state = makeState();
+    const phaseIter = getPhaseIteration(state);
+    phaseIter.corrective_tasks.push({
+      index: 1,
+      reason: 'earlier phase corrective',
+      injected_after: 'phase_review',
+      status: 'completed', // completed — not active
+      nodes: {},
+      commit_hash: 'old-phase-hash',
+    });
+    const result = mutation(state, { phase: 1, task: 1, commit_hash: 'task-scope-hash' }, baseConfig, baseTemplate);
+    const resultPhaseIter = getPhaseIteration(result.state);
+    const resultTaskIter = getTaskIteration(result.state);
+    // Completed phase corrective unchanged.
+    expect(resultPhaseIter.corrective_tasks[0].commit_hash).toBe('old-phase-hash');
+    // Task-scope iteration receives the new commit.
+    expect(resultTaskIter.commit_hash).toBe('task-scope-hash');
   });
 });
 
@@ -1349,7 +1836,6 @@ function makeIterationNodes() {
   return {
     phase_gate: { kind: 'gate' as const, status: 'not_started' as const, gate_active: false },
     phase_planning: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
-    phase_report: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
     phase_review: { kind: 'step' as const, status: 'not_started' as const, doc_path: null, retries: 0 },
     task_loop: {
       kind: 'for_each_task' as const,
@@ -1400,46 +1886,48 @@ function makeMultiIterationState(): PipelineState {
 }
 
 describe('multi-iteration phase mutation (phase ≥ 2)', () => {
-  it('phase_planning_started with { phase: 2 } sets iterations[1].nodes.phase_planning.status to in_progress', () => {
+  // Post-Iter 8: phase_report_started removed; phase_review_started is the only
+  // phase-scoped _started event remaining.
+  it('phase_review_started with { phase: 2 } sets iterations[1].nodes.phase_review.status to in_progress', () => {
     const state = makeMultiIterationState();
-    const mutation = getMutation('phase_planning_started')!;
+    const mutation = getMutation('phase_review_started')!;
     const result = mutation(state, { phase: 2 }, baseConfig, baseTemplate);
     const phaseLoop = result.state.graph.nodes['phase_loop'];
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
-    expect(phaseLoop.iterations[1].nodes['phase_planning'].status).toBe('in_progress');
+    expect(phaseLoop.iterations[1].nodes['phase_review'].status).toBe('in_progress');
   });
 
   it('does not affect iteration[0] when phase: 2', () => {
     const state = makeMultiIterationState();
-    const mutation = getMutation('phase_planning_started')!;
+    const mutation = getMutation('phase_review_started')!;
     const result = mutation(state, { phase: 2 }, baseConfig, baseTemplate);
     const phaseLoop = result.state.graph.nodes['phase_loop'];
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
-    expect(phaseLoop.iterations[0].nodes['phase_planning'].status).toBe('not_started');
+    expect(phaseLoop.iterations[0].nodes['phase_review'].status).toBe('not_started');
   });
 });
 
 describe('multi-iteration task mutation (task ≥ 2)', () => {
-  it('task_handoff_started with { phase: 1, task: 2 } sets iterations[0].task_loop.iterations[1].task_handoff to in_progress', () => {
+  it('execution_started with { phase: 1, task: 2 } sets iterations[0].task_loop.iterations[1].task_executor to in_progress', () => {
     const state = makeMultiIterationState();
-    const mutation = getMutation('task_handoff_started')!;
+    const mutation = getMutation('execution_started')!;
     const result = mutation(state, { phase: 1, task: 2 }, baseConfig, baseTemplate);
     const phaseLoop = result.state.graph.nodes['phase_loop'];
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
     if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
-    expect(taskLoop.iterations[1].nodes['task_handoff'].status).toBe('in_progress');
+    expect(taskLoop.iterations[1].nodes['task_executor'].status).toBe('in_progress');
   });
 
   it('does not affect task iteration[0] when task: 2', () => {
     const state = makeMultiIterationState();
-    const mutation = getMutation('task_handoff_started')!;
+    const mutation = getMutation('execution_started')!;
     const result = mutation(state, { phase: 1, task: 2 }, baseConfig, baseTemplate);
     const phaseLoop = result.state.graph.nodes['phase_loop'];
     if (phaseLoop.kind !== 'for_each_phase') throw new Error('unexpected node kind');
     const taskLoop = phaseLoop.iterations[0].nodes['task_loop'];
     if (taskLoop.kind !== 'for_each_task') throw new Error('unexpected node kind');
-    expect(taskLoop.iterations[0].nodes['task_handoff'].status).toBe('not_started');
+    expect(taskLoop.iterations[0].nodes['task_executor'].status).toBe('not_started');
   });
 });
 
@@ -1662,10 +2150,12 @@ describe('gate_mode_set mutation', () => {
 // ── source_control_init mutation ──────────────────────────────────────────────
 
 describe('source_control_init mutation', () => {
+  const reqCtx = { auto_commit: 'never', auto_pr: 'never' };
+
   it('creates pipeline.source_control with branch and base_branch', () => {
     const state = makeState();
     const mutation = getMutation('source_control_init')!;
-    const result = mutation(state, { branch: 'feature/my-branch', base_branch: 'main' }, baseConfig, baseTemplate);
+    const result = mutation(state, { branch: 'feature/my-branch', base_branch: 'main', ...reqCtx }, baseConfig, baseTemplate);
     const sc = result.state.pipeline.source_control;
     expect(sc).not.toBeNull();
     expect(sc!.branch).toBe('feature/my-branch');
@@ -1675,14 +2165,14 @@ describe('source_control_init mutation', () => {
   it('defaults worktree_path to "." when not provided', () => {
     const state = makeState();
     const mutation = getMutation('source_control_init')!;
-    const result = mutation(state, { branch: 'b', base_branch: 'main' }, baseConfig, baseTemplate);
+    const result = mutation(state, { branch: 'b', base_branch: 'main', ...reqCtx }, baseConfig, baseTemplate);
     expect(result.state.pipeline.source_control!.worktree_path).toBe('.');
   });
 
   it('throws when branch is missing', () => {
     const state = makeState();
     const mutation = getMutation('source_control_init')!;
-    expect(() => mutation(state, { base_branch: 'main' }, baseConfig, baseTemplate)).toThrow(
+    expect(() => mutation(state, { base_branch: 'main', ...reqCtx }, baseConfig, baseTemplate)).toThrow(
       /--branch/
     );
   });
@@ -1690,7 +2180,7 @@ describe('source_control_init mutation', () => {
   it('throws when base_branch is missing', () => {
     const state = makeState();
     const mutation = getMutation('source_control_init')!;
-    expect(() => mutation(state, { branch: 'feature/x' }, baseConfig, baseTemplate)).toThrow(
+    expect(() => mutation(state, { branch: 'feature/x', ...reqCtx }, baseConfig, baseTemplate)).toThrow(
       /--base-branch/
     );
   });
@@ -1698,14 +2188,197 @@ describe('source_control_init mutation', () => {
   it('does not mutate original state', () => {
     const state = makeState();
     const mutation = getMutation('source_control_init')!;
-    mutation(state, { branch: 'b', base_branch: 'main' }, baseConfig, baseTemplate);
+    mutation(state, { branch: 'b', base_branch: 'main', ...reqCtx }, baseConfig, baseTemplate);
     expect(state.pipeline.source_control).toBeNull();
   });
 
   it('returns non-empty mutations_applied', () => {
     const state = makeState();
     const mutation = getMutation('source_control_init')!;
-    const result = mutation(state, { branch: 'b', base_branch: 'main' }, baseConfig, baseTemplate);
+    const result = mutation(state, { branch: 'b', base_branch: 'main', ...reqCtx }, baseConfig, baseTemplate);
     expect(result.mutations_applied.length).toBeGreaterThan(0);
+  });
+});
+
+// ── Iter 5 — Explosion script mutations ─────────────────────────────────────
+
+/**
+ * Minimal state with explode_master_plan node wired into top-level graph, mirroring
+ * default.yml's 4-node planning chain. Used by the explosion mutation tests below.
+ */
+function makeStateWithExplodeNode(opts: {
+  masterPlanStatus?: 'not_started' | 'in_progress' | 'completed';
+  explodeStatus?: 'not_started' | 'in_progress' | 'completed' | 'failed';
+  parseRetryCount?: number;
+  lastParseError?: { line: number; expected: string; found: string; message: string } | null;
+} = {}): PipelineState {
+  const {
+    masterPlanStatus = 'completed',
+    explodeStatus = 'in_progress',
+    parseRetryCount = 0,
+    lastParseError = null,
+  } = opts;
+  return {
+    $schema: 'orchestration-state-v5',
+    project: { name: 'EXPLODE', created: '2026-04-18T00:00:00Z', updated: '2026-04-18T00:00:00Z' },
+    config: {
+      gate_mode: 'autonomous',
+      limits: {
+        max_phases: 5,
+        max_tasks_per_phase: 10,
+        max_retries_per_task: 3,
+        max_consecutive_review_rejections: 3,
+      },
+      source_control: { auto_commit: 'never', auto_pr: 'never' },
+    },
+    pipeline: { gate_mode: null, source_control: null, current_tier: 'planning', halt_reason: null },
+    graph: {
+      template_id: 'default',
+      status: 'in_progress',
+      current_node_path: null,
+      nodes: {
+        requirements: { kind: 'step', status: 'completed', doc_path: '/tmp/req.md', retries: 0 },
+        master_plan: {
+          kind: 'step',
+          status: masterPlanStatus,
+          doc_path: '/tmp/master-plan.md',
+          retries: 0,
+          last_parse_error: lastParseError,
+          parse_retry_count: parseRetryCount,
+        },
+        explode_master_plan: { kind: 'step', status: explodeStatus, doc_path: null, retries: 0 },
+        plan_approval_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+      },
+    },
+  };
+}
+
+describe('explosion_started mutation', () => {
+  it('is registered', () => {
+    expect(getMutation('explosion_started')).toBeTypeOf('function');
+  });
+
+  it('flips explode_master_plan to in_progress', () => {
+    const state = makeStateWithExplodeNode({ explodeStatus: 'not_started' });
+    const mutation = getMutation('explosion_started')!;
+    const result = mutation(state, {}, baseConfig, baseTemplate);
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('in_progress');
+  });
+
+  it('does not mutate original state', () => {
+    const state = makeStateWithExplodeNode({ explodeStatus: 'not_started' });
+    const mutation = getMutation('explosion_started')!;
+    mutation(state, {}, baseConfig, baseTemplate);
+    const explodeNode = state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('not_started');
+  });
+});
+
+describe('explosion_completed mutation', () => {
+  it('is registered', () => {
+    expect(getMutation('explosion_completed')).toBeTypeOf('function');
+  });
+
+  it('marks explode_master_plan completed, leaves doc_path null, clears master_plan recovery state', () => {
+    const state = makeStateWithExplodeNode({
+      parseRetryCount: 2,
+      lastParseError: { line: 1, expected: 'e', found: 'f', message: 'm' },
+    });
+    const mutation = getMutation('explosion_completed')!;
+    const result = mutation(state, { doc_path: '/tmp/mp.md' }, baseConfig, baseTemplate);
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('completed');
+    // explode step produces no doc of its own; context.doc_path (= master plan path) is NOT stored here
+    // because master_plan.doc_path already carries that value.
+    expect(explodeNode.doc_path).toBeNull();
+    const mpNode = result.state.graph.nodes['master_plan'] as StepNodeState;
+    expect(mpNode.last_parse_error).toBeNull();
+    expect(mpNode.parse_retry_count).toBe(0);
+  });
+
+  it('no-op on recovery state when there was no prior parse failure', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 0, lastParseError: null });
+    const mutation = getMutation('explosion_completed')!;
+    const result = mutation(state, { doc_path: '/tmp/mp.md' }, baseConfig, baseTemplate);
+    const mpNode = result.state.graph.nodes['master_plan'] as StepNodeState;
+    expect(mpNode.last_parse_error).toBeNull();
+    expect(mpNode.parse_retry_count).toBe(0);
+  });
+});
+
+describe('explosion_failed mutation', () => {
+  it('is registered', () => {
+    expect(getMutation('explosion_failed')).toBeTypeOf('function');
+  });
+
+  it('1st failure: increments parse_retry_count to 1, stores error, resets explode_master_plan to not_started, flips master_plan back to in_progress', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 0 });
+    const parseError = { line: 42, expected: 'phase heading', found: 'task heading', message: 'at line 42' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: parseError }, baseConfig, baseTemplate);
+
+    const mpNode = result.state.graph.nodes['master_plan'] as StepNodeState;
+    expect(mpNode.status).toBe('in_progress');
+    expect(mpNode.parse_retry_count).toBe(1);
+    expect(mpNode.last_parse_error).toEqual(parseError);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('not_started');
+
+    expect(result.state.graph.status).not.toBe('halted');
+  });
+
+  it('4th failure (cap=3 exceeded): halts the graph with halt_reason and explode_master_plan.status=failed', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 3 });
+    const parseError = { line: 99, expected: 'x', found: 'y', message: 'irrecoverable' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: parseError }, baseConfig, baseTemplate);
+
+    const mpNode = result.state.graph.nodes['master_plan'] as StepNodeState;
+    expect(mpNode.parse_retry_count).toBe(4);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('failed');
+
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toBeTruthy();
+    expect(result.state.pipeline.halt_reason).toContain('cap=3');
+  });
+
+  it('parse_error with float line (1.5) triggers dispatch-error halt', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 0 });
+    const malformedError = { line: 1.5, expected: 'x', found: 'y', message: 'error' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: malformedError }, baseConfig, baseTemplate);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('failed');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('dispatch error');
+  });
+
+  it('parse_error with negative line (-1) triggers dispatch-error halt', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 0 });
+    const malformedError = { line: -1, expected: 'x', found: 'y', message: 'error' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: malformedError }, baseConfig, baseTemplate);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('failed');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('dispatch error');
+  });
+
+  it('parse_error with zero line (0) triggers dispatch-error halt', () => {
+    const state = makeStateWithExplodeNode({ parseRetryCount: 0 });
+    const malformedError = { line: 0, expected: 'x', found: 'y', message: 'error' };
+    const mutation = getMutation('explosion_failed')!;
+    const result = mutation(state, { parse_error: malformedError }, baseConfig, baseTemplate);
+
+    const explodeNode = result.state.graph.nodes['explode_master_plan'] as StepNodeState;
+    expect(explodeNode.status).toBe('failed');
+    expect(result.state.graph.status).toBe('halted');
+    expect(result.state.pipeline.halt_reason).toContain('dispatch error');
   });
 });

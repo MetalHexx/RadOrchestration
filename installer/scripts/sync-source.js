@@ -29,7 +29,7 @@ const __dirname = path.dirname(__filename);
 const UI_EXCLUDES = new Set(['node_modules', '.next', '.env.local', '.env']);
 
 /** Names excluded from .claude source sync (repo-specific files not for end users). */
-const CLAUDE_EXCLUDES = new Set(['settings.local.json']);
+const CLAUDE_EXCLUDES = new Set(['settings.json', 'settings.local.json']);
 
 /**
  * @param {string} source - Absolute path to the source directory

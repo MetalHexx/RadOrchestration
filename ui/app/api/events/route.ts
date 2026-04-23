@@ -10,6 +10,13 @@ import { readConfig } from '@/lib/fs-reader';
 
 export const dynamic = 'force-dynamic';
 
+// Skip project-internal scaffold dirs so the watcher doesn't recurse into a
+// project's own node_modules/.next/.git — on Windows that triggers a stream of
+// EPERM errors and a slow memory leak in chokidar as watcher state piles up,
+// eventually OOM-crashing the Node process. Matches both POSIX and Windows
+// path separators.
+const IGNORED_PROJECT_DIR_RE = /[\\/](node_modules|\.git|\.next|\.cache)([\\/]|$)/;
+
 // ─── SSE Helpers ────────────────────────────────────────────────────────────
 
 function createSSEEvent<T extends SSEEventType>(
@@ -102,7 +109,7 @@ export async function GET(request: Request) {
           stabilityThreshold: 200,
           pollInterval: 50,
         },
-        ignored: [/state\.json\.(proposed|empty)$/],
+        ignored: [/state\.json\.(proposed|empty)$/, IGNORED_PROJECT_DIR_RE],
         ignoreInitial: true,
       });
 
@@ -147,6 +154,11 @@ export async function GET(request: Request) {
         usePolling,
         depth: 0,
         ignoreInitial: true,
+        // Defensive: depth:0 already keeps this watcher at the projects-dir top
+        // level so scaffold dirs inside a project aren't reachable today, but
+        // pairing the same ignore list with the state.json watcher above keeps
+        // the two consistent if `depth` ever changes.
+        ignored: [IGNORED_PROJECT_DIR_RE],
       });
 
       dirWatcher.on('addDir', (dirPath: string) => {

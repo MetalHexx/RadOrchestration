@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { validateTemplate } from '../lib/template-validator.js';
+import { loadTemplate } from '../lib/template-loader.js';
 import type { PipelineTemplate, NodeDef } from '../lib/types.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const TEMPLATES_DIR = path.resolve(__dirname, '../../templates');
 
 function makeTemplate(nodes: NodeDef[], id = 'my-template'): PipelineTemplate {
   return {
@@ -151,6 +157,72 @@ describe('validateTemplate', () => {
       expect(cycleErr).toBeDefined();
       expect(cycleErr!.detail.cycle_nodes).toContain('body-a');
       expect(cycleErr!.detail.cycle_nodes).toContain('body-b');
+    });
+  });
+
+  describe('default.yml (Iter 9 canonical template)', () => {
+    it('loads via template-loader without throwing — 9 top-level nodes covering the full pipeline', () => {
+      // loadTemplate is what the engine actually calls; it filters tolerable
+      // unreachable_node warnings for leaf terminals (see template-loader.ts).
+      // This asserts default.yml is loadable end-to-end in the engine's path.
+      const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'default.yml'));
+      const ids = template.nodes.map((n) => n.id);
+      expect(ids).toEqual([
+        'requirements',
+        'master_plan',
+        'explode_master_plan',
+        'plan_approval_gate',
+        'gate_mode_selection',
+        'phase_loop',
+        'final_review',
+        'pr_gate',
+        'final_approval_gate',
+      ]);
+    });
+
+    it('has no structural defects (cycles, dangling refs, invalid kinds) — unreachable-leaf warnings are tolerated', () => {
+      const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'default.yml'));
+      const result = validateTemplate(template, 'default');
+      const hardErrors = result.errors.filter((e) => e.subtype !== 'unreachable_node');
+      expect(hardErrors).toHaveLength(0);
+    });
+
+    it('explode_master_plan step exists with expected events (started/completed) and depends_on [master_plan]', () => {
+      const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'default.yml'));
+      const explode = template.nodes.find(n => n.id === 'explode_master_plan');
+      expect(explode).toBeDefined();
+      expect(explode!.kind).toBe('step');
+      expect((explode as any).action).toBe('explode_master_plan');
+      // The explode step produces no single doc (outputs are phases/*.md, tasks/*.md,
+      // seeded iterations). doc_output_field MUST be absent — otherwise preRead would
+      // require context.doc_path on explosion_completed and try to validate a
+      // non-existent doc. See pre-reads.ts early-return when doc_output_field is absent.
+      expect((explode as any).doc_output_field).toBeUndefined();
+      expect((explode as any).events.started).toBe('explosion_started');
+      expect((explode as any).events.completed).toBe('explosion_completed');
+      // `failed` is NOT declared on the step — `explosion_failed` is routed via
+      // OUT_OF_BAND_EVENTS (see scripts/lib/constants.ts) because buildEventIndex
+      // does not register step-level `failed` events.
+      expect((explode as any).events.failed).toBeUndefined();
+      expect((explode as any).depends_on).toEqual(['master_plan']);
+      const gate = template.nodes.find(n => n.id === 'plan_approval_gate');
+      expect((gate as any).depends_on).toEqual(['explode_master_plan']);
+    });
+  });
+
+  describe('deprecated templates', () => {
+    it('skips validation for a deprecated template even when nodes are structurally invalid', () => {
+      const deprecatedTemplate: PipelineTemplate = {
+        template: { id: 'foo', version: '1', description: 'd', status: 'deprecated' },
+        nodes: [
+          // Invalid nodes: cycle + dangling ref — would normally fail validation
+          makeStep('a', ['b']),
+          makeStep('b', ['a']),
+          makeStep('x', ['nonexistent']),
+        ],
+      };
+      const result = validateTemplate(deprecatedTemplate, 'foo');
+      expect(result).toEqual({ valid: true, errors: [], warnings: [] });
     });
   });
 });

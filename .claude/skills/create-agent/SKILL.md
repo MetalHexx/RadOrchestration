@@ -31,7 +31,7 @@ A skill for creating new custom agents for the orchestration system. Generates p
 
 ## Workflow
 
-1. **Determine the filename and name**: Lowercase, hyphenated: `{agent-name}.md` (placed in `.claude/agents/`). The `name:` field must match the filename without extension (e.g., filename `product-manager.md` → `name: product-manager`) — Claude Code spawns agents by this name.
+1. **Determine the filename and name**: Lowercase, hyphenated: `{agent-name}.md` (placed in `.claude/agents/`). The `name:` field must match the filename without extension (e.g., filename `source-control.md` → `name: source-control`) — Claude Code spawns agents by this name.
 2. **Select tools**: Apply principle of least privilege — only grant what the agent needs. Populate BOTH `tools:` (comma-separated Pascal names) and `allowedTools:` (YAML list, same entries). See the **Frontmatter Reference** below.
 3. **Write the description**: Keyword-rich — includes WHAT it does AND WHEN to use it (both hosts use this for agent discovery)
 4. **Write the body**: Follow the **Agent Body Template** below

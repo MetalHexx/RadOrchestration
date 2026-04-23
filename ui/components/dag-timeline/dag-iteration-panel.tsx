@@ -4,7 +4,7 @@ import { DAGNodeRow } from './dag-node-row';
 import { NodeStatusBadge } from './node-status-badge';
 import { DAGCorrectiveTaskGroup } from './dag-corrective-task-group';
 import { DAGLoopNode } from './dag-loop-node';
-import { ExternalLink } from '@/components/documents';
+import { DocumentLink, ExternalLink } from '@/components/documents';
 import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath } from './dag-timeline-helpers';
 import type { IterationEntry } from '@/types/state';
 
@@ -57,18 +57,24 @@ export function DAGIterationPanel({
   const commitData = getCommitLinkData(iteration.commit_hash, repoBaseUrl);
   const correctiveGroupParentId = buildCorrectiveGroupParentId(parentNodeId, iterationIndex);
 
-  // Derive iteration name from child node doc path
+  // Derive iteration name from iteration.doc_path (post-unify) with a
+  // fallback to the legacy per-iteration synthetic nodes
+  // (`phase_planning` / `task_handoff`) so existing completed projects
+  // browsed via the UI keep their labels.
   let iterationName: string;
   let isFallback: boolean;
+  let docPath: string | null;
 
   if (parentKind === 'for_each_phase') {
     const phaseNode = iteration.nodes['phase_planning'];
-    const docPath = (phaseNode && 'doc_path' in phaseNode) ? phaseNode.doc_path : null;
+    const legacyDocPath = (phaseNode && 'doc_path' in phaseNode) ? phaseNode.doc_path : null;
+    docPath = iteration.doc_path ?? legacyDocPath ?? null;
     isFallback = !docPath;
     iterationName = parsePhaseNameFromDocPath(docPath, iterationIndex);
   } else {
     const taskNode = iteration.nodes['task_handoff'];
-    const docPath = (taskNode && 'doc_path' in taskNode) ? taskNode.doc_path : null;
+    const legacyDocPath = (taskNode && 'doc_path' in taskNode) ? taskNode.doc_path : null;
+    docPath = iteration.doc_path ?? legacyDocPath ?? null;
     isFallback = !docPath;
     iterationName = parseTaskNameFromDocPath(docPath, iterationIndex);
   }
@@ -123,13 +129,23 @@ export function DAGIterationPanel({
           {iterationName}
         </span>
         <NodeStatusBadge status={iteration.status} />
+        {iteration.doc_path != null && iteration.doc_path !== '' && (
+          // Gate on iteration.doc_path (new shape) only — NOT on the combined `docPath` that
+          // includes the legacy `phase_planning` / `task_handoff` fallback. Legacy projects
+          // already render a Doc button on those synthetic child rows via DAGNodeRow; adding
+          // a second one here would duplicate the link on every pre-unify completed project.
+          <DocumentLink path={iteration.doc_path} label="Doc" onDocClick={onDocClick} />
+        )}
         {commitData !== null && (
           commitData.href !== null ? (
+            // No tabIndex override: this header <div> has no row-level focus
+            // wiring (unlike DAGNodeRow, which owns a roving tabindex + keydown
+            // handler), so keyboard users must reach the commit link via
+            // natural tab order. Same rationale as DocumentLink above.
             <ExternalLink
               href={commitData.href}
               label={commitData.label}
               icon="external-link"
-              tabIndex={-1}
             />
           ) : (
             <span className="text-xs font-mono text-muted-foreground">

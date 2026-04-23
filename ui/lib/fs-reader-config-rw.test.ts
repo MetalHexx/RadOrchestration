@@ -82,14 +82,25 @@ async function run() {
     await test('returns correct path when ORCH_ROOT is not set', async () => {
       delete process.env.ORCH_ROOT;
       const result = getConfigPath('/workspace');
-      const expected = path.join('/workspace', '.claude', 'skills', 'orchestration', 'config', 'orchestration.yml');
+      const expected = path.resolve('/workspace', '.claude', 'skills', 'orchestration', 'config', 'orchestration.yml');
       assert.strictEqual(result, expected);
     });
 
-    await test('returns correct path when ORCH_ROOT is set', async () => {
+    await test('returns correct path when ORCH_ROOT is set (relative)', async () => {
       process.env.ORCH_ROOT = '.agents';
       const result = getConfigPath('/workspace');
-      const expected = path.join('/workspace', '.agents', 'skills', 'orchestration', 'config', 'orchestration.yml');
+      const expected = path.resolve('/workspace', '.agents', 'skills', 'orchestration', 'config', 'orchestration.yml');
+      assert.strictEqual(result, expected);
+      delete process.env.ORCH_ROOT;
+    });
+
+    await test('honors absolute ORCH_ROOT (discarding workspaceRoot prefix)', async () => {
+      // path.resolve honors absolute ORCH_ROOT — aligns with
+      // installer/lib/env-generator.js's contract ("folder name or absolute path").
+      const absRoot = path.resolve('/elsewhere/.copilot');
+      process.env.ORCH_ROOT = absRoot;
+      const result = getConfigPath('/workspace');
+      const expected = path.join(absRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
       assert.strictEqual(result, expected);
       delete process.env.ORCH_ROOT;
     });

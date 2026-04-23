@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import type { NodeStatus } from '@/types/state';
 import { SpinnerBadge } from '@/components/badges';
 
@@ -25,17 +26,22 @@ export const STATUS_MAP: Record<NodeStatus, StatusMapEntry> = {
   skipped:      { cssVar: '--status-skipped',      isSpinning: false, isComplete: false, isRejected: false, defaultLabel: 'Skipped' },
 };
 
-export function NodeStatusBadge({ status, label }: NodeStatusBadgeProps) {
-  const { cssVar, isSpinning, isComplete, isRejected, defaultLabel } = STATUS_MAP[status];
-  const resolvedLabel = label ?? defaultLabel;
-  return (
-    <SpinnerBadge
-      label={resolvedLabel}
-      cssVar={cssVar}
-      isSpinning={isSpinning}
-      isComplete={isComplete}
-      isRejected={isRejected}
-      ariaLabel={resolvedLabel}
-    />
-  );
-}
+export const NodeStatusBadge = React.forwardRef<HTMLSpanElement, NodeStatusBadgeProps>(
+  function NodeStatusBadge({ status, label }, ref) {
+    const { cssVar, isSpinning, isComplete, isRejected, defaultLabel } = STATUS_MAP[status];
+    const resolvedLabel = label ?? defaultLabel;
+    return (
+      <SpinnerBadge
+        ref={ref}
+        label={resolvedLabel}
+        cssVar={cssVar}
+        isSpinning={isSpinning}
+        isComplete={isComplete}
+        isRejected={isRejected}
+        ariaLabel={resolvedLabel}
+      />
+    );
+  },
+);
+
+NodeStatusBadge.displayName = "NodeStatusBadge";

@@ -117,6 +117,7 @@ export interface TemplateHeader {
   id: string;
   version: string;
   description: string;
+  status?: 'deprecated';
 }
 
 export interface PipelineTemplate {
@@ -131,11 +132,21 @@ export interface BaseNodeState {
   status: NodeStatus;
 }
 
+export interface ParseErrorDetail {
+  line: number;
+  expected: string;
+  found: string;
+  message: string;
+}
+
 export interface StepNodeState extends BaseNodeState {
   kind: 'step';
   doc_path: string | null;
   retries: number;
   verdict?: string | null;
+  // Populated on explosion_failed, cleared on explosion_completed. Specific to master_plan.
+  last_parse_error?: ParseErrorDetail | null;
+  parse_retry_count?: number | null;
 }
 
 export interface GateNodeState extends BaseNodeState {
@@ -159,6 +170,7 @@ export interface CorrectiveTaskEntry {
   injected_after: string;     // node ID that triggered injection (e.g., "code_review")
   status: NodeStatus;
   nodes: Record<string, NodeState>;
+  doc_path?: string | null;   // corrective task handoff doc (authored pre-injection)
   commit_hash: string | null; // per-corrective-task commit hash, set by COMMIT_COMPLETED mutation
 }
 
@@ -167,6 +179,7 @@ export interface IterationEntry {
   status: NodeStatus;
   nodes: Record<string, NodeState>;
   corrective_tasks: CorrectiveTaskEntry[];
+  doc_path?: string | null;   // iteration doc (phase plan or task handoff)
   commit_hash: string | null; // per-task commit hash, set by COMMIT_COMPLETED mutation
 }
 
@@ -290,6 +303,17 @@ export interface EventContext {
   total_phases?: number;
   tasks?: unknown[];
   exit_criteria_met?: boolean;
+
+  // ── Iter 5 — explosion script recovery payload ──
+  parse_error?: ParseErrorDetail;
+
+  // ── Iter 10 — orchestrator mediation contract for code_review_completed ──
+  // Carried on the review doc's frontmatter (appended by orchestrator addendum)
+  // and surfaced onto event context via pre-reads. Only `changes_requested`
+  // raw verdicts carry these; approved/rejected pass through with all three absent.
+  orchestrator_mediated?: boolean;
+  effective_outcome?: string;
+  corrective_handoff_path?: string;
 }
 
 // Orchestration Config (from orchestration.yml)

@@ -27,7 +27,6 @@ export function getManifest(orchRoot) {
       sourceDir: 'src/.claude/skills',
       targetDir: 'skills',
       recursive: true,
-      excludeDirs: ['orchestration-staging'],
     },
   ];
 

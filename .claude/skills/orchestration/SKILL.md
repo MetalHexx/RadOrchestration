@@ -1,6 +1,6 @@
 ---
 name: orchestration
-description: Orchestration system runtime, configuration, validation, and context. All pipeline agents load this skill for system context. The Orchestrator receives pipeline-specific guidance. Reviewers and Tactical Plannersreceive validation guidance.
+description: Orchestration system runtime, configuration, validation, and context. All pipeline agents load this skill for system context. The Orchestrator receives pipeline-specific guidance. Reviewers receive validation guidance.
 user-invocable: false
 ---
 
@@ -16,8 +16,9 @@ Read `references/context.md` first. If your role appears in the table below with
 |------|--------------------|-----------------|
 | All agents | [references/context.md](references/context.md) | Agent roles, pipeline flow, naming conventions, key operating rules |
 | Orchestrator | [references/pipeline-guide.md](references/pipeline-guide.md) | Event loop, action routing, CLI usage, state mutation patterns |
-| Orchestrator | [references/action-event-reference.md](references/action-event-reference.md) | Complete Action Routing Table (20 actions) and Event Signaling Reference — quick lookup during pipeline operation |
-| Reviewer, Tactical Planner | [references/validation-guide.md](references/validation-guide.md) | Validator CLI, check modules, validation workflow |
+| Orchestrator | [references/action-event-reference.md](references/action-event-reference.md) | Complete Action Routing Table (16 actions) and Event Signaling Reference — quick lookup during pipeline operation |
+| Orchestrator | [references/corrective-playbook.md](references/corrective-playbook.md) | Orchestrator-only. Mediation guide for `code_review_completed` with `verdict: changes_requested`. Read on every task-scope corrective cycle. |
+| Reviewer | [references/validation-guide.md](references/validation-guide.md) | Validator CLI, check modules, validation workflow |
 | All agents | [references/document-conventions.md](references/document-conventions.md) | Document naming, placement, filename patterns, frontmatter field values |
 
 ## Contents
@@ -30,6 +31,6 @@ This skill bundles:
 - **`scripts/main.ts`** — Pipeline engine CLI (TypeScript) — invoked by `pipeline.js`
 - **`scripts/migrate-to-v5.ts`** — Migration CLI
 - **`scripts/lib/`** — Pipeline engine, resolver, mutations, state I/O, validator
-- **`templates/`** — Pipeline templates (`full.yml`, `quick.yml`)
+- **`templates/`** — Pipeline templates (`default.yml`, `full.yml` (deprecated))
 - **`validate/`** — Orchestration validator CLI, check modules, utilities
 - **`references/`** — Role-specific reference documents

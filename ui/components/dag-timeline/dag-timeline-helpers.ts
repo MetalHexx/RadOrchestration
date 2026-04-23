@@ -110,7 +110,9 @@ export const NODE_SECTION_MAP: Record<string, SectionLabel> = {
   research: 'Planning',
   design: 'Planning',
   architecture: 'Planning',
+  requirements: 'Planning',
   master_plan: 'Planning',
+  explode_master_plan: 'Planning',
   plan_approval_gate: 'Gates',
   gate_mode_selection: 'Gates',
   phase_loop: 'Execution',
@@ -197,7 +199,8 @@ export function deriveCurrentPhase(
   if (!activeIteration) return null;
 
   const phasePlanningNode = activeIteration.nodes.phase_planning;
-  const docPath = phasePlanningNode?.kind === 'step' ? phasePlanningNode.doc_path : null;
+  const legacyDocPath = phasePlanningNode?.kind === 'step' ? phasePlanningNode.doc_path : null;
+  const docPath = activeIteration.doc_path ?? legacyDocPath ?? null;
 
   return parsePhaseNameFromDocPath(docPath, activeIteration.index);
 }

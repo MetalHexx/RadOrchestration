@@ -85,6 +85,8 @@ Each project gets its own subfolder under the configured `base_path` (default: `
 ├── {NAME}-DESIGN.md
 ├── {NAME}-ARCHITECTURE.md
 ├── {NAME}-MASTER-PLAN.md
+├── {NAME}-REQUIREMENTS.md     # Planner output (lean FR/NFR/AD/DD ledger)
+├── {NAME}-EXECUTION-PLAN.md   # Planner output (inlined phases + tasks)
 ├── {NAME}-ERROR-LOG.md
 ├── phases/
 │   ├── {NAME}-PHASE-01-{TITLE}.md
@@ -114,6 +116,8 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 | `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-CODE-REVIEW-P01-T03-AUTH.md` |
 | `{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REPORT-P01-CORE-API.md` |
 | `{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REVIEW-P01-CORE-API.md` |
+| `{NAME}-REQUIREMENTS.md` | `MYAPP-REQUIREMENTS.md` |
+| `{NAME}-EXECUTION-PLAN.md` | `MYAPP-EXECUTION-PLAN.md` |
 | `{NAME}-ERROR-LOG.md` | `MYAPP-ERROR-LOG.md` |
 
 ### System Files
@@ -137,6 +141,8 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 | `DESIGN.md` | UX Designer | User flows, layouts, components, states, breakpoints, accessibility |
 | `ARCHITECTURE.md` | Architect | System layers, module map, contracts, APIs, schemas, dependency graph |
 | `MASTER-PLAN.md` | Architect | Executive summary, phase outlines, exit criteria, risk register |
+| `REQUIREMENTS.md` | Planner | Lean FR/NFR/AD/DD ledger (≤ 500 estimated tokens per block) referenced by ID throughout the Execution Plan |
+| `EXECUTION-PLAN.md` | Planner | Inlined phase + task plan with exact code, commands, and file paths per task; every step tagged with the requirement IDs it satisfies |
 
 ### Execution Documents
 

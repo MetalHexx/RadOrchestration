@@ -140,9 +140,7 @@ describe('EVENTS — renamed v5 keys to v4 canonical names', () => {
     expect(EVENTS.TASK_COMPLETED).toBe('task_completed');
   });
 
-  it('PHASE_REPORT_CREATED is "phase_report_created"', () => {
-    expect(EVENTS.PHASE_REPORT_CREATED).toBe('phase_report_created');
-  });
+  // Post-Iter 8: PHASE_REPORT_CREATED removed (phase_review absorbed phase_report).
 
   it('FINAL_APPROVED is "final_approved"', () => {
     expect(EVENTS.FINAL_APPROVED).toBe('final_approved');
@@ -228,17 +226,18 @@ describe('OUT_OF_BAND_EVENTS', () => {
     expect(OUT_OF_BAND_EVENTS).toBeInstanceOf(Set);
   });
 
-  it('has exactly 6 entries', () => {
-    expect(OUT_OF_BAND_EVENTS.size).toBe(6);
+  it('has exactly 7 entries', () => {
+    expect(OUT_OF_BAND_EVENTS.size).toBe(7);
   });
 
-  it('contains all 6 out-of-band event strings', () => {
+  it('contains all 7 out-of-band event strings', () => {
     expect(OUT_OF_BAND_EVENTS.has('plan_rejected')).toBe(true);
     expect(OUT_OF_BAND_EVENTS.has('gate_rejected')).toBe(true);
     expect(OUT_OF_BAND_EVENTS.has('final_rejected')).toBe(true);
     expect(OUT_OF_BAND_EVENTS.has('halt')).toBe(true);
     expect(OUT_OF_BAND_EVENTS.has('gate_mode_set')).toBe(true);
     expect(OUT_OF_BAND_EVENTS.has('source_control_init')).toBe(true);
+    expect(OUT_OF_BAND_EVENTS.has('explosion_failed')).toBe(true);
   });
 });
 

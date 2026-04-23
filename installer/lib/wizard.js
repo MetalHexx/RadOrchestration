@@ -22,7 +22,7 @@ const DEFAULTS = {
   projectsNaming: 'SCREAMING_CASE',
   maxPhases: 10,
   maxTasksPerPhase: 8,
-  maxRetriesPerTask: 2,
+  maxRetriesPerTask: 5,
   maxConsecutiveReviewRejections: 3,
   executionMode: 'ask',
   autoCommit: 'ask',

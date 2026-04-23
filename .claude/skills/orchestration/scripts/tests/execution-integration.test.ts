@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
+import { enrichActionContext } from '../lib/context-enrichment.js';
+import { initSourceControlForTests } from './fixtures/parity-states.js';
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -108,17 +110,12 @@ function seedDoc(docPath: string, extraFrontmatter: Record<string, unknown> = {}
 }
 
 const DOC_PATHS = {
-  research: path.join(PROJECT_DIR, 'docs', 'research.md'),
-  prd: path.join(PROJECT_DIR, 'docs', 'prd.md'),
-  design: path.join(PROJECT_DIR, 'docs', 'design.md'),
-  architecture: path.join(PROJECT_DIR, 'docs', 'architecture.md'),
   masterPlan: path.join(PROJECT_DIR, 'docs', 'master-plan.md'),
   phasePlan: (phase: number) => path.join(PROJECT_DIR, 'phases', `phase-${phase}-plan.md`),
   taskHandoff: (phase: number, task: number) =>
     path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-handoff.md`),
   codeReview: (phase: number, task: number) =>
     path.join(PROJECT_DIR, 'tasks', `p${phase}-t${task}-review.md`),
-  phaseReport: (phase: number) => path.join(PROJECT_DIR, 'phases', `phase-${phase}-report.md`),
   phaseReview: (phase: number) => path.join(PROJECT_DIR, 'phases', `phase-${phase}-review.md`),
   finalReview: path.join(PROJECT_DIR, 'docs', 'final-review.md'),
 };
@@ -129,54 +126,94 @@ const TASKS_FIXTURE = [
 ];
 
 /**
- * Drives the planning tier from init through plan_approved.
- * Returns the MockIO with state ready for execution-tier events.
+ * Mirrors the production explosion script: wipes and re-seeds phase_loop with
+ * one iteration per entry in `phaseTasks`. Each phase iteration carries
+ * `doc_path = DOC_PATHS.phasePlan(n)` and a task_loop whose iterations carry
+ * `doc_path = DOC_PATHS.taskHandoff(p, t)` directly. Body nodes are not
+ * pre-scaffolded; the walker scaffolds them on each iteration's first
+ * in_progress transition.
+ */
+function seedExplosionState(io: MockIO, phaseTasks: Array<typeof TASKS_FIXTURE>): void {
+  const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+  phaseLoop.iterations = [];
+  phaseLoop.status = 'not_started';
+  for (let pIdx = 0; pIdx < phaseTasks.length; pIdx++) {
+    const phaseNum = pIdx + 1;
+    const phaseDoc = DOC_PATHS.phasePlan(phaseNum);
+    seedDoc(phaseDoc, { tasks: phaseTasks[pIdx] });
+
+    const taskLoop: ForEachTaskNodeState = {
+      kind: 'for_each_task',
+      status: 'not_started',
+      iterations: phaseTasks[pIdx].map((_, tIdx) => {
+        const handoffDoc = DOC_PATHS.taskHandoff(phaseNum, tIdx + 1);
+        seedDoc(handoffDoc);
+        return {
+          index: tIdx,
+          status: 'not_started' as const,
+          nodes: {},
+          corrective_tasks: [],
+          doc_path: handoffDoc,
+          commit_hash: null,
+        };
+      }),
+    };
+
+    phaseLoop.iterations.push({
+      index: pIdx,
+      status: 'not_started',
+      nodes: { task_loop: taskLoop },
+      corrective_tasks: [],
+      doc_path: phaseDoc,
+      commit_hash: null,
+    });
+  }
+}
+
+/**
+ * Drives the planning tier from init through plan_approved. Seeds the
+ * explosion state (phase iterations + task iterations with `doc_path` on each)
+ * before plan_approved fires, so the walker's first pass after plan_approved
+ * advances directly into the execution tier without a re-walk workaround.
+ *
+ * In 'autonomous' / 'task' / 'phase' gate modes, returns the first execution
+ * action (`execute_task`). In 'ask' mode the walker halts at the
+ * `gate_mode_selection` gate before advancing; the test must dispatch
+ * `gate_mode_set` itself.
  */
 function drivePlanningTier(io: MockIO): PipelineResult {
   // Init scaffold
   processEvent('start', PROJECT_DIR, {}, io);
-  // research in_progress
-  processEvent('research_started', PROJECT_DIR, {}, io);
-  // research completed
-  seedDoc(DOC_PATHS.research);
-  processEvent('research_completed', PROJECT_DIR, { doc_path: DOC_PATHS.research }, io);
-
-  // prd
-  processEvent('prd_started', PROJECT_DIR, {}, io);
-  seedDoc(DOC_PATHS.prd);
-  processEvent('prd_completed', PROJECT_DIR, { doc_path: DOC_PATHS.prd }, io);
-
-  // design
-  processEvent('design_started', PROJECT_DIR, {}, io);
-  seedDoc(DOC_PATHS.design);
-  processEvent('design_completed', PROJECT_DIR, { doc_path: DOC_PATHS.design }, io);
-
-  // architecture
-  processEvent('architecture_started', PROJECT_DIR, {}, io);
-  seedDoc(DOC_PATHS.architecture);
-  processEvent('architecture_completed', PROJECT_DIR, { doc_path: DOC_PATHS.architecture }, io);
 
   // master_plan
   processEvent('master_plan_started', PROJECT_DIR, {}, io);
-  seedDoc(DOC_PATHS.masterPlan, { total_phases: 2 });
+  seedDoc(DOC_PATHS.masterPlan, { total_phases: 2, total_tasks: 4 });
   processEvent('master_plan_completed', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 
-  // plan_approved → triggers phase_loop expansion
-  return processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+  // Mirror the production explosion script: seed phase_loop iterations with
+  // doc_path on each iteration + task_loop.iterations BEFORE plan_approved so
+  // the walker can advance through phase_loop in a single pass.
+  seedExplosionState(io, [TASKS_FIXTURE, TASKS_FIXTURE]);
+
+  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+
+  // commit_gate / pr_gate read state.pipeline.source_control (state_ref).
+  // Init before the walker first evaluates commit_gate. See
+  // initSourceControlForTests for the "ask" → "always" normalization rationale.
+  initSourceControlForTests(io, io.readConfig());
+
+  return result.action === 'ask_gate_mode'
+    ? result
+    : processEvent('start', PROJECT_DIR, {}, io);
 }
 
 /**
- * Drives one task through the full started → handoff → execute → review cycle.
- * Returns the result of the final code_review_completed event.
+ * Drives one task through execute → review. Post-Iter 7 the per-task `task_handoff`
+ * authoring step is gone — the pre-seeded `task_handoff` child node already
+ * carries `status: completed` + `doc_path`.
  */
 function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
   const ctx = { phase, task };
-
-  processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-
-  const handoffDoc = DOC_PATHS.taskHandoff(phase, task);
-  seedDoc(handoffDoc);
-  processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
 
   processEvent('execution_started', PROJECT_DIR, ctx, io);
   processEvent('task_completed', PROJECT_DIR, ctx, io);
@@ -206,16 +243,11 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
 }
 
 /**
- * Drives post-task-loop phase steps: report, review, gate.
+ * Drives post-task-loop phase steps: review, gate.
  * Returns the result of the last event for the phase.
  */
 function drivePhasePostTasks(io: MockIO, phase: number): PipelineResult {
   const ctx = { phase };
-
-  processEvent('phase_report_started', PROJECT_DIR, ctx, io);
-  const reportDoc = DOC_PATHS.phaseReport(phase);
-  seedDoc(reportDoc);
-  processEvent('phase_report_created', PROJECT_DIR, { ...ctx, doc_path: reportDoc }, io);
 
   processEvent('phase_review_started', PROJECT_DIR, ctx, io);
   const reviewDoc = DOC_PATHS.phaseReview(phase);
@@ -248,51 +280,38 @@ describe('Execution-tier integration — complete pipeline run', () => {
     const io = createMockIO(null, makeConfig());
     let result: PipelineResult;
 
-    // ── Planning tier ────────────────────────────────────────────────────
+    // ── Planning tier (drives master_plan + plan_approved + explosion seeding) ──
+    // drivePlanningTier also fires source_control_init so commit_gate /
+    // pr_gate (state_ref) can evaluate on the first post-plan walker tick.
     result = drivePlanningTier(io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');
+    // Post-unify: iterations carry doc_path directly; walker scaffolds body
+    // nodes and advances straight to the first task executor.
+    expect(result.action).toBe('execute_task');
 
-    // ── Verify phase_loop expansion ──────────────────────────────────────
+    // ── Verify phase_loop expansion + explosion seeding ──────────────────
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       expect(phaseLoop.status).toBe('in_progress');
       expect(phaseLoop.iterations).toHaveLength(2);
       expect(phaseLoop.iterations[0].index).toBe(0);
       expect(phaseLoop.iterations[1].index).toBe(1);
+      // Each phase iteration carries doc_path directly; task iterations do too.
+      expect(phaseLoop.iterations[0].doc_path).toBe(DOC_PATHS.phasePlan(1));
+      const taskLoop0 = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+      expect(taskLoop0.iterations).toHaveLength(2);
+      expect(taskLoop0.iterations[0].doc_path).toBe(DOC_PATHS.taskHandoff(1, 1));
     }
 
     // ══════════════════════════════════════════════════════════════════════
     // Phase 1
     // ══════════════════════════════════════════════════════════════════════
 
-    // ── phase_planning_started (phase 1) ─────────────────────────────────
-    result = processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');
-
-    // ── phase_plan_created (phase 1) → triggers task_loop expansion ─────
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    result = processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
-
-    // ── Verify task_loop expansion in iteration 0 ────────────────────────
-    {
-      const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-      const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
-      expect(taskLoop.status).toBe('in_progress');
-      expect(taskLoop.iterations).toHaveLength(2);
-    }
-
     // ── Phase 1, Task 1 ──────────────────────────────────────────────────
     result = driveTask(io, 1, 1);
     expect(result.success).toBe(true);
     // task_gate auto-approves in autonomous mode (verdict=approved) → advance to task 2
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('execute_task');
 
     // Verify task_gate completed (gate fires after commit_gate at task scope)
     {
@@ -305,8 +324,8 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // ── Phase 1, Task 2 ──────────────────────────────────────────────────
     result = driveTask(io, 1, 2);
     expect(result.success).toBe(true);
-    // task_gate auto-approves → task_loop completes → phase_report
-    expect(result.action).toBe('generate_phase_report');
+    // task_gate auto-approves → task_loop completes → phase_review (post-Iter 8)
+    expect(result.action).toBe('spawn_phase_reviewer');
 
     // Verify task_gate for task 2 completed
     {
@@ -319,8 +338,8 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // ── Phase 1 post-task steps ──────────────────────────────────────────
     result = drivePhasePostTasks(io, 1);
     expect(result.success).toBe(true);
-    // Phase gate auto-approves → advance to phase 2
-    expect(result.action).toBe('create_phase_plan');
+    // Phase gate auto-approves → advance to phase 2's first execute_task
+    expect(result.action).toBe('execute_task');
 
     // Verify phase_gate auto-approved via walker's autonomous verdict check (gate_active = false, gate never fires as an action)
     {
@@ -349,37 +368,15 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // Phase 2
     // ══════════════════════════════════════════════════════════════════════
 
-    // ── phase_planning_started (phase 2) ─────────────────────────────────
-    result = processEvent('phase_planning_started', PROJECT_DIR, { phase: 2 }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');
-
-    // ── phase_plan_created (phase 2) → triggers task_loop expansion ─────
-    seedDoc(DOC_PATHS.phasePlan(2), { tasks: TASKS_FIXTURE });
-    result = processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 2,
-      doc_path: DOC_PATHS.phasePlan(2),
-    }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
-
-    // ── Verify task_loop expansion in iteration 1 ────────────────────────
-    {
-      const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-      const taskLoop = phaseLoop.iterations[1].nodes['task_loop'] as ForEachTaskNodeState;
-      expect(taskLoop.status).toBe('in_progress');
-      expect(taskLoop.iterations).toHaveLength(2);
-    }
-
     // ── Phase 2, Task 1 ──────────────────────────────────────────────────
     result = driveTask(io, 2, 1);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('execute_task');
 
     // ── Phase 2, Task 2 ──────────────────────────────────────────────────
     result = driveTask(io, 2, 2);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('generate_phase_report');
+    expect(result.action).toBe('spawn_phase_reviewer');
 
     // ── Phase 2 post-task steps ──────────────────────────────────────────
     result = drivePhasePostTasks(io, 2);
@@ -420,17 +417,6 @@ describe('Execution-tier integration — complete pipeline run', () => {
       expect(prGate.status).toBe('in_progress');
     }
 
-    // ── source_control_init ──────────────────────────────────────────────
-    result = processEvent('source_control_init', PROJECT_DIR, {
-      branch: 'feature/test-branch',
-      base_branch: 'main',
-      worktree_path: '.',
-      auto_commit: 'always',
-      auto_pr: 'always',
-      remote_url: 'https://github.com/test/repo',
-    }, io);
-    expect(result.success).toBe(true);
-
     // ── pr_requested ────────────────────────────────────────
     result = processEvent('pr_requested', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
@@ -451,7 +437,6 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // ── Final state assertions ───────────────────────────────────────────
     // Verify all top-level nodes completed
     const nodes = io.currentState!.graph.nodes;
-    expect((nodes['research'] as StepNodeState).status).toBe('completed');
     expect((nodes['master_plan'] as StepNodeState).status).toBe('completed');
     expect((nodes['plan_approval_gate'] as GateNodeState).status).toBe('completed');
     expect((nodes['phase_loop'] as ForEachPhaseNodeState).status).toBe('completed');
@@ -460,6 +445,122 @@ describe('Execution-tier integration — complete pipeline run', () => {
     expect((nodes['pr_gate'] as ConditionalNodeState).status).toBe('completed');
 
     expect(io.currentState!.graph.status).toBe('completed');
+  });
+
+  // Iter 13 — for executor enrichment, `handoff_doc` is the only doc-path
+  // input. The enriched context for `execute_task` still carries the
+  // phase/task identifiers, but NOTHING that names an upstream planning doc
+  // (Requirements / Master Plan / PRD / Design / Architecture). Guards
+  // against executor-contract regressions if future enrichment code
+  // accidentally surfaces upstream doc paths.
+  it('execute_task enrichment exposes handoff_doc as the only doc-path field — no upstream-doc fields', () => {
+    const config = makeConfig();
+    const io = createMockIO(null, config);
+
+    // Drive to first execute_task so the walker has resolved the active
+    // phase/task and the pre-seeded task_handoff doc_path is readable.
+    const result = drivePlanningTier(io);
+    expect(result.action).toBe('execute_task');
+
+    const ctx = enrichActionContext({
+      action: 'execute_task',
+      walkerContext: {},
+      state: io.currentState!,
+      config,
+      cliContext: {},
+    });
+
+    // Present — the handoff doc path and the identity fields the coder needs.
+    expect(ctx).toHaveProperty('handoff_doc');
+    expect(ctx.handoff_doc).toBe(DOC_PATHS.taskHandoff(1, 1));
+    expect(ctx).toHaveProperty('phase_number', 1);
+    expect(ctx).toHaveProperty('phase_id', 'P01');
+    expect(ctx).toHaveProperty('task_number', 1);
+    expect(ctx).toHaveProperty('task_id', 'P01-T01');
+
+    // Absent — no upstream planning-doc fields may leak into the coder context.
+    expect(ctx).not.toHaveProperty('requirements_doc');
+    expect(ctx).not.toHaveProperty('master_plan_doc');
+    expect(ctx).not.toHaveProperty('prd_doc');
+    expect(ctx).not.toHaveProperty('design_doc');
+    expect(ctx).not.toHaveProperty('architecture_doc');
+  });
+
+  // Post-Iter 7: scratch project drives requirements-style flow and verifies that
+  // no legacy per-phase / per-task authoring event fires. Pre-seeded task_handoff
+  // child step nodes (Iter 5 explosion behavior) are the only source of handoff
+  // doc paths during execution.
+  it('scratch project: no phase_planning / task_handoff authoring event fires during execution', () => {
+    const io = createMockIO(null, makeConfig());
+
+    // Record every event dispatched through processEvent by wrapping in a helper
+    const dispatched: string[] = [];
+    function signal(event: string, ctx: Record<string, unknown> = {}) {
+      dispatched.push(event);
+      return processEvent(event, PROJECT_DIR, ctx, io);
+    }
+
+    // ── Planning tier — mirrors post-Iter-7 flow: requirements → master_plan →
+    // (explosion pre-seeds phase_planning + task_handoff children). No legacy
+    // phase_planning_started / task_handoff_started / phase_plan_created /
+    // task_handoff_created events participate.
+    signal('start');
+    signal('requirements_started');
+    const requirementsDoc = path.join(PROJECT_DIR, 'docs', 'requirements.md');
+    seedDoc(requirementsDoc, { requirement_count: 4 });
+    signal('requirements_completed', { doc_path: requirementsDoc });
+    signal('master_plan_started');
+    seedDoc(DOC_PATHS.masterPlan, { total_phases: 1, total_tasks: 1 });
+    signal('master_plan_completed', { doc_path: DOC_PATHS.masterPlan });
+
+    // Simulate the explosion-script's pre-seeding: iterations carry doc_path
+    // directly. Seed before plan_approved so the walker's first pass after
+    // plan_approved advances straight into execute_task.
+    const oneTask = [{ id: 'T01', title: 'Task 1' }];
+    seedExplosionState(io, [oneTask]);
+
+    const planApproved = signal('plan_approved', { doc_path: DOC_PATHS.masterPlan });
+    expect(planApproved.success).toBe(true);
+    expect(planApproved.action).toBe('execute_task');
+
+    const ctx = { phase: 1, task: 1 };
+    signal('execution_started', ctx);
+    signal('task_completed', ctx);
+
+    signal('code_review_started', ctx);
+    const reviewDoc = DOC_PATHS.codeReview(1, 1);
+    seedDoc(reviewDoc);
+    const afterReview = signal('code_review_completed', {
+      ...ctx,
+      doc_path: reviewDoc,
+      verdict: 'approved',
+    });
+
+    // Commit + task gate auto-approve in autonomous mode
+    if (afterReview.action === 'invoke_source_control_commit') {
+      signal('commit_started', ctx);
+      signal('commit_completed', { ...ctx, commit_hash: 'abc123', pushed: true });
+    }
+
+    // Negative assertion — these events are removed post-Iter 7; the strings
+    // appear here only as forbidden-list entries, not as active event names.
+    // Assertion: the dispatched event list contains zero authoring events.
+    const forbidden = [
+      'phase_planning_started',
+      'phase_plan_created',
+      'task_handoff_started',
+      'task_handoff_created',
+    ];
+    for (const evt of forbidden) {
+      expect(dispatched).not.toContain(evt);
+    }
+
+    // And the execute_task context reads the pre-seeded handoff doc from the
+    // task iteration's doc_path (see execute_task enrichment in
+    // context-enrichment.ts).
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
+    expect(taskLoop.iterations[0].doc_path).toBe(DOC_PATHS.taskHandoff(1, 1));
   });
 });
 
@@ -480,26 +581,20 @@ describe('Execution-tier integration — gate mode variations', () => {
     expect(result.success).toBe(true);
     expect(result.action).toBe('ask_gate_mode');
 
-    // Pass through gate_mode_selection, then reset so subsequent gates see ask behavior
+    // Pass through gate_mode_selection — phase_loop expands during this event.
+    // Then seed explosion-script child nodes (Iter 5 behavior) so the walker
+    // can advance past the missing phase_planning / task_handoff body nodes.
     result = processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');
+    seedExplosionState(io, [TASKS_FIXTURE, TASKS_FIXTURE]);
+    result = processEvent('start', PROJECT_DIR, {}, io);
+    expect(result.action).toBe('execute_task');
+    // Reset gate_mode so subsequent gates see ask behavior
     io.currentState!.pipeline.gate_mode = null;
-
-    // Phase 1 setup
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
 
     // Phase 1, Task 1 — drive up to code review completion
     {
       const ctx = { phase: 1, task: 1 };
-      processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-      const h = DOC_PATHS.taskHandoff(1, 1); seedDoc(h);
-      processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: h }, io);
       processEvent('execution_started', PROJECT_DIR, ctx, io);
       processEvent('task_completed', PROJECT_DIR, ctx, io);
       processEvent('code_review_started', PROJECT_DIR, ctx, io);
@@ -533,24 +628,16 @@ describe('Execution-tier integration — gate mode variations', () => {
     const io = createMockIO(null, config);
     let result: PipelineResult;
 
-    // Drive planning tier
+    // Drive planning tier (auto-expands + seeds in 'task' mode — gate_mode_selection auto-approves)
     result = drivePlanningTier(io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');
-
-    // Phase 1 setup
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
+    expect(result.action).toBe('execute_task');
 
     // Phase 1, Task 1 — driveTask approves gate internally
     result = driveTask(io, 1, 1);
     expect(result.success).toBe(true);
     // task_gate fires in 'task' mode → driveTask approves it → advance to task 2
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('execute_task');
 
     // Verify task_gate fired and was approved (gate_active = true)
     {
@@ -564,14 +651,9 @@ describe('Execution-tier integration — gate mode variations', () => {
     // Phase 1, Task 2
     result = driveTask(io, 1, 2);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('generate_phase_report');
+    expect(result.action).toBe('spawn_phase_reviewer');
 
-    // Drive phase report + review
-    processEvent('phase_report_started', PROJECT_DIR, { phase: 1 }, io);
-    const reportDoc = DOC_PATHS.phaseReport(1);
-    seedDoc(reportDoc);
-    processEvent('phase_report_created', PROJECT_DIR, { phase: 1, doc_path: reportDoc }, io);
-
+    // Drive phase review (post-Iter 8: phase_report absorbed into phase_review)
     processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
     const reviewDoc = DOC_PATHS.phaseReview(1);
     seedDoc(reviewDoc);
@@ -585,10 +667,10 @@ describe('Execution-tier integration — gate mode variations', () => {
     // phase_gate fires in 'task' mode
     expect(result.action).toBe('gate_phase');
 
-    // Approve phase gate → advance to next phase (commit is now at task scope)
+    // Approve phase gate → advance to next phase's first execute_task
     result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');
+    expect(result.action).toBe('execute_task');
 
     // Verify phase_gate fired and was approved (gate_active = true)
     {
@@ -613,15 +695,7 @@ describe('Execution-tier integration — conditional branch variations', () => {
     let result: PipelineResult;
 
     result = drivePlanningTier(io);
-    expect(result.action).toBe('create_phase_plan');
-
-    // Phase 1 setup + tasks
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
+    expect(result.action).toBe('execute_task');
 
     driveTask(io, 1, 1);
     driveTask(io, 1, 2);
@@ -630,8 +704,8 @@ describe('Execution-tier integration — conditional branch variations', () => {
     // commit conditional: 'never' neq 'never' → false → branch_taken='false' → skip → next phase
     result = drivePhasePostTasks(io, 1);
     expect(result.success).toBe(true);
-    // Walker should proceed to phase 2 (commit skipped at task scope)
-    expect(result.action).toBe('create_phase_plan');
+    // Walker should proceed to phase 2's first execute_task (commit skipped at task scope)
+    expect(result.action).toBe('execute_task');
 
     // Verify commit conditional took false branch (task-scope)
     {
@@ -649,17 +723,10 @@ describe('Execution-tier integration — conditional branch variations', () => {
     let result: PipelineResult;
 
     result = drivePlanningTier(io);
-    expect(result.action).toBe('create_phase_plan');
+    expect(result.action).toBe('execute_task');
 
     // Drive 2 phases × 2 tasks through completion
     for (let phase = 1; phase <= 2; phase++) {
-      processEvent('phase_planning_started', PROJECT_DIR, { phase }, io);
-      seedDoc(DOC_PATHS.phasePlan(phase), { tasks: TASKS_FIXTURE });
-      processEvent('phase_plan_created', PROJECT_DIR, {
-        phase,
-        doc_path: DOC_PATHS.phasePlan(phase),
-      }, io);
-
       driveTask(io, phase, 1);
       driveTask(io, phase, 2);
       drivePhasePostTasks(io, phase);
@@ -693,21 +760,9 @@ describe('Execution-tier integration — conditional branch variations', () => {
 
     drivePlanningTier(io);
 
-    // Phase 1 setup
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
-
     // Drive task 1 manually to observe invoke_source_control_commit action
     {
       const ctx = { phase: 1, task: 1 };
-      processEvent('task_handoff_started', PROJECT_DIR, ctx, io);
-      const handoffDoc = DOC_PATHS.taskHandoff(1, 1);
-      seedDoc(handoffDoc);
-      processEvent('task_handoff_created', PROJECT_DIR, { ...ctx, doc_path: handoffDoc }, io);
       processEvent('execution_started', PROJECT_DIR, ctx, io);
       processEvent('task_completed', PROJECT_DIR, ctx, io);
       processEvent('code_review_started', PROJECT_DIR, ctx, io);
@@ -740,13 +795,6 @@ describe('Execution-tier integration — conditional branch variations', () => {
 
     // Drive 2 phases × 2 tasks through completion
     for (let phase = 1; phase <= 2; phase++) {
-      processEvent('phase_planning_started', PROJECT_DIR, { phase }, io);
-      seedDoc(DOC_PATHS.phasePlan(phase), { tasks: TASKS_FIXTURE });
-      processEvent('phase_plan_created', PROJECT_DIR, {
-        phase,
-        doc_path: DOC_PATHS.phasePlan(phase),
-      }, io);
-
       driveTask(io, phase, 1);
       driveTask(io, phase, 2);
       drivePhasePostTasks(io, phase);
@@ -785,59 +833,29 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
     drivePlanningTier(io);
 
     // Complete phase 1
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
-
     driveTask(io, 1, 1);
     driveTask(io, 1, 2);
     result = drivePhasePostTasks(io, 1);
-    expect(result.action).toBe('create_phase_plan');
+    expect(result.action).toBe('execute_task');
 
-    // Verify iteration 0 completed and iteration 1 is next
+    // Verify iteration 0 completed and iteration 1 is in progress
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       expect(phaseLoop.iterations[0].status).toBe('completed');
       expect(phaseLoop.iterations[0].index).toBe(0);
-      // Walker already walked into iteration 1 to find next action, so it's in_progress
       expect(phaseLoop.iterations[1].status).toBe('in_progress');
       expect(phaseLoop.iterations[1].index).toBe(1);
-    }
 
-    // Start phase 2
-    result = processEvent('phase_planning_started', PROJECT_DIR, { phase: 2 }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('create_phase_plan');
-
-    // Verify iteration 1 is now in_progress
-    {
-      const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-      expect(phaseLoop.iterations[1].status).toBe('in_progress');
-    }
-
-    // Complete phase 2 planning → task expansion
-    seedDoc(DOC_PATHS.phasePlan(2), { tasks: TASKS_FIXTURE });
-    result = processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 2,
-      doc_path: DOC_PATHS.phasePlan(2),
-    }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
-
-    // Verify iteration 1 body nodes are independently scaffolded
-    {
-      const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-      const iter1 = phaseLoop.iterations[1];
-      const taskLoop = iter1.nodes['task_loop'] as ForEachTaskNodeState;
+      // Verify iteration 1 body nodes are independently scaffolded by seedExplosionState.
+      // Phase 1's task states should not bleed into phase 2.
+      const taskLoop = phaseLoop.iterations[1].nodes['task_loop'] as ForEachTaskNodeState;
       expect(taskLoop.iterations).toHaveLength(2);
       expect(taskLoop.iterations[0].index).toBe(0);
       expect(taskLoop.iterations[1].index).toBe(1);
-      // Phase 1's task states should not bleed into phase 2
-      const taskHandoff = taskLoop.iterations[0].nodes['task_handoff'] as StepNodeState;
-      expect(taskHandoff.status).toBe('not_started');
+      // task_handoff is pre-seeded as completed (Iter 5 explosion behavior); the
+      // executor itself remains not_started until execution_started fires.
+      const executor = taskLoop.iterations[0].nodes['task_executor'] as StepNodeState;
+      expect(executor.status).toBe('not_started');
     }
   });
 
@@ -847,19 +865,11 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
 
     drivePlanningTier(io);
 
-    // Phase 1 setup
-    processEvent('phase_planning_started', PROJECT_DIR, { phase: 1 }, io);
-    seedDoc(DOC_PATHS.phasePlan(1), { tasks: TASKS_FIXTURE });
-    processEvent('phase_plan_created', PROJECT_DIR, {
-      phase: 1,
-      doc_path: DOC_PATHS.phasePlan(1),
-    }, io);
-
-    // Complete task 1
+    // Complete task 1 → walker advances to task 2's execute_task
     result = driveTask(io, 1, 1);
-    expect(result.action).toBe('create_task_handoff');
+    expect(result.action).toBe('execute_task');
 
-    // Verify task iteration 0 completed and iteration 1 is next
+    // Verify task iteration 0 completed and iteration 1 is in progress
     {
       const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
@@ -868,18 +878,6 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
       // Walker already walked into iteration 1 to find next action, so it's in_progress
       expect(taskLoop.iterations[1].status).toBe('in_progress');
       expect(taskLoop.iterations[1].index).toBe(1);
-    }
-
-    // Start task 2
-    result = processEvent('task_handoff_started', PROJECT_DIR, { phase: 1, task: 2 }, io);
-    expect(result.success).toBe(true);
-    expect(result.action).toBe('create_task_handoff');
-
-    // Verify iteration 1 is now in_progress
-    {
-      const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
-      const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
-      expect(taskLoop.iterations[1].status).toBe('in_progress');
     }
 
     // Verify task 2 body nodes are independently scaffolded (not polluted by task 1)
@@ -893,14 +891,7 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
       expect(review.status).toBe('not_started');
     }
 
-    // Complete task 2 → task_loop completes → phase_report
-    const handoffDoc = DOC_PATHS.taskHandoff(1, 2);
-    seedDoc(handoffDoc);
-    processEvent('task_handoff_created', PROJECT_DIR, {
-      phase: 1,
-      task: 2,
-      doc_path: handoffDoc,
-    }, io);
+    // Complete task 2 → task_loop completes → phase_review
     processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 2 }, io);
     processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 2 }, io);
     processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 2 }, io);
@@ -927,9 +918,9 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
       result = processEvent('task_gate_approved', PROJECT_DIR, { phase: 1, task: 2 }, io);
     }
 
-    // task_loop completes → generate_phase_report
+    // task_loop completes → spawn_phase_reviewer (post-Iter 8)
     expect(result.success).toBe(true);
-    expect(result.action).toBe('generate_phase_report');
+    expect(result.action).toBe('spawn_phase_reviewer');
 
     // Verify both task iterations completed
     {

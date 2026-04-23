@@ -29,7 +29,7 @@ const DEFAULT_CONFIG: OrchestrationConfig = {
     auto_pr: 'ask',
     provider: 'github',
   },
-  default_template: 'full',
+  default_template: 'default',
 };
 
 function deepMerge(

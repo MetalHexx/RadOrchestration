@@ -54,13 +54,13 @@ test('Agents category has correct sourceDir, targetDir, and recursive', () => {
 
 // ── Skills category ───────────────────────────────────────────────────────────
 
-test('Skills category has correct sourceDir, targetDir, recursive, and excludeDirs', () => {
+test('Skills category has correct sourceDir, targetDir, and recursive', () => {
   const { categories } = getManifest('.github');
   const cat = categories[2];
   assert.strictEqual(cat.sourceDir, 'src/.claude/skills');
   assert.strictEqual(cat.targetDir, 'skills');
   assert.strictEqual(cat.recursive, true);
-  assert.deepStrictEqual(cat.excludeDirs, ['orchestration-staging']);
+  assert.strictEqual(cat.excludeDirs, undefined);
 });
 
 // ── globalExcludes ────────────────────────────────────────────────────────────

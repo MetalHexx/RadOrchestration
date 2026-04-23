@@ -102,6 +102,46 @@ async function run() {
     }
   });
 
+  await test('skips node_modules / .git / .next / .cache directories', async () => {
+    // Scaffold-internal dirs a user-created project might contain once it has
+    // its own build output. listProjectFiles must not descend into any of them
+    // — otherwise "Other Docs" bloats with node_modules READMEs and the
+    // watcher in ui/app/api/events/route.ts hits EPERM + OOM on Windows.
+    const nmPkg = path.join(tmpDir, 'node_modules', 'some-pkg');
+    const nmNested = path.join(tmpDir, 'node_modules', 'some-pkg', 'nested');
+    const gitDir = path.join(tmpDir, '.git');
+    const nextDir = path.join(tmpDir, '.next', 'static');
+    const cacheDir = path.join(tmpDir, '.cache');
+    await mkdir(nmNested, { recursive: true });
+    await mkdir(gitDir, { recursive: true });
+    await mkdir(nextDir, { recursive: true });
+    await mkdir(cacheDir, { recursive: true });
+    await writeFile(path.join(nmPkg, 'README.md'), '# pkg');
+    await writeFile(path.join(nmNested, 'CHANGELOG.md'), '# nested');
+    await writeFile(path.join(gitDir, 'NOTES.md'), '# git');
+    await writeFile(path.join(nextDir, 'build.md'), '# next');
+    await writeFile(path.join(cacheDir, 'blob.md'), '# cache');
+
+    const files = await listProjectFiles(tmpDir);
+
+    for (const f of files) {
+      assert.ok(
+        !f.startsWith('node_modules/'),
+        `should skip node_modules, saw "${f}"`,
+      );
+      assert.ok(!f.startsWith('.git/'), `should skip .git, saw "${f}"`);
+      assert.ok(!f.startsWith('.next/'), `should skip .next, saw "${f}"`);
+      assert.ok(!f.startsWith('.cache/'), `should skip .cache, saw "${f}"`);
+    }
+    // Sanity: the root-level .md files from setup() must still appear.
+    assert.ok(files.includes('PRD.md'), 'should still include PRD.md');
+
+    await rm(path.join(tmpDir, 'node_modules'), { recursive: true });
+    await rm(gitDir, { recursive: true });
+    await rm(path.join(tmpDir, '.next'), { recursive: true });
+    await rm(cacheDir, { recursive: true });
+  });
+
   // Cleanup
   await rm(tmpDir, { recursive: true });
 

@@ -41,11 +41,11 @@ export const CONDITION_OPERATORS = Object.freeze({
 // ── Next Actions ──────────────────────────────────────────────────────────────
 export const NEXT_ACTIONS = Object.freeze({
   // Planning agent spawns
-  SPAWN_RESEARCH: 'spawn_research',
-  SPAWN_PRD: 'spawn_prd',
-  SPAWN_DESIGN: 'spawn_design',
-  SPAWN_ARCHITECTURE: 'spawn_architecture',
+  SPAWN_REQUIREMENTS: 'spawn_requirements',
   SPAWN_MASTER_PLAN: 'spawn_master_plan',
+
+  // Planning scripts
+  EXPLODE_MASTER_PLAN: 'explode_master_plan',
 
   // Human gates
   REQUEST_PLAN_APPROVAL: 'request_plan_approval',
@@ -55,11 +55,8 @@ export const NEXT_ACTIONS = Object.freeze({
   REQUEST_FINAL_APPROVAL: 'request_final_approval',
 
   // Execution agent spawns
-  CREATE_PHASE_PLAN: 'create_phase_plan',
-  CREATE_TASK_HANDOFF: 'create_task_handoff',
   EXECUTE_TASK: 'execute_task',
   SPAWN_CODE_REVIEWER: 'spawn_code_reviewer',
-  GENERATE_PHASE_REPORT: 'generate_phase_report',
   SPAWN_PHASE_REVIEWER: 'spawn_phase_reviewer',
   SPAWN_FINAL_REVIEWER: 'spawn_final_reviewer',
 
@@ -75,16 +72,13 @@ export const NEXT_ACTIONS = Object.freeze({
 // ── Events ────────────────────────────────────────────────────────────────────
 export const EVENTS = Object.freeze({
   // ── Planning step events ──────────────────────────────────────────────
-  RESEARCH_STARTED: 'research_started',
-  RESEARCH_COMPLETED: 'research_completed',
-  PRD_STARTED: 'prd_started',
-  PRD_COMPLETED: 'prd_completed',
-  DESIGN_STARTED: 'design_started',
-  DESIGN_COMPLETED: 'design_completed',
-  ARCHITECTURE_STARTED: 'architecture_started',
-  ARCHITECTURE_COMPLETED: 'architecture_completed',
+  REQUIREMENTS_STARTED: 'requirements_started',
+  REQUIREMENTS_COMPLETED: 'requirements_completed',
   MASTER_PLAN_STARTED: 'master_plan_started',
   MASTER_PLAN_COMPLETED: 'master_plan_completed',
+  EXPLOSION_STARTED: 'explosion_started',
+  EXPLOSION_COMPLETED: 'explosion_completed',
+  EXPLOSION_FAILED: 'explosion_failed',
 
   // ── Gate approved events ──────────────────────────────────────────────
   PLAN_APPROVED: 'plan_approved',
@@ -92,21 +86,13 @@ export const EVENTS = Object.freeze({
   PHASE_GATE_APPROVED: 'phase_gate_approved',
   FINAL_APPROVED: 'final_approved',
 
-  // ── Phase execution events ────────────────────────────────────────────
-  PHASE_PLANNING_STARTED: 'phase_planning_started',
-  PHASE_PLAN_CREATED: 'phase_plan_created',
-
   // ── Task execution events ─────────────────────────────────────────────
-  TASK_HANDOFF_STARTED: 'task_handoff_started',
-  TASK_HANDOFF_CREATED: 'task_handoff_created',
   EXECUTION_STARTED: 'execution_started',
   TASK_COMPLETED: 'task_completed',
   CODE_REVIEW_STARTED: 'code_review_started',
   CODE_REVIEW_COMPLETED: 'code_review_completed',
 
   // ── Phase review events ───────────────────────────────────────────────
-  PHASE_REPORT_STARTED: 'phase_report_started',
-  PHASE_REPORT_CREATED: 'phase_report_created',
   PHASE_REVIEW_STARTED: 'phase_review_started',
   PHASE_REVIEW_COMPLETED: 'phase_review_completed',
 
@@ -136,6 +122,9 @@ export const OUT_OF_BAND_EVENTS = new Set<string>([
   'halt',
   'gate_mode_set',
   'source_control_init',
+  // Parse-failure recovery loop: step-level `failed` events are not template-indexed
+  // by buildEventIndex, so routing `explosion_failed` requires the out-of-band path.
+  'explosion_failed',
 ]);
 
 export const REVIEW_VERDICTS = Object.freeze({

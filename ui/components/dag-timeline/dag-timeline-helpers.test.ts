@@ -178,13 +178,15 @@ test("case-insensitive: lowercase -task- segment parses correctly", () => {
 
 console.log("\ngroupNodesBySection tests\n");
 
-test("all 11 NODE_SECTION_MAP keys produce 4 sections in correct order with correct counts", () => {
+test("all 13 NODE_SECTION_MAP keys produce 4 sections in correct order with correct counts", () => {
   const allNodes = {
     prd: stepNode,
     research: stepNode,
     design: stepNode,
     architecture: stepNode,
+    requirements: stepNode,
     master_plan: stepNode,
+    explode_master_plan: stepNode,
     plan_approval_gate: gateNode,
     gate_mode_selection: gateNode,
     phase_loop: forEachPhaseNode,
@@ -196,7 +198,7 @@ test("all 11 NODE_SECTION_MAP keys produce 4 sections in correct order with corr
   const result = groupNodesBySection(allNodes);
   assert.strictEqual(result.length, 4);
   assert.strictEqual(result[0].label, "Planning");
-  assert.strictEqual(result[0].entries.length, 5);
+  assert.strictEqual(result[0].entries.length, 7);
   assert.strictEqual(result[1].label, "Gates");
   assert.strictEqual(result[1].entries.length, 2);
   assert.strictEqual(result[2].label, "Execution");
@@ -220,6 +222,137 @@ test("only Planning keys returns single-element array with label Planning", () =
 test("unknown node IDs are silently excluded from all groups", () => {
   const result = groupNodesBySection({ unknown_step: stepNode, another_unknown: gateNode });
   assert.deepStrictEqual(result, []);
+});
+
+test("Iter 4: default.yml partial template (requirements + master_plan + plan_approval_gate) groups correctly — requirements before master_plan in Planning section", () => {
+  // Simulates a fresh project scaffolded from default.yml: 2 planning steps + 1 gate.
+  // groupNodesBySection preserves insertion order of the input NodesRecord within each section,
+  // and default.yml declares `requirements` before `master_plan`.
+  const result = groupNodesBySection({
+    requirements: stepNode,
+    master_plan: stepNode,
+    plan_approval_gate: gateNode,
+  });
+  assert.strictEqual(result.length, 2);
+  assert.strictEqual(result[0].label, "Planning");
+  assert.strictEqual(result[0].entries.length, 2);
+  assert.strictEqual(result[0].entries[0][0], "requirements");
+  assert.strictEqual(result[0].entries[1][0], "master_plan");
+  assert.strictEqual(result[1].label, "Gates");
+  assert.strictEqual(result[1].entries[0][0], "plan_approval_gate");
+});
+
+test("Iter 4: in_progress requirements node renders under Planning with in_progress status", () => {
+  const inProgressStep = { ...stepNode, status: "in_progress" as const };
+  const result = groupNodesBySection({
+    requirements: inProgressStep,
+    master_plan: stepNode,
+    plan_approval_gate: gateNode,
+  });
+  const planningSection = result.find((g) => g.label === "Planning")!;
+  const [reqId, reqNode] = planningSection.entries[0];
+  assert.strictEqual(reqId, "requirements");
+  assert.strictEqual(reqNode.status, "in_progress");
+});
+
+test("Iter 4: legacy full.yml state (no requirements node) still groups correctly — no crashes, no missing-key warnings", () => {
+  // A pre-Iter-4 state.json scaffolded from full.yml does NOT contain a `requirements` node.
+  // groupNodesBySection must render cleanly without the new node.
+  const legacyNodes = {
+    prd: stepNode,
+    research: stepNode,
+    design: stepNode,
+    architecture: stepNode,
+    master_plan: stepNode,
+    plan_approval_gate: gateNode,
+    gate_mode_selection: gateNode,
+    phase_loop: forEachPhaseNode,
+    final_review: stepNode,
+    pr_gate: gateNode,
+    final_approval_gate: gateNode,
+  };
+  const result = groupNodesBySection(legacyNodes);
+  assert.strictEqual(result.length, 4);
+  // Planning section: all 5 legacy steps, no `requirements` entry
+  const planningSection = result.find((g) => g.label === "Planning")!;
+  const planningIds = planningSection.entries.map(([id]) => id);
+  assert.strictEqual(planningSection.entries.length, 5);
+  assert.ok(!planningIds.includes("requirements"), "legacy state should not have requirements");
+  assert.ok(planningIds.includes("master_plan"), "legacy state must still have master_plan");
+});
+
+test("Iter 5: default.yml partial template (requirements + master_plan + explode_master_plan + plan_approval_gate) groups correctly — explode_master_plan placed after master_plan, before the gate", () => {
+  // Simulates a fresh project scaffolded from default.yml post-Iter-5: 3 planning steps + 1 gate.
+  const result = groupNodesBySection({
+    requirements: stepNode,
+    master_plan: stepNode,
+    explode_master_plan: stepNode,
+    plan_approval_gate: gateNode,
+  });
+  assert.strictEqual(result.length, 2);
+  const planningSection = result[0];
+  assert.strictEqual(planningSection.label, "Planning");
+  assert.strictEqual(planningSection.entries.length, 3);
+  assert.strictEqual(planningSection.entries[0][0], "requirements");
+  assert.strictEqual(planningSection.entries[1][0], "master_plan");
+  assert.strictEqual(planningSection.entries[2][0], "explode_master_plan");
+  assert.strictEqual(result[1].label, "Gates");
+  assert.strictEqual(result[1].entries[0][0], "plan_approval_gate");
+});
+
+test("Iter 5: pre-seeded iterations — phase_loop node with explode_master_plan completed + iterations carrying phase_planning child nodes with doc_path populated still groups correctly", () => {
+  // After explosion completes, explode_master_plan.status=completed and each phase iteration
+  // carries a pre-seeded `phase_planning` child step node with doc_path populated (not on the
+  // iteration itself — IterationEntry has no doc_path field).
+  // Rendering must not crash on iterations whose nodes contain only these pre-seeded child steps.
+  const seededPhaseLoop = {
+    ...forEachPhaseNode,
+    status: "not_started" as const,
+    iterations: [
+      { index: 0, status: "not_started" as const, nodes: { phase_planning: { kind: "step" as const, status: "completed" as const, doc_path: "phases/MYAPP-PHASE-01-SETUP.md", retries: 0 } }, corrective_tasks: [], commit_hash: null },
+      { index: 1, status: "not_started" as const, nodes: { phase_planning: { kind: "step" as const, status: "completed" as const, doc_path: "phases/MYAPP-PHASE-02-CORE.md", retries: 0 } }, corrective_tasks: [], commit_hash: null },
+    ],
+  };
+  // Iter 5 mutation intentionally keeps explode_master_plan.doc_path null to avoid a spurious
+  // Doc link in the UI — the "document" for this step is the child phase-plan files, not a
+  // Master Plan copy. Fixture mirrors that semantic so any regression that sets doc_path on
+  // the completed explode node will be caught here rather than masked by drift.
+  const completedExplode = { ...stepNode, status: "completed" as const, doc_path: null };
+  const result = groupNodesBySection({
+    requirements: stepNode,
+    master_plan: stepNode,
+    explode_master_plan: completedExplode,
+    plan_approval_gate: gateNode,
+    phase_loop: seededPhaseLoop,
+  });
+  assert.strictEqual(result.length, 3);
+  assert.strictEqual(result[0].label, "Planning");
+  assert.strictEqual(result[0].entries.length, 3);
+  // Confirm the completed explode node is present with status completed.
+  const explodeEntry = result[0].entries.find(([id]) => id === "explode_master_plan");
+  assert.ok(explodeEntry, "explode_master_plan must be in Planning section");
+  assert.strictEqual(explodeEntry![1].status, "completed");
+});
+
+test("Iter 5: legacy state.json (no explode_master_plan + no pre-seeded phase_planning child + no last_parse_error on master_plan) still groups cleanly", () => {
+  // Pre-Iter-5 state.json must keep rendering without the explode node and without the
+  // pre-seeded phase_planning child step nodes that Iter 5's explosion script now emits.
+  const legacyPhaseLoop = {
+    ...forEachPhaseNode,
+    iterations: [
+      { index: 0, status: "not_started" as const, nodes: {}, corrective_tasks: [] },
+    ],
+  };
+  const legacyNodes = {
+    requirements: stepNode,
+    master_plan: stepNode,
+    plan_approval_gate: gateNode,
+    phase_loop: legacyPhaseLoop,
+  };
+  const result = groupNodesBySection(legacyNodes);
+  const planningIds = result.find(g => g.label === "Planning")!.entries.map(([id]) => id);
+  assert.ok(!planningIds.includes("explode_master_plan"), "legacy state should not carry explode_master_plan");
+  assert.ok(planningIds.includes("master_plan"), "legacy state must still carry master_plan");
 });
 
 test("section order is Planning → Gates → Execution → Completion regardless of insertion order", () => {
@@ -276,6 +409,46 @@ test("phase loop with in_progress iteration and doc_path returns parsed phase na
     ],
   });
   assert.strictEqual(result, "Phase 1 \u2014 CORE SETUP");
+});
+
+test("phase loop with in_progress iteration using new shape (iteration.doc_path set, empty nodes) returns parsed phase name", () => {
+  // Post-explode-scaffold-unify shape: the iteration itself carries doc_path and
+  // has no synthetic phase_planning child node. deriveCurrentPhase must read
+  // iteration.doc_path first before falling back to the legacy phase_planning node.
+  const result = deriveCurrentPhase({
+    ...forEachPhaseNode,
+    status: "in_progress",
+    iterations: [
+      {
+        index: 0,
+        status: "in_progress",
+        doc_path: "phases/MY-PROJECT-PHASE-01-CORE-SETUP.md",
+        nodes: {},
+        corrective_tasks: [],
+      },
+    ],
+  });
+  assert.strictEqual(result, "Phase 1 — CORE SETUP");
+});
+
+test("phase loop with in_progress iteration carrying BOTH iteration.doc_path and legacy phase_planning prefers iteration.doc_path", () => {
+  // Mixed-shape edge case (shouldn't happen in practice but precedence must be deterministic).
+  const result = deriveCurrentPhase({
+    ...forEachPhaseNode,
+    status: "in_progress",
+    iterations: [
+      {
+        index: 0,
+        status: "in_progress",
+        doc_path: "phases/MY-PROJECT-PHASE-01-NEW-SHAPE.md",
+        nodes: {
+          phase_planning: { kind: "step", status: "completed", doc_path: "phases/MY-PROJECT-PHASE-01-LEGACY-SHAPE.md", retries: 0 },
+        },
+        corrective_tasks: [],
+      },
+    ],
+  });
+  assert.strictEqual(result, "Phase 1 — NEW SHAPE");
 });
 
 test("phase loop with in_progress iteration and null doc_path returns fallback Phase N", () => {
