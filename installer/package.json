@@ -3,6 +3,26 @@
   "version": "1.0.0-alpha.5",
   "description": "Interactive CLI installer for the RadOrchestration system",
   "type": "module",
+  "license": "MIT",
+  "author": "MetalHexx",
+  "homepage": "https://github.com/MetalHexx/RadOrchestation#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MetalHexx/RadOrchestation.git",
+    "directory": "installer"
+  },
+  "bugs": {
+    "url": "https://github.com/MetalHexx/RadOrchestation/issues"
+  },
+  "keywords": [
+    "ai",
+    "orchestration",
+    "agents",
+    "claude",
+    "copilot",
+    "cli",
+    "installer"
+  ],
   "scripts": {
     "start": "node scripts/sync-source.js && node index.js",
     "test": "node --test --experimental-test-module-mocks \"lib/**/*.test.js\" \"scripts/**/*.test.js\" \"index.test.js\"",

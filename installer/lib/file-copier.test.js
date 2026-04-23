@@ -280,13 +280,13 @@ test('copyAll silently skips missing categories and continues copying present on
   }
 });
 
-// ── End-to-end: orchestration-staging exclusion ───────────────────────────────
+// ── End-to-end: per-category excludeDirs ──────────────────────────────────────
 
-test('orchestration-staging/ directory is excluded when copying the Skills category', () => {
+test('per-category excludeDirs filters out the named directory when copying', () => {
   const { repo, target, cleanup } = makeDirs();
   try {
     writeFile(repo, '.github/skills/skill-a/SKILL.md');
-    writeFile(repo, '.github/skills/orchestration-staging/STAGING.md');
+    writeFile(repo, '.github/skills/excluded-dir/IGNORED.md');
     writeFile(repo, '.github/skills/global-skill.md');
     const manifest = {
       categories: [
@@ -295,7 +295,7 @@ test('orchestration-staging/ directory is excluded when copying the Skills categ
           sourceDir: '.github/skills',
           targetDir: 'skills',
           recursive: true,
-          excludeDirs: ['orchestration-staging'],
+          excludeDirs: ['excluded-dir'],
         },
       ],
       globalExcludes: ['node_modules', '.next', '.env.local', 'package-lock.json'],
@@ -304,7 +304,7 @@ test('orchestration-staging/ directory is excluded when copying the Skills categ
     assert.equal(results[0].success, true);
     assert.ok(fs.existsSync(path.join(target, 'skills', 'skill-a', 'SKILL.md')));
     assert.ok(fs.existsSync(path.join(target, 'skills', 'global-skill.md')));
-    assert.ok(!fs.existsSync(path.join(target, 'skills', 'orchestration-staging')));
+    assert.ok(!fs.existsSync(path.join(target, 'skills', 'excluded-dir')));
   } finally {
     cleanup();
   }

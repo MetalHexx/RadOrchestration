@@ -53,7 +53,7 @@ export async function promptPipelineLimits() {
   const rawMaxRetriesPerTask = await input({
     message: 'Maximum retries per task',
     theme: INQUIRER_THEME,
-    default: '2',
+    default: '5',
     validate: isNonNegativeInteger,
   });
 

@@ -4,9 +4,9 @@ import { describe, it, before, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
 // Create mock function before registering module mock
-// Returns default values sequentially: '10', '8', '2', '3'
+// Returns default values sequentially: '10', '8', '5', '3'
 let callCount = 0;
-const defaults = ['10', '8', '2', '3'];
+const defaults = ['10', '8', '5', '3'];
 const inputMock = mock.fn(async () => defaults[callCount++ % defaults.length]);
 
 // Register module mock BEFORE dynamic import of the module under test
@@ -54,8 +54,8 @@ describe('promptPipelineLimits', () => {
     assert.equal(calls[2].message, 'Maximum retries per task');
   });
 
-  it('P-8: default is "2"', () => {
-    assert.equal(calls[2].default, '2');
+  it('P-8: default is "5"', () => {
+    assert.equal(calls[2].default, '5');
   });
 
   it('P-9: message is "Maximum consecutive review rejections"', () => {
@@ -90,7 +90,7 @@ describe('promptPipelineLimits', () => {
   it('returns correct parsed values', () => {
     assert.equal(result.maxPhases, 10);
     assert.equal(result.maxTasksPerPhase, 8);
-    assert.equal(result.maxRetriesPerTask, 2);
+    assert.equal(result.maxRetriesPerTask, 5);
     assert.equal(result.maxConsecutiveReviewRejections, 3);
   });
 
