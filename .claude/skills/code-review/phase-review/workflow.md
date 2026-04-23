@@ -28,7 +28,6 @@ Phase Review reads only the inputs below — do NOT load the Master Plan (its co
 | `phase_head_sha` | Spawn context | Last committed SHA of the phase (corrective-aware). `null` when auto-commit is off. |
 | Cumulative diff | `git diff <phase_first_sha>~1..<phase_head_sha>` (fallback: `git diff HEAD` + untracked files when either SHA is null) | The actual change set under review — scope for both the conformance pass and the quality sweep. |
 | Source Code | Files produced in this phase | Read only when the diff requires surrounding context. |
-| `state.json` | Pipeline state file | Source for per-task retry counts (corrective_tasks length) used in the Task Results table. |
 
 **Tag resolution.** Parse the Phase Plan's `**Requirements:**` line directly to get the list of FR/NFR/AD/DD tags scoped to this phase. Do not traverse Task Handoffs to union tags — the Phase Plan is the authoritative scope.
 
@@ -39,7 +38,7 @@ Phase Review reads only the inputs below — do NOT load the Master Plan (its co
 3. **Run the cumulative phase diff.** If both `phase_first_sha` and `phase_head_sha` are present, run `git diff <phase_first_sha>~1..<phase_head_sha>` and `git diff --stat <phase_first_sha>~1..<phase_head_sha>`. If either is `null`, fall back to `git diff HEAD` + `git diff --stat HEAD` and read any untracked files listed in the phase's Task Handoff File Targets. Capture the exact command(s) run and the `--stat` output verbatim — these populate the template's `## Scope` section.
 4. **Run the tests and verify the build.** Do not accept "tests passed" from any per-task report on faith. Capture the exact command run and the output — including **named test results**, not just a count — for the template's `## Test Execution` section.
 5. **Aggregate phase data for the summary sections (Iter 8 phase-summary consolidation)**:
-   - Task Results: from `state.json` retry counts (corrective_tasks length per task iteration) + commit-level outcomes observable in the diff.
+   - Task Results: from commit-level outcomes observable in the diff.
    - Files Changed: aggregate from the cumulative diff (created vs modified counts + key paths).
    - Issues & Resolutions: task-scoped issues observable in the diff's history (including through retries).
    - Carry-Forward Items: concrete issues the next phase must handle.
@@ -67,7 +66,7 @@ Phase Review reads only the inputs below — do NOT load the Master Plan (its co
 
 ## Stateless Contract (Iter 10/11)
 
-Phase Review is **stateless**. You read the Phase Plan, the Requirements doc, the cumulative diff, and `state.json`. You do not read any prior phase review doc, prior corrective attempt, or prior orchestrator addendum. A phase iteration runs `phase_review` exactly once per iter-11's single-pass clause — a phase-scope corrective's own task-level code review completes the cycle. Treat the diff under review as the sole source of truth. Do not flag a change relative to a prior review as regression when the corrective flow explicitly reshaped the code.
+Phase Review is **stateless**. You read the Phase Plan, the Requirements doc, and the cumulative diff. You do not read any prior phase review doc, prior corrective attempt, or prior orchestrator addendum. A phase iteration runs `phase_review` exactly once per iter-11's single-pass clause — a phase-scope corrective's own task-level code review completes the cycle. Treat the diff under review as the sole source of truth. Do not flag a change relative to a prior review as regression when the corrective flow explicitly reshaped the code.
 
 ## Conformance Checklist Categories
 
