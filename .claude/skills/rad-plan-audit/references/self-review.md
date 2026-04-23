@@ -11,8 +11,8 @@ Plan. Pick the row that matches what you're writing.
 
 | You are writing | Upstream | Focus on |
 |-----------------|----------|----------|
-| Requirements | Brainstorming doc *(if present)* | §2.3 terminology; structural rules from `.claude/skills/rad-create-plans/references/requirements/workflow.md` step 7 (block shape, tags, no placeholders). |
-| Master Plan | Requirements doc | Part 1 (codebase accuracy), §2.1 (coverage), §2.3 (terminology), **Part 3 (explosion-readiness — the load-bearing pass for Master Plan self-review)**. |
+| Requirements | Brainstorming doc *(if present)* | §2.3 terminology; **§2.4 decision encapsulation (must not have forward references to Master Plan, phase plan, task handoff; no deferred-work verbs; no conditional decisions);** structural rules from `.claude/skills/rad-create-plans/references/requirements/workflow.md` step 7 (block shape, tags, no placeholders). |
+| Master Plan | Requirements doc | Part 1 (codebase accuracy), §2.1 (coverage), §2.3 (terminology) |
 
 ## Workflow
 
@@ -33,14 +33,12 @@ Plan. Pick the row that matches what you're writing.
    them in place and save. Do not dispatch a reviewer, do not write a
    report. If you find a Requirements ID that no task covers, add the
    task (or correct the phase breakdown). If you find a phantom tag,
-   delete or correct it. If a step has no requirement tag, tag it or
-   delete the step.
+   delete or correct it.
 
 ## Master Plan — Part 3 emphasis
 
 Part 3 (Buildability) is the highest-value pass for Master Plan
-self-review because the explosion script propagates any Master Plan
-defect directly into per-task handoffs. Before saving, confirm:
+self-review because it fully determines whether the plan is executable. Before saving, confirm:
 
 - Every FR / NFR / AD / DD in the Requirements doc appears in at least
   one task's `**Requirements:**` line.
@@ -50,3 +48,5 @@ defect directly into per-task handoffs. Before saving, confirm:
   `(DD-N)` tag.
 - Every `code`-type task has exactly four RED-GREEN steps.
 - No `TBD` / `TODO` / `similar to` / `as needed` language anywhere.
+- Is there anything that would cause a coder to ask you mid-build, "Wait, what does this mean?" If so, clarify it before saving.
+- If there is anything missing from the plan that would cause the plan to fail, add or remove it before saving.

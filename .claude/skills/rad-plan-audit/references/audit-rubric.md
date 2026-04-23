@@ -85,7 +85,7 @@ they appear across the two docs.
 
 | Check | What to Verify |
 |-------|---------------|
-| **Interface shape stability** | An interface named in the Requirements doc has the same fields, types, and optionality when inlined in a Master Plan task. |
+| **Interface shape stability** | An interface named in the Requirements doc has the same fields, types etc. |
 | **Module responsibility stability** | A module described as "responsible for X" in the Requirements doc isn't described as "responsible for Y" in a Master Plan task body. |
 | **File path consistency** | The same file is referenced by the same path in both docs — no `/src/config.ts` in Requirements and `/lib/config.ts` in a task's `**Files:**` block. |
 | **Frozen contract integrity** | Contracts marked frozen, sacred, or NFR-constrained in the Requirements doc are not modified by any task — even additively. |
@@ -99,12 +99,27 @@ Verify that the same concept uses the same name across both documents.
 | **Component/module names** | A component called "ConfigEditor" in Requirements isn't called "SettingsPanel" in a Master Plan task. |
 | **Type and interface names** | An interface called `PipelineResult` in Requirements isn't called `PipelineOutput` in a task. |
 | **Event and action names** | Events or actions referenced by name are spelled and cased identically in both docs. |
-| **Abbreviations and acronyms** | Terms are used consistently — not "PR" in one doc and "pull request" in the other when referring to a specific named concept. |
 
 Minor stylistic variation in prose is not a finding. This check targets
 **named technical artifacts** — types, modules, components, events,
 config keys — where inconsistency would cause a coder to implement the
 wrong thing or look for something that doesn't exist under that name.
+
+### 2.4 Decision Encapsulation
+
+Verify Requirements blocks are self-contained and conclusive. An AD/DD
+block that defers its own claim to future work creates performative tasks
+downstream.
+
+| Check | What to Verify |
+|-------|---------------|
+| **No downstream doc references** | Requirements block bodies do not name the Master Plan, phase plan, task handoff, or "execution" in any context. Strict grep targets: `Master Plan`, `phase plan`, `task handoff`. Any match is a finding. |
+| **No deferred-work verbs** | Requirements block bodies do not contain deferred-work phrasing. Grep targets: `will be verified`, `will be enumerated`, `pending confirmation`, `to be decided`, `audit task`, `discovery task`, `enumeration task`, `investigation task`. |
+| **No conditional decisions** | An AD/DD whose stated decision is contingent on a future verification described as happening elsewhere is not a decision — it is a deferral, and must be resolved at Requirements-authoring time. |
+
+A finding in §2.4 is severity `high` — deferred Requirements produce
+performative Master Plan tasks that survive through explosion, execution,
+and review.
 
 ---
 
@@ -124,7 +139,7 @@ especially step 7 (task rules + YAGNI gate).
 | Check | What to Verify |
 |-------|---------------|
 | **Tag coverage** | Every ID (FR / NFR / AD / DD) in the Requirements doc appears in at least one task. This is the Requirements → Master Plan completeness gate. |
-| **Tag justification** | Every step in every task ends with at least one `(FR-N)` / `(NFR-N)` / `(AD-N)` / `(DD-N)` tag — inline in the step description for write steps, inline in the expected-output line for run steps. The YAGNI gate: a step that doesn't trace to a requirement shouldn't exist. |
+| **Tag justification** | Every task includes at least one `(FR-N)` / `(NFR-N)` / `(AD-N)` / `(DD-N)` tag.  The YAGNI gate: a task that doesn't trace to a requirement shouldn't exist. |
 | **Tag validity** | Every tag cited anywhere in the Master Plan (phase heading, task heading, step line) resolves to an ID block in the Requirements doc. No phantom `FR-99` / `AD-12` citations. |
 | **Phase heading shape** | Every `## P\d{2}:` heading carries a `**Requirements:**` line. Phase numbers are zero-padded two digits. |
 | **Task heading shape** | Every `### P\d{2}-T\d{2}:` heading carries three mandatory lines: `**Task type:**` (one of `code` / `doc` / `config` / `infra`), `**Requirements:**`, and `**Files:**` (with `Create:` / `Modify:` / `Test:` / `Delete:` sub-bullets). |

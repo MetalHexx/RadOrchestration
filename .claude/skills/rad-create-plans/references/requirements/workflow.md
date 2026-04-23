@@ -2,9 +2,11 @@
 
 You author the project-level Requirements doc — a single ledger that captures
 functional requirements (FR), non-functional requirements (NFR), architectural
-decisions (AD), and design decisions (DD). This doc is the source of truth every
-Master Plan step cites by ID. Keep each block lean enough to chunk, short
-enough to scan, specific enough to act on.
+decisions (AD), and design decisions (DD). This doc is the sealed specification
+of the system to be built. Each block stands on its own as a conclusive
+statement — a required behavior, a decided design, an architectural choice.
+Keep each block lean enough to chunk, short enough to scan, specific enough to
+act on.
 
 This workflow does NOT load `references/shared/guidelines.md` or
 `references/shared/self-review.md`. The authoring rules below are the full set.
@@ -26,16 +28,23 @@ prompt says, no more.
 ### Steps
 
 1. Read inputs. Read brainstorming (if present). Read the orchestrator prompt.
-   Do targeted codebase discovery — only what you need to write grounded
-   requirements. Do not survey the whole repo; Grep specific symbols, Glob
-   expected paths, Read the few files that actually matter.
+   Do codebase discovery and any needed research to deliver the requirements.
+
+1a. If the Brainstorming doc contained an `## Open Questions` section,
+    resolve each question before proceeding to Step 2. Investigate with
+    your available inputs (orchestrator prompt, Brainstorming, codebase),
+    make a decision, and encode the finding into the relevant block. The
+    planner owns the decision — Open Questions left by the user are the
+    user's acknowledgment that the planner will close them. Open Questions
+    are not valid Requirements content; they must be closed at this step,
+    not transcribed into any block's body.
 
 2. Decide the four ID ranges. Count roughly how many FRs, NFRs, ADs, and DDs
    the project needs. Use four separate sequences:
-   - FR-1, FR-2, ... (functional requirements — what the system does)
-   - NFR-1, NFR-2, ... (non-functional — performance, security, limits)
-   - AD-1, AD-2, ... (architectural decisions — cross-cutting structure)
-   - DD-1, DD-2, ... (design decisions — observable state, UX, interactions)
+   - FR-1, FR-2, ... (functional requirements — what the system does, capabilities, behaviors, features, etc.)
+   - NFR-1, NFR-2, ... (non-functional — performance, security, limits, scalability, reliability, maintainability, etc.)
+   - AD-1, AD-2, ... (architectural decisions — cross-cutting structure, contracts, technology requirements, error handling, data storage, API design, etc.)
+   - DD-1, DD-2, ... (design decisions — observable state, UX, interactions, visual design, design tokens, css, visual component structure, etc.)
 
 3. Author the intro. Two short paragraphs (2–3 sentences each) capturing
    project sentiment: what is being built, who it's for, what success looks
@@ -47,16 +56,13 @@ prompt says, no more.
    goal reads naturally.
 
 5. Author `## Non-Goals` — single-line bullets. State what is explicitly
-   out of scope so the master plan can't drift into it.
+   out of scope.
 
 6. Author the four requirement sections in this order:
    - `## Functional Requirements`
    - `## Non-Functional Requirements`
    - `## Architectural Decisions`
    - `## Design Decisions`
-
-   Skip a section entirely if the project has no items of that type. Do NOT
-   include an empty heading with "None" under it.
 
 7. Author each block with the shape:
 
@@ -67,12 +73,10 @@ prompt says, no more.
 
    {1–2 sentence description. Constraints inlined as a short bullet list
     only when a bullet form genuinely adds clarity.}
-   ```
 
-   AD and DD bodies may end with a single inline sentence capturing a
-   rejected alternative:
-   `Rejected alternative: {option} — {one-line consequence}.`
-   Do not expand this into its own section.
+    Anything else necessary to capture the requirement or decision.
+    400 estimated token limit per block (heading + body) for chunking.
+   ```
 
 8. Run the token lint:
 
@@ -82,12 +86,7 @@ prompt says, no more.
    with heading, line number, and estimated token count. Exit code is always 0;
    the lint is a soft warning, not a blocker.
 
-9. If the offender list is non-empty, load and invoke the `log-error` skill to
-   append a single entry to `{PROJECT-DIR}/{NAME}-ERROR-LOG.md` listing the
-   offender headings + estimated token counts. Save the Requirements doc
-   regardless — the lint is advisory.
-
-10. Save to `{PROJECT-DIR}/{NAME}-REQUIREMENTS.md`.
+9. Save to `{PROJECT-DIR}/{NAME}-REQUIREMENTS.md`.
 
 ## Output Contract
 
@@ -136,7 +135,14 @@ author: "planner-agent"
 - `**Resolves:**` line appears only on AD/DD blocks, and only when they
   resolve a specific FR (or small set of FRs).
 - No placeholder text. No "TBD", no "details to follow". If you don't know
-  enough to write it now, don't write the block.
+  enough to write it now, don't write the requirement.
+- Requirements describes the target state of the system, not the process of
+  getting there. Every block is self-contained and conclusive. Do not
+  reference downstream planning documents (Master Plan, phase plan, task
+  handoff, execution), do not delegate work to future agents, do not encode
+  future investigations as part of a decision. If the block body reads as a
+  deferral, the block isn't finished — close it at Step 1a by investigating
+  and deciding.
 - No cross-doc assumptions. Requirements stands on its own — it does not
   reference external planning docs. Every FR/NFR/AD/DD block is
   self-contained.
