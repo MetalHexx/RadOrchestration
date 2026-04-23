@@ -1,7 +1,6 @@
 // ui/lib/sse/singleton.ts
 import { SSEBroadcaster } from './broadcaster';
 import { getWorkspaceRoot, resolveBasePath } from '@/lib/path-resolver';
-import { readConfig } from '@/lib/fs-reader';
 
 const KEY = '__sseBroadcaster';
 type GlobalWithBroadcaster = typeof globalThis & { [KEY]?: SSEBroadcaster };
