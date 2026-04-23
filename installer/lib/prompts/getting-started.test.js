@@ -6,7 +6,7 @@ import path from 'node:path';
 import os from 'node:os';
 
 // Create mock functions before registering the module mock
-const selectMock = mock.fn(async () => 'copilot');
+const selectMock = mock.fn(async () => 'claude-code');
 const inputMock = mock.fn(async () => process.cwd());
 
 // Register module mock BEFORE dynamic import of the module under test
@@ -25,7 +25,7 @@ describe('promptGettingStarted', () => {
   before(async () => {
     selectMock.mock.resetCalls();
     inputMock.mock.resetCalls();
-    selectMock.mock.mockImplementation(async () => 'copilot');
+    selectMock.mock.mockImplementation(async () => 'claude-code');
     inputMock.mock.mockImplementation(async () => process.cwd());
 
     result = await promptGettingStarted();
@@ -41,19 +41,24 @@ describe('promptGettingStarted', () => {
     assert.equal(selectArgs.choices.length, 3);
   });
 
-  it('first choice is GitHub Copilot (selectable, value: "copilot")', () => {
-    assert.equal(selectArgs.choices[0].name, 'GitHub Copilot');
-    assert.equal(selectArgs.choices[0].value, 'copilot');
-    assert.ok(!selectArgs.choices[0].disabled, 'copilot choice should not be disabled');
+  it('calls select() with default "claude-code"', () => {
+    assert.equal(selectArgs.default, 'claude-code');
   });
 
-  it('second choice is Cursor (disabled)', () => {
-    assert.equal(selectArgs.choices[1].value, 'cursor');
-    assert.equal(selectArgs.choices[1].disabled, true);
+  it('first choice is Claude Code (selectable, value: "claude-code")', () => {
+    assert.equal(selectArgs.choices[0].name, 'Claude Code');
+    assert.equal(selectArgs.choices[0].value, 'claude-code');
+    assert.ok(!selectArgs.choices[0].disabled, 'claude-code choice should not be disabled');
   });
 
-  it('third choice is Claude Code (disabled)', () => {
-    assert.equal(selectArgs.choices[2].value, 'claude-code');
+  it('second choice is GitHub Copilot (selectable, value: "copilot")', () => {
+    assert.equal(selectArgs.choices[1].name, 'GitHub Copilot');
+    assert.equal(selectArgs.choices[1].value, 'copilot');
+    assert.ok(!selectArgs.choices[1].disabled, 'copilot choice should not be disabled');
+  });
+
+  it('third choice is Cursor (disabled)', () => {
+    assert.equal(selectArgs.choices[2].value, 'cursor');
     assert.equal(selectArgs.choices[2].disabled, true);
   });
 
@@ -70,8 +75,8 @@ describe('promptGettingStarted', () => {
     assert.ok(Object.hasOwn(result, 'workspaceDir'), 'result has workspaceDir property');
   });
 
-  it('returns tool: "copilot"', () => {
-    assert.equal(result.tool, 'copilot');
+  it('returns tool: "claude-code"', () => {
+    assert.equal(result.tool, 'claude-code');
   });
 
   it('workspaceDir is an absolute path', () => {

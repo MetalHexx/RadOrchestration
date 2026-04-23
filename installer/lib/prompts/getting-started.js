@@ -15,10 +15,11 @@ export async function promptGettingStarted() {
   const tool = await select({
     message: 'Select your AI coding tool',
     theme: INQUIRER_THEME,
+    default: 'claude-code',
     choices: [
+      { name: 'Claude Code', value: 'claude-code' },
       { name: 'GitHub Copilot', value: 'copilot' },
       { name: 'Cursor (coming soon)', value: 'cursor', disabled: true },
-      { name: 'Claude Code (coming soon)', value: 'claude-code', disabled: true },
     ],
   });
 

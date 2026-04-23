@@ -15,7 +15,7 @@ import { promptUiInstall } from './prompts/ui-install.js';
  * @type {import('./types.js').InstallerConfig}
  */
 const DEFAULTS = {
-  tool: 'copilot',
+  tool: 'claude-code',
   workspaceDir: process.cwd(),
   orchRoot: '.claude',
   projectsBasePath: 'orchestration-projects',

@@ -24,7 +24,7 @@ export function renderHelp() {
     '',
     `  ${THEME.heading('SETUP')}`,
     `    ${flag('--workspace')} ${meta('<path>')}           Target workspace directory ${meta('(default: cwd)')}`,
-    `    ${flag('--tool')} ${meta('<tool>')}                AI coding tool ${meta('(copilot)')}`,
+    `    ${flag('--tool')} ${meta('<tool>')}                AI coding tool ${meta('(claude-code | copilot)')}`,
     `    ${flag('--orch-root')} ${meta('<folder>')}         Orchestration root folder ${meta('(default: .claude)')}`,
     '',
     `  ${THEME.heading('PROJECT STORAGE')}`,

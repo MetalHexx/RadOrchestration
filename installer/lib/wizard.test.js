@@ -240,7 +240,7 @@ describe('runWizard({ skipConfirmation: true })', () => {
   });
 
   it('returns default values when skipConfirmation is true', () => {
-    assert.equal(result.tool, 'copilot');
+    assert.equal(result.tool, 'claude-code');
     assert.equal(result.orchRoot, '.claude');
     assert.equal(result.projectsBasePath, 'orchestration-projects');
     assert.equal(result.projectsNaming, 'SCREAMING_CASE');
@@ -275,7 +275,7 @@ describe('runWizard with cliOverrides', () => {
     assert.equal(result.orchRoot, '.rad', 'orchRoot from cliOverrides');
     assert.equal(result.executionMode, 'autonomous', 'executionMode from cliOverrides');
     // Other values should be defaults since skipConfirmation is true
-    assert.equal(result.tool, 'copilot');
+    assert.equal(result.tool, 'claude-code');
     assert.equal(result.maxPhases, 10);
   });
 
