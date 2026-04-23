@@ -134,7 +134,10 @@ After resolving, if the worktree check was not already done, run `find-projects.
   "options": [
     { "label": "Open in new VS Code window", "recommended": true, "description": "Runs: code \"{worktreePath}\"" },
     { "label": "Open Copilot CLI", "description": "Launches orchestration via Copilot CLI in an external terminal" },
-    { "label": "Open Claude Code", "description": "Launches orchestration via Claude Code in yolo mode in an external terminal" },
+    { "label": "Open Claude Code — auto (recommended)", "description": "Launches Claude Code with classifier-judged permissions — safer guard-rails, may pause on risky calls" },
+    { "label": "Open Claude Code — bypass permissions (yolo)", "description": "Launches Claude Code skipping all permission prompts — fully autonomous, no guard-rails" },
+    { "label": "Open Claude Code — accept edits", "description": "Launches Claude Code auto-accepting file edits; prompts for shell and other side-effecting calls" },
+    { "label": "Open Claude Code — default (interactive)", "description": "Launches Claude Code prompting for every tool call — only use if you intend to babysit the session" },
     { "label": "Open terminal at worktree", "description": "Opens an external terminal at the worktree path" },
     { "label": "Do nothing", "description": "Just create it — I'll navigate there myself" }
   ],
@@ -158,6 +161,7 @@ After all answers are returned, derive these values:
 | `baseBranch` | `branch_from` answer |
 | `resolvedAutoCommit` | `auto_commit` answer (`yes` → `always`, `no` → `never`), or `configAutoCommit` if it wasn't `"ask"` |
 | `resolvedAutoPr` | `auto_pr` answer (`yes` → `always`, `no` → `never`), or `configAutoPr` if it wasn't `"ask"` |
+| `permissionMode` | Parsed from `post_action` label: `"auto"` (auto), `"bypassPermissions"` (bypass/yolo), `"acceptEdits"` (accept edits), `"default"` (interactive). Only set when a Claude Code option was selected. |
 
 > The `source_control_init` pipeline event also accepts `yes`/`no` directly and normalizes them — the conversion here is kept for clarity.
 
@@ -232,7 +236,7 @@ gnome-terminal -- bash -c "cd '{worktreePath}' && copilot --agent orchestrator -
 ### Open Claude Code
 
 ```
-node {skillRoot}/scripts/launch-claude.js --worktree-path "{worktreePath}" --projects-base-path "{projectsBasePath}" --prompt "/rad-execute execute project {masterPlanPath or projectName}"
+node {skillRoot}/scripts/launch-claude.js --worktree-path "{worktreePath}" --projects-base-path "{projectsBasePath}" --prompt "/rad-execute execute project {masterPlanPath or projectName}" --permission-mode "{permissionMode}"
 ```
 
 `{skillRoot}` is the absolute path to the `rad-execute-parallel` skill folder (the directory containing `SKILL.md`). The script handles Windows, macOS, and Linux internally — no platform-specific branching needed here.
