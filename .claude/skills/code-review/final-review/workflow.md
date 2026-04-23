@@ -21,7 +21,6 @@ Final Review reads only the inputs below. The Requirements doc is the complete c
 | `project_base_sha` | Spawn context | First chronological commit across the project (first task's initial commit across all phases). `null` when auto-commit is off. |
 | `project_head_sha` | Spawn context | Last committed SHA across the project (includes corrective commits at both task scope and phase scope). `null` when auto-commit is off. |
 | Cumulative project diff | `git diff <project_base_sha>~1..<project_head_sha>` (fallback: `git diff HEAD` + untracked files when either SHA is null) | The actual change set under review — scope for both the conformance pass and the quality sweep. |
-| `state.json` | Pipeline state file | Source for phase/task structure metadata used in the Phase Summary table. |
 | Source files | Full project source tree | Read only when the cumulative diff requires surrounding context to verify a finding. |
 
 ## Workflow
@@ -50,7 +49,7 @@ Final Review reads only the inputs below. The Requirements doc is the complete c
 
 ## Stateless Contract (Iter 10/11/12)
 
-Final Review is **stateless**. You read the Requirements doc, the cumulative project diff, and `state.json`. You do not read any prior final review doc, prior orchestrator addendum, or prior corrective attempt. Final-review corrective cycles are not wired in iter-12 — the verdict you emit is strict and final. Treat the diff under review as the sole source of truth.
+Final Review is **stateless**. You read the Requirements doc and the cumulative project diff. You do not read any prior final review doc, prior orchestrator addendum, or prior corrective attempt. Final-review corrective cycles are not wired in iter-12 — the verdict you emit is strict and final. Treat the diff under review as the sole source of truth.
 
 ## Focus Areas
 

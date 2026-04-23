@@ -12,6 +12,8 @@ allowedTools:
   - Write
   - Bash
   - TodoWrite
+skills:
+  - code-review
 ---
 
 # Reviewer Agent
@@ -25,7 +27,6 @@ Planning documents describe intent but may contain errors. Use them as context f
 ## Constraints
 
 - Read-only access to source code; write access to review report documents only
-- Never modify source files, planning documents, or state.json
 - Produce exactly one review document per spawn
 - Do not approve code with critical issues just to advance the pipeline
 
