@@ -253,6 +253,19 @@ export async function fileExists(absolutePath: string): Promise<boolean> {
 }
 
 /**
+ * Directory names skipped by `listProjectFiles`. A project that contains its
+ * own build scaffold (e.g. a Next.js app with installed npm deps) would
+ * otherwise pull hundreds of `.md` files out of `node_modules` into the UI's
+ * "Other Docs" list, and walking those trees on every selection is slow.
+ */
+const LIST_IGNORED_DIR_NAMES: ReadonlySet<string> = new Set([
+  'node_modules',
+  '.git',
+  '.next',
+  '.cache',
+]);
+
+/**
  * Recursively list all .md files in a project directory.
  * Returns paths relative to the project directory using forward slashes.
  * Does not follow symlinks. Skips entries containing "..".
@@ -267,6 +280,7 @@ export async function listProjectFiles(projectDir: string): Promise<string[]> {
     const entries = await readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
       if (entry.name.includes('..')) continue;
+      if (entry.isDirectory() && LIST_IGNORED_DIR_NAMES.has(entry.name)) continue;
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         await walk(fullPath);
