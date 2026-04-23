@@ -4,10 +4,13 @@ import { useState, useEffect, useMemo } from "react";
 import { useProjects } from "@/hooks/use-projects";
 import { useDocumentDrawer } from "@/hooks/use-document-drawer";
 import { useFollowMode } from "@/hooks/use-follow-mode";
+import { useConfigEditor } from "@/hooks/use-config-editor";
+import { useConfigClickContext } from "@/hooks/use-config-click-context";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
 import { MainDashboard } from "@/components/layout";
 import { DocumentDrawer } from "@/components/documents";
+import { ConfigEditorPanel } from "@/components/config";
 import { DAGTimeline, DAGTimelineSkeleton, ProjectHeader, HaltReasonBanner, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
 import { SSEStatusBanner } from "@/components/badges";
 import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
@@ -46,6 +49,14 @@ export default function ProjectsPage() {
 
   const nodesForFollowMode = v5State ? v5State.graph.nodes : null;
   const { followMode, expandedLoopIds, onAccordionChange, toggleFollowMode } = useFollowMode(nodesForFollowMode, selectedProject);
+
+  const configEditor = useConfigEditor();
+  const { setOnConfigClick } = useConfigClickContext();
+
+  useEffect(() => {
+    setOnConfigClick(configEditor.open);
+    return () => { setOnConfigClick(undefined); };
+  }, [setOnConfigClick, configEditor.open]);
 
   const selected: ProjectSummary | undefined = useMemo(
     () => projects.find((p) => p.name === selectedProject),
@@ -213,6 +224,8 @@ export default function ProjectsPage() {
         docs={orderedDocs}
         onNavigate={navigateTo}
       />
+
+      <ConfigEditorPanel editor={configEditor} />
     </div>
   );
 }

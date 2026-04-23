@@ -1,33 +1,20 @@
 version: "1.0"
-
-# ─── System ────────────────────────────────────────────────────────
 system:
-  orch_root: ".claude"                   # Orchestration root folder (relative name or absolute path)
-
-# ─── Project Storage ───────────────────────────────────────────────
+  orch_root: .claude
 projects:
-
-  base_path: "C:\\dev\\orchestration-projects"    # Location of project files.   Relative paths from workspace root or absolute paths are valid.
-  naming: "SCREAMING_CASE"                        # SCREAMING_CASE | lowercase | numbered
-
-# ─── Default Template ──────────────────────────────────────────────
-default_template: "ask"           # default | <custom-name> | ask
-
-# ─── Pipeline Limits (Scope Guards) ───────────────────────────────
+  base_path: C:\dev\orchestration-projects
+  naming: SCREAMING_CASE
+default_template: ask
 limits:
-  max_phases: 10                         # Maximum phases per project
-  max_tasks_per_phase: 8                 # Maximum tasks per phase
-  max_retries_per_task: 5                # Auto-retries before escalation
-  max_consecutive_review_rejections: 3   # Reviewer rejects before human escalation
-
-# ─── Human Gate Defaults ───────────────────────────────────────────
+  max_phases: 10
+  max_tasks_per_phase: 8
+  max_retries_per_task: 5
+  max_consecutive_review_rejections: 3
 human_gates:
-  after_planning: true                   # Always gate after master plan (hard default)
-  execution_mode: "ask"                  # ask | phase | task | autonomous
-  after_final_review: true               # Always gate after final review (hard default)
-
-# ─── Source Control ────────────────────────────────────────────────────────────
+  after_planning: true
+  execution_mode: ask
+  after_final_review: true
 source_control:
-  auto_commit: "ask"          # always | ask | never
-  auto_pr: "ask"              # always | ask | never
-  provider: "github"          # reserved: github only in v1
+  auto_commit: ask
+  auto_pr: ask
+  provider: github

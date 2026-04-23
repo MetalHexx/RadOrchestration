@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useMemo } from "react";
+import { createContext, useContext, useState, useMemo, useCallback } from "react";
 
 // ─── Interface ───────────────────────────────────────────────────────────────
 
@@ -21,7 +21,17 @@ export const ConfigClickContext = createContext<ConfigClickContextValue>(default
 // ─── Provider ────────────────────────────────────────────────────────────────
 
 export function ConfigClickProvider({ children }: { children: React.ReactNode }) {
-  const [onConfigClick, setOnConfigClick] = useState<(() => void) | undefined>(undefined);
+  const [onConfigClick, setOnConfigClickState] = useState<(() => void) | undefined>(undefined);
+
+  // Wrap the setter so callers can pass a handler directly without running into
+  // useState's updater-function gotcha (a bare function argument would be
+  // interpreted as an updater and invoked instead of stored).
+  const setOnConfigClick = useCallback(
+    (handler: (() => void) | undefined) => {
+      setOnConfigClickState(() => handler);
+    },
+    []
+  );
 
   const value = useMemo<ConfigClickContextValue>(
     () => ({ onConfigClick, setOnConfigClick }),
