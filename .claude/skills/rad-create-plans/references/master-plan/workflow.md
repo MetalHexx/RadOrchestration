@@ -70,6 +70,22 @@ becomes task-local and action-oriented.
    (layer boundary, independently deliverable slice). Tasks within a phase are
    the smallest unit a single coder agent will execute end-to-end.
 
+   **Task sizing rubric** — If the orchestrator's spawn prompt includes a
+   `Task size preference`, apply the corresponding scope below. If no
+   preference was passed ("Planner Decides"), use your own judgment.
+
+   | Tier | Task scope guidance |
+   |---|---|
+   | Small | One file or one function. Fine-grained, isolated. Maximize task count. |
+   | Medium | 2–4 files, one coherent unit of work. Balanced scope and overhead. |
+   | Large | Cross-cutting change or full feature slice. Fewer tasks, higher complexity per task. |
+   | Extra Large | End-to-end feature per task. Minimal task count; requires a capable model. |
+   | Planner Decides | No constraint — use judgment based on natural seams in the requirements. |
+
+   The tier governs scope per task, not step count within a task. TDD
+   structure (4 RED-GREEN steps) is always required for `code` tasks
+   regardless of tier.
+
 4. Author a `## Introduction` section. Under that heading, write one or two
    short paragraphs (2–3 sentences each) covering what is being built and why,
    at a glance. No phase-by-phase restatement.

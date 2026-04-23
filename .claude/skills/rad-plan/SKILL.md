@@ -22,14 +22,26 @@ I have project goals I'd like to develop into a full scale plan.
   - If it doesn't, respond with an error message indicating the template was not found.
 - If no `project_template` is specified, use `default`.
 
-## Step 2: Starting Message
-- Produce a nicely formatted and mildly enthusiastic message confirming the project name and template choice.
+## Step 2: Choose Task Size
+- Use the `askQuestions` tool to ask the user how large they want each task to be. Present exactly these options:
+  - **Planner Decides** — no constraint; the planner agent sizes tasks using its own judgment (default)
+  - **Small** — single file or function; fine-grained tasks suited for targeted, isolated changes
+  - **Medium** — 2–4 files, one coherent unit of work; balanced scope and overhead
+  - **Large** — cross-cutting change or full feature slice; fewer tasks, higher complexity per task
+  - **Extra Large** — end-to-end feature per task; minimal process overhead, requires a capable model
+- Store the result as `task_size_preference`.
+
+## Step 3: Starting Message
+- Produce a nicely formatted and mildly enthusiastic message confirming the project name, template choice, and task size preference.
 - List planning steps by reading the template YAML: include only `kind: step` nodes that appear before the first `request_plan_approval` gate. Everything after that gate is execution, not planning.
 
-## Step 3: Read Project Template
+## Step 4: Read Project Template
 - Start the planning pipeline and call needed CLI parameters to start the planning process, passing the chosen template as an argument (e.g., `--template default`).
+- If `task_size_preference` is anything other than **Planner Decides**, append the following as a plain prose instruction in the planner agent's spawn prompt:
+  > "Task size preference: {task_size_preference}. Size all tasks according to that tier per the sizing rubric in the master-plan workflow."
+- If **Planner Decides** was selected, pass no additional sizing instruction.
 
-## Step 4: Audit the plan
+## Step 5: Audit the plan
 - Dispatch a fresh subagent with the `rad-plan-audit` skill (full-audit
   mode) to audit the Requirements doc and the Master Plan. Give the
   subagent both doc paths and instruct it to follow
@@ -37,7 +49,7 @@ I have project goals I'd like to develop into a full scale plan.
   returns a structured report with frontmatter `verdict: approved` or
   `verdict: issues_found`. The auditor does NOT edit either planning
   doc — it reports.
-- If `verdict: approved`: proceed to Step 5.
+- If `verdict: approved`: proceed to Step 6.
 - If `verdict: issues_found`:
     1. Dispatch the `planner` agent with the audit report path, the
        Requirements doc path, and the Master Plan path, instructing it
@@ -63,7 +75,7 @@ I have project goals I'd like to develop into a full scale plan.
   summary, and (when re-exploded) the backup directory path.
 - Single pass, no re-audit after corrections.
 
-## Step 5: Finalize the plan
+## Step 6: Finalize the plan
 - Use the `askQuestions` tool to ask the user how they want to proceed and execute the plan:
 - Give them 2 options "Execute Plan in current branch / worktree" or "Execute the plan in a new branch / worktree".
   - **Current branch**: Follow the `rad-execute` skill — approve and begin execution immediately.
