@@ -34,6 +34,10 @@ test('watcherCount reflects live FSWatcher fields, not a hardcoded constant (NFR
   const dir = await mkdtemp(path.join(os.tmpdir(), 'sse-b-'));
   const b = new SSEBroadcaster({ projectsDir: dir, debounceMs: 50, heartbeatMs: 60_000 });
   assert.strictEqual(b.watcherCount(), 2);
+  // Capture and close the real FSWatcher before we orphan the field
+  // — chokidar watchers keep the event loop alive until close() resolves.
+  const origFileWatcher = (b as unknown as { fileWatcher: { close: () => Promise<void> } }).fileWatcher;
+  await origFileWatcher.close();
   // Simulate one watcher being absent (failed init or disposed).
   (b as unknown as { fileWatcher: unknown }).fileWatcher = undefined;
   assert.strictEqual(b.watcherCount(), 1);
