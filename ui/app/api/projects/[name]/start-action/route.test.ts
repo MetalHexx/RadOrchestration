@@ -129,6 +129,10 @@ async function invokePOST(body: unknown, name: string) {
       assert.equal(json.success, false);
       assert.equal(typeof json.error, 'string');
       assert.ok(!/[A-Z]:\\|\/home\//.test(json.error), 'error must not echo absolute host path');
+      assert.ok(
+        !/LAUNCH_CLAUDE_PROJECT_FORCE_FAIL/.test(json.error),
+        'error must not echo env var name'
+      );
       console.log('✓ forced launcher failure → 500, structured error, no path leakage');
     }
 

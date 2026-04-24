@@ -91,7 +91,7 @@ try {
   if (forceFail) {
     process.stdout.write(JSON.stringify({
       success: false,
-      error: 'Forced failure (LAUNCH_CLAUDE_PROJECT_FORCE_FAIL=1).',
+      error: 'Forced failure for testing.',
     }) + '\n');
     process.exit(1);
   }
