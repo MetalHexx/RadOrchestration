@@ -86,6 +86,15 @@ function launchLinux() {
 try {
   const platform = process.platform;
   const dryRun = process.env.LAUNCH_CLAUDE_PROJECT_DRY_RUN === '1';
+  const forceFail = process.env.LAUNCH_CLAUDE_PROJECT_FORCE_FAIL === '1';
+
+  if (forceFail) {
+    process.stdout.write(JSON.stringify({
+      success: false,
+      error: 'Forced failure (LAUNCH_CLAUDE_PROJECT_FORCE_FAIL=1).',
+    }) + '\n');
+    process.exit(1);
+  }
 
   if (!dryRun) {
     if (platform === 'win32')       launchWindows();

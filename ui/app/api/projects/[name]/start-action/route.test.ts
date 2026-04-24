@@ -105,6 +105,33 @@ async function invokePOST(body: unknown, name: string) {
       console.log('✓ start-planning happy path → 200 success:true');
     }
 
+    // WORKSPACE_ROOT unset → 500 with concise error, no absolute path leakage
+    {
+      const saved = process.env.WORKSPACE_ROOT;
+      delete process.env.WORKSPACE_ROOT;
+      const res = await invokePOST({ action: 'start-brainstorming' }, 'DEMO-PROJECT');
+      process.env.WORKSPACE_ROOT = saved;
+      assert.equal(res.status, 500);
+      const json = await res.json();
+      assert.match(json.error, /workspace/i);
+      assert.ok(!/[A-Z]:\\|\/home\//.test(json.error), 'error must not echo absolute host path');
+      assert.ok(!/WORKSPACE_ROOT/.test(json.error), 'error must not echo env var name');
+      console.log('✓ unset WORKSPACE_ROOT → 500, concise error, no path/env leakage');
+    }
+
+    // Forced launcher failure → 500 with structured error, no path leakage
+    {
+      process.env.LAUNCH_CLAUDE_PROJECT_FORCE_FAIL = '1';
+      const res = await invokePOST({ action: 'start-brainstorming' }, 'DEMO-PROJECT');
+      delete process.env.LAUNCH_CLAUDE_PROJECT_FORCE_FAIL;
+      assert.equal(res.status, 500);
+      const json = await res.json();
+      assert.equal(json.success, false);
+      assert.equal(typeof json.error, 'string');
+      assert.ok(!/[A-Z]:\\|\/home\//.test(json.error), 'error must not echo absolute host path');
+      console.log('✓ forced launcher failure → 500, structured error, no path leakage');
+    }
+
     console.log('\nAll start-action route tests passed');
   } finally {
     await teardown();
