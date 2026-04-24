@@ -46,7 +46,7 @@ Before considering the document final, verify:
 - [ ] Problem statement is specific enough to direct investigation
 - [ ] Each goal has a rationale (not just "we want X")
 - [ ] Scope boundaries are explicit — in-scope and out-of-scope
-- [ ] Open questions are captured for downstream resolution
+- [ ] Open questions are asked before the brainstorming doc is finalized
 - [ ] Summary paragraph is self-contained and unambiguous
 - [ ] Related projects are linked (if applicable — see `project-memory.md`)
 - [ ] Series context is included (if applicable — see `project-series.md`)
