@@ -16,6 +16,7 @@
  *         or            { success: false, error }
  */
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- CJS node subprocess script; ui/package.json has no "type": "module"
 const { spawn } = require('child_process');
 
 const args = process.argv.slice(2);

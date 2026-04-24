@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import type { NextRequest } from 'next/server';
 
 // --- Fixtures ---------------------------------------------------------
 const VALID_YAML = `version: "4"
@@ -55,7 +56,7 @@ async function invokePOST(body: unknown, name: string) {
     body: JSON.stringify(body),
   });
   // Next route handlers accept a Request and a context object.
-  return POST(req as any, { params: { name } });
+  return POST(req as unknown as NextRequest, { params: { name } });
 }
 
 (async () => {
