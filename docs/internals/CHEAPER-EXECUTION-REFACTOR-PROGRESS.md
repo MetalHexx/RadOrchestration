@@ -94,18 +94,18 @@ Worktrees live outside the main checkout — e.g., `C:\dev\orchestration-worktre
 |------|--------|---------------|-------|--------------|-----|
 | 0 | `feat/iter-0-prereqs` | `C:\dev\orchestration\v3-worktrees\feat-iter-0-prereqs` | Merged | (see commit 08bf2ff lineage) | — |
 | 1 | `feat/iter-1-doc-formats` | `C:\dev\orchestration\v3-worktrees\feat-iter-1-doc-formats` | Merged | `08bf2ff` | #51 |
-| 2 | `feat/iter-2-rename-to-master-plan` | `C:\dev\orchestration\v3-worktrees\feat-iter-2-rename-to-master-plan` | Awaiting merge | — | [#53](https://github.com/MetalHexx/RadOrchestation/pull/53) |
-| 3 | `feat/iter-3-remove-upstream-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning` | Awaiting merge | — | [#54](https://github.com/MetalHexx/RadOrchestation/pull/54) |
-| 4 | `feat/iter-4-requirements-pipeline-node` | `C:\dev\orchestration\v3-worktrees\feat-iter-4-requirements-pipeline-node` | Awaiting merge | — | [#55](https://github.com/MetalHexx/RadOrchestation/pull/55) |
-| 5 | `feat/iter-5-explosion-script` | `C:\dev\orchestration\v3-worktrees\feat-iter-5-explosion-script` | Merged | `4500203` | [#56](https://github.com/MetalHexx/RadOrchestation/pull/56) |
-| 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Merged | `82333f1` | [#57](https://github.com/MetalHexx/RadOrchestation/pull/57) |
-| 7 | `feat/iter-7-remove-per-phase-task-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning` | Merged | `ff05ce2` | [#58](https://github.com/MetalHexx/RadOrchestation/pull/58) |
-| 8 | `feat/iter-8-phase-review-absorbs-phase-report` | `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report` | Merged | `d5d45f3` | [#59](https://github.com/MetalHexx/RadOrchestation/pull/59) |
-| 9 | `feat/iter-9-complete-default-yml` | `C:\dev\orchestration\v3-worktrees\feat-iter-9-complete-default-yml` | Merged | `4ee1ea1` | [#60](https://github.com/MetalHexx/RadOrchestation/pull/60) |
-| 10 | `feat/iter-10-task-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-10-task-corrective-cycles` | Merged | `3b85095` | [#61](https://github.com/MetalHexx/RadOrchestation/pull/61) |
-| 11 | `feat/iter-11-phase-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-11-phase-corrective-cycles` | Merged | `6140a9a` | [#62](https://github.com/MetalHexx/RadOrchestation/pull/62) |
-| 12 | `feat/iter-12-code-review-rework` | `C:\dev\orchestration\v3-worktrees\feat-iter-12-code-review-rework` | Merged | `1030620` | [#64](https://github.com/MetalHexx/RadOrchestation/pull/64) |
-| 13 | `feat/iter-13-executor-rework` | `C:\dev\orchestration\v3-worktrees\feat-iter-13-executor-rework` | Awaiting merge | — | [#65](https://github.com/MetalHexx/RadOrchestation/pull/65) |
+| 2 | `feat/iter-2-rename-to-master-plan` | `C:\dev\orchestration\v3-worktrees\feat-iter-2-rename-to-master-plan` | Awaiting merge | — | [#53](https://github.com/MetalHexx/RadOrchestration/pull/53) |
+| 3 | `feat/iter-3-remove-upstream-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-3-remove-upstream-planning` | Awaiting merge | — | [#54](https://github.com/MetalHexx/RadOrchestration/pull/54) |
+| 4 | `feat/iter-4-requirements-pipeline-node` | `C:\dev\orchestration\v3-worktrees\feat-iter-4-requirements-pipeline-node` | Awaiting merge | — | [#55](https://github.com/MetalHexx/RadOrchestration/pull/55) |
+| 5 | `feat/iter-5-explosion-script` | `C:\dev\orchestration\v3-worktrees\feat-iter-5-explosion-script` | Merged | `4500203` | [#56](https://github.com/MetalHexx/RadOrchestration/pull/56) |
+| 6 | `feat/iter-6-prompt-harness` | `C:\dev\orchestration\v3-worktrees\feat-iter-6-prompt-harness` | Merged | `82333f1` | [#57](https://github.com/MetalHexx/RadOrchestration/pull/57) |
+| 7 | `feat/iter-7-remove-per-phase-task-planning` | `C:\dev\orchestration\v3-worktrees\feat-iter-7-remove-per-phase-task-planning` | Merged | `ff05ce2` | [#58](https://github.com/MetalHexx/RadOrchestration/pull/58) |
+| 8 | `feat/iter-8-phase-review-absorbs-phase-report` | `C:\dev\orchestration\v3-worktrees\feat-iter-8-phase-review-absorbs-phase-report` | Merged | `d5d45f3` | [#59](https://github.com/MetalHexx/RadOrchestration/pull/59) |
+| 9 | `feat/iter-9-complete-default-yml` | `C:\dev\orchestration\v3-worktrees\feat-iter-9-complete-default-yml` | Merged | `4ee1ea1` | [#60](https://github.com/MetalHexx/RadOrchestration/pull/60) |
+| 10 | `feat/iter-10-task-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-10-task-corrective-cycles` | Merged | `3b85095` | [#61](https://github.com/MetalHexx/RadOrchestration/pull/61) |
+| 11 | `feat/iter-11-phase-corrective-cycles` | `C:\dev\orchestration\v3-worktrees\feat-iter-11-phase-corrective-cycles` | Merged | `6140a9a` | [#62](https://github.com/MetalHexx/RadOrchestration/pull/62) |
+| 12 | `feat/iter-12-code-review-rework` | `C:\dev\orchestration\v3-worktrees\feat-iter-12-code-review-rework` | Merged | `1030620` | [#64](https://github.com/MetalHexx/RadOrchestration/pull/64) |
+| 13 | `feat/iter-13-executor-rework` | `C:\dev\orchestration\v3-worktrees\feat-iter-13-executor-rework` | Awaiting merge | — | [#65](https://github.com/MetalHexx/RadOrchestration/pull/65) |
 | 14 | — | — | Not created | — | — |
 | 15 | — | — | Not created | — | — |
 | 16 | — | — | Not created | — | — |
@@ -174,7 +174,7 @@ Append new entries at the bottom. Format:
 - Ripples: `corrective-playbook.md` gains `### Code-task RED-GREEN shape` subsection; `master-plan/workflow.md` gains one sub-bullet on test-quality anti-patterns; `action-event-reference.md` row 3 tightened to `handoff_doc`-only enrichment cell; `rad-execute/SKILL.md` audit clean (zero edits).
 - Tests: E1/E2 integration assertions — execute_task enrichment carries `handoff_doc` only; original and corrective contexts have identical key shape. E3 new `execute-coding-task-contract.test.ts` grep-locks SKILL.md prose anchors. E4 new `prompt-tests/execute-coding-task-e2e/` harness with fixture `tdd-slip` (pre-seeded at execute_task ready, back-to-back original + C1 runs; inaugural baseline captured as a placeholder — see Deviations).
 - Scripts tree: 1298 → 1317 passed (+19 from new tests). UI + installer unchanged. Baseline diff clean.
-- Commits: `ef5f5d9` (main) + `f9cd00e` (pre-PR corrective from dual-reviewer pass). PR: [#65](https://github.com/MetalHexx/RadOrchestation/pull/65), plus 6 Copilot-cycle fixups (`2a1f982`, `83e4076`, `ba18726`, `13297bb`, `9f77dae`, `ef08545`, `382e0ff`). Cycle terminated at R7 per two-consecutive-nits-only criterion.
+- Commits: `ef5f5d9` (main) + `f9cd00e` (pre-PR corrective from dual-reviewer pass). PR: [#65](https://github.com/MetalHexx/RadOrchestration/pull/65), plus 6 Copilot-cycle fixups (`2a1f982`, `83e4076`, `ba18726`, `13297bb`, `9f77dae`, `ef08545`, `382e0ff`). Cycle terminated at R7 per two-consecutive-nits-only criterion.
 
 ### 2026-04-21 — Explosion-scaffold-unify — Walker stall fix + doc_path promoted to iteration
 
@@ -332,7 +332,7 @@ Format:
 - Deleted legacy tactical-planner-authored `references/master-plan/`; git-mv'd Iter-1 `references/execution-plan/` into the freed slot; renamed template to `MASTER-PLAN.md`; flipped `type: execution_plan` → `type: master_plan`.
 - `plan_approved` validator extended with `total_tasks` positive-integer rule; 12 test fixture files updated; 4 new validator test cases added (net: 1228 → 1232 pass, 0 fail).
 - `action-event-reference.md` row 5 retargeted: `tactical-planner` → `planner`; `spawn_master_plan` wired. Dead `spawn_master_plan` row stripped from `tactical-planner.md`. Vocabulary purge across 6 internal skill docs.
-- Commits: `69599ec` (main), `04dffa5` (corrective). PR: [#53](https://github.com/MetalHexx/RadOrchestation/pull/53).
+- Commits: `69599ec` (main), `04dffa5` (corrective). PR: [#53](https://github.com/MetalHexx/RadOrchestration/pull/53).
 
 ### 2026-04-18 — Iteration 4 — Requirements pipeline node + partial `default.yml`
 
@@ -346,7 +346,7 @@ Format:
 - Reference docs: `action-event-reference.md` gains row 1 for `spawn_requirements`; downstream action rows renumbered 2→18. Event table gains `requirements_started` / `requirements_completed` rows documenting the `graph.status` relocation. `pipeline-guide.md` needed no change (generic requirements example was already in place).
 - Tests: +15 new vitest cases across `constants.test.ts`, `static-compliance.test.ts`, `contract/05-frontmatter-validation.test.ts`, `contract/06-state-mutations.test.ts`, `mutations.test.ts`, `mutations-negative-path.test.ts`, `context-enrichment.test.ts`, `template-validator.test.ts`. +7 UI node-test cases across `dag-timeline-helpers.test.ts` and `status-derivation.test.ts` (status/ordering + status-transition + legacy-project regression). Suite totals: orchestration 46 files / 1170 pass / 1 todo (baseline 1154); UI 152 pass / 3 fail (baseline unchanged — 3 pre-existing failures); installer 399 pass / 0 fail.
 - Corrective commit: `plan_rejected` mutation guarded against missing `phase_loop` (see Deviations — surfaced by code-quality review pass).
-- Commits: `8c95b96` (main), `4c07f3e` (corrective). PR: [#55](https://github.com/MetalHexx/RadOrchestation/pull/55).
+- Commits: `8c95b96` (main), `4c07f3e` (corrective). PR: [#55](https://github.com/MetalHexx/RadOrchestration/pull/55).
 
 ### 2026-04-19 — Iteration 5 — Explosion script + state pre-seeding + parse-failure recovery loop
 
@@ -358,7 +358,7 @@ Format:
 - **Scope extension within this iteration**: after the initial implementation, UI smoke surfaced two issues. (1) Explode Master Plan node showed a spurious "Doc" link pointing at the master plan path — the `explosion_completed` mutation was storing `doc_path = context.doc_path` per the original plan. (2) Pre-seeded iterations (with `nodes: {}` empty) didn't surface their doc_path in the UI because the UI renders Doc links on child step nodes, not on `iteration.doc_path`. Pivoted: explosion script now seeds `iteration.nodes.phase_planning` (or `task_handoff` for tasks) as a completed step node carrying doc_path — matches legacy completed projects; UI renders Doc links automatically via existing `DAGNodeRow`. `iteration.doc_path` removed from schema + types entirely. Explode Master Plan mutation no longer assigns `doc_path`. See Deviation entry dated 2026-04-19.
 - Tests: orchestration 47 files / 1198 pass / 1 todo (baseline 1170 — net +28 new tests); UI 152 pass / 3 pre-existing failures (unchanged); installer 399 pass / 0 fail. New coverage: ≥6 parser cases + 2 re-run integration (success + malformed-aborts-no-side-effects) + 3 recovery-loop integration (single failure / success-clears / cap-exceeded) + 3 explosion mutation contract tests + schema/compat tests.
 - End-to-end UI smoke: ran the explosion CLI against a fresh `ITER5-E2E-SMOKE` project (2 phases × 2 tasks). All 8 docs (requirements + master plan + 2 phases + 4 tasks) render and open from the DAG timeline. Explode Master Plan node renders as Completed with no Doc link. Legacy `AGENT-CLEANUP` unchanged — zero regressions.
-- Commits: `f74555a` (initial Iter 5), `a5aa1f1` (review-corrective on initial), `3c41c34` (scope extension: child-node seeding + drop explode doc_path), `bd41ebf` (scope-extension review-corrective: iter-07 companion + test fixture cleanup), `1d90e42` (iter-11 companion alignment), `cfcd2a5` (relative doc_path paths), `d9c4d0c` (rendering cleanup + UI null check + frontmatter array rendering), `7a644ef` (forwardRef on 5 badge components), `4207cd3` (progress tracker + final corrective). PR: [#56](https://github.com/MetalHexx/RadOrchestation/pull/56).
+- Commits: `f74555a` (initial Iter 5), `a5aa1f1` (review-corrective on initial), `3c41c34` (scope extension: child-node seeding + drop explode doc_path), `bd41ebf` (scope-extension review-corrective: iter-07 companion + test fixture cleanup), `1d90e42` (iter-11 companion alignment), `cfcd2a5` (relative doc_path paths), `d9c4d0c` (rendering cleanup + UI null check + frontmatter array rendering), `7a644ef` (forwardRef on 5 badge components), `4207cd3` (progress tracker + final corrective). PR: [#56](https://github.com/MetalHexx/RadOrchestration/pull/56).
 - See "Open Items Surfaced During Execution" for three follow-ups: explosion script writes absolute paths instead of relative; UI `node.doc_path !== null` check lets `undefined` through; frontmatter viewer renders array values as `[object Object]`.
 
 ### 2026-04-19 — Iteration 6 — Prompt regression harness scaffold + inaugural rainbow-hello baseline
@@ -371,7 +371,7 @@ Format:
 - Inaugural baseline run executed against the `rainbow-hello` fixture in the same iteration. 8 requirements, 3 phases, 6 tasks emitted; explosion script succeeded first try (`parse_retry_count = 0`); all 9 pre-seeded iteration doc_paths (`phase_planning` / `task_handoff`) set correctly. Both linters return zero errors on the run docs and exactly 6 errors each on self-test. Commits only `lint-report.md` + `run-notes.md`; everything else under the baseline folder stays untracked.
 - Tests: orchestration 47 files / 1220 pass / 1 todo (baseline unchanged — harness sits outside `.claude/` / `ui/` / `installer/` / `scripts/`, no test-tree edits); UI 157 tests / 154 pass / 3 pre-existing failures (baseline unchanged); installer 399 pass / 0 fail. Zero test count delta.
 - UI smoke: N/A — no UI surface touched.
-- Commits: `f534247` (scaffold), `b890c18` (review-corrective — dead code, tightened self-test thresholds, project-name stability, narrowed `.gitkeep` exception), `a9cb44c` (inaugural baseline artifacts), `211c34a` (progress tracker). PR: [#57](https://github.com/MetalHexx/RadOrchestation/pull/57).
+- Commits: `f534247` (scaffold), `b890c18` (review-corrective — dead code, tightened self-test thresholds, project-name stability, narrowed `.gitkeep` exception), `a9cb44c` (inaugural baseline artifacts), `211c34a` (progress tracker). PR: [#57](https://github.com/MetalHexx/RadOrchestration/pull/57).
 
 ### 2026-04-21 — Iteration 12 — Code-review rework (task/phase/final)
 
@@ -406,7 +406,7 @@ Format:
 - Tests: orchestration 46 files / 1241 pass / 1 skip / 1 todo (baseline 1167/7/1 — net +74 pass / −6 skip via un-skips and new phase-scope coverage across mutations.test.ts, mutations-phase-corrective.test.ts (rewrite), dag-walker.test.ts, corrective-integration.test.ts, contract/05 + 06 + 09, mutations-negative-path.test.ts, event-routing-integration.test.ts, pre-reads.test.ts, context-enrichment.test.ts, verdict-validation.test.ts, phase-review-doc-shape.test.ts — the docs-assertion test for the now-removed `-C{N}` save-path row was deleted with the contract it asserted). UI 156 pass / 3 pre-existing fail / 159 total (unchanged — 11 new phase-scope rendering tests in document-ordering, dag-iteration-panel, dag-timeline-legacy-render all green). Installer 399 pass (unchanged).
 - UI visual verification via Claude-in-Chrome MCP against the fully-hydrated fixture: DAG timeline expands fully (62 rows), Phase 1 renders T1+CT1, T2, T3+CT1+CT2 under task_loop AND phase-scope CT1+CT2 as siblings below; Phase 2 renders clean. Phase review doc drawer shows its `Orchestrator Addendum` with Finding Dispositions + Effective Outcome + Corrective Handoff + Attempt banner. Phase-scope CT1 code-review drawer shows its own addendum (exercises ancestor-derivation path). Legacy BROKEN-COLORS fixture renders identically to pre-iter-11. Console clean except a pre-existing Dashlane browser-extension hydration warning. Evidence noted in ephemeral `ui-verification-2026-04-21.md` (not committed).
 - Reviews: 1 plan-conformance pass (CLEAN) + 1 code-quality pass (MINOR_ISSUES, no blockers). Applied one defensive fix (M2: `corrective_index` now uses `activeEntry.index` not `correctives.length` — semantic correctness even though values are equal today). Declined M1 (resolveActiveTaskIndex fallback is not a bug — phase-scope-first early returns protect all reachable paths), M3 (plan explicitly mandates the `'code_review' in last.nodes` discriminator), M4 (plan called for both test files).
-- Commits: `a4b4305` (main), `1f0375d` (M2 defensive fix), `a4e22ef` (inaugural harness baseline), `5f54265` (tracker). PR: [#62](https://github.com/MetalHexx/RadOrchestation/pull/62).
+- Commits: `a4b4305` (main), `1f0375d` (M2 defensive fix), `a4e22ef` (inaugural harness baseline), `5f54265` (tracker). PR: [#62](https://github.com/MetalHexx/RadOrchestration/pull/62).
 
 ### 2026-04-20 — Iteration 10 — Task-level corrective cycles (orchestrator mediation)
 
@@ -420,7 +420,7 @@ Format:
 - Iter 7 carry-forward resolved: multi-round corrective-context persistence extended in place in `corrective-integration.test.ts` "multiple retries then approval" test — `enrichActionContext('execute_task', ...)` assertions after each corrective birth verify `handoff_doc` resolves to the active C{N} handoff; `spawn_code_reviewer` enrichment returns the correct `corrective_index` per round. No new test file.
 - Tests: orchestration 46 files / 1165 pass / 7 skip / 1 todo (baseline 46/1126/7/1 — net +39 pass across mutations, corrective-integration, context-enrichment, pre-reads, verdict-validation, and contract suites 05/06/09 + event-routing-integration Iter-10 wiring tests). UI 156 pass / 3 pre-existing fail / 159 total (unchanged). Installer 399 pass / 0 fail (unchanged).
 - Reviews: 1 plan-conformance pass (`changes_requested` — flagged 2 items) + 1 code-quality pass (`changes_requested` — flagged 1 critical). Corrections absorbed in `cd645e8`: (1) `_runner.md` Step 1 expected return corrected from `action: spawn_code_reviewer` to `action: null` (walker does NOT re-emit actions for in-progress nodes — the smoke confirmed this; prior wording would have caused a future operator to incorrectly halt a correct run), (2) 4 Iter-10 wiring tests added to `event-routing-integration.test.ts` covering approved / mediated-changes_requested / mediated filter-down / validator-reject paths.
-- Commits: `06f05de` (main), `cd645e8` (review correctives), `c2e24c8` (tracker). PR: [#61](https://github.com/MetalHexx/RadOrchestation/pull/61).
+- Commits: `06f05de` (main), `cd645e8` (review correctives), `c2e24c8` (tracker). PR: [#61](https://github.com/MetalHexx/RadOrchestration/pull/61).
 
 ### 2026-04-20 — Iteration 9 — Complete `default.yml`
 
@@ -431,7 +431,7 @@ Format:
 - Tests: orchestration 46 files / 1126 pass / 7 skip / 1 todo (baseline 47/1122/7/1 — net +4 pass after `quick`-test removals are offset by default.yml shape + smoke + resolution cases). UI 156 / 3 pre-existing fail / 159 total (unchanged — the three failing tests all reference full.yml's pre-Iter-8 shape, carry-forward). Installer 399 pass (unchanged — no template references).
 - Retained deliberate (per plan): `full.yml` stays on disk as a deprecated escape hatch; v4 migrator (`migrate-to-v5.ts` + its test files) left hardcoded to `'full'` since v4 states legitimately came from full.yml (Iter 16 scope); `ui/lib/template-api-helpers.test.ts` generic `isValidTemplateId('quick')` string-validation left as-is.
 - Reviews: 1 conformance pass + 1 quality pass (both clean, no must-fix). Copilot cycle R1→R4 on PR #60 exited on R4 clean — R1 surfaced 4 comments (2 portability/comment fixes applied; 2 declined as architectural pushback against the Iter 5/7 explosion-seeding design and against adding abstraction for a single-consumer helper), R2+R3 each a single nit fixed in one commit.
-- Commits: `ba2053a` (main) + tracker + 3 small Copilot-cycle fixes. PR: [#60](https://github.com/MetalHexx/RadOrchestation/pull/60).
+- Commits: `ba2053a` (main) + tracker + 3 small Copilot-cycle fixes. PR: [#60](https://github.com/MetalHexx/RadOrchestration/pull/60).
 
 ### 2026-04-20 — Iteration 8 — phase_review absorbs phase_report
 
@@ -442,7 +442,7 @@ Format:
 - Tests: orchestration 47 files / 1123 pass / 7 skip / 1 todo (baseline 46/1119/7/1 — net +1 file, +4 pass; 25-test shape suite `phase-review-doc-shape.test.ts` added, offsetting ~20 removed dead-action/event cases). UI 156 pass / 3 pre-existing fail / 159 total (baseline unchanged; two new dag-timeline-legacy-render tests cover legacy `phase_report` body-node rendering + new-shape render). Installer 399 pass / 0 fail (unchanged).
 - Reviews: 1 conformance pass (green) + 1 independent quality pass (3 findings + 2 nits applied) + 5 Copilot rounds. Exit on R5 clean + adversarial-R5 nits-only. Pre-emptive adversarial reviewer between Copilot rounds caught 4 findings before Copilot did (R1 severity vocab match, R2 orchestrator.md narrative, R3 tracker placeholder, R4 MPA ripple). Declined items: two `~1` parentless-commit edge-case comments (R1 C2/C3) as pre-existing workflow text from base branch `ff05ce2`, one severity-taxonomy inline-note suggestion (R3 C1) as redundant hygiene.
 - Carry-forward to Iter 17 (public docs refresh): `docs/agents.md`, `docs/templates.md`, `docs/skills.md`, `docs/internals/scripts.md` all retain stale Phase Report references — explicitly deferred per plan.
-- Commits: `9255084` (main), `b3e4428` (review-corrective), `c053b68` (tracker), `c49a7c9` (PR link fill-in), `da83279` (pre-emptive Copilot-style fixes), `20ce0a1` (Copilot Round 2 corrective), `aa2cc82` (user-authored: drop Master Plan Adjustment Recommendations section), `ed505d2` (Copilot Round 3 corrective — CRLF regex + template-section-delete ripple), `85c09d5` (tracker SHA fill-in), `79bb1ba` (MPA ripple in action-event-reference + tracker bullet), plus this tracker-finalization commit. PR: [#59](https://github.com/MetalHexx/RadOrchestation/pull/59).
+- Commits: `9255084` (main), `b3e4428` (review-corrective), `c053b68` (tracker), `c49a7c9` (PR link fill-in), `da83279` (pre-emptive Copilot-style fixes), `20ce0a1` (Copilot Round 2 corrective), `aa2cc82` (user-authored: drop Master Plan Adjustment Recommendations section), `ed505d2` (Copilot Round 3 corrective — CRLF regex + template-section-delete ripple), `85c09d5` (tracker SHA fill-in), `79bb1ba` (MPA ripple in action-event-reference + tracker bullet), plus this tracker-finalization commit. PR: [#59](https://github.com/MetalHexx/RadOrchestration/pull/59).
 
 ### 2026-04-20 — Iteration 7 — Remove per-phase/per-task planning (tactical-planner + phase-plan/task-handoff + UI discoverProjects parallelization)
 
@@ -455,7 +455,7 @@ Format:
 - Tests: orchestration 46 files / 1120 pass / 6 skip / 1 todo (baseline 1220/0/1 — net –100 pass / +6 skip / –94 total; over-trim accepted by all 4 review rounds as legitimate removal of dead action/event references, no retained-behavior coverage lost). UI 156 pass / 3 pre-existing fail / +2 tests (baseline 154/3/157). Installer 399 pass (unchanged).
 - UI smoke (run from worktree against user's 107-project workspace): project list renders in **~37ms** (baseline 10–15s hang — >250× improvement); legacy `AGENT-CLEANUP` project DAG renders with 5 `phase_planning` + `task_handoff` body nodes intact; only pre-existing skeleton hydration warning in console (not Iter-7 related).
 - Review cycles: 3 initial reviewers (conformance / code-quality / Copilot-style) + 3 follow-up rounds (Copilot-style nits + conformance recheck + final sanity) with corrective coders between each round. Net: 4 review rounds, ~11 small fixes absorbed inline (dead imports, stale action counts, comment/path consistency, ordering robustness).
-- Merge commit: `ff05ce2`. PR: [#58](https://github.com/MetalHexx/RadOrchestation/pull/58).
+- Merge commit: `ff05ce2`. PR: [#58](https://github.com/MetalHexx/RadOrchestration/pull/58).
 
 ### 2026-04-19 — Iter 15 inserted (Repository deep clean), public docs refresh shifts to Iter 16
 
@@ -472,7 +472,7 @@ Format:
 - Stripped 4 `SPAWN_*` actions and 8 `*_STARTED`/`*_COMPLETED` events from `constants.ts`; trimmed `planningStartedSteps`/`planningCompletedSteps` in `mutations.ts` to `master_plan` only; `PLANNING_SPAWN_STEPS` in `context-enrichment.ts` reduced to `{spawn_master_plan: 'master_plan'}`.
 - Vocabulary purge across 6 internal skill docs. Deleted 77 legacy planning-chain tests; added 2 new `describe('deprecated templates')` cases in `template-validator.test.ts`. Updated 6 `ui/lib/template-serializer.test.ts` tests to reference surviving template nodes.
 - Tests: orchestration 46 files / 1155 pass / 1 todo (baseline 1232 — net −77 legacy + 2 new); UI 152 pass / 3 fail (baseline unchanged); installer 399 pass / 0 fail.
-- PR: [#54](https://github.com/MetalHexx/RadOrchestation/pull/54).
+- PR: [#54](https://github.com/MetalHexx/RadOrchestration/pull/54).
 
 ### 2026-04-18 — Iteration 2 — Three planning-time amendments to the companion doc
 

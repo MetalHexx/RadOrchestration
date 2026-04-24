@@ -106,7 +106,7 @@ describe('renderPostInstallSummary', () => {
   it('contains getting started guide link', () => {
     const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
     assert.ok(
-      output.includes('https://github.com/MetalHexx/RadOrchestation/blob/main/docs/guides.md'),
+      output.includes('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/guides.md'),
       'output should contain getting started guide link'
     );
   });
@@ -195,7 +195,7 @@ describe('renderPartialSuccessSummary', () => {
       renderPartialSuccessSummary(configWithUi, copyResults, configPath, errorMsg)
     );
     assert.ok(
-      output.includes('https://github.com/MetalHexx/RadOrchestation/blob/main/docs/guides.md'),
+      output.includes('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/guides.md'),
       'output should contain getting started guide link'
     );
   });
