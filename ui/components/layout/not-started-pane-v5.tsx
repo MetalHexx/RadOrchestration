@@ -81,6 +81,9 @@ export function NotStartedPaneV5({
                   variant="outline"
                   size="sm"
                   onClick={() => {
+                    // FR-3 / DD-4: the v5 page wires onViewBrainstorming to the
+                    // existing useDocumentDrawer().openDocument so the current
+                    // DocumentDrawer slide-out opens with the exact path.
                     if (brainstormingDoc) onViewBrainstorming(brainstormingDoc);
                   }}
                 >
