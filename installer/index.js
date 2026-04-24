@@ -3,6 +3,7 @@
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
+import { spawn } from 'node:child_process';
 import { confirm } from '@inquirer/prompts';
 import ora from 'ora';
 import { createRequire } from 'node:module';
@@ -35,6 +36,54 @@ import { copyCategory } from './lib/file-copier.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = __dirname;
+
+/**
+ * Runs `npm install --omit=dev` in the scripts directory with a spinner.
+ * Non-fatal — logs error with manual instructions on failure.
+ * @param {string} scriptsDir - Absolute path to the scripts directory
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export function installScriptsDeps(scriptsDir) {
+  return new Promise((resolve) => {
+    const label = 'Installing pipeline engine dependencies\u2026';
+    const spinner = ora({ text: label, color: THEME.spinner }).start();
+    let seconds = 0;
+    const interval = setInterval(() => {
+      seconds += 1;
+      spinner.text = `${label} (${seconds}s)`;
+    }, 1000);
+
+    const child = spawn('npm install --omit=dev', { cwd: scriptsDir, stdio: 'pipe', shell: true });
+    let stderr = '';
+
+    child.stdout.on('data', () => {});
+
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    child.on('close', (code) => {
+      clearInterval(interval);
+      if (code === 0) {
+        spinner.succeed('Pipeline engine dependencies installed');
+        resolve({ success: true });
+      } else {
+        spinner.fail('Pipeline engine dependencies: npm install failed');
+        console.log(`  Scripts directory: ${scriptsDir}`);
+        console.log(`  Run manually: cd ${scriptsDir} && npm install --omit=dev`);
+        resolve({ success: false, error: stderr });
+      }
+    });
+
+    child.on('error', (err) => {
+      clearInterval(interval);
+      spinner.fail('Pipeline engine dependencies: npm install failed');
+      console.log(`  Scripts directory: ${scriptsDir}`);
+      console.log(`  Run manually: cd ${scriptsDir} && npm install --omit=dev`);
+      resolve({ success: false, error: err.message });
+    });
+  });
+}
 
 /**
  * Main installer flow. Exported for testability.
@@ -154,6 +203,10 @@ export async function main() {
       : path.join(config.workspaceDir, config.projectsBasePath);
     fs.mkdirSync(resolvedProjectsPath, { recursive: true });
     projectsSpinner.succeed('Created projects directory');
+
+    // Install pipeline engine dependencies (non-fatal)
+    const scriptsDir = path.join(targetBase, 'skills', 'orchestration', 'scripts');
+    await installScriptsDeps(scriptsDir);
 
     const configPath = path.join(resolvedRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
 

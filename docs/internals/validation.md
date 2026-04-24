@@ -2,24 +2,24 @@
 
 The orchestration system includes a zero-dependency Node.js CLI tool that validates the entire ecosystem — agents, skills, instructions, configuration, cross-references, and file structure. Run it any time you add, rename, or change orchestration components to catch misconfigurations before they break the pipeline.
 
-> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](../configuration.md), adjust paths accordingly.
+> **Note:** Commands below use `.claude` as the default orchestration root. If you've [configured a custom root](../configuration.md), adjust paths accordingly.
 
 ## Quick Start
 
 ```bash
-# Default .github root shown. Adjust if you configured a custom orch_root.
+# Default .claude root shown. Adjust if you configured a custom orch_root.
 
 # Run all checks
-node .github/skills/orchestration/scripts/validate/validate-orchestration.js
+node .claude/skills/orchestration/scripts/validate/validate-orchestration.js
 
 # Verbose output (show passing checks too)
-node .github/skills/orchestration/scripts/validate/validate-orchestration.js --verbose
+node .claude/skills/orchestration/scripts/validate/validate-orchestration.js --verbose
 
 # Check a single category
-node .github/skills/orchestration/scripts/validate/validate-orchestration.js --category agents
+node .claude/skills/orchestration/scripts/validate/validate-orchestration.js --category agents
 
 # CI-friendly (no color, exits 1 on failure)
-node .github/skills/orchestration/scripts/validate/validate-orchestration.js --no-color
+node .claude/skills/orchestration/scripts/validate/validate-orchestration.js --no-color
 ```
 
 **Exit codes:** `0` = all checks passed (warnings allowed), `1` = one or more failures.
@@ -44,7 +44,7 @@ The validator runs seven categories of checks in sequence. Each check produces r
 
 ### 1. Structure
 
-Verifies the required `.github/` layout _(or your [configured root](../configuration.md))_:
+Verifies the required `.claude/` layout _(or your [configured root](../configuration.md))_:
 
 - Required directories exist: `agents/`, `skills/`, `instructions/`
 - Required files exist: `orchestration.yml`, `copilot-instructions.md`
@@ -109,8 +109,8 @@ Checks referential integrity across all components:
 Default output groups results by category with color-coded status:
 
 ```
-✅ Structure: .github/agents/ exists
-✅ Structure: .github/skills/ exists
+✅ Structure: .claude/agents/ exists
+✅ Structure: .claude/skills/ exists
 ⚠️  Skills: skill 'create-agent' has no references/ directory
 ❌ Cross-refs: agent 'orchestrator' references non-existent subagent 'planner'
 
@@ -124,8 +124,8 @@ Use `--verbose` to see all passing checks. Use `--quiet` for just the summary li
 The validator is designed for CI pipelines:
 
 ```bash
-# Default .github root shown. Adjust if you configured a custom orch_root.
-node .github/skills/orchestration/scripts/validate/validate-orchestration.js --no-color
+# Default .claude root shown. Adjust if you configured a custom orch_root.
+node .claude/skills/orchestration/scripts/validate/validate-orchestration.js --no-color
 ```
 
 - Exit code `0` means all checks passed
@@ -140,7 +140,7 @@ Run validation after:
 - Changing `orchestration.yml`
 - Modifying instruction files
 - Adding prompt files
-- Any structural changes to `.github/` _(or your [configured root](../configuration.md))_
+- Any structural changes to `.claude/` _(or your [configured root](../configuration.md))_
 
 ## Next Steps
 

@@ -26,6 +26,7 @@ interface FinalReviewSectionInputs {
   finalReview: {
     status: FinalReviewStatus;
     report_doc: string | null;
+    doc_path?: string | null;
     human_approved: boolean;
   };
   projectName: string;
@@ -70,6 +71,8 @@ function simulatePlanningSection(inputs: PlanningSectionInputs): {
 }
 
 // ---------- FinalReviewSection simulation ----------
+// Behavioral simulation, not a component-render test. If FinalReviewSection
+// changes its `documentName` derivation, this simulation must be updated in lockstep.
 
 function simulateFinalReviewSection(inputs: FinalReviewSectionInputs): {
   rendersNull: boolean;
@@ -98,13 +101,19 @@ function simulateFinalReviewSection(inputs: FinalReviewSectionInputs): {
   }
 
   if (pipelineTier === "review") {
+    // Iter-12: documentName is derived from finalReview.doc_path (basename)
+    // when present, falling back to the legacy filename shape otherwise. This
+    // mirrors the component's path-move support for reports/{NAME}-FINAL-REVIEW.md.
+    const derivedName = finalReview.doc_path
+      ? finalReview.doc_path.split("/").pop() ?? `${projectName}-FINAL-REVIEW.md`
+      : `${projectName}-FINAL-REVIEW.md`;
     return {
       rendersNull: false,
       approveButton: {
         rendered: true,
         gateEvent: "final_approved",
         projectName,
-        documentName: `${projectName}-FINAL-REVIEW.md`,
+        documentName: derivedName,
         label: "Approve Final Review",
         className: "mt-1",
       },
@@ -211,6 +220,25 @@ test("FinalReviewSection renders ApproveGateButton with gateEvent='final_approve
   }
 });
 
+test("FinalReviewSection derives documentName from finalReview.doc_path (basename) when provided [Iter-12]", () => {
+  const result = simulateFinalReviewSection({
+    finalReview: {
+      status: "complete",
+      report_doc: "report.md",
+      doc_path: "reports/MY-PROJECT-FINAL-REVIEW.md",
+      human_approved: false,
+    },
+    projectName: "MY-PROJECT",
+    pipelineTier: "review",
+  });
+  assert.strictEqual(result.approveButton.rendered, true);
+  if (result.approveButton.rendered) {
+    // Basename stripped from reports/ prefix — the display name in the
+    // confirm dialog stays user-readable without embedding the subdirectory.
+    assert.strictEqual(result.approveButton.documentName, "MY-PROJECT-FINAL-REVIEW.md");
+  }
+});
+
 test("FinalReviewSection renders 'Pending Approval' with Circle icon when pipelineTier !== 'review' and !human_approved", () => {
   const result = simulateFinalReviewSection({
     finalReview: { status: "complete", report_doc: "report.md", human_approved: false },
@@ -249,6 +277,25 @@ test("FinalReviewSection returns null when finalReview.status === 'not_started'"
 
 console.log("\nMainDashboard prop threading tests:");
 
+interface MainDashboardMaxRetriesInputs {
+  projectName: string;
+  pipelineTier: PipelineTier;
+  maxRetries?: number;
+}
+
+function simulateMainDashboardMaxRetries(inputs: MainDashboardMaxRetriesInputs) {
+  return {
+    planningSectionProps: {
+      projectName: inputs.projectName,
+    },
+    finalReviewSectionProps: {
+      projectName: inputs.projectName,
+      pipelineTier: inputs.pipelineTier,
+    },
+    resolvedMaxRetries: inputs.maxRetries ?? 3,
+  };
+}
+
 test("MainDashboard passes projectName to PlanningSection", () => {
   const result = simulateMainDashboardPropThreading({
     projectName: "UI-HUMAN-GATE-CONTROLS",
@@ -264,6 +311,24 @@ test("MainDashboard passes projectName and pipelineTier to FinalReviewSection", 
   });
   assert.strictEqual(result.finalReviewSectionProps.projectName, "UI-HUMAN-GATE-CONTROLS");
   assert.strictEqual(result.finalReviewSectionProps.pipelineTier, "review");
+});
+
+test("MainDashboard resolves maxRetries from config when provided (e.g. 5 from state.config.limits.max_retries_per_task)", () => {
+  const result = simulateMainDashboardMaxRetries({
+    projectName: "DAG-CONTRACT-REPAIRS-2",
+    pipelineTier: "execution",
+    maxRetries: 5,
+  });
+  assert.strictEqual(result.resolvedMaxRetries, 5);
+});
+
+test("MainDashboard falls back to default maxRetries=3 when config is absent", () => {
+  const result = simulateMainDashboardMaxRetries({
+    projectName: "DAG-CONTRACT-REPAIRS-2",
+    pipelineTier: "execution",
+    maxRetries: undefined,
+  });
+  assert.strictEqual(result.resolvedMaxRetries, 3);
 });
 
 // ==================== Barrel Re-export Tests ====================

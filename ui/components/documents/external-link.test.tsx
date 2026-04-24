@@ -1,8 +1,11 @@
 // ui/components/documents/external-link.test.tsx
 import assert from 'node:assert/strict';
+import React from 'react';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ExternalLink } from './external-link';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).React = React;
 
 // Helper
 function render(props: Parameters<typeof ExternalLink>[0]): string {
@@ -61,6 +64,25 @@ function render(props: Parameters<typeof ExternalLink>[0]): string {
   assert.ok(!html.includes('cursor-not-allowed'), 'active href: no cursor-not-allowed');
   assert.ok(!html.includes('text-muted-foreground'), 'active href: no muted foreground colour');
   console.log('✓ active href — no disabled styling applied');
+}
+
+// ── Opt-in tabIndex prop ─────────────────────────────────────────────────
+
+{
+  // Default (no tabIndex prop): the anchor should not emit a tabindex attribute,
+  // leaving the browser's natural tab order for <a href> intact. Non-timeline
+  // call sites (task-card.tsx etc.) rely on this.
+  const html = render({ href: 'https://example.com/', label: 'Link' });
+  assert.ok(!html.includes('tabindex='), 'default: no tabindex attribute emitted');
+  console.log('✓ active href — omits tabindex by default');
+}
+
+{
+  // Explicit -1 (timeline call sites): anchor must emit tabindex="-1" so it
+  // stays out of the listbox's roving-tabindex scheme.
+  const html = render({ href: 'https://example.com/', label: 'Link', tabIndex: -1 });
+  assert.ok(html.includes('tabindex="-1"'), 'tabIndex={-1}: emits tabindex="-1"');
+  console.log('✓ active href — tabIndex={-1} round-trips to tabindex="-1"');
 }
 
 console.log('\nAll ExternalLink tests passed ✓');

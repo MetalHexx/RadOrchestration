@@ -443,22 +443,22 @@ flowchart TD
 **Agents** (5 agents → thin routers):
 | Agent | File | Change |
 |-------|------|--------|
-| Research | `.github/agents/research.agent.md` | Strip to thin router |
-| Product Manager | `.github/agents/product-manager.agent.md` | Strip to thin router |
-| UX Designer | `.github/agents/ux-designer.agent.md` | Strip to thin router |
-| Architect | `.github/agents/architect.agent.md` | Strip to thin router, remove Mode 2 (Master Plan) |
-| Tactical Planner | `.github/agents/tactical-planner.agent.md` | Strip to thin router, add Mode 0 (Master Plan) |
+| Research | `.claude/agents/research.agent.md` | Strip to thin router |
+| Product Manager | `.claude/agents/product-manager.agent.md` | Strip to thin router |
+| UX Designer | `.claude/agents/ux-designer.agent.md` | Strip to thin router |
+| Architect | `.claude/agents/architect.agent.md` | Strip to thin router, remove Mode 2 (Master Plan) |
+| Tactical Planner | `.claude/agents/tactical-planner.agent.md` | Strip to thin router, add Mode 0 (Master Plan) |
 
 **Skills** (7 skills → routing tables + reference docs):
 | Skill | Directory | Change |
 |-------|-----------|--------|
-| `research-codebase` | `.github/skills/research-codebase/` | SKILL.md → routing table; create `references/` with workflow + rules |
-| `create-prd` | `.github/skills/create-prd/` | SKILL.md → routing table; create `references/`; update template (merge user stories into FRs, drop success metrics) |
-| `create-design` | `.github/skills/create-design/` | SKILL.md → routing table; create `references/`; strengthen triage enforcement (default NOT-REQUIRED) |
-| `create-architecture` | `.github/skills/create-architecture/` | SKILL.md → routing table; create `references/`; update template (replace Phasing Recommendations with Dependency Constraints) |
-| `create-master-plan` | `.github/skills/create-master-plan/` | SKILL.md → routing table; create `references/`; update template (remove copied sections, add section-level phase links) |
-| `create-phase-plan` | `.github/skills/create-phase-plan/` | SKILL.md → routing table; create `references/`; update template (lean manifest with source doc refs) |
-| `create-task-handoff` | `.github/skills/create-task-handoff/` | SKILL.md → routing table; create `references/`; no template change (self-containment preserved) |
+| `research-codebase` | `.claude/skills/research-codebase/` | SKILL.md → routing table; create `references/` with workflow + rules |
+| `create-prd` | `.claude/skills/create-prd/` | SKILL.md → routing table; create `references/`; update template (merge user stories into FRs, drop success metrics) |
+| `create-design` | `.claude/skills/create-design/` | SKILL.md → routing table; create `references/`; strengthen triage enforcement (default NOT-REQUIRED) |
+| `create-architecture` | `.claude/skills/create-architecture/` | SKILL.md → routing table; create `references/`; update template (replace Phasing Recommendations with Dependency Constraints) |
+| `create-master-plan` | `.claude/skills/create-master-plan/` | SKILL.md → routing table; create `references/`; update template (remove copied sections, add section-level phase links) |
+| `create-phase-plan` | `.claude/skills/create-phase-plan/` | SKILL.md → routing table; create `references/`; update template (lean manifest with source doc refs) |
+| `create-task-handoff` | `.claude/skills/create-task-handoff/` | SKILL.md → routing table; create `references/`; no template change (self-containment preserved) |
 
 **Templates** (5 templates updated):
 | Template | Change |

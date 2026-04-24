@@ -9,12 +9,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Copies the orchestration source directory (.github/) into installer/src/.github/
+ * Copies the orchestration source directory (.claude/) into installer/src/.claude/
  * for local publishing. Used by the `prepack` npm script.
  *
  * Behavior:
- *   1. Resolve source: path.resolve(__dirname, '../../.github')
- *   2. Resolve target: path.resolve(__dirname, '../src/.github')
+ *   1. Resolve source: path.resolve(__dirname, '../../.claude')
+ *   2. Resolve target: path.resolve(__dirname, '../src/.claude')
  *   3. Remove target if it exists (clean slate)
  *   4. fs.cpSync(source, target, { recursive: true })
  *   5. Log success message
@@ -22,14 +22,14 @@ const __dirname = path.dirname(__filename);
  * Only runs on `npm pack` / `npm publish`, NOT on `npm install`.
  * In CI, the GitHub Actions workflow performs this copy instead.
  *
- * @param {string} source - Absolute path to the .github/ source directory
+ * @param {string} source - Absolute path to the .claude/ source directory
  * @param {string} target - Absolute path to the destination directory
  */
 /** Names excluded from UI source sync (build artifacts, deps, env files). */
 const UI_EXCLUDES = new Set(['node_modules', '.next', '.env.local', '.env']);
 
-/** Names excluded from .github source sync (repo-specific files not for end users). */
-const GITHUB_EXCLUDES = new Set(['copilot-instructions.md']);
+/** Names excluded from .claude source sync (repo-specific files not for end users). */
+const CLAUDE_EXCLUDES = new Set(['settings.json', 'settings.local.json']);
 
 /**
  * @param {string} source - Absolute path to the source directory
@@ -49,9 +49,9 @@ export function syncSource(source, target, excludes) {
 // Only execute when run directly (not when imported by tests)
 if (process.argv[1] === __filename) {
   syncSource(
-    path.resolve(__dirname, '../../.github'),
-    path.resolve(__dirname, '../src/.github'),
-    GITHUB_EXCLUDES,
+    path.resolve(__dirname, '../../.claude'),
+    path.resolve(__dirname, '../src/.claude'),
+    CLAUDE_EXCLUDES,
   );
 
   syncSource(

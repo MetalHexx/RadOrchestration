@@ -140,6 +140,22 @@ Every task is reviewed against the plan. Code reviewers inspect source code dire
 
 The document-driven architecture is inherently portable. Agents communicate through markdown and YAML, not platform APIs. Adapting to other AI assistants primarily involves translating agent definitions to the target format.
 
+## Development
+
+Contributors working on this repo should enable the pre-commit hook so the
+orchestration TypeScript stays type-clean before each commit. The hook file
+is already committed at `.githooks/pre-commit` — point git at it once after
+cloning:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+(Equivalent: `node .claude/skills/orchestration/scripts/setup-hooks.js`.)
+
+This is dev-only setup. End users installing via the `radorch` installer
+do **not** get the pre-commit hook configured.
+
 ## License
 
 See LICENSE for details.

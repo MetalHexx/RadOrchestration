@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { ProjectSummary } from "@/types/components";
-import type { ProjectState } from "@/types/state";
+import type { AnyProjectState } from "@/types/state";
+import { isV5State } from "@/types/state";
 import type { SSEEvent, SSEConnectionStatus } from "@/types/events";
+import { derivePlanningStatus, deriveExecutionStatus } from "@/lib/status-derivation";
 import { useSSE } from "@/hooks/use-sse";
 
 const STORAGE_KEY = "monitoring-ui-selected-project";
@@ -14,7 +16,7 @@ interface UseProjectsReturn {
   /** Name of the currently selected project, or null */
   selectedProject: string | null;
   /** State for the selected project, or null if not available */
-  projectState: ProjectState | null;
+  projectState: AnyProjectState | null;
   /** Function to select a project by name */
   selectProject: (name: string) => void;
   /** True while any fetch is in progress */
@@ -31,12 +33,15 @@ export function useProjects(): UseProjectsReturn {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [projectState, setProjectState] =
-    useState<ProjectState | null>(null);
+    useState<AnyProjectState | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   // Stable ref for selectedProject to use inside the SSE callback
-  const selectedProjectRef = useCallback(() => selectedProject, [selectedProject]);
+  const selectedProjectRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedProjectRef.current = selectedProject;
+  }, [selectedProject]);
 
   const fetchProjectList = useCallback(async () => {
     try {
@@ -52,25 +57,57 @@ export function useProjects(): UseProjectsReturn {
 
   const handleSSEEvent = useCallback(
     (event: SSEEvent) => {
-      const currentSelected = selectedProjectRef();
+      const currentSelected = selectedProjectRef.current;
 
       switch (event.type) {
         case "state_change": {
-          const payload = event.payload as { projectName: string; state: ProjectState };
+          const payload = event.payload as { projectName: string; state: AnyProjectState };
 
           // Unconditionally patch the projects array (sidebar reactivity)
-          setProjects(prev =>
-            prev.map(p =>
-              p.name === payload.projectName
-                ? {
-                    ...p,
-                    tier: payload.state.pipeline.current_tier,
-                    planningStatus: payload.state.planning?.status,
-                    executionStatus: payload.state.execution?.status,
-                  }
-                : p
-            )
-          );
+          if (isV5State(payload.state)) {
+            const v5state = payload.state;
+            const tier =
+              v5state.graph.status === 'completed'
+                ? 'complete'
+                : v5state.pipeline.current_tier;
+            const planningStatus = derivePlanningStatus(v5state.graph.nodes);
+            const executionStatus = deriveExecutionStatus(
+              v5state.graph.status,
+              v5state.graph.nodes,
+            );
+            setProjects(prev =>
+              prev.map(p =>
+                p.name === payload.projectName
+                  ? {
+                      ...p,
+                      tier,
+                      planningStatus,
+                      executionStatus,
+                      lastUpdated: v5state.project?.updated,
+                      schemaVersion: 'v5' as const,
+                      graphStatus: v5state.graph.status,
+                    }
+                  : p
+              )
+            );
+          } else {
+            const v4state = payload.state;
+            setProjects(prev =>
+              prev.map(p =>
+                p.name === payload.projectName
+                  ? {
+                      ...p,
+                      tier: v4state.pipeline.current_tier,
+                      planningStatus: v4state.planning?.status,
+                      executionStatus: v4state.execution?.status,
+                      lastUpdated: v4state.project?.updated,
+                      schemaVersion: 'v4' as const,
+                      graphStatus: 'not_initialized' as const,
+                    }
+                  : p
+              )
+            );
+          }
 
           // Existing behaviour: update detail view for the selected project
           if (payload.projectName === currentSelected) {
@@ -96,7 +133,7 @@ export function useProjects(): UseProjectsReturn {
           break;
       }
     },
-    [selectedProjectRef, fetchProjectList],
+    [fetchProjectList],
   );
 
   const { status: sseStatus, reconnect } = useSSE({

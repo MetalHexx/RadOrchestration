@@ -1,5 +1,5 @@
-import { PLANNING_STEP_ORDER } from '@/types/state';
-import type { PlanningStepName, ProjectState } from '@/types/state';
+import { PLANNING_STEP_ORDER, NODE_ID_FINAL_REVIEW } from '@/types/state';
+import type { PlanningStepName, ProjectState, ProjectStateV5 } from '@/types/state';
 import type { OrderedDoc } from '@/types/components';
 
 const STEP_TITLES: Record<PlanningStepName, string> = {
@@ -7,8 +7,35 @@ const STEP_TITLES: Record<PlanningStepName, string> = {
   prd: 'PRD',
   design: 'Design',
   architecture: 'Architecture',
+  requirements: 'Requirements',
   master_plan: 'Master Plan',
+  explode_master_plan: 'Phase/Task Generation',
 };
+
+function appendAllFileDocs(
+  allFiles: string[],
+  projectName: string,
+  seenPaths: Set<string>,
+  seenBasenames: Set<string>,
+  basename: (p: string) => string,
+  push: (path: string, title: string, category: OrderedDoc['category']) => void,
+): void {
+  const errorLogPattern = `${projectName}-ERROR-LOG.md`;
+  const errorLogFile = allFiles.find((f) => f.endsWith(errorLogPattern));
+  if (errorLogFile && !seenPaths.has(errorLogFile)) {
+    push(errorLogFile, 'Error Log', 'error-log');
+  }
+
+  const otherDocs = allFiles
+    .filter((f) => f.endsWith('.md') && !seenBasenames.has(basename(f)))
+    .sort();
+
+  for (const filePath of otherDocs) {
+    const filename = filePath.split('/').pop() ?? filePath;
+    const title = filename.replace(/\.md$/, '');
+    push(filePath, title, 'other');
+  }
+}
 
 /**
  * Derive the canonical document navigation order from project state.
@@ -80,21 +107,7 @@ export function getOrderedDocs(
 
   // 4 & 5. Error log + other docs from allFiles
   if (allFiles) {
-    const errorLogPattern = `${projectName}-ERROR-LOG.md`;
-    const errorLogFile = allFiles.find((f) => f.endsWith(errorLogPattern));
-    if (errorLogFile && !seenPaths.has(errorLogFile)) {
-      push(errorLogFile, 'Error Log', 'error-log');
-    }
-
-    const otherDocs = allFiles
-      .filter((f) => f.endsWith('.md') && !seenBasenames.has(basename(f)))
-      .sort();
-
-    for (const filePath of otherDocs) {
-      const filename = filePath.split('/').pop() ?? filePath;
-      const title = filename.replace(/\.md$/, '');
-      push(filePath, title, 'other');
-    }
+    appendAllFileDocs(allFiles, projectName, seenPaths, seenBasenames, basename, push);
   }
 
   return docs;
@@ -117,4 +130,156 @@ export function getAdjacentDocs(
   const next = currentIndex < docs.length - 1 ? docs[currentIndex + 1] : null;
 
   return { prev, next, currentIndex, total: docs.length };
+}
+
+// ─── v5 helpers ──────────────────────────────────────────────────────────────
+
+// Corrective entries emit in a fixed order (plan-then-review) regardless of
+// the object key order produced by the scaffolder or by JSON round-trip.
+// JS Object.entries is insertion-ordered per spec, but relying on that makes
+// the sidebar order coupled to how the engine builds/serializes ct.nodes —
+// any future refactor that rebuilds the map from a different seed would flip
+// the emitted sequence. A fixed array removes the coupling. `task_executor`,
+// `commit_gate`, `task_gate` have no doc_path and are skipped by the caller's
+// `doc_path != null` check, so omitting them here is safe.
+const CORRECTIVE_DOC_EMIT_ORDER = ['task_handoff', 'code_review'] as const;
+
+const STEP_TITLES_V5: Record<PlanningStepName, string> = {
+  research: 'Research Findings',
+  prd: 'PRD',
+  design: 'Design',
+  architecture: 'Architecture',
+  requirements: 'Requirements',
+  master_plan: 'Master Plan',
+  explode_master_plan: 'Phase/Task Generation',
+};
+
+function capitalize(s: string): string {
+  return s.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+function titleForPhaseChild(childId: string, phaseNum: number): string {
+  // phase_planning is v5 canonical; phase_plan retained for legacy compat
+  if (childId === 'phase_planning' || childId === 'phase_plan') return `Phase ${phaseNum} Plan`;
+  if (childId === 'phase_report') return `Phase ${phaseNum} Report`;
+  if (childId === 'phase_review') return `Phase ${phaseNum} Review`;
+  return capitalize(childId);
+}
+
+function titleForPhaseCorrectiveChild(childId: string, phaseNum: number): string {
+  // Phase-scope correctives scaffold the same body-def node IDs as task-scope
+  // iterations (`task_handoff`, `code_review`), but at phase scope `task_handoff`
+  // is the corrective plan for the phase and `code_review` is its review.
+  if (childId === 'task_handoff') return `Phase ${phaseNum} Plan`;
+  if (childId === 'code_review') return `Phase ${phaseNum} Review`;
+  return titleForPhaseChild(childId, phaseNum);
+}
+
+function titleForTaskChild(taskNodeId: string, phaseNum: number, taskNum: number): string {
+  if (taskNodeId === 'task_handoff') return `P${phaseNum}-T${taskNum} Handoff`;
+  if (taskNodeId === 'code_review') return `P${phaseNum}-T${taskNum} Review`;
+  return `P${phaseNum}-T${taskNum} ${capitalize(taskNodeId)}`;
+}
+
+/**
+ * Derive the canonical document navigation order from a v5 project state.
+ * Recursively walks graph.nodes, iteration entries, and corrective task entries
+ * to collect doc_path values from step nodes.
+ *
+ * Order: root step nodes → per-phase-iteration (phase step nodes → per-task-iteration
+ *        (task step nodes → corrective task step nodes)) → final_review step → error log → other docs.
+ */
+export function getOrderedDocsV5(
+  state: ProjectStateV5,
+  projectName: string,
+  allFiles?: string[],
+): OrderedDoc[] {
+  const result: OrderedDoc[] = [];
+  const seenPaths = new Set<string>();
+  const seenBasenames = new Set<string>();
+  const basename = (p: string) => p.split(/[\/\\]/).pop() ?? p;
+
+  const push = (path: string, title: string, category: OrderedDoc['category']) => {
+    result.push({ path, title, category });
+    seenPaths.add(path);
+    seenBasenames.add(basename(path));
+  };
+
+  // Emit planning steps in canonical order regardless of object key order
+  for (const planId of PLANNING_STEP_ORDER) {
+    const node = state.graph.nodes[planId];
+    if (node && node.kind === 'step' && node.doc_path != null) {
+      push(node.doc_path, STEP_TITLES_V5[planId], 'planning');
+    }
+  }
+
+  for (const [, node] of Object.entries(state.graph.nodes)) {
+    // Skip all root step nodes (planning steps already emitted above; final_review emitted after loop)
+    if (node.kind === 'step') {
+      continue;
+    }
+    if (node.kind === 'for_each_phase') {
+      const sortedIterations = [...node.iterations].sort((a, b) => a.index - b.index);
+      for (const iteration of sortedIterations) {
+        const phaseNum = iteration.index + 1;
+        for (const [childId, child] of Object.entries(iteration.nodes)) {
+          if (child.kind === 'step' && child.doc_path != null) {
+            const category: OrderedDoc['category'] = childId.includes('review') ? 'review' : 'phase';
+            push(child.doc_path, titleForPhaseChild(childId, phaseNum), category);
+          } else if (child.kind === 'for_each_task') {
+            const sortedTaskIters = [...child.iterations].sort((a, b) => a.index - b.index);
+            for (const taskIter of sortedTaskIters) {
+              const taskNum = taskIter.index + 1;
+              for (const [taskNodeId, taskNode] of Object.entries(taskIter.nodes)) {
+                if (taskNode.kind === 'step' && taskNode.doc_path != null) {
+                  const category: OrderedDoc['category'] = taskNodeId.includes('review') ? 'review' : 'task';
+                  push(taskNode.doc_path, titleForTaskChild(taskNodeId, phaseNum, taskNum), category);
+                }
+              }
+              const sortedCTs = [...taskIter.corrective_tasks].sort((a, b) => a.index - b.index);
+              for (const ct of sortedCTs) {
+                for (const ctNodeId of CORRECTIVE_DOC_EMIT_ORDER) {
+                  const ctNode = ct.nodes[ctNodeId];
+                  if (ctNode?.kind === 'step' && ctNode.doc_path != null) {
+                    const title = titleForTaskChild(ctNodeId, phaseNum, taskNum) + ' (CT' + ct.index + ')';
+                    // Corrective code_review docs group under 'review' like their non-corrective
+                    // siblings (line ~235) and phase-scope corrective reviews. Prior iter-10 shape
+                    // hardcoded 'task' which hid corrective re-reviews from the Review category.
+                    const category: OrderedDoc['category'] = ctNodeId === 'code_review' ? 'review' : 'task';
+                    push(ctNode.doc_path, title, category);
+                  }
+                }
+              }
+            }
+          }
+        }
+        const sortedPhaseCTs = [...iteration.corrective_tasks].sort((a, b) => a.index - b.index);
+        for (const ct of sortedPhaseCTs) {
+          for (const ctNodeId of CORRECTIVE_DOC_EMIT_ORDER) {
+            const ctNode = ct.nodes[ctNodeId];
+            if (ctNode?.kind === 'step' && ctNode.doc_path != null) {
+              const title = titleForPhaseCorrectiveChild(ctNodeId, phaseNum) + ' (Phase-C' + ct.index + ')';
+              // Explicit id check (not `includes('review')`) keeps categorization stable
+              // if future corrective body nodes happen to contain the 'review' substring.
+              const category: OrderedDoc['category'] = ctNodeId === 'code_review' ? 'review' : 'phase';
+              push(ctNode.doc_path, title, category);
+            }
+          }
+        }
+      }
+    }
+    // gate, conditional, parallel, for_each_task: skip
+  }
+
+  // Emit final_review after all phase/task nodes
+  const finalReviewNode = state.graph.nodes[NODE_ID_FINAL_REVIEW];
+  if (finalReviewNode && finalReviewNode.kind === 'step' && finalReviewNode.doc_path != null) {
+    push(finalReviewNode.doc_path, 'Final Review', 'review');
+  }
+
+  if (allFiles) {
+    appendAllFileDocs(allFiles, projectName, seenPaths, seenBasenames, basename, push);
+  }
+
+  return result;
 }

@@ -57,8 +57,8 @@ export function resolveProjectDir(
  * @param relativePath - Document path relative to project dir (e.g., "tasks/MONITORING-UI-TASK-P01-T01.md")
  * @returns Absolute filesystem path
  *
- * Example: resolveDocPath('/workspace', '.github/projects', 'VALIDATOR', 'tasks/VALIDATOR-TASK-P01-T01.md')
- *        → '/workspace/.github/projects/VALIDATOR/tasks/VALIDATOR-TASK-P01-T01.md'
+ * Example: resolveDocPath('/workspace', '.claude/projects', 'VALIDATOR', 'tasks/VALIDATOR-TASK-P01-T01.md')
+ *        → '/workspace/.claude/projects/VALIDATOR/tasks/VALIDATOR-TASK-P01-T01.md'
  */
 export function resolveDocPath(
   workspaceRoot: string,

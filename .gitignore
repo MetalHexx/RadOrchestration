@@ -1,5 +1,53 @@
+node_modules/
+
 .vscode/mcp.json
 
-# Claude Code config (contains API keys)
-.claude/
-CLAUDE.md
+.vscode/settings.json
+
+.claude/settings.json
+.claude/settings.local.json
+
+*.code-workspace
+
+# Ephemeral test log artifacts — never commit
+*-tests.log
+
+# Prompt harness — run outputs ignored by default.
+# NOTE: git ignore cannot re-include files if an ancestor directory is excluded
+# by a directory-matching pattern. The rules below ignore run-folder CONTENTS
+# (files at least two levels under output/) while leaving the fixture-specific
+# directory (`output/<fixture>/`) un-ignored, so `!` exceptions below can
+# re-include specific files under otherwise-ignored run folders.
+/prompt-tests/plan-pipeline-e2e/output/*/*/**
+!/prompt-tests/plan-pipeline-e2e/output/*/.gitkeep
+!/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-*/lint-report.md
+!/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-*/run-notes.md
+
+# Prompt harness — corrective-mediation-e2e.
+# Same structure as plan-pipeline-e2e: ignore run-folder contents, re-include
+# the inaugural-baseline run-notes.md under baseline-* folders.
+/prompt-tests/corrective-mediation-e2e/output/*/*/**
+!/prompt-tests/corrective-mediation-e2e/output/*/.gitkeep
+!/prompt-tests/corrective-mediation-e2e/output/broken-colors/baseline-*/run-notes.md
+
+# Prompt harness — phase-review-mediation-e2e.
+# Same structure as above: ignore run-folder contents, re-include the
+# inaugural-baseline run-notes.md under baseline-* folders.
+/prompt-tests/phase-review-mediation-e2e/output/*/*/**
+!/prompt-tests/phase-review-mediation-e2e/output/*/.gitkeep
+!/prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/baseline-*/run-notes.md
+
+# Prompt harness — code-review-rework-e2e (iter-12).
+# Same structure as above: ignore run-folder contents, re-include the
+# inaugural-baseline run-notes.md under baseline-* folders.
+/prompt-tests/code-review-rework-e2e/output/*/*/**
+!/prompt-tests/code-review-rework-e2e/output/*/.gitkeep
+!/prompt-tests/code-review-rework-e2e/output/conformance-tiered/baseline-*/run-notes.md
+
+# Prompt harness — execute-coding-task-e2e (iter-13).
+# Same structure as above: ignore run-folder contents, re-include the
+# inaugural-baseline run-notes.md + lint-report.md under baseline-* folders.
+/prompt-tests/execute-coding-task-e2e/output/*/*/**
+!/prompt-tests/execute-coding-task-e2e/output/*/.gitkeep
+!/prompt-tests/execute-coding-task-e2e/output/tdd-slip/baseline-*/lint-report.md
+!/prompt-tests/execute-coding-task-e2e/output/tdd-slip/baseline-*/run-notes.md

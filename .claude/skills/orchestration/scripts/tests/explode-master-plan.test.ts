@@ -1,0 +1,424 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as os from 'node:os';
+import { fileURLToPath } from 'node:url';
+
+import {
+  parseMasterPlan,
+  explodeMasterPlan,
+  ParseError,
+  phaseFilename,
+  taskFilename,
+} from '../lib/explode-master-plan.js';
+import { writeState, readState } from '../lib/state-io.js';
+import type {
+  PipelineState,
+  ForEachPhaseNodeState,
+  ForEachTaskNodeState,
+} from '../lib/types.js';
+
+// ── Fixture locations ─────────────────────────────────────────────────────────
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const FIXTURE_DIR = path.join(__dirname, 'fixtures', 'master-plans');
+const WELL_FORMED = path.join(FIXTURE_DIR, 'well-formed.md');
+const MALFORMED = path.join(FIXTURE_DIR, 'malformed.md');
+const WITH_FRONTMATTER_MALFORMED = path.join(FIXTURE_DIR, 'with-frontmatter-malformed.md');
+
+// ── Temp dir helpers ──────────────────────────────────────────────────────────
+
+let TMP_DIR: string;
+
+beforeEach(() => {
+  TMP_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'explode-test-'));
+});
+
+afterEach(() => {
+  fs.rmSync(TMP_DIR, { recursive: true, force: true });
+});
+
+function writeTempMasterPlan(body: string, name = 'MASTER-PLAN.md'): string {
+  const fpath = path.join(TMP_DIR, name);
+  fs.writeFileSync(fpath, body, 'utf-8');
+  return fpath;
+}
+
+function makeMinimalStateForExplosion(projectName: string): PipelineState {
+  return {
+    $schema: 'orchestration-state-v5',
+    project: { name: projectName, created: '2026-04-18T00:00:00Z', updated: '2026-04-18T00:00:00Z' },
+    config: {
+      gate_mode: 'autonomous',
+      limits: {
+        max_phases: 10,
+        max_tasks_per_phase: 10,
+        max_retries_per_task: 3,
+        max_consecutive_review_rejections: 3,
+      },
+      source_control: { auto_commit: 'never', auto_pr: 'never' },
+    },
+    pipeline: { gate_mode: null, source_control: null, current_tier: 'planning', halt_reason: null },
+    graph: {
+      template_id: 'default',
+      status: 'in_progress',
+      current_node_path: null,
+      nodes: {
+        requirements: { kind: 'step', status: 'completed', doc_path: '/tmp/req.md', retries: 0 },
+        master_plan: { kind: 'step', status: 'completed', doc_path: '/tmp/master-plan.md', retries: 0 },
+        explode_master_plan: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 },
+        plan_approval_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+      },
+    },
+  };
+}
+
+// ── Parser tests ──────────────────────────────────────────────────────────────
+
+describe('parseMasterPlan — parser cases', () => {
+  it('well-formed fixture parses cleanly: 3 phases, 6 tasks (2/3/1)', () => {
+    const parsed = parseMasterPlan(WELL_FORMED);
+    expect(parsed.phases).toHaveLength(3);
+    expect(parsed.phases[0]!.id).toBe('P01');
+    expect(parsed.phases[0]!.tasks).toHaveLength(2);
+    expect(parsed.phases[1]!.tasks).toHaveLength(3);
+    expect(parsed.phases[2]!.tasks).toHaveLength(1);
+    // Total = 6
+    const totalTasks = parsed.phases.reduce((n, p) => n + p.tasks.length, 0);
+    expect(totalTasks).toBe(6);
+    // Requirement tags harvested from the task body
+    expect(parsed.phases[0]!.tasks[0]!.requirementTags).toEqual(expect.arrayContaining(['FR-1', 'AD-1']));
+  });
+
+  it('malformed fixture (single-digit phase id "P1:") throws ParseError with line/expected/found populated', () => {
+    expect(() => parseMasterPlan(MALFORMED)).toThrow(ParseError);
+    try {
+      parseMasterPlan(MALFORMED);
+    } catch (err) {
+      expect(err).toBeInstanceOf(ParseError);
+      const pe = err as ParseError;
+      expect(pe.line).toBeGreaterThan(0);
+      expect(pe.expected).toContain('P{NN}');
+      expect(pe.found).toContain('P1:');
+      expect(pe.message).toMatch(/phase heading/i);
+    }
+  });
+
+  it('malformed (unparseable task id "### P01-TX: Bad") throws ParseError pointing at the task line', () => {
+    const body = [
+      '## P01: Good phase',
+      '',
+      '### P01-TX: Bad ID',
+      '',
+      'Body.',
+    ].join('\n');
+    const fpath = writeTempMasterPlan(body);
+    let caught: ParseError | null = null;
+    try {
+      parseMasterPlan(fpath);
+    } catch (err) {
+      caught = err as ParseError;
+    }
+    expect(caught).not.toBeNull();
+    expect(caught!.line).toBe(3);
+    expect(caught!.expected).toContain('T{MM}');
+    expect(caught!.found).toContain('P01-TX');
+  });
+
+  it('empty phase (no tasks) parses successfully and emits phase with 0 tasks', () => {
+    const body = [
+      '## P01: Empty',
+      '',
+      'Phase description only, no tasks.',
+    ].join('\n');
+    const fpath = writeTempMasterPlan(body);
+    const parsed = parseMasterPlan(fpath);
+    expect(parsed.phases).toHaveLength(1);
+    expect(parsed.phases[0]!.tasks).toHaveLength(0);
+  });
+
+  it('phase with zero tasks AND another phase with multiple tasks → no orphan tasks', () => {
+    const body = [
+      '## P01: Empty phase',
+      '',
+      'Just prose.',
+      '',
+      '## P02: Populated phase',
+      '',
+      '### P02-T01: First',
+      '',
+      'Body.',
+      '',
+      '### P02-T02: Second',
+      '',
+      'Body.',
+    ].join('\n');
+    const fpath = writeTempMasterPlan(body);
+    const parsed = parseMasterPlan(fpath);
+    expect(parsed.phases).toHaveLength(2);
+    expect(parsed.phases[0]!.tasks).toHaveLength(0);
+    expect(parsed.phases[1]!.tasks).toHaveLength(2);
+    expect(parsed.phases[1]!.tasks[0]!.id).toBe('P02-T01');
+    expect(parsed.phases[1]!.tasks[1]!.id).toBe('P02-T02');
+  });
+
+  // Regression: task-less phase followed by another phase must preserve its body.
+  // Previously, the parse loop pre-captured body + wiped currentBodyLines before
+  // flushPhase() ran, causing flushPhase() to overwrite the captured body with
+  // an empty string when it re-evaluated tasks.length === 0. See lib/explode-master-plan.ts.
+  it('task-less phase followed by another phase preserves its body content', () => {
+    const body = [
+      '## P01: Empty Phase',
+      '',
+      'Phase prose here.',
+      '',
+      '## P02: Second Phase',
+      '',
+      '### P02-T01: First',
+      '',
+      'Body.',
+    ].join('\n');
+    const fpath = writeTempMasterPlan(body);
+    const parsed = parseMasterPlan(fpath);
+    expect(parsed.phases).toHaveLength(2);
+    expect(parsed.phases[0]!.tasks).toHaveLength(0);
+    // The key assertion: task-less phase body must be preserved, not wiped.
+    expect(parsed.phases[0]!.body.trim()).toBe('Phase prose here.');
+  });
+
+  it('round-trip identity: parse → explode → re-parse emitted phase plans preserves task ids and counts', () => {
+    const projectName = 'ROUNDTRIP';
+    const parsed1 = parseMasterPlan(WELL_FORMED);
+    const result = explodeMasterPlan({
+      projectDir: TMP_DIR,
+      masterPlanPath: WELL_FORMED,
+      projectName,
+      nowIso: '2026-04-18T00:00:00.000Z',
+    });
+    expect(result.emittedPhaseFiles).toHaveLength(3);
+    expect(result.emittedTaskFiles).toHaveLength(6);
+
+    // Sanity: filenames match phase/task titles.
+    for (let i = 0; i < parsed1.phases.length; i++) {
+      const phase = parsed1.phases[i]!;
+      const expected = phaseFilename(projectName, phase);
+      expect(result.emittedPhaseFiles[i]).toContain(expected);
+    }
+    // Sanity: the task files exist on disk.
+    for (const f of result.emittedTaskFiles) {
+      expect(fs.existsSync(f)).toBe(true);
+    }
+  });
+
+  it('emitted task doc body is the master-plan section verbatim, no Objective/Body wrappers, no duplicated Requirements line', () => {
+    const projectName = 'RENDER';
+    const result = explodeMasterPlan({
+      projectDir: TMP_DIR,
+      masterPlanPath: WELL_FORMED,
+      projectName,
+      nowIso: '2026-04-18T00:00:00.000Z',
+    });
+    const taskFile = result.emittedTaskFiles[0]!; // P01-T01
+    const content = fs.readFileSync(taskFile, 'utf-8');
+    // Strip frontmatter block, then trim leading blank lines.
+    const body = content.replace(/^---\n[\s\S]*?\n---\n/, '').replace(/^\s+/, '');
+    // The H1 is the only heading the renderer adds — no "## Objective", "## Body",
+    // "_(extracted from Master Plan body below)_", or re-appended "**Requirements**:" line.
+    expect(body).toMatch(/^# P01-T01: /);
+    expect(body).not.toContain('## Objective');
+    expect(body).not.toContain('## Body');
+    expect(body).not.toContain('(extracted from Master Plan body below)');
+    // The trailing duplicated Requirements line (added by the old renderer in addition to the
+    // inline one already present in the body) must be gone. We allow inline "Requirements:"
+    // text from the master plan body itself, but not a standalone trailing line.
+    //
+    // Note on the regex: it matches `**Requirements**: ...` with the colon OUTSIDE the bold —
+    // the exact shape the old renderer appended. It does NOT match the inline
+    // `**Requirements:** FR-1` form the master plan body carries (colon INSIDE the bold).
+    // That's deliberate: the inline form is legitimate content copied from the master plan.
+    const trailingReqLines = body.match(/^\*\*Requirements\*\*:.*$/gm) ?? [];
+    expect(trailingReqLines.length).toBe(0);
+  });
+
+  it('emitted phase doc body is the master-plan section verbatim, no "Phase Objective" wrapper', () => {
+    const projectName = 'RENDERP';
+    const result = explodeMasterPlan({
+      projectDir: TMP_DIR,
+      masterPlanPath: WELL_FORMED,
+      projectName,
+      nowIso: '2026-04-18T00:00:00.000Z',
+    });
+    const phaseFile = result.emittedPhaseFiles[0]!;
+    const content = fs.readFileSync(phaseFile, 'utf-8');
+    const body = content.replace(/^---\n[\s\S]*?\n---\n/, '').replace(/^\s+/, '');
+    expect(body).toMatch(/^# Phase 1: /);
+    expect(body).not.toContain('## Phase Objective');
+    // Tasks enumeration still lands.
+    expect(body).toContain('## Tasks');
+  });
+
+  // Regression: ParseError.line must be FILE-ABSOLUTE, not body-relative.
+  // `readDocument` strips the YAML frontmatter block before the parser sees the body; real
+  // Master Plans carry ~8-14 lines of frontmatter. If the parser reports body-relative lines,
+  // the recovery-loop guidance misleads the planner ("fix line 3" points at the wrong place
+  // once the frontmatter is considered). The fixture has a 9-line frontmatter block and a
+  // malformed `## P1:` heading on file-line 13 (= body-line 4).
+  it('ParseError.line is file-absolute (accounts for YAML frontmatter offset), not body-relative', () => {
+    let caught: ParseError | null = null;
+    try {
+      parseMasterPlan(WITH_FRONTMATTER_MALFORMED);
+    } catch (err) {
+      caught = err as ParseError;
+    }
+    expect(caught).not.toBeNull();
+    // File-absolute line: the malformed `## P1:` heading is on file-line 13 of
+    // the fixture. Body-relative would be 4 — that's the bug we're guarding against.
+    expect(caught!.line).toBe(13);
+    expect(caught!.found).toContain('P1:');
+    expect(caught!.expected).toContain('P{NN}');
+  });
+
+  it('task heading before any phase heading throws ParseError with "before any phase heading" message', () => {
+    const body = [
+      '### P01-T01: Orphan',
+      '',
+      'Body.',
+    ].join('\n');
+    const fpath = writeTempMasterPlan(body);
+    let caught: ParseError | null = null;
+    try {
+      parseMasterPlan(fpath);
+    } catch (err) {
+      caught = err as ParseError;
+    }
+    expect(caught).not.toBeNull();
+    expect(caught!.message).toMatch(/before any phase heading/);
+  });
+
+  it('parseMasterPlan on nonexistent file throws ParseError with line >= 1', () => {
+    const nonexistentPath = path.join(TMP_DIR, 'does-not-exist.md');
+    let caught: ParseError | null = null;
+    try {
+      parseMasterPlan(nonexistentPath);
+    } catch (err) {
+      caught = err as ParseError;
+    }
+    expect(caught).not.toBeNull();
+    expect(caught).toBeInstanceOf(ParseError);
+    expect(caught!.line).toBeGreaterThanOrEqual(1);
+    expect(caught!.expected).toContain('Master Plan file');
+    expect(caught!.found).toContain('missing file');
+  });
+});
+
+// ── Re-run integration ────────────────────────────────────────────────────────
+
+describe('explodeMasterPlan — re-run integration', () => {
+  it('pre-existing phases/ + tasks/ + hand-edited notes all land in backups/{ts}/, fresh files emitted, state re-seeded', () => {
+    const projectName = 'RERUN';
+
+    // Pre-stage old contents.
+    fs.mkdirSync(path.join(TMP_DIR, 'phases'), { recursive: true });
+    fs.mkdirSync(path.join(TMP_DIR, 'tasks'), { recursive: true });
+    fs.writeFileSync(path.join(TMP_DIR, 'phases', `${projectName}-PHASE-01-OLD.md`), '# old phase', 'utf-8');
+    fs.writeFileSync(path.join(TMP_DIR, 'tasks', `${projectName}-TASK-P01-T01-OLD.md`), '# old task', 'utf-8');
+    // A hand-edited note that does NOT match the patterns — must still be backed up.
+    fs.writeFileSync(path.join(TMP_DIR, 'phases', 'MY-NOTES.md'), '# hand notes', 'utf-8');
+
+    // Seed state.json with a dummy phase_loop to prove it gets wiped + reseeded.
+    const state = makeMinimalStateForExplosion(projectName);
+    (state.graph.nodes['phase_loop'] as unknown as ForEachPhaseNodeState) = {
+      kind: 'for_each_phase',
+      status: 'in_progress',
+      iterations: [
+        { index: 0, status: 'completed', nodes: {}, corrective_tasks: [], commit_hash: 'abc' } as any,
+      ],
+    };
+    writeState(TMP_DIR, state);
+
+    const result = explodeMasterPlan({
+      projectDir: TMP_DIR,
+      masterPlanPath: WELL_FORMED,
+      projectName,
+      nowIso: '2026-04-18T12-34-56-789Z',
+    });
+
+    // Backup created.
+    expect(result.backupDir).not.toBeNull();
+    expect(fs.existsSync(result.backupDir!)).toBe(true);
+    // All old contents (including hand-edited notes) migrated.
+    expect(fs.existsSync(path.join(result.backupDir!, 'phases', `${projectName}-PHASE-01-OLD.md`))).toBe(true);
+    expect(fs.existsSync(path.join(result.backupDir!, 'phases', 'MY-NOTES.md'))).toBe(true);
+    expect(fs.existsSync(path.join(result.backupDir!, 'tasks', `${projectName}-TASK-P01-T01-OLD.md`))).toBe(true);
+    // Fresh files emitted.
+    expect(result.emittedPhaseFiles).toHaveLength(3);
+    expect(result.emittedTaskFiles).toHaveLength(6);
+    // Old files no longer in phases/ + tasks/.
+    expect(fs.existsSync(path.join(TMP_DIR, 'phases', 'MY-NOTES.md'))).toBe(false);
+    expect(fs.existsSync(path.join(TMP_DIR, 'phases', `${projectName}-PHASE-01-OLD.md`))).toBe(false);
+
+    // State re-seeded.
+    const seededState = readState(TMP_DIR)!;
+    const phaseLoop = seededState.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
+    expect(phaseLoop.iterations).toHaveLength(3);
+    // Regression: phase_loop.status must reset to not_started when iterations are regenerated.
+    // The pre-seeded phaseLoop had status 'in_progress'; leaving it stale would contradict the
+    // fresh not_started iterations below.
+    expect(phaseLoop.status).toBe('not_started');
+    // Phase iteration carries doc_path directly — no synthetic phase_planning child step.
+    // doc_path values in state.json are RELATIVE with forward slashes — matches legacy convention
+    // (phases/NAME-PHASE-NN-TITLE.md) and keeps state.json portable across platforms.
+    const phaseIter = phaseLoop.iterations[0]!;
+    expect(phaseIter.doc_path).toMatch(/^phases\//);
+    expect(phaseIter.doc_path).not.toContain('\\');
+    expect(phaseIter.doc_path).toContain(`${projectName}-PHASE-01-`);
+    // No synthetic phase_planning node — the only seeded body node is task_loop.
+    expect(phaseIter.nodes['phase_planning']).toBeUndefined();
+    // Task iterations populated; each carries doc_path directly — no synthetic task_handoff child.
+    const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState;
+    expect(taskLoop.iterations).toHaveLength(2);
+    const taskIter = taskLoop.iterations[0]!;
+    expect(taskIter.doc_path).toMatch(/^tasks\//);
+    expect(taskIter.doc_path).not.toContain('\\');
+    expect(taskIter.nodes['task_handoff']).toBeUndefined();
+  });
+
+  it('malformed Master Plan on re-run: filesystem UNTOUCHED (no backup, no fresh emission)', () => {
+    const projectName = 'ABORT';
+
+    // Pre-stage some existing content.
+    fs.mkdirSync(path.join(TMP_DIR, 'phases'), { recursive: true });
+    fs.writeFileSync(path.join(TMP_DIR, 'phases', 'KEEP.md'), '# keep', 'utf-8');
+
+    expect(() => explodeMasterPlan({
+      projectDir: TMP_DIR,
+      masterPlanPath: MALFORMED,
+      projectName,
+      nowIso: '2026-04-18T00-00-00-000Z',
+    })).toThrow(ParseError);
+
+    // Filesystem untouched.
+    expect(fs.existsSync(path.join(TMP_DIR, 'phases', 'KEEP.md'))).toBe(true);
+    expect(fs.existsSync(path.join(TMP_DIR, 'backups'))).toBe(false);
+  });
+});
+
+// ── Recovery loop integration ─────────────────────────────────────────────────
+// Explosion mutation contract tests (explosion_completed / explosion_failed 1st /
+// explosion_failed 4th-cap-exceeded) live in tests/contract/06-state-mutations.test.ts
+// per the Iter 5 plan directive. They use the shared `makeStateWithExplosion`
+// factory and standard contract-test style (DEFAULT_CONFIG, emptyTemplate).
+
+// ── Filename helpers ──────────────────────────────────────────────────────────
+
+describe('filename helpers (exported for reuse)', () => {
+  it('phaseFilename produces SCREAMING-KEBAB-CASE slug', () => {
+    expect(phaseFilename('MYAPP', { id: 'P01', index: 1, title: 'Foundation setup', body: '', tasks: [] }))
+      .toBe('MYAPP-PHASE-01-FOUNDATION-SETUP.md');
+  });
+  it('taskFilename encodes phase + task index', () => {
+    expect(taskFilename('MYAPP', {
+      id: 'P02-T03', phaseIndex: 2, taskIndex: 3, title: 'Wire it up', requirementTags: [], body: '',
+    })).toBe('MYAPP-TASK-P02-T03-WIRE-IT-UP.md');
+  });
+});

@@ -64,6 +64,11 @@ describe('parseArgs', () => {
       assert.strictEqual(options.tool, 'copilot');
     });
 
+    it('--tool claude-code', () => {
+      const { options } = parseArgs(['--tool', 'claude-code']);
+      assert.strictEqual(options.tool, 'claude-code');
+    });
+
     it('--orch-root .rad', () => {
       const { options } = parseArgs(['--orch-root', '.rad']);
       assert.strictEqual(options.orchRoot, '.rad');

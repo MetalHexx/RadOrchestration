@@ -17,12 +17,18 @@ interface ExternalLinkProps {
   label: string;
   /** Icon variant; defaults to "external-link" */
   icon?: 'github' | 'external-link';
+  /** Optional tabIndex override. When set, overrides the default browser tab
+   *  order for the underlying <a>. DAG-timeline call sites pass -1 to keep the
+   *  listbox's roving-tabindex scheme intact; other call sites omit it so the
+   *  link stays in the natural Tab order. */
+  tabIndex?: number;
 }
 
 export function ExternalLink({
   href,
   label,
   icon = 'external-link',
+  tabIndex,
 }: ExternalLinkProps): JSX.Element {
   const Icon = icon === 'github' ? Github : ExternalLinkIcon;
 
@@ -52,6 +58,7 @@ export function ExternalLink({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
+      tabIndex={tabIndex}
       className="inline-flex items-center gap-1.5 text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm text-sm"
       aria-label={label}
     >

@@ -1,0 +1,92 @@
+'use client';
+
+import { useState } from 'react';
+import { Handle, Position } from '@xyflow/react';
+import { Layers, RefreshCcw, GitBranch, type LucideIcon } from 'lucide-react';
+import { type TemplateNodeKind, type TemplateGraphNodeData } from '@/types/template';
+import { cn } from '@/lib/utils';
+
+const iconMap: Partial<Record<TemplateNodeKind, LucideIcon>> = {
+  for_each_phase: Layers,
+  for_each_task: RefreshCcw,
+  conditional: GitBranch,
+};
+
+const accentMap: Partial<Record<TemplateNodeKind, string>> = {
+  for_each_phase: 'var(--tier-planning)',
+  for_each_task: 'var(--tier-review)',
+  conditional: 'var(--tier-execution)',
+};
+
+const kindLabelMap: Partial<Record<TemplateNodeKind, string>> = {
+  for_each_phase: 'Loop: each phase',
+  for_each_task: 'Loop: each task',
+  conditional: 'Conditional',
+};
+
+interface TemplateGroupNodeProps {
+  data: TemplateGraphNodeData;
+}
+
+export function TemplateGroupNode({ data }: TemplateGroupNodeProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const Icon = iconMap[data.kind];
+  const accent = accentMap[data.kind] ?? 'transparent';
+  const tooltipId = `tooltip-${data.id}`;
+
+  return (
+    <div
+      className="w-full h-full rounded-[var(--radius-lg)]"
+      style={{
+        background: 'var(--canvas-node-group-bg)',
+        borderTop: `3px solid ${accent}`,
+        borderRight: '1px dashed var(--canvas-node-group-border)',
+        borderBottom: '1px dashed var(--canvas-node-group-border)',
+        borderLeft: '1px dashed var(--canvas-node-group-border)',
+      }}
+      tabIndex={0}
+      role="group"
+      aria-label={data.label}
+      aria-describedby={showTooltip ? tooltipId : undefined}
+      onFocus={() => setShowTooltip(true)}
+      onBlur={() => setShowTooltip(false)}
+    >
+      <Handle type="target" position={Position.Top} isConnectable={false} />
+      {/* Header row */}
+      <div
+        className={cn(
+          'relative flex items-center h-[40px] px-3 gap-2 rounded-t-[var(--radius-lg)]',
+          'bg-[var(--card)] cursor-default',
+          'hover:bg-[var(--canvas-node-group-bg)]/60',
+        )}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+      >
+        {Icon && (
+          <Icon
+            className="h-4 w-4 text-[var(--muted-foreground)] shrink-0"
+            aria-hidden="true"
+          />
+        )}
+
+        <span className="text-sm font-medium text-[var(--card-foreground)] truncate">
+          {data.label}
+        </span>
+
+        <span className="ml-auto text-[11px] text-[var(--muted-foreground)] shrink-0" title={data.kind}>
+          {kindLabelMap[data.kind] ?? data.kind}
+        </span>
+
+        {showTooltip && (
+          <div id={tooltipId} role="tooltip" className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[var(--card)] border border-[var(--border)] rounded-md shadow-md px-3 py-2 text-xs whitespace-nowrap z-50">
+            {process.env.NODE_ENV === 'development' && <div>id: {data.id}</div>}
+            <div>kind: {data.kind}</div>
+            <div>{kindLabelMap[data.kind] ?? ''}</div>
+          </div>
+        )}
+      </div>
+      <Handle type="source" position={Position.Bottom} isConnectable={false} />
+    </div>
+  );
+}

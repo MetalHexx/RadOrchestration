@@ -15,14 +15,14 @@ import { promptUiInstall } from './prompts/ui-install.js';
  * @type {import('./types.js').InstallerConfig}
  */
 const DEFAULTS = {
-  tool: 'copilot',
+  tool: 'claude-code',
   workspaceDir: process.cwd(),
-  orchRoot: '.github',
+  orchRoot: '.claude',
   projectsBasePath: 'orchestration-projects',
   projectsNaming: 'SCREAMING_CASE',
   maxPhases: 10,
   maxTasksPerPhase: 8,
-  maxRetriesPerTask: 2,
+  maxRetriesPerTask: 5,
   maxConsecutiveReviewRejections: 3,
   executionMode: 'ask',
   autoCommit: 'ask',

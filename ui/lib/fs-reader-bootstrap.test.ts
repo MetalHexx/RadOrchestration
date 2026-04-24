@@ -54,8 +54,8 @@ async function run() {
 
     console.log('\nreadConfig() — ORCH_ROOT bootstrap');
 
-    await test('uses .github when ORCH_ROOT is not set', async () => {
-      const configDir = path.join(tmpDir, '.github', 'skills', 'orchestration', 'config');
+    await test('uses .claude when ORCH_ROOT is not set', async () => {
+      const configDir = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config');
       await mkdir(configDir, { recursive: true });
       await writeFile(path.join(configDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
 
@@ -102,7 +102,7 @@ async function run() {
       assert.strictEqual(resolveOrchRoot(config), '.agents');
     });
 
-    await test('returns .github when system.orch_root is undefined', async () => {
+    await test('returns .claude when system.orch_root is undefined', async () => {
       const config = {
         version: '1',
         system: {},
@@ -111,10 +111,10 @@ async function run() {
         human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
         source_control: { auto_commit: 'always', auto_pr: 'never', provider: 'github' },
       } as OrchestrationConfig;
-      assert.strictEqual(resolveOrchRoot(config), '.github');
+      assert.strictEqual(resolveOrchRoot(config), '.claude');
     });
 
-    await test('returns .github when system property is absent', async () => {
+    await test('returns .claude when system property is absent', async () => {
       const config = {
         version: '1',
         projects: { base_path: '../projects', naming: 'SCREAMING_CASE' },
@@ -122,7 +122,7 @@ async function run() {
         human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
         source_control: { auto_commit: 'always', auto_pr: 'never', provider: 'github' },
       } as OrchestrationConfig;
-      assert.strictEqual(resolveOrchRoot(config), '.github');
+      assert.strictEqual(resolveOrchRoot(config), '.claude');
     });
 
   } finally {

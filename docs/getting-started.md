@@ -1,6 +1,6 @@
 # Getting Started
 
-> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
+> **Note:** Commands below use `.claude` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
 
 This guide covers prerequisites, installation, and next steps for the orchestration system.
 

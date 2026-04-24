@@ -22,7 +22,7 @@
 
 /**
  * @typedef {Object} InstallerConfig
- * @property {'copilot'} tool - Selected AI tool (v1: copilot only)
+ * @property {'copilot'|'claude-code'} tool - Selected AI tool
  * @property {string} workspaceDir - Absolute path to target workspace
  * @property {string} orchRoot - Orchestration root folder name or absolute path
  * @property {string} projectsBasePath - Relative or absolute path for project storage

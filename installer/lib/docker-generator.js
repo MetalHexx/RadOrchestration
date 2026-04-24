@@ -8,7 +8,7 @@ import { toDockerPath } from './path-utils.js';
  * @param {Object} options
  * @param {string} options.uiDir - Absolute path to UI directory
  * @param {string} options.workspaceDir - Absolute path to workspace root
- * @param {string} options.orchRoot - Orchestration root folder name (e.g., '.github')
+ * @param {string} options.orchRoot - Orchestration root folder name (e.g., '.claude')
  * @param {string} options.projectsDir - Absolute path to the projects directory
  * @returns {string} - Complete docker-compose.yml content
  */

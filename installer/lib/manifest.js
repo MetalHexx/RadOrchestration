@@ -4,7 +4,7 @@
 
 /**
  * Returns the complete file copy manifest.
- * @param {string} orchRoot - The orchestration root folder name (e.g., '.github')
+ * @param {string} orchRoot - The orchestration root folder name (e.g., '.claude')
  * @returns {Manifest}
  */
 export function getManifest(orchRoot) {
@@ -12,40 +12,21 @@ export function getManifest(orchRoot) {
   const categories = [
     {
       name: 'Root config',
-      sourceDir: 'src/.github',
+      sourceDir: 'src/.claude',
       targetDir: '.',
       recursive: false,
     },
     {
       name: 'Agents',
-      sourceDir: 'src/.github/agents',
+      sourceDir: 'src/.claude/agents',
       targetDir: 'agents',
       recursive: false,
     },
     {
-      name: 'Instructions',
-      sourceDir: 'src/.github/instructions',
-      targetDir: 'instructions',
-      recursive: false,
-    },
-    {
-      name: 'Prompts',
-      sourceDir: 'src/.github/prompts',
-      targetDir: 'prompts',
-      recursive: false,
-    },
-    {
-      name: 'Hooks',
-      sourceDir: 'src/.github/hooks',
-      targetDir: 'hooks',
-      recursive: false,
-    },
-    {
       name: 'Skills',
-      sourceDir: 'src/.github/skills',
+      sourceDir: 'src/.claude/skills',
       targetDir: 'skills',
       recursive: true,
-      excludeDirs: ['orchestration-staging'],
     },
   ];
 
