@@ -237,6 +237,7 @@ async function run() {
       '@/hooks/use-sse-context',
       '@/hooks/use-config-editor',
       '@/hooks/use-config-click-context',
+      '@/hooks/use-start-action',
       '@/components/ui/sidebar',
       '@/components/sidebar',
       '@/components/layout',

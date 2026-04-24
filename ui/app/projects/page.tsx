@@ -8,7 +8,8 @@ import { useConfigEditor } from "@/hooks/use-config-editor";
 import { useConfigClickContext } from "@/hooks/use-config-click-context";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
-import { MainDashboard } from "@/components/layout";
+import { MainDashboard, NotStartedPaneV5 } from "@/components/layout";
+import { useStartAction } from "@/hooks/use-start-action";
 import { DocumentDrawer } from "@/components/documents";
 import { ConfigEditorPanel } from "@/components/config";
 import { DAGTimeline, DAGTimelineSkeleton, ProjectHeader, HaltReasonBanner, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
@@ -67,6 +68,8 @@ export default function ProjectsPage() {
     () => (projectState && !isV5State(projectState) ? projectState : null),
     [projectState],
   );
+
+  const startAction = useStartAction(selectedProject);
 
   const v5Derivations = useMemo(() => {
     if (!v5State) {
@@ -202,6 +205,16 @@ export default function ProjectsPage() {
               projectState={v4State}
               project={selected}
               onDocClick={openDocument}
+            />
+          ) : selected && selected.tier === 'not_initialized' && !v5State && !v4State && !selected.hasMalformedState ? (
+            <NotStartedPaneV5
+              projectName={selected.name}
+              brainstormingDoc={selected.brainstormingDoc ?? null}
+              onViewBrainstorming={openDocument}
+              onStartPlanning={() => startAction.start('start-planning')}
+              onStartBrainstorming={() => startAction.start('start-brainstorming')}
+              pendingAction={startAction.pendingAction}
+              errorMessage={startAction.errorMessage}
             />
           ) : (
             <div className="flex h-full items-center justify-center p-6">
