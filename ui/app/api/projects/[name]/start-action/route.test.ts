@@ -9,7 +9,7 @@ const VALID_YAML = `version: "4"
 system:
   orch_root: .claude/skills/orchestration
 projects:
-  base_path: ../orchestration-projects
+  base_path: orchestration-projects
   naming: SCREAMING_CASE
 limits:
   max_phases: 5
@@ -34,7 +34,7 @@ async function setup() {
   const configDir = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config');
   await mkdir(configDir, { recursive: true });
   await writeFile(path.join(configDir, 'orchestration.yml'), VALID_YAML, 'utf-8');
-  projectsDir = path.resolve(tmpDir, '..', 'orchestration-projects');
+  projectsDir = path.join(tmpDir, 'orchestration-projects');
   await mkdir(path.join(projectsDir, 'DEMO-PROJECT'), { recursive: true });
   process.env.WORKSPACE_ROOT = tmpDir;
   process.env.LAUNCH_CLAUDE_PROJECT_DRY_RUN = '1';
@@ -45,7 +45,6 @@ async function teardown() {
   delete process.env.WORKSPACE_ROOT;
   delete process.env.LAUNCH_CLAUDE_PROJECT_DRY_RUN;
   await rm(tmpDir, { recursive: true, force: true });
-  await rm(projectsDir, { recursive: true, force: true });
 }
 
 async function invokePOST(body: unknown, name: string) {
@@ -136,6 +135,13 @@ async function invokePOST(body: unknown, name: string) {
       );
       console.log('✓ forced launcher failure → 500, structured error, no path leakage');
     }
+
+    // projectsDir stays inside tmpDir (teardown safety)
+    assert.ok(
+      projectsDir.startsWith(tmpDir),
+      'projectsDir must be inside tmpDir so teardown does not escape the temp workspace',
+    );
+    console.log('✓ projectsDir stays inside tmpDir (teardown safety)');
 
     console.log('\nAll start-action route tests passed');
   } finally {

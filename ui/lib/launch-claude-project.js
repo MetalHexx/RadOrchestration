@@ -53,34 +53,46 @@ function buildClaudeCmd() {
 }
 
 function launchWindows() {
-  const innerCmd = `Set-Location '${workspaceRoot}'; ${buildClaudeCmd()}`;
+  const escapedRoot = workspaceRoot.replace(/'/g, "''");
+  const innerCmd = `Set-Location '${escapedRoot}'; ${buildClaudeCmd()}`;
   const encoded  = Buffer.from(innerCmd, 'utf16le').toString('base64');
   const child = spawn(
     'wt',
     ['--startingDirectory', workspaceRoot, 'powershell', '-NoExit', '-EncodedCommand', encoded],
     { detached: true, stdio: 'ignore' }
   );
+  child.on('error', (err) => {
+    process.stderr.write(`launch-claude-project: spawn error: ${err.message}\n`);
+  });
   child.unref();
 }
 
 function launchMac() {
-  const cmd     = `cd '${workspaceRoot}' && ${buildClaudeCmd()}`;
+  const escapedRoot = workspaceRoot.replace(/'/g, "'\\''");
+  const cmd     = `cd '${escapedRoot}' && ${buildClaudeCmd()}`;
   const escaped = cmd.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const child = spawn(
     'osascript',
     ['-e', `tell application "Terminal" to do script "${escaped}"`],
     { detached: true, stdio: 'ignore' }
   );
+  child.on('error', (err) => {
+    process.stderr.write(`launch-claude-project: spawn error: ${err.message}\n`);
+  });
   child.unref();
 }
 
 function launchLinux() {
-  const cmd = `cd '${workspaceRoot}' && ${buildClaudeCmd()}; exec bash`;
+  const escapedRoot = workspaceRoot.replace(/'/g, "'\\''");
+  const cmd = `cd '${escapedRoot}' && ${buildClaudeCmd()}; exec bash`;
   const child = spawn(
     'gnome-terminal',
     ['--', 'bash', '-c', cmd],
     { detached: true, stdio: 'ignore' }
   );
+  child.on('error', (err) => {
+    process.stderr.write(`launch-claude-project: spawn error: ${err.message}\n`);
+  });
   child.unref();
 }
 
@@ -88,6 +100,11 @@ try {
   const platform = process.platform;
   const dryRun = process.env.LAUNCH_CLAUDE_PROJECT_DRY_RUN === '1';
   const forceFail = process.env.LAUNCH_CLAUDE_PROJECT_FORCE_FAIL === '1';
+  const forceNonErrorThrow = process.env.LAUNCH_CLAUDE_PROJECT_FORCE_NON_ERROR_THROW === '1';
+
+  if (forceNonErrorThrow) {
+    throw 'string not error';
+  }
 
   if (forceFail) {
     process.stdout.write(JSON.stringify({
@@ -105,6 +122,7 @@ try {
 
   process.stdout.write(JSON.stringify({ success: true, platform, permissionMode }) + '\n');
 } catch (err) {
-  process.stdout.write(JSON.stringify({ success: false, error: err.message }) + '\n');
+  const message = err instanceof Error ? err.message : String(err);
+  process.stdout.write(JSON.stringify({ success: false, error: message }) + '\n');
   process.exit(1);
 }

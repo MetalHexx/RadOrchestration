@@ -1,10 +1,9 @@
 /**
  * Tests for ui/lib/launch-claude-project.js
  *
- * Exercises the script via `node` with a stubbed `spawn` by swapping the
- * child_process module through NODE_OPTIONS --require. Keeps everything
- * in-process-safe by asserting against JSON stdout only. No real terminal
- * is opened during tests.
+ * Runs the script in a subprocess with LAUNCH_CLAUDE_PROJECT_DRY_RUN=1 so
+ * the platform-specific spawn() is skipped and no real terminal is opened.
+ * Assertions are made against the script's single-line JSON stdout contract.
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -56,6 +55,19 @@ function runLauncher(args: string[], env: NodeJS.ProcessEnv = {}): { stdout: str
   assert.equal(parsed.permissionMode, 'auto');
   assert.equal(status, 0);
   console.log('✓ dry-run happy path → success JSON (platform + permissionMode=auto)');
+}
+
+// Non-Error throw at top level → catch fallback uses String(err)
+{
+  const { stdout, status } = runLauncher(
+    ['--workspace-root', process.cwd(), '--prompt', '/brainstorm FOO'],
+    { LAUNCH_CLAUDE_PROJECT_FORCE_NON_ERROR_THROW: '1' },
+  );
+  const parsed = JSON.parse(stdout.trim());
+  assert.equal(parsed.success, false);
+  assert.equal(parsed.error, 'string not error');
+  assert.notEqual(status, 0);
+  console.log('✓ non-Error throw → catch uses String(err) fallback');
 }
 
 console.log('\nAll launch-claude-project tests passed');

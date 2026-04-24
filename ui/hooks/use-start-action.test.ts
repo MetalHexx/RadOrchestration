@@ -62,4 +62,7 @@ async function run() {
   console.log('\nAll use-start-action tests passed');
 }
 
-run();
+run().catch(err => {
+  console.error(err);
+  process.exit(1);
+});
