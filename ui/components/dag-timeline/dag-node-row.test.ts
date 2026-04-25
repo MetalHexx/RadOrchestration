@@ -9,9 +9,9 @@
  */
 import assert from "node:assert";
 import { formatNodeId } from './dag-node-row';
-import { getDisplayName, getGateNodeConfig, GATE_NODE_CONFIG } from './dag-timeline-helpers';
+import { getDisplayName, getGateNodeConfig, getRowButtonDescriptor, GATE_NODE_CONFIG } from './dag-timeline-helpers';
 import { STATUS_MAP } from './node-status-badge';
-import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState } from '@/types/state';
+import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodeStatus } from '@/types/state';
 import { gateNode, conditionalNodeBranchTrue, conditionalNodeBranchFalse } from './__fixtures__';
 
 let passed = 0;
@@ -620,6 +620,68 @@ test("Enter on step row with doc_path returns 'open-doc'", () => {
   // Step rows with a non-null doc_path should keyboard-activate the doc.
   const action = decideKeyDownAction('Enter', false, true);
   assert.strictEqual(action, 'open-doc');
+});
+
+// ─── Tests: row descriptor branching (FR-1, FR-2, FR-3, AD-1, AD-2) ──────────
+
+/**
+ * Mirrors the `DAGNodeRow` post-descriptor render decision:
+ * 'approve' → ApproveGateButton; 'execute' → ExecutePlanButton; 'none' → no button.
+ */
+function renderKindFor(
+  nodeId: string,
+  node: GateNodeState,
+  phaseLoopStatus: NodeStatus | undefined,
+  projectName: string | undefined,
+): 'approve' | 'execute' | 'none' {
+  if (projectName === undefined) return 'none';
+  if (node.kind !== 'gate') return 'none';
+  const desc = getRowButtonDescriptor(nodeId, node, phaseLoopStatus);
+  return desc.kind;
+}
+
+test("FR-1: gate_active=false on plan_approval_gate → 'none' (regression: POEMS-1 in requirements step)", () => {
+  const node: GateNodeState = { kind: 'gate', status: 'not_started', gate_active: false };
+  assert.strictEqual(renderKindFor('plan_approval_gate', node, 'not_started', 'POEMS-1'), 'none');
+});
+
+test("FR-1: gate_active=false on final_approval_gate → 'none'", () => {
+  const node: GateNodeState = { kind: 'gate', status: 'not_started', gate_active: false };
+  assert.strictEqual(renderKindFor('final_approval_gate', node, 'not_started', 'POEMS-1'), 'none');
+});
+
+test("FR-1: gate_active=true on plan_approval_gate → 'approve'", () => {
+  const node: GateNodeState = { kind: 'gate', status: 'not_started', gate_active: true };
+  assert.strictEqual(renderKindFor('plan_approval_gate', node, 'not_started', 'POEMS-1'), 'approve');
+});
+
+test("FR-2: plan_approval_gate completed AND phase_loop not_started → 'execute'", () => {
+  const node: GateNodeState = { kind: 'gate', status: 'completed', gate_active: true };
+  assert.strictEqual(renderKindFor('plan_approval_gate', node, 'not_started', 'POEMS-1'), 'execute');
+});
+
+test("FR-2: plan_approval_gate completed AND phase_loop in_progress → 'none'", () => {
+  const node: GateNodeState = { kind: 'gate', status: 'completed', gate_active: true };
+  assert.strictEqual(renderKindFor('plan_approval_gate', node, 'in_progress', 'POEMS-1'), 'none');
+});
+
+test("FR-3 mutex: completed gate never renders 'approve'", () => {
+  const node: GateNodeState = { kind: 'gate', status: 'completed', gate_active: true };
+  const k = renderKindFor('plan_approval_gate', node, 'not_started', 'POEMS-1');
+  assert.notStrictEqual(k, 'approve');
+});
+
+test("FR-7: task_gate compound id never renders any row button", () => {
+  const node: GateNodeState = { kind: 'gate', status: 'not_started', gate_active: true };
+  assert.strictEqual(
+    renderKindFor('phase_loop.iter0.task_gate', node, 'in_progress', 'POEMS-1'),
+    'none'
+  );
+});
+
+test("projectName undefined → 'none' (no button without a project context)", () => {
+  const node: GateNodeState = { kind: 'gate', status: 'not_started', gate_active: true };
+  assert.strictEqual(renderKindFor('plan_approval_gate', node, 'not_started', undefined), 'none');
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────

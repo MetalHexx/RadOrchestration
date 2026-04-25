@@ -5,33 +5,37 @@ import { cn } from '@/lib/utils';
 import { NodeKindIcon } from './node-kind-icon';
 import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
 import { DocumentLink } from '@/components/documents';
-import { ApproveGateButton } from '@/components/dashboard';
-import { getDisplayName, getGateNodeConfig } from './dag-timeline-helpers';
+import { ApproveGateButton, ExecutePlanButton } from '@/components/dashboard';
+import { getDisplayName, getRowButtonDescriptor } from './dag-timeline-helpers';
 import type { CompatibleNodeState } from './dag-timeline-helpers';
+import type { NodeStatus } from '@/types/state';
 
 interface DAGNodeRowProps {
   nodeId: string;
   node: CompatibleNodeState;
   currentNodePath: string | null;
   onDocClick: (path: string) => void;
-  depth?: number;  // default: 0
+  depth?: number;
   projectName?: string;
   isFocused: boolean;
   onFocusChange: (nodeId: string) => void;
+  /** Top-level phase_loop status; drives FR-2 Execute Plan visibility (AD-2). */
+  phaseLoopStatus?: NodeStatus;
 }
 
 // Re-export formatNodeId to preserve barrel export contract
 export { formatNodeId } from './dag-timeline-helpers';
 
-export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0, projectName, isFocused, onFocusChange }: DAGNodeRowProps) {
+export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0, projectName, isFocused, onFocusChange, phaseLoopStatus }: DAGNodeRowProps) {
   const isActive = nodeId === currentNodePath;
   const branchTaken = node.kind === 'conditional' ? node.branch_taken : null;
   const branchLabel = branchTaken != null ? (branchTaken === 'true' ? 'Yes' : 'No') : null;
   const branchBadgeStatus = branchTaken != null ? (branchTaken === 'true' ? 'completed' : 'skipped') : null;
-  const gateConfig = node.kind === 'gate' && node.status !== 'completed' && projectName !== undefined
-    ? getGateNodeConfig(nodeId)
-    : null;
-  const hasGate = gateConfig !== null;
+  const descriptor =
+    node.kind === 'gate' && projectName !== undefined
+      ? getRowButtonDescriptor(nodeId, node, phaseLoopStatus)
+      : { kind: 'none' as const };
+  const hasGate = descriptor.kind !== 'none';
 
   const gateButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -80,13 +84,21 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       {node.kind === 'step' && node.doc_path != null && node.doc_path !== '' && (
         <DocumentLink path={node.doc_path} label="Doc" onDocClick={onDocClick} tabIndex={-1} />
       )}
-      {gateConfig !== null && (
+      {descriptor.kind === 'approve' && (
         <ApproveGateButton
           ref={gateButtonRef}
-          gateEvent={gateConfig.event}
+          gateEvent={descriptor.event}
           projectName={projectName!}
           documentName={projectName!}
-          label={gateConfig.label}
+          label={descriptor.label}
+          className="ml-auto"
+          tabIndex={-1}
+        />
+      )}
+      {descriptor.kind === 'execute' && (
+        <ExecutePlanButton
+          ref={gateButtonRef}
+          projectName={projectName!}
           className="ml-auto"
           tabIndex={-1}
         />
