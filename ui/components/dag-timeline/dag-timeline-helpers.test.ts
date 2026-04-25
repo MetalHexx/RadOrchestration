@@ -595,5 +595,31 @@ test("FR-3 mutex: at no phase_loop status do both buttons render simultaneously"
   }
 });
 
+// ─── Tests: getRowButtonDescriptor — FR-7 non-regression invariants ──────────
+
+test("compound id 'phase_loop.iter0.final_approval_gate' with gate_active=true → approve (FR-7, AD-1)", () => {
+  const desc = getRowButtonDescriptor(
+    'phase_loop.iter0.final_approval_gate',
+    gateActive,
+    'in_progress'
+  );
+  assert.deepStrictEqual(desc, { kind: 'approve', event: 'final_approved', label: 'Approve Final Review' });
+});
+
+test("compound id 'phase_loop.iter0.task_gate' returns kind='none' (FR-7: task gates never render row buttons)", () => {
+  const desc = getRowButtonDescriptor('phase_loop.iter0.task_gate', gateActive, 'in_progress');
+  assert.deepStrictEqual(desc, { kind: 'none' });
+});
+
+test("pr_gate leaf returns kind='none' (FR-7)", () => {
+  const desc = getRowButtonDescriptor('pr_gate', gateActive, 'in_progress');
+  assert.deepStrictEqual(desc, { kind: 'none' });
+});
+
+test("gate_mode_selection leaf returns kind='none' (FR-7)", () => {
+  const desc = getRowButtonDescriptor('gate_mode_selection', gateActive, 'in_progress');
+  assert.deepStrictEqual(desc, { kind: 'none' });
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
