@@ -85,6 +85,31 @@ async function run() {
     },
   );
 
+  // execute-plan: failure path surfaces error string verbatim (FR-8, DD-5)
+  await withFetch(
+    async () =>
+      new Response(JSON.stringify({ success: false, error: 'Launcher failed.' }), {
+        status: 500, headers: { 'content-type': 'application/json' },
+      }),
+    async () => {
+      const res = await postStartAction('DEMO', 'execute-plan');
+      assert.equal(res.success, false);
+      assert.equal(res.error, 'Launcher failed.');
+      console.log('✓ execute-plan failure → { success:false, error }');
+    },
+  );
+
+  // execute-plan: network error returned as failure result, never thrown (FR-8, NFR-2)
+  await withFetch(
+    async () => { throw new Error('offline'); },
+    async () => {
+      const res = await postStartAction('DEMO', 'execute-plan');
+      assert.equal(res.success, false);
+      assert.match(res.error ?? '', /offline|network/i);
+      console.log('✓ execute-plan network error → { success:false, error }');
+    },
+  );
+
   console.log('\nAll use-start-action tests passed');
 }
 
