@@ -6,6 +6,7 @@ export { OtherDocsSection } from "./other-docs-section";
 export { GateHistorySection } from "./gate-history-section";
 export { LimitsSection } from "./limits-section";
 export { ApproveGateButton } from "./approve-gate-button";
+export { ExecutePlanButton } from "./execute-plan-button";
 export { ConfirmApprovalDialog } from "./confirm-approval-dialog";
 export { GateErrorBanner } from "./gate-error-banner";
 export { SourceControlSection } from "./source-control-section";

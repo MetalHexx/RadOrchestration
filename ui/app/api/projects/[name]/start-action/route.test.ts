@@ -83,6 +83,7 @@ async function invokePOST(body: unknown, name: string) {
       assert.equal(res.status, 400);
       const json = await res.json();
       assert.match(json.error, /action/i);
+      assert.match(json.error, /execute-plan/);
       console.log('✓ unknown action → 400');
     }
 
@@ -134,6 +135,60 @@ async function invokePOST(body: unknown, name: string) {
         'error must not echo env var name'
       );
       console.log('✓ forced launcher failure → 500, structured error, no path leakage');
+    }
+
+    // Happy path execute-plan → 200 success:true platform string (FR-4, FR-5)
+    {
+      const res = await invokePOST({ action: 'execute-plan' }, 'DEMO-PROJECT');
+      assert.equal(res.status, 200);
+      const json = await res.json();
+      assert.equal(json.success, true);
+      assert.equal(typeof json.platform, 'string');
+      console.log('✓ execute-plan happy path → 200 success:true platform string');
+    }
+
+    // execute-plan on unknown project → 404 (AD-4)
+    {
+      const res = await invokePOST({ action: 'execute-plan' }, 'NOPE');
+      assert.equal(res.status, 404);
+      console.log('✓ execute-plan unknown project → 404');
+    }
+
+    // execute-plan: invalid project name format → 400 (AD-4)
+    {
+      const res = await invokePOST({ action: 'execute-plan' }, 'bad..name');
+      assert.equal(res.status, 400);
+      console.log('✓ execute-plan invalid project name → 400');
+    }
+
+    // execute-plan: forced launcher failure → 500, no path/env leakage (NFR-2, NFR-3)
+    {
+      process.env.LAUNCH_CLAUDE_PROJECT_FORCE_FAIL = '1';
+      const res = await invokePOST({ action: 'execute-plan' }, 'DEMO-PROJECT');
+      delete process.env.LAUNCH_CLAUDE_PROJECT_FORCE_FAIL;
+      assert.equal(res.status, 500);
+      const json = await res.json();
+      assert.equal(json.success, false);
+      assert.equal(typeof json.error, 'string');
+      assert.ok(!/[A-Z]:\\|\/home\//.test(json.error), 'execute-plan error must not echo absolute host path');
+      assert.ok(
+        !/LAUNCH_CLAUDE_PROJECT_FORCE_FAIL|WORKSPACE_ROOT/.test(json.error),
+        'execute-plan error must not echo env var name'
+      );
+      console.log('✓ execute-plan forced launcher failure → 500, no path/env leakage');
+    }
+
+    // execute-plan: route returns promptly under DRY_RUN (NFR-1: no wait on terminal)
+    {
+      const start = Date.now();
+      const res = await invokePOST({ action: 'execute-plan' }, 'DEMO-PROJECT');
+      const elapsedMs = Date.now() - start;
+      assert.equal(res.status, 200);
+      // The launcher runs under LAUNCH_CLAUDE_PROJECT_DRY_RUN=1 (set in setup);
+      // the route must return before any real terminal would render. This is
+      // a generous upper bound — true responsiveness is OS-level.
+      assert.ok(elapsedMs < 5000, `route must return promptly; took ${elapsedMs}ms`);
+      console.log(`✓ execute-plan route returns promptly (${elapsedMs}ms)`);
     }
 
     // projectsDir stays inside tmpDir (teardown safety)

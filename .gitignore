@@ -51,3 +51,6 @@ node_modules/
 !/prompt-tests/execute-coding-task-e2e/output/*/.gitkeep
 !/prompt-tests/execute-coding-task-e2e/output/tdd-slip/baseline-*/lint-report.md
 !/prompt-tests/execute-coding-task-e2e/output/tdd-slip/baseline-*/run-notes.md
+
+# Next.js build output (root-level)
+/.next/
