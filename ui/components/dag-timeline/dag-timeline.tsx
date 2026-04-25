@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { NodesRecord, NodeState } from '@/types/state';
+import type { NodesRecord, NodeState, NodeStatus } from '@/types/state';
 import { DAGNodeRow } from './dag-node-row';
 import { DAGLoopNode } from './dag-loop-node';
 import { isLoopNode, groupNodesBySection, NODE_SECTION_MAP } from './dag-timeline-helpers';
@@ -19,6 +19,8 @@ interface DAGTimelineProps {
   ) => void;
   repoBaseUrl: string | null;
   projectName: string;
+  /** Top-level phase_loop.status for FR-2 Execute Plan visibility (AD-2). */
+  phaseLoopStatus?: NodeStatus;
 }
 
 /**
@@ -41,7 +43,7 @@ export function deriveAncestorLoopKeys(lostKey: string): string[] {
   return result.reverse();
 }
 
-export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName }: DAGTimelineProps) {
+export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName, phaseLoopStatus }: DAGTimelineProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const groups = groupNodesBySection(nodes);
   const unmatchedEntries = Object.entries(nodes).filter(([nodeId]) => !Object.hasOwn(NODE_SECTION_MAP, nodeId));
@@ -164,6 +166,7 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
           focusedRowKey={focusedRowKey}
           isFocused={focusedRowKey === nodeId}
           onFocusChange={handleFocusChange}
+          phaseLoopStatus={phaseLoopStatus}
         />
       ) : (
         <DAGNodeRow
@@ -174,6 +177,7 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
           projectName={projectName}
           isFocused={focusedRowKey === nodeId}
           onFocusChange={handleFocusChange}
+          phaseLoopStatus={phaseLoopStatus}
         />
       )}
     </div>

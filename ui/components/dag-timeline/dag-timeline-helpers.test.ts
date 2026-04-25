@@ -621,5 +621,26 @@ test("gate_mode_selection leaf returns kind='none' (FR-7)", () => {
   assert.deepStrictEqual(desc, { kind: 'none' });
 });
 
+// ─── Tests: phase_loop.status pass-through invariant (AD-2) ──────────────────
+
+test("AD-2: descriptor receives phase_loop.status straight from nodes record (no derived fetch)", () => {
+  // Build a minimal nodes record matching v5 shape. The descriptor is
+  // computed against `nodes.phase_loop.status` directly — proving the
+  // page can pass the raw status without a side-channel.
+  const nodes = {
+    plan_approval_gate: { kind: 'gate', status: 'completed', gate_active: true } as const,
+    phase_loop: { kind: 'for_each_phase', status: 'not_started', iterations: [] } as const,
+  };
+  const phaseLoopStatus = nodes.phase_loop.status;
+  const desc = getRowButtonDescriptor('plan_approval_gate', nodes.plan_approval_gate, phaseLoopStatus);
+  assert.strictEqual(desc.kind, 'execute');
+});
+
+test("AD-2: phase_loop missing → undefined → descriptor 'none' for FR-2 (defensive)", () => {
+  const node = { kind: 'gate', status: 'completed', gate_active: true } as const;
+  const desc = getRowButtonDescriptor('plan_approval_gate', node, undefined);
+  assert.strictEqual(desc.kind, 'none');
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);

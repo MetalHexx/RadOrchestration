@@ -73,7 +73,7 @@ export default function ProjectsPage() {
 
   const v5Derivations = useMemo(() => {
     if (!v5State) {
-      return { graphStatus: undefined, gateMode: undefined, currentPhaseName: null, progress: null, repoBaseUrl: null };
+      return { graphStatus: undefined, gateMode: undefined, currentPhaseName: null, progress: null, repoBaseUrl: null, phaseLoopStatus: undefined };
     }
     const phaseLoopNode = v5State.graph.nodes.phase_loop;
     const typedPhaseLoop = phaseLoopNode?.kind === 'for_each_phase' ? phaseLoopNode : undefined;
@@ -83,6 +83,7 @@ export default function ProjectsPage() {
       currentPhaseName: deriveCurrentPhase(typedPhaseLoop),
       progress: derivePhaseProgress(typedPhaseLoop),
       repoBaseUrl: deriveRepoBaseUrl(v5State.pipeline.source_control?.compare_url ?? null),
+      phaseLoopStatus: typedPhaseLoop?.status,
     };
   }, [v5State]);
 
@@ -197,6 +198,7 @@ export default function ProjectsPage() {
                   onAccordionChange={onAccordionChange}
                   repoBaseUrl={v5Derivations.repoBaseUrl}
                   projectName={selected.name}
+                  phaseLoopStatus={v5Derivations.phaseLoopStatus}
                 />
               </div>
             </div>
