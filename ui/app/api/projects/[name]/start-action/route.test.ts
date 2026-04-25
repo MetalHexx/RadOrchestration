@@ -161,6 +161,36 @@ async function invokePOST(body: unknown, name: string) {
       console.log('✓ execute-plan invalid project name → 400');
     }
 
+    // execute-plan: forced launcher failure → 500, no path/env leakage (NFR-2, NFR-3)
+    {
+      process.env.LAUNCH_CLAUDE_PROJECT_FORCE_FAIL = '1';
+      const res = await invokePOST({ action: 'execute-plan' }, 'DEMO-PROJECT');
+      delete process.env.LAUNCH_CLAUDE_PROJECT_FORCE_FAIL;
+      assert.equal(res.status, 500);
+      const json = await res.json();
+      assert.equal(json.success, false);
+      assert.equal(typeof json.error, 'string');
+      assert.ok(!/[A-Z]:\\|\/home\//.test(json.error), 'execute-plan error must not echo absolute host path');
+      assert.ok(
+        !/LAUNCH_CLAUDE_PROJECT_FORCE_FAIL|WORKSPACE_ROOT/.test(json.error),
+        'execute-plan error must not echo env var name'
+      );
+      console.log('✓ execute-plan forced launcher failure → 500, no path/env leakage');
+    }
+
+    // execute-plan: route returns promptly under DRY_RUN (NFR-1: no wait on terminal)
+    {
+      const start = Date.now();
+      const res = await invokePOST({ action: 'execute-plan' }, 'DEMO-PROJECT');
+      const elapsedMs = Date.now() - start;
+      assert.equal(res.status, 200);
+      // The launcher runs under LAUNCH_CLAUDE_PROJECT_DRY_RUN=1 (set in setup);
+      // the route must return before any real terminal would render. This is
+      // a generous upper bound — true responsiveness is OS-level.
+      assert.ok(elapsedMs < 5000, `route must return promptly; took ${elapsedMs}ms`);
+      console.log(`✓ execute-plan route returns promptly (${elapsedMs}ms)`);
+    }
+
     // projectsDir stays inside tmpDir (teardown safety)
     assert.ok(
       projectsDir.startsWith(tmpDir),
