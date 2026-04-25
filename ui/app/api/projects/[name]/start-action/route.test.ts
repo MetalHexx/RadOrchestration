@@ -83,6 +83,7 @@ async function invokePOST(body: unknown, name: string) {
       assert.equal(res.status, 400);
       const json = await res.json();
       assert.match(json.error, /action/i);
+      assert.match(json.error, /execute-plan/);
       console.log('✓ unknown action → 400');
     }
 
@@ -134,6 +135,30 @@ async function invokePOST(body: unknown, name: string) {
         'error must not echo env var name'
       );
       console.log('✓ forced launcher failure → 500, structured error, no path leakage');
+    }
+
+    // Happy path execute-plan → 200 success:true platform string (FR-4, FR-5)
+    {
+      const res = await invokePOST({ action: 'execute-plan' }, 'DEMO-PROJECT');
+      assert.equal(res.status, 200);
+      const json = await res.json();
+      assert.equal(json.success, true);
+      assert.equal(typeof json.platform, 'string');
+      console.log('✓ execute-plan happy path → 200 success:true platform string');
+    }
+
+    // execute-plan on unknown project → 404 (AD-4)
+    {
+      const res = await invokePOST({ action: 'execute-plan' }, 'NOPE');
+      assert.equal(res.status, 404);
+      console.log('✓ execute-plan unknown project → 404');
+    }
+
+    // execute-plan: invalid project name format → 400 (AD-4)
+    {
+      const res = await invokePOST({ action: 'execute-plan' }, 'bad..name');
+      assert.equal(res.status, 400);
+      console.log('✓ execute-plan invalid project name → 400');
     }
 
     // projectsDir stays inside tmpDir (teardown safety)

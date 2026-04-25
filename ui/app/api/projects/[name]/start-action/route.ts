@@ -8,10 +8,11 @@ export const dynamic = 'force-dynamic';
 
 const PROJECT_NAME_PATTERN = /^[A-Z0-9][A-Z0-9_-]*$/;
 
-type StartAction = 'start-planning' | 'start-brainstorming';
+type StartAction = 'start-planning' | 'start-brainstorming' | 'execute-plan';
 const ALLOWED_ACTIONS: ReadonlySet<string> = new Set<StartAction>([
   'start-planning',
   'start-brainstorming',
+  'execute-plan',
 ]);
 
 /**
@@ -22,6 +23,11 @@ const ALLOWED_ACTIONS: ReadonlySet<string> = new Set<StartAction>([
 function composePrompt(action: StartAction, projectName: string): string {
   if (action === 'start-planning') {
     return `/rad-plan Start planning ${projectName}`;
+  }
+  if (action === 'execute-plan') {
+    // FR-4 / AD-3: literal slash-prefixed prompt invokes the new
+    // /rad-approve-plan skill with the validated project name.
+    return `/rad-approve-plan ${projectName}`;
   }
   return `/brainstorm ${projectName}`;
 }
@@ -46,7 +52,7 @@ export async function POST(
   const action = (body as { action?: string } | null)?.action;
   if (!action || !ALLOWED_ACTIONS.has(action)) {
     return NextResponse.json(
-      { error: 'Invalid action. Allowed: start-planning, start-brainstorming.' },
+      { error: 'Invalid action. Allowed: start-planning, start-brainstorming, execute-plan.' },
       { status: 400 }
     );
   }
