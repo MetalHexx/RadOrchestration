@@ -1,4 +1,4 @@
-import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord, NodeState, ForEachPhaseNodeState, GateEvent } from '@/types/state';
+import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord, NodeState, ForEachPhaseNodeState, GateEvent, NodeStatus } from '@/types/state';
 
 export type CompatibleNodeState = StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState;
 
@@ -92,6 +92,65 @@ export function getGateNodeConfig(
   nodeId: string
 ): { event: GateEvent; label: string } | null {
   return GATE_NODE_CONFIG[extractLeaf(nodeId)] ?? null;
+}
+
+// ─── Row Button Descriptor (FR-1, FR-2, FR-3, AD-1, AD-2) ────────────────────
+
+/**
+ * Descriptor returned by `getRowButtonDescriptor` describing which (if any)
+ * action button renders on a given DAG row. The discriminated union keeps
+ * the FR-3 mutex invariant computable in one place — the row component
+ * branches on `kind` rather than re-deriving predicates inline.
+ *
+ *  - `'none'`    — no button on this row right now
+ *  - `'approve'` — render ApproveGateButton with the given event/label (FR-1)
+ *  - `'execute'` — render ExecutePlanButton with the given label (FR-2)
+ */
+export type RowButtonDescriptor =
+  | { kind: 'none' }
+  | { kind: 'approve'; event: GateEvent; label: string }
+  | { kind: 'execute'; label: string };
+
+/**
+ * Single source of truth for which button (if any) renders on a DAG row.
+ *
+ * Inputs:
+ *   - nodeId           — possibly compound (`phase_loop.iter0.plan_approval_gate`)
+ *   - node             — the resolved gate node (only used for plan/final approval gates)
+ *   - phaseLoopStatus  — top-level `state.graph.nodes.phase_loop.status` (AD-2)
+ *
+ * Decision table (FR-3 mutex):
+ *   plan_approval_gate, gate_active=true                            → approve (FR-1)
+ *   plan_approval_gate, status=completed, phase_loop=not_started    → execute (FR-2)
+ *   final_approval_gate, gate_active=true                           → approve (FR-1)
+ *   anything else                                                   → none
+ */
+export function getRowButtonDescriptor(
+  nodeId: string,
+  node: GateNodeState,
+  phaseLoopStatus: NodeStatus | undefined
+): RowButtonDescriptor {
+  const cfg = getGateNodeConfig(nodeId);
+  if (cfg === null) return { kind: 'none' };
+
+  // FR-1: Approve button is bound to gate_active, not status alone.
+  if (node.gate_active === true && node.status !== 'completed') {
+    return { kind: 'approve', event: cfg.event, label: cfg.label };
+  }
+
+  // FR-2: Execute Plan only on the plan-approval row, only when the gate
+  // has been approved (status completed) AND the phase_loop has not yet
+  // begun. The final-approval row never yields 'execute'.
+  const leaf = nodeId.includes('.') ? nodeId.slice(nodeId.lastIndexOf('.') + 1) : nodeId;
+  if (
+    leaf === 'plan_approval_gate' &&
+    node.status === 'completed' &&
+    phaseLoopStatus === 'not_started'
+  ) {
+    return { kind: 'execute', label: 'Execute Plan' };
+  }
+
+  return { kind: 'none' };
 }
 
 // ─── Section Types ────────────────────────────────────────────────────────────

@@ -5,7 +5,8 @@
  * NOTE: Tests use the established .test.ts pattern (no DOM/JSX rendering).
  */
 import assert from "node:assert";
-import { getCommitLinkData, deriveRepoBaseUrl, formatNodeId, getDisplayName, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, groupNodesBySection, deriveCurrentPhase, derivePhaseProgress, NODE_SECTION_MAP } from './dag-timeline-helpers';
+import { getCommitLinkData, deriveRepoBaseUrl, formatNodeId, getDisplayName, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, groupNodesBySection, deriveCurrentPhase, derivePhaseProgress, getRowButtonDescriptor, NODE_SECTION_MAP } from './dag-timeline-helpers';
+import type { GateNodeState, NodeStatus } from '@/types/state';
 import { compoundNodeIds, stepNode, gateNode, forEachPhaseNode } from './__fixtures__';
 
 let passed = 0;
@@ -516,6 +517,82 @@ test("no completed iterations returns {completed:0, total:N}", () => {
     ],
   });
   assert.deepStrictEqual(result, { completed: 0, total: 2 });
+});
+
+// ─── Tests: getRowButtonDescriptor (FR-1, FR-2, FR-3, AD-1, AD-2) ───────────
+
+const gateNotActive: GateNodeState = { kind: 'gate', status: 'not_started', gate_active: false };
+const gateActive: GateNodeState   = { kind: 'gate', status: 'not_started', gate_active: true  };
+const gateCompleted: GateNodeState = { kind: 'gate', status: 'completed',  gate_active: true  };
+
+console.log('\ngetRowButtonDescriptor tests\n');
+
+test("plan_approval_gate: gate_active=false → kind='none' (FR-1 regression: no premature Approve Plan)", () => {
+  const desc = getRowButtonDescriptor('plan_approval_gate', gateNotActive, 'not_started');
+  assert.deepStrictEqual(desc, { kind: 'none' });
+});
+
+test("plan_approval_gate: gate_active=true → kind='approve' with plan_approved event (FR-1)", () => {
+  const desc = getRowButtonDescriptor('plan_approval_gate', gateActive, 'not_started');
+  assert.deepStrictEqual(desc, { kind: 'approve', event: 'plan_approved', label: 'Approve Plan' });
+});
+
+test("plan_approval_gate compound id with gate_active=true resolves leaf (FR-1, AD-1)", () => {
+  const desc = getRowButtonDescriptor('some.prefix.plan_approval_gate', gateActive, 'not_started');
+  assert.strictEqual(desc.kind, 'approve');
+});
+
+test("final_approval_gate: gate_active=false → kind='none' (FR-1)", () => {
+  const desc = getRowButtonDescriptor('final_approval_gate', gateNotActive, 'not_started');
+  assert.deepStrictEqual(desc, { kind: 'none' });
+});
+
+test("final_approval_gate: gate_active=true → kind='approve' with final_approved event (FR-1)", () => {
+  const desc = getRowButtonDescriptor('final_approval_gate', gateActive, 'not_started');
+  assert.deepStrictEqual(desc, { kind: 'approve', event: 'final_approved', label: 'Approve Final Review' });
+});
+
+test("plan_approval_gate completed AND phase_loop not_started → kind='execute' (FR-2, AD-2)", () => {
+  const desc = getRowButtonDescriptor('plan_approval_gate', gateCompleted, 'not_started');
+  assert.deepStrictEqual(desc, { kind: 'execute', label: 'Execute Plan' });
+});
+
+test("plan_approval_gate completed AND phase_loop in_progress → kind='none' (FR-2: hides post-launch)", () => {
+  const desc = getRowButtonDescriptor('plan_approval_gate', gateCompleted, 'in_progress');
+  assert.deepStrictEqual(desc, { kind: 'none' });
+});
+
+test("plan_approval_gate completed AND phase_loop completed → kind='none' (FR-2)", () => {
+  const desc = getRowButtonDescriptor('plan_approval_gate', gateCompleted, 'completed');
+  assert.deepStrictEqual(desc, { kind: 'none' });
+});
+
+test("plan_approval_gate completed AND phase_loop undefined → kind='none' (FR-2 defensive)", () => {
+  const desc = getRowButtonDescriptor('plan_approval_gate', gateCompleted, undefined);
+  assert.deepStrictEqual(desc, { kind: 'none' });
+});
+
+test("final_approval_gate completed never yields kind='execute' regardless of phase_loop (FR-2: plan-row only)", () => {
+  const desc = getRowButtonDescriptor('final_approval_gate', gateCompleted, 'not_started');
+  assert.deepStrictEqual(desc, { kind: 'none' });
+});
+
+test("non-gate-config leaf (task_gate) returns kind='none' regardless of input (FR-7)", () => {
+  const desc = getRowButtonDescriptor('phase_loop.iter0.task_gate', gateActive, 'not_started');
+  assert.deepStrictEqual(desc, { kind: 'none' });
+});
+
+test("FR-3 mutex: at no phase_loop status do both buttons render simultaneously", () => {
+  const statuses: Array<NodeStatus | undefined> = ['not_started', 'in_progress', 'completed', 'halted', undefined];
+  for (const s of statuses) {
+    const a = getRowButtonDescriptor('plan_approval_gate', gateActive, s);
+    const c = getRowButtonDescriptor('plan_approval_gate', gateCompleted, s);
+    assert.notStrictEqual(`${a.kind}/${c.kind}`, 'approve/execute (same call)');
+    // Distinct calls model distinct moments in time; mutex is that no
+    // single (gate, phase_loop) tuple yields both kinds.
+    assert.ok(a.kind !== 'execute', 'gate_active state never produces execute');
+    assert.ok(c.kind !== 'approve', 'completed-gate state never produces approve');
+  }
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
