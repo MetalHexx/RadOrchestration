@@ -587,7 +587,6 @@ test("FR-3 mutex: at no phase_loop status do both buttons render simultaneously"
   for (const s of statuses) {
     const a = getRowButtonDescriptor('plan_approval_gate', gateActive, s);
     const c = getRowButtonDescriptor('plan_approval_gate', gateCompleted, s);
-    assert.notStrictEqual(`${a.kind}/${c.kind}`, 'approve/execute (same call)');
     // Distinct calls model distinct moments in time; mutex is that no
     // single (gate, phase_loop) tuple yields both kinds.
     assert.ok(a.kind !== 'execute', 'gate_active state never produces execute');

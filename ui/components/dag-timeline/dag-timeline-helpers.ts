@@ -141,7 +141,7 @@ export function getRowButtonDescriptor(
   // FR-2: Execute Plan only on the plan-approval row, only when the gate
   // has been approved (status completed) AND the phase_loop has not yet
   // begun. The final-approval row never yields 'execute'.
-  const leaf = nodeId.includes('.') ? nodeId.slice(nodeId.lastIndexOf('.') + 1) : nodeId;
+  const leaf = extractLeaf(nodeId);
   if (
     leaf === 'plan_approval_gate' &&
     node.status === 'completed' &&
