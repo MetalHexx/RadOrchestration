@@ -583,7 +583,7 @@ test("non-gate-config leaf (task_gate) returns kind='none' regardless of input (
 });
 
 test("FR-3 mutex: at no phase_loop status do both buttons render simultaneously", () => {
-  const statuses: Array<NodeStatus | undefined> = ['not_started', 'in_progress', 'completed', 'halted', undefined];
+  const statuses: Array<NodeStatus | undefined> = ['not_started', 'in_progress', 'completed', 'failed', 'halted', 'skipped', undefined];
   for (const s of statuses) {
     const a = getRowButtonDescriptor('plan_approval_gate', gateActive, s);
     const c = getRowButtonDescriptor('plan_approval_gate', gateCompleted, s);

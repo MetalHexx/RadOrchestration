@@ -6,7 +6,7 @@
  */
 import assert from 'node:assert/strict';
 import { postStartAction } from './use-start-action';
-import { START_ACTION_KINDS } from '@/components/layout';
+import { START_ACTION_KINDS } from '@/components/layout/start-action-kinds';
 
 const originalFetch = globalThis.fetch;
 

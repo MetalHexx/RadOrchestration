@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 const PROJECT_NAME_PATTERN = /^[A-Z0-9][A-Z0-9_-]*$/;
 
 type StartAction = 'start-planning' | 'start-brainstorming' | 'execute-plan';
-const ALLOWED_ACTIONS: ReadonlySet<string> = new Set<StartAction>([
+const ALLOWED_ACTIONS: ReadonlySet<StartAction> = new Set<StartAction>([
   'start-planning',
   'start-brainstorming',
   'execute-plan',
@@ -50,7 +50,10 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
   }
   const action = (body as { action?: string } | null)?.action;
-  if (!action || !ALLOWED_ACTIONS.has(action)) {
+  function isAllowedAction(a: string | undefined): a is StartAction {
+    return a !== undefined && (ALLOWED_ACTIONS as ReadonlySet<string>).has(a);
+  }
+  if (!isAllowedAction(action)) {
     return NextResponse.json(
       { error: 'Invalid action. Allowed: start-planning, start-brainstorming, execute-plan.' },
       { status: 400 }
@@ -85,7 +88,7 @@ export async function POST(
   }
 
   // 5. Compose prompt server-side and invoke launcher (FR-4, FR-5, AD-3, AD-4)
-  const prompt = composePrompt(action as StartAction, name);
+  const prompt = composePrompt(action, name);
   const result = await invokeLaunchClaudeProject({ workspaceRoot, prompt });
 
   if (!result.success) {

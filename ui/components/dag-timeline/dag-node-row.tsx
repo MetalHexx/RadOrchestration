@@ -35,9 +35,9 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
     node.kind === 'gate' && projectName !== undefined
       ? getRowButtonDescriptor(nodeId, node, phaseLoopStatus)
       : { kind: 'none' as const };
-  const hasGate = descriptor.kind !== 'none';
+  const hasActionButton = descriptor.kind !== 'none';
 
-  const gateButtonRef = useRef<HTMLButtonElement | null>(null);
+  const actionButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const ariaLabel = `${getDisplayName(nodeId)} — ${STATUS_MAP[node.status].defaultLabel}`;
 
@@ -48,12 +48,12 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
-    if (hasGate && gateButtonRef.current !== null) {
-      gateButtonRef.current.click();
+    if (hasActionButton && actionButtonRef.current !== null) {
+      actionButtonRef.current.click();
     } else if (node.kind === 'step' && node.doc_path != null && node.doc_path !== '') {
       onDocClick(node.doc_path);
     }
-  }, [hasGate, node, onDocClick]);
+  }, [hasActionButton, node, onDocClick]);
 
   return (
     <div
@@ -86,7 +86,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       )}
       {descriptor.kind === 'approve' && (
         <ApproveGateButton
-          ref={gateButtonRef}
+          ref={actionButtonRef}
           gateEvent={descriptor.event}
           projectName={projectName!}
           documentName={projectName!}
@@ -97,7 +97,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       )}
       {descriptor.kind === 'execute' && (
         <ExecutePlanButton
-          ref={gateButtonRef}
+          ref={actionButtonRef}
           projectName={projectName!}
           className="ml-auto"
           tabIndex={-1}

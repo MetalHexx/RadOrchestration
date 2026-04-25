@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { StartActionKind } from "@/components/layout";
+import type { StartActionKind } from "@/components/layout/start-action-kinds";
 
 export interface StartActionResult {
   success: boolean;
