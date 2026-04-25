@@ -4,7 +4,8 @@ import { FileText, Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export type StartActionKind = "start-planning" | "start-brainstorming";
+export const START_ACTION_KINDS = ["start-planning", "start-brainstorming", "execute-plan"] as const;
+export type StartActionKind = typeof START_ACTION_KINDS[number];
 
 export interface NotStartedPaneV5Props {
   /** Selected project's name (ProjectSummary.name, SCREAMING_CASE). */
