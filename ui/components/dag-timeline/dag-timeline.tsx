@@ -166,7 +166,6 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
           focusedRowKey={focusedRowKey}
           isFocused={focusedRowKey === nodeId}
           onFocusChange={handleFocusChange}
-          phaseLoopStatus={phaseLoopStatus}
         />
       ) : (
         <DAGNodeRow

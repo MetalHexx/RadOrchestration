@@ -6,7 +6,7 @@ import { NodeKindIcon } from './node-kind-icon';
 import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
 import { DAGIterationPanel } from './dag-iteration-panel';
 import { getDisplayName } from './dag-timeline-helpers';
-import type { ForEachPhaseNodeState, ForEachTaskNodeState, NodeStatus } from '@/types/state';
+import type { ForEachPhaseNodeState, ForEachTaskNodeState } from '@/types/state';
 
 export interface DAGLoopNodeProps {
   nodeId: string;
@@ -23,8 +23,6 @@ export interface DAGLoopNodeProps {
   focusedRowKey: string | null;
   isFocused: boolean;
   onFocusChange: (nodeId: string) => void;
-  /** Top-level phase_loop.status for FR-2 Execute Plan visibility (AD-2). */
-  phaseLoopStatus?: NodeStatus;
 }
 
 export function buildLoopItemValue(nodeId: string): string {
@@ -43,7 +41,6 @@ export function DAGLoopNode({
   focusedRowKey,
   isFocused,
   onFocusChange,
-  phaseLoopStatus,
 }: DAGLoopNodeProps) {
   const sortedIterations = [...node.iterations].sort((a, b) => a.index - b.index);
   const isActive = nodeId === currentNodePath;
