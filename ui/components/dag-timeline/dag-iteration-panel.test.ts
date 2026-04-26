@@ -701,6 +701,51 @@ test('dag-iteration-panel.tsx ariaLabel ternary does NOT carry a "Phase iteratio
   );
 });
 
+console.log("\nDAGIterationPanel — task iteration accordion (P02-T02)\n");
+
+test('dag-iteration-panel.tsx for_each_task branch wraps the task iteration in <AccordionItem value={buildIterationItemValue(parentNodeId, iterationIndex)}> (AD-2, AD-3)', () => {
+  // The file now contains TWO AccordionItem invocations (one per parentKind branch).
+  // Both must use buildIterationItemValue for the value prop so the hook + renderer
+  // identity contract holds for tasks too (AD-3).
+  const matches = iterationPanelSource.match(/value=\{buildIterationItemValue\(parentNodeId,\s*iterationIndex\)\}/g) ?? [];
+  assert.ok(
+    matches.length >= 2,
+    `for_each_task branch must also use buildIterationItemValue for its <AccordionItem value> — found ${matches.length} occurrence(s), expected ≥ 2`
+  );
+});
+
+test('dag-iteration-panel.tsx for_each_task branch does NOT render <ProgressBar> (FR-9 — task iterations have no progress bar)', () => {
+  // ProgressBar is imported and used by the for_each_phase branch only. The for_each_task
+  // branch must not introduce a second usage.
+  const matches = iterationPanelSource.match(/<ProgressBar\b/g) ?? [];
+  assert.strictEqual(
+    matches.length,
+    1,
+    `<ProgressBar> must appear exactly once in dag-iteration-panel.tsx (in the for_each_phase branch only); found ${matches.length} occurrence(s) — task iterations have no progress bar (FR-9)`
+  );
+});
+
+test('dag-iteration-panel.tsx for_each_task branch renders the icon-only SpinnerBadge in its header (DD-1)', () => {
+  // The renderStatusIcon helper introduced in P02-T01 is reused here. There must be ≥ 2
+  // call sites (one per parentKind branch).
+  const matches = iterationPanelSource.match(/renderStatusIcon\(/g) ?? [];
+  assert.ok(
+    matches.length >= 2,
+    `renderStatusIcon must be called in BOTH parentKind branches — found ${matches.length} call(s), expected ≥ 2 (DD-1)`
+  );
+});
+
+test('dag-iteration-panel.tsx for_each_task branch keeps Doc / commit links as SIBLINGS of AccordionTrigger (DD-1, no nested interactive controls)', () => {
+  // After P02-T02, both <AccordionTrigger> blocks in the file must contain NO
+  // <DocumentLink or <ExternalLink usage. The links live in sibling rows.
+  const triggerBlocks = [...iterationPanelSource.matchAll(/<AccordionTrigger[\s\S]*?<\/AccordionTrigger>/g)];
+  assert.ok(triggerBlocks.length >= 2, `expected ≥ 2 <AccordionTrigger>...</AccordionTrigger> blocks (one per parentKind branch); found ${triggerBlocks.length}`);
+  for (const m of triggerBlocks) {
+    assert.ok(!/<DocumentLink\b/.test(m[0]), 'no <DocumentLink> may live inside an <AccordionTrigger> (nested interactive control)');
+    assert.ok(!/<ExternalLink\b/.test(m[0]), 'no <ExternalLink> may live inside an <AccordionTrigger> (nested interactive control)');
+  }
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
