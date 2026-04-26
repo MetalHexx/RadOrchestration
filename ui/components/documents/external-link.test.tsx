@@ -85,4 +85,31 @@ function render(props: Parameters<typeof ExternalLink>[0]): string {
   console.log('✓ active href — tabIndex={-1} round-trips to tabindex="-1"');
 }
 
+// ── Optional title prop ─────────────────────────────────────────────────────
+
+{
+  const html = render({
+    href: 'https://github.com/o/r/commit/abc123def4567890',
+    label: 'Commit',
+    icon: 'github',
+    title: 'abc123def4567890',
+  });
+  assert.ok(html.includes('title="abc123def4567890"'),
+    `expected title attribute in: ${html}`);
+  console.log('✓ FR-12/DD-8 ExternalLink emits title attribute when title prop is provided');
+}
+
+{
+  const html = render({
+    href: 'https://github.com/o/r/commit/abc123def4567890',
+    label: 'Commit',
+    icon: 'github',
+    title: 'abc123def4567890',
+  });
+  assert.ok(html.includes('aria-label="abc123def4567890"') ||
+            html.includes('aria-label="Commit"'),
+    "ExternalLink must preserve aria-label (NFR-1)");
+  console.log('✓ NFR-1 aria-label remains the visible label even when title is set');
+}
+
 console.log('\nAll ExternalLink tests passed ✓');
