@@ -201,7 +201,18 @@ export function DAGIterationPanel({
                   isFocused={focusedRowKey === childKey}
                   onFocusChange={onFocusChange}
                 />
-              ) : null;
+              ) : (
+                <DAGNodeRow
+                  key={childNodeId}
+                  nodeId={childKey}
+                  node={childNode}
+                  depth={ITERATION_CHILD_DEPTH}
+                  currentNodePath={currentNodePath}
+                  onDocClick={onDocClick}
+                  isFocused={focusedRowKey === childKey}
+                  onFocusChange={onFocusChange}
+                />
+              );
             })}
             <DAGCorrectiveTaskGroup
               correctiveTasks={iteration.corrective_tasks}

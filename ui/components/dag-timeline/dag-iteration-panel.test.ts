@@ -779,5 +779,44 @@ test('dag-iteration-panel.tsx data-row-key uses itemValue (the iteration accordi
   );
 });
 
+test('dag-iteration-panel.tsx renders <DAGNodeRow> in BOTH parentKind branches so non-loop iteration.nodes children (e.g. legacy phase_planning step) are not silently dropped (FR-17)', () => {
+  // Pre-unify projects carry a synthetic `phase_planning` step inside
+  // for_each_phase iteration.nodes. The for_each_task branch already handles
+  // non-loop children via a <DAGNodeRow> fallthrough — the for_each_phase
+  // branch must mirror that exact behavior, otherwise any direct step / gate
+  // / conditional node inside iteration.nodes silently disappears from the
+  // rendered body.
+  //
+  // Source-text invariant: exactly two <DAGNodeRow JSX call sites in the
+  // file — one per parentKind branch.
+  const matches = iterationPanelSource.match(/<DAGNodeRow\b/g) ?? [];
+  assert.strictEqual(
+    matches.length,
+    2,
+    `expected exactly two <DAGNodeRow> JSX usages — one per parentKind branch (for_each_phase + for_each_task); found ${matches.length}. Non-loop nodes inside for_each_phase iteration.nodes (e.g. legacy phase_planning step) will be silently dropped if the for_each_phase branch lacks a <DAGNodeRow> fallthrough`
+  );
+
+  // Sanity: also confirm a phase iteration whose nodes contain a non-loop
+  // step is structurally the case the renderer must handle. Mirrors the
+  // pre-unify shape carried by legacy completed projects.
+  const phaseIterationWithLegacyStep: IterationEntry = {
+    index: 0,
+    status: 'completed',
+    corrective_tasks: [],
+    nodes: {
+      phase_planning: {
+        kind: 'step',
+        status: 'completed',
+        doc_path: 'plans/PROJ-PHASE-P01.md',
+        retries: 0,
+      },
+    },
+    commit_hash: null,
+  };
+  const phasePlanning = phaseIterationWithLegacyStep.nodes['phase_planning'];
+  assert.ok(phasePlanning !== undefined);
+  assert.strictEqual(isLoopNode(phasePlanning), false, 'phase_planning is a non-loop step node');
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
