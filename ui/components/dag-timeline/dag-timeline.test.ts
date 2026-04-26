@@ -861,6 +861,26 @@ test('deriveAncestorLoopKeys("phase_loop.iter0.task_loop.iter2.task_handoff") st
   assert.deepStrictEqual(result, ['phase_loop.iter0.task_loop', 'phase_loop']);
 });
 
+// ─── P05-T01: inter-section <Separator> removal ──────────────────────────────
+
+import { readFileSync as tlRead } from 'node:fs';
+import { fileURLToPath as tlFileURL } from 'node:url';
+import { dirname as tlDirname, join as tlJoin } from 'node:path';
+
+const TIMELINE_SOURCE = tlRead(
+  tlJoin(tlDirname(tlFileURL(import.meta.url)), 'dag-timeline.tsx'),
+  'utf8'
+);
+
+console.log("\nDAGTimeline FR-13/FR-14 source-shape tests\n");
+
+test("FR-13/FR-14 inter-section <Separator> is no longer rendered between groups", () => {
+  // The cards (Planning, Completion) carry their own border; Separator
+  // between sibling DAGSectionGroup renders is removed (DD-9, DD-10).
+  assert.ok(!/<Separator[\s\S]*?my-3[\s\S]*?\/>/.test(TIMELINE_SOURCE),
+    "DAGTimeline must not render a Separator between section groups (FR-13, DD-9)");
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

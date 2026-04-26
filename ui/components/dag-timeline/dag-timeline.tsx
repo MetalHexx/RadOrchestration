@@ -1,12 +1,11 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { NodesRecord, NodeState, NodeStatus } from '@/types/state';
 import { DAGNodeRow } from './dag-node-row';
 import { DAGLoopNode } from './dag-loop-node';
 import { isLoopNode, groupNodesBySection, NODE_SECTION_MAP } from './dag-timeline-helpers';
 import { DAGSectionGroup } from './dag-section-group';
-import { Separator } from '@/components/ui/separator';
 
 interface DAGTimelineProps {
   nodes: NodesRecord;
@@ -209,17 +208,13 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
       role="listbox"
       aria-label="Pipeline timeline"
       onKeyDownCapture={handleKeyDown}
-      className="flex flex-col gap-0"
+      className="flex flex-col gap-3"
     >
-      {groups.map((group, index) => (
-        <Fragment key={group.label}>
-          {index > 0 && <Separator className="my-3" role="none" />}
-          <DAGSectionGroup label={group.label}>
-            {group.entries.map(renderNodeEntry)}
-          </DAGSectionGroup>
-        </Fragment>
+      {groups.map((group) => (
+        <DAGSectionGroup key={group.label} label={group.label}>
+          {group.entries.map(renderNodeEntry)}
+        </DAGSectionGroup>
       ))}
-      {groups.length > 0 && unmatchedEntries.length > 0 && <Separator className="my-3" role="none" />}
       {unmatchedEntries.map(renderNodeEntry)}
     </div>
   );
