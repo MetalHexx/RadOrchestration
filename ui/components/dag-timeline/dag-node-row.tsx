@@ -75,7 +75,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
     >
       <NodeKindIcon kind={node.kind} />
       <span className="text-sm font-medium min-w-0 shrink truncate max-w-[55%]">{getDisplayName(nodeId)}</span>
-      <NodeStatusBadge status={node.status} />
+      <NodeStatusBadge status={node.status} iconOnly />
       {branchLabel !== null && branchBadgeStatus !== null && (
         <span role="group" aria-label={`Branch taken: ${branchLabel}`}>
           <NodeStatusBadge status={branchBadgeStatus} label={branchLabel} />

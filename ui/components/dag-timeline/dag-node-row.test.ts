@@ -688,3 +688,66 @@ test("projectName undefined → 'none' (no button without a project context)", (
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
+
+// ─── P03-T03: Root-row visual tightening (DD-1, DD-4, FR-11) ─────────────────
+
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const dagNodeRowSource = readFileSync(join(__dirname, 'dag-node-row.tsx'), 'utf-8');
+
+console.log("\nDAGNodeRow — root-row visual tightening (P03-T03)\n");
+
+let passed2 = 0;
+let failed2 = 0;
+
+function test2(name: string, fn: () => void) {
+  try {
+    fn();
+    console.log(`  ✓ ${name}`);
+    passed2++;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`  ✗ ${name}\n    ${msg}`);
+    failed2++;
+  }
+}
+
+test2('dag-node-row.tsx renders <NodeStatusBadge status=... iconOnly /> (DD-1)', () => {
+  assert.ok(
+    /<NodeStatusBadge\b[^>]*\biconOnly\b/.test(dagNodeRowSource),
+    'DAGNodeRow must render the icon-only NodeStatusBadge variant on root-level rows so the small status icon vocabulary is consistent across phase iteration / task iteration / corrective / root rows (DD-1, FR-11)'
+  );
+});
+
+test2('dag-node-row.tsx keeps the compact py-2 px-3 typography on the row container (DD-4)', () => {
+  assert.ok(
+    /'py-2 pr-3 rounded-md gap-2 flex items-center hover:bg-accent\/50'/.test(dagNodeRowSource)
+    || /'py-2 px-3[^']*hover:bg-accent\/50'/.test(dagNodeRowSource),
+    'DAGNodeRow must keep the compact py-2 (px/pr-3) gap-2 row typography (DD-4)'
+  );
+});
+
+test2('dag-node-row.tsx still renders the action button container with ml-auto so descriptor.kind === "approve" / "execute" align right (FR-11 — no behavior change)', () => {
+  assert.ok(/className="ml-auto"/.test(dagNodeRowSource), 'action-button right-alignment classes must be preserved (FR-11)');
+});
+
+const nsbSource = readFileSync(join(__dirname, 'node-status-badge.tsx'), 'utf-8');
+
+test2('node-status-badge.tsx accepts an `iconOnly` prop and forwards it to SpinnerBadge as `hideLabel` (DD-1)', () => {
+  assert.ok(
+    /iconOnly\??:\s*boolean/.test(nsbSource),
+    'NodeStatusBadgeProps must declare iconOnly?: boolean'
+  );
+  assert.ok(
+    /hideLabel=\{iconOnly\}/.test(nsbSource)
+    || /hideLabel:\s*iconOnly/.test(nsbSource),
+    'NodeStatusBadge must forward iconOnly to SpinnerBadge as hideLabel (DD-1)'
+  );
+});
+
+console.log(`\n${passed2} passed, ${failed2} failed\n`);
+if (failed2 > 0) process.exit(1);

@@ -7,6 +7,8 @@ import { SpinnerBadge } from '@/components/badges';
 interface NodeStatusBadgeProps {
   status: NodeStatus;
   label?: string;
+  /** When true, suppresses visible label text on the badge — used by the compact row treatment (DD-1). */
+  iconOnly?: boolean;
 }
 
 export interface StatusMapEntry {
@@ -27,7 +29,7 @@ export const STATUS_MAP: Record<NodeStatus, StatusMapEntry> = {
 };
 
 export const NodeStatusBadge = React.forwardRef<HTMLSpanElement, NodeStatusBadgeProps>(
-  function NodeStatusBadge({ status, label }, ref) {
+  function NodeStatusBadge({ status, label, iconOnly }, ref) {
     const { cssVar, isSpinning, isComplete, isRejected, defaultLabel } = STATUS_MAP[status];
     const resolvedLabel = label ?? defaultLabel;
     return (
@@ -39,6 +41,7 @@ export const NodeStatusBadge = React.forwardRef<HTMLSpanElement, NodeStatusBadge
         isComplete={isComplete}
         isRejected={isRejected}
         ariaLabel={resolvedLabel}
+        hideLabel={iconOnly}
       />
     );
   },
