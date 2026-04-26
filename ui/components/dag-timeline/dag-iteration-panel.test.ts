@@ -461,7 +461,7 @@ test('dag-iteration-panel.tsx imports DocumentLink from @/components/documents',
   );
 });
 
-test('dag-iteration-panel.tsx renders a <DocumentLink path={iteration.doc_path} label="Doc" onDocClick={onDocClick} /> — new-shape only', () => {
+test('dag-iteration-panel.tsx renders <DocumentLink path={iteration.doc_path}> with typed labels (Phase Plan / Task Handoff) onDocClick={onDocClick} /> — new-shape only (FR-11)', () => {
   // Iterations lost their synthetic phase_planning / task_handoff child step nodes in the
   // explode-scaffold-unify refactor. Those children used to own the Doc button via DAGNodeRow.
   // Post-unify, the iteration panel itself must render the Doc button off iteration.doc_path.
@@ -479,8 +479,8 @@ test('dag-iteration-panel.tsx renders a <DocumentLink path={iteration.doc_path} 
     '<DocumentLink> path prop must be iteration.doc_path (new-shape only), NOT the combined docPath — otherwise legacy projects show a duplicate Doc button on top of the one DAGNodeRow already renders for the phase_planning / task_handoff child row'
   );
   assert.ok(
-    /<DocumentLink[^/]*label="Doc"/.test(iterationPanelSource),
-    '<DocumentLink> label prop must be "Doc" to match DAGNodeRow idiom'
+    /<DocumentLink[^/]*label="Phase Plan|Task Handoff"/.test(iterationPanelSource),
+    '<DocumentLink> label prop must be typed by parent kind: "Phase Plan" for phase iterations, "Task Handoff" for task iterations (FR-11)'
   );
   assert.ok(
     /<DocumentLink[^/]*onDocClick=\{onDocClick\}/.test(iterationPanelSource),
@@ -842,6 +842,18 @@ test("DD-1 iconOnly is wired to iteration.status === 'completed'", () => {
 test("renderStatusIcon helper retired", () => {
   assert.ok(!/function renderStatusIcon\b/.test(PANEL_SOURCE),
     "renderStatusIcon helper is replaced by NodeStatusBadge call sites (FR-1)");
+});
+
+test("FR-11 phase-iteration DocumentLink label is 'Phase Plan'", () => {
+  assert.ok(/label="Phase Plan"/.test(PANEL_SOURCE),
+    "phase iteration trigger DocumentLink must be 'Phase Plan' (FR-11)");
+});
+
+test("FR-11 task-iteration DocumentLink label is 'Task Handoff', not 'Doc'", () => {
+  assert.ok(/label="Task Handoff"/.test(PANEL_SOURCE),
+    "task iteration trigger DocumentLink must be 'Task Handoff' (FR-11)");
+  assert.ok(!/label="Doc"/.test(PANEL_SOURCE),
+    "literal 'Doc' label is forbidden in dag-iteration-panel.tsx (FR-11)");
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

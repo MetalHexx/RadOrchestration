@@ -272,7 +272,7 @@ export function DAGIterationPanel({
             </AccordionTrigger>
           </div>
           {iteration.doc_path != null && iteration.doc_path !== '' && (
-            <DocumentLink path={iteration.doc_path} label="Doc" onDocClick={onDocClick} />
+            <DocumentLink path={iteration.doc_path} label="Task Handoff" onDocClick={onDocClick} />
           )}
           {commitData !== null && (
             commitData.href !== null ? (
