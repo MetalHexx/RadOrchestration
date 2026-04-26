@@ -130,11 +130,12 @@ export function DAGIterationPanel({
     const phaseReviewVerdict = phaseReviewNode?.kind === 'step' ? (phaseReviewNode.verdict ?? null) : null;
     const progress = deriveIterationTaskProgress(iteration);
     const headerAriaLabel = `Phase iteration ${iterationIndex + 1} — ${iterationName} — ${iteration.status}`;
+    const hasPhasePlan = iteration.doc_path != null && iteration.doc_path !== '';
     return (
       <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
         <AccordionItem value={buildIterationItemValue(parentNodeId, iterationIndex)} className={cardClasses}>
-          <div className="flex items-center gap-2 rounded-md hover:bg-accent/50 pr-3">
-            <div className="flex-1 flex items-center gap-2 min-w-0">
+          <div className="relative flex items-center gap-2 rounded-md hover:bg-accent/50 pr-3">
+            <div className="flex-1 flex items-center gap-2 min-w-0 [&>h3]:flex-1 [&>h3]:min-w-0">
               <AccordionTrigger
                 role="option"
                 aria-selected={false}
@@ -167,12 +168,20 @@ export function DAGIterationPanel({
                     />
                   </div>
                 )}
+                {/* Invisible placeholder reserves layout space for the absolute-positioned Phase Plan link below; chevron auto-renders next via shadcn's ml-auto on data-slot=accordion-trigger-icon */}
+                {hasPhasePlan && (
+                  <span aria-hidden="true" className="invisible inline-flex items-center gap-1.5 text-sm shrink-0">
+                    <span className="inline-block h-3.5 w-3.5" />
+                    <span>Phase Plan</span>
+                  </span>
+                )}
               </AccordionTrigger>
             </div>
-            {iteration.doc_path != null && iteration.doc_path !== '' && (
-              <DocumentLink path={iteration.doc_path} label="Phase Plan" onDocClick={onDocClick} />
+            {hasPhasePlan && (
+              <div className="absolute right-12 top-1/2 -translate-y-1/2 z-10">
+                <DocumentLink path={iteration.doc_path!} label="Phase Plan" onDocClick={onDocClick} />
+              </div>
             )}
-            <span data-chevron-slot className="w-6 shrink-0" aria-hidden="true" />
           </div>
           <AccordionContent>
             <div className="border-l border-border pl-3 ml-3">
@@ -233,11 +242,14 @@ export function DAGIterationPanel({
 
   // for_each_task branch (FR-5, FR-9)
   const headerAriaLabel = `Task iteration ${iterationIndex + 1} — ${iterationName} — ${iteration.status}`;
+  const hasTaskHandoff = iteration.doc_path != null && iteration.doc_path !== '';
+  const hasCommitLink = commitData !== null && iteration.commit_hash != null;
+  const hasAnyTaskTrailing = hasTaskHandoff || hasCommitLink;
   return (
     <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
       <AccordionItem value={buildIterationItemValue(parentNodeId, iterationIndex)} className={cardClasses}>
-        <div className="flex items-center gap-2 rounded-md hover:bg-accent/50 pr-3">
-          <div className="flex-1 flex items-center gap-2 min-w-0">
+        <div className="relative flex items-center gap-2 rounded-md hover:bg-accent/50 pr-3">
+          <div className="flex-1 flex items-center gap-2 min-w-0 [&>h3]:flex-1 [&>h3]:min-w-0">
             <AccordionTrigger
               role="option"
               aria-selected={false}
@@ -261,29 +273,49 @@ export function DAGIterationPanel({
               <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
                 {iterationName}
               </span>
+              {/* Invisible placeholder reserves layout space for the absolute-positioned Task Handoff + Commit links below */}
+              {hasAnyTaskTrailing && (
+                <span aria-hidden="true" className="invisible ml-auto inline-flex items-center gap-2 text-sm shrink-0">
+                  {hasTaskHandoff && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-block h-3.5 w-3.5" />
+                      <span>Task Handoff</span>
+                    </span>
+                  )}
+                  {hasCommitLink && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-block h-3.5 w-3.5" />
+                      <span>{commitData!.label}</span>
+                    </span>
+                  )}
+                </span>
+              )}
             </AccordionTrigger>
           </div>
-          {iteration.doc_path != null && iteration.doc_path !== '' && (
-            <DocumentLink path={iteration.doc_path} label="Task Handoff" onDocClick={onDocClick} />
+          {hasAnyTaskTrailing && (
+            <div className="absolute right-12 top-1/2 -translate-y-1/2 z-10 flex items-center gap-2">
+              {hasTaskHandoff && (
+                <DocumentLink path={iteration.doc_path!} label="Task Handoff" onDocClick={onDocClick} />
+              )}
+              {hasCommitLink && (
+                commitData!.href !== null ? (
+                  <ExternalLink
+                    href={commitData!.href}
+                    label="Commit"
+                    icon="github"
+                    title={iteration.commit_hash!}
+                  />
+                ) : (
+                  <span
+                    className="text-xs font-mono text-muted-foreground"
+                    title={iteration.commit_hash!}
+                  >
+                    {commitData!.label}
+                  </span>
+                )
+              )}
+            </div>
           )}
-          {commitData !== null && iteration.commit_hash != null && (
-            commitData.href !== null ? (
-              <ExternalLink
-                href={commitData.href}
-                label="Commit"
-                icon="github"
-                title={iteration.commit_hash}
-              />
-            ) : (
-              <span
-                className="text-xs font-mono text-muted-foreground"
-                title={iteration.commit_hash}
-              >
-                {commitData.label}
-              </span>
-            )
-          )}
-          <span data-chevron-slot className="w-6 shrink-0" aria-hidden="true" />
         </div>
         <AccordionContent>
           {Object.entries(iteration.nodes).map(([childNodeId, childNode]) => {

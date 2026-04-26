@@ -212,8 +212,8 @@ test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path
     'corrective task group must render <DocumentLink> for the corrective task\'s doc link'
   );
   assert.ok(
-    /<DocumentLink\s+path=\{entry\.doc_path\}/.test(correctiveTaskGroupSource),
-    '<DocumentLink> path prop must be entry.doc_path (the new CorrectiveTaskEntry.doc_path field)'
+    /<DocumentLink\s+path=\{entry\.doc_path!?\}/.test(correctiveTaskGroupSource),
+    '<DocumentLink> path prop must be entry.doc_path (the new CorrectiveTaskEntry.doc_path field). Trailing `!` non-null assertion accepted when callsite is gated on a hasHandoff boolean derived from entry.doc_path.'
   );
   assert.ok(
     /<DocumentLink[^/]*label="Handoff"/.test(correctiveTaskGroupSource),
@@ -226,18 +226,15 @@ test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path
 });
 
 test('dag-corrective-task-group.tsx gates <DocumentLink> on entry.doc_path (no render when null/empty)', () => {
-  // Gate expression mirrors dag-iteration-panel.tsx:132 exactly:
+  // Gate expression mirrors dag-iteration-panel.tsx exactly:
   //   entry.doc_path != null && entry.doc_path !== ''
   // No render when doc_path is absent — a completed-without-handoff-doc corrective task would
-  // show an empty Doc button otherwise.
-  const lines = correctiveTaskGroupSource.split(/\r?\n/);
-  const docLinkLineIdx = lines.findIndex((l) => l.includes('<DocumentLink'));
-  assert.ok(docLinkLineIdx > 0, 'DocumentLink line must exist');
-  // Scan the preceding 10 lines for the gate expression (headroom for an explanatory comment block).
-  const precedingWindow = lines.slice(Math.max(0, docLinkLineIdx - 10), docLinkLineIdx).join('\n');
+  // show an empty Doc button otherwise. The gate may be hoisted into a `hasHandoff` boolean
+  // and reused at the JSX site — accept either inline or hoisted form.
   assert.ok(
-    /entry\.doc_path\s*!=\s*null/.test(precedingWindow),
-    'DocumentLink must be gated on `entry.doc_path != null` so corrective tasks without a handoff doc do not render an empty Doc button'
+    /hasHandoff\s*=\s*entry\.doc_path\s*!=\s*null/.test(correctiveTaskGroupSource)
+      || /entry\.doc_path\s*!=\s*null\s*&&\s*entry\.doc_path\s*!==\s*''/.test(correctiveTaskGroupSource),
+    'DocumentLink must be gated on `entry.doc_path != null && entry.doc_path !== \'\'` so corrective tasks without a handoff doc do not render an empty Doc button. Gate may be hoisted into a hasHandoff boolean.'
   );
 });
 
@@ -429,7 +426,9 @@ test("DD-8 corrective ExternalLink forwards full commit hash as title", () => {
 });
 
 test("FR-17/DD-13 corrective trigger wrapper carries pr-3 gutter", () => {
-  const match = CG_SOURCE.match(/className="flex items-center gap-2 rounded-md hover:bg-accent\/50[^"]*"/);
+  // Match the trailing flex-row class chain with optional leading utilities
+  // (e.g. `relative`) so future additive refactors don't churn this assertion.
+  const match = CG_SOURCE.match(/className="[^"]*flex items-center gap-2 rounded-md hover:bg-accent\/50[^"]*"/);
   assert.ok(match !== null, "corrective trigger wrapper missing");
   assert.ok(match[0].includes('pr-3'),
     `corrective trigger wrapper missing pr-3 gutter: ${match[0]} (FR-17, DD-13)`);

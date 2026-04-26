@@ -207,6 +207,7 @@ export const NODE_SECTION_MAP: Record<string, SectionLabel> = {
   final_review: 'Completion',
   pr_gate: 'Completion',
   final_approval_gate: 'Completion',
+  final_pr: 'Completion',
 };
 
 // ─── Doc-link label table (FR-11, AD-6) ─────────────────────────────────────

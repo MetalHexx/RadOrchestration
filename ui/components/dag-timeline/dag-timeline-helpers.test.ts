@@ -191,6 +191,10 @@ test("NODE_SECTION_MAP reroutes plan_approval_gate to Planning (FR-13, AD-3)", (
   assert.strictEqual(NODE_SECTION_MAP.gate_mode_selection, "Planning");
 });
 
+test("NODE_SECTION_MAP routes final_pr to Completion", () => {
+  assert.strictEqual(NODE_SECTION_MAP.final_pr, "Completion");
+});
+
 test("groupNodesBySection emits no Gates group (FR-13, AD-3)", () => {
   const result = groupNodesBySection({
     prd: stepNode,

@@ -475,8 +475,8 @@ test('dag-iteration-panel.tsx renders <DocumentLink path={iteration.doc_path}> w
     'iteration panel must render <DocumentLink> for the iteration\'s doc link'
   );
   assert.ok(
-    /<DocumentLink\s+path=\{iteration\.doc_path\}/.test(iterationPanelSource),
-    '<DocumentLink> path prop must be iteration.doc_path (new-shape only), NOT the combined docPath — otherwise legacy projects show a duplicate Doc button on top of the one DAGNodeRow already renders for the phase_planning / task_handoff child row'
+    /<DocumentLink\s+path=\{iteration\.doc_path!?\}/.test(iterationPanelSource),
+    '<DocumentLink> path prop must be iteration.doc_path (new-shape only), NOT the combined docPath — otherwise legacy projects show a duplicate Doc button on top of the one DAGNodeRow already renders for the phase_planning / task_handoff child row. (Trailing `!` non-null assertion accepted when callsite is gated on a hasPhasePlan/hasTaskHandoff boolean derived from iteration.doc_path.)'
   );
   assert.ok(
     /<DocumentLink[^/]*label="Phase Plan|Task Handoff"/.test(iterationPanelSource),
@@ -493,15 +493,13 @@ test('dag-iteration-panel.tsx gates <DocumentLink> on iteration.doc_path (new sh
   // fallback path already has a Doc button on the phase_planning / task_handoff child row.
   // Double-rendering would ship two buttons that open the same document on every legacy project.
   // The gate uses `iteration.doc_path != null && iteration.doc_path !== ''` to mirror the
-  // existing DAGNodeRow:80 pattern (`node.doc_path != null && node.doc_path !== ''`).
-  const lines = iterationPanelSource.split(/\r?\n/);
-  const docLinkLineIdx = lines.findIndex((l) => l.includes('<DocumentLink'));
-  assert.ok(docLinkLineIdx > 0, 'DocumentLink line must exist');
-  // Scan the preceding 6 lines for the gate expression (headroom for the explanatory comment).
-  const precedingWindow = lines.slice(Math.max(0, docLinkLineIdx - 6), docLinkLineIdx).join('\n');
+  // existing DAGNodeRow:80 pattern (`node.doc_path != null && node.doc_path !== ''`). The
+  // gate may be hoisted into a boolean (`hasPhasePlan` / `hasTaskHandoff` /
+  // `hasAnyTaskTrailing`) and reused at the JSX site — accept either inline or hoisted form.
   assert.ok(
-    /iteration\.doc_path\s*!=\s*null/.test(precedingWindow),
-    'DocumentLink must be gated on `iteration.doc_path != null` (new shape only, not the legacy-fallback-inclusive `docPath` variable)'
+    /(hasPhasePlan|hasTaskHandoff|hasAnyTaskTrailing)\s*=\s*iteration\.doc_path\s*!=\s*null/.test(iterationPanelSource)
+      || /iteration\.doc_path\s*!=\s*null\s*&&\s*iteration\.doc_path\s*!==\s*''/.test(iterationPanelSource),
+    'DocumentLink must be gated on `iteration.doc_path != null && iteration.doc_path !== \'\'` (new shape only, not the legacy-fallback-inclusive `docPath` variable). Gate may be hoisted into a hasPhasePlan/hasTaskHandoff/hasAnyTaskTrailing boolean.'
   );
 });
 
@@ -881,11 +879,14 @@ test("FR-8/DD-5 phase iteration body wraps task list with left padding + left ru
     "phase iteration body wrapper must include border-l + pl-* classes (FR-8, DD-5)");
 });
 
-test("FR-9/DD-6 phase trigger reserves a fixed-width chevron column at the right edge", () => {
-  // The wrapper around AccordionTrigger declares a fixed-width slot
-  // class (data-attr or shrink-0 + w-N) at its right edge.
-  assert.ok(/data-chevron-slot|w-6 shrink-0|w-8 shrink-0/.test(PANEL_SOURCE),
-    "phase trigger must reserve a fixed-width chevron column (FR-9, DD-6)");
+test("FR-9/DD-6 phase trigger lands the auto-rendered chevron at the row's right edge via Header flex-1", () => {
+  // Once the inner wrapper gives the AccordionPrimitive.Header (rendered as <h3>)
+  // flex-1 + min-w-0, the trigger button fills the row width and shadcn's
+  // ChevronDownIcon lands at the right edge via the
+  // [&_data-[slot=accordion-trigger-icon]]:ml-auto rule on AccordionTrigger.
+  // No phantom chevron-slot is required.
+  assert.ok(/\[&>h3\]:flex-1/.test(PANEL_SOURCE),
+    "phase trigger inner wrapper must give Header flex-1 so the auto-chevron lands at the row's right edge (FR-9, DD-6)");
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
@@ -943,9 +944,11 @@ test("FR-18 deriveCurrentPhase still walks legacy phase_planning child", () => {
 
 test("FR-17/DD-13 phase iteration trigger wrapper carries pr-3 gutter", () => {
   // Both phase- and task-iteration trigger wrapper divs (the
-  // <div className="flex items-center gap-2 rounded-md hover:bg-accent/50 ...">)
-  // must include the pr-3 gutter token.
-  const matches = PANEL_SOURCE.match(/className="flex items-center gap-2 rounded-md hover:bg-accent\/50[^"]*"/g) ?? [];
+  // <div className="...flex items-center gap-2 rounded-md hover:bg-accent/50 ...">)
+  // must include the pr-3 gutter token. Match the trailing flex-row class chain
+  // with optional leading utilities (e.g. `relative`) so future additive
+  // refactors don't churn this assertion.
+  const matches = PANEL_SOURCE.match(/className="[^"]*flex items-center gap-2 rounded-md hover:bg-accent\/50[^"]*"/g) ?? [];
   assert.ok(matches.length >= 2, `expected at least 2 trigger wrappers, got ${matches.length}`);
   for (const m of matches) {
     assert.ok(m.includes('pr-3'), `trigger wrapper missing pr-3 gutter: ${m} (FR-17, DD-13)`);
