@@ -97,4 +97,42 @@ test('shouldRender(3) returns true (multiple children → render content)', () =
 // ─── Summary ────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`);
+
+// ─── Card variant tests (FR-13, FR-14, FR-15, AD-4, AD-5, DD-9, DD-10) ──────
+
+import { isCardSection, getCardClasses, CARD_SHELL_CLASSES, CARD_HEADER_CLASSES } from './dag-section-group';
+
+console.log("DAGSectionGroup card-variant tests\n");
+
+test("FR-13 Planning is a card section (DD-9)", () => {
+  assert.strictEqual(isCardSection("Planning"), true);
+});
+
+test("FR-14 Completion is a card section (DD-9)", () => {
+  assert.strictEqual(isCardSection("Completion"), true);
+});
+
+test("FR-15 Execution is NOT a card section (DD-10)", () => {
+  assert.strictEqual(isCardSection("Execution"), false);
+});
+
+test("AD-5 CARD_SHELL_CLASSES uses border + rounded + bg-card tokens", () => {
+  assert.ok(CARD_SHELL_CLASSES.includes("border"));
+  assert.ok(CARD_SHELL_CLASSES.includes("rounded"));
+  assert.ok(CARD_SHELL_CLASSES.includes("bg-card"));
+});
+
+test("AD-5 CARD_HEADER_CLASSES retains uppercase tracking-wide muted treatment", () => {
+  assert.ok(CARD_HEADER_CLASSES.includes("uppercase"));
+  assert.ok(CARD_HEADER_CLASSES.includes("tracking-wide"));
+  assert.ok(CARD_HEADER_CLASSES.includes("text-muted-foreground"));
+});
+
+test("getCardClasses returns shell classes for Planning/Completion, empty for Execution (DD-9, DD-10)", () => {
+  assert.strictEqual(getCardClasses("Planning"), CARD_SHELL_CLASSES);
+  assert.strictEqual(getCardClasses("Completion"), CARD_SHELL_CLASSES);
+  assert.strictEqual(getCardClasses("Execution"), "");
+});
+
+console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
