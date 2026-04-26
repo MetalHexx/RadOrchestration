@@ -8,7 +8,7 @@ import { DAGLoopNode } from './dag-loop-node';
 import { DocumentLink, ExternalLink } from '@/components/documents';
 import { ReviewVerdictBadge } from '@/components/badges';
 import { ProgressBar } from '@/components/execution/progress-bar';
-import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
+import { NodeStatusBadge } from './node-status-badge';
 import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, buildIterationItemValue, deriveIterationTaskProgress, deriveIterationBadgeLabel } from './dag-timeline-helpers';
 import type { IterationEntry, ReviewVerdict } from '@/types/state';
 
