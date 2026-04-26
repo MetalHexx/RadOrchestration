@@ -428,5 +428,12 @@ test("DD-8 corrective ExternalLink forwards full commit hash as title", () => {
     "corrective row must forward full commit hash as ExternalLink title (DD-8)");
 });
 
+test("FR-17/DD-13 corrective trigger wrapper carries pr-3 gutter", () => {
+  const match = CG_SOURCE.match(/className="flex items-center gap-2 rounded-md hover:bg-accent\/50[^"]*"/);
+  assert.ok(match !== null, "corrective trigger wrapper missing");
+  assert.ok(match[0].includes('pr-3'),
+    `corrective trigger wrapper missing pr-3 gutter: ${match[0]} (FR-17, DD-13)`);
+});
+
 console.log(`\n${passed4} passed, ${failed4} failed\n`);
 if (failed4 > 0) process.exit(1);

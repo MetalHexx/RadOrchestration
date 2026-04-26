@@ -940,3 +940,14 @@ test("FR-18 deriveCurrentPhase still walks legacy phase_planning child", () => {
   assert.ok(/phase_planning/.test(helpersSource),
     "deriveCurrentPhase must keep its phase_planning legacy fallback (FR-18)");
 });
+
+test("FR-17/DD-13 phase iteration trigger wrapper carries pr-3 gutter", () => {
+  // Both phase- and task-iteration trigger wrapper divs (the
+  // <div className="flex items-center gap-2 rounded-md hover:bg-accent/50 ...">)
+  // must include the pr-3 gutter token.
+  const matches = PANEL_SOURCE.match(/className="flex items-center gap-2 rounded-md hover:bg-accent\/50[^"]*"/g) ?? [];
+  assert.ok(matches.length >= 2, `expected at least 2 trigger wrappers, got ${matches.length}`);
+  for (const m of matches) {
+    assert.ok(m.includes('pr-3'), `trigger wrapper missing pr-3 gutter: ${m} (FR-17, DD-13)`);
+  }
+});

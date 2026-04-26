@@ -866,5 +866,10 @@ test4("AD-8 DAGNodeRow renders verdictPill after the status badge when provided"
     "DAGNodeRow must render {verdictPill} (AD-8)");
 });
 
+test4("FR-17/DD-13 flat-row container retains pr-3 gutter", () => {
+  assert.ok(/'py-2 pr-3 rounded-md/.test(ROW_SOURCE) || /pr-3 rounded-md gap-2 flex/.test(ROW_SOURCE),
+    "flat-row container must carry pr-3 gutter (FR-17, DD-13)");
+});
+
 console.log(`\n${passed4} passed, ${failed4} failed\n`);
 if (failed4 > 0) process.exit(1);
