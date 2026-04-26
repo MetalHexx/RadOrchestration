@@ -186,33 +186,35 @@ test("DD-12: phaseN/taskN prefix preserved exactly", () => {
 
 console.log("\ngroupNodesBySection tests\n");
 
-test("all 13 NODE_SECTION_MAP keys produce 4 sections in correct order with correct counts", () => {
-  const allNodes = {
+test("NODE_SECTION_MAP reroutes plan_approval_gate to Planning (FR-13, AD-3)", () => {
+  assert.strictEqual(NODE_SECTION_MAP.plan_approval_gate, "Planning");
+  assert.strictEqual(NODE_SECTION_MAP.gate_mode_selection, "Planning");
+});
+
+test("groupNodesBySection emits no Gates group (FR-13, AD-3)", () => {
+  const result = groupNodesBySection({
     prd: stepNode,
-    research: stepNode,
-    design: stepNode,
-    architecture: stepNode,
-    requirements: stepNode,
-    master_plan: stepNode,
-    explode_master_plan: stepNode,
     plan_approval_gate: gateNode,
     gate_mode_selection: gateNode,
     phase_loop: forEachPhaseNode,
     final_review: stepNode,
-    pr_gate: gateNode,
+  });
+  const labels = result.map(g => g.label);
+  assert.deepStrictEqual(labels, ["Planning", "Execution", "Completion"]);
+  const planning = result.find(g => g.label === "Planning")!;
+  const planningIds = planning.entries.map(([id]) => id);
+  assert.ok(planningIds.includes("plan_approval_gate"));
+  assert.ok(planningIds.includes("gate_mode_selection"));
+});
+
+test("section order is Planning → Execution → Completion regardless of insertion (AD-3)", () => {
+  const result = groupNodesBySection({
     final_approval_gate: gateNode,
-  };
-  assert.strictEqual(Object.keys(allNodes).length, Object.keys(NODE_SECTION_MAP).length);
-  const result = groupNodesBySection(allNodes);
-  assert.strictEqual(result.length, 4);
-  assert.strictEqual(result[0].label, "Planning");
-  assert.strictEqual(result[0].entries.length, 7);
-  assert.strictEqual(result[1].label, "Gates");
-  assert.strictEqual(result[1].entries.length, 2);
-  assert.strictEqual(result[2].label, "Execution");
-  assert.strictEqual(result[2].entries.length, 1);
-  assert.strictEqual(result[3].label, "Completion");
-  assert.strictEqual(result[3].entries.length, 3);
+    prd: stepNode,
+    phase_loop: forEachPhaseNode,
+    plan_approval_gate: gateNode,
+  });
+  assert.deepStrictEqual(result.map(g => g.label), ["Planning", "Execution", "Completion"]);
 });
 
 test("empty NodesRecord returns empty array", () => {
@@ -232,25 +234,25 @@ test("unknown node IDs are silently excluded from all groups", () => {
   assert.deepStrictEqual(result, []);
 });
 
-test("Iter 4: default.yml partial template (requirements + master_plan + plan_approval_gate) groups correctly — requirements before master_plan in Planning section", () => {
+test("partial template (requirements + master_plan + plan_approval_gate) groups correctly — all 3 in Planning section", () => {
   // Simulates a fresh project scaffolded from default.yml: 2 planning steps + 1 gate.
   // groupNodesBySection preserves insertion order of the input NodesRecord within each section,
-  // and default.yml declares `requirements` before `master_plan`.
+  // and default.yml declares `requirements` before `master_plan`. plan_approval_gate now
+  // routes to Planning (FR-13), so all 3 appear in Planning without a separate Gates group.
   const result = groupNodesBySection({
     requirements: stepNode,
     master_plan: stepNode,
     plan_approval_gate: gateNode,
   });
-  assert.strictEqual(result.length, 2);
+  assert.strictEqual(result.length, 1);
   assert.strictEqual(result[0].label, "Planning");
-  assert.strictEqual(result[0].entries.length, 2);
+  assert.strictEqual(result[0].entries.length, 3);
   assert.strictEqual(result[0].entries[0][0], "requirements");
   assert.strictEqual(result[0].entries[1][0], "master_plan");
-  assert.strictEqual(result[1].label, "Gates");
-  assert.strictEqual(result[1].entries[0][0], "plan_approval_gate");
+  assert.strictEqual(result[0].entries[2][0], "plan_approval_gate");
 });
 
-test("Iter 4: in_progress requirements node renders under Planning with in_progress status", () => {
+test("in_progress requirements node renders under Planning with in_progress status", () => {
   const inProgressStep = { ...stepNode, status: "in_progress" as const };
   const result = groupNodesBySection({
     requirements: inProgressStep,
@@ -263,9 +265,10 @@ test("Iter 4: in_progress requirements node renders under Planning with in_progr
   assert.strictEqual(reqNode.status, "in_progress");
 });
 
-test("Iter 4: legacy full.yml state (no requirements node) still groups correctly — no crashes, no missing-key warnings", () => {
+test("legacy full.yml state (no requirements node) still groups correctly — no crashes, gates in Planning", () => {
   // A pre-Iter-4 state.json scaffolded from full.yml does NOT contain a `requirements` node.
   // groupNodesBySection must render cleanly without the new node.
+  // plan_approval_gate and gate_mode_selection now route to Planning (FR-13).
   const legacyNodes = {
     prd: stepNode,
     research: stepNode,
@@ -280,39 +283,42 @@ test("Iter 4: legacy full.yml state (no requirements node) still groups correctl
     final_approval_gate: gateNode,
   };
   const result = groupNodesBySection(legacyNodes);
-  assert.strictEqual(result.length, 4);
-  // Planning section: all 5 legacy steps, no `requirements` entry
+  assert.strictEqual(result.length, 3);
+  // Planning section: all 5 legacy steps + 2 planning gates = 7 total
   const planningSection = result.find((g) => g.label === "Planning")!;
   const planningIds = planningSection.entries.map(([id]) => id);
-  assert.strictEqual(planningSection.entries.length, 5);
+  assert.strictEqual(planningSection.entries.length, 7);
   assert.ok(!planningIds.includes("requirements"), "legacy state should not have requirements");
   assert.ok(planningIds.includes("master_plan"), "legacy state must still have master_plan");
+  assert.ok(planningIds.includes("plan_approval_gate"), "plan_approval_gate now in Planning");
+  assert.ok(planningIds.includes("gate_mode_selection"), "gate_mode_selection now in Planning");
 });
 
-test("Iter 5: default.yml partial template (requirements + master_plan + explode_master_plan + plan_approval_gate) groups correctly — explode_master_plan placed after master_plan, before the gate", () => {
+test("default.yml partial template (requirements + master_plan + explode_master_plan + plan_approval_gate) groups correctly — all 4 in Planning", () => {
   // Simulates a fresh project scaffolded from default.yml post-Iter-5: 3 planning steps + 1 gate.
+  // plan_approval_gate now routes to Planning (FR-13), so all 4 appear in single Planning section.
   const result = groupNodesBySection({
     requirements: stepNode,
     master_plan: stepNode,
     explode_master_plan: stepNode,
     plan_approval_gate: gateNode,
   });
-  assert.strictEqual(result.length, 2);
+  assert.strictEqual(result.length, 1);
   const planningSection = result[0];
   assert.strictEqual(planningSection.label, "Planning");
-  assert.strictEqual(planningSection.entries.length, 3);
+  assert.strictEqual(planningSection.entries.length, 4);
   assert.strictEqual(planningSection.entries[0][0], "requirements");
   assert.strictEqual(planningSection.entries[1][0], "master_plan");
   assert.strictEqual(planningSection.entries[2][0], "explode_master_plan");
-  assert.strictEqual(result[1].label, "Gates");
-  assert.strictEqual(result[1].entries[0][0], "plan_approval_gate");
+  assert.strictEqual(planningSection.entries[3][0], "plan_approval_gate");
 });
 
-test("Iter 5: pre-seeded iterations — phase_loop node with explode_master_plan completed + iterations carrying phase_planning child nodes with doc_path populated still groups correctly", () => {
+test("pre-seeded iterations — phase_loop node with explode_master_plan completed + iterations carrying phase_planning child nodes with doc_path populated still groups correctly", () => {
   // After explosion completes, explode_master_plan.status=completed and each phase iteration
   // carries a pre-seeded `phase_planning` child step node with doc_path populated (not on the
   // iteration itself — IterationEntry has no doc_path field).
   // Rendering must not crash on iterations whose nodes contain only these pre-seeded child steps.
+  // plan_approval_gate now routes to Planning (FR-13).
   const seededPhaseLoop = {
     ...forEachPhaseNode,
     status: "not_started" as const,
@@ -333,18 +339,20 @@ test("Iter 5: pre-seeded iterations — phase_loop node with explode_master_plan
     plan_approval_gate: gateNode,
     phase_loop: seededPhaseLoop,
   });
-  assert.strictEqual(result.length, 3);
+  assert.strictEqual(result.length, 2);
   assert.strictEqual(result[0].label, "Planning");
-  assert.strictEqual(result[0].entries.length, 3);
+  assert.strictEqual(result[0].entries.length, 4);
+  assert.strictEqual(result[1].label, "Execution");
   // Confirm the completed explode node is present with status completed.
   const explodeEntry = result[0].entries.find(([id]) => id === "explode_master_plan");
   assert.ok(explodeEntry, "explode_master_plan must be in Planning section");
   assert.strictEqual(explodeEntry![1].status, "completed");
 });
 
-test("Iter 5: legacy state.json (no explode_master_plan + no pre-seeded phase_planning child + no last_parse_error on master_plan) still groups cleanly", () => {
+test("legacy state.json (no explode_master_plan + no pre-seeded phase_planning child) still groups cleanly", () => {
   // Pre-Iter-5 state.json must keep rendering without the explode node and without the
   // pre-seeded phase_planning child step nodes that Iter 5's explosion script now emits.
+  // plan_approval_gate now routes to Planning (FR-13).
   const legacyPhaseLoop = {
     ...forEachPhaseNode,
     iterations: [
@@ -361,21 +369,9 @@ test("Iter 5: legacy state.json (no explode_master_plan + no pre-seeded phase_pl
   const planningIds = result.find(g => g.label === "Planning")!.entries.map(([id]) => id);
   assert.ok(!planningIds.includes("explode_master_plan"), "legacy state should not carry explode_master_plan");
   assert.ok(planningIds.includes("master_plan"), "legacy state must still carry master_plan");
+  assert.ok(planningIds.includes("plan_approval_gate"), "plan_approval_gate now routes to Planning");
 });
 
-test("section order is Planning → Gates → Execution → Completion regardless of insertion order", () => {
-  const result = groupNodesBySection({
-    final_approval_gate: gateNode,
-    prd: stepNode,
-    phase_loop: forEachPhaseNode,
-    plan_approval_gate: gateNode,
-  });
-  assert.strictEqual(result.length, 4);
-  assert.strictEqual(result[0].label, "Planning");
-  assert.strictEqual(result[1].label, "Gates");
-  assert.strictEqual(result[2].label, "Execution");
-  assert.strictEqual(result[3].label, "Completion");
-});
 
 console.log("\nderiveCurrentPhase tests\n");
 

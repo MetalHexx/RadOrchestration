@@ -183,7 +183,7 @@ export function getRowButtonDescriptor(
 
 // ─── Section Types ────────────────────────────────────────────────────────────
 
-export type SectionLabel = 'Planning' | 'Gates' | 'Execution' | 'Completion';
+export type SectionLabel = 'Planning' | 'Execution' | 'Completion';
 
 export interface SectionGroup {
   label: SectionLabel;
@@ -200,8 +200,8 @@ export const NODE_SECTION_MAP: Record<string, SectionLabel> = {
   requirements: 'Planning',
   master_plan: 'Planning',
   explode_master_plan: 'Planning',
-  plan_approval_gate: 'Gates',
-  gate_mode_selection: 'Gates',
+  plan_approval_gate: 'Planning',
+  gate_mode_selection: 'Planning',
   phase_loop: 'Execution',
   final_review: 'Completion',
   pr_gate: 'Completion',
@@ -249,7 +249,7 @@ export function parseTaskNameFromDocPath(
 }
 
 export function groupNodesBySection(nodes: NodesRecord): SectionGroup[] {
-  const sectionOrder: SectionLabel[] = ['Planning', 'Gates', 'Execution', 'Completion'];
+  const sectionOrder: SectionLabel[] = ['Planning', 'Execution', 'Completion'];
   const buckets = new Map<SectionLabel, Array<[string, NodeState]>>();
 
   for (const label of sectionOrder) {
