@@ -6,10 +6,10 @@ import { DAGNodeRow } from './dag-node-row';
 import { DAGCorrectiveTaskGroup } from './dag-corrective-task-group';
 import { DAGLoopNode } from './dag-loop-node';
 import { DocumentLink, ExternalLink } from '@/components/documents';
-import { SpinnerBadge, ReviewVerdictBadge } from '@/components/badges';
+import { ReviewVerdictBadge } from '@/components/badges';
 import { ProgressBar } from '@/components/execution/progress-bar';
-import { STATUS_MAP } from './node-status-badge';
-import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, buildIterationItemValue, deriveIterationTaskProgress } from './dag-timeline-helpers';
+import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
+import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, buildIterationItemValue, deriveIterationTaskProgress, deriveIterationBadgeLabel } from './dag-timeline-helpers';
 import type { IterationEntry, ReviewVerdict } from '@/types/state';
 
 interface DAGIterationPanelProps {
@@ -42,21 +42,6 @@ export function buildIterationChildNodeId(parentNodeId: string, iterationIndex: 
 
 export function buildCorrectiveGroupParentId(parentNodeId: string, iterationIndex: number): string {
   return `${parentNodeId}.iter${iterationIndex}`;
-}
-
-function renderStatusIcon(status: IterationEntry['status']) {
-  const entry = STATUS_MAP[status];
-  return (
-    <SpinnerBadge
-      label={entry.defaultLabel}
-      cssVar={entry.cssVar}
-      isSpinning={entry.isSpinning}
-      isComplete={entry.isComplete}
-      isRejected={entry.isRejected}
-      ariaLabel={entry.defaultLabel}
-      hideLabel
-    />
-  );
 }
 
 export function DAGIterationPanel({
@@ -163,7 +148,16 @@ export function DAGIterationPanel({
                 tabIndex={isFocused ? 0 : -1}
                 onFocus={handleFocus}
               >
-                {renderStatusIcon(iteration.status)}
+                {(() => {
+                  const derived = deriveIterationBadgeLabel(iteration);
+                  return (
+                    <NodeStatusBadge
+                      status={derived.status}
+                      label={derived.label}
+                      iconOnly={iteration.status === 'completed'}
+                    />
+                  );
+                })()}
                 <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
                   {iterationName}
                 </span>
@@ -262,7 +256,16 @@ export function DAGIterationPanel({
               tabIndex={isFocused ? 0 : -1}
               onFocus={handleFocus}
             >
-              {renderStatusIcon(iteration.status)}
+              {(() => {
+                const derived = deriveIterationBadgeLabel(iteration);
+                return (
+                  <NodeStatusBadge
+                    status={derived.status}
+                    label={derived.label}
+                    iconOnly={iteration.status === 'completed'}
+                  />
+                );
+              })()}
               <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
                 {iterationName}
               </span>

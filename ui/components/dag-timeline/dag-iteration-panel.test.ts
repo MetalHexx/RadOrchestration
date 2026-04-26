@@ -580,11 +580,10 @@ test('dag-iteration-panel.tsx <AccordionItem value> uses buildIterationItemValue
   );
 });
 
-test('dag-iteration-panel.tsx renders SpinnerBadge with hideLabel for the phase-iteration small status icon (DD-1)', () => {
+test('dag-iteration-panel.tsx renders NodeStatusBadge with iconOnly for the phase-iteration small status icon (DD-1)', () => {
   assert.ok(
-    /SpinnerBadge[\s\S]{0,400}hideLabel/.test(iterationPanelSource)
-    || /NodeStatusBadge[\s\S]{0,200}hideLabel/.test(iterationPanelSource),
-    'phase iteration header must use the icon-only SpinnerBadge (or a NodeStatusBadge variant that forwards hideLabel) for the small status icon (DD-1)'
+    /NodeStatusBadge[\s\S]{0,200}iconOnly/.test(iterationPanelSource),
+    'phase iteration header must use NodeStatusBadge with iconOnly wired to iteration.status === "completed" for the small status icon (DD-1)'
   );
 });
 
@@ -725,13 +724,13 @@ test('dag-iteration-panel.tsx for_each_task branch does NOT render <ProgressBar>
   );
 });
 
-test('dag-iteration-panel.tsx for_each_task branch renders the icon-only SpinnerBadge in its header (DD-1)', () => {
-  // The renderStatusIcon helper introduced in P02-T01 is reused here. There must be ≥ 2
+test('dag-iteration-panel.tsx for_each_task branch renders NodeStatusBadge in its header (DD-1)', () => {
+  // After P02-T02, NodeStatusBadge replaces renderStatusIcon. There must be ≥ 2
   // call sites (one per parentKind branch).
-  const matches = iterationPanelSource.match(/renderStatusIcon\(/g) ?? [];
+  const matches = iterationPanelSource.match(/<NodeStatusBadge/g) ?? [];
   assert.ok(
     matches.length >= 2,
-    `renderStatusIcon must be called in BOTH parentKind branches — found ${matches.length} call(s), expected ≥ 2 (DD-1)`
+    `<NodeStatusBadge> must be rendered in BOTH parentKind branches — found ${matches.length} occurrence(s), expected ≥ 2 (DD-1)`
   );
 });
 
@@ -816,6 +815,33 @@ test('dag-iteration-panel.tsx renders <DAGNodeRow> in BOTH parentKind branches s
   const phasePlanning = phaseIterationWithLegacyStep.nodes['phase_planning'];
   assert.ok(phasePlanning !== undefined);
   assert.strictEqual(isLoopNode(phasePlanning), false, 'phase_planning is a non-loop step node');
+});
+
+const PANEL_SOURCE = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), 'dag-iteration-panel.tsx'),
+  'utf8'
+);
+
+console.log("\nDAGIterationPanel FR-1/FR-3 source-shape tests\n");
+
+test("AD-1 deriveIterationBadgeLabel is imported", () => {
+  assert.ok(/deriveIterationBadgeLabel/.test(PANEL_SOURCE),
+    "panel must import deriveIterationBadgeLabel (AD-1)");
+});
+
+test("FR-1 panel renders <NodeStatusBadge ...> on the trigger (not the bare hideLabel SpinnerBadge)", () => {
+  assert.ok(/<NodeStatusBadge/.test(PANEL_SOURCE),
+    "trigger must render NodeStatusBadge (FR-1)");
+});
+
+test("DD-1 iconOnly is wired to iteration.status === 'completed'", () => {
+  assert.ok(/iteration\.status\s*===\s*['"]completed['"]/.test(PANEL_SOURCE),
+    "iconOnly must be conditional on iteration.status === 'completed' (DD-1)");
+});
+
+test("renderStatusIcon helper retired", () => {
+  assert.ok(!/function renderStatusIcon\b/.test(PANEL_SOURCE),
+    "renderStatusIcon helper is replaced by NodeStatusBadge call sites (FR-1)");
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
