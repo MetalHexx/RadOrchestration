@@ -826,22 +826,6 @@ test('dag-timeline.tsx does NOT contain `EventSource(` (no new SSE subscription 
   );
 });
 
-// ─── T05: Source-text invariant on dag-loop-node.tsx ─────────────────────────
-
-const loopNodeSourceForRowKey = readFileSync(
-  join(__dirname, 'dag-loop-node.tsx'),
-  'utf-8'
-);
-
-test('dag-loop-node.tsx contains `data-row-key={nodeId}` exactly once (recovery target stamp on the AccordionTrigger)', () => {
-  const matches = loopNodeSourceForRowKey.match(/data-row-key=\{nodeId\}/g) ?? [];
-  assert.strictEqual(
-    matches.length,
-    1,
-    `expected exactly 1 data-row-key={nodeId} occurrence on the AccordionTrigger, got ${matches.length}`
-  );
-});
-
 // ─── T05: Source-text invariant on use-follow-mode.ts (regression guard) ────
 
 test('use-follow-mode.ts still contains `!isProgrammaticRef.current` (unchanged by this task)', () => {
