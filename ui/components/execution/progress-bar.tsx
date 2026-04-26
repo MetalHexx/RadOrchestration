@@ -6,9 +6,14 @@ interface ProgressBarProps {
   completed: number;
   total: number;
   status?: PhaseStatus;
+  showCount?: boolean;
 }
 
-export function ProgressBar({ completed, total }: ProgressBarProps) {
+export function ProgressBar({
+  completed,
+  total,
+  showCount = true,
+}: ProgressBarProps) {
   const percentage = total > 0 ? (completed / total) * 100 : 0;
 
   return (
@@ -32,9 +37,11 @@ export function ProgressBar({ completed, total }: ProgressBarProps) {
           }}
         />
       </div>
-      <span className="text-xs text-muted-foreground whitespace-nowrap">
-        {completed}/{total} tasks
-      </span>
+      {showCount && (
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          {completed}/{total} tasks
+        </span>
+      )}
     </div>
   );
 }

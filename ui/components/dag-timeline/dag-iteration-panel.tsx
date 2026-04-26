@@ -133,9 +133,7 @@ export function DAGIterationPanel({
     }
   }
 
-  const ariaLabel = parentKind === 'for_each_phase'
-    ? `Phase iteration ${iterationIndex + 1} — ${iterationName} — ${iteration.status}`
-    : `Task iteration ${iterationIndex + 1} — ${iterationName} — ${iteration.status}`;
+  const ariaLabel = `Task iteration ${iterationIndex + 1} — ${iterationName} — ${iteration.status}`;
 
   if (parentKind === 'for_each_phase') {
     const phaseReportNode = iteration.nodes['phase_report'];
@@ -164,7 +162,11 @@ export function DAGIterationPanel({
                 </span>
                 {progress !== null && (
                   <div className="flex-1 min-w-24">
-                    <ProgressBar completed={progress.completed} total={progress.total} />
+                    <ProgressBar
+                      completed={progress.completed}
+                      total={progress.total}
+                      showCount={progress.total > 0}
+                    />
                   </div>
                 )}
               </AccordionTrigger>
@@ -286,6 +288,15 @@ export function DAGIterationPanel({
           />
         );
       })}
+      <DAGCorrectiveTaskGroup
+        correctiveTasks={iteration.corrective_tasks}
+        parentNodeId={correctiveGroupParentId}
+        currentNodePath={currentNodePath}
+        onDocClick={onDocClick}
+        repoBaseUrl={repoBaseUrl}
+        focusedRowKey={focusedRowKey}
+        onFocusChange={onFocusChange}
+      />
     </div>
   );
 }

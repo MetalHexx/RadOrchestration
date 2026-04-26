@@ -422,17 +422,18 @@ test('dag-iteration-panel.tsx forwards iteration.corrective_tasks to DAGCorrecti
   // The corrective_tasks forwarding must NOT be inside a parentKind conditional block
   // (i.e., it appears once unconditionally for both for_each_phase and for_each_task).
   //
-  // Robust check: (1) <DAGCorrectiveTaskGroup occurs exactly once in the file — a
-  // branched-by-parentKind rendering would produce TWO invocations (one per branch).
+  // Robust check: (1) <DAGCorrectiveTaskGroup occurs at least once in the file. The
+  // P02-T01-C1 corrective restored a SECOND call site in the for_each_task fallthrough
+  // branch — the new "exactly two" test is the canonical invariant. This pre-existing
+  // test now flexes to >= 1 to permit both per-branch invocations.
   // (2) No gating pattern appears anywhere before the forwarding line — regardless
   // of distance — scanning the full file up to the forwarding point rather than a
   // fixed window. This catches gating nested several blocks up (e.g. an IIFE or
   // helper that wraps the JSX later in a refactor).
   const invocationMatches = iterationPanelSource.match(/<DAGCorrectiveTaskGroup\b/g) ?? [];
-  assert.strictEqual(
-    invocationMatches.length,
-    1,
-    `<DAGCorrectiveTaskGroup must appear exactly once in dag-iteration-panel.tsx (a per-parentKind branch would have two); found ${invocationMatches.length}`
+  assert.ok(
+    invocationMatches.length >= 1,
+    `<DAGCorrectiveTaskGroup must appear at least once in dag-iteration-panel.tsx; found ${invocationMatches.length}`
   );
   const lines = iterationPanelSource.split(/\r?\n/);
   const forwardingLine = lines.findIndex((l) => l.includes('correctiveTasks={iteration.corrective_tasks}'));
@@ -637,6 +638,66 @@ test('dag-iteration-panel.tsx renders <ReviewVerdictBadge> in the for_each_phase
   assert.ok(
     !/<ReviewVerdictBadge\b/.test(triggerInner),
     '<ReviewVerdictBadge> must render in the expanded body footer, not inside the <AccordionTrigger> (DD-6 — Phase Report / Phase Review / verdict all live in the body, not the header)'
+  );
+});
+
+test('dag-iteration-panel.tsx renders <DAGCorrectiveTaskGroup> in BOTH the for_each_phase accordion body AND the for_each_task fallthrough (FR-3, FR-4, NFR-1)', () => {
+  const src = readFileSync(
+    join(__dirname, 'dag-iteration-panel.tsx'),
+    'utf-8'
+  );
+  // exactly two <DAGCorrectiveTaskGroup ...> JSX call sites
+  const matches = src.match(/<DAGCorrectiveTaskGroup\b/g) ?? [];
+  assert.strictEqual(
+    matches.length,
+    2,
+    'expected exactly two <DAGCorrectiveTaskGroup> JSX usages — one per branch'
+  );
+});
+
+test('dag-iteration-panel.tsx passes showCount={...} to <ProgressBar> so 0/0 tasks is suppressed (DD-3, FR-8)', () => {
+  const src = readFileSync(
+    join(__dirname, 'dag-iteration-panel.tsx'),
+    'utf-8'
+  );
+  assert.match(
+    src,
+    /<ProgressBar[\s\S]*?showCount=\{[^}]+\}/,
+    '<ProgressBar> in dag-iteration-panel.tsx must receive a showCount prop'
+  );
+});
+
+test('progress-bar.tsx accepts a showCount prop and suppresses the count span when showCount is false (DD-3)', () => {
+  const src = readFileSync(
+    join(__dirname, '..', '..', 'components', 'execution', 'progress-bar.tsx'),
+    'utf-8'
+  );
+  // showCount is part of the props interface
+  assert.match(
+    src,
+    /showCount\??:\s*boolean/,
+    'ProgressBarProps must declare a showCount?: boolean field'
+  );
+  // showCount guards the rendering of the {completed}/{total} tasks span
+  assert.match(
+    src,
+    /showCount\s*&&[\s\S]*?\{completed\}\/\{total\}\s*tasks/,
+    'progress-bar.tsx must gate the {completed}/{total} tasks span on showCount'
+  );
+});
+
+test('dag-iteration-panel.tsx ariaLabel ternary does NOT carry a "Phase iteration" branch (dead-code prune)', () => {
+  const src = readFileSync(
+    join(__dirname, 'dag-iteration-panel.tsx'),
+    'utf-8'
+  );
+  // there must be at most one occurrence of "Phase iteration ${"
+  // — namely headerAriaLabel — and zero in the ariaLabel ternary
+  const phaseIterPattern = /["`'\s]Phase iteration\s+\$\{/g;
+  const hits = src.match(phaseIterPattern) ?? [];
+  assert.ok(
+    hits.length <= 1,
+    `expected at most 1 "Phase iteration \${...}" template hit (headerAriaLabel) — found ${hits.length}; the dead ariaLabel branch was not pruned`
   );
 });
 
