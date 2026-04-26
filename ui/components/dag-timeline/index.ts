@@ -19,6 +19,7 @@ export {
   groupNodesBySection,
   deriveCurrentPhase,
   derivePhaseProgress,
+  deriveIterationTaskProgress,
   deriveRepoBaseUrl,
 } from './dag-timeline-helpers';
 export type { SectionLabel, SectionGroup } from './dag-timeline-helpers';

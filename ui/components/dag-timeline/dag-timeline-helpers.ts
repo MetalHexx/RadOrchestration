@@ -1,4 +1,4 @@
-import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord, NodeState, ForEachPhaseNodeState, GateEvent, NodeStatus } from '@/types/state';
+import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord, NodeState, ForEachPhaseNodeState, GateEvent, NodeStatus, IterationEntry } from '@/types/state';
 
 export type CompatibleNodeState = StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState;
 
@@ -302,4 +302,26 @@ export function derivePhaseProgress(
   ).length;
 
   return { completed, total: phaseLoopNode.iterations.length };
+}
+
+/**
+ * Derives `{ completed, total }` for a phase iteration's progress bar
+ * (FR-7, AD-4). Reads the iteration's own embedded `task_loop` node so
+ * the bar is scoped to that single phase iteration — not the top-level
+ * `phase_loop`. Returns `null` when the iteration has no `task_loop`
+ * child (e.g. legacy or pre-explosion shape); returns `{ 0, 0 }` when
+ * `task_loop.iterations.length === 0` so the FR-8 empty-track render
+ * path can still draw the bar at 0%. Counts only iterations whose
+ * status is exactly `'completed'`, which keeps the bar full after the
+ * phase iteration itself moves to `completed`.
+ */
+export function deriveIterationTaskProgress(
+  iteration: IterationEntry
+): { completed: number; total: number } | null {
+  const taskLoopNode = iteration.nodes['task_loop'];
+  if (!taskLoopNode || taskLoopNode.kind !== 'for_each_task') return null;
+  const completed = taskLoopNode.iterations.filter(
+    (i) => i.status === 'completed'
+  ).length;
+  return { completed, total: taskLoopNode.iterations.length };
 }

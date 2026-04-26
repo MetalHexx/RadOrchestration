@@ -671,5 +671,60 @@ test('isLoopNode is re-exported from dag-timeline-helpers', () => {
   assert.strictEqual(typeof isLoopNode, 'function');
 });
 
+import { deriveIterationTaskProgress } from './dag-timeline-helpers';
+import type { IterationEntry } from '@/types/state';
+
+console.log("\nderiveIterationTaskProgress tests\n");
+
+test('returns null when iteration has no task_loop child', () => {
+  const iter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: { phase_planning: { kind: 'step', status: 'completed', doc_path: null, retries: 0 } },
+  };
+  assert.strictEqual(deriveIterationTaskProgress(iter), null);
+});
+
+test('returns { completed: 0, total: 0 } when task_loop has no iterations (FR-8)', () => {
+  const iter: IterationEntry = {
+    index: 0, status: 'not_started', corrective_tasks: [], commit_hash: null,
+    nodes: { task_loop: { kind: 'for_each_task', status: 'not_started', iterations: [] } },
+  };
+  assert.deepStrictEqual(deriveIterationTaskProgress(iter), { completed: 0, total: 0 });
+});
+
+test('counts only iterations whose status === "completed" (AD-4, FR-7)', () => {
+  const iter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: {
+      task_loop: {
+        kind: 'for_each_task', status: 'in_progress',
+        iterations: [
+          { index: 0, status: 'completed', nodes: {}, corrective_tasks: [], commit_hash: null },
+          { index: 1, status: 'completed', nodes: {}, corrective_tasks: [], commit_hash: null },
+          { index: 2, status: 'in_progress', nodes: {}, corrective_tasks: [], commit_hash: null },
+          { index: 3, status: 'not_started', nodes: {}, corrective_tasks: [], commit_hash: null },
+        ],
+      },
+    },
+  };
+  assert.deepStrictEqual(deriveIterationTaskProgress(iter), { completed: 2, total: 4 });
+});
+
+test('keeps reporting full progress after iteration completes (FR-7 — "stays full and visible")', () => {
+  const iter: IterationEntry = {
+    index: 0, status: 'completed', corrective_tasks: [], commit_hash: null,
+    nodes: {
+      task_loop: {
+        kind: 'for_each_task', status: 'completed',
+        iterations: [
+          { index: 0, status: 'completed', nodes: {}, corrective_tasks: [], commit_hash: null },
+          { index: 1, status: 'completed', nodes: {}, corrective_tasks: [], commit_hash: null },
+        ],
+      },
+    },
+  };
+  assert.deepStrictEqual(deriveIterationTaskProgress(iter), { completed: 2, total: 2 });
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
