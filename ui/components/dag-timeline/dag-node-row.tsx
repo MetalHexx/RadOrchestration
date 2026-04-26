@@ -3,7 +3,7 @@
 import { useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
-import { DocumentLink } from '@/components/documents';
+import { DocumentLink, ExternalLink } from '@/components/documents';
 import { ApproveGateButton, ExecutePlanButton } from '@/components/dashboard';
 import { getDisplayName, getRowButtonDescriptor, deriveGateBadgeStatusAndLabel, getDocLinkLabel, derivePlanningStepLabel } from './dag-timeline-helpers';
 import type { CompatibleNodeState } from './dag-timeline-helpers';
@@ -24,12 +24,16 @@ interface DAGNodeRowProps {
    *  badge. Used by the phase iteration body to surface the
    *  phase_review verdict on the phase_review row itself (FR-16). */
   verdictPill?: React.ReactNode;
+  /** PR URL surfaced on the `final_pr` row (Completion section). Sourced
+   *  from `state.pipeline.source_control.pr_url` and threaded through
+   *  DAGTimeline; ignored on every other row. */
+  prUrl?: string | null;
 }
 
 // Re-export formatNodeId to preserve barrel export contract
 export { formatNodeId } from './dag-timeline-helpers';
 
-export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0, projectName, isFocused, onFocusChange, phaseLoopStatus, verdictPill }: DAGNodeRowProps) {
+export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0, projectName, isFocused, onFocusChange, phaseLoopStatus, verdictPill, prUrl }: DAGNodeRowProps) {
   const isActive = nodeId === currentNodePath;
   const branchTaken = node.kind === 'conditional' ? node.branch_taken : null;
   const branchLabel = branchTaken != null ? (branchTaken === 'true' ? 'Yes' : 'No') : null;
@@ -99,6 +103,9 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       )}
       {node.kind === 'step' && node.doc_path != null && node.doc_path !== '' && (
         <DocumentLink path={node.doc_path} label={getDocLinkLabel(nodeId)} onDocClick={onDocClick} tabIndex={-1} />
+      )}
+      {nodeId === 'final_pr' && prUrl != null && prUrl !== '' && (
+        <ExternalLink href={prUrl} label="Pull Request" icon="github" tabIndex={-1} />
       )}
       {descriptor.kind === 'approve' && (
         <ApproveGateButton

@@ -203,6 +203,7 @@ export default function ProjectsPage() {
                   repoBaseUrl={v5Derivations.repoBaseUrl}
                   projectName={selected.name}
                   phaseLoopStatus={v5Derivations.phaseLoopStatus}
+                  prUrl={v5State.pipeline.source_control?.pr_url ?? null}
                 />
               </div>
             </div>

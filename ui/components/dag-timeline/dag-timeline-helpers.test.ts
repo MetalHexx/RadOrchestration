@@ -123,6 +123,18 @@ test("single word with no dot and no underscore returns capitalized", () => {
   assert.strictEqual(getDisplayName(compoundNodeIds.singleWord), "Commit");
 });
 
+test("DISPLAY_NAME_OVERRIDES restores acronym capitalization for final_pr", () => {
+  assert.strictEqual(getDisplayName("final_pr"), "Final PR");
+});
+
+test("DISPLAY_NAME_OVERRIDES restores acronym capitalization for pr_gate", () => {
+  assert.strictEqual(getDisplayName("pr_gate"), "PR Gate");
+});
+
+test("DISPLAY_NAME_OVERRIDES applies after compound-id leaf extraction", () => {
+  assert.strictEqual(getDisplayName("phase_loop.iter0.final_pr"), "Final PR");
+});
+
 console.log("\nparsePhaseNameFromDocPath tests\n");
 
 test("multi-word all-caps title is title-cased (FR-6)", () => {

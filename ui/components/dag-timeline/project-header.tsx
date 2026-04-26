@@ -1,6 +1,6 @@
 "use client";
 
-import { Github, Clock, ExternalLink, XCircle } from "lucide-react";
+import { Github, Clock, XCircle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SpinnerBadge, PipelineTierBadge } from "@/components/badges";
@@ -200,7 +200,7 @@ export function ProjectHeader({ projectName, tier, planningStatus, executionStat
                         className="inline-flex items-center gap-1 text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
                         aria-label="View pull request on GitHub"
                       >
-                        <ExternalLink size={12} aria-hidden="true" />
+                        <Github size={12} aria-hidden="true" />
                         Pull Request
                       </a>
                     } />

@@ -92,8 +92,19 @@ function extractLeaf(nodeId: string): string {
  * "phase_loop.iter0.phase_planning" → "Phase Planning"
  * "phase_planning"                  → "Phase Planning"
  */
+/**
+ * Acronym overrides for `getDisplayName`. `formatNodeId` does naive
+ * title-casing (`final_pr` → `Final Pr`); these entries restore the
+ * intended capitalization for known acronyms surfaced as row titles.
+ */
+export const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
+  final_pr: 'Final PR',
+  pr_gate: 'PR Gate',
+};
+
 export function getDisplayName(nodeId: string): string {
-  return formatNodeId(extractLeaf(nodeId));
+  const leaf = extractLeaf(nodeId);
+  return DISPLAY_NAME_OVERRIDES[leaf] ?? formatNodeId(leaf);
 }
 
 // ─── Gate Node Config (single source of truth for approval buttons) ──────────

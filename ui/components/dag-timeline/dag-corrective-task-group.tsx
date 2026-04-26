@@ -98,9 +98,9 @@ function CorrectiveRow({
               iconOnly={entry.status === 'completed'}
             />
             <span className="text-sm font-medium truncate min-w-0">{buildTriggerText(entry.index)}</span>
-            {/* Invisible placeholder reserves layout space for the absolute-positioned Handoff + Commit links below */}
+            {/* Invisible placeholder reserves layout space for the absolute-positioned Handoff + Commit links below; pl-3 keeps the visible links from crowding the corrective name when it's long. */}
             {(hasHandoff || hasCommitLink) && (
-              <span aria-hidden="true" className="invisible ml-auto inline-flex items-center gap-2 text-sm shrink-0">
+              <span aria-hidden="true" className="invisible ml-auto inline-flex items-center gap-2 pl-3 text-sm shrink-0">
                 {hasHandoff && (
                   <span className="inline-flex items-center gap-1.5">
                     <span className="inline-block h-3.5 w-3.5" />

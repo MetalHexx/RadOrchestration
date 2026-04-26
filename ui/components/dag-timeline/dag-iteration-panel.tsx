@@ -168,9 +168,9 @@ export function DAGIterationPanel({
                     />
                   </div>
                 )}
-                {/* Invisible placeholder reserves layout space for the absolute-positioned Phase Plan link below; chevron auto-renders next via shadcn's ml-auto on data-slot=accordion-trigger-icon */}
+                {/* Invisible placeholder reserves layout space for the absolute-positioned Phase Plan link below; chevron auto-renders next via shadcn's ml-auto on data-slot=accordion-trigger-icon. The pl-3 widens the reserved area so the visible Phase Plan link doesn't crowd the ProgressBar's "N/N tasks" label. */}
                 {hasPhasePlan && (
-                  <span aria-hidden="true" className="invisible inline-flex items-center gap-1.5 text-sm shrink-0">
+                  <span aria-hidden="true" className="invisible inline-flex items-center gap-1.5 pl-3 text-sm shrink-0">
                     <span className="inline-block h-3.5 w-3.5" />
                     <span>Phase Plan</span>
                   </span>
@@ -273,9 +273,9 @@ export function DAGIterationPanel({
               <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
                 {iterationName}
               </span>
-              {/* Invisible placeholder reserves layout space for the absolute-positioned Task Handoff + Commit links below */}
+              {/* Invisible placeholder reserves layout space for the absolute-positioned Task Handoff + Commit links below; pl-3 keeps the visible links from crowding the iteration name when it's long. */}
               {hasAnyTaskTrailing && (
-                <span aria-hidden="true" className="invisible ml-auto inline-flex items-center gap-2 text-sm shrink-0">
+                <span aria-hidden="true" className="invisible ml-auto inline-flex items-center gap-2 pl-3 text-sm shrink-0">
                   {hasTaskHandoff && (
                     <span className="inline-flex items-center gap-1.5">
                       <span className="inline-block h-3.5 w-3.5" />

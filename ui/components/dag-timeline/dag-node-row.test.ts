@@ -871,5 +871,18 @@ test4("FR-17/DD-13 flat-row container retains pr-3 gutter", () => {
     "flat-row container must carry pr-3 gutter (FR-17, DD-13)");
 });
 
+test4("DAGNodeRow accepts an optional prUrl prop and renders an ExternalLink (icon=github, label=\"Pull Request\") on the final_pr row", () => {
+  assert.ok(/prUrl\??:\s*string\s*\|\s*null/.test(ROW_SOURCE),
+    "DAGNodeRow props must include optional prUrl: string | null");
+  assert.ok(/import\s+\{[^}]*\bExternalLink\b[^}]*\}\s+from\s+['"]@\/components\/documents['"]/.test(ROW_SOURCE),
+    "DAGNodeRow must import ExternalLink so the final_pr row can surface the PR link");
+  assert.ok(/nodeId\s*===\s*['"]final_pr['"]\s*&&\s*prUrl\s*!=\s*null/.test(ROW_SOURCE),
+    "ExternalLink must be gated on `nodeId === 'final_pr' && prUrl != null` so the link only renders on the Final PR row when the PR URL exists");
+  assert.ok(/<ExternalLink[^/>]*href=\{prUrl\}[^/>]*label="Pull Request"[^/>]*icon="github"/s.test(ROW_SOURCE)
+    || /<ExternalLink[^/>]*icon="github"[^/>]*label="Pull Request"[^/>]*href=\{prUrl\}/s.test(ROW_SOURCE)
+    || (/<ExternalLink/.test(ROW_SOURCE) && /href=\{prUrl\}/.test(ROW_SOURCE) && /label="Pull Request"/.test(ROW_SOURCE) && /icon="github"/.test(ROW_SOURCE)),
+    "ExternalLink must render with href={prUrl}, label=\"Pull Request\", icon=\"github\" — same shape as the project header link");
+});
+
 console.log(`\n${passed4} passed, ${failed4} failed\n`);
 if (failed4 > 0) process.exit(1);

@@ -20,6 +20,9 @@ interface DAGTimelineProps {
   projectName: string;
   /** Top-level phase_loop.status for FR-2 Execute Plan visibility (AD-2). */
   phaseLoopStatus?: NodeStatus;
+  /** PR URL from state.pipeline.source_control.pr_url; surfaced on the
+   *  `final_pr` row only (Completion section). */
+  prUrl?: string | null;
 }
 
 /**
@@ -53,7 +56,7 @@ export function iterationAncestorToAccordionKey(loopParentId: string, iterationI
   return `iter-${loopParentId}-${iterationIndex}`;
 }
 
-export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName, phaseLoopStatus }: DAGTimelineProps) {
+export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName, phaseLoopStatus, prUrl }: DAGTimelineProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const groups = groupNodesBySection(nodes);
   const unmatchedEntries = Object.entries(nodes).filter(([nodeId]) => !Object.hasOwn(NODE_SECTION_MAP, nodeId));
@@ -197,6 +200,7 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
           isFocused={focusedRowKey === nodeId}
           onFocusChange={handleFocusChange}
           phaseLoopStatus={phaseLoopStatus}
+          prUrl={prUrl}
         />
       )}
     </div>
