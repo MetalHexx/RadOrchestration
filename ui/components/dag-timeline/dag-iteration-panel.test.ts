@@ -911,3 +911,32 @@ test("DD-11 ReviewVerdictBadge still imported (rendered via verdictPill slot)", 
   assert.ok(/ReviewVerdictBadge/.test(PANEL_SOURCE),
     "ReviewVerdictBadge import retained for verdictPill slot (DD-11)");
 });
+
+console.log("\nDAGIterationPanel FR-18 legacy-fallback regression assertions\n");
+
+test("FR-18 legacy phase iteration with phase_planning child + no doc_path keeps fallback rendering shape", () => {
+  // Source-shape proxy: the panel must read iteration.nodes['phase_planning']
+  // as a fallback when iteration.doc_path is null/absent.
+  assert.ok(/iteration\.nodes\[['"]phase_planning['"]\]/.test(PANEL_SOURCE),
+    "panel must reference iteration.nodes['phase_planning'] for legacy fallback (FR-18)");
+});
+
+test("FR-18 legacy task iteration with task_handoff child + no doc_path keeps fallback rendering shape", () => {
+  assert.ok(/iteration\.nodes\[['"]task_handoff['"]\]/.test(PANEL_SOURCE),
+    "panel must reference iteration.nodes['task_handoff'] for legacy fallback (FR-18)");
+});
+
+test("DD-4 italic-fallback class chain still present when both doc_path and legacy node yield null", () => {
+  assert.ok(/italic text-muted-foreground/.test(PANEL_SOURCE),
+    "italic-fallback iteration name treatment retained (DD-4)");
+});
+
+test("FR-18 deriveCurrentPhase still walks legacy phase_planning child", () => {
+  // dag-timeline-helpers.ts line 288-290: phase_planning legacy branch
+  const helpersSource = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), 'dag-timeline-helpers.ts'),
+    'utf8'
+  );
+  assert.ok(/phase_planning/.test(helpersSource),
+    "deriveCurrentPhase must keep its phase_planning legacy fallback (FR-18)");
+});
