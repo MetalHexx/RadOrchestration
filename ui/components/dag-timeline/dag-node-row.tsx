@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
 import { DocumentLink } from '@/components/documents';
 import { ApproveGateButton, ExecutePlanButton } from '@/components/dashboard';
-import { getDisplayName, getRowButtonDescriptor } from './dag-timeline-helpers';
+import { getDisplayName, getRowButtonDescriptor, deriveGateBadgeStatusAndLabel } from './dag-timeline-helpers';
 import type { CompatibleNodeState } from './dag-timeline-helpers';
 import type { NodeStatus } from '@/types/state';
 
@@ -70,10 +70,21 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       )}
       style={{ paddingLeft: 12 + depth * 16 }}
     >
-      <NodeStatusBadge
-        status={node.status}
-        iconOnly={node.status === 'completed'}
-      />
+      {node.kind === 'gate' ? (() => {
+        const derived = deriveGateBadgeStatusAndLabel(node);
+        return (
+          <NodeStatusBadge
+            status={derived.status}
+            label={derived.label}
+            iconOnly={derived.status === 'completed'}
+          />
+        );
+      })() : (
+        <NodeStatusBadge
+          status={node.status}
+          iconOnly={node.status === 'completed'}
+        />
+      )}
       <span className="text-sm font-medium min-w-0 shrink truncate max-w-[55%]">{getDisplayName(nodeId)}</span>
       {branchLabel !== null && branchBadgeStatus !== null && (
         <span role="group" aria-label={`Branch taken: ${branchLabel}`}>

@@ -2,9 +2,8 @@
 
 import { useCallback } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import { SpinnerBadge } from '@/components/badges';
+import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
 import { DAGNodeRow } from './dag-node-row';
-import { STATUS_MAP } from './node-status-badge';
 import { DocumentLink, ExternalLink } from '@/components/documents';
 import { getCommitLinkData, filterCompatibleNodes, buildCorrectiveItemValue } from './dag-timeline-helpers';
 import type { CorrectiveTaskEntry } from '@/types/state';
@@ -90,14 +89,9 @@ function CorrectiveRow({
             tabIndex={isFocused ? 0 : -1}
             onFocus={handleFocus}
           >
-            <SpinnerBadge
-              label={statusEntry.defaultLabel}
-              cssVar={statusEntry.cssVar}
-              isSpinning={statusEntry.isSpinning}
-              isComplete={statusEntry.isComplete}
-              isRejected={statusEntry.isRejected}
-              ariaLabel={statusEntry.defaultLabel}
-              hideLabel
+            <NodeStatusBadge
+              status={entry.status}
+              iconOnly={entry.status === 'completed'}
             />
             <span className="text-sm font-medium">{buildTriggerText(entry.index)}</span>
           </AccordionTrigger>

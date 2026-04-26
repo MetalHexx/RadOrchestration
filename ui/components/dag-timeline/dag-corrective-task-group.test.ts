@@ -344,10 +344,10 @@ test('dag-corrective-task-group.tsx <AccordionItem value> uses buildCorrectiveIt
   );
 });
 
-test('dag-corrective-task-group.tsx renders the icon-only SpinnerBadge in each header (DD-1)', () => {
+test('dag-corrective-task-group.tsx renders the icon-only NodeStatusBadge in each header (DD-1)', () => {
   assert.ok(
-    /SpinnerBadge[\s\S]{0,400}hideLabel/.test(ctgSource),
-    'corrective task header must render the icon-only SpinnerBadge for visual parity with iteration headers (DD-1, FR-6)'
+    /NodeStatusBadge[\s\S]{0,400}iconOnly/.test(ctgSource),
+    'corrective task header must render the icon-only NodeStatusBadge for visual parity with iteration headers (DD-1, FR-6)'
   );
 });
 
@@ -363,3 +363,49 @@ test('dag-corrective-task-group.tsx <AccordionTrigger> wires role="option", data
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
+
+import { readFileSync as cgReadSync } from 'node:fs';
+import { fileURLToPath as cgFileURL } from 'node:url';
+import { dirname as cgDirname, join as cgJoin } from 'node:path';
+
+const CG_SOURCE = cgReadSync(
+  cgJoin(cgDirname(cgFileURL(import.meta.url)), 'dag-corrective-task-group.tsx'),
+  'utf8'
+);
+
+console.log("\nDAGCorrectiveTaskGroup FR-1 source-shape tests\n");
+
+let passed4 = 0;
+let failed4 = 0;
+
+function test4(name: string, fn: () => void) {
+  try {
+    fn();
+    console.log(`  ✓ ${name}`);
+    passed4++;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`  ✗ ${name}\n    ${msg}`);
+    failed4++;
+  }
+}
+
+test4("FR-1 corrective trigger uses NodeStatusBadge (labeled)", () => {
+  assert.ok(/<NodeStatusBadge/.test(CG_SOURCE),
+    "corrective trigger must render NodeStatusBadge (FR-1)");
+});
+
+test4("DD-1 corrective iconOnly wired to entry.status === 'completed'", () => {
+  assert.ok(/entry\.status\s*===\s*['"]completed['"]/.test(CG_SOURCE),
+    "corrective trigger iconOnly conditional on completed (DD-1)");
+});
+
+test4("FR-1 hideLabel SpinnerBadge no longer rendered on corrective trigger", () => {
+  // The trigger render (between AccordionTrigger open and close) must not
+  // pass a literal hideLabel attribute on a SpinnerBadge.
+  assert.ok(!/<SpinnerBadge[\s\S]*?hideLabel[\s\S]*?\/>/.test(CG_SOURCE),
+    "no SpinnerBadge … hideLabel on corrective trigger (FR-1)");
+});
+
+console.log(`\n${passed4} passed, ${failed4} failed\n`);
+if (failed4 > 0) process.exit(1);

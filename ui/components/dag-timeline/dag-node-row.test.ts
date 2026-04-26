@@ -806,3 +806,19 @@ test3("DD-1 iconOnly is conditional on completed status, not unconditional", () 
 
 console.log(`\n${passed3} passed, ${failed3} failed\n`);
 if (failed3 > 0) process.exit(1);
+
+test3("FR-4/AD-2 dag-node-row imports deriveGateBadgeStatusAndLabel", () => {
+  assert.ok(/deriveGateBadgeStatusAndLabel/.test(ROW_SOURCE),
+    "DAGNodeRow must import deriveGateBadgeStatusAndLabel for the gate-active override (FR-4, AD-2)");
+});
+
+test3("FR-4 gate node badge resolved via helper, not raw node.status", () => {
+  // The helper-resolved {status,label} pair drives the badge so
+  // gate_active=true renders gray Not Started even when underlying
+  // status === 'in_progress' (FR-4, AD-2, DD-3).
+  assert.ok(/deriveGateBadgeStatusAndLabel\s*\(\s*node\s*\)/.test(ROW_SOURCE),
+    "DAGNodeRow must call deriveGateBadgeStatusAndLabel(node) on gate rows (FR-4)");
+});
+
+console.log(`\n${passed3} passed, ${failed3} failed\n`);
+if (failed3 > 0) process.exit(1);
