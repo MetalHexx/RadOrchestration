@@ -1,4 +1,5 @@
 import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord, NodeState, ForEachPhaseNodeState, GateEvent, NodeStatus, IterationEntry } from '@/types/state';
+import { STATUS_MAP } from './node-status-map';
 
 export type CompatibleNodeState = StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState;
 
@@ -324,4 +325,64 @@ export function deriveIterationTaskProgress(
     (i) => i.status === 'completed'
   ).length;
   return { completed, total: taskLoopNode.iterations.length };
+}
+
+// ─── Stage-aware label derivation (FR-3, FR-4, FR-5, AD-1) ──────────────────
+
+/**
+ * Substep node-id → in-progress label vocabulary (FR-3, DD-2).
+ * Resolved against the iteration's in-flight child substep.
+ */
+const ITERATION_SUBSTEP_LABELS: Record<string, string> = {
+  task_executor: 'Executing',
+  code_review:   'Reviewing',
+  commit:        'Committing',
+  phase_review:  'Reviewing',
+};
+
+/**
+ * Derives the resolved {status, label} pair for an iteration's badge.
+ * For `in_progress` iterations, walks `iteration.nodes` to find an
+ * in-flight child whose id matches `ITERATION_SUBSTEP_LABELS`. If the
+ * in-flight child is itself a `for_each_task` loop, recurses into its
+ * active iteration (phase iteration inherits the task's substep label,
+ * FR-3). Falls back to `'Executing'` when no substep matches but the
+ * iteration is still in_progress. For non-in_progress statuses, returns
+ * the `STATUS_MAP` defaultLabel for the iteration's own status.
+ */
+export function deriveIterationBadgeLabel(
+  iteration: IterationEntry
+): { status: NodeStatus; label: string } {
+  if (iteration.status !== 'in_progress') {
+    const entry = STATUS_MAP[iteration.status];
+    return { status: iteration.status, label: entry.defaultLabel };
+  }
+  for (const [childId, childNode] of Object.entries(iteration.nodes)) {
+    if (childNode.kind === 'for_each_task' && childNode.status === 'in_progress') {
+      const active = childNode.iterations.find(i => i.status === 'in_progress');
+      if (active) return deriveIterationBadgeLabel(active);
+    }
+    if (childNode.status !== 'in_progress') continue;
+    const label = ITERATION_SUBSTEP_LABELS[childId];
+    if (label !== undefined) {
+      return { status: 'in_progress', label };
+    }
+  }
+  return { status: 'in_progress', label: 'Executing' };
+}
+
+/**
+ * Resolves the badge {status, label} for a gate node. When
+ * `gate_active === true` (FR-4), forces the gray `not_started` visual
+ * with label `'Not Started'` (DD-3). Otherwise returns the gate's own
+ * status with its STATUS_MAP defaultLabel.
+ */
+export function deriveGateBadgeStatusAndLabel(
+  node: GateNodeState
+): { status: NodeStatus; label: string } {
+  if (node.gate_active === true && node.status !== 'completed') {
+    return { status: 'not_started', label: 'Not Started' };
+  }
+  const entry = STATUS_MAP[node.status];
+  return { status: node.status, label: entry.defaultLabel };
 }

@@ -729,5 +729,65 @@ test('keeps reporting full progress after iteration completes (FR-7 — "stays f
   assert.deepStrictEqual(deriveIterationTaskProgress(iter), { completed: 2, total: 2 });
 });
 
+import { deriveIterationBadgeLabel, deriveGateBadgeStatusAndLabel } from './dag-timeline-helpers';
+
+console.log("\nderiveIterationBadgeLabel tests\n");
+
+test("FR-3 task_executor in_progress → Executing", () => {
+  const iter: IterationEntry = { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: { task_executor: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } } };
+  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'in_progress', label: 'Executing' });
+});
+
+test("FR-3 code_review in_progress → Reviewing", () => {
+  const iter: IterationEntry = { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: { code_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } } };
+  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'in_progress', label: 'Reviewing' });
+});
+
+test("FR-3 commit in_progress → Committing", () => {
+  const iter: IterationEntry = { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: { commit: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } } };
+  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'in_progress', label: 'Committing' });
+});
+
+test("FR-3 phase_review in_progress → Reviewing", () => {
+  const iter: IterationEntry = { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: { phase_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } } };
+  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'in_progress', label: 'Reviewing' });
+});
+
+test("FR-3 phase iteration inherits from in-flight task iteration (Reviewing)", () => {
+  const iter: IterationEntry = { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: { task_loop: { kind: 'for_each_task', status: 'in_progress', iterations: [
+      { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+        nodes: { code_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } } },
+    ] } } };
+  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'in_progress', label: 'Reviewing' });
+});
+
+test("FR-3 fallback: in_progress with no in-flight substep → Executing", () => {
+  const iter: IterationEntry = { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: { task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 } } };
+  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'in_progress', label: 'Executing' });
+});
+
+test("DD-2 completed iteration → Completed (icon-only label)", () => {
+  const iter: IterationEntry = { index: 0, status: 'completed', corrective_tasks: [], commit_hash: null, nodes: {} };
+  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'completed', label: 'Completed' });
+});
+
+console.log("\nderiveGateBadgeStatusAndLabel tests\n");
+
+test("FR-4 gate_active=true overrides to Not Started (DD-3)", () => {
+  const node: GateNodeState = { kind: 'gate', status: 'in_progress', gate_active: true };
+  assert.deepStrictEqual(deriveGateBadgeStatusAndLabel(node), { status: 'not_started', label: 'Not Started' });
+});
+
+test("FR-4 gate_active=false uses underlying status default", () => {
+  const node: GateNodeState = { kind: 'gate', status: 'completed', gate_active: false };
+  assert.deepStrictEqual(deriveGateBadgeStatusAndLabel(node), { status: 'completed', label: 'Completed' });
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
