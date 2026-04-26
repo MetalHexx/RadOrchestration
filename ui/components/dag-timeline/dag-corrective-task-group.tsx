@@ -68,7 +68,7 @@ function CorrectiveRow({
         <button> is invalid HTML and breaks click/keyboard behavior.
         Mirrors the clean pattern already in dag-iteration-panel.tsx.
       */}
-      <div className="flex items-center gap-2 rounded-md hover:bg-accent/50">
+      <div className="flex items-center gap-2 rounded-md hover:bg-accent/50 pr-3">
         {/*
           flex-1 lives on this wrapper <div> — NOT on AccordionTrigger's className —
           because AccordionTrigger renders AccordionPrimitive.Header (hardcoded
@@ -120,6 +120,7 @@ function CorrectiveRow({
             </span>
           )
         )}
+        <span data-chevron-slot className="w-6 shrink-0" aria-hidden="true" />
       </div>
       <AccordionContent>
         {compatibleNodes.map(([childNodeId, childNode]) => {

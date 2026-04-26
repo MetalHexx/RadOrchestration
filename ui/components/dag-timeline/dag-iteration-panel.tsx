@@ -133,8 +133,8 @@ export function DAGIterationPanel({
     return (
       <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
         <AccordionItem value={buildIterationItemValue(parentNodeId, iterationIndex)} className={cardClasses}>
-          <div className="flex items-center gap-2 rounded-md hover:bg-accent/50">
-            <div className="flex-1">
+          <div className="flex items-center gap-2 rounded-md hover:bg-accent/50 pr-3">
+            <div className="flex-1 flex items-center gap-2 min-w-0">
               <AccordionTrigger
                 role="option"
                 aria-selected={false}
@@ -172,56 +172,59 @@ export function DAGIterationPanel({
             {iteration.doc_path != null && iteration.doc_path !== '' && (
               <DocumentLink path={iteration.doc_path} label="Phase Plan" onDocClick={onDocClick} />
             )}
+            <span data-chevron-slot className="w-6 shrink-0" aria-hidden="true" />
           </div>
           <AccordionContent>
-            {/* Body: task iteration list + footer (Phase Report / Review) — populated in P02-T02 + P03-T01 */}
-            {Object.entries(iteration.nodes).map(([childNodeId, childNode]) => {
-              const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
-              return isLoopNode(childNode) ? (
-                <DAGLoopNode
-                  key={childNodeId}
-                  nodeId={childKey}
-                  node={childNode}
-                  currentNodePath={currentNodePath}
-                  onDocClick={onDocClick}
-                  expandedLoopIds={expandedLoopIds}
-                  onAccordionChange={onAccordionChange}
-                  repoBaseUrl={repoBaseUrl}
-                  projectName={projectName}
-                  focusedRowKey={focusedRowKey}
-                  isFocused={focusedRowKey === childKey}
-                  onFocusChange={onFocusChange}
-                />
-              ) : (
-                <DAGNodeRow
-                  key={childNodeId}
-                  nodeId={childKey}
-                  node={childNode}
-                  depth={ITERATION_CHILD_DEPTH}
-                  currentNodePath={currentNodePath}
-                  onDocClick={onDocClick}
-                  isFocused={focusedRowKey === childKey}
-                  onFocusChange={onFocusChange}
-                  verdictPill={
-                    childNodeId === 'phase_review' && phaseReviewVerdict != null
-                      ? <ReviewVerdictBadge verdict={phaseReviewVerdict as ReviewVerdict} />
-                      : undefined
-                  }
-                />
-              );
-            })}
-            <DAGCorrectiveTaskGroup
-              correctiveTasks={iteration.corrective_tasks}
-              parentIterationKey={itemValue}
-              parentNodeId={correctiveGroupParentId}
-              currentNodePath={currentNodePath}
-              onDocClick={onDocClick}
-              repoBaseUrl={repoBaseUrl}
-              focusedRowKey={focusedRowKey}
-              onFocusChange={onFocusChange}
-              expandedLoopIds={expandedLoopIds}
-              onAccordionChange={onAccordionChange}
-            />
+            <div className="border-l border-border pl-3 ml-3">
+              {/* Body: task iteration list + footer (Phase Report / Review) — populated in P02-T02 + P03-T01 */}
+              {Object.entries(iteration.nodes).map(([childNodeId, childNode]) => {
+                const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
+                return isLoopNode(childNode) ? (
+                  <DAGLoopNode
+                    key={childNodeId}
+                    nodeId={childKey}
+                    node={childNode}
+                    currentNodePath={currentNodePath}
+                    onDocClick={onDocClick}
+                    expandedLoopIds={expandedLoopIds}
+                    onAccordionChange={onAccordionChange}
+                    repoBaseUrl={repoBaseUrl}
+                    projectName={projectName}
+                    focusedRowKey={focusedRowKey}
+                    isFocused={focusedRowKey === childKey}
+                    onFocusChange={onFocusChange}
+                  />
+                ) : (
+                  <DAGNodeRow
+                    key={childNodeId}
+                    nodeId={childKey}
+                    node={childNode}
+                    depth={ITERATION_CHILD_DEPTH}
+                    currentNodePath={currentNodePath}
+                    onDocClick={onDocClick}
+                    isFocused={focusedRowKey === childKey}
+                    onFocusChange={onFocusChange}
+                    verdictPill={
+                      childNodeId === 'phase_review' && phaseReviewVerdict != null
+                        ? <ReviewVerdictBadge verdict={phaseReviewVerdict as ReviewVerdict} />
+                        : undefined
+                    }
+                  />
+                );
+              })}
+              <DAGCorrectiveTaskGroup
+                correctiveTasks={iteration.corrective_tasks}
+                parentIterationKey={itemValue}
+                parentNodeId={correctiveGroupParentId}
+                currentNodePath={currentNodePath}
+                onDocClick={onDocClick}
+                repoBaseUrl={repoBaseUrl}
+                focusedRowKey={focusedRowKey}
+                onFocusChange={onFocusChange}
+                expandedLoopIds={expandedLoopIds}
+                onAccordionChange={onAccordionChange}
+              />
+            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
@@ -233,8 +236,8 @@ export function DAGIterationPanel({
   return (
     <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
       <AccordionItem value={buildIterationItemValue(parentNodeId, iterationIndex)} className={cardClasses}>
-        <div className="flex items-center gap-2 rounded-md hover:bg-accent/50">
-          <div className="flex-1">
+        <div className="flex items-center gap-2 rounded-md hover:bg-accent/50 pr-3">
+          <div className="flex-1 flex items-center gap-2 min-w-0">
             <AccordionTrigger
               role="option"
               aria-selected={false}
@@ -280,6 +283,7 @@ export function DAGIterationPanel({
               </span>
             )
           )}
+          <span data-chevron-slot className="w-6 shrink-0" aria-hidden="true" />
         </div>
         <AccordionContent>
           {Object.entries(iteration.nodes).map(([childNodeId, childNode]) => {

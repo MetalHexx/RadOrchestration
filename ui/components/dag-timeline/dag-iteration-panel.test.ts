@@ -870,6 +870,24 @@ test("DD-8 task-iteration ExternalLink forwards full commit hash as title", () =
     "panel must forward the full commit hash as ExternalLink title (DD-8)");
 });
 
+// ─── P04-T04: Phase iteration body indent + chevron column reservation ────────
+
+console.log("\nDAGIterationPanel — P04-T04 indent wrapper + chevron slot (FR-8, FR-9, DD-5, DD-6)\n");
+
+test("FR-8/DD-5 phase iteration body wraps task list with left padding + left rule", () => {
+  // The body container must use both left padding and a left border
+  // (border-l) on the body wrapper inside AccordionContent.
+  assert.ok(/border-l[^"]*pl-/.test(PANEL_SOURCE) || /pl-[^"]*border-l/.test(PANEL_SOURCE),
+    "phase iteration body wrapper must include border-l + pl-* classes (FR-8, DD-5)");
+});
+
+test("FR-9/DD-6 phase trigger reserves a fixed-width chevron column at the right edge", () => {
+  // The wrapper around AccordionTrigger declares a fixed-width slot
+  // class (data-attr or shrink-0 + w-N) at its right edge.
+  assert.ok(/data-chevron-slot|w-6 shrink-0|w-8 shrink-0/.test(PANEL_SOURCE),
+    "phase trigger must reserve a fixed-width chevron column (FR-9, DD-6)");
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
 
