@@ -789,5 +789,41 @@ test("FR-4 gate_active=false uses underlying status default", () => {
   assert.deepStrictEqual(deriveGateBadgeStatusAndLabel(node), { status: 'completed', label: 'Completed' });
 });
 
+import { getDocLinkLabel, DOC_LINK_LABELS } from './dag-timeline-helpers';
+
+console.log("\ngetDocLinkLabel tests\n");
+
+test("FR-11 phase planning steps map to typed labels", () => {
+  assert.strictEqual(getDocLinkLabel('research'), 'Research');
+  assert.strictEqual(getDocLinkLabel('prd'), 'PRD');
+  assert.strictEqual(getDocLinkLabel('design'), 'Design');
+  assert.strictEqual(getDocLinkLabel('architecture'), 'Architecture');
+  assert.strictEqual(getDocLinkLabel('requirements'), 'Requirements');
+  assert.strictEqual(getDocLinkLabel('master_plan'), 'Master Plan');
+});
+
+test("FR-11 review/report steps map to typed labels", () => {
+  assert.strictEqual(getDocLinkLabel('code_review'), 'Code Review');
+  assert.strictEqual(getDocLinkLabel('phase_report'), 'Phase Report');
+  assert.strictEqual(getDocLinkLabel('phase_review'), 'Phase Review');
+  assert.strictEqual(getDocLinkLabel('final_review'), 'Final Review');
+});
+
+test("AD-6 compound id resolves leaf to label", () => {
+  assert.strictEqual(getDocLinkLabel('phase_loop.iter0.task_loop.iter1.code_review'), 'Code Review');
+});
+
+test("FR-11 unknown leaf falls back to getDisplayName", () => {
+  assert.strictEqual(getDocLinkLabel('something_custom'), 'Something Custom');
+});
+
+test("DOC_LINK_LABELS is exported and contains all FR-11 ids", () => {
+  const required = ['research','prd','design','architecture','requirements','master_plan',
+    'code_review','phase_report','phase_review','final_review'];
+  for (const id of required) {
+    assert.ok(Object.hasOwn(DOC_LINK_LABELS, id), `${id} missing from DOC_LINK_LABELS`);
+  }
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);

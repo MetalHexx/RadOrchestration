@@ -209,6 +209,33 @@ export const NODE_SECTION_MAP: Record<string, SectionLabel> = {
   final_approval_gate: 'Completion',
 };
 
+// ─── Doc-link label table (FR-11, AD-6) ─────────────────────────────────────
+
+export const DOC_LINK_LABELS: Record<string, string> = {
+  research:        'Research',
+  prd:             'PRD',
+  design:          'Design',
+  architecture:    'Architecture',
+  requirements:    'Requirements',
+  master_plan:     'Master Plan',
+  code_review:     'Code Review',
+  phase_report:    'Phase Report',
+  phase_review:    'Phase Review',
+  final_review:    'Final Review',
+};
+
+/**
+ * Returns the typed doc-link label for a node id (FR-11). Resolves
+ * compound ids (`phase_loop.iter0.task_loop.iter1.code_review`) by
+ * extracting the leaf segment (AD-6 — same `extractLeaf` pattern used
+ * by `getDisplayName` and `getGateNodeConfig`). Falls back to
+ * `getDisplayName(nodeId)` for ids not in `DOC_LINK_LABELS`.
+ */
+export function getDocLinkLabel(nodeId: string): string {
+  const leaf = nodeId.includes('.') ? nodeId.slice(nodeId.lastIndexOf('.') + 1) : nodeId;
+  return DOC_LINK_LABELS[leaf] ?? getDisplayName(nodeId);
+}
+
 // ─── Section Helper Functions ─────────────────────────────────────────────────
 
 export function parsePhaseNameFromDocPath(
