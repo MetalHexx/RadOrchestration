@@ -320,6 +320,45 @@ test('dag-corrective-task-group.tsx <DocumentLink> renders OUTSIDE <AccordionTri
   }
 });
 
+// ─── v4 header parity (P03-T02) ──────────────────────────────────────────────
+
+const ctgSource = readFileSync(join(__dirname, 'dag-corrective-task-group.tsx'), 'utf-8');
+
+console.log("\nDAGCorrectiveTaskGroup — v4 header parity (P03-T02)\n");
+
+test('dag-corrective-task-group.tsx wires <Accordion ... value={expandedCorrectiveIds} onValueChange={onAccordionChange} multiple> (DD-7, AD-3)', () => {
+  // The corrective accordion now participates in the same controlled
+  // expansion set as the iteration accordions so DD-7 (additive
+  // auto-expansion) works.
+  assert.ok(
+    /<Accordion\b[^>]*\bmultiple\b[^>]*value=\{expandedLoopIds\}[^>]*onValueChange=\{onAccordionChange\}/.test(ctgSource)
+    || /<Accordion\b[^>]*value=\{expandedLoopIds\}[^>]*onValueChange=\{onAccordionChange\}[^>]*\bmultiple\b/.test(ctgSource),
+    '<Accordion> in dag-corrective-task-group.tsx must be controlled (value, onValueChange) and multi-open so DD-7 additive expansion works'
+  );
+});
+
+test('dag-corrective-task-group.tsx <AccordionItem value> uses buildCorrectiveItemValue(parentIterationKey, entry.index) (AD-3 hook+renderer parity)', () => {
+  assert.ok(
+    /<AccordionItem\b[^>]*value=\{buildCorrectiveItemValue\(parentIterationKey,\s*entry\.index\)\}/.test(ctgSource),
+    '<AccordionItem value> must come from buildCorrectiveItemValue so the same key produced by useFollowMode also opens the accordion (AD-3)'
+  );
+});
+
+test('dag-corrective-task-group.tsx renders the icon-only SpinnerBadge in each header (DD-1)', () => {
+  assert.ok(
+    /SpinnerBadge[\s\S]{0,400}hideLabel/.test(ctgSource),
+    'corrective task header must render the icon-only SpinnerBadge for visual parity with iteration headers (DD-1, FR-6)'
+  );
+});
+
+test('dag-corrective-task-group.tsx <AccordionTrigger> wires role="option", data-timeline-row, data-row-key={itemValue}, tabIndex={isFocused ? 0 : -1}, onFocus={handleFocus} (AD-5, FR-16)', () => {
+  assert.ok(/role="option"/.test(ctgSource));
+  assert.ok(/data-timeline-row/.test(ctgSource));
+  assert.ok(/data-row-key=\{itemValue\}/.test(ctgSource));
+  assert.ok(/tabIndex=\{isFocused \? 0 : -1\}/.test(ctgSource));
+  assert.ok(/onFocus=\{handleFocus\}/.test(ctgSource));
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

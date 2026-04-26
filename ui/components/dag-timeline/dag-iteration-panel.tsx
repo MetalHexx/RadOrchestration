@@ -205,12 +205,15 @@ export function DAGIterationPanel({
             })}
             <DAGCorrectiveTaskGroup
               correctiveTasks={iteration.corrective_tasks}
+              parentIterationKey={itemValue}
               parentNodeId={correctiveGroupParentId}
               currentNodePath={currentNodePath}
               onDocClick={onDocClick}
               repoBaseUrl={repoBaseUrl}
               focusedRowKey={focusedRowKey}
               onFocusChange={onFocusChange}
+              expandedLoopIds={expandedLoopIds}
+              onAccordionChange={onAccordionChange}
             />
             {(phaseReviewVerdict != null || phaseReportPath != null || phaseReviewPath != null) && (
               <div className="flex items-center gap-2 mt-3 pt-2 border-t pl-2">
@@ -304,12 +307,15 @@ export function DAGIterationPanel({
           })}
           <DAGCorrectiveTaskGroup
             correctiveTasks={iteration.corrective_tasks}
+            parentIterationKey={itemValue}
             parentNodeId={correctiveGroupParentId}
             currentNodePath={currentNodePath}
             onDocClick={onDocClick}
             repoBaseUrl={repoBaseUrl}
             focusedRowKey={focusedRowKey}
             onFocusChange={onFocusChange}
+            expandedLoopIds={expandedLoopIds}
+            onAccordionChange={onAccordionChange}
           />
         </AccordionContent>
       </AccordionItem>
