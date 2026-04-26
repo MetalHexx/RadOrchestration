@@ -43,6 +43,17 @@ export function deriveAncestorLoopKeys(lostKey: string): string[] {
   return result.reverse();
 }
 
+/**
+ * Translates one (loopParentId, iterationIndex) pair into the iteration
+ * accordion's `data-row-key` (iter-...). Used by the focus-fallback
+ * useEffect to map each `loopParentId` returned by `deriveAncestorLoopKeys`
+ * into the accordion key the iteration panel actually stamps onto its
+ * trigger (AD-3 — single shared key shape).
+ */
+export function iterationAncestorToAccordionKey(loopParentId: string, iterationIndex: number): string {
+  return `iter-${loopParentId}-${iterationIndex}`;
+}
+
 export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName, phaseLoopStatus }: DAGTimelineProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const groups = groupNodesBySection(nodes);
@@ -135,14 +146,24 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
     if (typeof document === 'undefined') return;
     if (document.activeElement !== document.body) return;
     if (focusedRowKey === null) return;
-
     const container = containerRef.current;
     if (container === null) return;
 
-    const ancestorKeys = deriveAncestorLoopKeys(focusedRowKey);
-    for (const ancestorKey of ancestorKeys) {
+    // The deepest-first ancestor chain is parsed off the focused child's
+    // compound key (e.g. `phase_loop.iter0.task_loop.iter2.task_handoff` →
+    // [`phase_loop.iter0.task_loop`, `phase_loop`]). For each ancestor we
+    // also need the iteration index that was just collapsed; we recover it
+    // from the same compound key by scanning the segment immediately after
+    // the ancestor prefix.
+    const ancestorPrefixes = deriveAncestorLoopKeys(focusedRowKey);
+    for (const prefix of ancestorPrefixes) {
+      const after = focusedRowKey.slice(prefix.length);
+      const iterMatch = after.match(/^\.iter(\d+)\./);
+      if (iterMatch === null) continue;
+      const iterIndex = Number.parseInt(iterMatch[1], 10);
+      const accordionKey = iterationAncestorToAccordionKey(prefix, iterIndex);
       const target = container.querySelector<HTMLElement>(
-        `[data-row-key="${CSS.escape(ancestorKey)}"]`
+        `[data-row-key="${CSS.escape(accordionKey)}"]`
       );
       if (target !== null) {
         target.focus();

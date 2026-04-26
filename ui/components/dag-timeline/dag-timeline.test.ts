@@ -839,6 +839,28 @@ test('use-follow-mode.ts still contains `!isProgrammaticRef.current` (unchanged 
   );
 });
 
+// ─── P03-T04: iterationAncestorToAccordionKey helper ─────────────────────────
+
+import { iterationAncestorToAccordionKey } from './dag-timeline';
+
+console.log("\nDAGTimeline — ancestor-key translation for the iter-... accordion (P03-T04)\n");
+
+test('iterationAncestorToAccordionKey("phase_loop", 0) returns "iter-phase_loop-0" (AD-3 + AD-5)', () => {
+  assert.strictEqual(iterationAncestorToAccordionKey('phase_loop', 0), 'iter-phase_loop-0');
+});
+
+test('iterationAncestorToAccordionKey accepts a compound parent ("phase_loop.iter0.task_loop", 2) → "iter-phase_loop.iter0.task_loop-2"', () => {
+  assert.strictEqual(
+    iterationAncestorToAccordionKey('phase_loop.iter0.task_loop', 2),
+    'iter-phase_loop.iter0.task_loop-2'
+  );
+});
+
+test('deriveAncestorLoopKeys("phase_loop.iter0.task_loop.iter2.task_handoff") still returns the loop-id chain so the focus-fallback effect can map them via iterationAncestorToAccordionKey (FR-16)', () => {
+  const result = deriveAncestorLoopKeys('phase_loop.iter0.task_loop.iter2.task_handoff');
+  assert.deepStrictEqual(result, ['phase_loop.iter0.task_loop', 'phase_loop']);
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
