@@ -748,5 +748,36 @@ test('dag-iteration-panel.tsx for_each_task branch keeps Doc / commit links as S
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
+console.log("\nDAGIterationPanel — roving-tabindex parity (P02-T03)\n");
+
+test('dag-iteration-panel.tsx wires tabIndex={isFocused ? 0 : -1} on EVERY <AccordionTrigger> (FR-16, AD-5)', () => {
+  const triggerBlocks = [...iterationPanelSource.matchAll(/<AccordionTrigger[\s\S]*?>/g)];
+  assert.ok(triggerBlocks.length >= 2, 'expected ≥ 2 <AccordionTrigger ...> opening tags');
+  for (const m of triggerBlocks) {
+    assert.ok(
+      /tabIndex=\{isFocused \? 0 : -1\}/.test(m[0]),
+      `every <AccordionTrigger> must wire tabIndex={isFocused ? 0 : -1}; missing on tag: ${m[0].slice(0, 120)}...`
+    );
+  }
+});
+
+test('dag-iteration-panel.tsx wires onFocus={handleFocus} on EVERY <AccordionTrigger> (FR-16)', () => {
+  const triggerBlocks = [...iterationPanelSource.matchAll(/<AccordionTrigger[\s\S]*?>/g)];
+  for (const m of triggerBlocks) {
+    assert.ok(
+      /onFocus=\{handleFocus\}/.test(m[0]),
+      `every <AccordionTrigger> must wire onFocus={handleFocus}; missing on tag: ${m[0].slice(0, 120)}...`
+    );
+  }
+});
+
+test('dag-iteration-panel.tsx data-row-key uses itemValue (the iteration accordion key) so deriveAncestorLoopKeys still walks correctly (AD-5)', () => {
+  const matches = iterationPanelSource.match(/data-row-key=\{itemValue\}/g) ?? [];
+  assert.ok(
+    matches.length >= 2,
+    `data-row-key={itemValue} must appear in BOTH parentKind branches — found ${matches.length}`
+  );
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);

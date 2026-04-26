@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { DAGNodeRow } from './dag-node-row';
 import { DAGCorrectiveTaskGroup } from './dag-corrective-task-group';
@@ -97,6 +98,13 @@ export function DAGIterationPanel({
     iterationName = parseTaskNameFromDocPath(docPath, iterationIndex);
   }
 
+  // Shared roving-tabindex wiring (FR-16, AD-5)
+  const itemValue = buildIterationItemValue(parentNodeId, iterationIndex);
+  const isFocused = focusedRowKey === itemValue;
+  const handleFocus = useCallback(() => {
+    onFocusChange(itemValue);
+  }, [itemValue, onFocusChange]);
+
   // Compute card container classes
   let cardClasses: string;
 
@@ -151,7 +159,9 @@ export function DAGIterationPanel({
                 aria-label={headerAriaLabel}
                 className="hover:no-underline gap-2 items-center py-2 px-3 border-0 w-full"
                 data-timeline-row
-                data-row-key={buildIterationItemValue(parentNodeId, iterationIndex)}
+                data-row-key={itemValue}
+                tabIndex={isFocused ? 0 : -1}
+                onFocus={handleFocus}
               >
                 {renderStatusIcon(iteration.status)}
                 <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
@@ -222,7 +232,6 @@ export function DAGIterationPanel({
   }
 
   // for_each_task branch (FR-5, FR-9)
-  const itemValue = buildIterationItemValue(parentNodeId, iterationIndex);
   const headerAriaLabel = `Task iteration ${iterationIndex + 1} — ${iterationName} — ${iteration.status}`;
   return (
     <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
@@ -236,6 +245,8 @@ export function DAGIterationPanel({
               className="hover:no-underline gap-2 items-center py-2 px-3 border-0 w-full"
               data-timeline-row
               data-row-key={itemValue}
+              tabIndex={isFocused ? 0 : -1}
+              onFocus={handleFocus}
             >
               {renderStatusIcon(iteration.status)}
               <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
