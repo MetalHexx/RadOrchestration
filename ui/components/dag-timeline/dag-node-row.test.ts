@@ -834,3 +834,37 @@ test3("FR-11 DocumentLink label is wired to getDocLinkLabel(nodeId), not literal
 
 console.log(`\n${passed3} passed, ${failed3} failed\n`);
 if (failed3 > 0) process.exit(1);
+
+// ─── P04-T03: verdictPill prop addition (AD-8) ───────────────────────────────
+
+console.log("\nDAGNodeRow — P04-T03 verdictPill prop (AD-8)\n");
+
+let passed4 = 0;
+let failed4 = 0;
+
+function test4(name: string, fn: () => void) {
+  try {
+    fn();
+    console.log(`  ✓ ${name}`);
+    passed4++;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`  ✗ ${name}\n    ${msg}`);
+    failed4++;
+  }
+}
+
+test4("AD-8 DAGNodeRow accepts an optional verdictPill prop", () => {
+  assert.ok(/verdictPill\??:\s*React\.ReactNode/.test(ROW_SOURCE) ||
+            /verdictPill\??:\s*ReactNode/.test(ROW_SOURCE),
+    "DAGNodeRow props must include optional verdictPill: ReactNode (AD-8)");
+});
+test4("AD-8 DAGNodeRow renders verdictPill after the status badge when provided", () => {
+  // Source-shape check: verdictPill is rendered between the status
+  // badge and the name span / branch indicator block.
+  assert.ok(/\{verdictPill\}/.test(ROW_SOURCE),
+    "DAGNodeRow must render {verdictPill} (AD-8)");
+});
+
+console.log(`\n${passed4} passed, ${failed4} failed\n`);
+if (failed4 > 0) process.exit(1);

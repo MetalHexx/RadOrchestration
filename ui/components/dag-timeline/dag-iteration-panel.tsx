@@ -126,10 +126,7 @@ export function DAGIterationPanel({
   }
 
   if (parentKind === 'for_each_phase') {
-    const phaseReportNode = iteration.nodes['phase_report'];
     const phaseReviewNode = iteration.nodes['phase_review'];
-    const phaseReportPath = phaseReportNode?.kind === 'step' ? phaseReportNode.doc_path : null;
-    const phaseReviewPath = phaseReviewNode?.kind === 'step' ? phaseReviewNode.doc_path : null;
     const phaseReviewVerdict = phaseReviewNode?.kind === 'step' ? (phaseReviewNode.verdict ?? null) : null;
     const progress = deriveIterationTaskProgress(iteration);
     const headerAriaLabel = `Phase iteration ${iterationIndex + 1} — ${iterationName} — ${iteration.status}`;
@@ -205,6 +202,11 @@ export function DAGIterationPanel({
                   onDocClick={onDocClick}
                   isFocused={focusedRowKey === childKey}
                   onFocusChange={onFocusChange}
+                  verdictPill={
+                    childNodeId === 'phase_review' && phaseReviewVerdict != null
+                      ? <ReviewVerdictBadge verdict={phaseReviewVerdict as ReviewVerdict} />
+                      : undefined
+                  }
                 />
               );
             })}
@@ -220,19 +222,6 @@ export function DAGIterationPanel({
               expandedLoopIds={expandedLoopIds}
               onAccordionChange={onAccordionChange}
             />
-            {(phaseReviewVerdict != null || phaseReportPath != null || phaseReviewPath != null) && (
-              <div className="flex items-center gap-2 mt-3 pt-2 border-t pl-2">
-                {phaseReviewVerdict != null && (
-                  <ReviewVerdictBadge verdict={phaseReviewVerdict as ReviewVerdict} />
-                )}
-                {phaseReportPath != null && (
-                  <DocumentLink path={phaseReportPath} label="Phase Report" onDocClick={onDocClick} />
-                )}
-                {phaseReviewPath != null && (
-                  <DocumentLink path={phaseReviewPath} label="Phase Review" onDocClick={onDocClick} />
-                )}
-              </div>
-            )}
           </AccordionContent>
         </AccordionItem>
       </Accordion>

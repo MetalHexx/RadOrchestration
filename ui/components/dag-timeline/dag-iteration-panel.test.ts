@@ -872,3 +872,24 @@ test("DD-8 task-iteration ExternalLink forwards full commit hash as title", () =
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
+
+// ─── P04-T03: Footer block removal + verdictPill inline wiring ───────────────
+
+console.log("\nDAGIterationPanel — P04-T03 footer removal + verdictPill (FR-16, AD-8, DD-11)\n");
+
+test("FR-16 phase-iteration body has no border-t footer block", () => {
+  // The duplicated footer (border-t + Phase Report/Phase Review links)
+  // is removed; verdict surfaces on the phase_review row itself.
+  assert.ok(!/border-t pl-2/.test(PANEL_SOURCE),
+    "phase iteration footer (border-t pl-2) must be removed (FR-16)");
+});
+
+test("AD-8 phase-iteration body wires verdictPill on phase_review DAGNodeRow", () => {
+  assert.ok(/verdictPill=/.test(PANEL_SOURCE),
+    "phase_review DAGNodeRow must receive a verdictPill (AD-8)");
+});
+
+test("DD-11 ReviewVerdictBadge still imported (rendered via verdictPill slot)", () => {
+  assert.ok(/ReviewVerdictBadge/.test(PANEL_SOURCE),
+    "ReviewVerdictBadge import retained for verdictPill slot (DD-11)");
+});

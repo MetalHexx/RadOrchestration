@@ -20,12 +20,16 @@ interface DAGNodeRowProps {
   onFocusChange: (nodeId: string) => void;
   /** Top-level phase_loop status; drives FR-2 Execute Plan visibility (AD-2). */
   phaseLoopStatus?: NodeStatus;
+  /** AD-8 — optional verdict pill rendered immediately after the status
+   *  badge. Used by the phase iteration body to surface the
+   *  phase_review verdict on the phase_review row itself (FR-16). */
+  verdictPill?: React.ReactNode;
 }
 
 // Re-export formatNodeId to preserve barrel export contract
 export { formatNodeId } from './dag-timeline-helpers';
 
-export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0, projectName, isFocused, onFocusChange, phaseLoopStatus }: DAGNodeRowProps) {
+export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0, projectName, isFocused, onFocusChange, phaseLoopStatus, verdictPill }: DAGNodeRowProps) {
   const isActive = nodeId === currentNodePath;
   const branchTaken = node.kind === 'conditional' ? node.branch_taken : null;
   const branchLabel = branchTaken != null ? (branchTaken === 'true' ? 'Yes' : 'No') : null;
@@ -85,6 +89,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
           iconOnly={node.status === 'completed'}
         />
       )}
+      {verdictPill}
       <span className="text-sm font-medium min-w-0 shrink truncate max-w-[55%]">{getDisplayName(nodeId)}</span>
       {branchLabel !== null && branchBadgeStatus !== null && (
         <span role="group" aria-label={`Branch taken: ${branchLabel}`}>
