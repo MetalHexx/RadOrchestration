@@ -176,7 +176,7 @@ export function DAGIterationPanel({
           </div>
           <AccordionContent>
             <div className="border-l border-border pl-3 ml-3">
-              {/* Body: task iteration list + footer (Phase Report / Review) — populated in P02-T02 + P03-T01 */}
+              {/* Body: task iteration list (phase_review verdict now rendered inline on its row, see DD-11/FR-16) */}
               {Object.entries(iteration.nodes).map(([childNodeId, childNode]) => {
                 const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
                 return isLoopNode(childNode) ? (

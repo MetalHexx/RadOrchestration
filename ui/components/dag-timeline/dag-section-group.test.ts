@@ -100,7 +100,7 @@ console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`);
 
 // ─── Card variant tests (FR-13, FR-14, FR-15, AD-4, AD-5, DD-9, DD-10) ──────
 
-import { isCardSection, getCardClasses, CARD_SHELL_CLASSES, CARD_HEADER_CLASSES } from './dag-section-group';
+import { isCardSection, CARD_SHELL_CLASSES, CARD_HEADER_CLASSES } from './dag-section-group';
 
 console.log("DAGSectionGroup card-variant tests\n");
 
@@ -129,9 +129,9 @@ test("AD-5 CARD_HEADER_CLASSES retains uppercase tracking-wide muted treatment",
 });
 
 test("getCardClasses returns shell classes for Planning/Completion, empty for Execution (DD-9, DD-10)", () => {
-  assert.strictEqual(getCardClasses("Planning"), CARD_SHELL_CLASSES);
-  assert.strictEqual(getCardClasses("Completion"), CARD_SHELL_CLASSES);
-  assert.strictEqual(getCardClasses("Execution"), "");
+  assert.strictEqual((isCardSection("Planning") ? CARD_SHELL_CLASSES : ""), CARD_SHELL_CLASSES);
+  assert.strictEqual((isCardSection("Completion") ? CARD_SHELL_CLASSES : ""), CARD_SHELL_CLASSES);
+  assert.strictEqual((isCardSection("Execution") ? CARD_SHELL_CLASSES : ""), "");
 });
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`);

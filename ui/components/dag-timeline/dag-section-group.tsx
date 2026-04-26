@@ -15,10 +15,6 @@ export function isCardSection(label: string): boolean {
   return label === 'Planning' || label === 'Completion';
 }
 
-export function getCardClasses(label: string): string {
-  return isCardSection(label) ? CARD_SHELL_CLASSES : '';
-}
-
 export function computeAriaLabel(label: string): string {
   return `${label} section`;
 }
