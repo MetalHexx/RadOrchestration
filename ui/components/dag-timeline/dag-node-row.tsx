@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
 import { DocumentLink } from '@/components/documents';
 import { ApproveGateButton, ExecutePlanButton } from '@/components/dashboard';
-import { getDisplayName, getRowButtonDescriptor, deriveGateBadgeStatusAndLabel, getDocLinkLabel } from './dag-timeline-helpers';
+import { getDisplayName, getRowButtonDescriptor, deriveGateBadgeStatusAndLabel, getDocLinkLabel, derivePlanningStepLabel } from './dag-timeline-helpers';
 import type { CompatibleNodeState } from './dag-timeline-helpers';
 import type { NodeStatus } from '@/types/state';
 
@@ -86,6 +86,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       })() : (
         <NodeStatusBadge
           status={node.status}
+          label={derivePlanningStepLabel(nodeId, node.status)}
           iconOnly={node.status === 'completed'}
         />
       )}

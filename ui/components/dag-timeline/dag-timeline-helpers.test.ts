@@ -825,5 +825,27 @@ test("DOC_LINK_LABELS is exported and contains all FR-11 ids", () => {
   }
 });
 
+import { derivePlanningStepLabel } from './dag-timeline-helpers';
+
+console.log("\nderivePlanningStepLabel (FR-5) tests\n");
+
+test("FR-5 in_progress planning steps derive label 'Executing'", () => {
+  for (const id of ['research','prd','design','architecture','requirements','master_plan','explode_master_plan']) {
+    assert.strictEqual(derivePlanningStepLabel(id, 'in_progress'), 'Executing', `${id} in_progress`);
+  }
+});
+
+test("FR-5 non-in_progress planning steps return undefined (falls through to STATUS_MAP default)", () => {
+  for (const status of ['not_started','completed','failed','halted','skipped'] as const) {
+    assert.strictEqual(derivePlanningStepLabel('research', status), undefined);
+  }
+});
+
+test("FR-5 non-planning step ids return undefined even when in_progress", () => {
+  assert.strictEqual(derivePlanningStepLabel('task_executor', 'in_progress'), undefined);
+  assert.strictEqual(derivePlanningStepLabel('phase_loop', 'in_progress'), undefined);
+  assert.strictEqual(derivePlanningStepLabel('something_else', 'in_progress'), undefined);
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
