@@ -1,11 +1,7 @@
 "use client";
 
-import { useCallback } from 'react';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import { NodeKindIcon } from './node-kind-icon';
-import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
+import { Fragment } from 'react';
 import { DAGIterationPanel } from './dag-iteration-panel';
-import { getDisplayName } from './dag-timeline-helpers';
 import type { ForEachPhaseNodeState, ForEachTaskNodeState } from '@/types/state';
 
 export interface DAGLoopNodeProps {
@@ -25,10 +21,20 @@ export interface DAGLoopNodeProps {
   onFocusChange: (nodeId: string) => void;
 }
 
-export function buildLoopItemValue(nodeId: string): string {
-  return `loop-${nodeId}`;
-}
-
+/**
+ * Transparent iteration mapper (AD-1). Renders one DAGIterationPanel per
+ * iteration with no surrounding shell — no Accordion, no header row, no
+ * loop-${nodeId} accordion value. The iteration panels themselves own the
+ * accordion behaviour (AD-2). Iterations are sorted by index ascending
+ * (DD-8: oldest first, newest at the bottom). Keys off node.kind via the
+ * caller's own dispatch in dag-timeline.tsx / dag-iteration-panel.tsx
+ * (FR-18 — generalises to any for_each_* template loop).
+ *
+ * The `isFocused` and `onFocusChange` props are kept on the prop signature
+ * so call sites in dag-timeline.tsx do not need to change shape, but they
+ * are intentionally unused here — focus is owned by the iteration accordion
+ * triggers, not by a loop-row that no longer exists.
+ */
 export function DAGLoopNode({
   nodeId,
   node,
@@ -39,59 +45,28 @@ export function DAGLoopNode({
   repoBaseUrl,
   projectName,
   focusedRowKey,
-  isFocused,
   onFocusChange,
 }: DAGLoopNodeProps) {
   const sortedIterations = [...node.iterations].sort((a, b) => a.index - b.index);
-  const isActive = nodeId === currentNodePath;
-  const ariaLabel = `${getDisplayName(nodeId)} — ${STATUS_MAP[node.status].defaultLabel}`;
-
-  const handleFocus = useCallback(() => {
-    onFocusChange(nodeId);
-  }, [nodeId, onFocusChange]);
-
   return (
-    <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
-      <AccordionItem value={buildLoopItemValue(nodeId)} className="border-b-0">
-        <AccordionTrigger
-          role="option"
-          aria-selected={isActive}
-          aria-label={ariaLabel}
-          className="hover:no-underline py-2 px-3 rounded-md gap-2 hover:bg-accent/50 items-center"
-          tabIndex={isFocused ? 0 : -1}
-          data-timeline-row
-          data-row-key={nodeId}
-          onFocus={handleFocus}
-        >
-          <NodeKindIcon kind={node.kind} />
-          {/* flex-1 is intentional here — loop node triggers are accordion headers where the label,
-              status badge, and chevron share a flex row. flex-1 fills available space before the
-              badge and chevron, keeping the chevron right-aligned. DAGNodeRow uses max-w-[55%]
-              instead because standard rows have additional trailing elements (document links, branch
-              badges) that need predictable horizontal space. */}
-          <span className="text-sm font-medium truncate flex-1">{getDisplayName(nodeId)}</span>
-          <NodeStatusBadge status={node.status} />
-        </AccordionTrigger>
-        <AccordionContent>
-          {sortedIterations.map((iteration) => (
-            <DAGIterationPanel
-              key={iteration.index}
-              iteration={iteration}
-              iterationIndex={iteration.index}
-              parentNodeId={nodeId}
-              parentKind={node.kind}
-              currentNodePath={currentNodePath}
-              onDocClick={onDocClick}
-              repoBaseUrl={repoBaseUrl}
-              projectName={projectName}
-              expandedLoopIds={expandedLoopIds}
-              onAccordionChange={onAccordionChange}
-              focusedRowKey={focusedRowKey}
-              onFocusChange={onFocusChange}
-            />
-          ))}
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+    <Fragment>
+      {sortedIterations.map((iteration) => (
+        <DAGIterationPanel
+          key={iteration.index}
+          iteration={iteration}
+          iterationIndex={iteration.index}
+          parentNodeId={nodeId}
+          parentKind={node.kind}
+          currentNodePath={currentNodePath}
+          onDocClick={onDocClick}
+          repoBaseUrl={repoBaseUrl}
+          projectName={projectName}
+          expandedLoopIds={expandedLoopIds}
+          onAccordionChange={onAccordionChange}
+          focusedRowKey={focusedRowKey}
+          onFocusChange={onFocusChange}
+        />
+      ))}
+    </Fragment>
   );
 }

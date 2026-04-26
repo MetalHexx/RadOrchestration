@@ -9,7 +9,6 @@ import assert from "node:assert";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { buildLoopItemValue } from './dag-loop-node';
 import { isLoopNode, getDisplayName } from './dag-timeline-helpers';
 import type {
   ForEachPhaseNodeState,
@@ -74,20 +73,7 @@ const forEachPhaseNodeUnsorted: ForEachPhaseNodeState = {
 
 console.log("\nDAGLoopNode logic tests\n");
 
-// buildLoopItemValue
-test('buildLoopItemValue("phase_loop") returns "loop-phase_loop"', () => {
-  assert.strictEqual(buildLoopItemValue("phase_loop"), "loop-phase_loop");
-});
-
-test('buildLoopItemValue("task_loop") returns "loop-task_loop"', () => {
-  assert.strictEqual(buildLoopItemValue("task_loop"), "loop-task_loop");
-});
-
-test('buildLoopItemValue("my_node_id") returns "loop-my_node_id"', () => {
-  assert.strictEqual(buildLoopItemValue("my_node_id"), "loop-my_node_id");
-});
-
-// getDisplayName (used by component trigger row)
+// getDisplayName (used by callers / smoke test for helpers integration)
 test('getDisplayName("phase_loop") returns "Phase Loop"', () => {
   assert.strictEqual(getDisplayName("phase_loop"), "Phase Loop");
 });
@@ -96,44 +82,30 @@ test('getDisplayName("task_loop") returns "Task Loop"', () => {
   assert.strictEqual(getDisplayName("task_loop"), "Task Loop");
 });
 
+// isLoopNode smoke tests for both fixtures
+test('isLoopNode(forEachPhaseNode2) returns true', () => {
+  assert.strictEqual(isLoopNode(forEachPhaseNode2), true);
+});
+
+test('isLoopNode(forEachTaskNode3) returns true', () => {
+  assert.strictEqual(isLoopNode(forEachTaskNode3), true);
+});
+
 // Component simulation: for_each_phase node with 0 iterations
 test('for_each_phase node with 0 iterations renders no iteration panels', () => {
   const iterations = forEachPhaseNode0.iterations;
   assert.strictEqual(iterations.length, 0);
 });
 
-// Component simulation: for_each_phase node with 2 iterations
-test('for_each_phase node with 2 iterations renders 2 DAGIterationPanel entries', () => {
-  const iterations = forEachPhaseNode2.iterations;
-  assert.strictEqual(iterations.length, 2);
+// Component simulation: iteration counts and ordering
+test('for_each_phase node with 2 iterations has 2 iteration entries', () => {
+  assert.strictEqual(forEachPhaseNode2.iterations.length, 2);
 });
 
-test('for_each_phase node with 2 iterations — first entry has iterationIndex 0', () => {
-  const sorted = [...forEachPhaseNode2.iterations].sort((a, b) => a.index - b.index);
-  assert.strictEqual(sorted[0].index, 0);
+test('for_each_task node with 3 iterations has 3 iteration entries', () => {
+  assert.strictEqual(forEachTaskNode3.iterations.length, 3);
 });
 
-test('for_each_phase node with 2 iterations — second entry has iterationIndex 1', () => {
-  const sorted = [...forEachPhaseNode2.iterations].sort((a, b) => a.index - b.index);
-  assert.strictEqual(sorted[1].index, 1);
-});
-
-test('parentNodeId is passed through to DAGIterationPanel (simulation: nodeId matches)', () => {
-  const nodeId = "phase_loop";
-  // isLoopNode confirms for_each_phase renders as DAGLoopNode, which then passes nodeId as parentNodeId
-  const iterations = forEachPhaseNode2.iterations;
-  assert.strictEqual(isLoopNode(forEachPhaseNode2), true);
-  assert.strictEqual(iterations.length, 2);
-  assert.strictEqual(buildLoopItemValue(nodeId), "loop-phase_loop");
-});
-
-// Component simulation: for_each_task node with 3 iterations
-test('for_each_task node with 3 iterations renders 3 DAGIterationPanel entries', () => {
-  const iterations = forEachTaskNode3.iterations;
-  assert.strictEqual(iterations.length, 3);
-});
-
-// Iterations are rendered sorted by index ascending
 test('iterations are sorted by index ascending', () => {
   const sorted = [...forEachPhaseNodeUnsorted.iterations].sort((a, b) => a.index - b.index);
   assert.strictEqual(sorted[0].index, 0);
@@ -148,265 +120,73 @@ test('unsorted iterations are reordered to ascending order', () => {
   assert.deepStrictEqual(sorted.map(i => i.index), [0, 1, 2]);
 });
 
-// Trigger row — NodeKindIcon with correct kind
-test('trigger row uses node.kind for NodeKindIcon (for_each_phase)', () => {
-  const kind = forEachPhaseNode2.kind;
-  assert.strictEqual(kind, 'for_each_phase');
-});
-
-test('trigger row uses node.kind for NodeKindIcon (for_each_task)', () => {
-  const kind = forEachTaskNode3.kind;
-  assert.strictEqual(kind, 'for_each_task');
-});
-
-// Trigger row — NodeStatusBadge with node status
-test('trigger row uses node.status for NodeStatusBadge (in_progress)', () => {
-  const status = forEachPhaseNode2.status;
-  assert.strictEqual(status, 'in_progress');
-});
-
-test('trigger row uses node.status for NodeStatusBadge (completed)', () => {
-  const status = forEachTaskNode3.status;
-  assert.strictEqual(status, 'completed');
-});
-
-// Trigger row — formatted node name
-test('trigger row displays formatted node name via getDisplayName', () => {
-  assert.strictEqual(getDisplayName("phase_loop"), "Phase Loop");
-  assert.strictEqual(getDisplayName("task_loop"), "Task Loop");
-});
-
-// currentNodePath and onDocClick passthrough simulation
-test('currentNodePath is passed through to DAGIterationPanel', () => {
-  const currentNodePath = "phase_loop.iter0.task_handoff";
-  // getDisplayName extracts the leaf segment of compound node paths
-  assert.strictEqual(getDisplayName(currentNodePath), "Task Handoff");
-});
-
-test('onDocClick is passed through to DAGIterationPanel', () => {
-  let called = false;
-  const onDocClick = (path: string) => { called = true; void path; };
-  onDocClick("some/path");
-  assert.strictEqual(called, true);
-});
-
-// No aria-current on the trigger row
-test('component does not add aria-current to trigger row (delegation to child DAGNodeRow)', () => {
-  // This is a design constraint: the trigger row should NOT have aria-current.
-  // We verify by asserting the component does not compute any isActive boolean
-  // for the trigger itself — active-node indication is handled by child DAGNodeRow.
-  // Simulation: nodeId !== currentNodePath does not affect trigger row rendering.
-  const nodeId: string = "phase_loop";
-  const currentNodePath: string = "phase_loop.iter0.task_handoff";
-  // The trigger row never compares nodeId to currentNodePath
-  const triggerHasAriaCurrent = nodeId === currentNodePath; // must be false
-  assert.strictEqual(triggerHasAriaCurrent, false);
-});
-
-// ─── Source-text: Accordion controlled-mode wiring on DAGLoopNode ────────────
+// ─── Source-text: transparent renderer ─────────────────────────────────────
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const loopNodeSource = readFileSync(join(__dirname, 'dag-loop-node.tsx'), 'utf-8');
 
-/**
- * Returns true if the source contains an `<Accordion ...>` opening tag whose
- * attributes include both `value={expandedLoopIds}` and
- * `onValueChange={onAccordionChange}` — i.e. the accordion is wired in
- * controlled mode with state forwarded from the caller. The check is
- * line-by-line: when a line opens `<Accordion`, all subsequent lines up to the
- * end of the opening tag (`>` or `/>`) are inspected for the required props.
- */
-function hasControlledAccordionWiring(source: string): boolean {
-  const lines = source.split(/\r?\n/);
-  for (let i = 0; i < lines.length; i++) {
-    if (!lines[i].includes('<Accordion')) continue;
-    let sawValue = false;
-    let sawOnValueChange = false;
-    let j = i;
-    while (j < lines.length) {
-      const line = lines[j];
-      if (line.includes('value={expandedLoopIds}')) sawValue = true;
-      if (line.includes('onValueChange={onAccordionChange}')) sawOnValueChange = true;
-      if (line.includes('/>') || (j > i && line.includes('>'))) break;
-      j++;
-    }
-    if (sawValue && sawOnValueChange) return true;
-  }
-  return false;
-}
-
-test('dag-loop-node.tsx wires <Accordion> in controlled mode with value={expandedLoopIds} and onValueChange={onAccordionChange}', () => {
-  assert.ok(loopNodeSource.includes('<Accordion'), 'sanity: dag-loop-node.tsx should contain an <Accordion element');
+test('dag-loop-node.tsx does NOT render an <Accordion> (AD-1 — loop shell removed)', () => {
   assert.ok(
-    hasControlledAccordionWiring(loopNodeSource),
-    'dag-loop-node.tsx must wire <Accordion> with both value={expandedLoopIds} and onValueChange={onAccordionChange} (controlled-mode forwarding)'
+    !/<Accordion\b/.test(loopNodeSource),
+    'DAGLoopNode must not wrap iterations in an <Accordion> — it is now a transparent iteration mapper (AD-1, FR-1, FR-2)'
   );
 });
 
-// Regression: base-ui's Accordion.Root defaults to `multiple=false` (single-open
-// mode), which — with the shared `expandedLoopIds` array passed to every nested
-// DAGLoopNode — causes a nested task_loop click to REPLACE the value array
-// (AccordionRoot.js:75 — `nextValue = [newValue]`) and thereby collapse the
-// parent phase_loop. Multi-open mode is required so value updates preserve
-// unrelated loop-item entries across sibling and ancestor Accordions.
-test('dag-loop-node.tsx sets `multiple` on <Accordion> so nested loop clicks preserve sibling/ancestor expansion', () => {
+test('dag-loop-node.tsx does NOT export buildLoopItemValue (AD-1 — old loop-key shape retired)', () => {
   assert.ok(
-    /<Accordion\b[^>]*\bmultiple\b/.test(loopNodeSource),
-    'dag-loop-node.tsx must pass `multiple` to <Accordion> (required for nested-loop state preservation)',
+    !/export\s+function\s+buildLoopItemValue\b/.test(loopNodeSource),
+    'buildLoopItemValue export must be removed; the iteration accordion key shape (iter-...) is the only key shape now (AD-3)'
   );
 });
 
-test('dag-loop-node.tsx forwards expandedLoopIds and onAccordionChange to nested DAGIterationPanel', () => {
-  // Iteration panels need to participate in the same controlled-mode tree so
-  // nested loops (task_loop within phase_loop) stay in sync with the same
-  // expandedLoopIds set held by the page-level useFollowMode hook.
+test('dag-loop-node.tsx maps directly over node.iterations sorted by index ascending (DD-8, FR-10)', () => {
   assert.ok(
-    /expandedLoopIds=\{expandedLoopIds\}/.test(loopNodeSource),
-    'dag-loop-node.tsx must forward expandedLoopIds={expandedLoopIds} to DAGIterationPanel'
-  );
-  assert.ok(
-    /onAccordionChange=\{onAccordionChange\}/.test(loopNodeSource),
-    'dag-loop-node.tsx must forward onAccordionChange={onAccordionChange} to DAGIterationPanel'
+    /\.\.\.node\.iterations\][\s\S]{0,80}\.sort\(\(a,\s*b\)\s*=>\s*a\.index\s*-\s*b\.index\)/.test(loopNodeSource)
+    || /node\.iterations\.slice\(\)\.sort\(\(a,\s*b\)\s*=>\s*a\.index\s*-\s*b\.index\)/.test(loopNodeSource),
+    'DAGLoopNode must sort node.iterations by index ascending (DD-8: oldest first / newest at the bottom)'
   );
 });
 
-// ─── Roving-tabindex helpers and tests ───────────────────────────────────────
-
-/**
- * Mirrors the production `tabIndex={isFocused ? 0 : -1}` expression on the
- * `<AccordionTrigger>` so tests can assert the computation without DOM rendering.
- */
-function computeTriggerTabIndex(isFocused: boolean): 0 | -1 {
-  return isFocused ? 0 : -1;
-}
-
-/**
- * Simulates the production `handleFocus` callback wiring:
- * `useCallback(() => { onFocusChange(nodeId); }, [nodeId, onFocusChange])`.
- * Returns an object with `calls` (recording each nodeId passed to
- * onFocusChange) and `trigger()` (mimicking one real DOM focus event).
- */
-function simulateOnFocusFires(nodeId: string): { calls: string[]; trigger: () => void } {
-  const calls: string[] = [];
-  const onFocusChange = (id: string) => { calls.push(id); };
-  const trigger = () => { onFocusChange(nodeId); };
-  return { calls, trigger };
-}
-
-test('computeTriggerTabIndex(true) returns 0', () => {
-  assert.strictEqual(computeTriggerTabIndex(true), 0);
-});
-
-test('computeTriggerTabIndex(false) returns -1', () => {
-  assert.strictEqual(computeTriggerTabIndex(false), -1);
-});
-
-test('dag-loop-node.tsx source contains data-timeline-row (join-key attribute for [data-timeline-row] coordinator query)', () => {
+test('dag-loop-node.tsx renders one DAGIterationPanel per iteration with no wrapping shell (AD-1)', () => {
   assert.ok(
-    loopNodeSource.includes('data-timeline-row'),
-    'dag-loop-node.tsx must stamp data-timeline-row on the <AccordionTrigger> so a future DAGTimeline coordinator can discover all focusable timeline rows via a single [data-timeline-row] query'
+    /<DAGIterationPanel\b/.test(loopNodeSource),
+    'DAGLoopNode must render <DAGIterationPanel> for each iteration (transparent mapping)'
   );
+  // No JSX element other than <DAGIterationPanel ...> and a React.Fragment wrapper
+  // may surround the map call: no <div className="..." > wrapper that would
+  // re-introduce a visual shell.
+  const noShellWrap = !/<div\s+className=[^>]*>\s*\{\s*sortedIterations\.map/.test(loopNodeSource)
+    && !/<Accordion\b/.test(loopNodeSource);
+  assert.ok(noShellWrap, 'DAGLoopNode must not introduce a wrapping <div className=... > or <Accordion> shell around the iteration map');
 });
 
-test('dag-loop-node.tsx source contains tabIndex={isFocused ? 0 : -1} (roving-tabindex wired through isFocused)', () => {
-  assert.ok(
-    loopNodeSource.includes('tabIndex={isFocused ? 0 : -1}'),
-    'dag-loop-node.tsx must wire tabIndex={isFocused ? 0 : -1} on the <AccordionTrigger> (not hard-coded)'
-  );
+test('dag-loop-node.tsx forwards expandedLoopIds and onAccordionChange to DAGIterationPanel (AD-3 — iteration panel owns the accordion)', () => {
+  assert.ok(/expandedLoopIds=\{expandedLoopIds\}/.test(loopNodeSource));
+  assert.ok(/onAccordionChange=\{onAccordionChange\}/.test(loopNodeSource));
 });
 
-test('dag-loop-node.tsx source contains onFocus={handleFocus} (focus event wired to memoized handler)', () => {
-  assert.ok(
-    loopNodeSource.includes('onFocus={handleFocus}'),
-    'dag-loop-node.tsx must wire onFocus={handleFocus} on the <AccordionTrigger>'
-  );
-});
+// ─── Props-contract fixture (kept) ─────────────────────────────────────────
 
-test('dag-loop-node.tsx source does NOT contain onKeyDown= (browser-default <button> Enter/Space drives accordion)', () => {
-  // Strip JSDoc and line comments before testing, mirroring the comment-stripping
-  // pattern in dag-timeline.test.ts to avoid false positives from comment text.
-  const stripped = loopNodeSource
-    .replace(/\/\*[\s\S]*?\*\//g, '')  // remove block comments (including JSDoc)
-    .replace(/\/\/[^\n]*/g, '');        // remove line comments
-  assert.ok(
-    !stripped.includes('onKeyDown='),
-    'dag-loop-node.tsx must NOT contain onKeyDown= — the accordion toggle is driven by browser-default <button> Enter/Space activation; a row-level onKeyDown would risk double-firing the toggle'
-  );
-});
-
-test('simulateOnFocusFires: calling trigger() once produces calls === [nodeId]', () => {
-  const { calls, trigger } = simulateOnFocusFires('phase_loop');
-  trigger();
-  assert.deepStrictEqual(calls, ['phase_loop']);
-});
-
-test('simulateOnFocusFires: calling trigger() twice produces calls === [nodeId, nodeId] (no internal deduplication)', () => {
-  const { calls, trigger } = simulateOnFocusFires('phase_loop');
-  trigger();
-  trigger();
-  assert.deepStrictEqual(calls, ['phase_loop', 'phase_loop']);
-});
-
-// Props-contract fixture: asserts DAGLoopNodeProps compiles with both new required fields.
-// This declaration fails TypeScript compilation if isFocused or onFocusChange is missing
-// or mistyped — mirroring the test-fixture pattern used elsewhere in this file.
 import type { DAGLoopNodeProps } from './dag-loop-node';
 
 const _propsContractFixture: DAGLoopNodeProps = {
   nodeId: 'phase_loop',
   node: forEachPhaseNode2,
   currentNodePath: null,
-  onDocClick: (path: string) => { void path; },
+  onDocClick: () => {},
   expandedLoopIds: [],
-  onAccordionChange: (value: string[], eventDetails: { reason: string }) => { void value; void eventDetails; },
+  onAccordionChange: () => {},
   repoBaseUrl: null,
   projectName: 'test-project',
   focusedRowKey: null,
   isFocused: false,
-  onFocusChange: (nodeId: string) => { void nodeId; },
+  onFocusChange: () => {},
 };
 
-test('DAGLoopNodeProps contract fixture: isFocused is boolean and onFocusChange is (nodeId: string) => void', () => {
-  assert.strictEqual(typeof _propsContractFixture.isFocused, 'boolean');
+test('DAGLoopNodeProps contract still compiles (props shape preserved so DAGTimeline / DAGIterationPanel call sites do not change)', () => {
   assert.strictEqual(typeof _propsContractFixture.onFocusChange, 'function');
 });
-
-// ─── Source-text: AccordionTrigger listbox-option semantics ──────────────────
-
-test('dag-loop-node.tsx source contains role="option" on the AccordionTrigger (listbox-option parity with DAGNodeRow)', () => {
-  assert.ok(
-    loopNodeSource.includes('role="option"'),
-    'dag-loop-node.tsx must set role="option" on the AccordionTrigger so every focusable row inside the listbox container exposes option semantics'
-  );
-});
-
-test('dag-loop-node.tsx source contains aria-selected={isActive} on the AccordionTrigger (selection tracks SSE currentNodePath)', () => {
-  assert.ok(
-    loopNodeSource.includes('aria-selected={isActive}'),
-    'dag-loop-node.tsx must wire aria-selected={isActive} on the AccordionTrigger so the current pipeline step is announced as the selected listbox option'
-  );
-});
-
-test('dag-loop-node.tsx source contains aria-label={ariaLabel} on the AccordionTrigger (accessible name parity with DAGNodeRow)', () => {
-  assert.ok(
-    loopNodeSource.includes('aria-label={ariaLabel}'),
-    'dag-loop-node.tsx must wire aria-label={ariaLabel} on the AccordionTrigger so screen readers announce a consistent "<display name> — <status>" name across rows and loop triggers'
-  );
-});
-
-test('dag-loop-node.tsx derives isActive from currentNodePath and builds ariaLabel from display name + status label', () => {
-  assert.ok(
-    loopNodeSource.includes('const isActive = nodeId === currentNodePath'),
-    'dag-loop-node.tsx must compute isActive = nodeId === currentNodePath so aria-selected mirrors the SSE current-step signal'
-  );
-  assert.ok(
-    /const ariaLabel = `\$\{getDisplayName\(nodeId\)\} — \$\{STATUS_MAP\[node\.status\]\.defaultLabel\}`/.test(loopNodeSource),
-    'dag-loop-node.tsx must build ariaLabel from `${getDisplayName(nodeId)} — ${STATUS_MAP[node.status].defaultLabel}` to mirror DAGNodeRow'
-  );
-});
-
-// ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
