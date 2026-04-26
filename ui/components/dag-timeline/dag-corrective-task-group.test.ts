@@ -201,11 +201,12 @@ test('dag-corrective-task-group.tsx imports DocumentLink from @/components/docum
   );
 });
 
-test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path} label="Doc" onDocClick={onDocClick} /> in the accordion header row', () => {
+test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path} label="Handoff" onDocClick={onDocClick} /> in the accordion header row', () => {
   // Mirrors the iteration-panel pattern (dag-iteration-panel.tsx:132-138): post-unify corrective
   // handoff docs are carried on CorrectiveTaskEntry.doc_path and entry.nodes can be empty, so
-  // the group component itself must render the Doc button off entry.doc_path to keep corrective
+  // the group component itself must render the Handoff button off entry.doc_path to keep corrective
   // handoffs accessible from the timeline now that the synthetic task_handoff step node is gone.
+  // Label is "Handoff" (not "Doc") to distinguish corrective task handoff docs from step docs (FR-11).
   assert.ok(
     correctiveTaskGroupSource.includes('<DocumentLink'),
     'corrective task group must render <DocumentLink> for the corrective task\'s doc link'
@@ -215,8 +216,8 @@ test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path
     '<DocumentLink> path prop must be entry.doc_path (the new CorrectiveTaskEntry.doc_path field)'
   );
   assert.ok(
-    /<DocumentLink[^/]*label="Doc"/.test(correctiveTaskGroupSource),
-    '<DocumentLink> label prop must be "Doc" to match the iteration-panel / DAGNodeRow idiom'
+    /<DocumentLink[^/]*label="Handoff"/.test(correctiveTaskGroupSource),
+    '<DocumentLink> label prop must be "Handoff" to distinguish corrective task handoff docs (FR-11)'
   );
   assert.ok(
     /<DocumentLink[^/]*onDocClick=\{onDocClick\}/.test(correctiveTaskGroupSource),
@@ -405,6 +406,13 @@ test4("FR-1 hideLabel SpinnerBadge no longer rendered on corrective trigger", ()
   // pass a literal hideLabel attribute on a SpinnerBadge.
   assert.ok(!/<SpinnerBadge[\s\S]*?hideLabel[\s\S]*?\/>/.test(CG_SOURCE),
     "no SpinnerBadge … hideLabel on corrective trigger (FR-1)");
+});
+
+test4("FR-11 corrective DocumentLink label is 'Handoff', not 'Doc'", () => {
+  assert.ok(/label="Handoff"/.test(CG_SOURCE),
+    "corrective DocumentLink label must be 'Handoff' (FR-11)");
+  assert.ok(!/label="Doc"/.test(CG_SOURCE),
+    "literal 'Doc' label is forbidden on corrective DocumentLink (FR-11)");
 });
 
 console.log(`\n${passed4} passed, ${failed4} failed\n`);

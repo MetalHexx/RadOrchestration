@@ -820,5 +820,17 @@ test3("FR-4 gate node badge resolved via helper, not raw node.status", () => {
     "DAGNodeRow must call deriveGateBadgeStatusAndLabel(node) on gate rows (FR-4)");
 });
 
+test3("FR-11 dag-node-row imports getDocLinkLabel for typed doc-link labels", () => {
+  assert.ok(/getDocLinkLabel/.test(ROW_SOURCE),
+    "DAGNodeRow must import getDocLinkLabel (FR-11)");
+});
+
+test3("FR-11 DocumentLink label is wired to getDocLinkLabel(nodeId), not literal 'Doc'", () => {
+  assert.ok(/label=\{getDocLinkLabel\(nodeId\)\}/.test(ROW_SOURCE),
+    "DocumentLink must consume getDocLinkLabel(nodeId) (FR-11)");
+  assert.ok(!/label="Doc"/.test(ROW_SOURCE),
+    "literal 'Doc' label is forbidden on flat-row DocumentLink (FR-11)");
+});
+
 console.log(`\n${passed3} passed, ${failed3} failed\n`);
 if (failed3 > 0) process.exit(1);

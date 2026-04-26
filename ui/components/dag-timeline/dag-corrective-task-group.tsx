@@ -100,7 +100,7 @@ function CorrectiveRow({
           // Rendered OUTSIDE AccordionTrigger — see header comment. No tabIndex
           // override: the trigger consumes Enter/Space for expand/collapse, so
           // keyboard users reach this link via natural tab order.
-          <DocumentLink path={entry.doc_path} label="Doc" onDocClick={onDocClick} />
+          <DocumentLink path={entry.doc_path} label="Handoff" onDocClick={onDocClick} />
         )}
         {commitData !== null && (
           commitData.href !== null ? (
