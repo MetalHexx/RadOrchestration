@@ -223,7 +223,7 @@ export function parsePhaseNameFromDocPath(
 
   const title = match[1]
     .split('-')
-    .map(w => w === w.toUpperCase() && w.length > 1 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ');
 
   return `Phase ${phaseNum} — ${title}`;
@@ -242,7 +242,7 @@ export function parseTaskNameFromDocPath(
 
   const title = match[1]
     .split('-')
-    .map(w => w === w.toUpperCase() && w.length > 1 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ');
 
   return `Task ${taskNum} — ${title}`;

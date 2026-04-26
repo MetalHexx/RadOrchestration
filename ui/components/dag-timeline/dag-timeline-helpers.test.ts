@@ -125,9 +125,9 @@ test("single word with no dot and no underscore returns capitalized", () => {
 
 console.log("\nparsePhaseNameFromDocPath tests\n");
 
-test("valid doc path with multi-word title returns Phase N — all-caps segments preserved", () => {
+test("multi-word all-caps title is title-cased (FR-6)", () => {
   const result = parsePhaseNameFromDocPath("phases/MY-PROJECT-PHASE-02-CORE-RESEARCH-BRANCH.md", 1);
-  assert.strictEqual(result, "Phase 2 \u2014 CORE RESEARCH BRANCH");
+  assert.strictEqual(result, "Phase 2 \u2014 Core Research Branch");
 });
 
 test("null doc path returns fallback Phase N", () => {
@@ -140,9 +140,9 @@ test("non-matching doc path returns fallback Phase N", () => {
   assert.strictEqual(result, "Phase 3");
 });
 
-test("single-word title returns Phase N — Word", () => {
+test("single-word all-caps title is title-cased (FR-6)", () => {
   const result = parsePhaseNameFromDocPath("phases/FOO-PHASE-01-SETUP.md", 0);
-  assert.strictEqual(result, "Phase 1 \u2014 SETUP");
+  assert.strictEqual(result, "Phase 1 \u2014 Setup");
 });
 
 test("case-insensitive: lowercase -phase- segment parses correctly", () => {
@@ -152,9 +152,9 @@ test("case-insensitive: lowercase -phase- segment parses correctly", () => {
 
 console.log("\nparseTaskNameFromDocPath tests\n");
 
-test("valid doc path with single-word title returns Task N — Word", () => {
+test("task single-word all-caps title is title-cased (FR-6)", () => {
   const result = parseTaskNameFromDocPath("tasks/MY-PROJECT-TASK-P01-T03-WORKFLOW.md", 2);
-  assert.strictEqual(result, "Task 3 \u2014 WORKFLOW");
+  assert.strictEqual(result, "Task 3 \u2014 Workflow");
 });
 
 test("null doc path returns fallback Task N", () => {
@@ -167,14 +167,21 @@ test("non-matching doc path returns fallback Task N", () => {
   assert.strictEqual(result, "Task 5");
 });
 
-test("multi-word title returns Task N — all-caps segments preserved", () => {
+test("task multi-word all-caps title is title-cased (FR-6)", () => {
   const result = parseTaskNameFromDocPath("tasks/X-TASK-P02-T01-UI-COMPONENT-SETUP.md", 0);
-  assert.strictEqual(result, "Task 1 \u2014 UI COMPONENT SETUP");
+  assert.strictEqual(result, "Task 1 \u2014 Ui Component Setup");
 });
 
 test("case-insensitive: lowercase -task- segment parses correctly", () => {
   const result = parseTaskNameFromDocPath("tasks/x-task-p02-t01-ui-component-setup.md", 0);
   assert.strictEqual(result, "Task 1 \u2014 Ui Component Setup");
+});
+
+test("DD-12: phaseN/taskN prefix preserved exactly", () => {
+  const phase = parsePhaseNameFromDocPath("phases/X-PHASE-05-FOO.md", 4);
+  assert.ok(phase.startsWith("Phase 5 \u2014 "), `prefix preserved: ${phase}`);
+  const task = parseTaskNameFromDocPath("tasks/X-TASK-P02-T03-FOO.md", 2);
+  assert.ok(task.startsWith("Task 3 \u2014 "), `prefix preserved: ${task}`);
 });
 
 console.log("\ngroupNodesBySection tests\n");
@@ -409,7 +416,7 @@ test("phase loop with in_progress iteration and doc_path returns parsed phase na
       },
     ],
   });
-  assert.strictEqual(result, "Phase 1 \u2014 CORE SETUP");
+  assert.strictEqual(result, "Phase 1 \u2014 Core Setup");
 });
 
 test("phase loop with in_progress iteration using new shape (iteration.doc_path set, empty nodes) returns parsed phase name", () => {
@@ -429,7 +436,7 @@ test("phase loop with in_progress iteration using new shape (iteration.doc_path 
       },
     ],
   });
-  assert.strictEqual(result, "Phase 1 — CORE SETUP");
+  assert.strictEqual(result, "Phase 1 — Core Setup");
 });
 
 test("phase loop with in_progress iteration carrying BOTH iteration.doc_path and legacy phase_planning prefers iteration.doc_path", () => {
@@ -449,7 +456,7 @@ test("phase loop with in_progress iteration carrying BOTH iteration.doc_path and
       },
     ],
   });
-  assert.strictEqual(result, "Phase 1 — NEW SHAPE");
+  assert.strictEqual(result, "Phase 1 — New Shape");
 });
 
 test("phase loop with in_progress iteration and null doc_path returns fallback Phase N", () => {

@@ -156,8 +156,8 @@ test('(A) legacy iteration with phase_planning + task_handoff: iteration name pa
   const iteration = makeLegacyPhaseIteration(0);
   const phaseNode = iteration.nodes['phase_planning'] as StepNodeState;
   const name = parsePhaseNameFromDocPath(phaseNode.doc_path, iteration.index);
-  // Formatter preserves all-uppercase tokens verbatim (>1 char).
-  assert.strictEqual(name, 'Phase 1 \u2014 SETUP');
+  // Formatter title-cases all tokens (FR-6).
+  assert.strictEqual(name, 'Phase 1 \u2014 Setup');
 });
 
 test('(A) legacy task iteration: iteration name parsed from task_handoff.doc_path', () => {
@@ -166,7 +166,7 @@ test('(A) legacy task iteration: iteration name parsed from task_handoff.doc_pat
   assert.ok(taskLoop.kind === 'for_each_task');
   const taskHandoff = taskLoop.iterations[0].nodes['task_handoff'] as StepNodeState;
   const name = parseTaskNameFromDocPath(taskHandoff.doc_path, 0);
-  assert.strictEqual(name, 'Task 1 \u2014 AUTH');
+  assert.strictEqual(name, 'Task 1 \u2014 Auth');
 });
 
 test('(A) legacy top-level nodes: groupNodesBySection emits Planning/Gates/Execution/Completion with all entries intact', () => {
@@ -199,7 +199,7 @@ test('(A) legacy deriveCurrentPhase: reads phase_planning.doc_path for the activ
     iterations: [iter],
   };
   const label = deriveCurrentPhase(phaseLoop);
-  assert.strictEqual(label, 'Phase 1 \u2014 SETUP');
+  assert.strictEqual(label, 'Phase 1 \u2014 Setup');
 });
 
 test('(B) forward-compat iteration without phase_planning: iteration-name fallback returns "Phase N"', () => {
@@ -397,8 +397,8 @@ test('(Iter-11) phase-scope corrective iteration: phase_planning.doc_path parsed
   const iteration = makePhaseCorrectiveIteration(0);
   const phaseNode = iteration.nodes['phase_planning'] as StepNodeState;
   const name = parsePhaseNameFromDocPath(phaseNode.doc_path, iteration.index);
-  // Fallback to "Phase 1" if token not parseable; "SETUP" token produces "Phase 1 — SETUP"
-  assert.strictEqual(name, 'Phase 1 — SETUP');
+  // Fallback to "Phase 1" if token not parseable; "SETUP" token produces "Phase 1 — Setup" (FR-6)
+  assert.strictEqual(name, 'Phase 1 — Setup');
 });
 
 test('(Iter-11) legacy canary still passes: makeLegacyPhaseIteration is unchanged and corrective_tasks is empty', () => {
