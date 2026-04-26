@@ -37,11 +37,17 @@ interface ParallelNodeShape {
   nodes: Record<string, AnyNodeShape>;
 }
 
+interface CorrectiveTaskShape {
+  index: number;
+  status: NodeStatus;
+  nodes: Record<string, AnyNodeShape>;
+}
+
 interface IterationEntryShape {
   index: number;
   status: NodeStatus;
   nodes: Record<string, AnyNodeShape>;
-  corrective_tasks: [];
+  corrective_tasks: CorrectiveTaskShape[];
 }
 
 interface ForEachPhaseNodeShape {
@@ -95,43 +101,42 @@ async function run() {
     assert.deepStrictEqual(result, []);
   });
 
-  // (b) single top-level for_each_phase, in_progress
-  await test('(b) computeSmartDefaults returns ["loop-phase_loop"] for active for_each_phase', () => {
+  // (b) single top-level for_each_phase, in_progress — active iteration
+  await test('(b) computeSmartDefaults emits iter-phase_loop-0 for an active phase iteration inside an active phase loop (AD-3, FR-12)', () => {
     const nodes: Record<string, AnyNodeShape> = {
       phase_loop: {
-        kind: 'for_each_phase',
-        status: 'in_progress',
-        iterations: [],
-      },
-    };
-    const result = computeSmartDefaults(toNodes(nodes));
-    assert.deepStrictEqual(result, ['loop-phase_loop']);
-  });
-
-  // (c) recursion into iteration nodes — nested for_each_task
-  await test('(c) computeSmartDefaults recurses into iteration nodes to find nested active task_loop', () => {
-    const nodes: Record<string, AnyNodeShape> = {
-      phase_loop: {
-        kind: 'for_each_phase',
-        status: 'in_progress',
+        kind: 'for_each_phase', status: 'in_progress',
         iterations: [
-          {
-            index: 0,
-            status: 'in_progress',
-            nodes: {
-              task_loop: {
-                kind: 'for_each_task',
-                status: 'in_progress',
-                iterations: [],
-              },
-            },
-            corrective_tasks: [],
-          },
+          { index: 0, status: 'in_progress', nodes: {}, corrective_tasks: [] },
         ],
       },
     };
-    const result = computeSmartDefaults(toNodes(nodes));
-    assert.deepStrictEqual(result, ['loop-phase_loop', 'loop-task_loop']);
+    assert.deepStrictEqual(computeSmartDefaults(toNodes(nodes)), ['iter-phase_loop-0']);
+  });
+
+  // (c) recursion into iteration nodes — nested for_each_task
+  await test('(c) computeSmartDefaults emits one iter-... per nested active task iteration (FR-12)', () => {
+    const nodes: Record<string, AnyNodeShape> = {
+      phase_loop: {
+        kind: 'for_each_phase', status: 'in_progress',
+        iterations: [{
+          index: 0, status: 'in_progress', corrective_tasks: [],
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task', status: 'in_progress',
+              iterations: [
+                { index: 0, status: 'completed', nodes: {}, corrective_tasks: [] },
+                { index: 1, status: 'in_progress', nodes: {}, corrective_tasks: [] },
+              ],
+            },
+          },
+        }],
+      },
+    };
+    assert.deepStrictEqual(
+      computeSmartDefaults(toNodes(nodes)),
+      ['iter-phase_loop-0', 'iter-phase_loop.iter0.task_loop-1']
+    );
   });
 
   // (d) excludes loops with non-in_progress status
@@ -183,22 +188,19 @@ async function run() {
   });
 
   // (f) recursion into parallel.nodes
-  await test('(f) computeSmartDefaults recurses into parallel.nodes to discover nested loops', () => {
+  await test('(f) computeSmartDefaults recurses into parallel.nodes for nested loops', () => {
     const nodes: Record<string, AnyNodeShape> = {
       parallel_block: {
-        kind: 'parallel',
-        status: 'in_progress',
+        kind: 'parallel', status: 'in_progress',
         nodes: {
           nested_phase_loop: {
-            kind: 'for_each_phase',
-            status: 'in_progress',
-            iterations: [],
+            kind: 'for_each_phase', status: 'in_progress',
+            iterations: [{ index: 0, status: 'in_progress', nodes: {}, corrective_tasks: [] }],
           },
         },
       },
     };
-    const result = computeSmartDefaults(toNodes(nodes));
-    assert.deepStrictEqual(result, ['loop-nested_phase_loop']);
+    assert.deepStrictEqual(computeSmartDefaults(toNodes(nodes)), ['iter-nested_phase_loop-0']);
   });
 
   // (g) shallow-equal short-circuit helper — identical arrays
@@ -206,7 +208,7 @@ async function run() {
     assert.strictEqual(__shallowEqualStringArrays([], []), true);
     assert.strictEqual(__shallowEqualStringArrays(['a'], ['a']), true);
     assert.strictEqual(
-      __shallowEqualStringArrays(['loop-phase_loop', 'loop-task_loop'], ['loop-phase_loop', 'loop-task_loop']),
+      __shallowEqualStringArrays(['iter-phase_loop-0', 'iter-task_loop-0'], ['iter-phase_loop-0', 'iter-task_loop-0']),
       true
     );
   });
@@ -330,21 +332,34 @@ async function run() {
     );
   });
 
-  // (k) smart-default recursion over multiple sibling loops
-  await test('(k) computeSmartDefaults collects all in-progress loops across siblings', () => {
+  // (k) corrective tasks emit ct-... additively alongside the parent iteration
+  await test('(k) computeSmartDefaults emits ct-... for an active corrective task additively to its parent iteration (FR-13, DD-7)', () => {
     const nodes: Record<string, AnyNodeShape> = {
-      loop_a: { kind: 'for_each_phase', status: 'in_progress', iterations: [] },
-      loop_b: { kind: 'for_each_task', status: 'in_progress', iterations: [] },
-      loop_c: { kind: 'for_each_phase', status: 'completed', iterations: [] },
-      step_x: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 },
+      phase_loop: {
+        kind: 'for_each_phase', status: 'in_progress',
+        iterations: [{
+          index: 0, status: 'in_progress', corrective_tasks: [],
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task', status: 'in_progress',
+              iterations: [{
+                index: 0, status: 'in_progress',
+                nodes: {},
+                corrective_tasks: [
+                  { index: 1, status: 'in_progress', nodes: {} },
+                ],
+              }],
+            },
+          },
+        }],
+      },
     };
     const result = computeSmartDefaults(toNodes(nodes));
-    // Object.keys order is insertion order in modern JS engines; assert the
-    // two expected entries are present in the result.
-    assert.strictEqual(result.length, 2);
-    assert.ok(result.includes('loop-loop_a'));
-    assert.ok(result.includes('loop-loop_b'));
-    assert.ok(!result.includes('loop-loop_c'));
+    assert.deepStrictEqual(result, [
+      'iter-phase_loop-0',
+      'iter-phase_loop.iter0.task_loop-0',
+      'ct-iter-phase_loop.iter0.task_loop-0-1',
+    ]);
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);

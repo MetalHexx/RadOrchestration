@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { NodesRecord, NodeState } from "@/types/state";
+import {
+  buildIterationItemValue,
+  buildCorrectiveItemValue,
+} from "@/components/dag-timeline/dag-timeline-helpers";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -18,20 +22,25 @@ export interface UseFollowModeReturn {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * Recursively walk a v5 nodes record and return the list of loop-item values
- * for every `for_each_phase` / `for_each_task` node whose own aggregate
- * `status === 'in_progress'`. The returned values use the
- * `` `loop-${nodeId}` `` format produced by `buildLoopItemValue` in
- * `dag-loop-node.tsx`.
+ * Recursively walk a v5 nodes record and return the ordered list of
+ * accordion item values for every active iteration and corrective task:
+ *
+ *   - One `iter-${nodeId}-${index}` key per `in_progress` iteration inside
+ *     every `for_each_phase` / `for_each_task` node (FR-12, AD-3).
+ *   - One `ct-${iterKey}-${ctIndex}` key per `in_progress` corrective task
+ *     nested under that iteration, emitted additively alongside its parent
+ *     iteration key (DD-7, FR-13).
  *
  * Recursion covers:
  *   - `parallel.nodes` (nested loops inside a parallel block)
  *   - Each iteration's `nodes` record on `for_each_phase` / `for_each_task`
- *     entries (e.g. a `task_loop` nested inside a `for_each_phase` iteration)
+ *     entries using a compound path prefix so sibling loops at different
+ *     nesting levels produce unique, unambiguous keys
+ *     (e.g. `task_loop` nested in `phase_loop.iter0` →
+ *     `iter-phase_loop.iter0.task_loop-1`).
  *
- * The loop node's own status is the single source of truth for expansion —
- * this helper does NOT inspect inner iteration statuses to decide whether a
- * loop is "active".
+ * Iteration status is the single source of truth for expansion — only
+ * `in_progress` iterations and corrective tasks contribute keys.
  */
 export function computeSmartDefaults(nodes: NodesRecord | null): string[] {
   if (nodes === null) return [];
@@ -40,24 +49,51 @@ export function computeSmartDefaults(nodes: NodesRecord | null): string[] {
   return result;
 }
 
-function walkNodes(nodes: NodesRecord, result: string[]): void {
+function walkNodes(nodes: NodesRecord, result: string[], pathPrefix?: string): void {
   for (const nodeId of Object.keys(nodes)) {
     const node: NodeState | undefined = nodes[nodeId];
     if (!node) continue;
 
+    // Compute the fully-qualified node ID — compound when nested inside an
+    // iteration, plain when at the top level.
+    const qualifiedId = pathPrefix != null ? `${pathPrefix}.${nodeId}` : nodeId;
+
     if (node.kind === "for_each_phase" || node.kind === "for_each_task") {
-      if (node.status === "in_progress") {
-        result.push(`loop-${nodeId}`);
+      // Only descend into active loops — a not_started/completed loop has
+      // no active iteration to expand. This keys off node.kind (FR-18) so
+      // any future for_each_* template is handled the same way.
+      if (node.status !== "in_progress") {
+        // Recurse into sub-iterations anyway in case a completed parent
+        // loop holds a still-running nested loop (defensive — the
+        // pipeline should not produce this shape, but the walk must not
+        // skip an active descendant).
+        for (const iteration of node.iterations) {
+          walkNodes(iteration.nodes, result, `${qualifiedId}.iter${iteration.index}`);
+        }
+        continue;
       }
-      // Recurse into each iteration's nodes to discover nested loops.
       for (const iteration of node.iterations) {
-        walkNodes(iteration.nodes, result);
+        if (iteration.status === "in_progress") {
+          const iterKey = buildIterationItemValue(qualifiedId, iteration.index);
+          result.push(iterKey);
+          // Active correctives auto-open additively (DD-7) — they sit
+          // alongside the parent iteration in the expansion set.
+          for (const ct of iteration.corrective_tasks) {
+            if (ct.status === "in_progress") {
+              result.push(buildCorrectiveItemValue(iterKey, ct.index));
+            }
+          }
+        }
+        // Recurse into every iteration's nodes regardless of iteration
+        // status so a still-active task_loop nested under a just-completed
+        // phase iteration is still discovered.
+        walkNodes(iteration.nodes, result, `${qualifiedId}.iter${iteration.index}`);
       }
     } else if (node.kind === "parallel") {
-      // Recurse into the parallel block's nodes to discover nested loops.
-      walkNodes(node.nodes, result);
+      walkNodes(node.nodes, result, pathPrefix);
     }
-    // step / gate / conditional nodes have no nested loop children — skip.
+    // step / gate / conditional nodes have no nested loop / iteration
+    // children — skip.
   }
 }
 
