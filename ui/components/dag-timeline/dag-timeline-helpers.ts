@@ -25,6 +25,34 @@ export function isLoopNode(node: NodeState): node is Extract<NodeState, { kind: 
   return node.kind === 'for_each_phase' || node.kind === 'for_each_task';
 }
 
+/**
+ * Builds the controlled-mode accordion `value` for a phase / task iteration
+ * panel. Same shape consumed by `useFollowMode.computeSmartDefaults` and the
+ * iteration panel's `<Accordion value=...>` so the hook and the renderer
+ * agree on identity.
+ *
+ * Encoding: `iter-${parentNodeId}-${iterationIndex}`.
+ *
+ * `parentNodeId` may itself be a compound id (e.g.
+ * `phase_loop.iter0.task_loop`) — the resulting key is unique because no
+ * sibling iteration shares the same parent + index pair.
+ */
+export function buildIterationItemValue(parentNodeId: string, iterationIndex: number): string {
+  return `iter-${parentNodeId}-${iterationIndex}`;
+}
+
+/**
+ * Builds the controlled-mode accordion `value` for a corrective task panel
+ * nested under an iteration. The parent key is itself an iteration key
+ * produced by `buildIterationItemValue`, so corrective expansion is
+ * unambiguously scoped to one iteration.
+ *
+ * Encoding: `ct-${parentIterationKey}-${ctIndex}`.
+ */
+export function buildCorrectiveItemValue(parentIterationKey: string, ctIndex: number): string {
+  return `ct-${parentIterationKey}-${ctIndex}`;
+}
+
 export function filterCompatibleNodes(
   nodes: NodesRecord
 ): Array<[string, CompatibleNodeState]> {

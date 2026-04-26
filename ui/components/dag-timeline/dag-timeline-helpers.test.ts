@@ -641,5 +641,35 @@ test("AD-2: phase_loop missing → undefined → descriptor 'none' for FR-2 (def
   assert.strictEqual(desc.kind, 'none');
 });
 
+import {
+  buildIterationItemValue,
+  buildCorrectiveItemValue,
+  isLoopNode,
+} from './dag-timeline-helpers';
+
+console.log("\niteration key builders\n");
+
+test('buildIterationItemValue("phase_loop", 0) returns "iter-phase_loop-0"', () => {
+  assert.strictEqual(buildIterationItemValue("phase_loop", 0), "iter-phase_loop-0");
+});
+
+test('buildIterationItemValue("phase_loop.iter0.task_loop", 2) returns "iter-phase_loop.iter0.task_loop-2"', () => {
+  assert.strictEqual(
+    buildIterationItemValue("phase_loop.iter0.task_loop", 2),
+    "iter-phase_loop.iter0.task_loop-2"
+  );
+});
+
+test('buildCorrectiveItemValue("iter-phase_loop.iter0.task_loop-1", 1) returns "ct-iter-phase_loop.iter0.task_loop-1-1"', () => {
+  assert.strictEqual(
+    buildCorrectiveItemValue("iter-phase_loop.iter0.task_loop-1", 1),
+    "ct-iter-phase_loop.iter0.task_loop-1-1"
+  );
+});
+
+test('isLoopNode is re-exported from dag-timeline-helpers', () => {
+  assert.strictEqual(typeof isLoopNode, 'function');
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
