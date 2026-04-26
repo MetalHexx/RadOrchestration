@@ -362,6 +362,37 @@ async function run() {
     ]);
   });
 
+  await test('(l) iteration keys emitted by computeSmartDefaults match buildIterationItemValue / buildCorrectiveItemValue for the same node tree (AD-3 hook+renderer parity)', async () => {
+    const { buildIterationItemValue, buildCorrectiveItemValue } = await import(
+      '../components/dag-timeline/dag-timeline-helpers'
+    );
+    const nodes: Record<string, AnyNodeShape> = {
+      phase_loop: {
+        kind: 'for_each_phase', status: 'in_progress',
+        iterations: [{
+          index: 0, status: 'in_progress', corrective_tasks: [],
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task', status: 'in_progress',
+              iterations: [{
+                index: 2, status: 'in_progress',
+                nodes: {},
+                corrective_tasks: [
+                  { index: 1, status: 'in_progress', nodes: {} },
+                ],
+              }],
+            },
+          },
+        }],
+      },
+    };
+    const phaseIterKey = buildIterationItemValue('phase_loop', 0);
+    const taskIterKey = buildIterationItemValue('phase_loop.iter0.task_loop', 2);
+    const ctKey = buildCorrectiveItemValue(taskIterKey, 1);
+    const expected = [phaseIterKey, taskIterKey, ctKey];
+    assert.deepStrictEqual(computeSmartDefaults(toNodes(nodes)), expected);
+  });
+
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);
 }
