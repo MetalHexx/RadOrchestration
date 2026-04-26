@@ -1,12 +1,15 @@
 "use client";
 
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { DAGNodeRow } from './dag-node-row';
-import { NodeStatusBadge } from './node-status-badge';
 import { DAGCorrectiveTaskGroup } from './dag-corrective-task-group';
 import { DAGLoopNode } from './dag-loop-node';
 import { DocumentLink, ExternalLink } from '@/components/documents';
-import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath } from './dag-timeline-helpers';
-import type { IterationEntry } from '@/types/state';
+import { SpinnerBadge, ReviewVerdictBadge } from '@/components/badges';
+import { ProgressBar } from '@/components/execution/progress-bar';
+import { STATUS_MAP } from './node-status-badge';
+import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, buildIterationItemValue, deriveIterationTaskProgress } from './dag-timeline-helpers';
+import type { IterationEntry, ReviewVerdict } from '@/types/state';
 
 interface DAGIterationPanelProps {
   iteration: IterationEntry;
@@ -38,6 +41,21 @@ export function buildIterationChildNodeId(parentNodeId: string, iterationIndex: 
 
 export function buildCorrectiveGroupParentId(parentNodeId: string, iterationIndex: number): string {
   return `${parentNodeId}.iter${iterationIndex}`;
+}
+
+function renderStatusIcon(status: IterationEntry['status']) {
+  const entry = STATUS_MAP[status];
+  return (
+    <SpinnerBadge
+      label={entry.defaultLabel}
+      cssVar={entry.cssVar}
+      isSpinning={entry.isSpinning}
+      isComplete={entry.isComplete}
+      isRejected={entry.isRejected}
+      ariaLabel={entry.defaultLabel}
+      hideLabel
+    />
+  );
 }
 
 export function DAGIterationPanel({
@@ -85,19 +103,20 @@ export function DAGIterationPanel({
   if (parentKind === 'for_each_phase') {
     switch (iteration.status) {
       case 'in_progress':
-        cardClasses = 'border border-[var(--color-link)] bg-card rounded-md p-3 mb-2';
+        cardClasses = 'border border-[var(--color-link)] bg-card rounded-md mb-2';
         break;
       case 'completed':
-        cardClasses = 'border border-border bg-muted/50 rounded-md p-3 mb-2';
+        cardClasses = 'border border-border bg-muted/50 rounded-md mb-2';
         break;
       case 'failed':
       case 'halted':
-        cardClasses = 'border border-[var(--status-failed)] bg-card rounded-md p-3 mb-2';
+        cardClasses = 'border border-[var(--status-failed)] bg-card rounded-md mb-2';
         break;
       default:
-        cardClasses = 'border border-border bg-card rounded-md p-3 mb-2';
+        cardClasses = 'border border-border bg-card rounded-md mb-2';
     }
   } else {
+    // task-iteration variant unchanged for P02-T01 — handled in P02-T02
     switch (iteration.status) {
       case 'in_progress':
         cardClasses = 'border border-border/70 bg-card rounded-md p-2 mb-1.5';
@@ -115,12 +134,96 @@ export function DAGIterationPanel({
   }
 
   const ariaLabel = parentKind === 'for_each_phase'
-    ? `Phase iteration ${iterationIndex + 1} \u2014 ${iterationName} \u2014 ${iteration.status}`
-    : `Task iteration ${iterationIndex + 1} \u2014 ${iterationName} \u2014 ${iteration.status}`;
+    ? `Phase iteration ${iterationIndex + 1} — ${iterationName} — ${iteration.status}`
+    : `Task iteration ${iterationIndex + 1} — ${iterationName} — ${iteration.status}`;
 
-  const headerClass = parentKind === 'for_each_phase'
-    ? 'py-1 flex items-center gap-2 mb-1.5'
-    : 'py-1 flex items-center gap-2 mb-1';
+  if (parentKind === 'for_each_phase') {
+    const phaseReportNode = iteration.nodes['phase_report'];
+    const phaseReviewNode = iteration.nodes['phase_review'];
+    const phaseReportPath = phaseReportNode?.kind === 'step' ? phaseReportNode.doc_path : null;
+    const phaseReviewPath = phaseReviewNode?.kind === 'step' ? phaseReviewNode.doc_path : null;
+    const phaseReviewVerdict = phaseReviewNode?.kind === 'step' ? (phaseReviewNode.verdict ?? null) : null;
+    const progress = deriveIterationTaskProgress(iteration);
+    const headerAriaLabel = `Phase iteration ${iterationIndex + 1} — ${iterationName} — ${iteration.status}`;
+    return (
+      <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
+        <AccordionItem value={buildIterationItemValue(parentNodeId, iterationIndex)} className={cardClasses}>
+          <div className="flex items-center gap-2 rounded-md hover:bg-accent/50">
+            <div className="flex-1">
+              <AccordionTrigger
+                role="option"
+                aria-selected={false}
+                aria-label={headerAriaLabel}
+                className="hover:no-underline gap-2 items-center py-2 px-3 border-0 w-full"
+                data-timeline-row
+                data-row-key={buildIterationItemValue(parentNodeId, iterationIndex)}
+              >
+                {renderStatusIcon(iteration.status)}
+                <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
+                  {iterationName}
+                </span>
+                {progress !== null && (
+                  <div className="flex-1 min-w-24">
+                    <ProgressBar completed={progress.completed} total={progress.total} />
+                  </div>
+                )}
+              </AccordionTrigger>
+            </div>
+            {iteration.doc_path != null && iteration.doc_path !== '' && (
+              <DocumentLink path={iteration.doc_path} label="Phase Plan" onDocClick={onDocClick} />
+            )}
+          </div>
+          <AccordionContent>
+            {/* Body: task iteration list + footer (Phase Report / Review) — populated in P02-T02 + P03-T01 */}
+            {Object.entries(iteration.nodes).map(([childNodeId, childNode]) => {
+              const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
+              return isLoopNode(childNode) ? (
+                <DAGLoopNode
+                  key={childNodeId}
+                  nodeId={childKey}
+                  node={childNode}
+                  currentNodePath={currentNodePath}
+                  onDocClick={onDocClick}
+                  expandedLoopIds={expandedLoopIds}
+                  onAccordionChange={onAccordionChange}
+                  repoBaseUrl={repoBaseUrl}
+                  projectName={projectName}
+                  focusedRowKey={focusedRowKey}
+                  isFocused={focusedRowKey === childKey}
+                  onFocusChange={onFocusChange}
+                />
+              ) : null;
+            })}
+            <DAGCorrectiveTaskGroup
+              correctiveTasks={iteration.corrective_tasks}
+              parentNodeId={correctiveGroupParentId}
+              currentNodePath={currentNodePath}
+              onDocClick={onDocClick}
+              repoBaseUrl={repoBaseUrl}
+              focusedRowKey={focusedRowKey}
+              onFocusChange={onFocusChange}
+            />
+            {(phaseReviewVerdict != null || phaseReportPath != null || phaseReviewPath != null) && (
+              <div className="flex items-center gap-2 mt-3 pt-2 border-t pl-2">
+                {phaseReviewVerdict != null && (
+                  <ReviewVerdictBadge verdict={phaseReviewVerdict as ReviewVerdict} />
+                )}
+                {phaseReportPath != null && (
+                  <DocumentLink path={phaseReportPath} label="Phase Report" onDocClick={onDocClick} />
+                )}
+                {phaseReviewPath != null && (
+                  <DocumentLink path={phaseReviewPath} label="Phase Review" onDocClick={onDocClick} />
+                )}
+              </div>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    );
+  }
+
+  // task-iteration branch — preserved for P02-T02
+  const headerClass = 'py-1 flex items-center gap-2 mb-1';
 
   return (
     <div className={cardClasses} aria-label={ariaLabel}>
@@ -128,7 +231,6 @@ export function DAGIterationPanel({
         <span className={isFallback ? 'text-sm italic text-muted-foreground truncate max-w-[60%] min-w-0' : 'text-sm font-medium truncate max-w-[60%] min-w-0'}>
           {iterationName}
         </span>
-        <NodeStatusBadge status={iteration.status} />
         {iteration.doc_path != null && iteration.doc_path !== '' && (
           // Gate on iteration.doc_path (new shape) only — NOT on the combined `docPath` that
           // includes the legacy `phase_planning` / `task_handoff` fallback. Legacy projects
@@ -184,15 +286,6 @@ export function DAGIterationPanel({
           />
         );
       })}
-      <DAGCorrectiveTaskGroup
-        correctiveTasks={iteration.corrective_tasks}
-        parentNodeId={correctiveGroupParentId}
-        currentNodePath={currentNodePath}
-        onDocClick={onDocClick}
-        repoBaseUrl={repoBaseUrl}
-        focusedRowKey={focusedRowKey}
-        onFocusChange={onFocusChange}
-      />
     </div>
   );
 }

@@ -549,6 +549,97 @@ test('dag-corrective-task-group.tsx does NOT contain projectName= or gateActive=
   );
 });
 
+console.log("\nDAGIterationPanel — phase iteration accordion (P02-T01)\n");
+
+test('dag-iteration-panel.tsx imports Accordion/AccordionItem/AccordionTrigger/AccordionContent from @/components/ui/accordion (AD-2)', () => {
+  assert.ok(
+    /import\s+\{[^}]*Accordion[^}]*AccordionItem[^}]*AccordionTrigger[^}]*AccordionContent[^}]*\}\s+from\s+['"]@\/components\/ui\/accordion['"]/.test(iterationPanelSource)
+    || (
+      /import\s+\{[^}]*Accordion\b/.test(iterationPanelSource)
+      && /AccordionItem/.test(iterationPanelSource)
+      && /AccordionTrigger/.test(iterationPanelSource)
+      && /AccordionContent/.test(iterationPanelSource)
+    ),
+    'iteration panel must import the accordion primitives so the panel itself becomes the accordion (AD-2)'
+  );
+});
+
+test('dag-iteration-panel.tsx wires <Accordion ... value={expandedLoopIds} onValueChange={onAccordionChange} multiple> at the top of the for_each_phase branch (AD-2, AD-3)', () => {
+  assert.ok(
+    /<Accordion\b[^>]*\bmultiple\b[^>]*value=\{expandedLoopIds\}[^>]*onValueChange=\{onAccordionChange\}/.test(iterationPanelSource)
+    || /<Accordion\b[^>]*value=\{expandedLoopIds\}[^>]*onValueChange=\{onAccordionChange\}[^>]*\bmultiple\b/.test(iterationPanelSource),
+    '<Accordion> in iteration panel must be controlled (value={expandedLoopIds}, onValueChange={onAccordionChange}) and multi-open (matches the controlled-mode contract documented in AD-3)'
+  );
+});
+
+test('dag-iteration-panel.tsx <AccordionItem value> uses buildIterationItemValue(parentNodeId, iterationIndex) (AD-3 hook+renderer parity)', () => {
+  assert.ok(
+    /<AccordionItem\b[^>]*value=\{buildIterationItemValue\(parentNodeId,\s*iterationIndex\)\}/.test(iterationPanelSource),
+    '<AccordionItem value> must come from buildIterationItemValue so the same key shape is produced by both the hook and the renderer (AD-3)'
+  );
+});
+
+test('dag-iteration-panel.tsx renders SpinnerBadge with hideLabel for the phase-iteration small status icon (DD-1)', () => {
+  assert.ok(
+    /SpinnerBadge[\s\S]{0,400}hideLabel/.test(iterationPanelSource)
+    || /NodeStatusBadge[\s\S]{0,200}hideLabel/.test(iterationPanelSource),
+    'phase iteration header must use the icon-only SpinnerBadge (or a NodeStatusBadge variant that forwards hideLabel) for the small status icon (DD-1)'
+  );
+});
+
+test('dag-iteration-panel.tsx imports ProgressBar from @/components/execution/progress-bar (NFR-5)', () => {
+  assert.ok(
+    /import\s+\{\s*ProgressBar\s*\}\s+from\s+['"]@\/components\/execution\/progress-bar['"]/.test(iterationPanelSource),
+    'iteration panel must reuse the existing ProgressBar primitive — no new package, no new shared utility (NFR-5)'
+  );
+});
+
+test('dag-iteration-panel.tsx renders ProgressBar inside the for_each_phase accordion trigger (FR-7, FR-8)', () => {
+  assert.ok(
+    /<ProgressBar\b/.test(iterationPanelSource),
+    'iteration panel must render <ProgressBar> in the phase-iteration header so progress ticks per task (FR-7) and the empty 0% track shows for not_started phases (FR-8)'
+  );
+});
+
+test('dag-iteration-panel.tsx Phase Plan DocumentLink is a SIBLING of AccordionTrigger (not nested inside it) — DD-6 + nested-interactive-control invariant', () => {
+  // The DocumentLink line for Phase Plan must NOT live within the
+  // <AccordionTrigger>...</AccordionTrigger> span. Mirrors the
+  // dag-corrective-task-group.tsx pattern.
+  const triggerOpenIdx = iterationPanelSource.indexOf('<AccordionTrigger');
+  const triggerCloseIdx = iterationPanelSource.indexOf('</AccordionTrigger>');
+  assert.ok(triggerOpenIdx > -1 && triggerCloseIdx > triggerOpenIdx, 'panel must contain a <AccordionTrigger>...</AccordionTrigger> pair');
+  const triggerInner = iterationPanelSource.slice(triggerOpenIdx, triggerCloseIdx);
+  assert.ok(
+    !/<DocumentLink\b/.test(triggerInner),
+    'Phase Plan <DocumentLink> must render as a sibling of <AccordionTrigger>, not inside it (nested interactive control would break click + ARIA — see dag-corrective-task-group.tsx pattern)'
+  );
+});
+
+test('dag-iteration-panel.tsx imports ReviewVerdictBadge from @/components/badges (FR-4, DD-6)', () => {
+  assert.ok(
+    /import\s+\{[^}]*\bReviewVerdictBadge\b[^}]*\}\s+from\s+['"]@\/components\/badges['"]/.test(iterationPanelSource),
+    'iteration panel must import ReviewVerdictBadge so the body footer can render the verdict badge when present (FR-4, DD-6)'
+  );
+});
+
+test('dag-iteration-panel.tsx renders <ReviewVerdictBadge> in the for_each_phase body footer when verdict is present (FR-4, DD-6)', () => {
+  // Body-footer placement: the badge must NOT live inside the AccordionTrigger
+  // (it belongs in the expanded body alongside Phase Report / Phase Review),
+  // and the file must reference the iteration's phase_review step verdict.
+  assert.ok(
+    /<ReviewVerdictBadge\b[^>]*verdict=\{[^}]*phaseReviewNode[^}]*verdict[^}]*\}/.test(iterationPanelSource)
+    || /<ReviewVerdictBadge\b[^>]*verdict=\{[^}]*phaseReviewVerdict[^}]*\}/.test(iterationPanelSource),
+    'body footer must render <ReviewVerdictBadge verdict={...}> sourced from the iteration phase_review step node (FR-4, DD-6)'
+  );
+  const triggerOpenIdx = iterationPanelSource.indexOf('<AccordionTrigger');
+  const triggerCloseIdx = iterationPanelSource.indexOf('</AccordionTrigger>');
+  const triggerInner = iterationPanelSource.slice(triggerOpenIdx, triggerCloseIdx);
+  assert.ok(
+    !/<ReviewVerdictBadge\b/.test(triggerInner),
+    '<ReviewVerdictBadge> must render in the expanded body footer, not inside the <AccordionTrigger> (DD-6 — Phase Report / Phase Review / verdict all live in the body, not the header)'
+  );
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
