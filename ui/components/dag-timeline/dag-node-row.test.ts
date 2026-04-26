@@ -751,3 +751,58 @@ test2('node-status-badge.tsx accepts an `iconOnly` prop and forwards it to Spinn
 
 console.log(`\n${passed2} passed, ${failed2} failed\n`);
 if (failed2 > 0) process.exit(1);
+
+// ─── P02-T01: Drop kind icon and label flat-row badge ───────────────────────
+
+import { readFileSync as fsReadSync } from 'node:fs';
+import { fileURLToPath as fsFileURL } from 'node:url';
+import { dirname as fsDirname, join as fsJoin } from 'node:path';
+
+const ROW_SOURCE = fsReadSync(
+  fsJoin(fsDirname(fsFileURL(import.meta.url)), 'dag-node-row.tsx'),
+  'utf8'
+);
+
+console.log("\nDAGNodeRow FR-1/FR-2/FR-7 source-shape tests\n");
+
+let passed3 = 0;
+let failed3 = 0;
+
+function test3(name: string, fn: () => void) {
+  try {
+    fn();
+    console.log(`  ✓ ${name}`);
+    passed3++;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`  ✗ ${name}\n    ${msg}`);
+    failed3++;
+  }
+}
+
+test3("FR-7 NodeKindIcon is no longer rendered in dag-node-row.tsx", () => {
+  assert.ok(!ROW_SOURCE.includes('<NodeKindIcon'),
+    "DAGNodeRow must not render NodeKindIcon (FR-7)");
+});
+
+test3("FR-1/FR-2 NodeStatusBadge renders before the name span", () => {
+  // Scope the source-shape check to the JSX render block (everything after
+  // `return (`) so the aria-label's getDisplayName usage on line 61 doesn't
+  // false-trigger the precede check.
+  const renderStart = ROW_SOURCE.indexOf('return (');
+  assert.ok(renderStart > -1, "return ( marker must be present");
+  const renderBlock = ROW_SOURCE.slice(renderStart);
+  const badgeIdx = renderBlock.indexOf('<NodeStatusBadge');
+  const nameIdx  = renderBlock.indexOf('>{getDisplayName(nodeId)}</span>');
+  assert.ok(badgeIdx > -1 && nameIdx > -1, "both must be present in render block");
+  assert.ok(badgeIdx < nameIdx, "badge must precede the display name span (FR-2)");
+});
+
+test3("DD-1 iconOnly is conditional on completed status, not unconditional", () => {
+  assert.ok(/iconOnly=\{[^}]*['"]?completed['"]?[^}]*\}/.test(ROW_SOURCE) ||
+            /node\.status\s*===\s*['"]completed['"]/.test(ROW_SOURCE),
+    "iconOnly must be wired to node.status === 'completed' (DD-1)");
+});
+
+console.log(`\n${passed3} passed, ${failed3} failed\n`);
+if (failed3 > 0) process.exit(1);

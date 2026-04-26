@@ -2,7 +2,6 @@
 
 import { useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { NodeKindIcon } from './node-kind-icon';
 import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
 import { DocumentLink } from '@/components/documents';
 import { ApproveGateButton, ExecutePlanButton } from '@/components/dashboard';
@@ -39,8 +38,6 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
 
   const actionButtonRef = useRef<HTMLButtonElement | null>(null);
 
-  const ariaLabel = `${getDisplayName(nodeId)} — ${STATUS_MAP[node.status].defaultLabel}`;
-
   const handleFocus = useCallback(() => {
     onFocusChange(nodeId);
   }, [nodeId, onFocusChange]);
@@ -61,7 +58,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       aria-selected={isActive}
       tabIndex={isFocused ? 0 : -1}
       data-timeline-row
-      aria-label={ariaLabel}
+      aria-label={`${getDisplayName(nodeId)} — ${STATUS_MAP[node.status].defaultLabel}`}
       aria-current={isActive ? 'step' : undefined}
       data-row-key={nodeId}
       onFocus={handleFocus}
@@ -73,9 +70,11 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       )}
       style={{ paddingLeft: 12 + depth * 16 }}
     >
-      <NodeKindIcon kind={node.kind} />
+      <NodeStatusBadge
+        status={node.status}
+        iconOnly={node.status === 'completed'}
+      />
       <span className="text-sm font-medium min-w-0 shrink truncate max-w-[55%]">{getDisplayName(nodeId)}</span>
-      <NodeStatusBadge status={node.status} iconOnly />
       {branchLabel !== null && branchBadgeStatus !== null && (
         <span role="group" aria-label={`Branch taken: ${branchLabel}`}>
           <NodeStatusBadge status={branchBadgeStatus} label={branchLabel} />
