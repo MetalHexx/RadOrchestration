@@ -856,5 +856,19 @@ test("FR-11 task-iteration DocumentLink label is 'Task Handoff', not 'Doc'", () 
     "literal 'Doc' label is forbidden in dag-iteration-panel.tsx (FR-11)");
 });
 
+test("FR-12 task-iteration ExternalLink renders icon='github' with label='Commit'", () => {
+  assert.ok(/icon="github"/.test(PANEL_SOURCE),
+    "panel must pass icon='github' on commit ExternalLink (FR-12)");
+  assert.ok(/label="Commit"/.test(PANEL_SOURCE),
+    "panel must pass label='Commit' on commit ExternalLink (FR-12)");
+});
+
+test("DD-8 task-iteration ExternalLink forwards full commit hash as title", () => {
+  assert.ok(/title=\{iteration\.commit_hash[^}]*\}/.test(PANEL_SOURCE) ||
+            /title=\{commitData\.full[^}]*\}/.test(PANEL_SOURCE) ||
+            /title=\{[^}]*commit[_.]hash[^}]*\}/.test(PANEL_SOURCE),
+    "panel must forward the full commit hash as ExternalLink title (DD-8)");
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);

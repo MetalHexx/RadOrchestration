@@ -274,15 +274,19 @@ export function DAGIterationPanel({
           {iteration.doc_path != null && iteration.doc_path !== '' && (
             <DocumentLink path={iteration.doc_path} label="Task Handoff" onDocClick={onDocClick} />
           )}
-          {commitData !== null && (
+          {commitData !== null && iteration.commit_hash != null && (
             commitData.href !== null ? (
               <ExternalLink
                 href={commitData.href}
-                label={commitData.label}
-                icon="external-link"
+                label="Commit"
+                icon="github"
+                title={iteration.commit_hash}
               />
             ) : (
-              <span className="text-xs font-mono text-muted-foreground">
+              <span
+                className="text-xs font-mono text-muted-foreground"
+                title={iteration.commit_hash}
+              >
                 {commitData.label}
               </span>
             )

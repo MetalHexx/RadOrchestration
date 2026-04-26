@@ -102,16 +102,20 @@ function CorrectiveRow({
           // keyboard users reach this link via natural tab order.
           <DocumentLink path={entry.doc_path} label="Handoff" onDocClick={onDocClick} />
         )}
-        {commitData !== null && (
+        {commitData !== null && entry.commit_hash != null && (
           commitData.href !== null ? (
             // No tabIndex override: rendered OUTSIDE AccordionTrigger.
             <ExternalLink
               href={commitData.href}
-              label={commitData.label}
-              icon="external-link"
+              label="Commit"
+              icon="github"
+              title={entry.commit_hash}
             />
           ) : (
-            <span className="text-xs font-mono text-muted-foreground">
+            <span
+              className="text-xs font-mono text-muted-foreground"
+              title={entry.commit_hash}
+            >
               {commitData.label}
             </span>
           )

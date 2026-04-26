@@ -415,5 +415,18 @@ test4("FR-11 corrective DocumentLink label is 'Handoff', not 'Doc'", () => {
     "literal 'Doc' label is forbidden on corrective DocumentLink (FR-11)");
 });
 
+test("FR-12 corrective ExternalLink renders icon='github' with label='Commit'", () => {
+  assert.ok(/icon="github"/.test(CG_SOURCE),
+    "corrective row must pass icon='github' on commit ExternalLink (FR-12)");
+  assert.ok(/label="Commit"/.test(CG_SOURCE),
+    "corrective row must pass label='Commit' on commit ExternalLink (FR-12)");
+});
+
+test("DD-8 corrective ExternalLink forwards full commit hash as title", () => {
+  assert.ok(/title=\{[^}]*commit[_.]hash[^}]*\}/.test(CG_SOURCE) ||
+            /title=\{entry\.commit_hash[^}]*\}/.test(CG_SOURCE),
+    "corrective row must forward full commit hash as ExternalLink title (DD-8)");
+});
+
 console.log(`\n${passed4} passed, ${failed4} failed\n`);
 if (failed4 > 0) process.exit(1);
