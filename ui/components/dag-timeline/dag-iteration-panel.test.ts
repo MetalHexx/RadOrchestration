@@ -959,3 +959,28 @@ test("FR-17/DD-13 phase iteration trigger wrapper carries pr-3 gutter", () => {
     assert.ok(m.includes('pr-3'), `trigger wrapper missing pr-3 gutter: ${m} (FR-17, DD-13)`);
   }
 });
+
+// ─── P02-T02: Stage-aware badge wiring (FR-1, FR-3, AD-2, AD-3, AD-4, DD-7) ──
+
+console.log("\nDAGIterationPanel stage-aware badge wiring (FR-1, FR-3, AD-2, AD-3, AD-4, DD-7)\n");
+
+test("AD-2 panel imports resolveStageBadge", () => {
+  assert.ok(/resolveStageBadge/.test(PANEL_SOURCE),
+    "dag-iteration-panel.tsx must import resolveStageBadge");
+});
+
+test("AD-3 deriveIterationBadgeLabel called with explicit parentKind ('for_each_phase')", () => {
+  assert.ok(/deriveIterationBadgeLabel\(iteration,\s*['"]for_each_phase['"]\)/.test(PANEL_SOURCE),
+    "phase-branch call site must pass 'for_each_phase' as parentKind");
+});
+
+test("AD-3 deriveIterationBadgeLabel called with explicit parentKind ('for_each_task')", () => {
+  assert.ok(/deriveIterationBadgeLabel\(iteration,\s*['"]for_each_task['"]\)/.test(PANEL_SOURCE),
+    "task-branch call site must pass 'for_each_task' as parentKind");
+});
+
+test("AD-4 panel passes cssVar to NodeStatusBadge on both phase and task iteration headers", () => {
+  const matches = PANEL_SOURCE.match(/<NodeStatusBadge[\s\S]*?cssVar=\{/g);
+  assert.ok(matches !== null && matches.length >= 2,
+    "both iteration-header NodeStatusBadge instances (phase + task) must pass cssVar");
+});

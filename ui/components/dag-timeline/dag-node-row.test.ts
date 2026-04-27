@@ -891,5 +891,39 @@ test4("aria-label is derived from the resolved badge {status,label} — not raw 
     "aria-label must not consume STATUS_MAP[node.status].defaultLabel directly outside of the resolvedBadge fallback");
 });
 
+// ─── P02-T02: Stage-aware badge wiring (FR-1, FR-2, FR-4, FR-6, AD-2, AD-4, DD-1, DD-2) ──
+
+console.log("\nDAGNodeRow stage-aware badge wiring (FR-1, FR-2, FR-4, FR-6, AD-2, AD-4, DD-1, DD-2)\n");
+
+test4("AD-2 DAGNodeRow imports resolveStageBadge from dag-timeline-helpers", () => {
+  assert.ok(/resolveStageBadge/.test(ROW_SOURCE),
+    "dag-node-row.tsx must import resolveStageBadge");
+});
+
+test4("AD-2 DAGNodeRow no longer imports derivePlanningStepLabel", () => {
+  // resolveStageBadge subsumes derivePlanningStepLabel (DD-1: planning
+  // steps now resolve to --tier-planning + 'Planning', not the
+  // legacy 'Executing' label). The old import is removed to prove
+  // there's no duplication of label resolution at the row.
+  assert.ok(!/derivePlanningStepLabel/.test(ROW_SOURCE),
+    "dag-node-row.tsx must no longer import or reference derivePlanningStepLabel");
+});
+
+test4("AD-4 DAGNodeRow passes resolved cssVar into NodeStatusBadge", () => {
+  // Body must contain a `cssVar={...}` JSX attribute on NodeStatusBadge.
+  assert.ok(/<NodeStatusBadge[\s\S]*?cssVar=\{/.test(ROW_SOURCE),
+    "dag-node-row.tsx must pass cssVar to NodeStatusBadge");
+});
+
+test4("FR-6 DAGNodeRow stops calling STATUS_MAP[status].defaultLabel directly for label resolution", () => {
+  // The old planningLabel ?? STATUS_MAP[node.status].defaultLabel
+  // pattern is replaced by resolveStageBadge(...).label, which
+  // already collapses both branches into the helper.
+  // resolveStageBadge replaces the inline STATUS_MAP fallback that
+  // was on the resolvedBadge ternary at line ~49 of the pre-change file.
+  assert.ok(!/planningLabel\s*\?\?\s*STATUS_MAP/.test(ROW_SOURCE),
+    "dag-node-row.tsx must no longer chain `planningLabel ?? STATUS_MAP[...].defaultLabel`");
+});
+
 console.log(`\n${passed4} passed, ${failed4} failed\n`);
 if (failed4 > 0) process.exit(1);

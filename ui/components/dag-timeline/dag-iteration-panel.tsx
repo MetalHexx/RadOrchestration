@@ -8,7 +8,7 @@ import { DAGLoopNode } from './dag-loop-node';
 import { DocumentLink, ExternalLink } from '@/components/documents';
 import { ProgressBar } from '@/components/execution/progress-bar';
 import { NodeStatusBadge } from './node-status-badge';
-import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, buildIterationItemValue, deriveIterationTaskProgress, deriveIterationBadgeLabel, shouldRenderTimelineRow } from './dag-timeline-helpers';
+import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, buildIterationItemValue, deriveIterationTaskProgress, deriveIterationBadgeLabel, shouldRenderTimelineRow, resolveStageBadge } from './dag-timeline-helpers';
 import type { CompatibleNodeState } from './dag-timeline-helpers';
 import type { IterationEntry } from '@/types/state';
 
@@ -128,6 +128,18 @@ export function DAGIterationPanel({
   if (parentKind === 'for_each_phase') {
     const progress = deriveIterationTaskProgress(iteration);
     const derivedBadge = deriveIterationBadgeLabel(iteration, 'for_each_phase');
+    // FR-3 / DD-7 — the phase iteration's tier cssVar mirrors its label:
+    // "Planning" → --tier-planning, "Executing" (incl. while task_loop is
+    // running per FR-3) → --tier-execution, "Reviewing" → --tier-review.
+    // For non-in_progress statuses, resolveStageBadge falls through to
+    // STATUS_MAP[status].cssVar (DD-2), which is what the iteration's
+    // current grey/green/red treatment already expects.
+    const phaseStageId =
+      derivedBadge.label === 'Planning'  ? 'phase_planning' :
+      derivedBadge.label === 'Reviewing' ? 'phase_review'   :
+      derivedBadge.label === 'Executing' ? 'task_executor'  :
+      derivedBadge.label === 'Committing' ? 'commit'        : '';
+    const phaseStageBadge = resolveStageBadge(phaseStageId, derivedBadge.status);
     const headerAriaLabel = `Phase iteration ${iterationIndex + 1} — ${iterationName} — ${derivedBadge.label}`;
     const hasPhasePlan = iteration.doc_path != null && iteration.doc_path !== '';
 
@@ -162,6 +174,7 @@ export function DAGIterationPanel({
                 <NodeStatusBadge
                   status={derivedBadge.status}
                   label={derivedBadge.label}
+                  cssVar={phaseStageBadge.cssVar}
                   iconOnly={iteration.status === 'completed'}
                 />
                 <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
@@ -313,6 +326,15 @@ export function DAGIterationPanel({
 
   // for_each_task branch (FR-5, FR-9)
   const derivedBadge = deriveIterationBadgeLabel(iteration, 'for_each_task');
+  // Task iteration cssVar mirrors its label vocabulary the same way
+  // the phase branch does (FR-1, AD-4, DD-1). The only difference is
+  // that task iterations recurse into their own substeps for the
+  // label, so the in-flight substep id can be inferred symmetrically.
+  const taskStageId =
+    derivedBadge.label === 'Reviewing'  ? 'code_review'  :
+    derivedBadge.label === 'Committing' ? 'commit'       :
+    derivedBadge.label === 'Executing'  ? 'task_executor': '';
+  const taskStageBadge = resolveStageBadge(taskStageId, derivedBadge.status);
   const headerAriaLabel = `Task iteration ${iterationIndex + 1} — ${iterationName} — ${derivedBadge.label}`;
   const hasTaskHandoff = iteration.doc_path != null && iteration.doc_path !== '';
   const hasCommitLink = commitData !== null && iteration.commit_hash != null;
@@ -335,6 +357,7 @@ export function DAGIterationPanel({
               <NodeStatusBadge
                 status={derivedBadge.status}
                 label={derivedBadge.label}
+                cssVar={taskStageBadge.cssVar}
                 iconOnly={iteration.status === 'completed'}
               />
               <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
