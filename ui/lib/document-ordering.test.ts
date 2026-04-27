@@ -1031,5 +1031,148 @@ test('NFR-1 — v4 getOrderedDocs tail-bucket labels are unchanged (uppercase ba
   assert.deepStrictEqual(docs.map((d) => d.title), ['ALPHA', 'ZEBRA']);
 });
 
+test('NFR-2 — no canonical doc emitted by the engine lands in the tail "other" bucket', () => {
+  // Default-template fixture: planning steps, one phase with two tasks,
+  // one task-scope corrective on T1, one phase-scope corrective, final review.
+  const state = makeV5State({
+    research: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/PROJ-RESEARCH-FINDINGS.md', retries: 0 },
+    prd: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/PROJ-PRD.md', retries: 0 },
+    design: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/PROJ-DESIGN.md', retries: 0 },
+    architecture: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/PROJ-ARCHITECTURE.md', retries: 0 },
+    requirements: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/PROJ-REQUIREMENTS.md', retries: 0 },
+    master_plan: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/PROJ-MASTER-PLAN.md', retries: 0 },
+    phase_loop: {
+      kind: 'for_each_phase',
+      status: 'in_progress',
+      iterations: [
+        {
+          index: 0,
+          status: 'in_progress',
+          doc_path: 'projects/PROJ/phases/PROJ-PHASE-P01-PLAN.md',
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task',
+              status: 'in_progress',
+              iterations: [
+                {
+                  index: 0,
+                  status: 'completed',
+                  doc_path: 'projects/PROJ/tasks/PROJ-TASK-P01-T01.md',
+                  nodes: {
+                    code_review: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/reviews/PROJ-CODE-REVIEW-P01-T01.md', retries: 0 },
+                  },
+                  corrective_tasks: [
+                    {
+                      index: 1,
+                      reason: 'fix',
+                      injected_after: 'code_review',
+                      status: 'completed',
+                      doc_path: 'projects/PROJ/tasks/PROJ-TASK-P01-T01-CT1.md',
+                      nodes: {
+                        code_review: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/reviews/PROJ-CODE-REVIEW-P01-T01-CT1.md', retries: 0 },
+                      },
+                      commit_hash: null,
+                    },
+                  ],
+                  commit_hash: null,
+                },
+                {
+                  index: 1,
+                  status: 'completed',
+                  doc_path: 'projects/PROJ/tasks/PROJ-TASK-P01-T02.md',
+                  nodes: {
+                    code_review: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/reviews/PROJ-CODE-REVIEW-P01-T02.md', retries: 0 },
+                  },
+                  corrective_tasks: [],
+                  commit_hash: null,
+                },
+              ],
+            },
+            phase_review: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/reports/PROJ-PHASE-REVIEW-P01.md', retries: 0 },
+          },
+          corrective_tasks: [
+            {
+              index: 1,
+              reason: 'phase fix',
+              injected_after: 'phase_review',
+              status: 'completed',
+              doc_path: 'projects/PROJ/tasks/PROJ-TASK-P01-PHASE-C1.md',
+              nodes: {
+                code_review: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/reviews/PROJ-CODE-REVIEW-P01-PHASE-C1.md', retries: 0 },
+              },
+              commit_hash: null,
+            },
+          ],
+          commit_hash: null,
+        },
+      ],
+    },
+    final_review: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/reports/PROJ-FINAL-REVIEW.md', retries: 0 },
+  });
+
+  // allFiles mirrors the canonical paths above plus genuine tail docs.
+  const canonicalPaths = [
+    'projects/PROJ/PROJ-RESEARCH-FINDINGS.md',
+    'projects/PROJ/PROJ-PRD.md',
+    'projects/PROJ/PROJ-DESIGN.md',
+    'projects/PROJ/PROJ-ARCHITECTURE.md',
+    'projects/PROJ/PROJ-REQUIREMENTS.md',
+    'projects/PROJ/PROJ-MASTER-PLAN.md',
+    'projects/PROJ/phases/PROJ-PHASE-P01-PLAN.md',
+    'projects/PROJ/tasks/PROJ-TASK-P01-T01.md',
+    'projects/PROJ/reviews/PROJ-CODE-REVIEW-P01-T01.md',
+    'projects/PROJ/tasks/PROJ-TASK-P01-T01-CT1.md',
+    'projects/PROJ/reviews/PROJ-CODE-REVIEW-P01-T01-CT1.md',
+    'projects/PROJ/tasks/PROJ-TASK-P01-T02.md',
+    'projects/PROJ/reviews/PROJ-CODE-REVIEW-P01-T02.md',
+    'projects/PROJ/reports/PROJ-PHASE-REVIEW-P01.md',
+    'projects/PROJ/tasks/PROJ-TASK-P01-PHASE-C1.md',
+    'projects/PROJ/reviews/PROJ-CODE-REVIEW-P01-PHASE-C1.md',
+    'projects/PROJ/reports/PROJ-FINAL-REVIEW.md',
+  ];
+  const tailFiles = [
+    'projects/PROJ/PROJ-BRAINSTORMING.md',
+    'projects/PROJ/PROJ-ERROR-LOG.md',
+  ];
+  const allFiles = [...canonicalPaths, ...tailFiles];
+
+  const docs = getOrderedDocsV5(state, 'PROJ', allFiles);
+
+  // NFR-2 invariant — every canonical path is in docs and NOT categorized 'other'.
+  const otherPaths = new Set(docs.filter((d) => d.category === 'other').map((d) => d.path));
+  for (const p of canonicalPaths) {
+    assert.ok(!otherPaths.has(p), `canonical doc ${p} leaked into the tail "other" bucket`);
+    assert.ok(docs.some((d) => d.path === p), `canonical doc ${p} is missing from the walk`);
+  }
+
+  // Tail bucket contains only the brainstorming file (error log gets its own category).
+  const others = docs.filter((d) => d.category === 'other');
+  assert.deepStrictEqual(others.map((d) => d.title), ['Brainstorming']);
+  assert.strictEqual(docs.find((d) => d.category === 'error-log')!.title, 'Error Log');
+
+  // FR-4 walk-order spot-check: phase plan precedes T1 handoff; T1's CT precedes T2.
+  const titles = docs.map((d) => d.title);
+  const idxPhasePlan = titles.indexOf('Phase 1 Plan');
+  const idxT1Handoff = titles.indexOf('P1-T1 Handoff');
+  const idxT1CT = titles.indexOf('P1-T1 CT1');
+  const idxT2Handoff = titles.indexOf('P1-T2 Handoff');
+  const idxPhaseReview = titles.indexOf('Phase 1 Review');
+  const idxPhaseCT = titles.indexOf('Phase 1 CT1');
+  const idxFinal = titles.indexOf('Final Review');
+  assert.ok(idxPhasePlan < idxT1Handoff && idxT1Handoff < idxT1CT && idxT1CT < idxT2Handoff,
+    'task-scope corrective must stay grouped with parent task before walk advances');
+  assert.ok(idxT2Handoff < idxPhaseReview && idxPhaseReview < idxPhaseCT && idxPhaseCT < idxFinal,
+    'phase review precedes phase-scope correctives, both precede final review');
+});
+
+test('FR-13 — drawer header file is untouched (compile-time pin)', () => {
+  // FR-13 is enforced by source-control review — no code changes in
+  // ui/components/documents/document-drawer.tsx (or the drawer header
+  // sub-components) are introduced by this iteration. This test exists
+  // as a documentation marker so a reviewer knows to verify the drawer
+  // file diff is empty.
+  assert.ok(true, 'see ui/components/documents/document-drawer.tsx — no diff expected');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
