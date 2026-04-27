@@ -4,6 +4,7 @@
  */
 import assert from 'node:assert';
 import { getOrderedDocs, getAdjacentDocs, getOrderedDocsV5 } from './document-ordering';
+import * as mod from './document-ordering';
 import type { ProjectState, ProjectStateV5, NodesRecord } from '@/types/state';
 import type { OrderedDoc } from '@/types/components';
 
@@ -895,15 +896,6 @@ test('full integration: planning + phase iteration with task iteration + correct
 
 test('label helpers and within-iteration order constants — locked label scheme (FR-5..11, DD-1)', () => {
   // Import surface — these are exported for testing in P01-T01
-  const mod = require('./document-ordering') as {
-    STEP_TITLES_V5: Record<string, string>;
-    PHASE_ITER_CHILD_ORDER: readonly string[];
-    TASK_ITER_CHILD_ORDER: readonly string[];
-    titleForPhaseChild: (childId: string, phaseNum: number) => string;
-    titleForTaskChild: (childId: string, phaseNum: number, taskNum: number) => string;
-    titleForPhaseCorrectiveChild: (childId: string, phaseNum: number, ctIndex: number) => string;
-    titleForTaskCorrectiveChild: (childId: string, phaseNum: number, taskNum: number, ctIndex: number) => string;
-  };
 
   // FR-6 — planning labels survive rewrite unchanged
   assert.strictEqual(mod.STEP_TITLES_V5.research, 'Research Findings');
