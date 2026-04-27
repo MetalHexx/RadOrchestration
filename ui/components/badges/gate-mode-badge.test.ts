@@ -101,6 +101,35 @@ test("null mode maps to --gate-global CSS variable", () => {
   assert.strictEqual(getCssVar(null), "--gate-global");
 });
 
+import { readFileSync as readFileSyncGM } from 'node:fs';
+import { join as joinGM, dirname as dirnameGM } from 'node:path';
+import { fileURLToPath as fileURLToPathGM } from 'node:url';
+const __dirname_gm = dirnameGM(fileURLToPathGM(import.meta.url));
+const GM_SOURCE = readFileSyncGM(joinGM(__dirname_gm, 'gate-mode-badge.tsx'), 'utf8');
+
+console.log("\nFR-5 / DD-5 GateModeBadge dotless rendering");
+
+test("DD-5 GateModeBadge source no longer renders a rounded-full inline dot", () => {
+  assert.ok(!/rounded-full/.test(GM_SOURCE),
+    "gate-mode-badge.tsx must no longer render a rounded-full dot span");
+});
+
+test("DD-5 GateModeBadge keeps Badge wrapper, color-mix fill, aria-label", () => {
+  // Pill identity is carried by the colored fill; aria-label still names the gate mode.
+  assert.ok(/<Badge/.test(GM_SOURCE), "Badge wrapper preserved");
+  assert.ok(/color-mix\(in srgb, var\(\$\{config\.cssVar\}\) 15%, transparent\)/.test(GM_SOURCE),
+    "15%-tint fill preserved (DD-5: same fill as SpinnerBadge family)");
+  assert.ok(/aria-label=\{`Gate mode: \$\{config\.label\}`\}/.test(GM_SOURCE),
+    "aria-label preserved (NFR-3 — label still announced)");
+});
+
+test("DD-5 GateModeBadge body contains no <span> with inline-block sizing utilities", () => {
+  // The dot was the sole inline-block sizing span. After removal the body
+  // should render only `{config.label}` text inside the Badge.
+  assert.ok(!/inline-block\s+h-1\.5\s+w-1\.5/.test(GM_SOURCE),
+    "no inline-block h-1.5 w-1.5 dot span should remain");
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

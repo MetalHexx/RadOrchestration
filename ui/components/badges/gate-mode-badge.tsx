@@ -31,11 +31,6 @@ export const GateModeBadge = React.forwardRef<HTMLSpanElement, GateModeBadgeProp
         }}
         aria-label={`Gate mode: ${config.label}`}
       >
-        <span
-          className="inline-block h-1.5 w-1.5 rounded-full"
-          style={{ backgroundColor: `var(${config.cssVar})` }}
-          aria-hidden="true"
-        />
         {config.label}
       </Badge>
     );
