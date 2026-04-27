@@ -491,26 +491,53 @@ export function resolveStageBadge(
 
 /**
  * Derives the resolved {status, label} pair for an iteration's badge.
- * For `in_progress` iterations, walks `iteration.nodes` to find an
- * in-flight child whose id matches `ITERATION_SUBSTEP_LABELS`. If the
- * in-flight child is itself a `for_each_task` loop, recurses into its
- * active iteration (phase iteration inherits the task's substep label,
- * FR-3). Falls back to `'Executing'` when no substep matches but the
- * iteration is still in_progress. For non-in_progress statuses, returns
- * the `STATUS_MAP` defaultLabel for the iteration's own status.
+ *
+ * - parentKind === 'for_each_phase': stops at the phase's own direct
+ *   substeps (FR-3 / AD-3 / DD-7). Never recurses into an active
+ *   task's substeps. A phase whose `task_loop` is in_progress reads
+ *   "Executing" regardless of which task substep is currently active.
+ * - parentKind === 'for_each_task': preserves the original substep
+ *   walk so task-iteration rows continue to surface their own
+ *   substep label (e.g. "Reviewing" while a code_review is in flight).
+ *
+ * For non-in_progress statuses, returns STATUS_MAP defaults
+ * regardless of parentKind (DD-2).
  */
 export function deriveIterationBadgeLabel(
-  iteration: IterationEntry
+  iteration: IterationEntry,
+  parentKind: 'for_each_phase' | 'for_each_task',
 ): { status: NodeStatus; label: string } {
   if (iteration.status !== 'in_progress') {
     const entry = STATUS_MAP[iteration.status];
     return { status: iteration.status, label: entry.defaultLabel };
   }
-  for (const [childId, childNode] of Object.entries(iteration.nodes)) {
-    if (childNode.kind === 'for_each_task' && childNode.status === 'in_progress') {
-      const active = childNode.iterations.find(i => i.status === 'in_progress');
-      if (active) return deriveIterationBadgeLabel(active);
+
+  // FR-3 / AD-3: phase iteration stops at its own substeps. Look only
+  // at the phase's direct children (phase_planning / task_loop /
+  // phase_review). When task_loop is the in-flight child, the phase
+  // row reads "Executing" — no recursion into the active task.
+  if (parentKind === 'for_each_phase') {
+    for (const [childId, childNode] of Object.entries(iteration.nodes)) {
+      if (childNode.status !== 'in_progress') continue;
+      if (childId === 'task_loop') {
+        return { status: 'in_progress', label: 'Executing' };
+      }
+      const cfg = ITERATION_SUBSTEP_CONFIG[childId];
+      if (cfg !== undefined) {
+        return { status: 'in_progress', label: cfg.label };
+      }
+      // phase_planning is not in the substep table; resolve via the
+      // planning-step set instead.
+      if (PLANNING_STEP_IDS.has(childId) || childId === 'phase_planning') {
+        return { status: 'in_progress', label: 'Planning' };
+      }
     }
+    return { status: 'in_progress', label: 'Executing' };
+  }
+
+  // parentKind === 'for_each_task' — preserve the original substep walk
+  // so task-iteration rows continue to surface their substep label.
+  for (const [childId, childNode] of Object.entries(iteration.nodes)) {
     if (childNode.status !== 'in_progress') continue;
     const label = ITERATION_SUBSTEP_LABELS[childId];
     if (label !== undefined) {

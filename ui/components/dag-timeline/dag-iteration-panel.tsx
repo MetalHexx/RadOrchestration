@@ -127,7 +127,7 @@ export function DAGIterationPanel({
 
   if (parentKind === 'for_each_phase') {
     const progress = deriveIterationTaskProgress(iteration);
-    const derivedBadge = deriveIterationBadgeLabel(iteration);
+    const derivedBadge = deriveIterationBadgeLabel(iteration, 'for_each_phase');
     const headerAriaLabel = `Phase iteration ${iterationIndex + 1} — ${iterationName} — ${derivedBadge.label}`;
     const hasPhasePlan = iteration.doc_path != null && iteration.doc_path !== '';
 
@@ -312,7 +312,7 @@ export function DAGIterationPanel({
   }
 
   // for_each_task branch (FR-5, FR-9)
-  const derivedBadge = deriveIterationBadgeLabel(iteration);
+  const derivedBadge = deriveIterationBadgeLabel(iteration, 'for_each_task');
   const headerAriaLabel = `Task iteration ${iterationIndex + 1} — ${iterationName} — ${derivedBadge.label}`;
   const hasTaskHandoff = iteration.doc_path != null && iteration.doc_path !== '';
   const hasCommitLink = commitData !== null && iteration.commit_hash != null;
