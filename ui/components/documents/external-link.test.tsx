@@ -106,10 +106,11 @@ function render(props: Parameters<typeof ExternalLink>[0]): string {
     icon: 'github',
     title: 'abc123def4567890',
   });
-  assert.ok(html.includes('aria-label="abc123def4567890"') ||
-            html.includes('aria-label="Commit"'),
-    "ExternalLink must preserve aria-label (NFR-1)");
-  console.log('✓ NFR-1 aria-label remains the visible label even when title is set');
+  assert.ok(html.includes('aria-label="Commit"'),
+    `aria-label must remain the descriptive label, not the hash, in: ${html}`);
+  assert.ok(!html.includes('aria-label="abc123def4567890"'),
+    `aria-label must not be overridden by title (raw hash) in: ${html}`);
+  console.log('✓ NFR-1 aria-label remains the descriptive label when title is set (hash exposed via title attribute only)');
 }
 
 console.log('\nAll ExternalLink tests passed ✓');

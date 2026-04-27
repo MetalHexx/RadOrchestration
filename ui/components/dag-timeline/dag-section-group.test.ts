@@ -94,10 +94,6 @@ test('shouldRender(3) returns true (multiple children → render content)', () =
   assert.strictEqual(shouldRender(3), true);
 });
 
-// ─── Summary ────────────────────────────────────────────────────────────────
-
-console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`);
-
 // ─── Card variant tests (FR-13, FR-14, FR-15, AD-4, AD-5, DD-9, DD-10) ──────
 
 import { isCardSection, CARD_SHELL_CLASSES } from './dag-section-group';

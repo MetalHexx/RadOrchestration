@@ -43,6 +43,16 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       ? getRowButtonDescriptor(nodeId, node, phaseLoopStatus)
       : { kind: 'none' as const };
   const hasActionButton = descriptor.kind !== 'none';
+  const isFinalPrRow = nodeId === 'final_pr' && prUrl != null && prUrl !== '';
+
+  // Resolve the same {status,label} pair the visible badge uses, so the row's
+  // aria-label announces what the user sees rather than a stale raw status.
+  // Gate rows can present "Not Started" via deriveGateBadgeStatusAndLabel even
+  // when node.status is 'in_progress'; planning steps surface "Executing" via
+  // derivePlanningStepLabel.
+  const resolvedBadge = node.kind === 'gate'
+    ? deriveGateBadgeStatusAndLabel(node)
+    : { status: node.status, label: derivePlanningStepLabel(nodeId, node.status) ?? STATUS_MAP[node.status].defaultLabel };
 
   const actionButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -55,10 +65,12 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
     event.preventDefault();
     if (hasActionButton && actionButtonRef.current !== null) {
       actionButtonRef.current.click();
+    } else if (isFinalPrRow) {
+      window.open(prUrl!, '_blank', 'noopener,noreferrer');
     } else if (node.kind === 'step' && node.doc_path != null && node.doc_path !== '') {
       onDocClick(node.doc_path);
     }
-  }, [hasActionButton, node, onDocClick]);
+  }, [hasActionButton, isFinalPrRow, prUrl, node, onDocClick]);
 
   return (
     <div
@@ -66,7 +78,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       aria-selected={isActive}
       tabIndex={isFocused ? 0 : -1}
       data-timeline-row
-      aria-label={`${getDisplayName(nodeId)} — ${STATUS_MAP[node.status].defaultLabel}`}
+      aria-label={`${getDisplayName(nodeId)} — ${resolvedBadge.label}`}
       aria-current={isActive ? 'step' : undefined}
       data-row-key={nodeId}
       onFocus={handleFocus}
@@ -78,22 +90,11 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       )}
       style={{ paddingLeft: 12 + depth * 16 }}
     >
-      {node.kind === 'gate' ? (() => {
-        const derived = deriveGateBadgeStatusAndLabel(node);
-        return (
-          <NodeStatusBadge
-            status={derived.status}
-            label={derived.label}
-            iconOnly={derived.status === 'completed'}
-          />
-        );
-      })() : (
-        <NodeStatusBadge
-          status={node.status}
-          label={derivePlanningStepLabel(nodeId, node.status)}
-          iconOnly={node.status === 'completed'}
-        />
-      )}
+      <NodeStatusBadge
+        status={resolvedBadge.status}
+        label={node.kind === 'gate' ? resolvedBadge.label : derivePlanningStepLabel(nodeId, node.status)}
+        iconOnly={resolvedBadge.status === 'completed'}
+      />
       {verdictPill}
       <span className="text-sm font-medium min-w-0 shrink truncate max-w-[55%]">{getDisplayName(nodeId)}</span>
       {branchLabel !== null && branchBadgeStatus !== null && (

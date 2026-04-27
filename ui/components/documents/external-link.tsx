@@ -24,9 +24,9 @@ interface ExternalLinkProps {
   tabIndex?: number;
   /** Optional native tooltip text — passed to the underlying <a>'s `title`
    *  attribute. Used by the dag-timeline commit link to expose the full
-   *  commit hash on hover (DD-8, NFR-1). When `title` is set, it also
-   *  becomes the accessible name (aria-label override) so screen readers
-   *  announce the full hash. */
+   *  commit hash on hover (DD-8). The accessible name remains `label` so
+   *  screen readers announce descriptive context (e.g. "Commit") rather
+   *  than the raw hash. */
   title?: string;
 }
 
@@ -68,7 +68,7 @@ export function ExternalLink({
       tabIndex={tabIndex}
       title={title}
       className="inline-flex items-center gap-1.5 text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm text-sm"
-      aria-label={title ?? label}
+      aria-label={label}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />
       <span className="sr-only sm:not-sr-only">{label}</span>

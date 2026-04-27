@@ -884,5 +884,24 @@ test4("DAGNodeRow accepts an optional prUrl prop and renders an ExternalLink (ic
     "ExternalLink must render with href={prUrl}, label=\"Pull Request\", icon=\"github\" — same shape as the project header link");
 });
 
+test4("final_pr row is keyboard-activatable — Enter/Space opens prUrl in a new tab", () => {
+  assert.ok(/window\.open\s*\(\s*prUrl/.test(ROW_SOURCE),
+    "handleKeyDown must call window.open(prUrl, ...) so Enter/Space activates the PR link without breaking roving-tabindex");
+  assert.ok(/['"]_blank['"]/.test(ROW_SOURCE),
+    "PR link must open in a new tab via window.open(..., '_blank', ...)");
+  assert.ok(/noopener,?\s*noreferrer/.test(ROW_SOURCE),
+    "window.open must include noopener,noreferrer for safety parity with the anchor's rel attribute");
+});
+
+test4("aria-label is derived from the resolved badge {status,label} — not raw node.status", () => {
+  // The row's aria-label must announce the same status the badge renders so
+  // screen readers don't disagree with the visible label (e.g. gate_active=true
+  // shows "Not Started" but raw node.status would announce "In Progress").
+  assert.ok(/aria-label=\{`\$\{getDisplayName\(nodeId\)\} — \$\{resolvedBadge\.label\}`\}/.test(ROW_SOURCE),
+    "aria-label must be `${getDisplayName(nodeId)} — ${resolvedBadge.label}` — single source of truth with the badge");
+  assert.ok(!/STATUS_MAP\[node\.status\]\.defaultLabel/.test(ROW_SOURCE.replace(/derivePlanningStepLabel\(nodeId, node\.status\) \?\? STATUS_MAP\[node\.status\]\.defaultLabel/g, '')),
+    "aria-label must not consume STATUS_MAP[node.status].defaultLabel directly outside of the resolvedBadge fallback");
+});
+
 console.log(`\n${passed4} passed, ${failed4} failed\n`);
 if (failed4 > 0) process.exit(1);
