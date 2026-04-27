@@ -142,9 +142,19 @@ export function getAdjacentDocs(
 // the emitted sequence. A fixed array removes the coupling. `task_executor`,
 // `commit_gate`, `task_gate` have no doc_path and are skipped by the caller's
 // `doc_path != null` check, so omitting them here is safe.
-const CORRECTIVE_DOC_EMIT_ORDER = ['task_handoff', 'code_review'] as const;
+export const CORRECTIVE_DOC_EMIT_ORDER = ['task_handoff', 'code_review'] as const;
 
-const STEP_TITLES_V5: Record<PlanningStepName, string> = {
+// Within-iteration child emission order — locked per AD-3 / FR-5 so the walk
+// is stable across engine refactors that rebuild iteration.nodes from a
+// different seed. The phase-plan-from-iteration-doc_path step is emitted
+// BEFORE this loop runs, so `phase_planning` is left in here as harmless
+// forward-compat: a future template that wires it back as a child step node
+// would still surface in the right slot. Same logic for `task_handoff` in
+// TASK_ITER_CHILD_ORDER.
+export const PHASE_ITER_CHILD_ORDER = ['phase_planning', 'task_loop', 'phase_review'] as const;
+export const TASK_ITER_CHILD_ORDER = ['task_handoff', 'code_review'] as const;
+
+export const STEP_TITLES_V5: Record<PlanningStepName, string> = {
   research: 'Research Findings',
   prd: 'PRD',
   design: 'Design',
@@ -158,27 +168,47 @@ function capitalize(s: string): string {
   return s.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-function titleForPhaseChild(childId: string, phaseNum: number): string {
-  // phase_planning is v5 canonical; phase_plan retained for legacy compat
+export function titleForPhaseChild(childId: string, phaseNum: number): string {
+  // phase_planning is v5 canonical; phase_plan retained for legacy compat.
+  // Both IDs survive in the helper even though the default template now
+  // sources the phase plan from iteration.doc_path (AD-2): a future custom
+  // template scaffolding either ID as a child step node still surfaces with
+  // the right label.
   if (childId === 'phase_planning' || childId === 'phase_plan') return `Phase ${phaseNum} Plan`;
+  // AD-6 — phase_report mapping preserved as harmless dead code so that any
+  // future template wiring it in surfaces with the correct label.
   if (childId === 'phase_report') return `Phase ${phaseNum} Report`;
   if (childId === 'phase_review') return `Phase ${phaseNum} Review`;
-  return capitalize(childId);
+  // AD-1 — unrecognized child IDs surface with a generic per-scope label so
+  // a future custom-template node never silently vanishes into the tail bucket.
+  return `Phase ${phaseNum} ${capitalize(childId)}`;
 }
 
-function titleForPhaseCorrectiveChild(childId: string, phaseNum: number): string {
-  // Phase-scope correctives scaffold the same body-def node IDs as task-scope
-  // iterations (`task_handoff`, `code_review`), but at phase scope `task_handoff`
-  // is the corrective plan for the phase and `code_review` is its review.
-  if (childId === 'task_handoff') return `Phase ${phaseNum} Plan`;
-  if (childId === 'code_review') return `Phase ${phaseNum} Review`;
-  return titleForPhaseChild(childId, phaseNum);
-}
-
-function titleForTaskChild(taskNodeId: string, phaseNum: number, taskNum: number): string {
+export function titleForTaskChild(taskNodeId: string, phaseNum: number, taskNum: number): string {
   if (taskNodeId === 'task_handoff') return `P${phaseNum}-T${taskNum} Handoff`;
   if (taskNodeId === 'code_review') return `P${phaseNum}-T${taskNum} Review`;
+  // AD-1 — generic fallback per scope.
   return `P${phaseNum}-T${taskNum} ${capitalize(taskNodeId)}`;
+}
+
+// FR-9 — task-scope corrective labels. `CT{K}` already implies a corrective
+// handoff, so the plan label drops the "Handoff" word; the review label
+// appends "Review" to keep the original-vs-corrective parallel symmetric.
+export function titleForTaskCorrectiveChild(taskNodeId: string, phaseNum: number, taskNum: number, ctIndex: number): string {
+  if (taskNodeId === 'task_handoff') return `P${phaseNum}-T${taskNum} CT${ctIndex}`;
+  if (taskNodeId === 'code_review') return `P${phaseNum}-T${taskNum} CT${ctIndex} Review`;
+  return `P${phaseNum}-T${taskNum} CT${ctIndex} ${capitalize(taskNodeId)}`;
+}
+
+// FR-10 — phase-scope correctives scaffold the same body-def node IDs as
+// task-scope iterations (`task_handoff`, `code_review`). At phase scope
+// `task_handoff` means "the corrective plan" and `code_review` means
+// "its review." The label uses `Phase {N} CT{K}` shorthand to parallel the
+// task-scope CT scheme.
+export function titleForPhaseCorrectiveChild(childId: string, phaseNum: number, ctIndex: number): string {
+  if (childId === 'task_handoff') return `Phase ${phaseNum} CT${ctIndex}`;
+  if (childId === 'code_review') return `Phase ${phaseNum} CT${ctIndex} Review`;
+  return `Phase ${phaseNum} CT${ctIndex} ${capitalize(childId)}`;
 }
 
 /**
@@ -258,7 +288,7 @@ export function getOrderedDocsV5(
           for (const ctNodeId of CORRECTIVE_DOC_EMIT_ORDER) {
             const ctNode = ct.nodes[ctNodeId];
             if (ctNode?.kind === 'step' && ctNode.doc_path != null) {
-              const title = titleForPhaseCorrectiveChild(ctNodeId, phaseNum) + ' (Phase-C' + ct.index + ')';
+              const title = titleForPhaseCorrectiveChild(ctNodeId, phaseNum, ct.index) + ' (Phase-C' + ct.index + ')';
               // Explicit id check (not `includes('review')`) keeps categorization stable
               // if future corrective body nodes happen to contain the 'review' substring.
               const category: OrderedDoc['category'] = ctNodeId === 'code_review' ? 'review' : 'phase';

@@ -606,10 +606,10 @@ test('phase-scope corrective task step nodes append Phase-CN suffix with correct
   assert.strictEqual(docs.length, 4);
   assert.strictEqual(docs[0].title, 'Phase 1 Plan');
   assert.strictEqual(docs[1].title, 'Phase 1 Review');
-  assert.strictEqual(docs[2].title, 'Phase 1 Plan (Phase-C1)');
+  assert.strictEqual(docs[2].title, 'Phase 1 CT1 (Phase-C1)');
   assert.strictEqual(docs[2].category, 'phase');
   assert.strictEqual(docs[2].path, 'tasks/PROJ-TASK-P01-PHASE-C1.md');
-  assert.strictEqual(docs[3].title, 'Phase 1 Review (Phase-C1)');
+  assert.strictEqual(docs[3].title, 'Phase 1 CT1 Review (Phase-C1)');
   assert.strictEqual(docs[3].category, 'review');
   assert.strictEqual(docs[3].path, 'reports/PROJ-CODE-REVIEW-P01-PHASE-C1.md');
 });
@@ -661,9 +661,9 @@ test('phase-scope corrective docs are sorted by corrective index and interleave 
   // phase_review, then corrective C1 (index 1) before C2 (index 2)
   assert.strictEqual(docs.length, 3);
   assert.strictEqual(docs[0].title, 'Phase 1 Review');
-  assert.strictEqual(docs[1].title, 'Phase 1 Plan (Phase-C1)');
+  assert.strictEqual(docs[1].title, 'Phase 1 CT1 (Phase-C1)');
   assert.strictEqual(docs[1].path, 'tasks/PROJ-TASK-P01-PHASE-C1.md');
-  assert.strictEqual(docs[2].title, 'Phase 1 Plan (Phase-C2)');
+  assert.strictEqual(docs[2].title, 'Phase 1 CT2 (Phase-C2)');
   assert.strictEqual(docs[2].path, 'tasks/PROJ-TASK-P01-PHASE-C2.md');
 });
 
@@ -809,6 +809,50 @@ test('full integration: planning + phase iteration with task iteration + correct
   assert.strictEqual(docs[7].category, 'review');
   assert.strictEqual(docs[8].category, 'task');
   assert.strictEqual(docs[9].category, 'phase');
+});
+
+test('label helpers and within-iteration order constants — locked label scheme (FR-5..11, DD-1)', () => {
+  // Import surface — these are exported for testing in P01-T01
+  const mod = require('./document-ordering') as {
+    STEP_TITLES_V5: Record<string, string>;
+    PHASE_ITER_CHILD_ORDER: readonly string[];
+    TASK_ITER_CHILD_ORDER: readonly string[];
+    titleForPhaseChild: (childId: string, phaseNum: number) => string;
+    titleForTaskChild: (childId: string, phaseNum: number, taskNum: number) => string;
+    titleForPhaseCorrectiveChild: (childId: string, phaseNum: number, ctIndex: number) => string;
+    titleForTaskCorrectiveChild: (childId: string, phaseNum: number, taskNum: number, ctIndex: number) => string;
+  };
+
+  // FR-6 — planning labels survive rewrite unchanged
+  assert.strictEqual(mod.STEP_TITLES_V5.research, 'Research Findings');
+  assert.strictEqual(mod.STEP_TITLES_V5.prd, 'PRD');
+  assert.strictEqual(mod.STEP_TITLES_V5.design, 'Design');
+  assert.strictEqual(mod.STEP_TITLES_V5.architecture, 'Architecture');
+  assert.strictEqual(mod.STEP_TITLES_V5.requirements, 'Requirements');
+  assert.strictEqual(mod.STEP_TITLES_V5.master_plan, 'Master Plan');
+
+  // FR-5 / AD-3 — explicit per-scope ordering constants (no Object.entries reliance)
+  assert.deepStrictEqual([...mod.PHASE_ITER_CHILD_ORDER], ['phase_planning', 'task_loop', 'phase_review']);
+  assert.deepStrictEqual([...mod.TASK_ITER_CHILD_ORDER], ['task_handoff', 'code_review']);
+
+  // FR-7 — phase plan label
+  assert.strictEqual(mod.titleForPhaseChild('phase_planning', 3), 'Phase 3 Plan');
+  // AD-6 — phase_report mapping preserved as harmless dead code
+  assert.strictEqual(mod.titleForPhaseChild('phase_report', 3), 'Phase 3 Report');
+  // FR-10 — phase review label
+  assert.strictEqual(mod.titleForPhaseChild('phase_review', 3), 'Phase 3 Review');
+
+  // FR-8 — task labels (no task name interpolation)
+  assert.strictEqual(mod.titleForTaskChild('task_handoff', 2, 5), 'P2-T5 Handoff');
+  assert.strictEqual(mod.titleForTaskChild('code_review', 2, 5), 'P2-T5 Review');
+
+  // FR-9 — task-scope corrective labels (CT shorthand, no "Handoff" word on plan)
+  assert.strictEqual(mod.titleForTaskCorrectiveChild('task_handoff', 2, 5, 1), 'P2-T5 CT1');
+  assert.strictEqual(mod.titleForTaskCorrectiveChild('code_review', 2, 5, 1), 'P2-T5 CT1 Review');
+
+  // FR-10 — phase-scope corrective labels (Phase {N} CT{K} / Phase {N} CT{K} Review)
+  assert.strictEqual(mod.titleForPhaseCorrectiveChild('task_handoff', 1, 1), 'Phase 1 CT1');
+  assert.strictEqual(mod.titleForPhaseCorrectiveChild('code_review', 1, 1), 'Phase 1 CT1 Review');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
