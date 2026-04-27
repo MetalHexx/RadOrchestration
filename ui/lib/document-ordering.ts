@@ -301,17 +301,27 @@ export function getOrderedDocsV5(
                 }
               }
 
-              // Task-scope correctives (FR-3) — emitted in T03; this stub
-              // preserves the existing behaviour temporarily so unrelated
-              // tests do not regress between T02 and T03.
+              // Task-scope correctives (FR-3 / AD-2) — corrective handoff
+              // from ct.doc_path (NOT from ct.nodes.task_handoff). The
+              // ct.nodes map for correctives only ever contains `code_review`
+              // as a meaningful step node.
               const sortedCTs = [...taskIter.corrective_tasks].sort((a, b) => a.index - b.index);
               for (const ct of sortedCTs) {
-                for (const ctNodeId of CORRECTIVE_DOC_EMIT_ORDER) {
-                  const ctNode = ct.nodes[ctNodeId];
-                  if (ctNode?.kind === 'step' && ctNode.doc_path != null) {
-                    const title = titleForTaskChild(ctNodeId, phaseNum, taskNum) + ' (CT' + ct.index + ')';
-                    const category: OrderedDoc['category'] = ctNodeId === 'code_review' ? 'review' : 'task';
-                    push(ctNode.doc_path, title, category);
+                // FR-3 / AD-2 — corrective handoff from ct.doc_path.
+                if (ct.doc_path != null) {
+                  push(ct.doc_path, titleForTaskCorrectiveChild('task_handoff', phaseNum, taskNum, ct.index), 'task');
+                }
+                // FR-3 — corrective code review IS a child step node.
+                const ctReview = ct.nodes['code_review'];
+                if (ctReview?.kind === 'step' && ctReview.doc_path != null) {
+                  push(ctReview.doc_path, titleForTaskCorrectiveChild('code_review', phaseNum, taskNum, ct.index), 'review');
+                }
+                // AD-1 — surface any other unrecognized child step node so
+                // custom templates do not silently leak to the tail bucket.
+                for (const [otherId, otherNode] of Object.entries(ct.nodes)) {
+                  if (otherId === 'code_review') continue;
+                  if (otherNode.kind === 'step' && otherNode.doc_path != null) {
+                    push(otherNode.doc_path, titleForTaskCorrectiveChild(otherId, phaseNum, taskNum, ct.index), 'task');
                   }
                 }
               }
@@ -319,15 +329,21 @@ export function getOrderedDocsV5(
           }
         }
 
-        // Phase-scope correctives (FR-3) — emitted in T03; stub kept here.
+        // Phase-scope correctives (FR-3 / AD-2) — corrective handoff from
+        // ct.doc_path; corrective code review from ct.nodes.code_review.
         const sortedPhaseCTs = [...iteration.corrective_tasks].sort((a, b) => a.index - b.index);
         for (const ct of sortedPhaseCTs) {
-          for (const ctNodeId of CORRECTIVE_DOC_EMIT_ORDER) {
-            const ctNode = ct.nodes[ctNodeId];
-            if (ctNode?.kind === 'step' && ctNode.doc_path != null) {
-              const title = titleForPhaseCorrectiveChild(ctNodeId, phaseNum, ct.index) + ' (Phase-C' + ct.index + ')';
-              const category: OrderedDoc['category'] = ctNodeId === 'code_review' ? 'review' : 'phase';
-              push(ctNode.doc_path, title, category);
+          if (ct.doc_path != null) {
+            push(ct.doc_path, titleForPhaseCorrectiveChild('task_handoff', phaseNum, ct.index), 'phase');
+          }
+          const ctReview = ct.nodes['code_review'];
+          if (ctReview?.kind === 'step' && ctReview.doc_path != null) {
+            push(ctReview.doc_path, titleForPhaseCorrectiveChild('code_review', phaseNum, ct.index), 'review');
+          }
+          for (const [otherId, otherNode] of Object.entries(ct.nodes)) {
+            if (otherId === 'code_review') continue;
+            if (otherNode.kind === 'step' && otherNode.doc_path != null) {
+              push(otherNode.doc_path, titleForPhaseCorrectiveChild(otherId, phaseNum, ct.index), 'phase');
             }
           }
         }

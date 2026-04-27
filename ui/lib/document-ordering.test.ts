@@ -541,9 +541,8 @@ test('corrective task step nodes append CT suffix with task category', () => {
                       reason: 'failed',
                       injected_after: 'code_review',
                       status: 'completed',
-                      nodes: {
-                        task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/T01-CT1.md', retries: 0 },
-                      },
+                      doc_path: 'tasks/T01-CT1.md',
+                      nodes: {},
                       commit_hash: null,
                     },
                   ],
@@ -562,14 +561,15 @@ test('corrective task step nodes append CT suffix with task category', () => {
   const docs = getOrderedDocsV5(state, 'TEST');
   assert.strictEqual(docs.length, 2);
   assert.strictEqual(docs[0].title, 'P1-T1 Handoff');
-  assert.strictEqual(docs[1].title, 'P1-T1 Handoff (CT1)');
+  assert.strictEqual(docs[1].title, 'P1-T1 CT1');
   assert.strictEqual(docs[1].category, 'task');
   assert.strictEqual(docs[1].path, 'tasks/T01-CT1.md');
 });
 
-test('phase-scope corrective task step nodes append Phase-CN suffix with correct categories', () => {
+test('phase-scope corrective task step nodes emit Phase N CTK labels with correct categories', () => {
   // Mirrors the task-scope corrective test above but for phaseIter.corrective_tasks.
-  // Exercises the additive phase-scope loop added to document-ordering.ts in Iter-11.
+  // Exercises the phase-scope loop: ct.doc_path for the corrective handoff (FR-3 / AD-2),
+  // ct.nodes.code_review for the review (code_review IS a child step node at corrective scope).
   const state = makeV5State({
     phase_loop: {
       kind: 'for_each_phase',
@@ -588,8 +588,8 @@ test('phase-scope corrective task step nodes append Phase-CN suffix with correct
               reason: 'Phase review requested changes',
               injected_after: 'phase_review',
               status: 'completed',
+              doc_path: 'tasks/PROJ-TASK-P01-PHASE-C1.md',
               nodes: {
-                task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/PROJ-TASK-P01-PHASE-C1.md', retries: 0 },
                 code_review: { kind: 'step', status: 'completed', doc_path: 'reports/PROJ-CODE-REVIEW-P01-PHASE-C1.md', retries: 0 },
               },
               commit_hash: null,
@@ -606,10 +606,10 @@ test('phase-scope corrective task step nodes append Phase-CN suffix with correct
   assert.strictEqual(docs.length, 4);
   assert.strictEqual(docs[0].title, 'Phase 1 Plan');
   assert.strictEqual(docs[1].title, 'Phase 1 Review');
-  assert.strictEqual(docs[2].title, 'Phase 1 CT1 (Phase-C1)');
+  assert.strictEqual(docs[2].title, 'Phase 1 CT1');
   assert.strictEqual(docs[2].category, 'phase');
   assert.strictEqual(docs[2].path, 'tasks/PROJ-TASK-P01-PHASE-C1.md');
-  assert.strictEqual(docs[3].title, 'Phase 1 CT1 Review (Phase-C1)');
+  assert.strictEqual(docs[3].title, 'Phase 1 CT1 Review');
   assert.strictEqual(docs[3].category, 'review');
   assert.strictEqual(docs[3].path, 'reports/PROJ-CODE-REVIEW-P01-PHASE-C1.md');
 });
@@ -635,9 +635,8 @@ test('phase-scope corrective docs are sorted by corrective index and interleave 
               reason: 'Phase review second round',
               injected_after: 'phase_review',
               status: 'completed',
-              nodes: {
-                task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/PROJ-TASK-P01-PHASE-C2.md', retries: 0 },
-              },
+              doc_path: 'tasks/PROJ-TASK-P01-PHASE-C2.md',
+              nodes: {},
               commit_hash: null,
             },
             {
@@ -645,9 +644,8 @@ test('phase-scope corrective docs are sorted by corrective index and interleave 
               reason: 'Phase review first round',
               injected_after: 'phase_review',
               status: 'completed',
-              nodes: {
-                task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/PROJ-TASK-P01-PHASE-C1.md', retries: 0 },
-              },
+              doc_path: 'tasks/PROJ-TASK-P01-PHASE-C1.md',
+              nodes: {},
               commit_hash: null,
             },
           ],
@@ -661,10 +659,95 @@ test('phase-scope corrective docs are sorted by corrective index and interleave 
   // phase_review, then corrective C1 (index 1) before C2 (index 2)
   assert.strictEqual(docs.length, 3);
   assert.strictEqual(docs[0].title, 'Phase 1 Review');
-  assert.strictEqual(docs[1].title, 'Phase 1 CT1 (Phase-C1)');
+  assert.strictEqual(docs[1].title, 'Phase 1 CT1');
   assert.strictEqual(docs[1].path, 'tasks/PROJ-TASK-P01-PHASE-C1.md');
-  assert.strictEqual(docs[2].title, 'Phase 1 CT2 (Phase-C2)');
+  assert.strictEqual(docs[2].title, 'Phase 1 CT2');
   assert.strictEqual(docs[2].path, 'tasks/PROJ-TASK-P01-PHASE-C2.md');
+});
+
+test('FR-4 walk order — task with corrective AND phase with phase-scope corrective stays grouped (FR-3, FR-4, NFR-3)', () => {
+  const state = makeV5State({
+    phase_loop: {
+      kind: 'for_each_phase',
+      status: 'in_progress',
+      iterations: [
+        {
+          index: 0,
+          status: 'in_progress',
+          doc_path: 'phases/P01-PLAN.md',
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task',
+              status: 'in_progress',
+              iterations: [
+                {
+                  index: 0,
+                  status: 'in_progress',
+                  doc_path: 'tasks/T01.md',
+                  nodes: {
+                    code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/T01-REVIEW.md', retries: 0 },
+                  },
+                  corrective_tasks: [
+                    {
+                      index: 1,
+                      reason: 'fix one',
+                      injected_after: 'code_review',
+                      status: 'completed',
+                      doc_path: 'tasks/T01-CT1.md',
+                      nodes: {
+                        code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/T01-CT1-REVIEW.md', retries: 0 },
+                      },
+                      commit_hash: null,
+                    },
+                  ],
+                  commit_hash: null,
+                },
+                {
+                  index: 1,
+                  status: 'in_progress',
+                  doc_path: 'tasks/T02.md',
+                  nodes: {
+                    code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/T02-REVIEW.md', retries: 0 },
+                  },
+                  corrective_tasks: [],
+                  commit_hash: null,
+                },
+              ],
+            },
+            phase_review: { kind: 'step', status: 'completed', doc_path: 'reports/P01-REVIEW.md', retries: 0 },
+          },
+          corrective_tasks: [
+            {
+              index: 1,
+              reason: 'phase fix',
+              injected_after: 'phase_review',
+              status: 'completed',
+              doc_path: 'tasks/P01-PCT1.md',
+              nodes: {
+                code_review: { kind: 'step', status: 'completed', doc_path: 'reports/P01-PCT1-REVIEW.md', retries: 0 },
+              },
+              commit_hash: null,
+            },
+          ],
+          commit_hash: null,
+        },
+      ],
+    },
+  });
+
+  const docs = getOrderedDocsV5(state, 'PROJ');
+  assert.deepStrictEqual(docs.map((d) => d.title), [
+    'Phase 1 Plan',
+    'P1-T1 Handoff',
+    'P1-T1 Review',
+    'P1-T1 CT1',
+    'P1-T1 CT1 Review',
+    'P1-T2 Handoff',           // walk advances to next task only after T1's correctives
+    'P1-T2 Review',
+    'Phase 1 Review',
+    'Phase 1 CT1',
+    'Phase 1 CT1 Review',
+  ]);
 });
 
 test('gate and conditional nodes are skipped (no documents produced)', () => {
@@ -766,9 +849,8 @@ test('full integration: planning + phase iteration with task iteration + correct
                       reason: 'failed review',
                       injected_after: 'code_review',
                       status: 'completed',
-                      nodes: {
-                        task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/T01-CT1.md', retries: 0 },
-                      },
+                      doc_path: 'tasks/T01-CT1.md',
+                      nodes: {},
                       commit_hash: null,
                     },
                   ],
@@ -799,7 +881,7 @@ test('full integration: planning + phase iteration with task iteration + correct
     'Phase 1 Plan',
     'P1-T1 Handoff',
     'P1-T1 Review',
-    'P1-T1 Handoff (CT1)',
+    'P1-T1 CT1',
     'Phase 1 Report',
   ]);
 
