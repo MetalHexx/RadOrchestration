@@ -47,6 +47,23 @@ const STATUS_PRIORITY_URGENT_FIRST = {
   notInitialized: 9,
 } as const;
 
+// FR-15 / AD-4 — Done-first priority map. NOT a literal `priority * -1` of
+// STATUS_PRIORITY_URGENT_FIRST: that would flip notInitialized to the top,
+// contradicting the "pinned bottom in both directions" invariant. Built as
+// an explicit lookup so the bottom-pin survives.
+const STATUS_PRIORITY_DONE_FIRST = {
+  complete: 0,
+  notStarted: 1,
+  planned: 2,
+  planning: 3,
+  finalReview: 4,
+  approved: 5,
+  executing: 6,
+  malformed: 7,
+  halted: 8,
+  notInitialized: 9,   // FR-15 — still bottom
+} as const;
+
 type StatusBucket = keyof typeof STATUS_PRIORITY_URGENT_FIRST;
 
 function classifyStatus(p: ProjectSummary): StatusBucket {
@@ -89,8 +106,10 @@ function compareField(
   dir: SortDirection
 ): number {
   if (field === 'status') {
-    const result = getStatusPriority(a) - getStatusPriority(b);
-    return dir === 'desc' ? result * -1 : result;
+    const aBucket = classifyStatus(a);
+    const bBucket = classifyStatus(b);
+    const map = dir === 'desc' ? STATUS_PRIORITY_DONE_FIRST : STATUS_PRIORITY_URGENT_FIRST;
+    return map[aBucket] - map[bBucket];
   }
 
   if (field === 'name') {

@@ -59,6 +59,23 @@ const STATUS_PRIORITY_URGENT_FIRST = {
   notInitialized: 9,
 } as const;
 
+// FR-15 / AD-4 — Done-first priority map. NOT a literal `priority * -1` of
+// STATUS_PRIORITY_URGENT_FIRST: that would flip notInitialized to the top,
+// contradicting the "pinned bottom in both directions" invariant. Built as
+// an explicit lookup so the bottom-pin survives.
+const STATUS_PRIORITY_DONE_FIRST = {
+  complete: 0,
+  notStarted: 1,
+  planned: 2,
+  planning: 3,
+  finalReview: 4,
+  approved: 5,
+  executing: 6,
+  malformed: 7,
+  halted: 8,
+  notInitialized: 9,   // FR-15 — still bottom
+} as const;
+
 type StatusBucket = keyof typeof STATUS_PRIORITY_URGENT_FIRST;
 
 function classifyStatus(p: ProjectSummary): StatusBucket {
@@ -101,8 +118,10 @@ function compareField(
   dir: SortDirection
 ): number {
   if (field === 'status') {
-    const result = getStatusPriority(a) - getStatusPriority(b);
-    return dir === 'desc' ? result * -1 : result;
+    const aBucket = classifyStatus(a);
+    const bBucket = classifyStatus(b);
+    const map = dir === 'desc' ? STATUS_PRIORITY_DONE_FIRST : STATUS_PRIORITY_URGENT_FIRST;
+    return map[aBucket] - map[bBucket];
   }
   if (field === 'name') {
     const result = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
@@ -288,22 +307,22 @@ async function run() {
       'Active v5 rows (slots 2, 7) must all sort before any fallback row (slot 9)');
   });
 
-  await test('Status descending — reverse priority order ends at halted', async () => {
+  await test('Status descending — Done first order, Not Initialized pinned bottom', async () => {
     const config: SortConfig = { primary: 'status', primaryDir: 'desc', secondary: 'name', secondaryDir: 'asc' };
     const fixtures = [...allBuckets];
     const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, config));
     const names = sorted.map(p => p.name);
 
-    // desc = highest slot first → 9, 9, 8, 7, 2, 1, 0
+    // desc uses DONE_FIRST map: complete(0) → notStarted(1) → executing(6) → malformed(7) → halted(8) → notInitialized(9,9)
     // Within the slot-9 tie, secondary 'name asc' breaks: FallbackLegacy < FallbackUndefined.
     assert.deepStrictEqual(names, [
-      'FallbackLegacy',    // slot 9
-      'FallbackUndefined', // slot 9
-      'Completed',         // slot 8
-      'NotStarted',        // slot 7
-      'InProgress',        // slot 2
-      'Malformed',         // slot 1
-      'Halted',            // slot 0
+      'Completed',         // slot 0 (DONE_FIRST: complete=0)
+      'NotStarted',        // slot 1 (DONE_FIRST: notStarted=1)
+      'InProgress',        // slot 6 (DONE_FIRST: executing=6)
+      'Malformed',         // slot 7 (DONE_FIRST: malformed=7)
+      'Halted',            // slot 8 (DONE_FIRST: halted=8)
+      'FallbackLegacy',    // slot 9 — FR-15 pinned bottom
+      'FallbackUndefined', // slot 9 — FR-15 pinned bottom
     ]);
   });
 
@@ -409,6 +428,27 @@ async function run() {
   await test('AD-5 — Final Review sits between Approved and Planning', async () => {
     assert.ok(getStatusPriority(fxApproved) < getStatusPriority(fxFinalReview));
     assert.ok(getStatusPriority(fxFinalReview) < getStatusPriority(fxPlanning));
+  });
+
+  await test('FR-15 — Done first reverses through active states with Not Initialized pinned bottom', async () => {
+    const config: SortConfig = { primary: 'status', primaryDir: 'desc', secondary: 'name', secondaryDir: 'asc' };
+    const fixtures = [fxComplete, fxNotStarted, fxPlanned, fxPlanning, fxFinalReview, fxApproved, fxExecuting, fxMalformed, fxHalted, fxNotInitialized];
+    const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, config));
+    assert.deepStrictEqual(sorted.map((p) => p.name), [
+      'Complete', 'NotStarted', 'Planned', 'Planning', 'FinalReview',
+      'Approved', 'Executing', 'Malformed', 'Halted',
+      'NotInitialized',  // FR-15 — pinned bottom in desc direction too
+    ]);
+  });
+
+  await test('FR-15 — Not Initialized pinned bottom in BOTH directions', async () => {
+    const ascConfig:  SortConfig = { primary: 'status', primaryDir: 'asc',  secondary: 'name', secondaryDir: 'asc' };
+    const descConfig: SortConfig = { primary: 'status', primaryDir: 'desc', secondary: 'name', secondaryDir: 'asc' };
+    const fixtures = [fxNotInitialized, fxExecuting, fxComplete, fxHalted];
+    const ascSorted  = [...fixtures].sort((a, b) => compareSortConfig(a, b, ascConfig));
+    const descSorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, descConfig));
+    assert.strictEqual(ascSorted[ascSorted.length - 1].name,   'NotInitialized', 'asc: NotInitialized must be last');
+    assert.strictEqual(descSorted[descSorted.length - 1].name, 'NotInitialized', 'desc: NotInitialized must be last');
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);
