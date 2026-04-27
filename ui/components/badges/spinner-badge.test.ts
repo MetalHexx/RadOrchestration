@@ -65,12 +65,15 @@ function simulateSpinnerBadge(props: SpinnerBadgeProps): RenderResult {
     showsSpinner: props.isSpinning,
     showsCheckmark,
     showsX,
-    showsDot: !props.isSpinning && !showsCheckmark && !showsX,
+    // FR-5 / AD-5 / DD-3 — dot fallback removed. When nothing spins,
+    // is complete, or is rejected, the icon slot renders nothing.
+    showsDot: false,
     label: props.label,
     backgroundColor,
     color,
     iconColor: (props.isSpinning || showsCheckmark || showsX) ? `var(${props.cssVar})` : null,
-    dotBackgroundColor: (!props.isSpinning && !showsCheckmark && !showsX) ? `var(${props.cssVar})` : null,
+    // FR-5 — no dot is ever drawn; this is always null.
+    dotBackgroundColor: null,
     showsLabel: !props.hideLabel,
   };
 }
@@ -108,25 +111,25 @@ test("isSpinning=true still renders the label text", () => {
   assert.strictEqual(result.label, "Executing");
 });
 
-console.log("\nisSpinning=false (dot)");
+console.log("\nisSpinning=false (no icon)");
 
-test("isSpinning=false renders dot, not spinner", () => {
+test("FR-5 isSpinning=false (no other flag) renders nothing in the icon slot — no dot", () => {
   const result = simulateSpinnerBadge({
     label: "Complete",
     cssVar: "--tier-complete",
     isSpinning: false,
   });
-  assert.strictEqual(result.showsDot, true);
+  assert.strictEqual(result.showsDot, false);
   assert.strictEqual(result.showsSpinner, false);
 });
 
-test("isSpinning=false sets dot background color to var(cssVar)", () => {
+test("FR-5 isSpinning=false leaves dotBackgroundColor null (dot removed)", () => {
   const result = simulateSpinnerBadge({
     label: "Complete",
     cssVar: "--tier-complete",
     isSpinning: false,
   });
-  assert.strictEqual(result.dotBackgroundColor, "var(--tier-complete)");
+  assert.strictEqual(result.dotBackgroundColor, null);
   assert.strictEqual(result.iconColor, null);
 });
 
@@ -251,24 +254,24 @@ test("isComplete=true is ignored when isSpinning=true (spinner wins)", () => {
   assert.strictEqual(result.showsDot, false);
 });
 
-test("isComplete=false (explicit) falls through to dot", () => {
+test("FR-5 isComplete=false (explicit) leaves the icon slot empty (dot removed)", () => {
   const result = simulateSpinnerBadge({
     label: "Not Started",
     cssVar: "--status-not-started",
     isSpinning: false,
     isComplete: false,
   });
-  assert.strictEqual(result.showsDot, true);
+  assert.strictEqual(result.showsDot, false);
   assert.strictEqual(result.showsCheckmark, false);
 });
 
-test("isComplete omitted (undefined) falls through to dot", () => {
+test("FR-5 isComplete omitted leaves the icon slot empty (dot removed)", () => {
   const result = simulateSpinnerBadge({
     label: "Not Started",
     cssVar: "--status-not-started",
     isSpinning: false,
   });
-  assert.strictEqual(result.showsDot, true);
+  assert.strictEqual(result.showsDot, false);
   assert.strictEqual(result.showsCheckmark, false);
 });
 
@@ -385,15 +388,37 @@ test("isRejected=true + hideLabel=true → X icon shown, label hidden", () => {
   assert.strictEqual(result.ariaLabel, "Rejected");
 });
 
-test("isRejected=false (explicit) falls through to dot", () => {
+test("FR-5 isRejected=false (explicit) leaves the icon slot empty (dot removed)", () => {
   const result = simulateSpinnerBadge({
     label: "Not Started",
     cssVar: "--status-not-started",
     isSpinning: false,
     isRejected: false,
   });
-  assert.strictEqual(result.showsDot, true);
+  assert.strictEqual(result.showsDot, false);
   assert.strictEqual(result.showsX, false);
+});
+
+import { readFileSync as readFileSyncSB } from 'node:fs';
+import { join as joinSB, dirname as dirnameSB } from 'node:path';
+import { fileURLToPath as fileURLToPathSB } from 'node:url';
+const __dirname_sb = dirnameSB(fileURLToPathSB(import.meta.url));
+const SB_SOURCE = readFileSyncSB(joinSB(__dirname_sb, 'spinner-badge.tsx'), 'utf8');
+
+console.log("\nFR-5 / AD-5 dot-fallback removal");
+
+test("AD-5 SpinnerBadge source no longer contains a rounded-full dot span", () => {
+  // The dot fallback was the only consumer of `rounded-full` in this file.
+  assert.ok(!/rounded-full/.test(SB_SOURCE),
+    "spinner-badge.tsx must no longer render a rounded-full dot span");
+});
+
+test("AD-5 SpinnerBadge keeps the four-priority chain shape (spinner → check → X → null)", () => {
+  // Loader2, Check, X must still be present; nothing else should
+  // appear in the icon slot.
+  assert.ok(/Loader2/.test(SB_SOURCE), "Loader2 still rendered");
+  assert.ok(/Check/.test(SB_SOURCE), "Check still rendered");
+  assert.ok(/\bX\b/.test(SB_SOURCE), "X still rendered");
 });
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
