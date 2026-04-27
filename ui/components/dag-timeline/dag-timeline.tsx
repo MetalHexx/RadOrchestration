@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { NodesRecord, NodeState, NodeStatus } from '@/types/state';
 import { DAGNodeRow } from './dag-node-row';
 import { DAGLoopNode } from './dag-loop-node';
-import { isLoopNode, groupNodesBySection, NODE_SECTION_MAP } from './dag-timeline-helpers';
+import { isLoopNode, groupNodesBySection, NODE_SECTION_MAP, shouldRenderTimelineRow } from './dag-timeline-helpers';
+import type { CompatibleNodeState } from './dag-timeline-helpers';
 import { DAGSectionGroup } from './dag-section-group';
 
 interface DAGTimelineProps {
@@ -216,10 +217,14 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
     >
       {groups.map((group) => (
         <DAGSectionGroup key={group.label} label={group.label}>
-          {group.entries.map(renderNodeEntry)}
+          {group.entries
+            .filter(([nodeId, node]) => shouldRenderTimelineRow(nodeId, node as CompatibleNodeState, { commitHash: null, prUrl: prUrl ?? null }))
+            .map(renderNodeEntry)}
         </DAGSectionGroup>
       ))}
-      {unmatchedEntries.map(renderNodeEntry)}
+      {unmatchedEntries
+        .filter(([nodeId, node]) => shouldRenderTimelineRow(nodeId, node as CompatibleNodeState, { commitHash: null, prUrl: prUrl ?? null }))
+        .map(renderNodeEntry)}
     </div>
   );
 }

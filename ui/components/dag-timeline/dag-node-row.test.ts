@@ -854,18 +854,6 @@ function test4(name: string, fn: () => void) {
   }
 }
 
-test4("AD-8 DAGNodeRow accepts an optional verdictPill prop", () => {
-  assert.ok(/verdictPill\??:\s*React\.ReactNode/.test(ROW_SOURCE) ||
-            /verdictPill\??:\s*ReactNode/.test(ROW_SOURCE),
-    "DAGNodeRow props must include optional verdictPill: ReactNode (AD-8)");
-});
-test4("AD-8 DAGNodeRow renders verdictPill after the status badge when provided", () => {
-  // Source-shape check: verdictPill is rendered between the status
-  // badge and the name span / branch indicator block.
-  assert.ok(/\{verdictPill\}/.test(ROW_SOURCE),
-    "DAGNodeRow must render {verdictPill} (AD-8)");
-});
-
 test4("FR-17/DD-13 flat-row container retains pr-3 gutter", () => {
   assert.ok(/'py-2 pr-3 rounded-md/.test(ROW_SOURCE) || /pr-3 rounded-md gap-2 flex/.test(ROW_SOURCE),
     "flat-row container must carry pr-3 gutter (FR-17, DD-13)");
@@ -899,7 +887,7 @@ test4("aria-label is derived from the resolved badge {status,label} — not raw 
   // shows "Not Started" but raw node.status would announce "In Progress").
   assert.ok(/aria-label=\{`\$\{getDisplayName\(nodeId\)\} — \$\{resolvedBadge\.label\}`\}/.test(ROW_SOURCE),
     "aria-label must be `${getDisplayName(nodeId)} — ${resolvedBadge.label}` — single source of truth with the badge");
-  assert.ok(!/STATUS_MAP\[node\.status\]\.defaultLabel/.test(ROW_SOURCE.replace(/derivePlanningStepLabel\(nodeId, node\.status\) \?\? STATUS_MAP\[node\.status\]\.defaultLabel/g, '')),
+  assert.ok(!/STATUS_MAP\[node\.status\]\.defaultLabel/.test(ROW_SOURCE.replace(/planningLabel \?\? STATUS_MAP\[node\.status\]\.defaultLabel/g, '')),
     "aria-label must not consume STATUS_MAP[node.status].defaultLabel directly outside of the resolvedBadge fallback");
 });
 

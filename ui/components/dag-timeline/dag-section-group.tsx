@@ -29,7 +29,7 @@ export function DAGSectionGroup({ label, children }: DAGSectionGroupProps) {
       <div aria-hidden="true" className={SECTION_LABEL_CLASSES}>{label}</div>
       {isCardSection(label) ? (
         <div className={CARD_SHELL_CLASSES}>
-          <div className="px-2 py-2">{children}</div>
+          <div className="py-2">{children}</div>
         </div>
       ) : (
         children

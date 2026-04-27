@@ -6,11 +6,11 @@ import { DAGNodeRow } from './dag-node-row';
 import { DAGCorrectiveTaskGroup } from './dag-corrective-task-group';
 import { DAGLoopNode } from './dag-loop-node';
 import { DocumentLink, ExternalLink } from '@/components/documents';
-import { ReviewVerdictBadge } from '@/components/badges';
 import { ProgressBar } from '@/components/execution/progress-bar';
 import { NodeStatusBadge } from './node-status-badge';
-import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, buildIterationItemValue, deriveIterationTaskProgress, deriveIterationBadgeLabel } from './dag-timeline-helpers';
-import type { IterationEntry, ReviewVerdict } from '@/types/state';
+import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, buildIterationItemValue, deriveIterationTaskProgress, deriveIterationBadgeLabel, shouldRenderTimelineRow } from './dag-timeline-helpers';
+import type { CompatibleNodeState } from './dag-timeline-helpers';
+import type { IterationEntry } from '@/types/state';
 
 interface DAGIterationPanelProps {
   iteration: IterationEntry;
@@ -126,10 +126,9 @@ export function DAGIterationPanel({
   }
 
   if (parentKind === 'for_each_phase') {
-    const phaseReviewNode = iteration.nodes['phase_review'];
-    const phaseReviewVerdict = phaseReviewNode?.kind === 'step' ? (phaseReviewNode.verdict ?? null) : null;
     const progress = deriveIterationTaskProgress(iteration);
-    const headerAriaLabel = `Phase iteration ${iterationIndex + 1} — ${iterationName} — ${iteration.status}`;
+    const derivedBadge = deriveIterationBadgeLabel(iteration);
+    const headerAriaLabel = `Phase iteration ${iterationIndex + 1} — ${iterationName} — ${derivedBadge.label}`;
     const hasPhasePlan = iteration.doc_path != null && iteration.doc_path !== '';
     return (
       <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
@@ -146,16 +145,11 @@ export function DAGIterationPanel({
                 tabIndex={isFocused ? 0 : -1}
                 onFocus={handleFocus}
               >
-                {(() => {
-                  const derived = deriveIterationBadgeLabel(iteration);
-                  return (
-                    <NodeStatusBadge
-                      status={derived.status}
-                      label={derived.label}
-                      iconOnly={iteration.status === 'completed'}
-                    />
-                  );
-                })()}
+                <NodeStatusBadge
+                  status={derivedBadge.status}
+                  label={derivedBadge.label}
+                  iconOnly={iteration.status === 'completed'}
+                />
                 <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
                   {iterationName}
                 </span>
@@ -186,7 +180,9 @@ export function DAGIterationPanel({
           <AccordionContent>
             <div className="border-l border-border pl-3 ml-3">
               {/* Body: task iteration list (phase_review verdict now rendered inline on its row, see DD-11/FR-16) */}
-              {Object.entries(iteration.nodes).map(([childNodeId, childNode]) => {
+              {Object.entries(iteration.nodes).filter(([childNodeId, childNode]) =>
+                shouldRenderTimelineRow(childNodeId, childNode as CompatibleNodeState, { commitHash: iteration.commit_hash ?? null, prUrl: null })
+              ).map(([childNodeId, childNode]) => {
                 const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
                 return isLoopNode(childNode) ? (
                   <DAGLoopNode
@@ -213,11 +209,6 @@ export function DAGIterationPanel({
                     onDocClick={onDocClick}
                     isFocused={focusedRowKey === childKey}
                     onFocusChange={onFocusChange}
-                    verdictPill={
-                      childNodeId === 'phase_review' && phaseReviewVerdict != null
-                        ? <ReviewVerdictBadge verdict={phaseReviewVerdict as ReviewVerdict} />
-                        : undefined
-                    }
                   />
                 );
               })}
@@ -241,7 +232,8 @@ export function DAGIterationPanel({
   }
 
   // for_each_task branch (FR-5, FR-9)
-  const headerAriaLabel = `Task iteration ${iterationIndex + 1} — ${iterationName} — ${iteration.status}`;
+  const derivedBadge = deriveIterationBadgeLabel(iteration);
+  const headerAriaLabel = `Task iteration ${iterationIndex + 1} — ${iterationName} — ${derivedBadge.label}`;
   const hasTaskHandoff = iteration.doc_path != null && iteration.doc_path !== '';
   const hasCommitLink = commitData !== null && iteration.commit_hash != null;
   const hasAnyTaskTrailing = hasTaskHandoff || hasCommitLink;
@@ -260,16 +252,11 @@ export function DAGIterationPanel({
               tabIndex={isFocused ? 0 : -1}
               onFocus={handleFocus}
             >
-              {(() => {
-                const derived = deriveIterationBadgeLabel(iteration);
-                return (
-                  <NodeStatusBadge
-                    status={derived.status}
-                    label={derived.label}
-                    iconOnly={iteration.status === 'completed'}
-                  />
-                );
-              })()}
+              <NodeStatusBadge
+                status={derivedBadge.status}
+                label={derivedBadge.label}
+                iconOnly={iteration.status === 'completed'}
+              />
               <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
                 {iterationName}
               </span>
@@ -318,7 +305,9 @@ export function DAGIterationPanel({
           )}
         </div>
         <AccordionContent>
-          {Object.entries(iteration.nodes).map(([childNodeId, childNode]) => {
+          {Object.entries(iteration.nodes).filter(([childNodeId, childNode]) =>
+            shouldRenderTimelineRow(childNodeId, childNode as CompatibleNodeState, { commitHash: iteration.commit_hash ?? null, prUrl: null })
+          ).map(([childNodeId, childNode]) => {
             const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
             return isLoopNode(childNode) ? (
               <DAGLoopNode

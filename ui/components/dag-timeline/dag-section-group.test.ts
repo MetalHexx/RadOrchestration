@@ -118,7 +118,7 @@ test("AD-5 CARD_SHELL_CLASSES uses border + rounded + bg-card tokens", () => {
   assert.ok(CARD_SHELL_CLASSES.includes("bg-card"));
 });
 
-test("getCardClasses returns shell classes for Planning/Completion, empty for Execution (DD-9, DD-10)", () => {
+test("isCardSection + CARD_SHELL_CLASSES applies shell classes only to card sections (DD-9, DD-10)", () => {
   assert.strictEqual((isCardSection("Planning") ? CARD_SHELL_CLASSES : ""), CARD_SHELL_CLASSES);
   assert.strictEqual((isCardSection("Completion") ? CARD_SHELL_CLASSES : ""), CARD_SHELL_CLASSES);
   assert.strictEqual((isCardSection("Execution") ? CARD_SHELL_CLASSES : ""), "");

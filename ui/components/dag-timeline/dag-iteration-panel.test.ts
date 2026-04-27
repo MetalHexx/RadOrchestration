@@ -613,31 +613,6 @@ test('dag-iteration-panel.tsx Phase Plan DocumentLink is a SIBLING of AccordionT
   );
 });
 
-test('dag-iteration-panel.tsx imports ReviewVerdictBadge from @/components/badges (FR-4, DD-6)', () => {
-  assert.ok(
-    /import\s+\{[^}]*\bReviewVerdictBadge\b[^}]*\}\s+from\s+['"]@\/components\/badges['"]/.test(iterationPanelSource),
-    'iteration panel must import ReviewVerdictBadge so the body footer can render the verdict badge when present (FR-4, DD-6)'
-  );
-});
-
-test('dag-iteration-panel.tsx renders <ReviewVerdictBadge> in the for_each_phase body footer when verdict is present (FR-4, DD-6)', () => {
-  // Body-footer placement: the badge must NOT live inside the AccordionTrigger
-  // (it belongs in the expanded body alongside Phase Report / Phase Review),
-  // and the file must reference the iteration's phase_review step verdict.
-  assert.ok(
-    /<ReviewVerdictBadge\b[^>]*verdict=\{[^}]*phaseReviewNode[^}]*verdict[^}]*\}/.test(iterationPanelSource)
-    || /<ReviewVerdictBadge\b[^>]*verdict=\{[^}]*phaseReviewVerdict[^}]*\}/.test(iterationPanelSource),
-    'body footer must render <ReviewVerdictBadge verdict={...}> sourced from the iteration phase_review step node (FR-4, DD-6)'
-  );
-  const triggerOpenIdx = iterationPanelSource.indexOf('<AccordionTrigger');
-  const triggerCloseIdx = iterationPanelSource.indexOf('</AccordionTrigger>');
-  const triggerInner = iterationPanelSource.slice(triggerOpenIdx, triggerCloseIdx);
-  assert.ok(
-    !/<ReviewVerdictBadge\b/.test(triggerInner),
-    '<ReviewVerdictBadge> must render in the expanded body footer, not inside the <AccordionTrigger> (DD-6 — Phase Report / Phase Review / verdict all live in the body, not the header)'
-  );
-});
-
 test('dag-iteration-panel.tsx renders <DAGCorrectiveTaskGroup> in BOTH the for_each_phase accordion body AND the for_each_task fallthrough (FR-3, FR-4, NFR-1)', () => {
   const src = readFileSync(
     join(__dirname, 'dag-iteration-panel.tsx'),
@@ -901,16 +876,6 @@ test("FR-16 phase-iteration body has no border-t footer block", () => {
   // is removed; verdict surfaces on the phase_review row itself.
   assert.ok(!/border-t pl-2/.test(PANEL_SOURCE),
     "phase iteration footer (border-t pl-2) must be removed (FR-16)");
-});
-
-test("AD-8 phase-iteration body wires verdictPill on phase_review DAGNodeRow", () => {
-  assert.ok(/verdictPill=/.test(PANEL_SOURCE),
-    "phase_review DAGNodeRow must receive a verdictPill (AD-8)");
-});
-
-test("DD-11 ReviewVerdictBadge still imported (rendered via verdictPill slot)", () => {
-  assert.ok(/ReviewVerdictBadge/.test(PANEL_SOURCE),
-    "ReviewVerdictBadge import retained for verdictPill slot (DD-11)");
 });
 
 console.log("\nDAGIterationPanel FR-18 legacy-fallback regression assertions\n");

@@ -3,6 +3,34 @@ import { STATUS_MAP } from './node-status-map';
 
 export type CompatibleNodeState = StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState;
 
+export interface RowVisibilityContext {
+  prUrl: string | null;
+  commitHash: string | null;
+}
+
+/**
+ * Hide rows that add no signal beyond what the project header already
+ * surfaces (auto_commit / auto_pr / gate_mode badges). Hiding a gate
+ * conditional does not orphan its child action — the executor flattens
+ * branch_true children into the parent scope's nodes dict.
+ */
+export function shouldRenderTimelineRow(
+  nodeId: string,
+  node: CompatibleNodeState,
+  ctx: RowVisibilityContext,
+): boolean {
+  if (nodeId === 'commit_gate' || nodeId === 'pr_gate') return false;
+
+  if (node.kind === 'gate' && (nodeId === 'task_gate' || nodeId === 'phase_gate')) {
+    if (node.gate_active === false) return false;
+  }
+
+  if (nodeId === 'commit' && (ctx.commitHash == null || ctx.commitHash === '')) return false;
+  if (nodeId === 'final_pr' && (ctx.prUrl == null || ctx.prUrl === '')) return false;
+
+  return true;
+}
+
 export function deriveRepoBaseUrl(compareUrl: string | null): string | null {
   if (compareUrl == null) return null;
   if (compareUrl.trim().length === 0) return null;
@@ -97,7 +125,7 @@ function extractLeaf(nodeId: string): string {
  * title-casing (`final_pr` → `Final Pr`); these entries restore the
  * intended capitalization for known acronyms surfaced as row titles.
  */
-export const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
+const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
   final_pr: 'Final PR',
   pr_gate: 'PR Gate',
 };
@@ -229,7 +257,7 @@ export const NODE_SECTION_MAP: Record<string, SectionLabel> = {
 // (e.g. ✓ Requirements ░Requirements). Iteration trigger labels (Phase Plan /
 // Task Handoff / Handoff / Pull Request) are hard-coded at the call site
 // and remain typed because they don't duplicate the trigger title.
-export const DOC_LINK_LABELS: Record<string, string> = {
+const DOC_LINK_LABELS: Record<string, string> = {
   research:        'Document',
   prd:             'Document',
   design:          'Document',
@@ -250,7 +278,7 @@ export const DOC_LINK_LABELS: Record<string, string> = {
  * not in `DOC_LINK_LABELS`.
  */
 export function getDocLinkLabel(nodeId: string): string {
-  const leaf = nodeId.includes('.') ? nodeId.slice(nodeId.lastIndexOf('.') + 1) : nodeId;
+  const leaf = extractLeaf(nodeId);
   return DOC_LINK_LABELS[leaf] ?? getDisplayName(nodeId);
 }
 

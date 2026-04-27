@@ -805,7 +805,7 @@ test("FR-4 gate_active=false uses underlying status default", () => {
   assert.deepStrictEqual(deriveGateBadgeStatusAndLabel(node), { status: 'completed', label: 'Completed' });
 });
 
-import { getDocLinkLabel, DOC_LINK_LABELS } from './dag-timeline-helpers';
+import { getDocLinkLabel } from './dag-timeline-helpers';
 
 console.log("\ngetDocLinkLabel tests\n");
 
@@ -833,12 +833,93 @@ test("unknown leaf falls back to getDisplayName", () => {
   assert.strictEqual(getDocLinkLabel('something_custom'), 'Something Custom');
 });
 
-test("DOC_LINK_LABELS is exported and contains all bucketed ids", () => {
-  const required = ['research','prd','design','architecture','requirements','master_plan',
-    'code_review','phase_report','phase_review','final_review'];
-  for (const id of required) {
-    assert.ok(Object.hasOwn(DOC_LINK_LABELS, id), `${id} missing from DOC_LINK_LABELS`);
-  }
+test("getDocLinkLabel returns the correct bucket for every bucketed id", () => {
+  const documentIds = ['research','prd','design','architecture','requirements','master_plan'];
+  const reportIds = ['code_review','phase_report','phase_review','final_review'];
+  for (const id of documentIds) assert.strictEqual(getDocLinkLabel(id), 'Document');
+  for (const id of reportIds) assert.strictEqual(getDocLinkLabel(id), 'Report');
+});
+
+import { shouldRenderTimelineRow } from './dag-timeline-helpers';
+import type { RowVisibilityContext } from './dag-timeline-helpers';
+
+console.log("\nshouldRenderTimelineRow tests\n");
+
+const emptyCtx: RowVisibilityContext = { commitHash: null, prUrl: null };
+const ctxWithCommit: RowVisibilityContext = { commitHash: 'abc123', prUrl: null };
+const ctxWithPr: RowVisibilityContext = { prUrl: 'https://github.com/user/repo/pull/1', commitHash: null };
+
+test("commit_gate always hidden regardless of context", () => {
+  const node: import('@/types/state').ConditionalNodeState = { kind: 'conditional', status: 'completed', branch_taken: 'true' };
+  assert.strictEqual(shouldRenderTimelineRow('commit_gate', node, emptyCtx), false);
+  assert.strictEqual(shouldRenderTimelineRow('commit_gate', node, ctxWithCommit), false);
+  assert.strictEqual(shouldRenderTimelineRow('commit_gate', node, ctxWithPr), false);
+});
+
+test("pr_gate always hidden", () => {
+  const node: import('@/types/state').GateNodeState = { kind: 'gate', status: 'completed', gate_active: false };
+  assert.strictEqual(shouldRenderTimelineRow('pr_gate', node, emptyCtx), false);
+  assert.strictEqual(shouldRenderTimelineRow('pr_gate', node, ctxWithPr), false);
+});
+
+test("task_gate with gate_active: false returns false", () => {
+  const node: import('@/types/state').GateNodeState = { kind: 'gate', status: 'completed', gate_active: false };
+  assert.strictEqual(shouldRenderTimelineRow('task_gate', node, emptyCtx), false);
+});
+
+test("task_gate with gate_active: true returns true", () => {
+  const node: import('@/types/state').GateNodeState = { kind: 'gate', status: 'not_started', gate_active: true };
+  assert.strictEqual(shouldRenderTimelineRow('task_gate', node, emptyCtx), true);
+});
+
+test("phase_gate with gate_active: false returns false", () => {
+  const node: import('@/types/state').GateNodeState = { kind: 'gate', status: 'completed', gate_active: false };
+  assert.strictEqual(shouldRenderTimelineRow('phase_gate', node, emptyCtx), false);
+});
+
+test("phase_gate with gate_active: true returns true", () => {
+  const node: import('@/types/state').GateNodeState = { kind: 'gate', status: 'not_started', gate_active: true };
+  assert.strictEqual(shouldRenderTimelineRow('phase_gate', node, emptyCtx), true);
+});
+
+test("commit with commitHash: null returns false", () => {
+  const node: import('@/types/state').StepNodeState = { kind: 'step', status: 'completed', doc_path: null, retries: 0 };
+  assert.strictEqual(shouldRenderTimelineRow('commit', node, { commitHash: null, prUrl: null }), false);
+});
+
+test("commit with commitHash: '' returns false", () => {
+  const node: import('@/types/state').StepNodeState = { kind: 'step', status: 'completed', doc_path: null, retries: 0 };
+  assert.strictEqual(shouldRenderTimelineRow('commit', node, { commitHash: '', prUrl: null }), false);
+});
+
+test("commit with commitHash: 'abc123' returns true", () => {
+  const node: import('@/types/state').StepNodeState = { kind: 'step', status: 'completed', doc_path: null, retries: 0 };
+  assert.strictEqual(shouldRenderTimelineRow('commit', node, { commitHash: 'abc123', prUrl: null }), true);
+});
+
+test("final_pr with prUrl: null returns false", () => {
+  const node: import('@/types/state').StepNodeState = { kind: 'step', status: 'completed', doc_path: null, retries: 0 };
+  assert.strictEqual(shouldRenderTimelineRow('final_pr', node, { commitHash: null, prUrl: null }), false);
+});
+
+test("final_pr with prUrl: '' returns false", () => {
+  const node: import('@/types/state').StepNodeState = { kind: 'step', status: 'completed', doc_path: null, retries: 0 };
+  assert.strictEqual(shouldRenderTimelineRow('final_pr', node, { commitHash: null, prUrl: '' }), false);
+});
+
+test("final_pr with prUrl: 'https://github.com/user/repo/pull/1' returns true", () => {
+  const node: import('@/types/state').StepNodeState = { kind: 'step', status: 'completed', doc_path: null, retries: 0 };
+  assert.strictEqual(shouldRenderTimelineRow('final_pr', node, { commitHash: null, prUrl: 'https://github.com/user/repo/pull/1' }), true);
+});
+
+test("unrelated node 'requirements' (kind: 'step') always returns true", () => {
+  const node: import('@/types/state').StepNodeState = { kind: 'step', status: 'completed', doc_path: null, retries: 0 };
+  assert.strictEqual(shouldRenderTimelineRow('requirements', node, emptyCtx), true);
+});
+
+test("unrelated node 'master_plan' always returns true", () => {
+  const node: import('@/types/state').StepNodeState = { kind: 'step', status: 'not_started', doc_path: null, retries: 0 };
+  assert.strictEqual(shouldRenderTimelineRow('master_plan', node, emptyCtx), true);
 });
 
 import { derivePlanningStepLabel } from './dag-timeline-helpers';
