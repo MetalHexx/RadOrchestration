@@ -29,26 +29,57 @@ const STORAGE_KEY = "monitoring-ui-sort-config";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// FR-14 / AD-4 — Urgent-first priority map keyed off the same four fields
+// the row badge reads (`tier`, `planningStatus`, `executionStatus`,
+// `hasMalformedState`). Lower number = higher urgency = floats to top in
+// `asc` ('Urgent first') direction. Slot 9 is the bottom (Not Initialized
+// and any unrecognized combination — see AD-4 final clause).
+const STATUS_PRIORITY_URGENT_FIRST = {
+  halted: 0,
+  malformed: 1,
+  executing: 2,
+  approved: 3,
+  finalReview: 4,   // AD-5 — between Approved and Planning
+  planning: 5,
+  planned: 6,
+  notStarted: 7,
+  complete: 8,
+  notInitialized: 9,
+} as const;
+
+type StatusBucket = keyof typeof STATUS_PRIORITY_URGENT_FIRST;
+
+function classifyStatus(p: ProjectSummary): StatusBucket {
+  const { tier, planningStatus, executionStatus, hasMalformedState } = p;
+
+  // tier === 'execution' AND executionStatus === 'halted' renders as Halted
+  // in the badge; same source-of-truth for sort.
+  if (tier === 'halted' || executionStatus === 'halted') return 'halted';
+  if (hasMalformedState) return 'malformed';
+
+  if (tier === 'execution') {
+    if (executionStatus === 'in_progress') return 'executing';
+    // not_started | complete | undefined → Approved badge
+    return 'approved';
+  }
+
+  if (tier === 'review') return 'finalReview';
+
+  if (tier === 'planning') {
+    if (planningStatus === 'in_progress') return 'planning';
+    if (planningStatus === 'complete') return 'planned';
+    // not_started | undefined → Not Started badge
+    return 'notStarted';
+  }
+
+  if (tier === 'complete') return 'complete';
+
+  // tier === 'not_initialized' or any unrecognized combination — pin to bottom.
+  return 'notInitialized';
+}
+
 function getStatusPriority(p: ProjectSummary): number {
-  const { graphStatus, hasMalformedState } = p;
-
-  // Bucket 0: halted — v5 halted projects (live or persisted)
-  if (graphStatus === 'halted') return 0;
-
-  // Bucket 1: malformed / warning state — wins over any active status
-  if (hasMalformedState) return 1;
-
-  // Bucket 2: actively running v5 pipelines
-  if (graphStatus === 'in_progress') return 2;
-
-  // Bucket 3: v5 pipelines that have not yet begun
-  if (graphStatus === 'not_started') return 3;
-
-  // Bucket 4: v5 pipelines that finished successfully
-  if (graphStatus === 'completed') return 4;
-
-  // Bucket 5: legacy fallback — 'not_initialized', undefined, or any unrecognized value
-  return 5;
+  return STATUS_PRIORITY_URGENT_FIRST[classifyStatus(p)];
 }
 
 function compareField(
