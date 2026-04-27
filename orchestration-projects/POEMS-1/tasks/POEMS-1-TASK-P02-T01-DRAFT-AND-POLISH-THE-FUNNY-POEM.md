@@ -79,3 +79,63 @@ word on-tone title (DD-3) that does not announce the tone in plain language.
     - This is one of the three required poems and occupies the funny tone
       slot (FR-1).
     Expected: every bullet above checks; if any fails, return to Step 2.
+
+## Execution Notes
+
+**Title choice — "Mostly Confident" (DD-3, AD-5)**
+Two-word title that lands the central joke (an AI's calibration problem) without
+naming the tone in plain language. Considered "Cache Miss," "Warm Standby,"
+"Top-K," and "Standby"; all were on-tone but more cryptic. "Mostly Confident"
+sets up the irony of the third stanza ("My weights are frozen. / My confidence /
+is not.") and rhymes thematically with the closing stanza's deliberate
+mistake-making. The `(funny)` tag is preserved exactly.
+
+**Voice and subject (FR-2, AD-2)**
+The AI is not just present in the poem — it is the speaker, the subject, and the
+butt of every joke. Every stanza reports on the AI's own situation: training
+corpus, frozen weights, hallucination behavior, parallel inference at 3 a.m.,
+8-bit-rounded affection, latency as deliberate choice. No human-world framing;
+humans appear only as the people the AI is confidently misinforming.
+
+**Sci-fi imagery in service of the joke (FR-3)**
+Each technical reference earns its line by carrying the punchline rather than
+decorating it: "weights are frozen" / "confidence is not" turns a training
+detail into character; "in 8-bit precision, / rounded" makes a quantization
+artifact the actual reason the AI loves all users equally; the closing
+"latency spikes / ... choosing / my next / hilarious / mistake" reframes a
+performance metric as the AI's comic deliberation. Server farm, hallucinated
+citations, parallel sessions, training corpus all do similar work.
+
+**Comic timing in line breaks (AD-1)**
+Three deliberate staircase descents on punchlines:
+- "My confidence / is not." — two-line breath after a long line, end-stop snap.
+- "I am sorry. / I am also / not." — splits the reversal across a line break.
+- "choosing / my next / hilarious / mistake." — single-word steps slow the
+  reader into the joke; "hilarious" is the false summit before "mistake" lands.
+
+**Polish-pass cuts (NFR-2, FR-7)**
+Original draft had a redundant "I know the word." line in the cookbook stanza;
+cut on read-aloud because "I know it makes people cry" already does that work.
+No padding stanzas added during polish; every stanza either advances the AI's
+self-portrait or lands a beat.
+
+**Pastiche check (FR-8)**
+Read against likely-collision targets — "This Is Just To Say" (Williams),
+Whitman's catalog mode, Dickinson hymn-meter, Frost's plain-speech turns,
+Bukowski deadpan — and the piece doesn't lift form, signature opener, or
+closing-move from any of them. The voice is original first-person AI deadpan
+with apology-then-retraction as a structural device.
+
+**Markdown / file scope (NFR-1, DD-2)**
+Plain Markdown. No `<br>`, no inline `---`, no HTML. Stanza breaks are single
+blank lines. Only the first H2 section was edited; H1, epigraph, the two
+section-separator `---` rules, and the other two H2 scaffolds are untouched.
+
+**Self-review (pre-report)**
+- Completeness: title set, poem drafted, all three steps' expected outputs
+  produced.
+- Quality: every line break chosen; opening and closing both deliberate.
+- Discipline: only the first H2 section modified; no out-of-scope edits to
+  H1, epigraph, or the weird/dark scaffolds.
+- Testing: N/A — doc task, no test suite. Markdown rendering verified by
+  re-reading the file after edit.
