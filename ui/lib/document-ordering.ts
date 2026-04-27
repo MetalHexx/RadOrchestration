@@ -47,7 +47,7 @@ function tailDocLabelV5(filename: string, projectName: string): string {
   if (stem.toLowerCase().startsWith(prefix.toLowerCase())) {
     stem = stem.slice(prefix.length);
   }
-  const words = stem.split(/[-_]+/).filter((w) => w.length > 0);
+  const words = stem.split(/[-_\s]+/).filter((w) => w.length > 0);
   return words
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ');
@@ -73,7 +73,7 @@ function appendAllFileDocsV5(
   }
 
   const otherDocs = allFiles
-    .filter((f) => f.endsWith('.md') && !seenBasenames.has(basename(f)))
+    .filter((f) => /\.md$/i.test(f) && !seenBasenames.has(basename(f)))
     .sort();
 
   for (const filePath of otherDocs) {
@@ -178,16 +178,6 @@ export function getAdjacentDocs(
 }
 
 // ─── v5 helpers ──────────────────────────────────────────────────────────────
-
-// Corrective entries emit in a fixed order (plan-then-review) regardless of
-// the object key order produced by the scaffolder or by JSON round-trip.
-// JS Object.entries is insertion-ordered per spec, but relying on that makes
-// the sidebar order coupled to how the engine builds/serializes ct.nodes —
-// any future refactor that rebuilds the map from a different seed would flip
-// the emitted sequence. A fixed array removes the coupling. `task_executor`,
-// `commit_gate`, `task_gate` have no doc_path and are skipped by the caller's
-// `doc_path != null` check, so omitting them here is safe.
-export const CORRECTIVE_DOC_EMIT_ORDER = ['task_handoff', 'code_review'] as const;
 
 // Within-iteration child emission order — locked per AD-3 / FR-5 so the walk
 // is stable across engine refactors that rebuild iteration.nodes from a
