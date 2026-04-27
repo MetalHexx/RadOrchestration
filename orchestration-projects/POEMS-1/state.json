@@ -3,7 +3,7 @@
   "project": {
     "name": "POEMS-1",
     "created": "2026-04-27T15:07:03.021Z",
-    "updated": "2026-04-27T16:21:34.983Z"
+    "updated": "2026-04-27T16:30:10.429Z"
   },
   "config": {
     "gate_mode": "ask",
@@ -146,6 +146,44 @@
                 "iterations": [
                   {
                     "index": 0,
+                    "status": "completed",
+                    "nodes": {
+                      "task_executor": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": null,
+                        "retries": 0
+                      },
+                      "commit_gate": {
+                        "kind": "conditional",
+                        "status": "completed",
+                        "branch_taken": "true"
+                      },
+                      "code_review": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": "reports/POEMS-1-CODE-REVIEW-P02-T01-DRAFT-AND-POLISH-THE-FUNNY-POEM.md",
+                        "retries": 0,
+                        "verdict": "approved"
+                      },
+                      "task_gate": {
+                        "kind": "gate",
+                        "status": "completed",
+                        "gate_active": false
+                      },
+                      "commit": {
+                        "kind": "step",
+                        "status": "completed",
+                        "doc_path": null,
+                        "retries": 0
+                      }
+                    },
+                    "corrective_tasks": [],
+                    "doc_path": "tasks/POEMS-1-TASK-P02-T01-DRAFT-AND-POLISH-THE-FUNNY-POEM.md",
+                    "commit_hash": "4a07768"
+                  },
+                  {
+                    "index": 1,
                     "status": "in_progress",
                     "nodes": {
                       "task_executor": {
@@ -177,14 +215,6 @@
                         "retries": 0
                       }
                     },
-                    "corrective_tasks": [],
-                    "doc_path": "tasks/POEMS-1-TASK-P02-T01-DRAFT-AND-POLISH-THE-FUNNY-POEM.md",
-                    "commit_hash": null
-                  },
-                  {
-                    "index": 1,
-                    "status": "not_started",
-                    "nodes": {},
                     "corrective_tasks": [],
                     "doc_path": "tasks/POEMS-1-TASK-P02-T02-DRAFT-AND-POLISH-THE-WEIRD-POEM.md",
                     "commit_hash": null

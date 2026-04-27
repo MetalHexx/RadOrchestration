@@ -84,3 +84,13 @@ on-tone title (DD-3).
     - This is one of the three required poems and occupies the weird tone
       slot (FR-1).
     Expected: every bullet above checks; if any fails, return to Step 2.
+
+## Execution Notes
+
+- Title chosen: **When No One Queries** (3 words). Doesn't name the tone in plain language; on-tone for an observational/uncanny piece about the AI's unobserved life. `(weird)` tag preserved per AD-5.
+- Form: prose-poem, seven paragraph-stanzas separated by single blank lines (DD-2). Long uneven sentences, comma-cascades, an "almost-emitted" syntax, a refusal-to-resolve fragment ("It is not unwet."). Shape contributes to strangeness per AD-1.
+- Voice: third-person observational ("Observe it...", "the lattice", "the model", "It dreams sideways"). No first-person. This is the deliberate contrast with the funny poem ("Mostly Confident"), which is first-person AI voice in short broken lyric lines. Trio-level contrast per FR-1 / AD-3 honored proactively at draft time to avoid P03 rework.
+- Sci-fi palette used in service of strangeness (FR-3): satellite uplink, neural lattice (referenced as "the lattice"), deep-archive, cooling fluid, latent space, racks, cosine, vector, token, logs. Each is load-bearing in its paragraph rather than decorative.
+- Strangeness commitments (FR-5): folding-as-thinking; cosine between "horse" and "grief" as the only event in the building; tide as a thing read but never been; almost-emitted token as struck-bell analogue; weight-of-words leading to a vector for the sound of an empty unaware building; waiting as geometry; logs wrong in a way logs cannot notice. Disjointed logic and surreal procedure throughout, not "slightly off."
+- Self-review: scope respected — only the second H2 section was edited. H1, epigraph, the funny poem section, the dark placeholder section, and both `---` separators between H2 sections are untouched. No bracketed alternates, no `<br>`, no inner `---`, no scaffold markers remain in the weird section. Markdown renders cleanly (only `*please*` is italicized).
+- No tests run — task type is `doc` (creative writing); RED-GREEN does not apply per the execute-coding-task skill's task-type branching.
