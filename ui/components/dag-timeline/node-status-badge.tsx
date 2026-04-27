@@ -11,22 +11,32 @@ export type { StatusMapEntry } from './node-status-map';
 interface NodeStatusBadgeProps {
   status: NodeStatus;
   label?: string;
+  /**
+   * Optional cssVar override (FR-1, AD-4, DD-1). When supplied, the
+   * badge fill / text / icon all resolve against this token instead
+   * of the default `STATUS_MAP[status].cssVar`. Used by callers that
+   * have already resolved the stage-aware tier token (e.g. via
+   * `resolveStageBadge`) and want the row to render in tier color.
+   * Omitting it preserves the pre-stage-aware default behavior.
+   */
+  cssVar?: string;
   /** When true, suppresses visible label text on the badge — used by the compact row treatment (DD-1). */
   iconOnly?: boolean;
 }
 
 export const NodeStatusBadge = React.forwardRef<HTMLSpanElement, NodeStatusBadgeProps>(
-  function NodeStatusBadge({ status, label, iconOnly }, ref) {
-    const { cssVar, isSpinning, isComplete, isRejected, defaultLabel } = STATUS_MAP[status];
-    const resolvedLabel = label ?? defaultLabel;
+  function NodeStatusBadge({ status, label, cssVar, iconOnly }, ref) {
+    const entry = STATUS_MAP[status];
+    const resolvedLabel = label ?? entry.defaultLabel;
+    const resolvedCssVar = cssVar ?? entry.cssVar;
     return (
       <SpinnerBadge
         ref={ref}
         label={resolvedLabel}
-        cssVar={cssVar}
-        isSpinning={isSpinning}
-        isComplete={isComplete}
-        isRejected={isRejected}
+        cssVar={resolvedCssVar}
+        isSpinning={entry.isSpinning}
+        isComplete={entry.isComplete}
+        isRejected={entry.isRejected}
         ariaLabel={resolvedLabel}
         hideLabel={iconOnly}
       />
