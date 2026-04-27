@@ -236,10 +236,12 @@ gnome-terminal -- bash -c "cd '{worktreePath}' && copilot --agent orchestrator -
 ### Open Claude Code
 
 ```
-node {skillRoot}/scripts/launch-claude.js --worktree-path "{worktreePath}" --projects-base-path "{projectsBasePath}" --prompt "/rad-execute execute project {masterPlanPath or projectName}" --permission-mode "{permissionMode}"
+MSYS_NO_PATHCONV=1 node {skillRoot}/scripts/launch-claude.js --worktree-path "{worktreePath}" --projects-base-path "{projectsBasePath}" --prompt "/rad-execute {projectName}" --permission-mode "{permissionMode}"
 ```
 
 `{skillRoot}` is the absolute path to the `rad-execute-parallel` skill folder (the directory containing `SKILL.md`). The script handles Windows, macOS, and Linux internally — no platform-specific branching needed here.
+
+The `MSYS_NO_PATHCONV=1` prefix disables Git Bash's POSIX-to-Windows path conversion so the leading `/` in the slash-command prompt survives the shell→`node.exe` argument boundary. The prefix is harmless on macOS / Linux where MSYS2 isn't present. The script also defensively repairs MSYS-mangled prompts as a safety net for callers that forget the prefix.
 
 ### Open terminal at worktree
 

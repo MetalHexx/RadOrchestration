@@ -21,39 +21,68 @@ const { spawn } = require('child_process');
 // Arg parsing
 // ---------------------------------------------------------------------------
 
-const args = process.argv.slice(2);
-const getArg = (flag) => {
-  const idx = args.indexOf(flag);
-  return idx !== -1 ? args[idx + 1] ?? null : null;
-};
+function parseArgs(argv) {
+  const args = argv.slice(2);
+  const get = (flag) => {
+    const idx = args.indexOf(flag);
+    return idx !== -1 ? args[idx + 1] ?? null : null;
+  };
+  return {
+    worktreePath:   get('--worktree-path'),
+    projectsBase:   get('--projects-base-path'),
+    prompt:         get('--prompt'),
+    permissionMode: get('--permission-mode') || 'auto',
+  };
+}
 
-const worktreePath    = getArg('--worktree-path');
-const projectsBase    = getArg('--projects-base-path');
-const prompt          = getArg('--prompt');
-const permissionMode  = getArg('--permission-mode') || 'auto';
+/**
+ * Git Bash on Windows (MSYS2) rewrites a leading `/` argument to the Git
+ * installation root before native binaries see argv (e.g. `/rad-execute foo`
+ * arrives as `C:/Program Files/Git/rad-execute foo`). Detect that pattern
+ * and restore the original slash command.
+ *
+ * Contract: --prompt is a slash command. The heuristic only repairs when
+ * the trailing token of the path-portion matches /^[A-Za-z][\w-]*$/, so
+ * non-slash-command inputs are left alone.
+ */
+function repairMsysPrompt(prompt) {
+  if (typeof prompt !== 'string' || prompt.length === 0) return prompt;
+  if (prompt.startsWith('/')) return prompt;
+  if (!/^[A-Za-z]:[\\/]/.test(prompt)) return prompt;
+
+  // Scan from the right: find the rightmost path separator whose trailing
+  // segment (up to the next whitespace or end-of-string) is a valid
+  // slash-command identifier. The MSYS root itself may contain spaces
+  // (e.g. `C:/Program Files/Git/`), which is why we can't split on the
+  // first whitespace.
+  for (let i = prompt.length - 1; i >= 0; i--) {
+    const ch = prompt[i];
+    if (ch !== '/' && ch !== '\\') continue;
+
+    const tailStart = i + 1;
+    let tailEnd = tailStart;
+    while (tailEnd < prompt.length && !/\s/.test(prompt[tailEnd])) tailEnd++;
+
+    const command = prompt.slice(tailStart, tailEnd);
+    if (!/^[A-Za-z][\w-]*$/.test(command)) continue;
+
+    const rest = prompt.slice(tailEnd);
+    process.stderr.write(
+      `launch-claude.js: detected MSYS-mangled prompt; restoring leading slash for /${command}\n`
+    );
+    return `/${command}${rest}`;
+  }
+
+  return prompt;
+}
 
 const VALID_MODES = ['default', 'acceptEdits', 'bypassPermissions', 'auto', 'dontAsk', 'plan'];
-if (!VALID_MODES.includes(permissionMode)) {
-  process.stdout.write(JSON.stringify({
-    success: false,
-    error: `Invalid --permission-mode '${permissionMode}'. Must be one of: ${VALID_MODES.join(', ')}`
-  }) + '\n');
-  process.exit(1);
-}
-
-if (!worktreePath || !prompt) {
-  process.stdout.write(JSON.stringify({
-    success: false,
-    error: 'Missing required args: --worktree-path and --prompt'
-  }) + '\n');
-  process.exit(1);
-}
 
 // ---------------------------------------------------------------------------
 // Platform launchers
 // ---------------------------------------------------------------------------
 
-function buildClaudeCmd() {
+function buildClaudeCmd({ permissionMode, prompt, projectsBase }) {
   const parts = [`claude --permission-mode ${permissionMode}`];
   // Prompt must come before --add-dir; --add-dir accepts multiple values and
   // would otherwise consume the prompt string as a second directory argument.
@@ -62,22 +91,22 @@ function buildClaudeCmd() {
   return parts.join(' ');
 }
 
-function launchWindows() {
+function launchWindows(opts) {
   // Build a PowerShell command string, then Base64-encode it so it survives
   // the wt → powershell argument boundary as a single token (no quoting issues).
-  const innerCmd = `Set-Location '${worktreePath}'; ${buildClaudeCmd()}`;
+  const innerCmd = `Set-Location '${opts.worktreePath}'; ${buildClaudeCmd(opts)}`;
   const encoded  = Buffer.from(innerCmd, 'utf16le').toString('base64');
 
   const child = spawn(
     'wt',
-    ['--startingDirectory', worktreePath, 'powershell', '-NoExit', '-EncodedCommand', encoded],
+    ['--startingDirectory', opts.worktreePath, 'powershell', '-NoExit', '-EncodedCommand', encoded],
     { detached: true, stdio: 'ignore' }
   );
   child.unref();
 }
 
-function launchMac() {
-  const cmd    = `cd '${worktreePath}' && ${buildClaudeCmd()}`;
+function launchMac(opts) {
+  const cmd    = `cd '${opts.worktreePath}' && ${buildClaudeCmd(opts)}`;
   // Escape backslashes and double-quotes inside the AppleScript string
   const escaped = cmd.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
@@ -89,8 +118,8 @@ function launchMac() {
   child.unref();
 }
 
-function launchLinux() {
-  const cmd = `cd '${worktreePath}' && ${buildClaudeCmd()}; exec bash`;
+function launchLinux(opts) {
+  const cmd = `cd '${opts.worktreePath}' && ${buildClaudeCmd(opts)}; exec bash`;
 
   const child = spawn(
     'gnome-terminal',
@@ -101,18 +130,45 @@ function launchLinux() {
 }
 
 // ---------------------------------------------------------------------------
-// Dispatch
+// Exports (for testing)
 // ---------------------------------------------------------------------------
 
-try {
-  const platform = process.platform;
+module.exports = { parseArgs, repairMsysPrompt, VALID_MODES };
 
-  if (platform === 'win32')       launchWindows();
-  else if (platform === 'darwin') launchMac();
-  else                            launchLinux();
+// ---------------------------------------------------------------------------
+// Dispatch (CLI entry point)
+// ---------------------------------------------------------------------------
 
-  process.stdout.write(JSON.stringify({ success: true, platform, permissionMode }) + '\n');
-} catch (err) {
-  process.stdout.write(JSON.stringify({ success: false, error: err.message }) + '\n');
-  process.exit(1);
+if (require.main === module) {
+  const parsed = parseArgs(process.argv);
+  parsed.prompt = repairMsysPrompt(parsed.prompt);
+
+  if (!VALID_MODES.includes(parsed.permissionMode)) {
+    process.stdout.write(JSON.stringify({
+      success: false,
+      error: `Invalid --permission-mode '${parsed.permissionMode}'. Must be one of: ${VALID_MODES.join(', ')}`
+    }) + '\n');
+    process.exit(1);
+  }
+
+  if (!parsed.worktreePath || !parsed.prompt) {
+    process.stdout.write(JSON.stringify({
+      success: false,
+      error: 'Missing required args: --worktree-path and --prompt'
+    }) + '\n');
+    process.exit(1);
+  }
+
+  try {
+    const platform = process.platform;
+
+    if (platform === 'win32')       launchWindows(parsed);
+    else if (platform === 'darwin') launchMac(parsed);
+    else                            launchLinux(parsed);
+
+    process.stdout.write(JSON.stringify({ success: true, platform, permissionMode: parsed.permissionMode }) + '\n');
+  } catch (err) {
+    process.stdout.write(JSON.stringify({ success: false, error: err.message }) + '\n');
+    process.exit(1);
+  }
 }
