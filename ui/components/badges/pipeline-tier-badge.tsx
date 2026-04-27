@@ -16,7 +16,7 @@ const TIER_CONFIG = {
   review: { label: "Final Review", cssVar: "--tier-review" },
   complete: { label: "Complete", cssVar: "--tier-complete" },
   halted: { label: "Halted", cssVar: "--tier-halted" },
-  not_initialized: { label: "Not Started", cssVar: "--tier-not-initialized" },
+  not_initialized: { label: "Not Initialized", cssVar: "--tier-not-initialized" },
 } satisfies Record<PipelineTier | "not_initialized", { label: string; cssVar: string }>;
 
 function resolveBadgeState(
@@ -37,7 +37,11 @@ function resolveBadgeState(
     } else if (planningStatus === "complete") {
       label = "Planned";
       isSpinning = false;
+    } else if (planningStatus === "not_started") {
+      label = "Not Started";
+      isSpinning = false;
     } else {
+      // undefined planningStatus → backward-compat default
       label = "Planning";
       isSpinning = false;
     }
