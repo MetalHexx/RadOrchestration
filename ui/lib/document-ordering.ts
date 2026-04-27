@@ -37,6 +37,51 @@ function appendAllFileDocs(
   }
 }
 
+function tailDocLabelV5(filename: string, projectName: string): string {
+  // FR-12 — drop the trailing `.md`, strip the leading `{projectName}-`
+  // prefix (case-insensitive), convert remaining `-`/`_` separators to
+  // spaces, and title-case the result. Bare filenames with no prefix
+  // pass through to the title-case step unchanged.
+  let stem = filename.replace(/\.md$/i, '');
+  const prefix = `${projectName}-`;
+  if (stem.toLowerCase().startsWith(prefix.toLowerCase())) {
+    stem = stem.slice(prefix.length);
+  }
+  const words = stem.split(/[-_\s]+/).filter((w) => w.length > 0);
+  return words
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+// V5-only tail-bucket emitter. NFR-1 — kept separate from the shared
+// `appendAllFileDocs` (which is still consumed by the v4 `getOrderedDocs`)
+// so the v4 walk's tail labels remain bare uppercase filenames as the v4
+// tests assert. The error-log detection is identical to the v4 helper.
+function appendAllFileDocsV5(
+  allFiles: string[],
+  projectName: string,
+  seenPaths: Set<string>,
+  seenBasenames: Set<string>,
+  basename: (p: string) => string,
+  push: (path: string, title: string, category: OrderedDoc['category']) => void,
+): void {
+  // FR-11 — error log label and detection unchanged.
+  const errorLogPattern = `${projectName}-ERROR-LOG.md`;
+  const errorLogFile = allFiles.find((f) => f.endsWith(errorLogPattern));
+  if (errorLogFile && !seenPaths.has(errorLogFile)) {
+    push(errorLogFile, 'Error Log', 'error-log');
+  }
+
+  const otherDocs = allFiles
+    .filter((f) => /\.md$/i.test(f) && !seenBasenames.has(basename(f)))
+    .sort();
+
+  for (const filePath of otherDocs) {
+    const filename = basename(filePath);
+    push(filePath, tailDocLabelV5(filename, projectName), 'other');
+  }
+}
+
 /**
  * Derive the canonical document navigation order from project state.
  *
@@ -134,17 +179,17 @@ export function getAdjacentDocs(
 
 // ─── v5 helpers ──────────────────────────────────────────────────────────────
 
-// Corrective entries emit in a fixed order (plan-then-review) regardless of
-// the object key order produced by the scaffolder or by JSON round-trip.
-// JS Object.entries is insertion-ordered per spec, but relying on that makes
-// the sidebar order coupled to how the engine builds/serializes ct.nodes —
-// any future refactor that rebuilds the map from a different seed would flip
-// the emitted sequence. A fixed array removes the coupling. `task_executor`,
-// `commit_gate`, `task_gate` have no doc_path and are skipped by the caller's
-// `doc_path != null` check, so omitting them here is safe.
-const CORRECTIVE_DOC_EMIT_ORDER = ['task_handoff', 'code_review'] as const;
+// Within-iteration child emission order — locked per AD-3 / FR-5 so the walk
+// is stable across engine refactors that rebuild iteration.nodes from a
+// different seed. The phase-plan-from-iteration-doc_path step is emitted
+// BEFORE this loop runs, so `phase_planning` is left in here as harmless
+// forward-compat: a future template that wires it back as a child step node
+// would still surface in the right slot. Same logic for `task_handoff` in
+// TASK_ITER_CHILD_ORDER.
+export const PHASE_ITER_CHILD_ORDER = ['phase_planning', 'task_loop', 'phase_report', 'phase_review'] as const;
+export const TASK_ITER_CHILD_ORDER = ['task_handoff', 'code_review'] as const;
 
-const STEP_TITLES_V5: Record<PlanningStepName, string> = {
+export const STEP_TITLES_V5: Record<PlanningStepName, string> = {
   research: 'Research Findings',
   prd: 'PRD',
   design: 'Design',
@@ -158,27 +203,47 @@ function capitalize(s: string): string {
   return s.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-function titleForPhaseChild(childId: string, phaseNum: number): string {
-  // phase_planning is v5 canonical; phase_plan retained for legacy compat
+export function titleForPhaseChild(childId: string, phaseNum: number): string {
+  // phase_planning is v5 canonical; phase_plan retained for legacy compat.
+  // Both IDs survive in the helper even though the default template now
+  // sources the phase plan from iteration.doc_path (AD-2): a future custom
+  // template scaffolding either ID as a child step node still surfaces with
+  // the right label.
   if (childId === 'phase_planning' || childId === 'phase_plan') return `Phase ${phaseNum} Plan`;
+  // AD-6 — phase_report mapping preserved as harmless dead code so that any
+  // future template wiring it in surfaces with the correct label.
   if (childId === 'phase_report') return `Phase ${phaseNum} Report`;
   if (childId === 'phase_review') return `Phase ${phaseNum} Review`;
-  return capitalize(childId);
+  // AD-1 — unrecognized child IDs surface with a generic per-scope label so
+  // a future custom-template node never silently vanishes into the tail bucket.
+  return `Phase ${phaseNum} ${capitalize(childId)}`;
 }
 
-function titleForPhaseCorrectiveChild(childId: string, phaseNum: number): string {
-  // Phase-scope correctives scaffold the same body-def node IDs as task-scope
-  // iterations (`task_handoff`, `code_review`), but at phase scope `task_handoff`
-  // is the corrective plan for the phase and `code_review` is its review.
-  if (childId === 'task_handoff') return `Phase ${phaseNum} Plan`;
-  if (childId === 'code_review') return `Phase ${phaseNum} Review`;
-  return titleForPhaseChild(childId, phaseNum);
-}
-
-function titleForTaskChild(taskNodeId: string, phaseNum: number, taskNum: number): string {
+export function titleForTaskChild(taskNodeId: string, phaseNum: number, taskNum: number): string {
   if (taskNodeId === 'task_handoff') return `P${phaseNum}-T${taskNum} Handoff`;
   if (taskNodeId === 'code_review') return `P${phaseNum}-T${taskNum} Review`;
+  // AD-1 — generic fallback per scope.
   return `P${phaseNum}-T${taskNum} ${capitalize(taskNodeId)}`;
+}
+
+// FR-9 — task-scope corrective labels. `CT{K}` already implies a corrective
+// handoff, so the plan label drops the "Handoff" word; the review label
+// appends "Review" to keep the original-vs-corrective parallel symmetric.
+export function titleForTaskCorrectiveChild(taskNodeId: string, phaseNum: number, taskNum: number, ctIndex: number): string {
+  if (taskNodeId === 'task_handoff') return `P${phaseNum}-T${taskNum} CT${ctIndex}`;
+  if (taskNodeId === 'code_review') return `P${phaseNum}-T${taskNum} CT${ctIndex} Review`;
+  return `P${phaseNum}-T${taskNum} CT${ctIndex} ${capitalize(taskNodeId)}`;
+}
+
+// FR-10 — phase-scope correctives scaffold the same body-def node IDs as
+// task-scope iterations (`task_handoff`, `code_review`). At phase scope
+// `task_handoff` means "the corrective plan" and `code_review` means
+// "its review." The label uses `Phase {N} CT{K}` shorthand to parallel the
+// task-scope CT scheme.
+export function titleForPhaseCorrectiveChild(childId: string, phaseNum: number, ctIndex: number): string {
+  if (childId === 'task_handoff') return `Phase ${phaseNum} CT${ctIndex}`;
+  if (childId === 'code_review') return `Phase ${phaseNum} CT${ctIndex} Review`;
+  return `Phase ${phaseNum} CT${ctIndex} ${capitalize(childId)}`;
 }
 
 /**
@@ -222,7 +287,35 @@ export function getOrderedDocsV5(
       const sortedIterations = [...node.iterations].sort((a, b) => a.index - b.index);
       for (const iteration of sortedIterations) {
         const phaseNum = iteration.index + 1;
-        for (const [childId, child] of Object.entries(iteration.nodes)) {
+
+        // FR-1 / AD-2 — phase plan from iteration.doc_path, emitted at the
+        // start of the iteration's slice (before the iteration's child nodes).
+        if (iteration.doc_path != null) {
+          push(iteration.doc_path, `Phase ${phaseNum} Plan`, 'phase');
+        }
+
+        // FR-5 / AD-3 — explicit per-scope ordering. We iterate the locked
+        // child-id list rather than Object.entries(iteration.nodes) so the
+        // emitted sequence is stable across engine refactors that rebuild
+        // the nodes map from a different seed. Unknown child IDs (custom
+        // templates) are appended after the locked ones in insertion order
+        // so they still surface (AD-1).
+        // FR-1 / AD-2 dedup guard — when iteration.doc_path provided the phase
+        // plan, skip any legacy `phase_planning` / `phase_plan` child step in the
+        // same iteration so a hybrid persisted state doesn't surface the plan twice.
+        const skipLegacyPhasePlanChild = iteration.doc_path != null;
+        const isLegacyPhasePlanChild = (id: string): boolean =>
+          skipLegacyPhasePlanChild && (id === 'phase_planning' || id === 'phase_plan');
+        const phaseChildIds = [
+          ...PHASE_ITER_CHILD_ORDER.filter((id) => id in iteration.nodes && !isLegacyPhasePlanChild(id)),
+          ...Object.keys(iteration.nodes).filter(
+            (id) => !(PHASE_ITER_CHILD_ORDER as readonly string[]).includes(id) && !isLegacyPhasePlanChild(id),
+          ),
+        ];
+
+        for (const childId of phaseChildIds) {
+          const child = iteration.nodes[childId];
+          if (!child) continue;
           if (child.kind === 'step' && child.doc_path != null) {
             const category: OrderedDoc['category'] = childId.includes('review') ? 'review' : 'phase';
             push(child.doc_path, titleForPhaseChild(childId, phaseNum), category);
@@ -230,39 +323,80 @@ export function getOrderedDocsV5(
             const sortedTaskIters = [...child.iterations].sort((a, b) => a.index - b.index);
             for (const taskIter of sortedTaskIters) {
               const taskNum = taskIter.index + 1;
-              for (const [taskNodeId, taskNode] of Object.entries(taskIter.nodes)) {
+
+              // FR-2 / AD-2 — task handoff from taskIter.doc_path, emitted
+              // before the task iteration's child nodes (i.e. before code_review).
+              if (taskIter.doc_path != null) {
+                push(taskIter.doc_path, `P${phaseNum}-T${taskNum} Handoff`, 'task');
+              }
+
+              // FR-2 / AD-2 dedup guard — when taskIter.doc_path provided the
+              // handoff, skip a legacy `task_handoff` child step so a hybrid
+              // persisted state doesn't surface the handoff twice.
+              const skipLegacyTaskHandoffChild = taskIter.doc_path != null;
+              const taskChildIds = [
+                ...TASK_ITER_CHILD_ORDER.filter(
+                  (id) => id in taskIter.nodes && !(skipLegacyTaskHandoffChild && id === 'task_handoff'),
+                ),
+                ...Object.keys(taskIter.nodes).filter(
+                  (id) =>
+                    !(TASK_ITER_CHILD_ORDER as readonly string[]).includes(id) &&
+                    !(skipLegacyTaskHandoffChild && id === 'task_handoff'),
+                ),
+              ];
+
+              for (const taskNodeId of taskChildIds) {
+                const taskNode = taskIter.nodes[taskNodeId];
+                if (!taskNode) continue;
                 if (taskNode.kind === 'step' && taskNode.doc_path != null) {
                   const category: OrderedDoc['category'] = taskNodeId.includes('review') ? 'review' : 'task';
                   push(taskNode.doc_path, titleForTaskChild(taskNodeId, phaseNum, taskNum), category);
                 }
               }
+
+              // Task-scope correctives (FR-3 / AD-2) — corrective handoff
+              // from ct.doc_path (NOT from ct.nodes.task_handoff). The
+              // ct.nodes map for correctives only ever contains `code_review`
+              // as a meaningful step node.
               const sortedCTs = [...taskIter.corrective_tasks].sort((a, b) => a.index - b.index);
               for (const ct of sortedCTs) {
-                for (const ctNodeId of CORRECTIVE_DOC_EMIT_ORDER) {
-                  const ctNode = ct.nodes[ctNodeId];
-                  if (ctNode?.kind === 'step' && ctNode.doc_path != null) {
-                    const title = titleForTaskChild(ctNodeId, phaseNum, taskNum) + ' (CT' + ct.index + ')';
-                    // Corrective code_review docs group under 'review' like their non-corrective
-                    // siblings (line ~235) and phase-scope corrective reviews. Prior iter-10 shape
-                    // hardcoded 'task' which hid corrective re-reviews from the Review category.
-                    const category: OrderedDoc['category'] = ctNodeId === 'code_review' ? 'review' : 'task';
-                    push(ctNode.doc_path, title, category);
+                // FR-3 / AD-2 — corrective handoff from ct.doc_path.
+                if (ct.doc_path != null) {
+                  push(ct.doc_path, titleForTaskCorrectiveChild('task_handoff', phaseNum, taskNum, ct.index), 'task');
+                }
+                // FR-3 — corrective code review IS a child step node.
+                const ctReview = ct.nodes['code_review'];
+                if (ctReview?.kind === 'step' && ctReview.doc_path != null) {
+                  push(ctReview.doc_path, titleForTaskCorrectiveChild('code_review', phaseNum, taskNum, ct.index), 'review');
+                }
+                // AD-1 — surface any other unrecognized child step node so
+                // custom templates do not silently leak to the tail bucket.
+                for (const [otherId, otherNode] of Object.entries(ct.nodes)) {
+                  if (otherId === 'code_review') continue;
+                  if (otherNode.kind === 'step' && otherNode.doc_path != null) {
+                    push(otherNode.doc_path, titleForTaskCorrectiveChild(otherId, phaseNum, taskNum, ct.index), 'task');
                   }
                 }
               }
             }
           }
         }
+
+        // Phase-scope correctives (FR-3 / AD-2) — corrective handoff from
+        // ct.doc_path; corrective code review from ct.nodes.code_review.
         const sortedPhaseCTs = [...iteration.corrective_tasks].sort((a, b) => a.index - b.index);
         for (const ct of sortedPhaseCTs) {
-          for (const ctNodeId of CORRECTIVE_DOC_EMIT_ORDER) {
-            const ctNode = ct.nodes[ctNodeId];
-            if (ctNode?.kind === 'step' && ctNode.doc_path != null) {
-              const title = titleForPhaseCorrectiveChild(ctNodeId, phaseNum) + ' (Phase-C' + ct.index + ')';
-              // Explicit id check (not `includes('review')`) keeps categorization stable
-              // if future corrective body nodes happen to contain the 'review' substring.
-              const category: OrderedDoc['category'] = ctNodeId === 'code_review' ? 'review' : 'phase';
-              push(ctNode.doc_path, title, category);
+          if (ct.doc_path != null) {
+            push(ct.doc_path, titleForPhaseCorrectiveChild('task_handoff', phaseNum, ct.index), 'phase');
+          }
+          const ctReview = ct.nodes['code_review'];
+          if (ctReview?.kind === 'step' && ctReview.doc_path != null) {
+            push(ctReview.doc_path, titleForPhaseCorrectiveChild('code_review', phaseNum, ct.index), 'review');
+          }
+          for (const [otherId, otherNode] of Object.entries(ct.nodes)) {
+            if (otherId === 'code_review') continue;
+            if (otherNode.kind === 'step' && otherNode.doc_path != null) {
+              push(otherNode.doc_path, titleForPhaseCorrectiveChild(otherId, phaseNum, ct.index), 'phase');
             }
           }
         }
@@ -278,7 +412,7 @@ export function getOrderedDocsV5(
   }
 
   if (allFiles) {
-    appendAllFileDocs(allFiles, projectName, seenPaths, seenBasenames, basename, push);
+    appendAllFileDocsV5(allFiles, projectName, seenPaths, seenBasenames, basename, push);
   }
 
   return result;

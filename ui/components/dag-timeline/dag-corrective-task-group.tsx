@@ -104,7 +104,7 @@ function CorrectiveRow({
                 {hasHandoff && (
                   <span className="inline-flex items-center gap-1.5">
                     <span className="inline-block h-3.5 w-3.5" />
-                    <span>Handoff</span>
+                    <span>Task Handoff</span>
                   </span>
                 )}
                 {hasCommitLink && (
@@ -123,7 +123,7 @@ function CorrectiveRow({
               // Rendered OUTSIDE AccordionTrigger — see header comment. No tabIndex
               // override: the trigger consumes Enter/Space for expand/collapse, so
               // keyboard users reach this link via natural tab order.
-              <DocumentLink path={entry.doc_path!} label="Handoff" onDocClick={onDocClick} />
+              <DocumentLink path={entry.doc_path!} label="Task Handoff" onDocClick={onDocClick} />
             )}
             {hasCommitLink && (
               commitData!.href !== null ? (

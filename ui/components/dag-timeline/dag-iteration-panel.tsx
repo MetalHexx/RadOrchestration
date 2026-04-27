@@ -130,6 +130,20 @@ export function DAGIterationPanel({
     const derivedBadge = deriveIterationBadgeLabel(iteration);
     const headerAriaLabel = `Phase iteration ${iterationIndex + 1} — ${iterationName} — ${derivedBadge.label}`;
     const hasPhasePlan = iteration.doc_path != null && iteration.doc_path !== '';
+
+    // Split iteration.nodes into pre-loop / loop / post-loop buckets so non-loop
+    // step nodes (e.g. phase_review) render at phase-level depth OUTSIDE the
+    // task spine — aligning them with the phase header and bounding the spine
+    // line to task-like content.
+    const renderableEntries = Object.entries(iteration.nodes).filter(([childNodeId, childNode]) =>
+      shouldRenderTimelineRow(childNodeId, childNode as CompatibleNodeState, { commitHash: iteration.commit_hash ?? null, prUrl: null })
+    );
+    const loopIndex = renderableEntries.findIndex(([, n]) => isLoopNode(n));
+    const preLoopEntries  = loopIndex === -1 ? renderableEntries : renderableEntries.slice(0, loopIndex);
+    const loopEntry       = loopIndex === -1 ? null              : renderableEntries[loopIndex];
+    const postLoopEntries = loopIndex === -1 ? []                : renderableEntries.slice(loopIndex + 1);
+    const showSpine = loopEntry !== null;
+
     return (
       <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
         <AccordionItem value={buildIterationItemValue(parentNodeId, iterationIndex)} className={cardClasses}>
@@ -178,53 +192,119 @@ export function DAGIterationPanel({
             )}
           </div>
           <AccordionContent>
-            <div className="border-l border-border pl-3 ml-3">
-              {/* Body: task iteration list (phase_review verdict now rendered inline on its row, see DD-11/FR-16) */}
-              {Object.entries(iteration.nodes).filter(([childNodeId, childNode]) =>
-                shouldRenderTimelineRow(childNodeId, childNode as CompatibleNodeState, { commitHash: iteration.commit_hash ?? null, prUrl: null })
-              ).map(([childNodeId, childNode]) => {
-                const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
-                return isLoopNode(childNode) ? (
-                  <DAGLoopNode
-                    key={childNodeId}
-                    nodeId={childKey}
-                    node={childNode}
-                    currentNodePath={currentNodePath}
-                    onDocClick={onDocClick}
-                    expandedLoopIds={expandedLoopIds}
-                    onAccordionChange={onAccordionChange}
-                    repoBaseUrl={repoBaseUrl}
-                    projectName={projectName}
-                    focusedRowKey={focusedRowKey}
-                    isFocused={focusedRowKey === childKey}
-                    onFocusChange={onFocusChange}
-                  />
-                ) : (
-                  <DAGNodeRow
-                    key={childNodeId}
-                    nodeId={childKey}
-                    node={childNode}
-                    depth={ITERATION_CHILD_DEPTH}
-                    currentNodePath={currentNodePath}
-                    onDocClick={onDocClick}
-                    isFocused={focusedRowKey === childKey}
-                    onFocusChange={onFocusChange}
-                  />
-                );
-              })}
-              <DAGCorrectiveTaskGroup
-                correctiveTasks={iteration.corrective_tasks}
-                parentIterationKey={itemValue}
-                parentNodeId={correctiveGroupParentId}
-                currentNodePath={currentNodePath}
-                onDocClick={onDocClick}
-                repoBaseUrl={repoBaseUrl}
-                focusedRowKey={focusedRowKey}
-                onFocusChange={onFocusChange}
-                expandedLoopIds={expandedLoopIds}
-                onAccordionChange={onAccordionChange}
-              />
-            </div>
+            {/* Body shape: phase-level non-loop step nodes (e.g. phase_review) and the
+                phase-iteration corrective task group render OUTSIDE the spine container so
+                they align with the phase header. The border-l spine wraps only the task
+                loop, so its grey line bounds task content only; the corrective group's own
+                dashed warning border picks up at the same x-column where the spine stops,
+                signalling that phase-level CTs are owned by the phase, not the tasks. */}
+            {preLoopEntries.map(([childNodeId, childNode]) => {
+              const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
+              return isLoopNode(childNode) ? (
+                <DAGLoopNode
+                  key={childNodeId}
+                  nodeId={childKey}
+                  node={childNode}
+                  currentNodePath={currentNodePath}
+                  onDocClick={onDocClick}
+                  expandedLoopIds={expandedLoopIds}
+                  onAccordionChange={onAccordionChange}
+                  repoBaseUrl={repoBaseUrl}
+                  projectName={projectName}
+                  focusedRowKey={focusedRowKey}
+                  isFocused={focusedRowKey === childKey}
+                  onFocusChange={onFocusChange}
+                />
+              ) : (
+                <DAGNodeRow
+                  key={childNodeId}
+                  nodeId={childKey}
+                  node={childNode}
+                  depth={0}
+                  currentNodePath={currentNodePath}
+                  onDocClick={onDocClick}
+                  isFocused={focusedRowKey === childKey}
+                  onFocusChange={onFocusChange}
+                />
+              );
+            })}
+            {showSpine && (
+              <div className="border-l border-border pl-3 ml-3">
+                {loopEntry !== null && (() => {
+                  const [childNodeId, childNode] = loopEntry;
+                  const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
+                  return isLoopNode(childNode) ? (
+                    <DAGLoopNode
+                      key={childNodeId}
+                      nodeId={childKey}
+                      node={childNode}
+                      currentNodePath={currentNodePath}
+                      onDocClick={onDocClick}
+                      expandedLoopIds={expandedLoopIds}
+                      onAccordionChange={onAccordionChange}
+                      repoBaseUrl={repoBaseUrl}
+                      projectName={projectName}
+                      focusedRowKey={focusedRowKey}
+                      isFocused={focusedRowKey === childKey}
+                      onFocusChange={onFocusChange}
+                    />
+                  ) : (
+                    <DAGNodeRow
+                      key={childNodeId}
+                      nodeId={childKey}
+                      node={childNode}
+                      depth={ITERATION_CHILD_DEPTH}
+                      currentNodePath={currentNodePath}
+                      onDocClick={onDocClick}
+                      isFocused={focusedRowKey === childKey}
+                      onFocusChange={onFocusChange}
+                    />
+                  );
+                })()}
+              </div>
+            )}
+            <DAGCorrectiveTaskGroup
+              correctiveTasks={iteration.corrective_tasks}
+              parentIterationKey={itemValue}
+              parentNodeId={correctiveGroupParentId}
+              currentNodePath={currentNodePath}
+              onDocClick={onDocClick}
+              repoBaseUrl={repoBaseUrl}
+              focusedRowKey={focusedRowKey}
+              onFocusChange={onFocusChange}
+              expandedLoopIds={expandedLoopIds}
+              onAccordionChange={onAccordionChange}
+            />
+            {postLoopEntries.map(([childNodeId, childNode]) => {
+              const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
+              return isLoopNode(childNode) ? (
+                <DAGLoopNode
+                  key={childNodeId}
+                  nodeId={childKey}
+                  node={childNode}
+                  currentNodePath={currentNodePath}
+                  onDocClick={onDocClick}
+                  expandedLoopIds={expandedLoopIds}
+                  onAccordionChange={onAccordionChange}
+                  repoBaseUrl={repoBaseUrl}
+                  projectName={projectName}
+                  focusedRowKey={focusedRowKey}
+                  isFocused={focusedRowKey === childKey}
+                  onFocusChange={onFocusChange}
+                />
+              ) : (
+                <DAGNodeRow
+                  key={childNodeId}
+                  nodeId={childKey}
+                  node={childNode}
+                  depth={0}
+                  currentNodePath={currentNodePath}
+                  onDocClick={onDocClick}
+                  isFocused={focusedRowKey === childKey}
+                  onFocusChange={onFocusChange}
+                />
+              );
+            })}
           </AccordionContent>
         </AccordionItem>
       </Accordion>

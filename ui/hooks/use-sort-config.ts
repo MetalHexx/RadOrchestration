@@ -18,37 +18,87 @@ export interface SortConfig {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
+// FR-17 — within a same-status cluster the most recently touched project
+// floats to the top. DD-2 — no migration code: users with a previously
+// persisted `monitoring-ui-sort-config` continue to load their saved
+// primary/secondary fields and directions on next visit; this default only
+// takes effect when no persisted config exists or the persisted config
+// fails the existing validation block in `useSortConfig`.
 export const DEFAULT_SORT_CONFIG: SortConfig = {
   primary: 'status',
   primaryDir: 'asc',
-  secondary: 'name',
-  secondaryDir: 'asc',
+  secondary: 'updated',
+  secondaryDir: 'desc',
 };
 
 const STORAGE_KEY = "monitoring-ui-sort-config";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function getStatusPriority(p: ProjectSummary): number {
-  const { graphStatus, hasMalformedState } = p;
+// FR-14 / AD-4 — Urgent-first priority map keyed off the same four fields
+// the row badge reads (`tier`, `planningStatus`, `executionStatus`,
+// `hasMalformedState`). Lower number = higher urgency = floats to top in
+// `asc` ('Urgent first') direction. Slot 9 is the bottom (Not Initialized
+// and any unrecognized combination — see AD-4 final clause).
+const STATUS_PRIORITY_URGENT_FIRST = {
+  halted: 0,
+  malformed: 1,
+  executing: 2,
+  approved: 3,
+  finalReview: 4,   // AD-5 — between Approved and Planning
+  planning: 5,
+  planned: 6,
+  notStarted: 7,
+  complete: 8,
+  notInitialized: 9,
+} as const;
 
-  // Bucket 0: halted — v5 halted projects (live or persisted)
-  if (graphStatus === 'halted') return 0;
+// FR-15 / AD-4 — Done-first priority map. NOT a literal `priority * -1` of
+// STATUS_PRIORITY_URGENT_FIRST: that would flip notInitialized to the top,
+// contradicting the "pinned bottom in both directions" invariant. Built as
+// an explicit lookup so the bottom-pin survives.
+const STATUS_PRIORITY_DONE_FIRST = {
+  complete: 0,
+  notStarted: 1,
+  planned: 2,
+  planning: 3,
+  finalReview: 4,
+  approved: 5,
+  executing: 6,
+  malformed: 7,
+  halted: 8,
+  notInitialized: 9,   // FR-15 — still bottom
+} as const;
 
-  // Bucket 1: malformed / warning state — wins over any active status
-  if (hasMalformedState) return 1;
+type StatusBucket = keyof typeof STATUS_PRIORITY_URGENT_FIRST;
 
-  // Bucket 2: actively running v5 pipelines
-  if (graphStatus === 'in_progress') return 2;
+function classifyStatus(p: ProjectSummary): StatusBucket {
+  const { tier, planningStatus, executionStatus, hasMalformedState } = p;
 
-  // Bucket 3: v5 pipelines that have not yet begun
-  if (graphStatus === 'not_started') return 3;
+  // tier === 'execution' AND executionStatus === 'halted' renders as Halted
+  // in the badge; same source-of-truth for sort.
+  if (tier === 'halted' || executionStatus === 'halted') return 'halted';
+  if (hasMalformedState) return 'malformed';
 
-  // Bucket 4: v5 pipelines that finished successfully
-  if (graphStatus === 'completed') return 4;
+  if (tier === 'execution') {
+    if (executionStatus === 'in_progress') return 'executing';
+    // not_started | complete | undefined → Approved badge
+    return 'approved';
+  }
 
-  // Bucket 5: legacy fallback — 'not_initialized', undefined, or any unrecognized value
-  return 5;
+  if (tier === 'review') return 'finalReview';
+
+  if (tier === 'planning') {
+    if (planningStatus === 'in_progress') return 'planning';
+    if (planningStatus === 'complete') return 'planned';
+    if (planningStatus === undefined) return 'planning';  // FR-14 — v4 backward-compat: badge renders "Planning" for undefined planningStatus
+    return 'notStarted';                                  // planningStatus === 'not_started' — badge renders "Not Started"
+  }
+
+  if (tier === 'complete') return 'complete';
+
+  // tier === 'not_initialized' or any unrecognized combination — pin to bottom.
+  return 'notInitialized';
 }
 
 function compareField(
@@ -58,8 +108,10 @@ function compareField(
   dir: SortDirection
 ): number {
   if (field === 'status') {
-    const result = getStatusPriority(a) - getStatusPriority(b);
-    return dir === 'desc' ? result * -1 : result;
+    const aBucket = classifyStatus(a);
+    const bBucket = classifyStatus(b);
+    const map = dir === 'desc' ? STATUS_PRIORITY_DONE_FIRST : STATUS_PRIORITY_URGENT_FIRST;
+    return map[aBucket] - map[bBucket];
   }
 
   if (field === 'name') {
@@ -68,18 +120,17 @@ function compareField(
   }
 
   // field === 'updated'
-  // Projects with lastUpdated === undefined always sort to bottom regardless of direction
-  const aUndef = a.lastUpdated === undefined;
-  const bUndef = b.lastUpdated === undefined;
-
-  if (aUndef && bUndef) return 0;
-  if (aUndef) return 1;   // a goes to bottom
-  if (bUndef) return -1;  // b goes to bottom
-
-  // Both defined — compare ISO 8601 strings (lexicographically sortable)
+  // FR-16 — undefined lastUpdated is treated as "older than any defined
+  // date." Encoded by mapping undefined to the empty string and letting
+  // the lexicographic comparison flow through `dir`. The empty string is
+  // less than any ISO 8601 timestamp ('2024…' starts with '2'), so:
+  //   asc  → undefined first  (Oldest first)
+  //   desc → undefined last   (Newest first)
+  const aKey = a.lastUpdated ?? '';
+  const bKey = b.lastUpdated ?? '';
   const result =
-    a.lastUpdated! < b.lastUpdated! ? -1 :
-    a.lastUpdated! > b.lastUpdated! ? 1 :
+    aKey < bKey ? -1 :
+    aKey > bKey ? 1 :
     0;
   return dir === 'desc' ? result * -1 : result;
 }

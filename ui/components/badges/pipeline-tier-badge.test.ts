@@ -37,7 +37,7 @@ const TIER_CONFIG = {
   review: { label: "Final Review", cssVar: "--tier-review" },
   complete: { label: "Complete", cssVar: "--tier-complete" },
   halted: { label: "Halted", cssVar: "--tier-halted" },
-  not_initialized: { label: "Not Started", cssVar: "--tier-not-initialized" },
+  not_initialized: { label: "Not Initialized", cssVar: "--tier-not-initialized" },
 } satisfies Record<PipelineTier | "not_initialized", { label: string; cssVar: string }>;
 
 function resolveBadgeState(
@@ -57,6 +57,9 @@ function resolveBadgeState(
       isSpinning = true;
     } else if (planningStatus === "complete") {
       label = "Planned";
+      isSpinning = false;
+    } else if (planningStatus === "not_started") {
+      label = "Not Started";
       isSpinning = false;
     } else {
       label = "Planning";
@@ -94,9 +97,9 @@ console.log("\nPipelineTierBadge — 8-state decision table\n");
 // Row 1: not_initialized
 console.log("Row 1: not_initialized");
 
-test('not_initialized → label "Not Started"', () => {
+test('not_initialized → label "Not Initialized"', () => {
   const result = resolveBadgeState("not_initialized", undefined, undefined);
-  assert.strictEqual(result.label, "Not Started");
+  assert.strictEqual(result.label, "Not Initialized");
 });
 
 test("not_initialized → no spinner", () => {
@@ -104,9 +107,9 @@ test("not_initialized → no spinner", () => {
   assert.strictEqual(result.isSpinning, false);
 });
 
-test('not_initialized → ariaLabel "Pipeline status: Not Started"', () => {
+test('not_initialized → ariaLabel "Pipeline status: Not Initialized"', () => {
   const result = resolveBadgeState("not_initialized", undefined, undefined);
-  assert.strictEqual(result.ariaLabel, "Pipeline status: Not Started");
+  assert.strictEqual(result.ariaLabel, "Pipeline status: Not Initialized");
 });
 
 test("not_initialized → cssVar --tier-not-initialized", () => {
@@ -168,10 +171,15 @@ test('planning + undefined planningStatus → ariaLabel "Pipeline status: Planni
   assert.strictEqual(result.ariaLabel, "Pipeline status: Planning");
 });
 
-test('planning + not_started planningStatus → label "Planning" (other fallback)', () => {
+test('planning + not_started planningStatus → label "Not Started"', () => {
   const result = resolveBadgeState("planning", "not_started", undefined);
-  assert.strictEqual(result.label, "Planning");
+  assert.strictEqual(result.label, "Not Started");
   assert.strictEqual(result.isSpinning, false);
+});
+
+test('planning + not_started planningStatus → ariaLabel "Pipeline status: Not Started"', () => {
+  const result = resolveBadgeState("planning", "not_started", undefined);
+  assert.strictEqual(result.ariaLabel, "Pipeline status: Not Started");
 });
 
 // Row 5: execution + in_progress → "Executing" spinner

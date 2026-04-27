@@ -26,17 +26,8 @@ const SORT_FIELDS: SortField[] = ["status", "name", "updated"]
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function buildSortSummary(config: SortConfig): string {
-  const primaryArrow = config.primaryDir === "asc" ? "↑" : "↓"
-  const primaryPart = `${FIELD_LABELS[config.primary]} ${primaryArrow}`
-
-  if (config.secondary === "none") {
-    return primaryPart
-  }
-
-  const secondaryArrow = config.secondaryDir === "asc" ? "↑" : "↓"
-  const secondaryPart = `${FIELD_LABELS[config.secondary as SortField]} ${secondaryArrow}`
-
-  return `${primaryPart} · ${secondaryPart}`
+  const arrow = config.primaryDir === "asc" ? "↑" : "↓"
+  return `${FIELD_LABELS[config.primary]} ${arrow}`
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -53,12 +44,6 @@ function SortBuilder({ config, onChange }: SortBuilderProps): JSX.Element {
     if (newValues.length === 0) return
     const dir = (newValues.find((v) => v !== config.primaryDir) ?? newValues[0]) as SortDirection
     onChange({ ...config, primaryDir: dir })
-  }
-
-  function handleSecondaryDirChange(newValues: string[]) {
-    if (newValues.length === 0) return
-    const dir = (newValues.find((v) => v !== config.secondaryDir) ?? newValues[0]) as SortDirection
-    onChange({ ...config, secondaryDir: dir })
   }
 
   return (
@@ -110,54 +95,6 @@ function SortBuilder({ config, onChange }: SortBuilderProps): JSX.Element {
                 {"↓ " + DIRECTION_LABELS[config.primary].desc}
               </ToggleGroupItem>
             </ToggleGroup>
-          </div>
-
-          {/* Secondary section */}
-          <div className="flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">Secondary</span>
-            <div role="group" aria-label="Secondary sort field" className="flex flex-wrap gap-1">
-              <Button
-                variant={config.secondary === "none" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => onChange({ ...config, secondary: "none" })}
-              >
-                None
-              </Button>
-              {SORT_FIELDS.map((field) => {
-                const isDisabled = field === config.primary
-                return (
-                  <Button
-                    key={field}
-                    variant={config.secondary === field ? "secondary" : "ghost"}
-                    size="sm"
-                    disabled={isDisabled}
-                    aria-disabled={isDisabled}
-                    className={isDisabled ? "opacity-50 cursor-not-allowed" : undefined}
-                    onClick={() => {
-                      if (field === config.primary) return
-                      onChange({ ...config, secondary: field })
-                    }}
-                  >
-                    {FIELD_LABELS[field]}
-                  </Button>
-                )
-              })}
-            </div>
-            {config.secondary !== "none" && (
-              <ToggleGroup
-                aria-label="Secondary sort direction"
-                value={[config.secondaryDir]}
-                onValueChange={handleSecondaryDirChange}
-                size="sm"
-              >
-                <ToggleGroupItem value="asc">
-                  {"↑ " + DIRECTION_LABELS[config.secondary as SortField].asc}
-                </ToggleGroupItem>
-                <ToggleGroupItem value="desc">
-                  {"↓ " + DIRECTION_LABELS[config.secondary as SortField].desc}
-                </ToggleGroupItem>
-              </ToggleGroup>
-            )}
           </div>
 
         </div>
