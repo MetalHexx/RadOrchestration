@@ -944,5 +944,107 @@ test("FR-5 non-planning step ids return undefined even when in_progress", () => 
   assert.strictEqual(derivePlanningStepLabel('something_else', 'in_progress'), undefined);
 });
 
+import { resolveStageBadge, ITERATION_SUBSTEP_LABELS } from './dag-timeline-helpers';
+
+console.log("\nresolveStageBadge (FR-1, FR-2, FR-4, FR-6, AD-2, AD-4, DD-1, DD-2) tests\n");
+
+test("FR-1/DD-1 planning step ids in_progress resolve to --tier-planning + 'Planning'", () => {
+  for (const id of ['research','prd','design','architecture','requirements','master_plan','explode_master_plan']) {
+    assert.deepStrictEqual(
+      resolveStageBadge(id, 'in_progress'),
+      { cssVar: '--tier-planning', label: 'Planning' },
+      `${id} in_progress`,
+    );
+  }
+});
+
+test("FR-1/DD-1 task_executor in_progress resolves to --tier-execution + 'Executing'", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('task_executor', 'in_progress'),
+    { cssVar: '--tier-execution', label: 'Executing' },
+  );
+});
+
+test("FR-1/DD-1 commit in_progress resolves to --tier-execution + 'Committing'", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('commit', 'in_progress'),
+    { cssVar: '--tier-execution', label: 'Committing' },
+  );
+});
+
+test("FR-1/DD-1 code_review in_progress resolves to --tier-review + 'Reviewing'", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('code_review', 'in_progress'),
+    { cssVar: '--tier-review', label: 'Reviewing' },
+  );
+});
+
+test("FR-1/DD-1 phase_review in_progress resolves to --tier-review + 'Reviewing'", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_review', 'in_progress'),
+    { cssVar: '--tier-review', label: 'Reviewing' },
+  );
+});
+
+test("FR-4/DD-1 final_review in_progress resolves to --tier-review + 'Reviewing'", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('final_review', 'in_progress'),
+    { cssVar: '--tier-review', label: 'Reviewing' },
+  );
+});
+
+test("FR-1/AD-2 unknown leaf in_progress falls back to STATUS_MAP defaults", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('something_else', 'in_progress'),
+    { cssVar: '--status-in-progress', label: 'In Progress' },
+  );
+});
+
+test("FR-2/DD-2 non-in_progress statuses use STATUS_MAP defaults regardless of nodeId", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('task_executor', 'completed'),
+    { cssVar: '--status-complete', label: 'Completed' },
+  );
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_review', 'not_started'),
+    { cssVar: '--status-not-started', label: 'Not Started' },
+  );
+  assert.deepStrictEqual(
+    resolveStageBadge('research', 'skipped'),
+    { cssVar: '--status-skipped', label: 'Skipped' },
+  );
+  assert.deepStrictEqual(
+    resolveStageBadge('commit', 'failed'),
+    { cssVar: '--status-failed', label: 'Failed' },
+  );
+  assert.deepStrictEqual(
+    resolveStageBadge('code_review', 'halted'),
+    { cssVar: '--status-halted', label: 'Halted' },
+  );
+});
+
+test("AD-4 compound nodeIds resolve via leaf segment", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_loop.iter0.task_loop.iter1.code_review', 'in_progress'),
+    { cssVar: '--tier-review', label: 'Reviewing' },
+  );
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_loop.iter0.phase_review', 'in_progress'),
+    { cssVar: '--tier-review', label: 'Reviewing' },
+  );
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_loop.iter0.task_loop.iter0.task_executor', 'in_progress'),
+    { cssVar: '--tier-execution', label: 'Executing' },
+  );
+});
+
+test("FR-6 ITERATION_SUBSTEP_LABELS now covers final_review", () => {
+  assert.strictEqual(ITERATION_SUBSTEP_LABELS.final_review, 'Reviewing');
+  assert.strictEqual(ITERATION_SUBSTEP_LABELS.task_executor, 'Executing');
+  assert.strictEqual(ITERATION_SUBSTEP_LABELS.commit, 'Committing');
+  assert.strictEqual(ITERATION_SUBSTEP_LABELS.code_review, 'Reviewing');
+  assert.strictEqual(ITERATION_SUBSTEP_LABELS.phase_review, 'Reviewing');
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);

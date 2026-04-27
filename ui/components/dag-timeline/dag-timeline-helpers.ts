@@ -427,18 +427,67 @@ export function deriveIterationTaskProgress(
   return { completed, total: taskLoopNode.iterations.length };
 }
 
-// ─── Stage-aware label derivation (FR-3, FR-4, FR-5, AD-1) ──────────────────
+// ─── Stage-aware label derivation (FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, AD-1, AD-2, AD-4, AD-6, DD-1, DD-2) ──
 
 /**
- * Substep node-id → in-progress label vocabulary (FR-3, DD-2).
- * Resolved against the iteration's in-flight child substep.
+ * Substep node-id → in-progress {cssVar, label} table. Single source of
+ * truth for stage-aware badge resolution at iteration headers AND
+ * substep rows. `final_review` joins the reviewing-stage family
+ * (FR-4) so the top-level Completion-section row gets the same
+ * purple "Reviewing" treatment as `phase_review` / `code_review`.
  */
-const ITERATION_SUBSTEP_LABELS: Record<string, string> = {
-  task_executor: 'Executing',
-  code_review:   'Reviewing',
-  commit:        'Committing',
-  phase_review:  'Reviewing',
+const ITERATION_SUBSTEP_CONFIG: Record<string, { cssVar: string; label: string }> = {
+  task_executor: { cssVar: '--tier-execution', label: 'Executing'  },
+  commit:        { cssVar: '--tier-execution', label: 'Committing' },
+  code_review:   { cssVar: '--tier-review',    label: 'Reviewing'  },
+  phase_review:  { cssVar: '--tier-review',    label: 'Reviewing'  },
+  final_review:  { cssVar: '--tier-review',    label: 'Reviewing'  },
 };
+
+/**
+ * Public label-only projection of `ITERATION_SUBSTEP_CONFIG`.
+ * Preserved for back-compat with existing iteration-panel
+ * imports and tests.
+ */
+export const ITERATION_SUBSTEP_LABELS: Record<string, string> = Object.fromEntries(
+  Object.entries(ITERATION_SUBSTEP_CONFIG).map(([k, v]) => [k, v.label])
+);
+
+/**
+ * Resolves a `(nodeId, status)` pair to the badge's `{cssVar, label}`
+ * (FR-1, FR-2, FR-4, FR-6, AD-2, AD-4, DD-1, DD-2). Single source of
+ * truth for stage-aware badge resolution at iteration headers AND
+ * substep rows.
+ *
+ * Resolution order for `in_progress`:
+ *   1. Planning leaf id (research/prd/design/architecture/requirements/
+ *      master_plan/explode_master_plan)         → --tier-planning + "Planning"
+ *   2. Substep leaf id in ITERATION_SUBSTEP_CONFIG → entry's cssVar + label
+ *   3. Fallback                                    → STATUS_MAP['in_progress']
+ *
+ * For non-`in_progress` statuses, returns `STATUS_MAP[status]` defaults
+ * (DD-2 — no overrides for "Not Started", "Completed", "Skipped",
+ * "Failed", "Halted").
+ */
+export function resolveStageBadge(
+  nodeId: string,
+  status: NodeStatus,
+): { cssVar: string; label: string } {
+  if (status !== 'in_progress') {
+    const entry = STATUS_MAP[status];
+    return { cssVar: entry.cssVar, label: entry.defaultLabel };
+  }
+  const leaf = extractLeaf(nodeId);
+  if (PLANNING_STEP_IDS.has(leaf)) {
+    return { cssVar: '--tier-planning', label: 'Planning' };
+  }
+  const cfg = ITERATION_SUBSTEP_CONFIG[leaf];
+  if (cfg !== undefined) {
+    return { cssVar: cfg.cssVar, label: cfg.label };
+  }
+  const entry = STATUS_MAP['in_progress'];
+  return { cssVar: entry.cssVar, label: entry.defaultLabel };
+}
 
 /**
  * Derives the resolved {status, label} pair for an iteration's badge.
