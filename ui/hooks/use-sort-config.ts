@@ -85,8 +85,8 @@ function classifyStatus(p: ProjectSummary): StatusBucket {
   if (tier === 'planning') {
     if (planningStatus === 'in_progress') return 'planning';
     if (planningStatus === 'complete') return 'planned';
-    // not_started | undefined → Not Started badge
-    return 'notStarted';
+    if (planningStatus === undefined) return 'planning';  // FR-14 — v4 backward-compat: badge renders "Planning" for undefined planningStatus
+    return 'notStarted';                                  // planningStatus === 'not_started' — badge renders "Not Started"
   }
 
   if (tier === 'complete') return 'complete';

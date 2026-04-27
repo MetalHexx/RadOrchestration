@@ -89,6 +89,19 @@ test('DEFAULT_SORT_CONFIG exports the expected secondary defaults', () => {
   assert.strictEqual(typeof DEFAULT_SORT_CONFIG.secondary, 'string');
 });
 
+// FR-14 — backward-compat alignment: undefined planningStatus sorts as Planning, not Not Started.
+test('FR-14 — undefined planningStatus sorts as Planning (slot 5) against production compareSortConfig', () => {
+  const fxPlanningUndef = fx({ name: 'p_undef', tier: 'planning', planningStatus: undefined });
+  const fxNotStarted = fx({ name: 'p_ns', tier: 'planning', planningStatus: 'not_started' });
+  const fxPlanning = fx({ name: 'p_planning', tier: 'planning', planningStatus: 'in_progress' });
+  const sorted = [fxNotStarted, fxPlanning, fxPlanningUndef].sort(
+    (a, b) => compareSortConfig(a, b, { primary: 'status', primaryDir: 'asc', secondary: 'name', secondaryDir: 'asc' })
+  );
+  // p_planning (slot 5) and p_undef (slot 5 after fix) tie on status; alphabetical secondary breaks → p_planning before p_undef.
+  // Both then sort before p_ns (slot 7).
+  assert.deepStrictEqual(sorted.map(p => p.name), ['p_planning', 'p_undef', 'p_ns']);
+});
+
 if (failed === 0) {
   console.log(`\nAll ${passed} tests passed.`);
 } else {

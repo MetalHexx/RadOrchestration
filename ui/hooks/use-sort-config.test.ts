@@ -97,8 +97,8 @@ function classifyStatus(p: ProjectSummary): StatusBucket {
   if (tier === 'planning') {
     if (planningStatus === 'in_progress') return 'planning';
     if (planningStatus === 'complete') return 'planned';
-    // not_started | undefined → Not Started badge
-    return 'notStarted';
+    if (planningStatus === undefined) return 'planning';  // FR-14 — v4 backward-compat: badge renders "Planning" for undefined planningStatus
+    return 'notStarted';                                  // planningStatus === 'not_started' — badge renders "Not Started"
   }
 
   if (tier === 'complete') return 'complete';
@@ -449,6 +449,24 @@ async function run() {
     const descSorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, descConfig));
     assert.strictEqual(ascSorted[ascSorted.length - 1].name,   'NotInitialized', 'asc: NotInitialized must be last');
     assert.strictEqual(descSorted[descSorted.length - 1].name, 'NotInitialized', 'desc: NotInitialized must be last');
+  });
+
+  await test('FR-14 — tier=planning with undefined planningStatus aligns with badge "Planning" (slot 5, not slot 7)', async () => {
+    const fxPlanningUndef = makeProject('p_undef', { name: 'p_undef', tier: 'planning', planningStatus: undefined, executionStatus: undefined, hasMalformedState: false });
+    const fxNotStarted = makeProject('p_ns', { name: 'p_ns', tier: 'planning', planningStatus: 'not_started', executionStatus: undefined, hasMalformedState: false });
+    const fxPlanned = makeProject('p_done', { name: 'p_done', tier: 'planning', planningStatus: 'complete', executionStatus: undefined, hasMalformedState: false });
+
+    // The backward-compat undefined-planningStatus row must sort with the in_progress
+    // 'Planning' badge cluster (slot 5), not the 'Not Started' cluster (slot 7).
+    assert.strictEqual(getStatusPriority(fxPlanningUndef), 5);
+    assert.strictEqual(getStatusPriority(fxNotStarted), 7);
+    assert.strictEqual(getStatusPriority(fxPlanned), 6);
+
+    // And that the row sorts in front of an explicit not_started row in Urgent-first.
+    const sorted = [fxNotStarted, fxPlanned, fxPlanningUndef].sort(
+      (a, b) => compareSortConfig(a, b, { primary: 'status', primaryDir: 'asc', secondary: 'name', secondaryDir: 'asc' })
+    );
+    assert.deepStrictEqual(sorted.map(p => p.name), ['p_undef', 'p_done', 'p_ns']);
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);
