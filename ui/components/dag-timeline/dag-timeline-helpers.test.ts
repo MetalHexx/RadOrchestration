@@ -809,31 +809,31 @@ import { getDocLinkLabel, DOC_LINK_LABELS } from './dag-timeline-helpers';
 
 console.log("\ngetDocLinkLabel tests\n");
 
-test("FR-11 phase planning steps map to typed labels", () => {
-  assert.strictEqual(getDocLinkLabel('research'), 'Research');
-  assert.strictEqual(getDocLinkLabel('prd'), 'PRD');
-  assert.strictEqual(getDocLinkLabel('design'), 'Design');
-  assert.strictEqual(getDocLinkLabel('architecture'), 'Architecture');
-  assert.strictEqual(getDocLinkLabel('requirements'), 'Requirements');
-  assert.strictEqual(getDocLinkLabel('master_plan'), 'Master Plan');
+test("planning artifact steps bucket to 'Document'", () => {
+  assert.strictEqual(getDocLinkLabel('research'), 'Document');
+  assert.strictEqual(getDocLinkLabel('prd'), 'Document');
+  assert.strictEqual(getDocLinkLabel('design'), 'Document');
+  assert.strictEqual(getDocLinkLabel('architecture'), 'Document');
+  assert.strictEqual(getDocLinkLabel('requirements'), 'Document');
+  assert.strictEqual(getDocLinkLabel('master_plan'), 'Document');
 });
 
-test("FR-11 review/report steps map to typed labels", () => {
-  assert.strictEqual(getDocLinkLabel('code_review'), 'Code Review');
-  assert.strictEqual(getDocLinkLabel('phase_report'), 'Phase Report');
-  assert.strictEqual(getDocLinkLabel('phase_review'), 'Phase Review');
-  assert.strictEqual(getDocLinkLabel('final_review'), 'Final Review');
+test("review/report steps bucket to 'Report'", () => {
+  assert.strictEqual(getDocLinkLabel('code_review'), 'Report');
+  assert.strictEqual(getDocLinkLabel('phase_report'), 'Report');
+  assert.strictEqual(getDocLinkLabel('phase_review'), 'Report');
+  assert.strictEqual(getDocLinkLabel('final_review'), 'Report');
 });
 
-test("AD-6 compound id resolves leaf to label", () => {
-  assert.strictEqual(getDocLinkLabel('phase_loop.iter0.task_loop.iter1.code_review'), 'Code Review');
+test("AD-6 compound id resolves leaf to bucketed label", () => {
+  assert.strictEqual(getDocLinkLabel('phase_loop.iter0.task_loop.iter1.code_review'), 'Report');
 });
 
-test("FR-11 unknown leaf falls back to getDisplayName", () => {
+test("unknown leaf falls back to getDisplayName", () => {
   assert.strictEqual(getDocLinkLabel('something_custom'), 'Something Custom');
 });
 
-test("DOC_LINK_LABELS is exported and contains all FR-11 ids", () => {
+test("DOC_LINK_LABELS is exported and contains all bucketed ids", () => {
   const required = ['research','prd','design','architecture','requirements','master_plan',
     'code_review','phase_report','phase_review','final_review'];
   for (const id of required) {

@@ -221,27 +221,33 @@ export const NODE_SECTION_MAP: Record<string, SectionLabel> = {
   final_pr: 'Completion',
 };
 
-// ─── Doc-link label table (FR-11, AD-6) ─────────────────────────────────────
+// ─── Doc-link label table (AD-6) ────────────────────────────────────────────
 
+// Two buckets: artifact docs → 'Document', review/report outputs → 'Report'.
+// Rolls back FR-11's strict per-node typing — that contract read as
+// duplicative on screen since the flat-row title already names the document
+// (e.g. ✓ Requirements ░Requirements). Iteration trigger labels (Phase Plan /
+// Task Handoff / Handoff / Pull Request) are hard-coded at the call site
+// and remain typed because they don't duplicate the trigger title.
 export const DOC_LINK_LABELS: Record<string, string> = {
-  research:        'Research',
-  prd:             'PRD',
-  design:          'Design',
-  architecture:    'Architecture',
-  requirements:    'Requirements',
-  master_plan:     'Master Plan',
-  code_review:     'Code Review',
-  phase_report:    'Phase Report',
-  phase_review:    'Phase Review',
-  final_review:    'Final Review',
+  research:        'Document',
+  prd:             'Document',
+  design:          'Document',
+  architecture:    'Document',
+  requirements:    'Document',
+  master_plan:     'Document',
+  code_review:     'Report',
+  phase_report:    'Report',
+  phase_review:    'Report',
+  final_review:    'Report',
 };
 
 /**
- * Returns the typed doc-link label for a node id (FR-11). Resolves
- * compound ids (`phase_loop.iter0.task_loop.iter1.code_review`) by
- * extracting the leaf segment (AD-6 — same `extractLeaf` pattern used
- * by `getDisplayName` and `getGateNodeConfig`). Falls back to
- * `getDisplayName(nodeId)` for ids not in `DOC_LINK_LABELS`.
+ * Returns the bucketed doc-link label for a node id. Resolves compound ids
+ * (`phase_loop.iter0.task_loop.iter1.code_review`) by extracting the leaf
+ * segment (AD-6 — same `extractLeaf` pattern used by `getDisplayName` and
+ * `getGateNodeConfig`). Falls back to `getDisplayName(nodeId)` for ids
+ * not in `DOC_LINK_LABELS`.
  */
 export function getDocLinkLabel(nodeId: string): string {
   const leaf = nodeId.includes('.') ? nodeId.slice(nodeId.lastIndexOf('.') + 1) : nodeId;
