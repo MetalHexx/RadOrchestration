@@ -201,22 +201,23 @@ test('dag-corrective-task-group.tsx imports DocumentLink from @/components/docum
   );
 });
 
-test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path} label="Doc" onDocClick={onDocClick} /> in the accordion header row', () => {
+test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path} label="Handoff" onDocClick={onDocClick} /> in the accordion header row', () => {
   // Mirrors the iteration-panel pattern (dag-iteration-panel.tsx:132-138): post-unify corrective
   // handoff docs are carried on CorrectiveTaskEntry.doc_path and entry.nodes can be empty, so
-  // the group component itself must render the Doc button off entry.doc_path to keep corrective
+  // the group component itself must render the Handoff button off entry.doc_path to keep corrective
   // handoffs accessible from the timeline now that the synthetic task_handoff step node is gone.
+  // Label is "Handoff" (not "Doc") to distinguish corrective task handoff docs from step docs (FR-11).
   assert.ok(
     correctiveTaskGroupSource.includes('<DocumentLink'),
     'corrective task group must render <DocumentLink> for the corrective task\'s doc link'
   );
   assert.ok(
-    /<DocumentLink\s+path=\{entry\.doc_path\}/.test(correctiveTaskGroupSource),
-    '<DocumentLink> path prop must be entry.doc_path (the new CorrectiveTaskEntry.doc_path field)'
+    /<DocumentLink\s+path=\{entry\.doc_path!?\}/.test(correctiveTaskGroupSource),
+    '<DocumentLink> path prop must be entry.doc_path (the new CorrectiveTaskEntry.doc_path field). Trailing `!` non-null assertion accepted when callsite is gated on a hasHandoff boolean derived from entry.doc_path.'
   );
   assert.ok(
-    /<DocumentLink[^/]*label="Doc"/.test(correctiveTaskGroupSource),
-    '<DocumentLink> label prop must be "Doc" to match the iteration-panel / DAGNodeRow idiom'
+    /<DocumentLink[^/]*label="Handoff"/.test(correctiveTaskGroupSource),
+    '<DocumentLink> label prop must be "Handoff" to distinguish corrective task handoff docs (FR-11)'
   );
   assert.ok(
     /<DocumentLink[^/]*onDocClick=\{onDocClick\}/.test(correctiveTaskGroupSource),
@@ -225,18 +226,15 @@ test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path
 });
 
 test('dag-corrective-task-group.tsx gates <DocumentLink> on entry.doc_path (no render when null/empty)', () => {
-  // Gate expression mirrors dag-iteration-panel.tsx:132 exactly:
+  // Gate expression mirrors dag-iteration-panel.tsx exactly:
   //   entry.doc_path != null && entry.doc_path !== ''
   // No render when doc_path is absent — a completed-without-handoff-doc corrective task would
-  // show an empty Doc button otherwise.
-  const lines = correctiveTaskGroupSource.split(/\r?\n/);
-  const docLinkLineIdx = lines.findIndex((l) => l.includes('<DocumentLink'));
-  assert.ok(docLinkLineIdx > 0, 'DocumentLink line must exist');
-  // Scan the preceding 10 lines for the gate expression (headroom for an explanatory comment block).
-  const precedingWindow = lines.slice(Math.max(0, docLinkLineIdx - 10), docLinkLineIdx).join('\n');
+  // show an empty Doc button otherwise. The gate may be hoisted into a `hasHandoff` boolean
+  // and reused at the JSX site — accept either inline or hoisted form.
   assert.ok(
-    /entry\.doc_path\s*!=\s*null/.test(precedingWindow),
-    'DocumentLink must be gated on `entry.doc_path != null` so corrective tasks without a handoff doc do not render an empty Doc button'
+    /hasHandoff\s*=\s*entry\.doc_path\s*!=\s*null/.test(correctiveTaskGroupSource)
+      || /entry\.doc_path\s*!=\s*null\s*&&\s*entry\.doc_path\s*!==\s*''/.test(correctiveTaskGroupSource),
+    'DocumentLink must be gated on `entry.doc_path != null && entry.doc_path !== \'\'` so corrective tasks without a handoff doc do not render an empty Doc button. Gate may be hoisted into a hasHandoff boolean.'
   );
 });
 
@@ -344,10 +342,10 @@ test('dag-corrective-task-group.tsx <AccordionItem value> uses buildCorrectiveIt
   );
 });
 
-test('dag-corrective-task-group.tsx renders the icon-only SpinnerBadge in each header (DD-1)', () => {
+test('dag-corrective-task-group.tsx renders the icon-only NodeStatusBadge in each header (DD-1)', () => {
   assert.ok(
-    /SpinnerBadge[\s\S]{0,400}hideLabel/.test(ctgSource),
-    'corrective task header must render the icon-only SpinnerBadge for visual parity with iteration headers (DD-1, FR-6)'
+    /NodeStatusBadge[\s\S]{0,400}iconOnly/.test(ctgSource),
+    'corrective task header must render the icon-only NodeStatusBadge for visual parity with iteration headers (DD-1, FR-6)'
   );
 });
 
@@ -363,3 +361,78 @@ test('dag-corrective-task-group.tsx <AccordionTrigger> wires role="option", data
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
+
+import { readFileSync as cgReadSync } from 'node:fs';
+import { fileURLToPath as cgFileURL } from 'node:url';
+import { dirname as cgDirname, join as cgJoin } from 'node:path';
+
+const CG_SOURCE = cgReadSync(
+  cgJoin(cgDirname(cgFileURL(import.meta.url)), 'dag-corrective-task-group.tsx'),
+  'utf8'
+);
+
+console.log("\nDAGCorrectiveTaskGroup FR-1 source-shape tests\n");
+
+let passed4 = 0;
+let failed4 = 0;
+
+function test4(name: string, fn: () => void) {
+  try {
+    fn();
+    console.log(`  ✓ ${name}`);
+    passed4++;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`  ✗ ${name}\n    ${msg}`);
+    failed4++;
+  }
+}
+
+test4("FR-1 corrective trigger uses NodeStatusBadge (labeled)", () => {
+  assert.ok(/<NodeStatusBadge/.test(CG_SOURCE),
+    "corrective trigger must render NodeStatusBadge (FR-1)");
+});
+
+test4("DD-1 corrective iconOnly wired to entry.status === 'completed'", () => {
+  assert.ok(/entry\.status\s*===\s*['"]completed['"]/.test(CG_SOURCE),
+    "corrective trigger iconOnly conditional on completed (DD-1)");
+});
+
+test4("FR-1 hideLabel SpinnerBadge no longer rendered on corrective trigger", () => {
+  // The trigger render (between AccordionTrigger open and close) must not
+  // pass a literal hideLabel attribute on a SpinnerBadge.
+  assert.ok(!/<SpinnerBadge[\s\S]*?hideLabel[\s\S]*?\/>/.test(CG_SOURCE),
+    "no SpinnerBadge … hideLabel on corrective trigger (FR-1)");
+});
+
+test4("FR-11 corrective DocumentLink label is 'Handoff', not 'Doc'", () => {
+  assert.ok(/label="Handoff"/.test(CG_SOURCE),
+    "corrective DocumentLink label must be 'Handoff' (FR-11)");
+  assert.ok(!/label="Doc"/.test(CG_SOURCE),
+    "literal 'Doc' label is forbidden on corrective DocumentLink (FR-11)");
+});
+
+test("FR-12 corrective ExternalLink renders icon='github' with label='Commit'", () => {
+  assert.ok(/icon="github"/.test(CG_SOURCE),
+    "corrective row must pass icon='github' on commit ExternalLink (FR-12)");
+  assert.ok(/label="Commit"/.test(CG_SOURCE),
+    "corrective row must pass label='Commit' on commit ExternalLink (FR-12)");
+});
+
+test("DD-8 corrective ExternalLink forwards full commit hash as title", () => {
+  assert.ok(/title=\{[^}]*commit[_.]hash[^}]*\}/.test(CG_SOURCE) ||
+            /title=\{entry\.commit_hash[^}]*\}/.test(CG_SOURCE),
+    "corrective row must forward full commit hash as ExternalLink title (DD-8)");
+});
+
+test("FR-17/DD-13 corrective trigger wrapper carries pr-3 gutter", () => {
+  // Match the trailing flex-row class chain with optional leading utilities
+  // (e.g. `relative`) so future additive refactors don't churn this assertion.
+  const match = CG_SOURCE.match(/className="[^"]*flex items-center gap-2 rounded-md hover:bg-accent\/50[^"]*"/);
+  assert.ok(match !== null, "corrective trigger wrapper missing");
+  assert.ok(match[0].includes('pr-3'),
+    `corrective trigger wrapper missing pr-3 gutter: ${match[0]} (FR-17, DD-13)`);
+});
+
+console.log(`\n${passed4} passed, ${failed4} failed\n`);
+if (failed4 > 0) process.exit(1);

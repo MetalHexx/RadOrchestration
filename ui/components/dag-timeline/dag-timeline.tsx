@@ -1,12 +1,12 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { NodesRecord, NodeState, NodeStatus } from '@/types/state';
 import { DAGNodeRow } from './dag-node-row';
 import { DAGLoopNode } from './dag-loop-node';
-import { isLoopNode, groupNodesBySection, NODE_SECTION_MAP } from './dag-timeline-helpers';
+import { isLoopNode, groupNodesBySection, NODE_SECTION_MAP, shouldRenderTimelineRow } from './dag-timeline-helpers';
+import type { CompatibleNodeState } from './dag-timeline-helpers';
 import { DAGSectionGroup } from './dag-section-group';
-import { Separator } from '@/components/ui/separator';
 
 interface DAGTimelineProps {
   nodes: NodesRecord;
@@ -21,6 +21,9 @@ interface DAGTimelineProps {
   projectName: string;
   /** Top-level phase_loop.status for FR-2 Execute Plan visibility (AD-2). */
   phaseLoopStatus?: NodeStatus;
+  /** PR URL from state.pipeline.source_control.pr_url; surfaced on the
+   *  `final_pr` row only (Completion section). */
+  prUrl?: string | null;
 }
 
 /**
@@ -54,7 +57,7 @@ export function iterationAncestorToAccordionKey(loopParentId: string, iterationI
   return `iter-${loopParentId}-${iterationIndex}`;
 }
 
-export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName, phaseLoopStatus }: DAGTimelineProps) {
+export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName, phaseLoopStatus, prUrl }: DAGTimelineProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const groups = groupNodesBySection(nodes);
   const unmatchedEntries = Object.entries(nodes).filter(([nodeId]) => !Object.hasOwn(NODE_SECTION_MAP, nodeId));
@@ -198,6 +201,7 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
           isFocused={focusedRowKey === nodeId}
           onFocusChange={handleFocusChange}
           phaseLoopStatus={phaseLoopStatus}
+          prUrl={prUrl}
         />
       )}
     </div>
@@ -209,18 +213,18 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
       role="listbox"
       aria-label="Pipeline timeline"
       onKeyDownCapture={handleKeyDown}
-      className="flex flex-col gap-0"
+      className="flex flex-col gap-3"
     >
-      {groups.map((group, index) => (
-        <Fragment key={group.label}>
-          {index > 0 && <Separator className="my-3" role="none" />}
-          <DAGSectionGroup label={group.label}>
-            {group.entries.map(renderNodeEntry)}
-          </DAGSectionGroup>
-        </Fragment>
+      {groups.map((group) => (
+        <DAGSectionGroup key={group.label} label={group.label}>
+          {group.entries
+            .filter(([nodeId, node]) => shouldRenderTimelineRow(nodeId, node as CompatibleNodeState, { commitHash: null, prUrl: prUrl ?? null }))
+            .map(renderNodeEntry)}
+        </DAGSectionGroup>
       ))}
-      {groups.length > 0 && unmatchedEntries.length > 0 && <Separator className="my-3" role="none" />}
-      {unmatchedEntries.map(renderNodeEntry)}
+      {unmatchedEntries
+        .filter(([nodeId, node]) => shouldRenderTimelineRow(nodeId, node as CompatibleNodeState, { commitHash: null, prUrl: prUrl ?? null }))
+        .map(renderNodeEntry)}
     </div>
   );
 }

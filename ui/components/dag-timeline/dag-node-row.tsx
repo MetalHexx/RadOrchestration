@@ -2,11 +2,10 @@
 
 import { useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { NodeKindIcon } from './node-kind-icon';
 import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
-import { DocumentLink } from '@/components/documents';
+import { DocumentLink, ExternalLink } from '@/components/documents';
 import { ApproveGateButton, ExecutePlanButton } from '@/components/dashboard';
-import { getDisplayName, getRowButtonDescriptor } from './dag-timeline-helpers';
+import { getDisplayName, getRowButtonDescriptor, deriveGateBadgeStatusAndLabel, getDocLinkLabel, derivePlanningStepLabel } from './dag-timeline-helpers';
 import type { CompatibleNodeState } from './dag-timeline-helpers';
 import type { NodeStatus } from '@/types/state';
 
@@ -21,25 +20,35 @@ interface DAGNodeRowProps {
   onFocusChange: (nodeId: string) => void;
   /** Top-level phase_loop status; drives FR-2 Execute Plan visibility (AD-2). */
   phaseLoopStatus?: NodeStatus;
+  /** PR URL surfaced on the `final_pr` row (Completion section). Sourced
+   *  from `state.pipeline.source_control.pr_url` and threaded through
+   *  DAGTimeline; ignored on every other row. */
+  prUrl?: string | null;
 }
 
 // Re-export formatNodeId to preserve barrel export contract
 export { formatNodeId } from './dag-timeline-helpers';
 
-export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0, projectName, isFocused, onFocusChange, phaseLoopStatus }: DAGNodeRowProps) {
+export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 0, projectName, isFocused, onFocusChange, phaseLoopStatus, prUrl }: DAGNodeRowProps) {
   const isActive = nodeId === currentNodePath;
-  const branchTaken = node.kind === 'conditional' ? node.branch_taken : null;
-  const branchLabel = branchTaken != null ? (branchTaken === 'true' ? 'Yes' : 'No') : null;
-  const branchBadgeStatus = branchTaken != null ? (branchTaken === 'true' ? 'completed' : 'skipped') : null;
   const descriptor =
     node.kind === 'gate' && projectName !== undefined
       ? getRowButtonDescriptor(nodeId, node, phaseLoopStatus)
       : { kind: 'none' as const };
   const hasActionButton = descriptor.kind !== 'none';
+  const isFinalPrRow = nodeId === 'final_pr' && prUrl != null && prUrl !== '';
+
+  // Resolve the same {status,label} pair the visible badge uses, so the row's
+  // aria-label announces what the user sees rather than a stale raw status.
+  // Gate rows can present "Not Started" via deriveGateBadgeStatusAndLabel even
+  // when node.status is 'in_progress'; planning steps surface "Executing" via
+  // derivePlanningStepLabel.
+  const planningLabel = derivePlanningStepLabel(nodeId, node.status);
+  const resolvedBadge = node.kind === 'gate'
+    ? deriveGateBadgeStatusAndLabel(node)
+    : { status: node.status, label: planningLabel ?? STATUS_MAP[node.status].defaultLabel };
 
   const actionButtonRef = useRef<HTMLButtonElement | null>(null);
-
-  const ariaLabel = `${getDisplayName(nodeId)} — ${STATUS_MAP[node.status].defaultLabel}`;
 
   const handleFocus = useCallback(() => {
     onFocusChange(nodeId);
@@ -50,10 +59,12 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
     event.preventDefault();
     if (hasActionButton && actionButtonRef.current !== null) {
       actionButtonRef.current.click();
+    } else if (isFinalPrRow) {
+      window.open(prUrl!, '_blank', 'noopener,noreferrer');
     } else if (node.kind === 'step' && node.doc_path != null && node.doc_path !== '') {
       onDocClick(node.doc_path);
     }
-  }, [hasActionButton, node, onDocClick]);
+  }, [hasActionButton, isFinalPrRow, prUrl, node, onDocClick]);
 
   return (
     <div
@@ -61,7 +72,7 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       aria-selected={isActive}
       tabIndex={isFocused ? 0 : -1}
       data-timeline-row
-      aria-label={ariaLabel}
+      aria-label={`${getDisplayName(nodeId)} — ${resolvedBadge.label}`}
       aria-current={isActive ? 'step' : undefined}
       data-row-key={nodeId}
       onFocus={handleFocus}
@@ -73,16 +84,17 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
       )}
       style={{ paddingLeft: 12 + depth * 16 }}
     >
-      <NodeKindIcon kind={node.kind} />
+      <NodeStatusBadge
+        status={resolvedBadge.status}
+        label={node.kind === 'gate' ? resolvedBadge.label : planningLabel}
+        iconOnly={resolvedBadge.status === 'completed'}
+      />
       <span className="text-sm font-medium min-w-0 shrink truncate max-w-[55%]">{getDisplayName(nodeId)}</span>
-      <NodeStatusBadge status={node.status} iconOnly />
-      {branchLabel !== null && branchBadgeStatus !== null && (
-        <span role="group" aria-label={`Branch taken: ${branchLabel}`}>
-          <NodeStatusBadge status={branchBadgeStatus} label={branchLabel} />
-        </span>
-      )}
       {node.kind === 'step' && node.doc_path != null && node.doc_path !== '' && (
-        <DocumentLink path={node.doc_path} label="Doc" onDocClick={onDocClick} tabIndex={-1} />
+        <DocumentLink path={node.doc_path} label={getDocLinkLabel(nodeId)} onDocClick={onDocClick} tabIndex={-1} />
+      )}
+      {nodeId === 'final_pr' && prUrl != null && prUrl !== '' && (
+        <ExternalLink href={prUrl} label="Pull Request" icon="github" tabIndex={-1} />
       )}
       {descriptor.kind === 'approve' && (
         <ApproveGateButton

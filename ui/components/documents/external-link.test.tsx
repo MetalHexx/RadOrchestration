@@ -85,4 +85,32 @@ function render(props: Parameters<typeof ExternalLink>[0]): string {
   console.log('✓ active href — tabIndex={-1} round-trips to tabindex="-1"');
 }
 
+// ── Optional title prop ─────────────────────────────────────────────────────
+
+{
+  const html = render({
+    href: 'https://github.com/o/r/commit/abc123def4567890',
+    label: 'Commit',
+    icon: 'github',
+    title: 'abc123def4567890',
+  });
+  assert.ok(html.includes('title="abc123def4567890"'),
+    `expected title attribute in: ${html}`);
+  console.log('✓ FR-12/DD-8 ExternalLink emits title attribute when title prop is provided');
+}
+
+{
+  const html = render({
+    href: 'https://github.com/o/r/commit/abc123def4567890',
+    label: 'Commit',
+    icon: 'github',
+    title: 'abc123def4567890',
+  });
+  assert.ok(html.includes('aria-label="Commit"'),
+    `aria-label must remain the descriptive label, not the hash, in: ${html}`);
+  assert.ok(!html.includes('aria-label="abc123def4567890"'),
+    `aria-label must not be overridden by title (raw hash) in: ${html}`);
+  console.log('✓ NFR-1 aria-label remains the descriptive label when title is set (hash exposed via title attribute only)');
+}
+
 console.log('\nAll ExternalLink tests passed ✓');

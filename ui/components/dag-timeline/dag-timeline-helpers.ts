@@ -1,6 +1,35 @@
 import type { StepNodeState, GateNodeState, ConditionalNodeState, ParallelNodeState, NodesRecord, NodeState, ForEachPhaseNodeState, GateEvent, NodeStatus, IterationEntry } from '@/types/state';
+import { STATUS_MAP } from './node-status-map';
 
 export type CompatibleNodeState = StepNodeState | GateNodeState | ConditionalNodeState | ParallelNodeState;
+
+export interface RowVisibilityContext {
+  prUrl: string | null;
+  commitHash: string | null;
+}
+
+/**
+ * Hide rows that add no signal beyond what the project header already
+ * surfaces (auto_commit / auto_pr / gate_mode badges). Hiding a gate
+ * conditional does not orphan its child action — the executor flattens
+ * branch_true children into the parent scope's nodes dict.
+ */
+export function shouldRenderTimelineRow(
+  nodeId: string,
+  node: CompatibleNodeState,
+  ctx: RowVisibilityContext,
+): boolean {
+  if (nodeId === 'commit_gate' || nodeId === 'pr_gate') return false;
+
+  if (node.kind === 'gate' && (nodeId === 'task_gate' || nodeId === 'phase_gate')) {
+    if (node.gate_active === false) return false;
+  }
+
+  if (nodeId === 'commit' && (ctx.commitHash == null || ctx.commitHash === '')) return false;
+  if (nodeId === 'final_pr' && (ctx.prUrl == null || ctx.prUrl === '')) return false;
+
+  return true;
+}
 
 export function deriveRepoBaseUrl(compareUrl: string | null): string | null {
   if (compareUrl == null) return null;
@@ -91,8 +120,19 @@ function extractLeaf(nodeId: string): string {
  * "phase_loop.iter0.phase_planning" → "Phase Planning"
  * "phase_planning"                  → "Phase Planning"
  */
+/**
+ * Acronym overrides for `getDisplayName`. `formatNodeId` does naive
+ * title-casing (`final_pr` → `Final Pr`); these entries restore the
+ * intended capitalization for known acronyms surfaced as row titles.
+ */
+const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
+  final_pr: 'Final PR',
+  pr_gate: 'PR Gate',
+};
+
 export function getDisplayName(nodeId: string): string {
-  return formatNodeId(extractLeaf(nodeId));
+  const leaf = extractLeaf(nodeId);
+  return DISPLAY_NAME_OVERRIDES[leaf] ?? formatNodeId(leaf);
 }
 
 // ─── Gate Node Config (single source of truth for approval buttons) ──────────
@@ -183,7 +223,7 @@ export function getRowButtonDescriptor(
 
 // ─── Section Types ────────────────────────────────────────────────────────────
 
-export type SectionLabel = 'Planning' | 'Gates' | 'Execution' | 'Completion';
+export type SectionLabel = 'Planning' | 'Execution' | 'Completion';
 
 export interface SectionGroup {
   label: SectionLabel;
@@ -200,13 +240,74 @@ export const NODE_SECTION_MAP: Record<string, SectionLabel> = {
   requirements: 'Planning',
   master_plan: 'Planning',
   explode_master_plan: 'Planning',
-  plan_approval_gate: 'Gates',
-  gate_mode_selection: 'Gates',
+  plan_approval_gate: 'Planning',
+  gate_mode_selection: 'Planning',
   phase_loop: 'Execution',
   final_review: 'Completion',
   pr_gate: 'Completion',
   final_approval_gate: 'Completion',
+  final_pr: 'Completion',
 };
+
+// ─── Doc-link label table (AD-6) ────────────────────────────────────────────
+
+// Two buckets: artifact docs → 'Document', review/report outputs → 'Report'.
+// Rolls back FR-11's strict per-node typing — that contract read as
+// duplicative on screen since the flat-row title already names the document
+// (e.g. ✓ Requirements ░Requirements). Iteration trigger labels (Phase Plan /
+// Task Handoff / Handoff / Pull Request) are hard-coded at the call site
+// and remain typed because they don't duplicate the trigger title.
+const DOC_LINK_LABELS: Record<string, string> = {
+  research:        'Document',
+  prd:             'Document',
+  design:          'Document',
+  architecture:    'Document',
+  requirements:    'Document',
+  master_plan:     'Document',
+  code_review:     'Report',
+  phase_report:    'Report',
+  phase_review:    'Report',
+  final_review:    'Report',
+};
+
+/**
+ * Returns the bucketed doc-link label for a node id. Resolves compound ids
+ * (`phase_loop.iter0.task_loop.iter1.code_review`) by extracting the leaf
+ * segment (AD-6 — same `extractLeaf` pattern used by `getDisplayName` and
+ * `getGateNodeConfig`). Falls back to `getDisplayName(nodeId)` for ids
+ * not in `DOC_LINK_LABELS`.
+ */
+export function getDocLinkLabel(nodeId: string): string {
+  const leaf = extractLeaf(nodeId);
+  return DOC_LINK_LABELS[leaf] ?? getDisplayName(nodeId);
+}
+
+// ─── Top-level planning step badge label (FR-5) ──────────────────────────────
+
+const PLANNING_STEP_IDS: ReadonlySet<string> = new Set([
+  'research',
+  'prd',
+  'design',
+  'architecture',
+  'requirements',
+  'master_plan',
+  'explode_master_plan',
+]);
+
+/**
+ * Returns the in-progress badge label for a top-level planning step row
+ * (FR-5). Only `in_progress` planning steps deviate from `STATUS_MAP`'s
+ * `'In Progress'` default — they render the uniform `'Executing'` label.
+ * For non-planning ids and non-in_progress statuses, returns `undefined`
+ * so the call site falls through to `STATUS_MAP[status].defaultLabel`.
+ */
+export function derivePlanningStepLabel(
+  nodeId: string,
+  status: NodeStatus
+): string | undefined {
+  if (status !== 'in_progress') return undefined;
+  return PLANNING_STEP_IDS.has(nodeId) ? 'Executing' : undefined;
+}
 
 // ─── Section Helper Functions ─────────────────────────────────────────────────
 
@@ -223,7 +324,7 @@ export function parsePhaseNameFromDocPath(
 
   const title = match[1]
     .split('-')
-    .map(w => w === w.toUpperCase() && w.length > 1 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ');
 
   return `Phase ${phaseNum} — ${title}`;
@@ -242,14 +343,14 @@ export function parseTaskNameFromDocPath(
 
   const title = match[1]
     .split('-')
-    .map(w => w === w.toUpperCase() && w.length > 1 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ');
 
   return `Task ${taskNum} — ${title}`;
 }
 
 export function groupNodesBySection(nodes: NodesRecord): SectionGroup[] {
-  const sectionOrder: SectionLabel[] = ['Planning', 'Gates', 'Execution', 'Completion'];
+  const sectionOrder: SectionLabel[] = ['Planning', 'Execution', 'Completion'];
   const buckets = new Map<SectionLabel, Array<[string, NodeState]>>();
 
   for (const label of sectionOrder) {
@@ -324,4 +425,64 @@ export function deriveIterationTaskProgress(
     (i) => i.status === 'completed'
   ).length;
   return { completed, total: taskLoopNode.iterations.length };
+}
+
+// ─── Stage-aware label derivation (FR-3, FR-4, FR-5, AD-1) ──────────────────
+
+/**
+ * Substep node-id → in-progress label vocabulary (FR-3, DD-2).
+ * Resolved against the iteration's in-flight child substep.
+ */
+const ITERATION_SUBSTEP_LABELS: Record<string, string> = {
+  task_executor: 'Executing',
+  code_review:   'Reviewing',
+  commit:        'Committing',
+  phase_review:  'Reviewing',
+};
+
+/**
+ * Derives the resolved {status, label} pair for an iteration's badge.
+ * For `in_progress` iterations, walks `iteration.nodes` to find an
+ * in-flight child whose id matches `ITERATION_SUBSTEP_LABELS`. If the
+ * in-flight child is itself a `for_each_task` loop, recurses into its
+ * active iteration (phase iteration inherits the task's substep label,
+ * FR-3). Falls back to `'Executing'` when no substep matches but the
+ * iteration is still in_progress. For non-in_progress statuses, returns
+ * the `STATUS_MAP` defaultLabel for the iteration's own status.
+ */
+export function deriveIterationBadgeLabel(
+  iteration: IterationEntry
+): { status: NodeStatus; label: string } {
+  if (iteration.status !== 'in_progress') {
+    const entry = STATUS_MAP[iteration.status];
+    return { status: iteration.status, label: entry.defaultLabel };
+  }
+  for (const [childId, childNode] of Object.entries(iteration.nodes)) {
+    if (childNode.kind === 'for_each_task' && childNode.status === 'in_progress') {
+      const active = childNode.iterations.find(i => i.status === 'in_progress');
+      if (active) return deriveIterationBadgeLabel(active);
+    }
+    if (childNode.status !== 'in_progress') continue;
+    const label = ITERATION_SUBSTEP_LABELS[childId];
+    if (label !== undefined) {
+      return { status: 'in_progress', label };
+    }
+  }
+  return { status: 'in_progress', label: 'Executing' };
+}
+
+/**
+ * Resolves the badge {status, label} for a gate node. When
+ * `gate_active === true` (FR-4), forces the gray `not_started` visual
+ * with label `'Not Started'` (DD-3). Otherwise returns the gate's own
+ * status with its STATUS_MAP defaultLabel.
+ */
+export function deriveGateBadgeStatusAndLabel(
+  node: GateNodeState
+): { status: NodeStatus; label: string } {
+  if (node.gate_active === true && node.status !== 'completed') {
+    return { status: 'not_started', label: 'Not Started' };
+  }
+  const entry = STATUS_MAP[node.status];
+  return { status: node.status, label: entry.defaultLabel };
 }

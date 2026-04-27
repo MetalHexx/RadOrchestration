@@ -2,9 +2,8 @@
 
 import { useCallback } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import { SpinnerBadge } from '@/components/badges';
+import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
 import { DAGNodeRow } from './dag-node-row';
-import { STATUS_MAP } from './node-status-badge';
 import { DocumentLink, ExternalLink } from '@/components/documents';
 import { getCommitLinkData, filterCompatibleNodes, buildCorrectiveItemValue } from './dag-timeline-helpers';
 import type { CorrectiveTaskEntry } from '@/types/state';
@@ -60,6 +59,8 @@ function CorrectiveRow({
   const commitData = getCommitLinkData(entry.commit_hash, repoBaseUrl);
   const compatibleNodes = filterCompatibleNodes(entry.nodes);
   const statusEntry = STATUS_MAP[entry.status];
+  const hasHandoff = entry.doc_path != null && entry.doc_path !== '';
+  const hasCommitLink = commitData !== null && entry.commit_hash != null;
   return (
     <AccordionItem value={buildCorrectiveItemValue(parentIterationKey, entry.index)}>
       {/*
@@ -69,17 +70,19 @@ function CorrectiveRow({
         <button> is invalid HTML and breaks click/keyboard behavior.
         Mirrors the clean pattern already in dag-iteration-panel.tsx.
       */}
-      <div className="flex items-center gap-2 rounded-md hover:bg-accent/50">
+      <div className="relative flex items-center gap-2 rounded-md hover:bg-accent/50 pr-3">
         {/*
           flex-1 lives on this wrapper <div> — NOT on AccordionTrigger's className —
           because AccordionTrigger renders AccordionPrimitive.Header (hardcoded
           className="flex") wrapping the inner Trigger <button>. Putting flex-1 on
-          the Trigger is a no-op for the row layout.
+          the Trigger is a no-op for the row layout. The arbitrary [&>h3]:flex-1
+          + [&>h3]:min-w-0 selector pushes flex-1 onto the Header so the trigger
+          fills the row width and the auto-rendered chevron lands at the right edge.
 
           Padding + w-full live on the Trigger so the entire padded band of the
           flex-1 column is part of the <button>'s click/focus target.
         */}
-        <div className="flex-1">
+        <div className="flex-1 [&>h3]:flex-1 [&>h3]:min-w-0">
           <AccordionTrigger
             role="option"
             aria-selected={false}
@@ -90,37 +93,57 @@ function CorrectiveRow({
             tabIndex={isFocused ? 0 : -1}
             onFocus={handleFocus}
           >
-            <SpinnerBadge
-              label={statusEntry.defaultLabel}
-              cssVar={statusEntry.cssVar}
-              isSpinning={statusEntry.isSpinning}
-              isComplete={statusEntry.isComplete}
-              isRejected={statusEntry.isRejected}
-              ariaLabel={statusEntry.defaultLabel}
-              hideLabel
+            <NodeStatusBadge
+              status={entry.status}
+              iconOnly={entry.status === 'completed'}
             />
-            <span className="text-sm font-medium">{buildTriggerText(entry.index)}</span>
+            <span className="text-sm font-medium truncate min-w-0">{buildTriggerText(entry.index)}</span>
+            {/* Invisible placeholder reserves layout space for the absolute-positioned Handoff + Commit links below; pl-3 keeps the visible links from crowding the corrective name when it's long. */}
+            {(hasHandoff || hasCommitLink) && (
+              <span aria-hidden="true" className="invisible ml-auto inline-flex items-center gap-2 pl-3 text-sm shrink-0">
+                {hasHandoff && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-block h-3.5 w-3.5" />
+                    <span>Handoff</span>
+                  </span>
+                )}
+                {hasCommitLink && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-block h-3.5 w-3.5" />
+                    <span>{commitData!.label}</span>
+                  </span>
+                )}
+              </span>
+            )}
           </AccordionTrigger>
         </div>
-        {entry.doc_path != null && entry.doc_path !== '' && (
-          // Rendered OUTSIDE AccordionTrigger — see header comment. No tabIndex
-          // override: the trigger consumes Enter/Space for expand/collapse, so
-          // keyboard users reach this link via natural tab order.
-          <DocumentLink path={entry.doc_path} label="Doc" onDocClick={onDocClick} />
-        )}
-        {commitData !== null && (
-          commitData.href !== null ? (
-            // No tabIndex override: rendered OUTSIDE AccordionTrigger.
-            <ExternalLink
-              href={commitData.href}
-              label={commitData.label}
-              icon="external-link"
-            />
-          ) : (
-            <span className="text-xs font-mono text-muted-foreground">
-              {commitData.label}
-            </span>
-          )
+        {(hasHandoff || hasCommitLink) && (
+          <div className="absolute right-12 top-1/2 -translate-y-1/2 z-10 flex items-center gap-2">
+            {hasHandoff && (
+              // Rendered OUTSIDE AccordionTrigger — see header comment. No tabIndex
+              // override: the trigger consumes Enter/Space for expand/collapse, so
+              // keyboard users reach this link via natural tab order.
+              <DocumentLink path={entry.doc_path!} label="Handoff" onDocClick={onDocClick} />
+            )}
+            {hasCommitLink && (
+              commitData!.href !== null ? (
+                // No tabIndex override: rendered OUTSIDE AccordionTrigger.
+                <ExternalLink
+                  href={commitData!.href}
+                  label="Commit"
+                  icon="github"
+                  title={entry.commit_hash!}
+                />
+              ) : (
+                <span
+                  className="text-xs font-mono text-muted-foreground"
+                  title={entry.commit_hash!}
+                >
+                  {commitData!.label}
+                </span>
+              )
+            )}
+          </div>
         )}
       </div>
       <AccordionContent>

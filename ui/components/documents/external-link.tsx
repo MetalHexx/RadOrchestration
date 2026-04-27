@@ -22,6 +22,12 @@ interface ExternalLinkProps {
    *  listbox's roving-tabindex scheme intact; other call sites omit it so the
    *  link stays in the natural Tab order. */
   tabIndex?: number;
+  /** Optional native tooltip text — passed to the underlying <a>'s `title`
+   *  attribute. Used by the dag-timeline commit link to expose the full
+   *  commit hash on hover (DD-8). The accessible name remains `label` so
+   *  screen readers announce descriptive context (e.g. "Commit") rather
+   *  than the raw hash. */
+  title?: string;
 }
 
 export function ExternalLink({
@@ -29,6 +35,7 @@ export function ExternalLink({
   label,
   icon = 'external-link',
   tabIndex,
+  title,
 }: ExternalLinkProps): JSX.Element {
   const Icon = icon === 'github' ? Github : ExternalLinkIcon;
 
@@ -59,6 +66,7 @@ export function ExternalLink({
       target="_blank"
       rel="noopener noreferrer"
       tabIndex={tabIndex}
+      title={title}
       className="inline-flex items-center gap-1.5 text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm text-sm"
       aria-label={label}
     >

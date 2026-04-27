@@ -751,3 +751,145 @@ test2('node-status-badge.tsx accepts an `iconOnly` prop and forwards it to Spinn
 
 console.log(`\n${passed2} passed, ${failed2} failed\n`);
 if (failed2 > 0) process.exit(1);
+
+// ─── P02-T01: Drop kind icon and label flat-row badge ───────────────────────
+
+import { readFileSync as fsReadSync } from 'node:fs';
+import { fileURLToPath as fsFileURL } from 'node:url';
+import { dirname as fsDirname, join as fsJoin } from 'node:path';
+
+const ROW_SOURCE = fsReadSync(
+  fsJoin(fsDirname(fsFileURL(import.meta.url)), 'dag-node-row.tsx'),
+  'utf8'
+);
+
+console.log("\nDAGNodeRow FR-1/FR-2/FR-7 source-shape tests\n");
+
+let passed3 = 0;
+let failed3 = 0;
+
+function test3(name: string, fn: () => void) {
+  try {
+    fn();
+    console.log(`  ✓ ${name}`);
+    passed3++;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`  ✗ ${name}\n    ${msg}`);
+    failed3++;
+  }
+}
+
+test3("FR-7 NodeKindIcon is no longer rendered in dag-node-row.tsx", () => {
+  assert.ok(!ROW_SOURCE.includes('<NodeKindIcon'),
+    "DAGNodeRow must not render NodeKindIcon (FR-7)");
+});
+
+test3("FR-1/FR-2 NodeStatusBadge renders before the name span", () => {
+  // Scope the source-shape check to the JSX render block (everything after
+  // `return (`) so the aria-label's getDisplayName usage on line 61 doesn't
+  // false-trigger the precede check.
+  const renderStart = ROW_SOURCE.indexOf('return (');
+  assert.ok(renderStart > -1, "return ( marker must be present");
+  const renderBlock = ROW_SOURCE.slice(renderStart);
+  const badgeIdx = renderBlock.indexOf('<NodeStatusBadge');
+  const nameIdx  = renderBlock.indexOf('>{getDisplayName(nodeId)}</span>');
+  assert.ok(badgeIdx > -1 && nameIdx > -1, "both must be present in render block");
+  assert.ok(badgeIdx < nameIdx, "badge must precede the display name span (FR-2)");
+});
+
+test3("DD-1 iconOnly is conditional on completed status, not unconditional", () => {
+  assert.ok(/iconOnly=\{[^}]*['"]?completed['"]?[^}]*\}/.test(ROW_SOURCE) ||
+            /node\.status\s*===\s*['"]completed['"]/.test(ROW_SOURCE),
+    "iconOnly must be wired to node.status === 'completed' (DD-1)");
+});
+
+console.log(`\n${passed3} passed, ${failed3} failed\n`);
+if (failed3 > 0) process.exit(1);
+
+test3("FR-4/AD-2 dag-node-row imports deriveGateBadgeStatusAndLabel", () => {
+  assert.ok(/deriveGateBadgeStatusAndLabel/.test(ROW_SOURCE),
+    "DAGNodeRow must import deriveGateBadgeStatusAndLabel for the gate-active override (FR-4, AD-2)");
+});
+
+test3("FR-4 gate node badge resolved via helper, not raw node.status", () => {
+  // The helper-resolved {status,label} pair drives the badge so
+  // gate_active=true renders gray Not Started even when underlying
+  // status === 'in_progress' (FR-4, AD-2, DD-3).
+  assert.ok(/deriveGateBadgeStatusAndLabel\s*\(\s*node\s*\)/.test(ROW_SOURCE),
+    "DAGNodeRow must call deriveGateBadgeStatusAndLabel(node) on gate rows (FR-4)");
+});
+
+test3("FR-11 dag-node-row imports getDocLinkLabel for typed doc-link labels", () => {
+  assert.ok(/getDocLinkLabel/.test(ROW_SOURCE),
+    "DAGNodeRow must import getDocLinkLabel (FR-11)");
+});
+
+test3("FR-11 DocumentLink label is wired to getDocLinkLabel(nodeId), not literal 'Doc'", () => {
+  assert.ok(/label=\{getDocLinkLabel\(nodeId\)\}/.test(ROW_SOURCE),
+    "DocumentLink must consume getDocLinkLabel(nodeId) (FR-11)");
+  assert.ok(!/label="Doc"/.test(ROW_SOURCE),
+    "literal 'Doc' label is forbidden on flat-row DocumentLink (FR-11)");
+});
+
+console.log(`\n${passed3} passed, ${failed3} failed\n`);
+if (failed3 > 0) process.exit(1);
+
+// ─── P04-T03: verdictPill prop addition (AD-8) ───────────────────────────────
+
+console.log("\nDAGNodeRow — P04-T03 verdictPill prop (AD-8)\n");
+
+let passed4 = 0;
+let failed4 = 0;
+
+function test4(name: string, fn: () => void) {
+  try {
+    fn();
+    console.log(`  ✓ ${name}`);
+    passed4++;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`  ✗ ${name}\n    ${msg}`);
+    failed4++;
+  }
+}
+
+test4("FR-17/DD-13 flat-row container retains pr-3 gutter", () => {
+  assert.ok(/'py-2 pr-3 rounded-md/.test(ROW_SOURCE) || /pr-3 rounded-md gap-2 flex/.test(ROW_SOURCE),
+    "flat-row container must carry pr-3 gutter (FR-17, DD-13)");
+});
+
+test4("DAGNodeRow accepts an optional prUrl prop and renders an ExternalLink (icon=github, label=\"Pull Request\") on the final_pr row", () => {
+  assert.ok(/prUrl\??:\s*string\s*\|\s*null/.test(ROW_SOURCE),
+    "DAGNodeRow props must include optional prUrl: string | null");
+  assert.ok(/import\s+\{[^}]*\bExternalLink\b[^}]*\}\s+from\s+['"]@\/components\/documents['"]/.test(ROW_SOURCE),
+    "DAGNodeRow must import ExternalLink so the final_pr row can surface the PR link");
+  assert.ok(/nodeId\s*===\s*['"]final_pr['"]\s*&&\s*prUrl\s*!=\s*null/.test(ROW_SOURCE),
+    "ExternalLink must be gated on `nodeId === 'final_pr' && prUrl != null` so the link only renders on the Final PR row when the PR URL exists");
+  assert.ok(/<ExternalLink[^/>]*href=\{prUrl\}[^/>]*label="Pull Request"[^/>]*icon="github"/s.test(ROW_SOURCE)
+    || /<ExternalLink[^/>]*icon="github"[^/>]*label="Pull Request"[^/>]*href=\{prUrl\}/s.test(ROW_SOURCE)
+    || (/<ExternalLink/.test(ROW_SOURCE) && /href=\{prUrl\}/.test(ROW_SOURCE) && /label="Pull Request"/.test(ROW_SOURCE) && /icon="github"/.test(ROW_SOURCE)),
+    "ExternalLink must render with href={prUrl}, label=\"Pull Request\", icon=\"github\" — same shape as the project header link");
+});
+
+test4("final_pr row is keyboard-activatable — Enter/Space opens prUrl in a new tab", () => {
+  assert.ok(/window\.open\s*\(\s*prUrl/.test(ROW_SOURCE),
+    "handleKeyDown must call window.open(prUrl, ...) so Enter/Space activates the PR link without breaking roving-tabindex");
+  assert.ok(/['"]_blank['"]/.test(ROW_SOURCE),
+    "PR link must open in a new tab via window.open(..., '_blank', ...)");
+  assert.ok(/noopener,?\s*noreferrer/.test(ROW_SOURCE),
+    "window.open must include noopener,noreferrer for safety parity with the anchor's rel attribute");
+});
+
+test4("aria-label is derived from the resolved badge {status,label} — not raw node.status", () => {
+  // The row's aria-label must announce the same status the badge renders so
+  // screen readers don't disagree with the visible label (e.g. gate_active=true
+  // shows "Not Started" but raw node.status would announce "In Progress").
+  assert.ok(/aria-label=\{`\$\{getDisplayName\(nodeId\)\} — \$\{resolvedBadge\.label\}`\}/.test(ROW_SOURCE),
+    "aria-label must be `${getDisplayName(nodeId)} — ${resolvedBadge.label}` — single source of truth with the badge");
+  assert.ok(!/STATUS_MAP\[node\.status\]\.defaultLabel/.test(ROW_SOURCE.replace(/planningLabel \?\? STATUS_MAP\[node\.status\]\.defaultLabel/g, '')),
+    "aria-label must not consume STATUS_MAP[node.status].defaultLabel directly outside of the resolvedBadge fallback");
+});
+
+console.log(`\n${passed4} passed, ${failed4} failed\n`);
+if (failed4 > 0) process.exit(1);

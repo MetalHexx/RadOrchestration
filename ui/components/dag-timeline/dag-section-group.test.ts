@@ -94,7 +94,35 @@ test('shouldRender(3) returns true (multiple children → render content)', () =
   assert.strictEqual(shouldRender(3), true);
 });
 
-// ─── Summary ────────────────────────────────────────────────────────────────
+// ─── Card variant tests (FR-13, FR-14, FR-15, AD-4, AD-5, DD-9, DD-10) ──────
+
+import { isCardSection, CARD_SHELL_CLASSES } from './dag-section-group';
+
+console.log("DAGSectionGroup card-variant tests\n");
+
+test("FR-13 Planning is a card section (DD-9)", () => {
+  assert.strictEqual(isCardSection("Planning"), true);
+});
+
+test("FR-14 Completion is a card section (DD-9)", () => {
+  assert.strictEqual(isCardSection("Completion"), true);
+});
+
+test("FR-15 Execution is NOT a card section (DD-10)", () => {
+  assert.strictEqual(isCardSection("Execution"), false);
+});
+
+test("AD-5 CARD_SHELL_CLASSES uses border + rounded + bg-card tokens", () => {
+  assert.ok(CARD_SHELL_CLASSES.includes("border"));
+  assert.ok(CARD_SHELL_CLASSES.includes("rounded"));
+  assert.ok(CARD_SHELL_CLASSES.includes("bg-card"));
+});
+
+test("isCardSection + CARD_SHELL_CLASSES applies shell classes only to card sections (DD-9, DD-10)", () => {
+  assert.strictEqual((isCardSection("Planning") ? CARD_SHELL_CLASSES : ""), CARD_SHELL_CLASSES);
+  assert.strictEqual((isCardSection("Completion") ? CARD_SHELL_CLASSES : ""), CARD_SHELL_CLASSES);
+  assert.strictEqual((isCardSection("Execution") ? CARD_SHELL_CLASSES : ""), "");
+});
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
