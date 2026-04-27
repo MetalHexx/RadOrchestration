@@ -118,18 +118,17 @@ function compareField(
   }
 
   // field === 'updated'
-  // Projects with lastUpdated === undefined always sort to bottom regardless of direction
-  const aUndef = a.lastUpdated === undefined;
-  const bUndef = b.lastUpdated === undefined;
-
-  if (aUndef && bUndef) return 0;
-  if (aUndef) return 1;   // a goes to bottom
-  if (bUndef) return -1;  // b goes to bottom
-
-  // Both defined — compare ISO 8601 strings (lexicographically sortable)
+  // FR-16 — undefined lastUpdated is treated as "older than any defined
+  // date." Encoded by mapping undefined to the empty string and letting
+  // the lexicographic comparison flow through `dir`. The empty string is
+  // less than any ISO 8601 timestamp ('2024…' starts with '2'), so:
+  //   asc  → undefined first  (Oldest first)
+  //   desc → undefined last   (Newest first)
+  const aKey = a.lastUpdated ?? '';
+  const bKey = b.lastUpdated ?? '';
   const result =
-    a.lastUpdated! < b.lastUpdated! ? -1 :
-    a.lastUpdated! > b.lastUpdated! ? 1 :
+    aKey < bKey ? -1 :
+    aKey > bKey ? 1 :
     0;
   return dir === 'desc' ? result * -1 : result;
 }

@@ -128,14 +128,18 @@ function compareField(
     return dir === 'desc' ? result * -1 : result;
   }
   // field === 'updated'
-  const aUndef = a.lastUpdated === undefined;
-  const bUndef = b.lastUpdated === undefined;
-  if (aUndef && bUndef) return 0;
-  if (aUndef) return 1;
-  if (bUndef) return -1;
-  let result = 0;
-  if (a.lastUpdated! < b.lastUpdated!) result = -1;
-  else if (a.lastUpdated! > b.lastUpdated!) result = 1;
+  // FR-16 — undefined lastUpdated is treated as "older than any defined
+  // date." Encoded by mapping undefined to the empty string and letting
+  // the lexicographic comparison flow through `dir`. The empty string is
+  // less than any ISO 8601 timestamp ('2024…' starts with '2'), so:
+  //   asc  → undefined first  (Oldest first)
+  //   desc → undefined last   (Newest first)
+  const aKey = a.lastUpdated ?? '';
+  const bKey = b.lastUpdated ?? '';
+  const result =
+    aKey < bKey ? -1 :
+    aKey > bKey ? 1 :
+    0;
   return dir === 'desc' ? result * -1 : result;
 }
 
@@ -360,26 +364,26 @@ async function run() {
     assert.deepStrictEqual(sorted.map(p => p.name), ['NewestProject', 'MidProject', 'OldProject']);
   });
 
-  await test('Updated with undefined sorts to bottom (desc)', async () => {
+  await test('FR-16 — Updated desc (Newest first): undefined sorts to bottom', async () => {
     const config: SortConfig = { primary: 'updated', primaryDir: 'desc', secondary: 'none', secondaryDir: 'asc' };
     const fixtures = [
-      makeProject('NoDate',  { lastUpdated: undefined }),
-      makeProject('Newest',  { lastUpdated: '2024-12-31T00:00:00Z' }),
-      makeProject('Older',   { lastUpdated: '2024-01-01T00:00:00Z' }),
-    ];
-    const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, config));
-    assert.strictEqual(sorted[sorted.length - 1].name, 'NoDate', 'undefined lastUpdated must sort to bottom in desc');
-  });
-
-  await test('Updated with undefined sorts to bottom (asc)', async () => {
-    const config: SortConfig = { primary: 'updated', primaryDir: 'asc', secondary: 'none', secondaryDir: 'asc' };
-    const fixtures = [
       makeProject('NoDate', { lastUpdated: undefined }),
-      makeProject('Newest', { lastUpdated: '2024-12-31T00:00:00Z' }),
+      makeProject('Newest', { lastUpdated: '2026-04-25T00:00:00Z' }),
       makeProject('Older',  { lastUpdated: '2024-01-01T00:00:00Z' }),
     ];
     const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, config));
-    assert.strictEqual(sorted[sorted.length - 1].name, 'NoDate', 'undefined lastUpdated must sort to bottom in asc');
+    assert.deepStrictEqual(sorted.map((p) => p.name), ['Newest', 'Older', 'NoDate']);
+  });
+
+  await test('FR-16 — Updated asc (Oldest first): undefined sorts to TOP (treated as older than any defined date)', async () => {
+    const config: SortConfig = { primary: 'updated', primaryDir: 'asc', secondary: 'none', secondaryDir: 'asc' };
+    const fixtures = [
+      makeProject('NoDate', { lastUpdated: undefined }),
+      makeProject('Newest', { lastUpdated: '2026-04-25T00:00:00Z' }),
+      makeProject('Older',  { lastUpdated: '2024-01-01T00:00:00Z' }),
+    ];
+    const sorted = [...fixtures].sort((a, b) => compareSortConfig(a, b, config));
+    assert.deepStrictEqual(sorted.map((p) => p.name), ['NoDate', 'Older', 'Newest']);
   });
 
   await test('Secondary tiebreaker — name desc breaks same-status tie', async () => {
