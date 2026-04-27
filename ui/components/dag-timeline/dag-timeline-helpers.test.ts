@@ -1146,5 +1146,21 @@ test("DD-2 completed phase iter → 'Completed' regardless of parentKind", () =>
   );
 });
 
+console.log("\nresolveStageBadge phase_planning recognition (FR-3, DD-7) tests\n");
+
+test("FR-3/DD-7 phase_planning in_progress resolves to --tier-planning + 'Planning'", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_planning', 'in_progress'),
+    { cssVar: '--tier-planning', label: 'Planning' },
+  );
+});
+
+test("FR-3/DD-7 compound nodeId ending in phase_planning resolves to --tier-planning", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_loop.iter0.phase_planning', 'in_progress'),
+    { cssVar: '--tier-planning', label: 'Planning' },
+  );
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);

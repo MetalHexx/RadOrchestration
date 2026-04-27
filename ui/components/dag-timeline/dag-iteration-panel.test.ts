@@ -984,3 +984,14 @@ test("AD-4 panel passes cssVar to NodeStatusBadge on both phase and task iterati
   assert.ok(matches !== null && matches.length >= 2,
     "both iteration-header NodeStatusBadge instances (phase + task) must pass cssVar");
 });
+
+test("FR-3/DD-7/AD-4 phase iteration Planning header maps to --tier-planning cssVar", async () => {
+  // The phase branch in dag-iteration-panel.tsx maps a derived
+  // "Planning" label to nodeId 'phase_planning' and feeds it to
+  // resolveStageBadge. Assert the resolved cssVar is --tier-planning,
+  // not the neutral --status-in-progress fallback.
+  const { resolveStageBadge } = await import('./dag-timeline-helpers');
+  const badge = resolveStageBadge('phase_planning', 'in_progress');
+  assert.strictEqual(badge.cssVar, '--tier-planning');
+  assert.strictEqual(badge.label, 'Planning');
+});

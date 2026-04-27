@@ -292,6 +292,7 @@ const PLANNING_STEP_IDS: ReadonlySet<string> = new Set([
   'requirements',
   'master_plan',
   'explode_master_plan',
+  'phase_planning',
 ]);
 
 /**
