@@ -34,11 +34,17 @@ interface SortConfig {
 
 // ─── Replicated from use-sort-config.ts (inline for test isolation) ──────────
 
+// FR-17 — within a same-status cluster the most recently touched project
+// floats to the top. DD-2 — no migration code: users with a previously
+// persisted `monitoring-ui-sort-config` continue to load their saved
+// primary/secondary fields and directions on next visit; this default only
+// takes effect when no persisted config exists or the persisted config
+// fails the existing validation block in `useSortConfig`.
 const DEFAULT_SORT_CONFIG: SortConfig = {
   primary: 'status',
   primaryDir: 'asc',
-  secondary: 'name',
-  secondaryDir: 'asc',
+  secondary: 'updated',
+  secondaryDir: 'desc',
 };
 
 // FR-14 / AD-4 — Urgent-first priority map keyed off the same four fields
@@ -471,6 +477,35 @@ async function run() {
       (a, b) => compareSortConfig(a, b, { primary: 'status', primaryDir: 'asc', secondary: 'name', secondaryDir: 'asc' })
     );
     assert.deepStrictEqual(sorted.map(p => p.name), ['p_undef', 'p_done', 'p_ns']);
+  });
+
+  // ─── FR-17 / DD-2 / NFR-4 — New default secondary: updated desc ───────────
+
+  await test('FR-17 — DEFAULT_SORT_CONFIG.secondary is "updated" with secondaryDir "desc"', async () => {
+    assert.strictEqual(DEFAULT_SORT_CONFIG.secondary, 'updated');
+    assert.strictEqual(DEFAULT_SORT_CONFIG.secondaryDir, 'desc');
+  });
+
+  await test('FR-17 — within a same-status cluster, most recently updated floats to top', async () => {
+    // Three Executing rows tied on primary status; secondary defaults to Updated desc.
+    const newer  = makeProject('NewerExec',  { tier: 'execution', executionStatus: 'in_progress', lastUpdated: '2026-04-26T00:00:00Z' });
+    const older  = makeProject('OlderExec',  { tier: 'execution', executionStatus: 'in_progress', lastUpdated: '2024-01-01T00:00:00Z' });
+    const middle = makeProject('MiddleExec', { tier: 'execution', executionStatus: 'in_progress', lastUpdated: '2025-06-15T12:00:00Z' });
+    const sorted = [...[older, newer, middle]].sort((a, b) => compareSortConfig(a, b, DEFAULT_SORT_CONFIG));
+    assert.deepStrictEqual(sorted.map((p) => p.name), ['NewerExec', 'MiddleExec', 'OlderExec']);
+  });
+
+  await test('DD-2 — persisted localStorage config validation accepts "updated" as secondary', async () => {
+    // Replicate the validation predicate from useSortConfig (lines 167-174).
+    const persisted = { primary: 'name', primaryDir: 'asc', secondary: 'updated', secondaryDir: 'desc' };
+    const valid =
+      persisted &&
+      typeof persisted === 'object' &&
+      (persisted.primary === 'status' || persisted.primary === 'name' || persisted.primary === 'updated') &&
+      (persisted.primaryDir === 'asc' || persisted.primaryDir === 'desc') &&
+      (persisted.secondary === 'none' || persisted.secondary === 'status' || persisted.secondary === 'name' || persisted.secondary === 'updated') &&
+      (persisted.secondaryDir === 'asc' || persisted.secondaryDir === 'desc');
+    assert.strictEqual(valid, true, 'persisted configs with secondary "updated" must continue to load');
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);

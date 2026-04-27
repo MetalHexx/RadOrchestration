@@ -18,11 +18,17 @@ export interface SortConfig {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
+// FR-17 — within a same-status cluster the most recently touched project
+// floats to the top. DD-2 — no migration code: users with a previously
+// persisted `monitoring-ui-sort-config` continue to load their saved
+// primary/secondary fields and directions on next visit; this default only
+// takes effect when no persisted config exists or the persisted config
+// fails the existing validation block in `useSortConfig`.
 export const DEFAULT_SORT_CONFIG: SortConfig = {
   primary: 'status',
   primaryDir: 'asc',
-  secondary: 'name',
-  secondaryDir: 'asc',
+  secondary: 'updated',
+  secondaryDir: 'desc',
 };
 
 const STORAGE_KEY = "monitoring-ui-sort-config";
