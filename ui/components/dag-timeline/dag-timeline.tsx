@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { NodesRecord, NodeState, NodeStatus } from '@/types/state';
 import { DAGNodeRow } from './dag-node-row';
 import { DAGLoopNode } from './dag-loop-node';
-import { isLoopNode, groupNodesBySection, NODE_SECTION_MAP, shouldRenderTimelineRow } from './dag-timeline-helpers';
+import { isLoopNode, groupNodesBySection, NODE_SECTION_MAP, shouldRenderTimelineRow, buildIterationItemValue } from './dag-timeline-helpers';
 import type { CompatibleNodeState } from './dag-timeline-helpers';
 import { DAGSectionGroup } from './dag-section-group';
 
@@ -51,10 +51,53 @@ export function deriveAncestorLoopKeys(lostKey: string): string[] {
  * accordion's `data-row-key` (iter-...). Used by the focus-fallback
  * useEffect to map each `loopParentId` returned by `deriveAncestorLoopKeys`
  * into the accordion key the iteration panel actually stamps onto its
- * trigger (AD-3 — single shared key shape).
+ * trigger (AD-3 — single shared key shape). Delegates to the canonical
+ * `buildIterationItemValue` builder so the encoding stays in one place.
  */
 export function iterationAncestorToAccordionKey(loopParentId: string, iterationIndex: number): string {
-  return `iter-${loopParentId}-${iterationIndex}`;
+  return buildIterationItemValue(loopParentId, iterationIndex);
+}
+
+/**
+ * Returns the deepest-first list of accordion `data-row-key` values to try
+ * when focus has been lost to body after the row that owned `focusedRowKey`
+ * was unmounted (typically because an ancestor accordion collapsed).
+ *
+ * `focusedRowKey` arrives in three shapes:
+ *   - compound nodeId: `phase_loop.iter0.task_handoff` — walk every
+ *     `.iterN.` boundary into an iteration trigger key.
+ *   - iteration trigger key: `iter-${parentNodeId}-${iterIndex}` — walk
+ *     `parentNodeId`'s own `.iterN.` boundaries (the trigger itself is
+ *     gone, so we want its enclosing iteration if any).
+ *   - corrective trigger key: `ct-${parentIterationKey}-${ctIndex}` —
+ *     fall back directly to `parentIterationKey`, then recurse upward.
+ */
+export function deriveAccordionFallbackKeys(focusedRowKey: string): string[] {
+  if (focusedRowKey.startsWith('ct-')) {
+    const lastDash = focusedRowKey.lastIndexOf('-');
+    if (lastDash <= 2) return [];
+    const parentIterationKey = focusedRowKey.slice(3, lastDash);
+    return [parentIterationKey, ...deriveAccordionFallbackKeys(parentIterationKey)];
+  }
+  if (focusedRowKey.startsWith('iter-')) {
+    const lastDash = focusedRowKey.lastIndexOf('-');
+    if (lastDash <= 4) return [];
+    const parentNodeId = focusedRowKey.slice(5, lastDash);
+    return derivePrefixAccordionKeys(parentNodeId + '.');
+  }
+  return derivePrefixAccordionKeys(focusedRowKey);
+}
+
+function derivePrefixAccordionKeys(compoundKey: string): string[] {
+  const result: string[] = [];
+  const regex = /\.iter(\d+)\./g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(compoundKey)) !== null) {
+    const loopParentId = compoundKey.slice(0, match.index);
+    const iterIndex = Number.parseInt(match[1], 10);
+    result.push(buildIterationItemValue(loopParentId, iterIndex));
+  }
+  return result.reverse();
 }
 
 export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName, phaseLoopStatus, prUrl }: DAGTimelineProps) {
@@ -152,19 +195,13 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
     const container = containerRef.current;
     if (container === null) return;
 
-    // The deepest-first ancestor chain is parsed off the focused child's
-    // compound key (e.g. `phase_loop.iter0.task_loop.iter2.task_handoff` →
-    // [`phase_loop.iter0.task_loop`, `phase_loop`]). For each ancestor we
-    // also need the iteration index that was just collapsed; we recover it
-    // from the same compound key by scanning the segment immediately after
-    // the ancestor prefix.
-    const ancestorPrefixes = deriveAncestorLoopKeys(focusedRowKey);
-    for (const prefix of ancestorPrefixes) {
-      const after = focusedRowKey.slice(prefix.length);
-      const iterMatch = after.match(/^\.iter(\d+)\./);
-      if (iterMatch === null) continue;
-      const iterIndex = Number.parseInt(iterMatch[1], 10);
-      const accordionKey = iterationAncestorToAccordionKey(prefix, iterIndex);
+    // Walk deepest-first up the chain of accordion ancestors that could
+    // still be in the DOM after a collapse. `deriveAccordionFallbackKeys`
+    // handles all three shapes the focused row key can take: compound
+    // nodeIds (e.g. `phase_loop.iter0.task_loop.iter2.task_handoff`),
+    // iteration trigger keys (`iter-*`), and corrective trigger keys
+    // (`ct-*`).
+    for (const accordionKey of deriveAccordionFallbackKeys(focusedRowKey)) {
       const target = container.querySelector<HTMLElement>(
         `[data-row-key="${CSS.escape(accordionKey)}"]`
       );

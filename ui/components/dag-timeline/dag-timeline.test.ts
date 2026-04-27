@@ -760,10 +760,10 @@ test('dag-timeline.tsx contains the focus-loss guard on `document.activeElement`
   );
 });
 
-test('dag-timeline.tsx seeds the recovery walk with `deriveAncestorLoopKeys(focusedRowKey)`', () => {
+test('dag-timeline.tsx seeds the recovery walk with `deriveAccordionFallbackKeys(focusedRowKey)`', () => {
   assert.ok(
-    timelineSource.includes('deriveAncestorLoopKeys(focusedRowKey)'),
-    'dag-timeline.tsx must seed the recovery walk with deriveAncestorLoopKeys(focusedRowKey)'
+    timelineSource.includes('deriveAccordionFallbackKeys(focusedRowKey)'),
+    'dag-timeline.tsx must seed the recovery walk with deriveAccordionFallbackKeys(focusedRowKey) so iter-/ct- shaped focused row keys are unwrapped before the ancestor walk'
   );
 });
 
@@ -859,6 +859,51 @@ test('iterationAncestorToAccordionKey accepts a compound parent ("phase_loop.ite
 test('deriveAncestorLoopKeys("phase_loop.iter0.task_loop.iter2.task_handoff") still returns the loop-id chain so the focus-fallback effect can map them via iterationAncestorToAccordionKey (FR-16)', () => {
   const result = deriveAncestorLoopKeys('phase_loop.iter0.task_loop.iter2.task_handoff');
   assert.deepStrictEqual(result, ['phase_loop.iter0.task_loop', 'phase_loop']);
+});
+
+// ─── deriveAccordionFallbackKeys: focus-recovery unwrap for iter-/ct- keys ───
+
+import { deriveAccordionFallbackKeys } from './dag-timeline';
+
+console.log("\nDAGTimeline — deriveAccordionFallbackKeys (Copilot review #1: iter-/ct- shaped focusedRowKey)\n");
+
+test('deriveAccordionFallbackKeys(compound nodeId) walks every .iterN. boundary deepest-first', () => {
+  assert.deepStrictEqual(
+    deriveAccordionFallbackKeys('phase_loop.iter0.task_loop.iter2.task_handoff'),
+    ['iter-phase_loop.iter0.task_loop-2', 'iter-phase_loop-0']
+  );
+});
+
+test('deriveAccordionFallbackKeys("phase_loop") returns [] (top-level row, no accordion ancestor)', () => {
+  assert.deepStrictEqual(deriveAccordionFallbackKeys('phase_loop'), []);
+});
+
+test('deriveAccordionFallbackKeys(iter- key with compound parent) falls back to the enclosing iteration trigger', () => {
+  // Nested task iteration trigger lost focus when the enclosing phase iteration collapsed.
+  // The task iteration trigger itself is gone; the next ancestor is the phase iteration trigger.
+  assert.deepStrictEqual(
+    deriveAccordionFallbackKeys('iter-phase_loop.iter0.task_loop-2'),
+    ['iter-phase_loop-0']
+  );
+});
+
+test('deriveAccordionFallbackKeys(top-level iter- key) returns [] (no ancestor accordion)', () => {
+  // Top-level phase iteration: parent is the top-level loop, which has no accordion trigger.
+  assert.deepStrictEqual(deriveAccordionFallbackKeys('iter-phase_loop-0'), []);
+});
+
+test('deriveAccordionFallbackKeys(ct- key) falls back to its parent iteration trigger first', () => {
+  assert.deepStrictEqual(
+    deriveAccordionFallbackKeys('ct-iter-phase_loop-0-3'),
+    ['iter-phase_loop-0']
+  );
+});
+
+test('deriveAccordionFallbackKeys(ct- key under a nested iteration) recurses up the iteration chain', () => {
+  assert.deepStrictEqual(
+    deriveAccordionFallbackKeys('ct-iter-phase_loop.iter0.task_loop-2-1'),
+    ['iter-phase_loop.iter0.task_loop-2', 'iter-phase_loop-0']
+  );
 });
 
 // ─── P05-T01: inter-section <Separator> removal ──────────────────────────────
