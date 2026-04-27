@@ -101,10 +101,6 @@ function classifyStatus(p: ProjectSummary): StatusBucket {
   return 'notInitialized';
 }
 
-function getStatusPriority(p: ProjectSummary): number {
-  return STATUS_PRIORITY_URGENT_FIRST[classifyStatus(p)];
-}
-
 function compareField(
   a: ProjectSummary,
   b: ProjectSummary,

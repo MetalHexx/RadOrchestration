@@ -985,6 +985,70 @@ test('emits phase-plan from iteration.doc_path and task-handoff from taskIter.do
   assert.strictEqual(docs[3].category, 'review');
 });
 
+test('phase-iteration with both iteration.doc_path AND legacy phase_planning child emits the plan only once (mixed-shape dedup)', () => {
+  const state = makeV5State({
+    phase_loop: {
+      kind: 'for_each_phase',
+      status: 'in_progress',
+      iterations: [
+        {
+          index: 0,
+          status: 'in_progress',
+          doc_path: 'phase-1-plan.md',
+          nodes: {
+            phase_planning: { kind: 'step', status: 'completed', doc_path: 'phase-1-plan.md', retries: 0 },
+          },
+          corrective_tasks: [],
+          commit_hash: null,
+        },
+      ],
+    },
+  });
+
+  const docs = getOrderedDocsV5(state, 'TEST');
+  const matching = docs.filter((d) => d.path === 'phase-1-plan.md');
+  assert.strictEqual(matching.length, 1, 'phase plan should be emitted exactly once');
+});
+
+test('task-iteration with both taskIter.doc_path AND legacy task_handoff child emits the handoff only once (mixed-shape dedup)', () => {
+  const state = makeV5State({
+    phase_loop: {
+      kind: 'for_each_phase',
+      status: 'in_progress',
+      iterations: [
+        {
+          index: 0,
+          status: 'in_progress',
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task',
+              status: 'in_progress',
+              iterations: [
+                {
+                  index: 0,
+                  status: 'in_progress',
+                  doc_path: 'tasks/T01-handoff.md',
+                  nodes: {
+                    task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/T01-handoff.md', retries: 0 },
+                  },
+                  corrective_tasks: [],
+                  commit_hash: null,
+                },
+              ],
+            },
+          },
+          corrective_tasks: [],
+          commit_hash: null,
+        },
+      ],
+    },
+  });
+
+  const docs = getOrderedDocsV5(state, 'TEST');
+  const matching = docs.filter((d) => d.path === 'tasks/T01-handoff.md');
+  assert.strictEqual(matching.length, 1, 'task handoff should be emitted exactly once');
+});
+
 test('FR-12 — v5 tail-bucket .md files are prefix-stripped and title-cased', () => {
   const state = makeV5State();
   const allFiles = [

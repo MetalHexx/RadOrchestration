@@ -300,9 +300,17 @@ export function getOrderedDocsV5(
         // the nodes map from a different seed. Unknown child IDs (custom
         // templates) are appended after the locked ones in insertion order
         // so they still surface (AD-1).
+        // FR-1 / AD-2 dedup guard — when iteration.doc_path provided the phase
+        // plan, skip any legacy `phase_planning` / `phase_plan` child step in the
+        // same iteration so a hybrid persisted state doesn't surface the plan twice.
+        const skipLegacyPhasePlanChild = iteration.doc_path != null;
+        const isLegacyPhasePlanChild = (id: string): boolean =>
+          skipLegacyPhasePlanChild && (id === 'phase_planning' || id === 'phase_plan');
         const phaseChildIds = [
-          ...PHASE_ITER_CHILD_ORDER.filter((id) => id in iteration.nodes),
-          ...Object.keys(iteration.nodes).filter((id) => !(PHASE_ITER_CHILD_ORDER as readonly string[]).includes(id)),
+          ...PHASE_ITER_CHILD_ORDER.filter((id) => id in iteration.nodes && !isLegacyPhasePlanChild(id)),
+          ...Object.keys(iteration.nodes).filter(
+            (id) => !(PHASE_ITER_CHILD_ORDER as readonly string[]).includes(id) && !isLegacyPhasePlanChild(id),
+          ),
         ];
 
         for (const childId of phaseChildIds) {
@@ -322,9 +330,19 @@ export function getOrderedDocsV5(
                 push(taskIter.doc_path, `P${phaseNum}-T${taskNum} Handoff`, 'task');
               }
 
+              // FR-2 / AD-2 dedup guard — when taskIter.doc_path provided the
+              // handoff, skip a legacy `task_handoff` child step so a hybrid
+              // persisted state doesn't surface the handoff twice.
+              const skipLegacyTaskHandoffChild = taskIter.doc_path != null;
               const taskChildIds = [
-                ...TASK_ITER_CHILD_ORDER.filter((id) => id in taskIter.nodes),
-                ...Object.keys(taskIter.nodes).filter((id) => !(TASK_ITER_CHILD_ORDER as readonly string[]).includes(id)),
+                ...TASK_ITER_CHILD_ORDER.filter(
+                  (id) => id in taskIter.nodes && !(skipLegacyTaskHandoffChild && id === 'task_handoff'),
+                ),
+                ...Object.keys(taskIter.nodes).filter(
+                  (id) =>
+                    !(TASK_ITER_CHILD_ORDER as readonly string[]).includes(id) &&
+                    !(skipLegacyTaskHandoffChild && id === 'task_handoff'),
+                ),
               ];
 
               for (const taskNodeId of taskChildIds) {
