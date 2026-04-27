@@ -26,17 +26,8 @@ const FIELD_LABELS: Record<SortField, string> = {
 };
 
 function buildSortSummary(config: SortConfig): string {
-  const primaryArrow = config.primaryDir === "asc" ? "↑" : "↓";
-  const primaryPart = `${FIELD_LABELS[config.primary]} ${primaryArrow}`;
-
-  if (config.secondary === "none") {
-    return primaryPart;
-  }
-
-  const secondaryArrow = config.secondaryDir === "asc" ? "↑" : "↓";
-  const secondaryPart = `${FIELD_LABELS[config.secondary as SortField]} ${secondaryArrow}`;
-
-  return `${primaryPart} · ${secondaryPart}`;
+  const arrow = config.primaryDir === "asc" ? "↑" : "↓";
+  return `${FIELD_LABELS[config.primary]} ${arrow}`;
 }
 
 // ─── Test runner ─────────────────────────────────────────────────────────────
@@ -93,6 +84,18 @@ async function run() {
     assert.strictEqual(result, 'Updated ↓');
   });
 
+  // Persisted secondary is ignored by the summary (control is hidden post-shipment)
+
+  await test('summary ignores persisted secondary — name primary with status secondary', async () => {
+    const result = buildSortSummary({ primary: 'name', primaryDir: 'asc', secondary: 'status', secondaryDir: 'desc' });
+    assert.strictEqual(result, 'Name ↑');
+  });
+
+  await test('summary never contains separator regardless of persisted secondary', async () => {
+    const result = buildSortSummary({ primary: 'updated', primaryDir: 'desc', secondary: 'name', secondaryDir: 'asc' });
+    assert.ok(!result.includes(' · '), `Expected no separator in "${result}"`);
+  });
+
   // Direction arrow symbols
 
   await test('Direction arrow — ascending produces ↑', async () => {
@@ -122,45 +125,6 @@ async function run() {
     assert.ok(result.startsWith('Updated'), `Expected result to start with "Updated", got "${result}"`);
   });
 
-  // Primary + secondary cases
-
-  await test('Primary + secondary — status asc + name asc', async () => {
-    const result = buildSortSummary({ primary: 'status', primaryDir: 'asc', secondary: 'name', secondaryDir: 'asc' });
-    assert.strictEqual(result, 'Status ↑ · Name ↑');
-  });
-
-  await test('Primary + secondary — name desc + updated desc', async () => {
-    const result = buildSortSummary({ primary: 'name', primaryDir: 'desc', secondary: 'updated', secondaryDir: 'desc' });
-    assert.strictEqual(result, 'Name ↓ · Updated ↓');
-  });
-
-  await test('Primary + secondary — updated asc + status desc', async () => {
-    const result = buildSortSummary({ primary: 'updated', primaryDir: 'asc', secondary: 'status', secondaryDir: 'desc' });
-    assert.strictEqual(result, 'Updated ↑ · Status ↓');
-  });
-
-  await test('Primary + secondary — separator is " · " (space-middot-space)', async () => {
-    const result = buildSortSummary({ primary: 'status', primaryDir: 'asc', secondary: 'name', secondaryDir: 'asc' });
-    assert.ok(result.includes(' · '), `Expected " · " separator in "${result}"`);
-  });
-
-  await test('Primary + secondary — status asc + updated asc', async () => {
-    const result = buildSortSummary({ primary: 'status', primaryDir: 'asc', secondary: 'updated', secondaryDir: 'asc' });
-    assert.strictEqual(result, 'Status ↑ · Updated ↑');
-  });
-
-  await test('Primary + secondary — name asc + status desc', async () => {
-    const result = buildSortSummary({ primary: 'name', primaryDir: 'asc', secondary: 'status', secondaryDir: 'desc' });
-    assert.strictEqual(result, 'Name ↑ · Status ↓');
-  });
-
-  // secondary === 'none' returns primary-only (no separator)
-
-  await test('secondary "none" — result contains no " · " separator', async () => {
-    const result = buildSortSummary({ primary: 'status', primaryDir: 'asc', secondary: 'none', secondaryDir: 'asc' });
-    assert.ok(!result.includes(' · '), `Expected no separator in "${result}"`);
-  });
-
   console.log(`\n  ${passed} passed, ${failed} failed\n`);
   if (failed > 0) process.exit(1);
 }
@@ -170,12 +134,8 @@ async function run() {
 // - Clicking the trigger row toggles the panel open/closed
 // - When expanded, summary text is hidden
 // - Clicking a primary field button calls onChange with updated primary
-// - Clicking a primary field that matches secondary auto-clears secondary to 'none'
 // - Toggling primary direction calls onChange with updated primaryDir
 // - Direction labels update to match the selected field
-// - Clicking "None" in secondary hides the secondary direction toggle
-// - Clicking a secondary field shows the direction toggle with correct labels
-// - Secondary field that matches primary is not selectable (no-op on click)
 // - Chevron rotates 180° when panel is open
 
 run();
