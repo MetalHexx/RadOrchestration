@@ -201,12 +201,13 @@ test('dag-corrective-task-group.tsx imports DocumentLink from @/components/docum
   );
 });
 
-test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path} label="Handoff" onDocClick={onDocClick} /> in the accordion header row', () => {
+test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path} label="Task Handoff" onDocClick={onDocClick} /> in the accordion header row', () => {
   // Mirrors the iteration-panel pattern (dag-iteration-panel.tsx:132-138): post-unify corrective
   // handoff docs are carried on CorrectiveTaskEntry.doc_path and entry.nodes can be empty, so
-  // the group component itself must render the Handoff button off entry.doc_path to keep corrective
-  // handoffs accessible from the timeline now that the synthetic task_handoff step node is gone.
-  // Label is "Handoff" (not "Doc") to distinguish corrective task handoff docs from step docs (FR-11).
+  // the group component itself must render the Task Handoff button off entry.doc_path to keep
+  // corrective handoffs accessible from the timeline now that the synthetic task_handoff step node
+  // is gone. Label is "Task Handoff" (matching regular task iterations) so the corrective task
+  // handoff doc is presented identically to a normal task handoff (FR-11).
   assert.ok(
     correctiveTaskGroupSource.includes('<DocumentLink'),
     'corrective task group must render <DocumentLink> for the corrective task\'s doc link'
@@ -216,8 +217,8 @@ test('dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path
     '<DocumentLink> path prop must be entry.doc_path (the new CorrectiveTaskEntry.doc_path field). Trailing `!` non-null assertion accepted when callsite is gated on a hasHandoff boolean derived from entry.doc_path.'
   );
   assert.ok(
-    /<DocumentLink[^/]*label="Handoff"/.test(correctiveTaskGroupSource),
-    '<DocumentLink> label prop must be "Handoff" to distinguish corrective task handoff docs (FR-11)'
+    /<DocumentLink[^/]*label="Task Handoff"/.test(correctiveTaskGroupSource),
+    '<DocumentLink> label prop must be "Task Handoff" so corrective task handoff docs share the same label as normal task handoffs (FR-11)'
   );
   assert.ok(
     /<DocumentLink[^/]*onDocClick=\{onDocClick\}/.test(correctiveTaskGroupSource),
@@ -405,9 +406,9 @@ test4("FR-1 hideLabel SpinnerBadge no longer rendered on corrective trigger", ()
     "no SpinnerBadge … hideLabel on corrective trigger (FR-1)");
 });
 
-test4("FR-11 corrective DocumentLink label is 'Handoff', not 'Doc'", () => {
-  assert.ok(/label="Handoff"/.test(CG_SOURCE),
-    "corrective DocumentLink label must be 'Handoff' (FR-11)");
+test4("FR-11 corrective DocumentLink label is 'Task Handoff', not 'Doc'", () => {
+  assert.ok(/label="Task Handoff"/.test(CG_SOURCE),
+    "corrective DocumentLink label must be 'Task Handoff' to match regular task iterations (FR-11)");
   assert.ok(!/label="Doc"/.test(CG_SOURCE),
     "literal 'Doc' label is forbidden on corrective DocumentLink (FR-11)");
 });

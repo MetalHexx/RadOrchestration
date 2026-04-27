@@ -759,14 +759,22 @@ test('dag-iteration-panel.tsx renders <DAGNodeRow> in BOTH parentKind branches s
   // / conditional node inside iteration.nodes silently disappears from the
   // rendered body.
   //
-  // Source-text invariant: exactly two <DAGNodeRow JSX call sites in the
-  // file — one per parentKind branch.
-  const matches = iterationPanelSource.match(/<DAGNodeRow\b/g) ?? [];
-  assert.strictEqual(
-    matches.length,
-    2,
-    `expected exactly two <DAGNodeRow> JSX usages — one per parentKind branch (for_each_phase + for_each_task); found ${matches.length}. Non-loop nodes inside for_each_phase iteration.nodes (e.g. legacy phase_planning step) will be silently dropped if the for_each_phase branch lacks a <DAGNodeRow> fallthrough`
-  );
+  // Source-text invariant: each parentKind branch contains at least one
+  // <DAGNodeRow JSX call site. (The for_each_phase branch carries multiple —
+  // one per pre-loop / spine-fallthrough / post-loop bucket — to keep
+  // phase-level non-loop nodes outside the spine container.)
+  const TASK_BRANCH_MARKER = '// for_each_task branch';
+  const split = iterationPanelSource.split(TASK_BRANCH_MARKER);
+  assert.ok(split.length === 2,
+    `expected the for_each_task branch marker comment "${TASK_BRANCH_MARKER}" to split the source exactly once; the test cannot reason about branch coverage without it.`);
+  const phaseBranchSource = split[0];
+  const taskBranchSource = split[1];
+  const phaseMatches = phaseBranchSource.match(/<DAGNodeRow\b/g) ?? [];
+  const taskMatches  = taskBranchSource.match(/<DAGNodeRow\b/g) ?? [];
+  assert.ok(phaseMatches.length >= 1,
+    `for_each_phase branch must contain at least one <DAGNodeRow> fallthrough so non-loop iteration.nodes children (e.g. legacy phase_planning step) are not silently dropped — found ${phaseMatches.length}`);
+  assert.ok(taskMatches.length >= 1,
+    `for_each_task branch must contain at least one <DAGNodeRow> fallthrough so non-loop iteration.nodes children (e.g. code_review, commit_gate) are not silently dropped — found ${taskMatches.length}`);
 
   // Sanity: also confirm a phase iteration whose nodes contain a non-loop
   // step is structurally the case the renderer must handle. Mirrors the
@@ -852,6 +860,38 @@ test("FR-8/DD-5 phase iteration body wraps task list with left padding + left ru
   // (border-l) on the body wrapper inside AccordionContent.
   assert.ok(/border-l[^"]*pl-/.test(PANEL_SOURCE) || /pl-[^"]*border-l/.test(PANEL_SOURCE),
     "phase iteration body wrapper must include border-l + pl-* classes (FR-8, DD-5)");
+});
+
+test("phase-iteration non-loop step nodes render at phase-level depth (depth={0})", () => {
+  // Phase-level rows (e.g. phase_review) must render as <DAGNodeRow> at
+  // depth=0 so they align horizontally with the Phase header (px-3),
+  // not at ITERATION_CHILD_DEPTH=1 like task rows. Source-shape proxy:
+  // the panel must contain at least one DAGNodeRow with depth={0}.
+  assert.ok(/depth=\{0\}/.test(PANEL_SOURCE),
+    "phase iteration must render at least one DAGNodeRow with depth={0} for phase-level (non-loop) step nodes");
+});
+
+test("phase-iteration <DAGCorrectiveTaskGroup> renders OUTSIDE the spine wrapper so the grey spine line bounds task content only", () => {
+  // The for_each_phase branch's grey border-l spine wraps only the task loop.
+  // The corrective task group renders as a sibling of the spine so its own
+  // dashed warning border picks up at the same x-column the grey line stops at,
+  // signalling that phase-level corrective tasks belong to the phase, not the tasks.
+  // Source-shape proxy: in the for_each_phase branch, the spine wrapper class
+  // string and <DAGCorrectiveTaskGroup must not appear inside the same JSX
+  // container — i.e. between the spine open and the next `</div>` that closes
+  // it, there is no <DAGCorrectiveTaskGroup.
+  const TASK_BRANCH_MARKER = '// for_each_task branch';
+  const phaseBranch = PANEL_SOURCE.split(TASK_BRANCH_MARKER)[0];
+  const spineOpen = phaseBranch.indexOf('border-l border-border pl-3 ml-3');
+  assert.ok(spineOpen >= 0, "panel must still contain the spine wrapper class string");
+  // Walk to the next occurrence of <DAGCorrectiveTaskGroup in the phase branch.
+  // Between spineOpen and that index, ensure we crossed at least one </div>
+  // (the spine's closing tag) — i.e. the corrective group is OUTSIDE the spine.
+  const ctIndex = phaseBranch.indexOf('<DAGCorrectiveTaskGroup', spineOpen);
+  assert.ok(ctIndex >= 0, "for_each_phase branch must still render <DAGCorrectiveTaskGroup>");
+  const between = phaseBranch.slice(spineOpen, ctIndex);
+  assert.ok(/<\/div>/.test(between),
+    "<DAGCorrectiveTaskGroup> must render OUTSIDE the spine wrapper in the for_each_phase branch — found no </div> between the spine open and the corrective group, meaning it's still nested inside the spine.");
 });
 
 test("FR-9/DD-6 phase trigger lands the auto-rendered chevron at the row's right edge via Header flex-1", () => {
