@@ -456,8 +456,8 @@ test('for_each_phase iterations produce phase-level documents with correct categ
         {
           index: 0,
           status: 'completed',
+          doc_path: 'phases/P01-PLAN.md',
           nodes: {
-            phase_planning: { kind: 'step', status: 'completed', doc_path: 'phases/P01-PLAN.md', retries: 0 },
             phase_report: { kind: 'step', status: 'completed', doc_path: 'phases/P01-REPORT.md', retries: 0 },
             phase_review: { kind: 'step', status: 'completed', doc_path: 'reviews/P01-REVIEW.md', retries: 0 },
           },
@@ -491,8 +491,8 @@ test('for_each_task iterations produce task-level documents with correct categor
                 {
                   index: 0,
                   status: 'completed',
+                  doc_path: 'tasks/T01.md',
                   nodes: {
-                    task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/T01.md', retries: 0 },
                     code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/T01-REVIEW.md', retries: 0 },
                   },
                   corrective_tasks: [],
@@ -747,8 +747,8 @@ test('full integration: planning + phase iteration with task iteration + correct
         {
           index: 0,
           status: 'in_progress',
+          doc_path: 'phases/P01-PLAN.md',
           nodes: {
-            phase_planning: { kind: 'step', status: 'completed', doc_path: 'phases/P01-PLAN.md', retries: 0 },
             task_loop: {
               kind: 'for_each_task',
               status: 'in_progress',
@@ -756,8 +756,8 @@ test('full integration: planning + phase iteration with task iteration + correct
                 {
                   index: 0,
                   status: 'completed',
+                  doc_path: 'tasks/T01.md',
                   nodes: {
-                    task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/T01.md', retries: 0 },
                     code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/T01-REVIEW.md', retries: 0 },
                   },
                   corrective_tasks: [
@@ -832,7 +832,7 @@ test('label helpers and within-iteration order constants — locked label scheme
   assert.strictEqual(mod.STEP_TITLES_V5.master_plan, 'Master Plan');
 
   // FR-5 / AD-3 — explicit per-scope ordering constants (no Object.entries reliance)
-  assert.deepStrictEqual([...mod.PHASE_ITER_CHILD_ORDER], ['phase_planning', 'task_loop', 'phase_review']);
+  assert.deepStrictEqual([...mod.PHASE_ITER_CHILD_ORDER], ['phase_planning', 'task_loop', 'phase_report', 'phase_review']);
   assert.deepStrictEqual([...mod.TASK_ITER_CHILD_ORDER], ['task_handoff', 'code_review']);
 
   // FR-7 — phase plan label
@@ -853,6 +853,62 @@ test('label helpers and within-iteration order constants — locked label scheme
   // FR-10 — phase-scope corrective labels (Phase {N} CT{K} / Phase {N} CT{K} Review)
   assert.strictEqual(mod.titleForPhaseCorrectiveChild('task_handoff', 1, 1), 'Phase 1 CT1');
   assert.strictEqual(mod.titleForPhaseCorrectiveChild('code_review', 1, 1), 'Phase 1 CT1 Review');
+});
+
+test('emits phase-plan from iteration.doc_path and task-handoff from taskIter.doc_path (FR-1, FR-2, FR-4, FR-7, FR-8, AD-2)', () => {
+  const state = makeV5State({
+    phase_loop: {
+      kind: 'for_each_phase',
+      status: 'in_progress',
+      iterations: [
+        {
+          index: 0,
+          status: 'in_progress',
+          // Iteration-level doc_path — the phase plan (FR-1 / AD-2)
+          doc_path: 'phases/PROJ-PHASE-P01-PLAN.md',
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task',
+              status: 'in_progress',
+              iterations: [
+                {
+                  index: 0,
+                  status: 'completed',
+                  // Iteration-level doc_path — the task handoff (FR-2 / AD-2)
+                  doc_path: 'tasks/PROJ-TASK-P01-T01.md',
+                  nodes: {
+                    code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/PROJ-CODE-REVIEW-P01-T01.md', retries: 0 },
+                  },
+                  corrective_tasks: [],
+                  commit_hash: null,
+                },
+              ],
+            },
+            phase_review: { kind: 'step', status: 'completed', doc_path: 'reports/PROJ-PHASE-REVIEW-P01.md', retries: 0 },
+          },
+          corrective_tasks: [],
+          commit_hash: null,
+        },
+      ],
+    },
+  });
+
+  const docs = getOrderedDocsV5(state, 'PROJ');
+
+  // FR-4 walk order: phase plan → task handoff → task review → phase review
+  assert.deepStrictEqual(docs.map((d) => d.title), [
+    'Phase 1 Plan',
+    'P1-T1 Handoff',
+    'P1-T1 Review',
+    'Phase 1 Review',
+  ]);
+  // Path source: iteration.doc_path / taskIter.doc_path (not from nodes.task_handoff)
+  assert.strictEqual(docs[0].path, 'phases/PROJ-PHASE-P01-PLAN.md');
+  assert.strictEqual(docs[1].path, 'tasks/PROJ-TASK-P01-T01.md');
+  assert.strictEqual(docs[0].category, 'phase');
+  assert.strictEqual(docs[1].category, 'task');
+  assert.strictEqual(docs[2].category, 'review');
+  assert.strictEqual(docs[3].category, 'review');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

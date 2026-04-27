@@ -151,7 +151,7 @@ export const CORRECTIVE_DOC_EMIT_ORDER = ['task_handoff', 'code_review'] as cons
 // forward-compat: a future template that wires it back as a child step node
 // would still surface in the right slot. Same logic for `task_handoff` in
 // TASK_ITER_CHILD_ORDER.
-export const PHASE_ITER_CHILD_ORDER = ['phase_planning', 'task_loop', 'phase_review'] as const;
+export const PHASE_ITER_CHILD_ORDER = ['phase_planning', 'task_loop', 'phase_report', 'phase_review'] as const;
 export const TASK_ITER_CHILD_ORDER = ['task_handoff', 'code_review'] as const;
 
 export const STEP_TITLES_V5: Record<PlanningStepName, string> = {
@@ -252,7 +252,27 @@ export function getOrderedDocsV5(
       const sortedIterations = [...node.iterations].sort((a, b) => a.index - b.index);
       for (const iteration of sortedIterations) {
         const phaseNum = iteration.index + 1;
-        for (const [childId, child] of Object.entries(iteration.nodes)) {
+
+        // FR-1 / AD-2 — phase plan from iteration.doc_path, emitted at the
+        // start of the iteration's slice (before the iteration's child nodes).
+        if (iteration.doc_path != null) {
+          push(iteration.doc_path, `Phase ${phaseNum} Plan`, 'phase');
+        }
+
+        // FR-5 / AD-3 — explicit per-scope ordering. We iterate the locked
+        // child-id list rather than Object.entries(iteration.nodes) so the
+        // emitted sequence is stable across engine refactors that rebuild
+        // the nodes map from a different seed. Unknown child IDs (custom
+        // templates) are appended after the locked ones in insertion order
+        // so they still surface (AD-1).
+        const phaseChildIds = [
+          ...PHASE_ITER_CHILD_ORDER.filter((id) => id in iteration.nodes),
+          ...Object.keys(iteration.nodes).filter((id) => !(PHASE_ITER_CHILD_ORDER as readonly string[]).includes(id)),
+        ];
+
+        for (const childId of phaseChildIds) {
+          const child = iteration.nodes[childId];
+          if (!child) continue;
           if (child.kind === 'step' && child.doc_path != null) {
             const category: OrderedDoc['category'] = childId.includes('review') ? 'review' : 'phase';
             push(child.doc_path, titleForPhaseChild(childId, phaseNum), category);
@@ -260,21 +280,36 @@ export function getOrderedDocsV5(
             const sortedTaskIters = [...child.iterations].sort((a, b) => a.index - b.index);
             for (const taskIter of sortedTaskIters) {
               const taskNum = taskIter.index + 1;
-              for (const [taskNodeId, taskNode] of Object.entries(taskIter.nodes)) {
+
+              // FR-2 / AD-2 — task handoff from taskIter.doc_path, emitted
+              // before the task iteration's child nodes (i.e. before code_review).
+              if (taskIter.doc_path != null) {
+                push(taskIter.doc_path, `P${phaseNum}-T${taskNum} Handoff`, 'task');
+              }
+
+              const taskChildIds = [
+                ...TASK_ITER_CHILD_ORDER.filter((id) => id in taskIter.nodes),
+                ...Object.keys(taskIter.nodes).filter((id) => !(TASK_ITER_CHILD_ORDER as readonly string[]).includes(id)),
+              ];
+
+              for (const taskNodeId of taskChildIds) {
+                const taskNode = taskIter.nodes[taskNodeId];
+                if (!taskNode) continue;
                 if (taskNode.kind === 'step' && taskNode.doc_path != null) {
                   const category: OrderedDoc['category'] = taskNodeId.includes('review') ? 'review' : 'task';
                   push(taskNode.doc_path, titleForTaskChild(taskNodeId, phaseNum, taskNum), category);
                 }
               }
+
+              // Task-scope correctives (FR-3) — emitted in T03; this stub
+              // preserves the existing behaviour temporarily so unrelated
+              // tests do not regress between T02 and T03.
               const sortedCTs = [...taskIter.corrective_tasks].sort((a, b) => a.index - b.index);
               for (const ct of sortedCTs) {
                 for (const ctNodeId of CORRECTIVE_DOC_EMIT_ORDER) {
                   const ctNode = ct.nodes[ctNodeId];
                   if (ctNode?.kind === 'step' && ctNode.doc_path != null) {
                     const title = titleForTaskChild(ctNodeId, phaseNum, taskNum) + ' (CT' + ct.index + ')';
-                    // Corrective code_review docs group under 'review' like their non-corrective
-                    // siblings (line ~235) and phase-scope corrective reviews. Prior iter-10 shape
-                    // hardcoded 'task' which hid corrective re-reviews from the Review category.
                     const category: OrderedDoc['category'] = ctNodeId === 'code_review' ? 'review' : 'task';
                     push(ctNode.doc_path, title, category);
                   }
@@ -283,14 +318,14 @@ export function getOrderedDocsV5(
             }
           }
         }
+
+        // Phase-scope correctives (FR-3) — emitted in T03; stub kept here.
         const sortedPhaseCTs = [...iteration.corrective_tasks].sort((a, b) => a.index - b.index);
         for (const ct of sortedPhaseCTs) {
           for (const ctNodeId of CORRECTIVE_DOC_EMIT_ORDER) {
             const ctNode = ct.nodes[ctNodeId];
             if (ctNode?.kind === 'step' && ctNode.doc_path != null) {
               const title = titleForPhaseCorrectiveChild(ctNodeId, phaseNum, ct.index) + ' (Phase-C' + ct.index + ')';
-              // Explicit id check (not `includes('review')`) keeps categorization stable
-              // if future corrective body nodes happen to contain the 'review' substring.
               const category: OrderedDoc['category'] = ctNodeId === 'code_review' ? 'review' : 'phase';
               push(ctNode.doc_path, title, category);
             }
