@@ -795,7 +795,7 @@ test('remaining md files from allFiles are appended sorted with other category',
   const allFiles = ['docs/ZEBRA.md', 'docs/ALPHA.md', 'image.png'];
   const docs = getOrderedDocsV5(state, 'TEST', allFiles);
 
-  assert.deepStrictEqual(docs.map((d) => d.title), ['ALPHA', 'ZEBRA']);
+  assert.deepStrictEqual(docs.map((d) => d.title), ['Alpha', 'Zebra']);
   assert.strictEqual(docs[0].category, 'other');
   assert.strictEqual(docs[1].category, 'other');
 });
@@ -812,7 +812,7 @@ test('empty graph with allFiles extras returns only extras', () => {
   const docs = getOrderedDocsV5(state, 'TEST', allFiles);
   assert.strictEqual(docs[0].category, 'error-log');
   assert.strictEqual(docs[1].category, 'other');
-  assert.strictEqual(docs[1].title, 'EXTRA');
+  assert.strictEqual(docs[1].title, 'Extra');
 });
 
 test('full integration: planning + phase iteration with task iteration + corrective task + final review', () => {
@@ -991,6 +991,44 @@ test('emits phase-plan from iteration.doc_path and task-handoff from taskIter.do
   assert.strictEqual(docs[1].category, 'task');
   assert.strictEqual(docs[2].category, 'review');
   assert.strictEqual(docs[3].category, 'review');
+});
+
+test('FR-12 — v5 tail-bucket .md files are prefix-stripped and title-cased', () => {
+  const state = makeV5State();
+  const allFiles = [
+    'projects/UI-IMPROVE-1-FIXES/UI-IMPROVE-1-FIXES-BRAINSTORMING.md',
+    'projects/UI-IMPROVE-1-FIXES/UI-IMPROVE-1-FIXES-AUDIT-REPORT.md',
+    'projects/UI-IMPROVE-1-FIXES/UI-IMPROVE-1-FIXES-ERROR-LOG.md',
+    'projects/UI-IMPROVE-1-FIXES/scratch_notes.md',
+    'image.png',
+  ];
+  const docs = getOrderedDocsV5(state, 'UI-IMPROVE-1-FIXES', allFiles);
+
+  // FR-11 — error log label is unchanged
+  const errorLog = docs.find((d) => d.category === 'error-log')!;
+  assert.strictEqual(errorLog.title, 'Error Log');
+
+  // FR-12 — prefix stripped, separators → spaces, title-cased
+  const titles = docs.filter((d) => d.category === 'other').map((d) => d.title).sort();
+  assert.deepStrictEqual(titles, ['Audit Report', 'Brainstorming', 'Scratch Notes']);
+});
+
+test('FR-12 — v5 tail-bucket label keeps name when project prefix is absent', () => {
+  const state = makeV5State();
+  const allFiles = ['NOTES.md', 'random-thoughts.md'];
+  const docs = getOrderedDocsV5(state, 'PROJ', allFiles);
+  const titles = docs.filter((d) => d.category === 'other').map((d) => d.title).sort();
+  assert.deepStrictEqual(titles, ['Notes', 'Random Thoughts']);
+});
+
+test('NFR-1 — v4 getOrderedDocs tail-bucket labels are unchanged (uppercase bare filenames)', () => {
+  // Regression guard: even after T04 ships the v5 title-cased tail labels,
+  // the v4 helper still produces the legacy uppercase bare-filename titles
+  // because it calls the untouched shared `appendAllFileDocs`.
+  const state = makeState();
+  const allFiles = ['docs/ZEBRA.md', 'docs/ALPHA.md'];
+  const docs = getOrderedDocs(state, 'TEST', allFiles);
+  assert.deepStrictEqual(docs.map((d) => d.title), ['ALPHA', 'ZEBRA']);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

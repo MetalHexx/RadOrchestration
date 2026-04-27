@@ -37,6 +37,51 @@ function appendAllFileDocs(
   }
 }
 
+function tailDocLabelV5(filename: string, projectName: string): string {
+  // FR-12 — drop the trailing `.md`, strip the leading `{projectName}-`
+  // prefix (case-insensitive), convert remaining `-`/`_` separators to
+  // spaces, and title-case the result. Bare filenames with no prefix
+  // pass through to the title-case step unchanged.
+  let stem = filename.replace(/\.md$/i, '');
+  const prefix = `${projectName}-`;
+  if (stem.toLowerCase().startsWith(prefix.toLowerCase())) {
+    stem = stem.slice(prefix.length);
+  }
+  const words = stem.split(/[-_]+/).filter((w) => w.length > 0);
+  return words
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+// V5-only tail-bucket emitter. NFR-1 — kept separate from the shared
+// `appendAllFileDocs` (which is still consumed by the v4 `getOrderedDocs`)
+// so the v4 walk's tail labels remain bare uppercase filenames as the v4
+// tests assert. The error-log detection is identical to the v4 helper.
+function appendAllFileDocsV5(
+  allFiles: string[],
+  projectName: string,
+  seenPaths: Set<string>,
+  seenBasenames: Set<string>,
+  basename: (p: string) => string,
+  push: (path: string, title: string, category: OrderedDoc['category']) => void,
+): void {
+  // FR-11 — error log label and detection unchanged.
+  const errorLogPattern = `${projectName}-ERROR-LOG.md`;
+  const errorLogFile = allFiles.find((f) => f.endsWith(errorLogPattern));
+  if (errorLogFile && !seenPaths.has(errorLogFile)) {
+    push(errorLogFile, 'Error Log', 'error-log');
+  }
+
+  const otherDocs = allFiles
+    .filter((f) => f.endsWith('.md') && !seenBasenames.has(basename(f)))
+    .sort();
+
+  for (const filePath of otherDocs) {
+    const filename = basename(filePath);
+    push(filePath, tailDocLabelV5(filename, projectName), 'other');
+  }
+}
+
 /**
  * Derive the canonical document navigation order from project state.
  *
@@ -359,7 +404,7 @@ export function getOrderedDocsV5(
   }
 
   if (allFiles) {
-    appendAllFileDocs(allFiles, projectName, seenPaths, seenBasenames, basename, push);
+    appendAllFileDocsV5(allFiles, projectName, seenPaths, seenBasenames, basename, push);
   }
 
   return result;
