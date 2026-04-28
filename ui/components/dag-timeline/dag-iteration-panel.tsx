@@ -134,9 +134,11 @@ export function DAGIterationPanel({
     // by the for_each_phase arm (FR-11), so that mapping is removed. For
     // non-in_progress statuses, resolveStageBadge falls through to
     // STATUS_MAP[status].cssVar (DD-2), which is what the iteration's
-    // current grey/green/red treatment already expects. The helper's
-    // for_each_phase arm always returns Executing / Reviewing / Done / Failed /
-    // Not Started, so the label-to-stage-id table is two active labels.
+    // current grey/green/red treatment already expects. "Executing" and
+    // "Reviewing" are the only active phase-stage labels for in_progress;
+    // other statuses keep their STATUS_MAP labels (Completed / Skipped /
+    // Not Started / Failed / Halted), so the label-to-stage-id table only
+    // needs to cover the two active labels.
     const phaseStageId =
       derivedBadge.label === 'Reviewing'  ? 'phase_review'  :
       derivedBadge.label === 'Executing'  ? 'task_executor' : '';

@@ -495,8 +495,9 @@ export function deriveIterationBadgeLabel(
   iteration: IterationEntry,
   parentKind: 'for_each_phase' | 'for_each_task',
 ): { status: NodeStatus; label: string } {
-  // FR-6 / DD-4 — terminal failure / halted iteration reads "Failed"
-  // (X glyph supplied by STATUS_MAP['failed'].isRejected). No spinner.
+  // FR-6 / DD-4 — terminal failure reads "Failed" (X glyph supplied by
+  // STATUS_MAP['failed'].isRejected); halted iterations read STATUS_MAP['halted']
+  // .defaultLabel ("Halted"). Neither branch carries a spinner.
   if (iteration.status === 'failed') {
     return { status: 'failed', label: 'Failed' };
   }
@@ -510,10 +511,9 @@ export function deriveIterationBadgeLabel(
   }
 
   // FR-4 / DD-3 — when any corrective entry is in flight under a task
-  // iteration, the parent's badge reads "Correcting" (red + spinner).
-  // Phase iterations don't carry corrective_tasks at this slot today,
-  // but the same predicate applied to either parentKind is harmless
-  // because phase iterations' corrective_tasks array is always [].
+  // iteration, the task parent's badge reads "Correcting" (red + spinner).
+  // This applies only to `for_each_task`; phase iterations do not use
+  // `corrective_tasks` here.
   if (parentKind === 'for_each_task' &&
       iteration.corrective_tasks.some((ct) => ct.status === 'in_progress')) {
     return { status: 'in_progress', label: 'Correcting' };
