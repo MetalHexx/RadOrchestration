@@ -4,6 +4,28 @@ All notable changes to this project are documented here. For full per-release de
 
 ---
 
+## v1.0.0-alpha.7 — 2026-04-28
+
+A polish release focused on the dashboard — start projects without leaving the UI, a cleaner DAG timeline, smarter sidebar sorting, and a handful of cross-platform fixes.
+
+### What's New
+
+- **Start projects from the dashboard** — the project pane now has a **Start** action that launches a brainstorming or planning session directly into a Claude Code terminal.
+- **Unified approval & execution dialogs** — plan approval, final approval, and execute-plan share a single, consistent confirmation popup.
+- **DAG timeline, simplified** — execution timeline collapses to a two-layer accordion. Task iterations fold their substeps into the badge label, **Code Review** surfaces as a header link, and a new **Corrected** pill leads the trailing-link cluster on iterations that recovered from a corrective cycle. Iteration vocabulary is unified across **Coding**, **Reviewing**, **Correcting**, **Failed**, and **Halted**, with stage colors resolved consistently across the list and details header.
+- **Smarter sidebar sorting** — **Urgency-first** ordering surfaces projects that need attention; **Done-first** reverses while keeping *Not Initialized* pinned to the bottom; **Updated (newest first)** is the new default secondary sort; undefined dates now respect direction. The active tier badge mirrors between the sidebar list and the details header with the in-progress spinner.
+- **DAG-ordered planning documents** — phase plans and task handoffs are emitted in topological order so the docs you read match the order the pipeline will execute. Corrective handoffs use a clean `CT-*` label scheme; tail-bucket project prefixes are stripped and title-cased.
+
+### What's Fixed
+
+- **Project names with dots** (e.g., `RELEASE-1.7-TEST`) no longer get rejected by the approve dialog or start-action route.
+- **Claude Code terminal launch on Windows** no longer prefixes `/rad-execute` with an unnecessary directory path.
+- **`rad-execute-parallel` skill** loads properly — the stray `disable-model-invocation` flag has been removed.
+- **`next build`** runs clean — a stray `require()` in the document-ordering tests was tripping the production lint gate.
+- **Planning skill task-size descriptions** sharpened so junior/standard/senior coder routing is easier to reason about.
+
+---
+
 ## v1.0.0-alpha.6 — 2026-04-24
 
 Large release landing the process refactor — DAG-based pipeline engine, requirements-first planning, orchestrator-mediated corrective cycles, a rewritten executor and reviewer, and a monitoring UI rebuilt on the new state shape.
