@@ -1,6 +1,6 @@
 {
   "name": "rad-orchestration",
-  "version": "1.0.0-alpha.6",
+  "version": "1.0.0-alpha.7",
   "description": "Interactive CLI installer for the RadOrchestration system",
   "type": "module",
   "license": "MIT",
