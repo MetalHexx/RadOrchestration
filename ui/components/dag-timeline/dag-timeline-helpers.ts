@@ -438,7 +438,7 @@ export function deriveIterationTaskProgress(
  * purple "Reviewing" treatment as `phase_review` / `code_review`.
  */
 const ITERATION_SUBSTEP_CONFIG: Record<string, { cssVar: string; label: string }> = {
-  task_executor: { cssVar: '--tier-execution', label: 'Executing'  },
+  task_executor: { cssVar: '--tier-execution', label: 'Coding'     },
   commit:        { cssVar: '--tier-execution', label: 'Committing' },
   code_review:   { cssVar: '--tier-review',    label: 'Reviewing'  },
   phase_review:  { cssVar: '--tier-review',    label: 'Reviewing'  },
@@ -508,36 +508,53 @@ export function deriveIterationBadgeLabel(
   iteration: IterationEntry,
   parentKind: 'for_each_phase' | 'for_each_task',
 ): { status: NodeStatus; label: string } {
+  // FR-6 / DD-4 — terminal failure / halted iteration reads "Failed"
+  // (X glyph supplied by STATUS_MAP['failed'].isRejected). No spinner.
+  if (iteration.status === 'failed') {
+    return { status: 'failed', label: 'Failed' };
+  }
+  if (iteration.status === 'halted') {
+    const entry = STATUS_MAP['halted'];
+    return { status: 'halted', label: entry.defaultLabel };
+  }
   if (iteration.status !== 'in_progress') {
     const entry = STATUS_MAP[iteration.status];
     return { status: iteration.status, label: entry.defaultLabel };
   }
 
-  // FR-3 / AD-3: phase iteration stops at its own substeps. Look only
-  // at the phase's direct children (phase_planning / task_loop /
-  // phase_review). When task_loop is the in-flight child, the phase
-  // row reads "Executing" — no recursion into the active task.
+  // FR-4 / DD-3 — when any corrective entry is in flight under a task
+  // iteration, the parent's badge reads "Correcting" (red + spinner).
+  // Phase iterations don't carry corrective_tasks at this slot today,
+  // but the same predicate applied to either parentKind is harmless
+  // because phase iterations' corrective_tasks array is always [].
+  if (parentKind === 'for_each_task' &&
+      iteration.corrective_tasks.some((ct) => ct.status === 'in_progress')) {
+    return { status: 'in_progress', label: 'Correcting' };
+  }
+
+  // FR-3 / FR-11 / AD-1 — phase iteration stops at its own substeps.
+  // Look only at the phase's direct children (phase_planning / task_loop
+  // / phase_review). When task_loop OR phase_planning is the in-flight
+  // child, the phase row reads "Executing" — no Planning branch, no
+  // recursion into the active task. The redundant
+  // `|| childId === 'phase_planning'` defensive disjunct is gone (FR-17).
   if (parentKind === 'for_each_phase') {
     for (const [childId, childNode] of Object.entries(iteration.nodes)) {
       if (childNode.status !== 'in_progress') continue;
-      if (childId === 'task_loop') {
+      if (childId === 'task_loop' || childId === 'phase_planning') {
         return { status: 'in_progress', label: 'Executing' };
       }
       const cfg = ITERATION_SUBSTEP_CONFIG[childId];
       if (cfg !== undefined) {
         return { status: 'in_progress', label: cfg.label };
       }
-      // phase_planning is not in the substep table; resolve via the
-      // planning-step set instead.
-      if (PLANNING_STEP_IDS.has(childId) || childId === 'phase_planning') {
-        return { status: 'in_progress', label: 'Planning' };
-      }
     }
     return { status: 'in_progress', label: 'Executing' };
   }
 
-  // parentKind === 'for_each_task' — preserve the original substep walk
-  // so task-iteration rows continue to surface their substep label.
+  // parentKind === 'for_each_task' — preserve the substep walk so the
+  // task iteration row surfaces its own substep label. task_executor
+  // now resolves to 'Coding' via ITERATION_SUBSTEP_LABELS (FR-2, DD-1).
   for (const [childId, childNode] of Object.entries(iteration.nodes)) {
     if (childNode.status !== 'in_progress') continue;
     const label = ITERATION_SUBSTEP_LABELS[childId];
@@ -545,7 +562,7 @@ export function deriveIterationBadgeLabel(
       return { status: 'in_progress', label };
     }
   }
-  return { status: 'in_progress', label: 'Executing' };
+  return { status: 'in_progress', label: 'Coding' };
 }
 
 /**
