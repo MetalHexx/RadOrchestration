@@ -541,13 +541,12 @@ test('dag-corrective-task-group.tsx does NOT contain placeholder onFocusChange={
   );
 });
 
-test('dag-corrective-task-group.tsx contains isFocused={focusedRowKey === childKey} on the DAGNodeRow branch (>= 1 occurrence)', () => {
-  const matches = correctiveTaskGroupSourceForCoordinator.match(/isFocused=\{focusedRowKey === childKey\}/g) ?? [];
-  assert.ok(
-    matches.length >= 1,
-    `expected at least 1 isFocused={focusedRowKey === childKey} occurrence on the DAGNodeRow branch, got ${matches.length}`
-  );
-});
+// Note: previously this file asserted CorrectiveRow contained
+// `isFocused={focusedRowKey === childKey}` on its <DAGNodeRow> branch.
+// P02-T02/FR-1 removed the <DAGNodeRow> mapping from CorrectiveRow, so
+// the per-child-key forwarding shape no longer applies. The corrective
+// row's own focus is governed by `isFocused={focusedRowKey === itemValue}`
+// resolved at the parent group call site, not at the row body.
 
 // ─── TypeScript-level fixtures: new required-prop contracts compile ──────────
 

@@ -537,7 +537,11 @@ test('dag-iteration-panel.tsx <ExternalLink> does NOT pass tabIndex (keyboard ac
 });
 
 test('dag-corrective-task-group.tsx does NOT contain projectName= or gateActive=', () => {
-  assert.ok(correctiveTaskGroupSource.includes('<DAGNodeRow'), 'sanity: corrective task group should contain a <DAGNodeRow element');
+  // Note: the original sanity assertion checked the file contained <DAGNodeRow>.
+  // P02-T02/FR-1 explicitly removed <DAGNodeRow> from CorrectiveRow as part of
+  // the row-recursion simplification, so the sanity guard no longer applies.
+  // The substantive assertions (no projectName=, no gateActive= nested-scope
+  // forwarding) still hold.
   assert.ok(
     !correctiveTaskGroupSource.includes('projectName='),
     'dag-corrective-task-group.tsx must NOT contain projectName= (confirms no nested-scope forwarding)'

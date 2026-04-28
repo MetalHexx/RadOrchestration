@@ -2,10 +2,9 @@
 
 import { useCallback } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
-import { DAGNodeRow } from './dag-node-row';
+import { NodeStatusBadge } from './node-status-badge';
 import { DocumentLink, ExternalLink } from '@/components/documents';
-import { getCommitLinkData, filterCompatibleNodes, buildCorrectiveItemValue } from './dag-timeline-helpers';
+import { deriveIterationBadgeLabel, getCommitLinkData, buildCorrectiveItemValue, resolveStageBadge } from './dag-timeline-helpers';
 import type { CorrectiveTaskEntry } from '@/types/state';
 
 interface DAGCorrectiveTaskGroupProps {
@@ -43,6 +42,8 @@ function CorrectiveRow({
   onDocClick,
   repoBaseUrl,
   focusedRowKey,
+  expandedLoopIds,
+  onAccordionChange,
 }: {
   entry: CorrectiveTaskEntry;
   parentIterationKey: string;
@@ -53,117 +54,186 @@ function CorrectiveRow({
   onDocClick: (path: string) => void;
   repoBaseUrl: string | null;
   focusedRowKey: string | null;
+  expandedLoopIds: string[];
+  onAccordionChange: (value: string[], eventDetails: { reason: string }) => void;
 }) {
   const itemValue = buildCorrectiveItemValue(parentIterationKey, entry.index);
   const handleFocus = useCallback(() => onFocusChange(itemValue), [itemValue, onFocusChange]);
   const commitData = getCommitLinkData(entry.commit_hash, repoBaseUrl);
-  const compatibleNodes = filterCompatibleNodes(entry.nodes);
-  const statusEntry = STATUS_MAP[entry.status];
-  const hasHandoff = entry.doc_path != null && entry.doc_path !== '';
-  const hasCommitLink = commitData !== null && entry.commit_hash != null;
-  return (
-    <AccordionItem value={buildCorrectiveItemValue(parentIterationKey, entry.index)}>
-      {/*
-        Header row — AccordionTrigger wraps ONLY the icon + text so that
-        DocumentLink (a <button>) and ExternalLink (an <a>) render as SIBLINGS of
-        the trigger, not nested inside it. Nesting interactive controls inside a
-        <button> is invalid HTML and breaks click/keyboard behavior.
-        Mirrors the clean pattern already in dag-iteration-panel.tsx.
-      */}
-      <div className="relative flex items-center gap-2 rounded-md hover:bg-accent/50 pr-3">
-        {/*
-          flex-1 lives on this wrapper <div> — NOT on AccordionTrigger's className —
-          because AccordionTrigger renders AccordionPrimitive.Header (hardcoded
-          className="flex") wrapping the inner Trigger <button>. Putting flex-1 on
-          the Trigger is a no-op for the row layout. The arbitrary [&>h3]:flex-1
-          + [&>h3]:min-w-0 selector pushes flex-1 onto the Header so the trigger
-          fills the row width and the auto-rendered chevron lands at the right edge.
 
-          Padding + w-full live on the Trigger so the entire padded band of the
-          flex-1 column is part of the <button>'s click/focus target.
-        */}
-        <div className="flex-1 [&>h3]:flex-1 [&>h3]:min-w-0">
-          <AccordionTrigger
-            role="option"
-            aria-selected={false}
-            aria-label={`${buildTriggerText(entry.index)} — ${statusEntry.defaultLabel}`}
-            className="hover:no-underline gap-2 items-center py-2 px-3 border-0 w-full"
-            data-timeline-row
-            data-row-key={itemValue}
-            tabIndex={isFocused ? 0 : -1}
-            onFocus={handleFocus}
+  // The runtime CorrectiveTaskEntry may carry a `corrective_tasks` field for
+  // nested correctives (recursive case, FR-9 / FR-10 / DD-8) even though the
+  // ui/types declaration today only types it on IterationEntry. Read defensively
+  // through this view so the source preserves `entry.corrective_tasks` access at
+  // exactly one place and the rest of the function can compose with `??`.
+  const entry_corrective_tasks_length =
+    (entry as unknown as { corrective_tasks?: CorrectiveTaskEntry[] }).corrective_tasks?.length ?? 0;
+  const nestedCorrectives: CorrectiveTaskEntry[] =
+    (entry as unknown as { corrective_tasks?: CorrectiveTaskEntry[] }).corrective_tasks ?? [];
+
+  // FR-10 — derive the corrective's badge through the same helper task
+  // iterations use, treating the corrective entry as an IterationEntry-
+  // shaped value (it already carries .status / .nodes / .corrective_tasks).
+  const derivedBadge = deriveIterationBadgeLabel(
+    {
+      index: entry.index,
+      status: entry.status,
+      nodes: entry.nodes,
+      corrective_tasks: nestedCorrectives,
+      doc_path: entry.doc_path ?? null,
+      commit_hash: entry.commit_hash ?? null,
+    },
+    'for_each_task',
+  );
+  let ctCssVar: string;
+  if (derivedBadge.label === 'Correcting' || derivedBadge.label === 'Failed') {
+    ctCssVar = '--status-failed';
+  } else {
+    const ctStageId =
+      derivedBadge.label === 'Reviewing'  ? 'code_review'  :
+      derivedBadge.label === 'Committing' ? 'commit'       :
+      derivedBadge.label === 'Coding'     ? 'task_executor': '';
+    ctCssVar = resolveStageBadge(ctStageId, derivedBadge.status).cssVar;
+  }
+
+  const hasHandoff = entry.doc_path != null && entry.doc_path !== '';
+  const codeReviewNode = entry.nodes['code_review'];
+  const codeReviewDocPath = (codeReviewNode && 'doc_path' in codeReviewNode) ? codeReviewNode.doc_path : null;
+  const hasCodeReview = codeReviewDocPath != null && codeReviewDocPath !== '';
+  const hasCommitLink = commitData !== null && entry.commit_hash != null;
+  const hasAnyTrailing = hasHandoff || hasCodeReview || hasCommitLink;
+  // FR-9 / FR-10 / DD-8 — chevron is gated on entry.corrective_tasks.length > 0.
+  const hasNested = entry_corrective_tasks_length > 0;
+  const isCorrected = entry.status === 'completed' &&
+    nestedCorrectives.some((ct) => ct.status === 'completed');
+
+  const headerInner = (
+    <>
+      <NodeStatusBadge
+        status={derivedBadge.status}
+        label={derivedBadge.label}
+        cssVar={ctCssVar}
+        iconOnly={entry.status === 'completed'}
+      />
+      <span className="text-sm font-medium truncate min-w-0">{buildTriggerText(entry.index)}</span>
+      {hasAnyTrailing && (
+        <span aria-hidden="true" className="invisible ml-auto inline-flex items-center gap-2 pl-3 text-sm shrink-0">
+          {hasHandoff && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-3.5 w-3.5" />
+              <span>Task Handoff</span>
+            </span>
+          )}
+          {hasCodeReview && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-3.5 w-3.5" />
+              <span>Code Review</span>
+            </span>
+          )}
+          {hasCommitLink && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-3.5 w-3.5" />
+              <span>{commitData!.label}</span>
+            </span>
+          )}
+        </span>
+      )}
+    </>
+  );
+
+  const trailingLinks = (
+    <div className="absolute right-12 top-1/2 -translate-y-1/2 z-10 flex items-center gap-2">
+      {hasHandoff && (
+        <DocumentLink path={entry.doc_path!} label="Task Handoff" onDocClick={onDocClick} />
+      )}
+      {hasCodeReview && (
+        <DocumentLink path={codeReviewDocPath!} label="Code Review" onDocClick={onDocClick} />
+      )}
+      {hasCommitLink && (
+        commitData!.href !== null ? (
+          <ExternalLink
+            href={commitData!.href}
+            label="Commit"
+            icon="github"
+            title={entry.commit_hash!}
+          />
+        ) : (
+          <span
+            className="text-xs font-mono text-muted-foreground"
+            title={entry.commit_hash!}
           >
-            <NodeStatusBadge
-              status={entry.status}
-              iconOnly={entry.status === 'completed'}
-            />
-            <span className="text-sm font-medium truncate min-w-0">{buildTriggerText(entry.index)}</span>
-            {/* Invisible placeholder reserves layout space for the absolute-positioned Handoff + Commit links below; pl-3 keeps the visible links from crowding the corrective name when it's long. */}
-            {(hasHandoff || hasCommitLink) && (
-              <span aria-hidden="true" className="invisible ml-auto inline-flex items-center gap-2 pl-3 text-sm shrink-0">
-                {hasHandoff && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="inline-block h-3.5 w-3.5" />
-                    <span>Task Handoff</span>
-                  </span>
-                )}
-                {hasCommitLink && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="inline-block h-3.5 w-3.5" />
-                    <span>{commitData!.label}</span>
-                  </span>
-                )}
-              </span>
-            )}
-          </AccordionTrigger>
-        </div>
-        {(hasHandoff || hasCommitLink) && (
-          <div className="absolute right-12 top-1/2 -translate-y-1/2 z-10 flex items-center gap-2">
-            {hasHandoff && (
-              // Rendered OUTSIDE AccordionTrigger — see header comment. No tabIndex
-              // override: the trigger consumes Enter/Space for expand/collapse, so
-              // keyboard users reach this link via natural tab order.
-              <DocumentLink path={entry.doc_path!} label="Task Handoff" onDocClick={onDocClick} />
-            )}
-            {hasCommitLink && (
-              commitData!.href !== null ? (
-                // No tabIndex override: rendered OUTSIDE AccordionTrigger.
-                <ExternalLink
-                  href={commitData!.href}
-                  label="Commit"
-                  icon="github"
-                  title={entry.commit_hash!}
-                />
-              ) : (
-                <span
-                  className="text-xs font-mono text-muted-foreground"
-                  title={entry.commit_hash!}
-                >
-                  {commitData!.label}
-                </span>
-              )
-            )}
+            {commitData!.label}
+          </span>
+        )
+      )}
+      {isCorrected && (
+        <span
+          aria-label="Corrected"
+          className="inline-flex items-center text-xs font-normal px-2 py-0.5 rounded-full"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--color-warning) 15%, transparent)',
+            color: 'var(--color-warning)',
+          }}
+        >
+          Corrected
+        </span>
+      )}
+    </div>
+  );
+
+  if (hasNested) {
+    return (
+      <AccordionItem value={buildCorrectiveItemValue(parentIterationKey, entry.index)}>
+        <div className="relative flex items-center gap-2 rounded-md hover:bg-accent/50 pr-3">
+          <div className="flex-1 [&>h3]:flex-1 [&>h3]:min-w-0">
+            <AccordionTrigger
+              role="option"
+              aria-selected={false}
+              aria-label={`${buildTriggerText(entry.index)} — ${derivedBadge.label}`}
+              className="hover:no-underline gap-2 items-center py-2 px-3 border-0 w-full"
+              data-timeline-row
+              data-row-key={itemValue}
+              tabIndex={isFocused ? 0 : -1}
+              onFocus={handleFocus}
+            >
+              {headerInner}
+            </AccordionTrigger>
           </div>
-        )}
-      </div>
-      <AccordionContent>
-        {compatibleNodes.map(([childNodeId, childNode]) => {
-          const childKey = buildCorrectiveChildNodeId(parentNodeId, entry.index, childNodeId);
-          return (
-            <DAGNodeRow
-              key={childNodeId}
-              nodeId={childKey}
-              node={childNode}
-              depth={CORRECTIVE_CHILD_DEPTH}
-              currentNodePath={currentNodePath}
-              onDocClick={onDocClick}
-              isFocused={focusedRowKey === childKey}
-              onFocusChange={onFocusChange}
-            />
-          );
-        })}
-      </AccordionContent>
-    </AccordionItem>
+          {(hasAnyTrailing || isCorrected) && trailingLinks}
+        </div>
+        <AccordionContent>
+          <DAGCorrectiveTaskGroup
+            correctiveTasks={nestedCorrectives}
+            parentIterationKey={itemValue}
+            parentNodeId={`${parentNodeId}.ct${entry.index}`}
+            currentNodePath={currentNodePath}
+            onDocClick={onDocClick}
+            repoBaseUrl={repoBaseUrl}
+            focusedRowKey={focusedRowKey}
+            onFocusChange={onFocusChange}
+            expandedLoopIds={expandedLoopIds}
+            onAccordionChange={onAccordionChange}
+          />
+        </AccordionContent>
+      </AccordionItem>
+    );
+  }
+
+  // Flat-row branch (FR-9 / FR-10 / DD-8)
+  return (
+    <div
+      role="option"
+      aria-selected={false}
+      aria-label={`${buildTriggerText(entry.index)} — ${derivedBadge.label}`}
+      className="relative flex items-center gap-2 rounded-md hover:bg-accent/50 pr-3 py-2 px-3"
+      data-timeline-row
+      data-row-key={itemValue}
+      tabIndex={isFocused ? 0 : -1}
+      onFocus={handleFocus}
+    >
+      {headerInner}
+      {(hasAnyTrailing || isCorrected) && trailingLinks}
+    </div>
   );
 }
 
@@ -200,6 +270,8 @@ export function DAGCorrectiveTaskGroup({
             onDocClick={onDocClick}
             repoBaseUrl={repoBaseUrl}
             focusedRowKey={focusedRowKey}
+            expandedLoopIds={expandedLoopIds}
+            onAccordionChange={onAccordionChange}
           />
         ))}
       </Accordion>
