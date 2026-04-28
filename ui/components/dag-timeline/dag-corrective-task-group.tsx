@@ -116,7 +116,7 @@ function CorrectiveRow({
         iconOnly={entry.status === 'completed'}
       />
       <span className="text-sm font-medium truncate min-w-0">{buildTriggerText(entry.index)}</span>
-      {hasAnyTrailing && (
+      {(hasAnyTrailing || isCorrected) && (
         <span aria-hidden="true" className="invisible ml-auto inline-flex items-center gap-2 pl-3 text-sm shrink-0">
           {hasHandoff && (
             <span className="inline-flex items-center gap-1.5">

@@ -370,7 +370,7 @@ export function DAGIterationPanel({
       <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
         {iterationName}
       </span>
-      {hasAnyTaskTrailing && (
+      {(hasAnyTaskTrailing || isCorrected) && (
         <span aria-hidden="true" className="invisible ml-auto inline-flex items-center gap-2 pl-3 text-sm shrink-0">
           {hasTaskHandoff && (
             <span className="inline-flex items-center gap-1.5">
