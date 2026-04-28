@@ -399,6 +399,18 @@ export function DAGIterationPanel({
 
   const trailingLinks = (
     <div className="absolute right-12 top-1/2 -translate-y-1/2 z-10 flex items-center gap-2">
+      {isCorrected && (
+        <span
+          aria-label="Corrected"
+          className="inline-flex items-center text-xs font-normal px-2 py-0.5 rounded-full"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--color-warning) 15%, transparent)',
+            color: 'var(--color-warning)',
+          }}
+        >
+          Corrected
+        </span>
+      )}
       {hasTaskHandoff && (
         <DocumentLink path={iteration.doc_path!} label="Task Handoff" onDocClick={onDocClick} />
       )}
@@ -421,18 +433,6 @@ export function DAGIterationPanel({
             {commitData!.label}
           </span>
         )
-      )}
-      {isCorrected && (
-        <span
-          aria-label="Corrected"
-          className="inline-flex items-center text-xs font-normal px-2 py-0.5 rounded-full"
-          style={{
-            backgroundColor: 'color-mix(in srgb, var(--color-warning) 15%, transparent)',
-            color: 'var(--color-warning)',
-          }}
-        >
-          Corrected
-        </span>
       )}
     </div>
   );
