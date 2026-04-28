@@ -131,14 +131,12 @@ export function DAGIterationPanel({
     // FR-3 / DD-7 / FR-11 — the phase iteration's tier cssVar mirrors its label:
     // "Executing" (incl. while task_loop is running per FR-3) → --tier-execution,
     // "Reviewing" → --tier-review. The 'Planning' label is no longer returned
-    // by the for_each_phase arm (FR-11), so that mapping is removed.
-    // For non-in_progress statuses, resolveStageBadge falls through to
+    // by the for_each_phase arm (FR-11), so that mapping is removed. For
+    // non-in_progress statuses, resolveStageBadge falls through to
     // STATUS_MAP[status].cssVar (DD-2), which is what the iteration's
-    // current grey/green/red treatment already expects.
-    // FR-11 — phase iteration headers no longer carry the 'Planning' label.
-    // The helper's for_each_phase arm always returns Executing / Reviewing /
-    // Done / Failed / Not Started, so the label-to-stage-id table is two
-    // active labels.
+    // current grey/green/red treatment already expects. The helper's
+    // for_each_phase arm always returns Executing / Reviewing / Done / Failed /
+    // Not Started, so the label-to-stage-id table is two active labels.
     const phaseStageId =
       derivedBadge.label === 'Reviewing'  ? 'phase_review'  :
       derivedBadge.label === 'Executing'  ? 'task_executor' : '';
