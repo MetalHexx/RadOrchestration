@@ -66,8 +66,6 @@ function CorrectiveRow({
   // ui/types declaration today only types it on IterationEntry. Read defensively
   // through this view so the source preserves `entry.corrective_tasks` access at
   // exactly one place and the rest of the function can compose with `??`.
-  const entry_corrective_tasks_length =
-    (entry as unknown as { corrective_tasks?: CorrectiveTaskEntry[] }).corrective_tasks?.length ?? 0;
   const nestedCorrectives: CorrectiveTaskEntry[] =
     (entry as unknown as { corrective_tasks?: CorrectiveTaskEntry[] }).corrective_tasks ?? [];
 
@@ -103,7 +101,7 @@ function CorrectiveRow({
   const hasCommitLink = commitData !== null && entry.commit_hash != null;
   const hasAnyTrailing = hasHandoff || hasCodeReview || hasCommitLink;
   // FR-9 / FR-10 / DD-8 — chevron is gated on entry.corrective_tasks.length > 0.
-  const hasNested = entry_corrective_tasks_length > 0;
+  const hasNested = nestedCorrectives.length > 0;
   const isCorrected = entry.status === 'completed' &&
     nestedCorrectives.some((ct) => ct.status === 'completed');
 
