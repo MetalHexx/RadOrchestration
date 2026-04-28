@@ -157,6 +157,70 @@ test("passes custom label as ariaLabel when label is overridden", () => {
   assert.strictEqual(resolveProps("in_progress", "My Label").ariaLabel, "My Label");
 });
 
+// ─── cssVar override prop (FR-1, FR-4, AD-4, DD-1) ───────────────────────────
+
+function resolvePropsWithOverride(status: NodeStatus, label?: string, cssVar?: string) {
+  const entry: StatusMapEntry = STATUS_MAP[status];
+  const resolvedLabel = label ?? entry.defaultLabel;
+  return {
+    cssVar: cssVar ?? entry.cssVar,
+    isSpinning: entry.isSpinning,
+    isComplete: entry.isComplete,
+    isRejected: entry.isRejected,
+    label: resolvedLabel,
+    ariaLabel: resolvedLabel,
+  };
+}
+
+console.log("\nNodeStatusBadge cssVar override (FR-1, FR-4, AD-4, DD-1) tests\n");
+
+test("cssVar override flows through to SpinnerBadge cssVar prop", () => {
+  const r = resolvePropsWithOverride('in_progress', 'Reviewing', '--tier-review');
+  assert.strictEqual(r.cssVar, '--tier-review');
+});
+
+test("cssVar omitted falls back to STATUS_MAP entry (back-compat)", () => {
+  const r = resolvePropsWithOverride('in_progress', 'In Progress');
+  assert.strictEqual(r.cssVar, '--status-in-progress');
+});
+
+test("cssVar override does not change isSpinning/isComplete/isRejected (DD-1: status drives icon, override drives only color)", () => {
+  const r = resolvePropsWithOverride('in_progress', 'Executing', '--tier-execution');
+  assert.strictEqual(r.isSpinning, true);
+  assert.strictEqual(r.isComplete, false);
+  assert.strictEqual(r.isRejected, false);
+});
+
+test("cssVar override + iconOnly: visible label suppressed but ariaLabel preserved (NFR-3)", () => {
+  // The component's render contract: when iconOnly is set, the
+  // SpinnerBadge receives hideLabel=true but ariaLabel still equals
+  // the resolved label so screen readers still announce stage.
+  const r = resolvePropsWithOverride('completed', 'Reviewing', '--tier-review');
+  assert.strictEqual(r.label, 'Reviewing');
+  assert.strictEqual(r.ariaLabel, 'Reviewing');
+});
+
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const NSB_SOURCE = readFileSync(join(__dirname, 'node-status-badge.tsx'), 'utf8');
+
+test("AD-4 NodeStatusBadge declares optional cssVar prop in its props interface", () => {
+  assert.ok(/cssVar\?\s*:\s*string/.test(NSB_SOURCE),
+    "node-status-badge.tsx must declare `cssVar?: string` on NodeStatusBadgeProps");
+});
+
+test("AD-4 NodeStatusBadge forwards cssVar to SpinnerBadge with STATUS_MAP fallback", () => {
+  // Body must include a fallback expression of the shape `cssVar ?? entry.cssVar`
+  // (or `cssVar ?? STATUS_MAP[status].cssVar` / equivalent destructure).
+  assert.ok(
+    /cssVar\s*\?\?\s*\w+\.cssVar/.test(NSB_SOURCE) ||
+    /cssVar\s*\?\?\s*STATUS_MAP\[/.test(NSB_SOURCE),
+    "NodeStatusBadge body must use `cssVar ?? <STATUS_MAP entry>.cssVar` fallback",
+  );
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

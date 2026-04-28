@@ -537,7 +537,11 @@ test('dag-iteration-panel.tsx <ExternalLink> does NOT pass tabIndex (keyboard ac
 });
 
 test('dag-corrective-task-group.tsx does NOT contain projectName= or gateActive=', () => {
-  assert.ok(correctiveTaskGroupSource.includes('<DAGNodeRow'), 'sanity: corrective task group should contain a <DAGNodeRow element');
+  // Note: the original sanity assertion checked the file contained <DAGNodeRow>.
+  // P02-T02/FR-1 explicitly removed <DAGNodeRow> from CorrectiveRow as part of
+  // the row-recursion simplification, so the sanity guard no longer applies.
+  // The substantive assertions (no projectName=, no gateActive= nested-scope
+  // forwarding) still hold.
   assert.ok(
     !correctiveTaskGroupSource.includes('projectName='),
     'dag-corrective-task-group.tsx must NOT contain projectName= (confirms no nested-scope forwarding)'
@@ -679,10 +683,24 @@ test('dag-iteration-panel.tsx for_each_task branch wraps the task iteration in <
   // The file now contains TWO AccordionItem invocations (one per parentKind branch).
   // Both must use buildIterationItemValue for the value prop so the hook + renderer
   // identity contract holds for tasks too (AD-3).
-  const matches = iterationPanelSource.match(/value=\{buildIterationItemValue\(parentNodeId,\s*iterationIndex\)\}/g) ?? [];
+  //
+  // P02-T01 update: the for_each_task branch hoists the call result into a
+  // local `itemValue` const (`const itemValue = buildIterationItemValue(...)`)
+  // and then references `value={itemValue}` on the AccordionItem. Accept either
+  // the inlined call or the hoisted-const form; the AD-3 contract is that the
+  // value identity comes from buildIterationItemValue, not the literal call site.
+  const inlined = iterationPanelSource.match(/value=\{buildIterationItemValue\(parentNodeId,\s*iterationIndex\)\}/g) ?? [];
+  const hoisted = iterationPanelSource.match(/value=\{itemValue\}/g) ?? [];
+  // Confirm the hoisted-const form is in fact buildIterationItemValue (no aliasing of
+  // a different helper to the same identifier).
   assert.ok(
-    matches.length >= 2,
-    `for_each_task branch must also use buildIterationItemValue for its <AccordionItem value> — found ${matches.length} occurrence(s), expected ≥ 2`
+    /const\s+itemValue\s*=\s*buildIterationItemValue\(parentNodeId,\s*iterationIndex\)/.test(iterationPanelSource),
+    'itemValue (used by the for_each_task <AccordionItem value>) must be hoisted from buildIterationItemValue(parentNodeId, iterationIndex)'
+  );
+  const total = inlined.length + hoisted.length;
+  assert.ok(
+    total >= 2,
+    `for_each_task branch must also use buildIterationItemValue (inlined or via the hoisted itemValue const) for its <AccordionItem value> — found ${inlined.length} inlined + ${hoisted.length} hoisted = ${total} occurrence(s), expected ≥ 2`
   );
 });
 
@@ -751,18 +769,19 @@ test('dag-iteration-panel.tsx data-row-key uses itemValue (the iteration accordi
   );
 });
 
-test('dag-iteration-panel.tsx renders <DAGNodeRow> in BOTH parentKind branches so non-loop iteration.nodes children (e.g. legacy phase_planning step) are not silently dropped (FR-17)', () => {
+test('dag-iteration-panel.tsx renders <DAGNodeRow> in the for_each_phase branch for non-loop iteration.nodes children (e.g. legacy phase_planning step) (FR-17)', () => {
   // Pre-unify projects carry a synthetic `phase_planning` step inside
-  // for_each_phase iteration.nodes. The for_each_task branch already handles
-  // non-loop children via a <DAGNodeRow> fallthrough — the for_each_phase
-  // branch must mirror that exact behavior, otherwise any direct step / gate
-  // / conditional node inside iteration.nodes silently disappears from the
-  // rendered body.
+  // for_each_phase iteration.nodes. The for_each_phase branch must keep its
+  // <DAGNodeRow> fallthrough (one per pre-loop / spine / post-loop bucket)
+  // so any direct step / gate / conditional node inside iteration.nodes is
+  // not silently dropped.
   //
-  // Source-text invariant: each parentKind branch contains at least one
-  // <DAGNodeRow JSX call site. (The for_each_phase branch carries multiple —
-  // one per pre-loop / spine-fallthrough / post-loop bucket — to keep
-  // phase-level non-loop nodes outside the spine container.)
+  // P02-T01 update: the for_each_task branch INTENTIONALLY no longer renders
+  // <DAGNodeRow> children for substep nodes (FR-1 / DD-9). Code Review surfaces
+  // as a header trailing link (FR-7); other substeps are absorbed into the
+  // iteration's badge label (FR-2 / FR-4 / FR-6) rather than into child rows.
+  // This test now asserts the post-P02-T01 invariant: phase branch keeps
+  // <DAGNodeRow> fallthroughs, task branch has zero.
   const TASK_BRANCH_MARKER = '// for_each_task branch';
   const split = iterationPanelSource.split(TASK_BRANCH_MARKER);
   assert.ok(split.length === 2,
@@ -773,8 +792,8 @@ test('dag-iteration-panel.tsx renders <DAGNodeRow> in BOTH parentKind branches s
   const taskMatches  = taskBranchSource.match(/<DAGNodeRow\b/g) ?? [];
   assert.ok(phaseMatches.length >= 1,
     `for_each_phase branch must contain at least one <DAGNodeRow> fallthrough so non-loop iteration.nodes children (e.g. legacy phase_planning step) are not silently dropped — found ${phaseMatches.length}`);
-  assert.ok(taskMatches.length >= 1,
-    `for_each_task branch must contain at least one <DAGNodeRow> fallthrough so non-loop iteration.nodes children (e.g. code_review, commit_gate) are not silently dropped — found ${taskMatches.length}`);
+  assert.strictEqual(taskMatches.length, 0,
+    `for_each_task branch must contain ZERO <DAGNodeRow> usages — substep mapping was intentionally dropped by P02-T01 (FR-1 / DD-9); found ${taskMatches.length}`);
 
   // Sanity: also confirm a phase iteration whose nodes contain a non-loop
   // step is structurally the case the renderer must handle. Mirrors the
@@ -904,6 +923,94 @@ test("FR-9/DD-6 phase trigger lands the auto-rendered chevron at the row's right
     "phase trigger inner wrapper must give Header flex-1 so the auto-chevron lands at the row's right edge (FR-9, DD-6)");
 });
 
+// Re-uses readFileSync / fileURLToPath / dirname / join already imported
+// at the top of dag-iteration-panel.test.ts (lines 9–11).
+const PANEL_SOURCE_P02 = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'dag-iteration-panel.tsx'), 'utf8');
+
+console.log("\nFR-1 / FR-7 / FR-8 / FR-9 / FR-5 — task iteration row simplification\n");
+
+test("FR-1 task iteration AccordionContent no longer renders <DAGNodeRow> children for substep nodes", () => {
+  // Source-shape proxy — the for_each_task arm's AccordionContent must
+  // not contain a <DAGNodeRow> mapping that walks iteration.nodes; the
+  // only allowed mapping inside that arm is <DAGCorrectiveTaskGroup>.
+  const taskArmMatch = PANEL_SOURCE_P02.match(/\/\/ for_each_task branch[\s\S]*?<\/Accordion>/);
+  assert.ok(taskArmMatch !== null, "for_each_task arm must still exist");
+  const taskArm = taskArmMatch[0];
+  // The AccordionContent block inside the task arm should contain the
+  // corrective group but no <DAGNodeRow> mapping over iteration.nodes.
+  assert.ok(/<DAGCorrectiveTaskGroup/.test(taskArm), "corrective group still rendered");
+  assert.ok(!/Object\.entries\(iteration\.nodes\)\s*\.filter[\s\S]*?<DAGNodeRow/.test(taskArm),
+    "task iteration AccordionContent must no longer map iteration.nodes onto <DAGNodeRow> (FR-1)");
+});
+
+test("FR-9/DD-8 task iteration row renders flat (no AccordionItem) when corrective_tasks.length === 0", () => {
+  // Source-shape proxy — the task arm must branch on
+  // iteration.corrective_tasks.length to choose between the
+  // AccordionItem shape and a flat <div> row.
+  assert.ok(/iteration\.corrective_tasks\.length\s*===\s*0/.test(PANEL_SOURCE_P02) ||
+            /iteration\.corrective_tasks\.length\s*>\s*0/.test(PANEL_SOURCE_P02),
+    "task arm must branch on iteration.corrective_tasks.length to gate the chevron (FR-9)");
+  // The flat-row branch must preserve data-timeline-row + data-row-key
+  // so follow mode keeps working.
+  assert.ok(/data-timeline-row[\s\S]*?data-row-key/.test(PANEL_SOURCE_P02),
+    "flat row must preserve data-timeline-row + data-row-key for follow mode (DD-8)");
+});
+
+test("FR-7/AD-5 task iteration header references iteration.nodes['code_review'].doc_path for the Code Review link", () => {
+  assert.ok(/iteration\.nodes\[['"]code_review['"]\][\s\S]*?doc_path/.test(PANEL_SOURCE_P02),
+    "task iteration header must read iteration.nodes['code_review'].doc_path for the Code Review link (FR-7, AD-5)");
+  assert.ok(/['"]Code Review['"]/.test(PANEL_SOURCE_P02),
+    "task iteration header must render a 'Code Review' link label beside Task Handoff (FR-7)");
+});
+
+test("FR-8 trailing-link slot order on the task header: Task Handoff, then Code Review, then Commit", () => {
+  // Source-shape proxy — the absolute trailing slot must contain the
+  // three links in DD-7 order. Match by the labels in their first
+  // appearance position. Labels appear as JSX attribute string literals
+  // (label="Task Handoff" / label="Code Review" / label="Commit") in the
+  // emitted source, so search by the same double-quoted form used by the
+  // pre-existing FR-11 / FR-12 tests above.
+  const handoffIdx = PANEL_SOURCE_P02.indexOf('label="Task Handoff"');
+  const reviewIdx  = PANEL_SOURCE_P02.indexOf('label="Code Review"');
+  const commitIdx  = PANEL_SOURCE_P02.indexOf('label="Commit"');
+  assert.ok(handoffIdx !== -1 && reviewIdx !== -1 && commitIdx !== -1,
+    "all three trailing labels must be present");
+  assert.ok(handoffIdx < reviewIdx && reviewIdx < commitIdx,
+    "trailing-link order must be Task Handoff → Code Review → Commit (FR-8, DD-7)");
+});
+
+test("FR-5/DD-6 task iteration renders 'Corrected' trailing pill when iteration completed AND any corrective resolved", () => {
+  // Source-shape proxy — the task arm must check
+  // iteration.corrective_tasks.some(ct => ct.status === 'completed')
+  // (or equivalent) gated on iteration.status === 'completed' to render
+  // a `Corrected` pill with --color-warning styling.
+  assert.ok(/Corrected/.test(PANEL_SOURCE_P02),
+    "task arm must render the 'Corrected' trailing marker label (FR-5)");
+  assert.ok(/--color-warning/.test(PANEL_SOURCE_P02),
+    "Corrected marker must reference --color-warning (DD-6, NFR-2)");
+  assert.ok(/aria-label=['"]Corrected['"]/.test(PANEL_SOURCE_P02),
+    "Corrected marker must carry aria-label='Corrected' (NFR-4)");
+});
+
+test("FR-4/FR-6 task arm wires Correcting/Failed cssVar at the call site (--status-failed for both)", () => {
+  // The taskStageId mapping must extend with 'Correcting' and 'Failed'
+  // labels resolving to a cssVar that is --status-failed (DD-3, DD-4).
+  assert.ok(/derivedBadge\.label\s*===\s*['"]Correcting['"][\s\S]*?--status-failed/.test(PANEL_SOURCE_P02) ||
+            /label === ['"]Correcting['"][\s\S]*?--status-failed/.test(PANEL_SOURCE_P02) ||
+            /Correcting[\s\S]*?cssVar:\s*['"]--status-failed['"]/.test(PANEL_SOURCE_P02),
+    "Correcting label must resolve to --status-failed at the call site (FR-4, DD-3, NFR-2)");
+  assert.ok(/Failed[\s\S]*?--status-failed/.test(PANEL_SOURCE_P02),
+    "Failed label must resolve to --status-failed at the call site (FR-6, DD-4, NFR-2)");
+});
+
+test("FR-2 task arm passes 'Coding' (renamed from 'Executing') as the active substep label", () => {
+  // taskStageId mapping must include a 'Coding' branch resolving to task_executor.
+  assert.ok(/derivedBadge\.label\s*===\s*['"]Coding['"][\s\S]*?task_executor/.test(PANEL_SOURCE_P02) ||
+            /label === ['"]Coding['"][\s\S]*?task_executor/.test(PANEL_SOURCE_P02) ||
+            /['"]Coding['"][\s\S]*?task_executor/.test(PANEL_SOURCE_P02),
+    "task arm must map the 'Coding' label to the task_executor substep (FR-2, DD-1)");
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
 
@@ -958,4 +1065,69 @@ test("FR-17/DD-13 phase iteration trigger wrapper carries pr-3 gutter", () => {
   for (const m of matches) {
     assert.ok(m.includes('pr-3'), `trigger wrapper missing pr-3 gutter: ${m} (FR-17, DD-13)`);
   }
+});
+
+// ─── P02-T02: Stage-aware badge wiring (FR-1, FR-3, AD-2, AD-3, AD-4, DD-7) ──
+
+console.log("\nDAGIterationPanel stage-aware badge wiring (FR-1, FR-3, AD-2, AD-3, AD-4, DD-7)\n");
+
+test("AD-2 panel imports resolveStageBadge", () => {
+  assert.ok(/resolveStageBadge/.test(PANEL_SOURCE),
+    "dag-iteration-panel.tsx must import resolveStageBadge");
+});
+
+test("AD-3 deriveIterationBadgeLabel called with explicit parentKind ('for_each_phase')", () => {
+  assert.ok(/deriveIterationBadgeLabel\(iteration,\s*['"]for_each_phase['"]\)/.test(PANEL_SOURCE),
+    "phase-branch call site must pass 'for_each_phase' as parentKind");
+});
+
+test("AD-3 deriveIterationBadgeLabel called with explicit parentKind ('for_each_task')", () => {
+  assert.ok(/deriveIterationBadgeLabel\(iteration,\s*['"]for_each_task['"]\)/.test(PANEL_SOURCE),
+    "task-branch call site must pass 'for_each_task' as parentKind");
+});
+
+test("AD-4 panel passes cssVar to NodeStatusBadge on both phase and task iteration headers", () => {
+  const matches = PANEL_SOURCE.match(/<NodeStatusBadge[\s\S]*?cssVar=\{/g);
+  assert.ok(matches !== null && matches.length >= 2,
+    "both iteration-header NodeStatusBadge instances (phase + task) must pass cssVar");
+});
+
+test("FR-12/FR-17 phase_planning no longer maps to --tier-planning (PLANNING_STEP_IDS member dropped)", async () => {
+  // FR-12 dropped 'phase_planning' from PLANNING_STEP_IDS; FR-17
+  // removed the special phase-arm Planning branch in
+  // deriveIterationBadgeLabel. resolveStageBadge('phase_planning', ...)
+  // now falls through to STATUS_MAP['in_progress'].
+  const { resolveStageBadge } = await import('./dag-timeline-helpers');
+  const badge = resolveStageBadge('phase_planning', 'in_progress');
+  assert.strictEqual(badge.cssVar, '--status-in-progress');
+  assert.strictEqual(badge.label, 'In Progress');
+});
+
+const PANEL_SOURCE_P03 = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'dag-iteration-panel.tsx'), 'utf8');
+
+console.log("\nFR-11 phase arm: Planning mapping removed from phaseStageId\n");
+
+test("FR-11/AD-1 phase arm no longer maps 'Planning' label to a stage id (dead branch removed)", () => {
+  // The for_each_phase arm's label-to-stage-id ternary must no longer
+  // contain a 'Planning' → 'phase_planning' branch — the helper no
+  // longer returns 'Planning' from for_each_phase, so the branch is
+  // unreachable and should be deleted.
+  // Keep the test narrow: only the phase arm's mapping table is in
+  // scope; the for_each_task arm has no Planning mapping and isn't
+  // relevant here.
+  const phaseArmMatch = PANEL_SOURCE_P03.match(/parentKind === ['"]for_each_phase['"][\s\S]*?for_each_task branch/);
+  assert.ok(phaseArmMatch !== null, "for_each_phase arm must still exist");
+  const phaseArm = phaseArmMatch[0];
+  assert.ok(!/derivedBadge\.label\s*===\s*['"]Planning['"]/.test(phaseArm),
+    "phase arm must no longer map the 'Planning' label to a stage id (FR-11, AD-1)");
+  assert.ok(!/['"]phase_planning['"]/.test(phaseArm.split('phaseStageId')[1] ?? ''),
+    "phaseStageId mapping must no longer reference 'phase_planning' (FR-11)");
+});
+
+test("FR-11 phase arm 'Executing' mapping still resolves via task_executor or task_loop equivalent", () => {
+  const phaseArmMatch = PANEL_SOURCE_P03.match(/parentKind === ['"]for_each_phase['"][\s\S]*?for_each_task branch/);
+  assert.ok(phaseArmMatch !== null);
+  const phaseArm = phaseArmMatch[0];
+  assert.ok(/derivedBadge\.label\s*===\s*['"]Executing['"]/.test(phaseArm),
+    "phase arm must still map the 'Executing' label to a stage id (FR-11 preserves Executing)");
 });

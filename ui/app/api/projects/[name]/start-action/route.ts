@@ -6,7 +6,7 @@ import { invokeLaunchClaudeProject } from '@/lib/launch-claude-project-invoke';
 
 export const dynamic = 'force-dynamic';
 
-const PROJECT_NAME_PATTERN = /^[A-Z0-9][A-Z0-9_-]*$/;
+const PROJECT_NAME_PATTERN = /^[A-Z0-9][A-Z0-9._-]*$/;
 
 type StartAction = 'start-planning' | 'start-brainstorming' | 'execute-plan';
 const ALLOWED_ACTIONS: ReadonlySet<StartAction> = new Set<StartAction>([

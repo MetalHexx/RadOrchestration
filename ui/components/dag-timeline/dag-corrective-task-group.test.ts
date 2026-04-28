@@ -435,5 +435,86 @@ test("FR-17/DD-13 corrective trigger wrapper carries pr-3 gutter", () => {
     `corrective trigger wrapper missing pr-3 gutter: ${match[0]} (FR-17, DD-13)`);
 });
 
+const __dirname_ct = dirname(fileURLToPath(import.meta.url));
+const CT_SOURCE = readFileSync(join(__dirname_ct, 'dag-corrective-task-group.tsx'), 'utf8');
+
+console.log("\nFR-10 / FR-1 / FR-7 / FR-8 / FR-9 / FR-5 — corrective task row recursion\n");
+
+test4("FR-1/FR-10 corrective row AccordionContent no longer maps entry.nodes onto <DAGNodeRow>", () => {
+  // Source-shape proxy — CorrectiveRow's AccordionContent must not
+  // contain a compatibleNodes.map onto <DAGNodeRow>.
+  assert.ok(!/compatibleNodes\.map\([\s\S]*?<DAGNodeRow/.test(CT_SOURCE),
+    "CorrectiveRow must no longer render <DAGNodeRow> children for entry.nodes substeps (FR-1, FR-10)");
+});
+
+test4("FR-9/FR-10/DD-8 corrective row renders flat (no AccordionItem) when entry.corrective_tasks.length === 0", () => {
+  assert.ok(/entry\.corrective_tasks\.length\s*===\s*0/.test(CT_SOURCE) ||
+            /entry\.corrective_tasks\.length\s*>\s*0/.test(CT_SOURCE),
+    "CorrectiveRow must branch on entry.corrective_tasks.length to gate the chevron (FR-9, FR-10)");
+});
+
+test4("FR-7/FR-10/AD-5 corrective row references entry.nodes['code_review'].doc_path for the Code Review link", () => {
+  assert.ok(/entry\.nodes\[['"]code_review['"]\][\s\S]*?doc_path/.test(CT_SOURCE),
+    "CorrectiveRow must read entry.nodes['code_review'].doc_path for its own Code Review link (FR-7, FR-8, AD-5)");
+  assert.ok(/['"]Code Review['"]/.test(CT_SOURCE),
+    "CorrectiveRow must render a 'Code Review' link label (FR-7, FR-10)");
+});
+
+test4("FR-8/FR-10/DD-7 corrective row trailing-link slot order: Task Handoff → Code Review → Commit", () => {
+  // Match the actual JSX label="..." form (mirrors the dag-iteration-panel
+  // P02-T01 test pattern). The handoff body's single-quoted regex was a typo;
+  // double-quoted is the only form present in the source.
+  const handoffIdx = CT_SOURCE.indexOf('label="Task Handoff"');
+  const reviewIdx  = CT_SOURCE.indexOf('label="Code Review"');
+  const commitIdx  = CT_SOURCE.indexOf('label="Commit"');
+  assert.ok(handoffIdx !== -1 && reviewIdx !== -1 && commitIdx !== -1,
+    "all three trailing labels must be present");
+  assert.ok(handoffIdx < reviewIdx && reviewIdx < commitIdx,
+    "trailing-link order must be Task Handoff → Code Review → Commit (FR-8, DD-7)");
+});
+
+test4("FR-5/FR-10/DD-6 corrective row renders 'Corrected' trailing pill when entry recovered from nested correctives", () => {
+  assert.ok(/Corrected/.test(CT_SOURCE),
+    "CorrectiveRow must render the 'Corrected' trailing marker label when nested correctives resolved (FR-5, FR-10)");
+  assert.ok(/--color-warning/.test(CT_SOURCE),
+    "Corrected marker must reference --color-warning (DD-6, NFR-2)");
+  assert.ok(/aria-label=['"]Corrected['"]/.test(CT_SOURCE),
+    "Corrected marker must carry aria-label='Corrected' (NFR-4)");
+});
+
+test4("FR-2/FR-4/FR-6/FR-10 corrective row badge resolves Coding/Correcting/Failed labels at the same vocabulary as task iterations", () => {
+  // CorrectiveRow today builds its badge via NodeStatusBadge with
+  // status=entry.status (no label override). Under FR-10, it must use
+  // deriveIterationBadgeLabel on a synthetic IterationEntry shape so
+  // the label vocabulary matches.
+  assert.ok(/deriveIterationBadgeLabel/.test(CT_SOURCE),
+    "CorrectiveRow must derive its label via deriveIterationBadgeLabel for FR-10 vocabulary parity");
+});
+
+test4("NFR-3 P02-T02 source-shape tests run under the test4 helper so failed4 > 0 fails the suite", () => {
+  // Source-shape proxy — the six P02-T02 source-shape assertions
+  // (FR-1/FR-10, FR-9/FR-10/DD-8, FR-7/FR-10/AD-5, FR-8/FR-10/DD-7,
+  // FR-5/FR-10/DD-6, FR-2/FR-4/FR-6/FR-10) must call test4(...) so
+  // they increment failed4 (guarded at line 495) rather than failed
+  // (guarded at line 364, before the block runs).
+  const SELF_SOURCE = readFileSync(__filename, 'utf8');
+  const labels = [
+    'FR-1/FR-10 corrective row AccordionContent no longer maps entry.nodes onto <DAGNodeRow>',
+    "FR-9/FR-10/DD-8 corrective row renders flat (no AccordionItem) when entry.corrective_tasks.length === 0",
+    "FR-7/FR-10/AD-5 corrective row references entry.nodes['code_review'].doc_path for the Code Review link",
+    'FR-8/FR-10/DD-7 corrective row trailing-link slot order: Task Handoff → Code Review → Commit',
+    "FR-5/FR-10/DD-6 corrective row renders 'Corrected' trailing pill when entry recovered from nested correctives",
+    'FR-2/FR-4/FR-6/FR-10 corrective row badge resolves Coding/Correcting/Failed labels at the same vocabulary as task iterations',
+  ];
+  for (const label of labels) {
+    // Each label must be invoked via test4(...) — the only helper
+    // whose counter is guarded by the surviving exit check.
+    const escaped = label.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const re = new RegExp(`test4\\(\\s*["\`']${escaped}["\`']`);
+    assert.ok(re.test(SELF_SOURCE),
+      `P02-T02 source-shape test \`${label}\` must call test4(...) (currently calling test(...) — failures would not exit non-zero)`);
+  }
+});
+
 console.log(`\n${passed4} passed, ${failed4} failed\n`);
 if (failed4 > 0) process.exit(1);

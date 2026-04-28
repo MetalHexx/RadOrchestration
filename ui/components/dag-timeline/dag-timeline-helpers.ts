@@ -282,8 +282,11 @@ export function getDocLinkLabel(nodeId: string): string {
   return DOC_LINK_LABELS[leaf] ?? getDisplayName(nodeId);
 }
 
-// ─── Top-level planning step badge label (FR-5) ──────────────────────────────
-
+// ─── Top-level planning step ids (used by resolveStageBadge) ─────────────────
+// Top-level planning leaves keep the blue --tier-planning + "Planning"
+// treatment under FR-12. phase_planning is intentionally excluded —
+// FR-11 / FR-17 retired its planning treatment in favor of "Executing"
+// at the phase iteration scope.
 const PLANNING_STEP_IDS: ReadonlySet<string> = new Set([
   'research',
   'prd',
@@ -293,21 +296,6 @@ const PLANNING_STEP_IDS: ReadonlySet<string> = new Set([
   'master_plan',
   'explode_master_plan',
 ]);
-
-/**
- * Returns the in-progress badge label for a top-level planning step row
- * (FR-5). Only `in_progress` planning steps deviate from `STATUS_MAP`'s
- * `'In Progress'` default — they render the uniform `'Executing'` label.
- * For non-planning ids and non-in_progress statuses, returns `undefined`
- * so the call site falls through to `STATUS_MAP[status].defaultLabel`.
- */
-export function derivePlanningStepLabel(
-  nodeId: string,
-  status: NodeStatus
-): string | undefined {
-  if (status !== 'in_progress') return undefined;
-  return PLANNING_STEP_IDS.has(nodeId) ? 'Executing' : undefined;
-}
 
 // ─── Section Helper Functions ─────────────────────────────────────────────────
 
@@ -427,48 +415,142 @@ export function deriveIterationTaskProgress(
   return { completed, total: taskLoopNode.iterations.length };
 }
 
-// ─── Stage-aware label derivation (FR-3, FR-4, FR-5, AD-1) ──────────────────
+// ─── Stage-aware label derivation (FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, AD-1, AD-2, AD-4, AD-6, DD-1, DD-2) ──
 
 /**
- * Substep node-id → in-progress label vocabulary (FR-3, DD-2).
- * Resolved against the iteration's in-flight child substep.
+ * Substep node-id → in-progress {cssVar, label} table. Single source of
+ * truth for stage-aware badge resolution at iteration headers AND
+ * substep rows. `final_review` joins the reviewing-stage family
+ * (FR-4) so the top-level Completion-section row gets the same
+ * purple "Reviewing" treatment as `phase_review` / `code_review`.
  */
-const ITERATION_SUBSTEP_LABELS: Record<string, string> = {
-  task_executor: 'Executing',
-  code_review:   'Reviewing',
-  commit:        'Committing',
-  phase_review:  'Reviewing',
+const ITERATION_SUBSTEP_CONFIG: Record<string, { cssVar: string; label: string }> = {
+  task_executor: { cssVar: '--tier-execution', label: 'Coding'     },
+  commit:        { cssVar: '--tier-execution', label: 'Committing' },
+  code_review:   { cssVar: '--tier-review',    label: 'Reviewing'  },
+  phase_review:  { cssVar: '--tier-review',    label: 'Reviewing'  },
+  final_review:  { cssVar: '--tier-review',    label: 'Reviewing'  },
 };
 
 /**
+ * Public label-only projection of `ITERATION_SUBSTEP_CONFIG`.
+ * Preserved for back-compat with existing iteration-panel
+ * imports and tests.
+ */
+export const ITERATION_SUBSTEP_LABELS: Record<string, string> = Object.fromEntries(
+  Object.entries(ITERATION_SUBSTEP_CONFIG).map(([k, v]) => [k, v.label])
+);
+
+/**
+ * Resolves a `(nodeId, status)` pair to the badge's `{cssVar, label}`
+ * (FR-1, FR-2, FR-4, FR-6, AD-2, AD-4, DD-1, DD-2). Single source of
+ * truth for stage-aware badge resolution at iteration headers AND
+ * substep rows.
+ *
+ * Resolution order for `in_progress`:
+ *   1. Planning leaf id (research/prd/design/architecture/requirements/
+ *      master_plan/explode_master_plan)         → --tier-planning + "Planning"
+ *   2. Substep leaf id in ITERATION_SUBSTEP_CONFIG → entry's cssVar + label
+ *   3. Fallback                                    → STATUS_MAP['in_progress']
+ *
+ * For non-`in_progress` statuses, returns `STATUS_MAP[status]` defaults
+ * (DD-2 — no overrides for "Not Started", "Completed", "Skipped",
+ * "Failed", "Halted").
+ */
+export function resolveStageBadge(
+  nodeId: string,
+  status: NodeStatus,
+): { cssVar: string; label: string } {
+  if (status !== 'in_progress') {
+    const entry = STATUS_MAP[status];
+    return { cssVar: entry.cssVar, label: entry.defaultLabel };
+  }
+  const leaf = extractLeaf(nodeId);
+  if (PLANNING_STEP_IDS.has(leaf)) {
+    return { cssVar: '--tier-planning', label: 'Planning' };
+  }
+  const cfg = ITERATION_SUBSTEP_CONFIG[leaf];
+  if (cfg !== undefined) {
+    return { cssVar: cfg.cssVar, label: cfg.label };
+  }
+  const entry = STATUS_MAP['in_progress'];
+  return { cssVar: entry.cssVar, label: entry.defaultLabel };
+}
+
+/**
  * Derives the resolved {status, label} pair for an iteration's badge.
- * For `in_progress` iterations, walks `iteration.nodes` to find an
- * in-flight child whose id matches `ITERATION_SUBSTEP_LABELS`. If the
- * in-flight child is itself a `for_each_task` loop, recurses into its
- * active iteration (phase iteration inherits the task's substep label,
- * FR-3). Falls back to `'Executing'` when no substep matches but the
- * iteration is still in_progress. For non-in_progress statuses, returns
- * the `STATUS_MAP` defaultLabel for the iteration's own status.
+ *
+ * - parentKind === 'for_each_phase': stops at the phase's own direct
+ *   substeps (FR-3 / AD-3 / DD-7). Never recurses into an active
+ *   task's substeps. A phase whose `task_loop` is in_progress reads
+ *   "Executing" regardless of which task substep is currently active.
+ * - parentKind === 'for_each_task': preserves the original substep
+ *   walk so task-iteration rows continue to surface their own
+ *   substep label (e.g. "Reviewing" while a code_review is in flight).
+ *
+ * For non-in_progress statuses, returns STATUS_MAP defaults
+ * regardless of parentKind (DD-2).
  */
 export function deriveIterationBadgeLabel(
-  iteration: IterationEntry
+  iteration: IterationEntry,
+  parentKind: 'for_each_phase' | 'for_each_task',
 ): { status: NodeStatus; label: string } {
+  // FR-6 / DD-4 — terminal failure reads "Failed" (X glyph supplied by
+  // STATUS_MAP['failed'].isRejected); halted iterations read STATUS_MAP['halted']
+  // .defaultLabel ("Halted"). Neither branch carries a spinner.
+  if (iteration.status === 'failed') {
+    return { status: 'failed', label: 'Failed' };
+  }
+  if (iteration.status === 'halted') {
+    const entry = STATUS_MAP['halted'];
+    return { status: 'halted', label: entry.defaultLabel };
+  }
   if (iteration.status !== 'in_progress') {
     const entry = STATUS_MAP[iteration.status];
     return { status: iteration.status, label: entry.defaultLabel };
   }
-  for (const [childId, childNode] of Object.entries(iteration.nodes)) {
-    if (childNode.kind === 'for_each_task' && childNode.status === 'in_progress') {
-      const active = childNode.iterations.find(i => i.status === 'in_progress');
-      if (active) return deriveIterationBadgeLabel(active);
+
+  // FR-4 / DD-3 — when any corrective entry is in flight under a task
+  // iteration, the task parent's badge reads "Correcting" (red + spinner).
+  // This applies only to `for_each_task`; phase iterations do not use
+  // `corrective_tasks` here.
+  if (parentKind === 'for_each_task' &&
+      iteration.corrective_tasks.some((ct) => ct.status === 'in_progress')) {
+    return { status: 'in_progress', label: 'Correcting' };
+  }
+
+  // FR-3 / FR-11 / AD-1 / FR-17 — phase iteration stops at its own substeps.
+  // Look only at the phase's direct children (phase_planning / task_loop
+  // / phase_review). When task_loop OR phase_planning is the in-flight
+  // child, the phase row reads "Executing" — there is no separate
+  // "Planning" branch (FR-11), and `phase_planning` is intentionally
+  // unified with `task_loop` here so an in-flight planning child still
+  // surfaces "Executing" on the phase row (FR-17).
+  if (parentKind === 'for_each_phase') {
+    for (const [childId, childNode] of Object.entries(iteration.nodes)) {
+      if (childNode.status !== 'in_progress') continue;
+      if (childId === 'task_loop' || childId === 'phase_planning') {
+        return { status: 'in_progress', label: 'Executing' };
+      }
+      const cfg = ITERATION_SUBSTEP_CONFIG[childId];
+      if (cfg !== undefined) {
+        return { status: 'in_progress', label: cfg.label };
+      }
     }
+    return { status: 'in_progress', label: 'Executing' };
+  }
+
+  // parentKind === 'for_each_task' — preserve the substep walk so the
+  // task iteration row surfaces its own substep label. task_executor
+  // now resolves to 'Coding' via ITERATION_SUBSTEP_LABELS (FR-2, DD-1).
+  for (const [childId, childNode] of Object.entries(iteration.nodes)) {
     if (childNode.status !== 'in_progress') continue;
     const label = ITERATION_SUBSTEP_LABELS[childId];
     if (label !== undefined) {
       return { status: 'in_progress', label };
     }
   }
-  return { status: 'in_progress', label: 'Executing' };
+  return { status: 'in_progress', label: 'Coding' };
 }
 
 /**

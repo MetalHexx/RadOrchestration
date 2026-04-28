@@ -14,8 +14,13 @@ interface SpinnerBadgeProps {
   /** When true (and isSpinning is false), renders a static Check icon.
    *  Defaults to false when omitted. isSpinning=true takes unconditional precedence. */
   isComplete?: boolean;
-  /** When true (and isSpinning & isComplete are false), renders a static X icon.
-   *  Defaults to false when omitted. Priority: isSpinning → isComplete → isRejected → dot. */
+  /**
+   * When true (and isSpinning & isComplete are false), renders a static X icon.
+   * Defaults to false when omitted. Priority: isSpinning → isComplete → isRejected → no icon.
+   * The legacy dot fallback was removed in UI-IMPROVE-3 (FR-5 / AD-5 / DD-3) — when none
+   * of the three flags is true, the icon slot renders nothing and the badge is a plain
+   * colored-text-on-fill pill.
+   */
   isRejected?: boolean;
   /** Accessible label override; defaults to label when omitted */
   ariaLabel?: string;
@@ -58,13 +63,7 @@ export const SpinnerBadge = React.forwardRef<HTMLSpanElement, SpinnerBadgeProps>
             style={{ color: `var(${cssVar})` }}
             aria-hidden="true"
           />
-        ) : (
-          <span
-            className="inline-block h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: `var(${cssVar})` }}
-            aria-hidden="true"
-          />
-        )}
+        ) : null}
         {!hideLabel && <span>{label}</span>}
       </Badge>
     );

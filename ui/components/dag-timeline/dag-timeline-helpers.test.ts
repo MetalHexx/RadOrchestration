@@ -749,48 +749,48 @@ import { deriveIterationBadgeLabel, deriveGateBadgeStatusAndLabel } from './dag-
 
 console.log("\nderiveIterationBadgeLabel tests\n");
 
-test("FR-3 task_executor in_progress → Executing", () => {
+test("FR-2/DD-1 task_executor in_progress → Coding (renamed from Executing)", () => {
   const iter: IterationEntry = { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
     nodes: { task_executor: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } } };
-  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'in_progress', label: 'Executing' });
+  assert.deepStrictEqual(deriveIterationBadgeLabel(iter, 'for_each_task'), { status: 'in_progress', label: 'Coding' });
 });
 
 test("FR-3 code_review in_progress → Reviewing", () => {
   const iter: IterationEntry = { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
     nodes: { code_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } } };
-  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'in_progress', label: 'Reviewing' });
+  assert.deepStrictEqual(deriveIterationBadgeLabel(iter, 'for_each_task'), { status: 'in_progress', label: 'Reviewing' });
 });
 
 test("FR-3 commit in_progress → Committing", () => {
   const iter: IterationEntry = { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
     nodes: { commit: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } } };
-  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'in_progress', label: 'Committing' });
+  assert.deepStrictEqual(deriveIterationBadgeLabel(iter, 'for_each_task'), { status: 'in_progress', label: 'Committing' });
 });
 
 test("FR-3 phase_review in_progress → Reviewing", () => {
   const iter: IterationEntry = { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
     nodes: { phase_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } } };
-  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'in_progress', label: 'Reviewing' });
+  assert.deepStrictEqual(deriveIterationBadgeLabel(iter, 'for_each_task'), { status: 'in_progress', label: 'Reviewing' });
 });
 
-test("FR-3 phase iteration inherits from in-flight task iteration (Reviewing)", () => {
+test("FR-3 task iter inherits its own in-flight substep (Reviewing)", () => {
   const iter: IterationEntry = { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
-    nodes: { task_loop: { kind: 'for_each_task', status: 'in_progress', iterations: [
-      { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
-        nodes: { code_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } } },
-    ] } } };
-  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'in_progress', label: 'Reviewing' });
+    nodes: { code_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } } };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(iter, 'for_each_task'),
+    { status: 'in_progress', label: 'Reviewing' },
+  );
 });
 
-test("FR-3 fallback: in_progress with no in-flight substep → Executing", () => {
+test("FR-2 fallback: in_progress with no in-flight substep → Coding (renamed from Executing)", () => {
   const iter: IterationEntry = { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
     nodes: { task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 } } };
-  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'in_progress', label: 'Executing' });
+  assert.deepStrictEqual(deriveIterationBadgeLabel(iter, 'for_each_task'), { status: 'in_progress', label: 'Coding' });
 });
 
 test("DD-2 completed iteration → Completed (icon-only label)", () => {
   const iter: IterationEntry = { index: 0, status: 'completed', corrective_tasks: [], commit_hash: null, nodes: {} };
-  assert.deepStrictEqual(deriveIterationBadgeLabel(iter), { status: 'completed', label: 'Completed' });
+  assert.deepStrictEqual(deriveIterationBadgeLabel(iter, 'for_each_task'), { status: 'completed', label: 'Completed' });
 });
 
 console.log("\nderiveGateBadgeStatusAndLabel tests\n");
@@ -922,26 +922,391 @@ test("unrelated node 'master_plan' always returns true", () => {
   assert.strictEqual(shouldRenderTimelineRow('master_plan', node, emptyCtx), true);
 });
 
-import { derivePlanningStepLabel } from './dag-timeline-helpers';
+import { resolveStageBadge, ITERATION_SUBSTEP_LABELS } from './dag-timeline-helpers';
 
-console.log("\nderivePlanningStepLabel (FR-5) tests\n");
+console.log("\nresolveStageBadge (FR-1, FR-2, FR-4, FR-6, AD-2, AD-4, DD-1, DD-2) tests\n");
 
-test("FR-5 in_progress planning steps derive label 'Executing'", () => {
+test("FR-1/DD-1 planning step ids in_progress resolve to --tier-planning + 'Planning'", () => {
   for (const id of ['research','prd','design','architecture','requirements','master_plan','explode_master_plan']) {
-    assert.strictEqual(derivePlanningStepLabel(id, 'in_progress'), 'Executing', `${id} in_progress`);
+    assert.deepStrictEqual(
+      resolveStageBadge(id, 'in_progress'),
+      { cssVar: '--tier-planning', label: 'Planning' },
+      `${id} in_progress`,
+    );
   }
 });
 
-test("FR-5 non-in_progress planning steps return undefined (falls through to STATUS_MAP default)", () => {
-  for (const status of ['not_started','completed','failed','halted','skipped'] as const) {
-    assert.strictEqual(derivePlanningStepLabel('research', status), undefined);
+test("FR-2/DD-1 task_executor in_progress resolves to --tier-execution + 'Coding' (renamed from Executing)", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('task_executor', 'in_progress'),
+    { cssVar: '--tier-execution', label: 'Coding' },
+  );
+});
+
+test("FR-1/DD-1 commit in_progress resolves to --tier-execution + 'Committing'", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('commit', 'in_progress'),
+    { cssVar: '--tier-execution', label: 'Committing' },
+  );
+});
+
+test("FR-1/DD-1 code_review in_progress resolves to --tier-review + 'Reviewing'", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('code_review', 'in_progress'),
+    { cssVar: '--tier-review', label: 'Reviewing' },
+  );
+});
+
+test("FR-1/DD-1 phase_review in_progress resolves to --tier-review + 'Reviewing'", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_review', 'in_progress'),
+    { cssVar: '--tier-review', label: 'Reviewing' },
+  );
+});
+
+test("FR-4/DD-1 final_review in_progress resolves to --tier-review + 'Reviewing'", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('final_review', 'in_progress'),
+    { cssVar: '--tier-review', label: 'Reviewing' },
+  );
+});
+
+test("FR-1/AD-2 unknown leaf in_progress falls back to STATUS_MAP defaults", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('something_else', 'in_progress'),
+    { cssVar: '--status-in-progress', label: 'In Progress' },
+  );
+});
+
+test("FR-2/DD-2 non-in_progress statuses use STATUS_MAP defaults regardless of nodeId", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('task_executor', 'completed'),
+    { cssVar: '--status-complete', label: 'Completed' },
+  );
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_review', 'not_started'),
+    { cssVar: '--status-not-started', label: 'Not Started' },
+  );
+  assert.deepStrictEqual(
+    resolveStageBadge('research', 'skipped'),
+    { cssVar: '--status-skipped', label: 'Skipped' },
+  );
+  assert.deepStrictEqual(
+    resolveStageBadge('commit', 'failed'),
+    { cssVar: '--status-failed', label: 'Failed' },
+  );
+  assert.deepStrictEqual(
+    resolveStageBadge('code_review', 'halted'),
+    { cssVar: '--status-halted', label: 'Halted' },
+  );
+});
+
+test("AD-4 compound nodeIds resolve via leaf segment", () => {
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_loop.iter0.task_loop.iter1.code_review', 'in_progress'),
+    { cssVar: '--tier-review', label: 'Reviewing' },
+  );
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_loop.iter0.phase_review', 'in_progress'),
+    { cssVar: '--tier-review', label: 'Reviewing' },
+  );
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_loop.iter0.task_loop.iter0.task_executor', 'in_progress'),
+    { cssVar: '--tier-execution', label: 'Coding' },
+  );
+});
+
+test("FR-6 ITERATION_SUBSTEP_LABELS now covers final_review", () => {
+  assert.strictEqual(ITERATION_SUBSTEP_LABELS.final_review, 'Reviewing');
+  assert.strictEqual(ITERATION_SUBSTEP_LABELS.task_executor, 'Coding');
+  assert.strictEqual(ITERATION_SUBSTEP_LABELS.commit, 'Committing');
+  assert.strictEqual(ITERATION_SUBSTEP_LABELS.code_review, 'Reviewing');
+  assert.strictEqual(ITERATION_SUBSTEP_LABELS.phase_review, 'Reviewing');
+});
+
+console.log("\nderiveIterationBadgeLabel — phase-boundary recursion stop (FR-3, AD-3, DD-7) tests\n");
+
+test("FR-3/AD-3 phase iter with task_loop in_progress reads 'Executing' regardless of task substep", () => {
+  const phaseIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: {
+      phase_planning: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
+      task_loop: {
+        kind: 'for_each_task', status: 'in_progress',
+        iterations: [
+          { index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+            nodes: { code_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } } },
+        ],
+      },
+      phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+    },
+  };
+  // Pre-FR-3 behavior bubbled the active task's "Reviewing" up to the phase row.
+  // Under FR-3 the phase row stops at task_loop and reads "Executing".
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(phaseIter, 'for_each_phase'),
+    { status: 'in_progress', label: 'Executing' },
+  );
+});
+
+test("FR-11 phase iter with phase_planning in_progress reads 'Executing' (Planning dropped)", () => {
+  const phaseIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: {
+      phase_planning: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 },
+    },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(phaseIter, 'for_each_phase'),
+    { status: 'in_progress', label: 'Executing' },
+  );
+});
+
+test("FR-3 phase iter with phase_review in_progress reads 'Reviewing'", () => {
+  const phaseIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: {
+      phase_planning: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
+      task_loop: { kind: 'for_each_task', status: 'completed', iterations: [] },
+      phase_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 },
+    },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(phaseIter, 'for_each_phase'),
+    { status: 'in_progress', label: 'Reviewing' },
+  );
+});
+
+test("FR-3 task iter still recurses — code_review substep bubbles up", () => {
+  const taskIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: { code_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(taskIter, 'for_each_task'),
+    { status: 'in_progress', label: 'Reviewing' },
+  );
+});
+
+test("FR-2/DD-1 task iter task_executor in_progress → 'Coding' (renamed from Executing)", () => {
+  const taskIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: { task_executor: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(taskIter, 'for_each_task'),
+    { status: 'in_progress', label: 'Coding' },
+  );
+});
+
+test("DD-7 phase iter, no in-flight substep, in_progress → 'Executing' (fallback)", () => {
+  const phaseIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: {
+      phase_planning: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
+    },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(phaseIter, 'for_each_phase'),
+    { status: 'in_progress', label: 'Executing' },
+  );
+});
+
+test("DD-2 completed phase iter → 'Completed' regardless of parentKind", () => {
+  const phaseIter: IterationEntry = { index: 0, status: 'completed', corrective_tasks: [], commit_hash: null, nodes: {} };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(phaseIter, 'for_each_phase'),
+    { status: 'completed', label: 'Completed' },
+  );
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(phaseIter, 'for_each_task'),
+    { status: 'completed', label: 'Completed' },
+  );
+});
+
+console.log("\nderiveIterationBadgeLabel — UI-IMPROVE-3-FIXES extensions (FR-2, FR-3, FR-4, FR-6, FR-11, FR-17, AD-1, AD-2, DD-1, DD-3, DD-4, DD-5)\n");
+
+test("FR-2/DD-1 task iter task_executor in_progress reads 'Coding' (renamed from 'Executing')", () => {
+  const taskIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: { task_executor: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(taskIter, 'for_each_task'),
+    { status: 'in_progress', label: 'Coding' },
+  );
+});
+
+test("FR-2 task iter code_review in_progress still reads 'Reviewing'", () => {
+  const taskIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: { code_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(taskIter, 'for_each_task'),
+    { status: 'in_progress', label: 'Reviewing' },
+  );
+});
+
+test("FR-2 task iter commit in_progress still reads 'Committing'", () => {
+  const taskIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: { commit: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(taskIter, 'for_each_task'),
+    { status: 'in_progress', label: 'Committing' },
+  );
+});
+
+test("FR-4/DD-3 task iter with an in_progress corrective entry reads 'Correcting'", () => {
+  const taskIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [
+      { index: 1, reason: 'r', injected_after: 'code_review', status: 'in_progress', nodes: {}, doc_path: null, commit_hash: null },
+    ], commit_hash: null,
+    nodes: { task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 } },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(taskIter, 'for_each_task'),
+    { status: 'in_progress', label: 'Correcting' },
+  );
+});
+
+test("FR-4 'Correcting' wins over the in-flight substep label when both apply", () => {
+  const taskIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [
+      { index: 1, reason: 'r', injected_after: 'code_review', status: 'in_progress', nodes: {}, doc_path: null, commit_hash: null },
+    ], commit_hash: null,
+    nodes: { code_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(taskIter, 'for_each_task'),
+    { status: 'in_progress', label: 'Correcting' },
+  );
+});
+
+test("FR-4 'Correcting' clears once every corrective resolves; iteration on completed reads STATUS_MAP default 'Completed'", () => {
+  const taskIter: IterationEntry = {
+    index: 0, status: 'completed', corrective_tasks: [
+      { index: 1, reason: 'r', injected_after: 'code_review', status: 'completed', nodes: {}, doc_path: null, commit_hash: null },
+    ], commit_hash: null,
+    nodes: {},
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(taskIter, 'for_each_task'),
+    { status: 'completed', label: 'Completed' },
+  );
+});
+
+test("FR-6/DD-4 task iter status='failed' reads {status:'failed', label:'Failed'} (terminal)", () => {
+  const taskIter: IterationEntry = {
+    index: 0, status: 'failed', corrective_tasks: [], commit_hash: null,
+    nodes: { task_executor: { kind: 'step', status: 'failed', doc_path: null, retries: 0 } },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(taskIter, 'for_each_task'),
+    { status: 'failed', label: 'Failed' },
+  );
+});
+
+test("FR-6 task iter status='halted' reads {status:'halted', label:'Halted'}", () => {
+  const taskIter: IterationEntry = {
+    index: 0, status: 'halted', corrective_tasks: [], commit_hash: null,
+    nodes: {},
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(taskIter, 'for_each_task'),
+    { status: 'halted', label: 'Halted' },
+  );
+});
+
+test("FR-11/AD-1 phase iter with phase_planning in_progress now reads 'Executing' (Planning dropped)", () => {
+  const phaseIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: {
+      phase_planning: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 },
+    },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(phaseIter, 'for_each_phase'),
+    { status: 'in_progress', label: 'Executing' },
+  );
+});
+
+test("FR-11 phase iter with phase_review in_progress still reads 'Reviewing'", () => {
+  const phaseIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: {
+      phase_planning: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
+      task_loop: { kind: 'for_each_task', status: 'completed', iterations: [] },
+      phase_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 },
+    },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(phaseIter, 'for_each_phase'),
+    { status: 'in_progress', label: 'Reviewing' },
+  );
+});
+
+test("FR-17 phase iter with task_loop in_progress reads 'Executing' even when no phase_planning child exists (defensive guard removed)", () => {
+  const phaseIter: IterationEntry = {
+    index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+    nodes: {
+      task_loop: { kind: 'for_each_task', status: 'in_progress', iterations: [] },
+    },
+  };
+  assert.deepStrictEqual(
+    deriveIterationBadgeLabel(phaseIter, 'for_each_phase'),
+    { status: 'in_progress', label: 'Executing' },
+  );
+});
+
+import { readFileSync as readFileSyncCleanup } from 'node:fs';
+import { join as joinCleanup, dirname as dirnameCleanup } from 'node:path';
+import { fileURLToPath as fileURLToPathCleanup } from 'node:url';
+const __dirname_cleanup = dirnameCleanup(fileURLToPathCleanup(import.meta.url));
+const HELPERS_SOURCE = readFileSyncCleanup(joinCleanup(__dirname_cleanup, 'dag-timeline-helpers.ts'), 'utf8');
+
+console.log("\nFR-16 / FR-12 carry-forward cleanup\n");
+
+test("FR-16 dag-timeline-helpers.ts no longer exports derivePlanningStepLabel", () => {
+  assert.ok(!/export function derivePlanningStepLabel/.test(HELPERS_SOURCE),
+    "derivePlanningStepLabel must be removed from dag-timeline-helpers.ts");
+  assert.ok(!/derivePlanningStepLabel/.test(HELPERS_SOURCE),
+    "no residual references to derivePlanningStepLabel may remain");
+});
+
+test("FR-12 PLANNING_STEP_IDS no longer contains 'phase_planning' (top-level planning steps unaffected; phase_planning resolves via resolveStageBadge leaf-segment lookup)", () => {
+  // Source-shape proxy — PLANNING_STEP_IDS is a private const; the
+  // contract is "the set covers research/prd/design/architecture/
+  // requirements/master_plan/explode_master_plan only".
+  const setLiteralMatch = HELPERS_SOURCE.match(/const PLANNING_STEP_IDS[\s\S]*?\]\);/);
+  assert.ok(setLiteralMatch !== null, "PLANNING_STEP_IDS literal must still exist");
+  const literal = setLiteralMatch[0];
+  for (const id of ['research','prd','design','architecture','requirements','master_plan','explode_master_plan']) {
+    assert.ok(literal.includes(`'${id}'`), `${id} must remain a top-level planning step id`);
+  }
+  assert.ok(!literal.includes(`'phase_planning'`),
+    "phase_planning must be dropped from PLANNING_STEP_IDS — it is a phase iteration substep, not a top-level planning step (FR-12, FR-17)");
+});
+
+test("FR-12 top-level planning step ids still resolve to --tier-planning + 'Planning' (resolveStageBadge unaffected)", () => {
+  for (const id of ['research','prd','design','architecture','requirements','master_plan','explode_master_plan']) {
+    assert.deepStrictEqual(
+      resolveStageBadge(id, 'in_progress'),
+      { cssVar: '--tier-planning', label: 'Planning' },
+      `${id} still reads Planning (FR-12)`,
+    );
   }
 });
 
-test("FR-5 non-planning step ids return undefined even when in_progress", () => {
-  assert.strictEqual(derivePlanningStepLabel('task_executor', 'in_progress'), undefined);
-  assert.strictEqual(derivePlanningStepLabel('phase_loop', 'in_progress'), undefined);
-  assert.strictEqual(derivePlanningStepLabel('something_else', 'in_progress'), undefined);
+test("FR-12/FR-17 phase_planning leaf no longer resolves to --tier-planning (falls through to STATUS_MAP)", () => {
+  // After FR-17, phase_planning is no longer a planning-leaf override.
+  // resolveStageBadge falls through to STATUS_MAP['in_progress'] for it.
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_planning', 'in_progress'),
+    { cssVar: '--status-in-progress', label: 'In Progress' },
+  );
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

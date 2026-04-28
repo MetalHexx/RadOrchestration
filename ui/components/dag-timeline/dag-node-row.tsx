@@ -2,10 +2,10 @@
 
 import { useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { NodeStatusBadge, STATUS_MAP } from './node-status-badge';
+import { NodeStatusBadge } from './node-status-badge';
 import { DocumentLink, ExternalLink } from '@/components/documents';
 import { ApproveGateButton, ExecutePlanButton } from '@/components/dashboard';
-import { getDisplayName, getRowButtonDescriptor, deriveGateBadgeStatusAndLabel, getDocLinkLabel, derivePlanningStepLabel } from './dag-timeline-helpers';
+import { getDisplayName, getRowButtonDescriptor, deriveGateBadgeStatusAndLabel, getDocLinkLabel, resolveStageBadge } from './dag-timeline-helpers';
 import type { CompatibleNodeState } from './dag-timeline-helpers';
 import type { NodeStatus } from '@/types/state';
 
@@ -38,15 +38,21 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
   const hasActionButton = descriptor.kind !== 'none';
   const isFinalPrRow = nodeId === 'final_pr' && prUrl != null && prUrl !== '';
 
-  // Resolve the same {status,label} pair the visible badge uses, so the row's
-  // aria-label announces what the user sees rather than a stale raw status.
-  // Gate rows can present "Not Started" via deriveGateBadgeStatusAndLabel even
-  // when node.status is 'in_progress'; planning steps surface "Executing" via
-  // derivePlanningStepLabel.
-  const planningLabel = derivePlanningStepLabel(nodeId, node.status);
+  // FR-1, FR-2, FR-4, FR-6, AD-2, AD-4, DD-1, DD-2 — resolve stage-aware
+  // {status, cssVar, label} for the row. Gate rows still flow through
+  // deriveGateBadgeStatusAndLabel (which can flip status to 'not_started'
+  // when gate_active is true). Non-gate rows resolve via resolveStageBadge,
+  // which folds the legacy planning-step path into the same lookup so
+  // planning steps now read --tier-planning + "Planning" (DD-1) instead of
+  // the legacy "Executing" label.
+  const stageBadge = resolveStageBadge(nodeId, node.status);
   const resolvedBadge = node.kind === 'gate'
-    ? deriveGateBadgeStatusAndLabel(node)
-    : { status: node.status, label: planningLabel ?? STATUS_MAP[node.status].defaultLabel };
+    ? (() => {
+        const gate = deriveGateBadgeStatusAndLabel(node);
+        const gateStage = resolveStageBadge(nodeId, gate.status);
+        return { status: gate.status, label: gate.label, cssVar: gateStage.cssVar };
+      })()
+    : { status: node.status, label: stageBadge.label, cssVar: stageBadge.cssVar };
 
   const actionButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -86,7 +92,8 @@ export function DAGNodeRow({ nodeId, node, currentNodePath, onDocClick, depth = 
     >
       <NodeStatusBadge
         status={resolvedBadge.status}
-        label={node.kind === 'gate' ? resolvedBadge.label : planningLabel}
+        label={resolvedBadge.label}
+        cssVar={resolvedBadge.cssVar}
         iconOnly={resolvedBadge.status === 'completed'}
       />
       <span className="text-sm font-medium min-w-0 shrink truncate max-w-[55%]">{getDisplayName(nodeId)}</span>
