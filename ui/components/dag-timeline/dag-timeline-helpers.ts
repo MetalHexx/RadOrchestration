@@ -519,12 +519,13 @@ export function deriveIterationBadgeLabel(
     return { status: 'in_progress', label: 'Correcting' };
   }
 
-  // FR-3 / FR-11 / AD-1 — phase iteration stops at its own substeps.
+  // FR-3 / FR-11 / AD-1 / FR-17 — phase iteration stops at its own substeps.
   // Look only at the phase's direct children (phase_planning / task_loop
   // / phase_review). When task_loop OR phase_planning is the in-flight
-  // child, the phase row reads "Executing" — no Planning branch, no
-  // recursion into the active task. The redundant
-  // `|| childId === 'phase_planning'` defensive disjunct is gone (FR-17).
+  // child, the phase row reads "Executing" — there is no separate
+  // "Planning" branch (FR-11), and `phase_planning` is intentionally
+  // unified with `task_loop` here so an in-flight planning child still
+  // surfaces "Executing" on the phase row (FR-17).
   if (parentKind === 'for_each_phase') {
     for (const [childId, childNode] of Object.entries(iteration.nodes)) {
       if (childNode.status !== 'in_progress') continue;
