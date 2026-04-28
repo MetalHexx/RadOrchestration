@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 const execFileAsync = promisify(execFile);
 
 const ALLOWED_GATE_EVENTS: ReadonlySet<string> = new Set(['plan_approved', 'final_approved']);
-const PROJECT_NAME_PATTERN = /^[A-Z0-9][A-Z0-9_-]*$/;
+const PROJECT_NAME_PATTERN = /^[A-Z0-9][A-Z0-9._-]*$/;
 
 export async function POST(
   request: NextRequest,
