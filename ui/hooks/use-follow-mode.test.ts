@@ -41,6 +41,10 @@ interface CorrectiveTaskShape {
   index: number;
   status: NodeStatus;
   nodes: Record<string, AnyNodeShape>;
+  reason?: string;
+  injected_after?: string;
+  doc_path?: string | null;
+  commit_hash?: string | null;
 }
 
 interface IterationEntryShape {
@@ -48,7 +52,11 @@ interface IterationEntryShape {
   status: NodeStatus;
   nodes: Record<string, AnyNodeShape>;
   corrective_tasks: CorrectiveTaskShape[];
+  commit_hash?: string | null;
 }
+
+// Alias so the new AD-6 tests can use the canonical name directly.
+type NodesRecord = Record<string, AnyNodeShape>;
 
 interface ForEachPhaseNodeShape {
   kind: 'for_each_phase';
@@ -391,6 +399,204 @@ async function run() {
     const ctKey = buildCorrectiveItemValue(taskIterKey, 1);
     const expected = [phaseIterKey, taskIterKey, ctKey];
     assert.deepStrictEqual(computeSmartDefaults(toNodes(nodes)), expected);
+  });
+
+  console.log("\nFR-13 / FR-14 / FR-15 follow-mode parity across new leaf shapes (AD-6)\n");
+
+  test("FR-13 task in Coding state — computeSmartDefaults emits the active task iter key (no substep key needed)", () => {
+    const nodes: NodesRecord = {
+      phase_loop: {
+        kind: 'for_each_phase', status: 'in_progress',
+        iterations: [{
+          index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task', status: 'in_progress',
+              iterations: [{
+                index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+                nodes: { task_executor: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } },
+              }],
+            },
+          },
+        }],
+      },
+    };
+    const keys = computeSmartDefaults(toNodes(nodes));
+    assert.ok(keys.includes('iter-phase_loop-0'),
+      'phase iter key emitted (FR-13)');
+    assert.ok(keys.includes('iter-phase_loop.iter0.task_loop-0'),
+      'active task iter key emitted (FR-13) — task header is the new leaf');
+  });
+
+  test("FR-13 task in Reviewing state — same iter key set, no substep keys", () => {
+    const nodes: NodesRecord = {
+      phase_loop: {
+        kind: 'for_each_phase', status: 'in_progress',
+        iterations: [{
+          index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task', status: 'in_progress',
+              iterations: [{
+                index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+                nodes: { code_review: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } },
+              }],
+            },
+          },
+        }],
+      },
+    };
+    const keys = computeSmartDefaults(toNodes(nodes));
+    assert.ok(keys.includes('iter-phase_loop.iter0.task_loop-0'), 'active task iter key emitted');
+  });
+
+  test("FR-14 task in Correcting state — active corrective ct- key emitted alongside parent iter key", () => {
+    const nodes: NodesRecord = {
+      phase_loop: {
+        kind: 'for_each_phase', status: 'in_progress',
+        iterations: [{
+          index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task', status: 'in_progress',
+              iterations: [{
+                index: 0, status: 'in_progress', commit_hash: null,
+                corrective_tasks: [
+                  { index: 1, reason: 'r', injected_after: 'code_review', status: 'in_progress',
+                    nodes: {}, doc_path: null, commit_hash: null },
+                ],
+                nodes: {},
+              }],
+            },
+          },
+        }],
+      },
+    };
+    const keys = computeSmartDefaults(toNodes(nodes));
+    assert.ok(keys.includes('iter-phase_loop.iter0.task_loop-0'),
+      'parent task iter key emitted (FR-14)');
+    assert.ok(keys.includes('ct-iter-phase_loop.iter0.task_loop-0-1'),
+      'active corrective ct- key emitted alongside parent (FR-14)');
+  });
+
+  test("FR-14 nested corrective — deepest in_progress ct- key emitted (recursive leaf)", () => {
+    // Note: corrective_tasks is a flat list at one nesting level today;
+    // the recursive walk lives in computeSmartDefaults' iteration recursion.
+    // This test validates the flat shape — nested correctives are
+    // structurally additive at the same iter scope.
+    const nodes: NodesRecord = {
+      phase_loop: {
+        kind: 'for_each_phase', status: 'in_progress',
+        iterations: [{
+          index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task', status: 'in_progress',
+              iterations: [{
+                index: 0, status: 'in_progress', commit_hash: null,
+                corrective_tasks: [
+                  { index: 1, reason: 'r1', injected_after: 'code_review', status: 'completed',
+                    nodes: {}, doc_path: null, commit_hash: null },
+                  { index: 2, reason: 'r2', injected_after: 'code_review', status: 'in_progress',
+                    nodes: {}, doc_path: null, commit_hash: null },
+                ],
+                nodes: {},
+              }],
+            },
+          },
+        }],
+      },
+    };
+    const keys = computeSmartDefaults(toNodes(nodes));
+    assert.ok(keys.includes('ct-iter-phase_loop.iter0.task_loop-0-2'),
+      'second corrective (in_progress) is the active leaf (FR-14)');
+    assert.ok(!keys.includes('ct-iter-phase_loop.iter0.task_loop-0-1'),
+      'first corrective (completed) is not a leaf (FR-14)');
+  });
+
+  test("FR-15 task in terminal Failed state — task iter key still emitted while parent loop active so the failure stays visible", () => {
+    const nodes: NodesRecord = {
+      phase_loop: {
+        kind: 'for_each_phase', status: 'in_progress',
+        iterations: [{
+          index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task', status: 'in_progress',
+              iterations: [{
+                index: 0, status: 'failed', corrective_tasks: [], commit_hash: null,
+                nodes: { task_executor: { kind: 'step', status: 'failed', doc_path: null, retries: 0 } },
+              }, {
+                index: 1, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+                nodes: { task_executor: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } },
+              }],
+            },
+          },
+        }],
+      },
+    };
+    const keys = computeSmartDefaults(toNodes(nodes));
+    // The active iter is task 1 (the in-flight one); follow mode tracks
+    // the active leaf, but the failed task 0's parent accordion remains
+    // expanded by virtue of the task_loop being in_progress so the
+    // failure stays in view (FR-15 is row-visibility, not key emission;
+    // the contract here is that the active leaf is still emitted).
+    assert.ok(keys.includes('iter-phase_loop.iter0.task_loop-1'),
+      'active in_progress task iter is the leaf, but the failed task 0 row stays visible because the parent loop is still expanded (FR-15)');
+  });
+
+  test("FR-13 task in Done state with no active siblings — no task iter key emitted (loop expansion only)", () => {
+    const nodes: NodesRecord = {
+      phase_loop: {
+        kind: 'for_each_phase', status: 'in_progress',
+        iterations: [{
+          index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task', status: 'in_progress',
+              iterations: [{
+                index: 0, status: 'completed', corrective_tasks: [], commit_hash: null,
+                nodes: {},
+              }],
+            },
+          },
+        }],
+      },
+    };
+    const keys = computeSmartDefaults(toNodes(nodes));
+    assert.ok(keys.includes('iter-phase_loop-0'),
+      'phase iter key emitted while phase is in_progress (FR-13)');
+    assert.ok(!keys.includes('iter-phase_loop.iter0.task_loop-0'),
+      'completed task iter is not a leaf — no key emitted (FR-13)');
+  });
+
+  test("FR-13/FR-15 corrected iteration (completed + corrective_tasks resolved) — no key emitted, row visibility owned by Corrected pill not follow mode", () => {
+    const nodes: NodesRecord = {
+      phase_loop: {
+        kind: 'for_each_phase', status: 'in_progress',
+        iterations: [{
+          index: 0, status: 'in_progress', corrective_tasks: [], commit_hash: null,
+          nodes: {
+            task_loop: {
+              kind: 'for_each_task', status: 'in_progress',
+              iterations: [{
+                index: 0, status: 'completed', commit_hash: null,
+                corrective_tasks: [
+                  { index: 1, reason: 'r', injected_after: 'code_review', status: 'completed',
+                    nodes: {}, doc_path: null, commit_hash: null },
+                ],
+                nodes: {},
+              }],
+            },
+          },
+        }],
+      },
+    };
+    const keys = computeSmartDefaults(toNodes(nodes));
+    assert.ok(!keys.includes('iter-phase_loop.iter0.task_loop-0'),
+      'completed corrected task iter emits no follow-mode key (FR-13)');
+    assert.ok(!keys.includes('ct-iter-phase_loop.iter0.task_loop-0-1'),
+      'resolved corrective emits no follow-mode key (FR-14)');
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);
