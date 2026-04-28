@@ -6,7 +6,7 @@
  * - isSpinning=true                                      → renders Loader2 with animate-spin
  * - isSpinning=false, isComplete=true                     → renders Check icon (static checkmark)
  * - isSpinning=false, isComplete=false, isRejected=true   → renders X icon (static cross)
- * - isSpinning=false, isComplete=false, isRejected=false  → renders 6×6px dot span
+ * - isSpinning=false, isComplete=false, isRejected=false  → empty icon slot (dot fallback removed in UI-IMPROVE-3)
  * - ariaLabel defaults to label when omitted
  * - ariaLabel overrides label when provided
  */
@@ -346,7 +346,7 @@ test("isRejected=true sets icon color to var(cssVar)", () => {
   assert.strictEqual(result.dotBackgroundColor, null);
 });
 
-console.log("\nisRejected precedence (isSpinning → isComplete → isRejected → dot)");
+console.log("\nisRejected precedence (isSpinning → isComplete → isRejected → no icon)");
 
 test("isRejected=true is ignored when isSpinning=true (spinner wins)", () => {
   const result = simulateSpinnerBadge({

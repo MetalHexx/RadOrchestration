@@ -282,8 +282,11 @@ export function getDocLinkLabel(nodeId: string): string {
   return DOC_LINK_LABELS[leaf] ?? getDisplayName(nodeId);
 }
 
-// ─── Top-level planning step badge label (FR-5) ──────────────────────────────
-
+// ─── Top-level planning step ids (used by resolveStageBadge) ─────────────────
+// Top-level planning leaves keep the blue --tier-planning + "Planning"
+// treatment under FR-12. phase_planning is intentionally excluded —
+// FR-11 / FR-17 retired its planning treatment in favor of "Executing"
+// at the phase iteration scope.
 const PLANNING_STEP_IDS: ReadonlySet<string> = new Set([
   'research',
   'prd',
@@ -292,23 +295,7 @@ const PLANNING_STEP_IDS: ReadonlySet<string> = new Set([
   'requirements',
   'master_plan',
   'explode_master_plan',
-  'phase_planning',
 ]);
-
-/**
- * Returns the in-progress badge label for a top-level planning step row
- * (FR-5). Only `in_progress` planning steps deviate from `STATUS_MAP`'s
- * `'In Progress'` default — they render the uniform `'Executing'` label.
- * For non-planning ids and non-in_progress statuses, returns `undefined`
- * so the call site falls through to `STATUS_MAP[status].defaultLabel`.
- */
-export function derivePlanningStepLabel(
-  nodeId: string,
-  status: NodeStatus
-): string | undefined {
-  if (status !== 'in_progress') return undefined;
-  return PLANNING_STEP_IDS.has(nodeId) ? 'Executing' : undefined;
-}
 
 // ─── Section Helper Functions ─────────────────────────────────────────────────
 

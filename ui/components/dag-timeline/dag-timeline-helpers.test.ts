@@ -922,28 +922,6 @@ test("unrelated node 'master_plan' always returns true", () => {
   assert.strictEqual(shouldRenderTimelineRow('master_plan', node, emptyCtx), true);
 });
 
-import { derivePlanningStepLabel } from './dag-timeline-helpers';
-
-console.log("\nderivePlanningStepLabel (FR-5) tests\n");
-
-test("FR-5 in_progress planning steps derive label 'Executing'", () => {
-  for (const id of ['research','prd','design','architecture','requirements','master_plan','explode_master_plan']) {
-    assert.strictEqual(derivePlanningStepLabel(id, 'in_progress'), 'Executing', `${id} in_progress`);
-  }
-});
-
-test("FR-5 non-in_progress planning steps return undefined (falls through to STATUS_MAP default)", () => {
-  for (const status of ['not_started','completed','failed','halted','skipped'] as const) {
-    assert.strictEqual(derivePlanningStepLabel('research', status), undefined);
-  }
-});
-
-test("FR-5 non-planning step ids return undefined even when in_progress", () => {
-  assert.strictEqual(derivePlanningStepLabel('task_executor', 'in_progress'), undefined);
-  assert.strictEqual(derivePlanningStepLabel('phase_loop', 'in_progress'), undefined);
-  assert.strictEqual(derivePlanningStepLabel('something_else', 'in_progress'), undefined);
-});
-
 import { resolveStageBadge, ITERATION_SUBSTEP_LABELS } from './dag-timeline-helpers';
 
 console.log("\nresolveStageBadge (FR-1, FR-2, FR-4, FR-6, AD-2, AD-4, DD-1, DD-2) tests\n");
@@ -1146,22 +1124,6 @@ test("DD-2 completed phase iter → 'Completed' regardless of parentKind", () =>
   );
 });
 
-console.log("\nresolveStageBadge phase_planning recognition (FR-3, DD-7) tests\n");
-
-test("FR-3/DD-7 phase_planning in_progress resolves to --tier-planning + 'Planning'", () => {
-  assert.deepStrictEqual(
-    resolveStageBadge('phase_planning', 'in_progress'),
-    { cssVar: '--tier-planning', label: 'Planning' },
-  );
-});
-
-test("FR-3/DD-7 compound nodeId ending in phase_planning resolves to --tier-planning", () => {
-  assert.deepStrictEqual(
-    resolveStageBadge('phase_loop.iter0.phase_planning', 'in_progress'),
-    { cssVar: '--tier-planning', label: 'Planning' },
-  );
-});
-
 console.log("\nderiveIterationBadgeLabel — UI-IMPROVE-3-FIXES extensions (FR-2, FR-3, FR-4, FR-6, FR-11, FR-17, AD-1, AD-2, DD-1, DD-3, DD-4, DD-5)\n");
 
 test("FR-2/DD-1 task iter task_executor in_progress reads 'Coding' (renamed from 'Executing')", () => {
@@ -1296,6 +1258,54 @@ test("FR-17 phase iter with task_loop in_progress reads 'Executing' even when no
   assert.deepStrictEqual(
     deriveIterationBadgeLabel(phaseIter, 'for_each_phase'),
     { status: 'in_progress', label: 'Executing' },
+  );
+});
+
+import { readFileSync as readFileSyncCleanup } from 'node:fs';
+import { join as joinCleanup, dirname as dirnameCleanup } from 'node:path';
+import { fileURLToPath as fileURLToPathCleanup } from 'node:url';
+const __dirname_cleanup = dirnameCleanup(fileURLToPathCleanup(import.meta.url));
+const HELPERS_SOURCE = readFileSyncCleanup(joinCleanup(__dirname_cleanup, 'dag-timeline-helpers.ts'), 'utf8');
+
+console.log("\nFR-16 / FR-12 carry-forward cleanup\n");
+
+test("FR-16 dag-timeline-helpers.ts no longer exports derivePlanningStepLabel", () => {
+  assert.ok(!/export function derivePlanningStepLabel/.test(HELPERS_SOURCE),
+    "derivePlanningStepLabel must be removed from dag-timeline-helpers.ts");
+  assert.ok(!/derivePlanningStepLabel/.test(HELPERS_SOURCE),
+    "no residual references to derivePlanningStepLabel may remain");
+});
+
+test("FR-12 PLANNING_STEP_IDS no longer contains 'phase_planning' (top-level planning steps unaffected; phase_planning resolves via resolveStageBadge leaf-segment lookup)", () => {
+  // Source-shape proxy — PLANNING_STEP_IDS is a private const; the
+  // contract is "the set covers research/prd/design/architecture/
+  // requirements/master_plan/explode_master_plan only".
+  const setLiteralMatch = HELPERS_SOURCE.match(/const PLANNING_STEP_IDS[\s\S]*?\]\);/);
+  assert.ok(setLiteralMatch !== null, "PLANNING_STEP_IDS literal must still exist");
+  const literal = setLiteralMatch[0];
+  for (const id of ['research','prd','design','architecture','requirements','master_plan','explode_master_plan']) {
+    assert.ok(literal.includes(`'${id}'`), `${id} must remain a top-level planning step id`);
+  }
+  assert.ok(!literal.includes(`'phase_planning'`),
+    "phase_planning must be dropped from PLANNING_STEP_IDS — it is a phase iteration substep, not a top-level planning step (FR-12, FR-17)");
+});
+
+test("FR-12 top-level planning step ids still resolve to --tier-planning + 'Planning' (resolveStageBadge unaffected)", () => {
+  for (const id of ['research','prd','design','architecture','requirements','master_plan','explode_master_plan']) {
+    assert.deepStrictEqual(
+      resolveStageBadge(id, 'in_progress'),
+      { cssVar: '--tier-planning', label: 'Planning' },
+      `${id} still reads Planning (FR-12)`,
+    );
+  }
+});
+
+test("FR-12/FR-17 phase_planning leaf no longer resolves to --tier-planning (falls through to STATUS_MAP)", () => {
+  // After FR-17, phase_planning is no longer a planning-leaf override.
+  // resolveStageBadge falls through to STATUS_MAP['in_progress'] for it.
+  assert.deepStrictEqual(
+    resolveStageBadge('phase_planning', 'in_progress'),
+    { cssVar: '--status-in-progress', label: 'In Progress' },
   );
 });
 
