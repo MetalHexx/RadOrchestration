@@ -1102,3 +1102,32 @@ test("FR-12/FR-17 phase_planning no longer maps to --tier-planning (PLANNING_STE
   assert.strictEqual(badge.cssVar, '--status-in-progress');
   assert.strictEqual(badge.label, 'In Progress');
 });
+
+const PANEL_SOURCE_P03 = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'dag-iteration-panel.tsx'), 'utf8');
+
+console.log("\nFR-11 phase arm: Planning mapping removed from phaseStageId\n");
+
+test("FR-11/AD-1 phase arm no longer maps 'Planning' label to a stage id (dead branch removed)", () => {
+  // The for_each_phase arm's label-to-stage-id ternary must no longer
+  // contain a 'Planning' → 'phase_planning' branch — the helper no
+  // longer returns 'Planning' from for_each_phase, so the branch is
+  // unreachable and should be deleted.
+  // Keep the test narrow: only the phase arm's mapping table is in
+  // scope; the for_each_task arm has no Planning mapping and isn't
+  // relevant here.
+  const phaseArmMatch = PANEL_SOURCE_P03.match(/parentKind === ['"]for_each_phase['"][\s\S]*?for_each_task branch/);
+  assert.ok(phaseArmMatch !== null, "for_each_phase arm must still exist");
+  const phaseArm = phaseArmMatch[0];
+  assert.ok(!/derivedBadge\.label\s*===\s*['"]Planning['"]/.test(phaseArm),
+    "phase arm must no longer map the 'Planning' label to a stage id (FR-11, AD-1)");
+  assert.ok(!/['"]phase_planning['"]/.test(phaseArm.split('phaseStageId')[1] ?? ''),
+    "phaseStageId mapping must no longer reference 'phase_planning' (FR-11)");
+});
+
+test("FR-11 phase arm 'Executing' mapping still resolves via task_executor or task_loop equivalent", () => {
+  const phaseArmMatch = PANEL_SOURCE_P03.match(/parentKind === ['"]for_each_phase['"][\s\S]*?for_each_task branch/);
+  assert.ok(phaseArmMatch !== null);
+  const phaseArm = phaseArmMatch[0];
+  assert.ok(/derivedBadge\.label\s*===\s*['"]Executing['"]/.test(phaseArm),
+    "phase arm must still map the 'Executing' label to a stage id (FR-11 preserves Executing)");
+});

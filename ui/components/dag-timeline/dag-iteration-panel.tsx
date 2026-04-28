@@ -128,17 +128,20 @@ export function DAGIterationPanel({
   if (parentKind === 'for_each_phase') {
     const progress = deriveIterationTaskProgress(iteration);
     const derivedBadge = deriveIterationBadgeLabel(iteration, 'for_each_phase');
-    // FR-3 / DD-7 — the phase iteration's tier cssVar mirrors its label:
-    // "Planning" → --tier-planning, "Executing" (incl. while task_loop is
-    // running per FR-3) → --tier-execution, "Reviewing" → --tier-review.
+    // FR-3 / DD-7 / FR-11 — the phase iteration's tier cssVar mirrors its label:
+    // "Executing" (incl. while task_loop is running per FR-3) → --tier-execution,
+    // "Reviewing" → --tier-review. The 'Planning' label is no longer returned
+    // by the for_each_phase arm (FR-11), so that mapping is removed.
     // For non-in_progress statuses, resolveStageBadge falls through to
     // STATUS_MAP[status].cssVar (DD-2), which is what the iteration's
     // current grey/green/red treatment already expects.
+    // FR-11 — phase iteration headers no longer carry the 'Planning' label.
+    // The helper's for_each_phase arm always returns Executing / Reviewing /
+    // Done / Failed / Not Started, so the label-to-stage-id table is two
+    // active labels.
     const phaseStageId =
-      derivedBadge.label === 'Planning'  ? 'phase_planning' :
-      derivedBadge.label === 'Reviewing' ? 'phase_review'   :
-      derivedBadge.label === 'Executing' ? 'task_executor'  :
-      derivedBadge.label === 'Committing' ? 'commit'        : '';
+      derivedBadge.label === 'Reviewing'  ? 'phase_review'  :
+      derivedBadge.label === 'Executing'  ? 'task_executor' : '';
     const phaseStageBadge = resolveStageBadge(phaseStageId, derivedBadge.status);
     const headerAriaLabel = `Phase iteration ${iterationIndex + 1} — ${iterationName} — ${derivedBadge.label}`;
     const hasPhasePlan = iteration.doc_path != null && iteration.doc_path !== '';
