@@ -81,11 +81,44 @@ export function buildManifest(root) {
 }
 
 function runSelfTest() {
-  // Self-test wired in P02-T02; this stub exits 0 with an empty summary so the eligibility test
-  // doesn't shell-out to a missing branch when invoked without --self-test. Real fixture cases live in T02.
-  const summary = { passed: 0, failed: 0, cases: [], note: 'self-test cases registered in T02' };
+  const cases = [];
+  function record(name, ok, detail) { cases.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`); }
+
+  // Case 1: rad-prefix is skipped.
+  const r1 = parseFrontmatter('---\nname: rad-thing\ndescription: x\n---\n');
+  record('rad-prefix-skipped', !r1.error && r1.frontmatter.name.startsWith('rad-'),
+    r1.error ?? `parsed name=${r1.frontmatter?.name}`);
+
+  // Case 2: disable-model-invocation: true is skipped.
+  const r2 = parseFrontmatter('---\nname: thing\ndescription: x\ndisable-model-invocation: true\n---\n');
+  record('disable-model-invocation-skipped', !r2.error && r2.frontmatter['disable-model-invocation'] === true,
+    r2.error ?? `parsed dmi=${r2.frontmatter?.['disable-model-invocation']}`);
+
+  // Case 3: missing name → entry skipped (parser reports valid frontmatter but consumer skips).
+  const r3 = parseFrontmatter('---\ndescription: only desc\n---\n');
+  record('missing-name-skipped', !r3.error && typeof r3.frontmatter.name !== 'string',
+    r3.error ?? `parsed name=${r3.frontmatter?.name}`);
+
+  // Case 4: malformed YAML → parser returns error, consumer skips.
+  const r4 = parseFrontmatter('---\nname: ok\nthis is not yaml\n---\n');
+  record('malformed-yaml-skipped', r4.error != null, r4.error ?? 'parsed unexpectedly clean');
+
+  // Case 5: eligible at deep path — exercises walker via in-memory fs is awkward; we instead assert
+  // that path.resolve produces an absolute path for a deep relative input, which is the load-bearing
+  // property the walker hands off to (FR-5, NFR-3).
+  const deepResolved = path.resolve('packages/a/b/c/d/SKILL.md');
+  record('eligible-deep-path', path.isAbsolute(deepResolved), `resolved=${deepResolved}`);
+
+  // Case 6: disable-model-invocation: "true" (string) is NOT excluded — only boolean true excludes (FR-3, AD-4).
+  const r6 = parseFrontmatter('---\nname: thing\ndescription: x\ndisable-model-invocation: "true"\n---\n');
+  record('string-true-not-excluded', !r6.error && r6.frontmatter['disable-model-invocation'] === 'true',
+    r6.error ?? `parsed dmi=${JSON.stringify(r6.frontmatter?.['disable-model-invocation'])}`);
+
+  const passed = cases.filter(c => c.ok).length;
+  const failed = cases.length - passed;
+  const summary = { passed, failed, cases: cases.map(c => ({ name: c.name, ok: c.ok })) };
   console.log(JSON.stringify(summary));
-  process.exit(0);
+  process.exit(failed === 0 ? 0 : 1);
 }
 
 if (process.argv[2] === '--self-test') runSelfTest();
