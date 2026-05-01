@@ -10,7 +10,7 @@ const SKIP_DIRS = new Set([
   // listed in the corrective's File Targets. Sweep is narrowed to the
   // .claude/, prompt-tests/, and docs/ scope per the handoff's "narrow the
   // test scope rather than editing the excluded file" guidance.
-  '.agents', 'installer', 'ui',
+  '.agents', 'ui',
 ]);
 const SKIP_FILE_GLOBS = [
   // Historical baseline run-notes — intentionally frozen

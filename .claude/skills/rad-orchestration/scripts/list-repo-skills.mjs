@@ -40,20 +40,20 @@ function parseFrontmatter(text) {
     if (!line || line.startsWith('#')) continue;
     const m = line.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)\s*:\s*(.*)$/);
     if (!m) return { error: `malformed line: ${line}` };
-    const raw = m[2].trim();
-    const wasQuoted = raw.length >= 2 && (
-      (raw.startsWith('"') && raw.endsWith('"')) ||
-      (raw.startsWith("'") && raw.endsWith("'"))
+    const rawValue = m[2].trim();
+    const wasQuoted = rawValue.length >= 2 && (
+      (rawValue.startsWith('"') && rawValue.endsWith('"')) ||
+      (rawValue.startsWith("'") && rawValue.endsWith("'"))
     );
     let value;
     if (wasQuoted) {
-      value = raw.slice(1, -1);
-    } else if (raw === 'true') {
+      value = rawValue.slice(1, -1);
+    } else if (rawValue === 'true') {
       value = true;
-    } else if (raw === 'false') {
+    } else if (rawValue === 'false') {
       value = false;
     } else {
-      value = raw;
+      value = rawValue;
     }
     fm[m[1]] = value;
   }
