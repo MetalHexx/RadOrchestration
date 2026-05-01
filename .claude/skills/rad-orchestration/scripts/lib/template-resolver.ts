@@ -72,7 +72,7 @@ export function snapshotTemplate(
 export function listAvailableTemplates(
   orchRoot: string,
 ): string[] {
-  const templatesDir = path.join(orchRoot, 'skills/orchestration/templates/');
+  const templatesDir = path.join(orchRoot, 'skills/rad-orchestration/templates/');
   if (!fs.existsSync(templatesDir)) {
     return [];
   }

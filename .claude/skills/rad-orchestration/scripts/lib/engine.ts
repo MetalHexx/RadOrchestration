@@ -108,7 +108,7 @@ export function processEvent(
 
     const state = io.readState(projectDir);
 
-    const templatesDir = path.join(orchRoot, 'skills/orchestration/templates');
+    const templatesDir = path.join(orchRoot, 'skills/rad-orchestration/templates');
     const resolution = resolveTemplateName(state, context.template, config, projectDir, templatesDir);
     // For new-project creation (state === null) always load from the global templates directory.
     // This avoids reading a project-local snapshot that may be mid-write in concurrent scenarios
