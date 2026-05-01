@@ -29,7 +29,7 @@ function* walkSkillFiles(root) {
   }
 }
 
-function parseFrontmatter(text, sourcePath) {
+function parseFrontmatter(text) {
   if (!text.startsWith('---')) return { error: 'no frontmatter block' };
   const end = text.indexOf('\n---', 3);
   if (end === -1) return { error: 'frontmatter not terminated' };
@@ -40,12 +40,21 @@ function parseFrontmatter(text, sourcePath) {
     if (!line || line.startsWith('#')) continue;
     const m = line.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)\s*:\s*(.*)$/);
     if (!m) return { error: `malformed line: ${line}` };
-    let value = m[2].trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
+    const raw = m[2].trim();
+    const wasQuoted = raw.length >= 2 && (
+      (raw.startsWith('"') && raw.endsWith('"')) ||
+      (raw.startsWith("'") && raw.endsWith("'"))
+    );
+    let value;
+    if (wasQuoted) {
+      value = raw.slice(1, -1);
+    } else if (raw === 'true') {
+      value = true;
+    } else if (raw === 'false') {
+      value = false;
+    } else {
+      value = raw;
     }
-    if (value === 'true') value = true;
-    else if (value === 'false') value = false;
     fm[m[1]] = value;
   }
   return { frontmatter: fm };
@@ -57,7 +66,7 @@ export function buildManifest(root) {
     let text;
     try { text = readFileSync(file, 'utf8'); }
     catch (err) { process.stderr.write(`warn: ${file}: ${err.message}\n`); continue; }
-    const { frontmatter, error } = parseFrontmatter(text, file);
+    const { frontmatter, error } = parseFrontmatter(text);
     if (error) { process.stderr.write(`warn: ${file}: ${error}\n`); continue; }
     const name = frontmatter.name;
     const description = frontmatter.description;
