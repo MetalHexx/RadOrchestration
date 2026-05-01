@@ -54,7 +54,7 @@ module.exports = async function checkConfig(basePath, context, _config, orchRoot
   const root = orchRoot || '.claude';
   try {
     const results = [];
-    const configPath = path.join(basePath, root, 'skills', 'orchestration', 'config', 'orchestration.yml');
+    const configPath = path.join(basePath, root, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
 
     // ── Read file ──────────────────────────────────────────────────────
     const content = readFile(configPath);

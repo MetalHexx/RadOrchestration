@@ -40,7 +40,7 @@ for (const f of walk(repoRoot)) {
   const text = readFileSync(f, 'utf8');
   const lines = text.split(/\r?\n/);
   lines.forEach((line, i) => {
-    if (line.includes('skills/orchestration/')) {
+    if (line.includes('skills/orchestration/') || line.includes("'skills', 'orchestration'") || line.includes('"skills", "orchestration"')) {
       hits.push(`${path.relative(repoRoot, f)}:${i + 1}: ${line.trim().slice(0, 120)}`);
     }
   });

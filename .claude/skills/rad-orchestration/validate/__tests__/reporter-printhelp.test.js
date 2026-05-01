@@ -79,7 +79,7 @@ async function test(description, fn) {
   // Test 3: 6 total occurrences (1 usage + 5 example lines) of custom root
   await test('printHelp(".agents") — 6 occurrences of ".agents/skills/rad-orchestration/scripts/validate/validate-orchestration" (1 usage + 5 examples)', async () => {
     const out = captureStdout(() => printHelp('.agents'));
-    const count = (out.match(/\.agents\/skills\/orchestration\/scripts\/validate\/validate-orchestration/g) || []).length;
+    const count = (out.match(/\.agents\/skills\/rad-orchestration\/scripts\/validate\/validate-orchestration/g) || []).length;
     assert.strictEqual(count, 6,
       `Expected 6 occurrences of ".agents/skills/rad-orchestration/scripts/validate/validate-orchestration" but found ${count}`
     );

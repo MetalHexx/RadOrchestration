@@ -116,7 +116,7 @@ const platform = platformMap[process.platform] || 'linux';
 // Discover config via __dirname → skills/execute-parallel/scripts → up to orch root
 // Then look for skills/rad-orchestration/config/orchestration.yml
 const orchRootGuess = path.resolve(__dirname, '..', '..', '..');  // scripts → rad-execute-parallel → skills → .claude
-const configPath = path.join(orchRootGuess, 'skills', 'orchestration', 'config', 'orchestration.yml');
+const configPath = path.join(orchRootGuess, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
 
 let orchRoot = '.claude';
 let projectsBasePath = path.join(repoRoot, '.claude', 'projects');

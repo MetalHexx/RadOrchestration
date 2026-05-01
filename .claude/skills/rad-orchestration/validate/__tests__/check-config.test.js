@@ -114,8 +114,8 @@ async function test(description, fn) {
     await checkConfig('/fake', {}, null, '.agents');
     assert.ok(calledPath !== null, 'readFile should have been called');
     assert.ok(
-      calledPath.endsWith(path.join('.agents', 'skills', 'orchestration', 'config', 'orchestration.yml')),
-      `Expected path ending with ${path.join('.agents', 'skills', 'orchestration', 'config', 'orchestration.yml')}, got "${calledPath}"`
+      calledPath.endsWith(path.join('.agents', 'skills', 'rad-orchestration', 'config', 'orchestration.yml')),
+      `Expected path ending with ${path.join('.agents', 'skills', 'rad-orchestration', 'config', 'orchestration.yml')}, got "${calledPath}"`
     );
     assert.ok(
       !calledPath.includes(path.join('.github', 'orchestration.yml')),
@@ -133,8 +133,8 @@ async function test(description, fn) {
     await checkConfig('/fake', {}, null, undefined);
     assert.ok(calledPath !== null, 'readFile should have been called');
     assert.ok(
-      calledPath.endsWith(path.join('.claude', 'skills', 'orchestration', 'config', 'orchestration.yml')),
-      `Expected path ending with ${path.join('.claude', 'skills', 'orchestration', 'config', 'orchestration.yml')}, got "${calledPath}"`
+      calledPath.endsWith(path.join('.claude', 'skills', 'rad-orchestration', 'config', 'orchestration.yml')),
+      `Expected path ending with ${path.join('.claude', 'skills', 'rad-orchestration', 'config', 'orchestration.yml')}, got "${calledPath}"`
     );
   });
 

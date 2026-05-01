@@ -154,7 +154,7 @@ const platform = platformMap[process.platform] || 'linux';
 // Discover config via __dirname → skills/rad-execute/scripts → up to orch root
 // Then look for skills/rad-orchestration/config/orchestration.yml
 const orchRootGuess = path.resolve(__dirname, '..', '..', '..');  // scripts → rad-execute → skills → .claude
-const configPath = path.join(orchRootGuess, 'skills', 'orchestration', 'config', 'orchestration.yml');
+const configPath = path.join(orchRootGuess, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
 
 let orchRoot = '.claude';
 let configAutoCommit = 'ask';
