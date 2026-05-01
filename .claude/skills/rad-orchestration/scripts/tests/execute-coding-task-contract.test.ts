@@ -24,7 +24,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const SKILL_PATH = path.resolve(
   __dirname,
-  '../../../execute-coding-task/SKILL.md',
+  '../../../rad-execute-coding-task/SKILL.md',
 );
 
 describe('execute-coding-task/SKILL.md — executor contract anchors', () => {
