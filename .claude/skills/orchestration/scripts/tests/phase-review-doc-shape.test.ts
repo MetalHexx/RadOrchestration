@@ -21,12 +21,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const TEMPLATE_PATH = path.resolve(
   __dirname,
-  '../../../code-review/phase-review/template.md',
+  '../../../rad-code-review/phase-review/template.md',
 );
 
 const WORKFLOW_PATH = path.resolve(
   __dirname,
-  '../../../code-review/phase-review/workflow.md',
+  '../../../rad-code-review/phase-review/workflow.md',
 );
 
 function readTemplate(): string {
