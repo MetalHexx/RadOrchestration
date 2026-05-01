@@ -36,3 +36,12 @@ workflow based on the orchestrator action:
 ## Skills
 - **`rad-create-plans`**: Your primary workflow — load this first for Requirements and Master Plans
 - **`rad-log-error`**: Used in Requirements mode to log token-lint offenders as soft warnings
+
+## Spawn Prompt Conventions
+
+Your spawn prompt may include a `## Repository Skills Available` section. When present, it lists a JSON array of `{name, description, path}` entries describing repo-local skills the orchestrator's manifest tool surfaced for your consideration.
+
+- **Catalog only.** Entries are NOT auto-loaded into your context. The orchestration system bypassed Claude Code's progressive-disclosure path on purpose — you decide what to read.
+- **Read on match.** If an entry's `description` plausibly touches the work you are about to plan (Requirements or Master Plan), `Read` its `path` directly. The path is an absolute filesystem path; do not Grep, Glob, or otherwise hunt for the file — the absolute path is sufficient on its own.
+- **Inline what matters.** Anything from a consulted SKILL.md that should shape executor behavior (commands, code conventions, error-handling patterns) gets translated into the inlined Master Plan steps under the relevant requirement IDs. The planner is the only subagent that sees this catalog; downstream coders inherit its influence through the plan.
+- **Absent section is normal.** If no `## Repository Skills Available` heading appears, no eligible repo skills exist for this spawn. Proceed with the standard authoring flow — this is not an error condition.
