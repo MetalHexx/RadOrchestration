@@ -235,7 +235,7 @@ mutationRegistry.set(EVENTS.EXPLOSION_FAILED, (state, context, _config, _templat
   mutations_applied.push(`set master_plan.parse_retry_count = ${nextCount}`);
 
   if (nextCount > MAX_PARSE_RETRIES) {
-    // Cap exceeded — halt. The orchestrator surfaces this via the log-error skill.
+    // Cap exceeded — halt. The orchestrator surfaces this via the rad-log-error skill.
     explodeNode.status = 'failed';
     mutations_applied.push(`set explode_master_plan.status = failed (parse retry cap ${MAX_PARSE_RETRIES} exceeded)`);
     // Defensive: explicitly clear any stale doc_path on the explode node, mirroring the
