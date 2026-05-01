@@ -1,5 +1,5 @@
 ---
-name: configure-system
+name: rad-configure-system
 description: "Configure the orchestration system using a structured questionnaire. Walks through system root, project storage, pipeline limits, gate behavior, and source control settings, then generates orchestration.yml."
 disable-model-invocation: true
 user-invocable: true

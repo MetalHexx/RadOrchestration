@@ -1,5 +1,5 @@
 ---
-name: create-agent
+name: rad-create-agent
 description: 'Create new custom agents (.agent.md) for the orchestration system. Use when asked to "create an agent", "make a new agent", "scaffold an agent", or when adding a new specialized role to the orchestration pipeline.'
 ---
 

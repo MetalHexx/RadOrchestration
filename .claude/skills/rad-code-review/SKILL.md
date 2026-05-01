@@ -1,5 +1,5 @@
 ---
-name: code-review
+name: rad-code-review
 description: 'Review code, phases, and projects for quality, correctness, and conformance. Supports three modes: task review, phase review, and final review. Each mode runs a conformance-first pass against a per-requirement audit table, followed by a lean quality sweep. Status semantics are scope-aware — task and phase use tiered status (on-track / drift / regression); final uses strict status (met / missing).'
 user-invocable: false
 ---
