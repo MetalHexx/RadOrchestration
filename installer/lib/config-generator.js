@@ -66,7 +66,7 @@ export function writeConfig(workspaceDir, orchRoot, yamlContent) {
     ? orchRoot
     : path.join(workspaceDir, orchRoot);
 
-  const targetDir = path.join(resolvedOrchRoot, 'skills', 'orchestration', 'config');
+  const targetDir = path.join(resolvedOrchRoot, 'skills', 'rad-orchestration', 'config');
   fs.mkdirSync(targetDir, { recursive: true });
   fs.writeFileSync(path.join(targetDir, 'orchestration.yml'), yamlContent);
 }

@@ -67,7 +67,7 @@ const copyResults = [
   { category: 'Skills', fileCount: 100, success: true },
 ];
 
-const configPath = '/home/user/my-project/.github/skills/orchestration/config/orchestration.yml';
+const configPath = '/home/user/my-project/.github/skills/rad-orchestration/config/orchestration.yml';
 
 // --- renderPreInstallSummary tests ---
 

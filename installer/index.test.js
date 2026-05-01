@@ -915,7 +915,7 @@ test('installScriptsDeps: spawn called with shell: true and stdio: pipe', async 
 
 // ── installScriptsDeps — integration tests ────────────────────────────────────
 
-test('main() calls installScriptsDeps: spawn invoked with cwd ending in skills/orchestration/scripts', async () => {
+test('main() calls installScriptsDeps: spawn invoked with cwd ending in skills/rad-orchestration/scripts', async () => {
   resetMocks();
   state.spawnExitCode = 0;
 
@@ -934,8 +934,8 @@ test('main() calls installScriptsDeps: spawn invoked with cwd ending in skills/o
   assert.ok(spawnCall, 'spawn called with npm install --omit=dev');
   const cwd = spawnCall.arguments[1].cwd;
   assert.ok(
-    String(cwd).replace(/\\/g, '/').endsWith('skills/orchestration/scripts'),
-    `spawn cwd ends with skills/orchestration/scripts, got: ${cwd}`
+    String(cwd).replace(/\\/g, '/').endsWith('skills/rad-orchestration/scripts'),
+    `spawn cwd ends with skills/rad-orchestration/scripts, got: ${cwd}`
   );
 });
 
