@@ -53,7 +53,7 @@ function stateWithNullSourceControl(): PipelineState {
 // ── Planning spawn actions (Iter 4: spawn_requirements added) ────────────────
 
 describe('enrichActionContext — planning spawn actions', () => {
-  it('spawn_requirements returns { step: "requirements" }', () => {
+  it('spawn_requirements returns { step: "requirements", repository_skills_block: <string> }', () => {
     const state = createScaffoldedState();
     const result = enrichActionContext({
       action: 'spawn_requirements',
@@ -62,10 +62,18 @@ describe('enrichActionContext — planning spawn actions', () => {
       config,
       cliContext: {},
     });
-    expect(result).toEqual({ step: 'requirements' });
+    // RAD-SKILL-DISCOVERY P02-T05: planning-spawn enrichment now invokes
+    // list-repo-skills.mjs and surfaces the rendered block as
+    // `repository_skills_block` so the orchestrator can inline it verbatim
+    // into the planner spawn prompt (FR-7, FR-8, FR-9, AD-6, AD-12, DD-2).
+    // Value is content-dependent on the invoking repo, so we assert the
+    // contract shape (string field present) rather than literal text.
+    expect(result.step).toBe('requirements');
+    expect(typeof result.repository_skills_block).toBe('string');
+    expect(Object.keys(result).sort()).toEqual(['repository_skills_block', 'step']);
   });
 
-  it('spawn_master_plan returns { step: "master_plan" }', () => {
+  it('spawn_master_plan returns { step: "master_plan", repository_skills_block: <string> }', () => {
     const state = createScaffoldedState();
     const result = enrichActionContext({
       action: 'spawn_master_plan',
@@ -74,7 +82,9 @@ describe('enrichActionContext — planning spawn actions', () => {
       config,
       cliContext: {},
     });
-    expect(result).toEqual({ step: 'master_plan' });
+    expect(result.step).toBe('master_plan');
+    expect(typeof result.repository_skills_block).toBe('string');
+    expect(Object.keys(result).sort()).toEqual(['repository_skills_block', 'step']);
   });
 });
 

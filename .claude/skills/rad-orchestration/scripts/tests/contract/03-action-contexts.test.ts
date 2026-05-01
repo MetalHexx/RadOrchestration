@@ -58,21 +58,33 @@ describe('[CONTRACT] Action Contexts — formatTaskId helper', () => {
 // ── [CONTRACT] Planning spawn actions (full template: master_plan only) ──
 
 describe('[CONTRACT] Action Contexts — planning spawn actions (full template)', () => {
+  // RAD-SKILL-DISCOVERY P02-T05: planning-spawn context now also carries
+  // `repository_skills_block` (string) so the orchestrator can inline the
+  // repo-skills manifest into the planner spawn prompt (FR-7, FR-8, FR-9,
+  // AD-6, AD-12, DD-2). Value is content-dependent on the invoking repo,
+  // so we assert the contract shape (string field present) rather than
+  // literal text.
   it('first action is spawn_master_plan (master_plan is first planning node in full template)', () => {
     const io = createMockIO(null);
     const result = processEvent('start', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_master_plan');
-    expect(result.context).toEqual({ step: 'master_plan' });
+    const ctx = result.context as Record<string, unknown>;
+    expect(ctx.step).toBe('master_plan');
+    expect(typeof ctx.repository_skills_block).toBe('string');
+    expect(Object.keys(ctx).sort()).toEqual(['repository_skills_block', 'step']);
   });
 
-  it('spawn_master_plan returns { step: "master_plan" }', () => {
+  it('spawn_master_plan returns { step: "master_plan", repository_skills_block: <string> }', () => {
     const io = createMockIO(null);
     processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_master_plan');
-    expect(result.context).toEqual({ step: 'master_plan' });
+    const ctx = result.context as Record<string, unknown>;
+    expect(ctx.step).toBe('master_plan');
+    expect(typeof ctx.repository_skills_block).toBe('string');
+    expect(Object.keys(ctx).sort()).toEqual(['repository_skills_block', 'step']);
   });
 });
 

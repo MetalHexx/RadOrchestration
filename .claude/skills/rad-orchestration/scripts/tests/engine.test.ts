@@ -115,7 +115,11 @@ describe('engine – processEvent', () => {
 
       expect(result.success).toBe(true);
       expect(result.action).toBe('spawn_master_plan');
-      expect(result.context).toEqual({ step: 'master_plan' });
+      // RAD-SKILL-DISCOVERY P02-T05: planning-spawn context now also carries
+      // `repository_skills_block` (string) — see context-enrichment.ts.
+      const ctx = result.context as Record<string, unknown>;
+      expect(ctx.step).toBe('master_plan');
+      expect(typeof ctx.repository_skills_block).toBe('string');
       expect(result.mutations_applied).toContain('scaffold_initial_state');
       expect(result.orchRoot).toBe(ORCH_ROOT);
     });
@@ -356,7 +360,11 @@ describe('engine – processEvent', () => {
 
       expect(result.success).toBe(true);
       expect(result.action).toBe('spawn_master_plan');
-      expect(result.context).toEqual({ step: 'master_plan' });
+      // RAD-SKILL-DISCOVERY P02-T05: planning-spawn context now also carries
+      // `repository_skills_block` (string) — see context-enrichment.ts.
+      const ctx = result.context as Record<string, unknown>;
+      expect(ctx.step).toBe('master_plan');
+      expect(typeof ctx.repository_skills_block).toBe('string');
 
       const mpNode = io.currentState!.graph.nodes['master_plan'] as StepNodeState;
       expect(mpNode.status).toBe('in_progress');
