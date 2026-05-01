@@ -38,7 +38,7 @@ The test spawns a real `@coder` agent and a real `@reviewer` agent. The mediatio
 
 ```bash
 # orchestration scripts — required
-cd .claude/skills/orchestration/scripts && npm install && cd -
+cd .claude/skills/rad-orchestration/scripts && npm install && cd -
 
 # UI — only required if you want to do the optional UI smoke at the end
 cd ui && npm install && cd -
@@ -125,7 +125,7 @@ This check confirms the UI renders the new corrective-cycle fields AND doesn't r
 cd ui && npm run build && npm run dev
 ```
 
-Open `http://localhost:3000`. Point the UI at the harness run folder's parent (set or confirm `projects.base_path` in `.claude/skills/orchestration/config/orchestration.yml` to include `prompt-tests/corrective-mediation-e2e/output/`). Then verify:
+Open `http://localhost:3000`. Point the UI at the harness run folder's parent (set or confirm `projects.base_path` in `.claude/skills/rad-orchestration/config/orchestration.yml` to include `prompt-tests/corrective-mediation-e2e/output/`). Then verify:
 
 1. **Document viewer** — open the review doc (`reports/BROKEN-COLORS-CODE-REVIEW-P01-T01-GET-COLORS.md`) in the UI. The new frontmatter fields should render: `orchestrator_mediated`, `effective_outcome`, `corrective_handoff_path`, `corrective_index`, `corrective_scope`, `budget_max`, `budget_remaining`. No fields silently dropped.
 

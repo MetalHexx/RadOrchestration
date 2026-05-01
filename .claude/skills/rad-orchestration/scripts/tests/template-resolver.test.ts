@@ -225,7 +225,7 @@ describe('listAvailableTemplates', () => {
   it('returns filename stems for .yml files in the templates directory', () => {
     tmpDir = makeTempDir();
     const orchRoot = tmpDir;
-    const templatesDir = path.join(orchRoot, 'skills/orchestration/templates');
+    const templatesDir = path.join(orchRoot, 'skills/rad-orchestration/templates');
     fs.mkdirSync(templatesDir, { recursive: true });
     fs.writeFileSync(path.join(templatesDir, 'full.yml'), '');
     fs.writeFileSync(path.join(templatesDir, 'default.yml'), '');
@@ -243,7 +243,7 @@ describe('listAvailableTemplates', () => {
   it('ignores non-.yml files (e.g., .gitkeep)', () => {
     tmpDir = makeTempDir();
     const orchRoot = tmpDir;
-    const templatesDir = path.join(orchRoot, 'skills/orchestration/templates');
+    const templatesDir = path.join(orchRoot, 'skills/rad-orchestration/templates');
     fs.mkdirSync(templatesDir, { recursive: true });
     fs.writeFileSync(path.join(templatesDir, 'full.yml'), '');
     fs.writeFileSync(path.join(templatesDir, '.gitkeep'), '');

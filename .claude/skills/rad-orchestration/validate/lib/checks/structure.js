@@ -22,7 +22,7 @@ async function checkStructure(basePath, context, _config, orchRoot) {
     ];
 
     const requiredFiles = [
-      { name: `${root}/skills/orchestration/config/orchestration.yml`, path: path.join(ghDir, 'skills', 'orchestration', 'config', 'orchestration.yml'), check: 'exists' },
+      { name: `${root}/skills/rad-orchestration/config/orchestration.yml`, path: path.join(ghDir, 'skills', 'rad-orchestration', 'config', 'orchestration.yml'), check: 'exists' },
       { name: `${root}/settings.json`, path: path.join(ghDir, 'settings.json'), check: 'exists' },
     ];
 

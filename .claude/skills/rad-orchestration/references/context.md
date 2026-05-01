@@ -42,7 +42,7 @@ Final:     Comprehensive Review → PR Creation (if auto_pr) → Human Approval 
 
 ## Configuration
 
-System configuration lives in `{orch_root}/skills/orchestration/config/orchestration.yml`. It controls:
+System configuration lives in `{orch_root}/skills/rad-orchestration/config/orchestration.yml`. It controls:
 - Project storage paths (`projects.base_path`)
 - Pipeline limits (max phases, tasks, retries)
 - Human gate defaults

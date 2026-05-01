@@ -31,7 +31,7 @@ The Orchestrator operates as an event-driven controller:
 1. **Determine the event to signal** (see Event Signaling Reference below)
 2. **Call the pipeline script**:
    ```
-   node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--config <path>] [--template <name>]
+   node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--config <path>] [--template <name>]
        [--doc-path <path>]
        [--branch <name>] [--base-branch <name>] [--worktree-path <path>]
        [--auto-commit <always|never>] [--auto-pr <always|never>]
@@ -60,7 +60,7 @@ The `start` event is always safe — the pipeline loads `state.json`, skips muta
 Always invoke `pipeline.js` from the workspace root:
 
 ```bash
-node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--config <path>] [--template <name>]
+node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--config <path>] [--template <name>]
     [--doc-path <path>]
     [--branch <name>] [--base-branch <name>] [--worktree-path <path>]
     [--auto-commit <always|never>] [--auto-pr <always|never>]
@@ -74,7 +74,7 @@ node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --proje
 The `--config` flag overrides the default config path:
 
 ```bash
-node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --project-dir <dir> --config <path-to-orchestration.yml>
+node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --project-dir <dir> --config <path-to-orchestration.yml>
 ```
 
 ### Loop Termination
@@ -177,7 +177,7 @@ If the pipeline exits with code 1, the result contains error details:
 On context compaction or agent restart, the Orchestrator has no runtime memory to recover. Recovery is a single call:
 
 ```bash
-node {orchRoot}/skills/orchestration/scripts/pipeline.js --event start --project-dir <path>
+node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event start --project-dir <path>
 ```
 
 The pipeline loads `state.json`, skips mutation, and resolves the next action from the current state. All state is persisted in `state.json` by the pipeline script, so no runtime memory is needed.

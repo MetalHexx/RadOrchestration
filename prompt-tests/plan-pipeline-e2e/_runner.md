@@ -10,7 +10,7 @@ You are driving the `default.yml` pipeline end-to-end against a fixed brainstorm
 
 Behave as a **simulated orchestrator**. The same rules the production orchestrator operates under apply here: signal events to `pipeline.js`, read `result.action` from stdout JSON, route exactly per the Action Routing Table, do not make planning decisions yourself, do not edit state.json, do not skip the two-step `_started` → action return protocol. The only differences: you spawn no agents beyond `@planner`, and you **halt when the pipeline returns `action: "request_plan_approval"`** rather than presenting the gate to a human.
 
-Full routing reference lives at `.claude/skills/orchestration/references/pipeline-guide.md` and `action-event-reference.md` — load them if you are not already carrying that context.
+Full routing reference lives at `.claude/skills/rad-orchestration/references/pipeline-guide.md` and `action-event-reference.md` — load them if you are not already carrying that context.
 
 ## Inputs
 
@@ -53,7 +53,7 @@ Invoke `pipeline.js` from the repo root (the entry auto-installs dependencies on
 Initial call — use `--event start` to scaffold state. The engine rejects any non-`start` event when `state.json` does not yet exist.
 
 ```
-node .claude/skills/orchestration/scripts/pipeline.js \
+node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event start \
   --project-dir prompt-tests/plan-pipeline-e2e/output/<fixture>/<PROJECT-NAME> \
   --template default

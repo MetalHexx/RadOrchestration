@@ -40,19 +40,19 @@ Call `askQuestions` with 1 question:
 
 ## Step 1: Check for existing configuration
 
-Using the `orch_root` value from Group 1, look for `{orch_root}/skills/orchestration/config/orchestration.yml` in the workspace root.
+Using the `orch_root` value from Group 1, look for `{orch_root}/skills/rad-orchestration/config/orchestration.yml` in the workspace root.
 
 > **Note**: If the previous config had a `system.root` key, that key has been renamed to `system.orch_root`. Note this migration when reading old config values.
 
 **If it does NOT exist:**
 - Inform the user no configuration file was found
-- Create intermediate directories if they don't exist: `{orch_root}/skills/orchestration/config/`
-- Create `{orch_root}/skills/orchestration/config/orchestration.yml` with the default content below and **skip to Path Propagation**
+- Create intermediate directories if they don't exist: `{orch_root}/skills/rad-orchestration/config/`
+- Create `{orch_root}/skills/rad-orchestration/config/orchestration.yml` with the default content below and **skip to Path Propagation**
 
 **Default `orchestration.yml` content to create (for fresh setup):**
 
 ```yaml
-# {orch_root}/skills/orchestration/config/orchestration.yml
+# {orch_root}/skills/rad-orchestration/config/orchestration.yml
 # Orchestration System Configuration
 # -----------------------------------
 
@@ -245,10 +245,10 @@ Call `askQuestions` with 2 questions:
 
 ## YAML Generation
 
-After completing all 5 groups (Groups 2–5 for existing config), assemble and write `{orch_root}/skills/orchestration/config/orchestration.yml` with the collected values (create intermediate directories if needed):
+After completing all 5 groups (Groups 2–5 for existing config), assemble and write `{orch_root}/skills/rad-orchestration/config/orchestration.yml` with the collected values (create intermediate directories if needed):
 
 ```yaml
-# {orch_root}/skills/orchestration/config/orchestration.yml
+# {orch_root}/skills/rad-orchestration/config/orchestration.yml
 # Orchestration System Configuration
 # -----------------------------------
 

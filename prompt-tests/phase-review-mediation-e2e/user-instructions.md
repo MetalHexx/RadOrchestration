@@ -39,7 +39,7 @@ The test spawns a real `@coder` agent and a real `@reviewer` agent. The mediatio
 
 ```bash
 # orchestration scripts — required
-cd .claude/skills/orchestration/scripts && npm install && cd -
+cd .claude/skills/rad-orchestration/scripts && npm install && cd -
 
 # UI — required if you will do the UI smoke check at the end
 cd ui && npm install && cd -

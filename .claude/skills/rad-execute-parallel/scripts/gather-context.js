@@ -114,7 +114,7 @@ const platform = platformMap[process.platform] || 'linux';
 // ─── Orchestration config ───────────────────────────────────────────────────
 
 // Discover config via __dirname → skills/execute-parallel/scripts → up to orch root
-// Then look for skills/orchestration/config/orchestration.yml
+// Then look for skills/rad-orchestration/config/orchestration.yml
 const orchRootGuess = path.resolve(__dirname, '..', '..', '..');  // scripts → rad-execute-parallel → skills → .claude
 const configPath = path.join(orchRootGuess, 'skills', 'orchestration', 'config', 'orchestration.yml');
 

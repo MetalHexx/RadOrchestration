@@ -48,7 +48,7 @@ const DEFAULT_CONFIG: OrchestrationConfig = {
   default_template: 'full',
 };
 
-const loaded = loadTemplate(path.join(ORCH_ROOT, 'skills/orchestration/templates/full.yml'));
+const loaded = loadTemplate(path.join(ORCH_ROOT, 'skills/rad-orchestration/templates/full.yml'));
 const TEMPLATE = loaded.template;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

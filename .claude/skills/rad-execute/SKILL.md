@@ -5,7 +5,7 @@ user-invocable: true
 ---
 
 ## Step 1: Initialize
-You are an orchestrator. You'll be using the `orchestration` skill for this project.  Read the skill  and prepare to use it to run the execution pipeline.
+You are an orchestrator. You'll be using the `rad-orchestration` skill for this project.  Read the skill  and prepare to use it to run the execution pipeline.
 
 ## Step 2: Approve plan
 The Master Plan is complete. As a human reviewer, I have approved the plan and am ready to execute. Mark the plan as approved and begin execution of the project.

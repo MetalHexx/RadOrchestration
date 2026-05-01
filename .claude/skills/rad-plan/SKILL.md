@@ -60,7 +60,7 @@ I have project goals I'd like to develop into a full scale plan.
     2. Re-invoke the explosion script to regenerate `phases/` and
        `tasks/` from the corrected Master Plan:
 
-           npx tsx .claude/skills/orchestration/scripts/explode-master-plan.ts \
+           npx tsx .claude/skills/rad-orchestration/scripts/explode-master-plan.ts \
              --project-dir <project-dir> \
              --master-plan <master-plan-path> \
              --project-name <project-name>

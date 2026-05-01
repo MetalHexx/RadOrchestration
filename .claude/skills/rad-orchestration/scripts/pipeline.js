@@ -8,7 +8,7 @@
 // to main.ts requires no changes here.
 //
 // Usage:
-//   node {orchRoot}/skills/orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [...]
+//   node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [...]
 
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';

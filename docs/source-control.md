@@ -79,5 +79,5 @@ For example, a subject line like `feat(P02-T03): Add remote_url detection` may b
 
 The Source Control Agent produces structured feedback for every operation — success confirmations, partial failure details, and full failure diagnostics. On failure, errors are logged to the project error log and the pipeline continues. Source control failures never block pipeline execution.
 
-For the state schema and field reference, see [state-v4.schema.json](../.claude/skills/orchestration/schemas/state-v4.schema.json).
+For the state schema and field reference, see [state-v4.schema.json](../.claude/skills/rad-orchestration/schemas/state-v4.schema.json).
 

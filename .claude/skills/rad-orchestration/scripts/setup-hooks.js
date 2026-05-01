@@ -6,7 +6,7 @@
 // orchestration scripts get type-checked before each commit.
 //
 // Usage (from the v3 repo root):
-//   node .claude/skills/orchestration/scripts/setup-hooks.js
+//   node .claude/skills/rad-orchestration/scripts/setup-hooks.js
 //
 // Or simply set the hooks path manually (the pre-commit file is already
 // committed at .githooks/pre-commit):
@@ -50,7 +50,7 @@ const preCommitContent = `#!/bin/sh
 # Exit 0 = commit proceeds, Exit 1 = commit blocked
 # Always runs regardless of which files are staged
 
-SCRIPTS_DIR=".claude/skills/orchestration/scripts"
+SCRIPTS_DIR=".claude/skills/rad-orchestration/scripts"
 
 cd "$SCRIPTS_DIR" || { echo "[type-check] ERROR: Could not cd into $SCRIPTS_DIR"; exit 1; }
 

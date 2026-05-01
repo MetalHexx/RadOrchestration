@@ -25,7 +25,7 @@ All fixture data is authored in `index.ts` as `ReviewReworkFixture` objects. Eac
 
 The fixture **drivers** live in TypeScript (`index.ts`) rather than on-disk assets so the fixtures can declare commit structure programmatically — each commit's file contents + message in a single place. This keeps the data + driver colocated and avoids parallel `.ts` and `.md` trees drifting.
 
-Tests under `.claude/skills/orchestration/scripts/tests/review-rework-fixtures.test.ts` call `createGitFixture()` with each fixture's commit structure, compute git diff ranges directly (no synthetic state.json / enrichment context — the harness exercises that path end-to-end), and confirm:
+Tests under `.claude/skills/rad-orchestration/scripts/tests/review-rework-fixtures.test.ts` call `createGitFixture()` with each fixture's commit structure, compute git diff ranges directly (no synthetic state.json / enrichment context — the harness exercises that path end-to-end), and confirm:
 
 1. The diff the reviewer would compute (`git diff <base>~1..<head>`) matches the fixture's expected change shape (sanity check on the driver).
 2. A review doc with the fixture's expected frontmatter passes the pre-read validator (for `approved` verdicts + for `changes_requested` verdicts on final-scope fixtures which require no mediation fields).

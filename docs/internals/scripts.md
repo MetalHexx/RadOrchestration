@@ -14,7 +14,7 @@ The orchestration system uses a single unified pipeline script (`pipeline.js`) f
 
 ```bash
 # Default .claude root shown. Adjust if you configured a custom orch_root.
-node .claude/skills/orchestration/scripts/pipeline.js \
+node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event <event_name> \
   --project-dir <path> \
   [--config <path>] \
@@ -61,7 +61,7 @@ node .claude/skills/orchestration/scripts/pipeline.js \
 
 ```bash
 # Default .claude root shown. Adjust if you configured a custom orch_root.
-node .claude/skills/orchestration/scripts/migrate-to-v4.js <project-dir>
+node .claude/skills/rad-orchestration/scripts/migrate-to-v4.js <project-dir>
 ```
 
 | Argument | Required | Description |

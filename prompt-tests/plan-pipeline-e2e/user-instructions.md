@@ -28,7 +28,7 @@ The test invokes the `@planner` agent twice. Each call is a real Opus-tier LLM s
 
 ```bash
 # orchestration scripts — required
-cd .claude/skills/orchestration/scripts && npm install && cd -
+cd .claude/skills/rad-orchestration/scripts && npm install && cd -
 
 # UI — only required if you want to do the optional UI smoke at the end
 cd ui && npm install && cd -
@@ -99,7 +99,7 @@ Skip this if you're time-boxed; it's a bonus check that the UI renders the run o
 cd ui && npm run build && npm run dev
 ```
 
-Open `http://localhost:3000`. Point the UI at the run folder's parent (whatever `projects.base_path` the dev instance resolves to — check `.claude/skills/orchestration/config/orchestration.yml`). The DAG timeline should render:
+Open `http://localhost:3000`. Point the UI at the run folder's parent (whatever `projects.base_path` the dev instance resolves to — check `.claude/skills/rad-orchestration/config/orchestration.yml`). The DAG timeline should render:
 
 - The seeded planning nodes (`requirements`, `master_plan`, `explode_master_plan`, `plan_approval_gate`) all marked completed.
 - Per-phase iterations, each with a `phase_planning` child step pointing at its emitted file in `phases/` via a clickable Doc link.

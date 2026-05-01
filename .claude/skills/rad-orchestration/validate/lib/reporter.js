@@ -298,7 +298,7 @@ function printHelp(orchRoot) {
     const helpText = [
       'Orchestration Validator v1.0.0',
       '',
-      `Usage: node ${root}/skills/orchestration/scripts/validate/validate-orchestration.js [options]`,
+      `Usage: node ${root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js [options]`,
       '',
       'Options:',
       '  -h, --help              Show this help message and exit',
@@ -320,11 +320,11 @@ function printHelp(orchRoot) {
       '  NO_COLOR=1       Equivalent to --no-color',
       '',
       'Examples:',
-      `  node ${root}/skills/orchestration/scripts/validate/validate-orchestration.js                  Run all checks`,
-      `  node ${root}/skills/orchestration/scripts/validate/validate-orchestration.js --category agents  Check agents only`,
-      `  node ${root}/skills/orchestration/scripts/validate/validate-orchestration.js --verbose          Detailed output`,
-      `  node ${root}/skills/orchestration/scripts/validate/validate-orchestration.js --quiet            Summary only`,
-      `  node ${root}/skills/orchestration/scripts/validate/validate-orchestration.js --no-color         CI-friendly output`,
+      `  node ${root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js                  Run all checks`,
+      `  node ${root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js --category agents  Check agents only`,
+      `  node ${root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js --verbose          Detailed output`,
+      `  node ${root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js --quiet            Summary only`,
+      `  node ${root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js --no-color         CI-friendly output`,
     ].join('\n') + '\n';
 
     write(helpText);

@@ -10,7 +10,7 @@ Drive the full orchestrator pipeline from "task 2 committed" through final-revie
 
 Behave as a **simulated orchestrator**. Signal events to `pipeline.js`, read `result.action` from stdout JSON, route exactly per the Action Routing Table, do not edit `state.json` directly, and honour the two-step `_started` → action-return protocol. Mediation happens out-of-band: read the review, judge findings, write the `## Orchestrator Addendum` + additive frontmatter, author the corrective Task Handoff, then signal the event.
 
-Full routing reference lives at `.claude/skills/orchestration/references/pipeline-guide.md` and `action-event-reference.md`. Load `corrective-playbook.md` now — iter-12 added the **Tiered Conformance Model** and **Finding Disposition by Status** sections, both directly relevant to this mission.
+Full routing reference lives at `.claude/skills/rad-orchestration/references/pipeline-guide.md` and `action-event-reference.md`. Load `corrective-playbook.md` now — iter-12 added the **Tiered Conformance Model** and **Finding Disposition by Status** sections, both directly relevant to this mission.
 
 ---
 
@@ -54,7 +54,7 @@ All paths are relative to the repo root unless noted.
 ### Step 1 — Bootstrap (resume)
 
 ```bash
-node .claude/skills/orchestration/scripts/pipeline.js \
+node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event start \
   --project-dir prompt-tests/code-review-rework-e2e/output/conformance-tiered/<RUN-FOLDER> \
   --config prompt-tests/code-review-rework-e2e/output/conformance-tiered/<RUN-FOLDER>/orchestration.yml
@@ -74,7 +74,7 @@ Signal `code_review_started` (two-step protocol), then spawn `@reviewer` with th
 
 ### Step 3 — Orchestrator mediation (in-session)
 
-Load `.claude/skills/orchestration/references/corrective-playbook.md`. Apply the **Tiered Conformance Model** + **Finding Disposition by Status** sections:
+Load `.claude/skills/rad-orchestration/references/corrective-playbook.md`. Apply the **Tiered Conformance Model** + **Finding Disposition by Status** sections:
 
 - **Budget check**: `phaseIter.iterations[0].task_loop.iterations[1].corrective_tasks.length === 0`. Budget not exhausted.
 - **Per-finding judgment**: FR-2 drift row traces to the Task Handoff's inlined FR-2 contract. Disposition: `action (drift)`. AD-1 on-track: `decline (on-track) — tracking for later scope`.
@@ -84,7 +84,7 @@ Load `.claude/skills/orchestration/references/corrective-playbook.md`. Apply the
 ### Step 4 — Signal `code_review_completed` (first attempt)
 
 ```bash
-node .claude/skills/orchestration/scripts/pipeline.js \
+node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event code_review_completed \
   --project-dir <...> \
   --config <...>/orchestration.yml \
