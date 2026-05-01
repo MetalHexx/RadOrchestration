@@ -57,18 +57,19 @@ node .claude/skills/rad-orchestration/scripts/pipeline.js \
 | `--phase <N>` | `phase` | `commit_started`, `commit_completed` |
 | `--task <N>` | `task` | `commit_started`, `commit_completed` |
 
-### migrate-to-v4.js
+### migrate-to-v5.ts
 
 ```bash
 # Default .claude root shown. Adjust if you configured a custom orch_root.
-node .claude/skills/rad-orchestration/scripts/migrate-to-v4.js <project-dir>
+npx tsx .claude/skills/rad-orchestration/scripts/migrate-to-v5.ts --project-dir <project-dir>
 ```
 
-| Argument | Required | Description |
+| Flag | Required | Description |
 |----------|----------|-------------|
-| `<project-dir>` | Yes | Absolute path to project directory containing `state.json` |
+| `--project-dir <path>` | Yes | Absolute path to project directory containing `state.json` |
+| `--dry-run` | No | Preview the migration without writing changes |
 
-Migrates a project’s `state.json` from an older schema version (v1–v3) to v4 format. Creates a backup of the original file (e.g., `state.3.json.bak`) before migrating and validates the result against the v4 JSON Schema.
+Migrates a project’s `state.json` from an older schema version (v1–v4) to v5 format and validates the result against the v5 JSON Schema.
 
 ---
 
