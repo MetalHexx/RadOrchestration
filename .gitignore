@@ -54,6 +54,12 @@ node_modules/
 !/prompt-tests/execute-coding-task-e2e/output/tdd-slip/baseline-*/lint-report.md
 !/prompt-tests/execute-coding-task-e2e/output/tdd-slip/baseline-*/run-notes.md
 
+# Prompt harness — repo-skill-discovery-e2e.
+/prompt-tests/repo-skill-discovery-e2e/output/*/*/**
+!/prompt-tests/repo-skill-discovery-e2e/output/*/.gitkeep
+!/prompt-tests/repo-skill-discovery-e2e/output/skill-disco-fixture/baseline-*/lint-report.md
+!/prompt-tests/repo-skill-discovery-e2e/output/skill-disco-fixture/baseline-*/run-notes.md
+
 # Private documentation — internal use only
 /docs/internals/_private/
 
