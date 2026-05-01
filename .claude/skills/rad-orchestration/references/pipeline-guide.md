@@ -161,7 +161,7 @@ If the pipeline exits with code 1, the result contains error details:
 **On every `success: false` result:**
 
 1. **Classify** the error using the table above
-2. **Log the error**: Invoke the `log-error` skill to append a structured entry to `{NAME}-ERROR-LOG.md` in the project directory (e.g., `{base_path}/MYAPP/MYAPP-ERROR-LOG.md`). Populate the entry fields from the pipeline result:
+2. **Log the error**: Invoke the `rad-log-error` skill to append a structured entry to `{NAME}-ERROR-LOG.md` in the project directory (e.g., `{base_path}/MYAPP/MYAPP-ERROR-LOG.md`). Populate the entry fields from the pipeline result:
    - **Pipeline Event**: from `result.event`
    - **Pipeline Action**: from `result.action` (or `N/A` if not present)
    - **Severity**: classify using the skill's severity guide (`critical` = blocks execution, `high` = incorrect state, `medium` = degraded behavior, `low` = cosmetic)

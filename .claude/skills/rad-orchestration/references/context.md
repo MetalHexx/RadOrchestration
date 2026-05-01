@@ -56,7 +56,7 @@ Contents:
 - Planning docs: `MASTER-PLAN.md` (inlined phase + task plan written by `@planner`), `REQUIREMENTS.md` (lean project-level ledger written by `@planner`)
 - Execution docs: `phases/`, `tasks/`, `reports/`
 - State: `state.json`
-- Error log: `ERROR-LOG.md` (append-only, created by `@orchestrator` via `log-error` skill)
+- Error log: `ERROR-LOG.md` (append-only, created by `@orchestrator` via `rad-log-error` skill)
 
 ## Naming Conventions
 

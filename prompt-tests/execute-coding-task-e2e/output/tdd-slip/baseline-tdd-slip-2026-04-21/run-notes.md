@@ -18,4 +18,4 @@ This file is a placeholder. The inaugural run of the `execute-coding-task-e2e` h
 
 ## Why a placeholder
 
-Iter-13's inner session scope is the `execute-coding-task` SKILL.md rewrite, ripple-doc edits, unit/integration tests, and the harness fixture scaffolding itself. Running the harness live inside the inner session would require an additional executor spawn round-trip whose output has no reviewer verifier in this harness (the executor IS the agent under test). The plan defers the inaugural capture so an operator can run it cleanly in a fresh session after the iter-13 PR merges and the rewritten SKILL.md is in effect.
+Iter-13's inner session scope is the `rad-execute-coding-task` SKILL.md rewrite, ripple-doc edits, unit/integration tests, and the harness fixture scaffolding itself. Running the harness live inside the inner session would require an additional executor spawn round-trip whose output has no reviewer verifier in this harness (the executor IS the agent under test). The plan defers the inaugural capture so an operator can run it cleanly in a fresh session after the iter-13 PR merges and the rewritten SKILL.md is in effect.

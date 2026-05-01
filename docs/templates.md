@@ -20,7 +20,7 @@ Each skill that produces a document bundles one or more templates in its `templa
 
 | Template | Skill | Description |
 |----------|-------|-------------|
-| [`BRAINSTORMING.md`](../.claude/skills/brainstorm/templates/BRAINSTORMING.md) | `brainstorm` | Collaborative ideation and project goal refinement |
+| [`BRAINSTORMING.md`](../.claude/skills/rad-brainstorm/templates/BRAINSTORMING.md) | `rad-brainstorm` | Collaborative ideation and project goal refinement |
 | [`RESEARCH-FINDINGS.md`](../.claude/skills/research-codebase/templates/RESEARCH-FINDINGS.md) | `research-codebase` | Codebase analysis, patterns, constraints, and recommendations |
 | [`PRD.md`](../.claude/skills/create-prd/templates/PRD.md) | `create-prd` | Product requirements with user stories, functional and non-functional requirements |
 | [`DESIGN.md`](../.claude/skills/rad-create-plans/references/design/templates/DESIGN.md) | `rad-create-plans` | Full UX design — per-component layouts (heading-per-item), interaction states, optional tokens and accessibility |
@@ -40,16 +40,16 @@ Each skill that produces a document bundles one or more templates in its `templa
 
 | Template | Skill | Description |
 |----------|-------|-------------|
-| [`task-review/template.md`](../.claude/skills/code-review/task-review/template.md) | `code-review` | Task-level code review with verdict, checklist, and issues |
-| [`phase-review/template.md`](../.claude/skills/code-review/phase-review/template.md) | `code-review` | Phase-level integration review with cross-task assessment |
-| [`final-review/template.md`](../.claude/skills/code-review/final-review/template.md) | `code-review` | Project-level final review with architectural integrity and P0 requirement coverage |
+| [`task-review/template.md`](../.claude/skills/rad-code-review/task-review/template.md) | `rad-code-review` | Task-level code review with verdict, checklist, and issues |
+| [`phase-review/template.md`](../.claude/skills/rad-code-review/phase-review/template.md) | `rad-code-review` | Phase-level integration review with cross-task assessment |
+| [`final-review/template.md`](../.claude/skills/rad-code-review/final-review/template.md) | `rad-code-review` | Project-level final review with architectural integrity and P0 requirement coverage |
 
 ## Meta Templates
 
 | Template | Skill | Description |
 |----------|-------|-------------|
-| [`ERROR-LOG.md`](../.claude/skills/log-error/templates/ERROR-LOG.md) | `log-error` | Append-only pipeline error log with numbered entries |
-| [`AGENT.md`](../.claude/skills/create-agent/templates/AGENT.md) | `create-agent` | Agent definition file scaffold for new custom agents |
+| [`ERROR-LOG.md`](../.claude/skills/rad-log-error/templates/ERROR-LOG.md) | `rad-log-error` | Append-only pipeline error log with numbered entries |
+| [`AGENT.md`](../.claude/skills/rad-create-agent/templates/AGENT.md) | `rad-create-agent` | Agent definition file scaffold for new custom agents |
 
 ## Design Variants
 

@@ -53,6 +53,8 @@ description: '<What it does>. Use when <specific triggers, scenarios, keywords u
 | `metadata` | No | Key-value pairs for additional properties |
 | `allowed-tools` | No | Space-delimited list of pre-approved tools (experimental) |
 
+> **Reserved namespace.** The `rad-` prefix is reserved for skills shipped by the orchestration system. Do not author downstream skills under the `rad-*` name; the planner-spawn manifest filter excludes them by design. See `CLAUDE.md` for the full reservation note.
+
 #### Description Best Practices
 
 **CRITICAL**: The `description` is the PRIMARY mechanism for automatic skill discovery. Include:

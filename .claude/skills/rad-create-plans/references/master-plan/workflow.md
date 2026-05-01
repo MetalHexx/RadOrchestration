@@ -55,7 +55,7 @@ becomes task-local and action-oriented.
     - Re-emit the Master Plan with the correction. Other content stays as
       before unless explicitly impacted by the formatting fix.
     - The recovery loop has a hardcoded cap of 3 retries. After the cap, the
-      pipeline halts via `log-error` for manual intervention. Do not attempt
+      pipeline halts via `rad-log-error` for manual intervention. Do not attempt
       new approaches on retry 3+; focus narrowly on fixing the exact parse
       error.
 

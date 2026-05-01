@@ -36,7 +36,7 @@ The Brainstormer works directly with the human in a conversational loop — aski
 
 **Output:** `BRAINSTORMING.md` — validated ideas, scope boundaries, target users, and problem statements.
 
-**Skills:** `orchestration`, `brainstorm`
+**Skills:** `rad-orchestration`, `rad-brainstorm`
 
 ---
 
@@ -49,7 +49,7 @@ The Orchestrator is the entry point for all project interactions. It signals eve
 **Input:** Human prompts, `state.json`, pipeline script results
 **Output:** None — strictly read-only, prompts agents to do work.
 
-**Skills:** `orchestration`, `log-error`
+**Skills:** `rad-orchestration`, `rad-log-error`
 
 ---
 
@@ -63,7 +63,7 @@ The Research agent analyzes the existing project structure, technology stack, pa
 
 **Output:** `RESEARCH-FINDINGS.md` — codebase analysis, technology inventory, patterns discovered, constraints, and recommendations.
 
-**Skills:** `orchestration`, `rad-create-plans`
+**Skills:** `rad-orchestration`, `rad-create-plans`
 
 ---
 
@@ -77,7 +77,7 @@ Translates technical research and brainstorming output into structured requireme
 
 **Output:** `PRD.md` — functional requirements, non-functional requirements, user stories, etc.
 
-**Skills:** `orchestration`, `rad-create-plans`
+**Skills:** `rad-orchestration`, `rad-create-plans`
 
 ---
 
@@ -91,7 +91,7 @@ Defines user flows, component layouts, interaction states, and accessibility req
 
 **Output:** `DESIGN.md` — per-component layouts, interaction states, user flows with unique signal (error recovery, branching, state transitions).
 
-**Skills:** `orchestration`, `rad-create-plans`
+**Skills:** `rad-orchestration`, `rad-create-plans`
 
 ---
 
@@ -105,7 +105,7 @@ The Architect reads Research, PRD, and Design to produce the technical architect
 
 **Output:** `ARCHITECTURE.md`, `MASTER-PLAN.md`
 
-**Skills:** `orchestration`, `create-architecture`, `create-master-plan`
+**Skills:** `rad-orchestration`, `create-architecture`, `create-master-plan`
 
 ---
 
@@ -125,7 +125,7 @@ The Tactical Planner is a pure planning agent that operates in 3 modes:
 
 **Output:**`PHASE-PLAN.md`, `PHASE-REPORT.md`, `TASK-HANDOFF.md`
 
-**Skills:** `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report`
+**Skills:** `rad-orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report`
 
 ---
 
@@ -141,7 +141,7 @@ The Planner is a single agent with two internal modes, routed by orchestrator ac
 
 **Output:** `REQUIREMENTS.md` (project-level FR/NFR/AD/DD ledger) and `EXECUTION-PLAN.md` (phase + task inlined plan)
 
-**Skills:** `orchestration`, `rad-create-plans`, `log-error`
+**Skills:** `rad-orchestration`, `rad-create-plans`, `rad-log-error`
 
 ---
 
@@ -155,7 +155,7 @@ Reads a single Task Handoff, implements the code changes, writes tests, and runs
 
 **Output:** Source code, tests
 
-**Skills:** `orchestration`, `execute-coding-task`, `run-tests`
+**Skills:** `rad-orchestration`, `rad-execute-coding-task`, `rad-run-tests`
 
 ---
 
@@ -169,7 +169,7 @@ The Junior Coder reads a single Task Handoff, implements well-defined code chang
 
 **Output:** Source code, tests
 
-**Skills:** `orchestration`, `execute-coding-task`, `run-tests`
+**Skills:** `rad-orchestration`, `rad-execute-coding-task`, `rad-run-tests`
 
 ---
 
@@ -183,7 +183,7 @@ The Senior Coder handles architecturally significant, nuanced, or cross-cutting 
 
 **Output:** Source code, tests
 
-**Skills:** `orchestration`, `execute-coding-task`, `run-tests`
+**Skills:** `rad-orchestration`, `rad-execute-coding-task`, `rad-run-tests`
 
 ---
 
@@ -202,15 +202,15 @@ The Reviewer operates at three levels:
 
 **Output:** `CODE-REVIEW.md`, `PHASE-REVIEW.md`, `FINAL-REVIEW.md`
 
-**Skills:** `orchestration`, `code-review`
+**Skills:** `rad-orchestration`, `rad-code-review`
 
 ---
 
 ### @source-control
 
-**Purpose:** Execute git commit and push operations after approved tasks, delegating all logic to the `source-control` skill.
+**Purpose:** Execute git commit and push operations after approved tasks, delegating all logic to the `rad-source-control` skill.
 
-The Source Control Agent is a thin router — it loads the `source-control` skill and delegates entirely to the skill's routing table. In commit mode, it reads `pipeline.source_control` from state, constructs a conventional commit message, and runs `git-commit.js` to stage, commit, and push. In PR mode, it reads `pr-guide.md` and runs `gh-pr.js` to detect or create a pull request on GitHub.
+The Source Control Agent is a thin router — it loads the `rad-source-control` skill and delegates entirely to the skill's routing table. In commit mode, it reads `pipeline.source_control` from state, constructs a conventional commit message, and runs `git-commit.js` to stage, commit, and push. In PR mode, it reads `pr-guide.md` and runs `gh-pr.js` to detect or create a pull request on GitHub.
 
 **Modes:**
 
@@ -225,7 +225,7 @@ The Source Control Agent is a thin router — it loads the `source-control` skil
 
 **Output:** Structured commit result (commit hash, push status, errors) signaled back via `commit_completed` event.
 
-**Skills:** `orchestration`, `source-control`
+**Skills:** `rad-orchestration`, `rad-source-control`
 
 ## Next Steps
 
