@@ -13,9 +13,9 @@ allowedTools:
   - Bash
   - TodoWrite
 skills: 
-  - orchestration
-  - execute-coding-task
-  - run-tests
+  - rad-orchestration
+  - rad-execute-coding-task
+  - rad-run-tests
 ---
 
 # Senior Coder Agent

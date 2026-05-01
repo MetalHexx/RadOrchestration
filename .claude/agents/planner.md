@@ -13,7 +13,7 @@ allowedTools:
   - TodoWrite
 skills: 
   - rad-create-plans  
-  - log-error
+  - rad-log-error
 ---
 
 # Planner Agent

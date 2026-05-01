@@ -1,5 +1,5 @@
 ---
-name: run-tests
+name: rad-run-tests
 description: 'Run the project test suite and report results. Use when executing tests, running unit tests, integration tests, validating code changes, checking test coverage, or verifying acceptance criteria. Provides structured test execution with pass/fail reporting and error details.'
 user-invocable: false
 ---

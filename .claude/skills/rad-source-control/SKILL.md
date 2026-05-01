@@ -1,5 +1,5 @@
 ---
-name: source-control
+name: rad-source-control
 description: 'Source control operations — commit code or open a PR. All inputs come from the spawn prompt.'
 user-invocable: true
 ---

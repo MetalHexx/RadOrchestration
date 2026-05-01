@@ -13,7 +13,7 @@ allowedTools:
   - Bash
   - TodoWrite
 skills:
-  - code-review
+  - rad-code-review
 ---
 
 # Reviewer Agent
