@@ -58,7 +58,7 @@ async function test(description, fn) {
   await test('printHelp(".agents") — usage line uses ".agents" prefix and no .github reference', async () => {
     const out = captureStdout(() => printHelp('.agents'));
     assert.ok(
-      out.includes('node .agents/skills/rad-orchestration/scripts/validate/validate-orchestration.js'),
+      out.includes('node .agents/skills/rad-orchestration/validate/validate-orchestration.js'),
       `Usage line should contain ".agents/skills/..." but got:\n${out}`
     );
     assert.ok(
@@ -77,11 +77,11 @@ async function test(description, fn) {
   });
 
   // Test 3: 6 total occurrences (1 usage + 5 example lines) of custom root
-  await test('printHelp(".agents") — 6 occurrences of ".agents/skills/rad-orchestration/scripts/validate/validate-orchestration" (1 usage + 5 examples)', async () => {
+  await test('printHelp(".agents") — 6 occurrences of ".agents/skills/rad-orchestration/validate/validate-orchestration" (1 usage + 5 examples)', async () => {
     const out = captureStdout(() => printHelp('.agents'));
-    const count = (out.match(/\.agents\/skills\/rad-orchestration\/scripts\/validate\/validate-orchestration/g) || []).length;
+    const count = (out.match(/\.agents\/skills\/rad-orchestration\/validate\/validate-orchestration/g) || []).length;
     assert.strictEqual(count, 6,
-      `Expected 6 occurrences of ".agents/skills/rad-orchestration/scripts/validate/validate-orchestration" but found ${count}`
+      `Expected 6 occurrences of ".agents/skills/rad-orchestration/validate/validate-orchestration" but found ${count}`
     );
   });
 
@@ -89,7 +89,7 @@ async function test(description, fn) {
   await test('printHelp() — no argument falls back to ".claude" (backward compatibility)', async () => {
     const out = captureStdout(() => printHelp());
     assert.ok(
-      out.includes('node .claude/skills/rad-orchestration/scripts/validate/validate-orchestration.js'),
+      out.includes('node .claude/skills/rad-orchestration/validate/validate-orchestration.js'),
       `Usage line should contain ".claude/skills/..." but got:\n${out}`
     );
   });
@@ -107,7 +107,7 @@ async function test(description, fn) {
   await test('printHelp(".copilot") — arbitrary root is substituted correctly', async () => {
     const out = captureStdout(() => printHelp('.copilot'));
     assert.ok(
-      out.includes('.copilot/skills/rad-orchestration/scripts/validate/validate-orchestration.js'),
+      out.includes('.copilot/skills/rad-orchestration/validate/validate-orchestration.js'),
       `Output should contain ".copilot/skills/..." but got:\n${out}`
     );
   });

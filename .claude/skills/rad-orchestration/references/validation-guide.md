@@ -26,7 +26,7 @@ A zero-dependency Node.js CLI tool that validates all `{orch_root}/` orchestrati
 ### Run Full Validation
 
 ```bash
-node {orch_root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js
+node {orch_root}/skills/rad-orchestration/validate/validate-orchestration.js
 ```
 
 Validates all orchestration files and prints grouped results with a final summary bar.
@@ -49,22 +49,22 @@ Valid category names: `structure`, `agents`, `skills`, `config`, `instructions`,
 
 ```bash
 # Check a specific category
-node {orch_root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js --category structure
-node {orch_root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js --category agents
-node {orch_root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js --category cross-references
+node {orch_root}/skills/rad-orchestration/validate/validate-orchestration.js --category structure
+node {orch_root}/skills/rad-orchestration/validate/validate-orchestration.js --category agents
+node {orch_root}/skills/rad-orchestration/validate/validate-orchestration.js --category cross-references
 
 # Verbose debugging
-node {orch_root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js --verbose
+node {orch_root}/skills/rad-orchestration/validate/validate-orchestration.js --verbose
 
 # Plain-text output (CI-friendly)
-node {orch_root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js --no-color
+node {orch_root}/skills/rad-orchestration/validate/validate-orchestration.js --no-color
 
 # Quiet mode (summary only)
-node {orch_root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js --quiet
+node {orch_root}/skills/rad-orchestration/validate/validate-orchestration.js --quiet
 
 # Combining flags
-node {orch_root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js --verbose --no-color --category agents
-node {orch_root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js --quiet --no-color
+node {orch_root}/skills/rad-orchestration/validate/validate-orchestration.js --verbose --no-color --category agents
+node {orch_root}/skills/rad-orchestration/validate/validate-orchestration.js --quiet --no-color
 ```
 
 Special case: If both `--verbose` and `--quiet` are provided, `--quiet` wins (only summary bar printed).
@@ -143,7 +143,7 @@ Validates consistency between orchestration files using context built by earlier
 Use exit codes in CI/CD scripts:
 
 ```bash
-node {orch_root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js
+node {orch_root}/skills/rad-orchestration/validate/validate-orchestration.js
 if [ $? -ne 0 ]; then
   echo "Validation failed — fix errors above and retry."
   exit 1
@@ -195,7 +195,7 @@ Checks run in the fixed order defined in the validator entry point. Do not reord
 
 **Solutions**:
 - Ensure you're running from the workspace root (where `{orch_root}/` exists)
-- Check that the tool path is correct: `node {orch_root}/skills/rad-orchestration/scripts/validate/validate-orchestration.js`
+- Check that the tool path is correct: `node {orch_root}/skills/rad-orchestration/validate/validate-orchestration.js`
 - Verify `{orch_root}/` is not in `.gitignore`
 
 ### "Invalid frontmatter" for valid-looking files
