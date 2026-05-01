@@ -64,7 +64,7 @@ Entries above are a catalog. Read a listed path directly when its description ma
 The heading string is contractual — `## Repository Skills Available`, no alternative phrasings. Manifest invocation occurs on every planner spawn; do not cache the output between spawns (AD-12). Wired only for the planner — coder, reviewer, source-control, and brainstormer spawns are unchanged (AD-10).
 
 ## Skills
-- **`orchestration`**: Load for full pipeline context — event loop, action routing table
+- **`rad-orchestration`**: Load for full pipeline context — event loop, action routing table
   (16 actions), event signaling reference, CLI usage, error handling, orchRoot
   configuration, spawning subagents protocol, and status reporting convention.
   Read `pipeline-guide.md` for the complete operational reference;
