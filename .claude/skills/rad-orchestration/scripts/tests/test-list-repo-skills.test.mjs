@@ -16,13 +16,18 @@ writeSkill('.claude/skills/rad-orchestration', 'rad-orchestration', 'system skil
 writeSkill('.claude/skills/eligible-inside', 'eligible-inside', 'eligible inside .claude');
 writeSkill('packages/foo/skills/eligible-outside', 'eligible-outside', 'eligible outside .claude');
 writeSkill('.claude/skills/no-invoke', 'no-invoke', 'has disable-model-invocation true', 'disable-model-invocation: true\n');
+writeSkill('.claude/skills/quoted-true-single', 'quoted-true-single', 'has disable-model-invocation single-quoted', "disable-model-invocation: 'true'\n");
+writeSkill('.claude/skills/quoted-true-double', 'quoted-true-double', 'has disable-model-invocation double-quoted', 'disable-model-invocation: "true"\n');
 mkdirSync(path.join(root, 'node_modules/skip'), { recursive: true });
 writeFileSync(path.join(root, 'node_modules/skip/SKILL.md'), '---\nname: should-be-skipped\ndescription: under node_modules\n---\n');
 const res = spawnSync(process.execPath, [scriptPath], { cwd: root, encoding: 'utf8' });
 assert.equal(res.status, 0, `script exited non-zero: ${res.stderr}`);
 const arr = JSON.parse(res.stdout);
-assert.equal(arr.length, 2, `expected 2 eligible entries, got ${arr.length}: ${JSON.stringify(arr)}`);
-assert.deepEqual(arr.map(x => x.name).sort(), ['eligible-inside', 'eligible-outside']);
+assert.equal(arr.length, 4, `expected 4 eligible entries, got ${arr.length}: ${JSON.stringify(arr)}`);
+assert.deepEqual(
+  arr.map(x => x.name).sort(),
+  ['eligible-inside', 'eligible-outside', 'quoted-true-double', 'quoted-true-single']
+);
 for (const entry of arr) {
   assert.ok(path.isAbsolute(entry.path), `path must be absolute: ${entry.path}`);
   assert.ok(entry.path.endsWith('SKILL.md'), `path must end with SKILL.md: ${entry.path}`);
