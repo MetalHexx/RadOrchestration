@@ -66,6 +66,15 @@ becomes task-local and action-oriented.
    use, and any existing patterns the plan must follow. Grep / Glob / Read —
    no survey-level exploration.
 
+2a. If your spawn prompt carried a `## Repository Skills Available` section,
+    treat it as a discovery surface alongside Grep/Glob/Read. Scan the JSON
+    array for entries whose `description` matches the work you are about to
+    plan; `Read` each matching entry's absolute `path` directly (no Grep/Glob
+    hunt — the manifest path is authoritative). Inline any commands,
+    conventions, or code patterns the consulted skill prescribes into the
+    relevant tasks under their requirement IDs. Absence of the section means
+    no eligible repo skills exist; proceed normally.
+
 3. Decide the phase and task breakdown. Phases group work by natural seam
    (layer boundary, independently deliverable slice). Tasks within a phase are
    the smallest unit a single coder agent will execute end-to-end.
