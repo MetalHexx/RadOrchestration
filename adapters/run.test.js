@@ -55,7 +55,10 @@ test('runAdapter copies skill subfolders verbatim', async () => {
 test('runAdapter emits manifest.json with one entry per emitted file', async () => {
   const canonical = fixtureCanonical();
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
-  await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.2.3' });
+  const result = await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.2.3' });
+  assert.strictEqual(result.agentCount, 1, 'returns agent count');
+  assert.strictEqual(result.skillCount, 2, 'returns skill count (SKILL.md + 1 reference file)');
+  assert.strictEqual(result.fileCount, 3, 'returns total file count');
   const manifest = JSON.parse(fs.readFileSync(path.join(out, 'fake', 'manifest.json'), 'utf8'));
   const paths = manifest.files.map((f) => f.bundlePath).sort();
   assert.deepStrictEqual(paths, [
@@ -68,6 +71,26 @@ test('runAdapter emits manifest.json with one entry per emitted file', async () 
   assert.strictEqual(agentEntry.version, '1.2.3');
   assert.strictEqual(agentEntry.harness, 'fake');
   assert.strictEqual(agentEntry.sourcePath, 'agents/sample.md');
+});
+
+test('runAdapter emits per-file output only when BUILD_VERBOSE=1', async () => {
+  const canonical = fixtureCanonical();
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
+  const messages = [];
+  const origLog = console.log;
+  console.log = (msg) => { messages.push(String(msg)); };
+  try {
+    delete process.env.BUILD_VERBOSE;
+    await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.2.3' });
+    assert.strictEqual(messages.length, 0, 'no per-file output when env var unset');
+
+    process.env.BUILD_VERBOSE = '1';
+    await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.2.3' });
+    assert.ok(messages.length > 0, 'verbose mode prints per-file output');
+  } finally {
+    console.log = origLog;
+    delete process.env.BUILD_VERBOSE;
+  }
 });
 
 test('runAdapter writes manifest as a sibling of the bundle dir, keyed on adapter.name', async () => {

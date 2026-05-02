@@ -1,5 +1,5 @@
 // scripts/build-integration.test.js — End-to-end: every adapter produces a
-// well-formed manifest stream that MULTI-HARNESS-2 can reason over (FR-18).
+// well-formed manifest stream that MULTI-HARNESS-2 can reason over.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

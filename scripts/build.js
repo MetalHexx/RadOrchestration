@@ -58,13 +58,13 @@ async function main() {
   const version = readVersion();
 
   for (const adapter of selected) {
-    const { fileCount } = await runAdapter(adapter, {
+    const { agentCount, skillCount } = await runAdapter(adapter, {
       canonicalRoot: repoRoot,
       outputRoot: repoRoot,
       version,
     });
     // One-line success per harness.
-    console.log(`Built ${adapter.name}: ${fileCount} files → ${adapter.targetDir}/`);
+    console.log(`Built ${adapter.name}: ${agentCount} agents, ${skillCount} skills → ${adapter.targetDir}/`);
   }
 }
 

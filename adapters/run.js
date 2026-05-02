@@ -16,12 +16,15 @@ import path from 'node:path';
  * Uses file copies (not symlinks) for cross-platform parity.
  */
 export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }) {
+  const verbose = process.env.BUILD_VERBOSE === '1';
   const targetRoot = path.join(outputRoot, adapter.targetDir);
   fs.rmSync(targetRoot, { recursive: true, force: true });
   fs.mkdirSync(targetRoot, { recursive: true });
 
   /** @type {MetadataStreamEntry[]} */
   const files = [];
+  let agentCount = 0;
+  let skillCount = 0;
 
   // Agents
   const agentsSrc = path.join(canonicalRoot, 'agents');
@@ -38,13 +41,16 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }
       );
       const outName = adapter.filenameRule({ kind: 'agent', canonicalName });
       fs.writeFileSync(path.join(agentsOut, outName), projected, 'utf8');
+      const bundlePath = path.posix.join('agents', outName);
       files.push({
-        bundlePath: path.posix.join('agents', outName),
+        bundlePath,
         sourcePath,
         ownership: 'orchestration-system',
         version,
         harness: adapter.name,
       });
+      agentCount++;
+      if (verbose) console.log(`  ${adapter.name}: ${bundlePath}`);
     }
   }
 
@@ -75,22 +81,28 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }
           const outName = adapter.filenameRule({ kind: 'skill', canonicalName: skillName });
           const destPath = path.join(skillOutDir, outName);
           fs.writeFileSync(destPath, projected, 'utf8');
+          const bundlePath = path.posix.join('skills', skillName, outName);
           files.push({
-            bundlePath: path.posix.join('skills', skillName, outName),
+            bundlePath,
             sourcePath: path.posix.join('skills', skillName, 'SKILL.md'),
             ownership: 'orchestration-system',
             version,
             harness: adapter.name,
           });
+          skillCount++;
+          if (verbose) console.log(`  ${adapter.name}: ${bundlePath}`);
         } else {
           fs.cpSync(absSrc, absDest);
+          const bundlePath = path.posix.join('skills', skillName, rel.split(path.sep).join('/'));
           files.push({
-            bundlePath: path.posix.join('skills', skillName, rel.split(path.sep).join('/')),
+            bundlePath,
             sourcePath: path.posix.join('skills', skillName, rel.split(path.sep).join('/')),
             ownership: 'orchestration-system',
             version,
             harness: adapter.name,
           });
+          skillCount++;
+          if (verbose) console.log(`  ${adapter.name}: ${bundlePath}`);
         }
       };
       for (const child of fs.readdirSync(skillSrcDir)) walk(child);
@@ -105,7 +117,12 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }
     'utf8',
   );
 
-  return { harness: adapter.name, fileCount: files.length };
+  return {
+    harness: adapter.name,
+    agentCount,
+    skillCount,
+    fileCount: files.length,
+  };
 }
 
 // ── Frontmatter helpers (regex-based YAML — no AST parser) ──────────
