@@ -1,0 +1,151 @@
+template:
+  id: quick
+  version: "1.0.0"
+  description: "Quick orchestration pipeline — default minus per-task code review, per-task gate, phase review, and phase gate. Planning, plan approval, final review, and final approval are preserved."
+
+# ── Display & Routing Fields ─────────────────────────────────────────────────
+# Informational field (not consumed by the v5 DAG engine at runtime):
+#
+#   label            - Human-readable display name for each node. The engine
+#                      uses the `id` field for node identity and routing.
+#
+# Consumed field (read by the v5 DAG engine at runtime):
+#
+#   action_if_needed - On gate nodes, specifies the action to dispatch when
+#                      the gate is active.
+# ─────────────────────────────────────────────────────────────────────────────
+
+nodes:
+
+  # ── Planning Steps ────────────────────────────────────────────────────────
+
+  - id: requirements
+    kind: step
+    label: "Requirements"
+    action: spawn_requirements
+    events: { started: requirements_started, completed: requirements_completed }
+    context: { step: requirements }
+    doc_output_field: doc_path
+    depends_on: []
+
+  - id: master_plan
+    kind: step
+    label: "Master Plan"
+    action: spawn_master_plan
+    events: { started: master_plan_started, completed: master_plan_completed }
+    context: { step: master_plan }
+    doc_output_field: doc_path
+    depends_on: [requirements]
+
+  - id: explode_master_plan
+    kind: step
+    label: "Explode Master Plan"
+    action: explode_master_plan
+    # `failed` event routed out-of-band — see OUT_OF_BAND_EVENTS in scripts/lib/constants.ts.
+    # buildEventIndex does not register step-level `failed` events, so the engine routes
+    # `explosion_failed` through the out-of-band path instead of the template event index.
+    events: { started: explosion_started, completed: explosion_completed }
+    context: { step: explode_master_plan }
+    depends_on: [master_plan]
+
+  # ── Plan Approval Gate ────────────────────────────────────────────────────
+
+  - id: plan_approval_gate
+    kind: gate
+    label: "Plan Approval Gate"
+    mode_ref: human_gates.after_planning
+    action_if_needed: request_plan_approval
+    approved_event: plan_approved
+    auto_approve_modes: []
+    depends_on: [explode_master_plan]
+
+  # ── Gate Mode Selection ───────────────────────────────────────────────────
+
+  - id: gate_mode_selection
+    kind: gate
+    label: "Gate Mode Selection"
+    mode_ref: human_gates.execution_mode
+    action_if_needed: gate_task
+    approved_event: gate_mode_set
+    auto_approve_modes: [task, phase, autonomous]
+    depends_on: [plan_approval_gate]
+
+  # ── Phase Execution Loop ──────────────────────────────────────────────────
+
+  - id: phase_loop
+    kind: for_each_phase
+    label: "Phase Execution Loop"
+    source_doc_ref: "$.nodes.master_plan.doc_path"
+    total_field: total_phases
+    depends_on: [gate_mode_selection]
+    body:
+
+      - id: task_loop
+        kind: for_each_task
+        label: "Task Execution Loop"
+        source_doc_ref: "$.current_phase.doc_path"
+        tasks_field: tasks
+        depends_on: []
+        body:
+
+          - id: task_executor
+            kind: step
+            label: "Execute Task"
+            action: execute_task
+            events: { started: execution_started, completed: task_completed }
+            depends_on: []
+
+          - id: commit_gate
+            kind: conditional
+            label: "Auto-Commit"
+            condition:
+              state_ref: pipeline.source_control.auto_commit
+              operator: neq
+              value: never
+            branches:
+              true:
+                - id: commit
+                  kind: step
+                  label: "Source Control Commit"
+                  action: invoke_source_control_commit
+                  events: { started: commit_started, completed: commit_completed }
+                  depends_on: []
+              false: []
+            depends_on: [task_executor]
+
+  # ── Final Review ──────────────────────────────────────────────────────────
+
+  - id: final_review
+    kind: step
+    label: "Final Review"
+    action: spawn_final_reviewer
+    events: { started: final_review_started, completed: final_review_completed }
+    doc_output_field: doc_path
+    depends_on: [phase_loop]
+
+  - id: pr_gate
+    kind: conditional
+    label: "Auto-PR Gate"
+    condition:
+      state_ref: pipeline.source_control.auto_pr
+      operator: neq
+      value: never
+    branches:
+      true:
+        - id: final_pr
+          kind: step
+          label: "Source Control PR"
+          action: invoke_source_control_pr
+          events: { started: pr_requested, completed: pr_created }
+          depends_on: []
+      false: []
+    depends_on: [final_review]
+
+  - id: final_approval_gate
+    kind: gate
+    label: "Final Approval Gate"
+    mode_ref: human_gates.after_final_review
+    action_if_needed: request_final_approval
+    approved_event: final_approved
+    auto_approve_modes: []
+    depends_on: [pr_gate]
