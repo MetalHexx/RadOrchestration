@@ -145,7 +145,7 @@ export async function main() {
       }
     }
 
-    const manifest = getManifest(config.orchRoot);
+    const manifest = getManifest(config.orchRoot, config.tool);
     renderPreInstallSummary(config);
 
     // Pre-install confirmation gate
