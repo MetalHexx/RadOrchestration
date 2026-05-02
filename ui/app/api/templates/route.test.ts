@@ -172,6 +172,19 @@ async function run() {
     assert.strictEqual(json.templates.length, 0);
   });
 
+  // --- GET: surfaces template.status in the response ---
+  await test('GET — surfaces template.status from YAML in each template summary', async () => {
+    const templateDir = path.join(tmpDir, '.github', 'skills', 'rad-orchestration', 'templates');
+    const deprecatedYaml = TEMPLATE_YAML.replace('description: A test template', 'description: A test template\n  status: deprecated');
+    await fsWriteFile(path.join(templateDir, 'old-template.yml'), deprecatedYaml, 'utf-8');
+    const res = await GET();
+    assert.strictEqual(res.status, 200);
+    const json = await res.json();
+    assert.strictEqual(json.templates.length, 1);
+    assert.strictEqual(json.templates[0].id, 'old-template');
+    assert.strictEqual(json.templates[0].status, 'deprecated');
+  });
+
   // --- POST: valid body returns 201 ---
   await test('POST — valid { id, content } returns 201 with { success: true, id }', async () => {
     const req = makePostRequest({ id: 'new-template', content: NEW_TEMPLATE_YAML });

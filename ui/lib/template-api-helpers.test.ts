@@ -171,6 +171,33 @@ describe('listTemplateFiles / readTemplateFile / writeTemplateFile / templateFil
     assert.deepEqual(ids, ['other-template', 'test-template']);
   });
 
+  it('listTemplateFiles populates status when template.status is set in YAML', async () => {
+    const fixtureWithStatus = `template:
+  id: deprecated-thing
+  version: "0.1"
+  description: An old template
+  status: deprecated
+nodes:
+  - id: step-1
+    kind: step
+    label: Test Step
+    depends_on: []
+    action: do-something
+`;
+    await writeFile(path.join(tmpDir, 'deprecated-thing.yml'), fixtureWithStatus, 'utf-8');
+    const result = await listTemplateFiles(tmpDir);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].id, 'deprecated-thing');
+    assert.equal(result[0].status, 'deprecated');
+  });
+
+  it('listTemplateFiles leaves status undefined when YAML has no template.status', async () => {
+    await writeFile(path.join(tmpDir, 'test-template.yml'), TEMPLATE_FIXTURE, 'utf-8');
+    const result = await listTemplateFiles(tmpDir);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].status, undefined);
+  });
+
   // readTemplateFile
 
   it('readTemplateFile returns rawYaml and definition for existing template', async () => {

@@ -45,11 +45,15 @@ export async function listTemplateFiles(templateDir: string): Promise<TemplateSu
     try {
       const content = await readFile(path.join(templateDir, entry), 'utf-8');
       const definition = parseYaml<TemplateDefinition>(content);
-      results.push({
+      const summary: TemplateSummary = {
         id,
         description: definition.template?.description ?? '',
         version: definition.template?.version ?? '',
-      });
+      };
+      if (definition.template?.status !== undefined) {
+        summary.status = definition.template.status;
+      }
+      results.push(summary);
     } catch (err) {
       console.warn('listTemplateFiles: skipping unparseable file', entry, err instanceof Error ? err.message : err);
     }
