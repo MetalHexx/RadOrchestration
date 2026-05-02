@@ -89,7 +89,7 @@ test('skillFrontmatter passes allowed-tools through (silently ignored by VS Code
   assert.strictEqual(out['allowed-tools'], 'Bash(git *)');
 });
 
-test('skillFrontmatter preserves rad-* prefix unchanged (FR-22)', () => {
+test('skillFrontmatter preserves rad-* prefix unchanged', () => {
   const out = adapter.skillFrontmatter({ name: 'rad-orchestration', description: 'd' }, { adapter });
   assert.strictEqual(out.name, 'rad-orchestration');
 });

@@ -64,7 +64,7 @@ export const adapter = {
   },
 
   skillFrontmatter(canonical) {
-    // Pass-through: rad-* names preserved (FR-22), allowed-tools emitted for
+    // Pass-through: rad-* names preserved; allowed-tools emitted for
     // cross-harness portability even though VS Code silently ignores it
     // (research §6.2 — confirmed via promptFileParser.ts).
     return { ...canonical };
