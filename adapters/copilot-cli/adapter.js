@@ -37,11 +37,36 @@ export const adapter = {
     return kind === 'agent' ? `${canonicalName}.agent.md` : 'SKILL.md';
   },
 
-  // Stubbed — P05-T02 fills in frontmatter projection.
   agentFrontmatter(canonical) {
-    return { ...canonical };
+    const out = { ...canonical };
+
+    // Tools: PascalCase string/list → lowercase alias list.
+    if (out.tools !== undefined) {
+      const items = Array.isArray(out.tools)
+        ? out.tools
+        : String(out.tools).split(',').map((t) => t.trim()).filter(Boolean);
+      out.tools = items.map((t) => TOOL_DICTIONARY[t] ?? t.toLowerCase());
+    }
+
+    // Drop Claude-only duplicate allowedTools.
+    delete out.allowedTools;
+
+    // Model: CLI rejects array syntax (research §3.A, copilot-cli #2133).
+    // Coerce array → first element, then resolve tier alias.
+    if (Array.isArray(out.model)) out.model = out.model[0];
+    if (out.model !== undefined && MODEL_ALIASES[out.model]) {
+      out.model = MODEL_ALIASES[out.model];
+    }
+
+    // Target: mark for CLI environment (research §3.A — `target: github-copilot`).
+    if (out.target === undefined) out.target = 'github-copilot';
+
+    return out;
   },
+
   skillFrontmatter(canonical) {
+    // Pass-through: rad-* names preserved, allowed-tools honored
+    // by CLI per research §3.B (`shell`, `bash` as documented values).
     return { ...canonical };
   },
 

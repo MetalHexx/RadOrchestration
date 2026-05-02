@@ -43,3 +43,54 @@ test('modelAliases use dot-versioned hyphenated ids per research §6.6', () => {
     opus: 'claude-opus-4.7',
   });
 });
+
+test('agentFrontmatter maps tools PascalCase → lowercase aliases', () => {
+  const out = adapter.agentFrontmatter(
+    { name: 'coder', description: 'Coder', model: 'sonnet', tools: 'Read, Bash, Edit' },
+    { adapter },
+  );
+  assert.deepStrictEqual(out.tools, ['read', 'execute', 'edit']);
+});
+
+test('agentFrontmatter remaps tier alias model → dot-versioned id', () => {
+  const out = adapter.agentFrontmatter(
+    { name: 'p', description: 'P', model: 'opus' },
+    { adapter },
+  );
+  assert.strictEqual(out.model, 'claude-opus-4.7');
+});
+
+test('agentFrontmatter coerces array model → first element (CLI rejects arrays per #2133)', () => {
+  const out = adapter.agentFrontmatter(
+    { name: 'p', description: 'P', model: ['opus', 'sonnet'] },
+    { adapter },
+  );
+  assert.strictEqual(typeof out.model, 'string');
+  assert.strictEqual(out.model, 'claude-opus-4.7');
+});
+
+test('agentFrontmatter adds target: github-copilot', () => {
+  const out = adapter.agentFrontmatter({ name: 'a', description: 'd' }, { adapter });
+  assert.strictEqual(out.target, 'github-copilot');
+});
+
+test('agentFrontmatter drops Claude-only allowedTools duplicate field', () => {
+  const out = adapter.agentFrontmatter(
+    { name: 'c', description: 'd', allowedTools: ['Read', 'Bash'] },
+    { adapter },
+  );
+  assert.ok(!('allowedTools' in out));
+});
+
+test('skillFrontmatter passes allowed-tools through (CLI honors it per §3.B)', () => {
+  const out = adapter.skillFrontmatter(
+    { name: 'rad-demo', description: 'd', 'allowed-tools': 'shell' },
+    { adapter },
+  );
+  assert.strictEqual(out['allowed-tools'], 'shell');
+});
+
+test('skillFrontmatter preserves rad-* prefix unchanged (FR-22)', () => {
+  const out = adapter.skillFrontmatter({ name: 'rad-orchestration', description: 'd' }, { adapter });
+  assert.strictEqual(out.name, 'rad-orchestration');
+});
