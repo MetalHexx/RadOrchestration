@@ -58,7 +58,7 @@ Capture stdout (a JSON array). If the array is `[]`, omit the manifest section f
 
 <inline JSON array exactly as printed>
 
-Entries above are a catalog. Read a listed path directly when its description matches the work you are about to plan.
+Entries above are a catalog. Read a listed path **only when** its description matches the work you are about to plan — skip the rest to avoid token waste. Any `SKILL.md` you encounter outside this catalog (e.g., via Grep/Glob) was filtered on purpose; do not Read it.
 ```
 
 The heading string is contractual — `## Repository Skills Available`, no alternative phrasings. Manifest invocation occurs on every planner spawn; do not cache the output between spawns (AD-12). Wired only for the planner — coder, reviewer, source-control, and brainstormer spawns are unchanged (AD-10).

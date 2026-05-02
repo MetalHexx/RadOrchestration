@@ -22,7 +22,7 @@ describe('context-enrichment manifest contract', () => {
       const arr = JSON.parse(manifestJson);
       if (arr.length === 0) return '';                                                    // FR-9
       return `\n\n## Repository Skills Available\n\n${manifestJson.trim()}\n\n` +         // FR-8, AD-6
-             `Entries above are a catalog. Read a listed path directly when its description matches the work you are about to plan.\n`; // DD-2
+             `Entries above are a catalog. Read a listed path **only when** its description matches the work you are about to plan — skip the rest to avoid token waste. Any \`SKILL.md\` you encounter outside this catalog (e.g., via Grep/Glob) was filtered on purpose; do not Read it.\n`; // DD-2
     }
 
     // Case A — repo with no eligible skills emits no heading.
@@ -40,7 +40,8 @@ describe('context-enrichment manifest contract', () => {
     raw = execFileSync(process.execPath, [scriptPath], { cwd: populated, encoding: 'utf8' });
     const suffix = renderSpawnSuffix(raw);
     assert.match(suffix, /^## Repository Skills Available$/m, 'heading must be the exact literal (AD-6)');
-    assert.match(suffix, /Entries above are a catalog\. Read a listed path directly/, 'orientation sentence must match DD-2 verbatim');
+    assert.match(suffix, /Entries above are a catalog\. Read a listed path \*\*only when\*\*/, 'orientation sentence must match DD-2 verbatim (read-on-match)');
+    assert.match(suffix, /outside this catalog .* was filtered on purpose; do not Read it/, 'orientation sentence must reinforce manifest authority (DD-2)');
     rmSync(populated, { recursive: true, force: true });
 
     // Case C — orchestrator agent file documents the manifest invocation contract.

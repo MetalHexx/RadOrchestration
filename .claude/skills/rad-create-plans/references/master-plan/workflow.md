@@ -70,7 +70,12 @@ becomes task-local and action-oriented.
     treat it as a discovery surface alongside Grep/Glob/Read. Scan the JSON
     array for entries whose `description` matches the work you are about to
     plan; `Read` each matching entry's absolute `path` directly (no Grep/Glob
-    hunt — the manifest path is authoritative). Inline any commands,
+    hunt — the manifest path is authoritative). **Skip entries whose
+    descriptions do not match — do not Read every catalog entry.** The
+    description is the screening surface; reading non-matches wastes tokens.
+    If you encounter a `SKILL.md` via codebase Grep/Glob that is not in the
+    catalog, do not Read it — the manifest is the complete authoritative
+    list and any exclusions are intentional. Inline any commands,
     conventions, or code patterns the consulted skill prescribes into the
     relevant tasks under their requirement IDs. Absence of the section means
     no eligible repo skills exist; proceed normally.
