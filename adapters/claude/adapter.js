@@ -14,7 +14,7 @@ export const adapter = {
   },
 
   // Identity projection — preserves every canonical field including the
-  // rad-* prefix on skill names (FR-22) and the Claude tools/model strings.
+  // rad-* prefix on skill names and the Claude tools/model strings.
   agentFrontmatter(canonical) {
     return { ...canonical };
   },
