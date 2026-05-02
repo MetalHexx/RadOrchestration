@@ -1,6 +1,7 @@
 ---
 name: rad-brainstorm
 description: 'Brainstorm and refine project goals through collaborative ideation. Use when exploring problem spaces, validating concepts, building consensus on what to build, or creating the initial project goals document.'
+disable-model-invocation: true
 user-invocable: true
 ---
 

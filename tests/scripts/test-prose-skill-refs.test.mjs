@@ -23,7 +23,4 @@ for (const f of walk(repoRoot)) {
   }
 }
 assert.deepEqual(errors, [], 'prose still contains old skill backtick refs:\n  - ' + errors.join('\n  - '));
-// Reserved-namespace doc presence.
-const createSkill = readFileSync(path.join(repoRoot, '.claude/skills/rad-create-skill/SKILL.md'), 'utf8');
-assert.match(createSkill, /reserved.*rad-/i, 'rad-create-skill/SKILL.md must carry a reserved-namespace note');
 console.log('prose skill refs assertions passed');

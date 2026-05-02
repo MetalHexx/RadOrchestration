@@ -49,7 +49,6 @@ Each skill that produces a document bundles one or more templates in its `templa
 | Template | Skill | Description |
 |----------|-------|-------------|
 | [`ERROR-LOG.md`](../.claude/skills/rad-log-error/templates/ERROR-LOG.md) | `rad-log-error` | Append-only pipeline error log with numbered entries |
-| [`AGENT.md`](../.claude/skills/rad-create-agent/templates/AGENT.md) | `rad-create-agent` | Agent definition file scaffold for new custom agents |
 
 ## Design Variants
 
