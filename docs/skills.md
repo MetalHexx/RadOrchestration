@@ -73,7 +73,7 @@ Prompts (`.prompt.md` files) are slash-command shortcuts that invoke a specific 
 | `/rad-plan` | `.claude/skills/rad-plan.prompt.md` | orchestrator | Start the full planning pipeline using the chosen template (default unless overridden) |
 | `/rad-plan-quick` | `.claude/skills/rad-plan-quick/SKILL.md` | orchestrator | Start the planning pipeline in quick mode — quick template, Extra Large tasks, autonomous execution mode all hardcoded |
 | `/rad-execute` | `.claude/skills/rad-execute.prompt.md` | orchestrator | Continue a project through the orchestration pipeline |
-| `/configure-system` | `.claude/skills/configure-system.prompt.md` | agent | Configure the orchestration system using a structured questionnaire |
+| `/rad-configure-system` | `.claude/skills/rad-configure-system/SKILL.md` | agent | Configure the orchestration system using a structured questionnaire |
 
 ### rad-plan
 
@@ -101,7 +101,7 @@ Both modes preserve the plan approval gate (last human checkpoint before any tas
 
 Continues a project through the execution pipeline after the Master Plan is approved. Use after planning completes to begin or resume phase execution.
 
-### configure-system
+### rad-configure-system
 
 Walks through orchestration system configuration using a structured questionnaire — system root, project storage, pipeline limits, gate behavior, and source control settings — then generates `orchestration.yml`.
 
