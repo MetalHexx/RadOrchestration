@@ -20,6 +20,8 @@ Full routing reference lives at `.claude/skills/rad-orchestration/references/pip
 | Project name | `baseline-<fixture>-<YYYY-MM-DD>` or `<UPPER-KEBAB-CASE>` | For inaugural baseline runs use `baseline-<fixture>-<YYYY-MM-DD>` (e.g. `baseline-rainbow-hello-quick-2026-05-02`). The inaugural-baseline-name pattern is required for the `.gitignore` exception to re-include `lint-report.md` + `run-notes.md`. |
 | Run folder | `prompt-tests/quick-pipeline-e2e/output/<fixture>/<project-name>/` | Use the stable project name as the folder name. |
 
+> **How project name is passed to the engine.** There is no `--name` CLI flag. The engine reads `path.basename(--project-dir)` on the `start` event and writes it into `state.project.name`. All downstream doc filenames (e.g. `<PROJECT-NAME>-REQUIREMENTS.md`) derive from that value. Choose a stable, descriptive folder name — it IS the project name.
+
 All paths below are relative to the repo root unless noted.
 
 ## Setup (bootstrap)
