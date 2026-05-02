@@ -4,7 +4,7 @@ How the pipeline engine works. Read this before modifying any pipeline module.
 
 ## Module Map
 
-All pipeline engine code lives under `.claude/skills/orchestration/scripts/`.
+All pipeline engine code lives under `.claude/skills/rad-orchestration/scripts/`.
 
 | Module | File | Responsibility |
 |--------|------|----------------|

@@ -18,7 +18,7 @@ import type { OrchestrationConfig } from '@/types/config';
 
 const VALID_CONFIG: OrchestrationConfig = {
   version: '4',
-  system: { orch_root: '.github/skills/orchestration' },
+  system: { orch_root: '.github/skills/rad-orchestration' },
   projects: { base_path: '../orchestration-projects', naming: 'SCREAMING_CASE' },
   limits: {
     max_phases: 5,
@@ -40,7 +40,7 @@ const VALID_CONFIG: OrchestrationConfig = {
 
 const VALID_YAML = `version: "4"
 system:
-  orch_root: .github/skills/orchestration
+  orch_root: .github/skills/rad-orchestration
 projects:
   base_path: ../orchestration-projects
   naming: SCREAMING_CASE

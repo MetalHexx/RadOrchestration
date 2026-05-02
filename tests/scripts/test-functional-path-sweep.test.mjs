@@ -40,15 +40,32 @@ function walk(dir, out=[]) {
   }
   return out;
 }
+// Pre-rename skill folder names from PR #77 (RAD-SKILL-DISCOVERY). All have
+// since been renamed to `rad-<name>`. The sweep flags any production code
+// still referring to the pre-rename folder. Boundary chars (`/`, `'`, `"`)
+// keep e.g. `skills/execute/` from matching `skills/execute-parallel/`.
+const OLD_SKILL_NAMES = [
+  'orchestration', 'brainstormer', 'code-review', 'create-plans',
+  'execute', 'execute-coding-task', 'execute-parallel',
+  'plan-audit', 'run-tests', 'source-control',
+  'log-error', 'create-skill', 'configure-system',
+];
 const hits = [];
 for (const f of walk(repoRoot)) {
   const text = readFileSync(f, 'utf8');
   const lines = text.split(/\r?\n/);
   lines.forEach((line, i) => {
-    if (line.includes('skills/orchestration/') || line.includes("'skills', 'orchestration'") || line.includes('"skills", "orchestration"')) {
-      hits.push(`${path.relative(repoRoot, f)}:${i + 1}: ${line.trim().slice(0, 120)}`);
+    for (const name of OLD_SKILL_NAMES) {
+      if (
+        line.includes(`skills/${name}/`) ||
+        line.includes(`'skills', '${name}'`) ||
+        line.includes(`"skills", "${name}"`)
+      ) {
+        hits.push(`${path.relative(repoRoot, f)}:${i + 1}: ${line.trim().slice(0, 120)}`);
+        break;
+      }
     }
   });
 }
-assert.deepEqual(hits, [], 'functional `skills/orchestration/` path strings remain in active code:\n  - ' + hits.join('\n  - '));
+assert.deepEqual(hits, [], 'functional pre-rename `skills/<name>/` path strings remain in active code:\n  - ' + hits.join('\n  - '));
 console.log('functional path-string sweep assertions passed');

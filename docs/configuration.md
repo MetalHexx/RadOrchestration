@@ -11,7 +11,7 @@ Understanding how these two files interact is key to understanding how the syste
 
 This is the single source of truth for system-wide settings. It lives at `{orch_root}/orchestration.yml` (by default `.claude/orchestration.yml`). You edit this file to control how the system behaves for all future projects.
 
-Run `/configure-system` in Copilot to create or update it interactively, or edit it directly. The dashboard UI (gear icon) also provides a visual editor.
+Run `/rad-configure-system` in Copilot to create or update it interactively, or edit it directly. The dashboard UI (gear icon) also provides a visual editor.
 
 Here is a complete example:
 
@@ -184,13 +184,13 @@ Settings that are **never** snapshotted — `system.orch_root`, `projects.base_p
 
 ## Changing Configuration
 
-Edit `orchestration.yml` directly or run `/configure-system` for an interactive experience.
+Edit `orchestration.yml` directly or run `/rad-configure-system` for an interactive experience.
 
 - **Limits and gates** — Changes only affect new projects. Existing projects use their snapshot.
 - **Source control** — Changes only affect projects whose source control hasn't been initialized yet.
 - **Structural settings** (`orch_root`, `base_path`, `naming`, `provider`) — Take effect immediately for all operations since they're always read from `orchestration.yml`.
 
-If you change `projects.base_path`, run `/configure-system` — it updates path references across the orchestration root automatically. The [validation tool](internals/validation.md) warns if references fall out of sync.
+If you change `projects.base_path`, run `/rad-configure-system` — it updates path references across the orchestration root automatically. The [validation tool](internals/validation.md) warns if references fall out of sync.
 
 ## Validation
 

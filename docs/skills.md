@@ -72,7 +72,7 @@ Prompts (`.prompt.md` files) are slash-command shortcuts that invoke a specific 
 |--------|------|-------|-------------|
 | `/rad-plan` | `.claude/skills/rad-plan.prompt.md` | orchestrator | Start the full planning pipeline — Research through Master Plan |
 | `/rad-execute` | `.claude/skills/rad-execute.prompt.md` | orchestrator | Continue a project through the orchestration pipeline |
-| `/configure-system` | `.claude/skills/configure-system.prompt.md` | agent | Configure the orchestration system using a structured questionnaire |
+| `/rad-configure-system` | `.claude/skills/rad-configure-system/SKILL.md` | agent | Configure the orchestration system using a structured questionnaire |
 
 ### rad-plan
 

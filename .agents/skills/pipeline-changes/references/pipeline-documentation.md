@@ -7,7 +7,7 @@ What documentation to update after a pipeline change, and when to escalate inste
 | What Changed | Update These Docs |
 |-------------|-------------------|
 | Event vocabulary (new/renamed/removed event) | `docs/scripts.md` — event vocabulary table |
-| Action routing (new/renamed/removed action) | `.claude/skills/orchestration/references/action-event-reference.md` — action routing table + event signaling reference |
+| Action routing (new/renamed/removed action) | `.claude/skills/rad-orchestration/references/action-event-reference.md` — action routing table + event signaling reference |
 | State schema fields | `.claude/instructions/state-management.instructions.md` + `schemas/state-v4.schema.json` |
 | Significant behavioral change | `docs/pipeline.md` + `README.md` (if it changes the high-level flow) |
 | Pipeline internals (module structure, data flow) | `.agents/skills/pipeline-changes/references/pipeline-internals.md` |

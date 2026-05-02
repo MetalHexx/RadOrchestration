@@ -14,7 +14,7 @@ For every pipeline change, follow this order:
 
 ## Module → Test File Lookup
 
-All test files are under `.claude/skills/orchestration/scripts/tests/`.
+All test files are under `.claude/skills/rad-orchestration/scripts/tests/`.
 
 | Module | Test File | What It Covers |
 |--------|-----------|----------------|
@@ -38,14 +38,14 @@ Tests use Node's built-in `node:test` runner. No npm install required.
 
 ```bash
 # Run a single test file
-node --test .claude/skills/orchestration/scripts/tests/mutations.test.js
+node --test .claude/skills/rad-orchestration/scripts/tests/mutations.test.js
 
 # Run all pipeline tests
-node --test .claude/skills/orchestration/scripts/tests/*.test.js
+node --test .claude/skills/rad-orchestration/scripts/tests/*.test.js
 
 # Run behavioral tests (both files)
-node --test .claude/skills/orchestration/scripts/tests/pipeline-behavioral.test.js
-node --test .claude/skills/orchestration/scripts/tests/pipeline.test.js
+node --test .claude/skills/rad-orchestration/scripts/tests/pipeline-behavioral.test.js
+node --test .claude/skills/rad-orchestration/scripts/tests/pipeline.test.js
 ```
 
 ## Test Infrastructure
