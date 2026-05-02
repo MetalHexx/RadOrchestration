@@ -66,23 +66,42 @@ These skills and prompts are invoked directly by humans rather than by the pipel
 
 ### Prompt Inventory
 
-Prompts (`.prompt.md` files) are slash-command shortcuts that invoke a specific agent with a predefined instruction.
+Slash-command shortcuts that invoke a specific agent with a predefined instruction. Each row names the skill or prompt file the orchestrator follows.
 
 | Prompt | File | Agent | Description |
 |--------|------|-------|-------------|
-| `/rad-plan` | `.claude/skills/rad-plan.prompt.md` | orchestrator | Start the full planning pipeline — Research through Master Plan |
-| `/rad-execute` | `.claude/skills/rad-execute.prompt.md` | orchestrator | Continue a project through the orchestration pipeline |
+| `/rad-plan` | `.claude/skills/rad-plan/SKILL.md` | orchestrator | Start the full planning pipeline using the chosen template (default unless overridden) |
+| `/rad-plan-quick` | `.claude/skills/rad-plan-quick/SKILL.md` | orchestrator | Start the planning pipeline in quick mode — quick template, Extra Large tasks, autonomous execution mode all hardcoded |
+| `/rad-execute` | `.claude/skills/rad-execute/SKILL.md` | orchestrator | Continue a project through the orchestration pipeline |
 | `/rad-configure-system` | `.claude/skills/rad-configure-system/SKILL.md` | agent | Configure the orchestration system using a structured questionnaire |
 
 ### rad-plan
 
-Kicks off the complete planning pipeline: Research → PRD → Design → Architecture → Master Plan. Use when you have a project idea and want to produce a full planning suite in one shot.
+Kicks off the complete planning pipeline using the chosen template — Requirements through Master Plan with the audit pass and the plan approval gate. Use when you want to choose the template explicitly or when you want the standard ceremony with per-task code review and per-task gate, the phase review, and the phase gate — planning ceremony, the audit pass, the plan approval gate, the final review, and the final approval gate are preserved.
+
+### rad-plan-quick
+
+Kicks off the planning pipeline in quick mode. Quick mode is `default.yml` minus per-task code review, the per-task gate, the phase review, and the phase gate — planning ceremony, the audit pass, the plan approval gate, the final review, and the final approval gate are preserved. The skill hardcodes `--template quick`, sets task size to Extra Large, and sets the human-gate execution mode to autonomous.
+
+**When to use default vs quick.**
+
+Use **default** when:
+- The project is mission-critical or unfamiliar territory.
+- You want a code review on every task and a review at the end of every phase.
+- You want to keep the per-task gate so you can stop the run mid-stream.
+
+Use **quick** when:
+- The project is small, well-scoped, and low-risk.
+- You are comfortable letting tasks chain without per-task review and letting phases close without a per-phase review.
+- You want a single final review at the end and an autonomous mid-execution flow.
+
+Both modes preserve the plan approval gate (last human checkpoint before any task executes) and the final approval gate after the final review.
 
 ### rad-execute
 
 Continues a project through the execution pipeline after the Master Plan is approved. Use after planning completes to begin or resume phase execution.
 
-### configure-system
+### rad-configure-system
 
 Walks through orchestration system configuration using a structured questionnaire — system root, project storage, pipeline limits, gate behavior, and source control settings — then generates `orchestration.yml`.
 

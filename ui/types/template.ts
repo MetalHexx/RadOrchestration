@@ -47,6 +47,7 @@ export interface TemplateDefinition {
     id: string;
     version: string;
     description: string;
+    status?: string;
   };
   nodes: TemplateYamlNode[];
 }
@@ -56,6 +57,7 @@ export interface TemplateSummary {
   id: string;
   description: string;
   version: string;
+  status?: string;
 }
 
 /** ReactFlow graph node data payload. */
