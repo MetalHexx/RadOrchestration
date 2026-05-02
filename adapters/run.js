@@ -9,11 +9,11 @@ import path from 'node:path';
 /**
  * Runs one adapter against the canonical source. Writes the bundle to
  * outputRoot/<adapter.targetDir>/ and the per-file metadata manifest to a
- * sibling outputRoot/<adapter.name>/manifest.json (DD-6) — separating bundle
+ * sibling outputRoot/<adapter.name>/manifest.json — separating bundle
  * destination (which may be shared across adapters, e.g. .github/) from the
  * manifest location (which must be unique per harness).
  *
- * Uses file copies (not symlinks) for cross-platform parity (NFR-2).
+ * Uses file copies (not symlinks) for cross-platform parity.
  */
 export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }) {
   const targetRoot = path.join(outputRoot, adapter.targetDir);
@@ -108,7 +108,7 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }
   return { harness: adapter.name, fileCount: files.length };
 }
 
-// ── Frontmatter helpers (regex-based YAML — no AST parser per NFR-7) ──────────
+// ── Frontmatter helpers (regex-based YAML — no AST parser) ──────────
 
 function projectFrontmatter(text, project) {
   const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);

@@ -74,7 +74,7 @@ test('runAdapter writes manifest as a sibling of the bundle dir, keyed on adapte
   const canonical = fixtureCanonical();
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
   await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.2.3' });
-  // Manifest lives under <outputRoot>/<adapter.name>/manifest.json (DD-6).
+  // Manifest lives under <outputRoot>/<adapter.name>/manifest.json.
   assert.ok(
     fs.existsSync(path.join(out, 'fake', 'manifest.json')),
     'manifest.json must be written under outputRoot/<adapter.name>/',

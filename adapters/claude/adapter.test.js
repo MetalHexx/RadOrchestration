@@ -21,7 +21,7 @@ test('agentFrontmatter is identity for canonical Claude shape', () => {
   assert.deepStrictEqual(adapter.agentFrontmatter(canonical, { adapter }), canonical);
 });
 
-test('skillFrontmatter preserves rad-* prefix unchanged (FR-22)', () => {
+test('skillFrontmatter preserves rad-* prefix unchanged', () => {
   const canonical = { name: 'rad-orchestration', description: 'Orch' };
   const out = adapter.skillFrontmatter(canonical, { adapter });
   assert.strictEqual(out.name, 'rad-orchestration');
