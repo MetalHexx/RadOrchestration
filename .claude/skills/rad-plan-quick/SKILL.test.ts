@@ -65,7 +65,7 @@ describe('rad-plan-quick SKILL.md', () => {
     assert.match(src, /rad-execute-parallel/);
   });
 
-  it('does not surface a "skipping" announcement to the user (silent defaults per DD-2)', () => {
+  it('does not surface a "skipping" announcement to the user (silent defaults)', () => {
     assert.doesNotMatch(src, /Skipping task-size question/i);
     assert.doesNotMatch(src, /Skipping gate-mode question/i);
   });

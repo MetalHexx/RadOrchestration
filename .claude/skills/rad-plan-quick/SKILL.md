@@ -18,7 +18,7 @@ You are an orchestrator. You'll be using the `orchestration` skill for this proj
 - The task-size preference is `Extra Large` — set as `task_size_preference = "Extra Large"`; this skill skips the task-size question.
 - The human-gate execution mode is `autonomous` — set as `pipeline.gate_mode = "autonomous"` (signal `gate_mode_set` with `gate_mode: autonomous` per the action-event reference); this skill skips the gate-mode question. No mid-execution per-task or per-phase prompt fires.
 
-Per DD-2, do not announce that defaults are being applied. The Step 2 starting message confirms all three resolved choices in one block, matching `/rad-plan`'s confirmation style.
+Do not announce that defaults are being applied. The Step 2 starting message confirms all three resolved choices in one block, matching `/rad-plan`'s confirmation style.
 
 ## Step 1: Starting Message
 Produce a nicely formatted and mildly enthusiastic message confirming the project name, the quick template, Extra Large task size, and autonomous execution mode. List planning steps by reading `quick.yml`: include only `kind: step` nodes that appear before the first `request_plan_approval` gate. Everything after that gate is execution, not planning.
@@ -44,7 +44,7 @@ Start the planning pipeline and call needed CLI parameters to start the planning
 - Single pass, no re-audit after corrections.
 
 ## Step 4: Present plan_approval_gate
-Per AD-4, the `plan_approval_gate` is non-negotiable in quick mode. Present the gate to the user and wait for an explicit approve / reject decision from the user. Quick mode is "lightweight execution," not "fire-and-forget post-plan," so the approval requires human review. On user approval, signal `plan_approved`. Before signalling `gate_mode_set`, set `gate_mode: autonomous` in the event context so the autonomous default sticks for the rest of the run.
+The `plan_approval_gate` is non-negotiable in quick mode. Present the gate to the user and wait for an explicit approve / reject decision from the user. Quick mode is "lightweight execution," not "fire-and-forget post-plan," so the approval requires human review. On user approval, signal `plan_approved`. Before signalling `gate_mode_set`, set `gate_mode: autonomous` in the event context so the autonomous default sticks for the rest of the run.
 
 ## Step 5: Finalize the plan
 Use the `askQuestions` tool to ask the user how they want to proceed and execute the plan. Give them 2 options:
