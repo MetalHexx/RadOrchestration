@@ -13,7 +13,7 @@ const sectionHeaderMock = mock.fn((marker, title) => {
 
 const promptGettingStartedMock = mock.fn(async () => {
   callOrder.push('promptGettingStarted');
-  return { tool: 'copilot', workspaceDir: '/home/user/workspace' };
+  return { tool: 'copilot-vscode', workspaceDir: '/home/user/workspace' };
 });
 
 const promptOrchRootMock = mock.fn(async () => {
@@ -159,7 +159,7 @@ describe('runWizard({ skipConfirmation: false })', () => {
   });
 
   it('returns tool and workspaceDir from promptGettingStarted', () => {
-    assert.equal(result.tool, 'copilot');
+    assert.equal(result.tool, 'copilot-vscode');
     assert.equal(result.workspaceDir, '/home/user/workspace');
   });
 
@@ -323,7 +323,7 @@ describe('runWizard with cliOverrides', () => {
 
     await runWizard({
       skipConfirmation: false,
-      cliOverrides: { tool: 'copilot', workspaceDir: '/custom/path' },
+      cliOverrides: { tool: 'copilot-vscode', workspaceDir: '/custom/path' },
     });
 
     assert.equal(promptGettingStartedMock.mock.calls.length, 0, 'promptGettingStarted skipped');

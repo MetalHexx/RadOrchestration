@@ -39,7 +39,7 @@ const manifest = {
 
 /** @type {import('./types.js').InstallerConfig} */
 const configBase = {
-  tool: 'copilot',
+  tool: 'copilot-vscode',
   workspaceDir: '/home/user/my-project',
   orchRoot: '.github',
   projectsBasePath: 'orchestration-projects',

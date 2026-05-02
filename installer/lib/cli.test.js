@@ -59,9 +59,14 @@ describe('parseArgs', () => {
   });
 
   describe('key-value flags', () => {
-    it('--tool copilot', () => {
-      const { options } = parseArgs(['--tool', 'copilot']);
-      assert.strictEqual(options.tool, 'copilot');
+    it('--tool copilot-vscode', () => {
+      const { options } = parseArgs(['--tool', 'copilot-vscode']);
+      assert.strictEqual(options.tool, 'copilot-vscode');
+    });
+
+    it('--tool copilot-cli', () => {
+      const { options } = parseArgs(['--tool', 'copilot-cli']);
+      assert.strictEqual(options.tool, 'copilot-cli');
     });
 
     it('--tool claude-code', () => {

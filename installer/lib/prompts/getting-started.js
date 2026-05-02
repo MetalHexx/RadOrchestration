@@ -7,8 +7,8 @@ import path from 'node:path';
 
 /**
  * Runs the "Getting Started" prompt section: AI tool selection and workspace directory.
- * @returns {Promise<{ tool: 'copilot', workspaceDir: string }>}
- *   - tool: The selected AI tool identifier (v1: always 'copilot')
+ * @returns {Promise<{ tool: 'claude-code' | 'copilot-vscode' | 'copilot-cli' | 'cursor', workspaceDir: string }>}
+ *   - tool: The selected AI tool identifier
  *   - workspaceDir: Absolute path to the target workspace directory
  */
 export async function promptGettingStarted() {
@@ -18,7 +18,8 @@ export async function promptGettingStarted() {
     default: 'claude-code',
     choices: [
       { name: 'Claude Code', value: 'claude-code' },
-      { name: 'GitHub Copilot', value: 'copilot' },
+      { name: 'GitHub Copilot (VS Code)', value: 'copilot-vscode' },
+      { name: 'GitHub Copilot CLI', value: 'copilot-cli' },
       { name: 'Cursor (coming soon)', value: 'cursor', disabled: true },
     ],
   });

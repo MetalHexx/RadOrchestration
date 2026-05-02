@@ -32,7 +32,7 @@ const INT_FIELDS = new Set([
 
 /** Valid values for enum-type fields */
 const ENUM_VALUES = {
-  tool:            ['copilot', 'claude-code'],
+  tool:            ['claude-code', 'copilot-vscode', 'copilot-cli', 'cursor'],
   projectsNaming:  ['SCREAMING_CASE', 'lowercase', 'numbered'],
   executionMode:   ['ask', 'phase', 'task', 'autonomous'],
   autoCommit:      ['always', 'ask', 'never'],

@@ -9,7 +9,7 @@ import { generateConfig, writeConfig } from './config-generator.js';
 
 /** @type {import('./types.js').InstallerConfig} */
 const sampleConfig = {
-  tool: 'copilot',
+  tool: 'copilot-vscode',
   workspaceDir: '/workspace',
   orchRoot: '.github',
   projectsBasePath: '../orchestration-projects',

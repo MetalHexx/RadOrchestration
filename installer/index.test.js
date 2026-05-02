@@ -13,7 +13,7 @@ import fs from 'node:fs';
 
 function makeDefaultConfig() {
   return {
-    tool: 'copilot',
+    tool: 'copilot-vscode',
     workspaceDir: '/workspace',
     orchRoot: '.github',
     projectsBasePath: 'projects',
