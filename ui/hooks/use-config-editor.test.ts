@@ -25,7 +25,7 @@ import { stringifyYaml } from '@/lib/yaml-parser';
 function makeValidConfig(): OrchestrationConfig {
   return {
     version: '4',
-    system: { orch_root: '.github/skills/rad-orchestration' },
+    system: { orch_root: '.github' },
     projects: { base_path: '../orchestration-projects', naming: 'SCREAMING_CASE' },
     limits: {
       max_phases: 5,
@@ -196,7 +196,7 @@ test('setMode to raw when dirty: stringifyYaml produces valid YAML', () => {
 });
 
 test('setMode to raw when clean: rawYaml stays as original', () => {
-  const originalRawYaml = 'version: "4"\nsystem:\n  orch_root: .github/skills/rad-orchestration\n';
+  const originalRawYaml = 'version: "4"\nsystem:\n  orch_root: .github\n';
   const config = makeValidConfig();
   const baseline = JSON.stringify(config);
   const formDirty = JSON.stringify(config) !== baseline;

@@ -7,7 +7,7 @@ import type { NextRequest } from 'next/server';
 // --- Fixtures ---------------------------------------------------------
 const VALID_YAML = `version: "4"
 system:
-  orch_root: .claude/skills/rad-orchestration
+  orch_root: .claude
 projects:
   base_path: orchestration-projects
   naming: SCREAMING_CASE

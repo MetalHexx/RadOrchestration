@@ -10,7 +10,7 @@ user-invocable: true
 - `project_template`: $1 — The template to use for planning. (e.g., "default" or a custom template name if one exists)
 
 ## Initialize
-You are an orchestrator. You'll be using the `rad-orchestration` skill for this project.  Read the skill  and prepare to use it for running the planning pipeline.
+You are an orchestrator. You'll be using the `rad-orchestration` skill for this project. Read the skill and prepare to use it for running the planning pipeline.
 
 ## Workflow:
 I have project goals I'd like to develop into a full scale plan.  
