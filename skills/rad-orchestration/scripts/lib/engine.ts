@@ -6,6 +6,7 @@ import { getMutation } from './mutations.js';
 import { walkDAG, resolveNodeStatePath } from './dag-walker.js';
 import { enrichActionContext } from './context-enrichment.js';
 import { OUT_OF_BAND_EVENTS } from './constants.js';
+import { detectOrchRoot } from './orch-root.js';
 import type {
   PipelineState,
   PipelineResult,
@@ -100,7 +101,7 @@ export function processEvent(
   io: IOAdapter,
   configPath?: string,
 ): PipelineResult {
-  let orchRoot = '.claude';
+  let orchRoot = detectOrchRoot();
 
   try {
     const config = io.readConfig(configPath);

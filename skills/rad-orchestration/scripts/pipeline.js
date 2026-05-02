@@ -21,11 +21,11 @@ const nodeModulesDir = join(__dirname, 'node_modules');
 /**
  * Resolves the install-time orchRoot from the filesystem signal — the
  * folder name three levels above this script (`<install-root>/<orchRoot>/skills/rad-orchestration/scripts/`).
- * This replaces the previous hardcoded '.claude' so Copilot installs that
- * land under `.github/` self-identify correctly.
+ * Copilot installs that land under a different root folder (e.g. `.github/`)
+ * self-identify correctly without any hardcoded name.
  *
  * @param {string} scriptsDir - Absolute path to this scripts/ folder.
- * @returns {string} - Discovered orchRoot folder name (e.g. '.claude', '.github').
+ * @returns {string} - Discovered orchRoot folder name (e.g. the install-root dir name).
  */
 export function detectOrchRoot(scriptsDir) {
   // .../<orchRoot>/skills/rad-orchestration/scripts/ → up three is <orchRoot>

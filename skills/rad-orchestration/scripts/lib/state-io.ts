@@ -7,7 +7,7 @@ import type { PipelineState, OrchestrationConfig } from './types.js';
 
 const DEFAULT_CONFIG: OrchestrationConfig = {
   system: {
-    orch_root: '.claude',
+    orch_root: '.claude', // authored-install-default — overwritten on first readConfig() call
   },
   projects: {
     base_path: '',

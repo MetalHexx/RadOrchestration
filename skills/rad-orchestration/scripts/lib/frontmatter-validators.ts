@@ -148,7 +148,7 @@ const VALIDATION_RULES: Record<string, FrontmatterValidationRule[]> = {
   // or `rejected`, all three mediation fields must be absent. The mutation
   // layer is `mutations.ts` PHASE_REVIEW_COMPLETED; the operator-facing write
   // surface + judgment rubric lives in
-  // `.claude/skills/rad-orchestration/references/corrective-playbook.md` (Phase-
+  // `<orchRoot>/skills/rad-orchestration/references/corrective-playbook.md` (Phase-
   // Scope Mediation section).
   phase_review_completed: [
     {

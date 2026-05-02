@@ -10,6 +10,7 @@ import {
   readDocument,
   ensureDirectories,
 } from './lib/state-io.js';
+import { detectOrchRoot } from './lib/orch-root.js';
 import type { EventContext, IOAdapter, PipelineResult } from './lib/types.js';
 
 // ── Argument Parsing ──────────────────────────────────────────────────────────
@@ -25,7 +26,7 @@ function parseArgs(argv: string[]): Record<string, string> {
   return args;
 }
 
-function makeErrorResult(message: string, event: string, orchRoot: string = '.claude'): PipelineResult {
+function makeErrorResult(message: string, event: string, orchRoot: string = detectOrchRoot()): PipelineResult {
   return {
     success: false,
     action: null,
@@ -41,7 +42,7 @@ function makeErrorResult(message: string, event: string, orchRoot: string = '.cl
 export function run(argv: string[]): void {
   const args = parseArgs(argv);
   const event = args['event'];
-  let orchRoot = '.claude'; // fallback until config is read
+  let orchRoot = detectOrchRoot(); // fallback until config is read
 
   try {
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
