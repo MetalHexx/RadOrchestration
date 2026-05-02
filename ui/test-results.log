@@ -1,0 +1,2345 @@
+
+PUT /api/config tests
+
+  ✓ form mode — valid config returns 200 with success and config
+  ✓ form mode — validation errors return 400 with details
+  ✓ form mode — missing config returns 400
+  ✓ raw mode — valid YAML returns 200 with success and config
+  ✓ raw mode — unparseable YAML returns 400 with Invalid YAML
+  ✓ raw mode — missing rawYaml returns 400
+  ✓ raw mode — YAML scalar returns 400
+  ✓ raw mode — YAML array returns 400
+  ✓ invalid mode returns 400
+  ✓ malformed JSON body returns 400
+  ✓ read-back integrity — returned config roundtrips correctly
+  ✓ non-writable config returns 403
+  ✓ GET handler remains functional
+
+  13 passed, 0 failed
+
+✔ app\api\config\route.test.ts (3406.5933ms)
+✓ unknown project → 404 not found
+✓ invalid project name format → 400
+✓ unknown action → 400
+✓ start-brainstorming happy path → 200 success:true platform string
+✓ start-planning happy path → 200 success:true
+✓ unset WORKSPACE_ROOT → 500, concise error, no path/env leakage
+✓ forced launcher failure → 500, structured error, no path leakage
+✓ execute-plan happy path → 200 success:true platform string
+✓ execute-plan unknown project → 404
+✓ execute-plan invalid project name → 400
+✓ execute-plan forced launcher failure → 500, no path/env leakage
+✓ execute-plan route returns promptly (182ms)
+✓ projectsDir stays inside tmpDir (teardown safety)
+
+All start-action route tests passed
+✔ app\api\projects\[name]\start-action\route.test.ts (2762.1762ms)
+
+GET /api/templates/[id] and PUT /api/templates/[id] tests
+
+  ✓ GET — valid existing ID returns 200 with { rawYaml, definition }
+  ✓ GET — non-existent ID returns 404 with error containing the ID
+  ✓ GET — path-traversal ID (../../etc/passwd) returns 400
+  ✓ PUT — valid { content } on existing template returns 200 with { success: true }
+  ✓ PUT — file is actually updated on disk after successful write
+  ✓ PUT — non-existent template returns 404
+  ✓ PUT — path-traversal ID returns 400
+  ✓ PUT — missing content field returns 400
+  ✓ PUT — invalid YAML content returns 400
+  ✓ PUT — malformed JSON body returns 400
+  ✓ GET — backslash path-traversal ID (..\\evil) returns 400
+  ✓ PUT — backslash path-traversal ID (..\\evil) returns 400
+GET /api/templates/test-template error: ENOENT: no such file or directory, open 'C:\Users\Metal\AppData\Local\Temp\templates-id-test-6SX22Z\.claude\skills\rad-orchestration\config\orchestration.yml'
+PUT /api/templates/test-template error: ENOENT: no such file or directory, open 'C:\Users\Metal\AppData\Local\Temp\templates-id-test-TySFer\.claude\skills\rad-orchestration\config\orchestration.yml'
+  ✓ GET — returns 500 when orchestration.yml is missing
+  ✓ PUT — returns 500 when orchestration.yml is missing
+
+  14 passed, 0 failed
+
+✔ app\api\templates\resource-route.test.ts (2478.2616ms)
+
+GET /api/templates and POST /api/templates tests
+
+  ✓ GET — returns 200 with templates array containing seeded template summaries
+  ✓ GET — returns 200 with empty templates array when no .yml files exist
+  ✓ GET — surfaces template.status from YAML in each template summary
+  ✓ POST — valid { id, content } returns 201 with { success: true, id }
+  ✓ POST — file is actually written to disk after successful create
+  ✓ POST — duplicate ID returns 409 with error containing the ID
+  ✓ POST — path-traversal ID (../evil) returns 400
+  ✓ POST — path-traversal ID (foo/bar) returns 400
+  ✓ POST — missing id field returns 400
+  ✓ POST — missing content field returns 400
+  ✓ POST — invalid YAML content returns 400
+  ✓ POST — malformed JSON body returns 400
+  ✓ POST — backslash path-traversal ID (..\\evil) returns 400
+GET /api/templates error: ENOENT: no such file or directory, open 'C:\Users\Metal\AppData\Local\Temp\templates-test-pvKLUF\.claude\skills\rad-orchestration\config\orchestration.yml'
+  ✓ GET — returns 500 when orchestration.yml is missing
+POST /api/templates error: ENOENT: no such file or directory, open 'C:\Users\Metal\AppData\Local\Temp\templates-test-oHvI9d\.claude\skills\rad-orchestration\config\orchestration.yml'
+  ✓ POST — returns 500 when orchestration.yml is missing
+
+  15 passed, 0 failed
+
+✔ app\api\templates\route.test.ts (2690.0026ms)
+app/layout — root layout server component
+  ✓ RootLayout is the default export and is a function
+  ✓ Source text imports AppHeaderShell from @/components/layout
+  ✓ Source text contains <AppHeaderShell ...> wrapping {children}
+  ✓ Source text does NOT contain "use client" directive
+  ✓ metadata export exists with title "Rad Orchestration"
+  ✓ skip-to-content link targets #main-content
+
+6 passed, 0 failed
+✔ app\layout.test.tsx (563.4306ms)
+app/not-found — 404 page verification
+  ✓ Default export is a function
+  ✓ Default export function is named NotFound
+  ✓ File does NOT contain "use client" directive
+  ✓ Source contains a link with href="/"
+  ✓ Source contains "Back to Dashboard" text
+
+5 passed, 0 failed
+✔ app\not-found.test.tsx (1147.7279ms)
+app/page — server redirect component
+  ✓ Default export is a function
+  ✓ Default export function is named Home
+  ✓ File does NOT contain "use client" directive
+  ✓ File imports redirect from next/navigation
+  ✓ File calls redirect("/projects")
+
+5 passed, 0 failed
+✔ app\page.test.tsx (882.393ms)
+projects-v4/loading — exports and contracts
+  ✓ Default export is a function named Loading
+  ✓ Module imports without errors
+
+2 passed, 0 failed
+✔ app\projects-v4\loading.test.tsx (610.9037ms)
+projects-v4/page — exports and contracts
+  ✓ Default export is a function named ProjectsV4Page
+  ✓ useConfigClickContext is importable from @/hooks/use-config-click-context
+  ✓ Module does NOT re-export AppHeader
+  ✓ Source imports ProjectSidebar from @/components/sidebar
+  ✓ Source imports MainDashboard from @/components/layout
+  ✓ Source imports DocumentDrawer from @/components/documents
+  ✓ Source imports ConfigEditorPanel from @/components/config
+  ✓ Source imports SidebarProvider from @/components/ui/sidebar
+  ✓ Source imports useProjects from @/hooks/use-projects
+  ✓ Source imports useDocumentDrawer from @/hooks/use-document-drawer
+  ✓ Source imports useConfigEditor from @/hooks/use-config-editor
+  ✓ Source calls setOnConfigClick (ConfigClickContext bridge wired)
+  ✓ Source contains id="main-content" on the content region
+  ✓ Source calls setOnConfigClick(undefined) on cleanup
+
+14 passed, 0 failed
+✔ app\projects-v4\page.test.tsx (6020.5546ms)
+✓ page.tsx wires NotStartedPaneV5 for selected Not-Started projects
+
+All /projects page structural tests passed
+✔ app\projects\page.test.ts (536.5114ms)
+projects/page — exports and contracts
+  ✓ Default export is a function named ProjectsPage
+  ✓ Source contains id="main-content" attribute
+  ✓ Source constrains page height to viewport minus header
+  ✓ Source imports useFollowMode from @/hooks/use-follow-mode
+  ✓ Source does NOT import TimelineToolbar from @/components/dag-timeline
+  ✓ Source calls useFollowMode( at least once
+  ✓ Source does NOT render <TimelineToolbar
+  ✓ Source threads followMode and toggleFollowMode into <ProjectHeader>
+  ✓ Source does NOT contain stub literal expandedLoopIds={[]}
+  ✓ Source does NOT contain stub literal onAccordionChange={() => {}}
+  ✓ Source passes expandedLoopIds={expandedLoopIds} to DAGTimeline
+  ✓ Source passes onAccordionChange={onAccordionChange} to DAGTimeline
+  ✓ <DAGTimeline> is rendered directly after <ProjectHeader> (no toolbar sibling)
+  ✓ Source destructures sseStatus and reconnect from useProjects (single SSE source of truth)
+  ✓ Source does not consume useSSEContext for banner (architectural guard)
+  ✓ Halt-slot call site precedes SSE-slot call site (stack order lock)
+  ✓ Status band <div> sits between <ProjectHeader and <div className="px-6 py-4">
+  ✓ No import from halt-reason-banner, sse-status-banner, or dag-timeline-skeleton
+  ✓ No new fetch URL literals or new EventSource constructions in page.tsx
+  ✓ No new npm package imports in page.tsx
+  ✓ aria-live does not appear on the status-band container
+
+21 passed, 0 failed
+✔ app\projects\page.test.tsx (7180.9586ms)
+
+forwardRef regression tests
+
+  ✓ Badge is a React.forwardRef component
+  ✓ Badge has a displayName for React devtools
+  ✓ Switch is a React.forwardRef component
+  ✓ Switch has a displayName for React devtools
+  ✓ SpinnerBadge is a React.forwardRef component
+  ✓ SpinnerBadge has a displayName for React devtools
+  ✓ NodeStatusBadge is a React.forwardRef component
+  ✓ NodeStatusBadge has a displayName for React devtools
+  ✓ GateModeBadge is a React.forwardRef component
+  ✓ GateModeBadge has a displayName for React devtools
+
+10 passed, 0 failed
+
+✔ components\badges\forward-ref.test.ts (1226.1999ms)
+
+GateModeBadge logic tests
+
+  ✓ renders label "Task gate" when mode="task"
+  ✓ renders label "Phase gate" when mode="phase"
+  ✓ renders label "Autonomous" when mode="autonomous"
+  ✓ renders label "Global default" when mode=null
+  ✓ has aria-label "Gate mode: Task gate" when mode="task"
+  ✓ has aria-label "Gate mode: Phase gate" when mode="phase"
+  ✓ has aria-label "Gate mode: Autonomous" when mode="autonomous"
+  ✓ has aria-label "Gate mode: Global default" when mode=null
+  ✓ task mode maps to --gate-task CSS variable
+  ✓ phase mode maps to --gate-phase CSS variable
+  ✓ autonomous mode maps to --gate-autonomous CSS variable
+  ✓ null mode maps to --gate-global CSS variable
+
+FR-5 / DD-5 GateModeBadge dotless rendering
+  ✓ DD-5 GateModeBadge source no longer renders a rounded-full inline dot
+  ✓ DD-5 GateModeBadge keeps Badge wrapper, color-mix fill, aria-label
+  ✓ DD-5 GateModeBadge body contains no <span> with inline-block sizing utilities
+
+15 passed, 0 failed
+
+✔ components\badges\gate-mode-badge.test.ts (614.3456ms)
+
+PipelineTierBadge — 8-state decision table
+
+Row 1: not_initialized
+  ✓ not_initialized → label "Not Initialized"
+  ✓ not_initialized → no spinner
+  ✓ not_initialized → ariaLabel "Pipeline status: Not Initialized"
+  ✓ not_initialized → cssVar --tier-not-initialized
+
+Row 2: planning + planningStatus=in_progress (spinner)
+  ✓ planning + in_progress → label "Planning"
+  ✓ planning + in_progress → spinner active
+  ✓ planning + in_progress → ariaLabel "Pipeline status: Planning, active"
+
+Row 3: planning + planningStatus=complete → "Planned"
+  ✓ planning + complete → label "Planned"
+  ✓ planning + complete → no spinner
+  ✓ planning + complete → ariaLabel "Pipeline status: Planned"
+
+Row 4: planning + no planningStatus (backward compat fallback)
+  ✓ planning + undefined planningStatus → label "Planning"
+  ✓ planning + undefined planningStatus → no spinner
+  ✓ planning + undefined planningStatus → ariaLabel "Pipeline status: Planning"
+  ✓ planning + not_started planningStatus → label "Not Started"
+  ✓ planning + not_started planningStatus → ariaLabel "Pipeline status: Not Started"
+
+Row 5: execution + executionStatus=in_progress → "Executing" (spinner)
+  ✓ execution + in_progress → label "Executing"
+  ✓ execution + in_progress → spinner active
+  ✓ execution + in_progress → ariaLabel "Pipeline status: Executing, active"
+
+Row 6: execution + no/other executionStatus (backward compat fallback)
+  ✓ execution + undefined executionStatus → label "Approved"
+  ✓ execution + undefined executionStatus → no spinner
+  ✓ execution + undefined executionStatus → ariaLabel "Pipeline status: Approved"
+  ✓ execution + complete executionStatus → label "Approved" (other fallback)
+
+Row 6a: execution + executionStatus=not_started → "Approved"
+  ✓ execution + not_started → label "Approved"
+  ✓ execution + not_started → ariaLabel "Pipeline status: Approved"
+
+Row 6b: execution + executionStatus=halted → "Halted"
+  ✓ execution + halted → label "Halted"
+  ✓ execution + halted → cssVar "--tier-halted"
+  ✓ execution + halted → ariaLabel "Pipeline status: Halted"
+
+Row 7: review
+  ✓ review → label "Final Review"
+  ✓ review → no spinner
+  ✓ review → ariaLabel "Pipeline status: Final Review"
+
+Row 8: complete
+  ✓ complete → label "Complete"
+  ✓ complete → no spinner
+  ✓ complete → ariaLabel "Pipeline status: Complete"
+
+Row 9: halted
+  ✓ halted → label "Halted"
+  ✓ halted → no spinner
+  ✓ halted → ariaLabel "Pipeline status: Halted"
+
+Backward compatibility (callers passing only tier)
+  ✓ planning tier only → same as before: "Planning", no spinner
+  ✓ execution tier only → same as before: "Approved", no spinner
+
+aria-label format
+  ✓ all tiers use "Pipeline status:" format (not "Pipeline tier:")
+  ✓ only spinner states include ", active" suffix
+
+CSS variable mapping
+  ✓ planning tier → --tier-planning CSS variable
+  ✓ execution tier → --tier-execution CSS variable
+  ✓ review tier → --tier-review CSS variable
+  ✓ complete tier → --tier-complete CSS variable
+  ✓ halted tier → --tier-halted CSS variable
+
+All 45 tests passed.
+✔ components\badges\pipeline-tier-badge.test.ts (614.6778ms)
+
+normal retry counts
+  ✓ 1 retry of 5 → secondary variant, no warning color
+  ✓ 2 retries of 5 → secondary variant, no warning color
+  ✓ 3 retries of 5 → secondary variant, no warning color
+
+at max retries — no warning styling
+  ✓ retries === max (5/5) → still secondary variant, NOT outline
+  ✓ retries === max (2/2) → still secondary variant, no warning color
+
+label format
+  ✓ label format is 'Retries: {retries}/{max}'
+  ✓ aria-label format is 'Retry count: {retries} of {max}'
+  ✓ max=5 correctly reflected in label denominator
+  ✓ max=5 correctly reflected in aria-label
+
+9 passed, 0 failed
+
+✔ components\badges\retry-badge.test.ts (666.1468ms)
+
+isSpinning=true (spinner)
+  ✓ isSpinning=true renders spinner, not dot
+  ✓ isSpinning=true sets spinner icon color to var(cssVar)
+  ✓ isSpinning=true still renders the label text
+
+isSpinning=false (no icon)
+  ✓ FR-5 isSpinning=false (no other flag) renders nothing in the icon slot — no dot
+  ✓ FR-5 isSpinning=false leaves dotBackgroundColor null (dot removed)
+  ✓ isSpinning=false still renders the label text
+
+ariaLabel default behavior
+  ✓ ariaLabel defaults to label when ariaLabel prop is omitted
+  ✓ ariaLabel defaults to label for non-spinning badge
+
+ariaLabel override behavior
+  ✓ ariaLabel uses provided value when ariaLabel prop is set
+  ✓ ariaLabel override works for non-spinning badge
+
+badge styling
+  ✓ backgroundColor uses color-mix formula with cssVar
+  ✓ text color uses var(cssVar)
+
+isComplete=true (checkmark)
+  ✓ isComplete=true, isSpinning=false → renders checkmark, not dot, not spinner
+  ✓ isComplete=true sets icon color to var(cssVar)
+  ✓ isComplete=true still renders the label text
+  ✓ isComplete=true is ignored when isSpinning=true (spinner wins)
+  ✓ FR-5 isComplete=false (explicit) leaves the icon slot empty (dot removed)
+  ✓ FR-5 isComplete omitted leaves the icon slot empty (dot removed)
+
+hideLabel prop behavior
+  ✓ hideLabel=true suppresses visible label
+  ✓ hideLabel=true does not affect ariaLabel
+  ✓ hideLabel=false renders visible label (default behavior)
+  ✓ hideLabel omitted renders visible label (default behavior)
+
+isRejected=true (X icon)
+  ✓ isRejected=true, isSpinning=false, isComplete=false → renders X, not dot, not spinner, not checkmark
+  ✓ isRejected=true sets icon color to var(cssVar)
+
+isRejected precedence (isSpinning → isComplete → isRejected → no icon)
+  ✓ isRejected=true is ignored when isSpinning=true (spinner wins)
+  ✓ isRejected=true is ignored when isComplete=true (checkmark wins)
+  ✓ isRejected=true + hideLabel=true → X icon shown, label hidden
+  ✓ FR-5 isRejected=false (explicit) leaves the icon slot empty (dot removed)
+
+FR-5 / AD-5 dot-fallback removal
+  ✓ AD-5 SpinnerBadge source no longer contains a rounded-full dot span
+  ✓ AD-5 SpinnerBadge keeps the four-priority chain shape (spinner → check → X → null)
+
+All 30 tests passed.
+✔ components\badges\spinner-badge.test.ts (1018.245ms)
+
+SSEStatusBanner visibility logic tests
+
+  ✓ shouldRenderSSEStatus('connected') returns false
+  ✓ shouldRenderSSEStatus('reconnecting') returns true
+  ✓ shouldRenderSSEStatus('disconnected') returns true
+  ✓ SSEStatusBanner returns null when status is 'connected'
+
+4 passed, 0 failed
+
+✔ components\badges\sse-status-banner.test.ts (877.6235ms)
+
+not_started status
+  ✓ not_started + planning stage → shows 'Not Started', not 'Planning'
+  ✓ not_started + executing stage → shows 'Not Started'
+  ✓ not_started + reviewing stage → shows 'Not Started'
+  ✓ not_started + complete stage → shows 'Not Started' (status check runs before terminal guard)
+
+in_progress status
+  ✓ in_progress + planning → shows 'Planning' with --tier-planning
+  ✓ in_progress + executing → shows 'Executing'
+  ✓ in_progress + reviewing → shows 'Reviewing' with --tier-review
+  ✓ in_progress + coding → shows 'Coding'
+
+complete and failed stage behavior
+  ✓ complete status + complete stage → 'Complete' badge with checkmark
+  ✓ failed status + failed stage → shows 'Failed' badge (static, no spinner)
+  ✓ halted status + complete stage → 'Complete' badge with checkmark (stage guard removed)
+
+halted status
+  ✓ halted + planning → shows 'Planning' (dot badge, no spinner)
+  ✓ halted + reviewing → shows 'Reviewing'
+
+in_progress spinner cases
+  ✓ in_progress + planning → isSpinning=true
+  ✓ in_progress + coding → isSpinning=true
+  ✓ in_progress + executing → isSpinning=true
+  ✓ in_progress + reviewing → isSpinning=true
+  ✓ halted + planning → isSpinning=false (dot, no spinner)
+  ✓ halted + reviewing → isSpinning=false
+
+ariaLabel
+  ✓ in_progress + planning → ariaLabel includes ': active'
+  ✓ halted + planning → ariaLabel is just the label (no active suffix)
+  ✓ not_started → ariaLabel defaults to 'Stage: Not Started'
+
+All 22 tests passed.
+✔ components\badges\stage-badge.test.ts (685.8482ms)
+
+ConfigInfoBanner logic tests
+
+  ✓ ConfigInfoBanner module compiles and exports ConfigInfoBanner
+  ✓ ConfigInfoBanner renders the provided message text (contract check)
+  ✓ ConfigInfoBanner uses Alert component which provides role=alert
+
+ConfigRawEditor logic tests
+
+  ✓ ConfigRawEditor module compiles and exports ConfigRawEditor
+  ✓ ConfigRawEditor passes value to textarea (contract check)
+  ✓ ConfigRawEditor onChange callback receives the new string value
+  ✓ ConfigRawEditor passes bannerMessage to ConfigInfoBanner
+
+ConfigFooter logic tests
+
+  ✓ ConfigFooter module compiles and exports ConfigFooter
+  ✓ ConfigFooter renders "Save" text when saveState is idle
+  ✓ ConfigFooter renders "Saving…" text when saveState is saving
+  ✓ ConfigFooter renders "Saved" text when saveState is success
+  ✓ ConfigFooter renders "Save" text (idle appearance) when saveState is error
+  ✓ ConfigFooter shows spinner icon when saveState is saving
+  ✓ ConfigFooter shows check icon when saveState is success
+  ✓ ConfigFooter disables save button when disabled prop is true
+  ✓ ConfigFooter enables save button when disabled is false and saveState is not saving
+  ✓ ConfigFooter disables save button when saveState is saving regardless of disabled prop
+  ✓ ConfigFooter shows error banner when saveState is error and errorMessage is truthy
+  ✓ ConfigFooter hides error banner when saveState is not error
+  ✓ ConfigFooter hides error banner when errorMessage is falsy
+  ✓ ConfigFooter onSave callback fires when save button is clicked (contract check)
+  ✓ ConfigFooter onDismissError callback fires when dismiss button is clicked (contract check)
+  ✓ ConfigFooter shows dismiss button only when onDismissError is provided
+
+ConfigErrorState logic tests
+
+  ✓ ConfigErrorState module compiles and exports ConfigErrorState
+  ✓ ConfigErrorState renders the provided error message (contract check)
+  ✓ ConfigErrorState onRetry callback fires when Retry button is clicked (contract check)
+
+  26 passed, 0 failed
+
+✔ components\config\config-components.test.ts (853.9381ms)
+
+ConfigFieldRow logic tests
+
+  ✓ ConfigFieldRow renders the label text as visible text
+  ✓ ConfigFieldRow renders a HelpCircle tooltip trigger that shows tooltip content on hover/focus
+  ✓ tooltip trigger aria-label matches 'Help for {label}' pattern
+  ✓ ConfigFieldRow renders children in the control slot
+  ✓ ConfigFieldRow does NOT render error text when error prop is undefined
+  ✓ ConfigFieldRow renders error text with text-destructive class when error prop is provided
+  ✓ ConfigFieldRow error region has aria-live='polite'
+  ✓ aria-describedby includes only tooltip ID when no error
+  ✓ aria-describedby chains tooltip and error IDs when both exist
+  ✓ aria-invalid is 'true' when error is present
+  ✓ aria-invalid is undefined when error is absent
+  ✓ tooltipId is derived as '{htmlFor}-tooltip'
+  ✓ errorId is derived as '{htmlFor}-error'
+  ✓ config-field-row module compiles and exports ConfigFieldRow
+
+  14 passed, 0 failed
+
+✔ components\config\config-field-row.test.ts (2006.2257ms)
+
+ConfigForm logic tests
+
+  ✓ getNestedValue extracts top-level key
+  ✓ getNestedValue extracts nested key (system.orch_root)
+  ✓ getNestedValue extracts deeply nested key (limits.max_phases)
+  ✓ getNestedValue returns undefined for non-existent path
+  ✓ getNestedValue extracts boolean value (human_gates.after_planning)
+  ✓ CONFIG_FIELDS contains exactly 1 version field
+  ✓ groupFieldsBySection excludes version field
+  ✓ groupFieldsBySection produces exactly 5 sections
+  ✓ All 5 section keys are present in grouped fields
+  ✓ Section field counts are correct
+  ✓ All 5 accordion sections have correct display titles
+  ✓ Version field renders as 'Schema version: {value}' text
+  ✓ String fields (orch_root, base_path) have controlType 'text'
+  ✓ Number fields (4 limits) have controlType 'number' with min values
+  ✓ Number field min attributes are correct
+  ✓ Boolean fields (after_planning, after_final_review) have controlType 'switch'
+  ✓ Enum fields (naming, execution_mode, auto_commit, auto_pr) have controlType 'toggle-group'
+  ✓ Toggle-group fields have correct options
+  ✓ Read-only fields (version, provider) have controlType 'readonly'
+  ✓ Text input onChange produces (dotPath, stringValue) pair
+  ✓ Number input onChange produces (dotPath, numericValue) pair
+  ✓ Number input onChange produces empty string for cleared input
+  ✓ Switch onChange produces (dotPath, booleanValue) pair
+  ✓ ToggleGroup onChange produces (dotPath, selectedOptionString) pair
+  ✓ ToggleGroup guards against undefined value — empty array does not fire onChange
+  ✓ ToggleGroup value prop handles undefined gracefully (produces empty array)
+  ✓ Validation errors are keyed by dot-path matching field keys
+  ✓ Fields without errors receive undefined error prop
+  ✓ Every non-version CONFIG_FIELD has a non-empty label
+  ✓ Every non-version CONFIG_FIELD has a non-empty tooltip
+  ✓ SECTION_ORDER contains exactly 5 sections in correct order
+  ✓ defaultValue for accordion matches all 5 section keys
+  ✓ config-form module compiles and exports ConfigForm
+
+  33 passed, 0 failed
+
+✔ components\config\config-form.test.ts (3530.9892ms)
+
+ConfigModeToggle logic tests
+
+  ✓ ConfigModeToggle renders "Form" and "Raw YAML" segments
+  ✓ ConfigModeToggle mode values are "form" and "raw"
+  ✓ ConfigModeToggle shows "Form" as active when mode="form" (has aria-selected="true")
+  ✓ ConfigModeToggle shows "Raw YAML" as active when mode="raw" (has aria-selected="true")
+  ✓ isActive returns true only for the current mode
+  ✓ ConfigModeToggle calls onModeChange("raw") when "Raw YAML" segment is clicked
+  ✓ ConfigModeToggle calls onModeChange("form") when "Form" segment is clicked
+  ✓ config-mode-toggle module compiles and exports ConfigModeToggle
+  ✓ container has role='tablist' and aria-label='Editor mode' (contract)
+  ✓ each segment has role='tab' (contract)
+  ✓ active tab has tabIndex 0, inactive tab has tabIndex -1 (mode=form)
+  ✓ active tab has tabIndex 0, inactive tab has tabIndex -1 (mode=raw)
+  ✓ ArrowRight from "Form" (index 0) switches to "Raw YAML"
+  ✓ ArrowLeft from "Raw YAML" (index 1) switches to "Form"
+  ✓ ArrowLeft from "Form" (index 0) wraps to "Raw YAML"
+  ✓ ArrowRight from "Raw YAML" (index 1) wraps to "Form"
+  ✓ non-arrow keys are not handled
+
+  17 passed, 0 failed
+
+✔ components\config\config-mode-toggle.test.ts (879.7624ms)
+
+DAGCorrectiveTaskGroup logic tests
+
+  ✓ buildCorrectiveChildNodeId returns "{parentNodeId}.ct{ctIndex}.{childNodeId}"
+  ✓ buildCorrectiveChildNodeId works with different indices
+  ✓ commit_hash "abc1234def" produces label "abc1234" (first 7 chars)
+  ✓ commit_hash "abc1234def" with null repoBaseUrl produces href null
+  ✓ commit_hash null produces null (no commit link)
+  ✓ node with kind "for_each_phase" is excluded
+  ✓ node with kind "for_each_task" is excluded
+  ✓ node with kind "step" is included
+  ✓ node with kind "gate" is included
+  ✓ node with kind "conditional" is included
+  ✓ node with kind "parallel" is included
+  ✓ filterCompatibleNodes skips for_each nodes while passing compatible ones
+  ✓ GROUP_ARIA_LABEL is "Corrective tasks"
+  ✓ filterCompatibleNodes returns empty array when nodes is {}
+  ✓ non-empty corrective task nodes are filtered compatibly
+  ✓ trigger text for index 1 is "Corrective Task 1"
+  ✓ trigger text for index 3 is "Corrective Task 3"
+  ✓ multiple corrective tasks produce correct trigger text for each
+  ✓ CORRECTIVE_CHILD_DEPTH is 2
+  ✓ dag-corrective-task-group.tsx imports DocumentLink from @/components/documents
+  ✓ dag-corrective-task-group.tsx renders a <DocumentLink path={entry.doc_path} label="Task Handoff" onDocClick={onDocClick} /> in the accordion header row
+  ✓ dag-corrective-task-group.tsx gates <DocumentLink> on entry.doc_path (no render when null/empty)
+  ✓ dag-corrective-task-group.tsx <DocumentLink> does NOT pass tabIndex (keyboard accessibility — default tab order required)
+  ✓ dag-corrective-task-group.tsx <ExternalLink> does NOT pass tabIndex (keyboard accessibility — same rationale as DocumentLink)
+  ✓ dag-corrective-task-group.tsx <AccordionTrigger> className contains w-full (full-band clickable area, regression guard for Copilot R11)
+  ✓ dag-corrective-task-group.tsx <DocumentLink> renders OUTSIDE <AccordionTrigger> (no nested interactive controls)
+
+DAGCorrectiveTaskGroup — v4 header parity (P03-T02)
+
+  ✓ dag-corrective-task-group.tsx wires <Accordion ... value={expandedCorrectiveIds} onValueChange={onAccordionChange} multiple> (DD-7, AD-3)
+  ✓ dag-corrective-task-group.tsx <AccordionItem value> uses buildCorrectiveItemValue(parentIterationKey, entry.index) (AD-3 hook+renderer parity)
+  ✓ dag-corrective-task-group.tsx renders the icon-only NodeStatusBadge in each header (DD-1)
+  ✓ dag-corrective-task-group.tsx <AccordionTrigger> wires role="option", data-timeline-row, data-row-key={itemValue}, tabIndex={isFocused ? 0 : -1}, onFocus={handleFocus} (AD-5, FR-16)
+
+30 passed, 0 failed
+
+
+DAGCorrectiveTaskGroup FR-1 source-shape tests
+
+  ✓ FR-1 corrective trigger uses NodeStatusBadge (labeled)
+  ✓ DD-1 corrective iconOnly wired to entry.status === 'completed'
+  ✓ FR-1 hideLabel SpinnerBadge no longer rendered on corrective trigger
+  ✓ FR-11 corrective DocumentLink label is 'Task Handoff', not 'Doc'
+  ✓ FR-12 corrective ExternalLink renders icon='github' with label='Commit'
+  ✓ DD-8 corrective ExternalLink forwards full commit hash as title
+  ✓ FR-17/DD-13 corrective trigger wrapper carries pr-3 gutter
+
+FR-10 / FR-1 / FR-7 / FR-8 / FR-9 / FR-5 — corrective task row recursion
+
+  ✓ FR-1/FR-10 corrective row AccordionContent no longer maps entry.nodes onto <DAGNodeRow>
+  ✓ FR-9/FR-10/DD-8 corrective row renders flat (no AccordionItem) when entry.corrective_tasks.length === 0
+  ✓ FR-7/FR-10/AD-5 corrective row references entry.nodes['code_review'].doc_path for the Code Review link
+  ✓ FR-8/FR-10/DD-7 corrective row trailing-link slot order: Task Handoff → Code Review → Commit
+  ✓ FR-5/FR-10/DD-6 corrective row renders 'Corrected' trailing pill when entry recovered from nested correctives
+  ✓ FR-2/FR-4/FR-6/FR-10 corrective row badge resolves Coding/Correcting/Failed labels at the same vocabulary as task iterations
+  ✓ NFR-3 P02-T02 source-shape tests run under the test4 helper so failed4 > 0 fails the suite
+
+11 passed, 0 failed
+
+✔ components\dag-timeline\dag-corrective-task-group.test.ts (5700.6692ms)
+
+DAGIterationPanel logic tests
+
+  ✓ buildIterationLabel(0) returns "Iteration 1" (0-based index → 1-based display)
+  ✓ buildIterationLabel(4) returns "Iteration 5"
+  ✓ buildIterationChildNodeId("phase_loop", 0, "phase_planning") returns "phase_loop.iter0.phase_planning"
+  ✓ buildIterationChildNodeId("task_loop", 2, "task_handoff") returns "task_loop.iter2.task_handoff"
+  ✓ getCommitLinkData("abc1234def", "https://github.com/user/repo") returns { href: "https://github.com/user/repo/commit/abc1234def", label: "abc1234" } (linked-state branch)
+  ✓ getCommitLinkData("abc1234def", null) returns { href: null, label: "abc1234" } (unlinked-state branch receives href === null and 7-char label)
+  ✓ getCommitLinkData(null, null) returns null (absent-state outer guard suppresses render)
+  ✓ filterCompatibleNodes includes nodes with kind "step"
+  ✓ filterCompatibleNodes includes nodes with kind "gate"
+  ✓ filterCompatibleNodes includes nodes with kind "conditional"
+  ✓ filterCompatibleNodes includes nodes with kind "parallel"
+  ✓ filterCompatibleNodes excludes nodes with kind "for_each_phase"
+  ✓ filterCompatibleNodes excludes nodes with kind "for_each_task"
+  ✓ filterCompatibleNodes with mixed kinds returns only compatible entries in original order
+  ✓ ITERATION_CHILD_DEPTH is exported and equals 1
+  ✓ buildCorrectiveGroupParentId("phase_loop", 0) returns "phase_loop.iter0"
+  ✓ buildCorrectiveGroupParentId("task_loop", 3) returns "task_loop.iter3"
+  ✓ isLoopNode() returns true for the for_each_task node inside taskLoopIteration.nodes
+  ✓ isLoopNode() returns false for all non-loop nodes in taskLoopIteration.nodes
+  ✓ partitioning taskLoopIteration.nodes by isLoopNode() yields 1 loop node and 3 non-loop nodes
+  ✓ phase-level child ID: buildIterationChildNodeId("phase_loop", 0, "task_loop") -> "phase_loop.iter0.task_loop"
+  ✓ task-level nested child ID: buildIterationChildNodeId("phase_loop.iter0.task_loop", 0, "code_review") -> "phase_loop.iter0.task_loop.iter0.code_review"
+  ✓ task-level child ID at iteration index 2: buildIterationChildNodeId("phase_loop.iter0.task_loop", 2, "task_handoff") -> "phase_loop.iter0.task_loop.iter2.task_handoff"
+  ✓ multi-level chaining: deeply nested corrective task ID construction
+  ✓ traversing taskLoopIteration nested data completes without error and yields 4 child node keys
+  ✓ traversing taskLoopIterationWithCorrective nested data completes without error and corrective_tasks has length 1
+  ✓ inner task iteration does NOT contain any further loop nodes (recursion naturally terminates)
+  ✓ taskLoopIterationWithCorrective corrective task has reason "Code review found issues"
+  ✓ taskLoopIterationWithCorrective corrective task carries doc_path directly
+  ✓ taskLoopIterationWithCorrective corrective task commit_hash is null
+  ✓ phase-scope corrective iteration fixture has corrective_tasks.length === 1
+  ✓ phase-scope corrective task nodes contain synthesized pre-completed task_handoff step node
+  ✓ dag-iteration-panel.tsx <DAGNodeRow> elements do NOT forward projectName or gateActive
+  ✓ dag-iteration-panel.tsx forwards iteration.corrective_tasks to DAGCorrectiveTaskGroup (phase-scope wiring)
+  ✓ dag-iteration-panel.tsx imports DocumentLink from @/components/documents
+  ✓ dag-iteration-panel.tsx renders <DocumentLink path={iteration.doc_path}> with typed labels (Phase Plan / Task Handoff) onDocClick={onDocClick} /> — new-shape only (FR-11)
+  ✓ dag-iteration-panel.tsx gates <DocumentLink> on iteration.doc_path (new shape only — no render on legacy fallback, no render on null/empty)
+  ✓ dag-iteration-panel.tsx <DocumentLink> does NOT pass tabIndex (keyboard accessibility — default tabIndex=0 so users can tab to it)
+  ✓ dag-iteration-panel.tsx <ExternalLink> does NOT pass tabIndex (keyboard accessibility — same rationale as DocumentLink)
+  ✓ dag-corrective-task-group.tsx does NOT contain projectName= or gateActive=
+
+DAGIterationPanel — phase iteration accordion (P02-T01)
+
+  ✓ dag-iteration-panel.tsx imports Accordion/AccordionItem/AccordionTrigger/AccordionContent from @/components/ui/accordion (AD-2)
+  ✓ dag-iteration-panel.tsx wires <Accordion ... value={expandedLoopIds} onValueChange={onAccordionChange} multiple> at the top of the for_each_phase branch (AD-2, AD-3)
+  ✓ dag-iteration-panel.tsx <AccordionItem value> uses buildIterationItemValue(parentNodeId, iterationIndex) (AD-3 hook+renderer parity)
+  ✓ dag-iteration-panel.tsx renders NodeStatusBadge with iconOnly for the phase-iteration small status icon (DD-1)
+  ✓ dag-iteration-panel.tsx imports ProgressBar from @/components/execution/progress-bar (NFR-5)
+  ✓ dag-iteration-panel.tsx renders ProgressBar inside the for_each_phase accordion trigger (FR-7, FR-8)
+  ✓ dag-iteration-panel.tsx Phase Plan DocumentLink is a SIBLING of AccordionTrigger (not nested inside it) — DD-6 + nested-interactive-control invariant
+  ✓ dag-iteration-panel.tsx renders <DAGCorrectiveTaskGroup> in BOTH the for_each_phase accordion body AND the for_each_task fallthrough (FR-3, FR-4, NFR-1)
+  ✓ dag-iteration-panel.tsx passes showCount={...} to <ProgressBar> so 0/0 tasks is suppressed (DD-3, FR-8)
+  ✓ progress-bar.tsx accepts a showCount prop and suppresses the count span when showCount is false (DD-3)
+  ✓ dag-iteration-panel.tsx ariaLabel ternary does NOT carry a "Phase iteration" branch (dead-code prune)
+
+DAGIterationPanel — task iteration accordion (P02-T02)
+
+  ✓ dag-iteration-panel.tsx for_each_task branch wraps the task iteration in <AccordionItem value={buildIterationItemValue(parentNodeId, iterationIndex)}> (AD-2, AD-3)
+  ✓ dag-iteration-panel.tsx for_each_task branch does NOT render <ProgressBar> (FR-9 — task iterations have no progress bar)
+  ✓ dag-iteration-panel.tsx for_each_task branch renders NodeStatusBadge in its header (DD-1)
+  ✓ dag-iteration-panel.tsx for_each_task branch keeps Doc / commit links as SIBLINGS of AccordionTrigger (DD-1, no nested interactive controls)
+
+DAGIterationPanel — roving-tabindex parity (P02-T03)
+
+  ✓ dag-iteration-panel.tsx wires tabIndex={isFocused ? 0 : -1} on EVERY <AccordionTrigger> (FR-16, AD-5)
+  ✓ dag-iteration-panel.tsx wires onFocus={handleFocus} on EVERY <AccordionTrigger> (FR-16)
+  ✓ dag-iteration-panel.tsx data-row-key uses itemValue (the iteration accordion key) so deriveAncestorLoopKeys still walks correctly (AD-5)
+  ✓ dag-iteration-panel.tsx renders <DAGNodeRow> in the for_each_phase branch for non-loop iteration.nodes children (e.g. legacy phase_planning step) (FR-17)
+
+DAGIterationPanel FR-1/FR-3 source-shape tests
+
+  ✓ AD-1 deriveIterationBadgeLabel is imported
+  ✓ FR-1 panel renders <NodeStatusBadge ...> on the trigger (not the bare hideLabel SpinnerBadge)
+  ✓ DD-1 iconOnly is wired to iteration.status === 'completed'
+  ✓ renderStatusIcon helper retired
+  ✓ FR-11 phase-iteration DocumentLink label is 'Phase Plan'
+  ✓ FR-11 task-iteration DocumentLink label is 'Task Handoff', not 'Doc'
+  ✓ FR-12 task-iteration ExternalLink renders icon='github' with label='Commit'
+  ✓ DD-8 task-iteration ExternalLink forwards full commit hash as title
+
+DAGIterationPanel — P04-T04 indent wrapper + chevron slot (FR-8, FR-9, DD-5, DD-6)
+
+  ✓ FR-8/DD-5 phase iteration body wraps task list with left padding + left rule
+  ✓ phase-iteration non-loop step nodes render at phase-level depth (depth={0})
+  ✓ phase-iteration <DAGCorrectiveTaskGroup> renders OUTSIDE the spine wrapper so the grey spine line bounds task content only
+  ✓ FR-9/DD-6 phase trigger lands the auto-rendered chevron at the row's right edge via Header flex-1
+
+FR-1 / FR-7 / FR-8 / FR-9 / FR-5 — task iteration row simplification
+
+  ✓ FR-1 task iteration AccordionContent no longer renders <DAGNodeRow> children for substep nodes
+  ✓ FR-9/DD-8 task iteration row renders flat (no AccordionItem) when corrective_tasks.length === 0
+  ✓ FR-7/AD-5 task iteration header references iteration.nodes['code_review'].doc_path for the Code Review link
+  ✓ FR-8 trailing-link slot order on the task header: Task Handoff, then Code Review, then Commit
+  ✓ FR-5/DD-6 task iteration renders 'Corrected' trailing pill when iteration completed AND any corrective resolved
+  ✓ FR-4/FR-6 task arm wires Correcting/Failed cssVar at the call site (--status-failed for both)
+  ✓ FR-2 task arm passes 'Coding' (renamed from 'Executing') as the active substep label
+
+78 passed, 0 failed
+
+
+DAGIterationPanel — P04-T03 footer removal + verdictPill (FR-16, AD-8, DD-11)
+
+  ✓ FR-16 phase-iteration body has no border-t footer block
+
+DAGIterationPanel FR-18 legacy-fallback regression assertions
+
+  ✓ FR-18 legacy phase iteration with phase_planning child + no doc_path keeps fallback rendering shape
+  ✓ FR-18 legacy task iteration with task_handoff child + no doc_path keeps fallback rendering shape
+  ✓ DD-4 italic-fallback class chain still present when both doc_path and legacy node yield null
+  ✓ FR-18 deriveCurrentPhase still walks legacy phase_planning child
+  ✓ FR-17/DD-13 phase iteration trigger wrapper carries pr-3 gutter
+
+DAGIterationPanel stage-aware badge wiring (FR-1, FR-3, AD-2, AD-3, AD-4, DD-7)
+
+  ✓ AD-2 panel imports resolveStageBadge
+  ✓ AD-3 deriveIterationBadgeLabel called with explicit parentKind ('for_each_phase')
+  ✓ AD-3 deriveIterationBadgeLabel called with explicit parentKind ('for_each_task')
+  ✓ AD-4 panel passes cssVar to NodeStatusBadge on both phase and task iteration headers
+  ✓ FR-12/FR-17 phase_planning no longer maps to --tier-planning (PLANNING_STEP_IDS member dropped)
+
+FR-11 phase arm: Planning mapping removed from phaseStageId
+
+  ✓ FR-11/AD-1 phase arm no longer maps 'Planning' label to a stage id (dead branch removed)
+  ✓ FR-11 phase arm 'Executing' mapping still resolves via task_executor or task_loop equivalent
+✔ components\dag-timeline\dag-iteration-panel.test.ts (4970.6676ms)
+
+DAGLoopNode logic tests
+
+  ✓ getDisplayName("phase_loop") returns "Phase Loop"
+  ✓ getDisplayName("task_loop") returns "Task Loop"
+  ✓ isLoopNode(forEachPhaseNode2) returns true
+  ✓ isLoopNode(forEachTaskNode3) returns true
+  ✓ for_each_phase node with 0 iterations renders no iteration panels
+  ✓ for_each_phase node with 2 iterations has 2 iteration entries
+  ✓ for_each_task node with 3 iterations has 3 iteration entries
+  ✓ iterations are sorted by index ascending
+  ✓ unsorted iterations are reordered to ascending order
+  ✓ dag-loop-node.tsx does NOT render an <Accordion> (AD-1 — loop shell removed)
+  ✓ dag-loop-node.tsx does NOT export buildLoopItemValue (AD-1 — old loop-key shape retired)
+  ✓ dag-loop-node.tsx maps directly over node.iterations sorted by index ascending (DD-8, FR-10)
+  ✓ dag-loop-node.tsx renders one DAGIterationPanel per iteration with no wrapping shell (AD-1)
+  ✓ dag-loop-node.tsx forwards expandedLoopIds and onAccordionChange to DAGIterationPanel (AD-3 — iteration panel owns the accordion)
+  ✓ DAGLoopNodeProps contract still compiles (props shape preserved so DAGTimeline / DAGIterationPanel call sites do not change)
+
+15 passed, 0 failed
+
+✔ components\dag-timeline\dag-loop-node.test.ts (619.1799ms)
+
+DAGNodeRow logic tests
+
+  ✓ getDisplayName extracts leaf from compound path
+  ✓ formatNodeId: "gate_mode_selection" → "Gate Mode Selection"
+  ✓ formatNodeId: single word "step" → "Step"
+  ✓ formatNodeId: two words "run_tests" → "Run Tests"
+  ✓ formatNodeId: long id "create_phase_plan_v2" → "Create Phase Plan V2"
+  ✓ step node has kind="step"
+  ✓ gate node has kind="gate"
+  ✓ conditional node has kind="conditional"
+  ✓ parallel node has kind="parallel"
+  ✓ step node passes correct status to NodeStatusBadge
+  ✓ gate node passes correct status to NodeStatusBadge
+  ✓ renders DocumentLink for step node with non-null doc_path
+  ✓ does NOT render DocumentLink for step node with null doc_path
+  ✓ does NOT render DocumentLink for step node with undefined doc_path (malformed state.json omits the field)
+  ✓ does NOT render DocumentLink for step node with empty-string doc_path
+  ✓ does NOT render DocumentLink for gate node
+  ✓ does NOT render DocumentLink for conditional node
+  ✓ does NOT render DocumentLink for parallel node
+  ✓ sets aria-current="step" when nodeId === currentNodePath
+  ✓ does NOT set aria-current when nodeId !== currentNodePath
+  ✓ does NOT set aria-current when currentNodePath is null
+  ✓ applies border-l-2 class when active
+  ✓ does NOT apply border-l-2 class when not active
+  ✓ default depth=0 → paddingLeft: 12 (base indent)
+  ✓ depth=1 → paddingLeft: 28
+  ✓ depth=2 → paddingLeft: 44
+  ✓ depth=3 → paddingLeft: 60
+  ✓ shouldRenderBranchIndicator returns true for conditional node with branch_taken="true"
+  ✓ shouldRenderBranchIndicator returns true for conditional node with branch_taken="false"
+  ✓ shouldRenderBranchIndicator returns false for conditional node with branch_taken=null
+  ✓ shouldRenderBranchIndicator returns false for step node
+  ✓ shouldRenderBranchIndicator returns false for gate node
+  ✓ shouldRenderBranchIndicator returns false for parallel node
+  ✓ computeBranchBadge("true") returns label="Yes", badgeStatus="completed", ariaLabel="Branch taken: Yes"
+  ✓ computeBranchBadge("false") returns label="No", badgeStatus="skipped", ariaLabel="Branch taken: No"
+  ✓ shouldRenderBranchIndicator handles generic conditional node id (not hardcoded to commit_gate)
+  ✓ GATE_NODE_CONFIG contains exactly two entries
+  ✓ GATE_NODE_CONFIG contains plan_approval_gate
+  ✓ GATE_NODE_CONFIG contains final_approval_gate
+  ✓ GATE_NODE_CONFIG does NOT contain pr_gate
+  ✓ GATE_NODE_CONFIG does NOT contain gate_mode_selection
+  ✓ GATE_NODE_CONFIG does NOT contain task_gate
+  ✓ GATE_NODE_CONFIG does NOT contain phase_gate
+  ✓ getGateNodeConfig('plan_approval_gate') returns plan_approved config
+  ✓ getGateNodeConfig('final_approval_gate') returns final_approved config
+  ✓ getGateNodeConfig('pr_gate') returns null
+  ✓ getGateNodeConfig('gate_mode_selection') returns null
+  ✓ getGateNodeConfig('task_gate') returns null
+  ✓ getGateNodeConfig('phase_gate') returns null
+  ✓ getGateNodeConfig resolves leaf for compound ID 'some.prefix.plan_approval_gate'
+  ✓ getGateNodeConfig resolves leaf for compound ID 'phase_loop.iter0.final_approval_gate'
+  ✓ getGateNodeConfig returns null for compound ID with non-map leaf 'phase_loop.iter0.task_gate'
+  ✓ getGateNodeConfig returns null for compound ID with non-map leaf 'phase_loop.iter0.phase_gate'
+  ✓ shouldRenderGateButton returns true for pending plan_approval_gate with projectName
+  ✓ shouldRenderGateButton returns true for pending final_approval_gate with projectName
+  ✓ shouldRenderGateButton returns true for compound ID resolving to plan_approval_gate
+  ✓ shouldRenderGateButton returns false for step node (non-gate kind)
+  ✓ shouldRenderGateButton returns false for conditional node (non-gate kind)
+  ✓ shouldRenderGateButton returns false for parallel node (non-gate kind)
+  ✓ shouldRenderGateButton returns false when node.status === 'completed' (regression: DAG-VIEW-4 plan_approval_gate stuck visible)
+  ✓ shouldRenderGateButton returns false when projectName === undefined
+  ✓ shouldRenderGateButton returns false for pr_gate leaf
+  ✓ shouldRenderGateButton returns false for gate_mode_selection leaf
+  ✓ shouldRenderGateButton returns false for task_gate leaf
+  ✓ shouldRenderGateButton returns false for phase_gate leaf
+  ✓ computeAriaLabel('Plan Architecture', 'In Progress') returns 'Plan Architecture — In Progress'
+  ✓ computeAriaLabel uses STATUS_MAP['halted'].defaultLabel → 'Approve Plan — Halted'
+  ✓ computeAriaLabel with compound-id leaf extraction → 'Plan Approval Gate — Not Started'
+  ✓ computeRowTabIndex(true) === 0
+  ✓ computeRowTabIndex(false) === -1
+  ✓ row role literal is 'option'
+  ✓ row carries the 'data-timeline-row' attribute
+  ✓ row carries the 'data-row-key' attribute stamped with nodeId
+  ✓ decideKeyDownAction('Enter', true, false) === 'click-gate'
+  ✓ decideKeyDownAction(' ', true, false) === 'click-gate'
+  ✓ decideKeyDownAction('Enter', true, true) === 'click-gate' (gate wins over doc)
+  ✓ decideKeyDownAction('Enter', false, true) === 'open-doc'
+  ✓ decideKeyDownAction(' ', false, true) === 'open-doc'
+  ✓ decideKeyDownAction('Enter', false, false) === 'swallow'
+  ✓ decideKeyDownAction(' ', false, false) === 'swallow'
+  ✓ decideKeyDownAction('Tab', true, true) === 'noop'
+  ✓ decideKeyDownAction('ArrowDown', true, true) === 'noop'
+  ✓ decideKeyDownAction('ArrowUp', true, true) === 'noop'
+  ✓ decideKeyDownAction('Escape', true, true) === 'noop'
+  ✓ Enter on pending plan_approval_gate row forwards .click() to gate button
+  ✓ Enter on step row with doc_path returns 'open-doc'
+  ✓ FR-1: gate_active=false on plan_approval_gate → 'none' (regression: POEMS-1 in requirements step)
+  ✓ FR-1: gate_active=false on final_approval_gate → 'none'
+  ✓ FR-1: gate_active=true on plan_approval_gate → 'approve'
+  ✓ FR-2: plan_approval_gate completed AND phase_loop not_started → 'execute'
+  ✓ FR-2: plan_approval_gate completed AND phase_loop in_progress → 'none'
+  ✓ FR-3 mutex: completed gate never renders 'approve'
+  ✓ FR-7: task_gate compound id never renders any row button
+  ✓ projectName undefined → 'none' (no button without a project context)
+
+94 passed, 0 failed
+
+
+DAGNodeRow — root-row visual tightening (P03-T03)
+
+  ✓ dag-node-row.tsx renders <NodeStatusBadge status=... iconOnly /> (DD-1)
+  ✓ dag-node-row.tsx keeps the compact py-2 px-3 typography on the row container (DD-4)
+  ✓ dag-node-row.tsx still renders the action button container with ml-auto so descriptor.kind === "approve" / "execute" align right (FR-11 — no behavior change)
+  ✓ node-status-badge.tsx accepts an `iconOnly` prop and forwards it to SpinnerBadge as `hideLabel` (DD-1)
+
+4 passed, 0 failed
+
+
+DAGNodeRow FR-1/FR-2/FR-7 source-shape tests
+
+  ✓ FR-7 NodeKindIcon is no longer rendered in dag-node-row.tsx
+  ✓ FR-1/FR-2 NodeStatusBadge renders before the name span
+  ✓ DD-1 iconOnly is conditional on completed status, not unconditional
+
+3 passed, 0 failed
+
+  ✓ FR-4/AD-2 dag-node-row imports deriveGateBadgeStatusAndLabel
+  ✓ FR-4 gate node badge resolved via helper, not raw node.status
+  ✓ FR-11 dag-node-row imports getDocLinkLabel for typed doc-link labels
+  ✓ FR-11 DocumentLink label is wired to getDocLinkLabel(nodeId), not literal 'Doc'
+
+7 passed, 0 failed
+
+
+DAGNodeRow — P04-T03 verdictPill prop (AD-8)
+
+  ✓ FR-17/DD-13 flat-row container retains pr-3 gutter
+  ✓ DAGNodeRow accepts an optional prUrl prop and renders an ExternalLink (icon=github, label="Pull Request") on the final_pr row
+  ✓ final_pr row is keyboard-activatable — Enter/Space opens prUrl in a new tab
+  ✓ aria-label is derived from the resolved badge {status,label} — not raw node.status
+
+DAGNodeRow stage-aware badge wiring (FR-1, FR-2, FR-4, FR-6, AD-2, AD-4, DD-1, DD-2)
+
+  ✓ AD-2 DAGNodeRow imports resolveStageBadge from dag-timeline-helpers
+  ✓ AD-2 DAGNodeRow no longer imports derivePlanningStepLabel
+  ✓ AD-4 DAGNodeRow passes resolved cssVar into NodeStatusBadge
+  ✓ FR-6 DAGNodeRow stops calling STATUS_MAP[status].defaultLabel directly for label resolution
+
+8 passed, 0 failed
+
+✔ components\dag-timeline\dag-node-row.test.ts (5186.9973ms)
+
+DAGSectionGroup logic tests
+
+  ✓ computeAriaLabel("Planning") returns "Planning section"
+  ✓ computeAriaLabel("Gates") returns "Gates section"
+  ✓ computeAriaLabel("Execution") returns "Execution section"
+  ✓ computeAriaLabel("Completion") returns "Completion section"
+  ✓ SECTION_LABEL_CLASSES contains "text-xs"
+  ✓ SECTION_LABEL_CLASSES contains "font-medium"
+  ✓ SECTION_LABEL_CLASSES contains "uppercase"
+  ✓ SECTION_LABEL_CLASSES contains "tracking-wide"
+  ✓ SECTION_LABEL_CLASSES contains "text-muted-foreground"
+  ✓ SECTION_LABEL_CLASSES contains "mb-1"
+  ✓ SECTION_LABEL_CLASSES is exactly "text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1"
+  ✓ shouldRender(0) returns false (empty children → render nothing)
+  ✓ shouldRender(1) returns true (one child → render content)
+  ✓ shouldRender(3) returns true (multiple children → render content)
+DAGSectionGroup card-variant tests
+
+  ✓ FR-13 Planning is a card section (DD-9)
+  ✓ FR-14 Completion is a card section (DD-9)
+  ✓ FR-15 Execution is NOT a card section (DD-10)
+  ✓ AD-5 CARD_SHELL_CLASSES uses border + rounded + bg-card tokens
+  ✓ isCardSection + CARD_SHELL_CLASSES applies shell classes only to card sections (DD-9, DD-10)
+
+19 tests: 19 passed, 0 failed
+
+✔ components\dag-timeline\dag-section-group.test.ts (929.4758ms)
+
+dag-timeline-helpers tests
+
+  ✓ valid commit hash with valid repoBaseUrl returns real commit URL and 7-char label
+  ✓ valid commit hash with null repoBaseUrl returns null href and 7-char label
+  ✓ null commitHash with valid repoBaseUrl returns null
+  ✓ null commitHash with null repoBaseUrl returns null
+  ✓ undefined commitHash returns null without throwing
+  ✓ empty string commitHash returns null
+  ✓ short hash (fewer than 7 chars) with null repoBaseUrl returns null href and full hash as label
+
+deriveRepoBaseUrl tests
+
+  ✓ valid compare URL returns repo base URL
+  ✓ null input returns null
+  ✓ URL without /compare/ segment returns null
+  ✓ URL with /compare/ followed by trailing slash returns repo base URL
+
+formatNodeId tests
+
+  ✓ phase_planning returns Phase Planning
+  ✓ code_review returns Code Review
+  ✓ commit (single word) returns Commit
+
+getDisplayName tests
+
+  ✓ simple ID with no dot passes through to formatNodeId
+  ✓ two-segment ID extracts leaf after dot
+  ✓ three-segment ID extracts leaf after last dot
+  ✓ deeply nested ID extracts leaf
+  ✓ loop node ID extracts leaf
+  ✓ single word with no dot and no underscore returns capitalized
+  ✓ DISPLAY_NAME_OVERRIDES restores acronym capitalization for final_pr
+  ✓ DISPLAY_NAME_OVERRIDES restores acronym capitalization for pr_gate
+  ✓ DISPLAY_NAME_OVERRIDES applies after compound-id leaf extraction
+
+parsePhaseNameFromDocPath tests
+
+  ✓ multi-word all-caps title is title-cased (FR-6)
+  ✓ null doc path returns fallback Phase N
+  ✓ non-matching doc path returns fallback Phase N
+  ✓ single-word all-caps title is title-cased (FR-6)
+  ✓ case-insensitive: lowercase -phase- segment parses correctly
+
+parseTaskNameFromDocPath tests
+
+  ✓ task single-word all-caps title is title-cased (FR-6)
+  ✓ null doc path returns fallback Task N
+  ✓ non-matching doc path returns fallback Task N
+  ✓ task multi-word all-caps title is title-cased (FR-6)
+  ✓ case-insensitive: lowercase -task- segment parses correctly
+  ✓ DD-12: phaseN/taskN prefix preserved exactly
+
+groupNodesBySection tests
+
+  ✓ NODE_SECTION_MAP reroutes plan_approval_gate to Planning (FR-13, AD-3)
+  ✓ NODE_SECTION_MAP routes final_pr to Completion
+  ✓ groupNodesBySection emits no Gates group (FR-13, AD-3)
+  ✓ section order is Planning → Execution → Completion regardless of insertion (AD-3)
+  ✓ empty NodesRecord returns empty array
+  ✓ only Planning keys returns single-element array with label Planning
+  ✓ unknown node IDs are silently excluded from all groups
+  ✓ partial template (requirements + master_plan + plan_approval_gate) groups correctly — all 3 in Planning section
+  ✓ in_progress requirements node renders under Planning with in_progress status
+  ✓ legacy full.yml state (no requirements node) still groups correctly — no crashes, gates in Planning
+  ✓ default.yml partial template (requirements + master_plan + explode_master_plan + plan_approval_gate) groups correctly — all 4 in Planning
+  ✓ pre-seeded iterations — phase_loop node with explode_master_plan completed + iterations carrying phase_planning child nodes with doc_path populated still groups correctly
+  ✓ legacy state.json (no explode_master_plan + no pre-seeded phase_planning child) still groups cleanly
+
+deriveCurrentPhase tests
+
+  ✓ undefined phaseLoopNode returns null
+  ✓ phase loop with no iterations returns null
+  ✓ phase loop with all completed iterations returns null
+  ✓ phase loop with in_progress iteration and doc_path returns parsed phase name
+  ✓ phase loop with in_progress iteration using new shape (iteration.doc_path set, empty nodes) returns parsed phase name
+  ✓ phase loop with in_progress iteration carrying BOTH iteration.doc_path and legacy phase_planning prefers iteration.doc_path
+  ✓ phase loop with in_progress iteration and null doc_path returns fallback Phase N
+
+derivePhaseProgress tests
+
+  ✓ undefined phaseLoopNode returns null
+  ✓ phase loop with no iterations returns null
+  ✓ 3 iterations (2 completed, 1 in_progress) returns {completed:2, total:3}
+  ✓ all iterations completed returns {completed:N, total:N}
+  ✓ no completed iterations returns {completed:0, total:N}
+
+getRowButtonDescriptor tests
+
+  ✓ plan_approval_gate: gate_active=false → kind='none' (FR-1 regression: no premature Approve Plan)
+  ✓ plan_approval_gate: gate_active=true → kind='approve' with plan_approved event (FR-1)
+  ✓ plan_approval_gate compound id with gate_active=true resolves leaf (FR-1, AD-1)
+  ✓ final_approval_gate: gate_active=false → kind='none' (FR-1)
+  ✓ final_approval_gate: gate_active=true → kind='approve' with final_approved event (FR-1)
+  ✓ plan_approval_gate completed AND phase_loop not_started → kind='execute' (FR-2, AD-2)
+  ✓ plan_approval_gate completed AND phase_loop in_progress → kind='none' (FR-2: hides post-launch)
+  ✓ plan_approval_gate completed AND phase_loop completed → kind='none' (FR-2)
+  ✓ plan_approval_gate completed AND phase_loop undefined → kind='none' (FR-2 defensive)
+  ✓ final_approval_gate completed never yields kind='execute' regardless of phase_loop (FR-2: plan-row only)
+  ✓ non-gate-config leaf (task_gate) returns kind='none' regardless of input (FR-7)
+  ✓ FR-3 mutex: at no phase_loop status do both buttons render simultaneously
+  ✓ compound id 'phase_loop.iter0.final_approval_gate' with gate_active=true → approve (FR-7, AD-1)
+  ✓ compound id 'phase_loop.iter0.task_gate' returns kind='none' (FR-7: task gates never render row buttons)
+  ✓ pr_gate leaf returns kind='none' (FR-7)
+  ✓ gate_mode_selection leaf returns kind='none' (FR-7)
+  ✓ AD-2: descriptor receives phase_loop.status straight from nodes record (no derived fetch)
+  ✓ AD-2: phase_loop missing → undefined → descriptor 'none' for FR-2 (defensive)
+
+iteration key builders
+
+  ✓ buildIterationItemValue("phase_loop", 0) returns "iter-phase_loop-0"
+  ✓ buildIterationItemValue("phase_loop.iter0.task_loop", 2) returns "iter-phase_loop.iter0.task_loop-2"
+  ✓ buildCorrectiveItemValue("iter-phase_loop.iter0.task_loop-1", 1) returns "ct-iter-phase_loop.iter0.task_loop-1-1"
+  ✓ isLoopNode is re-exported from dag-timeline-helpers
+
+deriveIterationTaskProgress tests
+
+  ✓ returns null when iteration has no task_loop child
+  ✓ returns { completed: 0, total: 0 } when task_loop has no iterations (FR-8)
+  ✓ counts only iterations whose status === "completed" (AD-4, FR-7)
+  ✓ keeps reporting full progress after iteration completes (FR-7 — "stays full and visible")
+
+deriveIterationBadgeLabel tests
+
+  ✓ FR-2/DD-1 task_executor in_progress → Coding (renamed from Executing)
+  ✓ FR-3 code_review in_progress → Reviewing
+  ✓ FR-3 commit in_progress → Committing
+  ✓ FR-3 phase_review in_progress → Reviewing
+  ✓ FR-3 task iter inherits its own in-flight substep (Reviewing)
+  ✓ FR-2 fallback: in_progress with no in-flight substep → Coding (renamed from Executing)
+  ✓ DD-2 completed iteration → Completed (icon-only label)
+
+deriveGateBadgeStatusAndLabel tests
+
+  ✓ FR-4 gate_active=true overrides to Not Started (DD-3)
+  ✓ FR-4 gate_active=false uses underlying status default
+
+getDocLinkLabel tests
+
+  ✓ planning artifact steps bucket to 'Document'
+  ✓ review/report steps bucket to 'Report'
+  ✓ AD-6 compound id resolves leaf to bucketed label
+  ✓ unknown leaf falls back to getDisplayName
+  ✓ getDocLinkLabel returns the correct bucket for every bucketed id
+
+shouldRenderTimelineRow tests
+
+  ✓ commit_gate always hidden regardless of context
+  ✓ pr_gate always hidden
+  ✓ task_gate with gate_active: false returns false
+  ✓ task_gate with gate_active: true returns true
+  ✓ phase_gate with gate_active: false returns false
+  ✓ phase_gate with gate_active: true returns true
+  ✓ commit with commitHash: null returns false
+  ✓ commit with commitHash: '' returns false
+  ✓ commit with commitHash: 'abc123' returns true
+  ✓ final_pr with prUrl: null returns false
+  ✓ final_pr with prUrl: '' returns false
+  ✓ final_pr with prUrl: 'https://github.com/user/repo/pull/1' returns true
+  ✓ unrelated node 'requirements' (kind: 'step') always returns true
+  ✓ unrelated node 'master_plan' always returns true
+
+resolveStageBadge (FR-1, FR-2, FR-4, FR-6, AD-2, AD-4, DD-1, DD-2) tests
+
+  ✓ FR-1/DD-1 planning step ids in_progress resolve to --tier-planning + 'Planning'
+  ✓ FR-2/DD-1 task_executor in_progress resolves to --tier-execution + 'Coding' (renamed from Executing)
+  ✓ FR-1/DD-1 commit in_progress resolves to --tier-execution + 'Committing'
+  ✓ FR-1/DD-1 code_review in_progress resolves to --tier-review + 'Reviewing'
+  ✓ FR-1/DD-1 phase_review in_progress resolves to --tier-review + 'Reviewing'
+  ✓ FR-4/DD-1 final_review in_progress resolves to --tier-review + 'Reviewing'
+  ✓ FR-1/AD-2 unknown leaf in_progress falls back to STATUS_MAP defaults
+  ✓ FR-2/DD-2 non-in_progress statuses use STATUS_MAP defaults regardless of nodeId
+  ✓ AD-4 compound nodeIds resolve via leaf segment
+  ✓ FR-6 ITERATION_SUBSTEP_LABELS now covers final_review
+
+deriveIterationBadgeLabel — phase-boundary recursion stop (FR-3, AD-3, DD-7) tests
+
+  ✓ FR-3/AD-3 phase iter with task_loop in_progress reads 'Executing' regardless of task substep
+  ✓ FR-11 phase iter with phase_planning in_progress reads 'Executing' (Planning dropped)
+  ✓ FR-3 phase iter with phase_review in_progress reads 'Reviewing'
+  ✓ FR-3 task iter still recurses — code_review substep bubbles up
+  ✓ FR-2/DD-1 task iter task_executor in_progress → 'Coding' (renamed from Executing)
+  ✓ DD-7 phase iter, no in-flight substep, in_progress → 'Executing' (fallback)
+  ✓ DD-2 completed phase iter → 'Completed' regardless of parentKind
+
+deriveIterationBadgeLabel — UI-IMPROVE-3-FIXES extensions (FR-2, FR-3, FR-4, FR-6, FR-11, FR-17, AD-1, AD-2, DD-1, DD-3, DD-4, DD-5)
+
+  ✓ FR-2/DD-1 task iter task_executor in_progress reads 'Coding' (renamed from 'Executing')
+  ✓ FR-2 task iter code_review in_progress still reads 'Reviewing'
+  ✓ FR-2 task iter commit in_progress still reads 'Committing'
+  ✓ FR-4/DD-3 task iter with an in_progress corrective entry reads 'Correcting'
+  ✓ FR-4 'Correcting' wins over the in-flight substep label when both apply
+  ✓ FR-4 'Correcting' clears once every corrective resolves; iteration on completed reads STATUS_MAP default 'Completed'
+  ✓ FR-6/DD-4 task iter status='failed' reads {status:'failed', label:'Failed'} (terminal)
+  ✓ FR-6 task iter status='halted' reads {status:'halted', label:'Halted'}
+  ✓ FR-11/AD-1 phase iter with phase_planning in_progress now reads 'Executing' (Planning dropped)
+  ✓ FR-11 phase iter with phase_review in_progress still reads 'Reviewing'
+  ✓ FR-17 phase iter with task_loop in_progress reads 'Executing' even when no phase_planning child exists (defensive guard removed)
+
+FR-16 / FR-12 carry-forward cleanup
+
+  ✓ FR-16 dag-timeline-helpers.ts no longer exports derivePlanningStepLabel
+  ✓ FR-12 PLANNING_STEP_IDS no longer contains 'phase_planning' (top-level planning steps unaffected; phase_planning resolves via resolveStageBadge leaf-segment lookup)
+  ✓ FR-12 top-level planning step ids still resolve to --tier-planning + 'Planning' (resolveStageBadge unaffected)
+  ✓ FR-12/FR-17 phase_planning leaf no longer resolves to --tier-planning (falls through to STATUS_MAP)
+
+145 passed, 0 failed
+
+✔ components\dag-timeline\dag-timeline-helpers.test.ts (825.9423ms)
+
+DAG timeline — legacy-state rendering regression
+
+  ✓ (A) legacy iteration with phase_planning + task_handoff: iteration name parsed from phase_planning.doc_path
+  ✓ (A) legacy task iteration: iteration name parsed from task_handoff.doc_path
+  ✓ (A) legacy top-level nodes: groupNodesBySection emits Planning/Execution/Completion with gate rows in Planning
+  ✓ (A) legacy deriveCurrentPhase: reads phase_planning.doc_path for the active iteration
+  ✓ (B) forward-compat iteration without phase_planning: iteration-name fallback returns "Phase N"
+  ✓ (B) forward-compat task iteration without task_handoff: fallback returns "Task N"
+  ✓ (B) forward-compat top-level nodes: groupNodesBySection emits the 3-section contract
+  ✓ (A) legacy state renders with no thrown exceptions even when phase_planning.doc_path is null
+  ✓ (Iter-8 legacy) iteration fixture preserves completed phase_report body node and top-level grouping uses the 3-section contract
+  ✓ (Iter-8 new shape) iteration WITHOUT phase_report body node renders cleanly under the 3-section contract
+  ✓ (Iter-11) phase-scope corrective iteration has corrective_tasks.length === 1
+  ✓ (Iter-11) phase-scope corrective task_handoff is pre-completed with correct doc_path
+  ✓ (Iter-11) phase-scope corrective has scaffolded code_review body node
+  ✓ (Iter-11) phase-scope corrective iteration: top-level groupNodesBySection emits Planning/Execution/Completion
+  ✓ (Iter-11) phase-scope corrective iteration: phase_planning.doc_path parsed correctly
+  ✓ (Iter-11) legacy canary still passes: makeLegacyPhaseIteration is unchanged and corrective_tasks is empty
+
+16 passed, 0 failed
+✔ components\dag-timeline\dag-timeline-legacy-render.test.ts (783.2021ms)
+
+DAGTimelineSkeleton component tests
+
+  ✓ DAGTimelineSkeleton() outer element carries role="status"
+  ✓ DAGTimelineSkeleton() outer element carries aria-label="Loading timeline"
+  ✓ DAGTimelineSkeleton() (no props) returns a React element
+  ✓ DAGTimelineSkeleton() children include the section-label bar
+  ✓ DAGTimelineSkeleton() (default rowCount=6) returns exactly 6 row-shaped placeholders
+  ✓ DAGTimelineSkeleton({ rowCount: 6 }) returns exactly 6 row-shaped placeholders
+  ✓ DAGTimelineSkeleton({ rowCount: 0 }) returns zero row-shaped placeholders
+  ✓ DAGTimelineSkeleton({ rowCount: 0 }) still renders the section-label bar
+  ✓ DAGTimelineSkeleton({ rowCount: 0 }) outer element still carries role="status"
+  ✓ DAGTimelineSkeleton({ rowCount: 3 }) returns exactly 3 row-shaped placeholders
+  ✓ DAGTimelineSkeleton({ rowCount: 3 }) also renders the section-label bar
+  ✓ DAGTimelineSkeleton({ rowCount: 3 }) includes 1 loop-shaped placeholder (interleaved after row index 1)
+  ✓ DAGTimelineSkeleton({ rowCount: 6 }) includes 2 loop-shaped placeholders (after rows 1 and 3)
+  ✓ DAGTimelineSkeleton({ rowCount: 6 }) total children = 1 (section-label) + 6 (rows) + 2 (loops) = 9
+  ✓ dag-timeline-skeleton.tsx imports Skeleton from @/components/ui/skeleton
+  ✓ dag-timeline-skeleton.tsx does NOT import any hooks (no useSSEContext, useProjects, etc.)
+  ✓ dag-timeline-skeleton.tsx outer wrapper uses role="status"
+  ✓ dag-timeline-skeleton.tsx outer wrapper uses aria-label="Loading timeline"
+  ✓ dag-timeline-skeleton.tsx does NOT use role="alert" or aria-live="assertive"
+  ✓ index.ts exports DAGTimelineSkeleton
+  ✓ index.ts exports DAGTimelineSkeletonProps
+  ✓ index.ts places DAGTimelineSkeleton export adjacent to HaltReasonBanner export
+
+22 passed, 0 failed
+
+✔ components\dag-timeline\dag-timeline-skeleton.test.ts (790.044ms)
+  ✓ step node is NOT identified as a loop node
+  ✓ gate node is NOT identified as a loop node
+  ✓ conditional node is NOT identified as a loop node
+  ✓ parallel node is NOT identified as a loop node
+  ✓ for_each_phase node IS identified as a loop node
+  ✓ for_each_task node IS identified as a loop node
+  ✓ Object.entries preserves insertion order for a mixed NodesRecord
+  ✓ Object.entries of single-entry NodesRecord returns that single entry
+  ✓ empty NodesRecord produces zero entries
+  ✓ all NodeKind values are classified without throwing
+  ✓ loop kinds form exactly the set {for_each_phase, for_each_task}
+  ✓ integration: plan_approval_gate pending (status: not_started) with projectName defined → shouldRenderGateButton true
+  ✓ integration: final_approval_gate pending (status: not_started) with projectName defined → shouldRenderGateButton true
+  ✓ integration: plan_approval_gate completed → shouldRenderGateButton false (hide-after-approval)
+  ✓ integration: gate_mode_selection pending with projectName defined → shouldRenderGateButton false (excluded from GATE_NODE_CONFIG)
+  ✓ integration: pr_gate as conditional node → shouldRenderGateButton false regardless of other props (not a gate kind)
+  ✓ dag-timeline.tsx forwards `projectName={projectName}` on every <DAGNodeRow> / <DAGLoopNode> call site (>= 2 total occurrences)
+  ✓ dag-timeline.tsx does NOT forward `gateActive` (button visibility is driven by node.status inside DAGNodeRow)
+  ✓ dag-timeline.tsx does NOT import fetch, api-client, or useApproveGate directly
+  ✓ deriveInitialFocusedRowKey([]) === null (empty timeline has no initial focus)
+  ✓ deriveInitialFocusedRowKey(["a"]) === "a" (single-row timeline)
+  ✓ deriveInitialFocusedRowKey(["a", "b", "c"]) === "a" (first in document order)
+  ✓ computeNextIndex("ArrowDown", 0, 3) === 1 (advance forward)
+  ✓ computeNextIndex("ArrowDown", 1, 3) === 2 (advance forward)
+  ✓ computeNextIndex("ArrowDown", 2, 3) === 0 (wrap to start from last)
+  ✓ computeNextIndex("ArrowDown", -1, 3) === 0 (no current focus → first row)
+  ✓ computeNextIndex("ArrowUp", 2, 3) === 1 (advance backward)
+  ✓ computeNextIndex("ArrowUp", 1, 3) === 0 (advance backward)
+  ✓ computeNextIndex("ArrowUp", 0, 3) === 2 (wrap to end from first)
+  ✓ computeNextIndex("ArrowUp", -1, 3) === 2 (no current focus → last row)
+  ✓ computeNextIndex("ArrowDown", 0, 1) === 0 (single-row wrap-to-self)
+  ✓ computeNextIndex("ArrowUp", 0, 1) === 0 (single-row wrap-to-self)
+  ✓ computeRowTabIndex("a", "a") === 0 (focused row is tabbable)
+  ✓ computeRowTabIndex("a", "b") === -1 (unfocused row is not tabbable)
+  ✓ computeRowTabIndex("a", null) === -1 (no focused row → row not tabbable)
+  ✓ computeRowTabIndex("b", null) === -1 (no focused row → row not tabbable)
+  ✓ single-tabindex=0 invariant: focusedRowKey="b" in ["a","b","c"] → [-1, 0, -1]
+  ✓ single-tabindex=0 invariant: focusedRowKey=null in ["a","b","c"] → all -1 (empty coordinator state)
+  ✓ dag-timeline.tsx contains role="listbox" (outer container role swap)
+  ✓ dag-timeline.tsx contains aria-label="Pipeline timeline"
+  ✓ dag-timeline.tsx contains ref={containerRef} (ref attachment for descendant query)
+  ✓ dag-timeline.tsx contains onKeyDownCapture={handleKeyDown} (arrow-key handler wired on container in capture phase)
+  ✓ dag-timeline.tsx handleKeyDown calls event.stopPropagation() for ArrowDown/ArrowUp (prevents base-ui AccordionTrigger from stealing arrow keys)
+  ✓ dag-timeline.tsx contains [data-timeline-row] (descendant query selector for roving coordinator)
+  ✓ dag-timeline.tsx contains isFocused={focusedRowKey === nodeId} on both renderNodeEntry branches (>= 2 occurrences)
+  ✓ dag-timeline.tsx contains onFocusChange={handleFocusChange} on both renderNodeEntry branches (>= 2 occurrences)
+  ✓ dag-timeline.tsx does NOT contain role="list" (regression guard: container role flipped from list to listbox)
+  ✓ dag-timeline.tsx does NOT contain placeholder isFocused={false} (regression guard: all placeholders replaced)
+  ✓ dag-timeline.tsx contains focus-recovery useEffect that reseeds focusedRowKey when null or stale
+  ✓ dag-timeline.tsx does NOT contain placeholder onFocusChange={() => {}} (regression guard: all placeholders replaced)
+  ✓ dag-iteration-panel.tsx does NOT contain placeholder isFocused={false} (regression guard)
+  ✓ dag-iteration-panel.tsx does NOT contain placeholder onFocusChange={() => {}} (regression guard)
+  ✓ dag-iteration-panel.tsx contains isFocused={focusedRowKey === childKey} on both iteration-child branches (>= 2 occurrences)
+  ✓ dag-iteration-panel.tsx contains focusedRowKey={focusedRowKey} forwarded to nested DAGLoopNode and DAGCorrectiveTaskGroup (>= 2 occurrences)
+  ✓ dag-iteration-panel.tsx contains onFocusChange={onFocusChange} forwarded to DAGLoopNode, DAGNodeRow, and DAGCorrectiveTaskGroup (>= 3 occurrences)
+  ✓ dag-corrective-task-group.tsx does NOT contain placeholder isFocused={false} (regression guard)
+  ✓ dag-corrective-task-group.tsx does NOT contain placeholder onFocusChange={() => {}} (regression guard)
+  ✓ DAGLoopNodeProps contract fixture: focusedRowKey is string|null and onFocusChange is (nodeId: string) => void
+  ✓ DAGIterationPanelProps structural fixture: focusedRowKey and onFocusChange are present and typed correctly
+  ✓ DAGCorrectiveTaskGroupProps structural fixture: focusedRowKey and onFocusChange are present and typed correctly
+  ✓ deriveAncestorLoopKeys("top_level_step") === [] (no .iter\d+. boundary)
+  ✓ deriveAncestorLoopKeys("phase_loop") === [] (loop trigger key with no ancestor)
+  ✓ deriveAncestorLoopKeys("phase_loop.iter0.task_handoff") === ["phase_loop"]
+  ✓ deriveAncestorLoopKeys("phase_loop.iter0.ct1.task_handoff") === ["phase_loop"] (.ct\d+. is NOT an ancestor)
+  ✓ deriveAncestorLoopKeys("phase_loop.iter0.task_loop.iter1.task_handoff") === ["phase_loop.iter0.task_loop", "phase_loop"] (deepest first)
+  ✓ deriveAncestorLoopKeys("phase_loop.iter12.task_loop.iter345.task_handoff") matches multi-digit iteration indices
+  ✓ dag-timeline.tsx imports useEffect from react
+  ✓ dag-timeline.tsx contains the focus-loss guard on `document.activeElement` vs `document.body`
+  ✓ dag-timeline.tsx seeds the recovery walk with `deriveAccordionFallbackKeys(focusedRowKey)`
+  ✓ dag-timeline.tsx contains the recovery selector prefix `[data-row-key="`
+  ✓ dag-timeline.tsx uses CSS.escape to safely escape ancestor keys in the selector
+  ✓ dag-timeline.tsx contains the recovery effect dep array `[expandedLoopIds, focusedRowKey]`
+  ✓ dag-timeline.tsx contains `const handleFocusChange = useCallback(` (prior-task stable-callback wrapping preserved)
+  ✓ dag-timeline.tsx contains `const handleKeyDown = useCallback(` (prior-task stable-callback wrapping preserved)
+  ✓ dag-timeline.tsx does NOT contain `React.memo` (memoization is OUT OF SCOPE for this task)
+  ✓ dag-timeline.tsx does NOT call fetch( (no new network wiring is introduced by this task)
+  ✓ dag-timeline.tsx does NOT contain `EventSource(` (no new SSE subscription is introduced by this task)
+  ✓ use-follow-mode.ts still contains `!isProgrammaticRef.current` (unchanged by this task)
+
+DAGTimeline — ancestor-key translation for the iter-... accordion (P03-T04)
+
+  ✓ iterationAncestorToAccordionKey("phase_loop", 0) returns "iter-phase_loop-0" (AD-3 + AD-5)
+  ✓ iterationAncestorToAccordionKey accepts a compound parent ("phase_loop.iter0.task_loop", 2) → "iter-phase_loop.iter0.task_loop-2"
+  ✓ deriveAncestorLoopKeys("phase_loop.iter0.task_loop.iter2.task_handoff") still returns the loop-id chain so the focus-fallback effect can map them via iterationAncestorToAccordionKey (FR-16)
+
+DAGTimeline — deriveAccordionFallbackKeys (Copilot review #1: iter-/ct- shaped focusedRowKey)
+
+  ✓ deriveAccordionFallbackKeys(compound nodeId) walks every .iterN. boundary deepest-first
+  ✓ deriveAccordionFallbackKeys("phase_loop") returns [] (top-level row, no accordion ancestor)
+  ✓ deriveAccordionFallbackKeys(iter- key with compound parent) falls back to the enclosing iteration trigger
+  ✓ deriveAccordionFallbackKeys(top-level iter- key) returns [] (no ancestor accordion)
+  ✓ deriveAccordionFallbackKeys(ct- key) falls back to its parent iteration trigger first
+  ✓ deriveAccordionFallbackKeys(ct- key under a nested iteration) recurses up the iteration chain
+
+DAGTimeline FR-13/FR-14 source-shape tests
+
+  ✓ FR-13/FR-14 inter-section <Separator> is no longer rendered between groups
+
+88 passed, 0 failed
+
+✔ components\dag-timeline\dag-timeline.test.ts (4891.6558ms)
+
+HaltReasonBanner visibility logic tests
+
+  ✓ shouldRenderHaltReason('halted', 'Gate rejected by reviewer.') returns true
+  ✓ shouldRenderHaltReason('halted', null) returns false (halted-without-reason renders nothing)
+  ✓ shouldRenderHaltReason('halted', '') returns false (empty string treated as no reason)
+  ✓ shouldRenderHaltReason('halted', '   ') returns false (whitespace-only string treated as no reason)
+  ✓ shouldRenderHaltReason('in_progress', 'Some old reason') returns false (hidden when not halted)
+  ✓ shouldRenderHaltReason('not_started', 'x') returns false
+  ✓ shouldRenderHaltReason('completed', 'x') returns false
+  ✓ shouldRenderHaltReason(undefined, 'x') returns false (graphStatus undefined before hydration)
+
+8 passed, 0 failed
+
+✔ components\dag-timeline\halt-reason-banner.test.ts (971.5706ms)
+
+NodeKindIcon logic tests
+
+  ✓ renders FileText icon for kind="step"
+  ✓ renders Lock icon for kind="gate"
+  ✓ renders GitBranch icon for kind="conditional"
+  ✓ renders LayoutGrid icon for kind="parallel"
+  ✓ renders Layers icon for kind="for_each_phase"
+  ✓ renders RefreshCcw icon for kind="for_each_task"
+  ✓ applies aria-hidden="true" to all rendered icons
+  ✓ merges custom className with default classes
+  ✓ uses default className when no className provided
+
+9 passed, 0 failed
+
+✔ components\dag-timeline\node-kind-icon.test.ts (840.801ms)
+
+NodeStatusBadge logic tests
+
+  ✓ maps not_started to cssVar "--status-not-started"
+  ✓ maps in_progress to cssVar "--status-in-progress"
+  ✓ maps completed to cssVar "--status-complete"
+  ✓ maps failed to cssVar "--status-failed"
+  ✓ maps halted to cssVar "--status-halted"
+  ✓ maps skipped to cssVar "--status-skipped"
+  ✓ in_progress has isSpinning=true
+  ✓ not_started has isSpinning=false
+  ✓ completed has isSpinning=false
+  ✓ failed has isSpinning=false
+  ✓ halted has isSpinning=false
+  ✓ skipped has isSpinning=false
+  ✓ completed has isComplete=true
+  ✓ not_started has isComplete=false
+  ✓ in_progress has isComplete=false
+  ✓ failed has isComplete=false
+  ✓ halted has isComplete=false
+  ✓ skipped has isComplete=false
+  ✓ failed has isRejected=true
+  ✓ halted has isRejected=true
+  ✓ not_started has isRejected=false
+  ✓ in_progress has isRejected=false
+  ✓ completed has isRejected=false
+  ✓ skipped has isRejected=false
+  ✓ not_started default label is "Not Started"
+  ✓ in_progress default label is "In Progress"
+  ✓ completed default label is "Completed"
+  ✓ failed default label is "Failed"
+  ✓ halted default label is "Halted"
+  ✓ skipped default label is "Skipped"
+  ✓ uses provided label prop over default
+  ✓ uses default label when no label prop provided
+  ✓ passes resolved label as ariaLabel to SpinnerBadge
+  ✓ passes custom label as ariaLabel when label is overridden
+
+NodeStatusBadge cssVar override (FR-1, FR-4, AD-4, DD-1) tests
+
+  ✓ cssVar override flows through to SpinnerBadge cssVar prop
+  ✓ cssVar omitted falls back to STATUS_MAP entry (back-compat)
+  ✓ cssVar override does not change isSpinning/isComplete/isRejected (DD-1: status drives icon, override drives only color)
+  ✓ cssVar override + iconOnly: visible label suppressed but ariaLabel preserved (NFR-3)
+  ✓ AD-4 NodeStatusBadge declares optional cssVar prop in its props interface
+  ✓ AD-4 NodeStatusBadge forwards cssVar to SpinnerBadge with STATUS_MAP fallback
+
+40 passed, 0 failed
+
+✔ components\dag-timeline\node-status-badge.test.ts (892.3988ms)
+
+ProjectHeader logic tests
+
+  ✓ renders the project name
+  ✓ renders project name with "text-lg font-semibold" class
+  ✓ outer element is <header> with aria-label
+  ✓ outer class includes border-b
+  ✓ row 1 has flex flex-wrap items-center gap-3 (unified wrapping row)
+  ✓ PipelineTierBadge renders when tier is provided (planning, in_progress)
+  ✓ PipelineTierBadge renders when tier is provided (execution, in_progress)
+  ✓ PipelineTierBadge does not render when tier is omitted
+  ✓ GateModeBadge renders when gateMode is provided (string)
+  ✓ GateModeBadge renders when gateMode is null (explicit null)
+  ✓ GateModeBadge does not render when gateMode is undefined (v4 path)
+  ✓ Row 2 renders when graphStatus === "in_progress" AND currentPhaseName is truthy
+  ✓ Row 2 is hidden when graphStatus !== "in_progress"
+  ✓ Row 2 is hidden when graphStatus is "not_started"
+  ✓ Row 2 is hidden when currentPhaseName is null
+  ✓ Row 2 is hidden when currentPhaseName is undefined
+  ✓ Progress text renders as "{completed} of {total} phases" when progress is provided with row 2 conditions
+  ✓ Progress text is hidden when progress is null even if row 2 is visible
+  ✓ Progress text is hidden when progress is undefined
+  ✓ header without tier or gateMode renders only projectName — no tier badge, no gate badge, no row 2
+  ✓ inlined source-control fragments are hidden when sourceControl is null
+  ✓ inlined source-control fragments render when a non-null V5SourceControlState fixture is passed
+  ✓ Follow Mode container uses ml-auto and inline-flex gap-2 classes
+  ✓ Follow Mode label text is exactly "Follow Mode" when followMode is true
+  ✓ Follow Mode label text is exactly "Follow Mode" when followMode is false
+  ✓ Follow Mode label htmlFor matches the Switch id ("follow-mode-switch")
+  ✓ Follow Mode Switch carries className "cursor-pointer"
+  ✓ Follow Mode Switch checked === true when followMode is true
+  ✓ Follow Mode Switch checked === false when followMode is false
+  ✓ Invoking onCheckedChange(true) calls onToggleFollowMode exactly once and does not forward the argument
+  ✓ Invoking onCheckedChange(false) calls onToggleFollowMode exactly once and does not forward the argument
+  ✓ schema-version pill is removed from source (no schemaVersionTooltip helper)
+  ✓ graph-status NodeStatusBadge is removed from source (no statusTooltip helper)
+  ✓ PipelineTierBadge is rendered in source
+  ✓ gateModeTooltip "task" copy appears verbatim in source
+  ✓ gateModeTooltip "phase" copy appears verbatim in source
+  ✓ gateModeTooltip "autonomous" copy appears verbatim in source
+  ✓ gateModeTooltip null (global default) copy appears verbatim in source
+  ✓ autoCommitTooltip "always" copy appears verbatim in source
+  ✓ autoCommitTooltip "ask" copy appears verbatim in source
+  ✓ autoCommitTooltip "never" copy appears verbatim in source
+  ✓ autoPrTooltip "always" copy appears verbatim in source
+  ✓ autoPrTooltip "ask" copy appears verbatim in source
+  ✓ autoPrTooltip "never" copy appears verbatim in source
+  ✓ auto_commit "ask" badge uses --status-in-progress cssVar in source
+  ✓ auto_pr "ask" badge uses --status-in-progress cssVar in source
+  ✓ branchTooltip template (compare URL present) appears verbatim in source
+  ✓ branchTooltip template (no compare URL) appears verbatim in source
+  ✓ prStateTooltip (valid URL) copy appears verbatim in source
+  ✓ prStateTooltip (pending/null) copy appears verbatim in source
+  ✓ prStateTooltip (failed) copy appears verbatim in source
+  ✓ followModeTooltip on=true copy appears verbatim in source
+  ✓ followModeTooltip on=false copy appears verbatim in source
+  ✓ exactly one <TooltipProvider> opening tag exists in source
+  ✓ exactly one </TooltipProvider> closing tag exists in source
+  ✓ no attribute-bearing <TooltipProvider ...> tag exists in source
+  ✓ exactly nine <TooltipContent> opening tags exist in source
+  ✓ every <TooltipTrigger ...> opening tag uses the render={ prop shape
+  ✓ barrel (index.ts) does not contain "SourceControlRow"
+  ✓ barrel (index.ts) does not contain "TimelineToolbar"
+  ✓ retired file "source-control-row.tsx" does not exist on disk
+  ✓ retired file "source-control-row.test.ts" does not exist on disk
+  ✓ retired file "timeline-toolbar.tsx" does not exist on disk
+  ✓ retired file "timeline-toolbar.test.ts" does not exist on disk
+  ✓ Auto-Commit badge source position precedes the branch compare link
+  ✓ Auto-PR badge source position precedes the branch compare link
+  ✓ branch compare link source position precedes the PR status region
+
+67 passed, 0 failed
+
+✔ components\dag-timeline\project-header.test.ts (648.1867ms)
+
+ApproveGateButton tests:
+  ✓ Renders trigger button with the provided label text when not pending
+  ✓ Trigger button shows Loader2 spinner and "Approving…" text when isPending is true
+  ✓ Trigger button has aria-busy="true" and aria-disabled="true" when isPending
+  ✓ Trigger button applies w-full sm:w-auto for responsive width
+  ✓ Clicking trigger button opens the ConfirmApprovalDialog (sets open to true)
+  ✓ ConfirmApprovalDialog receives correct title for plan_approved: "Approve Plan"
+  ✓ ConfirmApprovalDialog receives correct title for final_approved: "Approve Final Review"
+  ✓ ConfirmApprovalDialog receives correct description for plan_approved
+  ✓ ConfirmApprovalDialog receives correct description for final_approved
+  ✓ GateErrorBanner renders when error is not null, with message and optional detail
+  ✓ GateErrorBanner does not render when error is null
+  ✓ Dismissing the error banner calls clearError()
+  ✓ Closing the dialog (via onOpenChange(false)) calls clearError()
+  ✓ Trigger button receives tabIndex={-1} when caller passes -1
+  ✓ Trigger button receives tabIndex={0} when caller passes 0
+  ✓ Trigger button tabIndex is undefined when caller does not supply the prop
+  ✓ When caller supplies a ref slot, refReceived is true and refSlot.current is attached
+  ✓ On confirm success (approveGate returns true), dialog closes
+  ✓ On confirm failure (approveGate returns false), dialog remains open
+
+  19 passed, 0 failed
+
+✔ components\dashboard\approve-gate-button.test.ts (863.8692ms)
+
+ConfirmApprovalDialog tests:
+  ✓ Component file exports a named ConfirmApprovalDialog function
+  ✓ Props interface accepts all 7 required props
+  ✓ When isPending is false: Confirm button label is "Confirm Approval" and Cancel button label is "Cancel"
+  ✓ When isPending is true: Confirm button label changes to "Approving…" and shows spinner
+  ✓ When isPending is true: both Cancel and Confirm buttons have disabled attribute
+  ✓ When isPending is true: onOpenChange calls are blocked (guarded callback is a no-op)
+  ✓ When isPending is false: onOpenChange calls are NOT blocked
+  ✓ Confirm button has aria-busy="true" and aria-disabled="true" when isPending is true
+  ✓ Confirm button does NOT have aria-busy or aria-disabled when isPending is false
+  ✓ Spinner icon has aria-hidden="true"
+  ✓ Cancel button has autoFocus attribute (receives initial focus)
+  ✓ Document name is rendered with "font-medium text-foreground" classes inside description
+  ✓ Footer uses responsive classes: flex flex-col-reverse sm:flex-row sm:justify-end gap-2
+  ✓ Cancel button calls onOpenChange(false) when clicked
+  ✓ Confirm button calls onConfirm when clicked
+  ✓ Description ends with proceed prompt
+
+16 tests: 16 passed, 0 failed
+
+✔ components\dashboard\confirm-approval-dialog.test.ts (2394.6565ms)
+
+PlanningSection integration tests:
+
+FinalReviewSection integration tests:
+
+MainDashboard prop threading tests:
+
+Barrel re-export tests:
+
+Build verification:
+✔ PlanningSection renders ApproveGateButton with gateEvent='plan_approved' when planning.status === 'complete' and human_approved === false (1.4577ms)
+✔ PlanningSection does NOT render ApproveGateButton when planning.status !== 'complete' (0.2457ms)
+✔ PlanningSection does NOT render ApproveGateButton when human_approved === true (0.1685ms)
+✔ PlanningSection passes projectName to ApproveGateButton and derives documentName as ${projectName}-MASTER-PLAN.md (0.2441ms)
+✔ FinalReviewSection renders ApproveGateButton with gateEvent='final_approved' when pipelineTier === 'review' and !human_approved (0.3107ms)
+✔ FinalReviewSection derives documentName from finalReview.doc_path (basename) when provided [Iter-12] (0.2198ms)
+✔ FinalReviewSection renders 'Pending Approval' with Circle icon when pipelineTier !== 'review' and !human_approved (0.1609ms)
+✔ FinalReviewSection renders 'Human Approved' with CheckCircle2 icon when human_approved === true regardless of pipelineTier (0.2061ms)
+✔ FinalReviewSection returns null when finalReview.status === 'not_started' (0.2059ms)
+✔ MainDashboard passes projectName to PlanningSection (0.2823ms)
+✔ MainDashboard passes projectName and pipelineTier to FinalReviewSection (0.1579ms)
+✔ MainDashboard resolves maxRetries from config when provided (e.g. 5 from state.config.limits.max_retries_per_task) (0.1516ms)
+✔ MainDashboard falls back to default maxRetries=3 when config is absent (0.163ms)
+✔ ApproveGateButton, ConfirmApprovalDialog, and GateErrorBanner are re-exported from dashboard/index.ts (11.4506ms)
+✔ Project compiles without type errors (verified by tsc --noEmit before test run) (0.267ms)
+
+ExecutePlanButton tests
+
+  ✓ idle state: label is 'Execute Plan' (DD-2, DD-3)
+  ✓ pending state: label is 'Launching…' (DD-4)
+  ✓ idle: disabled === false (FR-8)
+  ✓ pending: disabled === true (FR-8, DD-4)
+
+ExecutePlanButton — Dialog flow
+
+  ✓ Trigger click opens dialog and does not call start
+  ✓ Cancel closes dialog without calling start
+  ✓ Confirm closes dialog and calls start("execute-plan") exactly once
+  ✓ Dialog confirm button is not disabled by pending state
+
+8 passed, 0 failed
+
+✔ components\dashboard\execute-plan-button.test.ts (2927.5382ms)
+
+GateErrorBanner tests:
+  ✓ Component renders without crashing when given message and onDismiss
+  ✓ role="alert" attribute is present on the container
+  ✓ aria-live="polite" attribute is present on the container
+  ✓ Message text has text-destructive and font-medium classes
+  ✓ AlertCircle icon has aria-hidden="true"
+  ✓ Dismiss button has aria-label="Dismiss error" and calls onDismiss
+  ✓ When detail is provided: details element is rendered with summary and pre
+  ✓ When detail is undefined: no details element is rendered
+  ✓ Detail pre has max-h-32 and overflow-auto classes
+
+9 tests: 9 passed, 0 failed
+
+✔ components\dashboard\gate-error-banner.test.ts (631.7582ms)
+ErrorLogSection
+  ✓ renders 'View Error Log' link when errorLogPath is provided as a non-null string
+  ✓ does NOT render 'View Error Log' link when errorLogPath is null
+  ✓ does NOT render 'View Error Log' link when errorLogPath is omitted
+  ✓ still renders retry/halt counts and blockers correctly after prop changes
+  ✓ clicking 'View Error Log' link calls onDocClick with the provided errorLogPath
+  ✓ shows empty blockers message when no blockers exist
+
+OtherDocsSection
+  ✓ renders each file as a DocumentLink in alphabetical order
+  ✓ shows 'No additional documents' when files is an empty array
+  ✓ wrapped in a <nav> element with aria-label='Other project documents'
+  ✓ labels are derived by stripping .md extension
+  ✓ labels with a full absolute path show only the basename without .md extension
+  ✓ clicking a file calls onDocClick with the file path
+  ✓ does not mutate the original files array
+
+PlanningChecklist label logic
+  ✓ shows basename-only label when doc_path is an absolute path
+  ✓ falls back to step display name when doc_path is null
+  ✓ shows basename-only label when doc_path is a relative path
+
+Results: 16 passed, 0 failed
+✔ components\dashboard\sections.test.ts (793.8573ms)
+SourceControlSection
+  ✓ Branch label is always 'Branch Name:'
+  ✓ Branch as plain text when compare_url is null
+  ✓ Branch as clickable link when compare_url is non-null
+  ✓ Auto-Commit badge: green check (isComplete) when 'always'
+  ✓ Auto-Commit badge: red X (isRejected) when 'never'
+  ✓ Auto-PR badge: green check (isComplete) when 'always'
+  ✓ Auto-PR badge: red X (isRejected) when 'never'
+  ✓ PR placeholder row visible when auto_pr is 'always'
+  ✓ PR placeholder row hidden when auto_pr is 'never'
+  ✓ prState is 'pending' when pr_url is undefined (not yet attempted)
+  ✓ prState is 'failed' when pr_url is null (creation failed)
+  ✓ prState is 'link' when pr_url is a valid URL
+  ✓ prState is 'pending' when pr_url is non-http string
+
+  13 passed, 0 failed
+
+✔ components\dashboard\source-control-section.test.ts (742.9787ms)
+
+DocumentMetadata frontmatter formatting tests
+
+  ✓ stringifyFrontmatterItem primitive string returns the string
+  ✓ stringifyFrontmatterItem primitive number returns the stringified number
+  ✓ stringifyFrontmatterItem primitive boolean returns the stringified boolean
+  ✓ stringifyFrontmatterItem null returns empty string
+  ✓ stringifyFrontmatterItem undefined returns empty string
+  ✓ stringifyFrontmatterItem flat object renders as key: value pairs
+  ✓ stringifyFrontmatterItem object with nested object stringifies the nested as JSON
+  ✓ stringifyFrontmatterItem object skips null/undefined values
+  ✓ stringifyFrontmatterItem empty object returns empty string
+  ✓ formatValue with array of objects returns { items: [...] } (regression: tasks frontmatter)
+  ✓ formatValue with array of primitives returns { items: [...] }
+  ✓ formatValue with empty array returns { items: [] }
+  ✓ formatValue with plain object returns { text } (key: value pairs)
+  ✓ formatValue with primitive string returns { text }
+  ✓ formatValue status value carries className for color
+  ✓ formatValue date key formats a valid ISO date
+  ✓ formatValue with Date instance for date key returns a non-ISO text
+  ✓ formatValue with Date instance for non-date key still renders readably (not empty)
+  ✓ formatValue with invalid Date falls back to empty string (graceful)
+  ✓ stringifyFrontmatterItem with Date instance returns non-empty readable string
+  ✓ stringifyFrontmatterItem with invalid Date returns empty string
+  ✓ stringifyFrontmatterItem with Date nested inside an object renders sanely
+
+22 passed, 0 failed
+
+✔ components\documents\document-metadata.test.ts (623.9184ms)
+DocumentNavFooter logic
+  ✓ renders Prev and Next buttons when positioned in the middle
+  ✓ Prev button is disabled when currentPath is the first doc
+  ✓ Next button is disabled when currentPath is the last doc
+  ✓ Both buttons disabled when only one document in the list
+  ✓ Clicking an active Next button calls onNavigate with the next doc path
+  ✓ Clicking an active Prev button calls onNavigate with the prev doc path
+  ✓ Clicking a disabled button does NOT call onNavigate
+  ✓ aria-label on Prev contains the previous document title
+  ✓ aria-label on Next contains the next document title
+
+9 passed, 0 failed
+✔ components\documents\document-nav-footer.test.ts (587.3422ms)
+✓ null href — renders disabled span, no anchor
+✓ null href — correct disabled Tailwind classes
+✓ null href — label text present
+✓ null href — tooltip structure present (TooltipContent "Not available" in JSX, portal not mounted in SSR)
+✓ active href — renders anchor with correct attributes
+✓ active href — no disabled styling applied
+✓ active href — omits tabindex by default
+✓ active href — tabIndex={-1} round-trips to tabindex="-1"
+✓ FR-12/DD-8 ExternalLink emits title attribute when title prop is provided
+✓ NFR-1 aria-label remains the descriptive label when title is set (hash exposed via title attribute only)
+
+All ExternalLink tests passed ✓
+✔ components\documents\external-link.test.tsx (2826.4341ms)
+
+commitUrl logic
+
+  ✓ commit_hash is null → commitUrl is null
+  ✓ commit_hash is undefined → commitUrl is null
+  ✓ commit_hash is a real hash → commitUrl is correct GitHub URL
+  ✓ commit_hash is the string "none" → commitUrl is produced (no sentinel)
+  ✓ remoteUrl is null with real hash → commitUrl is null
+
+5 passed, 0 failed
+
+✔ components\execution\task-card.test.ts (652.4887ms)
+app-header-shell — exports and structure
+  ✓ AppHeaderShell is exported and is a function
+  ✓ AppHeaderShell is re-exported from the barrel
+  ✓ AppHeaderShell.name equals "AppHeaderShell"
+  ✓ NAV_LINKS contains "/projects" href
+  ✓ NAV_LINKS does NOT contain "/projects-v4" href (hidden from nav)
+  ✓ SSEProvider is imported
+  ✓ ConfigClickProvider is imported
+  ✓ AppHeaderShell wraps children in SSEProvider
+  ✓ AppHeaderShell wraps children in ConfigClickProvider
+  ✓ sseStatus is passed to AppHeader
+  ✓ reconnect is passed to AppHeader
+
+All 11 tests passed
+✔ components\layout\app-header-shell.test.tsx (4670.0952ms)
+app-header — exports and structure
+  ✓ AppHeader is exported and is a function
+  ✓ AppHeader is re-exported from the barrel
+  ✓ AppHeader.name equals "AppHeader"
+  ✓ NavLink with matching pathname has aria-current="page", non-matching has aria-current={undefined}
+  ✓ Settings button hidden when onConfigClick is undefined
+  ✓ Settings button visible when onConfigClick is defined
+  ✓ ConnectionIndicator is imported
+  ✓ ThemeToggle is imported
+  ✓ ConnectionIndicator is rendered in source
+  ✓ ThemeToggle is rendered in source
+  ✓ Main navigation aria-label is present
+  ✓ Dashboard controls aria-label is present
+  ✓ version prop renders v{version} text with correct aria-label
+  ✓ version prop absent — no version span rendered
+  ✓ version span uses muted-foreground/60 class in source
+
+All 15 tests passed
+✔ components\layout\app-header.test.tsx (4988.2032ms)
+✓ doc present → two-button row (Start Planning + View Brainstorming)
+✓ doc absent → single Start Brainstorming button
+✓ pending action → button disabled
+✓ error message → inline destructive line below button row
+✓ View Brainstorming render gate is brainstormingDoc presence
+✓ barrel re-exports NotStartedPaneV5
+
+All NotStartedPaneV5 tests passed
+✔ components\layout\not-started-pane-v5.test.tsx (4574.2975ms)
+projects-placeholder-view — exports and structure
+  ✓ ProjectsPlaceholderView is exported and is a function
+  ✓ ProjectsPlaceholderView is re-exported from the barrel
+  ✓ ProjectsPlaceholderView.name equals "ProjectsPlaceholderView"
+
+All 3 tests passed
+✔ components\layout\projects-placeholder-view.test.tsx (4514.4906ms)
+template-group-node — TemplateGroupNode component
+  ✓ renders without crashing for kind for_each_phase
+  ✓ renders without crashing for kind for_each_task
+  ✓ icon SVG is rendered for kind for_each_phase
+  ✓ icon SVG is rendered for kind for_each_task
+  ✓ label text renders correctly
+  ✓ kind subtitle renders correctly
+  ✓ kind subtitle renders correctly for kind for_each_task
+  ✓ Handle components present in source (not testable in SSR)
+  ✓ TemplateGroupNode is exported from barrel
+  ✓ TemplateGraphNode is still exported from barrel
+  ✓ has role="group" and aria-label matching the label
+  ✓ renders without crashing for kind conditional
+  ✓ icon SVG is rendered for kind conditional
+  ✓ conditional kind displays Conditional label
+  ✓ conditional kind displays correct accent color
+
+All 15 tests passed
+✔ components\process-editor\template-group-node.test.tsx (1008.1158ms)
+Warning: An update to Root inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+▶ TemplateSelector
+  ✔ fetches /api/templates on mount and renders non-deprecated options (138.7443ms)
+Warning: An update to Root inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+  ✔ uses ?template from URL as the initial active id (33.5617ms)
+Warning: An update to Root inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+  ✔ falls back to default when ?template is absent (30.055ms)
+Warning: An update to Root inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+  ✔ falls back to default silently when ?template names an unknown id (17.4672ms)
+Warning: An update to Root inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+  ✔ shows a deprecated template that arrives via direct URL but does not add it to the dropdown options list (28.1718ms)
+Warning: An update to Root inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+  ✔ on change, calls routerReplace with ?template=<id> and notifies via onTemplateChange (17.2484ms)
+Warning: An update to Root inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+  ✔ renders a visible label "Template" associated with the select (29.1113ms)
+✔ TemplateSelector (295.7166ms)
+sort-builder — buildSortSummary
+  ✓ Primary only — status ascending
+  ✓ Primary only — status descending
+  ✓ Primary only — name ascending
+  ✓ Primary only — name descending
+  ✓ Primary only — updated ascending
+  ✓ Primary only — updated descending
+  ✓ summary ignores persisted secondary — name primary with status secondary
+  ✓ summary never contains separator regardless of persisted secondary
+  ✓ Direction arrow — ascending produces ↑
+  ✓ Direction arrow — descending produces ↓
+  ✓ Field label — status maps to "Status"
+  ✓ Field label — name maps to "Name"
+  ✓ Field label — updated maps to "Updated"
+
+  13 passed, 0 failed
+
+✔ components\sidebar\sort-builder.test.ts (641.2145ms)
+use-config-click-context — exports and default value
+  ✓ Exports exist: ConfigClickContext, ConfigClickProvider, useConfigClickContext
+  ✓ Default value — onConfigClick is undefined
+  ✓ Default value — setOnConfigClick is a no-op function
+  ✓ Default setOnConfigClick is safe to call with undefined
+  ✓ Type verification: ConfigClickContextValue-compatible object has correct shape
+
+All 5 tests passed
+✔ hooks\use-config-click-context.test.tsx (764.4224ms)
+
+use-config-editor tests
+
+  ✓ UseConfigEditorReturn interface is exported and compiles
+  ✓ updateField: limits.max_phases updates to 12
+  ✓ updateField: system.orch_root updates to new value
+  ✓ updateField: human_gates.execution_mode updates to phase
+  ✓ updateField: source_control.auto_commit updates to never
+  ✓ updateField: deep clone does not mutate original
+  ✓ isDirty: false when config matches baseline (form mode)
+  ✓ isDirty: true when config differs from baseline (form mode)
+  ✓ isDirty: false when rawYaml matches baseline (raw mode)
+  ✓ isDirty: true when rawYaml differs from baseline (raw mode)
+  ✓ isDirty: false when config is null
+  ✓ updateField re-runs validateConfig and catches errors
+  ✓ updateField with valid value produces no errors for that field
+  ✓ setMode to raw when dirty: stringifyYaml produces valid YAML
+  ✓ setMode to raw when clean: rawYaml stays as original
+  ✓ setMode to raw when dirty: rawYaml gets serialized from config
+  ✓ save in form mode: request body has mode and config
+  ✓ save in raw mode: request body has mode and rawYaml
+  ✓ save in form mode with validation errors: should not proceed
+  ✓ after save success: new baseline matches saved config
+  ✓ formDirtyOnSwitch: false initially
+  ✓ formDirtyOnSwitch: true when switching to raw with dirty form
+  ✓ formDirtyOnSwitch: false when switching to raw with clean form
+  ✓ formDirtyOnSwitch: resets to false when switching back to form
+  ✓ dismissSaveError: resets saveState to idle
+  ✓ dismissSaveError: clears saveError to null
+  ✓ UseConfigEditorReturn includes formDirtyOnSwitch and dismissSaveError
+
+27 passed, 0 failed
+
+✔ hooks\use-config-editor.test.ts (1068.2371ms)
+use-follow-mode — computeSmartDefaults + exported surface
+  ✓ (a) computeSmartDefaults({}) returns []
+  ✓ (b) computeSmartDefaults emits iter-phase_loop-0 for an active phase iteration inside an active phase loop (AD-3, FR-12)
+  ✓ (c) computeSmartDefaults emits one iter-... per nested active task iteration (FR-12)
+  ✓ (d) computeSmartDefaults excludes loops whose status is "completed"
+  ✓ (d2) computeSmartDefaults excludes loops whose status is "not_started"
+  ✓ (d3) computeSmartDefaults excludes loops whose status is "failed" / "halted" / "skipped"
+  ✓ (e) computeSmartDefaults(null) returns []
+  ✓ (f) computeSmartDefaults recurses into parallel.nodes for nested loops
+  ✓ (g) __shallowEqualStringArrays returns true for same-length same-order arrays
+  ✓ (g2) __shallowEqualStringArrays returns false for different-length arrays
+  ✓ (g3) __shallowEqualStringArrays returns false for same-length arrays with different content
+  ✓ (h) computeSmartDefaults returns value-equal arrays for equivalent inputs
+  ✓ (i) useFollowMode is exported as a function
+  ✓ (j) onAccordionChange signature accepts both "trigger-press" and "none" reasons
+  ✓ (k-toggle) toggleFollowMode source branches on `followMode` (not always setFollowMode(true))
+  ✓ (k-disengage) onAccordionChange drops reason check and keeps isProgrammaticRef guard
+  ✓ (k) computeSmartDefaults emits ct-... for an active corrective task additively to its parent iteration (FR-13, DD-7)
+  ✓ (l) iteration keys emitted by computeSmartDefaults match buildIterationItemValue / buildCorrectiveItemValue for the same node tree (AD-3 hook+renderer parity)
+
+FR-13 / FR-14 / FR-15 follow-mode parity across new leaf shapes (AD-6)
+
+
+18 passed, 0 failed
+  ✓ FR-13 task in Coding state — computeSmartDefaults emits the active task iter key (no substep key needed)
+  ✓ FR-13 task in Reviewing state — same iter key set, no substep keys
+  ✓ FR-14 task in Correcting state — active corrective ct- key emitted alongside parent iter key
+  ✓ FR-14 nested corrective — deepest in_progress ct- key emitted (recursive leaf)
+  ✓ FR-15 task in terminal Failed state — task iter key still emitted while parent loop active so the failure stays visible
+  ✓ FR-13 task in Done state with no active siblings — no task iter key emitted (loop expansion only)
+  ✓ FR-13/FR-15 corrected iteration (completed + corrective_tasks resolved) — no key emitted, row visibility owned by Corrected pill not follow mode
+✔ hooks\use-follow-mode.test.ts (646.3212ms)
+use-projects — SSE state_change lastUpdated patching
+  ✓ (d) matching project — lastUpdated equals payload.state.project.updated
+  ✓ (e) non-matching project — original object returned unchanged
+  ✓ (f) v4 state_change — schemaVersion is "v4"
+  ✓ (g) v5 state_change with completed graph — tier is "complete", schemaVersion is "v5"
+  ✓ (h) v5 state_change with in-progress graph — tier from pipeline.current_tier, schemaVersion is "v5"
+  ✓ (i) v5 state_change for non-matching project — original ProjectSummary returned unchanged
+  ✓ (j) v5 state_change — graphStatus mirrors payload graph.status (in_progress)
+  ✓ (k) v5 state_change — graphStatus mirrors payload graph.status (completed)
+  ✓ (l) v4 state_change — graphStatus is "not_initialized"
+
+9 passed, 0 failed
+✔ hooks\use-projects.test.ts (688.235ms)
+
+use-sort-config — production-module smoke test
+
+  ✓ FR-14 — full Urgent-first order against production compareSortConfig
+  ✓ AD-5 — Final Review sits between Approved and Planning in production sort
+  ✓ FR-14 — Not Initialized pins to bottom of production Urgent-first sort
+  ✓ DEFAULT_SORT_CONFIG exports the expected secondary defaults
+  ✓ FR-14 — undefined planningStatus sorts as Planning (slot 5) against production compareSortConfig
+
+All 5 tests passed.
+✔ hooks\use-sort-config.integration.test.ts (907.5394ms)
+use-sort-config — compareSortConfig
+  ✓ Slot 0 — halted regardless of hasMalformedState
+  ✓ Slot 1 — malformed wins over in_progress
+  ✓ Slot 2 — executing (non-malformed) returns 2
+  ✓ Slot 7 — not_started (planning tier) returns 7
+  ✓ Slot 8 — complete returns 8
+  ✓ Slot 9 — not_initialized (legacy fallback) returns 9
+  ✓ Slot 9 — undefined tier returns 9 (same fallback)
+  ✓ Default sort equivalence — all slots including legacy fallback
+  ✓ Legacy fallback slot sits just above completed
+  ✓ Mixed v5 and legacy summaries do not interleave
+  ✓ Status descending — Done first order, Not Initialized pinned bottom
+  ✓ Name ascending — A→Z
+  ✓ Name descending — Z→A
+  ✓ Name ascending — mixed case treated as case-insensitive
+  ✓ Updated descending — newest first
+  ✓ FR-16 — Updated desc (Newest first): undefined sorts to bottom
+  ✓ FR-16 — Updated asc (Oldest first): undefined sorts to TOP (treated as older than any defined date)
+  ✓ Secondary tiebreaker — name desc breaks same-status tie
+  ✓ FR-14 — Urgent first order matches visible badges
+  ✓ FR-14 — badge classification reads tier+planningStatus (Planning vs Planned)
+  ✓ AD-5 — Final Review sits between Approved and Planning
+  ✓ FR-15 — Done first reverses through active states with Not Initialized pinned bottom
+  ✓ FR-15 — Not Initialized pinned bottom in BOTH directions
+  ✓ FR-14 — tier=planning with undefined planningStatus aligns with badge "Planning" (slot 5, not slot 7)
+  ✓ FR-17 — DEFAULT_SORT_CONFIG.secondary is "updated" with secondaryDir "desc"
+  ✓ FR-17 — within a same-status cluster, most recently updated floats to top
+  ✓ DD-2 — persisted localStorage config validation accepts "updated" as secondary
+
+27 passed, 0 failed
+✔ hooks\use-sort-config.test.ts (899.4648ms)
+use-sse-context — exports and default value
+  ✓ Exports exist: SSEContext, SSEProvider, useSSEContext
+  ✓ SSEContext default value — sseStatus is "disconnected" and reconnect is a function
+  ✓ Default reconnect is safe to call without throwing
+  ✓ Type verification: SSEContextValue-compatible object has correct shape
+
+All 4 tests passed
+✔ hooks\use-sse-context.test.tsx (734.6195ms)
+✓ success → { success:true, platform }
+✓ failure → { success:false, error }
+✓ network error → { success:false, error }
+✓ START_ACTION_KINDS includes execute-plan
+✓ execute-plan → { success:true, platform }
+✓ execute-plan failure → { success:false, error }
+✓ execute-plan network error → { success:false, error }
+
+All use-start-action tests passed
+✔ hooks\use-start-action.test.ts (718.2366ms)
+
+config-field-meta tests
+
+  ✓ CONFIG_FIELDS is an array of exactly 14 entries
+  ✓ every entry conforms to FieldMeta interface
+  ✓ CONFIG_FIELD_MAP contains exactly 14 keys matching CONFIG_FIELDS
+  ✓ limits.max_phases has correct metadata
+  ✓ projects.naming has correct toggle-group and options
+  ✓ human_gates.after_planning is switch with no options or min
+  ✓ version is readonly with section "version"
+  ✓ source_control.provider is readonly with section "source-control"
+  ✓ all four number fields have correct min values
+  ✓ all four toggle-group fields have correct options
+  ✓ no field has both options and min defined
+  ✓ option values are case-sensitive correct
+
+  12 passed, 0 failed
+
+✔ lib\config-field-meta.test.ts (640.3633ms)
+
+config-validator tests
+
+  ✓ valid config returns empty object
+  ✓ system.orch_root empty string returns error
+  ✓ system.orch_root whitespace-only returns error
+  ✓ projects.base_path empty string returns error
+  ✓ projects.naming invalid value returns error
+  ✓ projects.naming SCREAMING_CASE is valid
+  ✓ projects.naming lowercase is valid
+  ✓ projects.naming numbered is valid
+  ✓ limits.max_phases 0 returns error
+  ✓ limits.max_phases -1 returns error
+  ✓ limits.max_phases 1.5 returns error
+  ✓ limits.max_phases 1 is valid
+  ✓ limits.max_retries_per_task 0 is valid
+  ✓ limits.max_retries_per_task -1 returns error
+  ✓ human_gates.after_planning non-boolean returns error
+  ✓ human_gates.after_planning true is valid
+  ✓ human_gates.after_planning false is valid
+  ✓ human_gates.execution_mode invalid returns error
+  ✓ human_gates.execution_mode "ask" is valid
+  ✓ human_gates.execution_mode "phase" is valid
+  ✓ human_gates.execution_mode "task" is valid
+  ✓ human_gates.execution_mode "autonomous" is valid
+  ✓ source_control.auto_commit invalid returns error
+  ✓ source_control.auto_commit "always" is valid
+  ✓ source_control.auto_commit "ask" is valid
+  ✓ source_control.auto_commit "never" is valid
+  ✓ source_control.auto_pr invalid returns error
+  ✓ multiple invalid fields returns all errors
+  ✓ does not mutate input config
+  ✓ missing system section returns section-level error
+  ✓ missing projects section returns section-level error
+  ✓ missing limits section returns section-level error
+  ✓ missing human_gates section returns section-level error
+  ✓ missing source_control section returns section-level error
+  ✓ all sections missing returns all section-level errors
+
+  35 passed, 0 failed
+
+✔ lib\config-validator.test.ts (643.2582ms)
+getOrderedDocs
+  ✓ returns planning + phase docs in canonical order
+  ✓ skips null paths
+  ✓ appends error log from allFiles after final review
+  ✓ includes phase_report between task reviews and phase_review
+  ✓ skips null phase_report path
+  ✓ excludes phase_report from Other Documents
+  ✓ appends other docs sorted alphabetically
+  ✓ excludes planning docs from Other Documents when state uses absolute paths but allFiles has relative paths
+  ✓ excludes phase plan docs from Other Documents when state paths differ in format
+  ✓ excludes task handoff docs from Other Documents when paths differ in format
+
+getAdjacentDocs
+  ✓ returns prev: null at index 0
+  ✓ returns next: null at last index
+  ✓ returns both prev and next at a middle index
+  ✓ returns currentIndex -1 when path not found
+
+getOrderedDocsV5
+  ✓ root planning step nodes produce docs in definition order with planning category
+  ✓ null doc_path on step nodes is skipped
+  ✓ for_each_phase iterations produce phase-level documents with correct categories and titles
+  ✓ for_each_task iterations produce task-level documents with correct categories and PN-TM titles
+  ✓ corrective task step nodes append CT suffix with task category
+  ✓ phase-scope corrective task step nodes emit Phase N CTK labels with correct categories
+  ✓ phase-scope corrective docs are sorted by corrective index and interleave correctly with task docs
+  ✓ FR-4 walk order — task with corrective AND phase with phase-scope corrective stays grouped (FR-3, FR-4, NFR-3)
+  ✓ gate and conditional nodes are skipped (no documents produced)
+  ✓ final_review root step node produces review category with Final Review title
+  ✓ error log from allFiles is appended with error-log category after graph docs
+  ✓ remaining md files from allFiles are appended sorted with other category
+  ✓ empty graph produces empty result
+  ✓ empty graph with allFiles extras returns only extras
+  ✓ full integration: planning + phase iteration with task iteration + corrective task + final review
+  ✓ label helpers and within-iteration order constants — locked label scheme (FR-5..11, DD-1)
+  ✓ emits phase-plan from iteration.doc_path and task-handoff from taskIter.doc_path (FR-1, FR-2, FR-4, FR-7, FR-8, AD-2)
+  ✓ phase-iteration with both iteration.doc_path AND legacy phase_planning child emits the plan only once (mixed-shape dedup)
+  ✓ task-iteration with both taskIter.doc_path AND legacy task_handoff child emits the handoff only once (mixed-shape dedup)
+  ✓ FR-12 — v5 tail-bucket .md files are prefix-stripped and title-cased
+  ✓ FR-12 — v5 tail-bucket label keeps name when project prefix is absent
+  ✓ NFR-1 — v4 getOrderedDocs tail-bucket labels are unchanged (uppercase bare filenames)
+  ✓ NFR-2 — no canonical doc emitted by the engine lands in the tail "other" bucket
+  ✓ FR-13 — drawer header file is untouched (compile-time pin)
+
+38 passed, 0 failed
+✔ lib\document-ordering.test.ts (646.3091ms)
+
+readConfig() — ORCH_ROOT bootstrap
+  ✓ uses .claude when ORCH_ROOT is not set
+  ✓ uses .agents when ORCH_ROOT=.agents
+  ✓ constructs path using ORCH_ROOT value
+
+resolveOrchRoot()
+  ✓ returns system.orch_root when set
+  ✓ returns .claude when system.orch_root is undefined
+  ✓ returns .claude when system property is absent
+
+6 tests: 6 passed, 0 failed
+✔ lib\fs-reader-bootstrap.test.ts (1161.0164ms)
+
+getConfigPath()
+  ✓ returns correct path when ORCH_ROOT is not set
+  ✓ returns correct path when ORCH_ROOT is set (relative)
+  ✓ honors absolute ORCH_ROOT (discarding workspaceRoot prefix)
+
+readConfig() — still works after refactor
+  ✓ readConfig() reads and parses config
+
+readConfigWithRaw()
+  ✓ returns both config and rawYaml
+  ✓ throws on missing file
+
+writeConfig()
+  ✓ writes atomically — file contains provided content and no temp files remain
+  ✓ temp file is in same directory as config
+  ✓ rejects when workspace directory does not exist
+
+stringifyYaml()
+  ✓ returns a string
+  ✓ produces valid YAML that can be parsed back
+
+Round-trip integrity
+  ✓ parseYaml(stringifyYaml(config)) deep-equals original
+
+12 tests: 12 passed, 0 failed
+✔ lib\fs-reader-config-rw.test.ts (1122.6521ms)
+discoverProjects — parallelization + per-project isolation
+  ✓ malformed state.json does not poison sibling entries
+  ✓ result order matches readdir directory-entry order
+  ✓ 50-project fixture returns without error
+
+3 passed, 0 failed
+✔ lib\fs-reader-discover-parallel.test.ts (1611.3241ms)
+discoverProjects — lastUpdated behavior
+  ✓ (a) initialized project — lastUpdated equals state.project.updated
+  ✓ (b) not-initialized project — lastUpdated is undefined
+  ✓ (c) malformed-state project — lastUpdated is undefined
+  ✓ (a2) v4 initialized project — graphStatus is "not_initialized"
+  ✓ (b2) no-state project — graphStatus is "not_initialized"
+  ✓ (c2) malformed-state project — graphStatus is "not_initialized"
+
+6 passed, 0 failed
+✔ lib\fs-reader-discover.test.ts (1249.8533ms)
+listProjectFiles
+  ✓ returns .md files from the project root directory
+  ✓ returns .md files from subdirectories with forward-slash relative paths
+  ✓ excludes non-.md files
+  ✓ throws ENOENT for a non-existent directory
+  ✓ skips entries containing ".." in the name
+  ✓ uses forward slashes even on Windows
+  ✓ skips node_modules / .git / .next / .cache directories
+
+7 passed, 0 failed
+✔ lib\fs-reader-list.test.ts (1109.5503ms)
+discoverProjects — v5 state support
+  ✓ v5 project — schemaVersion is "v5"
+  ✓ v5 project — tier mapped from pipeline.current_tier
+  ✓ v5 project — planningStatus derived from graph nodes (all planning nodes completed → "complete")
+  ✓ v5 project — executionStatus derived from graph (phase_loop in_progress → "in_progress")
+  ✓ v5 project — lastUpdated from project.updated
+  ✓ v5 project — hasState: true, hasMalformedState: false
+  ✓ v5 completed project — tier is "complete" when graph.status === "completed"
+  ✓ v4 project — schemaVersion is "v4" (no regression)
+  ✓ v4 project — tier, planningStatus, executionStatus unchanged (no regression)
+  ✓ no-state project — hasState: false, schemaVersion undefined (no regression)
+  ✓ malformed-state project — hasMalformedState: true (no regression)
+  ✓ v5 project — graphStatus equals state.graph.status ("in_progress")
+  ✓ v5 completed project — graphStatus equals state.graph.status ("completed")
+  ✓ v4 project — graphStatus is "not_initialized"
+  ✓ no-state project — graphStatus is "not_initialized"
+  ✓ malformed-state project — graphStatus is "not_initialized"
+
+readProjectState — v5 state support
+  ✓ readProjectState — parses v5 state and returns $schema === "orchestration-state-v5"
+  ✓ readProjectState — parses v4 state correctly (no regression)
+
+18 passed, 0 failed
+✔ lib\fs-reader-v5.test.ts (1163.8389ms)
+✓ happy path → success with platform + permissionMode
+✓ invalid permission mode → structured failure
+✓ missing args → structured failure
+
+All launch-claude-project-invoke tests passed
+✔ lib\launch-claude-project-invoke.test.ts (1155.2324ms)
+✓ missing args → JSON error + non-zero exit
+✓ invalid permission mode → JSON error
+✓ dry-run happy path → success JSON (platform + permissionMode=auto)
+✓ non-Error throw → catch uses String(err) fallback
+
+All launch-claude-project tests passed
+✔ lib\launch-claude-project.test.ts (1369.974ms)
+maxRetries resolution logic
+  ✓ project state config wins over global (5 vs 2)
+  ✓ project state config used when matching global (5 vs 5)
+  ✓ null projectState falls back to global
+  ✓ projectState with undefined config falls back to global
+  ✓ projectState config with missing max_retries_per_task falls back to global
+  ✓ zero is a valid value — not treated as falsy (uses ?? not ||)
+  ✓ large project value wins over smaller global
+
+7 passed, 0 failed
+
+✔ lib\max-retries-resolver.test.ts (533.0139ms)
+derivePlanningStatus
+  ✓ returns complete when all five planning nodes are completed
+  ✓ returns in_progress when any planning node is in_progress
+  ✓ returns not_started when all planning nodes are not_started
+  ✓ returns not_started when nodes is an empty record (defensive)
+  ✓ returns complete when all five are completed and non-planning nodes exist too
+  ✓ returns not_started for mixed not_started/completed without graphStatus arg (backward compat)
+  ✓ returns not_started for mixed not_started/completed when graphStatus=not_started
+  ✓ returns in_progress for mixed not_started/completed when graphStatus=in_progress (TEST-PLANS scenario)
+  ✓ returns in_progress when all nodes are not_started but graphStatus=in_progress (fresh-start)
+  ✓ returns complete when all nodes completed even if graphStatus=in_progress (complete short-circuits)
+  ✓ returns not_started when a planning node has failed status (intentional fall-through)
+  ✓ Iter 4: new-project nodes (requirements + master_plan completed) → complete
+  ✓ Iter 4: requirements in_progress → in_progress (status-transition check)
+  ✓ Iter 4: requirements completed + master_plan in_progress → in_progress
+  ✓ Iter 4: legacy state.json without requirements (all 5 legacy planning completed) still → complete
+deriveExecutionStatus
+  ✓ returns complete when graphStatus is completed
+  ✓ returns halted when graphStatus is halted
+  ✓ returns in_progress when phase_loop.status is in_progress
+  ✓ returns in_progress when final_review.status is in_progress
+  ✓ returns not_started when graphStatus is not_started and no execution nodes are in progress
+  ✓ returns not_started when graphStatus is not_started and nodes is empty
+
+21 passed, 0 failed
+✔ lib\status-derivation.test.ts (688.4599ms)
+▶ resolveTemplateDir
+  ✔ returns correct path given system.orch_root (1.798ms)
+  ✔ defaults to .claude when system.orch_root is undefined (0.3143ms)
+  ✔ uses custom orch_root when provided (0.276ms)
+✔ resolveTemplateDir (3.6884ms)
+▶ isValidTemplateId
+  ✔ returns true for valid IDs (0.4647ms)
+  ✔ returns false for path traversal: ../etc/passwd (0.1716ms)
+  ✔ returns false for path with forward slash: foo/bar (0.1628ms)
+  ✔ returns false for path with backslash: foo\bar (0.1685ms)
+  ✔ returns false for dot-prefixed: .hidden (0.1889ms)
+  ✔ returns false for ID with space: has space (0.2213ms)
+  ✔ returns false for empty string (0.7648ms)
+✔ isValidTemplateId (2.6545ms)
+▶ listTemplateFiles / readTemplateFile / writeTemplateFile / templateFileExists
+  ✔ listTemplateFiles returns TemplateSummary[] for .yml files (40.4672ms)
+  ✔ listTemplateFiles returns empty array for empty directory (4.5066ms)
+  ✔ listTemplateFiles skips non-.yml files (15.0284ms)
+listTemplateFiles: skipping unparseable file bad.yml Nested mappings are not allowed in compact mappings at line 1, column 4:
+
+:: invalid yaml ::
+   ^
+
+  ✔ listTemplateFiles skips .yml files that fail to parse (23.5817ms)
+  ✔ listTemplateFiles returns multiple summaries (16.7928ms)
+  ✔ listTemplateFiles populates status when template.status is set in YAML (15.204ms)
+  ✔ listTemplateFiles leaves status undefined when YAML has no template.status (5.9073ms)
+  ✔ readTemplateFile returns rawYaml and definition for existing template (7.0449ms)
+  ✔ readTemplateFile returns null for non-existent ID (2.0426ms)
+  ✔ writeTemplateFile writes content to {id}.yml (7.2084ms)
+  ✔ writeTemplateFile writes atomically — final file has correct content (8.0811ms)
+  ✔ writeTemplateFile overwrites existing file (24.1048ms)
+  ✔ templateFileExists returns true for existing template (4.7711ms)
+  ✔ templateFileExists returns false for non-existent template (3.7477ms)
+✔ listTemplateFiles / readTemplateFile / writeTemplateFile / templateFileExists (180.4249ms)
+▶ computeTemplateLayout
+  ▶ valid positions
+    ✔ all nodes have finite x and y >= 0 after layout with full.yml (44.117ms)
+    ✔ all nodes have finite x and y >= 0 after layout with default.yml (26.8116ms)
+  ✔ valid positions (73.0946ms)
+  ▶ group node dimensions
+    ✔ top-level templateGroup nodes with children have positive finite style.width and style.height (14.5166ms)
+  ✔ group node dimensions (14.7653ms)
+  ▶ children within parent bounds
+    ✔ direct children of top-level group nodes fit within their parent dimensions (10.9673ms)
+  ✔ children within parent bounds (11.1494ms)
+  ▶ relative positioning
+    ✔ direct children of top-level groups start at padding offsets relative to parent origin (11.21ms)
+  ✔ relative positioning (11.4515ms)
+  ▶ nested group layout
+    ✔ nested templateGroup nodes have positive finite style.width and style.height (17.69ms)
+    ✔ children of nested templateGroup nodes start at padding offsets (19.8965ms)
+    ✔ children of nested templateGroup nodes fit within parent computed dimensions (11.3102ms)
+  ✔ nested group layout (49.4561ms)
+  ▶ edge preservation
+    ✔ edge count is preserved for full.yml (11.1494ms)
+    ✔ edge count is preserved for default.yml (12.1075ms)
+    ✔ edges are structurally identical (same id, source, target) for full.yml (11.0635ms)
+    ✔ edges are structurally identical (same id, source, target) for default.yml (14.5535ms)
+  ✔ edge preservation (49.2587ms)
+  ▶ dagre configuration
+    ✔ top-level source nodes have smaller position.y than their targets (TB rankdir) (12.188ms)
+    ✔ no two connected top-level nodes share the same position.y (7.9003ms)
+  ✔ dagre configuration (21.0339ms)
+  ▶ empty input
+    ✔ returns { nodes: [], edges: [] } for empty arrays (1.1742ms)
+  ✔ empty input (1.2943ms)
+  ▶ conditional group layout
+    ✔ conditional-with-branches nodes have type templateGroup after serialization (8.7318ms)
+    ✔ conditional parents have positive style.width and style.height after layout (10.1514ms)
+    ✔ children of conditional parents are positioned inside parent bounds (13.1431ms)
+    ✔ no console warning for conditional child nodes (14.3196ms)
+  ✔ conditional group layout (46.9785ms)
+✔ computeTemplateLayout (280.259ms)
+▶ parseTemplateToGraph
+  ✔ parsing full.yml produces a TemplateGraph with nodes and edges arrays (23.7337ms)
+  ✔ parsing default.yml produces a TemplateGraph with nodes and edges arrays (10.3941ms)
+  ✔ all five node kinds appear in parsed full.yml nodes (5.8836ms)
+  ✔ loop nodes (for_each_phase, for_each_task) have type: templateGroup (6.7046ms)
+  ✔ step and gate nodes have type: templateNode (7.1407ms)
+  ✔ conditional nodes with non-empty branches have type: templateGroup (5.6982ms)
+  ✔ child nodes inside loop bodies have parentId set to the loop node id (6.9726ms)
+  ✔ child nodes inside conditional branches have parentId set to the conditional node id (4.8531ms)
+  ✔ depends_on relationships become edges: source=dependency, target=dependent (6.4562ms)
+  ✔ conditional branch edges have label: "true" for true-branch children (6.1515ms)
+  ✔ all edges have type: smoothstep, markerEnd: { type: arrowclosed }, and animated: false (11.248ms)
+  ✔ throws on invalid YAML input (empty string) (0.624ms)
+  ✔ throws on YAML without nodes array (1.031ms)
+  ✔ conditional node with empty branches has type: templateNode (0.7774ms)
+✔ parseTemplateToGraph (99.8401ms)
+▶ serializeGraphToYaml
+  ✔ serializing full.yml graph produces valid parseable YAML (31.3155ms)
+  ✔ serializing default.yml graph produces valid parseable YAML (25.8108ms)
+  ✔ serialized output includes template metadata block (id, version, description) (22.4392ms)
+  ✔ serialized output contains a non-empty nodes array (24.7795ms)
+✔ serializeGraphToYaml (104.8283ms)
+▶ round-trip fidelity
+  ✔ full.yml round-trip: parse → serialize → re-parse deepStrictEquals original parse (17.8721ms)
+  ✔ default.yml round-trip: parse → serialize → re-parse deepStrictEquals original parse (24.1529ms)
+  ✔ double round-trip: parse → serialize → parse → serialize produces idempotent output (37.4903ms)
+  ✔ node count preservation: re-parsed graph has the same number of nodes and edges (13.795ms)
+  ✔ branchless conditional round-trip: no branches key emitted when conditional has no children (1.2964ms)
+✔ round-trip fidelity (95.0437ms)
+▶ node kind coverage
+  ✔ step nodes: master_plan has kind=step with meta fields action, events, doc_output_field (3.903ms)
+  ✔ gate nodes: plan_approval_gate has kind=gate with meta fields mode_ref, action_if_needed, approved_event (3.2927ms)
+  ✔ conditional nodes: commit_gate has kind=conditional, meta.condition is parseable JSON with state_ref/operator/value (3.0368ms)
+  ✔ for_each_phase nodes: phase_loop has kind=for_each_phase, type=templateGroup, meta has source_doc_ref and total_field (6.862ms)
+  ✔ for_each_task nodes: task_loop has kind=for_each_task, type=templateGroup, meta has source_doc_ref and tasks_field (4.4909ms)
+✔ node kind coverage (21.9934ms)
+▶ recursive nesting
+  ✔ task_loop (for_each_task) has parentId: phase_loop (5.5405ms)
+  ✔ nodes inside task_loop body (task_executor, code_review, commit_gate, task_gate) have parentId: task_loop (7.6697ms)
+  ✔ commit_gate (conditional inside task_loop) has parentId: task_loop (7.1908ms)
+  ✔ commit (step in conditional true branch) has parentId: commit_gate (4.9108ms)
+  ✔ round-trip preserves nested body arrays and branches structure (15.7828ms)
+✔ recursive nesting (41.6722ms)
+▶ depends_on ↔ edges round-trip
+  ✔ plan_approval_gate depends on master_plan → edge { source: master_plan, target: plan_approval_gate } exists (7.4568ms)
+  ✔ task_gate depends on code_review → one unlabeled edge exists (7.5369ms)
+  ✔ after round-trip, depends_on arrays in re-parsed YAML match originals (12.557ms)
+✔ depends_on ↔ edges round-trip (28.0188ms)
+▶ meta field round-trip
+  ✔ step node events (object value) is stored as JSON string in meta and restores correctly after round-trip (14.047ms)
+  ✔ gate node auto_approve_modes (array value) survives round-trip (12.459ms)
+  ✔ conditional node condition (nested object) survives round-trip with state_ref, operator, value (13.8938ms)
+  ✔ loop node source_doc_ref (string value) survives round-trip (14.3725ms)
+✔ meta field round-trip (55.3577ms)
+ℹ tests 177
+ℹ suites 21
+ℹ pass 177
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9252.116

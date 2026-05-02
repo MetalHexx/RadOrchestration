@@ -17,10 +17,8 @@ let container: HTMLDivElement;
 let root: Root;
 let fetchCalls: string[] = [];
 let lastReplaceUrl: string | null = null;
-let initialUrl = '/process-editor';
 
 function setupDom(url: string): void {
-  initialUrl = url;
   dom = new JSDOM(`<!doctype html><html><body><div id="root"></div></body></html>`, {
     url: `http://localhost:3000${url}`,
   });

@@ -1,0 +1,26 @@
+
+> ui@1.0.0-alpha.7 build
+> next build
+
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+ ⚠ Compiled with warnings
+
+./node_modules/chokidar/lib/fsevents-handler.js
+Module not found: Can't resolve 'fsevents' in 'C:\dev\orchestration\v3-worktrees\QUICK-TEMPLATE\ui\node_modules\chokidar\lib'
+
+Import trace for requested module:
+./node_modules/chokidar/lib/fsevents-handler.js
+./node_modules/chokidar/index.js
+./app/api/events/route.ts
+
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+
+Failed to compile.
+
+./components/process-editor/template-selector.test.tsx
+20:5  Error: 'initialUrl' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules

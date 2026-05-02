@@ -1,0 +1,53 @@
+
+> ui@1.0.0-alpha.7 build
+> next build
+
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+ ⚠ Compiled with warnings
+
+./node_modules/chokidar/lib/fsevents-handler.js
+Module not found: Can't resolve 'fsevents' in 'C:\dev\orchestration\v3-worktrees\QUICK-TEMPLATE\ui\node_modules\chokidar\lib'
+
+Import trace for requested module:
+./node_modules/chokidar/lib/fsevents-handler.js
+./node_modules/chokidar/index.js
+./app/api/events/route.ts
+
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/8) ...
+   Generating static pages (2/8) 
+   Generating static pages (4/8) 
+   Generating static pages (6/8) 
+ ✓ Generating static pages (8/8)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    156 B          93.4 kB
+├ ○ /_not-found                          156 B          93.4 kB
+├ ƒ /api/config                          0 B                0 B
+├ ƒ /api/events                          0 B                0 B
+├ ƒ /api/projects                        0 B                0 B
+├ ƒ /api/projects/[name]/document        0 B                0 B
+├ ƒ /api/projects/[name]/files           0 B                0 B
+├ ƒ /api/projects/[name]/gate            0 B                0 B
+├ ƒ /api/projects/[name]/start-action    0 B                0 B
+├ ƒ /api/projects/[name]/state           0 B                0 B
+├ ƒ /api/templates                       0 B                0 B
+├ ƒ /api/templates/[id]                  0 B                0 B
+├ ○ /process-editor                      2.05 kB        95.2 kB
+├ ○ /projects                            10.5 kB         337 kB
+└ ○ /projects-v4                         1.44 kB         328 kB
++ First Load JS shared by all            93.2 kB
+  ├ chunks/2117-f19b88a8fcb717b2.js      31.9 kB
+  ├ chunks/fd9d1056-c33f46fa9dbb4616.js  53.6 kB
+  └ other shared chunks (total)          7.66 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
