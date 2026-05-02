@@ -30,7 +30,7 @@ Each pass of `plan-pipeline-e2e` invokes `@planner` **twice** (Requirements, Mas
 
 Mirror `plan-pipeline-e2e/`: a behavior folder with its own `README.md`, `_runner.md`, `fixtures/`, and `output/`. Keep `_runner.md` goal-oriented — describe what the simulated orchestrator session should accomplish, not every exact CLI invocation. The engine's `next_action` returns plus the Action Routing Table (`.claude/skills/rad-orchestration/references/action-event-reference.md`) handle the step-by-step decisions.
 
-Run outputs under `output/` are gitignored by behavior today (see the repo-root `.gitignore`, which currently covers only `plan-pipeline-e2e/output/...`). Narrower `!` exceptions re-include operator-committed baselines; everything else regenerates on each run. Future behaviors will need their own gitignore entries.
+Run outputs under `output/` are gitignored per behavior — see the existing blocks in the repo-root `.gitignore` for the established pattern. Narrower `!` exceptions re-include operator-committed baselines; everything else regenerates on each run. Each new behavior needs its own gitignore entry.
 
 ## Design reference
 

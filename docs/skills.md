@@ -66,7 +66,7 @@ These skills and prompts are invoked directly by humans rather than by the pipel
 
 ### Prompt Inventory
 
-Prompts (`.prompt.md` files) are slash-command shortcuts that invoke a specific agent with a predefined instruction.
+Slash-command shortcuts that invoke a specific agent with a predefined instruction. Each row names the skill or prompt file the orchestrator follows.
 
 | Prompt | File | Agent | Description |
 |--------|------|-------|-------------|

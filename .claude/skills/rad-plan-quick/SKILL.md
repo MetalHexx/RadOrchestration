@@ -44,7 +44,10 @@ Start the planning pipeline and call needed CLI parameters to start the planning
 - Single pass, no re-audit after corrections.
 
 ## Step 4: Present plan_approval_gate
-The `plan_approval_gate` is non-negotiable in quick mode. Present the gate to the user and wait for an explicit approve / reject decision from the user. Quick mode is "lightweight execution," not "fire-and-forget post-plan," so the approval requires human review. On user approval, signal `plan_approved`. Before signalling `gate_mode_set`, set `gate_mode: autonomous` in the event context so the autonomous default sticks for the rest of the run.
+The `plan_approval_gate` is non-negotiable in quick mode. Present the gate to the user and wait for an explicit approve / reject decision from the user. Quick mode is "lightweight execution," not "fire-and-forget post-plan," so the approval requires human review.
+
+- On user approval: signal `plan_approved`. Before signalling `gate_mode_set`, set `gate_mode: autonomous` in the event context so the autonomous default sticks for the rest of the run.
+- On user rejection: signal `plan_rejected` and halt. The user can edit the Master Plan and re-invoke `/rad-plan-quick` (or `/rad-plan`) to author a fresh plan. Do not retry inside this skill.
 
 ## Step 5: Finalize the plan
 Use the `askQuestions` tool to ask the user how they want to proceed and execute the plan. Give them 2 options:

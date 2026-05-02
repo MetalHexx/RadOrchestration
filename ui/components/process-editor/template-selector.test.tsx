@@ -280,6 +280,15 @@ describe('TemplateSelector', () => {
       assert.match(errEl!.textContent ?? '', /Failed to load templates/);
       assert.equal(observed, 'default', 'onResolved must fall back to default on fetch error');
       assert.equal(unhandledCount, 0, 'no unhandledRejection event should fire');
+
+      // F-R3-2: even with templates=[] the dropdown must render the resolved id as
+      // a fallback option and disable interaction so the user is not left with a
+      // blank-but-enabled <select> while the canvas silently shows 'default'.
+      const select = container.querySelector('select') as HTMLSelectElement;
+      assert.equal(select.value, 'default', 'select must reflect the resolved fallback id');
+      assert.equal(select.disabled, true, 'select must be disabled when fetch failed');
+      const opts = Array.from(container.querySelectorAll('option')).map(o => o.value);
+      assert.ok(opts.includes('default'), 'default option must be present so select is not blank');
     } finally {
       process.off('unhandledRejection', listener);
     }

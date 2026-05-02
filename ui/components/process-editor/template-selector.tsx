@@ -89,12 +89,13 @@ export function TemplateSelector({
   }
 
   const visible = templates.filter(t => t.status !== 'deprecated');
-  // If the resolved id is a deprecated-by-URL id, show it as an extra option so
-  // the <select> reflects the active value rather than snapping to default.
+  // Append the resolved id as an extra option whenever it is not in the visible
+  // list. Covers two cases: a deprecated id reached via direct URL (so the
+  // <select> still reflects the active value) and a fetch failure where
+  // `templates` is empty (so the dropdown is not rendered blank with the
+  // canvas silently rendering 'default').
   const showActiveAsExtra =
-    resolved &&
-    !visible.some(t => t.id === resolved) &&
-    templates.some(t => t.id === resolved);
+    resolved && !visible.some(t => t.id === resolved);
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 border-b border-[var(--border)]">
@@ -105,7 +106,7 @@ export function TemplateSelector({
         id={`${labelId}-select`}
         value={resolved}
         onChange={handleChange}
-        disabled={!loaded}
+        disabled={!loaded || !!error}
         className="px-2 py-1 border border-[var(--border)] rounded bg-[var(--background)] text-sm"
       >
         {visible.map(t => (
