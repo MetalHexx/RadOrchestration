@@ -1,9 +1,5 @@
-# Repository Guidance
+# Repository Coding Ruls:
 
-This repository ships an orchestration system that drives a planner → coder → reviewer pipeline through a deterministic Node engine. The system's runtime artifacts (agents, skills, scripts) live under `.claude/`; the user-facing pipeline entrypoint is `.claude/skills/rad-orchestration/scripts/main.ts` (compiled to `pipeline.js`). Subagents discover behavior through bundled skills under `.claude/skills/rad-*/`.
+- When making changes to the radorchestration pipeline and markdown files, do not leave requirements (FR-N, NFR-N, AD-N, DD-N) in the files.  These should only be used in project planning documents, not actual code or documentation.  The only exception is that we're making changes to the rad-create-plans or rad-code-review skills which leverage requirements as part of project planning and code review.
 
-## Reserved Namespace: rad-*
 
-Skills shipped by the orchestration system carry the `rad-` prefix on both folder name and frontmatter `name`. The prefix is a **documentation-only reserved namespace** — the system does not hard-enforce uniqueness against downstream authors, but the planner-spawn manifest filter (`list-repo-skills.mjs`) deliberately excludes any `rad-*` skill from the manifest. Authoring a `rad-something` skill in your own repo will therefore make it invisible to the planner.
-
-See `.claude/skills/rad-create-skill/SKILL.md` for the matching authoring convention.
