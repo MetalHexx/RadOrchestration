@@ -1,28 +1,26 @@
-# `claude` — Claude Code Adapter
+# `claude` — Claude Code Adapter (Identity Transform)
 
-This adapter targets [Claude Code](https://code.claude.com) (Anthropic CLI). Because the
-orchestration system's canonical format _is_ the Claude Code format, every capability surface
-here is an identity transform — no translation required.
+Target harness: **Claude Code** (Anthropic CLI).
+Target folder at repo root: `.claude/` (gitignored, dogfood-only).
 
-## Grounding
+Canonical authoring shape *is* Claude shape, so this adapter is an identity
+transform on every capability surface. It exists to (a) prove the adapter
+interface, (b) give the build script symmetry across harnesses, and (c) emit
+the per-file metadata stream alongside the bundle for MULTI-HARNESS-2's
+reconciliation system to consume.
 
-All harness specifics are sourced from `frontmatter-research.md`:
+## Capability surfaces — sources
 
-| Capability surface | Research section |
+| Surface | Grounded in `frontmatter-research.md` |
 |---|---|
-| `filenameRule` — agent: `<name>.md`, skill: `SKILL.md` (literal) | §1.A (filename pattern row), §1.B (filename pattern row) |
-| `agentFrontmatter` — identity (canonical = Claude shape) | §1.A (required + optional frontmatter) |
-| `skillFrontmatter` — identity; preserves `rad-*` prefix | §1.B (frontmatter table) |
-| `toolDictionary` — PascalCase names map to themselves | §1.A (tools field, PascalCase list) |
-| `modelAliases` — `haiku`→`haiku`, `sonnet`→`sonnet`, `opus`→`opus` | §6.6 (Claude column, row 1) |
+| Filename rule (`<name>.md` for agents, literal `SKILL.md` for skills) | §1.A and §1.B |
+| Agent frontmatter projection (identity) | §1.A |
+| Skill frontmatter projection (identity) | §1.B |
+| Tool-name dictionary (Claude PascalCase → identity) | §1.A "Optional frontmatter — `tools`" and §5.5 row 1 |
+| Model alias map (`haiku` / `sonnet` / `opus`) | §1.A "Optional frontmatter — `model`" and §6.6 Claude column |
 
-## Target directory
+## What this adapter does NOT do
 
-`.claude` — agents land at `.claude/agents/<name>.md`, skills at `.claude/skills/<name>/SKILL.md`.
-
-## Notes
-
-- `toolDictionary` includes the `Agent` alias (synonym for `Task`) in addition to the ten tools
-  exercised in the test suite, for completeness.
-- `modelAliases` exposes only the three tier aliases (`haiku`, `sonnet`, `opus`). Fully-qualified
-  model IDs are passed through unchanged by the harness runner and do not require mapping here.
+- Does not transform the body of agents or skills (per FR-9 / AD-8).
+- Does not modify or rename `rad-*` skills (per FR-22).
+- Does not ship `settings.json` or any top-level instructions (per AD-12).
