@@ -40,6 +40,7 @@ export function TemplateSelector({
   const labelId = useId();
   const [templates, setTemplates] = useState<TemplateSummary[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let aborted = false;
@@ -50,6 +51,14 @@ export function TemplateSelector({
         const json = await res.json() as { templates: TemplateSummary[] };
         if (aborted) return;
         setTemplates(json.templates ?? []);
+      } catch (err) {
+        if (aborted) return;
+        // Contain the rejection so it does not escape as an unhandledrejection
+        // event. `templates` stays [] → `resolved` falls back to 'default'.
+        // The alert below tells the user the list could not load.
+        // eslint-disable-next-line no-console
+        console.warn('TemplateSelector: failed to load templates', err);
+        setError(err instanceof Error ? err.message : String(err));
       } finally {
         if (!aborted) setLoaded(true);
       }
@@ -106,6 +115,11 @@ export function TemplateSelector({
           <option key={resolved} value={resolved}>{resolved}</option>
         )}
       </select>
+      {error && (
+        <span role="alert" className="text-sm text-[var(--destructive)]">
+          Failed to load templates
+        </span>
+      )}
     </div>
   );
 }

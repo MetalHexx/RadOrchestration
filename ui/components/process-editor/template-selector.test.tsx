@@ -241,4 +241,47 @@ describe('TemplateSelector', () => {
     const select = container.querySelector('select') as HTMLSelectElement;
     assert.ok(select.id && label!.getAttribute('for') === select.id);
   });
+
+  it('contains fetch rejection: surfaces an alert, falls back to default, and emits no unhandled rejection', async () => {
+    // F-R2-2: the load() effect previously had only try/finally, so a rejected
+    // fetch (network error) escaped as an unhandledrejection. The fix adds a
+    // catch that records the error and renders <span role="alert">.
+    //
+    // Test posture: install a process-level unhandledRejection listener that
+    // counts events, then render with a rejecting fetch. Assert alert visible,
+    // onResolved fired with 'default' (silent fallback), and counter still 0.
+    setupDom('/process-editor');
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = (async () => {
+      throw new Error('network down');
+    }) as unknown as typeof fetch;
+
+    let unhandledCount = 0;
+    const listener = (): void => { unhandledCount += 1; };
+    process.on('unhandledRejection', listener);
+    try {
+      let observed = '';
+      await act(async () => {
+        root = createRoot(container);
+        root.render(
+          React.createElement(Harness, {
+            initialRequested: '',
+            onResolved: (id: string) => { observed = id; },
+          }),
+        );
+      });
+      // Yield enough microtask + macrotask turns for the fetch rejection,
+      // catch, setState batch, and the rerender to flush. Same pattern as
+      // the other tests in this file, which also flush via setTimeout(0).
+      await new Promise(r => setTimeout(r, 0));
+      await new Promise(r => setTimeout(r, 0));
+
+      const errEl = container.querySelector('[role="alert"]');
+      assert.ok(errEl, 'alert element must be present after fetch rejection');
+      assert.match(errEl!.textContent ?? '', /Failed to load templates/);
+      assert.equal(observed, 'default', 'onResolved must fall back to default on fetch error');
+      assert.equal(unhandledCount, 0, 'no unhandledRejection event should fire');
+    } finally {
+      process.off('unhandledRejection', listener);
+    }
+  });
 });
