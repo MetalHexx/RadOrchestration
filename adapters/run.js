@@ -7,8 +7,11 @@ import path from 'node:path';
 /** @import { Adapter, MetadataStreamEntry } from './types.d.ts' */
 
 /**
- * Runs one adapter against the canonical source and writes the resulting
- * bundle plus its per-file metadata manifest into outputRoot/<targetDir>/.
+ * Runs one adapter against the canonical source. Writes the bundle to
+ * outputRoot/<adapter.targetDir>/ and the per-file metadata manifest to a
+ * sibling outputRoot/<adapter.name>/manifest.json (DD-6) — separating bundle
+ * destination (which may be shared across adapters, e.g. .github/) from the
+ * manifest location (which must be unique per harness).
  *
  * Uses file copies (not symlinks) for cross-platform parity (NFR-2).
  */
@@ -94,8 +97,10 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }
     }
   }
 
+  const manifestDir = path.join(outputRoot, adapter.name);
+  fs.mkdirSync(manifestDir, { recursive: true });
   fs.writeFileSync(
-    path.join(targetRoot, 'manifest.json'),
+    path.join(manifestDir, 'manifest.json'),
     JSON.stringify({ harness: adapter.name, version, files }, null, 2) + '\n',
     'utf8',
   );

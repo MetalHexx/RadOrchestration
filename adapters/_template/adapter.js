@@ -13,11 +13,11 @@ export const adapter = {
     throw new Error('_template: filenameRule not implemented');
   },
 
-  agentFrontmatter(canonical) {
+  agentFrontmatter(canonical, _ctx) {
     throw new Error('_template: agentFrontmatter not implemented');
   },
 
-  skillFrontmatter(canonical) {
+  skillFrontmatter(canonical, _ctx) {
     throw new Error('_template: skillFrontmatter not implemented');
   },
 

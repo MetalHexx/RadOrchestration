@@ -56,7 +56,7 @@ test('runAdapter emits manifest.json with one entry per emitted file', async () 
   const canonical = fixtureCanonical();
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
   await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.2.3' });
-  const manifest = JSON.parse(fs.readFileSync(path.join(out, '.fake', 'manifest.json'), 'utf8'));
+  const manifest = JSON.parse(fs.readFileSync(path.join(out, 'fake', 'manifest.json'), 'utf8'));
   const paths = manifest.files.map((f) => f.bundlePath).sort();
   assert.deepStrictEqual(paths, [
     'agents/sample.agent.md',
@@ -68,4 +68,21 @@ test('runAdapter emits manifest.json with one entry per emitted file', async () 
   assert.strictEqual(agentEntry.version, '1.2.3');
   assert.strictEqual(agentEntry.harness, 'fake');
   assert.strictEqual(agentEntry.sourcePath, 'agents/sample.md');
+});
+
+test('runAdapter writes manifest as a sibling of the bundle dir, keyed on adapter.name', async () => {
+  const canonical = fixtureCanonical();
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
+  await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.2.3' });
+  // Manifest lives under <outputRoot>/<adapter.name>/manifest.json (DD-6).
+  assert.ok(
+    fs.existsSync(path.join(out, 'fake', 'manifest.json')),
+    'manifest.json must be written under outputRoot/<adapter.name>/',
+  );
+  // The bundle dir must NOT contain a manifest.json — that would collide for
+  // adapters sharing a targetDir (e.g. copilot-vscode + copilot-cli on .github/).
+  assert.ok(
+    !fs.existsSync(path.join(out, '.fake', 'manifest.json')),
+    'manifest.json must not be inside the bundle dir',
+  );
 });
