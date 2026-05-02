@@ -5,7 +5,7 @@ import path from 'node:path';
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
 const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', 'out', 'coverage', 'archive',
-  // Out-of-scope subsystems for this corrective (FR-14 path-string sweep):
+  // Out-of-scope subsystems for this corrective:
   // these directories carry their own functional path strings and were not
   // listed in the corrective's File Targets. Sweep is narrowed to the
   // .claude/, prompt-tests/, and docs/ scope per the handoff's "narrow the

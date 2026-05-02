@@ -72,11 +72,11 @@ export function buildManifest(root) {
     const description = frontmatter.description;
     if (typeof name !== 'string' || !name) { process.stderr.write(`warn: ${file}: missing name\n`); continue; }
     if (typeof description !== 'string' || !description) { process.stderr.write(`warn: ${file}: missing description\n`); continue; }
-    if (name.startsWith('rad-')) continue;                              // FR-3, AD-4
-    if (frontmatter['disable-model-invocation'] === true) continue;     // FR-3, AD-4
-    out.push({ name, description, path: path.resolve(file) });          // FR-5
+    if (name.startsWith('rad-')) continue;
+    if (frontmatter['disable-model-invocation'] === true) continue;
+    out.push({ name, description, path: path.resolve(file) });
   }
-  out.sort((a, b) => a.name.localeCompare(b.name));                     // FR-4, NFR-4
+  out.sort((a, b) => a.name.localeCompare(b.name));
   return out;
 }
 
@@ -105,11 +105,11 @@ function runSelfTest() {
 
   // Case 5: eligible at deep path — exercises walker via in-memory fs is awkward; we instead assert
   // that path.resolve produces an absolute path for a deep relative input, which is the load-bearing
-  // property the walker hands off to (FR-5, NFR-3).
+  // property the walker hands off to.
   const deepResolved = path.resolve('packages/a/b/c/d/SKILL.md');
   record('eligible-deep-path', path.isAbsolute(deepResolved), `resolved=${deepResolved}`);
 
-  // Case 6: disable-model-invocation: "true" (string) is NOT excluded — only boolean true excludes (FR-3, AD-4).
+  // Case 6: disable-model-invocation: "true" (string) is NOT excluded — only boolean true excludes.
   const r6 = parseFrontmatter('---\nname: thing\ndescription: x\ndisable-model-invocation: "true"\n---\n');
   record('string-true-not-excluded', !r6.error && r6.frontmatter['disable-model-invocation'] === 'true',
     r6.error ?? `parsed dmi=${JSON.stringify(r6.frontmatter?.['disable-model-invocation'])}`);
@@ -122,4 +122,4 @@ function runSelfTest() {
 }
 
 if (process.argv[2] === '--self-test') runSelfTest();
-else process.stdout.write(JSON.stringify(buildManifest(process.cwd()), null, 2) + '\n');  // DD-1
+else process.stdout.write(JSON.stringify(buildManifest(process.cwd()), null, 2) + '\n');

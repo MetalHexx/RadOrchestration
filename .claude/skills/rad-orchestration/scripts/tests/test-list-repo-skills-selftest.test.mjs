@@ -17,7 +17,7 @@ describe('list-repo-skills.mjs --self-test', () => {
     assert.equal(typeof summary.failed, 'number', 'summary.failed is a number');
     assert.ok(Array.isArray(summary.cases), 'summary.cases is an array');
     assert.equal(summary.failed, 0, `expected 0 failed cases, got ${summary.failed}`);
-    // Coverage: must include cases for both filter criteria, missing fields, malformed YAML, varying depth (FR-6).
+    // Coverage: must include cases for both filter criteria, missing fields, malformed YAML, varying depth.
     const caseNames = summary.cases.map(c => c.name);
     for (const required of ['rad-prefix-skipped', 'disable-model-invocation-skipped', 'missing-name-skipped', 'malformed-yaml-skipped', 'eligible-deep-path']) {
       assert.ok(caseNames.includes(required), `self-test missing required case \`${required}\`: got ${JSON.stringify(caseNames)}`);

@@ -17,12 +17,12 @@ const __dirname = path.dirname(__filename);
  * Invoke `list-repo-skills.mjs` synchronously and render the spawn-prompt
  * suffix the orchestrator inlines into planner spawns. On any failure
  * (missing script, non-zero exit, malformed JSON), emit a single warn line
- * and return '' — manifest failure must NEVER break the planner spawn (AD-12).
+ * and return '' — manifest failure must NEVER break the planner spawn.
  *
  * Returns:
- *   - empty string '' when the manifest is `[]` OR when the invocation failed (FR-9)
- *   - the heading + JSON + DD-2 orientation sentence block when at least one
- *     eligible skill is present (FR-8, AD-6, DD-2)
+ *   - empty string '' when the manifest is `[]` OR when the invocation failed
+ *   - the heading + JSON + orientation sentence block when at least one
+ *     eligible skill is present
  */
 function buildRepositorySkillsBlock(): string {
   const scriptPath = path.resolve(__dirname, '..', 'list-repo-skills.mjs');
@@ -53,11 +53,11 @@ function buildRepositorySkillsBlock(): string {
     return '';
   }
 
-  if (!Array.isArray(arr) || arr.length === 0) return ''; // FR-9
+  if (!Array.isArray(arr) || arr.length === 0) return '';
 
   return (
-    `\n\n## Repository Skills Available\n\n${raw.trim()}\n\n` +                       // FR-8, AD-6
-    `Entries above are a catalog. Read a listed path **only when** its description matches the work you are about to plan — skip the rest to avoid token waste. Any \`SKILL.md\` you encounter outside this catalog (e.g., via Grep/Glob) was filtered on purpose; do not Read it.\n` // DD-2
+    `\n\n## Repository Skills Available\n\n${raw.trim()}\n\n` +
+    `Entries above are a catalog. Read a listed path **only when** its description matches the work you are about to plan — skip the rest to avoid token waste. Any \`SKILL.md\` you encounter outside this catalog (e.g., via Grep/Glob) was filtered on purpose; do not Read it.\n`
   );
 }
 
@@ -150,9 +150,9 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
 
   // Planning spawn enrichment — invoke list-repo-skills.mjs once per planner
   // spawn and surface the rendered block under `repository_skills_block` so
-  // the orchestrator can inline it verbatim into the spawn prompt (FR-7,
-  // FR-8, FR-9, AD-6, AD-12, DD-2, NFR-6). Manifest failure never breaks
-  // the spawn — buildRepositorySkillsBlock returns '' on any error path.
+  // the orchestrator can inline it verbatim into the spawn prompt. Manifest
+  // failure never breaks the spawn — buildRepositorySkillsBlock returns ''
+  // on any error path.
   if (action in PLANNING_SPAWN_STEPS) {
     const repository_skills_block = buildRepositorySkillsBlock();
     return {

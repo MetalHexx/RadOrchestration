@@ -14,9 +14,7 @@ A consolidated skill for creating planning documents. Routing is based on the in
 - **Requirements** — Project Requirements ledger (FR/NFR/AD/DD) (supported)
 
 ## DO NOT
-- Write requirements (FR/NFR/AD/DD) in any code, comments or docs that a given project produces. These are ephemeral planning artifacts only. 
-  - For example,  if we had to to create a component for a UI project to meet the requirement "FR-1", we shouldn't leave a comment in the code like `// This component satisfies FR-1` or `// This component satisfies FR-1, FR-2, NFR-3`. 
-  ```
+Write FR/NFR/AD/DD IDs inside the code, tests, or comment bodies you inline into requirements or plan steps. IDs are planning scaffolding — they live on requirement headings and step requirement lines, not inside the code/test/comment text itself.
 
 ## Routing
 

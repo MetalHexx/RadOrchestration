@@ -58,12 +58,10 @@ describe('[CONTRACT] Action Contexts — formatTaskId helper', () => {
 // ── [CONTRACT] Planning spawn actions (full template: master_plan only) ──
 
 describe('[CONTRACT] Action Contexts — planning spawn actions (full template)', () => {
-  // RAD-SKILL-DISCOVERY P02-T05: planning-spawn context now also carries
-  // `repository_skills_block` (string) so the orchestrator can inline the
-  // repo-skills manifest into the planner spawn prompt (FR-7, FR-8, FR-9,
-  // AD-6, AD-12, DD-2). Value is content-dependent on the invoking repo,
-  // so we assert the contract shape (string field present) rather than
-  // literal text.
+  // Planning-spawn context carries `repository_skills_block` (string) so the
+  // orchestrator can inline the repo-skills manifest into the planner spawn
+  // prompt. Value is content-dependent on the invoking repo, so we assert the
+  // contract shape (string field present) rather than literal text.
   it('first action is spawn_master_plan (master_plan is first planning node in full template)', () => {
     const io = createMockIO(null);
     const result = processEvent('start', PROJECT_DIR, {}, io);

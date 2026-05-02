@@ -62,12 +62,11 @@ describe('enrichActionContext — planning spawn actions', () => {
       config,
       cliContext: {},
     });
-    // RAD-SKILL-DISCOVERY P02-T05: planning-spawn enrichment now invokes
-    // list-repo-skills.mjs and surfaces the rendered block as
-    // `repository_skills_block` so the orchestrator can inline it verbatim
-    // into the planner spawn prompt (FR-7, FR-8, FR-9, AD-6, AD-12, DD-2).
-    // Value is content-dependent on the invoking repo, so we assert the
-    // contract shape (string field present) rather than literal text.
+    // Planning-spawn enrichment invokes list-repo-skills.mjs and surfaces the
+    // rendered block as `repository_skills_block` so the orchestrator can
+    // inline it verbatim into the planner spawn prompt. Value is
+    // content-dependent on the invoking repo, so we assert the contract shape
+    // (string field present) rather than literal text.
     expect(result.step).toBe('requirements');
     expect(typeof result.repository_skills_block).toBe('string');
     expect(Object.keys(result).sort()).toEqual(['repository_skills_block', 'step']);
