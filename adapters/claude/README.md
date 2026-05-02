@@ -21,6 +21,6 @@ reconciliation system to consume.
 
 ## What this adapter does NOT do
 
-- Does not transform the body of agents or skills (per FR-9 / AD-8).
-- Does not modify or rename `rad-*` skills (per FR-22).
-- Does not ship `settings.json` or any top-level instructions (per AD-12).
+- Does not transform the body of agents or skills.
+- Does not modify or rename `rad-*` skills.
+- Does not ship `settings.json` or any top-level instructions.
