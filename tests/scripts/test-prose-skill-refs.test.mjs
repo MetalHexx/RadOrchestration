@@ -5,7 +5,7 @@ import path from 'node:path';
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
 function walk(dir, out=[]) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
-    if (['node_modules','.git','dist','build','out','coverage','installer','ui','tests'].includes(e.name)) continue;
+    if (['node_modules','.git','dist','build','out','coverage','installer','ui','tests','_private'].includes(e.name)) continue;
     const p = path.join(dir, e.name);
     if (e.isDirectory()) walk(p, out);
     else if (e.name.endsWith('.md') && !p.includes('CHANGELOG')) out.push(p);
