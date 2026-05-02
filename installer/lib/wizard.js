@@ -70,7 +70,7 @@ export async function runWizard({ skipConfirmation, cliOverrides = {} }) {
     console.log('');
     console.log(THEME.hint('  Folder where agents, skills, and prompts are installed. Relative to workspace or absolute.'));
     console.log('');
-    orchRoot = await promptOrchRoot();
+    orchRoot = await promptOrchRoot({ tool: gettingStarted.tool });
   }
 
   // ── Project Storage ──────────────────────────────────────────────────────

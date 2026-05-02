@@ -5,11 +5,25 @@ import { INQUIRER_THEME } from '../theme.js';
 import { isValidFolderName, normalizePath } from '../path-utils.js';
 
 /**
+ * Per-harness canonical orchRoot defaults. Sourced from
+ * frontmatter-research.md §2.A (VS Code) and §3.A (CLI) — both Copilot
+ * variants share `.github/`. Claude Code uses `.claude/` per §1.
+ */
+const HARNESS_DEFAULTS = {
+  'claude-code': '.claude',
+  'copilot-vscode': '.github',
+  'copilot-cli': '.github',
+};
+
+/**
  * Runs the "Orchestration Root" prompt section: root folder selection + optional custom entry.
+ * @param {{ tool?: string }} [opts]
  * @returns {Promise<{ orchRoot: string }>}
  *   - orchRoot: Folder name (e.g., '.claude') or absolute path
  */
-export async function promptOrchRoot() {
+export async function promptOrchRoot(opts = {}) {
+  const harnessDefault = HARNESS_DEFAULTS[opts.tool] ?? '.claude';
+
   const selection = await select({
     message: 'Orchestration root folder',
     theme: INQUIRER_THEME,
@@ -19,7 +33,7 @@ export async function promptOrchRoot() {
       { name: '.github', value: '.github' },
       { name: 'Custom…', value: 'custom' },
     ],
-    default: '.claude',
+    default: harnessDefault,
   });
 
   let orchRoot = selection;

@@ -164,3 +164,31 @@ describe('promptOrchRoot — custom value normalization', () => {
     assert.equal(result.orchRoot, '.github');
   });
 });
+
+describe('promptOrchRoot — tool-specific defaults', () => {
+  let selectArgs;
+
+  it('orchRoot default is .claude when tool=claude-code', async () => {
+    selectMock.mock.resetCalls();
+    selectMock.mock.mockImplementation(async () => '.github');
+    await promptOrchRoot({ tool: 'claude-code' });
+    selectArgs = selectMock.mock.calls[0].arguments[0];
+    assert.strictEqual(selectArgs.default, '.claude');
+  });
+
+  it('orchRoot default is .github when tool=copilot-vscode', async () => {
+    selectMock.mock.resetCalls();
+    selectMock.mock.mockImplementation(async () => '.github');
+    await promptOrchRoot({ tool: 'copilot-vscode' });
+    selectArgs = selectMock.mock.calls[0].arguments[0];
+    assert.strictEqual(selectArgs.default, '.github');
+  });
+
+  it('orchRoot default is .github when tool=copilot-cli', async () => {
+    selectMock.mock.resetCalls();
+    selectMock.mock.mockImplementation(async () => '.github');
+    await promptOrchRoot({ tool: 'copilot-cli' });
+    selectArgs = selectMock.mock.calls[0].arguments[0];
+    assert.strictEqual(selectArgs.default, '.github');
+  });
+});
