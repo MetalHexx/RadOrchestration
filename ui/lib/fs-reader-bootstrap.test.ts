@@ -55,7 +55,7 @@ async function run() {
     console.log('\nreadConfig() — ORCH_ROOT bootstrap');
 
     await test('uses .claude when ORCH_ROOT is not set', async () => {
-      const configDir = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config');
+      const configDir = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config');
       await mkdir(configDir, { recursive: true });
       await writeFile(path.join(configDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
 
@@ -65,7 +65,7 @@ async function run() {
     });
 
     await test('uses .agents when ORCH_ROOT=.agents', async () => {
-      const configDir = path.join(tmpDir, '.agents', 'skills', 'orchestration', 'config');
+      const configDir = path.join(tmpDir, '.agents', 'skills', 'rad-orchestration', 'config');
       await mkdir(configDir, { recursive: true });
       await writeFile(path.join(configDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
 
@@ -76,7 +76,7 @@ async function run() {
     });
 
     await test('constructs path using ORCH_ROOT value', async () => {
-      const configDir = path.join(tmpDir, '.copilot', 'skills', 'orchestration', 'config');
+      const configDir = path.join(tmpDir, '.copilot', 'skills', 'rad-orchestration', 'config');
       await mkdir(configDir, { recursive: true });
       await writeFile(path.join(configDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
 

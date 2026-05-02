@@ -29,7 +29,7 @@ function composePrompt(action: StartAction, projectName: string): string {
     // /rad-approve-plan skill with the validated project name.
     return `/rad-approve-plan ${projectName}`;
   }
-  return `/brainstorm ${projectName}`;
+  return `/rad-brainstorm ${projectName}`;
 }
 
 export async function POST(

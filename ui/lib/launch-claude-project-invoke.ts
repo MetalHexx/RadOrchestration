@@ -7,7 +7,7 @@ const execFileAsync = promisify(execFile);
 export interface InvokeLaunchClaudeProjectArgs {
   /** Absolute path to the workspace root; becomes the launched terminal's cwd. */
   workspaceRoot: string;
-  /** Slash-prefixed prompt string (e.g. `/brainstorm FOO`). */
+  /** Slash-prefixed prompt string (e.g. `/rad-brainstorm FOO`). */
   prompt: string;
   /** Optional Claude Code permission mode; defaults to `auto` in the script. */
   permissionMode?: 'default' | 'acceptEdits' | 'bypassPermissions' | 'auto' | 'dontAsk' | 'plan';

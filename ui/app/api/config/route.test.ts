@@ -68,8 +68,8 @@ let tmpDir: string;
 /** Create a temp workspace with orchestration.yml populated */
 async function setupWorkspace(yamlContent: string = VALID_YAML): Promise<void> {
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'route-test-'));
-  // getConfigPath uses: {root}/{ORCH_ROOT || .claude}/skills/orchestration/config/orchestration.yml
-  const configDir = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config');
+  // getConfigPath uses: {root}/{ORCH_ROOT || .claude}/skills/rad-orchestration/config/orchestration.yml
+  const configDir = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config');
   await mkdir(configDir, { recursive: true });
   await fsWriteFile(path.join(configDir, 'orchestration.yml'), yamlContent, 'utf-8');
   process.env.WORKSPACE_ROOT = tmpDir;
@@ -246,7 +246,7 @@ async function run() {
   assert.deepStrictEqual(json.config.source_control, VALID_CONFIG.source_control);
 
   // Verify the file was actually written on disk
-  const configPath = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config', 'orchestration.yml');
+  const configPath = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
   const onDisk = await readFile(configPath, 'utf-8');
   assert.ok(onDisk.includes('max_phases: 5'), 'Written file should contain max_phases: 5');
 });

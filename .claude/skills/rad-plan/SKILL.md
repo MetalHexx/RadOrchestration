@@ -10,14 +10,14 @@ user-invocable: true
 - `project_template`: $1 — The template to use for planning. (e.g., "default" or a custom template name if one exists)
 
 ## Initialize
-You are an orchestrator. You'll be using the `orchestration` skill for this project.  Read the skill  and prepare to use it for running the planning pipeline.
+You are an orchestrator. You'll be using the `rad-orchestration` skill for this project.  Read the skill  and prepare to use it for running the planning pipeline.
 
 ## Workflow:
 I have project goals I'd like to develop into a full scale plan.  
 
 ## Step 1: Choose Project Template
 - If the `project_template` is a custom template name,
-  - Check if it exists in the `orchestration` skill `/templates` directory.
+  - Check if it exists in the `rad-orchestration` skill `/templates` directory.
   - If it does, use it.
   - If it doesn't, respond with an error message indicating the template was not found.
 - If no `project_template` is specified, use `default`.

@@ -4,13 +4,11 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
 const SKIP_DIRS = new Set([
-  'node_modules', '.git', 'dist', 'build', 'out', 'coverage', 'archive',
-  // Out-of-scope subsystems for this corrective:
-  // these directories carry their own functional path strings and were not
-  // listed in the corrective's File Targets. Sweep is narrowed to the
-  // .claude/, prompt-tests/, and docs/ scope per the handoff's "narrow the
-  // test scope rather than editing the excluded file" guidance.
-  '.agents', 'ui',
+  'node_modules', '.git', '.next', 'dist', 'build', 'out', 'coverage', 'archive',
+  // `.agents/` is the dev-only meta skills tree (non-production prompts and
+  // skills) — its prose intentionally references current and historical skill
+  // paths and is not policed by the production sweep.
+  '.agents',
   // Historical iteration notes — frozen records of past refactors. Same
   // intent as `archive/`; these aren't active code and shouldn't be policed.
   '_private',

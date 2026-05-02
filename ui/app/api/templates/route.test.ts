@@ -72,10 +72,10 @@ let prevOrchRoot: string | undefined;
 async function setupWorkspace(): Promise<void> {
   prevWorkspaceRoot = process.env.WORKSPACE_ROOT;
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'templates-test-'));
-  const configDir = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config');
+  const configDir = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config');
   await mkdir(configDir, { recursive: true });
   await fsWriteFile(path.join(configDir, 'orchestration.yml'), VALID_YAML, 'utf-8');
-  const templateDir = path.join(tmpDir, '.github', 'skills', 'orchestration', 'templates');
+  const templateDir = path.join(tmpDir, '.github', 'skills', 'rad-orchestration', 'templates');
   await mkdir(templateDir, { recursive: true });
   process.env.WORKSPACE_ROOT = tmpDir;
   prevOrchRoot = process.env.ORCH_ROOT;
@@ -151,7 +151,7 @@ async function run() {
 
   // --- GET: returns seeded template summaries ---
   await test('GET — returns 200 with templates array containing seeded template summaries', async () => {
-    const templateDir = path.join(tmpDir, '.github', 'skills', 'orchestration', 'templates');
+    const templateDir = path.join(tmpDir, '.github', 'skills', 'rad-orchestration', 'templates');
     await fsWriteFile(path.join(templateDir, 'test-template.yml'), TEMPLATE_YAML, 'utf-8');
     const res = await GET();
     assert.strictEqual(res.status, 200);
@@ -187,7 +187,7 @@ async function run() {
     const req = makePostRequest({ id: 'my-template', content: NEW_TEMPLATE_YAML });
     const res = await POST(req);
     assert.strictEqual(res.status, 201);
-    const templateDir = path.join(tmpDir, '.github', 'skills', 'orchestration', 'templates');
+    const templateDir = path.join(tmpDir, '.github', 'skills', 'rad-orchestration', 'templates');
     const onDisk = await readFile(path.join(templateDir, 'my-template.yml'), 'utf-8');
     assert.ok(onDisk.length > 0, 'Written file should not be empty');
     assert.ok(onDisk.includes('A new template'), 'Written file should contain template content');
@@ -195,7 +195,7 @@ async function run() {
 
   // --- POST: duplicate ID returns 409 ---
   await test('POST — duplicate ID returns 409 with error containing the ID', async () => {
-    const templateDir = path.join(tmpDir, '.github', 'skills', 'orchestration', 'templates');
+    const templateDir = path.join(tmpDir, '.github', 'skills', 'rad-orchestration', 'templates');
     await fsWriteFile(path.join(templateDir, 'test-template.yml'), TEMPLATE_YAML, 'utf-8');
     const req = makePostRequest({ id: 'test-template', content: NEW_TEMPLATE_YAML });
     const res = await POST(req);
@@ -270,7 +270,7 @@ async function run() {
   // --- GET: 500 when workspace config is unreadable ---
   await test('GET — returns 500 when orchestration.yml is missing', async () => {
     const { rm: fsRm } = await import('node:fs/promises');
-    const configPath = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config', 'orchestration.yml');
+    const configPath = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
     await fsRm(configPath);
     const res = await GET();
     assert.strictEqual(res.status, 500);
@@ -281,7 +281,7 @@ async function run() {
   // --- POST: 500 when workspace config is unreadable ---
   await test('POST — returns 500 when orchestration.yml is missing', async () => {
     const { rm: fsRm } = await import('node:fs/promises');
-    const configPath = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config', 'orchestration.yml');
+    const configPath = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
     await fsRm(configPath);
     const req = makePostRequest({ id: 'new-template', content: NEW_TEMPLATE_YAML });
     const res = await POST(req);
