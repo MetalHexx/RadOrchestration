@@ -43,10 +43,10 @@ describe('repairMsysPrompt', () => {
     );
   });
 
-  it('repairs a single-token slash-command name (e.g. /brainstorm)', () => {
+  it('repairs a single-token slash-command name (e.g. /init)', () => {
     assert.equal(
-      repairMsysPrompt('C:/Program Files/Git/brainstorm FOO'),
-      '/brainstorm FOO'
+      repairMsysPrompt('C:/Program Files/Git/init FOO'),
+      '/init FOO'
     );
   });
 

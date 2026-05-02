@@ -63,7 +63,7 @@ build the UI in 1-shot.
 
 ### Specialized Agents
 
-Twelve agents with strict separation of concerns. Each agent has a defined role, scoped tool access, and explicit write permissions. The Orchestrator is a thin skill-driven coordinator — it loads the `orchestration` skill, signals pipeline events, and routes via a compact action routing table. Never writes files directly. The Coder reads only its task handoff.
+Twelve agents with strict separation of concerns. Each agent has a defined role, scoped tool access, and explicit write permissions. The Orchestrator is a thin skill-driven coordinator — it loads the `rad-orchestration` skill, signals pipeline events, and routes via a compact action routing table. Never writes files directly. The Coder reads only its task handoff.
 
 [Learn more about agents →](docs/agents.md)
 
@@ -151,7 +151,7 @@ cloning:
 git config core.hooksPath .githooks
 ```
 
-(Equivalent: `node .claude/skills/orchestration/scripts/setup-hooks.js`.)
+(Equivalent: `node .claude/skills/rad-orchestration/scripts/setup-hooks.js`.)
 
 This is dev-only setup. End users installing via the `radorch` installer
 do **not** get the pre-commit hook configured.

@@ -7,7 +7,7 @@ import type { NextRequest } from 'next/server';
 // --- Fixtures ---------------------------------------------------------
 const VALID_YAML = `version: "4"
 system:
-  orch_root: .claude/skills/orchestration
+  orch_root: .claude
 projects:
   base_path: orchestration-projects
   naming: SCREAMING_CASE
@@ -31,7 +31,7 @@ let projectsDir: string;
 
 async function setup() {
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'start-action-'));
-  const configDir = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config');
+  const configDir = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config');
   await mkdir(configDir, { recursive: true });
   await writeFile(path.join(configDir, 'orchestration.yml'), VALID_YAML, 'utf-8');
   projectsDir = path.join(tmpDir, 'orchestration-projects');

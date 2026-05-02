@@ -9,7 +9,7 @@ import type { OrchestrationConfig } from '@/types/config';
 function makeValidConfig(): OrchestrationConfig {
   return {
     version: '4',
-    system: { orch_root: '.github/skills/orchestration' },
+    system: { orch_root: '.github' },
     projects: { base_path: '../orchestration-projects', naming: 'SCREAMING_CASE' },
     limits: {
       max_phases: 5,

@@ -171,7 +171,7 @@ Instruction files use `applyTo` glob patterns to load context-specific rules onl
 |------|-----------|-------|
 | `project-docs.instructions.md` | `.claude/projects/**` | Naming conventions, file ownership (sole writer policy), document quality standards |
 
-> **Note:** The `applyTo` glob in `project-docs.instructions.md` must match the `base_path` configured in `orchestration.yml`. If you change `base_path`, update `applyTo` to `{new_base_path}/**` or run `/configure-system` to sync automatically.
+> **Note:** The `applyTo` glob in `project-docs.instructions.md` must match the `base_path` configured in `orchestration.yml`. If you change `base_path`, update `applyTo` to `{new_base_path}/**` or run `/rad-configure-system` to sync automatically.
 
 ## Prompt Files
 

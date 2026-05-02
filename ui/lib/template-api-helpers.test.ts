@@ -64,19 +64,19 @@ describe('resolveTemplateDir', () => {
   it('returns correct path given system.orch_root', () => {
     const config = { ...MINIMAL_CONFIG, system: { orch_root: '.github' } };
     const result = resolveTemplateDir('/workspace', config);
-    assert.equal(result, path.join('/workspace', '.github', 'skills', 'orchestration', 'templates'));
+    assert.equal(result, path.join('/workspace', '.github', 'skills', 'rad-orchestration', 'templates'));
   });
 
   it('defaults to .claude when system.orch_root is undefined', () => {
     const config = { ...MINIMAL_CONFIG, system: { orch_root: undefined as unknown as string } };
     const result = resolveTemplateDir('/workspace', config);
-    assert.equal(result, path.join('/workspace', '.claude', 'skills', 'orchestration', 'templates'));
+    assert.equal(result, path.join('/workspace', '.claude', 'skills', 'rad-orchestration', 'templates'));
   });
 
   it('uses custom orch_root when provided', () => {
     const config = { ...MINIMAL_CONFIG, system: { orch_root: '.agents' } };
     const result = resolveTemplateDir('/my/workspace', config);
-    assert.equal(result, path.join('/my/workspace', '.agents', 'skills', 'orchestration', 'templates'));
+    assert.equal(result, path.join('/my/workspace', '.agents', 'skills', 'rad-orchestration', 'templates'));
   });
 });
 

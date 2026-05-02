@@ -33,7 +33,7 @@ function runLauncher(args: string[], env: NodeJS.ProcessEnv = {}): { stdout: str
 {
   const { stdout, status } = runLauncher([
     '--workspace-root', 'C:/tmp',
-    '--prompt', '/brainstorm FOO',
+    '--prompt', '/rad-brainstorm FOO',
     '--permission-mode', 'nope',
   ]);
   const parsed = JSON.parse(stdout.trim());
@@ -47,7 +47,7 @@ function runLauncher(args: string[], env: NodeJS.ProcessEnv = {}): { stdout: str
 {
   const { stdout, status } = runLauncher([
     '--workspace-root', process.cwd(),
-    '--prompt', '/brainstorm FOO',
+    '--prompt', '/rad-brainstorm FOO',
   ]);
   const parsed = JSON.parse(stdout.trim());
   assert.equal(parsed.success, true);
@@ -60,7 +60,7 @@ function runLauncher(args: string[], env: NodeJS.ProcessEnv = {}): { stdout: str
 // Non-Error throw at top level → catch fallback uses String(err)
 {
   const { stdout, status } = runLauncher(
-    ['--workspace-root', process.cwd(), '--prompt', '/brainstorm FOO'],
+    ['--workspace-root', process.cwd(), '--prompt', '/rad-brainstorm FOO'],
     { LAUNCH_CLAUDE_PROJECT_FORCE_NON_ERROR_THROW: '1' },
   );
   const parsed = JSON.parse(stdout.trim());

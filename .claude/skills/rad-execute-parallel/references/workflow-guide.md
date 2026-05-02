@@ -1,6 +1,6 @@
 # Workflow Guide — Execute Parallel
 
-Detailed reference for the agent executing the `execute-parallel` skill. Covers question schemas, value resolution, the `source_control_init` pipeline call, launch commands, and error handling.
+Detailed reference for the agent executing the `rad-execute-parallel` skill. Covers question schemas, value resolution, the `source_control_init` pipeline call, launch commands, and error handling.
 
 ---
 

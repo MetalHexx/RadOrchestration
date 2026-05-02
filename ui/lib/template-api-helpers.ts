@@ -17,10 +17,10 @@ import type { TemplateSummary, TemplateDefinition } from '@/types/template';
 
 /**
  * Resolve the absolute path to the global templates directory.
- * Path: {workspaceRoot}/{orchRoot}/skills/orchestration/templates/
+ * Path: {workspaceRoot}/{orchRoot}/skills/rad-orchestration/templates/
  */
 export function resolveTemplateDir(workspaceRoot: string, config: OrchestrationConfig): string {
-  return path.join(workspaceRoot, resolveOrchRoot(config), 'skills', 'orchestration', 'templates');
+  return path.join(workspaceRoot, resolveOrchRoot(config), 'skills', 'rad-orchestration', 'templates');
 }
 
 /**

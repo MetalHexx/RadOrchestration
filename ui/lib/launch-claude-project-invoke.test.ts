@@ -7,7 +7,7 @@ async function runTests() {
     process.env.LAUNCH_CLAUDE_PROJECT_DRY_RUN = '1';
     const result = await invokeLaunchClaudeProject({
       workspaceRoot: process.cwd(),
-      prompt: '/brainstorm FOO',
+      prompt: '/rad-brainstorm FOO',
     });
     assert.equal(result.success, true);
     assert.equal(typeof result.platform, 'string');
@@ -20,7 +20,7 @@ async function runTests() {
     process.env.LAUNCH_CLAUDE_PROJECT_DRY_RUN = '1';
     const result = await invokeLaunchClaudeProject({
       workspaceRoot: process.cwd(),
-      prompt: '/brainstorm FOO',
+      prompt: '/rad-brainstorm FOO',
       permissionMode: 'bogus' as unknown as 'auto',
     });
     assert.equal(result.success, false);

@@ -9,11 +9,11 @@ import { parseTemplateToGraph, serializeGraphToYaml } from './template-serialize
 // ── Fixture loading ───────────────────────────────────────────────────────────
 
 const FULL_YAML = readFileSync(
-  join(__dirname, '../../.claude/skills/orchestration/templates/full.yml'),
+  join(__dirname, '../../.claude/skills/rad-orchestration/templates/full.yml'),
   'utf-8'
 );
 const DEFAULT_YAML = readFileSync(
-  join(__dirname, '../../.claude/skills/orchestration/templates/default.yml'),
+  join(__dirname, '../../.claude/skills/rad-orchestration/templates/default.yml'),
   'utf-8'
 );
 

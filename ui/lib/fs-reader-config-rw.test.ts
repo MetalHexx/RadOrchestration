@@ -82,14 +82,14 @@ async function run() {
     await test('returns correct path when ORCH_ROOT is not set', async () => {
       delete process.env.ORCH_ROOT;
       const result = getConfigPath('/workspace');
-      const expected = path.resolve('/workspace', '.claude', 'skills', 'orchestration', 'config', 'orchestration.yml');
+      const expected = path.resolve('/workspace', '.claude', 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
       assert.strictEqual(result, expected);
     });
 
     await test('returns correct path when ORCH_ROOT is set (relative)', async () => {
       process.env.ORCH_ROOT = '.agents';
       const result = getConfigPath('/workspace');
-      const expected = path.resolve('/workspace', '.agents', 'skills', 'orchestration', 'config', 'orchestration.yml');
+      const expected = path.resolve('/workspace', '.agents', 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
       assert.strictEqual(result, expected);
       delete process.env.ORCH_ROOT;
     });
@@ -100,7 +100,7 @@ async function run() {
       const absRoot = path.resolve('/elsewhere/.copilot');
       process.env.ORCH_ROOT = absRoot;
       const result = getConfigPath('/workspace');
-      const expected = path.join(absRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
+      const expected = path.join(absRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
       assert.strictEqual(result, expected);
       delete process.env.ORCH_ROOT;
     });
@@ -111,7 +111,7 @@ async function run() {
 
     await test('readConfig() reads and parses config', async () => {
       delete process.env.ORCH_ROOT;
-      const configDir = path.join(tmpDir, '.claude', 'skills', 'orchestration', 'config');
+      const configDir = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config');
       await mkdir(configDir, { recursive: true });
       await fsWriteFile(path.join(configDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
 

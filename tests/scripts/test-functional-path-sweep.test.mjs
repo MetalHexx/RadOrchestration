@@ -4,13 +4,11 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
 const SKIP_DIRS = new Set([
-  'node_modules', '.git', 'dist', 'build', 'out', 'coverage', 'archive',
-  // Out-of-scope subsystems for this corrective:
-  // these directories carry their own functional path strings and were not
-  // listed in the corrective's File Targets. Sweep is narrowed to the
-  // .claude/, prompt-tests/, and docs/ scope per the handoff's "narrow the
-  // test scope rather than editing the excluded file" guidance.
-  '.agents', 'ui',
+  'node_modules', '.git', '.next', 'dist', 'build', 'out', 'coverage', 'archive',
+  // `.agents/` is the dev-only meta skills tree (non-production prompts and
+  // skills) — its prose intentionally references current and historical skill
+  // paths and is not policed by the production sweep.
+  '.agents',
   // Historical iteration notes — frozen records of past refactors. Same
   // intent as `archive/`; these aren't active code and shouldn't be policed.
   '_private',
@@ -42,15 +40,32 @@ function walk(dir, out=[]) {
   }
   return out;
 }
+// Pre-rename skill folder names from PR #77 (RAD-SKILL-DISCOVERY). All have
+// since been renamed to `rad-<name>`. The sweep flags any production code
+// still referring to the pre-rename folder. Boundary chars (`/`, `'`, `"`)
+// keep e.g. `skills/execute/` from matching `skills/execute-parallel/`.
+const OLD_SKILL_NAMES = [
+  'orchestration', 'brainstormer', 'code-review', 'create-plans',
+  'execute', 'execute-coding-task', 'execute-parallel',
+  'plan-audit', 'run-tests', 'source-control',
+  'log-error', 'create-skill', 'configure-system',
+];
 const hits = [];
 for (const f of walk(repoRoot)) {
   const text = readFileSync(f, 'utf8');
   const lines = text.split(/\r?\n/);
   lines.forEach((line, i) => {
-    if (line.includes('skills/orchestration/') || line.includes("'skills', 'orchestration'") || line.includes('"skills", "orchestration"')) {
-      hits.push(`${path.relative(repoRoot, f)}:${i + 1}: ${line.trim().slice(0, 120)}`);
+    for (const name of OLD_SKILL_NAMES) {
+      if (
+        line.includes(`skills/${name}/`) ||
+        line.includes(`'skills', '${name}'`) ||
+        line.includes(`"skills", "${name}"`)
+      ) {
+        hits.push(`${path.relative(repoRoot, f)}:${i + 1}: ${line.trim().slice(0, 120)}`);
+        break;
+      }
     }
   });
 }
-assert.deepEqual(hits, [], 'functional `skills/orchestration/` path strings remain in active code:\n  - ' + hits.join('\n  - '));
+assert.deepEqual(hits, [], 'functional pre-rename `skills/<name>/` path strings remain in active code:\n  - ' + hits.join('\n  - '));
 console.log('functional path-string sweep assertions passed');
