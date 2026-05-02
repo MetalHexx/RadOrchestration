@@ -2,7 +2,7 @@
 
 ## Overview
 
-Templates are structured markdown files bundled inside skill folders that control the format and structure of each skill's output. There are 15 templates across 12 skills, organized into four groups: Planning, Execution, Review, and Meta. They define the sections, headings, and frontmatter that agents produce when executing a skill.
+Templates are structured markdown files bundled inside skill folders that control the format and structure of each skill's output. There are 14 templates across 11 skills, organized into four groups: Planning, Execution, Review, and Meta. They define the sections, headings, and frontmatter that agents produce when executing a skill.
 
 ## How Skills and Templates Relate
 
