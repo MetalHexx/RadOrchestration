@@ -23,10 +23,12 @@ I have project goals I'd like to develop into a full scale plan.
 - If no `project_template` is specified, use `default`.
 
 ## Step 2: Choose Task Size
-- Use the `askQuestions` tool to ask the user how large they want each task to be. ALWAYS present the following options (in your own words)
-  - **Planner Decides** — no constraint; the planner agent sizes tasks using its own judgment 
-  - **Small** — single file or function; Good for mission crictical projects;  Slow and expensive to execute.
-  - **Medium** — 2–4 files, one coherent unit of work; balanced scope and overhead (Recommended)
+- Use the `askQuestions` tool to ask the user how large they want each task to be. ALWAYS present the following options (in your own words). The **(Recommended)** label moves based on the resolved `project_template`:
+  - When `project_template == "quick"`, attach **(Recommended)** to **Extra Large**.
+  - For all other templates (including `default`), attach **(Recommended)** to **Medium**.
+  - **Planner Decides** — no constraint; the planner agent sizes tasks using its own judgment
+  - **Small** — single file or function; Good for mission critical projects; Slow and expensive to execute.
+  - **Medium** — 2–4 files, one coherent unit of work; balanced scope and overhead
   - **Large** — cross-cutting change or full feature slice; fewer tasks, higher complexity per task
   - **Extra Large** — end-to-end feature per task; minimal process overhead, requires a capable model; Similar to a typical planning mode.
 - Store the result as `task_size_preference`.
