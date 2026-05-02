@@ -11,6 +11,7 @@ The harness sits at the repo root (sibling to `docs/`, `installer/`, `ui/`, `.cl
 | Folder | What it exercises |
 |--------|-------------------|
 | [`plan-pipeline-e2e/`](./plan-pipeline-e2e/) | `default.yml` planning chain end-to-end — Requirements → Master Plan → explosion script. Halts at `plan_approval_gate`. |
+| [`quick-pipeline-e2e/`](./quick-pipeline-e2e/) | `quick.yml` planning chain end-to-end — Requirements → Master Plan → explosion script under `--template quick`. Halts at `plan_approval_gate`. |
 
 ## Running a behavior
 
