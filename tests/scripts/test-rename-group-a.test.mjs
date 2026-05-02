@@ -3,7 +3,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
-const groupA = ['brainstorm', 'code-review', 'configure-system', 'create-agent', 'create-skill'];
+const groupA = ['brainstorm', 'code-review', 'configure-system'];
 for (const oldName of groupA) {
   const newName = `rad-${oldName}`;
   const oldDir = path.join(repoRoot, '.claude/skills', oldName);

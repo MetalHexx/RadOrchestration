@@ -2,7 +2,7 @@
 
 ## Overview
 
-Templates are structured markdown files bundled inside skill folders that control the format and structure of each skill's output. There are 15 templates across 12 skills, organized into four groups: Planning, Execution, Review, and Meta. They define the sections, headings, and frontmatter that agents produce when executing a skill.
+Templates are structured markdown files bundled inside skill folders that control the format and structure of each skill's output. There are 14 templates across 11 skills, organized into four groups: Planning, Execution, Review, and Meta. They define the sections, headings, and frontmatter that agents produce when executing a skill.
 
 ## How Skills and Templates Relate
 
@@ -49,7 +49,6 @@ Each skill that produces a document bundles one or more templates in its `templa
 | Template | Skill | Description |
 |----------|-------|-------------|
 | [`ERROR-LOG.md`](../.claude/skills/rad-log-error/templates/ERROR-LOG.md) | `rad-log-error` | Append-only pipeline error log with numbered entries |
-| [`AGENT.md`](../.claude/skills/rad-create-agent/templates/AGENT.md) | `rad-create-agent` | Agent definition file scaffold for new custom agents |
 
 ## Design Variants
 

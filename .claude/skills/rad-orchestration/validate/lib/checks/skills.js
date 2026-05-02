@@ -8,8 +8,23 @@ const { extractFrontmatter } = require('../utils/frontmatter');
 
 const CATEGORY = 'skills';
 
-/** Skills that don't require a templates/ subdirectory */
-const TEMPLATES_EXEMPT = ['run-tests', 'create-skill', 'execute-coding-task', 'orchestration', 'rad-execute-parallel', 'source-control'];
+/** Skills that don't require a top-level templates/ subdirectory.
+ *  - Pure orchestration / instruction skills (no document output)
+ *  - Skills whose templates live in non-standard locations (multi-mode subdirs,
+ *    deeply-nested references/, or inline in SKILL.md). See per-entry notes. */
+const TEMPLATES_EXEMPT = [
+  'rad-approve-plan',          // router, no doc output
+  'rad-code-review',           // templates in task-review/, phase-review/, final-review/ mode subdirs
+  'rad-configure-system',      // YAML scaffold inline in SKILL.md
+  'rad-create-plans',          // templates nested under references/requirements/ and references/master-plan/
+  'rad-execute',               // orchestration runner, no doc output
+  'rad-execute-coding-task',   // appends to existing handoff, no scaffold
+  'rad-execute-parallel',      // worktree setup, no doc output
+  'rad-plan',                  // planning entry-point router
+  'rad-plan-audit',            // audits existing docs, no output scaffold
+  'rad-run-tests',             // pure instructions
+  'rad-source-control',        // scripts-driven, no scaffold
+];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

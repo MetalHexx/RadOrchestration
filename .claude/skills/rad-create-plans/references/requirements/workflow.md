@@ -49,8 +49,8 @@ prompt says, no more.
     is the complete authoritative list and exclusions are intentional. Let
     the conventions encoded in consulted `SKILL.md` files inform the
     requirements you author — especially any test commands, file-layout
-    rules, or error-handling patterns the eligible skill defines. Absence of
-    the section means no eligible repo skills exist; proceed normally.
+    rules, or error-handling patterns the eligible skill defines.
+    Absence of the section means no eligible repo skills exist; proceed normally.
 
 2. Decide the four ID ranges. Count roughly how many FRs, NFRs, ADs, and DDs
    the project needs. Use four separate sequences:

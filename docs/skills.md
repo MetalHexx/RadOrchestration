@@ -31,13 +31,6 @@ The orchestration system includes 16 reusable skills — self-contained capabili
 |-------|-------------|---------|
 | `rad-code-review` | Review code, phases, and projects for quality, correctness, and conformance — supports task review, phase review, and final review modes with dual-pass approach | reviewer |
 
-### Meta Skills
-
-| Skill | Description | Used By |
-|-------|-------------|---------|
-| `rad-create-agent` | Scaffold new agent definitions (`.agent.md`) with proper frontmatter and tool declarations | any |
-| `rad-create-skill` | Scaffold new skills with `SKILL.md`, directory structure, and optional scripts/references | any |
-
 ### System Skills
 
 | Skill | Description | Used By |
