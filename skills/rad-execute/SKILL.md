@@ -22,6 +22,14 @@ Before the first pipeline tick, ensure `pipeline.source_control` is populated in
 ## Step 4: Execute Plan
 Execute the project according to the approved Master Plan using the proper execution pipeline.
 
+**Resuming a project:** to resume execution (or determine the next pending action on a fresh session), fire the pipeline `start` event:
+
+```
+node {repoRoot}/skills/rad-orchestration/scripts/pipeline.js --event start --project-dir {projectDir}
+```
+
+`start` returns the current pending action without mutating state, so it is the correct entry point both for first-time execution and for resume. Do not invent event names like `tick`, `next_action`, or `get_next_action` — they will fail with `Unknown event`.
+
 ## Step 5: Pipeline Error Handling
 - If any errors occur with the pipeline during execution, use the `rad-log-error` skill to log them
 - Do not try to fix the pipeline code,  simply work around it. 
