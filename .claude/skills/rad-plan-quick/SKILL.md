@@ -9,7 +9,7 @@ user-invocable: true
 - `project_name`: $0 — The name of the new project to plan. (e.g., "QUICK-DEMO")
 
 ## Initialize
-You are an orchestrator. You'll be using the `orchestration` skill for this project. Read the skill and prepare to use it for running the planning pipeline.
+You are an orchestrator. You'll be using the `rad-orchestration` skill for this project. Read the skill and prepare to use it for running the planning pipeline.
 
 ## Workflow
 `/rad-plan-quick` is the discoverable front door for quick mode. It wraps `/rad-plan` and silently bakes in three defaults:
@@ -18,7 +18,7 @@ You are an orchestrator. You'll be using the `orchestration` skill for this proj
 - The task-size preference is `Extra Large` — set as `task_size_preference = "Extra Large"`; this skill skips the task-size question.
 - The human-gate execution mode is `autonomous` — set as `pipeline.gate_mode = "autonomous"` (signal `gate_mode_set` with `gate_mode: autonomous` per the action-event reference); this skill skips the gate-mode question. No mid-execution per-task or per-phase prompt fires.
 
-Do not announce that defaults are being applied. The Step 2 starting message confirms all three resolved choices in one block, matching `/rad-plan`'s confirmation style.
+Do not announce that defaults are being applied. The Step 1 starting message confirms all three resolved choices in one block, matching `/rad-plan`'s confirmation style.
 
 ## Step 1: Starting Message
 Produce a nicely formatted and mildly enthusiastic message confirming the project name, the quick template, Extra Large task size, and autonomous execution mode. List planning steps by reading `quick.yml`: include only `kind: step` nodes that appear before the first `request_plan_approval` gate. Everything after that gate is execution, not planning.

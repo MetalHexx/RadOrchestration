@@ -2,15 +2,28 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const SKILL_PATH = path.resolve(__dirname, 'SKILL.md');
+// Resolve the test-file directory portably so the file runs under both
+// `tsx --test` (which loads it as CJS and exposes `__dirname`) and bare
+// `node --test` (which loads it as ESM where only `import.meta.url` is
+// defined). esbuild rewrites `import.meta.url` to a runtime shim under CJS
+// (e.g. `require('url').pathToFileURL(__filename).href`), so referencing it
+// unconditionally is safe in either module system.
+const HERE = typeof __dirname !== 'undefined'
+  ? __dirname
+  : path.dirname(fileURLToPath(import.meta.url));
+const SKILL_PATH = path.resolve(HERE, 'SKILL.md');
 
 function readSkill(): string {
   return fs.readFileSync(SKILL_PATH, 'utf-8');
 }
 
 function frontmatter(src: string): string {
-  const m = src.match(/^---\n([\s\S]*?)\n---/);
+  // Tolerate CRLF line endings (Windows checkouts with core.autocrlf=true)
+  // as well as LF (Linux/CI). The actual content within the block is matched
+  // line-loosely, so don't anchor `\n` strictly between the dashes.
+  const m = src.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   assert.ok(m, 'frontmatter not found');
   return m![1];
 }

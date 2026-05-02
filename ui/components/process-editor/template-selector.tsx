@@ -4,26 +4,41 @@ import { useEffect, useId, useState } from 'react';
 import type { TemplateSummary } from '@/types/template';
 
 interface TemplateSelectorProps {
-  initialTemplateId: string;
-  onTemplateChange: (id: string) => void;
+  /** Raw `?template=<id>` value from the URL on each parent render. */
+  requestedTemplateId: string;
+  /**
+   * Called whenever the resolved id changes (including the initial resolution).
+   * Must be referentially stable across renders (e.g. a useState setter or a
+   * useCallback-wrapped function); an inline arrow would cause spurious extra
+   * calls on every parent re-render.
+   */
+  onResolved: (id: string) => void;
+  /** Shallow URL update; the parent feeds the new `?template=<id>` back as `requestedTemplateId`. */
   routerReplace: (href: string) => void;
 }
 
 /**
- * URL-driven template selector. Reads ?template=<id> via `initialTemplateId`,
- * fetches /api/templates, hides deprecated templates from the dropdown options,
- * tolerates an active id that is not in the visible options (deprecated-by-URL),
- * and on change writes ?template=<id> via `routerReplace`. Silent fallback to
- * `default` when initialTemplateId is empty or names an id the API did not return.
+ * URL-driven template selector. Reads the requested id from `requestedTemplateId`
+ * (the parent re-passes this on every URL change), fetches /api/templates once,
+ * and resolves to either the requested id (if it names a known template, including
+ * a deprecated one reached via direct URL) or silently falls back to `default`.
+ *
+ * Deprecated templates do not appear in the dropdown options. If the resolved
+ * id IS a deprecated template (arrived via direct URL), it is still appended to
+ * the option list so the rendered <select> reflects the active value rather
+ * than snapping to default.
+ *
+ * The selector exposes the resolved id to the parent via `onResolved`. The parent
+ * gates canvas rendering on receiving a non-empty resolved id, which avoids a
+ * 404 flash when the URL names an unknown template.
  */
 export function TemplateSelector({
-  initialTemplateId,
-  onTemplateChange,
+  requestedTemplateId,
+  onResolved,
   routerReplace,
 }: TemplateSelectorProps): JSX.Element {
   const labelId = useId();
   const [templates, setTemplates] = useState<TemplateSummary[]>([]);
-  const [activeId, setActiveId] = useState<string>(initialTemplateId || 'default');
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -34,42 +49,43 @@ export function TemplateSelector({
         if (!res.ok) throw new Error(`fetch /api/templates failed: ${res.status}`);
         const json = await res.json() as { templates: TemplateSummary[] };
         if (aborted) return;
-        const list = json.templates ?? [];
-        setTemplates(list);
-        const requested = initialTemplateId;
-        const known = new Set(list.map(t => t.id));
-        // DD-6: silent fallback to default when ?template is absent, empty, or unknown.
-        // DD-7: a known-but-deprecated id stays visible (we treat it as known).
-        const resolved = requested && known.has(requested) ? requested : 'default';
-        setActiveId(resolved);
-        onTemplateChange(resolved);
+        setTemplates(json.templates ?? []);
       } finally {
         if (!aborted) setLoaded(true);
       }
     }
     void load();
     return () => { aborted = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Until templates are loaded, no id is resolved (parent gates canvas rendering on this).
+  // Once loaded, an unknown or empty requested id silently maps to 'default'. A
+  // deprecated id reached via direct URL counts as "known" so the selector still
+  // shows it as the active option.
+  const resolved = !loaded
+    ? ''
+    : requestedTemplateId && templates.some(t => t.id === requestedTemplateId)
+      ? requestedTemplateId
+      : 'default';
+
+  useEffect(() => {
+    if (resolved) onResolved(resolved);
+  }, [resolved, onResolved]);
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>): void {
     const id = e.target.value;
-    setActiveId(id);
-    onTemplateChange(id);
-    // FR-15: shallow URL update via router.replace; URL is the only persistence layer (AD-7).
     const url = new URL(window.location.href);
     url.searchParams.set('template', id);
     routerReplace(`${url.pathname}${url.search}`);
   }
 
-  // FR-16 / DD-7: hide deprecated from the option list, but if the active id IS the
-  // deprecated id (arrived via direct URL), append it as a non-listed option so the
-  // <select> still reflects the active value rather than silently snapping to default.
   const visible = templates.filter(t => t.status !== 'deprecated');
+  // If the resolved id is a deprecated-by-URL id, show it as an extra option so
+  // the <select> reflects the active value rather than snapping to default.
   const showActiveAsExtra =
-    activeId &&
-    !visible.some(t => t.id === activeId) &&
-    templates.some(t => t.id === activeId);
+    resolved &&
+    !visible.some(t => t.id === resolved) &&
+    templates.some(t => t.id === resolved);
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 border-b border-[var(--border)]">
@@ -78,7 +94,7 @@ export function TemplateSelector({
       </label>
       <select
         id={`${labelId}-select`}
-        value={activeId}
+        value={resolved}
         onChange={handleChange}
         disabled={!loaded}
         className="px-2 py-1 border border-[var(--border)] rounded bg-[var(--background)] text-sm"
@@ -87,7 +103,7 @@ export function TemplateSelector({
           <option key={t.id} value={t.id} title={t.description}>{t.id}</option>
         ))}
         {showActiveAsExtra && (
-          <option key={activeId} value={activeId}>{activeId}</option>
+          <option key={resolved} value={resolved}>{resolved}</option>
         )}
       </select>
     </div>

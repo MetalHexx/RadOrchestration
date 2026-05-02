@@ -70,7 +70,7 @@ Prompts (`.prompt.md` files) are slash-command shortcuts that invoke a specific 
 
 | Prompt | File | Agent | Description |
 |--------|------|-------|-------------|
-| `/rad-plan` | `.claude/skills/rad-plan.prompt.md` | orchestrator | Start the full planning pipeline using the chosen template (default unless overridden) |
+| `/rad-plan` | `.claude/skills/rad-plan/SKILL.md` | orchestrator | Start the full planning pipeline using the chosen template (default unless overridden) |
 | `/rad-plan-quick` | `.claude/skills/rad-plan-quick/SKILL.md` | orchestrator | Start the planning pipeline in quick mode — quick template, Extra Large tasks, autonomous execution mode all hardcoded |
 | `/rad-execute` | `.claude/skills/rad-execute.prompt.md` | orchestrator | Continue a project through the orchestration pipeline |
 | `/rad-configure-system` | `.claude/skills/rad-configure-system/SKILL.md` | agent | Configure the orchestration system using a structured questionnaire |
