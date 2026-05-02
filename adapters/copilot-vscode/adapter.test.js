@@ -43,3 +43,53 @@ test('modelAliases use (copilot)-suffixed display names per research §6.6', () 
     opus: 'Claude Opus 4.7 (copilot)',
   });
 });
+
+test('agentFrontmatter maps tools PascalCase → lowercase aliases', () => {
+  const out = adapter.agentFrontmatter(
+    { name: 'coder', description: 'Coder', model: 'sonnet', tools: 'Read, Bash, Edit' },
+    { adapter },
+  );
+  assert.deepStrictEqual(out.tools, ['read', 'execute', 'edit']);
+});
+
+test('agentFrontmatter remaps tier alias model → (copilot)-suffixed display name', () => {
+  const out = adapter.agentFrontmatter(
+    { name: 'planner', description: 'P', model: 'opus' },
+    { adapter },
+  );
+  assert.strictEqual(out.model, 'Claude Opus 4.7 (copilot)');
+});
+
+test('agentFrontmatter passes through full Claude id model strings unchanged', () => {
+  const out = adapter.agentFrontmatter(
+    { name: 'planner', description: 'P', model: 'claude-opus-4-7[1m]' },
+    { adapter },
+  );
+  assert.strictEqual(out.model, 'claude-opus-4-7[1m]');
+});
+
+test('agentFrontmatter adds target: vscode', () => {
+  const out = adapter.agentFrontmatter({ name: 'a', description: 'd' }, { adapter });
+  assert.strictEqual(out.target, 'vscode');
+});
+
+test('agentFrontmatter drops Claude-only allowedTools duplicate field', () => {
+  const out = adapter.agentFrontmatter(
+    { name: 'c', description: 'd', allowedTools: ['Read', 'Bash'] },
+    { adapter },
+  );
+  assert.ok(!('allowedTools' in out));
+});
+
+test('skillFrontmatter passes allowed-tools through (silently ignored by VS Code per §6.2)', () => {
+  const out = adapter.skillFrontmatter(
+    { name: 'rad-demo', description: 'demo', 'allowed-tools': 'Bash(git *)' },
+    { adapter },
+  );
+  assert.strictEqual(out['allowed-tools'], 'Bash(git *)');
+});
+
+test('skillFrontmatter preserves rad-* prefix unchanged (FR-22)', () => {
+  const out = adapter.skillFrontmatter({ name: 'rad-orchestration', description: 'd' }, { adapter });
+  assert.strictEqual(out.name, 'rad-orchestration');
+});

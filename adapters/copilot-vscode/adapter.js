@@ -37,11 +37,36 @@ export const adapter = {
     return kind === 'agent' ? `${canonicalName}.agent.md` : 'SKILL.md';
   },
 
-  // Stubbed — P04-T02 fills in frontmatter projection.
   agentFrontmatter(canonical) {
-    return { ...canonical };
+    const out = { ...canonical };
+
+    // Tools: PascalCase comma-string OR list → lowercase alias list.
+    if (out.tools !== undefined) {
+      const items = Array.isArray(out.tools)
+        ? out.tools
+        : String(out.tools).split(',').map((t) => t.trim()).filter(Boolean);
+      out.tools = items.map((t) => TOOL_DICTIONARY[t] ?? t.toLowerCase());
+    }
+
+    // Drop Claude-only duplicate allowedTools key (research §1.A — orchestrator.md uses both;
+    // VS Code only honors `tools:`).
+    delete out.allowedTools;
+
+    // Model: tier alias → (copilot)-suffixed display name; full ids pass through.
+    if (out.model !== undefined && MODEL_ALIASES[out.model]) {
+      out.model = MODEL_ALIASES[out.model];
+    }
+
+    // Target: mark for VS Code (research §2.A — `target: vscode | github-copilot`).
+    if (out.target === undefined) out.target = 'vscode';
+
+    return out;
   },
+
   skillFrontmatter(canonical) {
+    // Pass-through: rad-* names preserved (FR-22), allowed-tools emitted for
+    // cross-harness portability even though VS Code silently ignores it
+    // (research §6.2 — confirmed via promptFileParser.ts).
     return { ...canonical };
   },
 
