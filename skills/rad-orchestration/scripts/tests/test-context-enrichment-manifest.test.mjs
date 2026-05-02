@@ -15,8 +15,8 @@ describe('context-enrichment manifest contract', () => {
     // Windows-safe: fileURLToPath avoids the leading '/' that pathname produces on Windows
     // (mirrors the pattern in sibling tests test-list-repo-skills.test.mjs and test-list-repo-skills-selftest.test.mjs).
     const here = fileURLToPath(new URL('.', import.meta.url));
-    const repoRoot = path.resolve(here, '..', '..', '..', '..', '..');
-    const scriptPath = path.join(repoRoot, '.claude/skills/rad-orchestration/scripts/list-repo-skills.mjs');
+    const repoRoot = path.resolve(here, '..', '..', '..', '..');
+    const scriptPath = path.join(repoRoot, 'skills/rad-orchestration/scripts/list-repo-skills.mjs');
 
     function renderSpawnSuffix(manifestJson) {
       const arr = JSON.parse(manifestJson);
@@ -45,16 +45,16 @@ describe('context-enrichment manifest contract', () => {
     rmSync(populated, { recursive: true, force: true });
 
     // Case C — orchestrator agent file documents the manifest invocation contract.
-    const orchAgent = readFileSync(path.join(repoRoot, '.claude/agents/orchestrator.md'), 'utf8');
+    const orchAgent = readFileSync(path.join(repoRoot, 'agents/orchestrator.md'), 'utf8');
     assert.match(orchAgent, /list-repo-skills\.mjs/, 'orchestrator.md must document the manifest script invocation');
     assert.match(orchAgent, /## Repository Skills Available/, 'orchestrator.md must name the literal heading contract');
 
     // Case D — action-event reference teaches manifest invocation in the planner-spawn rows.
-    const actionRef = readFileSync(path.join(repoRoot, '.claude/skills/rad-orchestration/references/action-event-reference.md'), 'utf8');
+    const actionRef = readFileSync(path.join(repoRoot, 'skills/rad-orchestration/references/action-event-reference.md'), 'utf8');
     assert.match(actionRef, /list-repo-skills\.mjs/, 'action-event-reference.md must teach manifest invocation in rows 1 & 2');
 
     // Case E — context-enrichment.ts emits the repository_skills_block field on planning-spawn enrichment.
-    const ctxEnrich = readFileSync(path.join(repoRoot, '.claude/skills/rad-orchestration/scripts/lib/context-enrichment.ts'), 'utf8');
+    const ctxEnrich = readFileSync(path.join(repoRoot, 'skills/rad-orchestration/scripts/lib/context-enrichment.ts'), 'utf8');
     assert.match(ctxEnrich, /repository_skills_block/, 'context-enrichment.ts must emit a repository_skills_block field');
     assert.match(ctxEnrich, /list-repo-skills\.mjs/, 'context-enrichment.ts must invoke the manifest script');
   });
