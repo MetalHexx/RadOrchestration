@@ -2,14 +2,14 @@
 
 The orchestration system uses two configuration files:
 
-- **`orchestration.yml`** — The global configuration file that controls all system behavior. Lives in your orchestration root folder (`.claude/` by default).
+- **`orchestration.yml`** — The global configuration file that controls all system behavior. Lives at `{orch_root}/skills/rad-orchestration/config/orchestration.yml` (default `.claude/skills/rad-orchestration/config/orchestration.yml`).
 - **`state.json`** — A per-project file that tracks project progress and locks in configuration for the lifetime of that project.
 
 Understanding how these two files interact is key to understanding how the system behaves.
 
 ## orchestration.yml
 
-This is the single source of truth for system-wide settings. It lives at `{orch_root}/orchestration.yml` (by default `.claude/orchestration.yml`). You edit this file to control how the system behaves for all future projects.
+This is the single source of truth for system-wide settings. It lives at `{orch_root}/skills/rad-orchestration/config/orchestration.yml` (by default `.claude/skills/rad-orchestration/config/orchestration.yml`). You edit this file to control how the system behaves for all future projects.
 
 Run `/rad-configure-system` in Copilot to create or update it interactively, or edit it directly. The dashboard UI (gear icon) also provides a visual editor.
 
