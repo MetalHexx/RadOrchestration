@@ -1,0 +1,13 @@
+{
+  "name": "rad-orchestration-monorepo",
+  "private": true,
+  "type": "module",
+  "description": "Repo-root build scripts for the multi-harness adapter build loop.",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "build:claude": "node scripts/build.js --harness=claude",
+    "build:copilot-vscode": "node scripts/build.js --harness=copilot-vscode",
+    "build:copilot-cli": "node scripts/build.js --harness=copilot-cli",
+    "build:all": "node scripts/build.js --all"
+  }
+}
