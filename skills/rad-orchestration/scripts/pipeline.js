@@ -11,12 +11,26 @@
 //   node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [...]
 
 import { existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, basename, resolve } from 'node:path';
 import { execFileSync, execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const nodeModulesDir = join(__dirname, 'node_modules');
+
+/**
+ * Resolves the install-time orchRoot from the filesystem signal — the
+ * folder name three levels above this script (`<install-root>/<orchRoot>/skills/rad-orchestration/scripts/`).
+ * This replaces the previous hardcoded '.claude' so Copilot installs that
+ * land under `.github/` self-identify correctly.
+ *
+ * @param {string} scriptsDir - Absolute path to this scripts/ folder.
+ * @returns {string} - Discovered orchRoot folder name (e.g. '.claude', '.github').
+ */
+export function detectOrchRoot(scriptsDir) {
+  // .../<orchRoot>/skills/rad-orchestration/scripts/ → up three is <orchRoot>
+  return basename(resolve(scriptsDir, '..', '..', '..'));
+}
 
 // ── JIT install ───────────────────────────────────────────────────────────────
 
@@ -47,7 +61,7 @@ if (!existsSync(nodeModulesDir)) {
           action: null,
           context: { error: `npm ${command} failed` },
           mutations_applied: [],
-          orchRoot: '.claude',
+          orchRoot: detectOrchRoot(__dirname),
           error: {
             message: `npm ${command} failed: ${err.stderr?.toString() ?? err.message}`,
             event: 'unknown',
