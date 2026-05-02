@@ -119,7 +119,7 @@ Work through each finding in the review doc individually. For each:
 
 ### What the review doc guarantees
 
-The code-review skill (`.claude/skills/code-review/SKILL.md`, Evidence Contract + Finding-ID Scheme) structurally guarantees the fields below on every review doc. You key your judgment off these fields — if any are missing or inconsistent, the review is structurally invalid and mediation cannot proceed:
+The rad-code-review skill (`.claude/skills/rad-code-review/SKILL.md`, Evidence Contract + Finding-ID Scheme) structurally guarantees the fields below on every review doc. You key your judgment off these fields — if any are missing or inconsistent, the review is structurally invalid and mediation cannot proceed:
 
 - **`F-N` stable finding ID** on every row of every finding-bearing table (per-requirement audit + quality sweep). IDs are unique within the review doc and reset to `F-1` per doc (corrective reviews start fresh). Your disposition table keys on these IDs.
 - **`File:Line`** — concrete source pointer on every finding. Use it to read the actual source when verifying the reviewer's claim.
