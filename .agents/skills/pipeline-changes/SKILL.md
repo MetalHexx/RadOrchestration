@@ -9,7 +9,7 @@ Development skill for modifying pipeline engine code. Provides architecture cont
 
 **Scope:** Pipeline engine modules only — `pipeline-engine.js`, `mutations.js`, `resolver.js`, `validator.js`, `pre-reads.js`, `constants.js`, `state-io.js`, and `pipeline.js` (CLI entry point). Does not cover the installer, dashboard UI, or validation CLI.
 
-**Prerequisite:** For baseline system context (agent roles, tier flow, event vocabulary, action routing), read the rad-orchestration skill's [references/context.md](../../.claude/skills/rad-orchestration/references/context.md).
+**Prerequisite:** For baseline system context (agent roles, tier flow, event vocabulary, action routing), read the rad-orchestration skill's [references/context.md](../../../.claude/skills/rad-orchestration/references/context.md).
 
 ## Invariants
 
