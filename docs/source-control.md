@@ -4,7 +4,7 @@ The orchestration pipeline's source control automation feature enables automatic
 
 ## Quick Start
 
-1. **Configure once**: Run `configure-system` or the installer to set `auto_commit` in `orchestration.yml`.
+1. **Configure once**: Run `rad-configure-system` or the installer to set `auto_commit` in `orchestration.yml`.
 2. **Set up per project**: The `rad-execute-parallel` skill asks (or applies) your source control preference before launching execution.
 3. **Work normally**: Every approved task is committed and pushed automatically when `auto_commit: always`.
 
@@ -40,7 +40,7 @@ For pipeline event details and source control event flow, see [Scripts Reference
 
 ## Source Control Agent
 
-The Source Control Agent handles automatic git operations. It performs commits after approved tasks and creates pull requests after the final review. The agent delegates to the `source-control` skill for all git and GitHub CLI operations.
+The Source Control Agent handles automatic git operations. It performs commits after approved tasks and creates pull requests after the final review. The agent delegates to the `rad-source-control` skill for all git and GitHub CLI operations.
 
 ## Commit Message Format
 
@@ -79,5 +79,5 @@ For example, a subject line like `feat(P02-T03): Add remote_url detection` may b
 
 The Source Control Agent produces structured feedback for every operation — success confirmations, partial failure details, and full failure diagnostics. On failure, errors are logged to the project error log and the pipeline continues. Source control failures never block pipeline execution.
 
-For the state schema and field reference, see [state-v4.schema.json](../.claude/skills/orchestration/schemas/state-v4.schema.json).
+For the state schema and field reference, see [orchestration-state-v5.schema.json](../.claude/skills/rad-orchestration/schemas/orchestration-state-v5.schema.json).
 

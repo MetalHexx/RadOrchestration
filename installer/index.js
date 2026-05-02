@@ -205,10 +205,10 @@ export async function main() {
     projectsSpinner.succeed('Created projects directory');
 
     // Install pipeline engine dependencies (non-fatal)
-    const scriptsDir = path.join(targetBase, 'skills', 'orchestration', 'scripts');
+    const scriptsDir = path.join(targetBase, 'skills', 'rad-orchestration', 'scripts');
     await installScriptsDeps(scriptsDir);
 
-    const configPath = path.join(resolvedRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
+    const configPath = path.join(resolvedRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
 
     if (config.installUi) {
       console.log('');

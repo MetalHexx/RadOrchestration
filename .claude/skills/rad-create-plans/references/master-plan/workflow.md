@@ -55,7 +55,7 @@ becomes task-local and action-oriented.
     - Re-emit the Master Plan with the correction. Other content stays as
       before unless explicitly impacted by the formatting fix.
     - The recovery loop has a hardcoded cap of 3 retries. After the cap, the
-      pipeline halts via `log-error` for manual intervention. Do not attempt
+      pipeline halts via `rad-log-error` for manual intervention. Do not attempt
       new approaches on retry 3+; focus narrowly on fixing the exact parse
       error.
 
@@ -65,6 +65,20 @@ becomes task-local and action-oriented.
    or modify, exact commands the test suite accepts, the testing framework in
    use, and any existing patterns the plan must follow. Grep / Glob / Read —
    no survey-level exploration.
+
+2a. If your spawn prompt carried a `## Repository Skills Available` section,
+    treat it as a discovery surface alongside Grep/Glob/Read. Scan the JSON
+    array for entries whose `description` matches the work you are about to
+    plan; `Read` each matching entry's absolute `path` directly (no Grep/Glob
+    hunt — the manifest path is authoritative). **Skip entries whose
+    descriptions do not match — do not Read every catalog entry.** The
+    description is the screening surface; reading non-matches wastes tokens.
+    If you encounter a `SKILL.md` via codebase Grep/Glob that is not in the
+    catalog, do not Read it — the manifest is the complete authoritative
+    list and any exclusions are intentional. Inline any commands,
+    conventions, or code patterns the consulted skill prescribes into the
+    relevant tasks under their requirement IDs. Absence of the section means
+    no eligible repo skills exist; proceed normally.
 
 3. Decide the phase and task breakdown. Phases group work by natural seam
    (layer boundary, independently deliverable slice). Tasks within a phase are

@@ -38,7 +38,7 @@ For each row in the audit report's findings table, decide one of:
 
 - Reading the cited `File:Line` shows the finding misread the doc.
 - The finding references a rule or requirement that doesn't apply to
-  the two-doc scope (e.g., a check that belongs to `code-review`
+  the two-doc scope (e.g., a check that belongs to `rad-code-review`
   post-execution, not `rad-plan-audit`).
 - The finding duplicates another finding you've already actioned as
   part of a single edit.

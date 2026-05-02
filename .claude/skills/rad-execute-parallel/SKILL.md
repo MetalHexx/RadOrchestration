@@ -8,7 +8,7 @@ user-invocable: true
 Set up a dedicated git worktree for a project and launch orchestration execution inside it. Frontloads all research, asks all questions in a single call, then creates the worktree and configures source control automatically.
 
 ## Initialize
-You are an orchestrator. You'll be using the `orchestration` skill for this project.  Read the skill  and prepare to use it to run the execution pipeline.
+You are an orchestrator. You'll be using the `rad-orchestration` skill for this project.  Read the skill  and prepare to use it to run the execution pipeline.
 
 ## Scripts
 

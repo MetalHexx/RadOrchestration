@@ -122,20 +122,20 @@ test('writeConfig - creates intermediate directories when they do not exist', ()
   try {
     const orchRoot = path.join(tmpDir, 'deep', 'orch');
     writeConfig(tmpDir, orchRoot, 'test: true\n');
-    const expectedDir = path.join(orchRoot, 'skills', 'orchestration', 'config');
+    const expectedDir = path.join(orchRoot, 'skills', 'rad-orchestration', 'config');
     assert.ok(fs.existsSync(expectedDir));
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
 
-test('writeConfig - writes file to {resolvedOrchRoot}/skills/orchestration/config/orchestration.yml', () => {
+test('writeConfig - writes file to {resolvedOrchRoot}/skills/rad-orchestration/config/orchestration.yml', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'config-gen-test-'));
   try {
     const orchRoot = path.join(tmpDir, 'orch');
     const yamlContent = 'version: "1.0"\n';
     writeConfig(tmpDir, orchRoot, yamlContent);
-    const expectedPath = path.join(orchRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
+    const expectedPath = path.join(orchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
     assert.ok(fs.existsSync(expectedPath));
     assert.strictEqual(fs.readFileSync(expectedPath, 'utf8'), yamlContent);
   } finally {
@@ -148,7 +148,7 @@ test('writeConfig - resolves relative orchRoot against workspaceDir', () => {
   try {
     const relativeOrchRoot = '.github';
     writeConfig(tmpDir, relativeOrchRoot, 'test: true\n');
-    const expectedPath = path.join(tmpDir, relativeOrchRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
+    const expectedPath = path.join(tmpDir, relativeOrchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
     assert.ok(fs.existsSync(expectedPath));
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -162,10 +162,10 @@ test('writeConfig - uses absolute orchRoot directly when path.isAbsolute() is tr
     const absoluteOrchRoot = path.join(tmpDir, 'absolute-orch');
     const differentWorkspace = path.join(os.tmpdir(), 'some-other-workspace');
     writeConfig(differentWorkspace, absoluteOrchRoot, 'test: true\n');
-    const expectedPath = path.join(absoluteOrchRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
+    const expectedPath = path.join(absoluteOrchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
     assert.ok(fs.existsSync(expectedPath));
     // Ensure it did NOT write under differentWorkspace
-    const wrongPath = path.join(differentWorkspace, absoluteOrchRoot, 'skills', 'orchestration', 'config', 'orchestration.yml');
+    const wrongPath = path.join(differentWorkspace, absoluteOrchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
     assert.ok(!fs.existsSync(wrongPath));
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });

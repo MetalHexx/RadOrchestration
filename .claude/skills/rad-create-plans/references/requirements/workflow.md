@@ -39,6 +39,19 @@ prompt says, no more.
     are not valid Requirements content; they must be closed at this step,
     not transcribed into any block's body.
 
+1b. If your spawn prompt carried a `## Repository Skills Available` section, scan
+    the JSON array. For each entry whose `description` plausibly touches the
+    project's domain, `Read` the listed absolute `path` directly. **Skip
+    entries whose descriptions do not match — do not Read every SKILL.md just
+    because it appears in the catalog.** The description is the screening
+    surface; reading non-matches wastes tokens. If you encounter a `SKILL.md`
+    via Grep/Glob that is not in the catalog, do not Read it — the manifest
+    is the complete authoritative list and exclusions are intentional. Let
+    the conventions encoded in consulted `SKILL.md` files inform the
+    requirements you author — especially any test commands, file-layout
+    rules, or error-handling patterns the eligible skill defines. Absence of
+    the section means no eligible repo skills exist; proceed normally.
+
 2. Decide the four ID ranges. Count roughly how many FRs, NFRs, ADs, and DDs
    the project needs. Use four separate sequences:
    - FR-1, FR-2, ... (functional requirements — what the system does, capabilities, behaviors, features, etc.)

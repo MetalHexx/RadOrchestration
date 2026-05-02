@@ -13,6 +13,9 @@ A consolidated skill for creating planning documents. Routing is based on the in
 - **Master Plan** — Project Master Plan (supported)
 - **Requirements** — Project Requirements ledger (FR/NFR/AD/DD) (supported)
 
+## DO NOT
+Write FR/NFR/AD/DD IDs inside the code, tests, or comment bodies you inline into requirements or plan steps. IDs are planning scaffolding — they live on requirement headings and step requirement lines, not inside the code/test/comment text itself.
+
 ## Routing
 
 | Invoking Agent | Routes to |

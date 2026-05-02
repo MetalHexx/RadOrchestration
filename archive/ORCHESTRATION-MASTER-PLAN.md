@@ -59,15 +59,15 @@ The system takes a project from idea → PRD → design → architecture → mas
 | `create-task-handoff` | Tactical Planner | TASK-HANDOFF.md template |
 | `generate-task-report` | Coder | TASK-REPORT.md template |
 | `generate-phase-report` | Tactical Planner | PHASE-REPORT.md template |
-| `run-tests` | Coder | — |
+| `rad-run-tests` | Coder | — |
 | `review-code` | Reviewer | CODE-REVIEW.md template |
 | `review-phase` | Reviewer | PHASE-REVIEW.md template |
 | `research-codebase` | Research | RESEARCH-FINDINGS.md template |
-| `create-agent` | (meta-skill) | AGENT.md template + frontmatter-reference.md |
+| `rad-create-agent` | (meta-skill) | AGENT.md template + frontmatter-reference.md |
 
 Skills follow the Agent Skills specification. Templates stored with the skill under `templates/`.
 
-**Meta-skill**: The `create-skill` skill already exists at `.github/skills/create-skill` and defines the exact SKILL.md format, frontmatter rules, folder structure, and validation checklist. All new skills MUST follow this specification.
+**Meta-skill**: The `rad-create-skill` skill already exists at `.github/skills/create-skill` and defines the exact SKILL.md format, frontmatter rules, folder structure, and validation checklist. All new skills MUST follow this specification.
 
 ### 2.3.1 Copilot Platform Constraints
 
@@ -302,7 +302,7 @@ Create all 12 skill folders with `SKILL.md` files and bundled templates from Pha
 | 2.6 | Build `create-task-handoff` skill | ✅ Done | `.github/skills/create-task-handoff/` |
 | 2.7 | Build `generate-task-report` skill | ✅ Done | `.github/skills/generate-task-report/` |
 | 2.8 | Build `generate-phase-report` skill | ✅ Done | `.github/skills/generate-phase-report/` |
-| 2.9 | Build `run-tests` skill | ✅ Done | `.github/skills/run-tests/` |
+| 2.9 | Build `rad-run-tests` skill | ✅ Done | `.github/skills/run-tests/` |
 | 2.10 | Build `review-code` skill | ✅ Done | `.github/skills/review-code/` |
 | 2.11 | Build `review-phase` skill | ✅ Done | `.github/skills/review-phase/` |
 | 2.12 | Build `research-codebase` skill | ✅ Done | `.github/skills/research-codebase/` |
@@ -322,8 +322,8 @@ Create all 12 skill folders with `SKILL.md` files and bundled templates from Pha
 1. Each SKILL.md has YAML frontmatter with `name` (matching folder name) and a keyword-rich `description` (50-200 chars, includes WHAT + WHEN + trigger keywords) for Copilot's auto-discovery system.
 2. SKILL.md body follows a consistent pattern: title → overview → "When to Use" → "Inputs Required" (table) → "Workflow" (numbered steps) → "Key Rules" (bullets) → "Template" (relative link).
 3. Templates were extracted from `plan/schemas/*-template.md` design docs by stripping the schema design notes, field definitions, anti-patterns, and quality checklists — keeping ONLY the production template itself. Quality checklists for the Planner were moved into the SKILL.md body.
-4. The `run-tests` skill is instructions-only (no template). It guides test runner discovery across Node.js, Python, Rust, and Go projects.
-5. The `create-skill` meta-skill at `.github/skills/create-skill` is a flat file (not a directory) — it predates this project. All 12 new skills were created as proper directories.
+4. The `rad-run-tests` skill is instructions-only (no template). It guides test runner discovery across Node.js, Python, Rust, and Go projects.
+5. The `rad-create-skill` meta-skill at `.github/skills/create-skill` is a flat file (not a directory) — it predates this project. All 12 new skills were created as proper directories.
 
 **Key observation for Phase 3 agent:** Each skill's "Inputs Required" table and "Key Rules" section define exactly what an agent using that skill needs to read and write. These map directly to the cross-agent dependency map at `plan/schemas/cross-agent-dependency-map.md`. When building agents, reference the skill SKILL.md files to understand what each agent's workflow looks like.
 
@@ -336,7 +336,7 @@ Create all 12 skill folders with `SKILL.md` files and bundled templates from Pha
 | UX Designer | `create-design` | PRD, RESEARCH-FINDINGS | DESIGN |
 | Architect | `create-architecture`, `create-master-plan` | PRD, DESIGN, RESEARCH-FINDINGS | ARCHITECTURE, MASTER-PLAN |
 | Tactical Planner | `create-phase-plan`, `create-task-handoff`, `generate-phase-report` | MASTER-PLAN, ARCHITECTURE, DESIGN, state.json, orchestration.yml, task reports, code reviews | PHASE-PLAN, TASK-HANDOFF, PHASE-REPORT, STATUS.md, state.json |
-| Coder | `generate-task-report`, `run-tests` | TASK-HANDOFF (sole input) | Source code, tests, TASK-REPORT |
+| Coder | `generate-task-report`, `rad-run-tests` | TASK-HANDOFF (sole input) | Source code, tests, TASK-REPORT |
 | Reviewer | `review-code`, `review-phase` | TASK-REPORT, TASK-HANDOFF, ARCHITECTURE, DESIGN, PRD, source code | CODE-REVIEW, PHASE-REVIEW |
 | Orchestrator | (none — reads state only) | state.json, STATUS.md, orchestration.yml | **NOTHING** (read-only) |
 
@@ -412,7 +412,7 @@ Each file has YAML frontmatter (`name`, `description`, `tools`, optionally `agen
 | UX Designer | `create-design` |
 | Architect | `create-architecture`, `create-master-plan` |
 | Tactical Planner | `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
-| Coder | `generate-task-report`, `run-tests` |
+| Coder | `generate-task-report`, `rad-run-tests` |
 | Reviewer | `review-code`, `review-phase` |
 | Orchestrator | (none — reads state only) |
 
@@ -421,12 +421,12 @@ Each file has YAML frontmatter (`name`, `description`, `tools`, optionally `agen
 2. `.instructions.md` files may be needed for cross-cutting concerns (e.g., "always use the project's naming convention").
 3. Prompt files (`.prompt.md`) could provide quick-start workflows (e.g., "start a new project" prompt that invokes the Orchestrator).
 
-**New skill created**: `create-agent` skill was built at `.github/skills/create-agent/` to enable creating new agents in the orchestration system. It includes:
+**New skill created**: `rad-create-agent` skill was built at `.github/skills/create-agent/` to enable creating new agents in the orchestration system. It includes:
 - `SKILL.md` — Workflow, key rules, tool selection guide, validation checklist
 - `templates/AGENT.md` — Production template matching the established agent body pattern
 - `references/frontmatter-reference.md` — Complete tool/toolset/model reference for frontmatter authoring
 
-This brings the total skill count to **13** (12 original + 1 new `create-agent` skill).
+This brings the total skill count to **13** (12 original + 1 new `rad-create-agent` skill).
 
 ### Phase 4: Build Prompts & Instructions ✅ COMPLETE (reworked in session #6)
 
@@ -438,7 +438,7 @@ Create workspace configuration, instruction files, and the central config file. 
 | 4.2 | Create scoped `.instructions.md` files | ✅ Done | `.github/instructions/` (2 files) |
 | 4.3 | ~~Create pipeline prompt files~~ | ❌ Removed | Deleted in rework — invalid frontmatter, no routing mechanism |
 | 4.4 | Create `orchestration.yml` config file | ✅ Done | `.github/orchestration.yml` |
-| 4.5 | ~~Create `agent-development.instructions.md`~~ | ❌ Removed | Deleted in rework — redundant with `create-agent` + `create-skill` skills |
+| 4.5 | ~~Create `agent-development.instructions.md`~~ | ❌ Removed | Deleted in rework — redundant with `rad-create-agent` + `rad-create-skill` skills |
 | 4.6 | Create `configure-system.prompt.md` utility prompt | ✅ Done | `.github/prompts/configure-system.prompt.md` |
 
 #### Phase 4 Learnings & Decisions
@@ -456,8 +456,8 @@ A comprehensive review found several alignment issues that were corrected:
 - **Fix**: Both files now reference `orchestration.yml → projects.base_path` and note the default. The agents already used `{base_path}` placeholders — they were correct.
 
 **Issue 2: `agent-development.instructions.md` was redundant**
-- The `create-agent` skill (`.github/skills/create-agent/`) already teaches agent creation: frontmatter, tool selection, body structure, validation checklist.
-- The `create-skill` meta-skill already teaches skill creation: frontmatter, folder structure, description best practices.
+- The `rad-create-agent` skill (`.github/skills/create-agent/`) already teaches agent creation: frontmatter, tool selection, body structure, validation checklist.
+- The `rad-create-skill` meta-skill already teaches skill creation: frontmatter, folder structure, description best practices.
 - The instruction file duplicated content from both skills (tool permissions table, frontmatter rules) and had no `applyTo` scoping — so it loaded on EVERY interaction, polluting agent sessions that would never create agents.
 - **Fix**: Deleted entirely. The meta-skills are the authoritative sources for agent/skill development rules. They load only when relevant (Copilot's progressive skill loading).
 
@@ -531,7 +531,7 @@ A comprehensive review found several alignment issues that were corrected:
 
 **Note for Phase 5 agent**: The orchestration system is now structurally complete with good cohesion:
 - 8 agents with frontmatter, tools, skill bindings, and multi-mode workflows
-- 13 skills with SKILL.md files and production templates (including 2 meta-skills: `create-agent`, `create-skill`)
+- 13 skills with SKILL.md files and production templates (including 2 meta-skills: `rad-create-agent`, `rad-create-skill`)
 - 1 config file (`orchestration.yml`) — authority for paths, limits, errors, gates, git strategy. No dead-weight sections.
 - 1 admin utility prompt (`configure-system.prompt.md`) — safe to use in agent mode; creates/updates `orchestration.yml`, scans `.github/` for stale path references, propagates changes.
 - 1 workspace instruction file (`copilot-instructions.md`) — always-on context for the orchestration system
@@ -611,7 +611,7 @@ With static validation clean, start the E2E planning pipeline test:
 | 2026-03-07 | #3 | Phase 3 complete: built all 8 agents (`.agent.md` files) under `.github/agents/` with frontmatter, tool permissions, skill bindings, and multi-mode workflows |
 | 2026-03-07 | #3 | Updated master plan with Phase 3 learnings, tool permissions table, skill bindings table, and Phase 4 notes for context continuity |
 | 2026-03-07 | #4 | Phase 3 fix: corrected all 8 agents' frontmatter — migrated deprecated tool names to namespaced format (toolsets), added missing `agent` tool to Orchestrator, added `argument-hint` and `todo` to all agents, fixed agent names in `agents` array to use display names, set `agents: []` explicitly on all non-orchestrator agents |
-| 2026-03-07 | #4 | Created `create-agent` skill (`.github/skills/create-agent/`) with SKILL.md, AGENT.md template, and frontmatter-reference.md — brings total skills to 13 |
+| 2026-03-07 | #4 | Created `rad-create-agent` skill (`.github/skills/create-agent/`) with SKILL.md, AGENT.md template, and frontmatter-reference.md — brings total skills to 13 |
 | 2026-03-07 | #4 | Updated master plan with corrected tool permissions table, namespacing learnings, Q4 resolution fix, and new skill documentation |
 | 2026-03-07 | #5 | Phase 4 complete: created `copilot-instructions.md` (always-on workspace instructions), 3 `.instructions.md` files (project-docs, state-management, agent-development), 3 `.prompt.md` files (start-project, continue-project, project-status), and `orchestration.yml` config file |
 | 2026-03-07 | #5 | Updated master plan with Phase 4 learnings, complete file tree, and Phase 5 preparation notes |

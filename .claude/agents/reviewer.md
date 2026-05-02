@@ -13,7 +13,7 @@ allowedTools:
   - Bash
   - TodoWrite
 skills:
-  - code-review
+  - rad-code-review
 ---
 
 # Reviewer Agent
@@ -32,9 +32,9 @@ Planning documents describe intent but may contain errors. Use them as context f
 
 ## Skills
 
-- **`orchestration`**: System context — agent roles, pipeline flow, naming conventions, key rules
-- **`code-review`**: Primary skill — load and follow its Loading Instructions for all review modes (task, phase, final)
+- **`rad-orchestration`**: System context — agent roles, pipeline flow, naming conventions, key rules
+- **`rad-code-review`**: Primary skill — load and follow its Loading Instructions for all review modes (task, phase, final)
 
 ## Directive
 
-Load the `code-review` skill and follow its Loading Instructions.
+Load the `rad-code-review` skill and follow its Loading Instructions.

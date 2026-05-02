@@ -9,7 +9,7 @@ allowedTools:
   - Bash
   - TodoWrite
 skills: 
-  - source-control
+  - rad-source-control
 ---
 
 # Source Control Agent

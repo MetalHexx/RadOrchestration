@@ -22,6 +22,8 @@ node_modules/
 !/prompt-tests/plan-pipeline-e2e/output/*/.gitkeep
 !/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-*/lint-report.md
 !/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-*/run-notes.md
+!/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-rainbow-hello-2026-05-01/lint-report.md
+!/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-rainbow-hello-2026-05-01/run-notes.md
 
 # Prompt harness — corrective-mediation-e2e.
 # Same structure as plan-pipeline-e2e: ignore run-folder contents, re-include
@@ -51,6 +53,12 @@ node_modules/
 !/prompt-tests/execute-coding-task-e2e/output/*/.gitkeep
 !/prompt-tests/execute-coding-task-e2e/output/tdd-slip/baseline-*/lint-report.md
 !/prompt-tests/execute-coding-task-e2e/output/tdd-slip/baseline-*/run-notes.md
+
+# Prompt harness — repo-skill-discovery-e2e.
+/prompt-tests/repo-skill-discovery-e2e/output/*/*/**
+!/prompt-tests/repo-skill-discovery-e2e/output/*/.gitkeep
+!/prompt-tests/repo-skill-discovery-e2e/output/skill-disco-fixture/baseline-*/lint-report.md
+!/prompt-tests/repo-skill-discovery-e2e/output/skill-disco-fixture/baseline-*/run-notes.md
 
 # Private documentation — internal use only
 /docs/internals/_private/

@@ -153,7 +153,7 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 | `PHASE-REPORT.md` | Tactical Planner | Aggregated results, exit criteria assessment, carry-forward items |
 | `CODE-REVIEW.md` | Reviewer | Verdict, checklist, issues, severity classification |
 | `PHASE-REVIEW.md` | Reviewer | Cross-task integration assessment, exit criteria verification |
-| `ERROR-LOG.md` | Orchestrator (via `log-error` skill) | Append-only numbered error entries from pipeline failures |
+| `ERROR-LOG.md` | Orchestrator (via `rad-log-error` skill) | Append-only numbered error entries from pipeline failures |
 
 ### State Files
 

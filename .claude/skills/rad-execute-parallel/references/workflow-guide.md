@@ -176,7 +176,7 @@ After all answers are returned, derive these values:
 After worktree creation (or reuse), call the pipeline to record source control settings:
 
 ```
-node {repoRoot}/{orchRoot}/skills/orchestration/scripts/pipeline.js --event source_control_init --project-dir "{projectDir}" --branch "{branchName}" --base-branch "{baseBranch}" --worktree-path "{worktreePath}" --auto-commit "{resolvedAutoCommit}" --auto-pr "{resolvedAutoPr}" --remote-url "{remoteUrl}" --compare-url "{compareUrl}"
+node {repoRoot}/{orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event source_control_init --project-dir "{projectDir}" --branch "{branchName}" --base-branch "{baseBranch}" --worktree-path "{worktreePath}" --auto-commit "{resolvedAutoCommit}" --auto-pr "{resolvedAutoPr}" --remote-url "{remoteUrl}" --compare-url "{compareUrl}"
 ```
 
 Use `remoteUrl` and `compareUrl` from `create-worktree.js` output. For reused worktrees where the script was not run, detect them manually:

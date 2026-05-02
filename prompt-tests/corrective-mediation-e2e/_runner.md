@@ -10,7 +10,7 @@ You are the orchestrator in the middle of a corrective cycle. The fixture is pre
 
 Behave as a **simulated orchestrator**. The same rules the production orchestrator operates under apply here: signal events to `pipeline.js`, read `result.action` from stdout JSON, route exactly per the Action Routing Table, do not edit `state.json` directly, do not skip the two-step `_started` → action-return protocol. The only difference: this harness **halts once the corrective's re-review returns `approved`** rather than driving phase_review or final_approval_gate.
 
-Full routing reference lives at `.claude/skills/orchestration/references/pipeline-guide.md` and `action-event-reference.md`. Load `corrective-playbook.md` now — it is the authoritative mediation guide for this session.
+Full routing reference lives at `.claude/skills/rad-orchestration/references/pipeline-guide.md` and `action-event-reference.md`. Load `corrective-playbook.md` now — it is the authoritative mediation guide for this session.
 
 ---
 
@@ -45,7 +45,7 @@ All paths below are relative to the repo root unless noted.
 
    > The `state.json` is pre-seeded — do NOT invoke the installer or run `--event start` fresh. Skip step 3 of the plan-pipeline harness setup. The engine will detect the existing `state.json` when you signal `start`, and the walker will resume from the current graph position.
 
-3. Set your `<run-folder>` variable — every `pipeline.js` call uses `--project-dir <run-folder>` AND `--config <run-folder>/orchestration.yml`. The fixture ships a local `orchestration.yml` with `auto_commit: never` and `auto_pr: never` so the conditional `commit_gate` and `pr_gate` route to their `false` branches. Without `--config`, the engine falls back to the global `.claude/skills/orchestration/config/orchestration.yml` which has `auto_commit: ask` and the corrective cycle will request a real commit — not what the harness wants.
+3. Set your `<run-folder>` variable — every `pipeline.js` call uses `--project-dir <run-folder>` AND `--config <run-folder>/orchestration.yml`. The fixture ships a local `orchestration.yml` with `auto_commit: never` and `auto_pr: never` so the conditional `commit_gate` and `pr_gate` route to their `false` branches. Without `--config`, the engine falls back to the global `.claude/skills/rad-orchestration/config/orchestration.yml` which has `auto_commit: ask` and the corrective cycle will request a real commit — not what the harness wants.
 
 ---
 
@@ -54,7 +54,7 @@ All paths below are relative to the repo root unless noted.
 ### Step 1 — Bootstrap (resume at in-progress node)
 
 ```bash
-node .claude/skills/orchestration/scripts/pipeline.js \
+node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event start \
   --project-dir prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER> \
   --config prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER>/orchestration.yml
@@ -78,7 +78,7 @@ Verify it has:
 
 ### Step 3 — Mediate per the playbook
 
-Load `.claude/skills/orchestration/references/corrective-playbook.md` if not already in context.
+Load `.claude/skills/rad-orchestration/references/corrective-playbook.md` if not already in context.
 
 **Budget check first**: read `max_retries_per_task` from `state.json` (`config.limits.max_retries_per_task`, default 5). Count `corrective_tasks.length` in `state.json` at `graph.nodes.phase_loop.iterations[0].task_loop.iterations[0].corrective_tasks` — it should be 0 (empty). Budget is not exhausted.
 
@@ -121,7 +121,7 @@ The handoff must be self-contained — no references to prior attempts, no delta
 ### Step 4 — Signal `code_review_completed`
 
 ```bash
-node .claude/skills/orchestration/scripts/pipeline.js \
+node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event code_review_completed \
   --project-dir prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER> \
   --config prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER>/orchestration.yml \
@@ -142,7 +142,7 @@ tasks/BROKEN-COLORS-TASK-P01-T01-GET-COLORS-C1.md
 The coder should fix `src/colors.js` to return `['red', 'orange', 'yellow']`. After the coder completes, signal:
 
 ```bash
-node .claude/skills/orchestration/scripts/pipeline.js \
+node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event task_completed \
   --project-dir prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER> \
   --config prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER>/orchestration.yml
@@ -159,7 +159,7 @@ Signal `code_review_started` and spawn `@reviewer`. The reviewer operates on the
 After the reviewer writes its doc, signal:
 
 ```bash
-node .claude/skills/orchestration/scripts/pipeline.js \
+node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event code_review_completed \
   --project-dir prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER> \
   --config prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER>/orchestration.yml \

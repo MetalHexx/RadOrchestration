@@ -11,7 +11,7 @@ You are simulating the orchestrator at the point where a task is ready to execut
 1. `tasks/TDD-SLIP-TASK-P01-T01-CAPITALIZE.md` — **original** (explosion-script shape).
 2. `tasks/TDD-SLIP-TASK-P01-T01-CAPITALIZE-C1.md` — **pre-authored corrective** (C1, authored by a simulated orchestrator mediation — not produced live during this run).
 
-Your job is to dispatch the coder against each handoff in turn and observe whether the executor obeys the `execute-coding-task` skill contract. **Both runs must take the same path** — the executor is not allowed to branch behavior on `corrective_index`, `corrective_scope`, or the presence of a `-C1` suffix.
+Your job is to dispatch the coder against each handoff in turn and observe whether the executor obeys the `rad-execute-coding-task` skill contract. **Both runs must take the same path** — the executor is not allowed to branch behavior on `corrective_index`, `corrective_scope`, or the presence of a `-C1` suffix.
 
 You are NOT simulating a full pipeline. You do not drive `pipeline.js`, do not signal events, do not spawn reviewers. You manually invoke the executor twice, inspect the artifacts it produces, and check the pass criteria.
 
@@ -53,7 +53,7 @@ All paths are relative to the repo root unless noted.
 
 ### Run A — Original handoff
 
-1. Spawn `@coder` (the `execute-coding-task` skill). Pass exactly one input: the handoff path. **Do not pass the Requirements doc, Master Plan doc, or any other upstream doc** — handoff-only is the contract under test.
+1. Spawn `@coder` (the `rad-execute-coding-task` skill). Pass exactly one input: the handoff path. **Do not pass the Requirements doc, Master Plan doc, or any other upstream doc** — handoff-only is the contract under test.
 
 2. The coder should:
    - Read **only** `tasks/TDD-SLIP-TASK-P01-T01-CAPITALIZE.md`. No reads of `TDD-SLIP-BRAINSTORMING.md`, `TDD-SLIP-REQUIREMENTS.md`, `TDD-SLIP-MASTER-PLAN.md`, or `phases/*`.

@@ -8,7 +8,7 @@ The orchestration system includes 16 reusable skills — self-contained capabili
 
 | Skill | Description | Used By |
 |-------|-------------|---------|
-| `brainstorm` | Collaboratively explore, refine, and converge on project ideas through structured ideation | brainstormer |
+| `rad-brainstorm` | Collaboratively explore, refine, and converge on project ideas through structured ideation | brainstormer |
 | `rad-create-plans` | Consolidated planning skill — routes research, PRD, design, architecture, master plan, and phase plan creation to purpose-built workflows | research, product-manager, ux-designer, architect, tactical-planner |
 | `create-architecture` | Define system architecture — layers, modules, contracts, APIs, schemas — from PRD + Design | architect |
 | `create-master-plan` | Synthesize all planning documents into a Master Plan with phases, exit criteria, and risk register | architect |
@@ -19,30 +19,30 @@ The orchestration system includes 16 reusable skills — self-contained capabili
 |-------|-------------|---------|
 | `create-phase-plan` | Break project phases into concrete tasks with dependencies, execution order, and acceptance criteria | tactical-planner |
 | `create-task-handoff` | Create self-contained task documents that inline all contracts, interfaces, and requirements | tactical-planner |
-| `execute-coding-task` | Full coding task execution loop — read handoff, implement code, run tests, verify acceptance criteria | coder, coder-junior, coder-senior |
+| `rad-execute-coding-task` | Full coding task execution loop — read handoff, implement code, run tests, verify acceptance criteria | coder, coder-junior, coder-senior |
 | `generate-phase-report` | Summarize phase outcomes — aggregated task results, exit criteria assessment, carry-forward items | tactical-planner |
-| `run-tests` | Execute the project test suite and report structured results with pass/fail and error details | coder, coder-junior, coder-senior |
-| `log-error` | Log pipeline errors to a structured, append-only per-project error log | orchestrator, source-control |
-| `source-control` | Source control automation — git commit and push via CLI wrapper; PR creation via GitHub CLI | source-control |
+| `rad-run-tests` | Execute the project test suite and report structured results with pass/fail and error details | coder, coder-junior, coder-senior |
+| `rad-log-error` | Log pipeline errors to a structured, append-only per-project error log | orchestrator, source-control |
+| `rad-source-control` | Source control automation — git commit and push via CLI wrapper; PR creation via GitHub CLI | source-control |
 
 ### Review Skills
 
 | Skill | Description | Used By |
 |-------|-------------|---------|
-| `code-review` | Review code, phases, and projects for quality, correctness, and conformance — supports task review, phase review, and final review modes with dual-pass approach | reviewer |
+| `rad-code-review` | Review code, phases, and projects for quality, correctness, and conformance — supports task review, phase review, and final review modes with dual-pass approach | reviewer |
 
 ### Meta Skills
 
 | Skill | Description | Used By |
 |-------|-------------|---------|
-| `create-agent` | Scaffold new agent definitions (`.agent.md`) with proper frontmatter and tool declarations | any |
-| `create-skill` | Scaffold new skills with `SKILL.md`, directory structure, and optional scripts/references | any |
+| `rad-create-agent` | Scaffold new agent definitions (`.agent.md`) with proper frontmatter and tool declarations | any |
+| `rad-create-skill` | Scaffold new skills with `SKILL.md`, directory structure, and optional scripts/references | any |
 
 ### System Skills
 
 | Skill | Description | Used By |
 |-------|-------------|---------|
-| `orchestration` | Orchestration system runtime, configuration, validation, and context. All pipeline agents load this skill for system context. The Orchestrator receives pipeline-specific guidance. Reviewers and Tactical Planners receive validation guidance. | all agents |
+| `rad-orchestration` | Orchestration system runtime, configuration, validation, and context. All pipeline agents load this skill for system context. The Orchestrator receives pipeline-specific guidance. Reviewers and Tactical Planners receive validation guidance. | all agents |
 
 ## Skill-Agent Composition
 
@@ -50,18 +50,18 @@ Each agent is assigned skills in its `.agent.md` definition. This table shows th
 
 | Agent | Skills |
 |-------|--------|
-| brainstormer | `orchestration`, `brainstorm` |
-| orchestrator | `orchestration`, `log-error` |
-| research | `orchestration`, `rad-create-plans` |
-| product-manager | `orchestration`, `rad-create-plans` |
-| ux-designer | `orchestration`, `rad-create-plans` |
-| architect | `orchestration`, `create-architecture`, `create-master-plan` |
-| tactical-planner | `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
-| coder | `orchestration`, `execute-coding-task`, `run-tests` |
-| coder-junior | `orchestration`, `execute-coding-task`, `run-tests` |
-| coder-senior | `orchestration`, `execute-coding-task`, `run-tests` |
-| reviewer | `orchestration`, `code-review` |
-| source-control | `orchestration`, `source-control`, `log-error` |
+| brainstormer | `rad-orchestration`, `rad-brainstorm` |
+| orchestrator | `rad-orchestration`, `rad-log-error` |
+| research | `rad-orchestration`, `rad-create-plans` |
+| product-manager | `rad-orchestration`, `rad-create-plans` |
+| ux-designer | `rad-orchestration`, `rad-create-plans` |
+| architect | `rad-orchestration`, `create-architecture`, `create-master-plan` |
+| tactical-planner | `rad-orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
+| coder | `rad-orchestration`, `rad-execute-coding-task`, `rad-run-tests` |
+| coder-junior | `rad-orchestration`, `rad-execute-coding-task`, `rad-run-tests` |
+| coder-senior | `rad-orchestration`, `rad-execute-coding-task`, `rad-run-tests` |
+| reviewer | `rad-orchestration`, `rad-code-review` |
+| source-control | `rad-orchestration`, `rad-source-control`, `rad-log-error` |
 
 ## Human-Facing Entry Points
 

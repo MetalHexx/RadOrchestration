@@ -43,8 +43,28 @@ On `code_review_completed` with a raw `verdict: changes_requested` (task scope) 
 
 **If mediation context grows heavy (multi-round cycle, large review doc), STOP and ask the user to `/clear` before continuing.**
 
+## Planner Spawn Manifest
+
+Before spawning the **planner** agent for either `spawn_requirements` or `spawn_master_plan`, run the manifest script and inline its output into the planner's spawn prompt:
+
+```bash
+node {orchRoot}/skills/rad-orchestration/scripts/list-repo-skills.mjs
+```
+
+Capture stdout (a JSON array). If the array is `[]`, omit the manifest section from the spawn prompt entirely. Otherwise, append the following block to the end of the spawn prompt verbatim:
+
+```markdown
+## Repository Skills Available
+
+<inline JSON array exactly as printed>
+
+Entries above are a catalog. Read a listed path **only when** its description matches the work you are about to plan — skip the rest to avoid token waste. Any `SKILL.md` you encounter outside this catalog (e.g., via Grep/Glob) was filtered on purpose; do not Read it.
+```
+
+The heading string is contractual — `## Repository Skills Available`, no alternative phrasings. Manifest invocation occurs on every planner spawn; do not cache the output between spawns. Wired only for the planner — coder, reviewer, source-control, and brainstormer spawns are unchanged.
+
 ## Skills
-- **`orchestration`**: Load for full pipeline context — event loop, action routing table
+- **`rad-orchestration`**: Load for full pipeline context — event loop, action routing table
   (16 actions), event signaling reference, CLI usage, error handling, orchRoot
   configuration, spawning subagents protocol, and status reporting convention.
   Read `pipeline-guide.md` for the complete operational reference;

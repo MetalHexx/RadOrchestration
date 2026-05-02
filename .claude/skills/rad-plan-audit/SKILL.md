@@ -17,7 +17,7 @@ Validates the planning set — `{NAME}-REQUIREMENTS.md` and
    covered, every step tagged, every task structurally complete?
 
 Phase Plans and Task Handoffs are deterministic explosion artifacts and
-are out of scope here — they're validated post-execution by `code-review`.
+are out of scope here — they're validated post-execution by `rad-code-review`.
 
 The [audit rubric](./references/audit-rubric.md) defines exactly what
 counts as a finding. The calibration clause governs severity.

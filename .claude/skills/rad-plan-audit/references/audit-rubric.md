@@ -4,7 +4,7 @@ This rubric defines what counts as a genuine finding. The planning set
 comprises exactly two documents: the `{NAME}-REQUIREMENTS.md` ledger
 (FR / NFR / AD / DD) and the inlined `{NAME}-MASTER-PLAN.md`. Phase
 Plans and Task Handoffs are deterministic explosion artifacts validated
-elsewhere by `code-review`; they are out of scope here.
+elsewhere by `rad-code-review`; they are out of scope here.
 
 Apply the rubric methodically. A false positive is as damaging as a missed
 issue.

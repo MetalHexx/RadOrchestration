@@ -10,7 +10,7 @@ You are the orchestrator in the middle of a **phase-scope** corrective cycle. Th
 
 Behave as a **simulated orchestrator**. The same rules the production orchestrator operates under apply here: signal events to `pipeline.js`, read `result.action` from stdout JSON, route exactly per the Action Routing Table, do not edit `state.json` directly, do not skip the two-step `_started` → action-return protocol. The only difference: this harness **halts once the phase-scope corrective's task-level re-review returns `approved` and the walker advances past the Phase 1 iteration**. It does not drive Phase 2 or `final_review` — the fixture is single-phase for scope control.
 
-Full routing reference lives at `.claude/skills/orchestration/references/pipeline-guide.md` and `action-event-reference.md`. Load `corrective-playbook.md` now — both the **Scope: Task vs. Phase** note and the **Phase-Scope Mediation** section apply here.
+Full routing reference lives at `.claude/skills/rad-orchestration/references/pipeline-guide.md` and `action-event-reference.md`. Load `corrective-playbook.md` now — both the **Scope: Task vs. Phase** note and the **Phase-Scope Mediation** section apply here.
 
 ---
 
@@ -51,7 +51,7 @@ All paths below are relative to the repo root unless noted.
 
    > The `state.json` is pre-seeded — do NOT invoke the installer or run `--event start` fresh. Skip step 3 of the plan-pipeline harness setup. The engine will detect the existing `state.json` when you signal `start`, and the walker will resume from the current graph position.
 
-3. Set your `<run-folder>` variable — every `pipeline.js` call uses `--project-dir <run-folder>` AND `--config <run-folder>/orchestration.yml`. The fixture ships a local `orchestration.yml` with `auto_commit: never` and `auto_pr: never` so the conditional `commit_gate` routes to its `false` branch. Without `--config`, the engine falls back to the global `.claude/skills/orchestration/config/orchestration.yml` which has `auto_commit: ask` and the corrective cycle will request a real commit — not what the harness wants.
+3. Set your `<run-folder>` variable — every `pipeline.js` call uses `--project-dir <run-folder>` AND `--config <run-folder>/orchestration.yml`. The fixture ships a local `orchestration.yml` with `auto_commit: never` and `auto_pr: never` so the conditional `commit_gate` routes to its `false` branch. Without `--config`, the engine falls back to the global `.claude/skills/rad-orchestration/config/orchestration.yml` which has `auto_commit: ask` and the corrective cycle will request a real commit — not what the harness wants.
 
 ---
 
@@ -60,7 +60,7 @@ All paths below are relative to the repo root unless noted.
 ### Step 1 — Bootstrap (resume at in-progress phase_review)
 
 ```bash
-node .claude/skills/orchestration/scripts/pipeline.js \
+node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event start \
   --project-dir prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/<RUN-FOLDER> \
   --config prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/<RUN-FOLDER>/orchestration.yml
@@ -85,7 +85,7 @@ Verify it has:
 
 ### Step 3 — Mediate per the playbook (phase-scope)
 
-Load `.claude/skills/orchestration/references/corrective-playbook.md` — both the **Scope: Task vs. Phase** note near the top and the **Phase-Scope Mediation** section.
+Load `.claude/skills/rad-orchestration/references/corrective-playbook.md` — both the **Scope: Task vs. Phase** note near the top and the **Phase-Scope Mediation** section.
 
 **Budget check first**: read `max_retries_per_task` from `state.json` (`config.limits.max_retries_per_task`, default 5). Count `corrective_tasks.length` at `graph.nodes.phase_loop.iterations[0].corrective_tasks` — it should be 0 (empty). Budget is not exhausted.
 
@@ -137,7 +137,7 @@ The body describes the integration fix from scratch, pointing at `src/greet.js`,
 ### Step 4 — Signal `phase_review_completed`
 
 ```bash
-node .claude/skills/orchestration/scripts/pipeline.js \
+node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event phase_review_completed \
   --project-dir prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/<RUN-FOLDER> \
   --config prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/<RUN-FOLDER>/orchestration.yml \
@@ -164,7 +164,7 @@ tasks/COLORS-GREET-MISMATCH-TASK-P01-PHASE-C1.md
 The coder should update `src/greet.js` from `names.map(n => \`Hello, ${n.name}\`)` to `names.map(n => \`Hello, ${n}\`)`. `src/colors.js` stays as-is. After the coder completes, signal:
 
 ```bash
-node .claude/skills/orchestration/scripts/pipeline.js \
+node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event task_completed \
   --project-dir prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/<RUN-FOLDER> \
   --config prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/<RUN-FOLDER>/orchestration.yml
@@ -186,7 +186,7 @@ reports/COLORS-GREET-MISMATCH-CODE-REVIEW-P01-PHASE-C1.md
 After the reviewer writes its doc, signal:
 
 ```bash
-node .claude/skills/orchestration/scripts/pipeline.js \
+node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event code_review_completed \
   --project-dir prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/<RUN-FOLDER> \
   --config prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/<RUN-FOLDER>/orchestration.yml \
