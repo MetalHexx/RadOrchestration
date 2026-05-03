@@ -1,0 +1,67 @@
+# .github/workflows/publish.yml
+
+name: Publish rad-orchestration
+on:
+  push:
+    tags: ['v*']
+
+# Prevent overlapping publishes from racing on the same tag.
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # create GitHub Release
+      id-token: write   # npm provenance (OIDC)
+    defaults:
+      run:
+        working-directory: installer
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: installer/package-lock.json
+
+      - name: Verify tag matches package.json version
+        run: |
+          PKG_VERSION="v$(node -p "require('./package.json').version")"
+          if [ "$PKG_VERSION" != "${{ github.ref_name }}" ]; then
+            echo "::error::Tag ${{ github.ref_name }} does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Emit per-harness bundles + sync UI source
+        run: node scripts/sync-source.js
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run adapter integration tests (every harness emits valid manifest)
+        working-directory: ../
+        run: node --test scripts/build-integration.test.js
+
+      - name: Publish to npm (with provenance)
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --generate-notes \
+            --verify-tag \
+            --notes-file scripts/release-notes-migration.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
