@@ -1117,6 +1117,42 @@ test('main surfaces cross-harness prior install and runs cleanup against the pri
   assert.match(calls[0].arguments[1], /\.claude$/, 'removal must target the prior orchRoot');
 });
 
+test('claude→copilot switch: loadBundledManifest is called with the prior install\'s tool (claude-code), not the new tool', async () => {
+  resetMocks();
+  // Wizard chose .github (copilot-vscode); scanner finds prior install at .claude (claude-code).
+  runWizardMock.mock.mockImplementationOnce(async () => ({
+    ...makeDefaultConfig(),
+    tool: 'copilot-vscode',
+    orchRoot: '.github',
+    installUi: false,
+  }));
+  findPriorInstallMock.mock.mockImplementationOnce(() => ({
+    orchRoot: '/workspace/.claude',
+    packageVersion: '1.0.0-alpha.9',
+    tool: 'claude-code',
+  }));
+  // User confirms the cleanup prompt.
+  state.confirmResponse = true;
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  // The first loadBundledManifest call must use 'claude-code' (the prior harness),
+  // not 'copilot-vscode' (the newly chosen harness).
+  const lbmCalls = loadBundledManifestMock.mock.calls;
+  assert.ok(lbmCalls.length >= 1, 'loadBundledManifest must be called for cross-harness cleanup');
+  assert.strictEqual(
+    lbmCalls[0].arguments[1],
+    'claude-code',
+    'loadBundledManifest must use prior install\'s tool (claude-code), not the new tool (copilot-vscode)',
+  );
+});
+
 test('main proceeds with install untouched when user declines the cross-harness cleanup prompt (DD-4)', async () => {
   resetMocks();
   runWizardMock.mock.mockImplementationOnce(async () => ({

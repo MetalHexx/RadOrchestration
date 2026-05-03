@@ -14,13 +14,34 @@ import { readInstalledPackageVersion } from './installed-version.js';
 const WELL_KNOWN_ORCH_ROOTS = ['.claude', '.github'];
 
 /**
+ * Infers the harness tool from a well-known orchRoot folder name.
+ *
+ * Mapping:
+ *   .claude  → 'claude-code'
+ *   .github  → 'copilot-vscode'
+ *
+ * Limitation: copilot-cli is treated as 'copilot-vscode' here because both
+ * variants share the same manifest file-path shape (.agent.md extensions).
+ * If the user originally installed with copilot-cli, cleanup still removes
+ * the correct set of files. True disambiguation would require storing the tool
+ * name in orchestration.yml, which is a future enhancement.
+ *
+ * @param {string} orchRootName - The basename of the orchRoot folder (e.g. '.claude')
+ * @returns {string} Harness tool identifier
+ */
+function inferToolFromOrchRoot(orchRootName) {
+  if (orchRootName === '.claude') return 'claude-code';
+  return 'copilot-vscode';
+}
+
+/**
  * Returns details of a prior install at a well-known orchRoot whose path
  * differs from the chosen one. Pre-manifest installs (no package_version)
  * are skipped — those follow the DD-1 manual migration path.
  *
  * @param {string} workspaceDir - Absolute path to the workspace
  * @param {string} chosenOrchRoot - Relative folder name OR absolute path the user chose
- * @returns {null | { orchRoot: string, packageVersion: string }}
+ * @returns {null | { orchRoot: string, packageVersion: string, tool: string }}
  */
 export function findPriorInstallAtOtherOrchRoot(workspaceDir, chosenOrchRoot) {
   // Absolute-path overrides are not auto-detected (AD-7) — only well-known
@@ -33,7 +54,11 @@ export function findPriorInstallAtOtherOrchRoot(workspaceDir, chosenOrchRoot) {
     if (candidateAbs === chosenAbsolute) continue;
     const installed = readInstalledPackageVersion(candidateAbs);
     if (installed && installed.packageVersion) {
-      return { orchRoot: candidateAbs, packageVersion: installed.packageVersion };
+      return {
+        orchRoot: candidateAbs,
+        packageVersion: installed.packageVersion,
+        tool: inferToolFromOrchRoot(candidateName),
+      };
     }
   }
   return null;

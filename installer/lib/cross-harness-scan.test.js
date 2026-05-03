@@ -23,7 +23,21 @@ test('returns prior install when chosen orchRoot is .github but a .claude instal
   const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-'));
   seedYml(ws, '.claude', '1.0.0-alpha.9');
   const got = findPriorInstallAtOtherOrchRoot(ws, '.github');
-  assert.deepStrictEqual(got, { orchRoot: path.join(ws, '.claude'), packageVersion: '1.0.0-alpha.9' });
+  assert.deepStrictEqual(got, { orchRoot: path.join(ws, '.claude'), packageVersion: '1.0.0-alpha.9', tool: 'claude-code' });
+});
+
+test('tool field is claude-code when prior orchRoot is .claude', () => {
+  const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-'));
+  seedYml(ws, '.claude', '1.0.0-alpha.9');
+  const got = findPriorInstallAtOtherOrchRoot(ws, '.github');
+  assert.strictEqual(got.tool, 'claude-code', '.claude orchRoot must yield tool=claude-code');
+});
+
+test('tool field is copilot-vscode when prior orchRoot is .github', () => {
+  const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-'));
+  seedYml(ws, '.github', '1.0.0-alpha.9');
+  const got = findPriorInstallAtOtherOrchRoot(ws, '.claude');
+  assert.strictEqual(got.tool, 'copilot-vscode', '.github orchRoot must yield tool=copilot-vscode');
 });
 
 test('returns null when the chosen orchRoot equals the only install present (same-orchRoot upgrade is handled by the installer main flow)', () => {

@@ -167,7 +167,9 @@ export async function main() {
       });
       if (cleanup) {
         // Reuse the same primitives as `radorch uninstall` against the prior orchRoot.
-        const fullPriorManifest = loadBundledManifest(repoRoot, config.tool, priorAtOther.packageVersion);
+        // Use priorAtOther.tool (the prior harness) — not config.tool (the newly chosen harness) —
+        // so the manifest matches the files actually on disk in the prior orchRoot.
+        const fullPriorManifest = loadBundledManifest(repoRoot, priorAtOther.tool, priorAtOther.packageVersion);
         // Filter orchestration.yml out of the slice passed to removeManifestFiles —
         // it must be removed LAST (clean-slate signal). Mirrors runUninstall.
         const ORC_YML_PATH = 'skills/rad-orchestration/config/orchestration.yml';
