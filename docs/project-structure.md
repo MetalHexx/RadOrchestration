@@ -20,7 +20,8 @@ Each project lives in its own folder under the configured `base_path`. This page
 │   └── {NAME}-TASK-P01-T02-{TITLE}.md
 └── reports/                       # Review outputs
     ├── {NAME}-CODE-REVIEW-P01-T01-{TITLE}.md
-    └── {NAME}-PHASE-REVIEW-P01-{TITLE}.md
+    ├── {NAME}-PHASE-REVIEW-P01-{TITLE}.md
+    └── {NAME}-FINAL-REVIEW.md
 ```
 
 `phases/` and `tasks/` are explosion outputs, not authored by hand.
@@ -36,6 +37,7 @@ Each project lives in its own folder under the configured `base_path`. This page
 | `tasks/{NAME}-TASK-P{NN}-T{MM}-{TITLE}.md` | `MYAPP-TASK-P01-T01-DELETE-RETIRED-PAGES.md` | Task handoff file |
 | `reports/{NAME}-CODE-REVIEW-P{NN}-T{MM}-{TITLE}.md` | `MYAPP-CODE-REVIEW-P01-T01-DELETE-RETIRED-PAGES.md` | Code review report |
 | `reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REVIEW-P01-CLEANUP.md` | Phase review report |
+| `reports/{NAME}-FINAL-REVIEW.md` | `MYAPP-FINAL-REVIEW.md` | Final comprehensive review |
 | `{NAME}-ERROR-LOG.md` | `MYAPP-ERROR-LOG.md` | Append-only error log |
 
 `{TITLE}` is the SCREAMING-KEBAB-CASE slug of the phase or task title.
@@ -55,6 +57,8 @@ Each project lives in its own folder under the configured `base_path`. This page
 **Code review documents (`reports/`)** — One per task, written by the Reviewer agent after each coder pass. Contains a verdict, checklist, and any issues with severity classification.
 
 **Phase review documents (`reports/`)** — One per phase, written by the Reviewer agent after all tasks in a phase complete. Covers cross-task integration and phase exit criteria.
+
+**`{NAME}-FINAL-REVIEW.md`** — One per project, written by the Reviewer agent after the comprehensive review step completes. Contains the verdict that gates final approval.
 
 **`ERROR-LOG.md`** — Append-only numbered entries written by the pipeline when errors occur. Never edited by hand.
 
