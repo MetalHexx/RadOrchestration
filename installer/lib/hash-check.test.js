@@ -60,6 +60,29 @@ test('detectModifiedFiles ignores manifest entries whose file no longer exists o
   assert.deepStrictEqual(detectModifiedFiles(manifest, root), []);
 });
 
+test('detectModifiedFiles skips entries with ownership=user-config even when bytes differ', () => {
+  // orchestration.yml is the canonical user-config entry: the installer
+  // overwrites the bundled bytes with `generateConfig(userConfig)` after
+  // copy, so on-disk bytes diverge from the manifest sha256 by design.
+  // Without the skip, every upgrade/uninstall surfaces a false-positive
+  // modified-files warning for orchestration.yml.
+  const ymlPath = 'skills/rad-orchestration/config/orchestration.yml';
+  const root = fixtureRoot({ [ymlPath]: 'user wrote different content here' });
+  const manifest = { files: [
+    { bundlePath: ymlPath, sha256: sha256('bundle bytes from build time'), ownership: 'user-config' },
+  ] };
+  assert.deepStrictEqual(detectModifiedFiles(manifest, root), []);
+});
+
+test('detectModifiedFiles still flags ownership=orchestration-system entries that diverge', () => {
+  // Sanity: the user-config skip must not bleed into the default ownership.
+  const root = fixtureRoot({ 'agents/a.md': 'changed' });
+  const manifest = { files: [
+    { bundlePath: 'agents/a.md', sha256: sha256('one'), ownership: 'orchestration-system' },
+  ] };
+  assert.deepStrictEqual(detectModifiedFiles(manifest, root), ['agents/a.md']);
+});
+
 test('confirmModifiedFiles uses injectable promptConfirm when provided', async () => {
   const root = fixtureRoot({ 'agents/a.md': 'one' });
   const modified = ['agents/a.md'];

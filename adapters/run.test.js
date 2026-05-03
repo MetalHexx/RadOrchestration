@@ -222,3 +222,49 @@ test('runAdapter rewrites system.orch_root and stamps package_version in per-bun
   assert.match(written, /base_path:\s*orchestration-projects/);
   assert.match(written, /naming:\s*SCREAMING_CASE/);
 });
+
+test('runAdapter marks the orchestration.yml manifest entry as ownership=user-config', async () => {
+  // Regression: the installer overwrites orchestration.yml with
+  // generateConfig(userConfig) at install time, so the bundled bytes never
+  // match the installed bytes. Marking the entry as user-config is the
+  // signal to detectModifiedFiles to skip the entry and avoid surfacing a
+  // false-positive modified-file warning on every upgrade/uninstall. Other
+  // skill subfiles must keep ownership=orchestration-system.
+  const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-own-'));
+  const cfgDir = path.join(canonical, 'skills', 'rad-orchestration', 'config');
+  fs.mkdirSync(cfgDir, { recursive: true });
+  fs.writeFileSync(path.join(canonical, 'skills', 'rad-orchestration', 'SKILL.md'),
+    '---\nname: rad-orchestration\ndescription: Orchestration\n---\nbody\n', 'utf8');
+  fs.writeFileSync(
+    path.join(cfgDir, 'orchestration.yml'),
+    'version: "1.0"\nsystem:\n  orch_root: .claude\n',
+    'utf8',
+  );
+  // Sibling skill subfile to verify ownership doesn't leak to other entries.
+  fs.mkdirSync(path.join(canonical, 'skills', 'rad-orchestration', 'references'), { recursive: true });
+  fs.writeFileSync(
+    path.join(canonical, 'skills', 'rad-orchestration', 'references', 'r.md'),
+    'reference body\n',
+    'utf8',
+  );
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-own-'));
+  await runAdapter(
+    { ...fakeAdapter, targetDir: '.github' },
+    { canonicalRoot: canonical, outputRoot: out, version: '1.0.0-alpha.9', packageVersion: '1.0.0-alpha.9' },
+  );
+  const manifest = JSON.parse(fs.readFileSync(
+    path.join(out, 'fake', 'manifests', 'v1.0.0-alpha.9.json'), 'utf8',
+  ));
+  const ymlEntry = manifest.files.find(
+    (f) => f.bundlePath === 'skills/rad-orchestration/config/orchestration.yml',
+  );
+  assert.ok(ymlEntry, 'orchestration.yml entry must be present in manifest');
+  assert.strictEqual(ymlEntry.ownership, 'user-config',
+    'orchestration.yml ownership must be user-config so the hash check skips it');
+  const refEntry = manifest.files.find(
+    (f) => f.bundlePath === 'skills/rad-orchestration/references/r.md',
+  );
+  assert.ok(refEntry, 'reference subfile entry must be present');
+  assert.strictEqual(refEntry.ownership, 'orchestration-system',
+    'sibling skill subfiles must remain orchestration-system ownership');
+});

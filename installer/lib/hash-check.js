@@ -23,13 +23,20 @@ export function hexSha256OfBytes(bytes) {
  * sha256 differs from the manifest. Files missing on disk are ignored
  * (the surrounding install/uninstall flow handles those separately).
  *
- * @param {{ files: Array<{ bundlePath: string, sha256: string }> }} manifest
+ * Entries marked `ownership: 'user-config'` are skipped — these are files
+ * the installer rewrites with user-specific content after copying the
+ * bundle (e.g. orchestration.yml), so on-disk bytes diverge from bundled
+ * bytes by design on every install. Including them would surface a
+ * false-positive modified-files warning on every upgrade/uninstall.
+ *
+ * @param {{ files: Array<{ bundlePath: string, sha256: string, ownership?: string }> }} manifest
  * @param {string} resolvedOrchRoot - Absolute path to the user's orchRoot
  * @returns {string[]} - sorted bundlePaths whose on-disk content was modified
  */
 export function detectModifiedFiles(manifest, resolvedOrchRoot) {
   const modified = [];
   for (const entry of manifest.files) {
+    if (entry.ownership === 'user-config') continue;
     const abs = path.join(resolvedOrchRoot, entry.bundlePath);
     if (!fs.existsSync(abs)) continue;
     const actual = hexSha256OfBytes(fs.readFileSync(abs));

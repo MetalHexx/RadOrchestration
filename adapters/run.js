@@ -149,12 +149,20 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
       orchRoot: adapter.targetDir,
       packageVersion,
     });
-    // Re-hash the rewritten file in the manifest entry so detect-and-warn
-    // works against the as-shipped content.
+    // Re-hash the rewritten file and re-mark its ownership. The installer
+    // overwrites orchestration.yml with `generateConfig(userConfig)` at
+    // install time, so the on-disk bytes diverge from these bundle bytes
+    // by design — `ownership: 'user-config'` tells `detectModifiedFiles` to
+    // skip this entry and avoid a false-positive modified-files warning on
+    // every upgrade/uninstall. Removal still iterates all manifest entries,
+    // so the file is still cleaned up at uninstall time.
     const entry = files.find(
       (f) => f.bundlePath === path.posix.join('skills', 'rad-orchestration', 'config', 'orchestration.yml'),
     );
-    if (entry) entry.sha256 = sha256OfFile(ymlPath);
+    if (entry) {
+      entry.sha256 = sha256OfFile(ymlPath);
+      entry.ownership = 'user-config';
+    }
   }
 
   const catalogDir = path.join(outputRoot, adapter.name, 'manifests');

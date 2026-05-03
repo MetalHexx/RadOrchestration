@@ -9,7 +9,7 @@ Target folder at repo root: `.github/` (gitignored, dogfood-only).
 | Surface | Grounded in `frontmatter-research.md` |
 |---|---|
 | Filename rule (`<name>.agent.md` for agents, `SKILL.md` for skills) | §2.A and §2.B |
-| Agent frontmatter projection (lowercase tools, `(copilot)`-suffixed model, `target: vscode`) | §2.A |
+| Agent frontmatter projection (lowercase tools, `(copilot)`-suffixed model) | §2.A |
 | Skill frontmatter projection (pass-through; `allowed-tools` emitted but ignored) | §2.B and §6.2 |
 | Tool-name dictionary (PascalCase → lowercase aliases) | §2.A "Tool naming convention" and §5.5 |
 | Model alias map (`(copilot)`-suffixed display names) | §6.6 |
@@ -25,9 +25,12 @@ Target folder at repo root: `.github/` (gitignored, dogfood-only).
   `(...)` on fallback, so the suffix is tolerated and unambiguously
   identifies the Copilot-hosted variant when the same model name is offered
   by multiple vendors.
-- **`target: vscode` is added to agent frontmatter** (§2.A). This restricts
-  the agent to the VS Code environment so a single `<name>.agent.md` file
-  shipped into both `.github/agents/` (CLI target dir) and a VS Code
-  workspace doesn't double-fire.
+- **No `target:` field is injected.** Research §2.A documents the
+  `target: vscode` mechanism, but in practice both Copilot variants share
+  `.github/agents/` and the `<name>.agent.md` content is identical between
+  them — the dispatch difference lives in the model alias and tool
+  dictionary, not in a frontmatter discriminator. The adapter implementation
+  and `adapter.test.js` deliberately omit the field; this section reflects
+  the shipped projection.
 - **`rad-*` skill names are preserved** unchanged — VS Code does
   not auto-namespace plugin-installed skills (§6.1).
