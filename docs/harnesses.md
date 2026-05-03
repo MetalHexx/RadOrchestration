@@ -9,6 +9,7 @@ The orchestration system runs inside AI coding assistants — referred to here a
 | Claude Code | `npm install -g @anthropic-ai/claude-code` then run `claude` in your repo | Supported |
 | GitHub Copilot in VS Code | Install the GitHub Copilot extension; enable agent mode | Supported |
 | GitHub Copilot CLI | Install per GitHub instructions; run the Copilot CLI binary | Supported |
+| Launch from dashboard | Claude Code: Yes; Copilot VS Code: coming soon; Copilot CLI: coming soon | — |
 
 More coming soon.
 
