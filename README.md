@@ -149,6 +149,18 @@ Settings files (`settings.json`, `.github/copilot/settings.json`,
 by the installer or any adapter. Hooks and harness-native lifecycle
 formats are out of scope.
 
+## Upgrade and Uninstall
+
+Re-running `radorch` against a workspace that already has an install upgrades it surgically: the installer reads `package_version` from the existing `orchestration.yml`, looks up the prior version's manifest from its bundled catalog, removes exactly those files (warning first about any locally-modified files), then installs the new bundle. No on-disk metadata files are written into your `orchRoot`.
+
+To remove an install entirely, run:
+
+```bash
+radorch uninstall
+```
+
+This removes every file the prior install's manifest lists and finally `orchestration.yml` itself. Locally-modified files trigger an explicit confirmation prompt before removal — there is no `--force` escape hatch in v2.
+
 ## Upgrading from `v1.0.0-alpha.7`
 
 The multi-harness restructure changed how the installer ships agents and
