@@ -20,7 +20,7 @@ I have project goals I'd like to develop into a full scale plan.
   - Check if it exists in the `rad-orchestration` skill `/templates` directory.
   - If it does, use it.
   - If it doesn't, respond with an error message indicating the template was not found.
-- If no `project_template` is specified, use `default`.
+- If no `project_template` is specified, use the askQuestions tool to ask the user which template they want to use. List available templates by reading the `rad-orchestration` skill's `/templates` directory. Store the user's choice as `project_template`. If the user does not choose a template, default to `default`.  Don't show any templates that are marked with `status: deprecated`.
 
 ## Step 2: Choose Task Size
 - Use the `askQuestions` tool to ask the user how large they want each task to be. ALWAYS present the following options (in your own words). The **(Recommended)** label moves based on the resolved `project_template`:

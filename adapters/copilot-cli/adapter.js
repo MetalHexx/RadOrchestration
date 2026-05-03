@@ -64,7 +64,10 @@ export const adapter = {
   skillFrontmatter(canonical) {
     // Pass-through: rad-* names preserved, allowed-tools honored
     // by CLI per research §3.B (`shell`, `bash` as documented values).
-    return { ...canonical };
+    const out = { ...canonical };
+    // CLI does not understand `disable-model-invocation` — strip it.
+    delete out['disable-model-invocation'];
+    return out;
   },
 
   toolDictionary: TOOL_DICTIONARY,
