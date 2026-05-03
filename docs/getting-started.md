@@ -28,6 +28,7 @@ flowchart LR
 3. **Review the planning output before approving.** The planner produces `{NAME}-REQUIREMENTS.md`, the phase plans under `phases/`, and the per-task handoff files under `tasks/`. This is the moment to course-correct. See [project-structure.md](project-structure.md) for what each document is.
 > Recommended: Use the UI make review more comfortable, but you can also review in your code editor if you prefer.  See [dashboard.md](dashboard.md) for how the dashboard surfaces planning output.
 4. **Execute.** Run `/rad-execute <PROJECT-NAME>` for in-place execution, or `/rad-execute-parallel <PROJECT-NAME>` for an isolated worktree + branch (recommended when you want `main` untouched, or when you want multiple projects in flight simultaneously).
+
 5. **Lean into automation.** Enabling `auto_commit` and `auto_pr` lets the pipeline run hands-off through commits and pull requests; see [configuration.md](configuration.md).
 > Recommended: At the very least, use `auto_commit` to let the agent commit directly to your branch as it executes. This will enable the code-reviewer to more clearly review against the code diff for the given task.
 
@@ -35,9 +36,21 @@ flowchart LR
 
 After the plan is presented, choose a gate mode — `ask`, `phase`, `task`, or `autonomous` — to control when the pipeline pauses for your input; see [pipeline.md](pipeline.md) for depth.
 
-## Continuing & Checking Status
+## Pro Tips!
+### Monitoring UI
+The Monitoring UI will really help a lot as you learn the system and your velocity starts to skyrocket -- especially if you're running multiple projects in parallel. It'll help you stay organized and sane, trust me. ;)
 
-To resume an in-flight project, re-invoke `/rad-execute` against the same project name; the pipeline picks up where it left off. The dashboard gives you at-a-glance status across all your projects — see [dashboard.md](dashboard.md).
+It is also great for validating your plans.  Much easier than reviewing files.
+
+For more information: [dashboard.md](dashboard.md)
+
+### Steer your Orchestrator
+While the project is executing, feel to talk to the Orchestrator.  It won't bite or break your project run. :)  The Orchestrator can be steered and can help you make adjustments to the project run if needed.
+
+### Resuming Projects 
+If you need to pause a project run, or your computer crashes.  Do not worry!  Your project is tracked and will easily resume from any point in time.  Type `/rad-execute <PROJECT-NAME>` and your project will reliably resume exactly where it left off.  
+
+
 
 ## Brainstorming & Project Series
 
