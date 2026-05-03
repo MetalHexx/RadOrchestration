@@ -20,7 +20,7 @@ For per-harness install and launch entry points (Claude Code, Copilot VS Code, C
 
 ```mermaid
 flowchart LR
-    A[/rad-brainstorm] --> B[/rad-plan] --> C[/rad-execute]
+    A["/rad-brainstorm"] --> B["/rad-plan"] --> C["/rad-execute"]
 ```
 
 1. **Brainstorm first.** Run `/rad-brainstorm` to align on goals, decide whether the work warrants a project series, and pull in any extra context — other documents, images, related links — that the planners can use downstream.
