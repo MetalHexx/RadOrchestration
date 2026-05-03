@@ -128,7 +128,7 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }
 // ── Frontmatter helpers (regex-based YAML — no AST parser) ──────────
 
 function projectFrontmatter(text, project) {
-  const match = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!match) return text; // no frontmatter — ship body verbatim
   const fm = parseSimpleYaml(match[1]);
   const projected = project(fm) || {};

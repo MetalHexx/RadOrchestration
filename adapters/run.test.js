@@ -93,6 +93,31 @@ test('runAdapter emits per-file output only when BUILD_VERBOSE=1', async () => {
   }
 });
 
+test('runAdapter applies frontmatter projection to agents with CRLF line endings', async () => {
+  const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-crlf-'));
+  fs.mkdirSync(path.join(canonical, 'agents'), { recursive: true });
+  // Write agent file with Windows CRLF line endings.
+  const crlf = '---\r\nname: sample\r\ndescription: Sample\r\nmodel: opus\r\ntools: Read, Bash\r\n---\r\nbody\r\n';
+  fs.writeFileSync(path.join(canonical, 'agents', 'sample.md'), crlf, 'utf8');
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-crlf-'));
+  await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.0.0' });
+  const written = fs.readFileSync(path.join(out, '.fake', 'agents', 'sample.agent.md'), 'utf8');
+  assert.match(written, /model: fake-opus/, 'agentFrontmatter projection must have run');
+  assert.doesNotMatch(written, /model: opus/, 'original tier alias must not survive unchanged');
+});
+
+test('runAdapter applies frontmatter projection to skills with CRLF line endings', async () => {
+  const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-crlf-skill-'));
+  fs.mkdirSync(path.join(canonical, 'skills', 'rad-demo'), { recursive: true });
+  // Write SKILL.md with Windows CRLF line endings.
+  const crlf = '---\r\nname: rad-demo\r\ndescription: Demo\r\n---\r\nbody\r\n';
+  fs.writeFileSync(path.join(canonical, 'skills', 'rad-demo', 'SKILL.md'), crlf, 'utf8');
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-crlf-skill-'));
+  await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.0.0' });
+  const written = fs.readFileSync(path.join(out, '.fake', 'skills', 'rad-demo', 'SKILL.md'), 'utf8');
+  assert.match(written, /name: rad-demo/, 'skill frontmatter must be present in output');
+});
+
 test('runAdapter writes manifest as a sibling of the bundle dir, keyed on adapter.name', async () => {
   const canonical = fixtureCanonical();
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
