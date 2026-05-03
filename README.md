@@ -105,6 +105,67 @@ Automatic git commits after each approved task. The Source Control Agent constru
 
 Every task is reviewed against the plan. Code reviewers inspect source code directly.  Minor issues trigger automatic corrective tasks. Critical issues halt the pipeline for human intervention. Plans don't drift unchecked. Pipeline failures are logged to a structured, append-only error log (`ERROR-LOG.md`) in each project folder.
 
+## Multi-Harness Support
+
+The orchestration system ships day-one v1 support for **Claude Code**,
+**GitHub Copilot in VS Code**, and **GitHub Copilot CLI** from a single
+canonical source at repo-root `agents/` and `skills/`. Each harness has a
+self-contained adapter under `adapters/<harness>/` that projects canonical
+Claude-shape source down to that harness's filename, frontmatter, tool
+vocabulary, and model identifiers.
+
+### Contributor dev loop
+
+After editing canonical `agents/` or `skills/`, run the build for your
+target harness to refresh the local dogfood folder:
+
+```bash
+npm run build                  # Claude Code (default) → .claude/
+npm run build:claude           # explicit
+npm run build:copilot-vscode   # → .github/
+npm run build:copilot-cli      # → .github/
+npm run build:all              # every adapter, sequentially
+```
+
+`.claude/`, `.github/agents/`, `.github/skills/`, and `dist/` are
+gitignored — these are generated artifacts produced by the adapters, never
+committed. **First clone of the repo requires `npm run build`** before the
+in-repo Claude Code instance can read agents and skills.
+
+### Where things live
+
+- `agents/` — canonical Claude-shape agent source (committed)
+- `skills/` — canonical Claude-shape skill source (committed; `rad-*`
+  prefix is reserved for orchestration-system skills)
+- `adapters/<harness>/` — self-contained per-harness adapter
+- `installer/src/<harness>/` — pre-compiled bundles published in npm package
+- `.claude/`, `.github/` — gitignored dogfood targets
+
+### What the installer does NOT ship
+
+Settings files (`settings.json`, `.github/copilot/settings.json`,
+`opencode.json`, etc.) and top-level instruction files (`CLAUDE.md`,
+`AGENTS.md`, `copilot-instructions.md`) are user-owned and never shipped
+by the installer or any adapter. Hooks and harness-native lifecycle
+formats are out of scope.
+
+## Upgrading from `v1.0.0-alpha.7`
+
+The multi-harness restructure changed how the installer ships agents and
+skills. **Existing installs are not auto-reconciled** — files that used to
+come from the previous installer's `.claude/` bundle but no longer ship in
+the new per-harness bundle will remain on disk as orphans.
+
+Recommended migration path:
+
+1. Back up any local edits in your installed `.claude/` (or `.github/`) folder.
+2. Delete the installed `.claude/` (or `.github/`) folder for a clean state.
+3. Re-run the installer and pick your harness in the wizard.
+4. Restore any local edits.
+
+Surgical orphan detection and replacement is tracked in **MULTI-HARNESS-2**
+— that's the long-term fix and requires no further action from upgraders.
+
 ## Getting Started
 
 [Full getting started guide →](docs/getting-started.md)
