@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { detectModifiedFiles, hexSha256OfBytes } from './hash-check.js';
+import { detectModifiedFiles, hexSha256OfBytes, confirmModifiedFiles } from './hash-check.js';
 
 function sha256(s) { return crypto.createHash('sha256').update(s).digest('hex'); }
 
@@ -58,4 +58,23 @@ test('detectModifiedFiles ignores manifest entries whose file no longer exists o
   // Missing-on-disk is a no-op for the modified-file check — uninstall
   // skips it later, install overwrites; neither is a "user edited it" case.
   assert.deepStrictEqual(detectModifiedFiles(manifest, root), []);
+});
+
+test('confirmModifiedFiles uses injectable promptConfirm when provided', async () => {
+  const root = fixtureRoot({ 'agents/a.md': 'one' });
+  const modified = ['agents/a.md'];
+  let capturedMessage;
+  const stubConfirm = async ({ message }) => { capturedMessage = message; return true; };
+  const result = await confirmModifiedFiles(modified, root, stubConfirm);
+  assert.strictEqual(result, true, 'should return the value from the injected promptConfirm');
+  assert.ok(typeof capturedMessage === 'string' && capturedMessage.length > 0,
+    'injected promptConfirm must be called with a message');
+});
+
+test('confirmModifiedFiles injectable returns false when stub returns false', async () => {
+  const root = fixtureRoot({ 'agents/b.md': 'x' });
+  const modified = ['agents/b.md'];
+  const stubConfirm = async () => false;
+  const result = await confirmModifiedFiles(modified, root, stubConfirm);
+  assert.strictEqual(result, false);
 });

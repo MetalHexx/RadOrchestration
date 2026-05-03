@@ -10,7 +10,7 @@ import { confirm } from '@inquirer/prompts';
 import { THEME, sectionHeader } from './theme.js';
 import { readInstalledPackageVersion } from './installed-version.js';
 import { loadBundledManifest } from './catalog.js';
-import { detectModifiedFiles } from './hash-check.js';
+import { detectModifiedFiles, confirmModifiedFiles } from './hash-check.js';
 import { removeManifestFiles } from './remove.js';
 
 /**
@@ -56,16 +56,13 @@ export async function runUninstall(opts) {
   const packageVersion = installed.packageVersion;
   const manifest = loadBundledManifest(installerRoot, tool, packageVersion);
 
-  // 2. Detect-and-warn for locally-modified files.
+  // 2. Detect-and-warn for locally-modified files via the shared primitive.
   const modified = detectModifiedFiles(manifest, resolvedOrchRoot);
   if (modified.length > 0) {
-    console.log('');
-    console.log(THEME.warning('⚠ The following files have been locally modified since install:'));
-    for (const rel of modified) {
-      console.log('  ' + path.join(resolvedOrchRoot, rel));
-    }
-    console.log('');
-    const proceedModified = await promptConfirm('Continue and remove these files?', false);
+    // Bridge the positional promptConfirm used by runUninstall into the
+    // options-object form that confirmModifiedFiles expects.
+    const promptConfirmObj = async (confirmOpts) => promptConfirm(confirmOpts.message, confirmOpts.default);
+    const proceedModified = await confirmModifiedFiles(modified, resolvedOrchRoot, promptConfirmObj);
     if (!proceedModified) {
       console.log(THEME.body('Uninstall cancelled.'));
       return { status: 'cancelled-modified-files' };
