@@ -60,6 +60,14 @@ node_modules/
 !/prompt-tests/repo-skill-discovery-e2e/output/skill-disco-fixture/baseline-*/lint-report.md
 !/prompt-tests/repo-skill-discovery-e2e/output/skill-disco-fixture/baseline-*/run-notes.md
 
+# Prompt harness — instructions-reach-e2e.
+# Same structure as above: ignore run-folder contents, re-include the
+# inaugural-baseline lint-report.md + run-notes.md under baseline-* folders.
+/prompt-tests/instructions-reach-e2e/output/*/*/**
+!/prompt-tests/instructions-reach-e2e/output/*/.gitkeep
+!/prompt-tests/instructions-reach-e2e/output/instructions-canary/baseline-*/lint-report.md
+!/prompt-tests/instructions-reach-e2e/output/instructions-canary/baseline-*/run-notes.md
+
 # Prompt harness — quick-pipeline-e2e.
 # Same structure as plan-pipeline-e2e: ignore run-folder contents, re-include
 # the inaugural-baseline lint-report.md + run-notes.md under baseline-* folders.
