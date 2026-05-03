@@ -26,13 +26,13 @@ flowchart TD
 
 ## Lifecycles
 
-A task moves through four operational states. It begins `not_started`. When the Orchestrator dispatches it, the task transitions to `in_progress` and the Coder implements code and tests. When the Coder reports completion, the task moves to `awaiting_review`; the Reviewer then evaluates the work. On an approved code review, the task transitions to `complete`. On a `changes_requested` verdict with retries remaining, the Orchestrator authors a corrective task handoff and the task re-enters `in_progress` for another implementation pass.
+A task moves through three operational states. It begins `not_started`. When the Orchestrator dispatches it, the task transitions to `in_progress` and the Coder implements code and tests. The task remains `in_progress` while the Reviewer evaluates the work. On an approved code review, the task transitions to `completed`. On a `changes_requested` verdict with retries remaining, the Orchestrator authors a corrective task handoff and the task re-enters `in_progress` for another implementation pass.
 
-A phase aggregates over its tasks. While any task in the phase is still working, the phase remains `in_progress`. After the last task completes — and, in the `default` template, the phase review approves — the phase transitions to `complete`. The next phase then begins.
+A phase aggregates over its tasks. While any task in the phase is still working, the phase remains `in_progress`. After the last task completes — and, in the `default` template, the phase review approves — the phase transitions to `completed`. The next phase then begins.
 
 ## Status vs. Stage
 
-The pipeline tracks two distinct dimensions on every task and phase. `status` is the operational state described above (`not_started`, `in_progress`, `awaiting_review`, `complete`, and so on); `stage` is the pipeline placement that tells the engine which node in the template a task currently sits at. The two move on different cadences and serve different consumers — operators reason about `status`, the engine routes on `stage`. For the full transition tables across both dimensions, see [internals/system-architecture.md](internals/system-architecture.md).
+The pipeline tracks two distinct dimensions on every task and phase. `status` is the operational state described above (`not_started`, `in_progress`, `completed`, and so on); `stage` is the pipeline placement that tells the engine which node in the template a task currently sits at. The two move on different cadences and serve different consumers — operators reason about `status`, the engine routes on `stage`. For the full transition tables across both dimensions, see [internals/system-architecture.md](internals/system-architecture.md).
 
 ## Human Gates
 
