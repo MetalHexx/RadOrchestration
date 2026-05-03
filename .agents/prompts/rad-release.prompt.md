@@ -17,7 +17,7 @@ Run the following commands to collect the information you'll need for the questi
 3. Read current versions from these files (all must be bumped in lockstep):
    - `installer/package.json` (authoritative — drives the suggested next version)
    - `ui/package.json`
-   - `.claude/skills/rad-orchestration/scripts/package.json`
+   - `skills/rad-orchestration/scripts/package.json`
 4. Read `CHANGELOG.md` at the repo root if it exists (will be created on first release)
 
 ---
@@ -56,12 +56,14 @@ Options: `Yes, squash merge to main` / `No, tag from this branch`
 Edit each of these files — set `"version"` to the confirmed version number. All three must carry the same version:
 - `installer/package.json`
 - `ui/package.json`
-- `.claude/skills/rad-orchestration/scripts/package.json`
+- `skills/rad-orchestration/scripts/package.json`
+
+Note: `package_version` inside each per-harness bundle's `orchestration.yml` (e.g., `installer/src/claude/skills/rad-orchestration/config/orchestration.yml`) is **auto-stamped at build time** by the contributor build / publish step from `installer/package.json`. Do not edit it manually as part of the release flow.
 
 Stage and commit the version bump on the current branch:
 
 ```
-git add installer/package.json ui/package.json .claude/skills/rad-orchestration/scripts/package.json
+git add installer/package.json ui/package.json skills/rad-orchestration/scripts/package.json
 git commit -m "chore: bump version to {version}"
 ```
 
