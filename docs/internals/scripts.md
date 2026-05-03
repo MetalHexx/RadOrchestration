@@ -1,8 +1,8 @@
 # Pipeline Scripts
 
-The orchestration system uses a single unified pipeline script (`pipeline.js`) for all deterministic pipeline operations: routing, mutation, and validation. Without these scripts, LLM agents must re-derive routing decisions from natural language on every invocation — producing inconsistent results for identical inputs. The script encodes these decisions as tested, deterministic code, so the same `state.json` always produces the same next action. LLMs still handle all judgment-requiring work (coding, reviewing, designing); scripts handle mechanical consistency.
+`pipeline.js` is the single entry point for all deterministic pipeline operations: routing, mutation, and validation. The same `state.json` always produces the same next action — the script encodes routing decisions as tested, deterministic code so LLM agents never re-derive them from natural language.
 
-> `pipeline.js` is called by the Orchestrator agent during pipeline execution. It is not intended for manual use — users do not need to run it directly.
+> `pipeline.js` is called by the Orchestrator agent during pipeline execution. Users do not run it directly.
 
 > **Note:** Commands below use `.claude` as the default orchestration root. If you've [configured a custom root](../configuration.md), adjust paths accordingly.
 
@@ -23,15 +23,18 @@ node .claude/skills/rad-orchestration/scripts/pipeline.js \
   [--auto-commit <always|never>] [--auto-pr <always|never>] \
   [--gate-type <type>] [--reason <text>] \
   [--gate-mode <mode>] \
-  [--commit-hash <hash>] [--pushed <true|false>]
+  [--commit-hash <hash>] [--pushed <true|false>] \
+  [--verdict <verdict>] [--phase <N>] [--task <N>] \
+  [--pr-url <url>] [--remote-url <url>] [--compare-url <url>] \
+  [--template <name>] [--parse-error <json>]
 ```
 
 **Required flags:**
 
 | Flag | Description |
 |------|-------------|
-| `--event <name>` | The pipeline event to signal (required) |
-| `--project-dir <path>` | Path to the project directory (required) |
+| `--event <name>` | Pipeline event to signal |
+| `--project-dir <path>` | Path to the project directory |
 
 **Optional flags:**
 
@@ -49,13 +52,19 @@ node .claude/skills/rad-orchestration/scripts/pipeline.js \
 | `--worktree-path <path>` | `worktree_path` | `source_control_init` |
 | `--auto-commit <always|never>` | `auto_commit` | `source_control_init` |
 | `--auto-pr <always|never>` | `auto_pr` | `source_control_init` |
-| `--gate-type <type>` | `gate_type` | `gate_approved`, `gate_rejected` |
-| `--reason <text>` | `reason` | `gate_rejected` |
+| `--gate-type <type>` | `gate_type` | `gate_rejected` |
+| `--reason <text>` | `reason` | `gate_rejected`, `halt` |
 | `--gate-mode <mode>` | `gate_mode` | `gate_mode_set` |
 | `--commit-hash <hash>` | `commit_hash` | `commit_completed` |
 | `--pushed <true|false>` | `pushed` | `commit_completed` |
 | `--phase <N>` | `phase` | `commit_started`, `commit_completed` |
 | `--task <N>` | `task` | `commit_started`, `commit_completed` |
+| `--verdict <verdict>` | `verdict` | `code_review_completed`, `phase_review_completed`, `final_review_completed` |
+| `--pr-url <url>` | `pr_url` | `pr_created` |
+| `--remote-url <url>` | `remote_url` | `source_control_init` |
+| `--compare-url <url>` | `compare_url` | `source_control_init` |
+| `--template <name>` | `template` | `start` |
+| `--parse-error <json>` | `parse_error` | `explosion_failed` |
 
 ### migrate-to-v5.ts
 
@@ -69,86 +78,73 @@ npx tsx .claude/skills/rad-orchestration/scripts/migrate-to-v5.ts --project-dir 
 | `--project-dir <path>` | Yes | Absolute path to project directory containing `state.json` |
 | `--dry-run` | No | Preview the migration without writing changes |
 
-Migrates a project’s `state.json` from an older schema version (v1–v4) to v5 format and validates the result against the v5 JSON Schema.
+Migrates a project's `state.json` from an older schema version (v1–v4) to v5 format and validates the result against the v5 JSON Schema.
 
 ---
 
 ## Event Vocabulary
 
-The pipeline accepts exactly 38 events. Each maps to a mutation handler in the `MUTATIONS` lookup table.
+The pipeline accepts 30 events. Each maps to a mutation handler in the `MUTATIONS` lookup table.
 
 | # | Event | Tier | Description |
 |---|-------|------|-------------|
-| 1 | `research_started` | Planning | Research step begun; sets `planning.steps[0].status` → in_progress |
-| 2 | `research_completed` | Planning | Research finished; sets `planning.steps[0].status` → complete, `planning.steps[0].doc_path` |
-| 3 | `prd_started` | Planning | PRD step begun; sets `planning.steps[1].status` → in_progress |
-| 4 | `prd_completed` | Planning | PRD created; sets `planning.steps[1].status` → complete |
-| 5 | `design_started` | Planning | Design step begun; sets `planning.steps[2].status` → in_progress |
-| 6 | `design_completed` | Planning | Design doc created; sets `planning.steps[2].status` → complete |
-| 7 | `architecture_started` | Planning | Architecture step begun; sets `planning.steps[3].status` → in_progress |
-| 8 | `architecture_completed` | Planning | Architecture created; sets `planning.steps[3].status` → complete |
-| 9 | `master_plan_started` | Planning | Master plan step begun; sets `planning.steps[4].status` → in_progress |
-| 10 | `master_plan_completed` | Planning | Master plan created; sets `planning.steps[4].status` → complete, `planning.status` → complete |
-| 11 | `plan_approved` | Planning | Human approved; sets `planning.human_approved`, transitions `pipeline.current_tier` → execution |
-| 12 | `plan_rejected` | Planning | Human rejected master plan; resets `planning.status` for revision |
-| 13 | `phase_planning_started` | Execution | Phase planning begun; transitions phase `stage` → planning, `status` → in_progress |
-| 14 | `phase_plan_created` | Execution | Phase plan saved; sets `phase.docs.phase_plan`, `phase.status` → in_progress, `phase.stage` → executing |
-| 15 | `task_handoff_started` | Execution | Task handoff begun; transitions task `status` → in_progress, `stage` stays planning |
-| 16 | `task_handoff_created` | Execution | Task handoff saved; sets `task.docs.handoff`, `task.status` → in_progress, `task.stage` → coding |
-| 17 | `execution_started` | Execution | Coder execution begun; transitions task `stage` → coding, `status` → in_progress |
-| 18 | `task_completed` | Execution | Coder finished; sets `task.stage` → reviewing (`status` stays in_progress) |
-| 19 | `code_review_started` | Execution | Code review begun; transitions task `stage` → reviewing |
-| 20 | `code_review_completed` | Execution | Review finished; sets `task.docs.review`, `task.review.verdict`, `task.review.action`; resolves task outcome |
-| 21 | `phase_report_started` | Execution | Phase report begun; transitions phase `stage` → reporting |
-| 22 | `phase_report_created` | Execution | Phase report saved; sets `phase.docs.phase_report`, `phase.stage` → reviewing |
-| 23 | `phase_review_started` | Execution | Phase review begun; transitions phase `stage` → reviewing |
-| 24 | `phase_review_completed` | Execution | Phase review finished; sets `phase.docs.phase_review`, `phase.review.verdict`, `phase.review.action`; resolves phase outcome |
-| 25 | `source_control_init` | Execution | One-time initialization; persists branch, base_branch, worktree_path, auto_commit, auto_pr to `pipeline.source_control` |
-| 26 | `commit_started` | Execution | Signaled when the walker reaches the `commit` node in `task_loop.body`; `--phase` and `--task` are optional and auto-resolved from the active in-progress phase/task when omitted; fails with a descriptive error if resolution is ambiguous |
-| 27 | `commit_completed` | Execution | Source Control Agent completed commit; sets `task.commit_hash` from `--commit-hash` flag; `--phase` and `--task` are optional and auto-resolved from the active in-progress phase/task when omitted; fails with a descriptive error if resolution is ambiguous |
-| 28 | `pr_requested` | Execution | Signaled internally after `final_review_completed` when `auto_pr: always` and `pr_url` is undefined |
-| 29 | `pr_created` | Execution | Source Control Agent completed PR; sets `pipeline.source_control.pr_url` from `--pr-url` flag |
-| 30 | `gate_mode_set` | Gate | Operator selected gate mode; sets `pipeline.gate_mode` |
-| 31 | `task_gate_approved` | Gate | Human approved task gate; advances task past the gate checkpoint |
-| 32 | `phase_gate_approved` | Gate | Human approved phase gate; advances phase past the gate checkpoint |
-| 33 | `gate_rejected` | Gate | Human rejected gate; halts task or phase depending on `--gate-type` flag with `--reason` |
-| 34 | `final_review_started` | Review | Final review begun; sets `final_review.status` → in_progress |
-| 35 | `final_review_completed` | Review | Final review saved; sets `final_review.doc_path`, `final_review.status` → complete |
-| 36 | `final_approved` | Review | Human approved final review; sets `final_review.human_approved`, transitions `pipeline.current_tier` → complete |
-| 37 | `final_rejected` | Review | Human rejected final review; resets for revision |
-| 38 | `halt` | Any | Halt the pipeline with a reason |
+| 1 | `start` | Any | Initialize or resume the pipeline; scaffolds `state.json` when absent, otherwise re-walks the DAG |
+| 2 | `requirements_started` | Planning | Requirements step begun; sets `requirements.status` → in_progress |
+| 3 | `requirements_completed` | Planning | Requirements doc saved; sets `requirements.status` → completed, `requirements.doc_path` |
+| 4 | `master_plan_started` | Planning | Master plan step begun; sets `master_plan.status` → in_progress |
+| 5 | `master_plan_completed` | Planning | Master plan saved; sets `master_plan.status` → completed, `master_plan.doc_path` |
+| 6 | `explosion_started` | Planning | Explosion step begun; sets `explode_master_plan.status` → in_progress |
+| 7 | `explosion_completed` | Planning | Explosion succeeded; sets `explode_master_plan.status` → completed, clears `master_plan.last_parse_error` |
+| 8 | `explosion_failed` | Planning | Explosion parse failure; increments `master_plan.parse_retry_count`; halts pipeline if cap exceeded |
+| 9 | `plan_approved` | Planning | Human approved; sets `plan_approval_gate.status` → completed, transitions `pipeline.current_tier` → execution |
+| 10 | `plan_rejected` | Planning | Human rejected master plan; resets `master_plan.status` → not_started for revision |
+| 11 | `execution_started` | Execution | Coder execution begun; sets `task_executor.status` → in_progress |
+| 12 | `task_completed` | Execution | Coder finished; sets `task_executor.status` → completed |
+| 13 | `code_review_started` | Execution | Code review begun; sets `code_review.status` → in_progress |
+| 14 | `code_review_completed` | Execution | Review finished; sets `code_review.doc_path`, `code_review.verdict`; resolves task outcome |
+| 15 | `phase_review_started` | Execution | Phase review begun; sets `phase_review.status` → in_progress |
+| 16 | `phase_review_completed` | Execution | Phase review finished; sets `phase_review.doc_path`, `phase_review.verdict`; resolves phase outcome |
+| 17 | `commit_started` | Execution | Commit begun; sets `commit.status` → in_progress; `--phase` and `--task` auto-resolve from the active in-progress phase/task when omitted |
+| 18 | `commit_completed` | Execution | Commit finished; sets `commit.status` → completed, stores `commit_hash`; `--phase` and `--task` auto-resolve when omitted |
+| 19 | `pr_requested` | Execution | Signaled internally after `final_review_completed` when `auto_pr: always` and `pr_url` is unset |
+| 20 | `pr_created` | Execution | PR created; sets `pipeline.source_control.pr_url` from `--pr-url` flag |
+| 21 | `source_control_init` | Execution | One-time initialization; persists branch, base_branch, worktree_path, auto_commit, auto_pr to `pipeline.source_control` |
+| 22 | `task_gate_approved` | Gate | Human approved task gate; advances task past the gate checkpoint |
+| 23 | `phase_gate_approved` | Gate | Human approved phase gate; advances phase past the gate checkpoint |
+| 24 | `gate_rejected` | Gate | Human rejected gate; halts task or phase depending on `--gate-type` with `--reason` |
+| 25 | `gate_mode_set` | Gate | Operator selected gate mode; sets `pipeline.gate_mode` |
+| 26 | `final_review_started` | Review | Final review begun; sets `final_review.status` → in_progress |
+| 27 | `final_review_completed` | Review | Final review saved; sets `final_review.doc_path`, `final_review.verdict` |
+| 28 | `final_approved` | Review | Human approved final review; sets `final_approval_gate.status` → completed |
+| 29 | `final_rejected` | Review | Human rejected final review; resets `final_review` and `final_approval_gate` for revision |
+| 30 | `halt` | Any | Halt the pipeline with a reason; sets `graph.status` → halted, `pipeline.halt_reason` |
 
 ---
 
 ## Action Vocabulary
 
-The resolver is a pure function that returns one of 21 values based solely on the current `state.json` and config. All actions are returned to the Orchestrator for agent routing — the script performs no agent spawning itself.
+The resolver is a pure function that returns one of 16 values based solely on the current `state.json` and config. All actions are returned to the Orchestrator for agent routing — the script performs no agent spawning itself.
 
-### Planning Tier (6)
+### Planning Tier (4)
 
 | Action | Meaning |
 |--------|---------|
-| `spawn_research` | Spawn Research agent |
-| `spawn_prd` | Spawn Product Manager |
-| `spawn_design` | Spawn UX Designer |
-| `spawn_architecture` | Spawn Architect for architecture |
+| `spawn_requirements` | Spawn Requirements agent |
 | `spawn_master_plan` | Spawn Architect for master plan |
+| `explode_master_plan` | Run explosion script to generate phases and tasks from the master plan |
 | `request_plan_approval` | Planning complete — request human approval |
 
-### Execution Tier — Task Lifecycle (4)
+### Execution Tier — Task Lifecycle (2)
 
 | Action | Meaning |
 |--------|---------|
-| `create_phase_plan` | Phase needs a plan (fresh or corrective — corrective includes `context.is_correction` and `context.previous_review`) |
-| `create_task_handoff` | Task needs a handoff document (fresh or corrective, distinguished by `context.is_correction`) |
 | `execute_task` | Task has handoff, ready to execute |
 | `spawn_code_reviewer` | Task needs code review |
 
-### Execution Tier — Phase Lifecycle (2)
+### Execution Tier — Phase Lifecycle (1)
 
 | Action | Meaning |
 |--------|---------|
-| `generate_phase_report` | All tasks complete — generate phase report |
 | `spawn_phase_reviewer` | Phase needs review |
 
 ### Gate Actions (3)
