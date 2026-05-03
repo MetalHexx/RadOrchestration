@@ -84,7 +84,7 @@ Migrates a project's `state.json` from an older schema version (v1–v4) to v5 f
 
 ## Event Vocabulary
 
-The pipeline accepts 30 events. Each maps to a mutation handler in the `MUTATIONS` lookup table.
+The pipeline accepts 30 events. The `start` event is handled directly by `engine.ts` (cold-start scaffolding or resume); the remaining 29 are dispatched to mutation handlers registered in `mutations.ts`.
 
 | # | Event | Tier | Description |
 |---|-------|------|-------------|

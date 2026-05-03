@@ -32,7 +32,7 @@ flowchart TD
 
 ## Lifecycles
 
-A task moves through three operational states. It begins `not_started`. When the Orchestrator dispatches it, the task transitions to `in_progress` and the Coder implements code and tests. The task remains `in_progress` while the Reviewer evaluates the work. On an approved code review, the task transitions to `completed`. On a `changes_requested` verdict with retries remaining, the Orchestrator authors a corrective task handoff and the task re-enters `in_progress` for another implementation pass.
+A task begins `not_started`, transitions to `in_progress` when the Orchestrator dispatches it, and stays there while the Coder implements and the Reviewer evaluates. In the `default` template, the task transitions to `completed` once code review approves and the per-task gate clears — auto-approved under `phase` or `autonomous` modes, awaits the operator under `task` mode. The `quick` template has no per-task review or gate, so the task transitions to `completed` immediately after implementation. On a `changes_requested` verdict with retries remaining, the Orchestrator authors a corrective task handoff and the task re-enters `in_progress` for another implementation pass.
 
 A phase aggregates over its tasks. While any task in the phase is still working, the phase remains `in_progress`. After the last task completes — and, in the `default` template, the phase review approves — the phase transitions to `completed`. The next phase then begins.
 
