@@ -28,7 +28,7 @@ function sha256OfFile(absPath) {
  *
  * Uses file copies (not symlinks) for cross-platform parity.
  */
-export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }) {
+export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, packageVersion }) {
   const verbose = process.env.BUILD_VERBOSE === '1';
   const targetRoot = path.join(outputRoot, adapter.targetDir);
   // Structural scoped wipe — only the two subpaths runAdapter emits into are
@@ -135,6 +135,25 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }
     }
   }
 
+  // Per-bundle orchestration.yml rewrite: stamp orch_root + package_version.
+  // Targets only the canonical config path; all other YAML fields and all
+  // other files in the bundle pass through verbatim (NFR-3, AD-10).
+  if (packageVersion !== undefined) {
+    const ymlPath = path.join(
+      targetRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml',
+    );
+    rewritePerBundleOrchestrationYml(ymlPath, {
+      orchRoot: adapter.targetDir,
+      packageVersion,
+    });
+    // Re-hash the rewritten file in the manifest entry so detect-and-warn
+    // works against the as-shipped content.
+    const entry = files.find(
+      (f) => f.bundlePath === path.posix.join('skills', 'rad-orchestration', 'config', 'orchestration.yml'),
+    );
+    if (entry) entry.sha256 = sha256OfFile(ymlPath);
+  }
+
   const catalogDir = path.join(outputRoot, adapter.name, 'manifests');
   fs.mkdirSync(catalogDir, { recursive: true });
   fs.writeFileSync(
@@ -212,4 +231,61 @@ function stringifySimpleYaml(fm) {
     }
   }
   return s;
+}
+
+/**
+ * Rewrites the per-bundle orchestration.yml: sets `system.orch_root` to
+ * adapter.targetDir and stamps a new top-level `package_version:` field
+ * immediately after the existing `version:` line. All other fields pass
+ * through verbatim. No template engine, no AST round-trip — string-level
+ * field substitution against the existing simple-YAML output shape.
+ *
+ * Body-text placeholders ({orch_root}, {skillRoot}, etc.) inside agent
+ * and skill markdown bodies are NEVER touched — runtime resolution via
+ * detectOrchRoot() is the contract (see NFR-3, AD-10).
+ */
+function rewritePerBundleOrchestrationYml(absYmlPath, { orchRoot, packageVersion }) {
+  if (!fs.existsSync(absYmlPath)) return;
+  const text = fs.readFileSync(absYmlPath, 'utf8');
+  const lines = text.split(/\r?\n/);
+  const out = [];
+  let i = 0;
+  let stampedPackageVersion = false;
+  while (i < lines.length) {
+    const line = lines[i];
+    // Top-level `version: "1.0"` — emit, then stamp package_version once
+    // immediately after, only if not already present.
+    if (!stampedPackageVersion && /^version:\s*/.test(line)) {
+      out.push(line);
+      // Lookahead: is the next non-blank line already package_version?
+      let j = i + 1;
+      while (j < lines.length && lines[j].trim() === '') j++;
+      if (j < lines.length && /^package_version:\s*/.test(lines[j])) {
+        // Replace the existing line with a fresh stamp.
+        out.push(`package_version: ${packageVersion}`);
+        i = j + 1;
+        stampedPackageVersion = true;
+        continue;
+      }
+      out.push(`package_version: ${packageVersion}`);
+      stampedPackageVersion = true;
+      i++;
+      continue;
+    }
+    // `  orch_root: <anything>` under `system:` — rewrite the value only.
+    const m = line.match(/^(\s*orch_root:\s*).*$/);
+    if (m) {
+      out.push(`${m[1]}${orchRoot}`);
+      i++;
+      continue;
+    }
+    out.push(line);
+    i++;
+  }
+  // If somehow we never saw a top-level `version:` line, prepend the
+  // stamp at the top — keeps behavior deterministic on malformed input.
+  const final = stampedPackageVersion
+    ? out.join('\n')
+    : `package_version: ${packageVersion}\n` + out.join('\n');
+  fs.writeFileSync(absYmlPath, final, 'utf8');
 }

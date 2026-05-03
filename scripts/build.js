@@ -62,8 +62,8 @@ async function main() {
       canonicalRoot: repoRoot,
       outputRoot: repoRoot,
       version,
+      packageVersion: version,
     });
-    // One-line success per harness.
     console.log(`Built ${adapter.name}: ${agentCount} agents, ${skillCount} skills → ${adapter.targetDir}/`);
   }
 }

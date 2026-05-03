@@ -64,6 +64,7 @@ export async function emitBundles({ repoRoot, version }) {
       canonicalRoot: repoRoot,
       outputRoot: installerSrc,
       version,
+      packageVersion: version,
     });
     console.log(`Emitted bundle ${adapter.name}: ${fileCount} files → installer/src/${adapter.name}/`);
   }

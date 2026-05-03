@@ -188,3 +188,37 @@ test('runAdapter manifest entries carry sha256 hash of the emitted file content'
     assert.strictEqual(entry.sha256, expected, `sha256 must match emitted file content for ${entry.bundlePath}`);
   }
 });
+
+test('runAdapter rewrites system.orch_root and stamps package_version in per-bundle orchestration.yml', async () => {
+  const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-yml-'));
+  // Mirror the canonical layout: skills/rad-orchestration/config/orchestration.yml
+  const cfgDir = path.join(canonical, 'skills', 'rad-orchestration', 'config');
+  fs.mkdirSync(cfgDir, { recursive: true });
+  fs.writeFileSync(path.join(canonical, 'skills', 'rad-orchestration', 'SKILL.md'),
+    '---\nname: rad-orchestration\ndescription: Orchestration\n---\nbody\n', 'utf8');
+  fs.writeFileSync(
+    path.join(cfgDir, 'orchestration.yml'),
+    'version: "1.0"\nsystem:\n  orch_root: .claude\nprojects:\n  base_path: orchestration-projects\n  naming: SCREAMING_CASE\n',
+    'utf8',
+  );
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-yml-'));
+  await runAdapter(
+    { ...fakeAdapter, targetDir: '.github' },
+    { canonicalRoot: canonical, outputRoot: out, version: '1.0.0-alpha.9', packageVersion: '1.0.0-alpha.9' },
+  );
+  const written = fs.readFileSync(
+    path.join(out, '.github', 'skills', 'rad-orchestration', 'config', 'orchestration.yml'),
+    'utf8',
+  );
+  // system.orch_root rewritten to adapter.targetDir (without leading dot is acceptable; we match either form).
+  assert.match(written, /orch_root:\s*\.github/, 'system.orch_root must be rewritten to adapter.targetDir');
+  // New package_version stamped at top, after `version: "1.0"`, before `system:`.
+  assert.match(
+    written,
+    /version:\s*"?1\.0"?\s*\npackage_version:\s*1\.0\.0-alpha\.9\s*\nsystem:/,
+    'package_version must be stamped between schema version and system block',
+  );
+  // Other fields pass through verbatim.
+  assert.match(written, /base_path:\s*orchestration-projects/);
+  assert.match(written, /naming:\s*SCREAMING_CASE/);
+});
