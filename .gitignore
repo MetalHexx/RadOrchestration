@@ -22,6 +22,9 @@ package-lock.json
 # Adapter scratch sandbox — opt-in inspection, never committed
 dist/
 
+# Ephemeral installer test directory — created by rad-test-release prompt, never committed
+test-installer/
+
 *.code-workspace
 
 # Ephemeral test log artifacts — never commit
