@@ -58,7 +58,7 @@ A real-time Next.js dashboard visualizes project state, pipeline progress, docum
 | [Getting Started](docs/getting-started.md) | Install the system, walk through your first project, learn the common commands. |
 | [Pipeline](docs/pipeline.md) | The planning and execution flow, human gates, corrective cycles, error handling. |
 | [Agents](docs/agents.md) | Each agent's role, tool access, write permissions, and where it sits in the flow. |
-| [Skills](docs/skills.md) | The reusable skills bundled with the system and how agents compose them. |
+| [Skills](docs/skills.md) | The six user-invoked slash commands — what each does, when to use it, and what it produces. |
 | [Configuration](docs/configuration.md) | The `orchestration.yml` reference — every option explained with sensible defaults. |
 | [Project Structure](docs/project-structure.md) | File layout, naming conventions, document types, and state management. |
 | [Monitoring Dashboard](docs/dashboard.md) | Dashboard startup, features, data sources, and real-time update behavior. |
