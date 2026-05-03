@@ -54,15 +54,27 @@ export async function runUninstall(opts) {
   }
 
   const packageVersion = installed.packageVersion;
-  const manifest = loadBundledManifest(installerRoot, tool, packageVersion);
+  const fullManifest = loadBundledManifest(installerRoot, tool, packageVersion);
+
+  // Filter orchestration.yml out of the manifest slice passed to
+  // removeManifestFiles. It must be removed LAST — it is the signal to future
+  // installer runs that no prior install exists at this orchRoot. Removing it
+  // mid-stream (at its real position 51 of 1872) would orphan the remaining
+  // files if any later removal throws or is interrupted.
+  const ORC_YML_PATH = 'skills/rad-orchestration/config/orchestration.yml';
+  const manifest = {
+    ...fullManifest,
+    files: fullManifest.files.filter((f) => f.bundlePath !== ORC_YML_PATH),
+  };
 
   // 2. Detect-and-warn for locally-modified files via the shared primitive.
-  const modified = detectModifiedFiles(manifest, resolvedOrchRoot);
+  // Use the full manifest so the yml entry is included in the hash check.
+  const modified = detectModifiedFiles(fullManifest, resolvedOrchRoot);
   if (modified.length > 0) {
     // Bridge the positional promptConfirm used by runUninstall into the
     // options-object form that confirmModifiedFiles expects.
     const promptConfirmObj = async (confirmOpts) => promptConfirm(confirmOpts.message, confirmOpts.default);
-    const proceedModified = await confirmModifiedFiles(modified, resolvedOrchRoot, promptConfirmObj);
+    const proceedModified = await confirmModifiedFiles(modified, resolvedOrchRoot, promptConfirmObj, { message: 'Continue and delete these files?' });
     if (!proceedModified) {
       console.log(THEME.body('Uninstall cancelled.'));
       return { status: 'cancelled-modified-files' };
@@ -75,7 +87,7 @@ export async function runUninstall(opts) {
   console.log('');
   console.log('  ' + THEME.label('Target:') + '         ' + THEME.body(resolvedOrchRoot));
   console.log('  ' + THEME.label('Version:') + '        ' + THEME.body(packageVersion));
-  console.log('  ' + THEME.label('Files removed:') + '  ' + THEME.body(String(manifest.files.length)));
+  console.log('  ' + THEME.label('Files removed:') + '  ' + THEME.body(String(fullManifest.files.length)));
   console.log('');
   const proceed = await promptConfirm(
     `Uninstall rad-orchestration v${packageVersion} from ${resolvedOrchRoot}?`,
@@ -86,10 +98,34 @@ export async function runUninstall(opts) {
     return { status: 'cancelled' };
   }
 
-  // 4. Remove manifest files via spinners matching install style.
-  const spin = ora({ text: 'Removing files…', color: THEME.spinner }).start();
-  const result = removeManifestFiles(manifest, resolvedOrchRoot);
-  spin.succeed(`Removed ${result.removedCount} files`);
+  // 4. Remove manifest files with per-category spinners matching the install
+  //    flow's visual style (DD-3). Groups: agents/, skills/, everything else.
+  //    orchestration.yml is excluded from this slice — it is handled last in step 5.
+  const CATEGORIES = [
+    { label: 'agents', prefix: 'agents/' },
+    { label: 'skills', prefix: 'skills/' },
+  ];
+  let totalRemovedCount = 0;
+  for (const cat of CATEGORIES) {
+    const catFiles = manifest.files.filter((f) => f.bundlePath.startsWith(cat.prefix));
+    if (catFiles.length === 0) continue;
+    const catManifest = { ...manifest, files: catFiles };
+    const catSpin = ora({ text: `Removing ${cat.label}…`, color: THEME.spinner }).start();
+    const catResult = removeManifestFiles(catManifest, resolvedOrchRoot);
+    catSpin.succeed(`Removed ${cat.label} (${catResult.removedCount} files)`);
+    totalRemovedCount += catResult.removedCount;
+  }
+  // Catch any manifest entries not covered by the named categories above.
+  const otherFiles = manifest.files.filter(
+    (f) => !CATEGORIES.some((c) => f.bundlePath.startsWith(c.prefix)),
+  );
+  if (otherFiles.length > 0) {
+    const otherManifest = { ...manifest, files: otherFiles };
+    const otherSpin = ora({ text: 'Removing remaining files…', color: THEME.spinner }).start();
+    const otherResult = removeManifestFiles(otherManifest, resolvedOrchRoot);
+    otherSpin.succeed(`Removed remaining files (${otherResult.removedCount} files)`);
+    totalRemovedCount += otherResult.removedCount;
+  }
 
   // 5. Remove orchestration.yml LAST — this is the signal to future
   //    installer runs that no prior install exists at this orchRoot.
@@ -102,5 +138,5 @@ export async function runUninstall(opts) {
 
   console.log('');
   console.log(THEME.body(`Uninstalled rad-orchestration v${packageVersion} from ${resolvedOrchRoot}`));
-  return { status: 'completed', removedCount: result.removedCount, packageVersion };
+  return { status: 'completed', removedCount: totalRemovedCount, packageVersion };
 }

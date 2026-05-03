@@ -78,3 +78,32 @@ test('confirmModifiedFiles injectable returns false when stub returns false', as
   const result = await confirmModifiedFiles(modified, root, stubConfirm);
   assert.strictEqual(result, false);
 });
+
+test('confirmModifiedFiles uses default "Continue?" message when no options provided', async () => {
+  const root = fixtureRoot({ 'agents/a.md': 'one' });
+  const modified = ['agents/a.md'];
+  let capturedMessage;
+  const stubConfirm = async ({ message }) => { capturedMessage = message; return true; };
+  await confirmModifiedFiles(modified, root, stubConfirm);
+  assert.strictEqual(capturedMessage, 'Continue?', 'default message is "Continue?" when options omitted');
+});
+
+test('confirmModifiedFiles uses options.message when supplied', async () => {
+  const root = fixtureRoot({ 'agents/a.md': 'one' });
+  const modified = ['agents/a.md'];
+  let capturedMessage;
+  const stubConfirm = async ({ message }) => { capturedMessage = message; return true; };
+  await confirmModifiedFiles(modified, root, stubConfirm, { message: 'Continue and overwrite these files?' });
+  assert.strictEqual(capturedMessage, 'Continue and overwrite these files?',
+    'options.message overrides default');
+});
+
+test('confirmModifiedFiles passes "Continue and delete these files?" for delete context', async () => {
+  const root = fixtureRoot({ 'agents/c.md': 'x' });
+  const modified = ['agents/c.md'];
+  let capturedMessage;
+  const stubConfirm = async ({ message }) => { capturedMessage = message; return true; };
+  await confirmModifiedFiles(modified, root, stubConfirm, { message: 'Continue and delete these files?' });
+  assert.strictEqual(capturedMessage, 'Continue and delete these files?',
+    'delete-context message is passed through correctly');
+});

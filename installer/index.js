@@ -166,7 +166,7 @@ export async function main() {
       const priorManifest = loadBundledManifest(repoRoot, config.tool, priorVersion);
       const modified = detectModifiedFiles(priorManifest, resolvedRoot);
       if (modified.length > 0) {
-        const proceed = await confirmModifiedFiles(modified, resolvedRoot);
+        const proceed = await confirmModifiedFiles(modified, resolvedRoot, undefined, { message: 'Continue and overwrite these files?' });
         if (!proceed) {
           console.log('Installation cancelled.');
           process.exit(0);

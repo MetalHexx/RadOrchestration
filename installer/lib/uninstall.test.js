@@ -90,6 +90,49 @@ test('runUninstall exits via pre-manifest path when package_version is missing (
   assert.ok(fs.existsSync(path.join(cfg, 'orchestration.yml')), 'pre-manifest install must NOT be touched');
 });
 
+test('orchestration.yml removed AFTER all other manifest-listed files (F-5 invariant)', async () => {
+  // This fixture includes orchestration.yml IN the manifest (as in the real
+  // bundled manifest at position 51 of 1872). The invariant: orchestration.yml
+  // must be removed LAST, not mid-stream by removeManifestFiles.
+  const orchRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'uninst-order-'));
+  const ymlPath = path.join(orchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
+  fixtureInstalled(orchRoot, '1.0.0-alpha.9', { 'agents/coder.md': 'a' });
+  const installerRoot = fixtureInstaller('1.0.0-alpha.9', [
+    { bundlePath: 'skills/rad-orchestration/config/orchestration.yml', sha256: sha256('yml') },
+    { bundlePath: 'agents/coder.md', sha256: sha256('a') },
+  ]);
+
+  const removalOrder = [];
+  const origRmSync = fs.rmSync.bind(fs);
+  const origRmSyncFn = fs.rmSync;
+  // Track removal order by monkey-patching rmSync
+  fs.rmSync = (p, opts) => {
+    if (String(p).replace(/\\/g, '/').endsWith('orchestration.yml')) removalOrder.push('yml');
+    else if (String(p).replace(/\\/g, '/').endsWith('coder.md')) removalOrder.push('coder.md');
+    origRmSync(p, opts);
+  };
+
+  try {
+    const result = await runUninstall({
+      installerRoot,
+      resolvedOrchRoot: orchRoot,
+      tool: 'claude-code',
+      promptConfirm: async () => true,
+    });
+    assert.strictEqual(result.status, 'completed');
+    // coder.md must be removed BEFORE orchestration.yml
+    assert.ok(removalOrder.includes('coder.md'), 'coder.md was removed');
+    assert.ok(removalOrder.includes('yml'), 'orchestration.yml was removed');
+    assert.ok(
+      removalOrder.indexOf('coder.md') < removalOrder.indexOf('yml'),
+      `orchestration.yml must be removed last; got order: ${removalOrder.join(', ')}`,
+    );
+    assert.ok(!fs.existsSync(ymlPath), 'orchestration.yml no longer exists on disk');
+  } finally {
+    fs.rmSync = origRmSyncFn;
+  }
+});
+
 test('runUninstall aborts when user declines the modified-file confirmation', async () => {
   const orchRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'uninst-mod-'));
   fixtureInstalled(orchRoot, '1.0.0-alpha.9', { 'agents/coder.md': 'CHANGED' });

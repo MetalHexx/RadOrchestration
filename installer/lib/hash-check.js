@@ -53,15 +53,19 @@ export function detectModifiedFiles(manifest, resolvedOrchRoot) {
  * @param {(opts: { message: string, default: boolean }) => Promise<boolean>} [promptConfirm]
  *   Optional injectable confirm function (defaults to the real @inquirer/prompts confirm).
  *   Callers that need test isolation supply their own stub via this parameter.
+ * @param {{ message?: string }} [options]
+ *   Optional options object. `message` overrides the confirm prompt text so callers
+ *   can provide context-specific guidance (e.g. "overwrite" vs "delete").
  * @returns {Promise<boolean>}
  */
-export async function confirmModifiedFiles(modifiedBundlePaths, resolvedOrchRoot, promptConfirm) {
+export async function confirmModifiedFiles(modifiedBundlePaths, resolvedOrchRoot, promptConfirm, options) {
   const doConfirm = promptConfirm ?? confirm;
+  const message = options?.message ?? 'Continue?';
   console.log('');
   console.log(THEME.warning('⚠ The following files have been locally modified since install:'));
   for (const rel of modifiedBundlePaths) {
     console.log('  ' + path.join(resolvedOrchRoot, rel));
   }
   console.log('');
-  return await doConfirm({ message: 'Continue?', default: false });
+  return await doConfirm({ message, default: false });
 }
