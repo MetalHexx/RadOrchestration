@@ -45,12 +45,13 @@ It is also great for validating your plans.  Much easier than reviewing files.
 For more information: [dashboard.md](dashboard.md)
 
 ### Steer your Orchestrator
-While the project is executing, feel to talk to the Orchestrator.  It won't bite or break your project run. :)  The Orchestrator can be steered and can help you make adjustments to the project run if needed.
+While the project is executing, feel to talk to the Orchestrator.  Doing so will not harm your project run.  In fact, it can be of great utility!  The Orchestrator is happy to be steered and help make adjustments to the project run.  It is also useful for gaining insight about the project execution.
 
 ### Resuming Projects 
 If you need to pause a project run, or your computer crashes.  Do not worry!  Your project is tracked and will easily resume from any point in time.  Type `/rad-execute <PROJECT-NAME>` and your project will reliably resume exactly where it left off.  
 
-
+### Orchestrator Context Window Compacted?  No Problem!
+The orchestration system uses a state machine to keep track of exactly where you are in the project.  So don't worry about compaction.  In fact, a purposeful compaction could actually save you tokens if the context window starts to grow a lot in a long running project.
 
 ## Brainstorming & Project Series
 
