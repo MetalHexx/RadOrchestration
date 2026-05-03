@@ -58,9 +58,6 @@ export const adapter = {
       out.model = MODEL_ALIASES[out.model];
     }
 
-    // Target: mark for CLI environment (research §3.A — `target: github-copilot`).
-    if (out.target === undefined) out.target = 'github-copilot';
-
     return out;
   },
 

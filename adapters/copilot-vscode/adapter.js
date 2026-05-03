@@ -57,9 +57,6 @@ export const adapter = {
       out.model = MODEL_ALIASES[out.model];
     }
 
-    // Target: mark for VS Code (research §2.A — `target: vscode | github-copilot`).
-    if (out.target === undefined) out.target = 'vscode';
-
     return out;
   },
 

@@ -69,9 +69,9 @@ test('agentFrontmatter coerces array model → first element (CLI rejects arrays
   assert.strictEqual(out.model, 'claude-opus-4.7');
 });
 
-test('agentFrontmatter adds target: github-copilot', () => {
+test('agentFrontmatter does not inject target: (not understood by Copilot CLI)', () => {
   const out = adapter.agentFrontmatter({ name: 'a', description: 'd' }, { adapter });
-  assert.strictEqual(out.target, 'github-copilot');
+  assert.ok(!('target' in out));
 });
 
 test('agentFrontmatter drops Claude-only allowedTools duplicate field', () => {

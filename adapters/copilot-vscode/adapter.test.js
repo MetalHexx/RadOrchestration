@@ -68,9 +68,9 @@ test('agentFrontmatter passes through full Claude id model strings unchanged', (
   assert.strictEqual(out.model, 'claude-opus-4-7[1m]');
 });
 
-test('agentFrontmatter adds target: vscode', () => {
+test('agentFrontmatter does not inject target: (not understood by Copilot)', () => {
   const out = adapter.agentFrontmatter({ name: 'a', description: 'd' }, { adapter });
-  assert.strictEqual(out.target, 'vscode');
+  assert.ok(!('target' in out));
 });
 
 test('agentFrontmatter drops Claude-only allowedTools duplicate field', () => {
