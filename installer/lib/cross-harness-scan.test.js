@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { findPriorInstallAtOtherOrchRoot } from './cross-harness-scan.js';
+import { findPriorInstallAtOtherOrchRoot, inferToolFromOrchRoot } from './cross-harness-scan.js';
 
 function seedYml(workspace, orchRootName, packageVersion) {
   const cfg = path.join(workspace, orchRootName, 'skills', 'rad-orchestration', 'config');
@@ -58,4 +58,17 @@ test('does not auto-detect absolute-path orchRoot installs (AD-7)', () => {
   const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 'elsewhere-'));
   seedYml(elsewhere, '.claude', '1.0.0-alpha.9');
   assert.strictEqual(findPriorInstallAtOtherOrchRoot(ws, '.github'), null);
+});
+
+test('inferToolFromOrchRoot maps .claude → claude-code', () => {
+  assert.strictEqual(inferToolFromOrchRoot('.claude'), 'claude-code');
+});
+
+test('inferToolFromOrchRoot maps .github → copilot-vscode', () => {
+  assert.strictEqual(inferToolFromOrchRoot('.github'), 'copilot-vscode');
+});
+
+test('inferToolFromOrchRoot returns null for unknown folder names', () => {
+  assert.strictEqual(inferToolFromOrchRoot('.rad'), null);
+  assert.strictEqual(inferToolFromOrchRoot('custom-folder'), null);
 });

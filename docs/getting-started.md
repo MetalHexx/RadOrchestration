@@ -48,7 +48,7 @@ radorch uninstall
 
 The command reads `package_version` from your `orchestration.yml`, looks up the bundled manifest for that version, and removes only the files it lists. `orchestration.yml` is removed last so future installer runs see a clean slate. Locally-modified files surface in a confirmation prompt before any removal proceeds.
 
-Pass `--workspace <path>` and `--orch-root <folder>` to target a workspace other than the current directory or an `orchRoot` other than the default `.claude`. If you installed using a Copilot harness, pass `--tool copilot-vscode` or `--tool copilot-cli` so the installer loads the correct manifest — without it, the default `claude-code` manifest is used and your `*.agent.md` files will not be removed.
+Pass `--workspace <path>` and `--orch-root <folder>` to target a workspace other than the current directory or an `orchRoot` other than the default `.claude`. The harness is inferred from the `orchRoot` folder name (`.claude` → Claude Code, `.github` → Copilot), so `radorch uninstall --orch-root .github` is enough to clean up a Copilot install. Pass `--tool copilot-cli` explicitly only if you originally installed with the CLI variant — both Copilot variants share `.github/`, so the inferred default is `copilot-vscode`.
 
 ## Upgrading from earlier versions
 

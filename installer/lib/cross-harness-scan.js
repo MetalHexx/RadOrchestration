@@ -19,6 +19,7 @@ const WELL_KNOWN_ORCH_ROOTS = ['.claude', '.github'];
  * Mapping:
  *   .claude  → 'claude-code'
  *   .github  → 'copilot-vscode'
+ *   anything else → null (caller decides default)
  *
  * Limitation: copilot-cli is treated as 'copilot-vscode' here because both
  * variants share the same manifest file-path shape (.agent.md extensions).
@@ -27,11 +28,12 @@ const WELL_KNOWN_ORCH_ROOTS = ['.claude', '.github'];
  * name in orchestration.yml, which is a future enhancement.
  *
  * @param {string} orchRootName - The basename of the orchRoot folder (e.g. '.claude')
- * @returns {string} Harness tool identifier
+ * @returns {string|null} Harness tool identifier, or null if not inferrable
  */
-function inferToolFromOrchRoot(orchRootName) {
+export function inferToolFromOrchRoot(orchRootName) {
   if (orchRootName === '.claude') return 'claude-code';
-  return 'copilot-vscode';
+  if (orchRootName === '.github') return 'copilot-vscode';
+  return null;
 }
 
 /**

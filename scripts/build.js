@@ -51,11 +51,43 @@ function readVersion() {
   }
 }
 
+/**
+ * Returns a list of [targetDir, adapterNames[]] for any targetDir that more
+ * than one adapter writes to. Two Copilot adapters share `.github/` by design
+ * (frontmatter shape is identical at the file path level — the difference is
+ * tool-name dictionary and model alias map), and `runAdapter` wipes
+ * `<targetDir>/agents/` + `<targetDir>/skills/` before each run, so the final
+ * tree only reflects the adapter that ran last.
+ */
+export function findCollidingTargetDirs(adapters) {
+  const groups = new Map();
+  for (const a of adapters) {
+    const list = groups.get(a.targetDir) ?? [];
+    list.push(a.name);
+    groups.set(a.targetDir, list);
+  }
+  return [...groups.entries()].filter(([, names]) => names.length > 1);
+}
+
 async function main() {
   const opts = parseBuildArgs(process.argv.slice(2));
   const adapters = await discoverAdapters(path.join(repoRoot, 'adapters'));
   const selected = selectAdapters(adapters, opts);
   const version = readVersion();
+
+  // When the selection covers more than one adapter writing to the same
+  // targetDir, surface the collision up-front so contributors know the
+  // resulting tree only reflects the last adapter to run. The published
+  // installer bundles are not affected — sync-source.js emits each harness
+  // into its own installer/src/<harness>/ subfolder.
+  const collisions = findCollidingTargetDirs(selected);
+  for (const [targetDir, names] of collisions) {
+    console.warn(
+      `warning: adapters [${names.join(', ')}] all write to ${targetDir}/ — ` +
+      `the final tree will only reflect ${names[names.length - 1]} (the last to run). ` +
+      `Run a single --harness=<name> if you need a specific projection.`,
+    );
+  }
 
   for (const adapter of selected) {
     const { agentCount, skillCount } = await runAdapter(adapter, {

@@ -196,7 +196,14 @@ await mock.module('./lib/remove.js', {
   namedExports: { removeManifestFiles: removeManifestFilesMock },
 });
 await mock.module('./lib/cross-harness-scan.js', {
-  namedExports: { findPriorInstallAtOtherOrchRoot: findPriorInstallMock },
+  namedExports: {
+    findPriorInstallAtOtherOrchRoot: findPriorInstallMock,
+    inferToolFromOrchRoot: (orchRootName) => {
+      if (orchRootName === '.claude') return 'claude-code';
+      if (orchRootName === '.github') return 'copilot-vscode';
+      return null;
+    },
+  },
 });
 // Patch fs methods on the shared default-export object
 mock.method(fs, 'existsSync', existsSyncMock);

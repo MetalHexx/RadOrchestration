@@ -38,7 +38,7 @@ import { readInstalledPackageVersion } from './lib/installed-version.js';
 import { loadBundledManifest } from './lib/catalog.js';
 import { detectModifiedFiles, confirmModifiedFiles } from './lib/hash-check.js';
 import { removeManifestFiles } from './lib/remove.js';
-import { findPriorInstallAtOtherOrchRoot } from './lib/cross-harness-scan.js';
+import { findPriorInstallAtOtherOrchRoot, inferToolFromOrchRoot } from './lib/cross-harness-scan.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -117,11 +117,14 @@ export async function main() {
   }
 
   // uninstall subcommand → resolve orchRoot, delegate to runUninstall.
+  // When --tool is omitted, infer it from the orchRoot folder name so a
+  // bare `radorch uninstall` works correctly for Copilot installs (where
+  // the manifest paths are .agent.md, not .md). Explicit --tool wins.
   if (command === 'uninstall') {
     const { runUninstall } = await import('./lib/uninstall.js');
     const workspaceDir = options.workspaceDir ?? process.cwd();
     const orchRoot = options.orchRoot ?? '.claude';
-    const tool = options.tool ?? 'claude-code';
+    const tool = options.tool ?? inferToolFromOrchRoot(path.basename(orchRoot)) ?? 'claude-code';
     const resolvedOrchRoot = resolveOrchRoot(workspaceDir, orchRoot);
     await runUninstall({ installerRoot: repoRoot, resolvedOrchRoot, tool });
     return;
