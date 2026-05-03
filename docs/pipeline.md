@@ -11,12 +11,18 @@ flowchart TD
 
     subgraph LOOP ["Phase Loop"]
         direction TB
-        PHASE_PLAN(["Plan Phase — Orchestrator"]) --> TASK_PLAN(["Plan Task — Orchestrator"])
-        TASK_PLAN --> EXEC(["Execute Task — Coder"])
-        EXEC --> REVIEW(["Code Review — Reviewer"])
-        REVIEW --> CORRECT(["Corrective Cycle — Orchestrator"])
-        CORRECT --> NEXT(["Next Task or Phase"])
+        subgraph TLOOP ["Task Loop"]
+            direction TB
+            EXEC(["Execute Task — Coder"]) --> COMMIT(["Commit (if enabled) — Source Control"])
+            COMMIT --> REVIEW(["Code Review — Reviewer"])
+            REVIEW --> TGATE{{"Task Gate"}}
+        end
+        TLOOP --> PREVIEW(["Phase Review — Reviewer"])
+        PREVIEW --> PGATE{{"Phase Gate"}}
     end
+
+    REVIEW -. "changes_requested" .-> EXEC
+    PREVIEW -. "changes_requested" .-> EXEC
 
     GATE1 --> LOOP
     LOOP --> FINAL(["Final Review — Reviewer"])

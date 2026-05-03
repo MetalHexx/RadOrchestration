@@ -8,7 +8,7 @@ This page documents the user-invoked slash commands for the orchestration system
 
 **When to use it** — Use it before non-trivial work to decide whether the work warrants a project series and to gather linked PRDs, design docs, or screenshots that the planners will read.
 
-**What it produces** — `BRAINSTORMING.md` at the project root.
+**What it produces** — `{NAME}-BRAINSTORMING.md` at the project root.
 
 ### /rad-plan
 
@@ -16,7 +16,7 @@ This page documents the user-invoked slash commands for the orchestration system
 
 **When to use it** — Use it after `/rad-brainstorm`, or when you already have planning context and want the complete ceremony: per-task code review, per-task gate, phase review, phase gate, audit pass, plan approval gate, final review, and final approval gate.
 
-**What it produces** — `REQUIREMENTS.md`, `MASTER-PLAN.md`, and the per-phase and per-task files under `phases/` and `tasks/`.
+**What it produces** — `{NAME}-REQUIREMENTS.md`, `{NAME}-MASTER-PLAN.md`, and the per-phase and per-task files under `phases/` and `tasks/`.
 
 ### /rad-plan-quick
 

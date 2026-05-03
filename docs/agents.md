@@ -21,7 +21,7 @@ The three Coder tiers exist to route tasks between haiku, sonnet, and opus by co
 
 ### Brainstormer
 
-The Brainstormer works directly with the human in a conversational loop — asking probing questions, surfacing trade-offs, and converging on a well-defined scope before any pipeline work begins. It operates outside the main pipeline and produces `BRAINSTORMING.md` as the formal handoff to planning.
+The Brainstormer works directly with the human in a conversational loop — asking probing questions, surfacing trade-offs, and converging on a well-defined scope before any pipeline work begins. It operates outside the main pipeline and produces `{NAME}-BRAINSTORMING.md` as the formal handoff to planning.
 
 ### Orchestrator
 
@@ -29,7 +29,7 @@ The Orchestrator reads the pipeline state file on every event and dispatches the
 
 ### Planner
 
-The Planner authors `REQUIREMENTS.md` and `MASTER-PLAN.md` from the `BRAINSTORMING.md` and any user-supplied context. When authoring the plan, it pulls in domain skills already present in your repository — anything you have already authored as a skill in your repo is picked up automatically and shapes the resulting plan. This is how the pipeline adapts to your existing work rather than generating a generic plan.
+The Planner authors `{NAME}-REQUIREMENTS.md` and `{NAME}-MASTER-PLAN.md` from the `{NAME}-BRAINSTORMING.md` and any user-supplied context. When authoring the plan, it pulls in domain skills already present in your repository — anything you have already authored as a skill in your repo is picked up automatically and shapes the resulting plan. This is how the pipeline adapts to your existing work rather than generating a generic plan.
 
 ### Coder-Junior
 

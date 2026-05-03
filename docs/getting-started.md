@@ -20,9 +20,9 @@ For per-harness install and launch entry points (Claude Code, Copilot VS Code, C
 
 1. **Brainstorm first.** Run `/rad-brainstorm` to align on goals, decide whether the work warrants a project series, and pull in any extra context — other documents, images, related links — that the planners can use downstream.
 2. **Plan the project.** Once goals are locked, run `/rad-plan <PROJECT-NAME>`. Skills you've already authored in your own repo are picked up by the Planner during this step — no extra configuration.
-3. **Review the planning output before approving.** The planner produces `REQUIREMENTS.md`, the phase plans under `phases/`, and the per-task handoff files under `tasks/`. This is the moment to course-correct. See [project-structure.md](project-structure.md) for what each document is.
+3. **Review the planning output before approving.** The planner produces `{NAME}-REQUIREMENTS.md`, the phase plans under `phases/`, and the per-task handoff files under `tasks/`. This is the moment to course-correct. See [project-structure.md](project-structure.md) for what each document is.
 4. **Execute.** Run `/rad-execute` for in-place execution, or `/rad-execute-parallel` for an isolated worktree + branch (recommended when you want `main` untouched, or when you want multiple projects in flight simultaneously).
-5. **Lean into automation.** Enabling `auto-commit` and `auto-PR` lets the pipeline run hands-off through commits and pull requests; see [configuration.md](configuration.md).
+5. **Lean into automation.** Enabling `auto_commit` and `auto_pr` lets the pipeline run hands-off through commits and pull requests; see [configuration.md](configuration.md).
 
 ## Approve & Execute
 
@@ -36,7 +36,7 @@ To resume an in-flight project, re-invoke `/rad-execute` against the same projec
 
 The brainstormer is optional but recommended. `/rad-plan` will accept planning context directly if you'd rather skip ahead, but a short brainstorming session usually pays for itself in plan quality.
 
-When you do brainstorm, the agent produces a `BRAINSTORMING.md` document in your project folder. `/rad-plan` picks that file up automatically — it's the formal handoff into planning, and whatever you capture there is what the Planner reads when it authors `REQUIREMENTS.md`.
+When you do brainstorm, the agent produces a `{NAME}-BRAINSTORMING.md` document in your project folder. `/rad-plan` picks that file up automatically — it's the formal handoff into planning, and whatever you capture there is what the Planner reads when it authors `{NAME}-REQUIREMENTS.md`.
 
 The brainstormer is also a BYO-context surface. It helps you build a doc that links to existing PRDs, design docs, RFCs, screenshots, or any other artifacts the planner should be aware of — so the planning agents start grounded in your reality, not a blank page.
 
