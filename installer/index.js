@@ -33,6 +33,12 @@ import { resolveOrchRoot } from './lib/path-utils.js';
 // Infrastructure
 import { copyCategory } from './lib/file-copier.js';
 
+// Upgrade composition (manifest-aware)
+import { readInstalledPackageVersion } from './lib/installed-version.js';
+import { loadBundledManifest } from './lib/catalog.js';
+import { detectModifiedFiles, confirmModifiedFiles } from './lib/hash-check.js';
+import { removeManifestFiles } from './lib/remove.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = __dirname;
@@ -121,7 +127,9 @@ export async function main() {
   }
 
   const skipConfirmation = options.skipConfirmation ?? false;
-  const forceOverwrite = options.overwrite ?? false;
+  // Note: `options.overwrite` is still parsed by cli.js for backward-compat
+  // invocation strings, but the upgrade path no longer reads it (NFR-5 — the
+  // modified-file UX is the only confirmation surface and cannot be bypassed).
 
   try {
     renderBanner();
@@ -129,34 +137,44 @@ export async function main() {
     const config = await runWizard({ skipConfirmation, cliOverrides: options });
     config.packageVersion = __installerVersion;
 
-    // Existing-file detection
+    // Existing-install detection — manifest-aware upgrade composition.
+    // Reads the user's package_version, looks up the prior bundled manifest
+    // from the catalog, runs the modified-file check, and removes the prior
+    // install before proceeding. Pre-manifest installs follow the DD-1 path.
     const resolvedRoot = resolveOrchRoot(config.workspaceDir, config.orchRoot);
-    const agentsPath = path.join(resolvedRoot, 'agents');
-    const skillsPath = path.join(resolvedRoot, 'skills');
-
-    if (fs.existsSync(agentsPath) || fs.existsSync(skillsPath)) {
-      if (forceOverwrite) {
-        console.log(
-          THEME.warning(
-            `⚠ Existing orchestration files detected at ${resolvedRoot}. Overwriting (--overwrite).`
-          )
-        );
-      } else {
-        console.log(
-          THEME.warning(
-            `⚠ Existing orchestration files detected at ${resolvedRoot}. Continuing will overwrite them.`
-          )
-        );
-        // Safety gate — NEVER skipped by --yes alone
-        const overwrite = await confirm({
-          message: 'Overwrite existing files?',
-          default: false,
-        });
-        if (!overwrite) {
+    const installed = readInstalledPackageVersion(resolvedRoot);
+    if (installed && installed.packageVersion === null) {
+      // DD-1: pre-manifest install — print guidance, exit without modifying files.
+      console.log('');
+      sectionHeader('::', 'Pre-Manifest Install Detected');
+      console.log('');
+      console.log(THEME.body(
+        `The orchestration.yml at ${resolvedRoot} was installed by a pre-manifest version `
+        + `(v1.0.0-alpha.7 or earlier). Auto-upgrade is not supported for these installs.`,
+      ));
+      console.log(THEME.body(
+        `Back up any local edits, delete ${resolvedRoot}, then re-run \`radorch\` for a clean install. `
+        + `See the MULTI-HARNESS-1 release notes:`,
+      ));
+      console.log('  ' + THEME.command(
+        'https://github.com/MetalHexx/RadOrchestration/blob/main/README.md',
+      ));
+      process.exit(0);
+    }
+    if (installed && installed.packageVersion) {
+      const priorVersion = installed.packageVersion;
+      const priorManifest = loadBundledManifest(repoRoot, config.tool, priorVersion);
+      const modified = detectModifiedFiles(priorManifest, resolvedRoot);
+      if (modified.length > 0) {
+        const proceed = await confirmModifiedFiles(modified, resolvedRoot);
+        if (!proceed) {
           console.log('Installation cancelled.');
           process.exit(0);
         }
       }
+      const spin = ora({ text: `Removing prior install (v${priorVersion})…`, color: THEME.spinner }).start();
+      const result = removeManifestFiles(priorManifest, resolvedRoot);
+      spin.succeed(`Removed ${result.removedCount} files from prior install (v${priorVersion})`);
     }
 
     const manifest = getManifest(config.orchRoot, config.tool);

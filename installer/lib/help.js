@@ -48,7 +48,7 @@ export function renderHelp() {
     `    ${flag('--dashboard-dir')} ${meta('<path>')}       Dashboard directory ${meta('(default: <workspace>/ui)')}`,
     '',
     `  ${THEME.heading('FLAGS')}`,
-    `    ${flag('--overwrite')}, ${flag('--force')}            Overwrite existing orchestration files`,
+    `    ${flag('--overwrite')}, ${flag('--force')}            Overwrite existing orchestration files ${meta('(no longer skips modified-file checks)')}`,
     `    ${flag('--yes')}, ${flag('-y')}                       Accept defaults for unspecified options`,
     `    ${flag('--version')}, ${flag('-v')}                   Show version number`,
     `    ${flag('--help')}, ${flag('-h')}                      Show this help message`,
