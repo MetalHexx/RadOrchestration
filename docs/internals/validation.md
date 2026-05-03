@@ -29,7 +29,7 @@ node .claude/skills/rad-orchestration/validate/validate-orchestration.js --no-co
 | Option | Short | Description |
 |--------|-------|-------------|
 | `--help` | `-h` | Print usage and available categories |
-| `--verbose` | `-v` | Show passing results in addition to failures and warnings |
+| `--verbose` | `-v` | Show detailed context for every check |
 | `--quiet` | `-q` | Suppress all output except the final summary line |
 | `--no-color` | | Disable ANSI colors (auto-enabled when `NO_COLOR` is set or stdout is not a TTY) |
 | `--category <name>` | `-c` | Run and display results for a single category only |
@@ -56,7 +56,6 @@ Validates all `.agent.md` files:
 - Valid YAML frontmatter with required fields (`name`, `description`, `tools`)
 - Tool declarations reference valid tools
 - Only the Orchestrator agent may have a non-empty `agents` array
-- Skills referenced in the agent body exist in the skills directory
 
 ### 3. Skills
 
@@ -98,7 +97,7 @@ Validates `.prompt.md` files:
 Checks referential integrity across components:
 
 - Agents listed in the Orchestrator's `agents` array exist as discovered agents
-- Skills referenced in agent bodies exist as discovered skills
+- Skills referenced in agent bodies exist in the skills directory
 - `projects.base_path` in `orchestration.yml` resolves to an existing directory
 
 ## Output Format
@@ -114,7 +113,7 @@ Default output groups results by category with color-coded status:
 Summary: 42 passed, 1 warning, 1 failed
 ```
 
-Use `--verbose` to see all passing checks. Use `--quiet` for just the summary line.
+Use `--verbose` to expand detail blocks for every check. Use `--quiet` for just the summary line.
 
 ## CI Integration
 
