@@ -1,6 +1,6 @@
 # Validation
 
-The orchestration system includes a zero-dependency Node.js CLI tool that validates the entire ecosystem — agents, skills, instructions, configuration, cross-references, and file structure. Run it any time you add, rename, or change orchestration components to catch misconfigurations before they break the pipeline.
+The orchestration system includes a zero-dependency Node.js CLI that validates agents, skills, instructions, configuration, cross-references, and file structure. Run it any time you add, rename, or change orchestration components to catch misconfigurations before they break the pipeline.
 
 > **Note:** Commands below use `.claude` as the default orchestration root. If you've [configured a custom root](../configuration.md), adjust paths accordingly.
 
@@ -44,65 +44,62 @@ The validator runs seven categories of checks in sequence. Each check produces r
 
 ### 1. Structure
 
-Verifies the required `.claude/` layout _(or your [configured root](../configuration.md))_:
+Verifies the required layout under the orchestration root _(or your [configured root](../configuration.md))_:
 
-- Required directories exist: `agents/`, `skills/`, `instructions/`
-- Required files exist: `orchestration.yml`, `copilot-instructions.md`
-- No unexpected files in controlled directories
+- Required directories exist: `agents/`, `skills/`
+- Required files exist: `skills/rad-orchestration/config/orchestration.yml`, `settings.json`
 
 ### 2. Agents
 
 Validates all `.agent.md` files:
 
-- Valid YAML frontmatter with required fields
+- Valid YAML frontmatter with required fields (`name`, `description`, `tools`)
 - Tool declarations reference valid tools
-- Subagent declarations reference existing agents
-- Description is present and non-empty
+- Only the Orchestrator agent may have a non-empty `agents` array
+- Skills referenced in the agent body exist in the skills directory
 
 ### 3. Skills
 
-Validates all skill directories:
+Validates all skill directories under `skills/`:
 
 - Each skill has a `SKILL.md` file
-- Valid frontmatter with description
-- Referenced scripts and assets exist
-- Skill names follow naming conventions
+- Valid frontmatter with `name` and `description` fields
+- Skill `name` matches its folder name
+- `templates/` subdirectory is present (unless the skill is exempt)
+- Template links in `SKILL.md` resolve to existing files
 
 ### 4. Config
 
 Validates `orchestration.yml`:
 
 - Valid YAML syntax
-- All required keys present with correct types
-- Values within allowed ranges
-- Error severity categories use valid identifiers
-- Human gate settings are valid
+- Required sections present: `version`, `projects`, `limits`, `human_gates`
+- `version` is `1.0`
+- Enum fields (`projects.naming`, `human_gates.execution_mode`) use valid values
+- Limit fields are positive integers
+- Hard gates `after_planning` and `after_final_review` are both `true`
 
 ### 5. Instructions
 
 Validates `.instructions.md` files:
 
-- Valid frontmatter with `applyTo` pattern
-- `applyTo` glob patterns are syntactically valid
-- No duplicate instruction files for the same scope
+- Valid frontmatter with a non-empty `applyTo` field
+- `applyTo` pattern is consistent with the configured `projects.base_path`
 
 ### 6. Prompts
 
 Validates `.prompt.md` files:
 
-- Valid frontmatter
-- Required fields present
-- Referenced agents exist
+- Valid frontmatter with a non-empty `description` field
+- `tools` array, if present, contains only valid tool names
 
 ### 7. Cross-References
 
-Checks referential integrity across all components:
+Checks referential integrity across components:
 
-- Skills referenced by agents actually exist
-- Agents referenced as subagents actually exist
-- No orphaned skills (defined but never referenced)
-- No orphaned agents (defined but never referenced)
-- Instruction `applyTo` patterns match at least one file
+- Agents listed in the Orchestrator's `agents` array exist as discovered agents
+- Skills referenced in agent bodies exist as discovered skills
+- `projects.base_path` in `orchestration.yml` resolves to an existing directory
 
 ## Output Format
 
