@@ -4,7 +4,7 @@ import path from 'node:path';
 
 /**
  * @typedef {Object} ParsedCli
- * @property {'help'|'version'|'run'} command - The resolved command
+ * @property {'help'|'version'|'run'|'uninstall'} command - The resolved command
  * @property {Partial<import('./types.js').CliOptions>} options - Parsed key-value options
  */
 
@@ -53,6 +53,12 @@ export function parseArgs(argv) {
   }
   if (argv.includes('--version') || argv.includes('-v')) {
     return { command: 'version', options: {} };
+  }
+  // Positional subcommand — must be the first non-flag argument.
+  let isUninstall = false;
+  if (argv[0] === 'uninstall') {
+    isUninstall = true;
+    argv = argv.slice(1);
   }
 
   /** @type {Partial<import('./types.js').CliOptions>} */
@@ -117,7 +123,7 @@ export function parseArgs(argv) {
     }
   }
 
-  return { command: 'run', options };
+  return { command: isUninstall ? 'uninstall' : 'run', options };
 }
 
 /**

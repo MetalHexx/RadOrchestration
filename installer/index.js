@@ -109,6 +109,17 @@ export async function main() {
     return;
   }
 
+  // uninstall subcommand → resolve orchRoot, delegate to runUninstall.
+  if (command === 'uninstall') {
+    const { runUninstall } = await import('./lib/uninstall.js');
+    const workspaceDir = options.workspaceDir ?? process.cwd();
+    const orchRoot = options.orchRoot ?? '.claude';
+    const tool = options.tool ?? 'claude-code';
+    const resolvedOrchRoot = resolveOrchRoot(workspaceDir, orchRoot);
+    await runUninstall({ installerRoot: repoRoot, resolvedOrchRoot, tool });
+    return;
+  }
+
   const skipConfirmation = options.skipConfirmation ?? false;
   const forceOverwrite = options.overwrite ?? false;
 

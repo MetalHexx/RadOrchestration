@@ -53,6 +53,9 @@ export function renderHelp() {
     `    ${flag('--version')}, ${flag('-v')}                   Show version number`,
     `    ${flag('--help')}, ${flag('-h')}                      Show this help message`,
     '',
+    `  ${THEME.heading('SUBCOMMANDS')}`,
+    `    ${THEME.command('uninstall')}                       Remove a prior rad-orchestration install`,
+    '',
     `  ${THEME.heading('EXAMPLES')}`,
     `    ${THEME.command('radorch')}`,
     `      Interactive mode — prompts for all configuration`,
@@ -65,6 +68,9 @@ export function renderHelp() {
     '',
     `    ${THEME.command('radorch --yes --overwrite --no-dashboard')}`,
     `      Re-install with defaults, overwrite existing files, skip dashboard`,
+    '',
+    `    ${THEME.command('radorch uninstall')}`,
+    `      Remove every file the prior install's manifest lists, including orchestration.yml.`,
     '',
   ];
 

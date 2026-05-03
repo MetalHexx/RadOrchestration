@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it, test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { parseArgs } from './cli.js';
@@ -184,4 +184,16 @@ describe('parseArgs', () => {
       assert.strictEqual(options.maxPhases, 5);
     });
   });
+});
+
+test('parseArgs returns command="uninstall" when first arg is "uninstall"', () => {
+  const result = parseArgs(['uninstall']);
+  assert.strictEqual(result.command, 'uninstall');
+});
+
+test('parseArgs threads --workspace and --orch-root through the uninstall command', () => {
+  const result = parseArgs(['uninstall', '--workspace', '/tmp/ws', '--orch-root', '.github']);
+  assert.strictEqual(result.command, 'uninstall');
+  assert.strictEqual(result.options.orchRoot, '.github');
+  assert.ok(result.options.workspaceDir.endsWith('ws'));
 });
