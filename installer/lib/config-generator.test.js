@@ -189,3 +189,32 @@ test('generateConfig - normalizes Windows backslash paths to forward slashes in 
   const hasBackslash = lines.some(l => l.includes('\\'));
   assert.ok(!hasBackslash, 'YAML output must not contain raw backslashes in value lines');
 });
+
+test('generateConfig emits package_version between schema version and system block', () => {
+  const cfg = {
+    tool: 'claude-code',
+    workspaceDir: '/ws',
+    orchRoot: '.claude',
+    projectsBasePath: 'orchestration-projects',
+    projectsNaming: 'SCREAMING_CASE',
+    maxPhases: 10,
+    maxTasksPerPhase: 8,
+    maxRetriesPerTask: 5,
+    maxConsecutiveReviewRejections: 3,
+    executionMode: 'ask',
+    autoCommit: 'ask',
+    autoPr: 'ask',
+    provider: 'github',
+    installUi: false,
+    skipConfirmation: false,
+    packageVersion: '1.0.0-alpha.9',
+  };
+  const yaml = generateConfig(cfg);
+  // package_version sits immediately after the schema version line,
+  // before the system block (DD-5).
+  assert.match(
+    yaml,
+    /version:\s*"1\.0"\s*\n\s*\npackage_version:\s*1\.0\.0-alpha\.9\s*\n[\s\S]*\n# ─── System/m,
+    'package_version must be emitted between schema version and system block',
+  );
+});

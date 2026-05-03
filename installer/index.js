@@ -36,6 +36,8 @@ import { copyCategory } from './lib/file-copier.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = __dirname;
+const __require = createRequire(import.meta.url);
+const { version: __installerVersion } = __require('./package.json');
 
 /**
  * Runs `npm install --omit=dev` in the scripts directory with a spinner.
@@ -114,6 +116,7 @@ export async function main() {
     renderBanner();
 
     const config = await runWizard({ skipConfirmation, cliOverrides: options });
+    config.packageVersion = __installerVersion;
 
     // Existing-file detection
     const resolvedRoot = resolveOrchRoot(config.workspaceDir, config.orchRoot);

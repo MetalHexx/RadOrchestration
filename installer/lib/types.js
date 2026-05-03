@@ -35,6 +35,7 @@
  * @property {'always'|'ask'|'never'} autoCommit - Auto-commit behavior for source control
  * @property {'always'|'ask'|'never'} autoPr - Auto-PR behavior for source control
  * @property {'github'} provider - Source control provider (v1: github only)
+ * @property {string} packageVersion - rad-orchestration package version (read from installer/package.json at install time)
  * @property {boolean} installUi - Whether to install the monitoring dashboard
  * @property {string} [uiDir] - Absolute path to UI installation directory (when installUi is true)
  * @property {boolean} skipConfirmation - Whether --yes flag was passed
