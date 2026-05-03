@@ -18,6 +18,11 @@ For per-harness install and launch entry points (Claude Code, Copilot VS Code, C
 
 ## Recommended Workflow
 
+```mermaid
+flowchart LR
+    A[/rad-brainstorm] --> B[/rad-plan] --> C[/rad-execute]
+```
+
 1. **Brainstorm first.** Run `/rad-brainstorm` to align on goals, decide whether the work warrants a project series, and pull in any extra context — other documents, images, related links — that the planners can use downstream.
 2. **Plan the project.** Once goals are locked, run `/rad-plan <PROJECT-NAME>`. Skills you've already authored in your own repo are picked up by the Planner during this step — no extra configuration.
 3. **Review the planning output before approving.** The planner produces `{NAME}-REQUIREMENTS.md`, the phase plans under `phases/`, and the per-task handoff files under `tasks/`. This is the moment to course-correct. See [project-structure.md](project-structure.md) for what each document is.

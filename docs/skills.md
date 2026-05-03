@@ -2,6 +2,8 @@
 
 This page documents the user-invoked slash commands for the orchestration system. Author-time and plumbing skills — the internal skills that pipeline agents load automatically — are intentionally not listed here. Operators interact with the system through these six commands; everything else runs behind the scenes.
 
+The 3 most important commands are: `/rad-brainstorm`,  `/rad-plan` and `/rad-execute`.  The others are for special cases and convenience.
+
 ### /rad-brainstorm
 
 **What it does** — Runs a collaborative ideation session to align goals and capture context before planning begins.
