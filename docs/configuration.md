@@ -1,10 +1,10 @@
 # Configuration
 
-`orchestration.yml` is the single configuration file for the orchestration system. It lives at `.claude/skills/rad-orchestration/config/orchestration.yml` and controls project storage, pipeline limits, human-approval gates, and source-control automation. Sensible defaults ship out of the box — most teams only need to adjust a path or two before running their first project.
+`orchestration.yml` is the single configuration file for the orchestration system. It lives at `.claude/skills/rad-orchestration/config/orchestration.yml` (if you installed Rad Orchestration, your base directory may be .github or whatever you chose during installation.  This configuration houses your project plan storage, pipeline limits, default human-approval gates, and default source-control automation preferences. Sensible defaults ship out of the box — most teams only need to adjust a path or two before running their first project.
 
 ## orchestration.yml Reference
 
-Run `/rad-configure-system` to create or update the file interactively, or edit it directly. The dashboard UI (gear icon) also provides a visual editor.
+Run `/rad-configure-system` to create or update the file interactively, or edit it directly. The dashboard UI (gear icon) also provides a visual editor.  I recommend using the UI for the best configuration experience.  See: [dashboard](dashboard.md) for more info.
 
 ### `system`
 
@@ -24,7 +24,7 @@ Controls where project folders are created and how they are named.
 ```yaml
 projects:
   base_path: C:\dev\orchestration-projects
-  naming: SCREAMING_CASE
+  naming: SCREAMING_CASE  //this is bugged. Everything uses SCREAMING-CASE right now. :)
 ```
 
 `base_path` accepts a relative path (resolved from the workspace root) or an absolute path — absolute paths are useful when multiple git worktrees share a single project folder. Each project lands in `{base_path}/{PROJECT-NAME}/`. `naming` accepts `SCREAMING_CASE`, `lowercase`, or `numbered`.
@@ -41,7 +41,7 @@ Accepts `ask` (prompt the user each time), `default`, or `quick`. See [Process T
 
 ### `limits`
 
-Scope guards that cap how large a project can grow and how many automatic retries fire before a human is notified.
+Scope guards that cap how large a project can grow and how many automatic retries fire before a human is notified.  This is important so your project doesn't end up in a neverending corrective task loop.
 
 ```yaml
 limits:
@@ -64,7 +64,7 @@ human_gates:
   after_final_review: true
 ```
 
-`after_planning` and `after_final_review` are always enforced and cannot be disabled. `execution_mode` governs approval behavior during task execution:
+`after_planning` and `after_final_review` are always enforced and cannot be disabled.  You can ask the orchestrator to skip it though. :) `execution_mode` governs approval behavior during task execution:
 
 | Mode | Behavior |
 |------|----------|
@@ -106,12 +106,8 @@ The process template (`default` vs `quick`) is selected at `/rad-plan` time, not
 
 ## State and Snapshots
 
-`state.json` is the resumable record of a project. It lives in the project folder (`{base_path}/{PROJECT-NAME}/state.json`) and tracks project identity, planning-step completion, phase and task progress, review verdicts, and commit references. You do not edit it directly; the pipeline writes it after every action.
+`state.json` is the resumable record of a project. It lives in the project folder (`{base_path}/{PROJECT-NAME}/state.json`) and tracks project identity, planning-step completion, phase and task progress, review verdicts, and commit references. You do not edit it directly; the pipeline writes it after every action.  If you need to change it for some reason, you can ask an agent to help you.
 
 **Snapshot vs live-read** — when a project is created, the pipeline copies `limits`, `human_gates`, and `source_control` modes out of `orchestration.yml` and locks them into `state.json`. Every subsequent pipeline run reads those settings from the snapshot, not from `orchestration.yml`. This means changing `orchestration.yml` mid-project has no effect on that project — only new projects pick up the new values. Settings that are never snapshotted (`system.orch_root`, `projects.*`, `source_control.provider`) are always read live from `orchestration.yml`.
 
-**`template.yml`** — when a project starts, the selected process template (`default.yml` or `quick.yml`) is copied into the project folder as `template.yml`. All subsequent pipeline reads use the project-local copy. This is the parallel snapshot mechanism for templates: the template in effect when the project was created stays in effect for its entire lifetime, even if the source template changes later.
-
-## Validation
-
-Run the [validation tool](internals/validation.md) to check `orchestration.yml` for missing keys, type errors, and value-range issues.
+**`template.yml`** — when a project starts, the selected process template (`default.yml` or `quick.yml`) is copied into the project folder as `template.yml`. All subsequent pipeline reads use the project-local copy. This is the parallel snapshot mechanism for templates: the template in effect when the project was created stays in effect for its entire lifetime, even if the source template changes later.  In theory, you could ask an agent to change the process template if you need to customize it further to suit your needs, this is not officially supported (yet).

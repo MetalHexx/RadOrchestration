@@ -51,16 +51,17 @@ The same six slash commands work on every supported harness:
 
 Behavior is the same in every harness with one notable per-harness difference in `/rad-execute-parallel`. That command runs the plan in a dedicated worktree and branch. How a new session is opened for the worktree depends on the harness:
 
-- **Claude Code** — launches a fresh `claude` session pointed at the new worktree directory.
+- **Claude Code** — launches a fresh `claude` session pointed at the new worktree directory.  Your project will automatically start executing.
 - **Copilot VS Code** — opens a new VS Code window for the worktree.
-- **Copilot CLI** — opens a new terminal session in the worktree directory.
+  - The project will not automatically execute in vscode.  You can start the project by typing `/rad-execute <PROJECT-NAME>`
+- **Copilot CLI** — opens a new terminal session in the worktree directory.  Your project will automatically start executing.
 
 ## Per-Harness Gotchas
 
-- **`/rad-execute-parallel` session launch differs per harness.** See the Slash-Command Surface section above for the exact behavior. If the new window or session does not open automatically, navigate to the worktree directory manually and launch the harness there.
+- **`/rad-execute-parallel <PROJECT-NAME>` session launch differs per harness.** See the Slash-Command Surface section above for the exact behavior. If the new window or session does not open automatically, navigate to the worktree directory manually and launch the harness there.
 - **Copilot VS Code requires agent mode.** Standard Copilot Chat mode does not expose slash-command routing; agent mode is required. If a slash command appears unrecognized, confirm agent mode is enabled.
 - **Copilot CLI path setup.** The CLI binary must be on your `PATH`. If commands are not found after installation, restart your terminal or add the install location to `PATH` manually.
-- **Claude Code session persistence.** Claude Code sessions are single-window. If you close the window mid-execution, re-run `/rad-execute` from a new session; the pipeline resumes from where it left off.
+- **Claude Code session persistence.** Claude Code sessions are single-window. If you close the window mid-execution, re-run `/rad-execute <PROJECT-NAME>` from a new session; the pipeline resumes from where it left off.
 
 ## Launch from the Dashboard
 
