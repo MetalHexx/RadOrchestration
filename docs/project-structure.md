@@ -34,8 +34,8 @@ Each project lives in its own folder under the configured `base_path`. This page
 | `{NAME}-REQUIREMENTS.md` | `MYAPP-REQUIREMENTS.md` | Requirements ledger |
 | `{NAME}-MASTER-PLAN.md` | `MYAPP-MASTER-PLAN.md` | Phase-level plan |
 | `phases/{NAME}-PHASE-{NN}-{TITLE}.md` | `MYAPP-PHASE-01-CLEANUP.md` | Phase plan file |
-| `tasks/{NAME}-TASK-P{NN}-T{MM}-{TITLE}.md` | `MYAPP-TASK-P01-T01-DELETE-RETIRED-PAGES.md` | Task handoff file |
-| `reports/{NAME}-CODE-REVIEW-P{NN}-T{MM}-{TITLE}.md` | `MYAPP-CODE-REVIEW-P01-T01-DELETE-RETIRED-PAGES.md` | Code review report |
+| `tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-TASK-P01-T01-DELETE-RETIRED-PAGES.md` | Task handoff file |
+| `reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-CODE-REVIEW-P01-T01-DELETE-RETIRED-PAGES.md` | Code review report |
 | `reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REVIEW-P01-CLEANUP.md` | Phase review report |
 | `reports/{NAME}-FINAL-REVIEW.md` | `MYAPP-FINAL-REVIEW.md` | Final comprehensive review |
 | `{NAME}-ERROR-LOG.md` | `MYAPP-ERROR-LOG.md` | Append-only error log |

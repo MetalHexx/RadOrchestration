@@ -17,12 +17,16 @@ flowchart TD
     REQ --> PLAN(["Master Plan"])
     PLAN --> GATE1{{"Human Gate"}}
 
-    subgraph LOOP ["Phase / Task Execution Loop"]
+    subgraph LOOP ["Phase Loop"]
         direction TB
-        PHASE(["Plan Phase"]) --> TASK(["Plan Task"])
-        TASK --> EXEC(["Execute Task"])
-        EXEC --> REVIEW(["Review"])
-        REVIEW --> NEXT(["Next Task or Phase"])
+        subgraph TLOOP ["Task Loop"]
+            direction TB
+            EXEC(["Execute Task"]) --> COMMIT(["Commit (if enabled)"])
+            COMMIT --> REVIEW(["Code Review"])
+            REVIEW --> TGATE{{"Task Gate"}}
+        end
+        TLOOP --> PREVIEW(["Phase Review"])
+        PREVIEW --> PGATE{{"Phase Gate"}}
     end
 
     GATE1 --> LOOP
@@ -45,9 +49,7 @@ More coming soon — see [harnesses.md](docs/harnesses.md) for per-harness detai
 
 A real-time Next.js dashboard visualizes project state, pipeline progress, documents, and configuration by reading the `state.json` in each project — no service to run, no database to wire up.
 
-<div style="width: 1000px; height: 800px; margin: 0 auto; overflow: hidden;">
-    <img src="assets/dashboard-screenshot.png" object-fit: cover;">
-</div>
+![Dashboard screenshot](assets/dashboard-screenshot.png)
 
 [Learn more about the dashboard →](docs/dashboard.md)
 

@@ -79,7 +79,7 @@ Task size is also picked at planning time. `/rad-plan` prompts the operator with
 
 Source control behavior is controlled by two configuration keys: `auto_commit` and `auto_pr`. Each accepts `always`, `ask`, or `never`. `always` runs the operation without prompting, `ask` pauses for explicit operator approval, and `never` skips the operation entirely.
 
-Commits fire after each approved task.
+Commits fire after each task implementation completes — before code review and the task gate. Each implementation pass commits its own changes, including corrective re-runs.
 
 The auto-PR fires after the final review and before the final-approval gate.
 
