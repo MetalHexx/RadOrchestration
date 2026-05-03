@@ -95,7 +95,7 @@ The tables below are sourced from `.claude/skills/rad-orchestration/scripts/lib/
 | in_progress | code_review | code_review_completed (verdict=approved) | completed | code_review |
 | in_progress | code_review | code_review_completed (verdict=changes_requested, budget remaining) | completed | code_review (+ corrective task appended; new task_executor begins at not_started) |
 | in_progress | code_review | code_review_completed (verdict=changes_requested, budget exhausted) | completed | code_review (+ task_iteration → halted, graph → halted) |
-| in_progress | code_review | code_review_completed (verdict=rejected) | completed | code_review (+ task_iteration → halted, graph → halted) |
+| in_progress | code_review | code_review_completed (verdict=rejected) | completed | code_review (+ hosting iteration via ancestor derivation → halted, graph → halted) |
 | not_started | task_gate | task_gate_approved | completed | task_gate |
 | not_started | commit | commit_started | in_progress | commit |
 | in_progress | commit | commit_completed | completed | commit |
@@ -129,8 +129,8 @@ Task corrective entries append to `taskIter.corrective_tasks`. Phase corrective 
 | in_progress | master_plan | master_plan_completed | completed | master_plan |
 | not_started | explode_master_plan | explosion_started | in_progress | explode_master_plan |
 | in_progress | explode_master_plan | explosion_completed | completed | explode_master_plan |
-| in_progress | explode_master_plan | explosion_failed (parse retry < 3) | not_started | explode_master_plan (master_plan re-enters in_progress) |
-| in_progress | explode_master_plan | explosion_failed (parse retry ≥ 3) | failed | explode_master_plan (graph → halted) |
+| in_progress | explode_master_plan | explosion_failed (parse retry count ≤ 3) | not_started | explode_master_plan (master_plan re-enters in_progress) |
+| in_progress | explode_master_plan | explosion_failed (parse retry count > 3) | failed | explode_master_plan (graph → halted) |
 | not_started | plan_approval_gate | plan_approved | completed | plan_approval_gate (current_tier → execution) |
 | not_started | final_review | final_review_started | in_progress | final_review |
 | in_progress | final_review | final_review_completed | completed | final_review |
