@@ -1,234 +1,56 @@
 # Agents
 
-The orchestration system uses 13 specialized agents, each with a defined role, scoped tool access, and strict write permissions. Agents communicate through structured markdown documents — never through shared memory or message passing.
+The orchestration system ships eight agents, each with a defined role, scoped tool access, and a narrow write surface. Except for the Brainstormer, agents are not directly invoked by users — operators interact via slash commands and the pipeline routes work to the right agent. The Brainstormer is user-invocable via `/rad-brainstorm`.
 
-## Agent Overview
+## Model Routing
 
-| Agent | Role | Writes |
-|-------|------|--------|
-| `@brainstormer` | Collaborative ideation with the human | `BRAINSTORMING.md` |
-| `@orchestrator` | Thin coordinator — loads orchestration skill, routes pipeline events to the appropriate agent | `ERROR-LOG.md` (via log-error skill) |
-| `@research` | Codebase and context exploration | `RESEARCH-FINDINGS.md` |
-| `@product-manager` | Requirements definition | `PRD.md` |
-| `@ux-designer` | Interface and interaction design | `DESIGN.md` |
-| `@architect` | System architecture and master planning | `ARCHITECTURE.md`, `MASTER-PLAN.md` |
-| `@tactical-planner` | Task breakdown and phase reporting | `PHASE-PLAN.md`, `TASK-HANDOFF.md`, `PHASE-REPORT.md` |
-| `@planner` | Lean requirements ledger + inlined execution plan (authoring skill only — not yet wired into the pipeline) | `REQUIREMENTS.md`, `EXECUTION-PLAN.md` |
-| `@coder` | Code implementation | Code, tests |
-| `@coder-junior` | Straightforward, lower-complexity coding tasks from task handoffs | Code, tests |
-| `@coder-senior` | Complex or high-stakes coding tasks from task handoffs | Code, tests |
-| `@reviewer` | Code and phase review | `CODE-REVIEW.md`, `PHASE-REVIEW.md`, `FINAL-REVIEW.md` |
-| `@source-control` | Thin-router for git operations — commit, push, and PR creation | Code (via `git-commit.js` and `gh-pr.js` scripts) |
+| Agent | Model |
+|-------|-------|
+| Brainstormer | sonnet |
+| Orchestrator | opus |
+| Planner | opus |
+| Coder-Junior | haiku |
+| Coder | sonnet |
+| Coder-Senior | opus |
+| Reviewer | sonnet |
+| Source Control | haiku |
 
-
-
----
+The three Coder tiers exist to route tasks between haiku, sonnet, and opus by complexity — junior for straightforward changes, default for typical work, senior for complex or high-stakes work.
 
 ## Agent Details
 
-### @brainstormer
+### Brainstormer
 
-**Purpose:** Collaboratively explore and refine project ideas before entering the pipeline.
+The Brainstormer works directly with the human in a conversational loop — asking probing questions, surfacing trade-offs, and converging on a well-defined scope before any pipeline work begins. It operates outside the main pipeline and produces `{NAME}-BRAINSTORMING.md` as the formal handoff to planning.  Any documents, images, or links captured in the brainstorming doc are pulled into the Planner's context window to written to the brainstorming document.
 
-The Brainstormer works directly with the human in a conversational loop — asking probing questions, exploring trade-offs, identifying scope boundaries, and converging on a well-defined goals. It operates outside the main pipeline and is entirely optional.
+### Orchestrator
 
-**Input:** Human prompts and whatever you want.
+The Orchestrator reads the pipeline state file on every event and dispatches the right agent at the right time. When a review comes back with changes requested, it reads the review document, judges the findings, and authors corrective task handoffs that send the Coder back to fix only what matters. Its write surface is intentionally narrow — it never writes project source code or tests.
 
-**Output:** `BRAINSTORMING.md` — validated ideas, scope boundaries, target users, and problem statements.
+### Planner
 
-**Skills:** `rad-orchestration`, `rad-brainstorm`
+The Planner authors `{NAME}-REQUIREMENTS.md` and `{NAME}-MASTER-PLAN.md` from the `{NAME}-BRAINSTORMING.md` and any user-supplied context. When authoring the plan, it pulls in domain skills already present in your repository — anything you have already authored as a skill in your repo is picked up automatically and shapes the resulting plan. This is how the pipeline adapts to your existing work rather than generating a generic plan.
 
----
+### Coder-Junior
 
-### @orchestrator
+Coder-Junior executes one task end-to-end from a self-contained task handoff. For code tasks, it follows a mechanical RED-GREEN cycle: write a failing test first, implement until the test passes, then run the full suite to confirm no regressions. Assigned to straightforward tasks where the implementation steps are explicit and the scope is narrow.
 
-**Purpose:** Read project state and coordinate the pipeline by spawning the right agent at the right time.
+### Coder
 
-The Orchestrator is the entry point for all project interactions. It signals events to `pipeline.js`, parses the JSON result, and routes to the appropriate agent, presents human gates, or displays terminal messages. When the pipeline returns a failure result, the Orchestrator invokes the log-error skill to append a structured entry to the project's ERROR-LOG.md.
+Coder executes one task end-to-end from a self-contained task handoff. For code tasks, it follows the same RED-GREEN cycle as the other Coder tiers: failing test first, implement until green, full suite last. Assigned to typical work that fits a mid-tier model.
 
-**Input:** Human prompts, `state.json`, pipeline script results
-**Output:** None — strictly read-only, prompts agents to do work.
+### Coder-Senior
 
-**Skills:** `rad-orchestration`, `rad-log-error`
+Coder-Senior executes one task end-to-end from a self-contained task handoff, following the same RED-GREEN cycle. Assigned to complex or architecturally significant tasks where deeper reasoning is warranted.
 
----
+### Reviewer
 
-### @research
+The Reviewer reads the task output against the requirement audit and produces a structured review document. Its quality pass may flag speculative additions and pattern duplication when they appear; it does not prescribe implementation style beyond what the requirements specify. Review findings drive corrective task handoffs when changes are needed.
 
-**Purpose:** Explore the codebase, documentation, and external sources to gather technical context.
+### Source Control
 
-The Research agent analyzes the existing project structure, technology stack, patterns, and constraints. If a `BRAINSTORMING.md` exists, it uses that as input context.
-
-**Input:** Codebase, documentation, `BRAINSTORMING.md` (if exists)
-
-**Output:** `RESEARCH-FINDINGS.md` — codebase analysis, technology inventory, patterns discovered, constraints, and recommendations.
-
-**Skills:** `rad-orchestration`, `rad-create-plans`
-
----
-
-### @product-manager
-
-**Purpose:** Create a Product Requirements Document from research findings to keep plans grounded in reality.
-
-Translates technical research and brainstorming output into structured requirements with numbered items (FR-1, NFR-1) for cross-referencing throughout the pipeline.
-
-**Input:** `BRAINSTORMING.md` (if exists)
-
-**Output:** `PRD.md` — functional requirements, non-functional requirements, user stories, etc.
-
-**Skills:** `rad-orchestration`, `rad-create-plans`
-
----
-
-### @ux-designer
-
-**Purpose:** Create a UX Design document from the PRD and Research Findings.
-
-Defines user flows, component layouts, interaction states, and accessibility requirements. Defines the experience, not the implementation — component props stay conceptual.
-
-**Input:** `PRD.md`, `RESEARCH-FINDINGS.md` (if exists)
-
-**Output:** `DESIGN.md` — per-component layouts, interaction states, user flows with unique signal (error recovery, branching, state transitions).
-
-**Skills:** `rad-orchestration`, `rad-create-plans`
-
----
-
-### @architect
-
-**Purpose:** Define system architecture and synthesize all planning documents into a Master Plan.
-
-The Architect reads Research, PRD, and Design to produce the technical architecture — system layers, module map, API contracts, database schemas, interfaces, and dependency graphs. It then synthesizes all planning documents into a Master Plan with high level a phased execution plan.
-
-**Input:** `RESEARCH-FINDINGS.md`, `PRD.md`, `DESIGN.md`
-
-**Output:** `ARCHITECTURE.md`, `MASTER-PLAN.md`
-
-**Skills:** `rad-orchestration`, `create-architecture`, `create-master-plan`
-
----
-
-### @tactical-planner
-
-**Purpose:** Builds individual phase plans, breaks phases into tasks, creates self-contained task handoffs, and generates phase reports.  All plans and tasks created reference the planning documents to keep the work grounded in the original plans.  
-
-The tactical planner also reviews the Coder / Reviewer agents reports and reviews to keep the plans grounded in the current reality of the code.  For example, ff a code review fails, the task planner will issue corrective tasks.
-
-The Tactical Planner is a pure planning agent that operates in 3 modes:
-
-1. **Phase planning** — break a phase into tasks with dependencies and execution order
-2. **Task handoffs** — create self-contained coding instructions for the Coder
-3. **Phase reports** — aggregate task results and assess exit criteria
-
-**Input:** `ARCHITECTURE.md`, `PRD.md`, `MASTER-PLAN.md`, `DESIGN.md`, `CODE-REVIEW.md`, `state.json`
-
-**Output:**`PHASE-PLAN.md`, `PHASE-REPORT.md`, `TASK-HANDOFF.md`
-
-**Skills:** `rad-orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report`
-
----
-
-### @planner
-
-**Purpose:** Author the two lean planning documents for a project: a chunkable project-level Requirements ledger and an inlined, mechanical Execution Plan.
-
-The Planner is a single agent with two internal modes, routed by orchestrator action: `create_requirements` writes the Requirements doc, `create_execution_plan` writes the Execution Plan. The Requirements doc carries four separate ID sequences (FR-N, NFR-N, AD-N, DD-N), each block ≤ 500 estimated tokens. The Execution Plan inlines exact code, commands, and file paths per task, tags every step with the requirement IDs it satisfies, and uses a 4-step RED-GREEN TDD shape for code tasks. Both workflows are deliberately self-contained — they do not inherit the "context / rationale / constraints" prose mandate from `rad-create-plans/references/shared/`.
-
-**Status:** Authoring skill and agent only. The two new docs are not yet wired into the pipeline templates — Iteration 2 will add the explosion script and state seeding; Iteration 3 will wire a `cheaper.yml` process template.
-
-**Input:** Orchestrator prompt, `BRAINSTORMING.md` (optional), codebase (via Grep/Glob/Read), and (for Execution Plan mode) the project's `REQUIREMENTS.md`
-
-**Output:** `REQUIREMENTS.md` (project-level FR/NFR/AD/DD ledger) and `EXECUTION-PLAN.md` (phase + task inlined plan)
-
-**Skills:** `rad-orchestration`, `rad-create-plans`, `rad-log-error`
-
----
-
-### @coder
-
-**Purpose:** Execute coding tasks from self-contained Task Handoff documents.
-
-Reads a single Task Handoff, implements the code changes, writes tests, and runs the build.
-
-**Input:** `TASK-HANDOFF.md`
-
-**Output:** Source code, tests
-
-**Skills:** `rad-orchestration`, `rad-execute-coding-task`, `rad-run-tests`
-
----
-
-### @coder-junior
-
-**Purpose:** Execute straightforward, lower-complexity coding tasks from self-contained Task Handoff documents.
-
-The Junior Coder reads a single Task Handoff, implements well-defined code changes, writes tests, and runs the build. Assigned to tasks where the implementation steps are explicit and the scope is narrow.
-
-**Input:** `TASK-HANDOFF.md`
-
-**Output:** Source code, tests
-
-**Skills:** `rad-orchestration`, `rad-execute-coding-task`, `rad-run-tests`
-
----
-
-### @coder-senior
-
-**Purpose:** Execute complex or high-stakes coding tasks from self-contained Task Handoff documents.
-
-The Senior Coder handles architecturally significant, nuanced, or cross-cutting changes. Same input/output contract as `@coder` and `@coder-junior`; assigned when task complexity warrants deeper reasoning.
-
-**Input:** `TASK-HANDOFF.md`
-
-**Output:** Source code, tests
-
-**Skills:** `rad-orchestration`, `rad-execute-coding-task`, `rad-run-tests`
-
----
-
-### @reviewer
-
-**Purpose:** Review code changes and entire phases checking for code quality, bugs, etc.  It also checks the code against all the planning documents to ensure the code is meeting all expected requirements.
-
-Issues found by the reviewer will signal for corrective tasks.  The Tactical Planner uses this to course correct the execution leading to code that works right the first time.
-
-The Reviewer operates at three levels:
-- **Code review** — evaluates individual task output against PRD, architecture, and design
-- **Phase review** — assesses cross-task integration, module consistency, and exit criteria
-- **Final review** — comprehensive project-level review before completion
-
-**Input:** Code changes, `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `PHASE-PLAN.md`
-
-**Output:** `CODE-REVIEW.md`, `PHASE-REVIEW.md`, `FINAL-REVIEW.md`
-
-**Skills:** `rad-orchestration`, `rad-code-review`
-
----
-
-### @source-control
-
-**Purpose:** Execute git commit and push operations after approved tasks, delegating all logic to the `rad-source-control` skill.
-
-The Source Control Agent is a thin router — it loads the `rad-source-control` skill and delegates entirely to the skill's routing table. In commit mode, it reads `pipeline.source_control` from state, constructs a conventional commit message, and runs `git-commit.js` to stage, commit, and push. In PR mode, it reads `pr-guide.md` and runs `gh-pr.js` to detect or create a pull request on GitHub.
-
-**Modes:**
-
-| Mode | Trigger Action | Skill Reference | Script |
-|------|---------------|-----------------|--------|
-| commit | `invoke_source_control_commit` | `references/operations-guide.md` | `scripts/git-commit.js` |
-| PR | `invoke_source_control_pr` | `references/pr-guide.md` | `scripts/gh-pr.js` |
-
-**Tool restrictions:** `read`, `execute`, `todo` only — no `edit` tool. Source files are the Coder's domain.
-
-**Input:** `state.json` (`pipeline.source_control` sub-object), task handoff title (for commit message prefix)
-
-**Output:** Structured commit result (commit hash, push status, errors) signaled back via `commit_completed` event.
-
-**Skills:** `rad-orchestration`, `rad-source-control`
+Source Control is a thin wrapper for git commit, push, and pull-request creation. Commit messages are built from task metadata. Failures are logged and never block the pipeline from continuing.
 
 ## Next Steps
 
-- [Skills](skills.md) — Explore the 18 skills agents use
-- [Templates](templates.md) — See the 16 output templates skills produce
-
+- [Skills](skills.md) — Explore the skills agents use
