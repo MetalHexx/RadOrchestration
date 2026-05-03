@@ -1,13 +1,55 @@
-// installer/scripts/sync-source.test.js — Tests for sync-source.js
-
+// installer/scripts/sync-source.test.js — Per-harness bundle emission.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import path from 'node:path';
 import os from 'node:os';
-import { syncSource } from './sync-source.js';
+import path from 'node:path';
+import { emitBundles, syncSource } from './sync-source.js';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+function makeRepo() {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'repo-'));
+  // Minimal canonical source.
+  fs.mkdirSync(path.join(repo, 'agents'), { recursive: true });
+  fs.mkdirSync(path.join(repo, 'skills', 'rad-x'), { recursive: true });
+  fs.writeFileSync(
+    path.join(repo, 'agents', 'a.md'),
+    '---\nname: a\ndescription: d\nmodel: opus\n---\nbody\n',
+    'utf8',
+  );
+  fs.writeFileSync(
+    path.join(repo, 'skills', 'rad-x', 'SKILL.md'),
+    '---\nname: rad-x\ndescription: d\n---\nbody\n',
+    'utf8',
+  );
+  // Copy the live adapters folder into the temp repo.
+  // (Junction symlinks resolve relative to CWD at test time; fs.cpSync is
+  // more portable on Windows and avoids path-resolution surprises.)
+  const liveAdapters = path.resolve(import.meta.dirname, '../../adapters');
+  fs.cpSync(liveAdapters, path.join(repo, 'adapters'), { recursive: true });
+  fs.mkdirSync(path.join(repo, 'installer', 'src'), { recursive: true });
+  return repo;
+}
+
+test('emitBundles writes installer/src/<harness>/ for every adapter', async () => {
+  const repo = makeRepo();
+  await emitBundles({ repoRoot: repo, version: '0.0.0-test' });
+  assert.ok(fs.existsSync(path.join(repo, 'installer', 'src', 'claude', 'agents', 'a.md')));
+  assert.ok(fs.existsSync(path.join(repo, 'installer', 'src', 'copilot-vscode', 'agents', 'a.agent.md')));
+  assert.ok(fs.existsSync(path.join(repo, 'installer', 'src', 'copilot-cli', 'agents', 'a.agent.md')));
+});
+
+test('every emitted bundle carries a manifest.json', async () => {
+  const repo = makeRepo();
+  await emitBundles({ repoRoot: repo, version: '0.0.0-test' });
+  for (const harness of ['claude', 'copilot-vscode', 'copilot-cli']) {
+    const m = JSON.parse(fs.readFileSync(path.join(repo, 'installer', 'src', harness, 'manifest.json'), 'utf8'));
+    assert.strictEqual(m.harness, harness);
+    assert.strictEqual(m.version, '0.0.0-test');
+    assert.ok(m.files.length > 0);
+  }
+});
+
+// ── Helpers for syncSource tests ──────────────────────────────────────────────
 
 function makeSandbox() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sync-source-'));
