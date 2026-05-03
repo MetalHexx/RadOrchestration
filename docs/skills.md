@@ -8,11 +8,11 @@ This page documents the user-invoked slash commands for the orchestration system
 
 **When to use it** — Use it before non-trivial work to decide whether the work warrants a project series and to gather linked PRDs, design docs, or screenshots that the planners will read.
 
-**What it produces** — `{NAME}-BRAINSTORMING.md` at the project root.
+**What it produces** — `{NAME}-BRAINSTORMING.md` at the project root.  This will be linnked to a project series (should you choose to create one).  Relevant docs and additional context will be linked to the brainstorming document and read by the Planner when it authors `{NAME}-REQUIREMENTS.md`.
 
 ### /rad-plan
 
-**What it does** — Starts the full planning pipeline using the `default` template — suited for mission-critical or large projects.
+**What it does** — Starts the full planning pipeline using whichever process template you choose (`default` or `quick`).  The `default` template includes the full ceremony: per-task code review, per-task gate, phase review, phase gate, final review, and final approval gate. The `quick` template preserves the phase/task looping execution with a final code review.  In this template, itskips the per-task and per-phase gates and reviews — use it when you want a faster execution process for smaller work and lower token usage.
 
 **When to use it** — Use it after `/rad-brainstorm`, or when you already have planning context and want the complete ceremony: per-task code review, per-task gate, phase review, phase gate, audit pass, plan approval gate, final review, and final approval gate.
 

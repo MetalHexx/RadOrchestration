@@ -1,6 +1,6 @@
 # Dashboard
 
-The dashboard is a Next.js web app that reads each project's `state.json` and renders current pipeline state in a browser. It is aimed at developers who want a live view of what agents are doing across every project in the workspace without having to parse JSON by hand.
+The dashboard is a Next.js web app that reads each project's `state.json` and renders current pipeline state in a browser. It is aimed at developers who want a live view of what agents are doing across every project in the workspace.  It's a good way to get a good pulse on what is going on without digging through chat logs or project docs.
 
 ![Dashboard Screenshot](../assets/dashboard-screenshot.png)
 
@@ -11,10 +11,10 @@ The dashboard lives under `ui/` as a standalone Next.js app. From that directory
 ```bash
 cd ui
 npm install   # first run only
-npm run dev   # development mode on http://localhost:3000
+npm run start # Runs at: http://localhost:3000
 ```
 
-For a production-style run, use `npm run build-and-start` instead. The app reads `.env.local` (created by the `radorch` installer) for `WORKSPACE_ROOT` and `ORCH_ROOT`, which point it at your projects and orchestration root.
+If you need to rebuild first for whatever reason, use `npm run build-and-start` instead. The app reads `.env.local` (created by the `radorch` installer) for `WORKSPACE_ROOT` and `ORCH_ROOT`, which point it at your projects and orchestration root.
 
 ## Features
 

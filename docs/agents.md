@@ -21,7 +21,7 @@ The three Coder tiers exist to route tasks between haiku, sonnet, and opus by co
 
 ### Brainstormer
 
-The Brainstormer works directly with the human in a conversational loop — asking probing questions, surfacing trade-offs, and converging on a well-defined scope before any pipeline work begins. It operates outside the main pipeline and produces `{NAME}-BRAINSTORMING.md` as the formal handoff to planning.
+The Brainstormer works directly with the human in a conversational loop — asking probing questions, surfacing trade-offs, and converging on a well-defined scope before any pipeline work begins. It operates outside the main pipeline and produces `{NAME}-BRAINSTORMING.md` as the formal handoff to planning.  Any documents, images, or links captured in the brainstorming doc are pulled into the Planner's context window to written to the brainstorming document.
 
 ### Orchestrator
 
