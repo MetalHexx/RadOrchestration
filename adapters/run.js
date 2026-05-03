@@ -18,8 +18,14 @@ import path from 'node:path';
 export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }) {
   const verbose = process.env.BUILD_VERBOSE === '1';
   const targetRoot = path.join(outputRoot, adapter.targetDir);
-  fs.rmSync(targetRoot, { recursive: true, force: true });
+  // Structural scoped wipe — only the two subpaths runAdapter emits into are
+  // ever removed. Sibling content under targetRoot (workflows/, instructions
+  // files, settings) is structurally untouchable. Hard-coded by design — no
+  // configuration knob can widen the wipe surface.
   fs.mkdirSync(targetRoot, { recursive: true });
+  for (const sub of ['agents', 'skills']) {
+    fs.rmSync(path.join(targetRoot, sub), { recursive: true, force: true });
+  }
 
   /** @type {MetadataStreamEntry[]} */
   const files = [];

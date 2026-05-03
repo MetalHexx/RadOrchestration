@@ -118,6 +118,29 @@ test('runAdapter applies frontmatter projection to skills with CRLF line endings
   assert.match(written, /name: rad-demo/, 'skill frontmatter must be present in output');
 });
 
+test('runAdapter scopes its wipe to agents/ and skills/ — sibling content under targetRoot survives', async () => {
+  const canonical = fixtureCanonical();
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-scoped-'));
+  // Pre-seed sibling content the build must NEVER touch.
+  const targetRoot = path.join(out, '.fake');
+  fs.mkdirSync(path.join(targetRoot, 'workflows'), { recursive: true });
+  fs.writeFileSync(path.join(targetRoot, 'workflows', 'ci.yml'), 'jobs: {}\n', 'utf8');
+  fs.writeFileSync(path.join(targetRoot, 'AGENTS.md'), '# user-owned\n', 'utf8');
+  // Pre-seed a stale agents/ file that MUST be wiped.
+  fs.mkdirSync(path.join(targetRoot, 'agents'), { recursive: true });
+  fs.writeFileSync(path.join(targetRoot, 'agents', 'stale.md'), 'stale\n', 'utf8');
+
+  await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.2.3' });
+
+  // Sibling content survived.
+  assert.ok(fs.existsSync(path.join(targetRoot, 'workflows', 'ci.yml')), 'sibling workflow file must survive scoped wipe');
+  assert.ok(fs.existsSync(path.join(targetRoot, 'AGENTS.md')), 'sibling AGENTS.md must survive scoped wipe');
+  // Stale agents/ file was wiped before re-emit.
+  assert.ok(!fs.existsSync(path.join(targetRoot, 'agents', 'stale.md')), 'stale agents/ content must be wiped');
+  // Fresh agents/ was emitted.
+  assert.ok(fs.existsSync(path.join(targetRoot, 'agents', 'sample.agent.md')), 'fresh agents/ must be emitted');
+});
+
 test('runAdapter writes manifest as a sibling of the bundle dir, keyed on adapter.name', async () => {
   const canonical = fixtureCanonical();
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
