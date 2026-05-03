@@ -2,6 +2,8 @@
 
 Quick-lookup tables for the Orchestrator. See [pipeline-guide.md](pipeline-guide.md) for the full event loop, CLI usage, error handling, and operational context.
 
+> **ALWAYS FOLLOW THE GATE PROTOCOL in state.json** When `ask` or `never` is  selected for any gate listed in the projects state.json.  No exceptions, even in Copilots "autopilot", Claude Codes "Auto Mode" or any other similar YOLO mode.  The human must be the one to approve or reject at every gate when `ask` or `never` is selected.  This is non-negotiable and critical to the proper operation of this system.  Do not attempt to bypass or automate human approval at gates under any circumstances.
+
 ## Action Routing Table
 
 Every `result.action` value maps to exactly one Orchestrator operation. All branching derives from this table.
