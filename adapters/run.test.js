@@ -59,7 +59,9 @@ test('runAdapter emits manifest.json with one entry per emitted file', async () 
   assert.strictEqual(result.agentCount, 1, 'returns agent count');
   assert.strictEqual(result.skillCount, 2, 'returns skill count (SKILL.md + 1 reference file)');
   assert.strictEqual(result.fileCount, 3, 'returns total file count');
-  const manifest = JSON.parse(fs.readFileSync(path.join(out, 'fake', 'manifest.json'), 'utf8'));
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(out, 'fake', 'manifests', 'v1.2.3.json'), 'utf8'),
+  );
   const paths = manifest.files.map((f) => f.bundlePath).sort();
   assert.deepStrictEqual(paths, [
     'agents/sample.agent.md',
@@ -141,19 +143,48 @@ test('runAdapter scopes its wipe to agents/ and skills/ — sibling content unde
   assert.ok(fs.existsSync(path.join(targetRoot, 'agents', 'sample.agent.md')), 'fresh agents/ must be emitted');
 });
 
-test('runAdapter writes manifest as a sibling of the bundle dir, keyed on adapter.name', async () => {
+test('runAdapter writes manifest into per-version catalog at <adapter.name>/manifests/v<version>.json', async () => {
   const canonical = fixtureCanonical();
-  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-cat-'));
   await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.2.3' });
-  // Manifest lives under <outputRoot>/<adapter.name>/manifest.json.
+  // New canonical location.
+  const manifestPath = path.join(out, 'fake', 'manifests', 'v1.2.3.json');
+  assert.ok(fs.existsSync(manifestPath), 'manifest must live at <outputRoot>/<adapter.name>/manifests/v<version>.json');
+  // Legacy single-file location must NOT be re-emitted.
   assert.ok(
-    fs.existsSync(path.join(out, 'fake', 'manifest.json')),
-    'manifest.json must be written under outputRoot/<adapter.name>/',
+    !fs.existsSync(path.join(out, 'fake', 'manifest.json')),
+    'legacy <adapter.name>/manifest.json must not be written',
   );
-  // The bundle dir must NOT contain a manifest.json — that would collide for
-  // adapters sharing a targetDir (e.g. copilot-vscode + copilot-cli on .github/).
-  assert.ok(
-    !fs.existsSync(path.join(out, '.fake', 'manifest.json')),
-    'manifest.json must not be inside the bundle dir',
+  // Bundle dir must NOT contain a manifest.json — would collide on shared targetDir adapters.
+  assert.ok(!fs.existsSync(path.join(out, '.fake', 'manifest.json')), 'manifest must not be inside the bundle dir');
+});
+
+test('runAdapter preserves prior version manifests in the catalog directory', async () => {
+  const canonical = fixtureCanonical();
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-cat-prior-'));
+  const catalogDir = path.join(out, 'fake', 'manifests');
+  fs.mkdirSync(catalogDir, { recursive: true });
+  const priorBody = JSON.stringify({ harness: 'fake', version: '1.0.0-alpha.9', files: [] }, null, 2) + '\n';
+  fs.writeFileSync(path.join(catalogDir, 'v1.0.0-alpha.9.json'), priorBody, 'utf8');
+  await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.0.0-alpha.10' });
+  // Prior version preserved.
+  assert.ok(fs.existsSync(path.join(catalogDir, 'v1.0.0-alpha.9.json')), 'prior catalog entry must be preserved');
+  // New version added.
+  assert.ok(fs.existsSync(path.join(catalogDir, 'v1.0.0-alpha.10.json')), 'new catalog entry must be added');
+});
+
+test('runAdapter manifest entries carry sha256 hash of the emitted file content', async () => {
+  const canonical = fixtureCanonical();
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-hash-'));
+  await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.2.3' });
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(out, 'fake', 'manifests', 'v1.2.3.json'), 'utf8'),
   );
+  const crypto = await import('node:crypto');
+  for (const entry of manifest.files) {
+    assert.match(entry.sha256, /^[0-9a-f]{64}$/, `entry ${entry.bundlePath} must have hex sha256`);
+    const onDisk = fs.readFileSync(path.join(out, '.fake', entry.bundlePath));
+    const expected = crypto.createHash('sha256').update(onDisk).digest('hex');
+    assert.strictEqual(entry.sha256, expected, `sha256 must match emitted file content for ${entry.bundlePath}`);
+  }
 });

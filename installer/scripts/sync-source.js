@@ -33,11 +33,12 @@ export function syncSource(source, target, excludes) {
 /**
  * Runs every discovered adapter and writes installer/src/<harness>/ bundles.
  * Each adapter produces a self-contained folder at installer/src/<harness>/
- * containing the transformed files and a manifest.json.
+ * containing the transformed files and a per-version manifest catalog under
+ * installer/src/<harness>/manifests/v<version>.json.
  *
  * Uses outputRoot=installer/src/ and targetDir=adapter.name so that runAdapter
  * writes files to installer/src/<harness>/ and the manifest to
- * installer/src/<harness>/manifest.json (single level, no double-nesting).
+ * installer/src/<harness>/manifests/v<version>.json (single level, no double-nesting).
  *
  * @param {{ repoRoot: string, version: string }} opts
  */
@@ -47,12 +48,17 @@ export async function emitBundles({ repoRoot, version }) {
 
   for (const adapter of adapters) {
     const bundleDir = path.join(installerSrc, adapter.name);
-    fs.rmSync(bundleDir, { recursive: true, force: true });
+    // Scoped clean — wipe the bundle's emitted subpaths but preserve the
+    // per-version manifest catalog so prior releases stay shipped.
     fs.mkdirSync(bundleDir, { recursive: true });
+    for (const entry of fs.readdirSync(bundleDir)) {
+      if (entry === 'manifests') continue;
+      fs.rmSync(path.join(bundleDir, entry), { recursive: true, force: true });
+    }
 
     // Override adapter.targetDir to be the harness name so runAdapter writes:
     //   files  → outputRoot/<adapter.name>/  (= installer/src/<harness>/)
-    //   manifest → outputRoot/<adapter.name>/manifest.json
+    //   manifest → outputRoot/<adapter.name>/manifests/v<version>.json
     const bundleAdapter = { ...adapter, targetDir: adapter.name };
     const { fileCount } = await runAdapter(bundleAdapter, {
       canonicalRoot: repoRoot,

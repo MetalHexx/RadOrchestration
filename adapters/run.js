@@ -1,17 +1,30 @@
 // adapters/run.js — Per-adapter runtime: project frontmatter, copy bodies + subfolders,
-// emit per-file metadata stream as installer/src/<harness>/manifest.json.
+// emit per-file metadata stream into a per-version catalog at
+// installer/src/<harness>/manifests/v<version>.json.
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
 /** @import { Adapter, MetadataStreamEntry } from './types.d.ts' */
 
 /**
+ * Computes hex sha256 of a file's bytes. Reads synchronously — file counts
+ * are small (hundreds at most) and runAdapter is already sync I/O end-to-end.
+ */
+function sha256OfFile(absPath) {
+  const bytes = fs.readFileSync(absPath);
+  return crypto.createHash('sha256').update(bytes).digest('hex');
+}
+
+/**
  * Runs one adapter against the canonical source. Writes the bundle to
- * outputRoot/<adapter.targetDir>/ and the per-file metadata manifest to a
- * sibling outputRoot/<adapter.name>/manifest.json — separating bundle
- * destination (which may be shared across adapters, e.g. .github/) from the
- * manifest location (which must be unique per harness).
+ * outputRoot/<adapter.targetDir>/ and the per-version metadata manifest to a
+ * sibling per-harness catalog at outputRoot/<adapter.name>/manifests/v<version>.json
+ * — separating bundle destination (which may be shared across adapters, e.g.
+ * .github/) from the manifest location (which must be unique per harness).
+ * Each entry in the manifest carries a SHA-256 hash of the emitted file's bytes
+ * (post-frontmatter projection for agents/SKILL.md, verbatim for skill subfiles).
  *
  * Uses file copies (not symlinks) for cross-platform parity.
  */
@@ -46,7 +59,9 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }
         adapter.agentFrontmatter(fm, { adapter }),
       );
       const outName = adapter.filenameRule({ kind: 'agent', canonicalName });
-      fs.writeFileSync(path.join(agentsOut, outName), projected, 'utf8');
+      const absDest = path.join(agentsOut, outName);
+      fs.writeFileSync(absDest, projected, 'utf8');
+      const sha256 = sha256OfFile(absDest);
       const bundlePath = path.posix.join('agents', outName);
       files.push({
         bundlePath,
@@ -54,6 +69,7 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }
         ownership: 'orchestration-system',
         version,
         harness: adapter.name,
+        sha256,
       });
       agentCount++;
       if (verbose) console.log(`  ${adapter.name}: ${bundlePath}`);
@@ -87,6 +103,7 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }
           const outName = adapter.filenameRule({ kind: 'skill', canonicalName: skillName });
           const destPath = path.join(skillOutDir, outName);
           fs.writeFileSync(destPath, projected, 'utf8');
+          const sha256 = sha256OfFile(destPath);
           const bundlePath = path.posix.join('skills', skillName, outName);
           files.push({
             bundlePath,
@@ -94,11 +111,13 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }
             ownership: 'orchestration-system',
             version,
             harness: adapter.name,
+            sha256,
           });
           skillCount++;
           if (verbose) console.log(`  ${adapter.name}: ${bundlePath}`);
         } else {
           fs.cpSync(absSrc, absDest);
+          const sha256 = sha256OfFile(absDest);
           const bundlePath = path.posix.join('skills', skillName, rel.split(path.sep).join('/'));
           files.push({
             bundlePath,
@@ -106,6 +125,7 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }
             ownership: 'orchestration-system',
             version,
             harness: adapter.name,
+            sha256,
           });
           skillCount++;
           if (verbose) console.log(`  ${adapter.name}: ${bundlePath}`);
@@ -115,13 +135,19 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version }
     }
   }
 
-  const manifestDir = path.join(outputRoot, adapter.name);
-  fs.mkdirSync(manifestDir, { recursive: true });
+  const catalogDir = path.join(outputRoot, adapter.name, 'manifests');
+  fs.mkdirSync(catalogDir, { recursive: true });
   fs.writeFileSync(
-    path.join(manifestDir, 'manifest.json'),
+    path.join(catalogDir, `v${version}.json`),
     JSON.stringify({ harness: adapter.name, version, files }, null, 2) + '\n',
     'utf8',
   );
+  // Remove the legacy single-file location if it exists from a prior build —
+  // there is one canonical manifest location going forward.
+  const legacyManifest = path.join(outputRoot, adapter.name, 'manifest.json');
+  if (fs.existsSync(legacyManifest)) {
+    fs.rmSync(legacyManifest, { force: true });
+  }
 
   return {
     harness: adapter.name,

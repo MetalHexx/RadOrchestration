@@ -36,11 +36,12 @@ test('every discovered adapter produces a well-formed manifest', async () => {
   for (const adapter of adapters) {
     const out = fs.mkdtempSync(path.join(os.tmpdir(), `out-${adapter.name}-`));
     await runAdapter(adapter, { canonicalRoot: canonical, outputRoot: out, version: '0.0.0-test' });
-    // manifest.json lives at <outputRoot>/<adapter.name>/manifest.json (keyed on
+    // The per-version manifest catalog lives at
+    // <outputRoot>/<adapter.name>/manifests/v<version>.json (keyed on
     // adapter.name so that adapters sharing a targetDir, e.g. copilot-vscode and
     // copilot-cli both targeting .github, each get a unique manifest path).
-    const manifestPath = path.join(out, adapter.name, 'manifest.json');
-    assert.ok(fs.existsSync(manifestPath), `${adapter.name} must emit manifest.json`);
+    const manifestPath = path.join(out, adapter.name, 'manifests', 'v0.0.0-test.json');
+    assert.ok(fs.existsSync(manifestPath), `${adapter.name} must emit catalog manifest`);
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     assert.strictEqual(manifest.harness, adapter.name);
     assert.strictEqual(manifest.version, '0.0.0-test');
@@ -51,6 +52,7 @@ test('every discovered adapter produces a well-formed manifest', async () => {
       assert.strictEqual(f.ownership, 'orchestration-system');
       assert.strictEqual(f.version, '0.0.0-test');
       assert.strictEqual(f.harness, adapter.name);
+      assert.match(f.sha256, /^[0-9a-f]{64}$/, `entry ${f.bundlePath} must have hex sha256`);
     }
     fs.rmSync(out, { recursive: true, force: true });
   }

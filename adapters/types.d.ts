@@ -35,6 +35,7 @@ export interface MetadataStreamEntry {
   ownership: 'orchestration-system';
   version: string;             // orchestration-system version that produced the file
   harness: string;             // adapter folder name, e.g. 'claude'
+  sha256: string;              // hex SHA-256 of the emitted file's bytes
 }
 
 /** A single self-contained adapter exposing all five capability surfaces. */

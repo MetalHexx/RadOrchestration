@@ -38,11 +38,12 @@ test('emitBundles writes installer/src/<harness>/ for every adapter', async () =
   assert.ok(fs.existsSync(path.join(repo, 'installer', 'src', 'copilot-cli', 'agents', 'a.agent.md')));
 });
 
-test('every emitted bundle carries a manifest.json', async () => {
+test('every emitted bundle carries a per-version manifest in the catalog directory', async () => {
   const repo = makeRepo();
   await emitBundles({ repoRoot: repo, version: '0.0.0-test' });
   for (const harness of ['claude', 'copilot-vscode', 'copilot-cli']) {
-    const m = JSON.parse(fs.readFileSync(path.join(repo, 'installer', 'src', harness, 'manifest.json'), 'utf8'));
+    const manifestPath = path.join(repo, 'installer', 'src', harness, 'manifests', 'v0.0.0-test.json');
+    const m = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     assert.strictEqual(m.harness, harness);
     assert.strictEqual(m.version, '0.0.0-test');
     assert.ok(m.files.length > 0);
