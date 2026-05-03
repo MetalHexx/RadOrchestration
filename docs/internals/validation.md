@@ -12,7 +12,7 @@ The orchestration system includes a zero-dependency Node.js CLI that validates a
 # Run all checks
 node .claude/skills/rad-orchestration/validate/validate-orchestration.js
 
-# Verbose output (show passing checks too)
+# Show detailed context for every check
 node .claude/skills/rad-orchestration/validate/validate-orchestration.js --verbose
 
 # Check a single category
