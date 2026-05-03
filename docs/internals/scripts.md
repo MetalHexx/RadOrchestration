@@ -197,7 +197,8 @@ The resolver is a pure function that returns one of 16 values based solely on th
   "mutations_applied": [
     "task.status → in_progress",
     "task.stage → coding"
-  ]
+  ],
+  "orchRoot": ".claude"
 }
 ```
 
@@ -206,10 +207,16 @@ The resolver is a pure function that returns one of 16 values based solely on th
 ```json
 {
   "success": false,
-  "error": "Validation failed: [V6] Only one task may be in_progress",
-  "event": "task_handoff_created",
-  "state_snapshot": { "current_phase": 1 },
-  "mutations_applied": []
+  "action": null,
+  "context": {
+    "error": "Validation failed: [V6] Only one task may be in_progress"
+  },
+  "mutations_applied": [],
+  "orchRoot": ".claude",
+  "error": {
+    "message": "Validation failed: [V6] Only one task may be in_progress",
+    "event": "task_completed"
+  }
 }
 ```
 
