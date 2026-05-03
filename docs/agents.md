@@ -54,4 +54,3 @@ Source Control is a thin wrapper for git commit, push, and pull-request creation
 ## Next Steps
 
 - [Skills](skills.md) — Explore the skills agents use
-- [Templates](templates.md) — See the output templates skills produce
