@@ -57,7 +57,7 @@ test('runAdapter emits manifest.json with one entry per emitted file', async () 
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
   const result = await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.2.3' });
   assert.strictEqual(result.agentCount, 1, 'returns agent count');
-  assert.strictEqual(result.skillCount, 2, 'returns skill count (SKILL.md + 1 reference file)');
+  assert.strictEqual(result.skillCount, 1, 'skillCount counts distinct skill directories, not files');
   assert.strictEqual(result.fileCount, 3, 'returns total file count');
   const manifest = JSON.parse(
     fs.readFileSync(path.join(out, 'fake', 'manifests', 'v1.2.3.json'), 'utf8'),

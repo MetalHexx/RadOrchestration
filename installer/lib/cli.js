@@ -32,7 +32,10 @@ const INT_FIELDS = new Set([
 
 /** Valid values for enum-type fields */
 const ENUM_VALUES = {
-  tool:            ['claude-code', 'copilot-vscode', 'copilot-cli', 'cursor'],
+  // `cursor` is intentionally omitted: it appears as a disabled "Coming
+  // soon" choice in the interactive prompt, but no manifest backs it, so
+  // accepting it on the CLI would crash deep in getManifest().
+  tool:            ['claude-code', 'copilot-vscode', 'copilot-cli'],
   projectsNaming:  ['SCREAMING_CASE', 'lowercase', 'numbered'],
   executionMode:   ['ask', 'phase', 'task', 'autonomous'],
   autoCommit:      ['always', 'ask', 'never'],

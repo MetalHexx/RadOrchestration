@@ -3,7 +3,7 @@
 import path from 'node:path';
 import { THEME, sectionHeader } from './theme.js';
 import { promptGettingStarted } from './prompts/getting-started.js';
-import { promptOrchRoot } from './prompts/orch-root.js';
+import { promptOrchRoot, HARNESS_DEFAULTS } from './prompts/orch-root.js';
 import { promptProjectStorage } from './prompts/project-storage.js';
 import { promptPipelineLimits } from './prompts/pipeline-limits.js';
 import { promptGateBehavior } from './prompts/gate-behavior.js';
@@ -61,9 +61,13 @@ export async function runWizard({ skipConfirmation, cliOverrides = {} }) {
   }
 
   // ── Orchestration Root ───────────────────────────────────────────────────
+  // Default folder follows the resolved tool: copilot-* lands in `.github/`,
+  // claude-code in `.claude/`. Without this, `--yes --tool copilot-vscode`
+  // would write Copilot bundles into `.claude/`.
+  const harnessDefaultOrchRoot = HARNESS_DEFAULTS[gettingStarted.tool] ?? DEFAULTS.orchRoot;
   let orchRoot;
   if (useDefaults || has('orchRoot')) {
-    orchRoot = { orchRoot: cliOverrides.orchRoot ?? DEFAULTS.orchRoot };
+    orchRoot = { orchRoot: cliOverrides.orchRoot ?? harnessDefaultOrchRoot };
   } else {
     console.log('');
     sectionHeader('::', 'Orchestration Root');

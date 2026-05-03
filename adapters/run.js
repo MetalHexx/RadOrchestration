@@ -116,6 +116,10 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
           skillCount++;
           if (verbose) console.log(`  ${adapter.name}: ${bundlePath}`);
         } else {
+          // Skill subfile (scripts/, references/, templates/, etc.) — copy
+          // verbatim into the manifest stream. Does NOT count toward
+          // skillCount; that field counts distinct skill directories
+          // (anchored by SKILL.md). Use fileCount for total file count.
           fs.cpSync(absSrc, absDest);
           const sha256 = sha256OfFile(absDest);
           const bundlePath = path.posix.join('skills', skillName, rel.split(path.sep).join('/'));
@@ -127,7 +131,6 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
             harness: adapter.name,
             sha256,
           });
-          skillCount++;
           if (verbose) console.log(`  ${adapter.name}: ${bundlePath}`);
         }
       };

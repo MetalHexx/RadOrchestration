@@ -19,7 +19,7 @@ jobs:
           node-version: 22
 
       - name: Adapter unit tests (each capability surface)
-        run: node --test adapters/
+        run: node --test adapters/*.test.js adapters/*/adapter.test.js
 
       - name: Adapter integration test (well-formed manifest per harness)
         run: node --test scripts/build-integration.test.js

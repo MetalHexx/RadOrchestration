@@ -25,7 +25,7 @@ Execute the project according to the approved Master Plan using the proper execu
 **Resuming a project:** to resume execution (or determine the next pending action on a fresh session), fire the pipeline `start` event:
 
 ```
-node {repoRoot}/skills/rad-orchestration/scripts/pipeline.js --event start --project-dir {projectDir}
+node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event start --project-dir {projectDir}
 ```
 
 `start` returns the current pending action without mutating state, so it is the correct entry point both for first-time execution and for resume. Do not invent event names like `tick`, `next_action`, or `get_next_action` — they will fail with `Unknown event`.

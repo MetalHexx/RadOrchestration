@@ -8,8 +8,11 @@ import { isValidFolderName, normalizePath } from '../path-utils.js';
  * Per-harness canonical orchRoot defaults. Sourced from
  * frontmatter-research.md §2.A (VS Code) and §3.A (CLI) — both Copilot
  * variants share `.github/`. Claude Code uses `.claude/` per §1.
+ *
+ * Exported so the unattended-install path (wizard --yes) can pick the
+ * harness-correct default without reaching into the prompt module.
  */
-const HARNESS_DEFAULTS = {
+export const HARNESS_DEFAULTS = {
   'claude-code': '.claude',
   'copilot-vscode': '.github',
   'copilot-cli': '.github',
@@ -22,7 +25,7 @@ const HARNESS_DEFAULTS = {
  *   - orchRoot: Folder name (e.g., '.claude') or absolute path
  */
 export async function promptOrchRoot(opts = {}) {
-  const harnessDefault = HARNESS_DEFAULTS[opts.tool] ?? '.claude';
+  const harnessDefault = HARNESS_DEFAULTS[opts.tool] ?? HARNESS_DEFAULTS['claude-code'];
 
   const selection = await select({
     message: 'Orchestration root folder',

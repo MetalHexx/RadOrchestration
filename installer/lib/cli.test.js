@@ -149,6 +149,10 @@ describe('parseArgs', () => {
       assert.throws(() => parseArgs(['--tool', 'invalid']), /Invalid value/);
     });
 
+    it('--tool cursor throws (no manifest backs it; UI option is disabled)', () => {
+      assert.throws(() => parseArgs(['--tool', 'cursor']), /Invalid value/);
+    });
+
     it('--naming bad throws', () => {
       assert.throws(() => parseArgs(['--naming', 'bad']), /Invalid value/);
     });
