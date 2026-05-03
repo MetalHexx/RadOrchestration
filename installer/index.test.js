@@ -140,6 +140,9 @@ const detectModifiedFilesMock = mock.fn(() => state.modifiedFilesResponse);
 const confirmModifiedFilesMock = mock.fn(async () => state.confirmModifiedResponse);
 const removeManifestFilesMock = mock.fn(() => ({ removedCount: 0, prunedDirs: [] }));
 
+// Cross-harness scan mock (P05-T01 → wired in P05-T02)
+const findPriorInstallMock = mock.fn(() => null);
+
 const THEME = { banner: (s) => s, warning: (s) => s, error: (s) => s, body: (s) => s, command: (s) => s, label: (s) => s, spinner: 'cyan' };
 
 // Spinner factory - instances collected into array, cleared between tests
@@ -192,6 +195,9 @@ await mock.module('./lib/hash-check.js', {
 await mock.module('./lib/remove.js', {
   namedExports: { removeManifestFiles: removeManifestFilesMock },
 });
+await mock.module('./lib/cross-harness-scan.js', {
+  namedExports: { findPriorInstallAtOtherOrchRoot: findPriorInstallMock },
+});
 // Patch fs methods on the shared default-export object
 mock.method(fs, 'existsSync', existsSyncMock);
 mock.method(fs, 'mkdirSync', mkdirSyncMock);
@@ -211,6 +217,7 @@ const ALL_MOCKS = [
   checkNodeNpmMock, installUiMock, spawnMock, execSyncMock,
   readInstalledPackageVersionMock, loadBundledManifestMock, detectModifiedFilesMock,
   confirmModifiedFilesMock, removeManifestFilesMock,
+  findPriorInstallMock,
 ];
 
 function resetMocks() {
@@ -1075,4 +1082,65 @@ test('main runs the install path unchanged when no prior install is detected', a
     'loadBundledManifest not called (no prior install)');
   assert.equal(confirmModifiedFilesMock.mock.callCount(), 0,
     'confirmModifiedFiles not called (no prior install)');
+});
+
+// ── P05-T02: Cross-harness switch UX (DD-4, FR-8, AD-7, AD-8) ─────────────────
+
+test('main surfaces cross-harness prior install and runs cleanup against the prior orchRoot when user confirms', async () => {
+  resetMocks();
+  // Wizard chose .github; scanner finds prior install at .claude.
+  runWizardMock.mock.mockImplementationOnce(async () => ({
+    ...makeDefaultConfig(),
+    tool: 'copilot-vscode',
+    orchRoot: '.github',
+    installUi: false,
+  }));
+  findPriorInstallMock.mock.mockImplementationOnce(() => ({
+    orchRoot: '/workspace/.claude',
+    packageVersion: '1.0.0-alpha.9',
+  }));
+  // User confirms the cleanup prompt.
+  state.confirmResponse = true;
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  // Verify: removeManifestFilesMock was called with a manifest fetched
+  // for the PRIOR orchRoot (claude), not the chosen one (.github).
+  const calls = removeManifestFilesMock.mock.calls;
+  assert.ok(calls.length >= 1, 'cross-harness cleanup must invoke removeManifestFiles');
+  assert.match(calls[0].arguments[1], /\.claude$/, 'removal must target the prior orchRoot');
+});
+
+test('main proceeds with install untouched when user declines the cross-harness cleanup prompt (DD-4)', async () => {
+  resetMocks();
+  runWizardMock.mock.mockImplementationOnce(async () => ({
+    ...makeDefaultConfig(),
+    tool: 'copilot-vscode',
+    orchRoot: '.github',
+    installUi: false,
+  }));
+  findPriorInstallMock.mock.mockImplementationOnce(() => ({
+    orchRoot: '/workspace/.claude',
+    packageVersion: '1.0.0-alpha.9',
+  }));
+  state.confirmResponse = false;
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  // The chosen orchRoot's install path still runs; the prior orchRoot is untouched.
+  assert.strictEqual(removeManifestFilesMock.mock.callCount(), 0,
+    'declined cross-harness cleanup must not call removeManifestFiles against the prior orchRoot');
+  assert.ok(copyCategoryMock.mock.callCount() > 0, 'install copy must still proceed');
 });

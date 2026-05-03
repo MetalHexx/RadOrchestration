@@ -38,6 +38,7 @@ import { readInstalledPackageVersion } from './lib/installed-version.js';
 import { loadBundledManifest } from './lib/catalog.js';
 import { detectModifiedFiles, confirmModifiedFiles } from './lib/hash-check.js';
 import { removeManifestFiles } from './lib/remove.js';
+import { findPriorInstallAtOtherOrchRoot } from './lib/cross-harness-scan.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -142,6 +143,65 @@ export async function main() {
     // from the catalog, runs the modified-file check, and removes the prior
     // install before proceeding. Pre-manifest installs follow the DD-1 path.
     const resolvedRoot = resolveOrchRoot(config.workspaceDir, config.orchRoot);
+
+    // Cross-harness switch detection (DD-4, AD-7).
+    // Surfaces a prior install at a well-known orchRoot under the workspace
+    // whose path differs from the one the user just chose. Reuses the
+    // catalog/hash/remove primitives so this path inherits all the same
+    // safety properties as the in-place upgrade path (AD-8). orchestration.yml
+    // is filtered out of the manifest passed to removeManifestFiles and
+    // removed LAST — same composition rule as runUninstall (F-5 invariant).
+    const priorAtOther = findPriorInstallAtOtherOrchRoot(config.workspaceDir, config.orchRoot);
+    if (priorAtOther) {
+      console.log('');
+      sectionHeader('::', 'Prior Install Detected');
+      console.log('');
+      console.log(THEME.body(
+        `An existing rad-orchestration install was found at ${priorAtOther.orchRoot} `
+        + `(version ${priorAtOther.packageVersion}). You're installing into ${resolvedRoot}.`,
+      ));
+      console.log('');
+      const cleanup = await confirm({
+        message: `Uninstall the prior install at ${priorAtOther.orchRoot} before continuing?`,
+        default: true,
+      });
+      if (cleanup) {
+        // Reuse the same primitives as `radorch uninstall` against the prior orchRoot.
+        const fullPriorManifest = loadBundledManifest(repoRoot, config.tool, priorAtOther.packageVersion);
+        // Filter orchestration.yml out of the slice passed to removeManifestFiles —
+        // it must be removed LAST (clean-slate signal). Mirrors runUninstall.
+        const ORC_YML_PATH = 'skills/rad-orchestration/config/orchestration.yml';
+        const priorManifest = {
+          ...fullPriorManifest,
+          files: fullPriorManifest.files.filter((f) => f.bundlePath !== ORC_YML_PATH),
+        };
+        // Hash-check uses the FULL manifest so the yml file is included in the diff.
+        const modified = detectModifiedFiles(fullPriorManifest, priorAtOther.orchRoot);
+        if (modified.length > 0) {
+          const proceedModified = await confirmModifiedFiles(
+            modified, priorAtOther.orchRoot, undefined, { message: 'Continue and delete these files?' },
+          );
+          if (!proceedModified) {
+            console.log('Installation cancelled.');
+            process.exit(0);
+          }
+        }
+        const spin = ora({
+          text: `Removing prior install at ${priorAtOther.orchRoot} (v${priorAtOther.packageVersion})…`,
+          color: THEME.spinner,
+        }).start();
+        const result = removeManifestFiles(priorManifest, priorAtOther.orchRoot);
+        spin.succeed(
+          `Removed ${result.removedCount} files from ${priorAtOther.orchRoot}`,
+        );
+        // Remove the prior orchestration.yml LAST — clean-slate signal.
+        const ymlPath = path.join(
+          priorAtOther.orchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml',
+        );
+        if (fs.existsSync(ymlPath)) fs.rmSync(ymlPath, { force: true });
+      }
+    }
+
     const installed = readInstalledPackageVersion(resolvedRoot);
     if (installed && installed.packageVersion === null) {
       // DD-1: pre-manifest install — print guidance, exit without modifying files.
