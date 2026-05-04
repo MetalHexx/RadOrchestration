@@ -42,7 +42,24 @@ Use `AskUserQuestion` with these four options:
 | `copilot-cli` | Builds into `.github/agents/` and `.github/skills/` for GitHub Copilot CLI. |
 | `all` | Runs every adapter sequentially. |
 
-### 3. Map the answer to an npm script
+### 3. Ask for projects base path
+
+Read the current value of `projects.base_path` from the canonical config at `<repo-root>/skills/rad-orchestration/config/orchestration.yml`. Extract the line:
+
+```bash
+grep "base_path:" skills/rad-orchestration/config/orchestration.yml
+```
+
+Then use the `askQuestions` tool with a single question:
+
+- **Header:** `projects_base_path`
+- **Question:** "Where should orchestration projects be stored? (`projects.base_path` in `orchestration.yml`)"
+- **Options:** one option labeled `Keep current: <current-value>` (marked recommended)
+- **`allowFreeformInput`: true** so the contributor can type an alternate absolute path
+
+Store the answer (call it `newBasePath`). If the user selected the current value option or typed the same path, no patch is needed — set a flag `basepathChanged = false`. Otherwise set `basepathChanged = true`.
+
+### 4. Map the answer to an npm script
 
 | Answer | Command |
 |--------|---------|
@@ -53,11 +70,33 @@ Use `AskUserQuestion` with these four options:
 
 Note: the npm script for Claude is `build:claude`, not `build:claude-code`.
 
-### 4. Run the build
+### 5. Run the build
 
 Invoke the chosen command from repo root via the Bash tool.
 
-### 5. Report the result
+### 6. Patch base_path in the output orchestration.yml
+
+Run this step only if `basepathChanged = true`.
+
+Determine the output yml path(s) based on the chosen harness:
+
+| Harness | Output path |
+|---------|-------------|
+| `claude-code` | `<repo-root>/.claude/skills/rad-orchestration/config/orchestration.yml` |
+| `copilot-vscode` | `<repo-root>/.github/skills/rad-orchestration/config/orchestration.yml` |
+| `copilot-cli` | `<repo-root>/.github/skills/rad-orchestration/config/orchestration.yml` |
+| `all` | Both paths above |
+
+For each output path that exists, replace the `base_path:` line in-place using PowerShell:
+
+```powershell
+$f = "<output-yml-path>"
+(Get-Content $f) -replace '^(\s*base_path:\s*).*$', "`${1}<newBasePath>" | Set-Content $f
+```
+
+Confirm the patch was applied by printing the updated line.
+
+### 7. Report the result
 
 On success, surface the one-line per-harness output the build CLI prints, e.g.:
 
