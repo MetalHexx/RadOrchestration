@@ -2,7 +2,7 @@ version: "1.0"
 system:
   orch_root: .claude
 projects:
-  base_path: C:\dev\orchestration-projects
+  base_path: C:\dev\src\orchestration-projects
   naming: SCREAMING_CASE
 default_template: ask
 limits:
