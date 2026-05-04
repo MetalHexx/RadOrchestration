@@ -49,7 +49,7 @@ jobs:
         run: npm test
 
       - name: Run adapter integration tests (every harness emits valid manifest)
-        working-directory: ../
+        working-directory: ${{ github.workspace }}
         run: node --test scripts/build-integration.test.js
 
       - name: Publish to npm (with provenance)
