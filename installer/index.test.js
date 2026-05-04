@@ -13,7 +13,7 @@ import fs from 'node:fs';
 
 function makeDefaultConfig() {
   return {
-    tool: 'copilot',
+    tool: 'copilot-vscode',
     workspaceDir: '/workspace',
     orchRoot: '.github',
     projectsBasePath: 'projects',
@@ -40,6 +40,9 @@ const state = {
   parseArgsResult: null,     // if set, parseArgs returns this instead of default
   spawnExitCode: 0,          // exit code for spawn mock
   spawnError: null,          // if set, spawn mock emits 'error' event
+  installedVersionResponse: null, // value returned by readInstalledPackageVersion
+  modifiedFilesResponse: [], // array returned by detectModifiedFiles
+  confirmModifiedResponse: true, // boolean returned by confirmModifiedFiles
 };
 
 function resetState() {
@@ -49,6 +52,9 @@ function resetState() {
   state.parseArgsResult = null;
   state.spawnExitCode = 0;
   state.spawnError = null;
+  state.installedVersionResponse = null;
+  state.modifiedFilesResponse = [];
+  state.confirmModifiedResponse = true;
 }
 
 // ── Persistent mock functions (set up ONCE before index.js is imported) ──────
@@ -127,7 +133,17 @@ const spawnMock = mock.fn((cmd, opts) => {
   return child;
 });
 
-const THEME = { banner: (s) => s, warning: (s) => s, error: (s) => s, spinner: 'cyan' };
+// Upgrade-composition mocks (manifest-aware path: P04-T03)
+const readInstalledPackageVersionMock = mock.fn(() => state.installedVersionResponse);
+const loadBundledManifestMock = mock.fn(() => ({ files: [] }));
+const detectModifiedFilesMock = mock.fn(() => state.modifiedFilesResponse);
+const confirmModifiedFilesMock = mock.fn(async () => state.confirmModifiedResponse);
+const removeManifestFilesMock = mock.fn(() => ({ removedCount: 0, prunedDirs: [] }));
+
+// Cross-harness scan mock (P05-T01 → wired in P05-T02)
+const findPriorInstallMock = mock.fn(() => null);
+
+const THEME = { banner: (s) => s, warning: (s) => s, error: (s) => s, body: (s) => s, command: (s) => s, label: (s) => s, spinner: 'cyan' };
 
 // Spinner factory - instances collected into array, cleared between tests
 const spinnerInstances = [];
@@ -164,6 +180,31 @@ await mock.module('./lib/ui-builder.js', {
 await mock.module('@inquirer/prompts', { namedExports: { confirm: confirmMock } });
 await mock.module('ora', { defaultExport: oraMock });
 await mock.module('node:child_process', { namedExports: { execSync: execSyncMock, spawn: spawnMock } });
+await mock.module('./lib/installed-version.js', {
+  namedExports: { readInstalledPackageVersion: readInstalledPackageVersionMock },
+});
+await mock.module('./lib/catalog.js', {
+  namedExports: { loadBundledManifest: loadBundledManifestMock },
+});
+await mock.module('./lib/hash-check.js', {
+  namedExports: {
+    detectModifiedFiles: detectModifiedFilesMock,
+    confirmModifiedFiles: confirmModifiedFilesMock,
+  },
+});
+await mock.module('./lib/remove.js', {
+  namedExports: { removeManifestFiles: removeManifestFilesMock },
+});
+await mock.module('./lib/cross-harness-scan.js', {
+  namedExports: {
+    findPriorInstallAtOtherOrchRoot: findPriorInstallMock,
+    inferToolFromOrchRoot: (orchRootName) => {
+      if (orchRootName === '.claude') return 'claude-code';
+      if (orchRootName === '.github') return 'copilot-vscode';
+      return null;
+    },
+  },
+});
 // Patch fs methods on the shared default-export object
 mock.method(fs, 'existsSync', existsSyncMock);
 mock.method(fs, 'mkdirSync', mkdirSyncMock);
@@ -181,6 +222,9 @@ const ALL_MOCKS = [
   runWizardMock, getManifestMock, confirmMock, copyCategoryMock,
   generateConfigMock, writeConfigMock, resolveOrchRootMock, existsSyncMock, mkdirSyncMock, oraMock,
   checkNodeNpmMock, installUiMock, spawnMock, execSyncMock,
+  readInstalledPackageVersionMock, loadBundledManifestMock, detectModifiedFilesMock,
+  confirmModifiedFilesMock, removeManifestFilesMock,
+  findPriorInstallMock,
 ];
 
 function resetMocks() {
@@ -317,11 +361,12 @@ test('pre-install declined: exits 0 without calling copyCategory or generateConf
   assert.equal(generateConfigMock.mock.callCount(), 0, 'generateConfig not called');
 });
 
-// ── Existing-file detection ───────────────────────────────────────────────────
+// ── Modified-file gate: shown when prior install + locally modified files ─────
 
-test('existing-file detection: overwrite confirm shown when agents/ exists', async () => {
+test('modified-file gate: confirmModifiedFiles called when prior install has locally modified files', async () => {
   resetMocks();
-  state.existsSyncResponse = (p) => String(p).includes('agents');
+  state.installedVersionResponse = { packageVersion: '1.0.0-alpha.9' };
+  state.modifiedFilesResponse = ['agents/coder.md'];
 
   const originalArgv = process.argv;
   process.argv = ['node', 'installer/index.js', '--yes'];
@@ -331,16 +376,16 @@ test('existing-file detection: overwrite confirm shown when agents/ exists', asy
     process.argv = originalArgv;
   }
 
-  assert.ok(confirmMock.mock.callCount() >= 1, 'overwrite confirm called when agents/ exists');
-  assert.equal(confirmMock.mock.calls[0].arguments[0].default, false, 'overwrite confirm defaults to false');
+  assert.equal(confirmModifiedFilesMock.mock.callCount(), 1, 'confirmModifiedFiles called when modified files exist');
 });
 
-// ── Existing-file detection — user declines overwrite ─────────────────────────
+// ── Modified-file gate: user declines → exits 0 without copying ───────────────
 
-test('existing-file detection: user declines overwrite → exits 0 without copying', async () => {
+test('modified-file gate: user declines → exits 0 without copyCategory or removeManifestFiles', async () => {
   resetMocks();
-  state.existsSyncResponse = () => true;
-  state.confirmResponse = false;  // declines overwrite
+  state.installedVersionResponse = { packageVersion: '1.0.0-alpha.9' };
+  state.modifiedFilesResponse = ['agents/coder.md'];
+  state.confirmModifiedResponse = false;  // declines
 
   const exitCodes = [];
   const origExit = process.exit;
@@ -360,15 +405,17 @@ test('existing-file detection: user declines overwrite → exits 0 without copyi
     console.error = origConsoleError;
   }
 
-  assert.equal(exitCodes[0], 0, 'exits 0 on overwrite decline');
+  assert.equal(exitCodes[0], 0, 'exits 0 on modified-file decline');
+  assert.equal(removeManifestFilesMock.mock.callCount(), 0, 'removeManifestFiles not called');
   assert.equal(copyCategoryMock.mock.callCount(), 0, 'copyCategory not called');
 });
 
-// ── --yes does NOT skip overwrite confirmation ────────────────────────────────
+// ── --yes does NOT bypass modified-file gate (NFR-5) ──────────────────────────
 
-test('--yes does NOT skip the overwrite confirmation (safety gate)', async () => {
+test('--yes does NOT bypass the modified-file gate (NFR-5)', async () => {
   resetMocks();
-  state.existsSyncResponse = (p) => String(p).includes('agents');
+  state.installedVersionResponse = { packageVersion: '1.0.0-alpha.9' };
+  state.modifiedFilesResponse = ['agents/coder.md'];
 
   const originalArgv = process.argv;
   process.argv = ['node', 'installer/index.js', '--yes'];
@@ -378,7 +425,7 @@ test('--yes does NOT skip the overwrite confirmation (safety gate)', async () =>
     process.argv = originalArgv;
   }
 
-  assert.ok(confirmMock.mock.callCount() >= 1, 'overwrite confirm called even with --yes');
+  assert.equal(confirmModifiedFilesMock.mock.callCount(), 1, 'confirmModifiedFiles called even with --yes');
 });
 
 // ── Per-category ora spinners ─────────────────────────────────────────────────
@@ -769,11 +816,12 @@ test('--version: prints version and does NOT call renderBanner or runWizard', as
   assert.equal(runWizardMock.mock.callCount(), 0, 'runWizard not called');
 });
 
-// ── --overwrite flag ──────────────────────────────────────────────────────────
+// ── --overwrite / --force flags (intentional no-op in upgrade path; NFR-5) ────
 
-test('--overwrite: skips overwrite confirmation when existing files detected', async () => {
+test('--overwrite: does NOT bypass modified-file gate (NFR-5)', async () => {
   resetMocks();
-  state.existsSyncResponse = (p) => String(p).includes('agents');
+  state.installedVersionResponse = { packageVersion: '1.0.0-alpha.9' };
+  state.modifiedFilesResponse = ['agents/coder.md'];
 
   const originalArgv = process.argv;
   process.argv = ['node', 'installer/index.js', '--yes', '--overwrite'];
@@ -783,15 +831,16 @@ test('--overwrite: skips overwrite confirmation when existing files detected', a
     process.argv = originalArgv;
   }
 
-  // confirm should NOT be called — --overwrite bypasses the safety gate
-  assert.equal(confirmMock.mock.callCount(), 0, 'confirm not called when --overwrite is passed');
-  // Installation should proceed
+  // --overwrite is accepted by parseArgs but is a no-op in the upgrade path.
+  assert.equal(confirmModifiedFilesMock.mock.callCount(), 1,
+    'confirmModifiedFiles still called when --overwrite is passed (NFR-5)');
   assert.ok(copyCategoryMock.mock.callCount() >= 1, 'copyCategory called (installation proceeded)');
 });
 
-test('--force: alias for --overwrite, skips overwrite confirmation', async () => {
+test('--force: does NOT bypass modified-file gate (NFR-5)', async () => {
   resetMocks();
-  state.existsSyncResponse = (p) => String(p).includes('agents');
+  state.installedVersionResponse = { packageVersion: '1.0.0-alpha.9' };
+  state.modifiedFilesResponse = ['agents/coder.md'];
 
   const originalArgv = process.argv;
   process.argv = ['node', 'installer/index.js', '--yes', '--force'];
@@ -801,23 +850,9 @@ test('--force: alias for --overwrite, skips overwrite confirmation', async () =>
     process.argv = originalArgv;
   }
 
-  assert.equal(confirmMock.mock.callCount(), 0, 'confirm not called when --force is passed');
+  assert.equal(confirmModifiedFilesMock.mock.callCount(), 1,
+    'confirmModifiedFiles still called when --force is passed (NFR-5)');
   assert.ok(copyCategoryMock.mock.callCount() >= 1, 'copyCategory called');
-});
-
-test('without --overwrite: overwrite confirmation still shown when files exist', async () => {
-  resetMocks();
-  state.existsSyncResponse = (p) => String(p).includes('agents');
-
-  const originalArgv = process.argv;
-  process.argv = ['node', 'installer/index.js', '--yes'];
-  try {
-    await main();
-  } finally {
-    process.argv = originalArgv;
-  }
-
-  assert.ok(confirmMock.mock.callCount() >= 1, 'confirm called for overwrite when no --overwrite');
 });
 
 // ── parseArgs integration ─────────────────────────────────────────────────────
@@ -959,4 +994,196 @@ test('main() continues to renderPostInstallSummary when installScriptsDeps fails
     'Pipeline engine dependencies: npm install failed',
     'fail message correct'
   );
+});
+
+// ── P04-T03: Upgrade composition (uninstall prior → install new) ──────────────
+
+test('main composes upgrade as uninstall(prior) → install(new) when prior install detected', async () => {
+  // Arrange: simulate a prior install at the chosen orchRoot.
+  resetMocks();
+  state.installedVersionResponse = { packageVersion: '1.0.0-alpha.9' };
+  state.existsSyncResponse = (p) => p.endsWith('orchestration.yml')
+    || p.endsWith('agents') || p.endsWith('skills');
+  runWizardMock.mock.mockImplementationOnce(async () => ({
+    ...makeDefaultConfig(),
+    installUi: false,
+  }));
+
+  const callOrder = [];
+  removeManifestFilesMock.mock.mockImplementationOnce(() => {
+    callOrder.push('removeManifestFiles');
+    return { removedCount: 5, prunedDirs: [] };
+  });
+  copyCategoryMock.mock.mockImplementation((cat) => {
+    callOrder.push('copyCategory');
+    return { category: cat.name, fileCount: 3, success: true };
+  });
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  // Verify: the install proceeds AND the prior-removal step ran first.
+  assert.ok(removeManifestFilesMock.mock.callCount() > 0,
+    'removeManifestFiles called (prior install removed)');
+  assert.ok(copyCategoryMock.mock.callCount() > 0,
+    'copyCategory called (new install proceeded)');
+  assert.ok(loadBundledManifestMock.mock.callCount() > 0,
+    'loadBundledManifest called (prior manifest fetched from catalog)');
+  assert.equal(callOrder[0], 'removeManifestFiles',
+    'removeManifestFiles runs BEFORE copyCategory (uninstall → install order)');
+});
+
+test('main aborts with pre-manifest UX when orchestration.yml lacks package_version', async () => {
+  // Arrange: existsSync says orchestration.yml exists but installed-version
+  // returns { packageVersion: null }.
+  resetMocks();
+  state.installedVersionResponse = { packageVersion: null };
+
+  const exitCodes = [];
+  const origExit = process.exit;
+  process.exit = (code) => { exitCodes.push(code); throw new Error(`process.exit(${code})`); };
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } catch (_) {
+    // expected — process.exit throws
+  } finally {
+    process.argv = originalArgv;
+    process.exit = origExit;
+  }
+
+  // Verify: process exits without calling copyCategory.
+  assert.equal(exitCodes[0], 0, 'exits 0 on pre-manifest detection');
+  assert.equal(copyCategoryMock.mock.callCount(), 0, 'copyCategory not called');
+  assert.equal(removeManifestFilesMock.mock.callCount(), 0, 'removeManifestFiles not called');
+  assert.equal(loadBundledManifestMock.mock.callCount(), 0,
+    'loadBundledManifest not called (no version to look up)');
+});
+
+test('main runs the install path unchanged when no prior install is detected', async () => {
+  // Arrange: existsSync returns false for orchestration.yml.
+  resetMocks();
+  state.installedVersionResponse = null;
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  // Verify: copyCategoryMock is called once per category (existing assertion shape).
+  assert.equal(copyCategoryMock.mock.callCount(), 2,
+    'copyCategory called for each category (no prior install path)');
+  assert.equal(removeManifestFilesMock.mock.callCount(), 0,
+    'removeManifestFiles not called (no prior install)');
+  assert.equal(loadBundledManifestMock.mock.callCount(), 0,
+    'loadBundledManifest not called (no prior install)');
+  assert.equal(confirmModifiedFilesMock.mock.callCount(), 0,
+    'confirmModifiedFiles not called (no prior install)');
+});
+
+// ── P05-T02: Cross-harness switch UX (DD-4, FR-8, AD-7, AD-8) ─────────────────
+
+test('main surfaces cross-harness prior install and runs cleanup against the prior orchRoot when user confirms', async () => {
+  resetMocks();
+  // Wizard chose .github; scanner finds prior install at .claude.
+  runWizardMock.mock.mockImplementationOnce(async () => ({
+    ...makeDefaultConfig(),
+    tool: 'copilot-vscode',
+    orchRoot: '.github',
+    installUi: false,
+  }));
+  findPriorInstallMock.mock.mockImplementationOnce(() => ({
+    orchRoot: '/workspace/.claude',
+    packageVersion: '1.0.0-alpha.9',
+  }));
+  // User confirms the cleanup prompt.
+  state.confirmResponse = true;
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  // Verify: removeManifestFilesMock was called with a manifest fetched
+  // for the PRIOR orchRoot (claude), not the chosen one (.github).
+  const calls = removeManifestFilesMock.mock.calls;
+  assert.ok(calls.length >= 1, 'cross-harness cleanup must invoke removeManifestFiles');
+  assert.match(calls[0].arguments[1], /\.claude$/, 'removal must target the prior orchRoot');
+});
+
+test('claude→copilot switch: loadBundledManifest is called with the prior install\'s tool (claude-code), not the new tool', async () => {
+  resetMocks();
+  // Wizard chose .github (copilot-vscode); scanner finds prior install at .claude (claude-code).
+  runWizardMock.mock.mockImplementationOnce(async () => ({
+    ...makeDefaultConfig(),
+    tool: 'copilot-vscode',
+    orchRoot: '.github',
+    installUi: false,
+  }));
+  findPriorInstallMock.mock.mockImplementationOnce(() => ({
+    orchRoot: '/workspace/.claude',
+    packageVersion: '1.0.0-alpha.9',
+    tool: 'claude-code',
+  }));
+  // User confirms the cleanup prompt.
+  state.confirmResponse = true;
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  // The first loadBundledManifest call must use 'claude-code' (the prior harness),
+  // not 'copilot-vscode' (the newly chosen harness).
+  const lbmCalls = loadBundledManifestMock.mock.calls;
+  assert.ok(lbmCalls.length >= 1, 'loadBundledManifest must be called for cross-harness cleanup');
+  assert.strictEqual(
+    lbmCalls[0].arguments[1],
+    'claude-code',
+    'loadBundledManifest must use prior install\'s tool (claude-code), not the new tool (copilot-vscode)',
+  );
+});
+
+test('main proceeds with install untouched when user declines the cross-harness cleanup prompt (DD-4)', async () => {
+  resetMocks();
+  runWizardMock.mock.mockImplementationOnce(async () => ({
+    ...makeDefaultConfig(),
+    tool: 'copilot-vscode',
+    orchRoot: '.github',
+    installUi: false,
+  }));
+  findPriorInstallMock.mock.mockImplementationOnce(() => ({
+    orchRoot: '/workspace/.claude',
+    packageVersion: '1.0.0-alpha.9',
+  }));
+  state.confirmResponse = false;
+
+  const originalArgv = process.argv;
+  process.argv = ['node', 'installer/index.js', '--yes'];
+  try {
+    await main();
+  } finally {
+    process.argv = originalArgv;
+  }
+
+  // The chosen orchRoot's install path still runs; the prior orchRoot is untouched.
+  assert.strictEqual(removeManifestFilesMock.mock.callCount(), 0,
+    'declined cross-harness cleanup must not call removeManifestFiles against the prior orchRoot');
+  assert.ok(copyCategoryMock.mock.callCount() > 0, 'install copy must still proceed');
 });

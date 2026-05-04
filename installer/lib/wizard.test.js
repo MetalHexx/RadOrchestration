@@ -13,7 +13,7 @@ const sectionHeaderMock = mock.fn((marker, title) => {
 
 const promptGettingStartedMock = mock.fn(async () => {
   callOrder.push('promptGettingStarted');
-  return { tool: 'copilot', workspaceDir: '/home/user/workspace' };
+  return { tool: 'copilot-vscode', workspaceDir: '/home/user/workspace' };
 });
 
 const promptOrchRootMock = mock.fn(async () => {
@@ -54,7 +54,14 @@ mock.module('./prompts/getting-started.js', {
   namedExports: { promptGettingStarted: promptGettingStartedMock },
 });
 mock.module('./prompts/orch-root.js', {
-  namedExports: { promptOrchRoot: promptOrchRootMock },
+  namedExports: {
+    promptOrchRoot: promptOrchRootMock,
+    HARNESS_DEFAULTS: {
+      'claude-code': '.claude',
+      'copilot-vscode': '.github',
+      'copilot-cli': '.github',
+    },
+  },
 });
 mock.module('./prompts/project-storage.js', {
   namedExports: { promptProjectStorage: promptProjectStorageMock },
@@ -159,7 +166,7 @@ describe('runWizard({ skipConfirmation: false })', () => {
   });
 
   it('returns tool and workspaceDir from promptGettingStarted', () => {
-    assert.equal(result.tool, 'copilot');
+    assert.equal(result.tool, 'copilot-vscode');
     assert.equal(result.workspaceDir, '/home/user/workspace');
   });
 
@@ -323,7 +330,7 @@ describe('runWizard with cliOverrides', () => {
 
     await runWizard({
       skipConfirmation: false,
-      cliOverrides: { tool: 'copilot', workspaceDir: '/custom/path' },
+      cliOverrides: { tool: 'copilot-vscode', workspaceDir: '/custom/path' },
     });
 
     assert.equal(promptGettingStartedMock.mock.calls.length, 0, 'promptGettingStarted skipped');
@@ -350,5 +357,43 @@ describe('runWizard with cliOverrides', () => {
 
     assert.equal(promptUiInstallMock.mock.calls.length, 0, 'promptUiInstall skipped');
     assert.equal(result.installUi, false);
+  });
+});
+
+describe('runWizard — unattended orchRoot default follows tool', () => {
+  it('defaults orchRoot to .github when --yes --tool copilot-vscode and no --orch-root', async () => {
+    const result = await runWizard({
+      skipConfirmation: true,
+      cliOverrides: { tool: 'copilot-vscode' },
+    });
+    assert.equal(result.tool, 'copilot-vscode');
+    assert.equal(result.orchRoot, '.github');
+  });
+
+  it('defaults orchRoot to .github when --yes --tool copilot-cli and no --orch-root', async () => {
+    const result = await runWizard({
+      skipConfirmation: true,
+      cliOverrides: { tool: 'copilot-cli' },
+    });
+    assert.equal(result.tool, 'copilot-cli');
+    assert.equal(result.orchRoot, '.github');
+  });
+
+  it('defaults orchRoot to .claude when --yes --tool claude-code and no --orch-root', async () => {
+    const result = await runWizard({
+      skipConfirmation: true,
+      cliOverrides: { tool: 'claude-code' },
+    });
+    assert.equal(result.tool, 'claude-code');
+    assert.equal(result.orchRoot, '.claude');
+  });
+
+  it('explicit --orch-root override wins over harness default', async () => {
+    const result = await runWizard({
+      skipConfirmation: true,
+      cliOverrides: { tool: 'copilot-vscode', orchRoot: '.custom' },
+    });
+    assert.equal(result.tool, 'copilot-vscode');
+    assert.equal(result.orchRoot, '.custom');
   });
 });

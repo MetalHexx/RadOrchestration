@@ -33,9 +33,18 @@ import { resolveOrchRoot } from './lib/path-utils.js';
 // Infrastructure
 import { copyCategory } from './lib/file-copier.js';
 
+// Upgrade composition (manifest-aware)
+import { readInstalledPackageVersion } from './lib/installed-version.js';
+import { loadBundledManifest } from './lib/catalog.js';
+import { detectModifiedFiles, confirmModifiedFiles } from './lib/hash-check.js';
+import { removeManifestFiles } from './lib/remove.js';
+import { findPriorInstallAtOtherOrchRoot, inferToolFromOrchRoot } from './lib/cross-harness-scan.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = __dirname;
+const __require = createRequire(import.meta.url);
+const { version: __installerVersion } = __require('./package.json');
 
 /**
  * Runs `npm install --omit=dev` in the scripts directory with a spinner.
@@ -107,45 +116,133 @@ export async function main() {
     return;
   }
 
+  // uninstall subcommand → resolve orchRoot, delegate to runUninstall.
+  // When --tool is omitted, infer it from the orchRoot folder name so a
+  // bare `radorch uninstall` works correctly for Copilot installs (where
+  // the manifest paths are .agent.md, not .md). Explicit --tool wins.
+  if (command === 'uninstall') {
+    const { runUninstall } = await import('./lib/uninstall.js');
+    const workspaceDir = options.workspaceDir ?? process.cwd();
+    const orchRoot = options.orchRoot ?? '.claude';
+    const tool = options.tool ?? inferToolFromOrchRoot(path.basename(orchRoot)) ?? 'claude-code';
+    const resolvedOrchRoot = resolveOrchRoot(workspaceDir, orchRoot);
+    await runUninstall({ installerRoot: repoRoot, resolvedOrchRoot, tool });
+    return;
+  }
+
   const skipConfirmation = options.skipConfirmation ?? false;
-  const forceOverwrite = options.overwrite ?? false;
+  // Note: `options.overwrite` is still parsed by cli.js for backward-compat
+  // invocation strings, but the upgrade path no longer reads it (NFR-5 — the
+  // modified-file UX is the only confirmation surface and cannot be bypassed).
 
   try {
     renderBanner();
 
     const config = await runWizard({ skipConfirmation, cliOverrides: options });
+    config.packageVersion = __installerVersion;
 
-    // Existing-file detection
+    // Existing-install detection — manifest-aware upgrade composition.
+    // Reads the user's package_version, looks up the prior bundled manifest
+    // from the catalog, runs the modified-file check, and removes the prior
+    // install before proceeding. Pre-manifest installs follow the DD-1 path.
     const resolvedRoot = resolveOrchRoot(config.workspaceDir, config.orchRoot);
-    const agentsPath = path.join(resolvedRoot, 'agents');
-    const skillsPath = path.join(resolvedRoot, 'skills');
 
-    if (fs.existsSync(agentsPath) || fs.existsSync(skillsPath)) {
-      if (forceOverwrite) {
-        console.log(
-          THEME.warning(
-            `⚠ Existing orchestration files detected at ${resolvedRoot}. Overwriting (--overwrite).`
-          )
+    // Cross-harness switch detection (DD-4, AD-7).
+    // Surfaces a prior install at a well-known orchRoot under the workspace
+    // whose path differs from the one the user just chose. Reuses the
+    // catalog/hash/remove primitives so this path inherits all the same
+    // safety properties as the in-place upgrade path (AD-8). orchestration.yml
+    // is filtered out of the manifest passed to removeManifestFiles and
+    // removed LAST — same composition rule as runUninstall (F-5 invariant).
+    const priorAtOther = findPriorInstallAtOtherOrchRoot(config.workspaceDir, config.orchRoot);
+    if (priorAtOther) {
+      console.log('');
+      sectionHeader('::', 'Prior Install Detected');
+      console.log('');
+      console.log(THEME.body(
+        `An existing rad-orchestration install was found at ${priorAtOther.orchRoot} `
+        + `(version ${priorAtOther.packageVersion}). You're installing into ${resolvedRoot}.`,
+      ));
+      console.log('');
+      const cleanup = await confirm({
+        message: `Uninstall the prior install at ${priorAtOther.orchRoot} before continuing?`,
+        default: true,
+      });
+      if (cleanup) {
+        // Reuse the same primitives as `radorch uninstall` against the prior orchRoot.
+        // Use priorAtOther.tool (the prior harness) — not config.tool (the newly chosen harness) —
+        // so the manifest matches the files actually on disk in the prior orchRoot.
+        const fullPriorManifest = loadBundledManifest(repoRoot, priorAtOther.tool, priorAtOther.packageVersion);
+        // Filter orchestration.yml out of the slice passed to removeManifestFiles —
+        // it must be removed LAST (clean-slate signal). Mirrors runUninstall.
+        const ORC_YML_PATH = 'skills/rad-orchestration/config/orchestration.yml';
+        const priorManifest = {
+          ...fullPriorManifest,
+          files: fullPriorManifest.files.filter((f) => f.bundlePath !== ORC_YML_PATH),
+        };
+        // Hash-check uses the FULL manifest so the yml file is included in the diff.
+        const modified = detectModifiedFiles(fullPriorManifest, priorAtOther.orchRoot);
+        if (modified.length > 0) {
+          const proceedModified = await confirmModifiedFiles(
+            modified, priorAtOther.orchRoot, undefined, { message: 'Continue and delete these files?' },
+          );
+          if (!proceedModified) {
+            console.log('Installation cancelled.');
+            process.exit(0);
+          }
+        }
+        const spin = ora({
+          text: `Removing prior install at ${priorAtOther.orchRoot} (v${priorAtOther.packageVersion})…`,
+          color: THEME.spinner,
+        }).start();
+        const result = removeManifestFiles(priorManifest, priorAtOther.orchRoot);
+        spin.succeed(
+          `Removed ${result.removedCount} files from ${priorAtOther.orchRoot}`,
         );
-      } else {
-        console.log(
-          THEME.warning(
-            `⚠ Existing orchestration files detected at ${resolvedRoot}. Continuing will overwrite them.`
-          )
+        // Remove the prior orchestration.yml LAST — clean-slate signal.
+        const ymlPath = path.join(
+          priorAtOther.orchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml',
         );
-        // Safety gate — NEVER skipped by --yes alone
-        const overwrite = await confirm({
-          message: 'Overwrite existing files?',
-          default: false,
-        });
-        if (!overwrite) {
+        if (fs.existsSync(ymlPath)) fs.rmSync(ymlPath, { force: true });
+      }
+    }
+
+    const installed = readInstalledPackageVersion(resolvedRoot);
+    if (installed && installed.packageVersion === null) {
+      // DD-1: pre-manifest install — print guidance, exit without modifying files.
+      console.log('');
+      sectionHeader('::', 'Pre-Manifest Install Detected');
+      console.log('');
+      console.log(THEME.body(
+        `The orchestration.yml at ${resolvedRoot} was installed by a pre-manifest version `
+        + `(v1.0.0-alpha.7 or earlier). Auto-upgrade is not supported for these installs.`,
+      ));
+      console.log(THEME.body(
+        `Back up any local edits, delete ${resolvedRoot}, then re-run \`radorch\` for a clean install. `
+        + `See the MULTI-HARNESS-1 release notes:`,
+      ));
+      console.log('  ' + THEME.command(
+        'https://github.com/MetalHexx/RadOrchestration/blob/main/README.md',
+      ));
+      process.exit(0);
+    }
+    if (installed && installed.packageVersion) {
+      const priorVersion = installed.packageVersion;
+      const priorManifest = loadBundledManifest(repoRoot, config.tool, priorVersion);
+      const modified = detectModifiedFiles(priorManifest, resolvedRoot);
+      if (modified.length > 0) {
+        const proceed = await confirmModifiedFiles(modified, resolvedRoot, undefined, { message: 'Continue and overwrite these files?' });
+        if (!proceed) {
           console.log('Installation cancelled.');
           process.exit(0);
         }
       }
+      const spin = ora({ text: `Removing prior install (v${priorVersion})…`, color: THEME.spinner }).start();
+      const result = removeManifestFiles(priorManifest, resolvedRoot);
+      spin.succeed(`Removed ${result.removedCount} files from prior install (v${priorVersion})`);
     }
 
-    const manifest = getManifest(config.orchRoot);
+    const manifest = getManifest(config.orchRoot, config.tool);
     renderPreInstallSummary(config);
 
     // Pre-install confirmation gate

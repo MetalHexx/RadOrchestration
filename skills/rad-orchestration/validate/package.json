@@ -1,0 +1,6 @@
+{
+  "name": "rad-orchestration-validate",
+  "private": true,
+  "type": "commonjs",
+  "description": "Opt this CommonJS validator subtree out of the ESM declaration in the repo-root package.json. validate-orchestration.js, lib/, and __tests__/ all use require/module.exports and must be parsed as CJS regardless of where the script is invoked from."
+}

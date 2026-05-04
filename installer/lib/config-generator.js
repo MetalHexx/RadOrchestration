@@ -18,6 +18,8 @@ export function generateConfig(config) {
 
 version: "1.0"
 
+package_version: ${config.packageVersion}
+
 # ─── System ────────────────────────────────────────────────────────
 system:
   orch_root: "${normalizePath(config.orchRoot)}"                   # Orchestration root folder (relative name or absolute path)

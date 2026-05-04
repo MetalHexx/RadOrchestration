@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it, test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { parseArgs } from './cli.js';
@@ -59,9 +59,14 @@ describe('parseArgs', () => {
   });
 
   describe('key-value flags', () => {
-    it('--tool copilot', () => {
-      const { options } = parseArgs(['--tool', 'copilot']);
-      assert.strictEqual(options.tool, 'copilot');
+    it('--tool copilot-vscode', () => {
+      const { options } = parseArgs(['--tool', 'copilot-vscode']);
+      assert.strictEqual(options.tool, 'copilot-vscode');
+    });
+
+    it('--tool copilot-cli', () => {
+      const { options } = parseArgs(['--tool', 'copilot-cli']);
+      assert.strictEqual(options.tool, 'copilot-cli');
     });
 
     it('--tool claude-code', () => {
@@ -144,6 +149,10 @@ describe('parseArgs', () => {
       assert.throws(() => parseArgs(['--tool', 'invalid']), /Invalid value/);
     });
 
+    it('--tool cursor throws (no manifest backs it; UI option is disabled)', () => {
+      assert.throws(() => parseArgs(['--tool', 'cursor']), /Invalid value/);
+    });
+
     it('--naming bad throws', () => {
       assert.throws(() => parseArgs(['--naming', 'bad']), /Invalid value/);
     });
@@ -179,4 +188,16 @@ describe('parseArgs', () => {
       assert.strictEqual(options.maxPhases, 5);
     });
   });
+});
+
+test('parseArgs returns command="uninstall" when first arg is "uninstall"', () => {
+  const result = parseArgs(['uninstall']);
+  assert.strictEqual(result.command, 'uninstall');
+});
+
+test('parseArgs threads --workspace and --orch-root through the uninstall command', () => {
+  const result = parseArgs(['uninstall', '--workspace', '/tmp/ws', '--orch-root', '.github']);
+  assert.strictEqual(result.command, 'uninstall');
+  assert.strictEqual(result.options.orchRoot, '.github');
+  assert.ok(result.options.workspaceDir.endsWith('ws'));
 });

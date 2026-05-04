@@ -37,8 +37,8 @@ describe('promptGettingStarted', () => {
     assert.equal(selectArgs.message, 'Select your AI coding tool');
   });
 
-  it('calls select() with exactly 3 choices', () => {
-    assert.equal(selectArgs.choices.length, 3);
+  it('calls select() with exactly 4 choices', () => {
+    assert.equal(selectArgs.choices.length, 4);
   });
 
   it('calls select() with default "claude-code"', () => {
@@ -51,15 +51,21 @@ describe('promptGettingStarted', () => {
     assert.ok(!selectArgs.choices[0].disabled, 'claude-code choice should not be disabled');
   });
 
-  it('second choice is GitHub Copilot (selectable, value: "copilot")', () => {
-    assert.equal(selectArgs.choices[1].name, 'GitHub Copilot');
-    assert.equal(selectArgs.choices[1].value, 'copilot');
-    assert.ok(!selectArgs.choices[1].disabled, 'copilot choice should not be disabled');
+  it('second choice is GitHub Copilot (VS Code) (selectable, value: "copilot-vscode")', () => {
+    assert.equal(selectArgs.choices[1].name, 'GitHub Copilot (VS Code)');
+    assert.equal(selectArgs.choices[1].value, 'copilot-vscode');
+    assert.ok(!selectArgs.choices[1].disabled, 'copilot-vscode choice should not be disabled');
   });
 
-  it('third choice is Cursor (disabled)', () => {
-    assert.equal(selectArgs.choices[2].value, 'cursor');
-    assert.equal(selectArgs.choices[2].disabled, true);
+  it('third choice is GitHub Copilot CLI (selectable, value: "copilot-cli")', () => {
+    assert.equal(selectArgs.choices[2].name, 'GitHub Copilot CLI');
+    assert.equal(selectArgs.choices[2].value, 'copilot-cli');
+    assert.ok(!selectArgs.choices[2].disabled, 'copilot-cli choice should not be disabled');
+  });
+
+  it('fourth choice is Cursor (disabled)', () => {
+    assert.equal(selectArgs.choices[3].value, 'cursor');
+    assert.equal(selectArgs.choices[3].disabled, true);
   });
 
   it('calls input() with message "Target workspace directory"', () => {

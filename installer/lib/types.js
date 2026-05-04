@@ -22,7 +22,7 @@
 
 /**
  * @typedef {Object} InstallerConfig
- * @property {'copilot'|'claude-code'} tool - Selected AI tool
+ * @property {'claude-code'|'copilot-vscode'|'copilot-cli'|'cursor'} tool - Selected AI tool
  * @property {string} workspaceDir - Absolute path to target workspace
  * @property {string} orchRoot - Orchestration root folder name or absolute path
  * @property {string} projectsBasePath - Relative or absolute path for project storage
@@ -35,6 +35,7 @@
  * @property {'always'|'ask'|'never'} autoCommit - Auto-commit behavior for source control
  * @property {'always'|'ask'|'never'} autoPr - Auto-PR behavior for source control
  * @property {'github'} provider - Source control provider (v1: github only)
+ * @property {string} packageVersion - rad-orchestration package version (read from installer/package.json at install time)
  * @property {boolean} installUi - Whether to install the monitoring dashboard
  * @property {string} [uiDir] - Absolute path to UI installation directory (when installUi is true)
  * @property {boolean} skipConfirmation - Whether --yes flag was passed

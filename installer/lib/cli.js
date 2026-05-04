@@ -4,7 +4,7 @@ import path from 'node:path';
 
 /**
  * @typedef {Object} ParsedCli
- * @property {'help'|'version'|'run'} command - The resolved command
+ * @property {'help'|'version'|'run'|'uninstall'} command - The resolved command
  * @property {Partial<import('./types.js').CliOptions>} options - Parsed key-value options
  */
 
@@ -32,7 +32,10 @@ const INT_FIELDS = new Set([
 
 /** Valid values for enum-type fields */
 const ENUM_VALUES = {
-  tool:            ['copilot', 'claude-code'],
+  // `cursor` is intentionally omitted: it appears as a disabled "Coming
+  // soon" choice in the interactive prompt, but no manifest backs it, so
+  // accepting it on the CLI would crash deep in getManifest().
+  tool:            ['claude-code', 'copilot-vscode', 'copilot-cli'],
   projectsNaming:  ['SCREAMING_CASE', 'lowercase', 'numbered'],
   executionMode:   ['ask', 'phase', 'task', 'autonomous'],
   autoCommit:      ['always', 'ask', 'never'],
@@ -53,6 +56,12 @@ export function parseArgs(argv) {
   }
   if (argv.includes('--version') || argv.includes('-v')) {
     return { command: 'version', options: {} };
+  }
+  // Positional subcommand — must be the first non-flag argument.
+  let isUninstall = false;
+  if (argv[0] === 'uninstall') {
+    isUninstall = true;
+    argv = argv.slice(1);
   }
 
   /** @type {Partial<import('./types.js').CliOptions>} */
@@ -117,7 +126,7 @@ export function parseArgs(argv) {
     }
   }
 
-  return { command: 'run', options };
+  return { command: isUninstall ? 'uninstall' : 'run', options };
 }
 
 /**
