@@ -1,189 +1,65 @@
-﻿# Project Structure
+# Project Structure
 
-This page documents the file layout, naming conventions, and document types.
-
-## Workspace Layout
-
-> **Note:** Commands below use `.claude` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
-
-```text
-.claude/
-├── agents/                    # Agent definitions
-│   └── ...
-├── skills/                    # Skill bundles
-│   ├── orchestration/         # Unified orchestration skill
-│   │   ├── SKILL.md           # Role-based router
-│   │   ├── config/
-│   │   │   └── orchestration.yml  # System configuration
-│   │   ├── references/
-│   │   │   ├── context.md     # System context (all agents)
-│   │   │   ├── document-conventions.md  # Document naming & placement (all agents)
-│   │   │   ├── pipeline-guide.md  # Pipeline guide (Orchestrator)
-│   │   │   └── validation-guide.md  # Validation guide (Reviewer, Tactical Planner)
-│   │   └── scripts/
-│   │       ├── pipeline.js    # Unified pipeline CLI (sole state writer)
-│   │       ├── lib/           # Pipeline library modules
-│   │       │   └── ...
-│   │       ├── tests/         # Pipeline test files
-│   │       │   └── ...
-│   │       └── validate/      # Validator scripts
-│   │           ├── validate-orchestration.js  # Validator CLI entry point
-│   │           ├── lib/       # Validator library modules
-│   │           │   └── ...
-│   │           └── __tests__/ # Validator test files
-│   │               └── ...
-│   └── ...                    # Other skills
-├── instructions/              # Scoped instruction files
-│   └── ...
-├── prompts/                   # Utility prompt files
-│   └── ...
-├── copilot-instructions.md    # Workspace-level instructions
-└── projects/                  # Project artifacts (default -- configurable via orchestration.yml)
-    └── {PROJECT-NAME}/
-        └── ...
-archive/                       # Historical design artifacts -- the plan that started this repository
-├── ORCHESTRATION-MASTER-PLAN.md
-├── orchestration-human-draft.md
-└── schemas/                   # Relic templates (14 files)
-    └── ...
-assets/                        # Static assets
-└── dashboard-screenshot.png
-docs/                          # Documentation
-├── getting-started.md
-├── agents.md
-├── pipeline.md
-├── skills.md
-├── templates.md
-├── configuration.md
-├── project-structure.md
-├── dashboard.md
-└── internals/
-    ├── dependency-model.md
-    ├── planning-pipeline-overhaul.md
-    ├── scripts.md
-    ├── system-architecture.md
-    └── validation.md
-ui/                            # Monitoring dashboard (Next.js)
-└── components/
-    └── badges/
-        ├── pipeline-tier-badge.tsx
-        ├── review-verdict-badge.tsx
-        ├── status-icon.tsx
-        └── stage-badge.tsx    # Stage badge component
-```
+Each project lives in its own folder under the configured `base_path`. This page documents that folder layout, file naming patterns, and what each document is — it is the canonical reference for project document types.
 
 ## Project Folder Structure
 
-Each project gets its own subfolder under the configured `base_path` (default: `.claude/projects/` — configurable via `orchestration.yml`). The `base_path` supports both relative paths (resolved from workspace root) and absolute paths (used as-is, useful for git worktree setups):
-
 ```text
 {PROJECT-NAME}/
-├── state.json                 # Pipeline state (sole writer: pipeline script)
-├── BRAINSTORMING.md           # Optional ideation output
-├── {NAME}-RESEARCH-FINDINGS.md
-├── {NAME}-PRD.md
-├── {NAME}-DESIGN.md
-├── {NAME}-ARCHITECTURE.md
-├── {NAME}-MASTER-PLAN.md
-├── {NAME}-REQUIREMENTS.md     # Planner output (lean FR/NFR/AD/DD ledger)
-├── {NAME}-EXECUTION-PLAN.md   # Planner output (inlined phases + tasks)
-├── {NAME}-ERROR-LOG.md
-├── phases/
+├── {NAME}-BRAINSTORMING.md        # Ideation output
+├── {NAME}-REQUIREMENTS.md         # FR/NFR/AD ledger
+├── {NAME}-MASTER-PLAN.md          # Phase outlines and exit criteria
+├── {NAME}-ERROR-LOG.md            # Append-only error log
+├── template.yml                   # Pipeline template for this project
+├── state.json                     # Pipeline state (written by pipeline script)
+├── phases/                        # Phase plan files — populated by the explosion script
 │   ├── {NAME}-PHASE-01-{TITLE}.md
 │   └── {NAME}-PHASE-02-{TITLE}.md
-├── tasks/
+├── tasks/                         # Task handoff files
 │   ├── {NAME}-TASK-P01-T01-{TITLE}.md
-│   ├── {NAME}-TASK-P01-T02-{TITLE}.md
-│   └── ...
-└── reports/
+│   └── {NAME}-TASK-P01-T02-{TITLE}.md
+└── reports/                       # Review outputs
     ├── {NAME}-CODE-REVIEW-P01-T01-{TITLE}.md
-    ├── {NAME}-PHASE-REPORT-P01-{TITLE}.md
-    └── {NAME}-PHASE-REVIEW-P01-{TITLE}.md
+    ├── {NAME}-PHASE-REVIEW-P01-{TITLE}.md
+    └── {NAME}-FINAL-REVIEW.md
 ```
 
-## Naming Conventions
+## Naming Patterns
 
-### Project Files
+| Pattern | Example | What it is |
+|---------|---------|------------|
+| `{NAME}-BRAINSTORMING.md` | `MYAPP-BRAINSTORMING.md` | Ideation document |
+| `{NAME}-REQUIREMENTS.md` | `MYAPP-REQUIREMENTS.md` | Requirements ledger |
+| `{NAME}-MASTER-PLAN.md` | `MYAPP-MASTER-PLAN.md` | Phase-level plan |
+| `phases/{NAME}-PHASE-{NN}-{TITLE}.md` | `MYAPP-PHASE-01-CLEANUP.md` | Phase plan file |
+| `tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-TASK-P01-T01-DELETE-RETIRED-PAGES.md` | Task handoff file |
+| `reports/{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-CODE-REVIEW-P01-T01-DELETE-RETIRED-PAGES.md` | Code review report |
+| `reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REVIEW-P01-CLEANUP.md` | Phase review report |
+| `reports/{NAME}-FINAL-REVIEW.md` | `MYAPP-FINAL-REVIEW.md` | Final comprehensive review |
+| `{NAME}-ERROR-LOG.md` | `MYAPP-ERROR-LOG.md` | Append-only error log |
 
-Project files use `SCREAMING-CASE` (configurable) with the project name as a prefix:
-
-| Pattern | Example |
-|---------|---------|
-| `{NAME}-PRD.md` | `MYAPP-PRD.md` |
-| `{NAME}-DESIGN.md` | `MYAPP-DESIGN.md` |
-| `{NAME}-PHASE-{NN}-{TITLE}.md` | `MYAPP-PHASE-01-CORE-API.md` |
-| `{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-TASK-P01-T03-AUTH.md` |
-| `{NAME}-CODE-REVIEW-P{NN}-T{NN}-{TITLE}.md` | `MYAPP-CODE-REVIEW-P01-T03-AUTH.md` |
-| `{NAME}-PHASE-REPORT-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REPORT-P01-CORE-API.md` |
-| `{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md` | `MYAPP-PHASE-REVIEW-P01-CORE-API.md` |
-| `{NAME}-REQUIREMENTS.md` | `MYAPP-REQUIREMENTS.md` |
-| `{NAME}-EXECUTION-PLAN.md` | `MYAPP-EXECUTION-PLAN.md` |
-| `{NAME}-ERROR-LOG.md` | `MYAPP-ERROR-LOG.md` |
-
-### System Files
-
-| Component | Convention | Example |
-|-----------|-----------|---------|
-| Agents | lowercase with hyphens | `orchestrator.agent.md` |
-| Skills | lowercase with hyphens | `.claude/skills/create-prd/` |
-| Instructions | lowercase with hyphens | `project-docs.instructions.md` |
-| Prompts | lowercase with hyphens | `configure-system.prompt.md` |
+`{TITLE}` is the SCREAMING-KEBAB-CASE slug of the phase or task title.
 
 ## Document Types
 
-### Planning Documents
+**`{NAME}-BRAINSTORMING.md`** — Records validated ideas, scope boundaries, and problem statements produced during the brainstorming stage. Optional; not every project uses this stage.
 
-| Document | Sole Writer | Contents |
-|----------|-------------|----------|
-| `BRAINSTORMING.md` | Brainstormer | Validated ideas, scope boundaries, problem statements |
-| `RESEARCH-FINDINGS.md` | Research | Codebase analysis, patterns, constraints, tech inventory |
-| `PRD.md` | Product Manager | Problem statement, user stories, requirements (FR-/NFR-), risks, metrics |
-| `DESIGN.md` | UX Designer | User flows, layouts, components, states, breakpoints, accessibility |
-| `ARCHITECTURE.md` | Architect | System layers, module map, contracts, APIs, schemas, dependency graph |
-| `MASTER-PLAN.md` | Architect | Executive summary, phase outlines, exit criteria, risk register |
-| `REQUIREMENTS.md` | Planner | Lean FR/NFR/AD/DD ledger (≤ 500 estimated tokens per block) referenced by ID throughout the Execution Plan |
-| `EXECUTION-PLAN.md` | Planner | Inlined phase + task plan with exact code, commands, and file paths per task; every step tagged with the requirement IDs it satisfies |
+**`{NAME}-REQUIREMENTS.md`** — A lean ledger of functional requirements (FR-), non-functional requirements (NFR-), architectural decisions (AD-), and design decisions (DD-). Every downstream step traces to IDs defined here.
 
-### Execution Documents
+**`{NAME}-MASTER-PLAN.md`** — High-level phase outlines and executable tasks. This document is exploded into the smaller phase and task handoff documents.  Input to the explosion script that generates `phases/` and `tasks/`.
 
-| Document | Sole Writer | Contents |
-|----------|-------------|----------|
-| `PHASE-PLAN.md` | Tactical Planner | Task breakdown, dependencies, execution order, acceptance criteria |
-| `TASK-HANDOFF.md` | Tactical Planner | Self-contained coding instructions with inlined contracts and requirements |
-| `PHASE-REPORT.md` | Tactical Planner | Aggregated results, exit criteria assessment, carry-forward items |
-| `CODE-REVIEW.md` | Reviewer | Verdict, checklist, issues, severity classification |
-| `PHASE-REVIEW.md` | Reviewer | Cross-task integration assessment, exit criteria verification |
-| `ERROR-LOG.md` | Orchestrator (via `rad-log-error` skill) | Append-only numbered error entries from pipeline failures |
+**Phase plan files (`phases/`)** — One file per phase, generated by the explosion script from `{NAME}-MASTER-PLAN.md`. Lists the tasks in that phase and their execution order. Not hand-authored.
 
-### State Files
+**Task handoff files (`tasks/`)** — One file per task, generated by the explosion script. Self-contained coding instructions with inlined contracts, steps, and acceptance criteria. The Coder agent's sole input.
 
-| File | Sole Writer | Purpose |
-|------|-------------|---------|
-| `state.json` | Pipeline Script (`pipeline.js`) | Machine-readable pipeline state |
+**Code review documents (`reports/`)** — One per task, written by the Reviewer agent after each coder pass. Contains a verdict, checklist, and any issues with severity classification.
 
-For state schema details and validation, see [Validation](internals/validation.md).
+**Phase review documents (`reports/`)** — One per phase, written by the Reviewer agent after all tasks in a phase complete. Covers cross-task integration and phase exit criteria.
 
-## Scoped Instructions
+**`{NAME}-FINAL-REVIEW.md`** — One per project, written by the Reviewer agent after the comprehensive review step completes. Contains the verdict that gates final approval.
 
-Instruction files use `applyTo` glob patterns to load context-specific rules only when Copilot is working with matching files:
+**`{NAME}-ERROR-LOG.md`** — Append-only numbered entries written by the pipeline when errors occur. Never edited by hand.
 
-| File | Applies To | Rules |
-|------|-----------|-------|
-| `project-docs.instructions.md` | `.claude/projects/**` | Naming conventions, file ownership (sole writer policy), document quality standards |
+**`template.yml`** — The pipeline template that controls the graph of nodes and their sequencing for this project.  It is basically a copy of the `default` or `full` template you chose when running `/rad-plan`.  In the future, this will be possible to customize per project run if needed.
 
-> **Note:** The `applyTo` glob in `project-docs.instructions.md` must match the `base_path` configured in `orchestration.yml`. If you change `base_path`, update `applyTo` to `{new_base_path}/**` or run `/rad-configure-system` to sync automatically.
-
-## Prompt Files
-
-Prompt files provide utility workflows accessible via `/` commands in Copilot:
-
-| Prompt | Command | Purpose |
-|--------|---------|---------|
-| `configure-system.prompt.md` | `/configure-system` | Create or update `orchestration.yml`, scan for stale path references |
-| `rad-plan.prompt.md` | `/rad-plan` | Start the full planning pipeline for a new project — Research through Master Plan |
-| `rad-execute.prompt.md` | `/rad-execute` | Approve a Master Plan and begin execution |
-
-## Next Steps
-
-- [Templates](templates.md) — customization rules and the full template inventory
-- [Validation](internals/validation.md) — how to validate your project structure and state
+**`state.json`** — Machine-readable pipeline state. Written exclusively by the pipeline script; do not edit by hand. See [Validation](internals/validation.md) for schema details.

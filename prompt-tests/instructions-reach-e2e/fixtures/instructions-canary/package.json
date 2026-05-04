@@ -1,0 +1,6 @@
+{
+  "name": "instructions-canary-fixture",
+  "private": true,
+  "type": "module",
+  "description": "Fixture module config for instructions-reach-e2e/instructions-canary. The runner copies this file into the run folder so node --test treats the .js handoff targets as ESM (matching the 'Pure ESM; named export' constraint inlined in the Phase B handoff)."
+}
