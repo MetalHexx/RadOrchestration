@@ -4,6 +4,32 @@ All notable changes to this project are documented here. For full per-release de
 
 ---
 
+## v1.0.0-alpha.8 — 2026-05-04
+
+A release focused on multi-harness support, a new pluggable adapter architecture, and a substantially revised documentation set.
+
+### What's New
+
+- **Multi-harness support** — The system now works across Claude Code, GitHub Copilot in VS Code, and GitHub Copilot CLI. A pluggable adapter layer compiles canonical `agents/` and `skills/` into each harness's required shape. Upgrades are manifest-aware — only changed files are updated, preserving local customizations. Uninstall is also supported.
+- **Repo skill discovery** — The pipeline now automatically discovers workspace-local `SKILL.md` files and injects them into the planner spawn prompt as a `## Repository Skills Available` section, so the planner can incorporate project-specific tooling without manual wiring.
+- **Quick pipeline template** — A lightweight `quick` template for simpler projects that skips brainstorming and goes straight to a single-phase execution loop.
+- **Requirements workflow** — The planning skill now includes an explicit requirements phase before the master plan.
+- **CI workflow** — GitHub Actions CI now runs tests on every push.
+
+### What's Fixed
+
+- Skill visibility (user-facing vs. agent-internal) is now explicit and consistently enforced across all harnesses.
+- Removed a stale `scheduled_tasks.lock` file that could accumulate in long-running projects.
+- Repaired broken references left behind from the RAD-SKILL-DISCOVERY rename.
+
+### Changes
+
+- **Documentation rewrite** — All user-facing docs revised for clarity, including a reorganized getting-started guide and a new `harnesses.md`.
+- **Prompt regression harnesses** — New end-to-end harnesses for instructions-reach, quick pipeline, and repo skill discovery.
+- **Adapter test coverage** — Each harness adapter ships with its own test file.
+
+---
+
 ## v1.0.0-alpha.7 — 2026-04-28
 
 A polish release focused on the dashboard — start projects without leaving the UI, a cleaner DAG timeline, smarter sidebar sorting, and a handful of cross-platform fixes.
