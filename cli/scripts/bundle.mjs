@@ -13,6 +13,11 @@ const outFile = outArg
   ? outArg.slice('--out='.length)
   : path.join(cliRoot, 'dist-bundle', 'radorch.mjs');
 
+if (outArg && !outFile) {
+  process.stderr.write('bundle: --out= requires a non-empty path\n');
+  process.exit(1);
+}
+
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
 
 // Compile TypeScript once via tsc to get dist/ for esbuild's entry resolution.
