@@ -1164,9 +1164,9 @@ This section captures an architectural pivot that emerged from brainstorming for
 
 ### Summary of the pivot
 
-Replace the custom `radorch install` CLI command with a Claude Code plugin that ships everything pre-built — bundled CLI (esbuild → single `.mjs`), bundled pipeline runtime (esbuild → single `.js`), Next.js standalone UI, skills, hooks. User installs once via `/plugin install radorch@radorch-marketplace` from `MetalHexx/RadOrchestration`. State at canonical `~/.radorch/`, code in plugin cache. No two-step install. No `npm install -g`. No system PATH manipulation. The `~/.radorch/.harness` file and `radorch harness use` command are removed — plugin-native activation eliminates the "single active harness" concept entirely. Each harness's plugin lifecycle is independent; users mix and match at the harness level.
+Replace the custom `radorch install` CLI command with a Claude Code plugin that ships everything pre-built — bundled CLI (esbuild → single `.mjs`), bundled pipeline runtime (esbuild → single `.js`), Next.js standalone UI, skills, hooks. User installs once via `/plugin install rad-orchestration@rad-orchestration-marketplace` from `MetalHexx/RadOrchestration`. State at canonical `~/.radorch/`, code in plugin cache. No two-step install. No `npm install -g`. No system PATH manipulation. The `~/.radorch/.harness` file and `radorch harness use` command are removed — plugin-native activation eliminates the "single active harness" concept entirely. Each harness's plugin lifecycle is independent; users mix and match at the harness level.
 
-The iteration is framed as a **vertical-slice spike**: ship the model end-to-end on Claude only (UI launch path through `/radorch:ui-start` skill → bundled CLI → detached Next.js standalone), with the Copilot CLI and VS Code Copilot bundles built but their plugin manifests deferred. Every link in the plugin → skill → CLI → bundle → detached UI → state-folder chain is exercised by one end-to-end scenario.
+The iteration is framed as a **vertical-slice spike**: ship the model end-to-end on Claude only (UI launch path through `/rad-orchestration:ui-start` skill → bundled CLI → detached Next.js standalone), with the Copilot CLI and VS Code Copilot bundles built but their plugin manifests deferred. Every link in the plugin → skill → CLI → bundle → detached UI → state-folder chain is exercised by one end-to-end scenario.
 
 ### Wave displacements
 
@@ -1188,7 +1188,7 @@ These are deferred items that should be picked up at the right wave. They're not
 
 2. **VS Code Copilot plugin packaging.** Researched, viable but with caveats. `chat.pluginLocations` registers a plugin in-place from absolute path with no copy. `chat.plugins.marketplaces` accepts file:// for local marketplaces. Plugin manifest at `.github/plugin.json`. Gaps: explicitly NO plugin-root path token for Copilot-format plugins, no documented persistent-data dir, system in Preview behind `chat.plugins.enabled`. Defers further than Copilot CLI.
 
-3. **`rad-` prefix rename.** Under plugin-native, Claude namespaces plugin-shipped skills as `<plugin>:<skill>`. `radorch:rad-brainstorm` is a redundant double-prefix. Clean follow-on iteration drops the `rad-` prefix from canonical skill names. Likely combined with iter 05 (skill migration).
+3. **`rad-` prefix rename.** Under plugin-native, Claude namespaces plugin-shipped skills as `<plugin>:<skill>`. `rad-orchestration:rad-brainstorm` is a redundant double-prefix. Clean follow-on iteration drops the `rad-` prefix from canonical skill names. Likely combined with iter 05 (skill migration).
 
 4. **Agent namespacing in iter 05.** Confirmed: plugin agents are invoked as `Task(subagent_type='<plugin>:<agent>')`. Bare names only resolve for `~/.claude/agents/` and `.claude/agents/`. The orchestrator agent's spawn prompts (which dispatch to coder, reviewer, coder-junior, coder-senior) need rewriting to use namespaced subagent_type values when shipped via plugin. Iter 05 owns this alongside its skill migration sweep.
 
@@ -1202,7 +1202,7 @@ These are deferred items that should be picked up at the right wave. They're not
 
 9. **Separate releases repo.** If `MetalHexx/RadOrchestration` repo size becomes a problem (committed plugin artifacts grow), splitting to `MetalHexx/radorch-releases` is a clean follow-on. No architectural change required, just a publish target.
 
-10. **Marketplace name reservation.** Verify the chosen plugin/marketplace name (`radorch`, `radorch-marketplace`) isn't on Claude's reserved-names list before publishing. Reserved names include `claude-plugins-official`, `anthropic-plugins`, `agent-skills`, etc.
+10. **Marketplace name reservation.** Verify the chosen plugin/marketplace name (`rad-orchestration`, `rad-orchestration-marketplace`) isn't on Claude's reserved-names list before publishing. Reserved names include `claude-plugins-official`, `anthropic-plugins`, `agent-skills`, etc.
 
 ### Research findings to preserve
 
