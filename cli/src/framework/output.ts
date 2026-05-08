@@ -6,6 +6,13 @@ export interface SuccessEnvelope<TData = unknown> {
   warnings?: string[];
   prompt?: string;
   next_action?: string;
+  /**
+   * Optional exit-code override for commands whose exit semantics differ from the
+   * default (`ok: true` → 0). Doctor uses this to express "envelope is `ok: true`
+   * but the run encountered findings and should exit 1" (FR-21). When unset,
+   * runCommand falls back to the default mapping.
+   */
+  exit_code?: number;
 }
 
 export interface FailureEnvelope {
@@ -25,6 +32,9 @@ export function validateEnvelope(env: unknown): asserts env is Envelope {
   if (e['ok'] === true) {
     if (!('data' in e)) throw new Error('success envelope must carry `data`');
     if ('error' in e) throw new Error('success envelope must not carry `error` (data xor error)');
+    if ('exit_code' in e && typeof e['exit_code'] !== 'number') {
+      throw new Error('success envelope `exit_code` must be a number when present');
+    }
   } else {
     if (!('error' in e) || !e['error'] || typeof e['error'] !== 'object') {
       throw new Error('failure envelope must carry an `error` object');

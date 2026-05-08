@@ -23,14 +23,14 @@ export interface InstallResult {
 export async function runInstall(opts: {
   defaultHarness: HarnessName;
   acceptDefaults: boolean;
-  ctx: { env: NodeJS.ProcessEnv; ux: { isTTY: boolean; nonInteractive: boolean; noColor: boolean; json: boolean } };
+  ctx: { env: NodeJS.ProcessEnv; ux: { isTTY: boolean; nonInteractive: boolean; noColor: boolean; json: boolean }; stderr: NodeJS.WriteStream };
 }): Promise<InstallResult> {
   const root = resolveInstallRoot(opts.ctx.env);
   if (await pathExists(root)) {
     throw new UserError(`radorch install root already exists at ${root}. Remove it before re-running install (iter 1 is greenfield-only).`);
   }
   // Banner + next-steps hint render only in true interactive mode (DD-1, DD-9). When ux.isTTY=false they no-op.
-  renderBanner({ stream: process.stderr, isTTY: opts.ctx.ux.isTTY, nonInteractive: opts.ctx.ux.nonInteractive, noColor: opts.ctx.ux.noColor, json: opts.ctx.ux.json });
+  renderBanner({ stream: opts.ctx.stderr, isTTY: opts.ctx.ux.isTTY, nonInteractive: opts.ctx.ux.nonInteractive, noColor: opts.ctx.ux.noColor, json: opts.ctx.ux.json });
   const sp1 = startSpinner('Writing install skeleton', opts.ctx.ux);
   await writeInstallSkeleton({ root, packageVersion: pkg['version'], defaultHarness: opts.defaultHarness });
   sp1.succeed('Install skeleton written');
@@ -39,7 +39,7 @@ export async function runInstall(opts: {
   sp2.succeed('Harness bundles installed');
 
   if (opts.ctx.ux.isTTY && !opts.ctx.ux.nonInteractive && !opts.ctx.ux.json) {
-    process.stderr.write(`\nNext steps:\n  - radorch repo add (lands in #1.1)\n  - radorch doctor\n`);
+    opts.ctx.stderr.write(`\nNext steps:\n  - radorch repo add (lands in #1.1)\n  - radorch doctor\n`);
   }
 
   return {

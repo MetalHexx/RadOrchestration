@@ -49,8 +49,8 @@ export const doctorCommand = defineCommand({
   // Doctor's exit code is computed from check results, not error type.
   // exits 0 on no failures (warns allowed), 1 on any failure, 2 for unexpected internal errors (framework catch branch).
   mapResult: (r: DoctorResult) => ({
-    ok: r.all_passed,
+    ok: true as const,
     data: r,
-    ...(r.all_passed ? {} : { error: { type: 'user_error' as const, message: 'one or more doctor checks failed' } }),
+    exit_code: r.all_passed ? 0 : 1,
   }),
 });

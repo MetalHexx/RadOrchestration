@@ -24,7 +24,7 @@ export interface CommandDef<Args, Flags, Result> {
   args: { [K in keyof Args]: ArgSpec };
   flags: { [K in keyof Flags]: FlagSpec };
   handler: (ctx: { args: Args; flags: Flags; ctx: CommandContext }) => Promise<Result>;
-  mapResult?: (result: Result) => { ok: boolean; data?: unknown; error?: { type: 'user_error' | 'system_error'; message: string }; warnings?: string[] };
+  mapResult?: (result: Result) => { ok: boolean; data?: unknown; error?: { type: 'user_error' | 'system_error'; message: string }; warnings?: string[]; exit_code?: number };
 }
 
 export function defineCommand<Args, Flags, Result>(def: CommandDef<Args, Flags, Result>): CommandDef<Args, Flags, Result> {
@@ -122,7 +122,10 @@ export async function runCommand<Args, Flags, Result>(
     });
     await logger.flush();
     emit(envelope as never);
-    const exitCode = envelope.ok ? ExitCode.Success : (envelope.error?.type === 'user_error' ? ExitCode.UserError : ExitCode.SystemError);
+    const overrideExit = envelope.ok && typeof envelope.exit_code === 'number' ? envelope.exit_code : undefined;
+    const exitCode = overrideExit !== undefined
+      ? overrideExit
+      : (envelope.ok ? ExitCode.Success : (envelope.error?.type === 'user_error' ? ExitCode.UserError : ExitCode.SystemError));
     process.exit(exitCode);
   } catch (e) {
     const err = e instanceof RadorchError ? e : new SystemError(e instanceof Error ? e.message : String(e));
