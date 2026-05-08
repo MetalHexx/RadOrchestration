@@ -1,6 +1,6 @@
 ---
 name: rad-orchestration
-description: Orchestration system runtime, configuration, validation, and context. All pipeline agents load this skill for system context. The Orchestrator receives pipeline-specific guidance. Reviewers receive validation guidance.
+description: Orchestration system runtime, configuration, and context. All pipeline agents load this skill for system context. The Orchestrator receives pipeline-specific guidance.
 user-invocable: false
 ---
 
