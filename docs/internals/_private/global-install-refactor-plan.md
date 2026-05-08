@@ -1088,4 +1088,68 @@ Recommended order to spawn per-wave brainstorming → planning → execution pro
 5. Wave 6 (after Wave 3, ideally with Wave 5 mostly stable)
 6. Wave 8 (last; convergence)
 
-Each per-wave project's BRAINSTORMING.md derives from this doc's §7.x lock-ins (constraints) and the relevant entries from §9 open questions (still to resolve at brainstorm time).
+Each per-wave project's BRAINSTORMING.md derives from this doc's §7.x lock-ins (constraints) and the relevant entries from §9 open questions (still to resolve at brainstorm time). Plus §12 below — gap considerations surfaced by comprehensive code review, organized by wave.
+
+---
+
+## 12. Gap considerations (from comprehensive code-reality review)
+
+These are findings from a deep gap-and-reality review of the doc against the actual codebase. They're not blocking the program plan but **should be picked up when each wave's per-wave brainstorming happens** — they identify code areas, edge cases, or concerns the wave-by-wave lock-ins didn't enumerate.
+
+### Cross-cutting (any wave; address as appropriate)
+
+- **Concurrency policy**: no project-level lockfile spec today. Edge cases: two `/rad-execute` invocations against same project; UI Archive/Cleanup button while CLI is running; two skills issuing `radorch git commit` against different worktrees of the same repo.
+- **Environment variable inventory beyond `RADORCH_HOME`**: `CHOKIDAR_USEPOLLING` (Docker / WSL), `EDITOR` (used by `gh pr create` interactive), `GH_TOKEN` / `GITHUB_TOKEN` (alternate auth), `NO_COLOR`, `npm_config_*` (corporate registries affecting `pipeline.js` JIT install).
+- **Windows MAX_PATH risk** under nested `~/.radorch/runtime/harnesses/<h>/skills/rad-orchestration/scripts/node_modules/...`. Already a problem on long-pathed repos today; gets worse under global install.
+- **`gh` auth scope** per-host (github.com vs. enterprise) — `gh auth status` is per-host; multi-repo doesn't account for repos targeting different GitHub hosts.
+- **Internationalization / locale**: project names ASCII-only (implicit, not stated); commit/PR bodies may contain non-ASCII (LLM-crafted); Windows path-separator and codepage behavior with non-ASCII paths.
+- **File permissions / umask**: who chmods worktree directories? Cross-process readability if UI runs under a different uid (Docker scenarios).
+- **Logging flow**: `rad-log-error` mentioned in Wave 5 inventory but log-file path under v6 (`~/.radorch/projects/<NAME>/errors.md`?) and write ownership (skill / orchestrator / `radorch log-error` CLI?) not locked.
+
+### Wave 2 considerations (CLI scaffolding)
+
+- **`installer/lib/{cross-harness-scan, hash-check, catalog, manifest, installed-version, remove}.js`** — manifest-aware install/upgrade machinery shipping per-version manifests at `installer/src/<harness>/manifests/v*.json`. Today's installer detects user-modified files via SHA-256 and surgically removes orphans on uninstall. The plan doesn't say how this survives in `cli/`. Either fold into `radorch install` / `radorch update` / `radorch uninstall`, or design a replacement. **Biggest blind spot in the plan.**
+- **`radorch uninstall` symmetric story not specified**: remove harness assets, remove `~/.radorch/runtime/`, leave `projects/` intact for archival? Currently undocumented.
+- **`setup-hooks.js` and `.githooks/pre-commit`**: today's hook only `tsc --noEmit` on `skills/rad-orchestration/scripts/`. Wave 2 adds `cli/`-package hook. Two hook scripts? One that handles both? Where does `setup-hooks.js` live under v6 (it's currently inside `skills/rad-orchestration/scripts/`)?
+
+### Wave 3 considerations (state schema v6)
+
+- **`migrate-to-v6.ts` is NOT a pure data transform** like `migrate-to-v5.ts` was. It needs registry-binding (lookup by `remote_url` match against `~/.radorch/registry.yml`, fallback to user prompt) to bind the v5 single `source_control` into v6's `by_repo` map. Order-of-operations matters: install global → import existing project → run migrate. The plan's "mirrors `migrate-to-v5.ts` precedent" elides this.
+- **`orchRoot` derivation is positional** — `lib/orch-root.ts` and `pipeline.js` derive it from the directory name three/four levels above the script. Under `~/.radorch/runtime/harnesses/<harness>/skills/rad-orchestration/scripts/`, the detected `orchRoot` becomes the harness folder name (`claude` / `copilot-vscode` / `copilot-cli`), not the install-root. Migration story needed; possibly switch to reading `RADORCH_HOME` directly.
+
+### Wave 5 considerations (skill migration)
+
+- **`skills/rad-orchestration/validate/`** — entire 7-category orchestration validator harness (`validate-orchestration.js`, `lib/checks/{structure,agents,skills,config,instructions,prompts,cross-refs}.js`, `__tests__/`, own `package.json`). The `config` check today validates `orchestration.yml` shape — every field is dropped under v6. Either fold into `radorch doctor` or retire explicitly. Plan never mentions it.
+- **`tests/scripts/`** — 9 cross-cutting tests at repo level. `test-pipeline-source-skill-refs.test.mjs`, `test-prose-skill-refs.test.mjs`, `test-agent-skill-refs.test.mjs` cross-reference skills and agents — the retirements (`rad-execute-parallel`, `rad-approve-plan`, `rad-configure-system`, `rad-plan-quick`, `brainstormer.md`, `orchestrator.md`) will break these unless updated in lockstep. `test-claude-md-reserved-namespace.test.mjs` may need v6 path updates.
+- **UI test infrastructure** (`fs-reader-bootstrap.test.ts`, `fs-reader-config-rw.test.ts`, etc., ~7 files) — today validates `ORCH_ROOT` env-var bootstrap behavior. Substantial rewrite under `RADORCH_HOME` discovery, not deletion.
+- **Config validator dependency on dropped fields**: `installer/lib/wizard.js`, `installer/lib/prompts/{orch-root, project-storage, source-control}.js`, and `validate/lib/checks/config.js` all validate fields the plan drops. Cleanup needed when those skills retire.
+
+### Wave 6 considerations (DAG + tiered templates)
+
+- **Multi-repo `gh pr create`** works fine when each call sets cwd to the right worktree, but `gh auth status` is per-host: if registered repos point to different GitHub hosts (github.com vs. enterprise), the per-host auth check needs explicit handling.
+- **`prompt-tests/`** is deeper than the plan acknowledges. `plan-pipeline-e2e/` and `quick-pipeline-e2e/` reference `default.yml` / `quick.yml` by name. Folder names will be misleading after the rename — likely become `extra-high-pipeline-e2e` / `low-pipeline-e2e`, plus new behaviors for `high` and `medium`. `_runner.md` and `user-instructions.md` reference `WORKSPACE_ROOT` / `ORCH_ROOT` — need rewrite. Operator-committed baselines may need re-baselining post-v6.
+
+### Wave 7 considerations (UI)
+
+- **UI's `composePrompt` for `start-planning`** sends `/rad-plan ${projectName}`. Under Wave 5, `/rad-plan` requires AskUserQuestion target binding — but the user clicked a UI button without that context. The handoff between UI button → harness skill needs design (the UI may need to surface workspace/repo selection BEFORE composing the prompt).
+- **chokidar `_archive/` exclusion regex form**: today's `IGNORED_PROJECT_DIR_RE` is a path-segment regex matching `/node_modules/`, etc. Adding `_archive/` requires the same `[\\/]_archive[\\/]` form — a string glob like `**/_archive/**` won't pre-empt directory-recursion the same way.
+- **Cross-platform browser launch is harder than the lock-in suggests**: Windows `start` has known quoting hazards with `&` in URLs. `launch-claude.js` already pays this engineering tax (uses `wt.exe` with Base64 `-EncodedCommand`). The Wave 7 lock-in's "macOS `open`, Windows `start`, Linux `xdg-open`" understates the engineering.
+- **`installer/lib/docker-generator.js` and Docker UI flow** — generates `docker-compose.yml` with `WORKSPACE_ROOT` / `ORCH_ROOT` / `PROJECTS_DIR` env vars and a Node container. Wave 7 drops those env vars but doesn't address Docker. Needs explicit decision: drop / preserve / rewrite. `installer/lib/path-utils.js:toDockerPath` would move/retire alongside.
+
+### Wave 8 considerations (migration + publish)
+
+- **Harness asset placement (§9-11)** is currently parked but **blocks Wave 8 migration UX authoring**. Once `radorch install` ships harness assets to `~/.radorch/runtime/harnesses/claude/`, how does Claude Code see them? Symlink to `~/.claude/`? Copy? Both? Copilot VS Code reads `<repo>/.github/skills/` — how do those locations get populated under global install? **Resolve before Wave 8 starts.**
+- **In-flight migration state matrix** — a v5 project at migration time can be in any of: mid-planning, mid-execution-pre-commit, mid-corrective-cycle, awaiting plan-approval-gate, awaiting final-approval-gate. Each has different implications for worktree migration, source_control mapping, gate state preservation, PR-existence handling. None enumerated.
+- **Existing PR descriptions** lack the `## Linked PRs` placeholder for pass-2 substitution. After migration, the user's `radorch git pr` re-run finds existing PRs without the placeholder — pass-2 behavior at this seam is undefined.
+- **Worktree-state migration**: old v5 worktrees at non-canonical paths (`<repo>/.worktrees/...` or sibling) with possibly uncommitted work. "Old install dirs left alone" doesn't address worktree contents.
+- **`docs/` user-facing rewrite** — ~8 files (getting-started, configuration, dashboard, harnesses, agents, skills, pipeline, project-structure) describe the per-repo install model and `orchestration.yml`. Wave 8 release should enumerate them.
+- **`docs/internals/{scripts.md, system-architecture.md, validation.md}`** — internal docs mirroring the structure the refactor breaks.
+- **CLAUDE.md, AGENTS.md (top-level)** — encode the canonical-vs-runtime rule. Under v6, the runtime location changes; both files need updates.
+- **`assets/dashboard-screenshot.png`** — captured against current UI; Wave 7's rewrite (Active/Archived tabs, Settings page, header chip) dates it. Release-checklist deliverable.
+- **CHANGELOG.md** — release flow appends per-version sections; mentioned by `rad-release.prompt.md` but not by the plan.
+- **`installer/scripts/sync-source.js` evolution** — current sync-source generates per-version manifests AND copies UI source. Under Wave 8's "Next.js standalone bundled inside `radorch`," does sync-source produce the standalone bundle or invoke `next build` on `ui/`? Build-time dependency graph between `ui/` and `cli/` packages not specified.
+
+### Out of scope (flag-and-confirm)
+
+- **`archive/` folder** at repo root — historical canonical material; likely irrelevant. Confirm out-of-scope.
+- **`archive/schemas/`** — old state schemas (v3, v4); a v3 project would skip an intermediate hop in v6 migration. Confirm out-of-scope (or one sentence noting v3 not supported).
