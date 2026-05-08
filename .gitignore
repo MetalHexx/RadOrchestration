@@ -98,6 +98,14 @@ test-installer/
 !/prompt-tests/quick-pipeline-e2e/output/rainbow-hello-quick/baseline-*/lint-report.md
 !/prompt-tests/quick-pipeline-e2e/output/rainbow-hello-quick/baseline-*/run-notes.md
 
+# Plugin artifacts
+# NOTE: .claude/ (above) is the gitignored dogfood build output;
+# .claude-plugin/ is the COMMITTED Claude marketplace manifest folder.
+# The committed plugin folder lives at marketplace/plugins/rad-orchestration/
+# and is NOT gitignored. Copilot adapter outputs are gitignored.
+cli/dist/marketplaces/copilot-cli/
+cli/dist/marketplaces/copilot-vscode/
+
 # Next.js build output (root-level)
 /.next/
 docs/internals/_private/_done
