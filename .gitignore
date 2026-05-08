@@ -23,6 +23,9 @@ package-lock.json
 # Adapter scratch sandbox — opt-in inspection, never committed
 dist/
 
+# esbuild bundle output — produced by `npm run bundle` in cli/ and skills/rad-orchestration/scripts/
+dist-bundle/
+
 # Ephemeral installer test directory — created by rad-test-release prompt, never committed
 test-installer/
 
