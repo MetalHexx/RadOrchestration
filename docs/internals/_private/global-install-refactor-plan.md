@@ -1153,3 +1153,71 @@ These are findings from a deep gap-and-reality review of the doc against the act
 
 - **`archive/` folder** at repo root — historical canonical material; likely irrelevant. Confirm out-of-scope.
 - **`archive/schemas/`** — old state schemas (v3, v4); a v3 project would skip an intermediate hop in v6 migration. Confirm out-of-scope (or one sentence noting v3 not supported).
+
+---
+
+## 13. Addendum — Plugin-native delivery pivot (2026-05-08)
+
+This section captures an architectural pivot that emerged from brainstorming for what was previously planned as a small follow-on to iter 01. The pivot is significant enough to reshape several waves below; rather than rewrite §1–§12, this addendum overlays the changes and links to the iteration's full brainstorm for the underlying reasoning.
+
+**Iteration brainstorm (canonical reasoning):** [`GLOBAL-WORKSPACES-1.1-CLAUDE-PLUGIN-BRAINSTORMING.md`](../../../../../orchestration-projects/GLOBAL-WORKSPACES-1.1-CLAUDE-PLUGIN/GLOBAL-WORKSPACES-1.1-CLAUDE-PLUGIN-BRAINSTORMING.md) — read this for the full context behind every decision below.
+
+### Summary of the pivot
+
+Replace the custom `radorch install` CLI command with a Claude Code plugin that ships everything pre-built — bundled CLI (esbuild → single `.mjs`), bundled pipeline runtime (esbuild → single `.js`), Next.js standalone UI, skills, hooks. User installs once via `/plugin install radorch@radorch-marketplace` from `MetalHexx/RadOrchestration`. State at canonical `~/.radorch/`, code in plugin cache. No two-step install. No `npm install -g`. No system PATH manipulation. The `~/.radorch/.harness` file and `radorch harness use` command are removed — plugin-native activation eliminates the "single active harness" concept entirely. Each harness's plugin lifecycle is independent; users mix and match at the harness level.
+
+The iteration is framed as a **vertical-slice spike**: ship the model end-to-end on Claude only (UI launch path through `/radorch:ui-start` skill → bundled CLI → detached Next.js standalone), with the Copilot CLI and VS Code Copilot bundles built but their plugin manifests deferred. Every link in the plugin → skill → CLI → bundle → detached UI → state-folder chain is exercised by one end-to-end scenario.
+
+### Wave displacements
+
+The pivot reshapes work the original §6 wave structure assigned to later waves:
+
+- **Wave 8 (Migration / Publish) — most of §3 (publish workflow restructure) and §4 (UI publishing) are absorbed into 1.1.** The "atomic versioning across CLI + UI" goal still holds, now via a single plugin tarball lockstep. The "harness asset placement" parked open question (§9-11, §12) is **resolved** — the plugin system IS the asset-placement mechanism. `sync-source.js`, the `installer/lib/{cross-harness-scan, hash-check, catalog, manifest, installed-version, remove}.js` machinery, and the manifest-aware install/upgrade infrastructure are all retired by the plugin pivot. What remains in Wave 8: the per-repo → global migration story for users with iter-01 custom installs, the `installer/` package retirement, and any leftover doc rewrites.
+
+- **Wave 9 (Pipeline fold-in) — likely collapses to a rename.** The pipeline runtime now ships inside the plugin (bundled by esbuild) and is invoked by the CLI as a library. Wave 9's "fold pipeline.js into radorch CLI" goal becomes nearly trivial since the pipeline already lives next to the CLI in the same plugin bundle. May reduce to "rename the binary entry point and its slash form."
+
+### What stays unchanged
+
+Waves 3 (state v6), 4 (handoff contract), 5 (skill migration), 6 (DAG / tiered templates), and 7 (UI registry-aware) all proceed as planned in §6. The plugin-native model affects how their outputs are *distributed*, not what they do.
+
+### Things to consider for later
+
+These are deferred items that should be picked up at the right wave. They're not part of 1.1's scope but they're known and should not be re-discovered.
+
+1. **Copilot CLI plugin packaging.** Researched, viable. `copilot plugin marketplace add` accepts absolute local paths; manifest format nearly identical to Claude's; Copilot CLI natively reads `.claude-plugin/` manifests. Gaps: no documented plugin-root path token (`${COPILOT_PLUGIN_ROOT}` analog), hook execution semantics around `cwd` not fully specified, persistent-data dir at `~/.copilot/plugin-data/` exists but no env-var token. Worth its own iteration once docs settle.
+
+2. **VS Code Copilot plugin packaging.** Researched, viable but with caveats. `chat.pluginLocations` registers a plugin in-place from absolute path with no copy. `chat.plugins.marketplaces` accepts file:// for local marketplaces. Plugin manifest at `.github/plugin.json`. Gaps: explicitly NO plugin-root path token for Copilot-format plugins, no documented persistent-data dir, system in Preview behind `chat.plugins.enabled`. Defers further than Copilot CLI.
+
+3. **`rad-` prefix rename.** Under plugin-native, Claude namespaces plugin-shipped skills as `<plugin>:<skill>`. `radorch:rad-brainstorm` is a redundant double-prefix. Clean follow-on iteration drops the `rad-` prefix from canonical skill names. Likely combined with iter 05 (skill migration).
+
+4. **Agent namespacing in iter 05.** Confirmed: plugin agents are invoked as `Task(subagent_type='<plugin>:<agent>')`. Bare names only resolve for `~/.claude/agents/` and `.claude/agents/`. The orchestrator agent's spawn prompts (which dispatch to coder, reviewer, coder-junior, coder-senior) need rewriting to use namespaced subagent_type values when shipped via plugin. Iter 05 owns this alongside its skill migration sweep.
+
+5. **iter-01 installer retirement.** The iter-01 `radorch install` command and the `installer/` npm package are end-of-life under plugin-native. They stay through 1.1 (additive — plugin install doesn't break iter-01 users). A focused retirement iteration removes them once telemetry shows nobody's using the iter-01 path.
+
+6. **Per-repo → global migration story.** Users with iter-01 custom installs who want to move to plugin-native. State at `~/.radorch/` is identical so it's mostly "uninstall iter-01 + install plugin," but worth its own validation pass once telemetry shows real users in this state.
+
+7. **Cross-plugin version coordination.** When Copilot CLI and VS Code Copilot plugins also ship, multiple plugins on one machine each carry their own bundled CLI. The `last_writer_version` check in `~/.radorch/install.json` is the discipline; planning across plugins gets explicit.
+
+8. **Build-artifact reproducibility.** Developers commit built artifacts manually this iteration. Future iteration could add CI freshness check (rebuild + diff against committed artifacts). Not load-bearing now.
+
+9. **Separate releases repo.** If `MetalHexx/RadOrchestration` repo size becomes a problem (committed plugin artifacts grow), splitting to `MetalHexx/radorch-releases` is a clean follow-on. No architectural change required, just a publish target.
+
+10. **Marketplace name reservation.** Verify the chosen plugin/marketplace name (`radorch`, `radorch-marketplace`) isn't on Claude's reserved-names list before publishing. Reserved names include `claude-plugins-official`, `anthropic-plugins`, `agent-skills`, etc.
+
+### Research findings to preserve
+
+The brainstorm conversation produced authoritative answers that should outlive the session:
+
+- **Claude plugin system.** `/plugin marketplace add <owner>/<repo>` clones default branch. `.claude-plugin/marketplace.json` at repo root for discovery. `${CLAUDE_PLUGIN_ROOT}` token interpolated in hook commands and skill content. `${CLAUDE_PLUGIN_DATA}` is a persistent dir that survives `/plugin update`. `bin/` is on Bash tool's PATH only (NOT user shell PATH). Monitors and MCP servers are session-scoped. `/plugin install` accepts `--scope user|project|local`. Plugin removal preserves `~/.radorch/`.
+
+- **Copilot CLI plugin system.** `copilot plugin marketplace add` accepts absolute local paths. Plugin manifest discovery at `plugin.json`, `.plugin/plugin.json`, `.github/plugin/plugin.json`, OR `.claude-plugin/plugin.json` (Claude-shape natively read). Persistent data at `~/.copilot/plugin-data/<marketplace>/<plugin>/`. MCP-only for long-lived processes. Plugin code at `~/.copilot/installed-plugins/`.
+
+- **VS Code Copilot plugin system.** `chat.pluginLocations` registers in-place from absolute path. `chat.plugins.marketplaces` accepts file:// URIs. Plugin manifest at `.github/plugin.json`. `chat.agentSkillsLocations` is an orthogonal user-configurable list of skill paths. No `${PLUGIN_ROOT}` token for Copilot-format plugins (explicitly "Not defined" per official docs). Marketplace install clones into `agentPlugins/github.com/<org>/<repo>` per platform. Plugin system gated by `chat.plugins.enabled` (Preview, default false).
+
+- **Plugin agent namespacing (Claude).** `Task(subagent_type='<plugin>:<agent>')` confirmed via Claude docs. Bare names only resolve for `~/.claude/agents/` and `.claude/agents/`. Same applies to `@-mention` typeahead and `--agent` CLI flag. Other harnesses presumed similar but not verified per-harness.
+
+- **Superpowers reference architecture (`obra/superpowers`).** Ships skills only (no agents folder). Uses each harness's native plugin manager — explicitly rejects "manually copying skill files into `~/.claude/skills/`" as a fake integration. Per-harness manifests + bootstrap hooks differ; skill bodies identical across all harnesses. Confirmed VS Code Copilot is excluded from their target harness list, validating that the asymmetry isn't unique to radorch.
+
+### Pointer back
+
+When the deferred items above come up for their own iteration, the [GLOBAL-WORKSPACES-1.1-CLAUDE-PLUGIN brainstorm](../../../../../orchestration-projects/GLOBAL-WORKSPACES-1.1-CLAUDE-PLUGIN/GLOBAL-WORKSPACES-1.1-CLAUDE-PLUGIN-BRAINSTORMING.md) is the source of truth for the architectural reasoning. The decisions there were grounded in the research findings above; if those findings change (Microsoft/GitHub adds plugin-root path tokens to Copilot, e.g.), revisit.
