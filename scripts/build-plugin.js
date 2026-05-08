@@ -63,10 +63,10 @@ export function syncPluginVersion(pluginDir, version) {
   fs.writeFileSync(f, JSON.stringify(obj, null, 2) + '\n', 'utf8');
 }
 
-function step(name, fn) {
+async function step(name, fn) {
   const t0 = Date.now();
   process.stderr.write(`[build:plugin] ${name} ...\n`);
-  fn();
+  await fn();
   process.stderr.write(`[build:plugin] ${name} done (${Date.now() - t0}ms)\n`);
 }
 
@@ -77,18 +77,18 @@ async function main() {
   const committed = path.join(repoRoot, 'marketplace', 'plugins', 'rad-orchestration');
   const exec = (cmd, cwd) => execSync(cmd, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
 
-  step('cli-build', () => exec('npm run build', path.join(repoRoot, 'cli')));
-  step('cli-bundle', () => {
+  await step('cli-build', () => exec('npm run build', path.join(repoRoot, 'cli')));
+  await step('cli-bundle', () => {
     const out = path.join(claudeDist, 'bin', 'radorch.mjs');
     fs.mkdirSync(path.dirname(out), { recursive: true });
     exec(`npm run bundle -- --out=${out}`, path.join(repoRoot, 'cli'));
   });
-  step('pipeline-bundle', () => {
+  await step('pipeline-bundle', () => {
     const out = path.join(claudeDist, 'dist', 'pipeline.js');
     fs.mkdirSync(path.dirname(out), { recursive: true });
     exec(`npm run bundle -- --out=${out}`, path.join(repoRoot, 'skills', 'rad-orchestration', 'scripts'));
   });
-  step('ui-standalone', () => {
+  await step('ui-standalone', () => {
     exec('npm run build-standalone', path.join(repoRoot, 'ui'));
     const uiDest = path.join(claudeDist, 'ui');
     fs.rmSync(uiDest, { recursive: true, force: true });
@@ -105,19 +105,19 @@ async function main() {
     if (fs.existsSync(publicSrc)) fs.cpSync(publicSrc, path.join(uiDest, 'public'), { recursive: true });
   });
   const adapters = await discoverAdapters(path.join(repoRoot, 'adapters'));
-  step('adapters-plugin', async () => {
+  await step('adapters-plugin', async () => {
     for (const a of adapters) {
       await runAdapterPlugin(a, { canonicalRoot: repoRoot, outputRoot: repoRoot, version });
     }
   });
-  step('copy-bundles-into-claude-plugin', () => {
+  await step('copy-bundles-into-claude-plugin', () => {
     // Bundled artifacts were emitted directly into claudeDist by steps 2-4;
     // run-plugin (step 5) only writes skills + hooks + plugin.json, leaving
     // bin/ dist/ ui/ in place. Nothing to do here unless rerun ordering is
     // reversed — kept as a named step for traceability and future moves.
   });
-  step('sync-plugin-version', () => syncPluginVersion(claudeDist, version));
-  step('validate-plugin-tree', () => {
+  await step('sync-plugin-version', () => syncPluginVersion(claudeDist, version));
+  await step('validate-plugin-tree', () => {
     const r = validatePluginTree(claudeDist);
     if (!r.ok) {
       process.stderr.write(`[build:plugin] validate-plugin-tree FAIL — missing:\n  ${r.missing.join('\n  ')}\n`);

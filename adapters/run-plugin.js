@@ -3,7 +3,9 @@
 // cli/dist/marketplaces/<adapter.name>/plugins/rad-orchestration/, stamping
 // plugin.json `version` from the version arg.
 //
-// Idempotent: full directory wipe of the target before each run (FR-3, NFR-9).
+// Idempotent within the subdirectories this function owns (`skills/`, `hooks/`,
+// `.claude-plugin/`). Sibling subdirs like `bin/`, `dist/`, `ui/` populated by
+// the publish-time meta-script's bundle steps are preserved.
 // Reuses adapter.skillFrontmatter for SKILL.md projection so harness-specific
 // shape is honored even though only Claude ships this iteration.
 
@@ -17,8 +19,10 @@ function pluginOutputDir(outputRoot, adapterName) {
 export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, version }) {
   const sourceRoot = path.join(canonicalRoot, 'marketplace', 'plugins', 'rad-orchestration');
   const targetRoot = pluginOutputDir(outputRoot, adapter.name);
-  fs.rmSync(targetRoot, { recursive: true, force: true });
   fs.mkdirSync(targetRoot, { recursive: true });
+  for (const sub of ['skills', 'hooks', '.claude-plugin']) {
+    fs.rmSync(path.join(targetRoot, sub), { recursive: true, force: true });
+  }
 
   // Copy .claude-plugin/plugin.json with version stamped.
   const cpSrc = path.join(sourceRoot, '.claude-plugin', 'plugin.json');
