@@ -26,7 +26,7 @@ export async function runInstall(opts: {
 }): Promise<InstallResult> {
   const root = resolveInstallRoot(opts.ctx.env);
   if (await pathExists(root)) {
-    throw new UserError(`radorch install root already exists at ${root}. Remove it before re-running install (iter 1 is greenfield-only).`);
+    throw new UserError(`radorch install root already exists at ${root}. Remove it before re-running install.`);
   }
   // Banner + next-steps hint render only in true interactive mode (DD-1, DD-9). When ux.isTTY=false they no-op.
   renderBanner({ stream: opts.ctx.stderr, isTTY: opts.ctx.ux.isTTY, nonInteractive: opts.ctx.ux.nonInteractive, noColor: opts.ctx.ux.noColor, json: opts.ctx.ux.json });
@@ -51,7 +51,7 @@ export async function runInstall(opts: {
 
 export const installCommand = defineCommand({
   name: 'install',
-  description: 'Install the global radorch system on this developer machine (greenfield only)',
+  description: 'Install the global radorch system on this developer machine',
   args: {},
   flags: {
     y: { description: 'accept the claude default and skip the prompt' },

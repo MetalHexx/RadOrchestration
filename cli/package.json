@@ -3,7 +3,7 @@
   "version": "1.0.0-alpha.8",
   "private": true,
   "type": "module",
-  "description": "radorch CLI — greenfield TypeScript package (iteration 1, local-only)",
+  "description": "radorch CLI — global orchestration root manager",
   "license": "MIT",
   "engines": {
     "node": ">=20"

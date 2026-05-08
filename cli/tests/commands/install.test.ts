@@ -24,7 +24,7 @@ describe('radorch install', () => {
     ).rejects.toMatchObject({ type: 'user_error' });
   });
 
-  it('writes the full skeleton greenfield (install.json, config.yml, registry.yml, .harness, .gitignore, dirs, harness bundles)', async () => {
+  it('writes the full skeleton (install.json, config.yml, registry.yml, .harness, .gitignore, dirs, harness bundles)', async () => {
     const home = path.join(tmp, 'rad');
     const result = await runInstall({ defaultHarness: 'copilot-vscode', ctx: makeCtx(home) });
     expect(result.root).toBe(home);
