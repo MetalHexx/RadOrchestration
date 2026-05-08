@@ -8,6 +8,13 @@ import { ExitCode } from './exit-codes.js';
 import { RadorchError, SystemError, UserError } from './errors.js';
 import { installPaths, resolveInstallRoot } from '../lib/paths.js';
 import type { CommandContext, UxFlags } from './context.js';
+import { LOG_LEVELS } from './logger/types.js';
+import type { LogLevel } from './logger/types.js';
+
+export function pickLogLevel(flag: string | undefined, env: NodeJS.ProcessEnv): LogLevel {
+  if (flag && (LOG_LEVELS as readonly string[]).includes(flag)) return flag as LogLevel;
+  return resolveLogLevel(env);
+}
 
 export interface ArgSpec { description: string; required?: boolean; default?: string }
 export interface FlagSpec { description: string; default?: boolean | string; type?: 'boolean' | 'string' }
@@ -64,7 +71,7 @@ export async function runCommand<Args, Flags, Result>(
     env: opts.env,
     requireDirExists: true,
   });
-  const logger = createLogger({ level: resolveLogLevel(opts.env), sink, source: 'cli' });
+  let logger = createLogger({ level: resolveLogLevel(opts.env), sink, source: 'cli' });
 
   try {
     cmd.parse(opts.argv, { from: 'user' });
@@ -72,6 +79,7 @@ export async function runCommand<Args, Flags, Result>(
     ux.nonInteractive = Boolean(parsed['nonInteractive']);
     ux.json = Boolean(parsed['json']);
     ux.noColor = ux.noColor || parsed['color'] === false;
+    logger = createLogger({ level: pickLogLevel(parsed['logLevel'] as string | undefined, opts.env), sink, source: 'cli' });
 
     // Single-arg wizard for missing required args
     const argsResult = {} as Record<string, unknown>;
