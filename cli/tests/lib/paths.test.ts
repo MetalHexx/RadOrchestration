@@ -28,4 +28,12 @@ describe('installPaths', () => {
     expect(p.cliLog).toBe('/tmp/rad-x/logs/cli.log');
     expect(p.harnessesDir).toBe('/tmp/rad-x/runtime/harnesses');
   });
+  it('produces native paths when given a Windows-style root', () => {
+    const winRoot = 'C:\\Users\\example\\.radorch';
+    const paths = installPaths(winRoot);
+    // The cliLog must be a contiguous descendant of the root, not a corrupted prefix.
+    expect(paths.cliLog.startsWith(winRoot)).toBe(true);
+    expect(paths.cliLog).not.toContain('Users\\example.radorch');
+    expect(paths.logsDir.startsWith(winRoot)).toBe(true);
+  });
 });

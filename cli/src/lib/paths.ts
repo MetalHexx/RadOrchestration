@@ -22,7 +22,7 @@ export function resolveInstallRoot(env: NodeJS.ProcessEnv = process.env): string
 }
 
 export function installPaths(root: string): InstallPaths {
-  const join = path.posix.join;
+  const join = path.join;
   return {
     root,
     installJson: join(root, 'install.json'),

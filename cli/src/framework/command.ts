@@ -59,7 +59,7 @@ export async function runCommand<Args, Flags, Result>(
   const ux: UxFlags = {
     isTTY: opts.isTTY,
     nonInteractive: false,
-    noColor: opts.env['NO_COLOR'] === '1' || opts.env['NO_COLOR'] === 'true',
+    noColor: opts.env['NO_COLOR'] !== undefined && opts.env['NO_COLOR'] !== '',
     json: false,
   };
   const installRoot = resolveInstallRoot(opts.env);

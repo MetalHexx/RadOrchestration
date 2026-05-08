@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 const execP = promisify(execFile);
-const repoRoot = path.resolve(__dirname, '..', '..');
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(here, '..', '..');
 
 describe('binary smoke', () => {
   it('runs `radorch --help` and exits successfully', async () => {
