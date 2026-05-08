@@ -1,0 +1,127 @@
+import { Command } from 'commander';
+import { createPrompter } from './prompter.js';
+import { makeTheme } from './theme.js';
+import { createFileSink } from './logger/file-sink.js';
+import { createLogger, resolveLogLevel } from './logger/logger.js';
+import { emit } from './output.js';
+import { ExitCode } from './exit-codes.js';
+import { RadorchError, SystemError, UserError } from './errors.js';
+import { installPaths, resolveInstallRoot } from '../lib/paths.js';
+import type { CommandContext, UxFlags } from './context.js';
+
+export interface ArgSpec { description: string; required?: boolean; default?: string }
+export interface FlagSpec { description: string; default?: boolean | string; type?: 'boolean' | 'string' }
+export interface CommandDef<Args, Flags, Result> {
+  name: string;
+  description: string;
+  args: { [K in keyof Args]: ArgSpec };
+  flags: { [K in keyof Flags]: FlagSpec };
+  handler: (ctx: { args: Args; flags: Flags; ctx: CommandContext }) => Promise<Result>;
+  mapResult?: (result: Result) => { ok: boolean; data?: unknown; error?: { type: 'user_error' | 'system_error'; message: string }; warnings?: string[] };
+}
+
+export function defineCommand<Args, Flags, Result>(def: CommandDef<Args, Flags, Result>): CommandDef<Args, Flags, Result> {
+  return def;
+}
+
+export interface RunOptions {
+  argv: string[];
+  env: NodeJS.ProcessEnv;
+  isTTY: boolean;
+  stderr: NodeJS.WriteStream;
+}
+
+export async function runCommand<Args, Flags, Result>(
+  def: CommandDef<Args, Flags, Result>,
+  opts: RunOptions,
+): Promise<void> {
+  const cmd = new Command(def.name).description(def.description).exitOverride();
+  cmd.option('--non-interactive', 'disable prompts');
+  cmd.option('--json', 'force machine-readable output');
+  cmd.option('--no-color', 'disable ANSI color');
+  cmd.option('--log-level <level>', 'log level (error|warn|info|debug)');
+  for (const [name, spec] of Object.entries(def.args) as [string, ArgSpec][]) {
+    cmd.option(`--${name} <value>`, spec.description, spec.default);
+  }
+  for (const [name, spec] of Object.entries(def.flags) as [string, FlagSpec][]) {
+    if (spec.type === 'string') cmd.option(`--${name} <value>`, spec.description, spec.default as string | undefined);
+    else cmd.option(`--${name}`, spec.description);
+  }
+
+  const start = Date.now();
+  const ux: UxFlags = {
+    isTTY: opts.isTTY,
+    nonInteractive: false,
+    noColor: opts.env['NO_COLOR'] === '1' || opts.env['NO_COLOR'] === 'true',
+    json: false,
+  };
+  const installRoot = resolveInstallRoot(opts.env);
+  const paths = installPaths(installRoot);
+  const sink = createFileSink({
+    file: paths.cliLog,
+    maxBytes: 10 * 1024 * 1024,
+    maxFiles: 5,
+    env: opts.env,
+    requireDirExists: true,
+  });
+  const logger = createLogger({ level: resolveLogLevel(opts.env), sink, source: 'cli' });
+
+  try {
+    cmd.parse(opts.argv, { from: 'user' });
+    const parsed = cmd.opts();
+    ux.nonInteractive = Boolean(parsed['nonInteractive']);
+    ux.json = Boolean(parsed['json']);
+    ux.noColor = ux.noColor || parsed['color'] === false;
+
+    // Single-arg wizard for missing required args
+    const argsResult = {} as Record<string, unknown>;
+    const allowedToPrompt = ux.isTTY && !ux.nonInteractive && !ux.json;
+    const prompter = createPrompter({ isTTY: ux.isTTY, nonInteractive: ux.nonInteractive || ux.json });
+    for (const [name, spec] of Object.entries(def.args) as [string, ArgSpec][]) {
+      let value = parsed[name] as string | undefined;
+      if (value === undefined && spec.required) {
+        if (allowedToPrompt) {
+          value = await prompter.input({ message: `${name}: ${spec.description}`, default: spec.default });
+        } else {
+          throw new UserError(`Missing required argument --${name} (${spec.description}). Supply --${name}=<value> or run interactively.`);
+        }
+      }
+      argsResult[name] = value ?? spec.default;
+    }
+    const flagsResult = {} as Record<string, unknown>;
+    for (const name of Object.keys(def.flags)) {
+      flagsResult[name] = parsed[name];
+    }
+
+    const ctx: CommandContext = {
+      env: opts.env,
+      stderr: opts.stderr,
+      logger,
+      prompter,
+      theme: makeTheme({ noColor: ux.noColor }),
+      ux,
+    };
+    const result = await def.handler({ args: argsResult as Args, flags: flagsResult as Flags, ctx });
+    const envelope = def.mapResult ? def.mapResult(result) : { ok: true, data: result };
+    await logger.info('command_complete', {
+      command: def.name,
+      args: argsResult,
+      duration_ms: Date.now() - start,
+      result: envelope.ok ? 'ok' : 'fail',
+    });
+    await logger.flush();
+    emit(envelope as never);
+    const exitCode = envelope.ok ? ExitCode.Success : (envelope.error?.type === 'user_error' ? ExitCode.UserError : ExitCode.SystemError);
+    process.exit(exitCode);
+  } catch (e) {
+    const err = e instanceof RadorchError ? e : new SystemError(e instanceof Error ? e.message : String(e));
+    await logger.error('command_failed', {
+      command: def.name,
+      duration_ms: Date.now() - start,
+      error: { type: err.type, message: err.message },
+    });
+    await logger.flush();
+    emit({ ok: false, error: { type: err.type, message: err.message } });
+    process.exit(err.type === 'user_error' ? ExitCode.UserError : ExitCode.SystemError);
+  }
+}
