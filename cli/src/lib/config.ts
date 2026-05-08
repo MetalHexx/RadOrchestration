@@ -6,6 +6,8 @@ import type { HarnessName } from '../framework/harness.js';
 export interface InstallJson {
   package_version: string;
   installed_at: string;
+  last_writer_version: string;
+  state_schema_version: string;
 }
 export interface ConfigYml {
   default_active_harness: HarnessName;

@@ -25,6 +25,8 @@ export async function writeInstallSkeleton(opts: {
   await writeInstallJson(p.installJson, {
     package_version: opts.packageVersion,
     installed_at: new Date().toISOString(),
+    last_writer_version: opts.packageVersion,
+    state_schema_version: 'v5',
   });
   await writeConfigYml(p.configYml, { default_active_harness: opts.defaultHarness });
   await writeRegistrySkeleton(p.registryYml);
