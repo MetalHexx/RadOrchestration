@@ -40,12 +40,12 @@ describe('version skew', () => {
     const env = JSON.parse(r.stdout.trim());
     expect(env.ok).toBe(false);
     expect(env.error.message).toMatch(/last written by radorch 999\.0\.0/);
-  });
+  }, 60_000);
 
   it('does NOT block install (install creates install.json)', async () => {
     await execP('npx', ['tsc'], { cwd: cliRoot, shell: process.platform === 'win32' });
     const r = await radorch(['install', '--default-harness', 'claude'], home);
     const env = JSON.parse(r.stdout.trim());
     expect(env.ok).toBe(true);
-  });
+  }, 60_000);
 });

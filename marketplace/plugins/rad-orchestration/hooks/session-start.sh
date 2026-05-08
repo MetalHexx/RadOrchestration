@@ -12,9 +12,9 @@ if [ ! -f "$HOME_DIR/install.json" ]; then
   NOW=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
   cat > "$HOME_DIR/install.json" <<EOF
 {
-  "package_version": "1.1.0",
+  "package_version": "1.0.0-alpha.8",
   "installed_at": "$NOW",
-  "last_writer_version": "1.1.0",
+  "last_writer_version": "1.0.0-alpha.8",
   "state_schema_version": "v5"
 }
 EOF

@@ -12,9 +12,9 @@ $ij = Join-Path $homeDir 'install.json'
 if (-not (Test-Path $ij)) {
   $now = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.000Z")
   $obj = @{
-    package_version = '1.1.0'
+    package_version = '1.0.0-alpha.8'
     installed_at = $now
-    last_writer_version = '1.1.0'
+    last_writer_version = '1.0.0-alpha.8'
     state_schema_version = 'v5'
   } | ConvertTo-Json
   Set-Content -Path $ij -Value $obj -NoNewline

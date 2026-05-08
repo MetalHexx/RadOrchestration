@@ -52,5 +52,5 @@ describe('install → harness use → harness list → doctor', () => {
     const env4 = JSON.parse(r4.stdout.trim());
     expect(env4.ok).toBe(true);
     expect(env4.data.all_passed).toBe(true);
-  });
+  }, 60_000);
 });

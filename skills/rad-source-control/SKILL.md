@@ -8,6 +8,8 @@ user-invocable: false
 
 Scripts are in the `scripts/` folder alongside this SKILL.md. Use their absolute path when invoking them.
 
+> **ESM/CJS note.** The bundled scripts use CommonJS (`require`). If the workspace's root `package.json` declares `"type": "module"`, invoking the scripts directly with `node` will fail with `ReferenceError: require is not defined in ES module scope`. Do **NOT** rewrite the canonical script — use direct `git` Bash invocations instead: `git add <files>` (never `git add -A`), `git commit -m "<message>"`, `git push origin <branch>`. Then emit the same `## Commit Result` JSON block from the resulting hash and push outcome.
+
 ---
 
 ## Commit Mode

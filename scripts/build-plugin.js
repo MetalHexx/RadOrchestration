@@ -61,6 +61,24 @@ export function syncPluginVersion(pluginDir, version) {
   const obj = JSON.parse(fs.readFileSync(f, 'utf8'));
   obj.version = version;
   fs.writeFileSync(f, JSON.stringify(obj, null, 2) + '\n', 'utf8');
+
+  // Sync version into hook bootstrap scripts so install.json written at
+  // session-start always matches the plugin bundle (prevents checkVersionSkew
+  // rejecting `ui start` / other commands after a fresh bootstrap).
+  const shPath = path.join(pluginDir, 'hooks', 'session-start.sh');
+  if (fs.existsSync(shPath)) {
+    let sh = fs.readFileSync(shPath, 'utf8');
+    sh = sh.replace(/"package_version": "[^"]*"/g, `"package_version": "${version}"`);
+    sh = sh.replace(/"last_writer_version": "[^"]*"/g, `"last_writer_version": "${version}"`);
+    fs.writeFileSync(shPath, sh, 'utf8');
+  }
+  const ps1Path = path.join(pluginDir, 'hooks', 'session-start.ps1');
+  if (fs.existsSync(ps1Path)) {
+    let ps1 = fs.readFileSync(ps1Path, 'utf8');
+    ps1 = ps1.replace(/package_version = '[^']*'/g, `package_version = '${version}'`);
+    ps1 = ps1.replace(/last_writer_version = '[^']*'/g, `last_writer_version = '${version}'`);
+    fs.writeFileSync(ps1Path, ps1, 'utf8');
+  }
 }
 
 async function step(name, fn) {
@@ -126,8 +144,12 @@ async function main() {
   });
 
   // Sync to the committed plugin location (AD-25).
-  fs.rmSync(committed, { recursive: true, force: true });
-  fs.cpSync(claudeDist, committed, { recursive: true });
+  // Use cpSync with force rather than rmSync+cpSync to avoid Windows EPERM
+  // on directories held open by filesystem watchers (e.g. git, Explorer).
+  // cpSync with { recursive: true, force: true } overwrites individual files
+  // in place, bypassing the rmdir restriction on open directories.
+  fs.mkdirSync(committed, { recursive: true });
+  fs.cpSync(claudeDist, committed, { recursive: true, force: true });
   process.stderr.write(`[build:plugin] committed plugin synced → ${committed}\n`);
 }
 
