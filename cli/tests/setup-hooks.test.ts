@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const setupHooksPath = path.resolve(__dirname, '..', '..', 'skills', 'rad-orchestration', 'scripts', 'setup-hooks.js');
 const committedHookPath = path.resolve(__dirname, '..', '..', '.githooks', 'pre-commit');
 

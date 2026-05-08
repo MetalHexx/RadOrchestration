@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command, CommanderError } from 'commander';
 import { createPrompter } from './prompter.js';
 import { makeTheme } from './theme.js';
 import { createFileSink } from './logger/file-sink.js';
@@ -56,10 +56,13 @@ export async function runCommand<Args, Flags, Result>(
   }
 
   const start = Date.now();
+  // NFR-13: color is stripped when any UX gate fires — `NO_COLOR`, `--no-color`, OR non-TTY.
+  // Non-TTY counts as a gate so commands piped to logs/CI never leak ANSI escapes.
+  const noColorEnv = opts.env['NO_COLOR'] !== undefined && opts.env['NO_COLOR'] !== '';
   const ux: UxFlags = {
     isTTY: opts.isTTY,
     nonInteractive: false,
-    noColor: opts.env['NO_COLOR'] !== undefined && opts.env['NO_COLOR'] !== '',
+    noColor: noColorEnv || !opts.isTTY,
     json: false,
   };
   const installRoot = resolveInstallRoot(opts.env);
@@ -128,6 +131,26 @@ export async function runCommand<Args, Flags, Result>(
       : (envelope.ok ? ExitCode.Success : (envelope.error?.type === 'user_error' ? ExitCode.UserError : ExitCode.SystemError));
     process.exit(exitCode);
   } catch (e) {
+    // FR-5: parse/usage failures (unknown option, missing value, etc.) are user errors → exit 1.
+    // Help/version go through Commander's exitOverride too — Commander has already written their
+    // output, so we exit 0 silently without emitting an envelope.
+    if (e instanceof CommanderError) {
+      if (e.code === 'commander.helpDisplayed' || e.code === 'commander.help' || e.code === 'commander.version') {
+        await logger.flush();
+        process.exit(0);
+        return;
+      }
+      const userErr = new UserError(e.message);
+      await logger.error('command_failed', {
+        command: def.name,
+        duration_ms: Date.now() - start,
+        error: { type: userErr.type, message: userErr.message },
+      });
+      await logger.flush();
+      emit({ ok: false, error: { type: userErr.type, message: userErr.message } });
+      process.exit(ExitCode.UserError);
+      return;
+    }
     const err = e instanceof RadorchError ? e : new SystemError(e instanceof Error ? e.message : String(e));
     await logger.error('command_failed', {
       command: def.name,

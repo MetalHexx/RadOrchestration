@@ -22,7 +22,6 @@ export interface InstallResult {
 
 export async function runInstall(opts: {
   defaultHarness: HarnessName;
-  acceptDefaults: boolean;
   ctx: { env: NodeJS.ProcessEnv; ux: { isTTY: boolean; nonInteractive: boolean; noColor: boolean; json: boolean }; stderr: NodeJS.WriteStream };
 }): Promise<InstallResult> {
   const root = resolveInstallRoot(opts.ctx.env);
@@ -68,8 +67,8 @@ export const installCommand = defineCommand({
       const picked = await ctx.prompter.select({ message: 'Default active harness', choices: HarnessName, default: 'claude' });
       defaultHarness = picked;
     } else if (!ctx.ux.isTTY && !flags.y) {
-      throw new UserError('Non-TTY install requires --default-harness=<h> or -y (accepts claude).');
+      throw new UserError('Non-TTY install requires --default-harness=<h> or --y (accepts claude).');
     }
-    return runInstall({ defaultHarness, acceptDefaults: Boolean(flags.y), ctx });
+    return runInstall({ defaultHarness, ctx });
   },
 });

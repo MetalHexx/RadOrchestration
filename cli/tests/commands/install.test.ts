@@ -20,13 +20,13 @@ describe('radorch install', () => {
     const home = path.join(tmp, 'pre');
     await fs.mkdir(home, { recursive: true });
     await expect(
-      runInstall({ defaultHarness: 'claude', acceptDefaults: true, ctx: makeCtx(home) }),
+      runInstall({ defaultHarness: 'claude', ctx: makeCtx(home) }),
     ).rejects.toMatchObject({ type: 'user_error' });
   });
 
   it('writes the full skeleton greenfield (install.json, config.yml, registry.yml, .harness, .gitignore, dirs, harness bundles)', async () => {
     const home = path.join(tmp, 'rad');
-    const result = await runInstall({ defaultHarness: 'copilot-vscode', acceptDefaults: false, ctx: makeCtx(home) });
+    const result = await runInstall({ defaultHarness: 'copilot-vscode', ctx: makeCtx(home) });
     expect(result.root).toBe(home);
     expect(result.harnesses_installed).toEqual(['claude', 'copilot-vscode', 'copilot-cli']);
     expect(result.active_harness).toBe('copilot-vscode');

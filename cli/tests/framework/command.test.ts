@@ -120,4 +120,66 @@ describe('defineCommand', () => {
     expect(pickLogLevel('info', { } as unknown as NodeJS.ProcessEnv)).toBe('info');
     expect(pickLogLevel(undefined, { } as unknown as NodeJS.ProcessEnv)).toBe('info');
   });
+
+  it('maps Commander parse errors (unknown flag) to user_error + exit 1', async () => {
+    // FR-5: bad arguments map to user_error/exit 1, not system_error/exit 2.
+    const cmd = defineCommand({
+      name: 'no-extra',
+      description: 'noop',
+      args: {},
+      flags: {},
+      handler: async () => ({ ok: 'ok' as const }),
+    });
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined as never) as never);
+    await runCommand(cmd, { argv: ['--bogus'], env: { RADORCH_NO_LOG: '1' }, isTTY: false, stderr: process.stderr });
+    const arg = (log.mock.calls[0]?.[0] ?? '') as string;
+    const env = JSON.parse(arg);
+    expect(env.ok).toBe(false);
+    expect(env.error.type).toBe('user_error');
+    expect(exit).toHaveBeenCalledWith(1);
+    log.mockRestore(); exit.mockRestore();
+  });
+
+  it('strips color when isTTY is false (NFR-13: non-TTY is a UX gate)', async () => {
+    // The theme handed to the handler must be the no-op variant when stderr is non-TTY
+    // and NO_COLOR is unset, so commands piped to logs/CI never leak ANSI escapes.
+    let capturedThemed = '';
+    const cmd = defineCommand({
+      name: 'theme-probe',
+      description: 'noop',
+      args: {},
+      flags: {},
+      handler: async ({ ctx }) => {
+        capturedThemed = ctx.theme.error('boom');
+        return { ok: 'ok' as const };
+      },
+    });
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined as never) as never);
+    await runCommand(cmd, { argv: [], env: {} as NodeJS.ProcessEnv, isTTY: false, stderr: process.stderr });
+    // No-op theme returns the input string unchanged — no ANSI escape sequences.
+    expect(capturedThemed).toBe('boom');
+    log.mockRestore(); exit.mockRestore();
+  });
+
+  it('exits 0 silently for --help (no envelope emitted on stdout)', async () => {
+    // Commander's exitOverride throws CommanderError with code commander.helpDisplayed.
+    // We exit 0 without emitting an envelope (Commander already wrote help to stdout).
+    const cmd = defineCommand({
+      name: 'helpy',
+      description: 'has help',
+      args: {},
+      flags: {},
+      handler: async () => ({ ok: 'ok' as const }),
+    });
+    // Suppress Commander's stdout write so the test runner output stays clean.
+    const stdoutWrite = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined as never) as never);
+    await runCommand(cmd, { argv: ['--help'], env: { RADORCH_NO_LOG: '1' }, isTTY: false, stderr: process.stderr });
+    expect(log).not.toHaveBeenCalled();
+    expect(exit).toHaveBeenCalledWith(0);
+    stdoutWrite.mockRestore(); log.mockRestore(); exit.mockRestore();
+  });
 });
