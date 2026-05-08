@@ -31,11 +31,11 @@ const VERSION = pkg.version;
 const PKG_INLINE = JSON.stringify({ version: VERSION });
 
 // Pattern matching `const require_ = createRequire(import.meta.url);`
-// followed by `const pkg = require_('../../package.json');`
+// followed by `const pkg = require_('../../package.json');` (or up to '../../../').
 // These appear in compiled output files that load the version at runtime.
 // We inline the version at bundle time so the bundle is fully self-contained.
 const CJS_PKG_PATTERN =
-  /const require_ = createRequire\(import\.meta\.url\);\s*const pkg = require_\(['"]\.\.(\/\.\.)?\/package\.json['"]\)[^;]*;/g;
+  /const require_ = createRequire\(import\.meta\.url\);\s*const pkg = require_\(['"]\.\.(\/\.\.){0,2}\/package\.json['"]\)[^;]*;/g;
 
 // Plugin: inline package.json version in any bundled file that uses createRequire to load it.
 const inlineVersionPlugin = {

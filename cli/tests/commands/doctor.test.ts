@@ -5,6 +5,7 @@ import path from 'node:path';
 import { runDoctor, doctorCommand } from '../../src/commands/doctor/index.js';
 import { writeInstallSkeleton } from '../../src/commands/install/skeleton.js';
 import { validateEnvelope } from '../../src/framework/output.js';
+import { runPluginChecks } from '../../src/commands/doctor/checks.js';
 
 let tmp: string;
 beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc-')); });
@@ -26,7 +27,7 @@ describe('radorch doctor', () => {
     expect(result.all_passed).toBe(true); // warns allowed; only fails block
     const reg = result.checks.find((c) => c.category === 'Registry');
     expect(reg?.status).toBe('warn');
-    expect(['Environment', 'Install', 'Registry']).toEqual([
+    expect(['Environment', 'Install', 'Registry', 'Plugin']).toEqual([
       ...new Set(result.checks.map((c) => c.category)),
     ]);
   });
@@ -57,5 +58,42 @@ describe('doctorCommand mapResult', () => {
     expect(env.ok).toBe(true);
     expect((env as { data: typeof r }).data).toEqual(r);
     expect((env as { exit_code: number }).exit_code).toBe(1);
+  });
+});
+
+describe('plugin-aware doctor checks', () => {
+  let home: string;
+  beforeEach(async () => { home = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc-')); });
+  afterEach(async () => { await fs.rm(home, { recursive: true, force: true }); });
+
+  it('reports bootstrap status, UI PID consistency, and version skew', async () => {
+    // Fresh home — bootstrap missing
+    let result = await runPluginChecks({ root: home, localVersion: '1.1.0' });
+    expect(result.find((c) => c.name === 'bootstrap-skeleton')?.status).toBe('fail');
+    expect(result.find((c) => c.name === 'version-skew')?.status).toBe('pass'); // no install.json yet
+    expect(result.find((c) => c.name === 'ui-pid-consistency')?.status).toBe('pass'); // no pid file
+
+    // Bootstrap manually
+    await fs.mkdir(path.join(home, 'projects'), { recursive: true });
+    await fs.writeFile(path.join(home, 'registry.yml'), 'repos: []\nworkspaces: []\n');
+    await fs.writeFile(path.join(home, 'config.yml'), 'default_active_harness: claude\n');
+    await fs.writeFile(path.join(home, 'install.json'), JSON.stringify({
+      package_version: '1.1.0',
+      installed_at: '2026-05-08T00:00:00.000Z',
+      last_writer_version: '1.5.0',
+      state_schema_version: 'v5',
+    }));
+    result = await runPluginChecks({ root: home, localVersion: '1.1.0' });
+    expect(result.find((c) => c.name === 'bootstrap-skeleton')?.status).toBe('pass');
+    expect(result.find((c) => c.name === 'version-skew')?.status).toBe('fail');
+
+    // Stale PID file — process is dead
+    await fs.mkdir(path.join(home, 'runtime'), { recursive: true });
+    await fs.writeFile(
+      path.join(home, 'runtime', 'ui.pid'),
+      JSON.stringify({ pid: 999997, port: 3000, started_at: new Date().toISOString() }),
+    );
+    result = await runPluginChecks({ root: home, localVersion: '1.5.0' });
+    expect(result.find((c) => c.name === 'ui-pid-consistency')?.status).toBe('warn');
   });
 });
