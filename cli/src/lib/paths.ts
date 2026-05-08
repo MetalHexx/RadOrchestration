@@ -13,6 +13,9 @@ export interface InstallPaths {
   readonly logsDir: string;
   readonly cliLog: string;
   readonly harnessesDir: string;
+  readonly runtimeDir: string;
+  readonly uiPidFile: string;
+  readonly uiLog: string;
 }
 
 export function resolveInstallRoot(env: NodeJS.ProcessEnv = process.env): string {
@@ -35,5 +38,8 @@ export function installPaths(root: string): InstallPaths {
     logsDir: join(root, 'logs'),
     cliLog: join(root, 'logs', 'cli.log'),
     harnessesDir: join(root, 'runtime', 'harnesses'),
+    runtimeDir: join(root, 'runtime'),
+    uiPidFile: join(root, 'runtime', 'ui.pid'),
+    uiLog: join(root, 'logs', 'ui.log'),
   };
 }

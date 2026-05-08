@@ -4,6 +4,7 @@ import { installCommand } from './commands/install.js';
 import { doctorCommand } from './commands/doctor/index.js';
 import { harnessUseCommand } from './commands/harness-use.js';
 import { harnessListCommand } from './commands/harness-list.js';
+import { uiStartCommand, uiStopCommand, uiStatusCommand } from './commands/ui/index.js';
 
 export function buildProgram(version: string): Command {
   const program = new Command('radorch');
@@ -47,6 +48,35 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(harnessListCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
+  const ui = program.command('ui').description('UI server lifecycle');
+  ui
+    .command('start')
+    .description(uiStartCommand.description)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(uiStartCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  ui
+    .command('stop')
+    .description(uiStopCommand.description)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(uiStopCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  ui
+    .command('status')
+    .description(uiStatusCommand.description)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(uiStatusCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   return program;
