@@ -41,5 +41,11 @@ export const harnessUseCommand = defineCommand({
   description: 'Switch the active harness without re-installing',
   args: { harness: { description: 'harness name (claude | copilot-vscode | copilot-cli)', required: true } },
   flags: {},
-  handler: async ({ args, ctx }: { args: { harness: string }; ctx: CommandContext }) => runHarnessUse({ harness: args.harness, env: ctx.env }),
+  handler: async ({ args, ctx }: { args: { harness: string }; ctx: CommandContext }) => {
+    const result = await runHarnessUse({ harness: args.harness, env: ctx.env });
+    if (result.no_change && !ctx.ux.json) {
+      ctx.stderr.write(ctx.theme.hint(`harness "${result.active}" is already active — no change\n`));
+    }
+    return result;
+  },
 });
