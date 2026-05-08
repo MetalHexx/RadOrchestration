@@ -8,7 +8,7 @@ export interface BannerOptions {
   json: boolean;
 }
 export function renderBanner(opts: BannerOptions): void {
-  if (!opts.isTTY || opts.nonInteractive || opts.json) return;
+  if (!opts.isTTY || opts.nonInteractive || opts.json || opts.noColor) return;
   const theme = makeTheme({ noColor: opts.noColor });
   const cols = opts.stream.columns ?? 80;
   if (cols < 60) {

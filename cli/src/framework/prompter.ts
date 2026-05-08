@@ -19,15 +19,15 @@ export function createPrompter(opts: PrompterOptions): Prompter {
   return {
     async input(o) {
       if (!allowed) gate(o.message);
-      return input({ message: o.message, default: o.default });
+      return input({ message: o.message, default: o.default }, { output: process.stderr });
     },
     async confirm(o) {
       if (!allowed) gate(o.message);
-      return confirm({ message: o.message, default: o.defaultValue });
+      return confirm({ message: o.message, default: o.defaultValue }, { output: process.stderr });
     },
     async select(o) {
       if (!allowed) gate(o.message);
-      const choice = await select({ message: o.message, choices: o.choices.map((c) => ({ value: c, name: c })), default: o.default });
+      const choice = await select({ message: o.message, choices: o.choices.map((c) => ({ value: c, name: c })), default: o.default }, { output: process.stderr });
       return choice as Awaited<ReturnType<Prompter['select']>>;
     },
   };

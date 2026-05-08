@@ -25,4 +25,9 @@ describe('banner', () => {
     renderBanner({ stream, isTTY: true, nonInteractive: false, noColor: false, json: false });
     expect((stream.write as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
   });
+  it('writes nothing when noColor is true', () => {
+    const stream = { write: vi.fn(), columns: 80, isTTY: true } as unknown as NodeJS.WriteStream;
+    renderBanner({ stream, isTTY: true, nonInteractive: false, noColor: true, json: false });
+    expect((stream.write as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled();
+  });
 });
