@@ -98,7 +98,10 @@ export async function runCommand<Args, Flags, Result>(
     }
     const flagsResult = {} as Record<string, unknown>;
     for (const name of Object.keys(def.flags)) {
-      flagsResult[name] = parsed[name];
+      // Commander converts --kebab-case to camelCase in opts(); map back so handlers
+      // can look up flags by their declared hyphenated name (e.g. 'default-harness').
+      const camel = name.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+      flagsResult[name] = parsed[camel] ?? parsed[name];
     }
 
     const ctx: CommandContext = {

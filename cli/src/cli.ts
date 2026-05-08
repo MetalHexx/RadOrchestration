@@ -13,6 +13,7 @@ export function buildProgram(version: string): Command {
     .command('install')
     .description(installCommand.description)
     .allowUnknownOption()
+    .allowExcessArguments(true)
     .action(async () => {
       const argv = process.argv.slice(3);
       await runCommand(installCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
@@ -22,6 +23,7 @@ export function buildProgram(version: string): Command {
     .command('doctor')
     .description(doctorCommand.description)
     .allowUnknownOption()
+    .allowExcessArguments(true)
     .action(async () => {
       const argv = process.argv.slice(3);
       await runCommand(doctorCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
@@ -32,6 +34,7 @@ export function buildProgram(version: string): Command {
     .command('use <harness>')
     .description(harnessUseCommand.description)
     .allowUnknownOption()
+    .allowExcessArguments(true)
     .action(async (harnessName: string) => {
       const argv = ['--harness', harnessName, ...process.argv.slice(5)];
       await runCommand(harnessUseCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
@@ -40,6 +43,7 @@ export function buildProgram(version: string): Command {
     .command('list')
     .description(harnessListCommand.description)
     .allowUnknownOption()
+    .allowExcessArguments(true)
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(harnessListCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
