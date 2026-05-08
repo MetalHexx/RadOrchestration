@@ -227,4 +227,3 @@ The resolver is a pure function that returns one of 16 values based solely on th
 
 - [Pipeline](../pipeline.md) — Understand the pipeline stages and flow diagrams
 - [Configuration](../configuration.md) — Configure pipeline settings and human gates
-- [Validation](validation.md) — Run the validator and interpret results

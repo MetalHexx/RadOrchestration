@@ -41,7 +41,6 @@ When a pipeline change adds or modifies fields in **orchestration.yml** or **sta
 
 After any schema/config change, verify:
 
-1. **CLI validation** — run `validate-orchestration` against a project with the new field
-2. **UI form mode** — new config field renders correct control and validates input
-3. **State round-trip** — `writeState()` succeeds with the new field present
-4. **Tests** — run `pipeline-behavioral.test.js` and `pipeline.test.js`
+1. **UI form mode** — new config field renders correct control and validates input
+2. **State round-trip** — `writeState()` succeeds with the new field present
+3. **Tests** — run `pipeline-behavioral.test.js` and `pipeline.test.js`

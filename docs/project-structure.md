@@ -62,4 +62,4 @@ Each project lives in its own folder under the configured `base_path`. This page
 
 **`template.yml`** — The pipeline template that controls the graph of nodes and their sequencing for this project.  It is basically a copy of the `default` or `full` template you chose when running `/rad-plan`.  In the future, this will be possible to customize per project run if needed.
 
-**`state.json`** — Machine-readable pipeline state. Written exclusively by the pipeline script; do not edit by hand. See [Validation](internals/validation.md) for schema details.
+**`state.json`** — Machine-readable pipeline state. Written exclusively by the pipeline script; do not edit by hand.
