@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { pathExists } from '../lib/fs-helpers.js';
-import { resolveInstallRoot } from '../lib/paths.js';
+import { resolveInstallRoot, installPaths } from '../lib/paths.js';
 import { UserError } from '../framework/errors.js';
 import { defineCommand } from '../framework/command.js';
 import type { CommandContext } from '../framework/context.js';
@@ -25,7 +25,8 @@ export async function runInstall(opts: {
   ctx: { env: NodeJS.ProcessEnv; ux: { isTTY: boolean; nonInteractive: boolean; noColor: boolean; json: boolean }; stderr: NodeJS.WriteStream };
 }): Promise<InstallResult> {
   const root = resolveInstallRoot(opts.ctx.env);
-  if (await pathExists(root)) {
+  const p = installPaths(root);
+  if (await pathExists(p.installJson)) {
     throw new UserError(`radorch install root already exists at ${root}. Remove it before re-running install.`);
   }
   // Banner + next-steps hint render only in true interactive mode (DD-1, DD-9). When ux.isTTY=false they no-op.

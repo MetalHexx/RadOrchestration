@@ -22,7 +22,8 @@ function cmpSemver(a: string, b: string): number {
 export async function stampLastWriter(installJsonPath: string, version: string): Promise<void> {
   if (!(await pathExists(installJsonPath))) return;
   const ij = await readInstallJson(installJsonPath);
-  if (cmpSemver(version, ij.last_writer_version) >= 0) {
+  // No-op fallback: if last_writer_version is absent (old schema), just stamp it.
+  if (!ij.last_writer_version || cmpSemver(version, ij.last_writer_version) >= 0) {
     ij.last_writer_version = version;
     await writeInstallJson(installJsonPath, ij);
   }
@@ -34,6 +35,8 @@ export async function checkVersionSkew(opts: {
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   if (!(await pathExists(opts.installJsonPath))) return { ok: true };
   const ij = await readInstallJson(opts.installJsonPath);
+  // No-op fallback: if last_writer_version is absent (old schema), skip the check.
+  if (!ij.last_writer_version) return { ok: true };
   if (cmpSemver(opts.localVersion, ij.last_writer_version) < 0) {
     return {
       ok: false,

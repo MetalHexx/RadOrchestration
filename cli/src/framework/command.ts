@@ -1,4 +1,5 @@
 import { Command, CommanderError } from 'commander';
+import { createRequire } from 'node:module';
 import { createPrompter } from './prompter.js';
 import { makeTheme } from './theme.js';
 import { createFileSink } from './logger/file-sink.js';
@@ -7,9 +8,13 @@ import { emit } from './output.js';
 import { ExitCode } from './exit-codes.js';
 import { RadorchError, SystemError, UserError } from './errors.js';
 import { installPaths, resolveInstallRoot } from '../lib/paths.js';
+import { checkVersionSkew, stampLastWriter } from '../lib/install-json.js';
 import type { CommandContext, UxFlags } from './context.js';
 import { LOG_LEVELS } from './logger/types.js';
 import type { LogLevel } from './logger/types.js';
+
+const require_ = createRequire(import.meta.url);
+const pkg = require_('../../package.json') as { version: string };
 
 export function pickLogLevel(flag: string | undefined, env: NodeJS.ProcessEnv): LogLevel {
   if (flag && (LOG_LEVELS as readonly string[]).includes(flag)) return flag as LogLevel;
@@ -67,6 +72,16 @@ export async function runCommand<Args, Flags, Result>(
   };
   const installRoot = resolveInstallRoot(opts.env);
   const paths = installPaths(installRoot);
+
+  if (def.name !== 'install') {
+    const skew = await checkVersionSkew({ installJsonPath: paths.installJson, localVersion: pkg.version });
+    if (!skew.ok) {
+      emit({ ok: false, error: { type: 'user_error', message: skew.message } });
+      process.exit(ExitCode.UserError);
+      return;
+    }
+  }
+
   const sink = createFileSink({
     file: paths.cliLog,
     maxBytes: 10 * 1024 * 1024,
@@ -129,6 +144,9 @@ export async function runCommand<Args, Flags, Result>(
     const exitCode = overrideExit !== undefined
       ? overrideExit
       : (envelope.ok ? ExitCode.Success : (envelope.error?.type === 'user_error' ? ExitCode.UserError : ExitCode.SystemError));
+    if (envelope.ok && def.name !== 'install') {
+      try { await stampLastWriter(paths.installJson, pkg.version); } catch { /* best effort */ }
+    }
     process.exit(exitCode);
   } catch (e) {
     // FR-5: parse/usage failures (unknown option, missing value, etc.) are user errors → exit 1.

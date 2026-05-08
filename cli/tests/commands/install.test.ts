@@ -16,9 +16,11 @@ function makeCtx(home: string) {
 }
 
 describe('radorch install', () => {
-  it('errors with user_error when the install root already exists', async () => {
+  it('errors with user_error when install.json already exists', async () => {
     const home = path.join(tmp, 'pre');
     await fs.mkdir(home, { recursive: true });
+    // Simulate an existing installation by writing install.json
+    await fs.writeFile(path.join(home, 'install.json'), JSON.stringify({ package_version: '0.0.0', installed_at: new Date().toISOString(), last_writer_version: '0.0.0', state_schema_version: 'v5' }, null, 2) + '\n', 'utf8');
     await expect(
       runInstall({ defaultHarness: 'claude', ctx: makeCtx(home) }),
     ).rejects.toMatchObject({ type: 'user_error' });
