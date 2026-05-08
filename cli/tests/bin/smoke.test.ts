@@ -7,7 +7,7 @@ const repoRoot = path.resolve(__dirname, '..', '..');
 
 describe('binary smoke', () => {
   it('runs `radorch --help` and exits successfully', async () => {
-    await execP('npx', ['tsc'], { cwd: repoRoot, shell: true });
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
     const { stdout, stderr } = await execP('node', ['dist/bin/radorch.js', '--help'], {
       cwd: repoRoot,
       env: { ...process.env, RADORCH_NO_LOG: '1' },
