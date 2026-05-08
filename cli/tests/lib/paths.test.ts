@@ -16,17 +16,18 @@ describe('resolveInstallRoot', () => {
 
 describe('installPaths', () => {
   it('exposes the canonical layout under a given root', () => {
-    const p = installPaths('/tmp/rad-x');
-    expect(p.installJson).toBe('/tmp/rad-x/install.json');
-    expect(p.configYml).toBe('/tmp/rad-x/config.yml');
-    expect(p.registryYml).toBe('/tmp/rad-x/registry.yml');
-    expect(p.harnessPointer).toBe('/tmp/rad-x/.harness');
-    expect(p.gitignore).toBe('/tmp/rad-x/.gitignore');
-    expect(p.projectsDir).toBe('/tmp/rad-x/projects');
-    expect(p.worktreesDir).toBe('/tmp/rad-x/worktrees');
-    expect(p.logsDir).toBe('/tmp/rad-x/logs');
-    expect(p.cliLog).toBe('/tmp/rad-x/logs/cli.log');
-    expect(p.harnessesDir).toBe('/tmp/rad-x/runtime/harnesses');
+    const root = '/tmp/rad-x';
+    const p = installPaths(root);
+    expect(p.installJson).toBe(path.join(root, 'install.json'));
+    expect(p.configYml).toBe(path.join(root, 'config.yml'));
+    expect(p.registryYml).toBe(path.join(root, 'registry.yml'));
+    expect(p.harnessPointer).toBe(path.join(root, '.harness'));
+    expect(p.gitignore).toBe(path.join(root, '.gitignore'));
+    expect(p.projectsDir).toBe(path.join(root, 'projects'));
+    expect(p.worktreesDir).toBe(path.join(root, 'worktrees'));
+    expect(p.logsDir).toBe(path.join(root, 'logs'));
+    expect(p.cliLog).toBe(path.join(root, 'logs', 'cli.log'));
+    expect(p.harnessesDir).toBe(path.join(root, 'runtime', 'harnesses'));
   });
   it('produces native paths when given a Windows-style root', () => {
     const winRoot = 'C:\\Users\\example\\.radorch';
