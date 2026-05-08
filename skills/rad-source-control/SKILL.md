@@ -6,6 +6,10 @@ user-invocable: false
 
 # Source Control
 
+Scripts are in the `scripts/` folder alongside this SKILL.md. Use their absolute path when invoking them.
+
+> **ESM/CJS note.** The bundled scripts use CommonJS (`require`). If the workspace's root `package.json` declares `"type": "module"`, invoking the scripts directly with `node` will fail. **Proceed with direct `git` Bash invocations:** Stage files with `git add <file1> <file2> ...` (never `git add -A`), commit with `git commit -m "<message>"`, push with `git push origin <branch>`. The pre-commit hook runs automatically. Then emit the `## Commit Result` block from the resulting commit hash and push outcome.
+
 ---
 
 ## Commit Mode
@@ -24,20 +28,12 @@ user-invocable: false
 Format: `{prefix}({taskId}): {title}`  
 Optional body: blank line then 2–4 prose lines from the task description.
 
-**2. Stage the files listed in the spawn prompt using direct `git` invocations:**
-```bash
-cd <worktree-path>
-git add <file1> <file2> ... # exact filenames from prompt, never git add -A
+**2. If `node` invocation fails with ESM/CJS error, use direct `git` invocations (see note above). Otherwise, run:**
+```
+node <skill-dir>/scripts/git-commit.js --worktree-path "<worktree>" --message "<message>"
 ```
 
-**3. Commit and push:**
-```bash
-git commit -m "<message>"
-git push origin <branch>
-```
-The pre-commit hook runs automatically during commit.
-
-**4. Capture the commit hash and push outcome, then emit:**
+**3. Parse the resulting commit hash and push outcome, then emit:**
 ````
 ## Commit Result
 ```json
@@ -49,20 +45,18 @@ The pre-commit hook runs automatically during commit.
 
 ## PR Mode
 
-**1. Build the PR title and body** from the spawn prompt.
-
-**2. Create the PR using `gh` (GitHub CLI):**
-```bash
-cd <worktree-path>
-gh pr create \
-  --title "<title>" \
-  --body "<body>" \
-  --head "<branch>" \
-  --base "<base-branch>"
+**1. If `node` invocation fails with ESM/CJS error, consult the ESM/CJS note; do not proceed with direct `git` for PR operations. Otherwise, run:**
 ```
-If no body is provided in the prompt, omit the `--body` flag.
+node <skill-dir>/scripts/gh-pr.js \
+  --worktree-path "<worktree>" \
+  --branch "<branch>" \
+  --base-branch "<base-branch>" \
+  --title "<project-name>" \
+  [--body-file "<path>"]
+```
+`--body-file` is the path to a markdown file that becomes the PR description on GitHub. Pass it when a body file path is provided in the prompt; omit it otherwise (PR will have no description).
 
-**3. Parse the output and emit:**
+**2. Parse the JSON output from stdout and emit:**
 ````
 ## PR Result
 ```json
