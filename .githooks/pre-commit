@@ -3,8 +3,6 @@
 # Exit 0 = commit proceeds, Exit non-zero = commit blocked.
 # Always runs regardless of which files are staged.
 
-set -e
-
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
 # ---------- Block 1: pipeline runtime (existing) ----------
