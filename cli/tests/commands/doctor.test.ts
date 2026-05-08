@@ -96,4 +96,24 @@ describe('plugin-aware doctor checks', () => {
     result = await runPluginChecks({ root: home, localVersion: '1.5.0' });
     expect(result.find((c) => c.name === 'ui-pid-consistency')?.status).toBe('warn');
   });
+
+  it('does not throw when install.json lacks last_writer_version (iter-01 install)', async () => {
+    const homeIter01 = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doctor-iter01-'));
+    try {
+      // Pre-iter-02 install.json shape: only package_version + installed_at, no last_writer_version
+      await fs.mkdir(homeIter01, { recursive: true });
+      await fs.writeFile(
+        path.join(homeIter01, 'install.json'),
+        JSON.stringify({ package_version: '1.0.0-alpha.7', installed_at: '2026-04-01T00:00:00.000Z' }, null, 2) + '\n',
+        'utf8',
+      );
+      const results = await runPluginChecks({ root: homeIter01, localVersion: '1.0.0-alpha.8' });
+      // Must not throw. version-skew check should report a non-fail status (skip/pass/warn — no crash).
+      const skew = results.find((r) => r.name === 'version-skew');
+      expect(skew).toBeDefined();
+      expect(skew?.status).not.toBe('fail');
+    } finally {
+      await fs.rm(homeIter01, { recursive: true, force: true });
+    }
+  });
 });
