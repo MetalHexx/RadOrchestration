@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "shell": "bash",
+        "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
+      },
+      {
+        "shell": "powershell",
+        "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.ps1"
+      }
+    ]
+  }
+}
