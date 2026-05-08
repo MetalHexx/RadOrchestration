@@ -21,18 +21,18 @@ const ALLOWED_ERROR_TYPES: readonly ErrorType[] = ['user_error', 'system_error']
 export function validateEnvelope(env: unknown): asserts env is Envelope {
   if (!env || typeof env !== 'object') throw new Error('envelope must be an object');
   const e = env as Record<string, unknown>;
-  if (typeof e.ok !== 'boolean') throw new Error('envelope missing boolean `ok`');
-  if (e.ok === true) {
+  if (typeof e['ok'] !== 'boolean') throw new Error('envelope missing boolean `ok`');
+  if (e['ok'] === true) {
     if (!('data' in e)) throw new Error('success envelope must carry `data`');
     if ('error' in e) throw new Error('success envelope must not carry `error` (data xor error)');
   } else {
-    if (!('error' in e) || !e.error || typeof e.error !== 'object') {
+    if (!('error' in e) || !e['error'] || typeof e['error'] !== 'object') {
       throw new Error('failure envelope must carry an `error` object');
     }
     if ('data' in e) throw new Error('failure envelope must not carry `data` (data xor error)');
-    const err = e.error as Record<string, unknown>;
-    if (typeof err.message !== 'string') throw new Error('error.message must be a string');
-    if (!ALLOWED_ERROR_TYPES.includes(err.type as ErrorType)) {
+    const err = e['error'] as Record<string, unknown>;
+    if (typeof err['message'] !== 'string') throw new Error('error.message must be a string');
+    if (!ALLOWED_ERROR_TYPES.includes(err['type'] as ErrorType)) {
       throw new Error(`error.type must be one of ${ALLOWED_ERROR_TYPES.join(' | ')}`);
     }
   }
