@@ -3,9 +3,9 @@
 //
 // Checks whether node_modules exists in the scripts directory. If missing
 // (e.g. first run in a fresh worktree), runs `npm ci` to install
-// dependencies, then delegates to main.ts with all original arguments.
+// dependencies, then delegates to pipeline.ts with all original arguments.
 // All CLI arguments are passed through transparently — adding new flags
-// to main.ts requires no changes here.
+// to pipeline.ts requires no changes here.
 //
 // Usage:
 //   node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [...]
@@ -75,9 +75,9 @@ if (!existsSync(nodeModulesDir)) {
   }
 }
 
-// ── Delegate to main.ts ──────────────────────────────────────────────────────
+// ── Delegate to pipeline.ts ──────────────────────────────────────────────────────
 
-const pipelineScript = join(__dirname, 'main.ts');
+const pipelineScript = join(__dirname, 'pipeline.ts');
 const tsxArgs = [pipelineScript, ...process.argv.slice(2)];
 
 const cleanEnv = { ...process.env };

@@ -14,7 +14,7 @@ const outFile = outArg
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
 
 await build({
-  entryPoints: [path.join(__dirname, 'main.ts')],
+  entryPoints: [path.join(__dirname, 'pipeline.ts')],
   bundle: true,
   platform: 'node',
   format: 'esm',

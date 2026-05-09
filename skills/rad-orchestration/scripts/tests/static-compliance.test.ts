@@ -196,3 +196,27 @@ describe('PipelineResult shape', () => {
     expect(_withFullError.error).toHaveProperty('field', 'phase');
   });
 });
+
+// ── 6. pipeline source rename ────────────────────────────────────────────────
+
+describe('pipeline source rename', () => {
+  const scriptsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+  it('pipeline.ts exists at the scripts root', () => {
+    expect(fs.existsSync(path.join(scriptsDir, 'pipeline.ts'))).toBe(true);
+  });
+
+  it('main.ts no longer exists at the scripts root', () => {
+    expect(fs.existsSync(path.join(scriptsDir, 'main.ts'))).toBe(false);
+  });
+
+  it('no remaining "main.ts" string references inside scripts/', () => {
+    const tracked = ['bundle.mjs', 'tsconfig.json', 'vitest.config.ts'];
+    for (const f of tracked) {
+      const abs = path.join(scriptsDir, f);
+      if (!fs.existsSync(abs)) continue;
+      const text = fs.readFileSync(abs, 'utf8');
+      expect(text).not.toMatch(/\bmain\.ts\b/);
+    }
+  });
+});
