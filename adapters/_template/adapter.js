@@ -31,4 +31,13 @@ export const adapter = {
     sonnet: '<harness-sonnet-id>',
     opus: '<harness-opus-id>',
   }),
+
+  // pluginRootSubstitution — required for every adapter (AD-15).
+  // The string that replaces the canonical ${PLUGIN_ROOT} placeholder in skill
+  // bodies during emit. Set this to the harness-specific token or path expression
+  // that resolves to the installed plugin root at runtime.
+  //   • Claude Code: '${CLAUDE_PLUGIN_ROOT}'  (native Claude plugin-root variable)
+  //   • Copilot adapters: '{orchRoot}'         (runtime-resolved orch root)
+  //   • New harness: replace '<harness-plugin-root>' below with the harness token.
+  pluginRootSubstitution: '<harness-plugin-root>',
 };

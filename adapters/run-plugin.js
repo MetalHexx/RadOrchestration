@@ -72,7 +72,8 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
         }
         if (child === 'SKILL.md') {
           const text = fs.readFileSync(absSrc, 'utf8');
-          const projected = projectFrontmatterMin(text, (fm) => adapter.skillFrontmatter(fm, { adapter }));
+          const rawProjected = projectFrontmatterMin(text, (fm) => adapter.skillFrontmatter(fm, { adapter }));
+          const projected = applyPluginRootSubstitution(rawProjected, adapter);
           fs.writeFileSync(absDest, projected, 'utf8');
         } else {
           fs.copyFileSync(absSrc, absDest);
@@ -97,13 +98,28 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
       const projectFn = adapter.agentFrontmatter
         ? (fm) => adapter.agentFrontmatter(fm, { adapter })
         : (fm) => fm;
-      const projected = projectFrontmatterMin(text, projectFn);
+      const rawProjected = projectFrontmatterMin(text, projectFn);
+      const projected = applyPluginRootSubstitution(rawProjected, adapter);
       fs.writeFileSync(absDest, projected, 'utf8');
     }
   }
 
   // bin/ and dist/ and ui/ are placed by the meta-script (P04-T02), not here.
   return { harness: adapter.name, targetRoot };
+}
+
+// ── Plugin-root substitution ─────────────────────────────────────────
+
+/**
+ * Replaces every occurrence of the canonical `${PLUGIN_ROOT}` placeholder in
+ * a projected text body with the adapter's harness-specific substitution string.
+ * Applied post-frontmatter-projection; operates on the raw body text only.
+ * If the adapter does not declare pluginRootSubstitution, the text is returned
+ * unchanged (graceful degradation for adapters that pre-date this field).
+ */
+function applyPluginRootSubstitution(text, adapter) {
+  if (!adapter.pluginRootSubstitution) return text;
+  return text.replaceAll('${PLUGIN_ROOT}', adapter.pluginRootSubstitution);
 }
 
 // Lightweight YAML projection — same shape adapters/run.js uses internally.

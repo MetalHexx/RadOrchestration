@@ -55,9 +55,10 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
       const canonicalName = entry.replace(/\.md$/, '');
       const sourcePath = path.posix.join('agents', entry);
       const text = fs.readFileSync(path.join(agentsSrc, entry), 'utf8');
-      const projected = projectFrontmatter(text, (fm) =>
+      const rawProjected = projectFrontmatter(text, (fm) =>
         adapter.agentFrontmatter(fm, { adapter }),
       );
+      const projected = applyPluginRootSubstitution(rawProjected, adapter);
       const outName = adapter.filenameRule({ kind: 'agent', canonicalName });
       const absDest = path.join(agentsOut, outName);
       fs.writeFileSync(absDest, projected, 'utf8');
@@ -97,9 +98,10 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
         }
         if (rel === 'SKILL.md') {
           const text = fs.readFileSync(absSrc, 'utf8');
-          const projected = projectFrontmatter(text, (fm) =>
+          const rawProjected = projectFrontmatter(text, (fm) =>
             adapter.skillFrontmatter(fm, { adapter }),
           );
+          const projected = applyPluginRootSubstitution(rawProjected, adapter);
           const outName = adapter.filenameRule({ kind: 'skill', canonicalName: skillName });
           const destPath = path.join(skillOutDir, outName);
           fs.writeFileSync(destPath, projected, 'utf8');
@@ -185,6 +187,20 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
     skillCount,
     fileCount: files.length,
   };
+}
+
+// ── Plugin-root substitution ─────────────────────────────────────────
+
+/**
+ * Replaces every occurrence of the canonical `${PLUGIN_ROOT}` placeholder in
+ * a projected text body with the adapter's harness-specific substitution string.
+ * Applied post-frontmatter-projection; operates on the raw body text only.
+ * If the adapter does not declare pluginRootSubstitution, the text is returned
+ * unchanged (graceful degradation for adapters that pre-date this field).
+ */
+function applyPluginRootSubstitution(text, adapter) {
+  if (!adapter.pluginRootSubstitution) return text;
+  return text.replaceAll('${PLUGIN_ROOT}', adapter.pluginRootSubstitution);
 }
 
 // ── Frontmatter helpers (regex-based YAML — no AST parser) ──────────

@@ -44,4 +44,9 @@ export const adapter = {
     sonnet: 'sonnet',
     opus: 'opus',
   }),
+
+  // The harness-specific token that resolves the plugin root path at runtime.
+  // Claude Code exposes ${CLAUDE_PLUGIN_ROOT} as the absolute path to the
+  // installed plugin directory — used to make skill references portable.
+  pluginRootSubstitution: '${CLAUDE_PLUGIN_ROOT}',
 };
