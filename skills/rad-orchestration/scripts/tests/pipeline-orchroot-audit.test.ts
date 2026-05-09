@@ -22,6 +22,8 @@ const ALLOWLIST_SUBSTRINGS = [
 function walk(dir: string, acc: string[] = []): string[] {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (e.name === 'node_modules' || e.name === '.git') continue;
+    if (e.name === 'dist') continue;                         // gitignored tsc build output
+    if (e.name === 'pipeline.js' && !e.isDirectory()) continue;  // generated esbuild bundle
     const p = path.join(dir, e.name);
     if (e.isDirectory()) {
       if (e.name === 'fixtures') continue;
