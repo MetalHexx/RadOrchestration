@@ -34,7 +34,7 @@ flowchart TD
 
     subgraph ENGINE ["Pipeline Engine"]
         ENG(["pipeline.js + lib/"])
-        TPL(["Templates (default · quick)"])
+        TPL(["Templates (extra-high · high · medium · low)"])
         VAL(["Validator"])
     end
 
