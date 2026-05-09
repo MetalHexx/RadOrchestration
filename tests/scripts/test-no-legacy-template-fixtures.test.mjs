@@ -45,3 +45,8 @@ test('no UI production fallback target is the literal "default"', () => {
   const out = rg(":\\s*'default';", ['ui/components/process-editor']);
   assert.equal(out.trim(), '', `Found 'default' as a production fallback target:\n${out}`);
 });
+
+test('no prompt-test template.yml snapshot uses template.id: default | quick | full', () => {
+  const out = rg('id:\\s*(default|quick|full)\\b', ['prompt-tests']);
+  assert.equal(out.trim(), '', `Found legacy template.id values in prompt-test snapshots:\n${out}`);
+});
