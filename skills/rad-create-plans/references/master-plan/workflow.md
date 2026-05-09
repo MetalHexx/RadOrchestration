@@ -87,8 +87,6 @@ becomes task-local and action-oriented.
    **Project Size rubric** — The orchestrator's spawn prompt passes a
    `Task size preference` (one of `Small`, `Medium`, `Large`, `Extra Large`,
    or a `Custom: …` prose string). Apply the corresponding scope below.
-   Today's "one file or one function" floor is retired; today's `Medium`
-   becomes the new `Small`.
 
    | Tier | Task scope | Phase scope |
    |---|---|---|
