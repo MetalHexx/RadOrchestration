@@ -148,4 +148,3 @@ Verdict mediation: `code_review_completed` and `phase_review_completed` accept a
 
 - [pipeline.md](../pipeline.md) — operator-facing narrative of the run
 - [scripts.md](scripts.md) — engine entry points, mutations, and CLI surface
-- [validation.md](validation.md) — validator architecture and check modules

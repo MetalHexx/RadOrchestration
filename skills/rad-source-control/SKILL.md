@@ -8,6 +8,8 @@ user-invocable: false
 
 Scripts are in the `scripts/` folder alongside this SKILL.md. Use their absolute path when invoking them.
 
+> **ESM/CJS note.** The bundled scripts use CommonJS (`require`). If the workspace's root `package.json` declares `"type": "module"`, invoking the scripts directly with `node` will fail. **Proceed with direct `git` Bash invocations:** Stage files with `git add <file1> <file2> ...` (never `git add -A`), commit with `git commit -m "<message>"`, push with `git push origin <branch>`. The pre-commit hook runs automatically. Then emit the `## Commit Result` block from the resulting commit hash and push outcome.
+
 ---
 
 ## Commit Mode
@@ -26,12 +28,12 @@ Scripts are in the `scripts/` folder alongside this SKILL.md. Use their absolute
 Format: `{prefix}({taskId}): {title}`  
 Optional body: blank line then 2–4 prose lines from the task description.
 
-**2. Run:**
+**2. If `node` invocation fails with ESM/CJS error, use direct `git` invocations (see note above). Otherwise, run:**
 ```
 node <skill-dir>/scripts/git-commit.js --worktree-path "<worktree>" --message "<message>"
 ```
 
-**3. Parse the JSON output from stdout and emit:**
+**3. Parse the resulting commit hash and push outcome, then emit:**
 ````
 ## Commit Result
 ```json
@@ -43,7 +45,7 @@ node <skill-dir>/scripts/git-commit.js --worktree-path "<worktree>" --message "<
 
 ## PR Mode
 
-**1. Run:**
+**1. If `node` invocation fails with ESM/CJS error, consult the ESM/CJS note; do not proceed with direct `git` for PR operations. Otherwise, run:**
 ```
 node <skill-dir>/scripts/gh-pr.js \
   --worktree-path "<worktree>" \

@@ -8,6 +8,7 @@
     "build:claude": "node scripts/build.js --harness=claude",
     "build:copilot-vscode": "node scripts/build.js --harness=copilot-vscode",
     "build:copilot-cli": "node scripts/build.js --harness=copilot-cli",
-    "build:all": "node scripts/build.js --all"
+    "build:all": "node scripts/build.js --all",
+    "build:plugin": "node scripts/build-plugin.js"
   }
 }

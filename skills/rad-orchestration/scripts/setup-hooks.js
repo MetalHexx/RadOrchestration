@@ -46,29 +46,48 @@ const hooksDir = path.join(repoRoot, '.githooks');
 const preCommitPath = path.join(hooksDir, 'pre-commit');
 
 const preCommitContent = `#!/bin/sh
-# Pre-commit hook — runs tsc --noEmit on scripts folder
-# Exit 0 = commit proceeds, Exit 1 = commit blocked
-# Always runs regardless of which files are staged
+# Pre-commit hook — typechecks and lints both the pipeline runtime and the cli/ package.
+# Exit 0 = commit proceeds, Exit non-zero = commit blocked.
+# Always runs regardless of which files are staged.
 
-SCRIPTS_DIR="skills/rad-orchestration/scripts"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 
+# ---------- Block 1: pipeline runtime (existing) ----------
+SCRIPTS_DIR="$REPO_ROOT/skills/rad-orchestration/scripts"
 cd "$SCRIPTS_DIR" || { echo "[type-check] ERROR: Could not cd into $SCRIPTS_DIR"; exit 1; }
-
-echo "[type-check] Running TypeScript type check..."
-
+echo "[type-check] Running TypeScript type check on scripts/..."
 npx tsc --noEmit
-
-EXIT_CODE=$?
-
-if [ $EXIT_CODE -eq 0 ]; then
-  echo "[type-check] TypeScript OK (0 errors)"
-  exit 0
-else
-  echo "[type-check] ✗ Type error(s) found. Commit blocked."
-  echo "[type-check] Run 'npm run typecheck' in scripts/ to see full details."
-  echo "[type-check] To bypass (emergency only): git commit --no-verify"
+SCRIPTS_EXIT=$?
+if [ $SCRIPTS_EXIT -ne 0 ]; then
+  echo "[type-check] ✗ Pipeline runtime type error(s) found. Commit blocked."
+  echo "[type-check] Run 'npm run typecheck' in $SCRIPTS_DIR to see full details."
   exit 1
 fi
+echo "[type-check] Pipeline runtime TypeScript OK"
+
+# ---------- Block 2: cli/ package (new) ----------
+CLI_DIR="$REPO_ROOT/cli"
+if [ -d "$CLI_DIR" ]; then
+  cd "$CLI_DIR" || { echo "[cli] ERROR: Could not cd into $CLI_DIR"; exit 1; }
+  echo "[cli] Running TypeScript type check on cli/..."
+  npx tsc --noEmit
+  CLI_TSC_EXIT=$?
+  if [ $CLI_TSC_EXIT -ne 0 ]; then
+    echo "[cli] ✗ cli/ type error(s) found. Commit blocked."
+    exit 1
+  fi
+  echo "[cli] Running ESLint on cli/..."
+  npx eslint .
+  CLI_LINT_EXIT=$?
+  if [ $CLI_LINT_EXIT -ne 0 ]; then
+    echo "[cli] ✗ ESLint reported issues. Commit blocked."
+    exit 1
+  fi
+  echo "[cli] cli/ typecheck + lint OK"
+fi
+
+echo "[pre-commit] All checks passed"
+exit 0
 `;
 
 // Create .githooks/ directory if it doesn't exist

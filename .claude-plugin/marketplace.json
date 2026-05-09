@@ -1,0 +1,10 @@
+{
+  "name": "rad-orchestration-marketplace",
+  "owner": { "name": "metalhexx" },
+  "plugins": [
+    {
+      "name": "rad-orchestration",
+      "source": "../marketplace/plugins/rad-orchestration"
+    }
+  ]
+}

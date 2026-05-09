@@ -1,0 +1,24 @@
+{
+  "name": "rad-orchestration",
+  "description": "Global orchestration root manager — install once, drives projects across repos via Claude Code",
+  "version": "1.0.0-alpha.8",
+  "author": {
+    "name": "metalhexx"
+  },
+  "repository": "https://github.com/MetalHexx/RadOrchestration",
+  "license": "MIT",
+  "keywords": [
+    "orchestration",
+    "agents",
+    "skills",
+    "ci",
+    "automation"
+  ],
+  "homepage": "https://github.com/MetalHexx/RadOrchestration",
+  "skills": [
+    "./skills"
+  ],
+  "hooks": [
+    "./hooks/hooks.json"
+  ]
+}

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bundle": "node bundle.mjs"
   },
   "dependencies": {
     "ajv": "^8.17.1",
@@ -15,6 +16,7 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.19.17",
+    "esbuild": "^0.24.0",
     "typescript": "^5.9.3",
     "vitest": "^3.0.0"
   }
