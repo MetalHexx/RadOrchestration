@@ -47,16 +47,72 @@ const REQUIRED_ARTIFACTS = [
   'skills/rad-orchestration/SKILL.md',
   'skills/rad-plan/SKILL.md',
   'skills/rad-ui-start/SKILL.md',
-  // Representative canonical agent
-  'agents/orchestrator.md',
 ];
 
-export function validatePluginTree(rootDir) {
+/**
+ * Returns a sorted list of canonical agent names (filename minus `.md`) from
+ * `<canonicalRoot>/agents/`. Used by `validatePluginTree` to enumerate the
+ * expected plugin `agents/` tree dynamically rather than relying on a
+ * hardcoded representative subset.
+ */
+function listAgentNames(canonicalRoot) {
+  const agentsDir = path.join(canonicalRoot, 'agents');
+  if (!fs.existsSync(agentsDir)) return [];
+  return fs
+    .readdirSync(agentsDir)
+    .filter((f) => f.endsWith('.md') && !fs.statSync(path.join(agentsDir, f)).isDirectory())
+    .map((f) => f.replace(/\.md$/, ''))
+    .sort();
+}
+
+/**
+ * Validates the assembled plugin tree at `rootDir`.
+ *
+ * @param {string} rootDir      - Root of the plugin distribution tree to validate.
+ * @param {string} [canonicalRoot] - Repo root from which canonical `agents/` is
+ *   read to enumerate expected agent files. Defaults to the module-level
+ *   `repoRoot` so callers that know only the plugin dir still get full
+ *   agent enumeration without filesystem walking.
+ *
+ * Returns `{ ok: boolean, missing: string[] }`.
+ *
+ * Missing entries use one of two formats:
+ *   - `agents/<name>.md`                        — agent file absent from plugin tree
+ *   - `agents/orchestrator.md:token:rad-orchestration:<name>` — namespaced dispatch
+ *     token absent from plugin orchestrator agent body
+ */
+export function validatePluginTree(rootDir, canonicalRoot = repoRoot) {
   const missing = [];
+
+  // Static artifact checks.
   for (const rel of REQUIRED_ARTIFACTS) {
     const f = path.join(rootDir, rel);
     if (!fs.existsSync(f)) missing.push(rel);
   }
+
+  // Dynamic agent file checks — every canonical agent must ship in agents/.
+  const agentNames = listAgentNames(canonicalRoot);
+  for (const name of agentNames) {
+    const rel = `agents/${name}.md`;
+    if (!fs.existsSync(path.join(rootDir, rel))) missing.push(rel);
+  }
+
+  // Namespaced-token checks — every non-orchestrator canonical agent must
+  // appear at least once in the plugin's orchestrator agent body as
+  // `rad-orchestration:<name>`.  Only runs if orchestrator.md is present
+  // (absence is already caught by the agent-file check above).
+  const orchPath = path.join(rootDir, 'agents', 'orchestrator.md');
+  if (fs.existsSync(orchPath)) {
+    const orchBody = fs.readFileSync(orchPath, 'utf8');
+    for (const name of agentNames) {
+      if (name === 'orchestrator') continue;
+      const token = `rad-orchestration:${name}`;
+      if (!orchBody.includes(token)) {
+        missing.push(`agents/orchestrator.md:token:${token}`);
+      }
+    }
+  }
+
   return { ok: missing.length === 0, missing };
 }
 
@@ -140,7 +196,7 @@ async function main() {
   });
   await step('sync-plugin-version', () => syncPluginVersion(claudeDist, version));
   await step('validate-plugin-tree', () => {
-    const r = validatePluginTree(claudeDist);
+    const r = validatePluginTree(claudeDist, repoRoot);
     if (!r.ok) {
       process.stderr.write(`[build:plugin] validate-plugin-tree FAIL — missing:\n  ${r.missing.join('\n  ')}\n`);
       process.exit(1);

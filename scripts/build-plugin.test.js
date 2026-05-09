@@ -55,9 +55,22 @@ test('validatePluginTree: passes on a complete fixture', async () => {
   writeF('hooks/session-start.ps1');
   // Representative canonical skills (full enumeration)
   for (const s of ['rad-orchestration', 'rad-plan', 'rad-ui-start']) writeF(`skills/${s}/SKILL.md`);
-  // Representative canonical agent
-  writeF('agents/orchestrator.md');
-  const ok = validatePluginTree(tmp);
+
+  // All canonical agents must be present in agents/. Use the actual repo root
+  // so the fixture stays in sync with the canonical agents/ directory.
+  const agentsDir = path.join(repoRoot, 'agents');
+  const agentNames = fs.readdirSync(agentsDir)
+    .filter((f) => f.endsWith('.md') && !fs.statSync(path.join(agentsDir, f)).isDirectory())
+    .map((f) => f.replace(/\.md$/, ''));
+  for (const name of agentNames) writeF(`agents/${name}.md`);
+
+  // orchestrator.md body must contain rad-orchestration:<name> for every
+  // non-orchestrator canonical agent (namespaced dispatch token assertion).
+  const nonOrchNames = agentNames.filter((n) => n !== 'orchestrator');
+  const orchTokens = nonOrchNames.map((n) => `rad-orchestration:${n}`).join('\n');
+  writeF('agents/orchestrator.md', orchTokens);
+
+  const ok = validatePluginTree(tmp, repoRoot);
   assert.equal(ok.ok, true, JSON.stringify(ok));
 });
 
