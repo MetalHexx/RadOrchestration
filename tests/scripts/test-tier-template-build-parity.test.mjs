@@ -30,21 +30,17 @@ test('npm run build:all produces canonical, .claude, and .github with exactly th
 });
 
 test('installer pre-compiled bundles do not contain retired template files', () => {
-  // installer/src/<harness>/.claude/skills/rad-orchestration/templates/ is the pre-compiled bundle path.
-  // Sync via installer/scripts/sync-source.js if needed; this test runs after sync.
   const harnessDirs = fs.readdirSync(path.join(REPO_ROOT, 'installer', 'src'), { withFileTypes: true })
     .filter(d => d.isDirectory() && !d.name.startsWith('.'))
     .map(d => d.name);
+  let bundlesAsserted = 0;
   for (const h of harnessDirs) {
-    const candidates = [
-      path.join('installer', 'src', h, '.claude', 'skills', 'rad-orchestration', 'templates'),
-      path.join('installer', 'src', h, '.github', 'skills', 'rad-orchestration', 'templates'),
-    ];
-    for (const cand of candidates) {
-      const dir = templatesAt(cand);
-      if (dir === null) continue;
-      for (const f of FORBIDDEN) assert.ok(!dir.includes(f), `${cand} still contains ${f}`);
-      for (const f of EXPECTED_TIERS) assert.ok(dir.includes(f), `${cand} missing ${f}`);
-    }
+    const rel = path.join('installer', 'src', h, 'skills', 'rad-orchestration', 'templates');
+    const dir = templatesAt(rel);
+    if (dir === null) continue; // harnesses without a skills/ subtree (e.g. ui) are skipped
+    assert.deepEqual(dir, EXPECTED_TIERS.slice().sort(), `${rel} contents mismatch: ${JSON.stringify(dir)}`);
+    for (const f of FORBIDDEN) assert.ok(!dir.includes(f), `${rel} still contains ${f}`);
+    bundlesAsserted++;
   }
+  assert.ok(bundlesAsserted >= 1, `Expected at least one installer bundle to be asserted; found 0. Harness dirs: ${harnessDirs.join(', ')}`);
 });
