@@ -1,5 +1,7 @@
 node_modules/
 package-lock.json
+# CI's `npm ci` for the cli subpackage needs a committed lockfile
+!cli/package-lock.json
 
 .vscode/mcp.json
 
