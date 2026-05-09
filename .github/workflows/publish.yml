@@ -65,3 +65,33 @@ jobs:
             --notes-file scripts/release-notes-migration.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-plugin:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Install repo deps
+        run: npm ci
+      - name: Build plugin
+        run: npm run build:plugin
+      - name: Verify plugin version matches tag
+        run: |
+          PKG_VERSION="v$(node -p "require('./plugin/package.json').version")"
+          if [ "$PKG_VERSION" != "${{ github.ref_name }}" ]; then
+            echo "::error::plugin/package.json version $PKG_VERSION != ${{ github.ref_name }}"
+            exit 1
+          fi
+      - name: Publish plugin to npm (@rad-orchestration/claude-plugin)
+        working-directory: cli/dist/marketplaces/claude/plugins/rad-orchestration
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
