@@ -153,6 +153,8 @@ becomes task-local and action-oriented.
    ```
 
    - Phase numbers are zero-padded two digits: `P01`, `P02`, ...
+   - Phase title: 3–6 words naming the deliverable. No verb-heavy procedure titles.
+   - Phase description: lead with what the phase delivers as a whole — the capability or system state that exists when all tasks complete. No task enumeration or file lists.
    - The `**Requirements:**` line on the phase heading lists the union of
      requirement IDs its tasks address.
    - The execution-order block is an ASCII dependency tree. Use indentation,
@@ -182,6 +184,10 @@ becomes task-local and action-oriented.
        Run: `npm test -- login.test.ts`
        Expected: PASS (FR-1)
    ```
+
+   **Title rule:** 4–7 words, imperative verb + outcome noun. Names what the task establishes, not what files it touches. Example: "Add rate-limit validator" not "Implement rate-limit validator function with allowlist constant and five test cases."
+
+   **Intro rule:** Lead with the outcome — what this task establishes or enables. No file paths, no step enumeration; those live in the steps below. Two sentences maximum. Example: "Align the prompt-test suite naming with the four-tier vocabulary." not "Rename `prompt-tests/plan-pipeline-e2e/` → `prompt-tests/extra-high-pipeline-e2e/` and update all internal references."
 
 7. Task rules:
    - `**Task type:**` is mandatory on every task. One of: `code` | `doc` |
