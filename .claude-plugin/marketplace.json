@@ -4,7 +4,7 @@
   "plugins": [
     {
       "name": "rad-orchestration",
-      "source": "../marketplace/plugins/rad-orchestration"
+      "source": "./marketplace/plugins/rad-orchestration"
     }
   ]
 }
