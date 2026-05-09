@@ -88,29 +88,23 @@ becomes task-local and action-oriented.
    `Task size preference` (one of `Small`, `Medium`, `Large`, `Extra Large`,
    or a `Custom: …` prose string). Apply the corresponding scope below.
 
-   | Tier | Task scope | Phase scope |
+   | Size | Task scope | Tasks per phase |
    |---|---|---|
-   | Small | One coherent unit of work; 2–4 files. Substantive but bounded. | 2–3 tasks per phase. |
-   | Medium | Vertical slice or multiple coherent units; ~5–8 files. | 3–5 tasks per phase. |
-   | Large | Full feature slice or cross-cutting change. | 4–6 tasks per phase. |
-   | Extra Large | End-to-end feature per task. Minimal task count. | 1–2 tasks per phase, possibly single-phase. |
-   | Custom | User-supplied prose criteria (passes through verbatim). | Planner judges from natural seams within the custom criteria. |
+   | Small | One named, self-contained change — a function, a validator, a constant. Precise enough to title in five words. | 3–5 |
+   | Medium | A vertical slice through one layer: a module, a config section, a CLI command with its tests. | 2–4 |
+   | Large | A full feature slice touching multiple layers or subsystems end-to-end. | 2–3 |
+   | Extra Large | A standalone feature per task — scope that would be a phase at smaller sizes. Phases are thin wrappers. | 1–2 |
+   | Custom | User-supplied prose is the criterion; apply it literally. | Planner judges from natural seams. |
 
    **Worked examples per size (code domain).**
 
-   - *Small example* — "Add a `default_template` allowlist constant + a single
-     `validateDefaultTemplate(value)` function with five test cases." Two files
-     (one source, one test), one coherent unit, fits in one task.
-   - *Medium example* — "Author a config-validator module with allowlist + four
-     field-level validators + their test files." 5–8 files, one vertical slice
-     (the validator module), 3–5 such tasks make a phase.
-   - *Large example* — "Implement the resolver sentinel-remap end-to-end:
-     resolver code + DEFAULT_CONFIG flip + test migration + e2e regression
-     tests + adapter rebuild." Cross-cutting, one feature slice, 4–6 such
-     tasks per phase.
-   - *Extra Large example* — "Author all four tier templates + delete legacy
-     files + structural test suite + DAG audit." End-to-end feature in a
-     single task; phases group two such tasks.
+   - *Small* — "Add a `maxRetries` config field: extend the schema type, add a bounds-validator function (`1–10`), and write test cases covering boundary values." One coherent unit; the title names exactly what ships.
+
+   - *Medium* — "Author a password-reset flow: the `POST /auth/reset-request` endpoint, a signed-token generator, an email dispatch call, and integration tests for the happy path and expired-token case." A vertical slice through one layer; 2–4 such tasks make a phase.
+
+   - *Large* — "Add OAuth login end-to-end: provider redirect handler, callback + session persistence, error-state responses, and an integration test suite covering the full flow." Touches auth, session, and routing layers; 2–3 such tasks make a phase.
+
+   - *Extra Large* — "Build the full billing subsystem: plan-tier schema, Stripe webhook handler, invoice generation, customer portal redirect, and end-to-end smoke tests." Each task is what would be a phase at smaller sizes; 1–2 such tasks make a phase.
 
    **Edge cases.**
 
