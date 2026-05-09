@@ -41,8 +41,8 @@ default_template: ask
 Accepts `ask` (prompt the user each time), `extra-high`, `high`,
 `medium`, or `low`. See [Process Templates](#process-templates) below.
 Legacy values (`default`, `quick`, `full`) are remapped at resolution
-time for backwards compatibility but are rejected by config validation
-going forward — edit your config to use a tier name directly.
+time for backwards compatibility. Edit your config to use a tier name
+directly going forward.
 
 ### `limits`
 

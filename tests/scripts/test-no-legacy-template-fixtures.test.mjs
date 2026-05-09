@@ -2,17 +2,62 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { execSync } from 'node:child_process';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..');
 
-function rg(pattern, paths) {
-  try {
-    return execSync(`rg -n --no-heading "${pattern}" ${paths.join(' ')}`, { cwd: REPO_ROOT, encoding: 'utf-8' });
-  } catch (err) {
-    if (err.status === 1) return ''; // rg returns 1 when no matches
-    throw err;
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', '.next']);
+
+function walkFiles(rootDir) {
+  const files = [];
+  const stack = [rootDir];
+  while (stack.length > 0) {
+    const cur = stack.pop();
+    let entries;
+    try {
+      entries = fs.readdirSync(cur, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const full = path.join(cur, entry.name);
+      if (entry.isDirectory()) {
+        if (SKIP_DIRS.has(entry.name)) continue;
+        stack.push(full);
+      } else if (entry.isFile()) {
+        files.push(full);
+      }
+    }
   }
+  return files;
+}
+
+// Node-based grep replacement so the audit is self-contained and works in CI
+// environments without ripgrep on PATH. Mirrors `rg -n --no-heading` output
+// shape (`<relpath>:<line>:<text>`) so error messages stay readable.
+function rg(pattern, searchPaths) {
+  const re = new RegExp(pattern);
+  const lines = [];
+  for (const searchPath of searchPaths) {
+    const absPath = path.join(REPO_ROOT, searchPath);
+    if (!fs.existsSync(absPath)) continue;
+    const stat = fs.statSync(absPath);
+    const files = stat.isDirectory() ? walkFiles(absPath) : [absPath];
+    for (const file of files) {
+      let content;
+      try {
+        content = fs.readFileSync(file, 'utf-8');
+      } catch {
+        continue;
+      }
+      const split = content.split(/\r?\n/);
+      for (let i = 0; i < split.length; i++) {
+        if (re.test(split[i])) {
+          lines.push(`${path.relative(REPO_ROOT, file).replace(/\\/g, '/')}:${i + 1}:${split[i]}`);
+        }
+      }
+    }
+  }
+  return lines.length === 0 ? '' : lines.join('\n') + '\n';
 }
 
 test('no prompt-test orchestration.yml uses default_template: default | quick | full', () => {
