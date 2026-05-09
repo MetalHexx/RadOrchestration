@@ -32,9 +32,9 @@ flowchart TD
 
 ## Lifecycles
 
-A task begins `not_started`, transitions to `in_progress` when the Orchestrator dispatches it, and stays there while the Coder implements and the Reviewer evaluates. In the `default` template, the task transitions to `completed` once code review approves and the per-task gate clears — auto-approved under `phase` or `autonomous` modes, awaits the operator under `task` mode. The `quick` template has no per-task review or gate, so the task transitions to `completed` immediately after implementation. On a `changes_requested` verdict with retries remaining, the Orchestrator authors a corrective task handoff and the task re-enters `in_progress` for another implementation pass.
+A task begins `not_started`, transitions to `in_progress` when the Orchestrator dispatches it, and stays there while the Coder implements and the Reviewer evaluates. In tiers with per-task code review (`extra-high`, `high`), the task transitions to `completed` once code review approves and the per-task gate clears — auto-approved under `phase` or `autonomous` modes, awaits the operator under `task` mode. In tiers without per-task review (`medium`, `low`), the task transitions to `completed` immediately after implementation. On a `changes_requested` verdict with retries remaining, the Orchestrator authors a corrective task handoff and the task re-enters `in_progress` for another implementation pass.
 
-A phase aggregates over its tasks. While any task in the phase is still working, the phase remains `in_progress`. After the last task completes — and, in the `default` template, the phase review approves — the phase transitions to `completed`. The next phase then begins.
+A phase aggregates over its tasks. While any task in the phase is still working, the phase remains `in_progress`. After the last task completes — and, in tiers with phase review (`extra-high`, `medium`), the phase review approves — the phase transitions to `completed`. The next phase then begins.
 
 ## Status vs. Stage
 
@@ -65,15 +65,30 @@ When a code review or phase review flags problems, the Orchestrator authors a co
 
 ## Process Templates
 
-Two process templates ship with the system. They share planning ceremony — Requirements, Master Plan, plan-audit pass, and a plan-approval gate — and they share final review with its approval gate. They differ in how much ceremony surrounds each task and phase during execution.
+Four review-intensity tiers ship with the system. They share planning
+ceremony — Requirements, Master Plan, plan-audit pass, and a plan-approval
+gate — and they share final review with its approval gate. They differ
+only in defensive review depth between planning and final approval.
 
-**`default`** — for mission-critical or large projects. Preserves the full pipeline: planning ceremony, plan-audit pass, plan-approval gate, per-task code review, per-task gate, phase review, phase-approval gate, final review, and final-approval gate. Recommended task size: Medium.
+| Tier | Per-task code review | Phase review | Use case |
+|---|---|---|---|
+| `extra-high` (Recommended) | yes | yes | Production-critical, regulated, untrusted contributors. Maximum defense in depth. |
+| `high` | yes | no | High-value work where per-task feedback matters but phase-level review is redundant. |
+| `medium` | no | yes | Trusted team or well-understood scope; keep cross-task audit, skip per-task ceremony. |
+| `low` | no | no | Quick exploration, prototyping, hot fixes — final review still gates merge. |
 
-**`quick`** — for smaller changes or bug fixes. Equivalent to `default` minus per-task code review, the per-task gate, the phase review, and the phase-approval gate. Preserves: planning ceremony, plan-audit pass, plan-approval gate, final review, and final-approval gate. Recommended task size: Extra Large.
+The tier is selected at `/rad-plan` time. Plan approval, final review, and
+final approval are mandatory anchors in every tier; only the defensive
+review depth between them varies.
 
-The template is selected at `/rad-plan` time; `/rad-plan-quick` is a discoverable front door that hardcodes `quick`.
-
-Task size is also picked at planning time. `/rad-plan` prompts the operator with five tiers — Planner Decides, Small, Medium, Large, and Extra Large — with the recommended tier highlighted based on the chosen template; `/rad-plan-quick` hardcodes Extra Large and skips the prompt.
+Project Size — task and phase scope — is selected as a separate question
+at `/rad-plan` time, with five options: `Small`, `Medium`, `Large`,
+`Extra Large`, and `Custom` (user-supplied prose criterion). The
+`(Recommended)` Project Size moves with the chosen tier per a monotonic
+mapping: `extra-high` → Small, `high` → Medium, `medium` → Large,
+`low` → Extra Large. More review depth pairs with smaller scope. Every
+size remains selectable in every tier; the marker is a hint, not a
+constraint.
 
 ## Source Control
 

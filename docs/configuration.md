@@ -31,13 +31,18 @@ projects:
 
 ### `default_template`
 
-Sets how the process template is chosen when `/rad-plan` runs.
+Sets how the process template (review-intensity tier) is chosen when
+`/rad-plan` runs.
 
 ```yaml
 default_template: ask
 ```
 
-Accepts `ask` (prompt the user each time), `default`, or `quick`. See [Process Templates](#process-templates) below.
+Accepts `ask` (prompt the user each time), `extra-high`, `high`,
+`medium`, or `low`. See [Process Templates](#process-templates) below.
+Legacy values (`default`, `quick`, `full`) are remapped at resolution
+time for backwards compatibility but are rejected by config validation
+going forward — edit your config to use a tier name directly.
 
 ### `limits`
 
@@ -102,7 +107,9 @@ For when commits and PRs fire, commit format, and failure handling, see [pipelin
 
 ## Process Templates
 
-The process template (`default` vs `quick`) is selected at `/rad-plan` time, not in `orchestration.yml` — see [pipeline.md](pipeline.md#process-templates).
+The process template (review-intensity tier — `extra-high`, `high`,
+`medium`, or `low`) and the Project Size are selected at `/rad-plan`
+time, not in `orchestration.yml` — see [pipeline.md](pipeline.md#process-templates).
 
 ## State and Snapshots
 
@@ -110,4 +117,4 @@ The process template (`default` vs `quick`) is selected at `/rad-plan` time, not
 
 **Snapshot vs live-read** — when a project is created, the pipeline copies `limits`, `human_gates`, and `source_control` modes out of `orchestration.yml` and locks them into `state.json`. Every subsequent pipeline run reads those settings from the snapshot, not from `orchestration.yml`. This means changing `orchestration.yml` mid-project has no effect on that project — only new projects pick up the new values. Settings that are never snapshotted (`system.orch_root`, `projects.*`, `source_control.provider`) are always read live from `orchestration.yml`.
 
-**`template.yml`** — when a project starts, the selected process template (`default.yml` or `quick.yml`) is copied into the project folder as `template.yml`. All subsequent pipeline reads use the project-local copy. This is the parallel snapshot mechanism for templates: the template in effect when the project was created stays in effect for its entire lifetime, even if the source template changes later.  In theory, you could ask an agent to change the process template if you need to customize it further to suit your needs, this is not officially supported (yet).
+**`template.yml`** — when a project starts, the selected process template (any of the four tier templates) is copied into the project folder as `template.yml`. All subsequent pipeline reads use the project-local copy. This is the parallel snapshot mechanism for templates: the template in effect when the project was created stays in effect for its entire lifetime, even if the source template changes later.  In theory, you could ask an agent to change the process template if you need to customize it further to suit your needs, this is not officially supported (yet).

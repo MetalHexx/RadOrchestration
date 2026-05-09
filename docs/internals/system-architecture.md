@@ -67,7 +67,7 @@ flowchart TD
 
 **Pipeline engine** — `pipeline.js` is the sole writer of `state.json`. It loads a process template, walks the DAG, applies a mutation for each event, runs the validator, and returns the next action plus an enriched context to the Orchestrator.
 
-**Templates** — declarative YAML defining the node graph for a process variant (`default.yml`, `quick.yml`).
+**Templates** — declarative YAML defining the node graph for a process variant (the four review-intensity tiers: `extra-high`, `high`, `medium`, `low`).
 
 **Validator** — runs before and after every state mutation; rejects illegal transitions and contract violations.
 
