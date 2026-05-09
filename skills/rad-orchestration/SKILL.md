@@ -30,5 +30,5 @@ This skill bundles:
 - **`scripts/main.ts`** — Pipeline engine CLI (TypeScript) — invoked by `pipeline.js`
 - **`scripts/migrate-to-v5.ts`** — Migration CLI
 - **`scripts/lib/`** — Pipeline engine, resolver, mutations, state I/O, validator
-- **`templates/`** — Pipeline templates (`default.yml`, `full.yml` (deprecated))
+- **`templates/`** — Pipeline templates for the four review-intensity tiers (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`)
 - **`references/`** — Role-specific reference documents

@@ -7,7 +7,7 @@ user-invocable: true
 
 ## Inputs:
 - `project_name`: $0 — The name of the new project to plan. (e.g., "DAG-PIPELINE-2")
-- `project_template`: $1 — The template to use for planning. (e.g., "default" or a custom template name if one exists)
+- `project_template`: $1 — The template to use for planning. (e.g., "extra-high" or a custom template name if one exists)
 
 ## Initialize
 You are an orchestrator. You'll be using the `rad-orchestration` skill for this project. Read the skill and prepare to use it for running the planning pipeline.
