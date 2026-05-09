@@ -84,21 +84,60 @@ becomes task-local and action-oriented.
    (layer boundary, independently deliverable slice). Tasks within a phase are
    the smallest unit a single coder agent will execute end-to-end.
 
-   **Task sizing rubric** — If the orchestrator's spawn prompt includes a
-   `Task size preference`, apply the corresponding scope below. If no
-   preference was passed ("Planner Decides"), use your own judgment.
+   **Project Size rubric** — The orchestrator's spawn prompt passes a
+   `Task size preference` (one of `Small`, `Medium`, `Large`, `Extra Large`,
+   or a `Custom: …` prose string). Apply the corresponding scope below.
+   Today's "one file or one function" floor is retired; today's `Medium`
+   becomes the new `Small`.
 
-   | Tier | Task scope guidance |
-   |---|---|
-   | Small | One file or one function. Fine-grained, isolated. Maximize task count. |
-   | Medium | 2–4 files, one coherent unit of work. Balanced scope and overhead. |
-   | Large | Cross-cutting change or full feature slice. Fewer tasks, higher complexity per task. |
-   | Extra Large | End-to-end feature per task. Minimal task count; requires a capable model. |
-   | Planner Decides | No constraint — use judgment based on natural seams in the requirements. |
+   | Tier | Task scope | Phase scope |
+   |---|---|---|
+   | Small | One coherent unit of work; 2–4 files. Substantive but bounded. | 2–3 tasks per phase. |
+   | Medium | Vertical slice or multiple coherent units; ~5–8 files. | 3–5 tasks per phase. |
+   | Large | Full feature slice or cross-cutting change. | 4–6 tasks per phase. |
+   | Extra Large | End-to-end feature per task. Minimal task count. | 1–2 tasks per phase, possibly single-phase. |
+   | Custom | User-supplied prose criteria (passes through verbatim). | Planner judges from natural seams within the custom criteria. |
 
-   The tier governs scope per task, not step count within a task. TDD
+   **Worked examples per size (code domain).**
+
+   - *Small example* — "Add a `default_template` allowlist constant + a single
+     `validateDefaultTemplate(value)` function with five test cases." Two files
+     (one source, one test), one coherent unit, fits in one task.
+   - *Medium example* — "Author a config-validator module with allowlist + four
+     field-level validators + their test files." 5–8 files, one vertical slice
+     (the validator module), 3–5 such tasks make a phase.
+   - *Large example* — "Implement the resolver sentinel-remap end-to-end:
+     resolver code + DEFAULT_CONFIG flip + test migration + e2e regression
+     tests + adapter rebuild." Cross-cutting, one feature slice, 4–6 such
+     tasks per phase.
+   - *Extra Large example* — "Author all four tier templates + delete legacy
+     files + structural test suite + DAG audit." End-to-end feature in a
+     single task; phases group two such tasks.
+
+   **Edge cases.**
+
+   - When natural seams fight the chosen size: respect the seams. If the
+     requirements force three independent slices but the size says
+     `Extra Large`, author three Extra Large tasks rather than one
+     monolithic task that hides the seams.
+   - When the chosen size produces fewer than 2 phases: that's fine for
+     `Extra Large`. Single-phase plans are explicitly supported.
+   - Phase scope is most meaningful in tiers with phase review
+     (`extra-high`, `medium`). In `high` and `low` (no phase review),
+     phase scope still affects pacing and commit cadence, but does not
+     affect review overhead — do not over-index on phase boundaries
+     in those tiers.
+
+   **Interpreting `Custom` prose.** When the spawn prompt carries a
+   `Task size preference: Custom: <user prose>` string, treat the prose
+   as the authoritative scoping criterion for task scope. Apply
+   natural-seam judgment for phase boundaries within the custom
+   criteria. Do not fall back to a rubric tier silently — the user
+   chose `Custom` precisely to override the rubric.
+
+   The size governs scope per task, not step count within a task. TDD
    structure (4 RED-GREEN steps) is always required for `code` tasks
-   regardless of tier.
+   regardless of size.
 
 4. Author a `## Introduction` section. Under that heading, write one or two
    short paragraphs (2–3 sentences each) covering what is being built and why,
