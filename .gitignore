@@ -1,4 +1,9 @@
 node_modules/
+# Committed plugin standalone bundle ships its trimmed Next.js node_modules
+# tree so `node ui/server.js` can resolve at runtime without an install step
+# (FR-22, AD-25). Must un-ignore the directory itself before any contents
+# can be tracked.
+!marketplace/plugins/rad-orchestration/ui/node_modules/
 package-lock.json
 # CI's `npm ci` for the cli subpackage needs a committed lockfile
 !cli/package-lock.json
