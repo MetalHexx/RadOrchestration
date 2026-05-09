@@ -8,12 +8,8 @@ import { parseTemplateToGraph, serializeGraphToYaml } from './template-serialize
 
 // ── Fixture loading ───────────────────────────────────────────────────────────
 
-const FULL_YAML = readFileSync(
-  join(__dirname, '../../.claude/skills/rad-orchestration/templates/full.yml'),
-  'utf-8'
-);
-const DEFAULT_YAML = readFileSync(
-  join(__dirname, '../../.claude/skills/rad-orchestration/templates/default.yml'),
+const EXTRA_HIGH_YAML = readFileSync(
+  join(__dirname, '../../.claude/skills/rad-orchestration/templates/extra-high.yml'),
   'utf-8'
 );
 
@@ -46,22 +42,15 @@ function findYamlNode(nodes: any[], id: string): any | undefined {
 // ── parseTemplateToGraph ──────────────────────────────────────────────────────
 
 describe('parseTemplateToGraph', () => {
-  it('parsing full.yml produces a TemplateGraph with nodes and edges arrays', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+  it('parsing extra-high.yml produces a TemplateGraph with nodes and edges arrays', () => {
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     assert.ok(Array.isArray(graph.nodes), 'nodes should be an array');
     assert.ok(Array.isArray(graph.edges), 'edges should be an array');
     assert.ok(graph.nodes.length > 0, 'nodes should not be empty');
   });
 
-  it('parsing default.yml produces a TemplateGraph with nodes and edges arrays', () => {
-    const graph = parseTemplateToGraph(DEFAULT_YAML);
-    assert.ok(Array.isArray(graph.nodes), 'nodes should be an array');
-    assert.ok(Array.isArray(graph.edges), 'edges should be an array');
-    assert.ok(graph.nodes.length > 0, 'nodes should not be empty');
-  });
-
-  it('all five node kinds appear in parsed full.yml nodes', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+  it('all five node kinds appear in parsed extra-high.yml nodes', () => {
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const kinds = new Set(graph.nodes.map(n => n.data.kind));
     assert.ok(kinds.has('step'), 'kind "step" not found');
     assert.ok(kinds.has('gate'), 'kind "gate" not found');
@@ -71,7 +60,7 @@ describe('parseTemplateToGraph', () => {
   });
 
   it('loop nodes (for_each_phase, for_each_task) have type: templateGroup', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const loopNodes = graph.nodes.filter(
       n => n.data.kind === 'for_each_phase' || n.data.kind === 'for_each_task'
     );
@@ -82,7 +71,7 @@ describe('parseTemplateToGraph', () => {
   });
 
   it('step and gate nodes have type: templateNode', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const nodes = graph.nodes.filter(n => n.data.kind === 'step' || n.data.kind === 'gate');
     assert.ok(nodes.length > 0, 'no step/gate nodes found');
     for (const n of nodes) {
@@ -91,7 +80,7 @@ describe('parseTemplateToGraph', () => {
   });
 
   it('conditional nodes with non-empty branches have type: templateGroup', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const nodes = graph.nodes.filter(n => n.data.kind === 'conditional');
     assert.ok(nodes.length > 0, 'no conditional nodes found');
     for (const n of nodes) {
@@ -100,7 +89,7 @@ describe('parseTemplateToGraph', () => {
   });
 
   it('child nodes inside loop bodies have parentId set to the loop node id', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const phaseLoopChildren = graph.nodes.filter(n => n.parentId === 'phase_loop');
     assert.ok(phaseLoopChildren.length > 0, 'phase_loop has no children');
     const childIds = phaseLoopChildren.map(n => n.id);
@@ -111,7 +100,7 @@ describe('parseTemplateToGraph', () => {
   });
 
   it('child nodes inside conditional branches have parentId set to the conditional node id', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const commitNode = graph.nodes.find(n => n.id === 'commit');
     assert.ok(commitNode, 'commit node not found');
     assert.strictEqual(
@@ -122,16 +111,16 @@ describe('parseTemplateToGraph', () => {
   });
 
   it('depends_on relationships become edges: source=dependency, target=dependent', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
-    // plan_approval_gate depends on master_plan
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
+    // plan_approval_gate depends on explode_master_plan (extra-high.yml structure)
     const edge = graph.edges.find(
-      e => e.source === 'master_plan' && e.target === 'plan_approval_gate'
+      e => e.source === 'explode_master_plan' && e.target === 'plan_approval_gate'
     );
-    assert.ok(edge, 'edge master_plan → plan_approval_gate not found');
+    assert.ok(edge, 'edge explode_master_plan → plan_approval_gate not found');
   });
 
   it('conditional branch edges have label: "true" for true-branch children', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const commitTrueEdge = graph.edges.find(
       e => e.source === 'commit_gate' && e.target === 'commit' && e.label === 'true'
     );
@@ -139,7 +128,7 @@ describe('parseTemplateToGraph', () => {
   });
 
   it('all edges have type: smoothstep, markerEnd: { type: arrowclosed }, and animated: false', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     assert.ok(graph.edges.length > 0, 'no edges produced');
     for (const edge of graph.edges) {
       assert.strictEqual(edge.type, 'smoothstep', `edge ${edge.id} type should be smoothstep`);
@@ -186,27 +175,18 @@ describe('parseTemplateToGraph', () => {
 // ── serializeGraphToYaml ──────────────────────────────────────────────────────
 
 describe('serializeGraphToYaml', () => {
-  it('serializing full.yml graph produces valid parseable YAML', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
-    const fullMeta = (parseYamlRaw(FULL_YAML) as any).template;
+  it('serializing extra-high.yml graph produces valid parseable YAML', () => {
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
+    const fullMeta = (parseYamlRaw(EXTRA_HIGH_YAML) as any).template;
     const serialized = serializeGraphToYaml(graph, fullMeta);
     assert.ok(typeof serialized === 'string' && serialized.length > 0);
     const reparsed = parseYamlRaw(serialized);
     assert.ok(reparsed !== null && typeof reparsed === 'object');
   });
 
-  it('serializing default.yml graph produces valid parseable YAML', () => {
-    const graph = parseTemplateToGraph(DEFAULT_YAML);
-    const defaultMeta = (parseYamlRaw(DEFAULT_YAML) as any).template;
-    const serialized = serializeGraphToYaml(graph, defaultMeta);
-    assert.ok(typeof serialized === 'string' && serialized.length > 0);
-    const reparsed = parseYamlRaw(serialized);
-    assert.ok(reparsed !== null && typeof reparsed === 'object');
-  });
-
   it('serialized output includes template metadata block (id, version, description)', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
-    const fullMeta = (parseYamlRaw(FULL_YAML) as any).template;
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
+    const fullMeta = (parseYamlRaw(EXTRA_HIGH_YAML) as any).template;
     const serialized = serializeGraphToYaml(graph, fullMeta);
     const reparsed = parseYamlRaw(serialized) as any;
     assert.ok(reparsed.template, 'template block missing from serialized output');
@@ -216,8 +196,8 @@ describe('serializeGraphToYaml', () => {
   });
 
   it('serialized output contains a non-empty nodes array', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
-    const fullMeta = (parseYamlRaw(FULL_YAML) as any).template;
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
+    const fullMeta = (parseYamlRaw(EXTRA_HIGH_YAML) as any).template;
     const serialized = serializeGraphToYaml(graph, fullMeta);
     const reparsed = parseYamlRaw(serialized) as any;
     assert.ok(Array.isArray(reparsed.nodes), 'nodes should be an array');
@@ -228,23 +208,11 @@ describe('serializeGraphToYaml', () => {
 // ── round-trip fidelity ───────────────────────────────────────────────────────
 
 describe('round-trip fidelity', () => {
-  it('full.yml round-trip: parse → serialize → re-parse deepStrictEquals original parse', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
-    const fullMeta = (parseYamlRaw(FULL_YAML) as any).template;
+  it('extra-high.yml round-trip: parse → serialize → re-parse deepStrictEquals original parse', () => {
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
+    const fullMeta = (parseYamlRaw(EXTRA_HIGH_YAML) as any).template;
     const serialized = serializeGraphToYaml(graph, fullMeta);
-    const original = parseYamlRaw(FULL_YAML) as any;
-    const roundTripped = parseYamlRaw(serialized);
-    // Serializer only preserves id/version/description on template metadata;
-    // fields like `status` are not round-tripped, so strip them before comparing.
-    delete original.template.status;
-    assert.deepStrictEqual(roundTripped, original);
-  });
-
-  it('default.yml round-trip: parse → serialize → re-parse deepStrictEquals original parse', () => {
-    const graph = parseTemplateToGraph(DEFAULT_YAML);
-    const defaultMeta = (parseYamlRaw(DEFAULT_YAML) as any).template;
-    const serialized = serializeGraphToYaml(graph, defaultMeta);
-    const original = parseYamlRaw(DEFAULT_YAML) as any;
+    const original = parseYamlRaw(EXTRA_HIGH_YAML) as any;
     const roundTripped = parseYamlRaw(serialized);
     // Serializer only preserves id/version/description on template metadata;
     // fields like `status` are not round-tripped, so strip them before comparing.
@@ -253,8 +221,8 @@ describe('round-trip fidelity', () => {
   });
 
   it('double round-trip: parse → serialize → parse → serialize produces idempotent output', () => {
-    const fullMeta = (parseYamlRaw(FULL_YAML) as any).template;
-    const graph1 = parseTemplateToGraph(FULL_YAML);
+    const fullMeta = (parseYamlRaw(EXTRA_HIGH_YAML) as any).template;
+    const graph1 = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const serialized1 = serializeGraphToYaml(graph1, fullMeta);
     const graph2 = parseTemplateToGraph(serialized1);
     const serialized2 = serializeGraphToYaml(graph2, fullMeta);
@@ -262,8 +230,8 @@ describe('round-trip fidelity', () => {
   });
 
   it('node count preservation: re-parsed graph has the same number of nodes and edges', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
-    const fullMeta = (parseYamlRaw(FULL_YAML) as any).template;
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
+    const fullMeta = (parseYamlRaw(EXTRA_HIGH_YAML) as any).template;
     const serialized = serializeGraphToYaml(graph, fullMeta);
     const graph2 = parseTemplateToGraph(serialized);
     assert.strictEqual(graph2.nodes.length, graph.nodes.length, 'node count should be preserved');
@@ -300,7 +268,7 @@ describe('round-trip fidelity', () => {
 
 describe('node kind coverage', () => {
   it('step nodes: master_plan has kind=step with meta fields action, events, doc_output_field', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const masterPlan = graph.nodes.find(n => n.id === 'master_plan');
     assert.ok(masterPlan, 'master_plan node not found');
     assert.strictEqual(masterPlan.data.kind, 'step');
@@ -310,7 +278,7 @@ describe('node kind coverage', () => {
   });
 
   it('gate nodes: plan_approval_gate has kind=gate with meta fields mode_ref, action_if_needed, approved_event', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const gate = graph.nodes.find(n => n.id === 'plan_approval_gate');
     assert.ok(gate, 'plan_approval_gate node not found');
     assert.strictEqual(gate.data.kind, 'gate');
@@ -320,7 +288,7 @@ describe('node kind coverage', () => {
   });
 
   it('conditional nodes: commit_gate has kind=conditional, meta.condition is parseable JSON with state_ref/operator/value', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const cond = graph.nodes.find(n => n.id === 'commit_gate');
     assert.ok(cond, 'commit_gate node not found');
     assert.strictEqual(cond.data.kind, 'conditional');
@@ -332,7 +300,7 @@ describe('node kind coverage', () => {
   });
 
   it('for_each_phase nodes: phase_loop has kind=for_each_phase, type=templateGroup, meta has source_doc_ref and total_field', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const loopNode = graph.nodes.find(n => n.id === 'phase_loop');
     assert.ok(loopNode, 'phase_loop node not found');
     assert.strictEqual(loopNode.data.kind, 'for_each_phase');
@@ -342,7 +310,7 @@ describe('node kind coverage', () => {
   });
 
   it('for_each_task nodes: task_loop has kind=for_each_task, type=templateGroup, meta has source_doc_ref and tasks_field', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const loopNode = graph.nodes.find(n => n.id === 'task_loop');
     assert.ok(loopNode, 'task_loop node not found');
     assert.strictEqual(loopNode.data.kind, 'for_each_task');
@@ -356,14 +324,14 @@ describe('node kind coverage', () => {
 
 describe('recursive nesting', () => {
   it('task_loop (for_each_task) has parentId: phase_loop', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const taskLoop = graph.nodes.find(n => n.id === 'task_loop');
     assert.ok(taskLoop, 'task_loop not found');
     assert.strictEqual(taskLoop.parentId, 'phase_loop');
   });
 
   it('nodes inside task_loop body (task_executor, code_review, commit_gate, task_gate) have parentId: task_loop', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     for (const id of ['task_executor', 'code_review', 'commit_gate', 'task_gate']) {
       const node = graph.nodes.find(n => n.id === id);
       assert.ok(node, `${id} not found`);
@@ -372,22 +340,22 @@ describe('recursive nesting', () => {
   });
 
   it('commit_gate (conditional inside task_loop) has parentId: task_loop', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const commitGate = graph.nodes.find(n => n.id === 'commit_gate');
     assert.ok(commitGate, 'commit_gate not found');
     assert.strictEqual(commitGate.parentId, 'task_loop');
   });
 
   it('commit (step in conditional true branch) has parentId: commit_gate', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const commit = graph.nodes.find(n => n.id === 'commit');
     assert.ok(commit, 'commit node not found');
     assert.strictEqual(commit.parentId, 'commit_gate');
   });
 
   it('round-trip preserves nested body arrays and branches structure', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
-    const fullMeta = (parseYamlRaw(FULL_YAML) as any).template;
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
+    const fullMeta = (parseYamlRaw(EXTRA_HIGH_YAML) as any).template;
     const serialized = serializeGraphToYaml(graph, fullMeta);
     const reparsed = parseYamlRaw(serialized) as any;
 
@@ -415,20 +383,20 @@ describe('recursive nesting', () => {
 // ── depends_on ↔ edges round-trip ────────────────────────────────────────────
 
 describe('depends_on ↔ edges round-trip', () => {
-  it('plan_approval_gate depends on master_plan → edge { source: master_plan, target: plan_approval_gate } exists', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+  it('plan_approval_gate depends on explode_master_plan → edge { source: explode_master_plan, target: plan_approval_gate } exists', () => {
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const edge = graph.edges.find(
-      e => e.source === 'master_plan' && e.target === 'plan_approval_gate'
+      e => e.source === 'explode_master_plan' && e.target === 'plan_approval_gate'
     );
-    assert.ok(edge, 'edge master_plan → plan_approval_gate not found');
+    assert.ok(edge, 'edge explode_master_plan → plan_approval_gate not found');
   });
 
   it('task_gate depends on code_review → one unlabeled edge exists', () => {
     // Prior to iter-3, task_gate.depends_on was ['code_review', 'commit_gate'];
     // the iter-3 template refactor narrowed it to ['code_review']. This test
     // now verifies the live single-dependency round-trip instead of the stale
-    // commit_gate → task_gate edge that no longer exists in full.yml.
-    const graph = parseTemplateToGraph(FULL_YAML);
+    // commit_gate → task_gate edge that no longer exists in extra-high.yml.
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const edge = graph.edges.find(
       e => e.source === 'code_review' && e.target === 'task_gate' && e.label === undefined
     );
@@ -436,8 +404,8 @@ describe('depends_on ↔ edges round-trip', () => {
   });
 
   it('after round-trip, depends_on arrays in re-parsed YAML match originals', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
-    const fullMeta = (parseYamlRaw(FULL_YAML) as any).template;
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
+    const fullMeta = (parseYamlRaw(EXTRA_HIGH_YAML) as any).template;
     const serialized = serializeGraphToYaml(graph, fullMeta);
     const reparsed = parseYamlRaw(serialized) as any;
 
@@ -461,7 +429,7 @@ describe('depends_on ↔ edges round-trip', () => {
 
 describe('meta field round-trip', () => {
   it('step node events (object value) is stored as JSON string in meta and restores correctly after round-trip', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const masterPlan = graph.nodes.find(n => n.id === 'master_plan');
     assert.ok(masterPlan, 'master_plan node not found');
     // meta.events should be a JSON-encoded string
@@ -471,7 +439,7 @@ describe('meta field round-trip', () => {
     assert.ok(eventsObj.completed, 'events.completed missing');
 
     // After round-trip, events should be restored as object in YAML
-    const fullMeta = (parseYamlRaw(FULL_YAML) as any).template;
+    const fullMeta = (parseYamlRaw(EXTRA_HIGH_YAML) as any).template;
     const serialized = serializeGraphToYaml(graph, fullMeta);
     const reparsed = parseYamlRaw(serialized) as any;
     const masterPlanReparsed = findYamlNode(reparsed.nodes, 'master_plan');
@@ -480,14 +448,14 @@ describe('meta field round-trip', () => {
   });
 
   it('gate node auto_approve_modes (array value) survives round-trip', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const gateMode = graph.nodes.find(n => n.id === 'gate_mode_selection');
     assert.ok(gateMode, 'gate_mode_selection not found');
     const modesArr = JSON.parse(gateMode.data.meta.auto_approve_modes);
     assert.deepStrictEqual(modesArr, ['task', 'phase', 'autonomous']);
 
     // After round-trip, array should be preserved
-    const fullMeta = (parseYamlRaw(FULL_YAML) as any).template;
+    const fullMeta = (parseYamlRaw(EXTRA_HIGH_YAML) as any).template;
     const serialized = serializeGraphToYaml(graph, fullMeta);
     const reparsed = parseYamlRaw(serialized) as any;
     const gateModeReparsed = findYamlNode(reparsed.nodes, 'gate_mode_selection');
@@ -496,7 +464,7 @@ describe('meta field round-trip', () => {
   });
 
   it('conditional node condition (nested object) survives round-trip with state_ref, operator, value', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const commitGate = graph.nodes.find(n => n.id === 'commit_gate');
     assert.ok(commitGate, 'commit_gate not found');
     const condition = JSON.parse(commitGate.data.meta.condition);
@@ -505,7 +473,7 @@ describe('meta field round-trip', () => {
     assert.strictEqual(condition.value, 'never');
 
     // After round-trip, condition should be preserved as object
-    const fullMeta = (parseYamlRaw(FULL_YAML) as any).template;
+    const fullMeta = (parseYamlRaw(EXTRA_HIGH_YAML) as any).template;
     const serialized = serializeGraphToYaml(graph, fullMeta);
     const reparsed = parseYamlRaw(serialized) as any;
     const commitGateReparsed = findYamlNode(reparsed.nodes, 'commit_gate');
@@ -514,7 +482,7 @@ describe('meta field round-trip', () => {
   });
 
   it('loop node source_doc_ref (string value) survives round-trip', () => {
-    const graph = parseTemplateToGraph(FULL_YAML);
+    const graph = parseTemplateToGraph(EXTRA_HIGH_YAML);
     const phaseLoop = graph.nodes.find(n => n.id === 'phase_loop');
     assert.ok(phaseLoop, 'phase_loop not found');
     assert.strictEqual(
@@ -523,7 +491,7 @@ describe('meta field round-trip', () => {
     );
 
     // After round-trip
-    const fullMeta = (parseYamlRaw(FULL_YAML) as any).template;
+    const fullMeta = (parseYamlRaw(EXTRA_HIGH_YAML) as any).template;
     const serialized = serializeGraphToYaml(graph, fullMeta);
     const reparsed = parseYamlRaw(serialized) as any;
     const phaseLoopReparsed = findYamlNode(reparsed.nodes, 'phase_loop');

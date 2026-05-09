@@ -7,12 +7,8 @@ import { parseTemplateToGraph } from './template-serializer';
 
 // ── Fixture loading ───────────────────────────────────────────────────────────
 
-const FULL_YAML = readFileSync(
-  join(__dirname, '../../.claude/skills/rad-orchestration/templates/full.yml'),
-  'utf-8'
-);
-const DEFAULT_YAML = readFileSync(
-  join(__dirname, '../../.claude/skills/rad-orchestration/templates/default.yml'),
+const EXTRA_HIGH_YAML = readFileSync(
+  join(__dirname, '../../.claude/skills/rad-orchestration/templates/extra-high.yml'),
   'utf-8'
 );
 
@@ -22,26 +18,8 @@ describe('computeTemplateLayout', () => {
   // ── Valid positions ─────────────────────────────────────────────────────────
 
   describe('valid positions', () => {
-    it('all nodes have finite x and y >= 0 after layout with full.yml', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
-      const result = computeTemplateLayout(nodes, edges);
-      assert.ok(result.nodes.length > 0, 'expected at least one node');
-      for (const node of result.nodes) {
-        assert.ok(
-          Number.isFinite(node.position.x),
-          `node ${node.id} position.x is not finite`
-        );
-        assert.ok(
-          Number.isFinite(node.position.y),
-          `node ${node.id} position.y is not finite`
-        );
-        assert.ok(node.position.x >= 0, `node ${node.id} position.x is negative`);
-        assert.ok(node.position.y >= 0, `node ${node.id} position.y is negative`);
-      }
-    });
-
-    it('all nodes have finite x and y >= 0 after layout with default.yml', () => {
-      const { nodes, edges } = parseTemplateToGraph(DEFAULT_YAML);
+    it('all nodes have finite x and y >= 0 after layout with extra-high.yml', () => {
+      const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const result = computeTemplateLayout(nodes, edges);
       assert.ok(result.nodes.length > 0, 'expected at least one node');
       for (const node of result.nodes) {
@@ -63,7 +41,7 @@ describe('computeTemplateLayout', () => {
 
   describe('group node dimensions', () => {
     it('top-level templateGroup nodes with children have positive finite style.width and style.height', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const result = computeTemplateLayout(nodes, edges);
       // The layout sizes group nodes at all nesting depths
       const topLevelGroupNodes = result.nodes.filter(
@@ -93,7 +71,7 @@ describe('computeTemplateLayout', () => {
 
   describe('children within parent bounds', () => {
     it('direct children of top-level group nodes fit within their parent dimensions', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const result = computeTemplateLayout(nodes, edges);
       const nodeMap = new Map(result.nodes.map((n) => [n.id, n]));
       // Only top-level group nodes (no parentId) receive style.width/height from layout
@@ -130,7 +108,7 @@ describe('computeTemplateLayout', () => {
 
   describe('relative positioning', () => {
     it('direct children of top-level groups start at padding offsets relative to parent origin', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const result = computeTemplateLayout(nodes, edges);
       // The layout repositions children of group nodes at all nesting depths
       const topLevelGroupIds = new Set(
@@ -159,7 +137,7 @@ describe('computeTemplateLayout', () => {
 
   describe('nested group layout', () => {
     it('nested templateGroup nodes have positive finite style.width and style.height', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const result = computeTemplateLayout(nodes, edges);
       const nestedGroupNodes = result.nodes.filter(
         (n) => n.type === 'templateGroup' && n.parentId !== undefined
@@ -184,7 +162,7 @@ describe('computeTemplateLayout', () => {
     });
 
     it('children of nested templateGroup nodes start at padding offsets', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const result = computeTemplateLayout(nodes, edges);
       const nestedGroupIds = new Set(
         result.nodes
@@ -211,7 +189,7 @@ describe('computeTemplateLayout', () => {
     });
 
     it('children of nested templateGroup nodes fit within parent computed dimensions', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const result = computeTemplateLayout(nodes, edges);
       const nodeMap = new Map(result.nodes.map((n) => [n.id, n]));
       const nestedGroupIds = new Set(
@@ -254,30 +232,14 @@ describe('computeTemplateLayout', () => {
   // ── Edge preservation ───────────────────────────────────────────────────────
 
   describe('edge preservation', () => {
-    it('edge count is preserved for full.yml', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+    it('edge count is preserved for extra-high.yml', () => {
+      const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const result = computeTemplateLayout(nodes, edges);
       assert.strictEqual(result.edges.length, edges.length, 'edge count changed after layout');
     });
 
-    it('edge count is preserved for default.yml', () => {
-      const { nodes, edges } = parseTemplateToGraph(DEFAULT_YAML);
-      const result = computeTemplateLayout(nodes, edges);
-      assert.strictEqual(result.edges.length, edges.length, 'edge count changed after layout');
-    });
-
-    it('edges are structurally identical (same id, source, target) for full.yml', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
-      const result = computeTemplateLayout(nodes, edges);
-      for (let i = 0; i < edges.length; i++) {
-        assert.strictEqual(result.edges[i].id, edges[i].id, `edge[${i}] id changed`);
-        assert.strictEqual(result.edges[i].source, edges[i].source, `edge[${i}] source changed`);
-        assert.strictEqual(result.edges[i].target, edges[i].target, `edge[${i}] target changed`);
-      }
-    });
-
-    it('edges are structurally identical (same id, source, target) for default.yml', () => {
-      const { nodes, edges } = parseTemplateToGraph(DEFAULT_YAML);
+    it('edges are structurally identical (same id, source, target) for extra-high.yml', () => {
+      const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const result = computeTemplateLayout(nodes, edges);
       for (let i = 0; i < edges.length; i++) {
         assert.strictEqual(result.edges[i].id, edges[i].id, `edge[${i}] id changed`);
@@ -291,7 +253,7 @@ describe('computeTemplateLayout', () => {
 
   describe('dagre configuration', () => {
     it('top-level source nodes have smaller position.y than their targets (TB rankdir)', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const result = computeTemplateLayout(nodes, edges);
       const topLevelIds = new Set(
         result.nodes.filter((n) => !n.parentId).map((n) => n.id)
@@ -312,7 +274,7 @@ describe('computeTemplateLayout', () => {
     });
 
     it('no two connected top-level nodes share the same position.y', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const result = computeTemplateLayout(nodes, edges);
       const topLevelIds = new Set(
         result.nodes.filter((n) => !n.parentId).map((n) => n.id)
@@ -346,7 +308,7 @@ describe('computeTemplateLayout', () => {
 
   describe('conditional group layout', () => {
     it('conditional-with-branches nodes have type templateGroup after serialization', () => {
-      const { nodes } = parseTemplateToGraph(FULL_YAML);
+      const { nodes } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const commitGate = nodes.find((n) => n.id === 'commit_gate');
       const prGate = nodes.find((n) => n.id === 'pr_gate');
       assert.ok(commitGate !== undefined, 'expected commit_gate node to exist');
@@ -356,7 +318,7 @@ describe('computeTemplateLayout', () => {
     });
 
     it('conditional parents have positive style.width and style.height after layout', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const result = computeTemplateLayout(nodes, edges);
       const commitGate = result.nodes.find((n) => n.id === 'commit_gate');
       const prGate = result.nodes.find((n) => n.id === 'pr_gate');
@@ -375,7 +337,7 @@ describe('computeTemplateLayout', () => {
     });
 
     it('children of conditional parents are positioned inside parent bounds', () => {
-      const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+      const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
       const result = computeTemplateLayout(nodes, edges);
       const nodeMap = new Map(result.nodes.map((n) => [n.id, n]));
       const commit = nodeMap.get('commit');
@@ -407,7 +369,7 @@ describe('computeTemplateLayout', () => {
         warnings.push(args.map(String).join(' '));
       };
       try {
-        const { nodes, edges } = parseTemplateToGraph(FULL_YAML);
+        const { nodes, edges } = parseTemplateToGraph(EXTRA_HIGH_YAML);
         computeTemplateLayout(nodes, edges);
       } finally {
         console.warn = originalWarn;

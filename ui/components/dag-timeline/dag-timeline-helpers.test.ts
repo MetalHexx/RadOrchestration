@@ -251,9 +251,9 @@ test("unknown node IDs are silently excluded from all groups", () => {
 });
 
 test("partial template (requirements + master_plan + plan_approval_gate) groups correctly — all 3 in Planning section", () => {
-  // Simulates a fresh project scaffolded from default.yml: 2 planning steps + 1 gate.
+  // Simulates a fresh project scaffolded from extra-high.yml: 2 planning steps + 1 gate.
   // groupNodesBySection preserves insertion order of the input NodesRecord within each section,
-  // and default.yml declares `requirements` before `master_plan`. plan_approval_gate now
+  // and extra-high.yml declares `requirements` before `master_plan`. plan_approval_gate now
   // routes to Planning (FR-13), so all 3 appear in Planning without a separate Gates group.
   const result = groupNodesBySection({
     requirements: stepNode,
@@ -310,8 +310,8 @@ test("legacy full.yml state (no requirements node) still groups correctly — no
   assert.ok(planningIds.includes("gate_mode_selection"), "gate_mode_selection now in Planning");
 });
 
-test("default.yml partial template (requirements + master_plan + explode_master_plan + plan_approval_gate) groups correctly — all 4 in Planning", () => {
-  // Simulates a fresh project scaffolded from default.yml post-Iter-5: 3 planning steps + 1 gate.
+test("extra-high.yml partial template (requirements + master_plan + explode_master_plan + plan_approval_gate) groups correctly — all 4 in Planning", () => {
+  // Simulates a fresh project scaffolded from extra-high.yml post-Iter-5: 3 planning steps + 1 gate.
   // plan_approval_gate now routes to Planning (FR-13), so all 4 appear in single Planning section.
   const result = groupNodesBySection({
     requirements: stepNode,

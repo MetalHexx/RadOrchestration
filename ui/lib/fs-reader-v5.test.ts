@@ -41,7 +41,7 @@ function makeV5State(overrides: Record<string, unknown> = {}) {
       halt_reason: null,
     },
     graph: {
-      template_id: 'default',
+      template_id: 'extra-high',
       status: 'in_progress',
       current_node_path: 'phase_loop',
       nodes: {
@@ -108,7 +108,7 @@ async function setup(): Promise<string> {
         halt_reason: null,
       },
       graph: {
-        template_id: 'default',
+        template_id: 'extra-high',
         status: 'completed',
         current_node_path: null,
         nodes: {

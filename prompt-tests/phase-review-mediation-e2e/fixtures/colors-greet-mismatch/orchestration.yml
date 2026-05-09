@@ -13,7 +13,7 @@ projects:
   base_path: "."
   naming: "SCREAMING_CASE"
 
-default_template: "default"
+default_template: "extra-high"
 
 limits:
   max_phases: 10
