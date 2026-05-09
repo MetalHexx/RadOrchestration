@@ -1202,7 +1202,7 @@ var require_command = __commonJS({
   "node_modules/commander/lib/command.js"(exports) {
     var EventEmitter = __require("node:events").EventEmitter;
     var childProcess = __require("node:child_process");
-    var path9 = __require("node:path");
+    var path10 = __require("node:path");
     var fs9 = __require("node:fs");
     var process10 = __require("node:process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
@@ -2215,9 +2215,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
         let launchWithNode = false;
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
-          const localBin = path9.resolve(baseDir, baseName);
+          const localBin = path10.resolve(baseDir, baseName);
           if (fs9.existsSync(localBin)) return localBin;
-          if (sourceExt.includes(path9.extname(baseName))) return void 0;
+          if (sourceExt.includes(path10.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
             (ext) => fs9.existsSync(`${localBin}${ext}`)
           );
@@ -2235,17 +2235,17 @@ Expecting one of '${allowedValues.join("', '")}'`);
           } catch {
             resolvedScriptPath = this._scriptPath;
           }
-          executableDir = path9.resolve(
-            path9.dirname(resolvedScriptPath),
+          executableDir = path10.resolve(
+            path10.dirname(resolvedScriptPath),
             executableDir
           );
         }
         if (executableDir) {
           let localFile = findFile(executableDir, executableFile);
           if (!localFile && !subcommand._executableFile && this._scriptPath) {
-            const legacyName = path9.basename(
+            const legacyName = path10.basename(
               this._scriptPath,
-              path9.extname(this._scriptPath)
+              path10.extname(this._scriptPath)
             );
             if (legacyName !== this._name) {
               localFile = findFile(
@@ -2256,7 +2256,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
           }
           executableFile = localFile || executableFile;
         }
-        launchWithNode = sourceExt.includes(path9.extname(executableFile));
+        launchWithNode = sourceExt.includes(path10.extname(executableFile));
         let proc;
         if (process10.platform !== "win32") {
           if (launchWithNode) {
@@ -3171,7 +3171,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @return {Command}
        */
       nameFromFilename(filename) {
-        this._name = path9.basename(filename, path9.extname(filename));
+        this._name = path10.basename(filename, path10.extname(filename));
         return this;
       }
       /**
@@ -3185,9 +3185,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [path]
        * @return {(string|null|Command)}
        */
-      executableDir(path10) {
-        if (path10 === void 0) return this._executableDir;
-        this._executableDir = path10;
+      executableDir(path11) {
+        if (path11 === void 0) return this._executableDir;
+        this._executableDir = path11;
         return this;
       }
       /**
@@ -8859,16 +8859,21 @@ function cmpSemver(a, b) {
   const pb = b.split(/[.-]/).map((p) => /^\d+$/.test(p) ? Number(p) : p);
   const n = Math.max(pa.length, pb.length);
   for (let i = 0; i < n; i++) {
-    const x = pa[i] ?? 0;
-    const y = pb[i] ?? 0;
+    const x = pa[i];
+    const y = pb[i];
+    if (x === void 0)
+      return typeof y === "string" ? 1 : -1;
+    if (y === void 0)
+      return typeof x === "string" ? -1 : 1;
     if (typeof x === "number" && typeof y === "number") {
       if (x !== y)
         return x < y ? -1 : 1;
-    } else {
-      const sx = String(x);
-      const sy = String(y);
-      if (sx !== sy)
-        return sx < sy ? -1 : 1;
+    } else if (typeof x === "number") {
+      return 1;
+    } else if (typeof y === "number") {
+      return -1;
+    } else if (x !== y) {
+      return x < y ? -1 : 1;
     }
   }
   return 0;
@@ -13302,6 +13307,7 @@ var installCommand = defineCommand({
 });
 
 // dist/commands/doctor/checks.js
+import path7 from "node:path";
 async function runEnvironmentChecks() {
   const out = [];
   const major = Number(process.versions.node.split(".")[0]);
@@ -13373,12 +13379,23 @@ async function runRegistryChecks(root) {
 async function runPluginChecks(opts) {
   const out = [];
   const p = installPaths(opts.root);
-  out.push({
-    category: "Plugin",
-    name: "bundle-integrity",
-    status: "pass",
-    detail: "bundled CLI invocation deferred to integration suite"
-  });
+  if (opts.pluginRoot) {
+    const bundle = path7.join(opts.pluginRoot, "bin", "radorch.mjs");
+    const exists = await pathExists(bundle);
+    out.push({
+      category: "Plugin",
+      name: "bundle-integrity",
+      status: exists ? "pass" : "fail",
+      detail: exists ? bundle : `missing ${bundle} \u2014 run \`npm run build:plugin\``
+    });
+  } else {
+    out.push({
+      category: "Plugin",
+      name: "bundle-integrity",
+      status: "warn",
+      detail: "CLAUDE_PLUGIN_ROOT not set \u2014 bundle presence not verified"
+    });
+  }
   const required = [p.projectsDir, p.registryYml, p.configYml, p.installJson];
   let bootstrapOk = true;
   for (const f of required)
@@ -13413,28 +13430,10 @@ async function runPluginChecks(opts) {
   let skewDetail;
   if (await pathExists(p.installJson)) {
     const ij = await readInstallJson(p.installJson);
-    const cmp = (a, b) => {
-      const pa = a.split(/[.-]/).map((x) => /^\d+$/.test(x) ? Number(x) : x);
-      const pb = b.split(/[.-]/).map((x) => /^\d+$/.test(x) ? Number(x) : x);
-      for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-        const x = pa[i] ?? 0;
-        const y = pb[i] ?? 0;
-        if (typeof x === "number" && typeof y === "number") {
-          if (x !== y)
-            return x < y ? -1 : 1;
-        } else {
-          const sx = String(x);
-          const sy = String(y);
-          if (sx !== sy)
-            return sx < sy ? -1 : 1;
-        }
-      }
-      return 0;
-    };
     if (!ij.last_writer_version) {
       skewStatus = "pass";
       skewDetail = "install.json has no last_writer_version (iter-01 install \u2014 skipping skew check)";
-    } else if (cmp(opts.localVersion, ij.last_writer_version) < 0) {
+    } else if (cmpSemver(opts.localVersion, ij.last_writer_version) < 0) {
       skewStatus = "fail";
       skewDetail = `state last written by ${ij.last_writer_version}; this CLI is ${opts.localVersion}`;
     }
@@ -13451,7 +13450,7 @@ async function runDoctor(opts) {
     ...await runEnvironmentChecks(),
     ...await runInstallChecks(root),
     ...await runRegistryChecks(root),
-    ...await runPluginChecks({ root, localVersion: pkg3.version })
+    ...await runPluginChecks({ root, localVersion: pkg3.version, pluginRoot: opts.env["CLAUDE_PLUGIN_ROOT"] })
   ];
   const all_passed = !checks.some((c) => c.status === "fail");
   return { all_passed, checks };
@@ -13564,7 +13563,7 @@ var harnessListCommand = defineCommand({
 });
 
 // dist/commands/ui/start.js
-import path8 from "node:path";
+import path9 from "node:path";
 
 // dist/commands/ui/pid-file.js
 import fs7 from "node:fs/promises";
@@ -13598,7 +13597,7 @@ function isPidAlive(pid) {
 import { createServer } from "node:net";
 import { spawn as nodeSpawn } from "node:child_process";
 import fs8 from "node:fs";
-import path7 from "node:path";
+import path8 from "node:path";
 async function probePortFree(port) {
   return new Promise((resolve) => {
     const srv = createServer();
@@ -13608,7 +13607,7 @@ async function probePortFree(port) {
   });
 }
 function openLogFd(file) {
-  fs8.mkdirSync(path7.dirname(file), { recursive: true });
+  fs8.mkdirSync(path8.dirname(file), { recursive: true });
   return fs8.openSync(file, "a");
 }
 var spawn = nodeSpawn;
@@ -13621,6 +13620,18 @@ async function runStart(opts) {
   const p = installPaths(root);
   await ensureDir(p.runtimeDir);
   await ensureDir(p.logsDir);
+  const existing = await readPidFile(p.uiPidFile);
+  if (existing) {
+    if (isPidAlive(existing.pid)) {
+      return {
+        pid: existing.pid,
+        port: existing.port,
+        url: `http://localhost:${existing.port}`,
+        started_at: existing.started_at
+      };
+    }
+    await removePidFile(p.uiPidFile);
+  }
   const probe = opts._probePortFree ?? probePortFree;
   let chosenPort = null;
   const tried = [];
@@ -13634,8 +13645,8 @@ async function runStart(opts) {
   if (chosenPort === null) {
     throw new UserError(`every port ${PORT_LO}-${PORT_HI} is taken (tried ${tried.join(", ")}); free one and retry`);
   }
-  const uiDir = opts.env["RADORCH_UI_DIR"] ?? (opts.env["CLAUDE_PLUGIN_ROOT"] ? path8.join(opts.env["CLAUDE_PLUGIN_ROOT"], "ui") : path8.resolve(path8.dirname(process.argv[1] ?? ""), "..", "ui"));
-  const serverJs = path8.join(uiDir, "server.js");
+  const uiDir = opts.env["RADORCH_UI_DIR"] ?? (opts.env["CLAUDE_PLUGIN_ROOT"] ? path9.join(opts.env["CLAUDE_PLUGIN_ROOT"], "ui") : path9.resolve(path9.dirname(process.argv[1] ?? ""), "..", "ui"));
+  const serverJs = path9.join(uiDir, "server.js");
   const spawnFn = opts._spawn ?? spawn;
   const env2 = {
     ...opts.env,

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { resolveInstallRoot, installPaths } from '../../lib/paths.js';
 import { ensureDir } from '../../lib/fs-helpers.js';
-import { writePidFile } from './pid-file.js';
+import { readPidFile, removePidFile, writePidFile, isPidAlive } from './pid-file.js';
 import { probePortFree as defaultProbe, openLogFd, spawn as defaultSpawn } from './spawn.js';
 import { UserError, SystemError } from '../../framework/errors.js';
 
@@ -24,6 +24,21 @@ export async function runStart(opts: {
   const p = installPaths(root);
   await ensureDir(p.runtimeDir);
   await ensureDir(p.logsDir);
+  // Idempotency: if a recorded UI server is already alive, return its handle
+  // instead of spawning a duplicate. A stale entry (process already dead) is
+  // cleaned up so we proceed with a fresh spawn.
+  const existing = await readPidFile(p.uiPidFile);
+  if (existing) {
+    if (isPidAlive(existing.pid)) {
+      return {
+        pid: existing.pid,
+        port: existing.port,
+        url: `http://localhost:${existing.port}`,
+        started_at: existing.started_at,
+      };
+    }
+    await removePidFile(p.uiPidFile);
+  }
   const probe = opts._probePortFree ?? defaultProbe;
   let chosenPort: number | null = null;
   const tried: number[] = [];

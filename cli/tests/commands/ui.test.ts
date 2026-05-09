@@ -91,4 +91,38 @@ describe('ui start (with mocked spawn)', () => {
     expect(spawnCall[2].detached).toBe(true);
     expect(spawnCall[2].windowsHide).toBe(true);
   });
+  it('is idempotent: returns existing handle without re-spawning when a live PID is recorded', async () => {
+    const f = path.join(home, 'runtime', 'ui.pid');
+    await fs.mkdir(path.dirname(f), { recursive: true });
+    // current process pid is alive — simulates a live UI server entry
+    await writePidFile(f, { pid: process.pid, port: 3007, started_at: '2026-05-08T00:00:00.000Z' });
+    const probe = vi.fn().mockResolvedValue(true);
+    const fakeSpawn = vi.fn();
+    const r = await runStart({
+      env: { RADORCH_HOME: home, RADORCH_UI_DIR: path.join(home, 'fake-ui') },
+      _probePortFree: probe,
+      _spawn: fakeSpawn as never,
+    });
+    expect(fakeSpawn).not.toHaveBeenCalled();
+    expect(probe).not.toHaveBeenCalled();
+    expect(r.pid).toBe(process.pid);
+    expect(r.port).toBe(3007);
+    expect(r.url).toBe('http://localhost:3007');
+    expect(r.started_at).toBe('2026-05-08T00:00:00.000Z');
+  });
+  it('clears a stale PID file (dead process) and proceeds to a fresh spawn', async () => {
+    const f = path.join(home, 'runtime', 'ui.pid');
+    await fs.mkdir(path.dirname(f), { recursive: true });
+    await writePidFile(f, { pid: 999996, port: 3007, started_at: new Date().toISOString() });
+    const probe = vi.fn().mockResolvedValue(true);
+    const fakeSpawn = vi.fn().mockReturnValue({ pid: 5151, unref: () => {} });
+    const r = await runStart({
+      env: { RADORCH_HOME: home, RADORCH_UI_DIR: path.join(home, 'fake-ui') },
+      _probePortFree: probe,
+      _spawn: fakeSpawn as never,
+    });
+    expect(fakeSpawn).toHaveBeenCalledTimes(1);
+    expect(r.pid).toBe(5151);
+    expect(r.port).toBe(3000);
+  });
 });

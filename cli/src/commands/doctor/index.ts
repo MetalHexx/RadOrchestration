@@ -20,7 +20,7 @@ export async function runDoctor(opts: { env: NodeJS.ProcessEnv }): Promise<Docto
     ...(await runEnvironmentChecks()),
     ...(await runInstallChecks(root)),
     ...(await runRegistryChecks(root)),
-    ...(await runPluginChecks({ root, localVersion: pkg.version })),
+    ...(await runPluginChecks({ root, localVersion: pkg.version, pluginRoot: opts.env['CLAUDE_PLUGIN_ROOT'] })),
   ];
   const all_passed = !checks.some((c) => c.status === 'fail');
   return { all_passed, checks };

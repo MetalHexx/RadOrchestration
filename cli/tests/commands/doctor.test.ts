@@ -97,6 +97,37 @@ describe('plugin-aware doctor checks', () => {
     expect(result.find((c) => c.name === 'ui-pid-consistency')?.status).toBe('warn');
   });
 
+  it('bundle-integrity: warns when CLAUDE_PLUGIN_ROOT is unset', async () => {
+    const result = await runPluginChecks({ root: home, localVersion: '1.0.0' });
+    const bi = result.find((c) => c.name === 'bundle-integrity');
+    expect(bi?.status).toBe('warn');
+    expect(bi?.detail).toMatch(/CLAUDE_PLUGIN_ROOT not set/);
+  });
+
+  it('bundle-integrity: passes when bundle exists at CLAUDE_PLUGIN_ROOT', async () => {
+    const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
+    try {
+      await fs.mkdir(path.join(pluginRoot, 'bin'), { recursive: true });
+      await fs.writeFile(path.join(pluginRoot, 'bin', 'radorch.mjs'), '// stub bundle');
+      const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
+      expect(result.find((c) => c.name === 'bundle-integrity')?.status).toBe('pass');
+    } finally {
+      await fs.rm(pluginRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('bundle-integrity: fails when bundle is missing under a configured CLAUDE_PLUGIN_ROOT', async () => {
+    const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
+    try {
+      const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
+      const bi = result.find((c) => c.name === 'bundle-integrity');
+      expect(bi?.status).toBe('fail');
+      expect(bi?.detail).toMatch(/missing/);
+    } finally {
+      await fs.rm(pluginRoot, { recursive: true, force: true });
+    }
+  });
+
   it('does not throw when install.json lacks last_writer_version (iter-01 install)', async () => {
     const homeIter01 = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doctor-iter01-'));
     try {

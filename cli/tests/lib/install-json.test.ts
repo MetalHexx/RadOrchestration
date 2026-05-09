@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { readInstallJson, writeInstallJson } from '../../src/lib/config.js';
-import { stampLastWriter, checkVersionSkew } from '../../src/lib/install-json.js';
+import { stampLastWriter, checkVersionSkew, cmpSemver } from '../../src/lib/install-json.js';
 
 let tmp: string;
 beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-ij-')); });
@@ -72,5 +72,36 @@ describe('checkVersionSkew', () => {
   it('returns ok=true when install.json is absent (fresh state)', async () => {
     const result = await checkVersionSkew({ installJsonPath: path.join(tmp, 'missing.json'), localVersion: '1.2.0' });
     expect(result.ok).toBe(true);
+  });
+
+  it('does not block stable release upgrade from a pre-release (1.0.0 > 1.0.0-alpha.8)', async () => {
+    const file = path.join(tmp, 'install.json');
+    await writeInstallJson(file, {
+      package_version: '1.0.0',
+      installed_at: '2026-05-08T00:00:00.000Z',
+      last_writer_version: '1.0.0-alpha.8',
+      state_schema_version: 'v5',
+    });
+    const result = await checkVersionSkew({ installJsonPath: file, localVersion: '1.0.0' });
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe('cmpSemver', () => {
+  it('orders pre-release below release of same main version', () => {
+    expect(cmpSemver('1.0.0', '1.0.0-alpha.8')).toBeGreaterThan(0);
+    expect(cmpSemver('1.0.0-alpha.8', '1.0.0')).toBeLessThan(0);
+    expect(cmpSemver('1.0.0-rc.1', '1.0.0')).toBeLessThan(0);
+  });
+  it('orders pre-release identifiers correctly', () => {
+    expect(cmpSemver('1.0.0-alpha', '1.0.0-beta')).toBeLessThan(0);
+    expect(cmpSemver('1.0.0-alpha.8', '1.0.0-alpha.10')).toBeLessThan(0);
+    expect(cmpSemver('1.0.0-alpha.10', '1.0.0-alpha.9')).toBeGreaterThan(0);
+  });
+  it('orders by major/minor/patch when no pre-release tags involved', () => {
+    expect(cmpSemver('1.0.0', '1.0.1')).toBeLessThan(0);
+    expect(cmpSemver('1.1.0', '1.0.9')).toBeGreaterThan(0);
+    expect(cmpSemver('2.0.0', '1.99.99')).toBeGreaterThan(0);
+    expect(cmpSemver('1.2.3', '1.2.3')).toBe(0);
   });
 });

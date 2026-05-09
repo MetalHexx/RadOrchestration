@@ -1,8 +1,10 @@
+import path from 'node:path';
 import { pathExists } from '../../lib/fs-helpers.js';
 import { installPaths } from '../../lib/paths.js';
 import { readInstallJson, readConfigYml } from '../../lib/config.js';
 import { readRegistry } from '../../lib/registry.js';
 import { isHarnessName } from '../../framework/harness.js';
+import { cmpSemver } from '../../lib/install-json.js';
 
 export type CheckStatus = 'pass' | 'warn' | 'fail';
 export type CheckCategory = 'Environment' | 'Install' | 'Registry' | 'Plugin';
@@ -86,16 +88,32 @@ export async function runRegistryChecks(root: string): Promise<CheckResult[]> {
   return out;
 }
 
-export async function runPluginChecks(opts: { root: string; localVersion: string }): Promise<CheckResult[]> {
+export async function runPluginChecks(opts: {
+  root: string;
+  localVersion: string;
+  pluginRoot?: string;
+}): Promise<CheckResult[]> {
   const out: CheckResult[] = [];
   const p = installPaths(opts.root);
-  // Bundle integrity: presence-only check; we cannot guarantee CLAUDE_PLUGIN_ROOT here.
-  out.push({
-    category: 'Plugin',
-    name: 'bundle-integrity',
-    status: 'pass',
-    detail: 'bundled CLI invocation deferred to integration suite',
-  });
+  // Bundle integrity: probe the bundled CLI when CLAUDE_PLUGIN_ROOT is known
+  // (deployed plugin), otherwise warn that it could not be verified.
+  if (opts.pluginRoot) {
+    const bundle = path.join(opts.pluginRoot, 'bin', 'radorch.mjs');
+    const exists = await pathExists(bundle);
+    out.push({
+      category: 'Plugin',
+      name: 'bundle-integrity',
+      status: exists ? 'pass' : 'fail',
+      detail: exists ? bundle : `missing ${bundle} — run \`npm run build:plugin\``,
+    });
+  } else {
+    out.push({
+      category: 'Plugin',
+      name: 'bundle-integrity',
+      status: 'warn',
+      detail: 'CLAUDE_PLUGIN_ROOT not set — bundle presence not verified',
+    });
+  }
   // Bootstrap skeleton
   const required = [p.projectsDir, p.registryYml, p.configYml, p.installJson];
   let bootstrapOk = true;
@@ -131,21 +149,10 @@ export async function runPluginChecks(opts: { root: string; localVersion: string
   let skewDetail: string | undefined;
   if (await pathExists(p.installJson)) {
     const ij = await readInstallJson(p.installJson);
-    const cmp = (a: string, b: string): number => {
-      const pa = a.split(/[.-]/).map((x) => /^\d+$/.test(x) ? Number(x) : x);
-      const pb = b.split(/[.-]/).map((x) => /^\d+$/.test(x) ? Number(x) : x);
-      for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-        const x = pa[i] ?? 0;
-        const y = pb[i] ?? 0;
-        if (typeof x === 'number' && typeof y === 'number') { if (x !== y) return x < y ? -1 : 1; }
-        else { const sx = String(x); const sy = String(y); if (sx !== sy) return sx < sy ? -1 : 1; }
-      }
-      return 0;
-    };
     if (!ij.last_writer_version) {
       skewStatus = 'pass';
       skewDetail = 'install.json has no last_writer_version (iter-01 install — skipping skew check)';
-    } else if (cmp(opts.localVersion, ij.last_writer_version) < 0) {
+    } else if (cmpSemver(opts.localVersion, ij.last_writer_version) < 0) {
       skewStatus = 'fail';
       skewDetail = `state last written by ${ij.last_writer_version}; this CLI is ${opts.localVersion}`;
     }
