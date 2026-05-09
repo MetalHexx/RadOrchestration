@@ -1,17 +1,19 @@
-// adapters/run-plugin.js — Per-harness plugin-shape emit. Reads canonical
-// skills/rad-ui-*/ for UI skills and canonical hooks/ for hook scripts, then
-// copies everything to cli/dist/marketplaces/<adapter.name>/plugins/rad-orchestration/,
-// stamping plugin.json `version` from the version arg.
+// adapters/run-plugin.js — Per-harness plugin-shape emit. Reads every directory
+// under canonical skills/ and every .md file under canonical agents/, plus canonical
+// hooks/ for hook scripts, then copies everything to
+// cli/dist/marketplaces/<adapter.name>/plugins/rad-orchestration/, stamping
+// plugin.json `version` from the version arg.
 //
-// Skills sourcing: canonical skills/ at canonicalRoot, filtered to rad-ui-* dirs.
+// Skills sourcing: all directories under canonical skills/ at canonicalRoot.
+// Agents sourcing: all .md files under canonical agents/ at canonicalRoot.
 // Hooks sourcing: canonical hooks/ at canonicalRoot (AD-10). Non-plugin emits via
 // adapters/run.js do NOT propagate hooks — only the plugin emit ships the hook trio.
 //
-// Idempotent within the subdirectories this function owns (`skills/`, `hooks/`,
-// `.claude-plugin/`). Sibling subdirs like `bin/`, `dist/`, `ui/` populated by
-// the publish-time meta-script's bundle steps are preserved.
-// Reuses adapter.skillFrontmatter for SKILL.md projection so harness-specific
-// shape is honored even though only Claude ships this iteration.
+// Idempotent within the subdirectories this function owns (`skills/`, `agents/`,
+// `hooks/`, `.claude-plugin/`). Sibling subdirs like `bin/`, `dist/`, `ui/`
+// populated by the publish-time meta-script's bundle steps are preserved.
+// Reuses adapter.skillFrontmatter / adapter.agentFrontmatter for SKILL.md /
+// agent .md projection so harness-specific shape is honored.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,15 +23,15 @@ function pluginOutputDir(outputRoot, adapterName) {
 }
 
 export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, version }) {
-  const sourceRoot = path.join(canonicalRoot, 'marketplace', 'plugins', 'rad-orchestration');
+  const pluginJsonSourceRoot = path.join(canonicalRoot, 'marketplace', 'plugins', 'rad-orchestration');
   const targetRoot = pluginOutputDir(outputRoot, adapter.name);
   fs.mkdirSync(targetRoot, { recursive: true });
-  for (const sub of ['skills', 'hooks', '.claude-plugin']) {
+  for (const sub of ['skills', 'agents', 'hooks', '.claude-plugin']) {
     fs.rmSync(path.join(targetRoot, sub), { recursive: true, force: true });
   }
 
   // Copy .claude-plugin/plugin.json with version stamped.
-  const cpSrc = path.join(sourceRoot, '.claude-plugin', 'plugin.json');
+  const cpSrc = path.join(pluginJsonSourceRoot, '.claude-plugin', 'plugin.json');
   if (fs.existsSync(cpSrc)) {
     const cpDst = path.join(targetRoot, '.claude-plugin', 'plugin.json');
     fs.mkdirSync(path.dirname(cpDst), { recursive: true });
@@ -39,8 +41,8 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
     if (fs.existsSync(path.join(canonicalRoot, 'skills'))) obj.skills = ['./skills'];
     // Hooks presence check uses canonicalRoot (AD-10: canonical hooks/ is the sole source).
     if (fs.existsSync(path.join(canonicalRoot, 'hooks', 'hooks.json'))) obj.hooks = ['./hooks/hooks.json'];
-    // No agents this iteration (AD-13).
-    delete obj.agents;
+    // Agents directory — every canonical agent ships in the plugin.
+    if (fs.existsSync(path.join(canonicalRoot, 'agents'))) obj.agents = ['./agents'];
     fs.writeFileSync(cpDst, JSON.stringify(obj, null, 2) + '\n', 'utf8');
   }
 
@@ -51,15 +53,14 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
     fs.cpSync(hooksSrc, path.join(targetRoot, 'hooks'), { recursive: true });
   }
 
-  // Walk canonical skills/, filter to rad-ui-* entries, transform SKILL.md
-  // frontmatter via adapter.skillFrontmatter, copy other subfiles verbatim.
-  // Pattern mirrors adapters/run.js. Phase 3 will widen this to full enumeration.
+  // Walk every directory under canonical skills/, transform SKILL.md frontmatter
+  // via adapter.skillFrontmatter, copy other subfiles verbatim.
+  // Pattern mirrors adapters/run.js.
   const skillsSrc = path.join(canonicalRoot, 'skills');
   if (fs.existsSync(skillsSrc)) {
     for (const skillName of fs.readdirSync(skillsSrc)) {
       const skillSrcDir = path.join(skillsSrc, skillName);
       if (!fs.statSync(skillSrcDir).isDirectory()) continue;
-      if (!skillName.startsWith('rad-ui-')) continue;
       const skillOutDir = path.join(targetRoot, 'skills', skillName);
       fs.mkdirSync(skillOutDir, { recursive: true });
       for (const child of fs.readdirSync(skillSrcDir)) {
@@ -77,6 +78,27 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
           fs.copyFileSync(absSrc, absDest);
         }
       }
+    }
+  }
+
+  // Walk every .md file under canonical agents/, transform frontmatter via
+  // adapter.agentFrontmatter (falls back to identity if not defined), emit to
+  // <targetRoot>/agents/<agentName>.md.
+  const agentsSrc = path.join(canonicalRoot, 'agents');
+  if (fs.existsSync(agentsSrc)) {
+    const agentsOutDir = path.join(targetRoot, 'agents');
+    fs.mkdirSync(agentsOutDir, { recursive: true });
+    for (const agentFile of fs.readdirSync(agentsSrc)) {
+      if (!agentFile.endsWith('.md')) continue;
+      const absSrc = path.join(agentsSrc, agentFile);
+      if (fs.statSync(absSrc).isDirectory()) continue;
+      const absDest = path.join(agentsOutDir, agentFile);
+      const text = fs.readFileSync(absSrc, 'utf8');
+      const projectFn = adapter.agentFrontmatter
+        ? (fm) => adapter.agentFrontmatter(fm, { adapter })
+        : (fm) => fm;
+      const projected = projectFrontmatterMin(text, projectFn);
+      fs.writeFileSync(absDest, projected, 'utf8');
     }
   }
 

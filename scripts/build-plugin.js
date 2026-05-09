@@ -43,9 +43,12 @@ const REQUIRED_ARTIFACTS = [
   'hooks/hooks.json',
   'hooks/session-start.sh',
   'hooks/session-start.ps1',
+  // Representative canonical skills (full enumeration via runAdapterPlugin)
+  'skills/rad-orchestration/SKILL.md',
+  'skills/rad-plan/SKILL.md',
   'skills/rad-ui-start/SKILL.md',
-  'skills/rad-ui-stop/SKILL.md',
-  'skills/rad-ui-status/SKILL.md',
+  // Representative canonical agent
+  'agents/orchestrator.md',
 ];
 
 export function validatePluginTree(rootDir) {

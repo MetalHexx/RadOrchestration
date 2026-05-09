@@ -53,7 +53,10 @@ test('validatePluginTree: passes on a complete fixture', async () => {
   writeF('hooks/hooks.json', '{}');
   writeF('hooks/session-start.sh');
   writeF('hooks/session-start.ps1');
-  for (const s of ['rad-ui-start', 'rad-ui-stop', 'rad-ui-status']) writeF(`skills/${s}/SKILL.md`);
+  // Representative canonical skills (full enumeration)
+  for (const s of ['rad-orchestration', 'rad-plan', 'rad-ui-start']) writeF(`skills/${s}/SKILL.md`);
+  // Representative canonical agent
+  writeF('agents/orchestrator.md');
   const ok = validatePluginTree(tmp);
   assert.equal(ok.ok, true, JSON.stringify(ok));
 });
