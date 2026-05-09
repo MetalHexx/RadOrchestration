@@ -14,15 +14,13 @@ Before constructing any path, determine the orchestration root folder:
 - `projects.base_path`: Where project folders live
 - Use `base_path` to locate the project directory: `{base_path}/{PROJECT-NAME}/`.
 
-## Bootstrap
+## Runtime Entry
 
-`pipeline.js` is the Node.js entry point. It ensures dependencies are present, then runs `main.ts`.
+`skills/rad-orchestration/scripts/pipeline.js` is the runtime entry point — a self-contained esbuild bundle of `pipeline.ts` with all dependencies inlined. There is no JIT install step at runtime; first-run is instant.
 
-1. If `node_modules/` is missing, it runs `npm ci` (or `npm install` without a lockfile)
-2. It forwards all CLI args to `main.ts` unchanged (transparent pass-through)
-3. On setup failure, it emits a valid `PipelineResult`-shaped JSON error (`success: false`)
+The bundle is produced by `npm run bundle` in `skills/rad-orchestration/scripts/` (or as a side effect of the repo-root `npm run build` for any harness target). Do not edit `pipeline.js` by hand — edit `pipeline.ts` and rebuild.
 
-This handles fresh worktrees where `node_modules/` is gitignored.
+All CLI arguments pass through transparently to the bundled CLI surface.
 
 ## Pipeline Event Loop
 
