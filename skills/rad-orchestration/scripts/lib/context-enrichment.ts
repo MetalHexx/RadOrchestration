@@ -152,14 +152,26 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
   // spawn and surface the rendered block under `repository_skills_block` so
   // the orchestrator can inline it verbatim into the spawn prompt. Manifest
   // failure never breaks the spawn — buildRepositorySkillsBlock returns ''
-  // on any error path.
+  // on any error path. For spawn_master_plan only, also surface the
+  // phase/task limits so the orchestrator can inline a `## Plan Size Limits`
+  // block into the planner prompt without reading state.json or the YAML.
   if (action in PLANNING_SPAWN_STEPS) {
     const repository_skills_block = buildRepositorySkillsBlock();
-    return {
+    const base = {
       ...walkerContext,
       step: PLANNING_SPAWN_STEPS[action],
       repository_skills_block,
     };
+    if (action === 'spawn_master_plan') {
+      return {
+        ...base,
+        limits: {
+          max_phases: input.config.limits.max_phases,
+          max_tasks_per_phase: input.config.limits.max_tasks_per_phase,
+        },
+      };
+    }
+    return base;
   }
 
   // Phase-level enrichment

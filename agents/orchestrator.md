@@ -63,6 +63,21 @@ Entries above are a catalog. Read a listed path **only when** its description ma
 
 The heading string is contractual — `## Repository Skills Available`, no alternative phrasings. Manifest invocation occurs on every planner spawn; do not cache the output between spawns. Wired only for the planner — coder, reviewer, source-control, and brainstormer spawns are unchanged.
 
+## Planner Spawn — Plan Size Limits
+
+For `spawn_master_plan` only, `result.context.limits` carries `max_phases` and `max_tasks_per_phase` (sourced from `orchestration.yml`). Inline this block verbatim into the planner spawn prompt, substituting the two integer values from `result.context.limits`:
+
+```markdown
+## Plan Size Limits
+
+- max_phases: <result.context.limits.max_phases>
+- max_tasks_per_phase: <result.context.limits.max_tasks_per_phase>
+
+The Master Plan must not exceed these limits. Excess is silently capped by the pipeline at expansion time, dropping tail phases or tasks. Honor the limits when deciding the phase/task breakdown.
+```
+
+The heading string `## Plan Size Limits` is contractual — no alternative phrasings. `spawn_requirements` does not carry `limits`; emit no block in that case.
+
 ## Skills
 - **`rad-orchestration`**: Load for full pipeline context — event loop, action routing table
   (16 actions), event signaling reference, CLI usage, error handling, orchRoot

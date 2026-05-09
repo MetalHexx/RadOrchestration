@@ -84,6 +84,15 @@ becomes task-local and action-oriented.
    (layer boundary, independently deliverable slice). Tasks within a phase are
    the smallest unit a single coder agent will execute end-to-end.
 
+   **Plan size limits.** Your spawn prompt carries a `## Plan Size Limits`
+   section with `max_phases` and `max_tasks_per_phase` (sourced from
+   `orchestration.yml`). The breakdown must not exceed these. If natural
+   seams suggest more phases or more tasks in a phase than the limit
+   allows, consolidate — group more work per task, or fold thin phases
+   together — rather than overflow. The pipeline silently caps any excess
+   at expansion time, so overflow drops tail work without warning. Limits
+   are an outer bound the Project Size rubric below operates within.
+
    **Project Size rubric** — The orchestrator's spawn prompt passes a
    `Task size preference` (one of `Small`, `Medium`, `Large`, `Extra Large`,
    or a `Custom: …` prose string). Apply the corresponding scope below.
