@@ -4,9 +4,19 @@ import type { PipelineState, OrchestrationConfig, TemplateResolution } from './t
 
 /**
  * Resolves which template to use.
- * Priority: state.graph.template_id → CLI --template → config.default_template → "default"
- * When default_template is "ask", treat as absent and fall through to "default".
+ * Priority: state.graph.template_id → CLI --template → config.default_template (with sentinel remap) → "extra-high"
+ * The sentinel remap applies ONLY to config.default_template:
+ *   default → extra-high, quick → low, full → extra-high.
+ * state.graph.template_id and CLI --template resolve verbatim (project-local
+ * snapshot lookup keeps legacy in-flight projects functional).
+ * When default_template is "ask" or empty, fall through to "extra-high".
  */
+const CONFIG_SENTINEL_REMAP: Record<string, string> = {
+  default: 'extra-high',
+  quick: 'low',
+  full: 'extra-high',
+};
+
 export function resolveTemplateName(
   state: PipelineState | null,
   cliTemplateName: string | undefined,
@@ -24,10 +34,11 @@ export function resolveTemplateName(
     templateName = cliTemplateName;
     source = 'cli';
   } else if (config.default_template !== '' && config.default_template !== 'ask') {
-    templateName = config.default_template;
+    const raw = config.default_template;
+    templateName = CONFIG_SENTINEL_REMAP[raw] ?? raw;
     source = 'config';
   } else {
-    templateName = 'default';
+    templateName = 'extra-high';
     source = 'default';
   }
 

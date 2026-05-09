@@ -21,12 +21,12 @@ interface TemplateSelectorProps {
  * URL-driven template selector. Reads the requested id from `requestedTemplateId`
  * (the parent re-passes this on every URL change), fetches /api/templates once,
  * and resolves to either the requested id (if it names a known template, including
- * a deprecated one reached via direct URL) or silently falls back to `default`.
+ * a deprecated one reached via direct URL) or silently falls back to `extra-high`.
  *
  * Deprecated templates do not appear in the dropdown options. If the resolved
  * id IS a deprecated template (arrived via direct URL), it is still appended to
  * the option list so the rendered <select> reflects the active value rather
- * than snapping to default.
+ * than snapping to extra-high.
  *
  * The selector exposes the resolved id to the parent via `onResolved`. The parent
  * gates canvas rendering on receiving a non-empty resolved id, which avoids a
@@ -54,7 +54,7 @@ export function TemplateSelector({
       } catch (err) {
         if (aborted) return;
         // Contain the rejection so it does not escape as an unhandledrejection
-        // event. `templates` stays [] → `resolved` falls back to 'default'.
+        // event. `templates` stays [] → `resolved` falls back to 'extra-high'.
         // The alert below tells the user the list could not load.
         // eslint-disable-next-line no-console
         console.warn('TemplateSelector: failed to load templates', err);
@@ -68,14 +68,14 @@ export function TemplateSelector({
   }, []);
 
   // Until templates are loaded, no id is resolved (parent gates canvas rendering on this).
-  // Once loaded, an unknown or empty requested id silently maps to 'default'. A
+  // Once loaded, an unknown or empty requested id silently maps to 'extra-high'. A
   // deprecated id reached via direct URL counts as "known" so the selector still
   // shows it as the active option.
   const resolved = !loaded
     ? ''
     : requestedTemplateId && templates.some(t => t.id === requestedTemplateId)
       ? requestedTemplateId
-      : 'default';
+      : 'extra-high';
 
   useEffect(() => {
     if (resolved) onResolved(resolved);

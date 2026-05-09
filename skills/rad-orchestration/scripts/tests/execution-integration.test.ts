@@ -48,7 +48,7 @@ function makeConfig(overrides: {
       auto_pr: overrides.auto_pr ?? 'always',
       provider: 'github',
     },
-    default_template: 'full',
+    default_template: 'extra-high',
   };
 }
 
@@ -185,22 +185,31 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   // Init scaffold
   processEvent('start', PROJECT_DIR, {}, io);
 
-  // master_plan
+  // requirements → master_plan → explode_master_plan (extra-high planning sequence)
+  processEvent('requirements_started', PROJECT_DIR, {}, io);
+  const reqsDoc = path.join(PROJECT_DIR, 'docs', 'requirements.md');
+  seedDoc(reqsDoc, { requirement_count: 5 });
+  processEvent('requirements_completed', PROJECT_DIR, { doc_path: reqsDoc }, io);
+
   processEvent('master_plan_started', PROJECT_DIR, {}, io);
   seedDoc(DOC_PATHS.masterPlan, { total_phases: 2, total_tasks: 4 });
   processEvent('master_plan_completed', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+
+  processEvent('explosion_started', PROJECT_DIR, {}, io);
+  processEvent('explosion_completed', PROJECT_DIR, {}, io);
 
   // Mirror the production explosion script: seed phase_loop iterations with
   // doc_path on each iteration + task_loop.iterations BEFORE plan_approved so
   // the walker can advance through phase_loop in a single pass.
   seedExplosionState(io, [TASKS_FIXTURE, TASKS_FIXTURE]);
 
-  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
-
   // commit_gate / pr_gate read state.pipeline.source_control (state_ref).
-  // Init before the walker first evaluates commit_gate. See
+  // Init BEFORE plan_approved so the walker can evaluate commit_gate without
+  // crashing (pipeline.source_control would be null otherwise). See
   // initSourceControlForTests for the "ask" → "always" normalization rationale.
   initSourceControlForTests(io, io.readConfig());
+
+  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 
   return result.action === 'ask_gate_mode'
     ? result
@@ -501,9 +510,9 @@ describe('Execution-tier integration — complete pipeline run', () => {
     }
 
     // ── Planning tier — mirrors post-Iter-7 flow: requirements → master_plan →
-    // (explosion pre-seeds phase_planning + task_handoff children). No legacy
-    // phase_planning_started / task_handoff_started / phase_plan_created /
-    // task_handoff_created events participate.
+    // explode_master_plan → plan_approved → (explosion pre-seeds phase_planning +
+    // task_handoff children). No legacy phase_planning_started / task_handoff_started
+    // / phase_plan_created / task_handoff_created events participate.
     signal('start');
     signal('requirements_started');
     const requirementsDoc = path.join(PROJECT_DIR, 'docs', 'requirements.md');
@@ -512,12 +521,17 @@ describe('Execution-tier integration — complete pipeline run', () => {
     signal('master_plan_started');
     seedDoc(DOC_PATHS.masterPlan, { total_phases: 1, total_tasks: 1 });
     signal('master_plan_completed', { doc_path: DOC_PATHS.masterPlan });
+    signal('explosion_started');
+    signal('explosion_completed');
 
     // Simulate the explosion-script's pre-seeding: iterations carry doc_path
     // directly. Seed before plan_approved so the walker's first pass after
     // plan_approved advances straight into execute_task.
     const oneTask = [{ id: 'T01', title: 'Task 1' }];
     seedExplosionState(io, [oneTask]);
+
+    // Init source_control before plan_approved so commit_gate / pr_gate state_ref is set.
+    initSourceControlForTests(io, io.readConfig());
 
     const planApproved = signal('plan_approved', { doc_path: DOC_PATHS.masterPlan });
     expect(planApproved.success).toBe(true);

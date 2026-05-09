@@ -24,7 +24,7 @@ import type {
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/full.yml');
+const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/extra-high.yml');
 const PROJECT_DIR = '/tmp/test-project/DAG-TEST';
 const ORCH_ROOT = path.resolve(__dirname, '../../../..');
 
@@ -47,7 +47,7 @@ const DEFAULT_CONFIG: OrchestrationConfig = {
     auto_pr: 'ask',
     provider: 'github',
   },
-  default_template: 'full',
+  default_template: 'extra-high',
 };
 
 // Map of doc_path → frontmatter content used by mock readDocument
@@ -106,19 +106,19 @@ describe('engine – processEvent', () => {
     vi.mocked(getMutation).mockClear();
   });
 
-  describe('Init route (null state) — full template', () => {
-    // Note: assertions on the first action (spawn_master_plan) are full-template-specific.
-    // The full template starts with master_plan; other templates may differ.
-    it('scaffolds state from template and returns first action (spawn_master_plan in full template)', () => {
+  describe('Init route (null state) — extra-high template', () => {
+    // Note: assertions on the first action (spawn_requirements) are extra-high-template-specific.
+    // The extra-high template starts with requirements; other templates may differ.
+    it('scaffolds state from template and returns first action (spawn_requirements in extra-high template)', () => {
       const io = createMockIO(null);
       const result = processEvent('start', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(true);
-      expect(result.action).toBe('spawn_master_plan');
+      expect(result.action).toBe('spawn_requirements');
       // RAD-SKILL-DISCOVERY P02-T05: planning-spawn context now also carries
       // `repository_skills_block` (string) — see context-enrichment.ts.
       const ctx = result.context as Record<string, unknown>;
-      expect(ctx.step).toBe('master_plan');
+      expect(ctx.step).toBe('requirements');
       expect(typeof ctx.repository_skills_block).toBe('string');
       expect(result.mutations_applied).toContain('scaffold_initial_state');
       expect(result.orchRoot).toBe(ORCH_ROOT);
@@ -142,7 +142,7 @@ describe('engine – processEvent', () => {
       expect(state.config.source_control.auto_commit).toBe('ask');
       expect(state.config.source_control.auto_pr).toBe('ask');
       expect(state.graph.status).toBe('in_progress');
-      expect(state.graph.template_id).toBe('full');
+      expect(state.graph.template_id).toBe('extra-high');
       expect(state.graph.current_node_path).toBeNull();
     });
 
@@ -165,7 +165,7 @@ describe('engine – processEvent', () => {
       const nodes = io.currentState!.graph.nodes;
 
       // Planning steps
-      for (const nodeId of ['master_plan']) {
+      for (const nodeId of ['requirements', 'master_plan', 'explode_master_plan']) {
         const node = nodes[nodeId] as StepNodeState;
         expect(node.kind).toBe('step');
         expect(node.status).toBe('not_started');
@@ -219,12 +219,12 @@ describe('engine – processEvent', () => {
   });
 
   describe('start event – init (null state)', () => {
-    it('scaffolds state and returns success: true with first action spawn_master_plan (full template)', () => {
+    it('scaffolds state and returns success: true with first action spawn_requirements (extra-high template)', () => {
       const io = createMockIO(null);
       const result = processEvent('start', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(true);
-      expect(result.action).toBe('spawn_master_plan');
+      expect(result.action).toBe('spawn_requirements');
       expect(result.mutations_applied).toContain('scaffold_initial_state');
     });
 
@@ -255,12 +255,12 @@ describe('engine – processEvent', () => {
   describe('start event – cold-start / resume (state exists)', () => {
     it('returns success: true and the current pending action, persisting walker state', () => {
       const state = makeScaffoldedState();
-      // master_plan is not_started → walkDAG should find spawn_master_plan as first action
+      // requirements is not_started → walkDAG should find spawn_requirements as first action
       const io = createMockIO(state);
       const result = processEvent('start', PROJECT_DIR, {}, io);
 
       expect(result.success).toBe(true);
-      expect(result.action).toBe('spawn_master_plan');
+      expect(result.action).toBe('spawn_requirements');
       expect(result.mutations_applied).toEqual([]);
       expect(io.writeCalls.length).toBe(1);
       expect(io.writeCalls[0].projectDir).toBe(PROJECT_DIR);
@@ -285,8 +285,8 @@ describe('engine – processEvent', () => {
       const baseState = makeScaffoldedState();
       const nodes = baseState.graph.nodes;
 
-      // Satisfy all phase_loop dependencies
-      for (const id of ['master_plan']) {
+      // Satisfy all phase_loop dependencies (requirements, master_plan, explode_master_plan)
+      for (const id of ['requirements', 'master_plan', 'explode_master_plan']) {
         (nodes[id] as StepNodeState).status = 'completed';
       }
       const planGate = nodes['plan_approval_gate'] as GateNodeState;
@@ -372,9 +372,11 @@ describe('engine – processEvent', () => {
   });
 
   describe('Standard route – master_plan_completed', () => {
-    it('sets master_plan.status to completed and returns next action request_plan_approval', () => {
-      // Set up state where master_plan is in_progress
+    it('sets master_plan.status to completed and returns next action explode_master_plan', () => {
+      // Set up state where requirements is completed and master_plan is in_progress
       const state = makeScaffoldedState();
+      (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+      (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
       (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
 
       const docPath = path.posix.join(PROJECT_DIR, 'tasks', 'MASTER-PLAN.md');
@@ -387,7 +389,7 @@ describe('engine – processEvent', () => {
       const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
 
       expect(result.success).toBe(true);
-      expect(result.action).toBe('request_plan_approval');
+      expect(result.action).toBe('explode_master_plan');
 
       const mpNode = io.currentState!.graph.nodes['master_plan'] as StepNodeState;
       expect(mpNode.status).toBe('completed');
@@ -399,9 +401,12 @@ describe('engine – processEvent', () => {
     it('plan_approved flows through walkDAG gate, returns null action, persists state', () => {
       const state = makeScaffoldedState();
 
-      // Mark master plan as completed
+      // Mark all planning steps as completed
+      (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+      (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
       (state.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
       (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/tmp/master-plan.md';
+      (state.graph.nodes['explode_master_plan'] as StepNodeState).status = 'completed';
 
       // plan_approval_gate ready to be approved
       (state.graph.nodes['plan_approval_gate'] as GateNodeState).status = 'not_started';
@@ -578,9 +583,12 @@ describe('engine – processEvent', () => {
     it('standard route validates state after walkDAG — does not write on failure', () => {
       const state = makeScaffoldedState();
 
-      // Mark master_plan as completed
+      // Mark all planning steps as completed
+      (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+      (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
       (state.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
       (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/tmp/master-plan.md';
+      (state.graph.nodes['explode_master_plan'] as StepNodeState).status = 'completed';
       (state.graph.nodes['plan_approval_gate'] as GateNodeState).status = 'not_started';
 
       // Provide a master plan doc that declares phases, so walkDAG can expand
@@ -962,9 +970,13 @@ describe('wrappedReadDocument – relative path resolution', () => {
     // Set up state where task_loop needs to expand using phase_planning.doc_path
     const state = makeScaffoldedState();
 
-    // Mark master_plan as completed
+    // Mark all planning steps and gates as completed
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
     (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/tmp/master-plan.md';
+    (state.graph.nodes['explode_master_plan'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['explode_master_plan'] as StepNodeState).doc_path = null;
     (state.graph.nodes['plan_approval_gate'] as GateNodeState).status = 'completed';
     (state.graph.nodes['plan_approval_gate'] as GateNodeState).gate_active = true;
     (state.graph.nodes['gate_mode_selection'] as GateNodeState).status = 'completed';
@@ -1020,8 +1032,12 @@ describe('wrappedReadDocument – relative path resolution', () => {
     // with one in-progress iteration where phase_planning has a traversal doc_path.
     const state = makeScaffoldedState();
 
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
     (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/tmp/master-plan.md';
+    (state.graph.nodes['explode_master_plan'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['explode_master_plan'] as StepNodeState).doc_path = null;
     (state.graph.nodes['plan_approval_gate'] as GateNodeState).status = 'completed';
     (state.graph.nodes['plan_approval_gate'] as GateNodeState).gate_active = true;
     (state.graph.nodes['gate_mode_selection'] as GateNodeState).status = 'completed';

@@ -784,10 +784,48 @@ Four shipped templates, tiered by review intensity. Plan approval gate (after pl
 
 ### Template version migration policy
 
-- ✅ **v1 templates (`default.yml`, `quick.yml`, `full.yml`) retire** with the v6 schema migration. All three v1 files deleted from `templates/` in the same release that ships v6. (`full.yml` was already deprecated and kept for back-compat; the four-tier replacement supersedes it.)
-- ✅ **`migrate-to-v6.ts` auto-rewrites `graph.template_id`** for in-flight projects: `default` → `extra-high`, `quick` → `low`, `full` → `extra-high`. Behavior preserved for any project mid-flight at migration time.
+- ✅ **v1 templates (`default.yml`, `quick.yml`, `full.yml`) retire** with the v6 schema migration. All three v1 files deleted from `templates/` in the same release that ships v6. (`full.yml` was already deprecated and kept for back-compat; the four-tier replacement supersedes it.) (superseded — retired ahead of v6 by TIERED-PROCESS-TEMPLATES, see addendum below)
+- ✅ **`migrate-to-v6.ts` auto-rewrites `graph.template_id`** for in-flight projects: `default` → `extra-high`, `quick` → `low`, `full` → `extra-high`. Behavior preserved for any project mid-flight at migration time. (superseded — see addendum below)
 - ✅ **`default_template` config field's sentinels remap** in code: the `default` value (the sentinel resolved by `template-resolver.ts`) now resolves to `extra-high`; `quick` resolves to `low`; `full` resolves to `extra-high`. `ask` sentinel ("prompt user at planning time") still works unchanged.
 - ✅ **No coexist period.** Clean cut. The release that ships v6 ships only the four tier templates.
+
+### Addendum — tier rename shipped via TIERED-PROCESS-TEMPLATES (2026-05-08)
+
+The tier-rename portion of this Wave 6 plan has shipped as a standalone
+project ahead of the v6 schema migration. The brainstorming, requirements,
+and master-plan documents for that project live in the operator's external
+project workspace (under the configured `projects.base_path`) and were not
+checked into this repo.
+
+What that project delivered:
+
+- Four tier templates (`extra-high.yml`, `high.yml`, `medium.yml`,
+  `low.yml`) replace `default.yml`, `quick.yml`, and `full.yml`.
+- `template-resolver.ts` config-sentinel remap (`default` →
+  `extra-high`, `quick` → `low`, `full` → `extra-high`) plus the new
+  hardcoded fallback (`extra-high`).
+- Config validator allowlist for `default_template` updated to the four
+  tier names plus `ask` plus the empty string.
+- `/rad-plan` SKILL.md re-authored end-to-end with two tool-routed
+  questions (tier + Project Size), `Custom` size option, tier-aware
+  `(Recommended)` markers per a monotonic mapping. `/rad-plan-quick`
+  retired.
+- One-time dogfood-only cleanup script reconciled in-flight projects
+  under the operator's configured `projects.base_path` and was `git
+  rm`'d before merge — end users were not in scope for migration
+  tooling.
+
+What that project did NOT deliver (still parked in GW-06):
+
+- Multi-repo commit/PR fan-out, two-pass PR creation, mid-flight
+  workspace expansion, source-control narrative-crafting upgrade.
+- v6 schema migration as a whole.
+
+`migrate-to-v6.ts`'s historical `template_id` rewrite logic
+(`default → extra-high`, `quick → low`, `full → extra-high`) is
+superseded by the standalone cleanup script that has already run.
+GW-06's remaining scope can drop the `template_id` rewrite line item
+when v6 lands.
 
 ### DAG structure changes for multi-repo
 

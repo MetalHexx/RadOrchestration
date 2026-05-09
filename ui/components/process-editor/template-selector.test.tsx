@@ -35,8 +35,8 @@ function setupDom(url: string): void {
     fetchCalls.push(url);
     return new Response(JSON.stringify({
       templates: [
-        { id: 'default', description: 'Canonical', version: '1.0.0' },
-        { id: 'quick', description: 'Quick mode', version: '1.0.0' },
+        { id: 'extra-high', description: 'Canonical', version: '1.0.0' },
+        { id: 'low', description: 'Low intensity', version: '1.0.0' },
         { id: 'old', description: 'Old', version: '0.1', status: 'deprecated' },
       ],
     }), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -130,36 +130,36 @@ describe('TemplateSelector', () => {
     await new Promise(r => setTimeout(r, 0));
     assert.deepEqual(fetchCalls, ['/api/templates']);
     const opts = Array.from(container.querySelectorAll('option')).map(o => o.value);
-    assert.ok(opts.includes('default'));
-    assert.ok(opts.includes('quick'));
+    assert.ok(opts.includes('extra-high'));
+    assert.ok(opts.includes('low'));
     assert.ok(!opts.includes('old'), 'deprecated template "old" must not appear in dropdown');
   });
 
   it('uses ?template from URL as the initial active id', async () => {
     let observed = '';
-    await render('/process-editor?template=quick', { onResolved: id => { observed = id; } });
+    await render('/process-editor?template=low', { onResolved: id => { observed = id; } });
     await new Promise(r => setTimeout(r, 0));
     const select = container.querySelector('select') as HTMLSelectElement;
-    assert.equal(select.value, 'quick');
-    assert.equal(observed, 'quick');
+    assert.equal(select.value, 'low');
+    assert.equal(observed, 'low');
   });
 
-  it('falls back to default when ?template is absent', async () => {
+  it('falls back to extra-high when ?template is absent', async () => {
     let observed = '';
     await render('/process-editor', { onResolved: id => { observed = id; } });
     await new Promise(r => setTimeout(r, 0));
     const select = container.querySelector('select') as HTMLSelectElement;
-    assert.equal(select.value, 'default');
-    assert.equal(observed, 'default');
+    assert.equal(select.value, 'extra-high');
+    assert.equal(observed, 'extra-high');
   });
 
-  it('falls back to default silently when ?template names an unknown id', async () => {
+  it('falls back to extra-high silently when ?template names an unknown id', async () => {
     let observed = '';
     await render('/process-editor?template=nonexistent', { onResolved: id => { observed = id; } });
     await new Promise(r => setTimeout(r, 0));
     const errEl = container.querySelector('[role="alert"]');
     assert.equal(errEl, null, 'no error toast or banner for unknown ?template');
-    assert.equal(observed, 'default');
+    assert.equal(observed, 'extra-high');
   });
 
   it('never resolves to an unknown id even transiently (no canvas-error flash for ?template=nonexistent)', async () => {
@@ -175,28 +175,28 @@ describe('TemplateSelector', () => {
       !resolvedHistory.includes('nonexistent'),
       `onResolved must never receive 'nonexistent'; got history ${JSON.stringify(resolvedHistory)}`,
     );
-    assert.deepEqual(resolvedHistory, ['default']);
+    assert.deepEqual(resolvedHistory, ['extra-high']);
   });
 
   it('reflects a requestedTemplateId prop change after mount (back/forward navigation)', async () => {
     // F-R1-1 symptom 1: the prior implementation seeded activeTemplateId via
-    // useState(initialTemplateId || 'default'), so a later prop change from
+    // useState(initialTemplateId || 'extra-high'), so a later prop change from
     // useSearchParams was ignored. The fix is to derive the requested id from
     // the URL on every render and let the selector recompute resolved.
     const ref = React.createRef<HarnessHandle>();
-    await renderWithRef('/process-editor?template=quick', ref);
+    await renderWithRef('/process-editor?template=low', ref);
     await new Promise(r => setTimeout(r, 0));
     let select = container.querySelector('select') as HTMLSelectElement;
-    assert.equal(select.value, 'quick');
-    assert.equal(resolvedHistory.at(-1), 'quick');
+    assert.equal(select.value, 'low');
+    assert.equal(resolvedHistory.at(-1), 'low');
 
     await act(async () => {
-      ref.current!.setRequested('default');
+      ref.current!.setRequested('extra-high');
     });
     await new Promise(r => setTimeout(r, 0));
     select = container.querySelector('select') as HTMLSelectElement;
-    assert.equal(select.value, 'default', 'select.value must follow the new requested id');
-    assert.equal(resolvedHistory.at(-1), 'default', 'onResolved must fire for the new resolved id');
+    assert.equal(select.value, 'extra-high', 'select.value must follow the new requested id');
+    assert.equal(resolvedHistory.at(-1), 'extra-high', 'onResolved must fire for the new resolved id');
   });
 
   it('shows a deprecated template that arrives via direct URL but does not add it to the dropdown options list', async () => {
@@ -209,10 +209,10 @@ describe('TemplateSelector', () => {
     // matching <option> exists, so checking select.value alone can't catch a
     // broken showActiveAsExtra. Real browsers require a matching option.
     const opts = Array.from(container.querySelectorAll('option')).map(o => o.value);
-    assert.ok(opts.includes('default'));
-    assert.ok(opts.includes('quick'));
+    assert.ok(opts.includes('extra-high'));
+    assert.ok(opts.includes('low'));
     assert.ok(opts.includes('old'), 'deprecated active id must appear as extra option');
-    assert.equal(opts.length, 3, 'exactly default, quick, old when deprecated id is active');
+    assert.equal(opts.length, 3, 'exactly extra-high, low, old when deprecated id is active');
     assert.equal(select.value, 'old');
     assert.equal(observed, 'old');
   });
@@ -223,14 +223,14 @@ describe('TemplateSelector', () => {
     await new Promise(r => setTimeout(r, 0));
     const select = container.querySelector('select') as HTMLSelectElement;
     await act(async () => {
-      select.value = 'quick';
+      select.value = 'low';
       select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
     });
     // Harness routerReplace updates the simulated URL and re-renders, which
-    // triggers a fresh resolution and an onResolved('quick') call.
+    // triggers a fresh resolution and an onResolved('low') call.
     await new Promise(r => setTimeout(r, 0));
-    assert.equal(observed, 'quick');
-    assert.ok(lastReplaceUrl && lastReplaceUrl.includes('template=quick'), `expected URL to contain template=quick, got ${lastReplaceUrl}`);
+    assert.equal(observed, 'low');
+    assert.ok(lastReplaceUrl && lastReplaceUrl.includes('template=low'), `expected URL to contain template=low, got ${lastReplaceUrl}`);
   });
 
   it('renders a visible label "Template" associated with the select', async () => {
@@ -242,14 +242,14 @@ describe('TemplateSelector', () => {
     assert.ok(select.id && label!.getAttribute('for') === select.id);
   });
 
-  it('contains fetch rejection: surfaces an alert, falls back to default, and emits no unhandled rejection', async () => {
+  it('contains fetch rejection: surfaces an alert, falls back to extra-high, and emits no unhandled rejection', async () => {
     // F-R2-2: the load() effect previously had only try/finally, so a rejected
     // fetch (network error) escaped as an unhandledrejection. The fix adds a
     // catch that records the error and renders <span role="alert">.
     //
     // Test posture: install a process-level unhandledRejection listener that
     // counts events, then render with a rejecting fetch. Assert alert visible,
-    // onResolved fired with 'default' (silent fallback), and counter still 0.
+    // onResolved fired with 'extra-high' (silent fallback), and counter still 0.
     setupDom('/process-editor');
     (globalThis as unknown as { fetch: typeof fetch }).fetch = (async () => {
       throw new Error('network down');
@@ -278,17 +278,17 @@ describe('TemplateSelector', () => {
       const errEl = container.querySelector('[role="alert"]');
       assert.ok(errEl, 'alert element must be present after fetch rejection');
       assert.match(errEl!.textContent ?? '', /Failed to load templates/);
-      assert.equal(observed, 'default', 'onResolved must fall back to default on fetch error');
+      assert.equal(observed, 'extra-high', 'onResolved must fall back to extra-high on fetch error');
       assert.equal(unhandledCount, 0, 'no unhandledRejection event should fire');
 
       // F-R3-2: even with templates=[] the dropdown must render the resolved id as
       // a fallback option and disable interaction so the user is not left with a
-      // blank-but-enabled <select> while the canvas silently shows 'default'.
+      // blank-but-enabled <select> while the canvas silently shows 'extra-high'.
       const select = container.querySelector('select') as HTMLSelectElement;
-      assert.equal(select.value, 'default', 'select must reflect the resolved fallback id');
+      assert.equal(select.value, 'extra-high', 'select must reflect the resolved fallback id');
       assert.equal(select.disabled, true, 'select must be disabled when fetch failed');
       const opts = Array.from(container.querySelectorAll('option')).map(o => o.value);
-      assert.ok(opts.includes('default'), 'default option must be present so select is not blank');
+      assert.ok(opts.includes('extra-high'), 'extra-high option must be present so select is not blank');
     } finally {
       process.off('unhandledRejection', listener);
     }

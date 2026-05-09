@@ -15,7 +15,7 @@ import type {
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/full.yml');
+const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/extra-high.yml');
 const PROJECT_DIR = '/tmp/test-project/INTEGRATION-TEST';
 const ORCH_ROOT = path.resolve(__dirname, '../../../..');
 
@@ -38,7 +38,7 @@ const DEFAULT_CONFIG: OrchestrationConfig = {
     auto_pr: 'ask',
     provider: 'github',
   },
-  default_template: 'full',
+  default_template: 'extra-high',
 };
 
 // Map of doc_path → document content used by mock readDocument
@@ -179,6 +179,9 @@ describe('Planning-tier — individual step checks', () => {
 
   it('master_plan_started sets graph.status to in_progress', () => {
     const state = makeScaffoldedState();
+    // requirements must be completed for master_plan_started to advance master_plan
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
     const io = createMockIO(state);
 
     const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
@@ -189,6 +192,9 @@ describe('Planning-tier — individual step checks', () => {
 
   it('master_plan_started sets master_plan.status to in_progress', () => {
     const state = makeScaffoldedState();
+    // requirements must be completed for master_plan_started to advance master_plan
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
     const io = createMockIO(state);
 
     const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
@@ -198,8 +204,10 @@ describe('Planning-tier — individual step checks', () => {
     expect(n.status).toBe('in_progress');
   });
 
-  it('master_plan_completed stores doc_path and returns request_plan_approval', () => {
+  it('master_plan_completed stores doc_path and returns explode_master_plan', () => {
     const state = makeScaffoldedState();
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
     const docPath = path.posix.join(PROJECT_DIR, 'master-plan.md');
     seedDoc(docPath, { total_phases: 1 });
@@ -208,7 +216,7 @@ describe('Planning-tier — individual step checks', () => {
     const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
 
     expect(result.success).toBe(true);
-    expect(result.action).toBe('request_plan_approval');
+    expect(result.action).toBe('explode_master_plan');
     const n = io.currentState!.graph.nodes['master_plan'] as StepNodeState;
     expect(n.status).toBe('completed');
     expect(n.doc_path).toBe(docPath);
@@ -216,9 +224,12 @@ describe('Planning-tier — individual step checks', () => {
 
   it('plan_approved sets plan_approval_gate.gate_active to true', () => {
     const state = makeScaffoldedState();
-    // Mark master_plan completed so plan_approval_gate deps are met
+    // Mark all planning steps completed so plan_approval_gate deps are met
+    (state.graph.nodes['requirements'] as StepNodeState).status = 'completed';
+    (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'completed';
     (state.graph.nodes['master_plan'] as StepNodeState).doc_path = '/tmp/master_plan.md';
+    (state.graph.nodes['explode_master_plan'] as StepNodeState).status = 'completed';
     const io = createMockIO(state);
     DOC_STORE['/tmp/master_plan.md'] = {
       frontmatter: { total_phases: 3, total_tasks: 6 },

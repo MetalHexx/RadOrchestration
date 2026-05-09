@@ -1,6 +1,6 @@
-# quick-pipeline-e2e
+# low-pipeline-e2e
 
-End-to-end regression harness for the `quick.yml` planning chain.
+End-to-end regression harness for the `low.yml` planning chain.
 
 ## What it tests
 
@@ -13,7 +13,7 @@ requirements_started → spawn_requirements (@planner) →
       plan_approval_gate  ← HALT
 ```
 
-The planning chain is identical to `default.yml` by design (quick is pure subtraction on the execution side), so this harness primarily catches drift that is quick-specific: template-resolver picking up `quick.yml`, `--template quick` flowing through to state, and the wrap-up chain remaining intact post-halt-state on the YAML side.
+The planning chain is identical to `extra-high.yml` by design (low is pure subtraction on the execution side), so this harness primarily catches drift that is low-specific: template-resolver picking up `low.yml`, `--template low` flowing through to state, and the wrap-up chain remaining intact post-halt-state on the YAML side.
 
 ## How to run
 
@@ -34,7 +34,7 @@ The session must NOT approve the gate. The halt IS the success condition.
 
 After the halt:
 
-1. `state.graph.template_id === "quick"` and the snapshotted `template.yml` in the run folder matches `quick.yml`.
+1. `state.graph.template_id === "low"` and the snapshotted `template.yml` in the run folder matches `low.yml`.
 2. `state.graph.nodes.requirements.status === "completed"`
 3. `state.graph.nodes.master_plan.status === "completed"` and `master_plan.parse_retry_count === 0`
 4. `state.graph.nodes.explode_master_plan.status === "completed"`
@@ -43,4 +43,4 @@ After the halt:
 7. Both linters return `ok: true` against the emitted docs.
 8. `lint-report.md` and `run-notes.md` present in the run folder.
 
-Token cost: per `_runner.md`, this run invokes `@planner` at most twice — once for Requirements, once for the Master Plan — matching `plan-pipeline-e2e`'s cost profile (NFR-4).
+Token cost: per `_runner.md`, this run invokes `@planner` at most twice — once for Requirements, once for the Master Plan — matching `extra-high-pipeline-e2e`'s cost profile (NFR-4).

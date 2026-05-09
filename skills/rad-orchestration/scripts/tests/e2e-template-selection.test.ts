@@ -33,7 +33,7 @@ function makeConfig(overrides: Partial<OrchestrationConfig> = {}): Orchestration
     limits: { max_phases: 10, max_tasks_per_phase: 8, max_retries_per_task: 2, max_consecutive_review_rejections: 3 },
     human_gates: { after_planning: true, execution_mode: 'ask', after_final_review: true },
     source_control: { auto_commit: 'ask', auto_pr: 'ask', provider: 'github' },
-    default_template: 'default',
+    default_template: 'extra-high',
     ...overrides,
   };
 }
@@ -73,89 +73,87 @@ describe('e2e: template selection and loading', () => {
     }
   });
 
-  it('CLI --template default resolves to { templateName: "default", source: "cli" } and path points to default.yml', () => {
+  it('CLI --template extra-high resolves to { templateName: "extra-high", source: "cli" } and path points to extra-high.yml', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-template-'));
-    const result = resolveTemplateName(null, 'default', makeConfig(), tmpDir, TEMPLATES_DIR);
-    expect(result.templateName).toBe('default');
+    const result = resolveTemplateName(null, 'extra-high', makeConfig(), tmpDir, TEMPLATES_DIR);
+    expect(result.templateName).toBe('extra-high');
     expect(result.source).toBe('cli');
-    expect(result.templatePath.endsWith('default.yml')).toBe(true);
+    expect(result.templatePath.endsWith('extra-high.yml')).toBe(true);
   });
 
-  it('config.default_template: "default" resolves to { templateName: "default", source: "config" } when no state or CLI arg', () => {
+  it('config.default_template: "extra-high" resolves to { templateName: "extra-high", source: "config" } when no state or CLI arg', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-template-'));
-    const result = resolveTemplateName(null, undefined, makeConfig({ default_template: 'default' }), tmpDir, TEMPLATES_DIR);
-    expect(result.templateName).toBe('default');
+    const result = resolveTemplateName(null, undefined, makeConfig({ default_template: 'extra-high' }), tmpDir, TEMPLATES_DIR);
+    expect(result.templateName).toBe('extra-high');
     expect(result.source).toBe('config');
   });
 
-  it('resolved template path loads via loadTemplate() without errors and returns template.template.id === "default"', () => {
+  it('resolved template path loads via loadTemplate() without errors and returns template.template.id === "extra-high"', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-template-'));
-    const result = resolveTemplateName(null, 'default', makeConfig(), tmpDir, TEMPLATES_DIR);
+    const result = resolveTemplateName(null, 'extra-high', makeConfig(), tmpDir, TEMPLATES_DIR);
     const loaded = loadTemplate(result.templatePath);
-    expect(loaded.template.template.id).toBe('default');
+    expect(loaded.template.template.id).toBe('extra-high');
   });
 
-  it('fallback chain — state absent, CLI absent, config.default_template: "" resolves to default (source: default)', () => {
+  it('fallback chain — state absent, CLI absent, config.default_template: "" resolves to extra-high (source: default)', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-template-'));
     const result = resolveTemplateName(null, undefined, makeConfig({ default_template: '' }), tmpDir, TEMPLATES_DIR);
     expect(result.source).toBe('default');
-    expect(result.templateName).toBe('default');
+    expect(result.templateName).toBe('extra-high');
     const loaded = loadTemplate(result.templatePath);
-    expect(loaded.template.template.id).toBe('default');
+    expect(loaded.template.template.id).toBe('extra-high');
   });
 
-  it('fallback chain — state absent, CLI absent, config.default_template: "ask" resolves to default (source: default)', () => {
+  it('fallback chain — state absent, CLI absent, config.default_template: "ask" resolves to extra-high (source: default)', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-template-'));
     const result = resolveTemplateName(null, undefined, makeConfig({ default_template: 'ask' }), tmpDir, TEMPLATES_DIR);
     expect(result.source).toBe('default');
-    expect(result.templateName).toBe('default');
+    expect(result.templateName).toBe('extra-high');
     const loaded = loadTemplate(result.templatePath);
-    expect(loaded.template.template.id).toBe('default');
+    expect(loaded.template.template.id).toBe('extra-high');
   });
 
-  // ── full.yml escape-hatch regression coverage ──────────────────────────────
-
-  it('CLI --template full still resolves to full.yml (escape hatch — full.yml retained deprecated)', () => {
+  it('CLI --template low resolves to low.yml', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-template-'));
-    const result = resolveTemplateName(null, 'full', makeConfig(), tmpDir, TEMPLATES_DIR);
-    expect(result.templateName).toBe('full');
+    const result = resolveTemplateName(null, 'low', makeConfig(), tmpDir, TEMPLATES_DIR);
+    expect(result.templateName).toBe('low');
     expect(result.source).toBe('cli');
-    expect(result.templatePath.endsWith('full.yml')).toBe(true);
+    expect(result.templatePath.endsWith('low.yml')).toBe(true);
     const loaded = loadTemplate(result.templatePath);
-    expect(loaded.template.template.id).toBe('full');
+    expect(loaded.template.template.id).toBe('low');
   });
 
-  it('config.default_template: "full" still resolves to full.yml (escape hatch)', () => {
+  it('config.default_template: "low" resolves to low.yml', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-template-'));
-    const result = resolveTemplateName(null, undefined, makeConfig({ default_template: 'full' }), tmpDir, TEMPLATES_DIR);
-    expect(result.templateName).toBe('full');
+    const result = resolveTemplateName(null, undefined, makeConfig({ default_template: 'low' }), tmpDir, TEMPLATES_DIR);
+    expect(result.templateName).toBe('low');
     expect(result.source).toBe('config');
     const loaded = loadTemplate(result.templatePath);
-    expect(loaded.template.template.id).toBe('full');
+    expect(loaded.template.template.id).toBe('low');
   });
 
   it('full priority chain: state > CLI > config > default', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-template-'));
 
     // state beats CLI and config
-    const r1 = resolveTemplateName(makeState('full'), 'default', makeConfig({ default_template: 'default' }), tmpDir, TEMPLATES_DIR);
+    const r1 = resolveTemplateName(makeState('low'), 'extra-high', makeConfig({ default_template: 'extra-high' }), tmpDir, TEMPLATES_DIR);
     expect(r1.source).toBe('state');
-    expect(r1.templateName).toBe('full');
+    expect(r1.templateName).toBe('low');
 
     // CLI beats config
-    const r2 = resolveTemplateName(null, 'full', makeConfig({ default_template: 'default' }), tmpDir, TEMPLATES_DIR);
+    const r2 = resolveTemplateName(null, 'low', makeConfig({ default_template: 'extra-high' }), tmpDir, TEMPLATES_DIR);
     expect(r2.source).toBe('cli');
-    expect(r2.templateName).toBe('full');
+    expect(r2.templateName).toBe('low');
 
     // config beats default
-    const r3 = resolveTemplateName(null, undefined, makeConfig({ default_template: 'full' }), tmpDir, TEMPLATES_DIR);
+    const r3 = resolveTemplateName(null, undefined, makeConfig({ default_template: 'low' }), tmpDir, TEMPLATES_DIR);
     expect(r3.source).toBe('config');
-    expect(r3.templateName).toBe('full');
+    expect(r3.templateName).toBe('low');
 
     // default fallback when no state or CLI, and config.default_template is 'ask'
     const r4 = resolveTemplateName(null, undefined, makeConfig({ default_template: 'ask' }), tmpDir, TEMPLATES_DIR);
     expect(r4.source).toBe('default');
-    expect(r4.templateName).toBe('default');
+    expect(r4.templateName).toBe('extra-high');
   });
 });
 
@@ -198,9 +196,9 @@ function createMockIO(
   };
 }
 
-// ── E2E: default Template Pipeline Processing ────────────────────────────────
+// ── E2E: extra-high Template Pipeline Processing ──────────────────────────────
 
-describe('e2e: default template pipeline processing', () => {
+describe('e2e: extra-high template pipeline processing', () => {
   let tmpDir: string;
 
   afterEach(() => {
@@ -209,23 +207,23 @@ describe('e2e: default template pipeline processing', () => {
     }
   });
 
-  it('processEvent start with null state and default config scaffolds on default.yml', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-default-'));
+  it('processEvent start with null state and default config scaffolds on extra-high.yml', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-extra-high-'));
     const io = createMockIO(null, makeConfig());
     const result = processEvent('start', tmpDir, {}, io);
     expect(result.success).toBe(true);
     expect(Object.values(NEXT_ACTIONS)).toContain(result.action);
-    expect(io.currentState!.graph.template_id).toBe('default');
+    expect(io.currentState!.graph.template_id).toBe('extra-high');
   });
 
-  it('processEvent start with --template default scaffolds state with template_id: default and the default.yml node tree', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-default-'));
+  it('processEvent start with --template extra-high scaffolds state with template_id: extra-high and the extra-high.yml node tree', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-extra-high-'));
     const io = createMockIO(null);
-    const result = processEvent('start', tmpDir, { template: 'default' }, io);
+    const result = processEvent('start', tmpDir, { template: 'extra-high' }, io);
     expect(result.success).toBe(true);
-    expect(io.currentState!.graph.template_id).toBe('default');
+    expect(io.currentState!.graph.template_id).toBe('extra-high');
 
-    // Assert the default.yml top-level node tree is present in scaffolded state.
+    // Assert the extra-high.yml top-level node tree is present in scaffolded state.
     const nodes = io.currentState!.graph.nodes;
     for (const nodeId of [
       'requirements',
@@ -242,18 +240,18 @@ describe('e2e: default template pipeline processing', () => {
     }
   });
 
-  it('default template first action is spawn_requirements (Requirements is the top node)', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-default-'));
+  it('extra-high template first action is spawn_requirements (Requirements is the top node)', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-extra-high-'));
     const io = createMockIO(null);
-    const result = processEvent('start', tmpDir, { template: 'default' }, io);
+    const result = processEvent('start', tmpDir, { template: 'extra-high' }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_requirements');
   });
 });
 
-// ── E2E: full template pipeline processing (regression — escape hatch) ───────
+// ── E2E: low template pipeline processing ─────────────────────────────────────
 
-describe('e2e: full template pipeline processing', () => {
+describe('e2e: low template pipeline processing', () => {
   let tmpDir: string;
 
   afterEach(() => {
@@ -262,21 +260,83 @@ describe('e2e: full template pipeline processing', () => {
     }
   });
 
-  it('processEvent start with --template full scaffolds state with template_id: full', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-full-'));
+  it('processEvent start with --template low scaffolds state with template_id: low', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-low-'));
     const io = createMockIO(null);
-    const result = processEvent('start', tmpDir, { template: 'full' }, io);
+    const result = processEvent('start', tmpDir, { template: 'low' }, io);
     expect(result.success).toBe(true);
     expect(Object.values(NEXT_ACTIONS)).toContain(result.action);
-    expect(io.currentState!.graph.template_id).toBe('full');
+    expect(io.currentState!.graph.template_id).toBe('low');
   });
 
-  it('full template scaffolded state contains master_plan, plan_approval_gate, phase_loop', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-full-'));
+  it('low template scaffolded state contains requirements, plan_approval_gate, phase_loop', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-low-'));
     const io = createMockIO(null);
-    processEvent('start', tmpDir, { template: 'full' }, io);
+    processEvent('start', tmpDir, { template: 'low' }, io);
     const nodes = io.currentState!.graph.nodes;
-    for (const nodeId of ['master_plan', 'plan_approval_gate', 'phase_loop']) {
+    for (const nodeId of ['requirements', 'plan_approval_gate', 'phase_loop']) {
+      expect(nodes).toHaveProperty(nodeId);
+    }
+  });
+});
+
+// ── E2E: medium template pipeline processing ──────────────────────────────────
+
+describe('e2e: medium template pipeline processing', () => {
+  let tmpDir: string;
+
+  afterEach(() => {
+    if (tmpDir && fs.existsSync(tmpDir)) {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('processEvent start with --template medium scaffolds state with template_id: medium', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-medium-'));
+    const io = createMockIO(null);
+    const result = processEvent('start', tmpDir, { template: 'medium' }, io);
+    expect(result.success).toBe(true);
+    expect(Object.values(NEXT_ACTIONS)).toContain(result.action);
+    expect(io.currentState!.graph.template_id).toBe('medium');
+  });
+
+  it('medium template scaffolded state contains requirements, plan_approval_gate, phase_loop', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-medium-'));
+    const io = createMockIO(null);
+    processEvent('start', tmpDir, { template: 'medium' }, io);
+    const nodes = io.currentState!.graph.nodes;
+    for (const nodeId of ['requirements', 'plan_approval_gate', 'phase_loop']) {
+      expect(nodes).toHaveProperty(nodeId);
+    }
+  });
+});
+
+// ── E2E: high template pipeline processing ────────────────────────────────────
+
+describe('e2e: high template pipeline processing', () => {
+  let tmpDir: string;
+
+  afterEach(() => {
+    if (tmpDir && fs.existsSync(tmpDir)) {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('processEvent start with --template high scaffolds state with template_id: high', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-high-'));
+    const io = createMockIO(null);
+    const result = processEvent('start', tmpDir, { template: 'high' }, io);
+    expect(result.success).toBe(true);
+    expect(Object.values(NEXT_ACTIONS)).toContain(result.action);
+    expect(io.currentState!.graph.template_id).toBe('high');
+  });
+
+  it('high template scaffolded state contains requirements, plan_approval_gate, phase_loop', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-high-'));
+    const io = createMockIO(null);
+    processEvent('start', tmpDir, { template: 'high' }, io);
+    const nodes = io.currentState!.graph.nodes;
+    for (const nodeId of ['requirements', 'plan_approval_gate', 'phase_loop']) {
       expect(nodes).toHaveProperty(nodeId);
     }
   });
@@ -295,32 +355,32 @@ describe('e2e: isProjectLocal template resolution', () => {
 
   it('resolveTemplatePath returns isProjectLocal: true when template.yml exists in project dir', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-local-'));
-    snapshotTemplate(path.join(TEMPLATES_DIR, 'default.yml'), tmpDir);
-    const result = resolveTemplatePath('default', tmpDir, TEMPLATES_DIR);
+    snapshotTemplate(path.join(TEMPLATES_DIR, 'extra-high.yml'), tmpDir);
+    const result = resolveTemplatePath('extra-high', tmpDir, TEMPLATES_DIR);
     expect(result.isProjectLocal).toBe(true);
     expect(path.resolve(result.path)).toBe(path.resolve(tmpDir, 'template.yml'));
   });
 
   it('resolveTemplatePath returns isProjectLocal: false when no template.yml exists in project dir', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-local-'));
-    const result = resolveTemplatePath('default', tmpDir, TEMPLATES_DIR);
+    const result = resolveTemplatePath('extra-high', tmpDir, TEMPLATES_DIR);
     expect(result.isProjectLocal).toBe(false);
   });
 
   it('resolveTemplateName returns isProjectLocal: true when project-local template exists', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-local-'));
-    snapshotTemplate(path.join(TEMPLATES_DIR, 'default.yml'), tmpDir);
+    snapshotTemplate(path.join(TEMPLATES_DIR, 'extra-high.yml'), tmpDir);
     const result = resolveTemplateName(null, undefined, makeConfig(), tmpDir, TEMPLATES_DIR);
     expect(result.isProjectLocal).toBe(true);
   });
 
-  it('processEvent start with project-local default.yml snapshot succeeds', () => {
+  it('processEvent start with project-local extra-high.yml snapshot succeeds', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-local-'));
-    snapshotTemplate(path.join(TEMPLATES_DIR, 'default.yml'), tmpDir);
+    snapshotTemplate(path.join(TEMPLATES_DIR, 'extra-high.yml'), tmpDir);
     const io = createMockIO(null);
     const result = processEvent('start', tmpDir, {}, io);
     expect(result.success).toBe(true);
-    expect(io.currentState!.graph.template_id).toBe('default');
+    expect(io.currentState!.graph.template_id).toBe('extra-high');
   });
 });
 
@@ -335,26 +395,34 @@ describe('e2e: default_template config resolution', () => {
     }
   });
 
-  it('default_template: default in config causes processEvent to scaffold default template', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-default-'));
+  it('default_template: "default" in config remaps to extra-high template', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-extra-high-'));
     const io = createMockIO(null, makeConfig({ default_template: 'default' }));
     const result = processEvent('start', tmpDir, {}, io);
     expect(result.success).toBe(true);
-    expect(io.currentState!.graph.template_id).toBe('default');
+    expect(io.currentState!.graph.template_id).toBe('extra-high');
   });
 
-  it('default_template: full in config causes processEvent to scaffold full template (escape hatch)', () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-default-'));
+  it('default_template: "quick" in config remaps to low template', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-low-'));
+    const io = createMockIO(null, makeConfig({ default_template: 'quick' }));
+    const result = processEvent('start', tmpDir, {}, io);
+    expect(result.success).toBe(true);
+    expect(io.currentState!.graph.template_id).toBe('low');
+  });
+
+  it('default_template: "full" in config remaps to extra-high template', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-extra-high-'));
     const io = createMockIO(null, makeConfig({ default_template: 'full' }));
     const result = processEvent('start', tmpDir, {}, io);
     expect(result.success).toBe(true);
-    expect(io.currentState!.graph.template_id).toBe('full');
+    expect(io.currentState!.graph.template_id).toBe('extra-high');
   });
 });
 
-// ── E2E smoke: drive default.yml end-to-end from start to final_approved ─────
+// ── E2E smoke: drive extra-high.yml end-to-end from start to final_approved ──
 //
-// This test is the iteration's keystone evidence: a mock project on default.yml
+// This test is the iteration's keystone evidence: a mock project on extra-high.yml
 // scaffolded from null state and driven through every node to completion.
 //
 // Drive sequence: start → requirements_completed → master_plan_completed →
@@ -365,7 +433,7 @@ describe('e2e: default_template config resolution', () => {
 // phase_gate_approved (auto, autonomous) → final_review_completed (approved) →
 // pr_created → final_approved → display_complete.
 
-describe('e2e: default.yml full-pipeline smoke test', () => {
+describe('e2e: extra-high.yml full-pipeline smoke test', () => {
   let PROJECT_DIR: string;
   const DOC_STORE: Record<string, { frontmatter: Record<string, unknown>; content: string }> = {};
 
@@ -396,7 +464,7 @@ describe('e2e: default.yml full-pipeline smoke test', () => {
   }
 
   beforeEach(() => {
-    PROJECT_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'DEFAULT-YML-E2E-'));
+    PROJECT_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'EXTRA-HIGH-E2E-'));
     for (const key of Object.keys(DOC_STORE)) {
       delete DOC_STORE[key];
     }
@@ -408,14 +476,14 @@ describe('e2e: default.yml full-pipeline smoke test', () => {
     }
   });
 
-  it('drives default.yml from start → final_approved with every node reaching completed (1 phase, 1 task, autonomous)', () => {
+  it('drives extra-high.yml from start → final_approved with every node reaching completed (1 phase, 1 task, autonomous)', () => {
     const io = createMockIO(null, makeAutonomousConfig(), DOC_STORE);
 
     // ── start (scaffolds state) ────────────────────────────────────────────
-    let result = processEvent('start', PROJECT_DIR, { template: 'default' }, io);
+    let result = processEvent('start', PROJECT_DIR, { template: 'extra-high' }, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_requirements');
-    expect(io.currentState!.graph.template_id).toBe('default');
+    expect(io.currentState!.graph.template_id).toBe('extra-high');
 
     // ── requirements_started → requirements_completed ──────────────────────
     result = processEvent('requirements_started', PROJECT_DIR, {}, io);

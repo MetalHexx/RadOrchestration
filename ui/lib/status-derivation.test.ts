@@ -123,7 +123,7 @@ test('returns not_started when a planning node has failed status (intentional fa
   assert.strictEqual(derivePlanningStatus(nodes), 'not_started');
 });
 
-// ─── Iter 4: default.yml partial templates + legacy-project regression ──────
+// ─── Iter 4: extra-high.yml partial templates + legacy-project regression ──────
 
 test('Iter 4: new-project nodes (requirements + master_plan completed) → complete', () => {
   const nodes: NodesRecord = {

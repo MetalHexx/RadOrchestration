@@ -1,7 +1,7 @@
 template:
-  id: extra-high
+  id: medium
   version: "1.0.0"
-  description: "Canonical orchestration pipeline — Requirements → Master Plan → Explode → execution loop (tasks + phase review) → Final Review → PR → Final Approval."
+  description: "Medium review intensity — phase review + final review (no per-task review). Trusted team / well-understood scope; phase-level cross-task audit only."
 
 # ── Display & Routing Fields ─────────────────────────────────────────────────
 # Informational field (not consumed by the v5 DAG engine at runtime):
@@ -99,7 +99,7 @@ nodes:
             kind: conditional
             label: "Auto-Commit"
             condition:
-              config_ref: source_control.auto_commit
+              state_ref: pipeline.source_control.auto_commit
               operator: neq
               value: never
             branches:
@@ -112,23 +112,6 @@ nodes:
                   depends_on: []
               false: []
             depends_on: [task_executor]
-
-          - id: code_review
-            kind: step
-            label: "Code Review"
-            action: spawn_code_reviewer
-            events: { started: code_review_started, completed: code_review_completed }
-            doc_output_field: doc_path
-            depends_on: [commit_gate]
-
-          - id: task_gate
-            kind: gate
-            label: "Task Review Gate"
-            mode_ref: human_gates.execution_mode
-            action_if_needed: gate_task
-            approved_event: task_gate_approved
-            auto_approve_modes: [phase, autonomous]
-            depends_on: [code_review]
 
       - id: phase_review
         kind: step
@@ -161,7 +144,7 @@ nodes:
     kind: conditional
     label: "Auto-PR Gate"
     condition:
-      config_ref: source_control.auto_pr
+      state_ref: pipeline.source_control.auto_pr
       operator: neq
       value: never
     branches:

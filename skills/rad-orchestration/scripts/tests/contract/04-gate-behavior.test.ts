@@ -250,7 +250,7 @@ describe('[CONTRACT] Gate Behavior — Ask mode', () => {
 
 describe('[CONTRACT] Gate Behavior — Human gate (plan_approval_gate)', () => {
 
-  /** Drives to just past master_plan_completed so the plan_approval_gate is reached. */
+  /** Drives to just past explosion_completed so the plan_approval_gate is reached. */
   function driveToPlanGate(executionMode: string) {
     const cfg = createConfig({
       human_gates: { after_planning: true, execution_mode: executionMode, after_final_review: true },
@@ -258,13 +258,11 @@ describe('[CONTRACT] Gate Behavior — Human gate (plan_approval_gate)', () => {
     });
     const io = createMockIOWithConfig(null, cfg);
     processEvent('start', PROJECT_DIR, {}, io);
-    // Directly complete all planning nodes on the live state reference
+    // Directly complete planning through master_plan; the explosion_completed
+    // event below drives the walker past explode_master_plan to plan_approval_gate
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
-    const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
-    seedDoc(mpDoc);
-    // master_plan_completed fires the walker which reaches plan_approval_gate
-    return processEvent('master_plan_completed', PROJECT_DIR, { doc_path: mpDoc }, io);
+    return processEvent('explosion_completed', PROJECT_DIR, {}, io);
   }
 
   for (const mode of ['autonomous', 'phase', 'task', 'ask']) {

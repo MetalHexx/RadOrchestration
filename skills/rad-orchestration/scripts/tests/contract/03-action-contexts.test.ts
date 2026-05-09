@@ -5,6 +5,7 @@ import {
   createConfig,
   DOC_STORE,
   PROJECT_DIR,
+  completePlanningSteps,
   seedDoc,
   driveToExecutionWithConfig,
   driveTaskWith,
@@ -55,25 +56,25 @@ describe('[CONTRACT] Action Contexts — formatTaskId helper', () => {
   });
 });
 
-// ── [CONTRACT] Planning spawn actions (full template: master_plan only) ──
+// ── [CONTRACT] Planning spawn actions (extra-high template: requirements first) ──
 
 describe('[CONTRACT] Action Contexts — planning spawn actions (full template)', () => {
   // Planning-spawn context carries `repository_skills_block` (string) so the
   // orchestrator can inline the repo-skills manifest into the planner spawn
   // prompt. Value is content-dependent on the invoking repo, so we assert the
   // contract shape (string field present) rather than literal text.
-  it('first action is spawn_master_plan (master_plan is first planning node in full template)', () => {
+  it('first action is spawn_requirements (requirements is first planning node in extra-high template)', () => {
     const io = createMockIO(null);
     const result = processEvent('start', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
-    expect(result.action).toBe('spawn_master_plan');
+    expect(result.action).toBe('spawn_requirements');
     const ctx = result.context as Record<string, unknown>;
-    expect(ctx.step).toBe('master_plan');
+    expect(ctx.step).toBe('requirements');
     expect(typeof ctx.repository_skills_block).toBe('string');
     expect(Object.keys(ctx).sort()).toEqual(['repository_skills_block', 'step']);
   });
 
-  it('spawn_master_plan returns { step: "master_plan", repository_skills_block: <string> }', () => {
+  it('spawn_master_plan returns { step, repository_skills_block, limits } with limits sourced from config', () => {
     const io = createMockIO(null);
     processEvent('start', PROJECT_DIR, {}, io);
     const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
@@ -82,7 +83,13 @@ describe('[CONTRACT] Action Contexts — planning spawn actions (full template)'
     const ctx = result.context as Record<string, unknown>;
     expect(ctx.step).toBe('master_plan');
     expect(typeof ctx.repository_skills_block).toBe('string');
-    expect(Object.keys(ctx).sort()).toEqual(['repository_skills_block', 'step']);
+    // limits surfaced for spawn_master_plan only — orchestrator inlines
+    // these into the planner prompt as `## Plan Size Limits`.
+    expect(ctx.limits).toEqual({
+      max_phases: config.limits.max_phases,
+      max_tasks_per_phase: config.limits.max_tasks_per_phase,
+    });
+    expect(Object.keys(ctx).sort()).toEqual(['limits', 'repository_skills_block', 'step']);
   });
 });
 
@@ -208,14 +215,14 @@ describe('[CONTRACT] Action Contexts — task-level execution actions', () => {
 
 describe('[CONTRACT] Action Contexts — empty-context and terminal actions', () => {
   it('request_plan_approval returns {}', () => {
-    // Drive planning steps via state mutation + master_plan_completed event
+    // Drive all planning steps then fire explosion_completed to reach plan_approval_gate
     const io = createMockIO(null);
     processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
-    (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
-    const mpDocPath = '/tmp/master_plan.md';
-    seedDoc(mpDocPath);
-    const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: mpDocPath }, io);
+    // Complete requirements and master_plan, then fire explosion_completed to complete
+    // explode_master_plan and let the walker reach plan_approval_gate
+    completePlanningSteps(state, 'master_plan');
+    const result = processEvent('explosion_completed', PROJECT_DIR, {}, io);
     expect(result.success).toBe(true);
     expect(result.action).toBe('request_plan_approval');
     expect(result.context).toEqual({});

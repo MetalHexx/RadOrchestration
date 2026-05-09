@@ -413,7 +413,7 @@ function makeV5State(nodes: NodesRecord = {}): ProjectStateV5 {
       halt_reason: null,
     },
     graph: {
-      template_id: 'full',
+      template_id: 'extra-high',
       status: 'in_progress',
       current_node_path: null,
       nodes,

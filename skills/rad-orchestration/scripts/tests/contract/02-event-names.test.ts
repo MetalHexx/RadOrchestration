@@ -96,7 +96,7 @@ describe('[CONTRACT] Event Names — gate events', () => {
     const io = createMockIOWithConfig(null, config);
     processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
-    completePlanningSteps(state, 'master_plan');
+    completePlanningSteps(state, 'explode_master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
     seedDoc(mpDoc, { total_phases: 1, total_tasks: 2 });
     const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);

@@ -7,7 +7,7 @@ user-invocable: true
 
 ## Inputs:
 - `project_name`: $0 — The name of the new project to plan. (e.g., "DAG-PIPELINE-2")
-- `project_template`: $1 — The template to use for planning. (e.g., "default" or a custom template name if one exists)
+- `project_template`: $1 — The template to use for planning. (e.g., "extra-high" or a custom template name if one exists)
 
 ## Initialize
 You are an orchestrator. You'll be using the `rad-orchestration` skill for this project. Read the skill and prepare to use it for running the planning pipeline.
@@ -15,33 +15,104 @@ You are an orchestrator. You'll be using the `rad-orchestration` skill for this 
 ## Workflow:
 I have project goals I'd like to develop into a full scale plan.  
 
-## Step 1: Choose Project Template
-- If the `project_template` is a custom template name,
-  - Check if it exists in the `rad-orchestration` skill `/templates` directory.
-  - If it does, use it.
-  - If it doesn't, respond with an error message indicating the template was not found.
-- If no `project_template` is specified, use the askQuestions tool to ask the user which template they want to use. List available templates by reading the `rad-orchestration` skill's `/templates` directory. Store the user's choice as `project_template`. If the user does not choose a template, default to `default`.  Don't show any templates that are marked with `status: deprecated`.
+## Step 1: Choose Process Template (review intensity tier)
 
-## Step 2: Choose Task Size
-- Use the `askQuestions` tool to ask the user how large they want each task to be. ALWAYS present the following options (in your own words). The **(Recommended)** label moves based on the resolved `project_template`:
-  - When `project_template == "quick"`, attach **(Recommended)** to **Extra Large**.
-  - For all other templates (including `default`), attach **(Recommended)** to **Medium**.
-  - **Planner Decides** — no constraint; the planner agent sizes tasks using its own judgment
-  - **Small** — single file or function; Good for mission critical projects; Slow and expensive to execute.
-  - **Medium** — 2–4 files, one coherent unit of work; balanced scope and overhead
-  - **Large** — cross-cutting change or full feature slice; fewer tasks, higher complexity per task
-  - **Extra Large** — end-to-end feature per task; minimal process overhead, requires a capable model; Similar to a typical planning mode.
-- Store the result as `task_size_preference`.
+The four shipped tiers vary only in defensive review depth between planning
+and final approval. Plan approval, final review, and final approval are
+mandatory anchors in every tier.
+
+- If `project_template` was passed as an argument:
+  - If it matches one of the shipped tier names (`extra-high`, `high`,
+    `medium`, `low`) or is the name of a user-authored custom template
+    present in the `rad-orchestration` skill `/templates` directory, use
+    it.
+  - Otherwise respond with an error message indicating the template was
+    not found.
+- If no `project_template` was passed, use the `askQuestions` /
+  `AskUserQuestion` tool to ask the user which tier they want. Surface
+  every concrete option as an explicit labeled menu item — do NOT rely on
+  the auto-injected `Other` slot. The four options, with the
+  `(Recommended)` marker on `extra-high`:
+
+  | Option | Copy (two sentences max) |
+  |---|---|
+  | `extra-high` **(Recommended)** | Per-task code review + phase review + final review. Maximum defense in depth — for production-critical, regulated, or untrusted-contributor work. |
+  | `high` | Per-task code review + final review (no phase review). Per-task feedback matters; phase-level audit is redundant given task-level coverage. |
+  | `medium` | Phase review + final review (no per-task review). Trusted team or well-understood scope; keeps phase-level cross-task audit. |
+  | `low` | Final review only. Quick exploration, prototyping, hot fixes — final review still gates merge. |
+
+  The question's framing prose: "Which review-intensity tier should this
+  project run? Tier names map to defensive review depth; cost rises with
+  depth. Plan approval and final approval are mandatory in every tier."
+
+  Store the user's choice as `project_template`. The `(Recommended)`
+  marker is a hint, not a constraint — the user remains free to pick any
+  tier without warning.
+
+## Step 2: Choose Project Size (task and phase scope)
+
+Project Size scales task scope AND phase scope coherently as a single
+knob. The `(Recommended)` marker moves based on the tier resolved in
+Step 1 per this monotonic mapping:
+
+| Tier (Step 1) | Recommended Size |
+|---|---|
+| `extra-high` | Small |
+| `high` | Medium |
+| `medium` | Large |
+| `low` | Extra Large |
+
+More review depth steers toward smaller scope; less review depth steers
+toward larger scope. The marker is a hint, not a constraint — every size
+(including `Custom`) remains selectable in every tier and no warning
+fires for off-recommendation choices.
+
+Use the `askQuestions` / `AskUserQuestion` tool to ask the user the
+Project Size question. Surface every option as an explicit labeled menu
+item — do NOT rely on the auto-injected `Other` slot. Compute the
+`(Recommended)` marker from `project_template` and attach it to the one
+matching size.
+
+| Option | Copy (two sentences max) |
+|---|---|
+| `Small` | One coherent unit of work per task (2–4 files); 2–3 tasks per phase. Substantive but bounded; smallest scope without legacy one-file/one-function churn. |
+| `Medium` | Vertical slice or multiple coherent units per task (~5–8 files); 3–5 tasks per phase. Balanced scope and overhead. |
+| `Large` | Full feature slice or cross-cutting change per task; 4–6 tasks per phase. Fewer tasks, higher complexity per task. |
+| `Extra Large` | End-to-end feature per task; 1–2 tasks per phase, possibly single-phase. Minimal task count; requires a capable model. |
+| `Custom` | You describe the sizing criterion in your own words; the planner uses your prose as the task-scope target while still applying natural-seam judgment for phase boundaries. |
+
+The question's framing prose: "How big should each task be? Project Size
+scales task scope and phase scope together. The `(Recommended)` marker
+reflects the tier you picked in Step 1 — more review depth pairs with
+smaller scope — but every size remains selectable."
+
+Store the user's choice as `task_size_preference`. If the user picked
+`Custom`, immediately ask a follow-up question via `askQuestions` /
+`AskUserQuestion` collecting free-form prose (the question's `question`
+field: "Describe your sizing criterion in your own words — e.g. 'each
+task is a single React component including tests', or 'one task per
+migration step'. The planner will treat this as the authoritative
+scoping target for task scope while still applying natural-seam judgment
+for phase boundaries."). Store the user's prose verbatim and set
+`task_size_preference = "Custom: " + <prose>`.
+
+The planner always receives an explicit sizing signal — no deferral option.
 
 ## Step 3: Starting Message
 - Produce a nicely formatted and mildly enthusiastic message confirming the project name, template choice, and task size preference.
 - List planning steps by reading the template YAML: include only `kind: step` nodes that appear before the first `request_plan_approval` gate. Everything after that gate is execution, not planning.
 
 ## Step 4: Read Project Template
-- Start the planning pipeline and call needed CLI parameters to start the planning process, passing the chosen template as an argument (e.g., `--template default`).
-- If `task_size_preference` is anything other than **Planner Decides**, append the following as a plain prose instruction in the planner agent's spawn prompt:
-  > "Task size preference: {task_size_preference}. Size all tasks according to that tier per the sizing rubric in the master-plan workflow."
-- If **Planner Decides** was selected, pass no additional sizing instruction.
+- Start the planning pipeline and call needed CLI parameters to start the planning process, passing the chosen template as an argument (e.g., `--template <project_template>`).
+- The pipeline planner agent's spawn prompt always carries an explicit
+  sizing signal. Append one of the following as a plain prose instruction
+  in the planner agent's spawn prompt:
+  > "Task size preference: {task_size_preference}. Size all tasks
+  > according to that tier per the sizing rubric in the master-plan
+  > workflow."
+
+  When `task_size_preference` is a `Custom: …` string, the value flows
+  through verbatim — the planner treats the prose as authoritative.
 
 ## Step 5: Audit the plan
 - Dispatch a fresh subagent with the `rad-plan-audit` skill (full-audit

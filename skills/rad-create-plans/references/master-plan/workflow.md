@@ -84,21 +84,61 @@ becomes task-local and action-oriented.
    (layer boundary, independently deliverable slice). Tasks within a phase are
    the smallest unit a single coder agent will execute end-to-end.
 
-   **Task sizing rubric** — If the orchestrator's spawn prompt includes a
-   `Task size preference`, apply the corresponding scope below. If no
-   preference was passed ("Planner Decides"), use your own judgment.
+   **Plan size limits.** Your spawn prompt carries a `## Plan Size Limits`
+   section with `max_phases` and `max_tasks_per_phase` (sourced from
+   `orchestration.yml`). The breakdown must not exceed these. If natural
+   seams suggest more phases or more tasks in a phase than the limit
+   allows, consolidate — group more work per task, or fold thin phases
+   together — rather than overflow. The pipeline silently caps any excess
+   at expansion time, so overflow drops tail work without warning. Limits
+   are an outer bound the Project Size rubric below operates within.
 
-   | Tier | Task scope guidance |
-   |---|---|
-   | Small | One file or one function. Fine-grained, isolated. Maximize task count. |
-   | Medium | 2–4 files, one coherent unit of work. Balanced scope and overhead. |
-   | Large | Cross-cutting change or full feature slice. Fewer tasks, higher complexity per task. |
-   | Extra Large | End-to-end feature per task. Minimal task count; requires a capable model. |
-   | Planner Decides | No constraint — use judgment based on natural seams in the requirements. |
+   **Project Size rubric** — The orchestrator's spawn prompt passes a
+   `Task size preference` (one of `Small`, `Medium`, `Large`, `Extra Large`,
+   or a `Custom: …` prose string). Apply the corresponding scope below.
 
-   The tier governs scope per task, not step count within a task. TDD
+   | Size | Task scope | Tasks per phase |
+   |---|---|---|
+   | Small | One named, self-contained change — a function, a validator, a constant. Precise enough to title in five words. | 3–5 |
+   | Medium | A vertical slice through one layer: a module, a config section, a CLI command with its tests. | 2–4 |
+   | Large | A full feature slice touching multiple layers or subsystems end-to-end. | 2–3 |
+   | Extra Large | A standalone feature per task — scope that would be a phase at smaller sizes. Phases are thin wrappers. | 1–2 |
+   | Custom | User-supplied prose is the criterion; apply it literally. | Planner judges from natural seams. |
+
+   **Worked examples per size (code domain).**
+
+   - *Small* — "Add a `maxRetries` config field: extend the schema type, add a bounds-validator function (`1–10`), and write test cases covering boundary values." One coherent unit; the title names exactly what ships.
+
+   - *Medium* — "Author a password-reset flow: the `POST /auth/reset-request` endpoint, a signed-token generator, an email dispatch call, and integration tests for the happy path and expired-token case." A vertical slice through one layer; 2–4 such tasks make a phase.
+
+   - *Large* — "Add OAuth login end-to-end: provider redirect handler, callback + session persistence, error-state responses, and an integration test suite covering the full flow." Touches auth, session, and routing layers; 2–3 such tasks make a phase.
+
+   - *Extra Large* — "Build the full billing subsystem: plan-tier schema, Stripe webhook handler, invoice generation, customer portal redirect, and end-to-end smoke tests." Each task is what would be a phase at smaller sizes; 1–2 such tasks make a phase.
+
+   **Edge cases.**
+
+   - When natural seams fight the chosen size: respect the seams. If the
+     requirements force three independent slices but the size says
+     `Extra Large`, author three Extra Large tasks rather than one
+     monolithic task that hides the seams.
+   - When the chosen size produces fewer than 2 phases: that's fine for
+     `Extra Large`. Single-phase plans are explicitly supported.
+   - Phase scope is most meaningful in tiers with phase review
+     (`extra-high`, `medium`). In `high` and `low` (no phase review),
+     phase scope still affects pacing and commit cadence, but does not
+     affect review overhead — do not over-index on phase boundaries
+     in those tiers.
+
+   **Interpreting `Custom` prose.** When the spawn prompt carries a
+   `Task size preference: Custom: <user prose>` string, treat the prose
+   as the authoritative scoping criterion for task scope. Apply
+   natural-seam judgment for phase boundaries within the custom
+   criteria. Do not fall back to a rubric tier silently — the user
+   chose `Custom` precisely to override the rubric.
+
+   The size governs scope per task, not step count within a task. TDD
    structure (4 RED-GREEN steps) is always required for `code` tasks
-   regardless of tier.
+   regardless of size.
 
 4. Author a `## Introduction` section. Under that heading, write one or two
    short paragraphs (2–3 sentences each) covering what is being built and why,
@@ -122,6 +162,8 @@ becomes task-local and action-oriented.
    ```
 
    - Phase numbers are zero-padded two digits: `P01`, `P02`, ...
+   - Phase title: 3–6 words naming the deliverable. No verb-heavy procedure titles.
+   - Phase description: lead with what the phase delivers as a whole — the capability or system state that exists when all tasks complete. No task enumeration or file lists.
    - The `**Requirements:**` line on the phase heading lists the union of
      requirement IDs its tasks address.
    - The execution-order block is an ASCII dependency tree. Use indentation,
@@ -151,6 +193,10 @@ becomes task-local and action-oriented.
        Run: `npm test -- login.test.ts`
        Expected: PASS (FR-1)
    ```
+
+   **Title rule:** 4–7 words, imperative verb + outcome noun. Names what the task establishes, not what files it touches. Example: "Add rate-limit validator" not "Implement rate-limit validator function with allowlist constant and five test cases."
+
+   **Intro rule:** Lead with the outcome — what this task establishes or enables. No file paths, no step enumeration; those live in the steps below. Two sentences maximum. Example: "Align the prompt-test suite naming with the four-tier vocabulary." not "Rename `prompt-tests/plan-pipeline-e2e/` → `prompt-tests/extra-high-pipeline-e2e/` and update all internal references."
 
 7. Task rules:
    - `**Task type:**` is mandatory on every task. One of: `code` | `doc` |

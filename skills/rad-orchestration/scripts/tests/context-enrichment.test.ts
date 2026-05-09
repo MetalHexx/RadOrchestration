@@ -20,7 +20,7 @@ const config: OrchestrationConfig = {
     after_final_review: true,
   },
   source_control: { auto_commit: 'never', auto_pr: 'never', provider: 'github' },
-  default_template: 'full',
+  default_template: 'extra-high',
 };
 
 // ── State with source_control populated ───────────────────────────────────────
@@ -72,7 +72,7 @@ describe('enrichActionContext — planning spawn actions', () => {
     expect(Object.keys(result).sort()).toEqual(['repository_skills_block', 'step']);
   });
 
-  it('spawn_master_plan returns { step: "master_plan", repository_skills_block: <string> }', () => {
+  it('spawn_master_plan returns { step, repository_skills_block, limits } sourced from config.limits', () => {
     const state = createScaffoldedState();
     const result = enrichActionContext({
       action: 'spawn_master_plan',
@@ -83,7 +83,14 @@ describe('enrichActionContext — planning spawn actions', () => {
     });
     expect(result.step).toBe('master_plan');
     expect(typeof result.repository_skills_block).toBe('string');
-    expect(Object.keys(result).sort()).toEqual(['repository_skills_block', 'step']);
+    // limits surfaced for spawn_master_plan only — orchestrator inlines
+    // these into the planner prompt as `## Plan Size Limits` so the planner
+    // doesn't overflow the dag-walker's silent Math.min cap.
+    expect(result.limits).toEqual({
+      max_phases: config.limits.max_phases,
+      max_tasks_per_phase: config.limits.max_tasks_per_phase,
+    });
+    expect(Object.keys(result).sort()).toEqual(['limits', 'repository_skills_block', 'step']);
   });
 });
 

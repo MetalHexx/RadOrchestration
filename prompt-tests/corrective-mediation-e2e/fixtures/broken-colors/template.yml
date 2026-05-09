@@ -1,5 +1,5 @@
 template:
-  id: default
+  id: extra-high
   version: "1.0.0"
   description: "Canonical orchestration pipeline — Requirements → Master Plan → Explode → execution loop (tasks + phase review) → Final Review → PR → Final Approval."
 

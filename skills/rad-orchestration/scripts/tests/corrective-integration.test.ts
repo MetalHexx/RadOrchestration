@@ -49,7 +49,7 @@ function makeConfig(overrides: {
       auto_pr: overrides.auto_pr ?? 'always',
       provider: 'github',
     },
-    default_template: 'full',
+    default_template: 'extra-high',
   };
 }
 
@@ -181,20 +181,29 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   // Init scaffold
   processEvent('start', PROJECT_DIR, {}, io);
 
-  // master_plan
+  // requirements → master_plan → explode_master_plan (extra-high planning sequence)
+  processEvent('requirements_started', PROJECT_DIR, {}, io);
+  const reqsDoc = path.join(PROJECT_DIR, 'docs', 'requirements.md');
+  seedDoc(reqsDoc, { requirement_count: 5 });
+  processEvent('requirements_completed', PROJECT_DIR, { doc_path: reqsDoc }, io);
+
   processEvent('master_plan_started', PROJECT_DIR, {}, io);
   seedDoc(DOC_PATHS.masterPlan, { total_phases: 2, total_tasks: 4 });
   processEvent('master_plan_completed', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 
+  processEvent('explosion_started', PROJECT_DIR, {}, io);
+  processEvent('explosion_completed', PROJECT_DIR, {}, io);
+
   // Seed explosion state BEFORE plan_approved so the walker's first pass
   // after plan_approved advances through phase_loop in a single walk.
   seedExplosionState(io, [TASKS_FIXTURE, TASKS_FIXTURE]);
-  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 
   // commit_gate / pr_gate read state.pipeline.source_control (state_ref).
-  // Init before the walker first evaluates commit_gate. See
-  // initSourceControlForTests for the "ask" → "always" normalization rationale.
+  // Init BEFORE plan_approved so the walker can evaluate commit_gate without
+  // crashing (pipeline.source_control would be null otherwise).
   initSourceControlForTests(io, io.readConfig());
+
+  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
 
   return result.action === 'ask_gate_mode'
     ? result

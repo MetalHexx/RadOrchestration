@@ -1,4 +1,4 @@
-# Quick Pipeline E2E — Runner Prompt
+# Low Pipeline E2E — Runner Prompt
 
 > **Token cost.** This run invokes the `@planner` subagent **twice** (Requirements, then Master Plan). That is real Opus-tier spend. Do not loop the harness without intent. If a previous run's output is still valid for your purpose, reuse it.
 
@@ -6,7 +6,7 @@
 
 ## Mission
 
-You are driving the `quick.yml` pipeline end-to-end against a fixed brainstorming fixture so the project gets a regression signal on planner prompts and the explosion script under quick mode.
+You are driving the `low.yml` pipeline end-to-end against a fixed brainstorming fixture so the project gets a regression signal on planner prompts and the explosion script under low mode.
 
 Behave as a **simulated orchestrator**. The same rules the production orchestrator operates under apply here: signal events to `pipeline.js`, read `result.action` from stdout JSON, route exactly per the Action Routing Table, do not make planning decisions yourself, do not edit state.json, do not skip the two-step `_started` → action return protocol. The only differences: you spawn no agents beyond `@planner`, and you **halt when the pipeline returns `action: "request_plan_approval"`** rather than presenting the gate to a human.
 
@@ -16,9 +16,9 @@ Full routing reference lives at `.claude/skills/rad-orchestration/references/pip
 
 | Input | Default | Notes |
 |-------|---------|-------|
-| Fixture name | `rainbow-hello-quick` | Matches `prompt-tests/quick-pipeline-e2e/fixtures/<fixture>/BRAINSTORMING.md` |
+| Fixture name | `rainbow-hello-quick` | Matches `prompt-tests/low-pipeline-e2e/fixtures/<fixture>/BRAINSTORMING.md` |
 | Project name | `baseline-<fixture>-<YYYY-MM-DD>` or `<UPPER-KEBAB-CASE>` | For inaugural baseline runs use `baseline-<fixture>-<YYYY-MM-DD>` (e.g. `baseline-rainbow-hello-quick-2026-05-02`). The inaugural-baseline-name pattern is required for the `.gitignore` exception to re-include `lint-report.md` + `run-notes.md`. |
-| Run folder | `prompt-tests/quick-pipeline-e2e/output/<fixture>/<project-name>/` | Use the stable project name as the folder name. |
+| Run folder | `prompt-tests/low-pipeline-e2e/output/<fixture>/<project-name>/` | Use the stable project name as the folder name. |
 
 > **How project name is passed to the engine.** There is no `--name` CLI flag. The engine reads `path.basename(--project-dir)` on the `start` event and writes it into `state.project.name`. All downstream doc filenames (e.g. `<PROJECT-NAME>-REQUIREMENTS.md`) derive from that value. Choose a stable, descriptive folder name — it IS the project name.
 
@@ -31,7 +31,7 @@ Hand-roll the minimum project scaffold — do **NOT** invoke the installer and d
 1. Choose a project name; for the first committed baseline use `baseline-rainbow-hello-quick-2026-05-02` (or current date).
 2. Create the run folder and the three subdirs the explosion script will write into:
    ```
-   prompt-tests/quick-pipeline-e2e/output/<fixture>/<PROJECT-NAME>/
+   prompt-tests/low-pipeline-e2e/output/<fixture>/<PROJECT-NAME>/
      ├── phases/
      ├── tasks/
      └── backups/
@@ -40,13 +40,13 @@ Hand-roll the minimum project scaffold — do **NOT** invoke the installer and d
 
 ## Drive the pipeline
 
-Invoke `pipeline.js` from the repo root. Initial call uses `--event start` and `--template quick`:
+Invoke `pipeline.js` from the repo root. Initial call uses `--event start` and `--template low`:
 
 ```
 node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event start \
-  --project-dir prompt-tests/quick-pipeline-e2e/output/<fixture>/<PROJECT-NAME> \
-  --template quick
+  --project-dir prompt-tests/low-pipeline-e2e/output/<fixture>/<PROJECT-NAME> \
+  --template low
 ```
 
 From the first `start`, proceed per the two-step protocol:
@@ -57,11 +57,11 @@ From the first `start`, proceed per the two-step protocol:
 
 **Halt signal**: `result.action === "request_plan_approval"`. Do not signal `plan_approved`.
 
-Because quick.yml drops `code_review`, `task_gate`, `phase_review`, and `phase_gate` on the execution side, none of those actions should appear before the halt. If any of those fires, the harness state is off-script — halt and surface to the operator.
+Because low.yml drops `code_review`, `task_gate`, `phase_review`, and `phase_gate` on the execution side, none of those actions should appear before the halt. If any of those fires, the harness state is off-script — halt and surface to the operator.
 
 ## Assert pass criteria
 
-Mirror `plan-pipeline-e2e/_runner.md`:
+Mirror `extra-high-pipeline-e2e/_runner.md`:
 
 ### `lint-report.md`
 Run both linters against the emitted docs and capture stdout verbatim:
@@ -79,9 +79,9 @@ Include both doc-lint outputs (with the JSON summary line), both self-test outpu
 - Run folder path + timestamp + project name
 - Fixture used
 - Pipeline final `result.action` + `state.graph.nodes.plan_approval_gate.gate_active` (read from state.json, do not edit it)
-- `state.graph.template_id` confirmed as `quick`
+- `state.graph.template_id` confirmed as `low`
 - Counts: phases emitted, tasks emitted, requirement count
-- Short human-review checklist mirroring `plan-pipeline-e2e/_runner.md`'s notes section.
+- Short human-review checklist mirroring `extra-high-pipeline-e2e/_runner.md`'s notes section.
 
 ## Exit
 

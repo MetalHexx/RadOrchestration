@@ -40,11 +40,10 @@ Install the GitHub Copilot CLI following the [GitHub instructions](https://docs.
 
 ## Slash-Command Surface
 
-The same six slash commands work on every supported harness:
+The same five slash commands work on every supported harness:
 
 - `/rad-brainstorm`
 - `/rad-plan`
-- `/rad-plan-quick`
 - `/rad-execute`
 - `/rad-execute-parallel`
 - `/rad-configure-system`

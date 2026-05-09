@@ -3,7 +3,7 @@
 A document-driven agent orchestration system that takes software projects from idea through planning, execution, and review on top of native AI coding-assistant primitives plus a small Node.js pipeline.
 
 - Adapts to your repository's existing skills — the Planner picks up downstream skills authored in your repo without further configuration.
-- Customizable process templates — `default` for mission-critical or large projects, `quick` for smaller changes or bug fixes — selected at planning time.
+- Four review-intensity tiers — `extra-high` (maximum defense in depth) through `low` (quick exploration) — selected at planning time.
 - Coder agents follow a strict RED-GREEN TDD cycle on code tasks: write a failing test, watch it fail, implement the minimum to pass.
 - Documents are the inter-agent API — every step writes a structured markdown artifact, so the trail from idea to merged code is fully auditable.
 - Human gates are first-class — humans approve the plan before any code is written and approve the final result before the project closes.

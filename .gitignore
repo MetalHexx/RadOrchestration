@@ -49,12 +49,12 @@ test-installer/
 # (files at least two levels under output/) while leaving the fixture-specific
 # directory (`output/<fixture>/`) un-ignored, so `!` exceptions below can
 # re-include specific files under otherwise-ignored run folders.
-/prompt-tests/plan-pipeline-e2e/output/*/*/**
-!/prompt-tests/plan-pipeline-e2e/output/*/.gitkeep
-!/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-*/lint-report.md
-!/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-*/run-notes.md
-!/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-rainbow-hello-2026-05-01/lint-report.md
-!/prompt-tests/plan-pipeline-e2e/output/rainbow-hello/baseline-rainbow-hello-2026-05-01/run-notes.md
+/prompt-tests/extra-high-pipeline-e2e/output/*/*/**
+!/prompt-tests/extra-high-pipeline-e2e/output/*/.gitkeep
+!/prompt-tests/extra-high-pipeline-e2e/output/rainbow-hello/baseline-*/lint-report.md
+!/prompt-tests/extra-high-pipeline-e2e/output/rainbow-hello/baseline-*/run-notes.md
+!/prompt-tests/extra-high-pipeline-e2e/output/rainbow-hello/baseline-rainbow-hello-2026-05-01/lint-report.md
+!/prompt-tests/extra-high-pipeline-e2e/output/rainbow-hello/baseline-rainbow-hello-2026-05-01/run-notes.md
 
 # Prompt harness — corrective-mediation-e2e.
 # Same structure as plan-pipeline-e2e: ignore run-folder contents, re-include
@@ -99,13 +99,13 @@ test-installer/
 !/prompt-tests/instructions-reach-e2e/output/instructions-canary/baseline-*/lint-report.md
 !/prompt-tests/instructions-reach-e2e/output/instructions-canary/baseline-*/run-notes.md
 
-# Prompt harness — quick-pipeline-e2e.
-# Same structure as plan-pipeline-e2e: ignore run-folder contents, re-include
+# Prompt harness — low-pipeline-e2e.
+# Same structure as extra-high-pipeline-e2e: ignore run-folder contents, re-include
 # the inaugural-baseline lint-report.md + run-notes.md under baseline-* folders.
-/prompt-tests/quick-pipeline-e2e/output/*/*/**
-!/prompt-tests/quick-pipeline-e2e/output/*/.gitkeep
-!/prompt-tests/quick-pipeline-e2e/output/rainbow-hello-quick/baseline-*/lint-report.md
-!/prompt-tests/quick-pipeline-e2e/output/rainbow-hello-quick/baseline-*/run-notes.md
+/prompt-tests/low-pipeline-e2e/output/*/*/**
+!/prompt-tests/low-pipeline-e2e/output/*/.gitkeep
+!/prompt-tests/low-pipeline-e2e/output/rainbow-hello-quick/baseline-*/lint-report.md
+!/prompt-tests/low-pipeline-e2e/output/rainbow-hello-quick/baseline-*/run-notes.md
 
 # Plugin artifacts
 # NOTE: .claude/ (above) is the gitignored dogfood build output;

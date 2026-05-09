@@ -4,9 +4,9 @@ import type { NodesRecord, GraphStatus, PlanningStatus, ExecutionStatus } from '
 /**
  * Derive a v4-compatible PlanningStatus from v5 graph root nodes.
  * Only considers planning steps that exist in the state — a legacy project
- * scaffolded from full.yml has no `requirements` node, and a new project from
- * default.yml has no `research`/`prd`/`design`/`architecture`. A step that
- * isn't scaffolded must not block overall planning completion.
+ * scaffolded from full.yml (legacy snapshot) has no `requirements` node, and a
+ * new project from extra-high.yml has no `research`/`prd`/`design`/`architecture`.
+ * A step that isn't scaffolded must not block overall planning completion.
  *
  * When `graphStatus === 'in_progress'` and planning isn't fully complete,
  * planning is treated as in-progress even if no individual planning step is

@@ -1,14 +1,14 @@
-# plan-pipeline-e2e — How to Run and Verify
+# extra-high-pipeline-e2e — How to Run and Verify
 
 A friendly walkthrough for running this test end-to-end. No prior knowledge of the orchestration pipeline required.
 
 ## What this test is
 
-This test exercises the **planning half of our pipeline** on a small fixed project (a "rainbow HELLO WORLD" CLI tool). It runs the real `@planner` agent twice — once to produce a Requirements document, once to produce a Master Plan — then runs the deterministic explosion script that splits the master plan into per-phase and per-task files.
+This test exercises the **extra-high-tier pipeline** on a small fixed project (a "rainbow HELLO WORLD" CLI tool). It runs the real `@planner` agent twice — once to produce a Requirements document, once to produce a Master Plan — then runs the deterministic explosion script that splits the master plan into per-phase and per-task files.
 
 ## What this test is supposed to accomplish
 
-It's a regression alarm. If anyone changes the planner's prompt, the explosion parser, or the pipeline engine's routing for planning events, this test is designed to catch it. Specifically:
+It's a regression alarm. If anyone changes the planner's prompt, the explosion parser, or the pipeline engine's routing for the extra-high tier, this test is designed to catch it. Specifically:
 
 - **Planner drift** — the Requirements and Master Plan docs come out malformed (wrong structure, missing frontmatter, broken IDs, sloppy content).
 - **Explosion parser drift** — the script can't parse a reasonable planner output and crashes or produces malformed per-phase / per-task docs.
@@ -52,7 +52,7 @@ See `installer/lib/env-generator.js` for the canonical template. The UI reads th
 
 1. Open a **fresh** Claude Code session at the repo root. "Fresh" means a new session with no prior context from other work — otherwise session state can interfere with how the run plays out.
 
-2. Open `prompt-tests/plan-pipeline-e2e/_runner.md` in your editor and copy its **entire contents**.
+2. Open `prompt-tests/extra-high-pipeline-e2e/_runner.md` in your editor and copy its **entire contents**.
 
 3. Paste the contents into the Claude Code session as your first message. Claude will read the instructions and act as a simulated orchestrator — signaling events to `pipeline.js`, spawning `@planner` when the pipeline asks for it, and halting automatically when the pipeline reaches the `request_plan_approval` human gate.
 

@@ -46,7 +46,7 @@ function makeConfig(overrides?: Partial<OrchestrationConfig['human_gates']>): Or
       auto_pr: 'ask',
       provider: 'github',
     },
-    default_template: 'full',
+    default_template: 'extra-high',
   };
 }
 

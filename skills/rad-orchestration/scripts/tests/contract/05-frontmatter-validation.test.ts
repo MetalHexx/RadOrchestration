@@ -663,7 +663,7 @@ describe('[CONTRACT] Frontmatter — total_phases (plan_approved)', () => {
     const io = createMockIOWithConfig(null, config);
     processEvent('start', PROJECT_DIR, {}, io);
     const state = io.currentState!;
-    completePlanningSteps(state, 'master_plan');
+    completePlanningSteps(state, 'explode_master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
     return { io, mpDoc };
   }

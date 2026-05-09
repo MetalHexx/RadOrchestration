@@ -4,6 +4,8 @@ This page documents the user-invoked slash commands for the orchestration system
 
 The 3 most important commands are: `/rad-brainstorm`,  `/rad-plan` and `/rad-execute`.  The others are for special cases and convenience.
 
+The shipped review-intensity tiers are `extra-high`, `high`, `medium`, and `low`. They share planning ceremony and final review; they differ only in defensive review depth between planning and final approval. See [Process Templates](pipeline.md#process-templates) for the full matrix.
+
 ### /rad-brainstorm
 
 **What it does** — Runs a collaborative ideation session to align goals and capture context before planning begins.
@@ -14,27 +16,15 @@ The 3 most important commands are: `/rad-brainstorm`,  `/rad-plan` and `/rad-exe
 
 ### /rad-plan
 
-**What it does** — Starts the full planning pipeline using whichever process template you choose (`default` or `quick`).  The planners will work to produce a requirements document and an execution plan.  If you already have a brainstorming document, your planners will automatically use it to create the formal plans.
+**What it does** — Starts the full planning pipeline. At the start, you pick a review-intensity tier (`extra-high`, `high`, `medium`, `low`) and a Project Size (`Small`, `Medium`, `Large`, `Extra Large`, or `Custom` prose). The planners then produce a requirements document and an execution plan. If you already have a brainstorming document, your planners will automatically use it to create the formal plans.
 
-The `default` template includes the full ceremony: per-task code review, pre-phase reviews, and a final code review. 
+The tier governs review depth — `extra-high` runs per-task code review plus phase review plus final review; `low` runs final review only; `high` and `medium` are intermediate. Project Size governs task scope and phase scope, with a `(Recommended)` size that moves with the chosen tier.
 
-The `quick` template preserves the phase/task looping execution with a final code review.  This process template, skips the per-task and per-phase code reviews — use it when you want a faster execution process for smaller work and lower token usage.
-
-**When to use it** — Use it after `/rad-brainstorm`, or when you already have planning context and want the complete ceremony: per-task code review, per-task gate, phase review, phase gate, audit pass, plan approval gate, final review, and final approval gate.
+**When to use it** — Use it after `/rad-brainstorm`, or when you already have planning context and want planning ceremony plus the review depth your project needs.
 
 **How to use it** Typically you type `/rad-plan <PROJECT-NAME>` if you've created a brainstorming document prior.  However, if you have no brainstorming document, you can enter as long of a prompt as you want along with links to any additional documents, resources, images that you want the planners to consider in the final plan.
 
 **What it produces** — `{NAME}-REQUIREMENTS.md`, `{NAME}-MASTER-PLAN.md`, and the per-phase and per-task files under `phases/` and `tasks/`.
-
-### /rad-plan-quick
-
-**What it does** — Runs the same steps as `/rad-plan` using the `quick` template, with Extra Large task size hardcoded, and autonomous execution by default (no human phase / task gates).
-
-**When to use it** — Use it when the work is small enough that per-task code review and per-phase review would be unnecessary ceremony and token usage.  If the work is mission critical and needs more code review scrutiny, consider the `default` template instead.
-
-**How to use it** Typically you type `/rad-plan-quick <PROJECT-NAME>`.  Like `/rad-plan`, you can provide any additional context in the message.
-
-**What it produces** — The same planning documents as `/rad-plan`.
 
 ### /rad-execute
 

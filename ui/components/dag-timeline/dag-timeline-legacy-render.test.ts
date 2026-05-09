@@ -7,7 +7,7 @@
  *       derive iteration names, group sections, and surface statuses without
  *       raising or dropping entries.
  *   (B) Forward-compat state.json — iterations omit the legacy body nodes
- *       entirely (default.yml shape). Fallback labels kick in for iteration
+ *       entirely (extra-high.yml shape). Fallback labels kick in for iteration
  *       names; section grouping remains unchanged.
  *
  * These tests exercise pure logic — no DOM/JSX rendering, same pattern as

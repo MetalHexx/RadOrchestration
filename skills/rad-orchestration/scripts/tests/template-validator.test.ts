@@ -160,12 +160,12 @@ describe('validateTemplate', () => {
     });
   });
 
-  describe('default.yml (Iter 9 canonical template)', () => {
+  describe('extra-high.yml (full review intensity canonical template)', () => {
     it('loads via template-loader without throwing — 9 top-level nodes covering the full pipeline', () => {
       // loadTemplate is what the engine actually calls; it filters tolerable
       // unreachable_node warnings for leaf terminals (see template-loader.ts).
-      // This asserts default.yml is loadable end-to-end in the engine's path.
-      const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'default.yml'));
+      // This asserts extra-high.yml is loadable end-to-end in the engine's path.
+      const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'extra-high.yml'));
       const ids = template.nodes.map((n) => n.id);
       expect(ids).toEqual([
         'requirements',
@@ -181,14 +181,14 @@ describe('validateTemplate', () => {
     });
 
     it('has no structural defects (cycles, dangling refs, invalid kinds) — unreachable-leaf warnings are tolerated', () => {
-      const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'default.yml'));
-      const result = validateTemplate(template, 'default');
+      const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'extra-high.yml'));
+      const result = validateTemplate(template, 'extra-high');
       const hardErrors = result.errors.filter((e) => e.subtype !== 'unreachable_node');
       expect(hardErrors).toHaveLength(0);
     });
 
     it('explode_master_plan step exists with expected events (started/completed) and depends_on [master_plan]', () => {
-      const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'default.yml'));
+      const { template } = loadTemplate(path.join(TEMPLATES_DIR, 'extra-high.yml'));
       const explode = template.nodes.find(n => n.id === 'explode_master_plan');
       expect(explode).toBeDefined();
       expect(explode!.kind).toBe('step');
