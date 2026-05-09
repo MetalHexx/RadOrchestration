@@ -19,7 +19,8 @@ Run the following commands to collect the information you'll need for the questi
    - `ui/package.json`
    - `skills/rad-orchestration/scripts/package.json`
    - `cli/package.json`
-   - `marketplace/plugins/rad-orchestration/.claude-plugin/plugin.json`
+   - `plugin/package.json`
+   - `plugin/.claude-plugin/plugin.json`
 4. Read `CHANGELOG.md` at the repo root if it exists (will be created on first release)
 
 ---
@@ -60,14 +61,15 @@ Edit each of these files — set `"version"` to the confirmed version number. Al
 - `ui/package.json`
 - `skills/rad-orchestration/scripts/package.json`
 - `cli/package.json`
-- `marketplace/plugins/rad-orchestration/.claude-plugin/plugin.json`
+- `plugin/package.json`
+- `plugin/.claude-plugin/plugin.json`
 
 Note: `package_version` inside each per-harness bundle's `orchestration.yml` (e.g., `installer/src/claude/skills/rad-orchestration/config/orchestration.yml`) is **auto-stamped at build time** by the contributor build / publish step from `installer/package.json`. Do not edit it manually as part of the release flow.
 
 Stage and commit the version bump on the current branch:
 
 ```
-git add installer/package.json ui/package.json skills/rad-orchestration/scripts/package.json cli/package.json marketplace/plugins/rad-orchestration/.claude-plugin/plugin.json
+git add installer/package.json ui/package.json skills/rad-orchestration/scripts/package.json cli/package.json plugin/package.json plugin/.claude-plugin/plugin.json
 git commit -m "chore: bump version to {version}"
 ```
 

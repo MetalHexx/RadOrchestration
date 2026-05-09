@@ -79,8 +79,15 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      - name: Install repo deps
+      - name: Install cli deps
+        working-directory: cli
         run: npm ci
+      - name: Install ui deps
+        working-directory: ui
+        run: npm ci
+      - name: Install pipeline scripts deps
+        working-directory: skills/rad-orchestration/scripts
+        run: npm install
       - name: Build plugin
         run: npm run build:plugin
       - name: Verify plugin version matches tag
