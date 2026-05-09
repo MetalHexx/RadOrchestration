@@ -1,6 +1,6 @@
-# plan-pipeline-e2e
+# extra-high-pipeline-e2e
 
-End-to-end regression harness for the `default.yml` planning chain.
+End-to-end regression harness for the `extra-high.yml` planning chain.
 
 ## What it tests
 
@@ -17,7 +17,7 @@ Drift in any of these surfaces is caught:
 - Planner Requirements-mode output structure and ID sequencing
 - Planner Master-Plan-mode output structure, phase/task counts, requirement cross-refs
 - Explosion-script parser (ingests the planner's master-plan prose)
-- Pipeline engine action routing for the planning chain on `default.yml`
+- Pipeline engine action routing for the planning chain on `extra-high.yml`
 
 ## How to run
 

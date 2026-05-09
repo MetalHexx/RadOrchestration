@@ -10,8 +10,8 @@ The harness sits at the repo root (sibling to `docs/`, `installer/`, `ui/`, `.cl
 
 | Folder | What it exercises |
 |--------|-------------------|
-| [`plan-pipeline-e2e/`](./plan-pipeline-e2e/) | `default.yml` planning chain end-to-end — Requirements → Master Plan → explosion script. Halts at `plan_approval_gate`. |
-| [`quick-pipeline-e2e/`](./quick-pipeline-e2e/) | `quick.yml` planning chain end-to-end — Requirements → Master Plan → explosion script under `--template quick`. Halts at `plan_approval_gate`. |
+| [`extra-high-pipeline-e2e/`](./extra-high-pipeline-e2e/) | `extra-high.yml` planning chain end-to-end — Requirements → Master Plan → explosion script. Halts at `plan_approval_gate`. |
+| [`low-pipeline-e2e/`](./low-pipeline-e2e/) | `low.yml` planning chain end-to-end — Requirements → Master Plan → explosion script under `--template low`. Halts at `plan_approval_gate`. |
 
 ## Running a behavior
 
@@ -24,11 +24,11 @@ No runner executes on its own. The `_runner.md` file is authored as a prompt for
 
 ## Token cost — read before you loop
 
-Each pass of `plan-pipeline-e2e` invokes `@planner` **twice** (Requirements, Master Plan). That is real Opus spend per run. Do not loop the harness for cosmetic verification. Re-run only when a planner prompt, skill workflow, or explosion-script change actually warrants a new baseline.
+Each pass of `extra-high-pipeline-e2e` invokes `@planner` **twice** (Requirements, Master Plan). That is real Opus spend per run. Do not loop the harness for cosmetic verification. Re-run only when a planner prompt, skill workflow, or explosion-script change actually warrants a new baseline.
 
 ## Adding a new behavior
 
-Mirror `plan-pipeline-e2e/`: a behavior folder with its own `README.md`, `_runner.md`, `fixtures/`, and `output/`. Keep `_runner.md` goal-oriented — describe what the simulated orchestrator session should accomplish, not every exact CLI invocation. The engine's `next_action` returns plus the Action Routing Table (`.claude/skills/rad-orchestration/references/action-event-reference.md`) handle the step-by-step decisions.
+Mirror `extra-high-pipeline-e2e/`: a behavior folder with its own `README.md`, `_runner.md`, `fixtures/`, and `output/`. Keep `_runner.md` goal-oriented — describe what the simulated orchestrator session should accomplish, not every exact CLI invocation. The engine's `next_action` returns plus the Action Routing Table (`.claude/skills/rad-orchestration/references/action-event-reference.md`) handle the step-by-step decisions.
 
 Run outputs under `output/` are gitignored per behavior — see the existing blocks in the repo-root `.gitignore` for the established pattern. Narrower `!` exceptions re-include operator-committed baselines; everything else regenerates on each run. Each new behavior needs its own gitignore entry.
 

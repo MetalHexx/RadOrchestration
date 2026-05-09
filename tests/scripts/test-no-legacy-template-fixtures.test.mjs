@@ -50,3 +50,22 @@ test('no prompt-test template.yml snapshot uses template.id: default | quick | f
   const out = rg('id:\\s*(default|quick|full)\\b', ['prompt-tests']);
   assert.equal(out.trim(), '', `Found legacy template.id values in prompt-test snapshots:\n${out}`);
 });
+
+test('prompt-tests has the renamed extra-high-pipeline-e2e folder, no legacy plan-pipeline-e2e folder', () => {
+  assert.ok(fs.existsSync(path.join(REPO_ROOT, 'prompt-tests', 'extra-high-pipeline-e2e')), 'extra-high-pipeline-e2e folder is missing');
+  assert.ok(!fs.existsSync(path.join(REPO_ROOT, 'prompt-tests', 'plan-pipeline-e2e')), 'plan-pipeline-e2e folder still exists');
+});
+
+test('prompt-tests has the renamed low-pipeline-e2e folder, no legacy quick-pipeline-e2e folder', () => {
+  assert.ok(fs.existsSync(path.join(REPO_ROOT, 'prompt-tests', 'low-pipeline-e2e')), 'low-pipeline-e2e folder is missing');
+  assert.ok(!fs.existsSync(path.join(REPO_ROOT, 'prompt-tests', 'quick-pipeline-e2e')), 'quick-pipeline-e2e folder still exists');
+});
+
+test('renamed prompt-test runners reference the new tier names, not legacy template names', () => {
+  const ehRunner = fs.readFileSync(path.join(REPO_ROOT, 'prompt-tests', 'extra-high-pipeline-e2e', '_runner.md'), 'utf-8');
+  assert.ok(!/--template\s+default/.test(ehRunner), 'extra-high _runner.md still has --template default');
+  assert.ok(/--template\s+extra-high/.test(ehRunner), 'extra-high _runner.md missing --template extra-high');
+  const lowRunner = fs.readFileSync(path.join(REPO_ROOT, 'prompt-tests', 'low-pipeline-e2e', '_runner.md'), 'utf-8');
+  assert.ok(!/--template\s+quick/.test(lowRunner), 'low _runner.md still has --template quick');
+  assert.ok(/--template\s+low/.test(lowRunner), 'low _runner.md missing --template low');
+});
