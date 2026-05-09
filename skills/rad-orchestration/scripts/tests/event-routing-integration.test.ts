@@ -18,7 +18,7 @@ import {
 } from './fixtures/parity-states.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/full.yml');
+const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/extra-high.yml');
 
 // ── Clear DOC_STORE between tests ─────────────────────────────────────────────
 
@@ -471,8 +471,8 @@ describe('OOB events bypass template event index', () => {
     source_control_init: { branch: 'main', base_branch: 'main', auto_commit: 'never', auto_pr: 'never' },
   };
 
-  // explosion_failed requires the default.yml template (has explode_master_plan node).
-  // The smoke-test scaffold uses full.yml (default_template), which does not include
+  // explosion_failed requires the extra-high.yml template (has explode_master_plan node).
+  // The smoke-test scaffold uses extra-high.yml (default_template), which does include
   // that node, so the smoke assertion is handled separately via a dedicated integration
   // test in 06-state-mutations.test.ts (Iter 5 explosion-script mutations suite).
   const SMOKE_SKIP = new Set<string>(['explosion_failed']);

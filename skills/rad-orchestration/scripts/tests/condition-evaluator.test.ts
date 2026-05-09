@@ -21,7 +21,7 @@ const baseConfig: OrchestrationConfig = {
     auto_pr: 'never',
     provider: 'github',
   },
-  default_template: 'full',
+  default_template: 'extra-high',
 };
 
 const baseState: PipelineState = {
@@ -51,7 +51,7 @@ const baseState: PipelineState = {
     halt_reason: null,
   },
   graph: {
-    template_id: 'full',
+    template_id: 'extra-high',
     status: 'not_started',
     current_node_path: null,
     nodes: {},

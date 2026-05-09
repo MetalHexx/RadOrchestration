@@ -88,20 +88,20 @@ describe('resolveTemplateName', () => {
     expect(result.templateName).toBe('custom-config');
   });
 
-  it('returns source: default and templateName: "default" when state is null, CLI is undefined, and config.default_template is empty string', () => {
+  it('returns source: default and templateName: "extra-high" when state is null, CLI is undefined, and config.default_template is empty string', () => {
     tmpDir = makeTempDir();
     const config = makeConfig({ default_template: '' });
     const result = resolveTemplateName(null, undefined, config, tmpDir, '/some/templates');
     expect(result.source).toBe('default');
-    expect(result.templateName).toBe('default');
+    expect(result.templateName).toBe('extra-high');
   });
 
-  it('returns source: default and templateName: "default" when config.default_template is "ask"', () => {
+  it('returns source: default and templateName: "extra-high" when config.default_template is "ask"', () => {
     tmpDir = makeTempDir();
     const config = makeConfig({ default_template: 'ask' });
     const result = resolveTemplateName(null, undefined, config, tmpDir, '/some/templates');
     expect(result.source).toBe('default');
-    expect(result.templateName).toBe('default');
+    expect(result.templateName).toBe('extra-high');
   });
 });
 

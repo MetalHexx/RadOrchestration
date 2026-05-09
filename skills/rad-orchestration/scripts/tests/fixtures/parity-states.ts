@@ -36,7 +36,7 @@ export const DEFAULT_CONFIG: OrchestrationConfig = {
     auto_pr: 'ask',
     provider: 'github',
   },
-  default_template: 'full',
+  default_template: 'extra-high',
 };
 
 // Map of doc_path → document content used by mock readDocument
@@ -103,7 +103,7 @@ export function seedDoc(docPath: string, extraFrontmatter: Record<string, unknow
 
 // ── Complete planning steps helper ────────────────────────────────────────────
 
-const PLANNING_STEP_ORDER = ['master_plan'] as const;
+const PLANNING_STEP_ORDER = ['requirements', 'master_plan', 'explode_master_plan'] as const;
 
 export function completePlanningSteps(state: PipelineState, through: string): void {
   const throughIndex = PLANNING_STEP_ORDER.indexOf(through as (typeof PLANNING_STEP_ORDER)[number]);
@@ -113,8 +113,10 @@ export function completePlanningSteps(state: PipelineState, through: string): vo
   for (let i = 0; i <= throughIndex; i++) {
     const step = PLANNING_STEP_ORDER[i];
     const node = state.graph.nodes[step] as StepNodeState;
-    node.status = 'completed';
-    node.doc_path = `/tmp/${step}.md`;
+    if (node) {
+      node.status = 'completed';
+      node.doc_path = `/tmp/${step}.md`;
+    }
   }
 }
 
@@ -288,7 +290,7 @@ export function driveToExecutionWithConfig(
   const io = createMockIOWithConfig(null, config);
   processEvent('start', PROJECT_DIR, {}, io);
   const state = io.currentState!;
-  completePlanningSteps(state, 'master_plan');
+  completePlanningSteps(state, 'explode_master_plan');
   const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
   seedDoc(mpDoc, {
     total_phases: totalPhases,
@@ -416,7 +418,7 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
   processEvent('start', PROJECT_DIR, {}, io);
 
   const state = io.currentState!;
-  completePlanningSteps(state, 'master_plan');
+  completePlanningSteps(state, 'explode_master_plan');
   const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
   seedDoc(mpDoc, { total_phases: 1, total_tasks: 2 });
 

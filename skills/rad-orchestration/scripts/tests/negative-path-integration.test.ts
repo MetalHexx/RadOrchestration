@@ -14,7 +14,7 @@ import type {
 // ── Template loading ──────────────────────────────────────────────────────────
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/full.yml');
+const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/extra-high.yml');
 const { template } = loadTemplate(TEMPLATE_PATH);
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ const baseConfig: OrchestrationConfig = {
   },
   human_gates: { after_planning: true, execution_mode: 'manual', after_final_review: true },
   source_control: { auto_commit: 'on', auto_pr: 'on', provider: 'github' },
-  default_template: 'full',
+  default_template: 'extra-high',
 };
 
 // ── State helpers ─────────────────────────────────────────────────────────────
@@ -61,16 +61,15 @@ function makePlanningCompletedState(): PipelineState {
       halt_reason: null,
     },
     graph: {
-      template_id: 'full',
+      template_id: 'extra-high',
       status: 'in_progress',
       current_node_path: null,
       nodes: {
-        research: { kind: 'step', status: 'completed', doc_path: '/path/research.md', retries: 0 },
-        prd: { kind: 'step', status: 'completed', doc_path: '/path/prd.md', retries: 0 },
-        design: { kind: 'step', status: 'completed', doc_path: '/path/design.md', retries: 0 },
-        architecture: { kind: 'step', status: 'completed', doc_path: '/path/arch.md', retries: 0 },
+        requirements: { kind: 'step', status: 'completed', doc_path: '/path/requirements.md', retries: 0 },
         master_plan: { kind: 'step', status: 'completed', doc_path: '/path/plan.md', retries: 0 },
+        explode_master_plan: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
         plan_approval_gate: { kind: 'gate', status: 'completed', gate_active: true },
+        gate_mode_selection: { kind: 'gate', status: 'completed', gate_active: false },
         phase_loop: {
           kind: 'for_each_phase',
           status: 'in_progress',
@@ -124,16 +123,15 @@ function makeAllPhasesCompletedState(): PipelineState {
       halt_reason: null,
     },
     graph: {
-      template_id: 'full',
+      template_id: 'extra-high',
       status: 'in_progress',
       current_node_path: null,
       nodes: {
-        research: { kind: 'step', status: 'completed', doc_path: '/path/research.md', retries: 0 },
-        prd: { kind: 'step', status: 'completed', doc_path: '/path/prd.md', retries: 0 },
-        design: { kind: 'step', status: 'completed', doc_path: '/path/design.md', retries: 0 },
-        architecture: { kind: 'step', status: 'completed', doc_path: '/path/arch.md', retries: 0 },
+        requirements: { kind: 'step', status: 'completed', doc_path: '/path/requirements.md', retries: 0 },
         master_plan: { kind: 'step', status: 'completed', doc_path: '/path/plan.md', retries: 0 },
+        explode_master_plan: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
         plan_approval_gate: { kind: 'gate', status: 'completed', gate_active: true },
+        gate_mode_selection: { kind: 'gate', status: 'completed', gate_active: false },
         phase_loop: { kind: 'for_each_phase', status: 'completed', iterations: [] },
         final_review: { kind: 'step', status: 'completed', doc_path: '/path/final-review.md', retries: 0 },
         final_approval_gate: { kind: 'gate', status: 'completed', gate_active: true },
@@ -169,16 +167,15 @@ function makeActiveState(): PipelineState {
       halt_reason: null,
     },
     graph: {
-      template_id: 'full',
+      template_id: 'extra-high',
       status: 'in_progress',
       current_node_path: null,
       nodes: {
-        research: { kind: 'step', status: 'completed', doc_path: '/path/research.md', retries: 0 },
-        prd: { kind: 'step', status: 'completed', doc_path: '/path/prd.md', retries: 0 },
-        design: { kind: 'step', status: 'completed', doc_path: '/path/design.md', retries: 0 },
-        architecture: { kind: 'step', status: 'completed', doc_path: '/path/arch.md', retries: 0 },
+        requirements: { kind: 'step', status: 'completed', doc_path: '/path/requirements.md', retries: 0 },
         master_plan: { kind: 'step', status: 'completed', doc_path: '/path/plan.md', retries: 0 },
+        explode_master_plan: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
         plan_approval_gate: { kind: 'gate', status: 'completed', gate_active: true },
+        gate_mode_selection: { kind: 'gate', status: 'completed', gate_active: false },
         phase_loop: { kind: 'for_each_phase', status: 'in_progress', iterations: [] },
         final_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
         final_approval_gate: { kind: 'gate', status: 'not_started', gate_active: false },

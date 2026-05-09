@@ -5,8 +5,8 @@ import * as os from 'os';
 import { loadTemplate } from '../lib/template-loader.js';
 import type { NodeDef } from '../lib/types.js';
 
-const FULL_YML_PATH = new URL('../../templates/full.yml', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
-const DEFAULT_YML_PATH = new URL('../../templates/default.yml', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const EXTRA_HIGH_YML_PATH = new URL('../../templates/extra-high.yml', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const LOW_YML_PATH = new URL('../../templates/low.yml', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 
 /** Recursively find a node by ID in a NodeDef array. */
 function findNode(nodes: NodeDef[], id: string): NodeDef | undefined {
@@ -36,48 +36,51 @@ function findNode(nodes: NodeDef[], id: string): NodeDef | undefined {
 }
 
 describe('loadTemplate', () => {
-  describe('loading full.yml', () => {
-    it('loads and parses full.yml with correct template header', () => {
-      const result = loadTemplate(FULL_YML_PATH);
-      expect(result.template.template.id).toBe('full');
+  describe('loading extra-high.yml', () => {
+    it('loads and parses extra-high.yml with correct template header', () => {
+      const result = loadTemplate(EXTRA_HIGH_YML_PATH);
+      expect(result.template.template.id).toBe('extra-high');
       expect(result.template.template.version).toBe('1.0.0');
     });
 
-    it('returns exactly 19 entries in the event index', () => {
-      // Post-Iter 7: 4 events removed (phase_planning_started/_plan_created/
-      // task_handoff_started/_created) — explosion script (Iter 5) pre-seeds
-      // those nodes; per-loop authoring events are gone.
-      // Post-Iter 8: 2 more removed (phase_report_started/_created) — phase_review
-      // absorbed phase_report.
-      const result = loadTemplate(FULL_YML_PATH);
-      expect(result.eventIndex.size).toBe(19);
+    it('returns exactly 23 entries in the event index', () => {
+      // extra-high has all nodes: requirements, master_plan, explode_master_plan,
+      // plan_approval_gate, gate_mode_selection, phase_loop (with code_review + task_gate
+      // in task_loop and phase_review + phase_gate in phase_loop), final_review, pr_gate,
+      // final_approval_gate.
+      const result = loadTemplate(EXTRA_HIGH_YML_PATH);
+      expect(result.eventIndex.size).toBe(23);
     });
   });
 
-  describe('event index — all 19 mappings', () => {
-    const result = loadTemplate(FULL_YML_PATH);
+  describe('event index — all 23 mappings for extra-high.yml', () => {
+    const result = loadTemplate(EXTRA_HIGH_YML_PATH);
     const { eventIndex } = result;
 
     const cases: Array<[string, string, string, string]> = [
+      ['requirements_started',             'requirements',        'started',   'requirements'],
+      ['requirements_completed',           'requirements',        'completed', 'requirements'],
       ['master_plan_started',              'master_plan',         'started',   'master_plan'],
       ['master_plan_completed',            'master_plan',         'completed', 'master_plan'],
+      ['explosion_started',                'explode_master_plan', 'started',   'explode_master_plan'],
+      ['explosion_completed',              'explode_master_plan', 'completed', 'explode_master_plan'],
       ['plan_approved',                    'plan_approval_gate',  'approved',  'plan_approval_gate'],
-      ['gate_mode_set',                     'gate_mode_selection', 'approved',  'gate_mode_selection'],
+      ['gate_mode_set',                    'gate_mode_selection', 'approved',  'gate_mode_selection'],
       ['execution_started',                'task_executor',       'started',   'phase_loop.body.task_loop.body.task_executor'],
-      ['task_completed',              'task_executor',       'completed', 'phase_loop.body.task_loop.body.task_executor'],
+      ['task_completed',                   'task_executor',       'completed', 'phase_loop.body.task_loop.body.task_executor'],
       ['code_review_started',              'code_review',         'started',   'phase_loop.body.task_loop.body.code_review'],
       ['code_review_completed',            'code_review',         'completed', 'phase_loop.body.task_loop.body.code_review'],
       ['task_gate_approved',               'task_gate',           'approved',  'phase_loop.body.task_loop.body.task_gate'],
       ['phase_review_started',             'phase_review',        'started',   'phase_loop.body.phase_review'],
       ['phase_review_completed',           'phase_review',        'completed', 'phase_loop.body.phase_review'],
       ['phase_gate_approved',              'phase_gate',          'approved',  'phase_loop.body.phase_gate'],
-      ['commit_started',           'commit',              'started',   'phase_loop.body.task_loop.body.commit_gate.branches.true.commit'],
-      ['commit_completed',         'commit',              'completed', 'phase_loop.body.task_loop.body.commit_gate.branches.true.commit'],
+      ['commit_started',                   'commit',              'started',   'phase_loop.body.task_loop.body.commit_gate.branches.true.commit'],
+      ['commit_completed',                 'commit',              'completed', 'phase_loop.body.task_loop.body.commit_gate.branches.true.commit'],
       ['final_review_started',             'final_review',        'started',   'final_review'],
       ['final_review_completed',           'final_review',        'completed', 'final_review'],
-      ['final_approved',            'final_approval_gate', 'approved',  'final_approval_gate'],
-      ['pr_requested',        'final_pr',            'started',   'pr_gate.branches.true.final_pr'],
-      ['pr_created',      'final_pr',            'completed', 'pr_gate.branches.true.final_pr'],
+      ['final_approved',                   'final_approval_gate', 'approved',  'final_approval_gate'],
+      ['pr_requested',                     'final_pr',            'started',   'pr_gate.branches.true.final_pr'],
+      ['pr_created',                       'final_pr',            'completed', 'pr_gate.branches.true.final_pr'],
     ];
 
     for (const [eventName, expectedNodeId, expectedPhase, expectedPath] of cases) {
@@ -251,23 +254,23 @@ describe('loadTemplate', () => {
     });
   });
 
-  // ── default.yml shape — Iter 9 canonical template ───────────────────────
-  describe('default.yml shape (Iter 9 canonical)', () => {
-    it('loads default.yml without errors', () => {
-      expect(() => loadTemplate(DEFAULT_YML_PATH)).not.toThrow();
+  // ── extra-high.yml shape — canonical full-feature template ───────────────────
+  describe('extra-high.yml shape (canonical full-feature template)', () => {
+    it('loads extra-high.yml without errors', () => {
+      expect(() => loadTemplate(EXTRA_HIGH_YML_PATH)).not.toThrow();
     });
 
-    it('template header has id "default" and is NOT marked deprecated', () => {
-      const result = loadTemplate(DEFAULT_YML_PATH);
-      expect(result.template.template.id).toBe('default');
+    it('template header has id "extra-high" and is NOT marked deprecated', () => {
+      const result = loadTemplate(EXTRA_HIGH_YML_PATH);
+      expect(result.template.template.id).toBe('extra-high');
       expect(result.template.template.version).toBe('1.0.0');
       expect(result.template.template.description).toBeTruthy();
-      // default.yml is the canonical template — it must NOT carry the deprecated status.
+      // extra-high.yml is the full-feature template — it must NOT carry the deprecated status.
       expect((result.template.template as { status?: string }).status).not.toBe('deprecated');
     });
 
     it('all 9 expected top-level node ids are present in order', () => {
-      const result = loadTemplate(DEFAULT_YML_PATH);
+      const result = loadTemplate(EXTRA_HIGH_YML_PATH);
       const topLevelIds = result.template.nodes.map(n => n.id);
       expect(topLevelIds).toEqual([
         'requirements',
@@ -283,7 +286,7 @@ describe('loadTemplate', () => {
     });
 
     it('phase_loop has kind: for_each_phase and contains task_loop + phase_review + phase_gate as body children', () => {
-      const result = loadTemplate(DEFAULT_YML_PATH);
+      const result = loadTemplate(EXTRA_HIGH_YML_PATH);
       const phaseLoop = findNode(result.template.nodes, 'phase_loop');
       expect(phaseLoop).toBeDefined();
       expect(phaseLoop!.kind).toBe('for_each_phase');
@@ -294,7 +297,7 @@ describe('loadTemplate', () => {
     });
 
     it('task_loop body contains task_executor + commit_gate + code_review + task_gate in order', () => {
-      const result = loadTemplate(DEFAULT_YML_PATH);
+      const result = loadTemplate(EXTRA_HIGH_YML_PATH);
       const taskLoop = findNode(result.template.nodes, 'task_loop');
       expect(taskLoop).toBeDefined();
       expect(taskLoop!.kind).toBe('for_each_task');
@@ -305,10 +308,45 @@ describe('loadTemplate', () => {
     });
 
     it('phase_gate auto_approve_modes is empty (verdict-based auto-approve handles autonomous mode)', () => {
-      const result = loadTemplate(DEFAULT_YML_PATH);
+      const result = loadTemplate(EXTRA_HIGH_YML_PATH);
       const phaseGate = findNode(result.template.nodes, 'phase_gate');
       expect(phaseGate).toBeDefined();
       expect((phaseGate as { auto_approve_modes?: string[] }).auto_approve_modes).toEqual([]);
+    });
+  });
+
+  // ── low.yml shape — minimal template ──────────────────────────────────────
+  describe('low.yml shape (minimal template)', () => {
+    it('loads low.yml without errors', () => {
+      expect(() => loadTemplate(LOW_YML_PATH)).not.toThrow();
+    });
+
+    it('template header has id "low" and is NOT marked deprecated', () => {
+      const result = loadTemplate(LOW_YML_PATH);
+      expect(result.template.template.id).toBe('low');
+      expect(result.template.template.version).toBe('1.0.0');
+      expect(result.template.template.description).toBeTruthy();
+      expect((result.template.template as { status?: string }).status).not.toBe('deprecated');
+    });
+
+    it('task_loop body contains only task_executor + commit_gate (no per-task review)', () => {
+      const result = loadTemplate(LOW_YML_PATH);
+      const taskLoop = findNode(result.template.nodes, 'task_loop');
+      expect(taskLoop).toBeDefined();
+      const body = (taskLoop as { body?: NodeDef[] }).body;
+      expect(Array.isArray(body)).toBe(true);
+      const bodyIds = body!.map(n => n.id);
+      expect(bodyIds).toEqual(['task_executor', 'commit_gate']);
+    });
+
+    it('phase_loop body contains only task_loop (no phase review)', () => {
+      const result = loadTemplate(LOW_YML_PATH);
+      const phaseLoop = findNode(result.template.nodes, 'phase_loop');
+      expect(phaseLoop).toBeDefined();
+      const body = (phaseLoop as { body?: NodeDef[] }).body;
+      expect(Array.isArray(body)).toBe(true);
+      const bodyIds = body!.map(n => n.id);
+      expect(bodyIds).toEqual(['task_loop']);
     });
   });
 });

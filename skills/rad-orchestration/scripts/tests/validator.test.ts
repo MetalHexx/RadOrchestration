@@ -22,7 +22,7 @@ import type {
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/full.yml');
+const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/extra-high.yml');
 const PROJECT_DIR = '/tmp/test-project/VALIDATOR-TEST';
 const ORCH_ROOT = path.resolve(__dirname, '../../../..');
 
@@ -45,10 +45,10 @@ const DEFAULT_CONFIG: OrchestrationConfig = {
     auto_pr: 'ask',
     provider: 'github',
   },
-  default_template: 'full',
+  default_template: 'extra-high',
 };
 
-const loaded = loadTemplate(path.join(ORCH_ROOT, 'skills/rad-orchestration/templates/full.yml'));
+const loaded = loadTemplate(path.join(ORCH_ROOT, 'skills/rad-orchestration/templates/extra-high.yml'));
 const TEMPLATE = loaded.template;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ function makeMinimalState(): PipelineState {
       halt_reason: null,
     },
     graph: {
-      template_id: 'full',
+      template_id: 'extra-high',
       status: 'not_started',
       current_node_path: null,
       nodes,

@@ -20,7 +20,7 @@ const config: OrchestrationConfig = {
     after_final_review: true,
   },
   source_control: { auto_commit: 'never', auto_pr: 'never', provider: 'github' },
-  default_template: 'full',
+  default_template: 'extra-high',
 };
 
 // ── State with source_control populated ───────────────────────────────────────

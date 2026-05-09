@@ -214,7 +214,7 @@ describe('[CONTRACT] State Mutations — Plan approved mutations', () => {
     const io = createMockIOWithConfig(null, config);
     processEvent('start', PROJECT_DIR, {}, io); // scaffold
     const state = io.currentState!;
-    completePlanningSteps(state, 'master_plan');
+    completePlanningSteps(state, 'explode_master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
     seedDoc(mpDoc, { total_phases: 2, total_tasks: 4 });
 
