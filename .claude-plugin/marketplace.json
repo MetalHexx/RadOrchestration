@@ -4,7 +4,11 @@
   "plugins": [
     {
       "name": "rad-orchestration",
-      "source": "./marketplace/plugins/rad-orchestration"
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/MetalHexx/RadOrchestration.git",
+        "path": "marketplace/plugins/rad-orchestration"
+      }
     }
   ]
 }
