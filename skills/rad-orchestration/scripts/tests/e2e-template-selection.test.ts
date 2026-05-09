@@ -280,6 +280,68 @@ describe('e2e: low template pipeline processing', () => {
   });
 });
 
+// ── E2E: medium template pipeline processing ──────────────────────────────────
+
+describe('e2e: medium template pipeline processing', () => {
+  let tmpDir: string;
+
+  afterEach(() => {
+    if (tmpDir && fs.existsSync(tmpDir)) {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('processEvent start with --template medium scaffolds state with template_id: medium', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-medium-'));
+    const io = createMockIO(null);
+    const result = processEvent('start', tmpDir, { template: 'medium' }, io);
+    expect(result.success).toBe(true);
+    expect(Object.values(NEXT_ACTIONS)).toContain(result.action);
+    expect(io.currentState!.graph.template_id).toBe('medium');
+  });
+
+  it('medium template scaffolded state contains requirements, plan_approval_gate, phase_loop', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-medium-'));
+    const io = createMockIO(null);
+    processEvent('start', tmpDir, { template: 'medium' }, io);
+    const nodes = io.currentState!.graph.nodes;
+    for (const nodeId of ['requirements', 'plan_approval_gate', 'phase_loop']) {
+      expect(nodes).toHaveProperty(nodeId);
+    }
+  });
+});
+
+// ── E2E: high template pipeline processing ────────────────────────────────────
+
+describe('e2e: high template pipeline processing', () => {
+  let tmpDir: string;
+
+  afterEach(() => {
+    if (tmpDir && fs.existsSync(tmpDir)) {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('processEvent start with --template high scaffolds state with template_id: high', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-high-'));
+    const io = createMockIO(null);
+    const result = processEvent('start', tmpDir, { template: 'high' }, io);
+    expect(result.success).toBe(true);
+    expect(Object.values(NEXT_ACTIONS)).toContain(result.action);
+    expect(io.currentState!.graph.template_id).toBe('high');
+  });
+
+  it('high template scaffolded state contains requirements, plan_approval_gate, phase_loop', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-high-'));
+    const io = createMockIO(null);
+    processEvent('start', tmpDir, { template: 'high' }, io);
+    const nodes = io.currentState!.graph.nodes;
+    for (const nodeId of ['requirements', 'plan_approval_gate', 'phase_loop']) {
+      expect(nodes).toHaveProperty(nodeId);
+    }
+  });
+});
+
 // ── E2E: isProjectLocal Template Resolution ───────────────────────────────────
 
 describe('e2e: isProjectLocal template resolution', () => {
