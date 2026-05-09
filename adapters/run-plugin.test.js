@@ -20,7 +20,7 @@ test('emits plugin layout for claude under expected output path', async () => {
   fs.writeFileSync(path.join(hooksDir, 'hooks.json'), JSON.stringify({ hooks: { SessionStart: [] } }));
   fs.writeFileSync(path.join(hooksDir, 'session-start.sh'), '#!/bin/sh\nexit 0\n');
   // Plugin manifest source
-  const pluginCpDir = path.join(canonical, 'marketplace', 'plugins', 'rad-orchestration', '.claude-plugin');
+  const pluginCpDir = path.join(canonical, 'plugin', '.claude-plugin');
   fs.mkdirSync(pluginCpDir, { recursive: true });
   fs.writeFileSync(path.join(pluginCpDir, 'plugin.json'), JSON.stringify({
     name: 'rad-orchestration', version: '1.0.0', description: 'x',
@@ -48,9 +48,9 @@ test('copilot-cli emits to its own gitignored marketplaces folder', async () => 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-copilot-'));
   const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-can-'));
   // empty canonical sources are tolerated (skills/hooks dirs absent)
-  fs.mkdirSync(path.join(canonical, 'marketplace', 'plugins', 'rad-orchestration', '.claude-plugin'), { recursive: true });
+  fs.mkdirSync(path.join(canonical, 'plugin', '.claude-plugin'), { recursive: true });
   fs.writeFileSync(
-    path.join(canonical, 'marketplace', 'plugins', 'rad-orchestration', '.claude-plugin', 'plugin.json'),
+    path.join(canonical, 'plugin', '.claude-plugin', 'plugin.json'),
     JSON.stringify({ name: 'rad-orchestration', version: '0.0.0' }),
   );
   await runAdapterPlugin(copilotCliAdapter, { canonicalRoot: canonical, outputRoot: tmp, version: '1.1.0' });
@@ -61,9 +61,9 @@ test('copilot-cli emits to its own gitignored marketplaces folder', async () => 
 test('idempotent: second run produces byte-identical output', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-idem-'));
   const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-can-'));
-  fs.mkdirSync(path.join(canonical, 'marketplace', 'plugins', 'rad-orchestration', '.claude-plugin'), { recursive: true });
+  fs.mkdirSync(path.join(canonical, 'plugin', '.claude-plugin'), { recursive: true });
   fs.writeFileSync(
-    path.join(canonical, 'marketplace', 'plugins', 'rad-orchestration', '.claude-plugin', 'plugin.json'),
+    path.join(canonical, 'plugin', '.claude-plugin', 'plugin.json'),
     JSON.stringify({ name: 'rad-orchestration', version: '0.0.0' }),
   );
   await runAdapterPlugin(claudeAdapter, { canonicalRoot: canonical, outputRoot: tmp, version: '1.1.0' });

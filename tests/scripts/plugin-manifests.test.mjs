@@ -23,7 +23,7 @@ test('marketplace.json exists at the discovery location and points at the plugin
 });
 
 test('plugin.json exists at the plugin source location with required fields', () => {
-  const f = path.join(repoRoot, 'marketplace', 'plugins', 'rad-orchestration', '.claude-plugin', 'plugin.json');
+  const f = path.join(repoRoot, 'plugin', '.claude-plugin', 'plugin.json');
   assert.ok(fs.existsSync(f), `${f} must exist`);
   const p = JSON.parse(fs.readFileSync(f, 'utf8'));
   assert.equal(p.name, 'rad-orchestration');

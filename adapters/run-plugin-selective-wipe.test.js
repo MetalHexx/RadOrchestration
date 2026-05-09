@@ -36,7 +36,7 @@ test('selective wipe: bundle subdirs are preserved, owned subdirs are refreshed'
   const canonicalRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-selwipe-can-'));
   // .claude-plugin/plugin.json
   const pluginCpDir = path.join(
-    canonicalRoot, 'marketplace', 'plugins', 'rad-orchestration', '.claude-plugin',
+    canonicalRoot, 'plugin', '.claude-plugin',
   );
   fs.mkdirSync(pluginCpDir, { recursive: true });
   fs.writeFileSync(
