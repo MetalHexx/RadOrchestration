@@ -60,7 +60,7 @@ const DEFAULT_CONFIG_VALUES = {
     auto_pr: 'ask',
     provider: 'github',
   },
-  default_template: 'default',
+  default_template: 'extra-high',
 };
 
 // ── Temp dir management ───────────────────────────────────────────────────────

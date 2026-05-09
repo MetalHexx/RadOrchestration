@@ -207,7 +207,7 @@ describe('e2e: extra-high template pipeline processing', () => {
     }
   });
 
-  it('processEvent start with null state and extra-high config scaffolds on extra-high.yml', () => {
+  it('processEvent start with null state and default config scaffolds on extra-high.yml', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-extra-high-'));
     const io = createMockIO(null, makeConfig());
     const result = processEvent('start', tmpDir, {}, io);
@@ -333,20 +333,28 @@ describe('e2e: default_template config resolution', () => {
     }
   });
 
-  it('default_template: extra-high in config causes processEvent to scaffold extra-high template', () => {
+  it('default_template: "default" in config remaps to extra-high template', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-extra-high-'));
-    const io = createMockIO(null, makeConfig({ default_template: 'extra-high' }));
+    const io = createMockIO(null, makeConfig({ default_template: 'default' }));
     const result = processEvent('start', tmpDir, {}, io);
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.template_id).toBe('extra-high');
   });
 
-  it('default_template: low in config causes processEvent to scaffold low template', () => {
+  it('default_template: "quick" in config remaps to low template', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-low-'));
-    const io = createMockIO(null, makeConfig({ default_template: 'low' }));
+    const io = createMockIO(null, makeConfig({ default_template: 'quick' }));
     const result = processEvent('start', tmpDir, {}, io);
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.template_id).toBe('low');
+  });
+
+  it('default_template: "full" in config remaps to extra-high template', () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-extra-high-'));
+    const io = createMockIO(null, makeConfig({ default_template: 'full' }));
+    const result = processEvent('start', tmpDir, {}, io);
+    expect(result.success).toBe(true);
+    expect(io.currentState!.graph.template_id).toBe('extra-high');
   });
 });
 

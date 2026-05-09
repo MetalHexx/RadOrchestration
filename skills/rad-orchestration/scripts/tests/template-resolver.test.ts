@@ -105,6 +105,68 @@ describe('resolveTemplateName', () => {
   });
 });
 
+describe('resolveTemplateName — config sentinel remap (FR-6)', () => {
+  let tmpDir: string;
+  afterEach(() => { if (tmpDir && fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true, force: true }); });
+
+  it('config.default_template "default" remaps to extra-high (source: config)', () => {
+    tmpDir = makeTempDir();
+    const result = resolveTemplateName(null, undefined, makeConfig({ default_template: 'default' }), tmpDir, '/some/templates');
+    expect(result.source).toBe('config');
+    expect(result.templateName).toBe('extra-high');
+  });
+
+  it('config.default_template "quick" remaps to low (source: config)', () => {
+    tmpDir = makeTempDir();
+    const result = resolveTemplateName(null, undefined, makeConfig({ default_template: 'quick' }), tmpDir, '/some/templates');
+    expect(result.source).toBe('config');
+    expect(result.templateName).toBe('low');
+  });
+
+  it('config.default_template "full" remaps to extra-high (source: config)', () => {
+    tmpDir = makeTempDir();
+    const result = resolveTemplateName(null, undefined, makeConfig({ default_template: 'full' }), tmpDir, '/some/templates');
+    expect(result.source).toBe('config');
+    expect(result.templateName).toBe('extra-high');
+  });
+
+  it('config.default_template "ask" still falls through to extra-high default (source: default)', () => {
+    tmpDir = makeTempDir();
+    const result = resolveTemplateName(null, undefined, makeConfig({ default_template: 'ask' }), tmpDir, '/some/templates');
+    expect(result.source).toBe('default');
+    expect(result.templateName).toBe('extra-high');
+  });
+
+  it('config.default_template "" falls through to extra-high default (source: default)', () => {
+    tmpDir = makeTempDir();
+    const result = resolveTemplateName(null, undefined, makeConfig({ default_template: '' }), tmpDir, '/some/templates');
+    expect(result.source).toBe('default');
+    expect(result.templateName).toBe('extra-high');
+  });
+
+  it('config.default_template with a verbatim tier name (e.g. "high") resolves verbatim', () => {
+    tmpDir = makeTempDir();
+    const result = resolveTemplateName(null, undefined, makeConfig({ default_template: 'high' }), tmpDir, '/some/templates');
+    expect(result.source).toBe('config');
+    expect(result.templateName).toBe('high');
+  });
+
+  it('CLI --template "default" resolves to "default" verbatim (CLI is NOT remapped)', () => {
+    tmpDir = makeTempDir();
+    const result = resolveTemplateName(null, 'default', makeConfig(), tmpDir, '/some/templates');
+    expect(result.source).toBe('cli');
+    expect(result.templateName).toBe('default');
+  });
+
+  it('state.graph.template_id "default" resolves verbatim (state is NOT remapped)', () => {
+    tmpDir = makeTempDir();
+    const state = makeState('default');
+    const result = resolveTemplateName(state, undefined, makeConfig(), tmpDir, '/some/templates');
+    expect(result.source).toBe('state');
+    expect(result.templateName).toBe('default');
+  });
+});
+
 // ── resolveTemplatePath ──────────────────────────────────────────────────────
 
 describe('resolveTemplatePath', () => {
