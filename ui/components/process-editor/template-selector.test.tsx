@@ -36,7 +36,7 @@ function setupDom(url: string): void {
     return new Response(JSON.stringify({
       templates: [
         { id: 'extra-high', description: 'Canonical', version: '1.0.0' },
-        { id: 'quick', description: 'Quick mode', version: '1.0.0' },
+        { id: 'low', description: 'Low intensity', version: '1.0.0' },
         { id: 'old', description: 'Old', version: '0.1', status: 'deprecated' },
       ],
     }), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -131,17 +131,17 @@ describe('TemplateSelector', () => {
     assert.deepEqual(fetchCalls, ['/api/templates']);
     const opts = Array.from(container.querySelectorAll('option')).map(o => o.value);
     assert.ok(opts.includes('extra-high'));
-    assert.ok(opts.includes('quick'));
+    assert.ok(opts.includes('low'));
     assert.ok(!opts.includes('old'), 'deprecated template "old" must not appear in dropdown');
   });
 
   it('uses ?template from URL as the initial active id', async () => {
     let observed = '';
-    await render('/process-editor?template=quick', { onResolved: id => { observed = id; } });
+    await render('/process-editor?template=low', { onResolved: id => { observed = id; } });
     await new Promise(r => setTimeout(r, 0));
     const select = container.querySelector('select') as HTMLSelectElement;
-    assert.equal(select.value, 'quick');
-    assert.equal(observed, 'quick');
+    assert.equal(select.value, 'low');
+    assert.equal(observed, 'low');
   });
 
   it('falls back to extra-high when ?template is absent', async () => {
@@ -184,11 +184,11 @@ describe('TemplateSelector', () => {
     // useSearchParams was ignored. The fix is to derive the requested id from
     // the URL on every render and let the selector recompute resolved.
     const ref = React.createRef<HarnessHandle>();
-    await renderWithRef('/process-editor?template=quick', ref);
+    await renderWithRef('/process-editor?template=low', ref);
     await new Promise(r => setTimeout(r, 0));
     let select = container.querySelector('select') as HTMLSelectElement;
-    assert.equal(select.value, 'quick');
-    assert.equal(resolvedHistory.at(-1), 'quick');
+    assert.equal(select.value, 'low');
+    assert.equal(resolvedHistory.at(-1), 'low');
 
     await act(async () => {
       ref.current!.setRequested('extra-high');
@@ -210,9 +210,9 @@ describe('TemplateSelector', () => {
     // broken showActiveAsExtra. Real browsers require a matching option.
     const opts = Array.from(container.querySelectorAll('option')).map(o => o.value);
     assert.ok(opts.includes('extra-high'));
-    assert.ok(opts.includes('quick'));
+    assert.ok(opts.includes('low'));
     assert.ok(opts.includes('old'), 'deprecated active id must appear as extra option');
-    assert.equal(opts.length, 3, 'exactly extra-high, quick, old when deprecated id is active');
+    assert.equal(opts.length, 3, 'exactly extra-high, low, old when deprecated id is active');
     assert.equal(select.value, 'old');
     assert.equal(observed, 'old');
   });
@@ -223,14 +223,14 @@ describe('TemplateSelector', () => {
     await new Promise(r => setTimeout(r, 0));
     const select = container.querySelector('select') as HTMLSelectElement;
     await act(async () => {
-      select.value = 'quick';
+      select.value = 'low';
       select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
     });
     // Harness routerReplace updates the simulated URL and re-renders, which
-    // triggers a fresh resolution and an onResolved('quick') call.
+    // triggers a fresh resolution and an onResolved('low') call.
     await new Promise(r => setTimeout(r, 0));
-    assert.equal(observed, 'quick');
-    assert.ok(lastReplaceUrl && lastReplaceUrl.includes('template=quick'), `expected URL to contain template=quick, got ${lastReplaceUrl}`);
+    assert.equal(observed, 'low');
+    assert.ok(lastReplaceUrl && lastReplaceUrl.includes('template=low'), `expected URL to contain template=low, got ${lastReplaceUrl}`);
   });
 
   it('renders a visible label "Template" associated with the select', async () => {

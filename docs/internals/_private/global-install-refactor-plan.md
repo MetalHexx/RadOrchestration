@@ -792,11 +792,10 @@ Four shipped templates, tiered by review intensity. Plan approval gate (after pl
 ### Addendum — tier rename shipped via TIERED-PROCESS-TEMPLATES (2026-05-08)
 
 The tier-rename portion of this Wave 6 plan has shipped as a standalone
-project ahead of the v6 schema migration. See:
-
-- `C:\dev\orchestration-projects\TIERED-PROCESS-TEMPLATES\TIERED-PROCESS-TEMPLATES-BRAINSTORMING.md`
-- `C:\dev\orchestration-projects\TIERED-PROCESS-TEMPLATES\TIERED-PROCESS-TEMPLATES-REQUIREMENTS.md`
-- `C:\dev\orchestration-projects\TIERED-PROCESS-TEMPLATES\TIERED-PROCESS-TEMPLATES-MASTER-PLAN.md`
+project ahead of the v6 schema migration. The brainstorming, requirements,
+and master-plan documents for that project live in the operator's external
+project workspace (under the configured `projects.base_path`) and were not
+checked into this repo.
 
 What that project delivered:
 
@@ -812,8 +811,9 @@ What that project delivered:
   `(Recommended)` markers per a monotonic mapping. `/rad-plan-quick`
   retired.
 - One-time dogfood-only cleanup script reconciled in-flight projects
-  under `C:\dev\orchestration-projects` and was `git rm`'d before
-  merge — end users were not in scope for migration tooling.
+  under the operator's configured `projects.base_path` and was `git
+  rm`'d before merge — end users were not in scope for migration
+  tooling.
 
 What that project did NOT deliver (still parked in GW-06):
 
