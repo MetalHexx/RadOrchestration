@@ -5,9 +5,8 @@
     {
       "name": "rad-orchestration",
       "source": {
-        "source": "git-subdir",
-        "url": "https://github.com/MetalHexx/RadOrchestration.git",
-        "path": "marketplace/plugins/rad-orchestration"
+        "source": "npm",
+        "package": "@rad-orchestration/claude-plugin"
       }
     }
   ]
