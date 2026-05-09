@@ -1,7 +1,11 @@
 // adapters/run-plugin.js — Per-harness plugin-shape emit. Reads the canonical
-// plugin source under marketplace/plugins/rad-orchestration/ and copies it to
+// plugin source under marketplace/plugins/rad-orchestration/ (skills, plugin.json)
+// and hooks from the repo-root canonical hooks/ folder, then copies everything to
 // cli/dist/marketplaces/<adapter.name>/plugins/rad-orchestration/, stamping
 // plugin.json `version` from the version arg.
+//
+// Hooks sourcing: canonical hooks/ at repoRoot (AD-10). Non-plugin emits via
+// adapters/run.js do NOT propagate hooks — only the plugin emit ships the hook trio.
 //
 // Idempotent within the subdirectories this function owns (`skills/`, `hooks/`,
 // `.claude-plugin/`). Sibling subdirs like `bin/`, `dist/`, `ui/` populated by
@@ -33,14 +37,16 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
     obj.version = version;
     // Per Claude's plugin schema, when skills/ is in conventional location we declare a directory entry.
     if (fs.existsSync(path.join(sourceRoot, 'skills'))) obj.skills = ['./skills'];
-    if (fs.existsSync(path.join(sourceRoot, 'hooks', 'hooks.json'))) obj.hooks = ['./hooks/hooks.json'];
+    // Hooks presence check uses canonicalRoot (AD-10: canonical hooks/ is the sole source).
+    if (fs.existsSync(path.join(canonicalRoot, 'hooks', 'hooks.json'))) obj.hooks = ['./hooks/hooks.json'];
     // No agents this iteration (AD-13).
     delete obj.agents;
     fs.writeFileSync(cpDst, JSON.stringify(obj, null, 2) + '\n', 'utf8');
   }
 
-  // Copy hooks/ verbatim (cross-platform: include both .sh and .ps1).
-  const hooksSrc = path.join(sourceRoot, 'hooks');
+  // Copy hooks/ from canonical repo root (AD-10: canonical hooks/ is the sole source;
+  // non-plugin emits skip hook propagation entirely).
+  const hooksSrc = path.join(canonicalRoot, 'hooks');
   if (fs.existsSync(hooksSrc)) {
     fs.cpSync(hooksSrc, path.join(targetRoot, 'hooks'), { recursive: true });
   }

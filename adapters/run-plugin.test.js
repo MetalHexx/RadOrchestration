@@ -14,7 +14,8 @@ test('emits plugin layout for claude under expected output path', async () => {
   const skillDir = path.join(canonical, 'marketplace', 'plugins', 'rad-orchestration', 'skills', 'ui-start');
   fs.mkdirSync(skillDir, { recursive: true });
   fs.writeFileSync(path.join(skillDir, 'SKILL.md'), '---\nname: ui-start\ndescription: x\n---\nbody\n');
-  const hooksDir = path.join(canonical, 'marketplace', 'plugins', 'rad-orchestration', 'hooks');
+  // Hooks live at canonicalRoot/hooks/ (AD-10: canonical hooks/ is the sole source).
+  const hooksDir = path.join(canonical, 'hooks');
   fs.mkdirSync(hooksDir, { recursive: true });
   fs.writeFileSync(path.join(hooksDir, 'hooks.json'), JSON.stringify({ hooks: { SessionStart: [] } }));
   fs.writeFileSync(path.join(hooksDir, 'session-start.sh'), '#!/bin/sh\nexit 0\n');

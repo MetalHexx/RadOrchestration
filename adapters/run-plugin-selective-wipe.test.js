@@ -52,10 +52,8 @@ test('selective wipe: bundle subdirs are preserved, owned subdirs are refreshed'
     path.join(sampleSkillDir, 'SKILL.md'),
     '---\nname: sample-skill\ndescription: fresh\n---\nbody\n',
   );
-  // hooks/hooks.json
-  const hooksDir = path.join(
-    canonicalRoot, 'marketplace', 'plugins', 'rad-orchestration', 'hooks',
-  );
+  // hooks/hooks.json lives at canonicalRoot/hooks/ (AD-10: canonical hooks/ is the sole source).
+  const hooksDir = path.join(canonicalRoot, 'hooks');
   fs.mkdirSync(hooksDir, { recursive: true });
   fs.writeFileSync(path.join(hooksDir, 'hooks.json'), JSON.stringify({ hooks: {} }));
 
