@@ -97,15 +97,30 @@ export function validatePluginTree(rootDir, canonicalRoot = repoRoot) {
     if (!fs.existsSync(path.join(rootDir, rel))) missing.push(rel);
   }
 
-  // Namespaced-token checks — every non-orchestrator canonical agent must
-  // appear at least once in the plugin's orchestrator agent body as
-  // `rad-orchestration:<name>`.  Only runs if orchestrator.md is present
-  // (absence is already caught by the agent-file check above).
+  // Namespaced-token checks — every non-orchestrator canonical agent that
+  // appears as a bare-name dispatch reference in the canonical orchestrator
+  // body must show up in the plugin's orchestrator agent body as
+  // `rad-orchestration:<name>`. Agents whose bare name is absent from the
+  // canonical orchestrator body (e.g. coder-junior / coder-senior, which are
+  // dispatched only via @-references in skill bodies) are skipped — the
+  // namespacing transform in adapters/run-plugin.js can only rewrite tokens
+  // that already exist in the orchestrator dispatch context. Only runs if
+  // orchestrator.md is present (absence is already caught by the agent-file
+  // check above).
   const orchPath = path.join(rootDir, 'agents', 'orchestrator.md');
   if (fs.existsSync(orchPath)) {
     const orchBody = fs.readFileSync(orchPath, 'utf8');
+    const canonOrchPath = path.join(canonicalRoot, 'agents', 'orchestrator.md');
+    const canonOrchBody = fs.existsSync(canonOrchPath)
+      ? fs.readFileSync(canonOrchPath, 'utf8')
+      : '';
     for (const name of agentNames) {
       if (name === 'orchestrator') continue;
+      // Skip token assertion when the bare agent name does not appear in any
+      // dispatch context in the canonical orchestrator body — applyClaudeNamespacing
+      // can only rewrite tokens that already exist there.
+      const bareInCanonical = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+      if (!bareInCanonical.test(canonOrchBody)) continue;
       const token = `rad-orchestration:${name}`;
       if (!orchBody.includes(token)) {
         missing.push(`agents/orchestrator.md:token:${token}`);
