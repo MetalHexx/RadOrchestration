@@ -5,15 +5,20 @@
 // syncs the assembled plugin tree to the committed marketplace location.
 //
 // Steps (FR-2):
-//   1. cli-build              cli/ → cli/dist/                     (existing tsc)
-//   2. cli-bundle             cli/dist/bin/radorch.js → bundle .mjs (P01-T01)
-//   3. pipeline-bundle        skills/.../main.ts → dist/pipeline.js (P01-T02)
-//   4. ui-standalone          ui/ → ui/.next/standalone + static    (P01-T03)
-//   5. adapters-plugin        run-plugin for every adapter          (P04-T01)
+//   1. cli-build                cli/ → cli/dist/                     (existing tsc)
+//   2. cli-bundle               cli/dist/bin/radorch.js → bundle .mjs (P01-T01)
+//   3. pipeline-bundle          skills/.../main.ts → dist/pipeline.js (P01-T02)
+//   4. ui-standalone            ui/ → ui/.next/standalone + static    (P01-T03)
+//   5. adapters-plugin          run-plugin for every adapter          (P04-T01)
 //   6. copy-bundles-into-claude-plugin   stage bundled artifacts into the
-//                              CLI-emitted Claude plugin tree
-//   7. sync-plugin-version    plugin.json version <- cli/package.json
-//   8. validate-plugin-tree   structural assertions on the committed plugin
+//                                CLI-emitted Claude plugin tree
+//   7. copy-plugin-package-json copy plugin/package.json into staging dir
+//                                so the published npm tarball carries the
+//                                manifest (FR-8, AD-7, AD-16)
+//   8. sync-plugin-version      plugin.json + package.json version <- cli/package.json
+//   9. validate-plugin-tree     structural assertions on the staging plugin
+//  10. npm-pack-staging         `npm pack --dry-run --json` size assertion
+//                                (NFR-7: ≤ 50 MB unpacked, +10% margin)
 
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -31,8 +36,10 @@ export const PIPELINE_STEPS = [
   'ui-standalone',
   'adapters-plugin',
   'copy-bundles-into-claude-plugin',
+  'copy-plugin-package-json',
   'sync-plugin-version',
   'validate-plugin-tree',
+  'npm-pack-staging',
 ];
 
 const REQUIRED_ARTIFACTS = [
@@ -167,7 +174,7 @@ async function main() {
   const cliPkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'cli', 'package.json'), 'utf8'));
   const version = cliPkg.version;
   const claudeDist = path.join(repoRoot, 'cli', 'dist', 'marketplaces', 'claude', 'plugins', 'rad-orchestration');
-  const committed = path.join(repoRoot, 'marketplace', 'plugins', 'rad-orchestration');
+  const pluginManifest = path.join(repoRoot, 'plugin', 'package.json');
   const exec = (cmd, cwd) => execSync(cmd, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
 
   await step('cli-build', () => exec('npm run build', path.join(repoRoot, 'cli')));
@@ -209,6 +216,17 @@ async function main() {
     // bin/ dist/ ui/ in place. Nothing to do here unless rerun ordering is
     // reversed — kept as a named step for traceability and future moves.
   });
+  await step('copy-plugin-package-json', () => {
+    // Copy plugin/package.json into the staging tree so the published npm
+    // tarball (`npm pack` of claudeDist) carries the manifest. The committed
+    // source of truth lives at plugin/package.json; the version is kept in
+    // lockstep with cli/package.json by the release flow (FR-8, AD-7, AD-16).
+    if (!fs.existsSync(pluginManifest)) {
+      throw new Error(`plugin/package.json missing at ${pluginManifest}`);
+    }
+    fs.mkdirSync(claudeDist, { recursive: true });
+    fs.copyFileSync(pluginManifest, path.join(claudeDist, 'package.json'));
+  });
   await step('sync-plugin-version', () => syncPluginVersion(claudeDist, version));
   await step('validate-plugin-tree', () => {
     const r = validatePluginTree(claudeDist, repoRoot);
@@ -217,15 +235,28 @@ async function main() {
       process.exit(1);
     }
   });
-
-  // Sync the assembled plugin tree to the committed marketplace location (AD-25).
-  // Use cpSync with force rather than rmSync+cpSync to avoid Windows EPERM
-  // on directories held open by filesystem watchers (e.g. git, Explorer).
-  // cpSync with { recursive: true, force: true } overwrites individual files
-  // in place, bypassing the rmdir restriction on open directories.
-  fs.mkdirSync(committed, { recursive: true });
-  fs.cpSync(claudeDist, committed, { recursive: true, force: true });
-  process.stderr.write(`[build:plugin] committed plugin synced → ${committed}\n`);
+  await step('npm-pack-staging', () => {
+    // NFR-7: tarball unpacked size must stay under 50 MB (with a 10% margin
+    // headroom so we catch growth before it hits the hard ceiling).
+    const out = execSync('npm pack --dry-run --json', {
+      cwd: claudeDist,
+      shell: process.platform === 'win32',
+      encoding: 'utf8',
+    });
+    const parsed = JSON.parse(out);
+    const entry = Array.isArray(parsed) ? parsed[0] : parsed;
+    const unpackedSize = entry?.unpackedSize ?? entry?.size ?? 0;
+    const limit = 50 * 1024 * 1024 * 1.1;
+    process.stderr.write(
+      `[build:plugin] npm-pack-staging unpacked=${unpackedSize} bytes (limit=${Math.round(limit)} bytes)\n`,
+    );
+    if (unpackedSize > limit) {
+      process.stderr.write(
+        `[build:plugin] npm-pack-staging FAIL — unpacked size ${unpackedSize} exceeds NFR-7 ceiling of ${Math.round(limit)} bytes (50 MB + 10% margin)\n`,
+      );
+      process.exit(1);
+    }
+  });
 }
 
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))) {

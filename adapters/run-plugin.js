@@ -23,7 +23,9 @@ function pluginOutputDir(outputRoot, adapterName) {
 }
 
 export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, version }) {
-  const pluginJsonSourceRoot = path.join(canonicalRoot, 'marketplace', 'plugins', 'rad-orchestration');
+  // The .claude-plugin/plugin.json template lives under canonical plugin/ now
+  // (P04-T02 — committed marketplace tree retired in favor of npm-pack-of-staging).
+  const pluginJsonSourceRoot = path.join(canonicalRoot, 'plugin');
   const targetRoot = pluginOutputDir(outputRoot, adapter.name);
   fs.mkdirSync(targetRoot, { recursive: true });
   for (const sub of ['skills', 'agents', 'hooks', '.claude-plugin']) {

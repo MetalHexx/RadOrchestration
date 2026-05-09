@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { execFile } from 'node:child_process';
+import { execFile, execSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -9,11 +9,25 @@ import { fileURLToPath } from 'node:url';
 const execP = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..', '..');
-const pluginRoot = path.join(repoRoot, 'marketplace', 'plugins', 'rad-orchestration');
+const pluginRoot = path.join(
+  repoRoot,
+  'cli',
+  'dist',
+  'marketplaces',
+  'claude',
+  'plugins',
+  'rad-orchestration',
+);
 
 beforeAll(async () => {
   if (!(await fs.stat(pluginRoot).catch(() => null))) {
-    throw new Error(`marketplace/plugins/rad-orchestration is missing — run \`npm run build:plugin\` from the repo root first`);
+    // Plugin staging tree is now gitignored — build it on demand so the
+    // integration test runs out of the box without a manual pre-build step.
+    execSync('npm run build:plugin', {
+      cwd: repoRoot,
+      stdio: 'inherit',
+      shell: process.platform === 'win32' ? true : undefined,
+    });
   }
 });
 
@@ -31,9 +45,9 @@ describe('bundle existence (FR-27 #1)', () => {
       'hooks/hooks.json',
       'hooks/session-start.sh',
       'hooks/session-start.ps1',
-      'skills/ui-start/SKILL.md',
-      'skills/ui-stop/SKILL.md',
-      'skills/ui-status/SKILL.md',
+      'skills/rad-ui-start/SKILL.md',
+      'skills/rad-ui-stop/SKILL.md',
+      'skills/rad-ui-status/SKILL.md',
     ]) {
       const f = path.join(pluginRoot, rel);
       const stat = await fs.stat(f);
