@@ -30,6 +30,10 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
     fs.rmSync(path.join(targetRoot, sub), { recursive: true, force: true });
   }
 
+  // Discover the canonical agent list dynamically (no hardcoded names) for the
+  // Claude plugin namespacing pass below. Used only when adapter is Claude.
+  const canonicalAgentNames = listCanonicalAgentNames(canonicalRoot);
+
   // Copy .claude-plugin/plugin.json with version stamped.
   const cpSrc = path.join(pluginJsonSourceRoot, '.claude-plugin', 'plugin.json');
   if (fs.existsSync(cpSrc)) {
@@ -54,8 +58,10 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
   }
 
   // Walk every directory under canonical skills/, transform SKILL.md frontmatter
-  // via adapter.skillFrontmatter, copy other subfiles verbatim.
-  // Pattern mirrors adapters/run.js.
+  // via adapter.skillFrontmatter, copy other subfiles verbatim. For Claude
+  // adapter, the namespacing pass also runs over every .md body found
+  // recursively under each skill folder (e.g. references/*.md) — the
+  // orchestrator-facing dispatch tokens live in those reference docs too.
   const skillsSrc = path.join(canonicalRoot, 'skills');
   if (fs.existsSync(skillsSrc)) {
     for (const skillName of fs.readdirSync(skillsSrc)) {
@@ -63,21 +69,40 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
       if (!fs.statSync(skillSrcDir).isDirectory()) continue;
       const skillOutDir = path.join(targetRoot, 'skills', skillName);
       fs.mkdirSync(skillOutDir, { recursive: true });
-      for (const child of fs.readdirSync(skillSrcDir)) {
-        const absSrc = path.join(skillSrcDir, child);
-        const absDest = path.join(skillOutDir, child);
-        if (fs.statSync(absSrc).isDirectory()) {
-          fs.cpSync(absSrc, absDest, { recursive: true });
-          continue;
+
+      const walk = (relPath) => {
+        const absSrc = path.join(skillSrcDir, relPath);
+        const absDest = path.join(skillOutDir, relPath);
+        const stat = fs.statSync(absSrc);
+        if (stat.isDirectory()) {
+          fs.mkdirSync(absDest, { recursive: true });
+          for (const child of fs.readdirSync(absSrc)) {
+            walk(path.join(relPath, child));
+          }
+          return;
         }
-        if (child === 'SKILL.md') {
+        if (relPath === 'SKILL.md') {
           const text = fs.readFileSync(absSrc, 'utf8');
           const rawProjected = projectFrontmatterMin(text, (fm) => adapter.skillFrontmatter(fm, { adapter }));
-          const projected = applyPluginRootSubstitution(rawProjected, adapter);
+          const withPluginRoot = applyPluginRootSubstitution(rawProjected, adapter);
+          const projected = applyClaudeNamespacing(withPluginRoot, adapter, canonicalAgentNames);
           fs.writeFileSync(absDest, projected, 'utf8');
-        } else {
-          fs.copyFileSync(absSrc, absDest);
+          return;
         }
+        if (relPath.endsWith('.md')) {
+          // Skill reference docs (e.g. references/pipeline-guide.md) carry
+          // dispatch tokens that the orchestrator inlines context from. Run
+          // the same Claude namespacing pass over their bodies so dispatch
+          // references stay consistent in the plugin emit.
+          const text = fs.readFileSync(absSrc, 'utf8');
+          const projected = applyClaudeNamespacing(text, adapter, canonicalAgentNames);
+          fs.writeFileSync(absDest, projected, 'utf8');
+          return;
+        }
+        fs.copyFileSync(absSrc, absDest);
+      };
+      for (const child of fs.readdirSync(skillSrcDir)) {
+        walk(child);
       }
     }
   }
@@ -99,7 +124,8 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
         ? (fm) => adapter.agentFrontmatter(fm, { adapter })
         : (fm) => fm;
       const rawProjected = projectFrontmatterMin(text, projectFn);
-      const projected = applyPluginRootSubstitution(rawProjected, adapter);
+      const withPluginRoot = applyPluginRootSubstitution(rawProjected, adapter);
+      const projected = applyClaudeNamespacing(withPluginRoot, adapter, canonicalAgentNames);
       fs.writeFileSync(absDest, projected, 'utf8');
     }
   }
@@ -120,6 +146,119 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
 function applyPluginRootSubstitution(text, adapter) {
   if (!adapter.pluginRootSubstitution) return text;
   return text.replaceAll('${PLUGIN_ROOT}', adapter.pluginRootSubstitution);
+}
+
+// ── Claude plugin agent-name namespacing ─────────────────────────────
+
+/**
+ * Lists every canonical agent name (filename minus `.md`) under
+ * `<canonicalRoot>/agents/`. Returns a sorted, longest-first array so that
+ * regex alternation prefers `coder-junior` over `coder` and never produces
+ * a doubly-prefixed `rad-orchestration:rad-orchestration:coder` overlap.
+ *
+ * The orchestrator agent itself is excluded — orchestrator never dispatches
+ * to itself, so namespacing its own name in dispatch contexts would be
+ * meaningless and risk false positives in self-referential prose.
+ */
+function listCanonicalAgentNames(canonicalRoot) {
+  const agentsDir = path.join(canonicalRoot, 'agents');
+  if (!fs.existsSync(agentsDir)) return [];
+  const names = fs.readdirSync(agentsDir)
+    .filter((f) => f.endsWith('.md'))
+    .map((f) => f.replace(/\.md$/, ''))
+    .filter((n) => n !== 'orchestrator');
+  // Longest-first ordering so `coder-junior` is tried before `coder` in the
+  // alternation — without this, the bare-name pattern would match `coder` in
+  // `coder-junior` and produce `rad-orchestration:coder-junior` only via the
+  // longer alternative, but never `rad-orchestration:coder` followed by
+  // `-junior`.
+  names.sort((a, b) => b.length - a.length || a.localeCompare(b));
+  return names;
+}
+
+/**
+ * Rewrites every recognized agent dispatch token in `text` from its bare
+ * canonical form (e.g. `coder`) to its plugin-namespaced form
+ * (`rad-orchestration:coder`). Gated on `adapter.name === 'claude'`; other
+ * adapters return text unchanged.
+ *
+ * Conservative scoping — the substitution only fires inside known dispatch
+ * contexts, never on every prose mention of an agent name:
+ *
+ *   1. `**<name>**`              — markdown-bold dispatch tokens
+ *      (e.g. `Spawn **coder** agent`, `the **planner** agent`)
+ *   2. `<name> agent` / `<name> agents` — bare-name followed by ` agent(s)`
+ *      (catches "spawning the planner agent" prose)
+ *   3. `<name> spawn` / `<name> spawns` — bare-name followed by ` spawn(s)`
+ *      (catches "every planner spawn" — dispatch context)
+ *   4. Comma-separated dispatch lists — `<name>, <name>, ..., and <name>
+ *      spawns/agents` shape. When the tail of a comma-list closes on
+ *      ` spawn(s)` or ` agent(s)`, every agent name in the list head is
+ *      a dispatch reference and gets namespaced.
+ *   5. `subagent_type: <name>`   — YAML/code dispatch identifiers
+ *
+ * Names sourced dynamically from `<canonicalRoot>/agents/` (no hardcoded
+ * list); `orchestrator` is filtered out by `listCanonicalAgentNames`.
+ *
+ * Already-namespaced occurrences (`rad-orchestration:<name>`) are preserved
+ * — every regex in the chain includes a negative lookbehind / lookahead
+ * guard so the function is idempotent against repeat application.
+ */
+function applyClaudeNamespacing(text, adapter, canonicalAgentNames) {
+  if (adapter.name !== 'claude') return text;
+  if (!canonicalAgentNames || canonicalAgentNames.length === 0) return text;
+
+  const escaped = canonicalAgentNames.map(escapeRegex);
+  const alt = escaped.join('|');
+  const ns = 'rad-orchestration:';
+
+  let out = text;
+
+  // 1. **<name>** — markdown-bold dispatch token.
+  out = out.replace(
+    new RegExp(`\\*\\*(?:rad-orchestration:)?(${alt})\\*\\*`, 'g'),
+    `**${ns}$1**`,
+  );
+
+  // 4. Comma-separated dispatch lists closed by " spawn(s)" or " agent(s)".
+  //    Match `<name>, <name>, ..., (?:and )?<name> (spawns|agents)` and
+  //    namespace every entry. Run before rule #2/#3 so list bodies are
+  //    handled in one pass before the per-name suffix patterns fire.
+  const listEntry = `(?:rad-orchestration:)?(?:${alt})`;
+  const listRegex = new RegExp(
+    `(?<![\\w:-])(${listEntry}(?:,\\s+(?:and\\s+)?${listEntry})+)(?=\\s+(?:spawns?|agents?)\\b)`,
+    'g',
+  );
+  out = out.replace(listRegex, (match) => {
+    return match.replace(
+      new RegExp(`(?<![\\w:-])(?:rad-orchestration:)?(${alt})\\b`, 'g'),
+      `${ns}$1`,
+    );
+  });
+
+  // 2. <name> agent(s) — bare-name followed by " agent" or " agents".
+  out = out.replace(
+    new RegExp(`(?<![\\w:-])(${alt})(?= agents?\\b)`, 'g'),
+    `${ns}$1`,
+  );
+
+  // 3. <name> spawn(s) — bare-name followed by " spawn" or " spawns".
+  out = out.replace(
+    new RegExp(`(?<![\\w:-])(${alt})(?= spawns?\\b)`, 'g'),
+    `${ns}$1`,
+  );
+
+  // 5. subagent_type: <name> — YAML/code dispatch identifier.
+  out = out.replace(
+    new RegExp(`(subagent_type:\\s*)(?:rad-orchestration:)?(${alt})\\b`, 'g'),
+    `$1${ns}$2`,
+  );
+
+  return out;
+}
+
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // Lightweight YAML projection — same shape adapters/run.js uses internally.
