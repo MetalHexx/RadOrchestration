@@ -34,7 +34,7 @@ test('validatePluginTree: detects missing required artifacts', async () => {
   assert.ok(empty.missing.includes('dist/pipeline.js'));
   assert.ok(empty.missing.includes('ui/server.js'));
   assert.ok(empty.missing.includes('hooks/hooks.json'));
-  assert.ok(empty.missing.some((m) => m.startsWith('skills/ui-start/')));
+  assert.ok(empty.missing.some((m) => m.startsWith('skills/rad-ui-start/')));
 });
 
 test('validatePluginTree: passes on a complete fixture', async () => {
@@ -53,7 +53,7 @@ test('validatePluginTree: passes on a complete fixture', async () => {
   writeF('hooks/hooks.json', '{}');
   writeF('hooks/session-start.sh');
   writeF('hooks/session-start.ps1');
-  for (const s of ['ui-start', 'ui-stop', 'ui-status']) writeF(`skills/${s}/SKILL.md`);
+  for (const s of ['rad-ui-start', 'rad-ui-stop', 'rad-ui-status']) writeF(`skills/${s}/SKILL.md`);
   const ok = validatePluginTree(tmp);
   assert.equal(ok.ok, true, JSON.stringify(ok));
 });

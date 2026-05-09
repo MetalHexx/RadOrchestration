@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // scripts/build-plugin.js — publish-time meta-script. Drives the full pipeline
-// in fixed order, then copies the Claude plugin folder to the committed
-// marketplace/plugins/rad-orchestration/ location.
+// in fixed order: builds CLI, bundles artefacts, runs adapters-plugin (which
+// reads canonical skills/rad-ui-*/ and canonical hooks/), then validates and
+// syncs the assembled plugin tree to the committed marketplace location.
 //
 // Steps (FR-2):
 //   1. cli-build              cli/ → cli/dist/                     (existing tsc)
@@ -42,9 +43,9 @@ const REQUIRED_ARTIFACTS = [
   'hooks/hooks.json',
   'hooks/session-start.sh',
   'hooks/session-start.ps1',
-  'skills/ui-start/SKILL.md',
-  'skills/ui-stop/SKILL.md',
-  'skills/ui-status/SKILL.md',
+  'skills/rad-ui-start/SKILL.md',
+  'skills/rad-ui-stop/SKILL.md',
+  'skills/rad-ui-status/SKILL.md',
 ];
 
 export function validatePluginTree(rootDir) {
@@ -143,7 +144,7 @@ async function main() {
     }
   });
 
-  // Sync to the committed plugin location (AD-25).
+  // Sync the assembled plugin tree to the committed marketplace location (AD-25).
   // Use cpSync with force rather than rmSync+cpSync to avoid Windows EPERM
   // on directories held open by filesystem watchers (e.g. git, Explorer).
   // cpSync with { recursive: true, force: true } overwrites individual files

@@ -43,14 +43,12 @@ test('selective wipe: bundle subdirs are preserved, owned subdirs are refreshed'
     path.join(pluginCpDir, 'plugin.json'),
     JSON.stringify({ name: 'rad-orchestration', version: '0.0.0' }),
   );
-  // skills/sample-skill/SKILL.md
-  const sampleSkillDir = path.join(
-    canonicalRoot, 'marketplace', 'plugins', 'rad-orchestration', 'skills', 'sample-skill',
-  );
+  // skills/rad-ui-sample/SKILL.md — canonical rad-ui-* skill read by run-plugin
+  const sampleSkillDir = path.join(canonicalRoot, 'skills', 'rad-ui-sample');
   fs.mkdirSync(sampleSkillDir, { recursive: true });
   fs.writeFileSync(
     path.join(sampleSkillDir, 'SKILL.md'),
-    '---\nname: sample-skill\ndescription: fresh\n---\nbody\n',
+    '---\nname: rad-ui-sample\ndescription: fresh\n---\nbody\n',
   );
   // hooks/hooks.json lives at canonicalRoot/hooks/ (AD-10: canonical hooks/ is the sole source).
   const hooksDir = path.join(canonicalRoot, 'hooks');
@@ -86,8 +84,8 @@ test('selective wipe: bundle subdirs are preserved, owned subdirs are refreshed'
     `stale skills/old-skill/ must be wiped`,
   );
   assert.ok(
-    fs.existsSync(path.join(pluginRoot, 'skills', 'sample-skill', 'SKILL.md')),
-    `skills/sample-skill/SKILL.md must be emitted`,
+    fs.existsSync(path.join(pluginRoot, 'skills', 'rad-ui-sample', 'SKILL.md')),
+    `skills/rad-ui-sample/SKILL.md must be emitted`,
   );
 
   // 9. hooks and .claude-plugin were emitted

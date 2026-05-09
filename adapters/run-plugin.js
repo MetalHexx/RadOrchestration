@@ -1,10 +1,10 @@
-// adapters/run-plugin.js — Per-harness plugin-shape emit. Reads the canonical
-// plugin source under marketplace/plugins/rad-orchestration/ (skills, plugin.json)
-// and hooks from the repo-root canonical hooks/ folder, then copies everything to
-// cli/dist/marketplaces/<adapter.name>/plugins/rad-orchestration/, stamping
-// plugin.json `version` from the version arg.
+// adapters/run-plugin.js — Per-harness plugin-shape emit. Reads canonical
+// skills/rad-ui-*/ for UI skills and canonical hooks/ for hook scripts, then
+// copies everything to cli/dist/marketplaces/<adapter.name>/plugins/rad-orchestration/,
+// stamping plugin.json `version` from the version arg.
 //
-// Hooks sourcing: canonical hooks/ at repoRoot (AD-10). Non-plugin emits via
+// Skills sourcing: canonical skills/ at canonicalRoot, filtered to rad-ui-* dirs.
+// Hooks sourcing: canonical hooks/ at canonicalRoot (AD-10). Non-plugin emits via
 // adapters/run.js do NOT propagate hooks — only the plugin emit ships the hook trio.
 //
 // Idempotent within the subdirectories this function owns (`skills/`, `hooks/`,
@@ -36,7 +36,7 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
     const obj = JSON.parse(fs.readFileSync(cpSrc, 'utf8'));
     obj.version = version;
     // Per Claude's plugin schema, when skills/ is in conventional location we declare a directory entry.
-    if (fs.existsSync(path.join(sourceRoot, 'skills'))) obj.skills = ['./skills'];
+    if (fs.existsSync(path.join(canonicalRoot, 'skills'))) obj.skills = ['./skills'];
     // Hooks presence check uses canonicalRoot (AD-10: canonical hooks/ is the sole source).
     if (fs.existsSync(path.join(canonicalRoot, 'hooks', 'hooks.json'))) obj.hooks = ['./hooks/hooks.json'];
     // No agents this iteration (AD-13).
@@ -51,13 +51,15 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
     fs.cpSync(hooksSrc, path.join(targetRoot, 'hooks'), { recursive: true });
   }
 
-  // Walk skills/, transform SKILL.md frontmatter via adapter.skillFrontmatter,
-  // copy other subfiles verbatim. Pattern mirrors adapters/run.js.
-  const skillsSrc = path.join(sourceRoot, 'skills');
+  // Walk canonical skills/, filter to rad-ui-* entries, transform SKILL.md
+  // frontmatter via adapter.skillFrontmatter, copy other subfiles verbatim.
+  // Pattern mirrors adapters/run.js. Phase 3 will widen this to full enumeration.
+  const skillsSrc = path.join(canonicalRoot, 'skills');
   if (fs.existsSync(skillsSrc)) {
     for (const skillName of fs.readdirSync(skillsSrc)) {
       const skillSrcDir = path.join(skillsSrc, skillName);
       if (!fs.statSync(skillSrcDir).isDirectory()) continue;
+      if (!skillName.startsWith('rad-ui-')) continue;
       const skillOutDir = path.join(targetRoot, 'skills', skillName);
       fs.mkdirSync(skillOutDir, { recursive: true });
       for (const child of fs.readdirSync(skillSrcDir)) {

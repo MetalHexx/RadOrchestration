@@ -10,10 +10,10 @@ import { adapter as copilotCliAdapter } from './copilot-cli/adapter.js';
 test('emits plugin layout for claude under expected output path', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-claude-'));
   const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-can-'));
-  // Minimal canonical fixture: one plugin-source skill
-  const skillDir = path.join(canonical, 'marketplace', 'plugins', 'rad-orchestration', 'skills', 'ui-start');
+  // Minimal canonical fixture: one rad-ui-* skill at canonical skills/
+  const skillDir = path.join(canonical, 'skills', 'rad-ui-start');
   fs.mkdirSync(skillDir, { recursive: true });
-  fs.writeFileSync(path.join(skillDir, 'SKILL.md'), '---\nname: ui-start\ndescription: x\n---\nbody\n');
+  fs.writeFileSync(path.join(skillDir, 'SKILL.md'), '---\nname: rad-ui-start\ndescription: x\n---\nbody\n');
   // Hooks live at canonicalRoot/hooks/ (AD-10: canonical hooks/ is the sole source).
   const hooksDir = path.join(canonical, 'hooks');
   fs.mkdirSync(hooksDir, { recursive: true });
@@ -34,7 +34,7 @@ test('emits plugin layout for claude under expected output path', async () => {
 
   const out = path.join(tmp, 'cli', 'dist', 'marketplaces', 'claude', 'plugins', 'rad-orchestration');
   assert.ok(fs.existsSync(path.join(out, '.claude-plugin', 'plugin.json')));
-  assert.ok(fs.existsSync(path.join(out, 'skills', 'ui-start', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(out, 'skills', 'rad-ui-start', 'SKILL.md')));
   assert.ok(fs.existsSync(path.join(out, 'hooks', 'hooks.json')));
   assert.ok(fs.existsSync(path.join(out, 'hooks', 'session-start.sh')));
   // Plugin.json version is overwritten with the version arg
