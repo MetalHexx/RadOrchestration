@@ -13431,7 +13431,10 @@ async function runPluginChecks(opts) {
       }
       return 0;
     };
-    if (cmp(opts.localVersion, ij.last_writer_version) < 0) {
+    if (!ij.last_writer_version) {
+      skewStatus = "pass";
+      skewDetail = "install.json has no last_writer_version (iter-01 install \u2014 skipping skew check)";
+    } else if (cmp(opts.localVersion, ij.last_writer_version) < 0) {
       skewStatus = "fail";
       skewDetail = `state last written by ${ij.last_writer_version}; this CLI is ${opts.localVersion}`;
     }

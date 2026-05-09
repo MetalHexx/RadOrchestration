@@ -21,7 +21,9 @@ package-lock.json
 /copilot-cli/
 
 # Adapter scratch sandbox — opt-in inspection, never committed
-dist/
+/dist/
+# Committed plugin dist bundle must not be caught by the rule above (FR-22, AD-25)
+!marketplace/plugins/rad-orchestration/dist/
 
 # esbuild bundle output — produced by `npm run bundle` in cli/ and skills/rad-orchestration/scripts/
 dist-bundle/
