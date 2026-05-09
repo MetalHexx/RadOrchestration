@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { validateDefaultTemplate, ALLOWED_DEFAULT_TEMPLATE_VALUES } from '../lib/config-validator.js';
 
-describe('config-validator: default_template allowlist (FR-7)', () => {
+describe('config-validator: default_template allowlist', () => {
   it('accepts the four tier names', () => {
     for (const v of ['extra-high', 'high', 'medium', 'low']) {
       expect(validateDefaultTemplate(v)).toEqual({ ok: true });

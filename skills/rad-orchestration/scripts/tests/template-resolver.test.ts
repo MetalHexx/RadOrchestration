@@ -105,7 +105,7 @@ describe('resolveTemplateName', () => {
   });
 });
 
-describe('resolveTemplateName — config sentinel remap (FR-6)', () => {
+describe('resolveTemplateName — config sentinel remap', () => {
   let tmpDir: string;
   afterEach(() => { if (tmpDir && fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true, force: true }); });
 
