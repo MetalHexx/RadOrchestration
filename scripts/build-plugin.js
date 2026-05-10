@@ -144,14 +144,19 @@ export function syncPluginVersion(pluginDir, version) {
   obj.version = version;
   fs.writeFileSync(f, JSON.stringify(obj, null, 2) + '\n', 'utf8');
 
-  // Sync version into hook bootstrap scripts so install.json written at
-  // session-start always matches the plugin bundle (prevents checkVersionSkew
-  // rejecting `ui start` / other commands after a fresh bootstrap).
+  // Sync version into hook bootstrap scripts. install.json's package_version
+  // and last_writer_version, plus orchestration.yml's `package_version:` line
+  // (provisioned at session start in plugin mode) all need to match the
+  // plugin bundle so checkVersionSkew doesn't reject `ui start` / other
+  // commands after a fresh bootstrap.
   const shPath = path.join(pluginDir, 'hooks', 'session-start.sh');
   if (fs.existsSync(shPath)) {
     let sh = fs.readFileSync(shPath, 'utf8');
     sh = sh.replace(/"package_version": "[^"]*"/g, `"package_version": "${version}"`);
     sh = sh.replace(/"last_writer_version": "[^"]*"/g, `"last_writer_version": "${version}"`);
+    // YAML form in the orchestration.yml heredoc — line-anchored so we don't
+    // accidentally eat the JSON form above (which has a leading quote).
+    sh = sh.replace(/^package_version: \S+$/gm, `package_version: ${version}`);
     fs.writeFileSync(shPath, sh, 'utf8');
   }
   const ps1Path = path.join(pluginDir, 'hooks', 'session-start.ps1');
@@ -159,6 +164,9 @@ export function syncPluginVersion(pluginDir, version) {
     let ps1 = fs.readFileSync(ps1Path, 'utf8');
     ps1 = ps1.replace(/package_version = '[^']*'/g, `package_version = '${version}'`);
     ps1 = ps1.replace(/last_writer_version = '[^']*'/g, `last_writer_version = '${version}'`);
+    // YAML form embedded in the PowerShell here-string (no line anchor — the
+    // ps1 emits the YAML as a single \n-joined string literal).
+    ps1 = ps1.replace(/package_version: \d[^\\\s`"]*`n/g, `package_version: ${version}\`n`);
     fs.writeFileSync(ps1Path, ps1, 'utf8');
   }
 }
