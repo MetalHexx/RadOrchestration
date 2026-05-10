@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { runAdapter } from './run.js';
 import { runAdapterPlugin } from './run-plugin.js';
 import { adapter } from './claude/adapter.js';
 
@@ -29,11 +30,15 @@ test('Claude plugin emit namespaces every agent dispatch token', async () => {
 });
 
 test('dogfood emit (runAdapter) preserves bare names', async () => {
-  // Read the canonical agents/orchestrator.md and confirm bare-name dispatch
-  // text was NOT rewritten in non-plugin emit paths. The dogfood emit lives
-  // at .claude/agents/orchestrator.md after npm run build.
+  // Drive the Claude adapter through the legacy/dogfood emit path (runAdapter,
+  // not runAdapterPlugin) into a tmp dir and confirm bare-name dispatch
+  // tokens (`coder`, `reviewer`) are NOT rewritten to the namespaced form.
+  // Reading from a tmp emit avoids depending on .claude/ being built — that
+  // tree is gitignored and absent on clean CI.
   const repoRoot = path.resolve('.');
-  const dogfoodBody = fs.readFileSync(path.join(repoRoot, '.claude', 'agents', 'orchestrator.md'), 'utf8');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rap-dogfood-'));
+  await runAdapter(adapter, { canonicalRoot: repoRoot, outputRoot: tmp, version: '0.0.0' });
+  const dogfoodBody = fs.readFileSync(path.join(tmp, adapter.targetDir, 'agents', 'orchestrator.md'), 'utf8');
   assert.doesNotMatch(dogfoodBody, /rad-orchestration:coder\b/);
   assert.doesNotMatch(dogfoodBody, /rad-orchestration:reviewer\b/);
 });
