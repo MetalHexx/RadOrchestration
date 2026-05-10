@@ -109,13 +109,10 @@ const INTENDED_ITERATION_DELTAS = new Set([
   // bundle by design — the rename is part of retiring the JIT shim.
   'skills/rad-orchestration/scripts/main.ts',
   'skills/rad-orchestration/scripts/tests/main.test.ts',
-  // rad-ui-{start,stop,status} new canonical UI skills introduced in this
-  // iteration (P02-T01). These legitimately did not exist at the baseline
-  // snapshot and are verified to be tracked in the bundle via per-file
-  // walkSha coverage below. Marking them as intentional iteration additions.
-  'skills/rad-ui-start/SKILL.md',          // P02-T01: new canonical UI skill
-  'skills/rad-ui-stop/SKILL.md',           // P02-T01: new canonical UI skill
-  'skills/rad-ui-status/SKILL.md',         // P02-T01: new canonical UI skill
+  // rad-ui-{start,stop,status} are plugin-only skills, gated out of legacy
+  // emit by adapters/run.js's PLUGIN_ONLY_SKILLS skip. They must NOT appear
+  // in installer/src/<harness>/ bundles — if they ever do, this test should
+  // fail to surface the regression rather than silently allow it.
 ]);
 
 // Manifest catalogs (manifests/v<version>.json) embed per-file sha256 hashes

@@ -58,6 +58,35 @@ test('copilot-cli emits to its own gitignored marketplaces folder', async () => 
   assert.ok(fs.existsSync(path.join(out, '.claude-plugin', 'plugin.json')));
 });
 
+test('plugin emit retains rad-ui-{start,stop,status} (counterpart to run.js skip)', async () => {
+  // Symmetric counterpart to runAdapter's PLUGIN_ONLY_SKILLS skip. Plugin emit
+  // is the *only* path that ships these skills + the bin/radorch.mjs binary
+  // they depend on; if either changes silently, this test fails first.
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-ui-keep-'));
+  const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-can-ui-'));
+  for (const name of ['rad-ui-start', 'rad-ui-stop', 'rad-ui-status']) {
+    const skillDir = path.join(canonical, 'skills', name);
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(skillDir, 'SKILL.md'),
+      `---\nname: ${name}\ndescription: x\n---\nbody\n`,
+    );
+  }
+  fs.mkdirSync(path.join(canonical, 'plugin', '.claude-plugin'), { recursive: true });
+  fs.writeFileSync(
+    path.join(canonical, 'plugin', '.claude-plugin', 'plugin.json'),
+    JSON.stringify({ name: 'rad-orchestration', version: '0.0.0' }),
+  );
+  await runAdapterPlugin(claudeAdapter, { canonicalRoot: canonical, outputRoot: tmp, version: '1.1.0' });
+  const out = path.join(tmp, 'cli', 'dist', 'marketplaces', 'claude', 'plugins', 'rad-orchestration');
+  for (const name of ['rad-ui-start', 'rad-ui-stop', 'rad-ui-status']) {
+    assert.ok(
+      fs.existsSync(path.join(out, 'skills', name, 'SKILL.md')),
+      `plugin emit must retain ${name}/SKILL.md`,
+    );
+  }
+});
+
 test('idempotent: second run produces byte-identical output', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-idem-'));
   const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-can-'));

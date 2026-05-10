@@ -26,3 +26,32 @@ jobs:
 
       - name: Smoke build all harnesses against canonical source
         run: node scripts/build.js --all
+
+  byte-identity:
+    # Materializes both distribution artifacts and runs the byte-identity /
+    # drift regression test. Catches plugin-only-skill leaks into legacy
+    # bundles (and other unintended emit deltas) at PR time, before publish.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install repo-root dependencies
+        run: npm ci
+
+      - name: Install cli/ dependencies (for plugin bundle build)
+        run: npm ci
+        working-directory: cli
+
+      - name: Stage legacy installer bundles
+        run: node installer/scripts/sync-source.js
+
+      - name: Stage Claude plugin tree
+        run: npm run build:plugin
+
+      - name: Byte-identity regression test (NFR-1, NFR-2, NFR-7)
+        run: node --test tests/scripts/byte-identity-regression.test.mjs
