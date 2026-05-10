@@ -116,3 +116,32 @@ describe('ui lifecycle (FR-27 #5, FR-28)', () => {
     expect(statusEnv2.data.running).toBe(false);
   }, 30_000);
 });
+
+describe('plugin completeness (NFR-6, FR-1, FR-2, FR-4, FR-6)', () => {
+  it('every canonical skill is enumerable under skills/', async () => {
+    const canonRoot = path.resolve(__dirname, '..', '..', '..');
+    const canonical = (await fs.readdir(path.join(canonRoot, 'skills'), { withFileTypes: true }))
+      .filter(d => d.isDirectory()).map(d => d.name);
+    for (const s of canonical) {
+      await fs.access(path.join(pluginRoot, 'skills', s, 'SKILL.md'));
+    }
+  });
+  it('every canonical agent is shipped under agents/', async () => {
+    const canonRoot = path.resolve(__dirname, '..', '..', '..');
+    const canonical = (await fs.readdir(path.join(canonRoot, 'agents'))).filter(f => f.endsWith('.md'));
+    for (const a of canonical) {
+      await fs.access(path.join(pluginRoot, 'agents', a));
+    }
+  });
+  it('orchestrator body uses the namespaced rad-orchestration: dispatch form', async () => {
+    const text = await fs.readFile(path.join(pluginRoot, 'agents', 'orchestrator.md'), 'utf8');
+    for (const a of ['coder', 'reviewer', 'planner', 'brainstormer', 'source-control']) {
+      expect(text).toMatch(new RegExp(`rad-orchestration:${a}\\b`));
+    }
+  });
+  it('dist/pipeline.js is the esbuild bundle (no JIT shim markers)', async () => {
+    const text = await fs.readFile(path.join(pluginRoot, 'dist', 'pipeline.js'), 'utf8');
+    expect(text).not.toMatch(/\bnpx\s+tsx\b/);
+    expect(text).not.toMatch(/\bnpm\s+ci\b/);
+  });
+});
