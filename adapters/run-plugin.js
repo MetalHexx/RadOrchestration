@@ -69,10 +69,20 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
   }
 
   // Copy hooks/ from canonical repo root (AD-10: canonical hooks/ is the sole source;
-  // non-plugin emits skip hook propagation entirely).
+  // non-plugin emits skip hook propagation entirely). Filter out dev-only
+  // artifacts so the same shouldSkipPluginEntry policy that gates skill files
+  // also applies to hook files (e.g. hooks/session-start.test.mjs must not ship).
   const hooksSrc = path.join(canonicalRoot, 'hooks');
   if (fs.existsSync(hooksSrc)) {
-    fs.cpSync(hooksSrc, path.join(targetRoot, 'hooks'), { recursive: true });
+    fs.cpSync(hooksSrc, path.join(targetRoot, 'hooks'), {
+      recursive: true,
+      filter(source) {
+        if (source === hooksSrc) return true;
+        const basename = path.basename(source);
+        const isDir = fs.statSync(source).isDirectory();
+        return !shouldSkipPluginEntry(basename, isDir);
+      },
+    });
   }
 
   // Walk every directory under canonical skills/, transform SKILL.md frontmatter
