@@ -44,12 +44,19 @@ test('targetDir resolves to root (".") for root-config category, "agents"/"skill
   assert.strictEqual(categories[2].targetDir, 'skills');
 });
 
-test('globalExcludes matches expected array', () => {
+test('globalExcludes contains the runtime/dev artifacts that must never ship', () => {
   const { globalExcludes } = getManifest('.claude', 'claude-code');
-  assert.deepStrictEqual(globalExcludes, [
-    'node_modules',
-    '.next',
-    '.env.local',
-    'package-lock.json',
-  ]);
+  // Runtime exclusions (npm/Next.js/secrets):
+  assert.ok(globalExcludes.includes('node_modules'));
+  assert.ok(globalExcludes.includes('.next'));
+  assert.ok(globalExcludes.includes('.env.local'));
+  assert.ok(globalExcludes.includes('package-lock.json'));
+  // Dev-only exclusions added in PR-#85: pipeline test sources, build outputs.
+  assert.ok(globalExcludes.includes('tests'));
+  assert.ok(globalExcludes.includes('dist'));
+  assert.ok(globalExcludes.includes('dist-bundle'));
+  assert.ok(globalExcludes.includes('vitest.config.ts'));
+  assert.ok(globalExcludes.includes('vitest.config.js'));
+  assert.ok(globalExcludes.includes('vitest.config.mjs'));
+  assert.ok(globalExcludes.includes('tsconfig.tsbuildinfo'));
 });

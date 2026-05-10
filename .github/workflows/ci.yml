@@ -67,10 +67,11 @@ jobs:
       - name: Stage Claude plugin tree
         run: npm run build:plugin
 
-      - name: Bundle invariants — placement, completeness, manifest, size
+      - name: Bundle invariants — placement, completeness, manifest, size, no test leakage
         run: |
           node --test \
             tests/scripts/plugin-only-skill-placement.test.mjs \
             tests/scripts/bundle-completeness.test.mjs \
             tests/scripts/manifest-coherence.test.mjs \
-            tests/scripts/plugin-tarball-size.test.mjs
+            tests/scripts/plugin-tarball-size.test.mjs \
+            tests/scripts/bundle-no-test-leakage.test.mjs

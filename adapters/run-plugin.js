@@ -18,6 +18,22 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+// Test-source files and dev configs that should never ship to end users.
+// Mirrored in installer/lib/file-copier.js / manifest.js — keep in sync.
+const TEST_FILE_RE = /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/i;
+const SKIP_DIR_NAMES = new Set(['tests', 'node_modules', '.next', 'dist', 'dist-bundle']);
+const SKIP_FILE_NAMES = new Set([
+  'vitest.config.ts', 'vitest.config.js', 'vitest.config.mjs',
+  'tsconfig.tsbuildinfo',
+]);
+
+function shouldSkipPluginEntry(name, isDir) {
+  if (isDir) return SKIP_DIR_NAMES.has(name);
+  if (SKIP_FILE_NAMES.has(name)) return true;
+  if (TEST_FILE_RE.test(name)) return true;
+  return false;
+}
+
 function pluginOutputDir(outputRoot, adapterName) {
   return path.join(outputRoot, 'cli', 'dist', 'marketplaces', adapterName, 'plugins', 'rad-orchestration');
 }
@@ -76,6 +92,8 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
         const absSrc = path.join(skillSrcDir, relPath);
         const absDest = path.join(skillOutDir, relPath);
         const stat = fs.statSync(absSrc);
+        const basename = path.basename(relPath);
+        if (shouldSkipPluginEntry(basename, stat.isDirectory())) return;
         if (stat.isDirectory()) {
           fs.mkdirSync(absDest, { recursive: true });
           for (const child of fs.readdirSync(absSrc)) {

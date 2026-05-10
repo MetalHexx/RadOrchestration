@@ -15,6 +15,23 @@ import path from 'node:path';
 // with an empty ${CLAUDE_PLUGIN_ROOT} and a missing radorch.mjs.
 export const PLUGIN_ONLY_SKILLS = new Set(['rad-ui-start', 'rad-ui-stop', 'rad-ui-status']);
 
+// Test-source files and dev configs that should never ship in a per-harness
+// bundle. Mirrored in adapters/run-plugin.js and installer/lib/file-copier.js
+// — keep in sync.
+const TEST_FILE_RE = /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/i;
+const SKIP_DIR_NAMES = new Set(['tests', 'node_modules', '.next', 'dist', 'dist-bundle']);
+const SKIP_FILE_NAMES = new Set([
+  'vitest.config.ts', 'vitest.config.js', 'vitest.config.mjs',
+  'tsconfig.tsbuildinfo',
+]);
+
+function shouldSkipBundleEntry(name, isDir) {
+  if (isDir) return SKIP_DIR_NAMES.has(name);
+  if (SKIP_FILE_NAMES.has(name)) return true;
+  if (TEST_FILE_RE.test(name)) return true;
+  return false;
+}
+
 /**
  * Computes hex sha256 of a file's bytes. Reads synchronously — file counts
  * are small (hundreds at most) and runAdapter is already sync I/O end-to-end.
@@ -99,6 +116,8 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
         const absSrc = path.join(skillSrcDir, rel);
         const absDest = path.join(skillOutDir, rel);
         const stat = fs.statSync(absSrc);
+        const basename = path.basename(rel);
+        if (shouldSkipBundleEntry(basename, stat.isDirectory())) return;
         if (stat.isDirectory()) {
           fs.mkdirSync(absDest, { recursive: true });
           for (const child of fs.readdirSync(absSrc)) walk(path.join(rel, child));

@@ -5,6 +5,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+// Test-source files (e.g. `engine.test.ts`, `mutations.spec.js`) are dev-only
+// and never run at end-user runtime. Excluding them keeps installs lean and
+// stops shipping internals. Mirrored in adapters/run-plugin.js — keep in sync.
+const TEST_FILE_RE = /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/i;
+
 /**
  * Copies all files for a single manifest category.
  * Creates target directories as needed via fs.mkdirSync.
@@ -40,6 +45,9 @@ export function copyCategory(category, repoRoot, targetBase) {
 
         const isDir = fs.statSync(source).isDirectory();
         if (category.recursive === false && isDir) return false;
+
+        // Reject *.test.* / *.spec.* files anywhere in the tree (dev-only).
+        if (!isDir && TEST_FILE_RE.test(basename)) return false;
 
         if (!isDir) fileCount++;
 
