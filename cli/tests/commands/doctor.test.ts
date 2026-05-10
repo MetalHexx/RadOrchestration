@@ -148,3 +148,56 @@ describe('plugin-aware doctor checks', () => {
     }
   });
 });
+
+describe('runPluginChecks — new plugin-install checks (FR-14)', () => {
+  let home: string;
+  beforeEach(async () => { home = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc-')); });
+  afterEach(async () => { await fs.rm(home, { recursive: true, force: true }); });
+
+  it('projects-base-path-readable passes when the resolved path exists and is readable', async () => {
+    // Default base_path resolves to <root>/projects when no orchestration.yml is present.
+    await fs.mkdir(path.join(home, 'projects'), { recursive: true });
+    const result = await runPluginChecks({ root: home, localVersion: '1.0.0' });
+    const check = result.find((c) => c.name === 'projects-base-path-readable');
+    expect(check).toBeDefined();
+    expect(check?.status).toBe('pass');
+    expect(check?.detail).toContain(path.join(home, 'projects'));
+  });
+
+  it('plugin-skills-enumerable fails when a plugin-shipped skills/<name>/SKILL.md is missing', async () => {
+    const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
+    try {
+      // Create skills/<name>/ folder but no SKILL.md inside.
+      const skillDir = path.join(pluginRoot, 'skills', 'rad-broken');
+      await fs.mkdir(skillDir, { recursive: true });
+      const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
+      const check = result.find((c) => c.name === 'plugin-skills-enumerable');
+      expect(check).toBeDefined();
+      expect(check?.status).toBe('fail');
+      expect(check?.detail).toMatch(/rad-broken/);
+    } finally {
+      await fs.rm(pluginRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('plugin-agents-resolvable warns when CLAUDE_PLUGIN_ROOT is unset', async () => {
+    const result = await runPluginChecks({ root: home, localVersion: '1.0.0' });
+    const check = result.find((c) => c.name === 'plugin-agents-resolvable');
+    expect(check).toBeDefined();
+    expect(check?.status).toBe('warn');
+    expect(check?.detail).toMatch(/CLAUDE_PLUGIN_ROOT not set/);
+  });
+
+  it('cross-install-version-skew warns when both an iter-01 npm-installed radorch and the plugin CLI report different versions', async () => {
+    const result = await runPluginChecks({
+      root: home,
+      localVersion: '1.5.0',
+      iter01Version: '1.0.0',
+    });
+    const check = result.find((c) => c.name === 'cross-install-version-skew');
+    expect(check).toBeDefined();
+    expect(check?.status).toBe('warn');
+    expect(check?.detail).toMatch(/1\.0\.0/);
+    expect(check?.detail).toMatch(/1\.5\.0/);
+  });
+});
