@@ -63,6 +63,7 @@ A real-time Next.js dashboard visualizes project state, pipeline progress, docum
 | [Skills](docs/skills.md) | The six user-invoked slash commands — what each does, when to use it, and what it produces. |
 | [Configuration](docs/configuration.md) | The `orchestration.yml` reference — every option explained with sensible defaults. |
 | [Project Structure](docs/project-structure.md) | File layout, naming conventions, document types, and state management. |
+| [Plugins](docs/plugins.md) | Install rad-orchestration as a plugin via your harness's marketplace. |
 | [Monitoring Dashboard](docs/dashboard.md) | Dashboard startup, features, data sources, and real-time update behavior. |
 | [Harnesses](docs/harnesses.md) | Per-harness install detail, entry points, and current support status. |
 
