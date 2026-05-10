@@ -18,8 +18,10 @@ test('build-plugin meta-script: orchestration order constant exposes the documen
     'ui-standalone',
     'adapters-plugin',
     'copy-bundles-into-claude-plugin',
+    'copy-plugin-package-json',
     'sync-plugin-version',
     'validate-plugin-tree',
+    'npm-pack-staging',
   ]);
 });
 
