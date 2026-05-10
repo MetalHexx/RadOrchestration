@@ -71,6 +71,28 @@ git add installer/package.json ui/package.json skills/rad-orchestration/scripts/
 git commit -m "chore: bump version to {version}"
 ```
 
+### 3a.5 — Pre-tag local validation (always, regardless of merge choice)
+
+Before tagging, stage and validate both distribution surfaces locally. This catches build failures before the tag triggers `publish-plugin`, which would otherwise leave a half-published release on npm (the `publish` job succeeds but `publish-plugin` fails on the same tag).
+
+Run from the repo root:
+
+```
+node installer/scripts/sync-source.js
+npm run build:plugin
+```
+
+Then check the staged plugin tarball size budget:
+
+```
+cd cli/dist/marketplaces/claude/plugins/rad-orchestration
+npm pack --dry-run --json
+```
+
+Confirm the reported `unpackedSize` is under **57,671,680 bytes** (50 MB ceiling + 10% headroom). If size has grown past that, audit the included assets — do not raise the budget without an explicit decision.
+
+If any of these fail, **do not push the tag yet**. Fix locally and re-bump only if the version is unreleased.
+
 ### 3b — Merge to main (only if the user chose to merge)
 
 Now that the version bump is committed on this branch, squash-merge the entire branch into main:
@@ -123,6 +145,18 @@ To write accurate release notes:
 - Use the squash merge commit message body as a starting point
 - Cross-reference the actual diff (`git diff {previous_tag}..v{version} --stat`) to make sure nothing significant is missed
 - Find the previous tag with `git tag --sort=-creatordate | head -5`
+
+For the **first release of a plugin version** (and at the GA boundary), include a `### Claude Code plugin install` callout in the `## What's New` section:
+
+> Claude Code users can now install via the marketplace:
+>
+> ```
+> /plugin install rad-orchestration
+> ```
+>
+> The plugin install includes the orchestration runtime, the dashboard UI, and three UI-control skills (`rad-ui-start`, `rad-ui-stop`, `rad-ui-status`). Existing `npx radorch` users keep their current setup; both channels remain supported.
+
+Skip the callout in patch releases that don't change the install experience.
 
 ---
 
