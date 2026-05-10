@@ -35,5 +35,28 @@ jobs:
       - name: Lint (ESLint flat config)
         run: npx eslint .
 
+      # The Vitest suite includes tests/integration/plugin-bundle.test.ts,
+      # whose beforeAll invokes `npm run build:plugin` when the plugin tree is
+      # absent (always true on clean CI). That meta-script bundles ui/ and
+      # skills/rad-orchestration/scripts/, both of which need their own deps.
+      # Mirror the install ordering from publish.yml's `publish-plugin` job.
+      - name: Install ui dependencies (for build:plugin in plugin-bundle integration test)
+        working-directory: ui
+        run: npm ci
+
+      - name: Install pipeline scripts dependencies (for build:plugin in plugin-bundle integration test)
+        working-directory: skills/rad-orchestration/scripts
+        run: npm install
+
+      # Pre-build the plugin tree up-front so plugin-bundle.test.ts's beforeAll
+      # short-circuits (its fs.stat check finds the tree and skips the in-test
+      # build). This avoids a heavy esbuild + Next build running concurrently
+      # with the rest of the vitest worker pool, which starves shorter tests
+      # (e.g. tests/bin/smoke.test.ts) of CPU and trips their default 5s
+      # testTimeout.
+      - name: Pre-build plugin tree (so plugin-bundle.test.ts beforeAll short-circuits)
+        working-directory: .
+        run: npm run build:plugin
+
       - name: Test (Vitest full suite)
         run: npx vitest run

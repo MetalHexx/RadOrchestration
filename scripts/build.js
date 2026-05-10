@@ -6,11 +6,33 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
+import { execSync } from 'node:child_process';
 import { discoverAdapters } from '../adapters/discover.js';
 import { runAdapter } from '../adapters/run.js';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
+
+/** Absolute path to the rad-orchestration scripts folder (bundle source). */
+const scriptsDir = path.join(repoRoot, 'skills', 'rad-orchestration', 'scripts');
+
+/**
+ * Compiles the pipeline bundle and copies it into the given target path.
+ * Preserves the shebang and executable bit.
+ *
+ * @param {string} destPath - Absolute path to the destination pipeline.js
+ */
+export function emitPipelineBundle(destPath) {
+  execSync(`npm run bundle -- --out=${destPath}`, {
+    cwd: scriptsDir,
+    stdio: 'pipe',
+  });
+  try {
+    fs.chmodSync(destPath, 0o755);
+  } catch {
+    // chmod is a no-op on Windows; ignore silently
+  }
+}
 
 /** @returns {{ harness: string | null, all: boolean }} */
 export function parseBuildArgs(argv) {
@@ -96,6 +118,21 @@ async function main() {
       version,
       packageVersion: version,
     });
+
+    // Compile the pipeline bundle fresh and overwrite the verbatim-copied
+    // pipeline.js in this adapter's emit target. This ensures every dogfood
+    // target ships the esbuild bundle (pipeline.ts → pipeline.js) rather than
+    // whatever bytes happen to be in the canonical scripts/pipeline.js at
+    // copy time. (FR-6, AD-5, NFR-2)
+    const bundleDest = path.join(
+      repoRoot,
+      adapter.targetDir,
+      'skills', 'rad-orchestration', 'scripts', 'pipeline.js',
+    );
+    if (fs.existsSync(path.dirname(bundleDest))) {
+      emitPipelineBundle(bundleDest);
+    }
+
     console.log(`Built ${adapter.name}: ${agentCount} agents, ${skillCount} skills → ${adapter.targetDir}/`);
   }
 }

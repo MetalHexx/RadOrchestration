@@ -18,8 +18,10 @@ test('build-plugin meta-script: orchestration order constant exposes the documen
     'ui-standalone',
     'adapters-plugin',
     'copy-bundles-into-claude-plugin',
+    'copy-plugin-package-json',
     'sync-plugin-version',
     'validate-plugin-tree',
+    'npm-pack-staging',
   ]);
 });
 
@@ -34,7 +36,7 @@ test('validatePluginTree: detects missing required artifacts', async () => {
   assert.ok(empty.missing.includes('dist/pipeline.js'));
   assert.ok(empty.missing.includes('ui/server.js'));
   assert.ok(empty.missing.includes('hooks/hooks.json'));
-  assert.ok(empty.missing.some((m) => m.startsWith('skills/ui-start/')));
+  assert.ok(empty.missing.some((m) => m.startsWith('skills/rad-ui-start/')));
 });
 
 test('validatePluginTree: passes on a complete fixture', async () => {
@@ -53,8 +55,24 @@ test('validatePluginTree: passes on a complete fixture', async () => {
   writeF('hooks/hooks.json', '{}');
   writeF('hooks/session-start.sh');
   writeF('hooks/session-start.ps1');
-  for (const s of ['ui-start', 'ui-stop', 'ui-status']) writeF(`skills/${s}/SKILL.md`);
-  const ok = validatePluginTree(tmp);
+  // Representative canonical skills (full enumeration)
+  for (const s of ['rad-orchestration', 'rad-plan', 'rad-ui-start']) writeF(`skills/${s}/SKILL.md`);
+
+  // All canonical agents must be present in agents/. Use the actual repo root
+  // so the fixture stays in sync with the canonical agents/ directory.
+  const agentsDir = path.join(repoRoot, 'agents');
+  const agentNames = fs.readdirSync(agentsDir)
+    .filter((f) => f.endsWith('.md') && !fs.statSync(path.join(agentsDir, f)).isDirectory())
+    .map((f) => f.replace(/\.md$/, ''));
+  for (const name of agentNames) writeF(`agents/${name}.md`);
+
+  // orchestrator.md body must contain rad-orchestration:<name> for every
+  // non-orchestrator canonical agent (namespaced dispatch token assertion).
+  const nonOrchNames = agentNames.filter((n) => n !== 'orchestrator');
+  const orchTokens = nonOrchNames.map((n) => `rad-orchestration:${n}`).join('\n');
+  writeF('agents/orchestrator.md', orchTokens);
+
+  const ok = validatePluginTree(tmp, repoRoot);
   assert.equal(ok.ok, true, JSON.stringify(ok));
 });
 

@@ -223,6 +223,47 @@ test('runAdapter rewrites system.orch_root and stamps package_version in per-bun
   assert.match(written, /naming:\s*SCREAMING_CASE/);
 });
 
+test('runAdapter skips plugin-only skills (rad-ui-{start,stop,status})', async () => {
+  // Plugin-only skills depend on the bundled CLI binary at
+  // ${PLUGIN_ROOT}/bin/radorch.mjs which only ships in the Claude plugin emit
+  // (adapters/run-plugin.js). Legacy emit must not include them or they would
+  // fail at runtime in non-plugin installs (empty ${CLAUDE_PLUGIN_ROOT}, no
+  // radorch.mjs on disk).
+  const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-plugin-only-'));
+  fs.mkdirSync(path.join(canonical, 'skills', 'rad-ui-start'), { recursive: true });
+  fs.mkdirSync(path.join(canonical, 'skills', 'rad-ui-stop'), { recursive: true });
+  fs.mkdirSync(path.join(canonical, 'skills', 'rad-ui-status'), { recursive: true });
+  fs.mkdirSync(path.join(canonical, 'skills', 'rad-keep'), { recursive: true });
+  for (const name of ['rad-ui-start', 'rad-ui-stop', 'rad-ui-status', 'rad-keep']) {
+    fs.writeFileSync(
+      path.join(canonical, 'skills', name, 'SKILL.md'),
+      `---\nname: ${name}\ndescription: ${name}\n---\nbody\n`,
+      'utf8',
+    );
+  }
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-plugin-only-'));
+  const result = await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.2.3' });
+  // Bundle directory must NOT contain plugin-only skill folders.
+  const bundleSkillsDir = path.join(out, '.fake', 'skills');
+  assert.ok(!fs.existsSync(path.join(bundleSkillsDir, 'rad-ui-start')), 'rad-ui-start must not appear in legacy bundle');
+  assert.ok(!fs.existsSync(path.join(bundleSkillsDir, 'rad-ui-stop')), 'rad-ui-stop must not appear in legacy bundle');
+  assert.ok(!fs.existsSync(path.join(bundleSkillsDir, 'rad-ui-status')), 'rad-ui-status must not appear in legacy bundle');
+  // Non-plugin-only skills still emit.
+  assert.ok(fs.existsSync(path.join(bundleSkillsDir, 'rad-keep', 'SKILL.md')), 'non-plugin-only skill must still emit');
+  // Manifest must not reference any plugin-only skill bundlePaths.
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(out, 'fake', 'manifests', 'v1.2.3.json'), 'utf8'),
+  );
+  for (const entry of manifest.files) {
+    assert.ok(
+      !/^skills\/rad-ui-(start|stop|status)\//.test(entry.bundlePath),
+      `manifest must not reference plugin-only skill: ${entry.bundlePath}`,
+    );
+  }
+  // skillCount must reflect only non-plugin-only skills (1 of 4 in this fixture).
+  assert.strictEqual(result.skillCount, 1, 'skillCount must exclude plugin-only skills');
+});
+
 test('runAdapter marks the orchestration.yml manifest entry as ownership=user-config', async () => {
   // Regression: the installer overwrites orchestration.yml with
   // generateConfig(userConfig) at install time, so the bundled bytes never

@@ -19,11 +19,11 @@ test('marketplace.json exists at the discovery location and points at the plugin
   assert.ok(Array.isArray(m.plugins) && m.plugins.length === 1);
   const p0 = m.plugins[0];
   assert.equal(p0.name, 'rad-orchestration');
-  assert.equal(p0.source, '../marketplace/plugins/rad-orchestration');
+  assert.ok(typeof p0.source === 'object', 'source must be an object');
 });
 
 test('plugin.json exists at the plugin source location with required fields', () => {
-  const f = path.join(repoRoot, 'marketplace', 'plugins', 'rad-orchestration', '.claude-plugin', 'plugin.json');
+  const f = path.join(repoRoot, 'plugin', '.claude-plugin', 'plugin.json');
   assert.ok(fs.existsSync(f), `${f} must exist`);
   const p = JSON.parse(fs.readFileSync(f, 'utf8'));
   assert.equal(p.name, 'rad-orchestration');
@@ -40,4 +40,14 @@ test('plugin.json exists at the plugin source location with required fields', ()
   // skills + hooks arrays present (filled by build) — accept array or undefined here
   if (p.skills !== undefined) assert.ok(Array.isArray(p.skills));
   if (p.hooks !== undefined) assert.ok(Array.isArray(p.hooks));
+});
+
+test('marketplace.json declares the npm source type pointing at @rad-orchestration/claude-plugin', () => {
+  const f = path.join(repoRoot, '.claude-plugin', 'marketplace.json');
+  const obj = JSON.parse(fs.readFileSync(f, 'utf8'));
+  const plugin = obj.plugins[0];
+  assert.equal(plugin.source.source, 'npm');
+  assert.equal(plugin.source.package, '@rad-orchestration/claude-plugin');
+  assert.ok(!('url' in plugin.source), 'npm-source plugin must not carry a url field');
+  assert.ok(!('path' in plugin.source), 'npm-source plugin must not carry a path field');
 });

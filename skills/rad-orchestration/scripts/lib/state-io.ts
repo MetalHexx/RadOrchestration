@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import yaml from 'js-yaml';
 import type { PipelineState, OrchestrationConfig } from './types.js';
@@ -70,6 +71,44 @@ function isEnoent(err: unknown): boolean {
 }
 
 // ── Exported functions ────────────────────────────────────────────────────────
+
+/**
+ * Expands the leading `~/` in a `projects.base_path` value at read time.
+ *
+ * The plugin emit ships `base_path: ~/.radorch/projects/` as a portable,
+ * cross-platform default (FR-12, FR-13). At read time:
+ *
+ *   - `~/.radorch/...` expands against `env.RADORCH_HOME` when set, or
+ *     `os.homedir() + '/.radorch'` otherwise. This lets operators relocate
+ *     the radorch home (tests, alternate accounts, isolated installs) by
+ *     setting `RADORCH_HOME` without editing config.
+ *   - Bare `~/<other>` expands against `os.homedir()`.
+ *   - Anything else (absolute paths, relative paths, empty string) returns
+ *     unchanged — preserves the legacy installer's existing behavior.
+ *
+ * Pure: no filesystem access, no `process.env` capture beyond the explicit
+ * `env` argument. Defaults `env` to `process.env` for callsite ergonomics.
+ */
+export function resolveBasePath(
+  raw: string,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  if (!raw) return raw;
+  if (raw.startsWith('~/.radorch')) {
+    const radorchHome = env.RADORCH_HOME || path.join(os.homedir(), '.radorch');
+    const remainder = raw.slice('~/.radorch'.length).replace(/^[/\\]+/, '');
+    // Normalize trailing separators to match path.join's canonical output
+    // (no trailing slash) — callers compose further path segments.
+    const joined = remainder ? path.join(radorchHome, remainder) : radorchHome;
+    return joined.replace(/[/\\]+$/, '');
+  }
+  if (raw.startsWith('~/') || raw.startsWith('~\\')) {
+    const remainder = raw.slice(2).replace(/^[/\\]+/, '');
+    const joined = remainder ? path.join(os.homedir(), remainder) : os.homedir();
+    return joined.replace(/[/\\]+$/, '');
+  }
+  return raw;
+}
 
 export function readState(projectDir: string): PipelineState | null {
   const statePath = path.join(projectDir, 'state.json');

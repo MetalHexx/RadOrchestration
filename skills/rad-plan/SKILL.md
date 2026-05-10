@@ -75,10 +75,10 @@ matching size.
 
 | Option | Copy (two sentences max) |
 |---|---|
-| `Small` | One coherent unit of work per task (2–4 files); 2–3 tasks per phase. Substantive but bounded; smallest scope without legacy one-file/one-function churn. |
-| `Medium` | Vertical slice or multiple coherent units per task (~5–8 files); 3–5 tasks per phase. Balanced scope and overhead. |
-| `Large` | Full feature slice or cross-cutting change per task; 4–6 tasks per phase. Fewer tasks, higher complexity per task. |
-| `Extra Large` | End-to-end feature per task; 1–2 tasks per phase, possibly single-phase. Minimal task count; requires a capable model. |
+| `Small` | One named, self-contained change per task — a function, a validator, a constant. 3–5 tasks per phase. |
+| `Medium` | A vertical slice through one layer per task: a module, a config section, a CLI command with its tests. 2–4 tasks per phase. |
+| `Large` | A full feature slice touching multiple layers or subsystems end-to-end per task. 2–3 tasks per phase. |
+| `Extra Large` | A standalone feature per task — scope that would be a phase at smaller sizes; phases are thin wrappers. 1–2 tasks per phase, possibly single-phase. |
 | `Custom` | You describe the sizing criterion in your own words; the planner uses your prose as the task-scope target while still applying natural-seam judgment for phase boundaries. |
 
 The question's framing prose: "How big should each task be? Project Size

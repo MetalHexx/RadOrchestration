@@ -1,12 +1,12 @@
 node_modules/
-# Committed plugin standalone bundle ships its trimmed Next.js node_modules
-# tree so `node ui/server.js` can resolve at runtime without an install step
-# (FR-22, AD-25). Must un-ignore the directory itself before any contents
-# can be tracked.
-!marketplace/plugins/rad-orchestration/ui/node_modules/
 package-lock.json
 # CI's `npm ci` for the cli subpackage needs a committed lockfile
 !cli/package-lock.json
+# The plugin tree is now built into a gitignored staging dir
+# (cli/dist/marketplaces/claude/plugins/rad-orchestration/) and shipped via
+# `npm pack` of plugin/package.json — see scripts/build-plugin.js. The tree
+# under marketplace/plugins/rad-orchestration/ is no longer committed.
+plugin/node_modules/
 
 .vscode/mcp.json
 
@@ -29,8 +29,6 @@ package-lock.json
 
 # Adapter scratch sandbox — opt-in inspection, never committed
 /dist/
-# Committed plugin dist bundle must not be caught by the rule above (FR-22, AD-25)
-!marketplace/plugins/rad-orchestration/dist/
 
 # esbuild bundle output — produced by `npm run bundle` in cli/ and skills/rad-orchestration/scripts/
 dist-bundle/
@@ -109,11 +107,11 @@ test-installer/
 
 # Plugin artifacts
 # NOTE: .claude/ (above) is the gitignored dogfood build output;
-# .claude-plugin/ is the COMMITTED Claude marketplace manifest folder.
-# The committed plugin folder lives at marketplace/plugins/rad-orchestration/
-# and is NOT gitignored. Copilot adapter outputs are gitignored.
-cli/dist/marketplaces/copilot-cli/
-cli/dist/marketplaces/copilot-vscode/
+# .claude-plugin/ is the COMMITTED Claude marketplace manifest folder
+# (now living under plugin/.claude-plugin/ — staging at build time only).
+# The plugin staging tree (cli/dist/marketplaces/) is fully gitignored;
+# the published artifact is the npm tarball produced from plugin/package.json.
+cli/dist/marketplaces/
 
 # Next.js build output (root-level)
 /.next/

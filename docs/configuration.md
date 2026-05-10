@@ -56,7 +56,7 @@ limits:
   max_consecutive_review_rejections: 3
 ```
 
-All four fields are integers. These values are snapshotted into `state.json` at project creation — see [State and Snapshots](#state-and-snapshots) below.
+All four fields are integers. These values are snapshotted into `state.json` at project creation — see [State and Snapshots](#state-and-snapshots) below. When a plan would exceed `max_phases` or `max_tasks_per_phase`, the planner consolidates the work into fewer, larger phases or tasks rather than overflowing the limit.
 
 ### `human_gates`
 

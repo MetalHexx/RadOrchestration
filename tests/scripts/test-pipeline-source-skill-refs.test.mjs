@@ -4,14 +4,14 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
 const targets = [
-  '.claude/skills/rad-orchestration/scripts/main.ts',
-  '.claude/skills/rad-orchestration/templates/extra-high.yml',
-  '.claude/skills/rad-orchestration/templates/high.yml',
-  '.claude/skills/rad-orchestration/templates/medium.yml',
-  '.claude/skills/rad-orchestration/templates/low.yml',
+  'skills/rad-orchestration/scripts/pipeline.ts',
+  'skills/rad-orchestration/templates/extra-high.yml',
+  'skills/rad-orchestration/templates/high.yml',
+  'skills/rad-orchestration/templates/medium.yml',
+  'skills/rad-orchestration/templates/low.yml',
 ];
-const libDir = path.join(repoRoot, '.claude/skills/rad-orchestration/scripts/lib');
-for (const f of readdirSync(libDir).filter(n => n.endsWith('.ts'))) targets.push(`.claude/skills/rad-orchestration/scripts/lib/${f}`);
+const libDir = path.join(repoRoot, 'skills/rad-orchestration/scripts/lib');
+for (const f of readdirSync(libDir).filter(n => n.endsWith('.ts'))) targets.push(`skills/rad-orchestration/scripts/lib/${f}`);
 // Each entry: [old-skill-name, regex-anchored-as-skill-identifier]
 // A skill identifier appears in: backtick code spans, double-quoted strings preceded by `skill`, or `skills:` YAML lists.
 const skillRefPattern = (name) => new RegExp(`(\`${name}\`|"${name}"|'${name}'|^\\s*-\\s*${name}\\s*$)`, 'm');

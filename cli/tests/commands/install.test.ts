@@ -1,8 +1,12 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { createRequire } from 'node:module';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runInstall } from '../../src/commands/install.js';
+
+const require_ = createRequire(import.meta.url);
+const pkg = require_('../../package.json') as { version: string };
 
 let tmp: string;
 beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-install-')); });
@@ -12,15 +16,55 @@ function makeCtx(home: string) {
   return {
     env: { RADORCH_HOME: home, RADORCH_NO_LOG: '1' } as NodeJS.ProcessEnv,
     ux: { isTTY: false, nonInteractive: true, noColor: true, json: true },
+    stderr: process.stderr,
   };
 }
 
+async function writeFakeInstallJson(home: string, packageVersion: string) {
+  await fs.mkdir(home, { recursive: true });
+  await fs.writeFile(
+    path.join(home, 'install.json'),
+    JSON.stringify({
+      package_version: packageVersion,
+      installed_at: new Date().toISOString(),
+      last_writer_version: packageVersion,
+      state_schema_version: 'v5',
+    }, null, 2) + '\n',
+    'utf8',
+  );
+}
+
 describe('radorch install', () => {
-  it('errors with user_error when install.json already exists', async () => {
+  it('returns idempotent success when install.json exists at the same version', async () => {
+    const home = path.join(tmp, 'pre');
+    await writeFakeInstallJson(home, pkg.version);
+    const r = await runInstall({ defaultHarness: 'claude', ctx: makeCtx(home) });
+    expect(r.already_installed).toBe(true);
+    expect(r.version).toBe(pkg.version);
+    expect(r.root).toBe(home);
+  });
+
+  it('errors with user_error when install.json exists at a different (older) version', async () => {
+    const home = path.join(tmp, 'pre');
+    await writeFakeInstallJson(home, '0.0.0');
+    await expect(
+      runInstall({ defaultHarness: 'claude', ctx: makeCtx(home) }),
+    ).rejects.toMatchObject({ type: 'user_error' });
+  });
+
+  it('errors with user_error when install.json is corrupted', async () => {
     const home = path.join(tmp, 'pre');
     await fs.mkdir(home, { recursive: true });
-    // Simulate an existing installation by writing install.json
-    await fs.writeFile(path.join(home, 'install.json'), JSON.stringify({ package_version: '0.0.0', installed_at: new Date().toISOString(), last_writer_version: '0.0.0', state_schema_version: 'v5' }, null, 2) + '\n', 'utf8');
+    await fs.writeFile(path.join(home, 'install.json'), 'not json{', 'utf8');
+    await expect(
+      runInstall({ defaultHarness: 'claude', ctx: makeCtx(home) }),
+    ).rejects.toMatchObject({ type: 'user_error' });
+  });
+
+  it('errors with user_error when install.json is missing package_version field', async () => {
+    const home = path.join(tmp, 'pre');
+    await fs.mkdir(home, { recursive: true });
+    await fs.writeFile(path.join(home, 'install.json'), JSON.stringify({ installed_at: new Date().toISOString() }), 'utf8');
     await expect(
       runInstall({ defaultHarness: 'claude', ctx: makeCtx(home) }),
     ).rejects.toMatchObject({ type: 'user_error' });

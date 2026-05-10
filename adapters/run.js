@@ -8,6 +8,30 @@ import path from 'node:path';
 
 /** @import { Adapter, MetadataStreamEntry } from './types.d.ts' */
 
+// Skills that depend on the bundled CLI binary at `${PLUGIN_ROOT}/bin/radorch.mjs`,
+// which is only emitted by adapters/run-plugin.js into the Claude plugin tree.
+// Legacy emit (this file) ships agents+skills+manifests only — no binary — so
+// these skills must not appear in legacy bundles or they would fail at runtime
+// with an empty ${CLAUDE_PLUGIN_ROOT} and a missing radorch.mjs.
+export const PLUGIN_ONLY_SKILLS = new Set(['rad-ui-start', 'rad-ui-stop', 'rad-ui-status']);
+
+// Test-source files and dev configs that should never ship in a per-harness
+// bundle. Mirrored in adapters/run-plugin.js and installer/lib/file-copier.js
+// — keep in sync.
+const TEST_FILE_RE = /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/i;
+const SKIP_DIR_NAMES = new Set(['tests', 'node_modules', '.next', 'dist', 'dist-bundle']);
+const SKIP_FILE_NAMES = new Set([
+  'vitest.config.ts', 'vitest.config.js', 'vitest.config.mjs',
+  'tsconfig.tsbuildinfo',
+]);
+
+function shouldSkipBundleEntry(name, isDir) {
+  if (isDir) return SKIP_DIR_NAMES.has(name);
+  if (SKIP_FILE_NAMES.has(name)) return true;
+  if (TEST_FILE_RE.test(name)) return true;
+  return false;
+}
+
 /**
  * Computes hex sha256 of a file's bytes. Reads synchronously — file counts
  * are small (hundreds at most) and runAdapter is already sync I/O end-to-end.
@@ -55,9 +79,10 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
       const canonicalName = entry.replace(/\.md$/, '');
       const sourcePath = path.posix.join('agents', entry);
       const text = fs.readFileSync(path.join(agentsSrc, entry), 'utf8');
-      const projected = projectFrontmatter(text, (fm) =>
+      const rawProjected = projectFrontmatter(text, (fm) =>
         adapter.agentFrontmatter(fm, { adapter }),
       );
+      const projected = applyPluginRootSubstitution(rawProjected, adapter);
       const outName = adapter.filenameRule({ kind: 'agent', canonicalName });
       const absDest = path.join(agentsOut, outName);
       fs.writeFileSync(absDest, projected, 'utf8');
@@ -82,6 +107,7 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
     for (const skillName of fs.readdirSync(skillsSrc)) {
       const skillSrcDir = path.join(skillsSrc, skillName);
       if (!fs.statSync(skillSrcDir).isDirectory()) continue;
+      if (PLUGIN_ONLY_SKILLS.has(skillName)) continue;
       const skillOutDir = path.join(targetRoot, 'skills', skillName);
       fs.mkdirSync(skillOutDir, { recursive: true });
 
@@ -90,6 +116,8 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
         const absSrc = path.join(skillSrcDir, rel);
         const absDest = path.join(skillOutDir, rel);
         const stat = fs.statSync(absSrc);
+        const basename = path.basename(rel);
+        if (shouldSkipBundleEntry(basename, stat.isDirectory())) return;
         if (stat.isDirectory()) {
           fs.mkdirSync(absDest, { recursive: true });
           for (const child of fs.readdirSync(absSrc)) walk(path.join(rel, child));
@@ -97,9 +125,10 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
         }
         if (rel === 'SKILL.md') {
           const text = fs.readFileSync(absSrc, 'utf8');
-          const projected = projectFrontmatter(text, (fm) =>
+          const rawProjected = projectFrontmatter(text, (fm) =>
             adapter.skillFrontmatter(fm, { adapter }),
           );
+          const projected = applyPluginRootSubstitution(rawProjected, adapter);
           const outName = adapter.filenameRule({ kind: 'skill', canonicalName: skillName });
           const destPath = path.join(skillOutDir, outName);
           fs.writeFileSync(destPath, projected, 'utf8');
@@ -185,6 +214,20 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
     skillCount,
     fileCount: files.length,
   };
+}
+
+// ── Plugin-root substitution ─────────────────────────────────────────
+
+/**
+ * Replaces every occurrence of the canonical `${PLUGIN_ROOT}` placeholder in
+ * a projected text body with the adapter's harness-specific substitution string.
+ * Applied post-frontmatter-projection; operates on the raw body text only.
+ * If the adapter does not declare pluginRootSubstitution, the text is returned
+ * unchanged (graceful degradation for adapters that pre-date this field).
+ */
+function applyPluginRootSubstitution(text, adapter) {
+  if (!adapter.pluginRootSubstitution) return text;
+  return text.replaceAll('${PLUGIN_ROOT}', adapter.pluginRootSubstitution);
 }
 
 // ── Frontmatter helpers (regex-based YAML — no AST parser) ──────────

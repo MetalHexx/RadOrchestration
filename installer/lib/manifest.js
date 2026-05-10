@@ -31,6 +31,13 @@ export function getManifest(orchRoot, tool) {
 
   return {
     categories,
-    globalExcludes: ['node_modules', '.next', '.env.local', 'package-lock.json'],
+    globalExcludes: [
+      'node_modules', '.next', '.env.local', 'package-lock.json',
+      // Dev-only artifacts that should never ship to end users:
+      'tests',                  // pipeline test directory
+      'dist', 'dist-bundle',    // tsc / esbuild output dirs (gitignored)
+      'vitest.config.ts', 'vitest.config.js', 'vitest.config.mjs',
+      'tsconfig.tsbuildinfo',
+    ],
   };
 }

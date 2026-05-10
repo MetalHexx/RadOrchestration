@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
 import { pathExists } from '../lib/fs-helpers.js';
+import { readInstallJson } from '../lib/config.js';
 import { resolveInstallRoot, installPaths } from '../lib/paths.js';
 import { UserError } from '../framework/errors.js';
 import { defineCommand } from '../framework/command.js';
@@ -18,6 +19,7 @@ export interface InstallResult {
   version: string;
   harnesses_installed: typeof HarnessName;
   active_harness: HarnessName;
+  already_installed?: boolean;
 }
 
 export async function runInstall(opts: {
@@ -27,7 +29,40 @@ export async function runInstall(opts: {
   const root = resolveInstallRoot(opts.ctx.env);
   const p = installPaths(root);
   if (await pathExists(p.installJson)) {
-    throw new UserError(`radorch install root already exists at ${root}. Remove it before re-running install.`);
+    // Idempotent path: a healthy install at the same version is a no-op
+    // success. This matters for plugin mode, where the SessionStart hook
+    // bootstraps the install root before the user could ever run `radorch
+    // install` themselves — otherwise users following generic docs would
+    // hit a dead-end UserError. Older versions or corrupted install.json
+    // still error with guidance.
+    let existing: { package_version?: string } | null = null;
+    try {
+      existing = await readInstallJson(p.installJson);
+    } catch {
+      throw new UserError(
+        `radorch install root at ${root} contains an unreadable install.json. ` +
+        `Remove the directory and re-run install.`,
+      );
+    }
+    if (!existing || typeof existing.package_version !== 'string') {
+      throw new UserError(
+        `radorch install root at ${root} contains a malformed install.json (missing package_version). ` +
+        `Remove the directory and re-run install.`,
+      );
+    }
+    if (existing.package_version === pkg.version) {
+      return {
+        root,
+        version: pkg.version,
+        harnesses_installed: HarnessName,
+        active_harness: opts.defaultHarness,
+        already_installed: true,
+      };
+    }
+    throw new UserError(
+      `radorch install root at ${root} contains an older install (v${existing.package_version}); ` +
+      `current CLI is v${pkg.version}. Remove the directory and re-run install to upgrade.`,
+    );
   }
   // Banner + next-steps hint render only in true interactive mode (DD-1, DD-9). When ux.isTTY=false they no-op.
   renderBanner({ stream: opts.ctx.stderr, isTTY: opts.ctx.ux.isTTY, nonInteractive: opts.ctx.ux.nonInteractive, noColor: opts.ctx.ux.noColor, json: opts.ctx.ux.json });

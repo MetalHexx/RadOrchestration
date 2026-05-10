@@ -1,12 +1,6 @@
 import { Ajv, type ValidateFunction, type ErrorObject } from 'ajv';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import schemaJson from '../../schemas/orchestration-state-v5.schema.json' with { type: 'json' };
 import type { PipelineState } from './types.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const SCHEMA_PATH = join(__dirname, '..', '..', 'schemas', 'orchestration-state-v5.schema.json');
 
 let validateFn: ValidateFunction | null = null;
 
@@ -14,10 +8,8 @@ function getValidator(): ValidateFunction {
   if (validateFn !== null) {
     return validateFn;
   }
-  const schemaText = readFileSync(SCHEMA_PATH, 'utf-8');
-  const schema = JSON.parse(schemaText) as object;
   const ajv = new Ajv({ allErrors: true });
-  validateFn = ajv.compile(schema);
+  validateFn = ajv.compile(schemaJson as object);
   return validateFn;
 }
 

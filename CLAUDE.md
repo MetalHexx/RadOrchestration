@@ -24,6 +24,18 @@ You must always follow these rules when editing or running the orchestration sys
 ## DO NOT Add Requirements in Canonical Source
 - When making changes to the rad orchestration pipeline and markdown files, do not leave requirements (FR-N, NFR-N, AD-N, DD-N) in the files. These should only be used in project planning documents, not actual code or documentation. The only exception is that we're making changes to the rad-create-plans or rad-code-review skills which leverage requirements as part of project planning and code review.
 
+## DO NOT Write Markdown-Shape Tests Without Explicit Instruction
+- Do not author tests that assert on the textual shape of markdown files — regex `assert.match` / `expect().toContain` against headings, prose, pinned numbers in tables, or specific phrasing.
+- These tests are brittle: every prose edit risks breaking them, and they pin the docs without testing code behavior.
+- Broad anti-regression scans (one forbidden token swept across many `.md` files at once) are the exception; pinned-shape checks on individual docs are not.
+- If a markdown invariant genuinely needs guarding, ask the user before adding the test.
+
+## Reserved Namespace: rad-*
+
+Skills shipped by the orchestration system carry the `rad-` prefix on both folder name and frontmatter `name`. The prefix is a **documentation-only reserved namespace** — the system does not hard-enforce uniqueness against downstream authors, but the planner-spawn manifest filter (`list-repo-skills.mjs`) deliberately excludes any `rad-*` skill from the manifest. Authoring a `rad-something` skill in your own repo will therefore make it invisible to the planner.
+
+See `skills/rad-create-skill/SKILL.md` for the matching authoring convention.
+
 ## Source layout
 
 Canonical agent and skill source lives at the **repo root** in `agents/` and `skills/`, authored in Claude shape (the format Claude Code accepts natively). `.claude/` is a gitignored, generated artifact — populated by `npm run build` (default Claude adapter) and refreshed after any edit to `agents/` or `skills/`. Do not commit changes under `.claude/agents/` or `.claude/skills/`; edit the repo-root canonical source instead.

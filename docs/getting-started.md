@@ -12,6 +12,8 @@ By the end of this guide you'll have the orchestration system installed locally 
 npx rad-orchestration
 ```
 
+- On Claude Code, install via `/plugin install rad-orchestration` instead — see [plugins.md](plugins.md).
+
 ## Per-Harness Entry Points
 
 For per-harness install and launch entry points (Claude Code, Copilot VS Code, Copilot CLI), see [harnesses.md](harnesses.md). The rest of this guide is harness-agnostic.

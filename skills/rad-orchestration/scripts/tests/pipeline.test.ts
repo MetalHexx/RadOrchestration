@@ -30,7 +30,7 @@ const scriptsDir = dirname(fileURLToPath(import.meta.url)).replace(
 );
 const nodeModulesDir = join(scriptsDir, 'node_modules');
 const lockFilePath = join(scriptsDir, 'package-lock.json');
-const mainScript = join(scriptsDir, 'main.ts');
+const pipelineScript = join(scriptsDir, 'pipeline.ts');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -86,8 +86,8 @@ describe('pipeline.js — JIT dependency installer', () => {
       expect(lockFilePath).toBe(join(scriptsDir, 'package-lock.json'));
     });
 
-    it('resolves main.ts relative to the scripts directory', () => {
-      expect(mainScript).toBe(join(scriptsDir, 'main.ts'));
+    it('resolves pipeline.ts relative to the scripts directory', () => {
+      expect(pipelineScript).toBe(join(scriptsDir, 'pipeline.ts'));
     });
   });
 
@@ -126,10 +126,10 @@ describe('pipeline.js — JIT dependency installer', () => {
     });
   });
 
-  // ── Delegation to main.ts ───────────────────────────────────────────
+  // ── Delegation to pipeline.ts ───────────────────────────────────────────
 
   describe('pipeline delegation', () => {
-    it('passes all CLI arguments through to main.ts', () => {
+    it('passes all CLI arguments through to pipeline.ts', () => {
       const cliArgs = [
         '--event',
         'start',
@@ -139,11 +139,11 @@ describe('pipeline.js — JIT dependency installer', () => {
         '/tmp/config.yml',
       ];
 
-      // The expected tsx args are: ['tsx', mainScript, ...cliArgs]
-      const expectedTsxArgs = ['tsx', mainScript, ...cliArgs];
+      // The expected tsx args are: ['tsx', pipelineScript, ...cliArgs]
+      const expectedTsxArgs = ['tsx', pipelineScript, ...cliArgs];
 
       // Verify the argument array construction
-      const tsxArgs = [mainScript, ...cliArgs];
+      const tsxArgs = [pipelineScript, ...cliArgs];
       expect(['tsx', ...tsxArgs]).toEqual(expectedTsxArgs);
     });
 
@@ -172,7 +172,7 @@ describe('pipeline.js — JIT dependency installer', () => {
         '--verdict', 'approved',
       ];
 
-      const tsxArgs = [mainScript, ...fullFlags];
+      const tsxArgs = [pipelineScript, ...fullFlags];
       // All flags pass through unchanged
       expect(tsxArgs.slice(1)).toEqual(fullFlags);
     });

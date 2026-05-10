@@ -2,10 +2,10 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { runDoctor, doctorCommand } from '../../src/commands/doctor/index.js';
+import { runDoctor, doctorCommand, renderDoctorForTest } from '../../src/commands/doctor/index.js';
 import { writeInstallSkeleton } from '../../src/commands/install/skeleton.js';
 import { validateEnvelope } from '../../src/framework/output.js';
-import { runPluginChecks } from '../../src/commands/doctor/checks.js';
+import { runPluginChecks, type CheckResult } from '../../src/commands/doctor/checks.js';
 
 let tmp: string;
 beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc-')); });
@@ -147,4 +147,170 @@ describe('plugin-aware doctor checks', () => {
       await fs.rm(homeIter01, { recursive: true, force: true });
     }
   });
+});
+
+describe('runPluginChecks — new plugin-install checks (FR-14)', () => {
+  let home: string;
+  beforeEach(async () => { home = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc-')); });
+  afterEach(async () => { await fs.rm(home, { recursive: true, force: true }); });
+
+  it('projects-base-path-readable passes when the resolved path exists and is readable', async () => {
+    // Default base_path resolves to <root>/projects when no orchestration.yml is present.
+    await fs.mkdir(path.join(home, 'projects'), { recursive: true });
+    const result = await runPluginChecks({ root: home, localVersion: '1.0.0' });
+    const check = result.find((c) => c.name === 'projects-base-path-readable');
+    expect(check).toBeDefined();
+    expect(check?.status).toBe('pass');
+    expect(check?.detail).toContain(path.join(home, 'projects'));
+  });
+
+  it('plugin-skills-enumerable fails when a plugin-shipped skills/<name>/SKILL.md is missing', async () => {
+    const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
+    try {
+      // Create skills/<name>/ folder but no SKILL.md inside.
+      const skillDir = path.join(pluginRoot, 'skills', 'rad-broken');
+      await fs.mkdir(skillDir, { recursive: true });
+      const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
+      const check = result.find((c) => c.name === 'plugin-skills-enumerable');
+      expect(check).toBeDefined();
+      expect(check?.status).toBe('fail');
+      expect(check?.detail).toMatch(/rad-broken/);
+    } finally {
+      await fs.rm(pluginRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('plugin-agents-resolvable warns when CLAUDE_PLUGIN_ROOT is unset', async () => {
+    const result = await runPluginChecks({ root: home, localVersion: '1.0.0' });
+    const check = result.find((c) => c.name === 'plugin-agents-resolvable');
+    expect(check).toBeDefined();
+    expect(check?.status).toBe('warn');
+    expect(check?.detail).toMatch(/CLAUDE_PLUGIN_ROOT not set/);
+  });
+
+  it('cross-install-version-skew warns when both an iter-01 npm-installed radorch and the plugin CLI report different versions', async () => {
+    const result = await runPluginChecks({
+      root: home,
+      localVersion: '1.5.0',
+      iter01Version: '1.0.0',
+    });
+    const check = result.find((c) => c.name === 'cross-install-version-skew');
+    expect(check).toBeDefined();
+    expect(check?.status).toBe('warn');
+    expect(check?.detail).toMatch(/1\.0\.0/);
+    expect(check?.detail).toMatch(/1\.5\.0/);
+  });
+
+  it('plugin-agents-resolvable fails when agents/ is empty', async () => {
+    const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
+    try {
+      await fs.mkdir(path.join(pluginRoot, 'agents'), { recursive: true });
+      const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
+      const check = result.find((c) => c.name === 'plugin-agents-resolvable');
+      expect(check).toBeDefined();
+      expect(check?.status).toBe('fail');
+      expect(check?.detail).toMatch(/no \.md agent files/);
+    } finally {
+      await fs.rm(pluginRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('plugin-agents-resolvable passes when every .md is readable', async () => {
+    const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
+    try {
+      const agentsDir = path.join(pluginRoot, 'agents');
+      await fs.mkdir(agentsDir, { recursive: true });
+      await fs.writeFile(path.join(agentsDir, 'orchestrator.md'), '# stub agent\n');
+      await fs.writeFile(path.join(agentsDir, 'coder.md'), '# stub agent\n');
+      const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
+      const check = result.find((c) => c.name === 'plugin-agents-resolvable');
+      expect(check).toBeDefined();
+      expect(check?.status).toBe('pass');
+      expect(check?.detail).toBeUndefined();
+    } finally {
+      await fs.rm(pluginRoot, { recursive: true, force: true });
+    }
+  });
+
+  // OS-sensitive: stripping read perms is not reliably honored by Windows
+  // for the file owner, so vitest's `it.skipIf` keeps Linux/macOS coverage
+  // while skipping on win32. The empty-agents/ and per-file-missing cases
+  // still cover the main fail branches on every platform.
+  it.skipIf(process.platform === 'win32')(
+    'plugin-agents-resolvable fails when a listed .md is unreadable',
+    async () => {
+      const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
+      try {
+        const agentsDir = path.join(pluginRoot, 'agents');
+        await fs.mkdir(agentsDir, { recursive: true });
+        const filePath = path.join(agentsDir, 'broken.md');
+        await fs.writeFile(filePath, '# stub\n');
+        // Strip all read bits.
+        await fs.chmod(filePath, 0o000);
+        try {
+          const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
+          const check = result.find((c) => c.name === 'plugin-agents-resolvable');
+          expect(check).toBeDefined();
+          expect(check?.status).toBe('fail');
+          expect(check?.detail).toMatch(/broken\.md/);
+        } finally {
+          // Restore so afterEach cleanup can recurse.
+          await fs.chmod(filePath, 0o644);
+        }
+      } finally {
+        await fs.rm(pluginRoot, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it('plugin-skills-enumerable warns when skills/ is missing', async () => {
+    const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
+    try {
+      // pluginRoot exists but no skills/ subdirectory.
+      const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
+      const check = result.find((c) => c.name === 'plugin-skills-enumerable');
+      expect(check).toBeDefined();
+      expect(check?.status).toBe('warn');
+      expect(check?.detail).toMatch(/skills\/ directory missing/);
+    } finally {
+      await fs.rm(pluginRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('runDoctor end-to-end does not throw when no rad-orchestration binary is on PATH', async () => {
+    // Force PATH to an empty directory so spawn cannot find rad-orchestration.
+    const emptyDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-empty-path-'));
+    try {
+      await expect(
+        runDoctor({ env: { RADORCH_HOME: home, PATH: emptyDir, Path: emptyDir } }),
+      ).resolves.toBeDefined();
+    } finally {
+      await fs.rm(emptyDir, { recursive: true, force: true });
+    }
+  });
+});
+
+it('doctor renders every check from runDoctor under exactly the four canonical categories (regression guard for dynamic enumeration)', async () => {
+  const fakeChecks: CheckResult[] = [
+    { category: 'Environment', name: 'env-x', status: 'pass', detail: 'ok' },
+    { category: 'Install',     name: 'inst-x', status: 'pass', detail: 'ok' },
+    { category: 'Registry',    name: 'reg-x', status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'bundle-integrity',            status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'bootstrap-skeleton',          status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'ui-pid-consistency',          status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'version-skew',                status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'projects-base-path-readable', status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'plugin-skills-enumerable',    status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'plugin-agents-resolvable',    status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'cross-install-version-skew',  status: 'warn', detail: 'iter-01 install not detected' },
+  ];
+  const out = renderDoctorForTest({ all_passed: true, checks: fakeChecks });
+  // Every Plugin-category check name must appear in the rendered output (proves dynamic enumeration over `result.checks`).
+  const pluginNames = fakeChecks.filter(c => c.category === 'Plugin').map(c => c.name);
+  for (const name of pluginNames) {
+    expect(out).toContain(name);
+  }
+  // Exactly the four canonical category headings render — no new categories, no nested sub-rows.
+  const categoryHeadings = [...out.matchAll(/^(Environment|Install|Registry|Plugin)$/gm)].map(m => m[1]);
+  expect(categoryHeadings.sort()).toEqual(['Environment', 'Install', 'Plugin', 'Registry']);
 });

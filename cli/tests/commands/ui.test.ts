@@ -53,14 +53,52 @@ describe('ui stop', () => {
     const f = path.join(home, 'runtime', 'ui.pid');
     await fs.mkdir(path.dirname(f), { recursive: true });
     await writePidFile(f, { pid: 999998, port: 3000, started_at: new Date().toISOString() });
-    const r = await runStop({ env: { RADORCH_HOME: home } });
+    const probe = vi.fn().mockResolvedValue(true);
+    const r = await runStop({ env: { RADORCH_HOME: home }, _probePortFree: probe });
     expect(r.stopped).toBe(true);
+    expect(r.port_released).toBe(true);
     const after = await readPidFile(f);
     expect(after).toBeNull();
   });
   it('reports stopped when no pid file existed', async () => {
     const r = await runStop({ env: { RADORCH_HOME: home } });
     expect(r.stopped).toBe(true);
+  });
+  it('returns port_released:true after polling succeeds on a later attempt', async () => {
+    const f = path.join(home, 'runtime', 'ui.pid');
+    await fs.mkdir(path.dirname(f), { recursive: true });
+    await writePidFile(f, { pid: 999997, port: 3007, started_at: new Date().toISOString() });
+    // First two probes report port still bound; third reports free.
+    const probe = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    let mockTime = 0;
+    const r = await runStop({
+      env: { RADORCH_HOME: home },
+      _probePortFree: probe,
+      _now: () => mockTime,
+      _sleep: async (ms) => { mockTime += ms; },
+    });
+    expect(r.stopped).toBe(true);
+    expect(r.port_released).toBe(true);
+    expect(probe).toHaveBeenCalledTimes(3);
+    expect(probe).toHaveBeenCalledWith(3007);
+  });
+  it('returns port_released:false when probe never succeeds within timeout', async () => {
+    const f = path.join(home, 'runtime', 'ui.pid');
+    await fs.mkdir(path.dirname(f), { recursive: true });
+    await writePidFile(f, { pid: 999996, port: 3000, started_at: new Date().toISOString() });
+    const probe = vi.fn().mockResolvedValue(false);
+    let mockTime = 0;
+    const r = await runStop({
+      env: { RADORCH_HOME: home },
+      _probePortFree: probe,
+      _now: () => mockTime,
+      _sleep: async (ms) => { mockTime += ms; },
+    });
+    expect(r.stopped).toBe(true);
+    expect(r.port_released).toBe(false);
+    // 5000ms timeout / 200ms interval = ~25 iterations. The exact count depends
+    // on whether the loop probes once more after the final sleep — accept >=20.
+    expect(probe.mock.calls.length).toBeGreaterThanOrEqual(20);
   });
 });
 
@@ -83,11 +121,13 @@ describe('ui start (with mocked spawn)', () => {
     const pidFile = await readPidFile(path.join(home, 'runtime', 'ui.pid'));
     expect(pidFile?.pid).toBe(4242);
     expect(pidFile?.port).toBe(3000);
-    // verify env-bridge: WORKSPACE_ROOT and ORCH_ROOT pointed at <home>/projects
+    // verify env-bridge: in plugin mode ~/.radorch IS the canonical workspace
+    // and orch root in one, so WORKSPACE_ROOT=root, ORCH_ROOT=".". The UI's
+    // path-resolver then reads orchestration.yml at <root>/skills/...
     const spawnCall = fakeSpawn.mock.calls[0];
     const spawnEnv = spawnCall[2].env;
-    expect(spawnEnv.WORKSPACE_ROOT).toBe(path.join(home, 'projects'));
-    expect(spawnEnv.ORCH_ROOT).toBe(path.join(home, 'projects'));
+    expect(spawnEnv.WORKSPACE_ROOT).toBe(home);
+    expect(spawnEnv.ORCH_ROOT).toBe('.');
     expect(spawnCall[2].detached).toBe(true);
     expect(spawnCall[2].windowsHide).toBe(true);
   });

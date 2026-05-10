@@ -1,5 +1,5 @@
 {
-  "name": "@radorch/cli",
+  "name": "@rad-orchestration/cli",
   "version": "1.0.0-alpha.8",
   "private": true,
   "type": "module",

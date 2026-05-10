@@ -6,7 +6,7 @@ The orchestration system runs inside AI coding assistants — referred to here a
 
 | Harness | Install / entry point | Status | Dashboard launch |
 |---|---|---|---|
-| Claude Code | `npm install -g @anthropic-ai/claude-code` then run `claude` in your repo | Supported | Yes |
+| Claude Code | `npm install -g @anthropic-ai/claude-code` then run `claude` in your repo; or `/plugin install rad-orchestration` — see [plugins.md](plugins.md) | Supported | Yes |
 | GitHub Copilot in VS Code | Install the GitHub Copilot extension; enable agent mode | Supported | Coming soon |
 | GitHub Copilot CLI | Install per GitHub instructions; run the Copilot CLI binary | Supported | Coming soon |
 

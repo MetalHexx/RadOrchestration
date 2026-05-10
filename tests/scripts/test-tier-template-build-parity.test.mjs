@@ -45,3 +45,11 @@ test('installer pre-compiled bundles do not contain retired template files', () 
   }
   assert.ok(bundlesAsserted >= 1, `Expected at least one installer bundle to be asserted; found 0. Harness dirs: ${harnessDirs.join(', ')}`);
 });
+
+test('plugin emit ships exactly the four tier templates', () => {
+  execSync('npm run build:plugin', { cwd: REPO_ROOT, stdio: 'pipe' });
+  const pluginTemplates = templatesAt('cli/dist/marketplaces/claude/plugins/rad-orchestration/skills/rad-orchestration/templates');
+  assert.ok(pluginTemplates !== null, 'plugin templates dir missing — build:plugin may have failed');
+  assert.deepEqual(pluginTemplates, EXPECTED_TIERS.slice().sort(), `Plugin templates dir mismatch: ${JSON.stringify(pluginTemplates)}`);
+  for (const f of FORBIDDEN) assert.ok(!pluginTemplates.includes(f), `${f} still present in plugin emit`);
+});

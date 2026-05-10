@@ -216,7 +216,7 @@ mutationRegistry.set(EVENTS.EXPLOSION_FAILED, (state, context, _config, _templat
     cloned.pipeline.halt_reason =
       'Explosion dispatch error: explosion_failed received without a valid parse_error payload. ' +
       'This is a programmer error — the orchestrator or CLI wrapper must pass --parse-error with ' +
-      '{ line, expected, found, message }. See main.ts argument handling.';
+      '{ line, expected, found, message }. See pipeline.ts argument handling.';
     mutations_applied.push('set explode_master_plan.status = failed (invalid dispatch)');
     mutations_applied.push('set explode_master_plan.doc_path = null (invalid dispatch)');
     mutations_applied.push('set graph.status = halted (dispatch error)');

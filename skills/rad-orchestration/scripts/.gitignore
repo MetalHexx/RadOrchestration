@@ -1,2 +1,5 @@
 node_modules/
 dist/
+dist-bundle/
+# Ephemeral vitest / build run logs — captured locally, never committed.
+*.log

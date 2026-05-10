@@ -1,0 +1,9 @@
+# Enforce LF line endings across all text files so adapter emit and bundle
+# tests stay platform-stable. Without this, Windows checkouts (with
+# core.autocrlf=true) produce CRLF working trees while Linux CI runners
+# produce LF, and any test that hashes emitted files would diverge per-
+# platform.
+#
+# `* text=auto eol=lf` lets git auto-detect text vs binary; binaries are
+# left untouched.
+* text=auto eol=lf

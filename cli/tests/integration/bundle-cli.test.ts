@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { execFile, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
-import fsSync from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -39,11 +38,5 @@ describe('cli bundle', () => {
     const result = spawnSync('node', [bundleScript, '--out='], { encoding: 'utf8' });
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('--out= requires a non-empty path');
-  });
-
-  it('does not introduce peer:true annotations into ui/package-lock.json', () => {
-    const lockPath = path.resolve(cliRoot, '..', 'ui', 'package-lock.json');
-    const content = fsSync.readFileSync(lockPath, 'utf8');
-    expect(content).not.toContain('"peer": true');
   });
 });

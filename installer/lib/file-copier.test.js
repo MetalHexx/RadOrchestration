@@ -280,6 +280,46 @@ test('copyAll silently skips missing categories and continues copying present on
   }
 });
 
+// ── *.test.* / *.spec.* exclusion ────────────────────────────────────────────
+
+test('copyCategory rejects *.test.* files anywhere in the tree', () => {
+  const { repo, target, cleanup } = makeDirs();
+  try {
+    writeFile(repo, 'src/skill-a/SKILL.md');
+    writeFile(repo, 'src/skill-a/scripts/runtime.js');
+    writeFile(repo, 'src/skill-a/scripts/runtime.test.js');     // should be rejected
+    writeFile(repo, 'src/skill-a/scripts/runtime.spec.ts');     // should be rejected
+    writeFile(repo, 'src/skill-a/scripts/runtime.test.mjs');    // should be rejected
+    writeFile(repo, 'src/skill-b/something.test.tsx');          // should be rejected
+    const cat = { name: 'Skills', sourceDir: 'src', targetDir: 'skills', recursive: true };
+    copyCategory(cat, repo, target);
+    assert.ok(fs.existsSync(path.join(target, 'skills', 'skill-a', 'SKILL.md')));
+    assert.ok(fs.existsSync(path.join(target, 'skills', 'skill-a', 'scripts', 'runtime.js')));
+    assert.ok(!fs.existsSync(path.join(target, 'skills', 'skill-a', 'scripts', 'runtime.test.js')));
+    assert.ok(!fs.existsSync(path.join(target, 'skills', 'skill-a', 'scripts', 'runtime.spec.ts')));
+    assert.ok(!fs.existsSync(path.join(target, 'skills', 'skill-a', 'scripts', 'runtime.test.mjs')));
+    assert.ok(!fs.existsSync(path.join(target, 'skills', 'skill-b', 'something.test.tsx')));
+  } finally {
+    cleanup();
+  }
+});
+
+test('copyCategory still copies non-test files that just happen to contain "test" in the name', () => {
+  const { repo, target, cleanup } = makeDirs();
+  try {
+    writeFile(repo, 'src/test-utils.js');
+    writeFile(repo, 'src/contest.ts');
+    writeFile(repo, 'src/protests.md');
+    const cat = { name: 'Skills', sourceDir: 'src', targetDir: 'skills', recursive: false };
+    copyCategory(cat, repo, target);
+    assert.ok(fs.existsSync(path.join(target, 'skills', 'test-utils.js')));
+    assert.ok(fs.existsSync(path.join(target, 'skills', 'contest.ts')));
+    assert.ok(fs.existsSync(path.join(target, 'skills', 'protests.md')));
+  } finally {
+    cleanup();
+  }
+});
+
 // ── End-to-end: per-category excludeDirs ──────────────────────────────────────
 
 test('per-category excludeDirs filters out the named directory when copying', () => {

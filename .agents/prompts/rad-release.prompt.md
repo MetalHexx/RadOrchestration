@@ -19,7 +19,7 @@ Run the following commands to collect the information you'll need for the questi
    - `ui/package.json`
    - `skills/rad-orchestration/scripts/package.json`
    - `cli/package.json`
-   - `marketplace/plugins/rad-orchestration/.claude-plugin/plugin.json`
+   - `plugin/package.json`
 4. Read `CHANGELOG.md` at the repo root if it exists (will be created on first release)
 
 ---
@@ -60,16 +60,38 @@ Edit each of these files — set `"version"` to the confirmed version number. Al
 - `ui/package.json`
 - `skills/rad-orchestration/scripts/package.json`
 - `cli/package.json`
-- `marketplace/plugins/rad-orchestration/.claude-plugin/plugin.json`
+- `plugin/package.json`
 
 Note: `package_version` inside each per-harness bundle's `orchestration.yml` (e.g., `installer/src/claude/skills/rad-orchestration/config/orchestration.yml`) is **auto-stamped at build time** by the contributor build / publish step from `installer/package.json`. Do not edit it manually as part of the release flow.
 
 Stage and commit the version bump on the current branch:
 
 ```
-git add installer/package.json ui/package.json skills/rad-orchestration/scripts/package.json cli/package.json marketplace/plugins/rad-orchestration/.claude-plugin/plugin.json
+git add installer/package.json ui/package.json skills/rad-orchestration/scripts/package.json cli/package.json plugin/package.json
 git commit -m "chore: bump version to {version}"
 ```
+
+### 3a.5 — Pre-tag local validation (always, regardless of merge choice)
+
+Before tagging, stage and validate both distribution surfaces locally. This catches build failures before the tag triggers `publish-plugin`, which would otherwise leave a half-published release on npm (the `publish` job succeeds but `publish-plugin` fails on the same tag).
+
+Run from the repo root:
+
+```
+node installer/scripts/sync-source.js
+npm run build:plugin
+```
+
+Then check the staged plugin tarball size budget:
+
+```
+cd cli/dist/marketplaces/claude/plugins/rad-orchestration
+npm pack --dry-run --json
+```
+
+Confirm the reported `unpackedSize` is under **57,671,680 bytes** (50 MB ceiling + 10% headroom). If size has grown past that, audit the included assets — do not raise the budget without an explicit decision.
+
+If any of these fail, **do not push the tag yet**. Fix locally and re-bump only if the version is unreleased.
 
 ### 3b — Merge to main (only if the user chose to merge)
 
@@ -102,6 +124,10 @@ git push origin v{version}
 > git push origin v{version}
 > ```
 
+### 3d — Publish jobs
+
+Once the `v*` tag is pushed to the remote, two GitHub Actions jobs fire automatically in the `.github/workflows/publish.yml` workflow: the legacy `publish` job and the new `publish-plugin` job. Both run in lockstep with no further operator action needed. The `publish` job builds and publishes the core packages to npm; the `publish-plugin` job validates and publishes the Claude plugin to the plugin marketplace. You can monitor both in the [Actions tab](https://github.com/MetalHexx/RadOrchestration/actions).
+
 ---
 
 ## Step 4 — Generate release notes
@@ -119,6 +145,18 @@ To write accurate release notes:
 - Use the squash merge commit message body as a starting point
 - Cross-reference the actual diff (`git diff {previous_tag}..v{version} --stat`) to make sure nothing significant is missed
 - Find the previous tag with `git tag --sort=-creatordate | head -5`
+
+For the **first release of a plugin version** (and at the GA boundary), include a `### Claude Code plugin install` callout in the `## What's New` section:
+
+> Claude Code users can now install via the marketplace:
+>
+> ```
+> /plugin install rad-orchestration
+> ```
+>
+> The plugin install includes the orchestration runtime, the dashboard UI, and three UI-control skills (`rad-ui-start`, `rad-ui-stop`, `rad-ui-status`). Existing `npx radorch` users keep their current setup; both channels remain supported.
+
+Skip the callout in patch releases that don't change the install experience.
 
 ---
 

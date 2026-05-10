@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const execP = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..');
-const hookDir = path.join(repoRoot, 'marketplace', 'plugins', 'rad-orchestration', 'hooks');
+const hookDir = path.join(repoRoot, 'hooks');
 
 test('hooks.json declares two SessionStart entries (bash + powershell)', () => {
   const f = path.join(hookDir, 'hooks.json');
