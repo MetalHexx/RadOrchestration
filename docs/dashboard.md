@@ -20,6 +20,8 @@ npm run start # Runs at: http://localhost:3000
 
 If you need to rebuild first for whatever reason, use `npm run build-and-start` instead. The app reads `.env.local` (created by the `radorch` installer) for `WORKSPACE_ROOT` and `ORCH_ROOT`, which point it at your projects and orchestration root.
 
+On a plugin install, you can also launch the dashboard via the `/rad-orchestration:rad-ui-start` slash command — equivalent to `npm run start` from a cloned repo.
+
 ## Features
 
 ### Project Overview

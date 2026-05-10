@@ -51,3 +51,13 @@ The tier governs review depth — `extra-high` runs per-task code review plus ph
 **When to use it** — Use it on first install or whenever you want to change the system-wide defaults.
 
 **What it produces** — Edits to `orchestration.yml`.
+
+## User-invocable UI skills
+
+Three skills control the dashboard UI lifecycle:
+
+- `rad-ui-start` — launch the dashboard
+- `rad-ui-stop` — stop the dashboard
+- `rad-ui-status` — show the dashboard's status
+
+On a plugin install, invoke them with the namespaced slash form: `/rad-orchestration:rad-ui-start`, `/rad-orchestration:rad-ui-stop`, `/rad-orchestration:rad-ui-status`. See [plugins.md](plugins.md) for the full slash-command surface.
