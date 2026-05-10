@@ -78,6 +78,9 @@ const INTENDED_ITERATION_DELTAS = new Set([
   // tsconfig.json: include glob updated alongside the main.ts → pipeline.ts
   // rename. (P01-T02)
   'skills/rad-orchestration/scripts/tsconfig.json',
+  // pipeline.ts: renamed from main.ts in the source; the bundle now includes
+  // the source file alongside the compiled pipeline.js. (P01-T02)
+  'skills/rad-orchestration/scripts/pipeline.ts',
   // engine.ts: orchestration.yml home-expansion path resolution lifted into
   // the engine. (P05-T01 / FR-12, FR-13, AD-11, NFR-3)
   'skills/rad-orchestration/scripts/lib/engine.ts',
@@ -90,11 +93,29 @@ const INTENDED_ITERATION_DELTAS = new Set([
   'skills/rad-orchestration/scripts/tests/pipeline.test.ts',
   'skills/rad-orchestration/scripts/tests/pipeline-orchroot-audit.test.ts',
   'skills/rad-orchestration/scripts/tests/static-compliance.test.ts',
+  // jit-shim-retired.test.ts: new test added in P01-T02 to verify the JIT
+  // shim has been fully retired and pipeline.js is now esbuild bundle.
+  'skills/rad-orchestration/scripts/tests/jit-shim-retired.test.ts',
+  // pipeline-cli.test.ts: new test added for CLI surface testing. (P01-T02)
+  'skills/rad-orchestration/scripts/tests/pipeline-cli.test.ts',
+  // post-rename-suite-guard.test.ts: new test added post-rename to verify no
+  // references to the old main.ts/main.js remain in the bundle. (P01-T02)
+  'skills/rad-orchestration/scripts/tests/post-rename-suite-guard.test.ts',
+  // state-io-home-expansion.test.ts: new test added for home-expansion path
+  // resolution in state.json parsing. (P05-T01)
+  'skills/rad-orchestration/scripts/tests/state-io-home-expansion.test.ts',
   // main.ts → pipeline.ts rename (P01-T02). The pinned snapshot lists
   // main.ts (and its sibling test); both are absent from the post-iteration
   // bundle by design — the rename is part of retiring the JIT shim.
   'skills/rad-orchestration/scripts/main.ts',
   'skills/rad-orchestration/scripts/tests/main.test.ts',
+  // rad-ui-{start,stop,status} new canonical UI skills introduced in this
+  // iteration (P02-T01). These legitimately did not exist at the baseline
+  // snapshot and are verified to be tracked in the bundle via per-file
+  // walkSha coverage below. Marking them as intentional iteration additions.
+  'skills/rad-ui-start/SKILL.md',          // P02-T01: new canonical UI skill
+  'skills/rad-ui-stop/SKILL.md',           // P02-T01: new canonical UI skill
+  'skills/rad-ui-status/SKILL.md',         // P02-T01: new canonical UI skill
 ]);
 
 // Manifest catalogs (manifests/v<version>.json) embed per-file sha256 hashes
@@ -109,8 +130,18 @@ function isManifestPath(k) {
   return k.startsWith('manifests/');
 }
 
+// Build artifacts from local `tsc` runs and bundling: scripts/dist/,
+// scripts/dist-bundle/, scripts/node_modules/, and *.log files in scripts/ are
+// copied into the installer bundle by the adapter but are not shipped in the
+// published npm bundle (stripped by package.json's "files" allowlist). Skip them
+// from byte-identity comparison.
+function isBuildArtifactPath(k) {
+  return /^skills\/rad-orchestration\/scripts\/(dist|dist-bundle|node_modules)\//.test(k) ||
+         /^skills\/rad-orchestration\/scripts\/.*\.log$/.test(k);
+}
+
 function isSkippedPath(k) {
-  return INTENDED_ITERATION_DELTAS.has(k) || isManifestPath(k);
+  return INTENDED_ITERATION_DELTAS.has(k) || isManifestPath(k) || isBuildArtifactPath(k);
 }
 
 // Run sync-source.js once for the whole test file. Idempotent and shared
@@ -146,10 +177,15 @@ for (const { name, fixture } of HARNESSES) {
       if (isSkippedPath(k)) continue;
       assert.equal(observed[k], v, `byte mismatch at ${k}`);
     }
+    // Bidirectional comparison: ensure no unexpected files in observed
+    for (const k of Object.keys(observed)) {
+      if (isSkippedPath(k)) continue;
+      assert.ok(pinned[k] !== undefined, `unexpected new file in observed: ${k}`);
+    }
   });
 }
 
-test('cli/dist/marketplaces/claude/plugins/rad-orchestration/ stays under NFR-7 size budget', () => {
+test('cli/dist/marketplaces/claude/plugins/rad-orchestration/ stays under NFR-7 size budget', (t) => {
   // NFR-7: plugin tarball unpacked size must be < 50 MB (with a +10% margin
   // before failure → 57,671,680 bytes). The staged plugin tree on disk
   // includes dev-only debris (node_modules, tests/, dist-bundle/, etc.) that
@@ -169,7 +205,9 @@ test('cli/dist/marketplaces/claude/plugins/rad-orchestration/ stays under NFR-7 
   );
   if (!fs.existsSync(staged)) {
     // The size budget is meaningful only when the plugin has been staged.
-    // CI / `npm run build:plugin` produces this tree; absent that, skip.
+    // CI / `npm run build:plugin` produces this tree; absent that, skip visibly.
+    // This avoids false-passing when the expensive build hasn't run.
+    t.skip('staged plugin tree absent — run npm run build:plugin first');
     return;
   }
   const out = execSync('npm pack --dry-run --json', {
