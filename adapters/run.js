@@ -13,7 +13,7 @@ import path from 'node:path';
 // Legacy emit (this file) ships agents+skills+manifests only — no binary — so
 // these skills must not appear in legacy bundles or they would fail at runtime
 // with an empty ${CLAUDE_PLUGIN_ROOT} and a missing radorch.mjs.
-const PLUGIN_ONLY_SKILLS = new Set(['rad-ui-start', 'rad-ui-stop', 'rad-ui-status']);
+export const PLUGIN_ONLY_SKILLS = new Set(['rad-ui-start', 'rad-ui-stop', 'rad-ui-status']);
 
 /**
  * Computes hex sha256 of a file's bytes. Reads synchronously — file counts

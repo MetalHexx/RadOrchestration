@@ -31,10 +31,11 @@ jobs:
       - name: Smoke build all harnesses against canonical source
         run: node scripts/build.js --all
 
-  byte-identity:
-    # Materializes both distribution artifacts and runs the byte-identity /
-    # drift regression test. Catches plugin-only-skill leaks into legacy
-    # bundles (and other unintended emit deltas) at PR time, before publish.
+  bundles:
+    # Materializes both distribution artifacts (legacy installer bundles and
+    # the staged Claude plugin tree) and runs the bundle invariant suite:
+    # plugin-only skill placement, bundle completeness, manifest coherence,
+    # and the plugin tarball size budget.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,5 +67,10 @@ jobs:
       - name: Stage Claude plugin tree
         run: npm run build:plugin
 
-      - name: Byte-identity regression test (NFR-1, NFR-2, NFR-7)
-        run: node --test tests/scripts/byte-identity-regression.test.mjs
+      - name: Bundle invariants — placement, completeness, manifest, size
+        run: |
+          node --test \
+            tests/scripts/plugin-only-skill-placement.test.mjs \
+            tests/scripts/bundle-completeness.test.mjs \
+            tests/scripts/manifest-coherence.test.mjs \
+            tests/scripts/plugin-tarball-size.test.mjs

@@ -5,6 +5,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { discoverAdapters } from '../../adapters/discover.js';
@@ -93,13 +94,32 @@ export async function emitBundles({ repoRoot, version }) {
     // pipeline.js in this harness installer bundle. Ensures every
     // installer/src/<harness>/ ships the esbuild bundle, not whatever bytes
     // happen to be in the canonical scripts/pipeline.js at copy time.
-    // (FR-6, AD-5, NFR-2)
     const bundleDest = path.join(
       installerSrc, adapter.name,
       'skills', 'rad-orchestration', 'scripts', 'pipeline.js',
     );
     if (fs.existsSync(path.dirname(bundleDest))) {
       emitPipelineBundle(bundleDest);
+      // Re-hash the freshly bundled pipeline.js and update the manifest
+      // entry so the manifest stays coherent with what's actually on disk.
+      // Without this, the manifest's sha256 records the canonical (pre-
+      // bundle) bytes while the on-disk file is the esbuild output.
+      const manifestPath = path.join(
+        installerSrc, adapter.name, 'manifests', `v${version}.json`,
+      );
+      if (fs.existsSync(manifestPath)) {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        const bundledHash = crypto.createHash('sha256')
+          .update(fs.readFileSync(bundleDest))
+          .digest('hex');
+        const entry = manifest.files.find(
+          (f) => f.bundlePath === 'skills/rad-orchestration/scripts/pipeline.js',
+        );
+        if (entry) {
+          entry.sha256 = bundledHash;
+          fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+        }
+      }
     }
 
     console.log(`Emitted bundle ${adapter.name}: ${fileCount} files → installer/src/${adapter.name}/`);

@@ -1,8 +1,8 @@
-# Enforce LF line endings across all text files so the byte-identity
-# regression test (tests/scripts/byte-identity-regression.test.mjs) is
-# platform-stable. Without this, Windows checkouts (with core.autocrlf=true)
-# produce CRLF working trees while Linux CI runners produce LF, and the
-# adapter bundle emit hashes diverge per-platform.
+# Enforce LF line endings across all text files so adapter emit and bundle
+# tests stay platform-stable. Without this, Windows checkouts (with
+# core.autocrlf=true) produce CRLF working trees while Linux CI runners
+# produce LF, and any test that hashes emitted files would diverge per-
+# platform.
 #
 # `* text=auto eol=lf` lets git auto-detect text vs binary; binaries are
 # left untouched.
