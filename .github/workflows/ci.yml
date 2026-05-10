@@ -40,12 +40,21 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install repo-root dependencies
+      # Install ordering mirrors publish.yml's `publish-plugin` job: cli/,
+      # ui/, skills/rad-orchestration/scripts/ all need their deps before
+      # build:plugin (and sync-source.js, which also re-emits the pipeline
+      # bundle via skills/rad-orchestration/scripts/'s esbuild).
+      - name: Install cli dependencies
+        working-directory: cli
         run: npm ci
 
-      - name: Install cli/ dependencies (for plugin bundle build)
+      - name: Install ui dependencies
+        working-directory: ui
         run: npm ci
-        working-directory: cli
+
+      - name: Install pipeline scripts dependencies
+        working-directory: skills/rad-orchestration/scripts
+        run: npm install
 
       - name: Stage legacy installer bundles
         run: node installer/scripts/sync-source.js
