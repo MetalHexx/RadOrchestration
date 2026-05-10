@@ -24,6 +24,10 @@ jobs:
       - name: Adapter integration test (well-formed manifest per harness)
         run: node --test scripts/build-integration.test.js
 
+      - name: Install pipeline scripts dependencies (for npm run bundle)
+        working-directory: skills/rad-orchestration/scripts
+        run: npm install
+
       - name: Smoke build all harnesses against canonical source
         run: node scripts/build.js --all
 

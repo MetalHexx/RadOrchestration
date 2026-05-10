@@ -29,7 +29,7 @@ beforeAll(async () => {
       shell: process.platform === 'win32' ? true : undefined,
     });
   }
-});
+}, 180_000);
 
 let home: string;
 beforeEach(async () => { home = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-')); });

@@ -48,5 +48,15 @@ jobs:
         working-directory: skills/rad-orchestration/scripts
         run: npm install
 
+      # Pre-build the plugin tree up-front so plugin-bundle.test.ts's beforeAll
+      # short-circuits (its fs.stat check finds the tree and skips the in-test
+      # build). This avoids a heavy esbuild + Next build running concurrently
+      # with the rest of the vitest worker pool, which starves shorter tests
+      # (e.g. tests/bin/smoke.test.ts) of CPU and trips their default 5s
+      # testTimeout.
+      - name: Pre-build plugin tree (so plugin-bundle.test.ts beforeAll short-circuits)
+        working-directory: .
+        run: npm run build:plugin
+
       - name: Test (Vitest full suite)
         run: npx vitest run
