@@ -20,7 +20,6 @@ Run the following commands to collect the information you'll need for the questi
    - `skills/rad-orchestration/scripts/package.json`
    - `cli/package.json`
    - `plugin/package.json`
-   - `plugin/.claude-plugin/plugin.json`
 4. Read `CHANGELOG.md` at the repo root if it exists (will be created on first release)
 
 ---
@@ -62,14 +61,13 @@ Edit each of these files — set `"version"` to the confirmed version number. Al
 - `skills/rad-orchestration/scripts/package.json`
 - `cli/package.json`
 - `plugin/package.json`
-- `plugin/.claude-plugin/plugin.json`
 
 Note: `package_version` inside each per-harness bundle's `orchestration.yml` (e.g., `installer/src/claude/skills/rad-orchestration/config/orchestration.yml`) is **auto-stamped at build time** by the contributor build / publish step from `installer/package.json`. Do not edit it manually as part of the release flow.
 
 Stage and commit the version bump on the current branch:
 
 ```
-git add installer/package.json ui/package.json skills/rad-orchestration/scripts/package.json cli/package.json plugin/package.json plugin/.claude-plugin/plugin.json
+git add installer/package.json ui/package.json skills/rad-orchestration/scripts/package.json cli/package.json plugin/package.json
 git commit -m "chore: bump version to {version}"
 ```
 
@@ -103,6 +101,10 @@ git push origin v{version}
 > git push origin {branch}
 > git push origin v{version}
 > ```
+
+### 3d — Publish jobs
+
+Once the `v*` tag is pushed to the remote, two GitHub Actions jobs fire automatically in the `.github/workflows/publish.yml` workflow: the legacy `publish` job and the new `publish-plugin` job. Both run in lockstep with no further operator action needed. The `publish` job builds and publishes the core packages to npm; the `publish-plugin` job validates and publishes the Claude plugin to the plugin marketplace. You can monitor both in the [Actions tab](https://github.com/MetalHexx/RadOrchestration/actions).
 
 ---
 
