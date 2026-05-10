@@ -233,23 +233,32 @@ export async function runPluginChecks(opts: {
     out.push({ category: 'Plugin', name: 'projects-base-path-readable', status, detail });
   }
   // plugin-skills-enumerable (FR-14): every shipped skills/<name>/ folder
-  // must contain a SKILL.md. Warn when the plugin root is unknown — the
-  // check is irrelevant outside a deployed plugin (AD-12 missing-data warn).
+  // must contain a SKILL.md. Warn when the plugin root is unknown or the
+  // skills/ directory itself is missing — the check is irrelevant outside
+  // a deployed plugin (AD-12 missing-data warn), and a missing skills/
+  // dir signals a structurally broken plugin (warn so it surfaces).
   if (opts.pluginRoot) {
     const skillsDir = path.join(opts.pluginRoot, 'skills');
-    const missing: string[] = [];
-    if (await pathExists(skillsDir)) {
+    if (!(await pathExists(skillsDir))) {
+      out.push({
+        category: 'Plugin',
+        name: 'plugin-skills-enumerable',
+        status: 'warn',
+        detail: 'skills/ directory missing under CLAUDE_PLUGIN_ROOT',
+      });
+    } else {
+      const missing: string[] = [];
       for (const name of await fsP.readdir(skillsDir)) {
         const f = path.join(skillsDir, name, 'SKILL.md');
         if (!(await pathExists(f))) missing.push(name);
       }
+      out.push({
+        category: 'Plugin',
+        name: 'plugin-skills-enumerable',
+        status: missing.length === 0 ? 'pass' : 'fail',
+        detail: missing.length === 0 ? undefined : `skills missing SKILL.md: ${missing.join(', ')}`,
+      });
     }
-    out.push({
-      category: 'Plugin',
-      name: 'plugin-skills-enumerable',
-      status: missing.length === 0 ? 'pass' : 'fail',
-      detail: missing.length === 0 ? undefined : `skills missing SKILL.md: ${missing.join(', ')}`,
-    });
   } else {
     out.push({
       category: 'Plugin',
@@ -259,24 +268,33 @@ export async function runPluginChecks(opts: {
     });
   }
   // plugin-agents-resolvable (FR-14, DD-3): the plugin ships canonical agent
-  // files under agents/; namespacing is a body transform inside the plugin,
-  // so existence-checking the directory is sufficient.
+  // files under agents/; namespacing is a body transform inside the plugin.
+  // Enumerate dynamically and require agents/ to be non-empty, every entry
+  // .md-suffixed and readable on R_OK; report per-file misses.
   if (opts.pluginRoot) {
     const agentsDir = path.join(opts.pluginRoot, 'agents');
     const missing: string[] = [];
-    if (await pathExists(agentsDir)) {
-      for (const f of await fsP.readdir(agentsDir)) {
-        if (!f.endsWith('.md')) continue;
-        // Existence check is sufficient — namespacing is a body transform inside the plugin
-      }
-    } else {
+    if (!(await pathExists(agentsDir))) {
       missing.push('agents/ directory');
+    } else {
+      const entries = (await fsP.readdir(agentsDir)).filter((f) => f.endsWith('.md'));
+      if (entries.length === 0) {
+        missing.push('no .md agent files under agents/');
+      } else {
+        for (const f of entries) {
+          try {
+            await fsP.access(path.join(agentsDir, f), fsP.constants.R_OK);
+          } catch {
+            missing.push(f);
+          }
+        }
+      }
     }
     out.push({
       category: 'Plugin',
       name: 'plugin-agents-resolvable',
       status: missing.length === 0 ? 'pass' : 'fail',
-      detail: missing.length === 0 ? undefined : `missing: ${missing.join(', ')}`,
+      detail: missing.length === 0 ? undefined : `missing or unreadable: ${missing.join(', ')}`,
     });
   } else {
     out.push({

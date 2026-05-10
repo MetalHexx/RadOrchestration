@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { defineCommand } from '../../framework/command.js';
 import type { CommandContext } from '../../framework/context.js';
@@ -9,6 +10,37 @@ import { runEnvironmentChecks, runInstallChecks, runRegistryChecks, runPluginChe
 const require_ = createRequire(import.meta.url);
 const pkg = require_('../../../package.json') as { version: string };
 
+/**
+ * Detect a parallel iter-01 npm install of `radorch` by invoking
+ * `rad-orchestration --version` (and `rad-orchestration.cmd` on win32).
+ * 1s timeout honors NFR-8 (filesystem-light, bounded shell-out). Returns
+ * undefined on ENOENT, non-zero exit, timeout, or unparseable stdout —
+ * the cross-install-version-skew check then emits its not-detected warn.
+ */
+function detectIter01Version(env: NodeJS.ProcessEnv): string | undefined {
+  const candidates =
+    process.platform === 'win32'
+      ? ['rad-orchestration.cmd', 'rad-orchestration']
+      : ['rad-orchestration'];
+  for (const cmd of candidates) {
+    try {
+      const r = spawnSync(cmd, ['--version'], {
+        encoding: 'utf8',
+        timeout: 1000,
+        shell: false,
+        env,
+      });
+      if (r.status === 0 && r.stdout) {
+        const m = r.stdout.trim().match(/^\d+\.\d+\.\d+(-[\w.]+)?$/m);
+        if (m) return m[0];
+      }
+    } catch {
+      // ENOENT, timeout, or other spawn failure — try next candidate.
+    }
+  }
+  return undefined;
+}
+
 export interface DoctorResult {
   all_passed: boolean;
   checks: CheckResult[];
@@ -16,11 +48,17 @@ export interface DoctorResult {
 
 export async function runDoctor(opts: { env: NodeJS.ProcessEnv }): Promise<DoctorResult> {
   const root = resolveInstallRoot(opts.env);
+  const iter01Version = detectIter01Version(opts.env);
   const checks: CheckResult[] = [
     ...(await runEnvironmentChecks()),
     ...(await runInstallChecks(root)),
     ...(await runRegistryChecks(root)),
-    ...(await runPluginChecks({ root, localVersion: pkg.version, pluginRoot: opts.env['CLAUDE_PLUGIN_ROOT'] })),
+    ...(await runPluginChecks({
+      root,
+      localVersion: pkg.version,
+      pluginRoot: opts.env['CLAUDE_PLUGIN_ROOT'],
+      iter01Version,
+    })),
   ];
   const all_passed = !checks.some((c) => c.status === 'fail');
   return { all_passed, checks };

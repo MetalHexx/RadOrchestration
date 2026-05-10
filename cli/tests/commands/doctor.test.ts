@@ -200,4 +200,92 @@ describe('runPluginChecks — new plugin-install checks (FR-14)', () => {
     expect(check?.detail).toMatch(/1\.0\.0/);
     expect(check?.detail).toMatch(/1\.5\.0/);
   });
+
+  it('plugin-agents-resolvable fails when agents/ is empty', async () => {
+    const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
+    try {
+      await fs.mkdir(path.join(pluginRoot, 'agents'), { recursive: true });
+      const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
+      const check = result.find((c) => c.name === 'plugin-agents-resolvable');
+      expect(check).toBeDefined();
+      expect(check?.status).toBe('fail');
+      expect(check?.detail).toMatch(/no \.md agent files/);
+    } finally {
+      await fs.rm(pluginRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('plugin-agents-resolvable passes when every .md is readable', async () => {
+    const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
+    try {
+      const agentsDir = path.join(pluginRoot, 'agents');
+      await fs.mkdir(agentsDir, { recursive: true });
+      await fs.writeFile(path.join(agentsDir, 'orchestrator.md'), '# stub agent\n');
+      await fs.writeFile(path.join(agentsDir, 'coder.md'), '# stub agent\n');
+      const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
+      const check = result.find((c) => c.name === 'plugin-agents-resolvable');
+      expect(check).toBeDefined();
+      expect(check?.status).toBe('pass');
+      expect(check?.detail).toBeUndefined();
+    } finally {
+      await fs.rm(pluginRoot, { recursive: true, force: true });
+    }
+  });
+
+  // OS-sensitive: stripping read perms is not reliably honored by Windows
+  // for the file owner, so vitest's `it.skipIf` keeps Linux/macOS coverage
+  // while skipping on win32. The empty-agents/ and per-file-missing cases
+  // still cover the main fail branches on every platform.
+  it.skipIf(process.platform === 'win32')(
+    'plugin-agents-resolvable fails when a listed .md is unreadable',
+    async () => {
+      const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
+      try {
+        const agentsDir = path.join(pluginRoot, 'agents');
+        await fs.mkdir(agentsDir, { recursive: true });
+        const filePath = path.join(agentsDir, 'broken.md');
+        await fs.writeFile(filePath, '# stub\n');
+        // Strip all read bits.
+        await fs.chmod(filePath, 0o000);
+        try {
+          const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
+          const check = result.find((c) => c.name === 'plugin-agents-resolvable');
+          expect(check).toBeDefined();
+          expect(check?.status).toBe('fail');
+          expect(check?.detail).toMatch(/broken\.md/);
+        } finally {
+          // Restore so afterEach cleanup can recurse.
+          await fs.chmod(filePath, 0o644);
+        }
+      } finally {
+        await fs.rm(pluginRoot, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it('plugin-skills-enumerable warns when skills/ is missing', async () => {
+    const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
+    try {
+      // pluginRoot exists but no skills/ subdirectory.
+      const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
+      const check = result.find((c) => c.name === 'plugin-skills-enumerable');
+      expect(check).toBeDefined();
+      expect(check?.status).toBe('warn');
+      expect(check?.detail).toMatch(/skills\/ directory missing/);
+    } finally {
+      await fs.rm(pluginRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('runDoctor end-to-end does not throw when no rad-orchestration binary is on PATH', async () => {
+    // Force PATH to an empty directory so spawn cannot find rad-orchestration.
+    const emptyDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-empty-path-'));
+    try {
+      await expect(
+        runDoctor({ env: { RADORCH_HOME: home, PATH: emptyDir, Path: emptyDir } }),
+      ).resolves.toBeDefined();
+    } finally {
+      await fs.rm(emptyDir, { recursive: true, force: true });
+    }
+  });
 });
