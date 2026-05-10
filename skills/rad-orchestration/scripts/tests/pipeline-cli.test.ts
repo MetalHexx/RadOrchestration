@@ -53,6 +53,34 @@ describe('pipeline CLI — run()', () => {
     expect(typeof run).toBe('function');
   });
 
+  // ── Help Flag ───────────────────────────────────────────────────────────────
+
+  it('--help prints usage block and exits 0 without invoking the engine', () => {
+    run(['--help']);
+    expect(process.exitCode).toBe(0);
+    expect(output).toContain('Usage: pipeline.js --event');
+    expect(output).toContain('--project-dir');
+    expect(output).toContain('master_plan_completed');
+    // No JSON envelope on stdout when --help is given
+    expect(output).not.toContain('"success"');
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
+
+  it('-h is treated as an alias for --help', () => {
+    run(['-h']);
+    expect(process.exitCode).toBe(0);
+    expect(output).toContain('Usage: pipeline.js --event');
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
+
+  it('--help short-circuits before required-arg validation', () => {
+    // Without --event/--project-dir, normal flow would error. --help wins.
+    run(['--help', '--event', 'something']);
+    expect(process.exitCode).toBe(0);
+    expect(output).not.toContain('Missing required argument');
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+  });
+
   // ── Argument Parsing ────────────────────────────────────────────────────────
 
   it('parses core CLI arguments correctly', () => {

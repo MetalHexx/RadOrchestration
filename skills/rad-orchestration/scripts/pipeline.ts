@@ -26,6 +26,43 @@ function parseArgs(argv: string[]): Record<string, string> {
   return args;
 }
 
+const HELP_TEXT = `Usage: pipeline.js --event <event-name> --project-dir <path> [options]
+
+Required:
+  --event <name>          Pipeline event signal (see list below)
+  --project-dir <path>    Path to the project directory
+
+Common events:
+  start, requirements_started, requirements_completed,
+  master_plan_started, master_plan_completed,
+  explosion_started, explosion_completed, explosion_failed,
+  plan_approved, plan_rejected,
+  execution_started, code_review_started, code_review_completed,
+  task_completed, commit_started, commit_completed,
+  pr_requested, pr_created,
+  phase_review_started, phase_review_completed,
+  final_review_started, final_review_completed,
+  gate_mode_set, gate_approved, gate_rejected,
+  source_control_init
+
+Common flags:
+  --doc-path <path>       Document path (for *_completed events)
+  --phase <n> --task <n>  Phase/task selectors
+  --gate-mode task|phase|autonomous
+  --verdict approved|changes_requested|rejected
+  --branch <name>         Branch name (source-control events)
+  --commit-hash <hash>    Commit hash (commit_completed)
+  --pr-url <url>          PR URL (pr_created)
+  --parse-error '<json>'  Parse error payload (explosion_failed)
+  --reason <text>         Rejection reason (gate_rejected)
+  --config <path>         Override default orchestration.yml location
+
+Returns a JSON envelope on stdout. Exit code 0 on success, 1 on failure.
+
+For the full event reference and behaviour, see
+references/action-event-reference.md in the rad-orchestration skill folder.
+`;
+
 function makeErrorResult(message: string, event: string, orchRoot: string = detectOrchRoot()): PipelineResult {
   return {
     success: false,
@@ -40,6 +77,15 @@ function makeErrorResult(message: string, event: string, orchRoot: string = dete
 // ── CLI Entry ─────────────────────────────────────────────────────────────────
 
 export function run(argv: string[]): void {
+  // --help / -h short-circuit — print usage to stdout and exit 0 before any
+  // event/project-dir validation. Default behaviour (no help flag) is unchanged
+  // and still returns the JSON envelope on stdout.
+  if (argv.includes('--help') || argv.includes('-h')) {
+    process.exitCode = 0;
+    process.stdout.write(HELP_TEXT);
+    return;
+  }
+
   const args = parseArgs(argv);
   const event = args['event'];
   let orchRoot = detectOrchRoot(); // fallback until config is read
