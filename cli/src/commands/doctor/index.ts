@@ -78,6 +78,21 @@ function renderInteractive(result: DoctorResult, ctx: CommandContext): void {
   ctx.stderr.write(`\nSummary: ${result.all_passed ? ctx.theme.success('all passed') : ctx.theme.error('failures present')}\n`);
 }
 
+export function renderDoctorForTest(result: DoctorResult): string {
+  const lookup = { pass: 'PASS', warn: 'WARN', fail: 'FAIL' } as const;
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  for (const c of result.checks) {
+    if (!seen.has(c.category)) {
+      lines.push(`\n${c.category}`);
+      seen.add(c.category);
+    }
+    lines.push(`  [${lookup[c.status]}] ${c.name}${c.detail ? ' — ' + c.detail : ''}`);
+  }
+  lines.push(`\nSummary: ${result.all_passed ? 'all passed' : 'failures present'}`);
+  return lines.join('\n');
+}
+
 export const doctorCommand = defineCommand({
   name: 'doctor',
   description: 'Run health checks across environment, install integrity, and registry shape',

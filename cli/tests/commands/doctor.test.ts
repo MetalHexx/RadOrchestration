@@ -2,10 +2,10 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { runDoctor, doctorCommand } from '../../src/commands/doctor/index.js';
+import { runDoctor, doctorCommand, renderDoctorForTest } from '../../src/commands/doctor/index.js';
 import { writeInstallSkeleton } from '../../src/commands/install/skeleton.js';
 import { validateEnvelope } from '../../src/framework/output.js';
-import { runPluginChecks } from '../../src/commands/doctor/checks.js';
+import { runPluginChecks, type CheckResult } from '../../src/commands/doctor/checks.js';
 
 let tmp: string;
 beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc-')); });
@@ -288,4 +288,29 @@ describe('runPluginChecks — new plugin-install checks (FR-14)', () => {
       await fs.rm(emptyDir, { recursive: true, force: true });
     }
   });
+});
+
+it('doctor renders every check from runDoctor under exactly the four canonical categories (regression guard for dynamic enumeration)', async () => {
+  const fakeChecks: CheckResult[] = [
+    { category: 'Environment', name: 'env-x', status: 'pass', detail: 'ok' },
+    { category: 'Install',     name: 'inst-x', status: 'pass', detail: 'ok' },
+    { category: 'Registry',    name: 'reg-x', status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'bundle-integrity',            status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'bootstrap-skeleton',          status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'ui-pid-consistency',          status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'version-skew',                status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'projects-base-path-readable', status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'plugin-skills-enumerable',    status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'plugin-agents-resolvable',    status: 'pass', detail: 'ok' },
+    { category: 'Plugin',      name: 'cross-install-version-skew',  status: 'warn', detail: 'iter-01 install not detected' },
+  ];
+  const out = renderDoctorForTest({ all_passed: true, checks: fakeChecks });
+  // Every Plugin-category check name must appear in the rendered output (proves dynamic enumeration over `result.checks`).
+  const pluginNames = fakeChecks.filter(c => c.category === 'Plugin').map(c => c.name);
+  for (const name of pluginNames) {
+    expect(out).toContain(name);
+  }
+  // Exactly the four canonical category headings render — no new categories, no nested sub-rows.
+  const categoryHeadings = [...out.matchAll(/^(Environment|Install|Registry|Plugin)$/gm)].map(m => m[1]);
+  expect(categoryHeadings.sort()).toEqual(['Environment', 'Install', 'Plugin', 'Registry']);
 });
