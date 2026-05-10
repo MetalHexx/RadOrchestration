@@ -356,6 +356,34 @@ Decisions made during this brainstorm:
 
 - ✅ **Solo-repo path**: explicit `radorch repo add` is primary. Skills offer to register cwd as a fallback when the registry is empty and the user invokes `/rad-brainstorm` from inside a git repo.
 
+### Addendum — four-file model + pipeline-as-path-resolver (2026-05-09, from 1.3-REGISTRY-CRUD brainstorm)
+
+The Wave 1 commitment to `registry.yml` + `config.yml` is refined into a four-file model that splits team-portable identity from per-machine specifics consistently across both registry data and preferences. The original two-file model bundled per-machine path bindings AND per-developer preferences into one `config.yml` purely because they shared the "gitignored, per-machine" property. Splitting them aligns file boundaries with conceptual boundaries and pairs each concept's team and local halves with parallel naming.
+
+**The four files (locked)**:
+
+| File | Versioned? | Purpose |
+|---|---|---|
+| `repo-registry.yml` | yes | team identity — repos + workspaces with names, remotes, default branches, descriptions, workspace memberships |
+| `repo-registry.local.yml` | no (gitignored) | per-machine path bindings — `repos:` and `workspaces.<name>.root:` mapping registered names to local filesystem paths |
+| `preferences.yml` | yes | team-shared preference defaults — `auto_commit`, `auto_pr`, `human_gates.execution_mode`, `default_template`, `limits.*` |
+| `preferences.local.yml` | no (gitignored) | per-developer preference overrides; deep-merges over team file at read time |
+
+The new `preferences.yml` enables a capability the original Wave 1 model didn't: team-shared preference defaults that new team members inherit on first clone. The `.local.yml` suffix carries the "don't commit; deep-merges over the team file" semantic via the well-established `.env.local` convention.
+
+**Reading older references in this doc**: `registry.yml` mentions throughout §3, §4, §7, §7.5, §7.6, §7.7, §7.8, §7.10, and §12 should be read as `repo-registry.yml`; `config.yml` mentions in path-binding contexts should be read as `repo-registry.local.yml`; `config.yml` mentions in preference contexts should be read as `preferences.{yml, local.yml}`. The original wording is preserved as the historical Wave 1 commitment; this addendum is the operative naming.
+
+**Pipeline-as-path-resolver (clarification of §7.6 Spawn-prompt pre-resolution)**: the engine pre-resolves all paths into `result.context.working_directories` per §7.6 line 476 — already locked. What's clarified here:
+
+- The engine enumerates the project's repos via **`state.project.target`** (the `{kind, name}` discriminator from §7.6) + the **live `repo-registry.yml`** (resolves workspace targets to their current member list; single-repo targets resolve to themselves). No frozen "snapshot" field on `state.json` — registry edits flow through to the next engine call, and projects see live registry state on each spawn. The simplification trades the "edits don't disrupt running projects" property for a single source of truth (the live registry); the pipeline is the deterministic resolver each spawn.
+- Worktree paths are derived from `${RADORCH_HOME}/worktrees/<PROJECT>/<REPO>/` per §7.6 line 476 — already locked. The engine never reads `repo-registry.local.yml` at engine runtime; that file is consulted only by the CLI at worktree-creation time and by `radorch repo list` for binding-status display.
+- **Two-moment path-resolution flow** (worth being explicit since the local-bound path and the worktree path are different things): (1) **At worktree creation** — `radorch worktree create <project> <repo>` reads `repo-registry.local.yml` to find the source repo's local path on this machine, then runs `git worktree add ${RADORCH_HOME}/worktrees/<project>/<repo>/ <branch>` from that source. (2) **At engine runtime, every spawn** — engine derives `working_directories[repo]` purely from `${RADORCH_HOME}/worktrees/<project>/<repo>/` by convention, with no file reads. The `.local.yml` path is the *source* git location; the worktree path is the project's *workspace* git location. Worktree creation is the only moment the bridge is needed.
+- Subagents (coder, reviewer, source-control) receive paths via the spawn prompt and never call out to resolve them. Zero extra tool calls per spawn for path resolution.
+
+**Cross-references in the project series**:
+- [GLOBAL-WORKSPACES-1.3-REGISTRY-CRUD](../../../../orchestration-projects/GLOBAL-WORKSPACES-1.3-REGISTRY-CRUD/GLOBAL-WORKSPACES-1.3-REGISTRY-CRUD-BRAINSTORMING.md) Goal 3 (four-file model + schemas) + Goal 5 (removal semantics under live-registry model).
+- [GLOBAL-WORKSPACES-02-STATE-V6](../../../../orchestration-projects/GLOBAL-WORKSPACES-02-STATE-V6/GLOBAL-WORKSPACES-02-STATE-V6-BRAINSTORMING.md) (`state.project.target` field; pipeline reads target + live registry, no snapshot field).
+
 ---
 
 ## 7.5. Wave 2 lock-ins
