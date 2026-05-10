@@ -6484,7 +6484,7 @@ import * as path6 from "node:path";
 import process2 from "node:process";
 
 // lib/engine.ts
-import * as path4 from "node:path";
+import * as path5 from "node:path";
 
 // lib/template-loader.ts
 import * as fs from "node:fs";
@@ -12530,6 +12530,138 @@ function compareNodes(prevNodes, currNodes, path7, errors) {
   }
 }
 
+// lib/state-io.ts
+import * as fs3 from "node:fs";
+import * as os from "node:os";
+import * as path4 from "node:path";
+var DEFAULT_CONFIG = {
+  system: {
+    orch_root: ".claude"
+    // authored-install-default — overwritten on first readConfig() call
+  },
+  projects: {
+    base_path: "",
+    naming: "SCREAMING_CASE"
+  },
+  limits: {
+    max_phases: 10,
+    max_tasks_per_phase: 8,
+    max_retries_per_task: 2,
+    max_consecutive_review_rejections: 3
+  },
+  human_gates: {
+    after_planning: true,
+    execution_mode: "ask",
+    after_final_review: true
+  },
+  source_control: {
+    auto_commit: "ask",
+    auto_pr: "ask",
+    provider: "github"
+  },
+  default_template: "extra-high"
+};
+function deepMerge(target, source) {
+  const result = { ...target };
+  for (const key of Object.keys(source)) {
+    const srcVal = source[key];
+    const tgtVal = result[key];
+    if (srcVal !== null && srcVal !== void 0 && typeof srcVal === "object" && !Array.isArray(srcVal) && tgtVal !== null && tgtVal !== void 0 && typeof tgtVal === "object" && !Array.isArray(tgtVal)) {
+      result[key] = deepMerge(
+        tgtVal,
+        srcVal
+      );
+    } else if (srcVal !== void 0) {
+      result[key] = srcVal;
+    }
+  }
+  return result;
+}
+function isEnoent(err) {
+  return err !== null && typeof err === "object" && err.code === "ENOENT";
+}
+function resolveBasePath(raw, env = process.env) {
+  if (!raw) return raw;
+  if (raw.startsWith("~/.radorch")) {
+    const radorchHome = env.RADORCH_HOME || path4.join(os.homedir(), ".radorch");
+    const remainder = raw.slice("~/.radorch".length).replace(/^[/\\]+/, "");
+    const joined = remainder ? path4.join(radorchHome, remainder) : radorchHome;
+    return joined.replace(/[/\\]+$/, "");
+  }
+  if (raw.startsWith("~/") || raw.startsWith("~\\")) {
+    const remainder = raw.slice(2).replace(/^[/\\]+/, "");
+    const joined = remainder ? path4.join(os.homedir(), remainder) : os.homedir();
+    return joined.replace(/[/\\]+$/, "");
+  }
+  return raw;
+}
+function readState(projectDir) {
+  const statePath = path4.join(projectDir, "state.json");
+  try {
+    const raw = fs3.readFileSync(statePath, "utf-8");
+    return JSON.parse(raw);
+  } catch (err) {
+    if (isEnoent(err)) return null;
+    throw err;
+  }
+}
+function writeState(projectDir, state) {
+  fs3.mkdirSync(projectDir, { recursive: true });
+  const statePath = path4.join(projectDir, "state.json");
+  const tmpPath = path4.join(projectDir, "state.json.tmp");
+  try {
+    fs3.writeFileSync(tmpPath, JSON.stringify(state, null, 2), "utf-8");
+    fs3.renameSync(tmpPath, statePath);
+  } catch (err) {
+    fs3.rmSync(tmpPath, { force: true });
+    throw err;
+  }
+}
+function readConfig(configPath) {
+  const base = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  if (!configPath) {
+    return base;
+  }
+  try {
+    const raw = fs3.readFileSync(configPath, "utf-8");
+    const parsed = jsYaml.load(raw);
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return base;
+    }
+    return deepMerge(base, parsed);
+  } catch (err) {
+    if (isEnoent(err)) return base;
+    throw err;
+  }
+}
+function readDocument2(docPath) {
+  let raw;
+  try {
+    raw = fs3.readFileSync(docPath, "utf-8");
+  } catch (err) {
+    if (isEnoent(err)) return null;
+    throw err;
+  }
+  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/);
+  if (!match) {
+    return { frontmatter: {}, content: raw };
+  }
+  const frontmatterText = match[1] ?? "";
+  const content = match[2] ?? "";
+  const parsed = jsYaml.load(frontmatterText);
+  const frontmatter = parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  return {
+    frontmatter,
+    content
+  };
+}
+function ensureDirectories(projectDir) {
+  fs3.mkdirSync(projectDir, { recursive: true });
+  for (const subdir of ["phases", "tasks", "reports", "reviews"]) {
+    fs3.mkdirSync(path4.join(projectDir, subdir), { recursive: true });
+  }
+}
+
 // lib/engine.ts
 function scaffoldState(template, projectName, config) {
   const now = (/* @__PURE__ */ new Date()).toISOString();
@@ -12591,30 +12723,30 @@ function processEvent(event, projectDir, context, io, configPath) {
     const config = io.readConfig(configPath);
     orchRoot = config.system.orch_root;
     const state = io.readState(projectDir);
-    const templatesDir = path4.join(orchRoot, "skills/rad-orchestration/templates");
+    const templatesDir = path5.join(orchRoot, "skills/rad-orchestration/templates");
     const resolution = resolveTemplateName(state, context.template, config, projectDir, templatesDir);
-    const effectiveLoadPath = state !== null ? resolution.templatePath : path4.join(templatesDir, resolution.templateName + ".yml");
+    const effectiveLoadPath = state !== null ? resolution.templatePath : path5.join(templatesDir, resolution.templateName + ".yml");
     const loadedTemplate = loadTemplate(effectiveLoadPath);
     const { template, eventIndex } = loadedTemplate;
     const wrappedReadDocument = (docPath) => {
-      if (path4.isAbsolute(docPath)) {
+      if (path5.isAbsolute(docPath)) {
         return io.readDocument(docPath);
       }
-      const resolvedProjectDir = path4.resolve(projectDir);
-      const resolved = path4.resolve(resolvedProjectDir, docPath);
-      const relativeToProject = path4.relative(resolvedProjectDir, resolved);
-      if (relativeToProject === ".." || relativeToProject.startsWith(`..${path4.sep}`) || path4.isAbsolute(relativeToProject)) {
+      const resolvedProjectDir = path5.resolve(projectDir);
+      const resolved = path5.resolve(resolvedProjectDir, docPath);
+      const relativeToProject = path5.relative(resolvedProjectDir, resolved);
+      if (relativeToProject === ".." || relativeToProject.startsWith(`..${path5.sep}`) || path5.isAbsolute(relativeToProject)) {
         throw new Error(`Document path escapes project directory: ${docPath}`);
       }
       return io.readDocument(resolved);
     };
     if (event === "start") {
       if (state === null) {
-        const projectName = path4.basename(projectDir);
+        const projectName = path5.basename(projectDir);
         io.ensureDirectories(projectDir);
         try {
           snapshotTemplate(
-            path4.join(templatesDir, resolution.templateName + ".yml"),
+            path5.join(templatesDir, resolution.templateName + ".yml"),
             projectDir
           );
         } catch (err) {
@@ -12712,8 +12844,8 @@ function processEvent(event, projectDir, context, io, configPath) {
       if (normalizedContext2.doc_path) {
         normalizedContext2.doc_path = normalizeDocPath(
           normalizedContext2.doc_path,
-          config.projects.base_path,
-          path4.basename(projectDir)
+          resolveBasePath(config.projects.base_path),
+          path5.basename(projectDir)
         );
       }
       const mutationResult2 = mutation2(state, normalizedContext2, config, template);
@@ -12819,8 +12951,8 @@ function processEvent(event, projectDir, context, io, configPath) {
     if (normalizedContext.doc_path) {
       normalizedContext.doc_path = normalizeDocPath(
         normalizedContext.doc_path,
-        config.projects.base_path,
-        path4.basename(projectDir)
+        resolveBasePath(config.projects.base_path),
+        path5.basename(projectDir)
       );
     }
     const mutationResult = mutation(state, normalizedContext, config, template);
@@ -12906,122 +13038,6 @@ function processEvent(event, projectDir, context, io, configPath) {
         event
       }
     };
-  }
-}
-
-// lib/state-io.ts
-import * as fs3 from "node:fs";
-import * as path5 from "node:path";
-var DEFAULT_CONFIG = {
-  system: {
-    orch_root: ".claude"
-    // authored-install-default — overwritten on first readConfig() call
-  },
-  projects: {
-    base_path: "",
-    naming: "SCREAMING_CASE"
-  },
-  limits: {
-    max_phases: 10,
-    max_tasks_per_phase: 8,
-    max_retries_per_task: 2,
-    max_consecutive_review_rejections: 3
-  },
-  human_gates: {
-    after_planning: true,
-    execution_mode: "ask",
-    after_final_review: true
-  },
-  source_control: {
-    auto_commit: "ask",
-    auto_pr: "ask",
-    provider: "github"
-  },
-  default_template: "extra-high"
-};
-function deepMerge(target, source) {
-  const result = { ...target };
-  for (const key of Object.keys(source)) {
-    const srcVal = source[key];
-    const tgtVal = result[key];
-    if (srcVal !== null && srcVal !== void 0 && typeof srcVal === "object" && !Array.isArray(srcVal) && tgtVal !== null && tgtVal !== void 0 && typeof tgtVal === "object" && !Array.isArray(tgtVal)) {
-      result[key] = deepMerge(
-        tgtVal,
-        srcVal
-      );
-    } else if (srcVal !== void 0) {
-      result[key] = srcVal;
-    }
-  }
-  return result;
-}
-function isEnoent(err) {
-  return err !== null && typeof err === "object" && err.code === "ENOENT";
-}
-function readState(projectDir) {
-  const statePath = path5.join(projectDir, "state.json");
-  try {
-    const raw = fs3.readFileSync(statePath, "utf-8");
-    return JSON.parse(raw);
-  } catch (err) {
-    if (isEnoent(err)) return null;
-    throw err;
-  }
-}
-function writeState(projectDir, state) {
-  fs3.mkdirSync(projectDir, { recursive: true });
-  const statePath = path5.join(projectDir, "state.json");
-  const tmpPath = path5.join(projectDir, "state.json.tmp");
-  try {
-    fs3.writeFileSync(tmpPath, JSON.stringify(state, null, 2), "utf-8");
-    fs3.renameSync(tmpPath, statePath);
-  } catch (err) {
-    fs3.rmSync(tmpPath, { force: true });
-    throw err;
-  }
-}
-function readConfig(configPath) {
-  const base = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-  if (!configPath) {
-    return base;
-  }
-  try {
-    const raw = fs3.readFileSync(configPath, "utf-8");
-    const parsed = jsYaml.load(raw);
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return base;
-    }
-    return deepMerge(base, parsed);
-  } catch (err) {
-    if (isEnoent(err)) return base;
-    throw err;
-  }
-}
-function readDocument2(docPath) {
-  let raw;
-  try {
-    raw = fs3.readFileSync(docPath, "utf-8");
-  } catch (err) {
-    if (isEnoent(err)) return null;
-    throw err;
-  }
-  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/);
-  if (!match) {
-    return { frontmatter: {}, content: raw };
-  }
-  const frontmatterText = match[1] ?? "";
-  const content = match[2] ?? "";
-  const parsed = jsYaml.load(frontmatterText);
-  const frontmatter = parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-  return {
-    frontmatter,
-    content
-  };
-}
-function ensureDirectories(projectDir) {
-  fs3.mkdirSync(projectDir, { recursive: true });
-  for (const subdir of ["phases", "tasks", "reports", "reviews"]) {
-    fs3.mkdirSync(path5.join(projectDir, subdir), { recursive: true });
   }
 }
 

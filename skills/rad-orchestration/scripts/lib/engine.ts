@@ -20,6 +20,7 @@ import type {
 } from './types.js';
 import { scaffoldNodeState } from './scaffold.js';
 import { validateState } from './validator.js';
+import { resolveBasePath } from './state-io.js';
 
 // ── scaffoldState ─────────────────────────────────────────────────────────────
 
@@ -263,7 +264,7 @@ export function processEvent(
       if (normalizedContext.doc_path) {
         normalizedContext.doc_path = normalizeDocPath(
           normalizedContext.doc_path,
-          config.projects.base_path,
+          resolveBasePath(config.projects.base_path),
           path.basename(projectDir),
         );
       }
@@ -384,7 +385,7 @@ export function processEvent(
     if (normalizedContext.doc_path) {
       normalizedContext.doc_path = normalizeDocPath(
         normalizedContext.doc_path,
-        config.projects.base_path,
+        resolveBasePath(config.projects.base_path),
         path.basename(projectDir),
       );
     }
