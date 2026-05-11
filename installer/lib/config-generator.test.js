@@ -11,17 +11,17 @@ import { generateConfig, writeConfig } from './config-generator.js';
 const sampleConfig = {
   tool: 'copilot-vscode',
   workspaceDir: '/workspace',
-  orchRoot: '.github',
-  projectsBasePath: '../orchestration-projects',
-  projectsNaming: 'SCREAMING_CASE',
+  packageVersion: '1.1.0',
+  defaultTemplate: 'high',
   maxPhases: 6,
   maxTasksPerPhase: 10,
   maxRetriesPerTask: 2,
   maxConsecutiveReviewRejections: 3,
+  afterPlanning: true,
   executionMode: 'ask',
+  afterFinalReview: true,
   autoCommit: 'always',
   autoPr: 'never',
-  provider: 'github',
   installUi: false,
   skipConfirmation: false,
 };
@@ -34,17 +34,14 @@ test('generateConfig - returns a string containing version: "1.0"', () => {
   assert.ok(yaml.includes('version: "1.0"'));
 });
 
-test('generateConfig - output contains system: section with orch_root from config', () => {
+test('generateConfig - output contains package_version from config', () => {
   const yaml = generateConfig(sampleConfig);
-  assert.ok(yaml.includes('system:'));
-  assert.ok(yaml.includes(`orch_root: "${sampleConfig.orchRoot}"`));
+  assert.ok(yaml.includes(`package_version: ${sampleConfig.packageVersion}`));
 });
 
-test('generateConfig - output contains projects: section with base_path and naming from config', () => {
+test('generateConfig - output contains default_template from config', () => {
   const yaml = generateConfig(sampleConfig);
-  assert.ok(yaml.includes('projects:'));
-  assert.ok(yaml.includes(`base_path: "${sampleConfig.projectsBasePath}"`));
-  assert.ok(yaml.includes(`naming: "${sampleConfig.projectsNaming}"`));
+  assert.ok(yaml.includes(`default_template: ${sampleConfig.defaultTemplate}`));
 });
 
 test('generateConfig - output contains limits: section with all 4 keys', () => {
@@ -64,12 +61,11 @@ test('generateConfig - output contains human_gates: section with all 3 keys', ()
   assert.ok(yaml.includes('after_final_review: true'));
 });
 
-test('generateConfig - output contains source_control: section with all 3 fields', () => {
+test('generateConfig - output contains source_control: section with 2 fields', () => {
   const yaml = generateConfig(sampleConfig);
   assert.ok(yaml.includes('source_control:'));
   assert.ok(yaml.includes('auto_commit: "always"'));
   assert.ok(yaml.includes('auto_pr: "never"'));
-  assert.ok(yaml.includes('provider: "github"'));
 });
 
 test('generateConfig - source_control block appears after human_gates', () => {
@@ -79,142 +75,91 @@ test('generateConfig - source_control block appears after human_gates', () => {
   assert.ok(sourceControlIndex > humanGatesIndex, 'source_control should appear after human_gates');
 });
 
-test('generateConfig - source_control block appears before Notes', () => {
+test('generateConfig - output does NOT contain system or projects or provider', () => {
   const yaml = generateConfig(sampleConfig);
-  const sourceControlIndex = yaml.indexOf('source_control:');
-  const notesIndex = yaml.indexOf('Notes');
-  assert.ok(sourceControlIndex < notesIndex, 'source_control should appear before Notes');
-});
-
-test('generateConfig - source_control has inline comment "# always | ask | never" for auto_commit', () => {
-  const yaml = generateConfig(sampleConfig);
-  assert.ok(yaml.includes('# always | ask | never'));
-});
-
-test('generateConfig - source_control has inline comment "# reserved: github only in v1"', () => {
-  const yaml = generateConfig(sampleConfig);
-  assert.ok(yaml.includes('# reserved: github only in v1'));
-});
-
-test('generateConfig - output does NOT contain errors: or git: sections', () => {
-  const yaml = generateConfig(sampleConfig);
-  assert.ok(!yaml.includes('errors:'));
-  assert.ok(!yaml.includes('git:'));
-});
-
-test('generateConfig - output contains inline comments', () => {
-  const yaml = generateConfig(sampleConfig);
-  // Count lines containing # comment (exclude header lines to only count inline ones)
-  const lines = yaml.split('\n');
-  const commentLines = lines.filter(l => l.includes('#'));
-  assert.ok(commentLines.length > 5, 'Should have several comment lines');
-});
-
-test('generateConfig - output contains section header comments with ─── pattern', () => {
-  const yaml = generateConfig(sampleConfig);
-  assert.ok(yaml.includes('─── '));
+  assert.ok(!yaml.includes('system:'));
+  assert.ok(!yaml.includes('projects:'));
+  assert.ok(!yaml.includes('provider:'));
 });
 
 // ── writeConfig ───────────────────────────────────────────────────────────────
 
-test('writeConfig - creates intermediate directories when they do not exist', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'config-gen-test-'));
+test('writeConfig - creates ~/.radorch directory if it does not exist', () => {
+  const origHome = process.env.HOME || process.env.USERPROFILE;
+  const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'config-gen-test-home-'));
+
   try {
-    const orchRoot = path.join(tmpDir, 'deep', 'orch');
-    writeConfig(tmpDir, orchRoot, 'test: true\n');
-    const expectedDir = path.join(orchRoot, 'skills', 'rad-orchestration', 'config');
+    // Temporarily override home directory for this test
+    const oldHome = process.env.HOME || process.env.USERPROFILE;
+    if (process.platform === 'win32') {
+      process.env.USERPROFILE = tmpHome;
+    } else {
+      process.env.HOME = tmpHome;
+    }
+
+    const yamlContent = 'version: "1.0"\n';
+    writeConfig(yamlContent);
+
+    const expectedDir = path.join(tmpHome, '.radorch');
     assert.ok(fs.existsSync(expectedDir));
   } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    // Restore original home directory
+    if (process.platform === 'win32') {
+      process.env.USERPROFILE = origHome;
+    } else {
+      process.env.HOME = origHome;
+    }
+    fs.rmSync(tmpHome, { recursive: true, force: true });
   }
 });
 
-test('writeConfig - writes file to {resolvedOrchRoot}/skills/rad-orchestration/config/orchestration.yml', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'config-gen-test-'));
+test('writeConfig - writes file to ~/.radorch/orchestration.yml', () => {
+  const origHome = process.env.HOME || process.env.USERPROFILE;
+  const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'config-gen-test-home-'));
+
   try {
-    const orchRoot = path.join(tmpDir, 'orch');
-    const yamlContent = 'version: "1.0"\n';
-    writeConfig(tmpDir, orchRoot, yamlContent);
-    const expectedPath = path.join(orchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
+    // Temporarily override home directory for this test
+    const oldHome = process.env.HOME || process.env.USERPROFILE;
+    if (process.platform === 'win32') {
+      process.env.USERPROFILE = tmpHome;
+    } else {
+      process.env.HOME = tmpHome;
+    }
+
+    const yamlContent = 'version: "1.0"\npackage_version: 1.0.0\n';
+    writeConfig(yamlContent);
+
+    const expectedPath = path.join(tmpHome, '.radorch', 'orchestration.yml');
     assert.ok(fs.existsSync(expectedPath));
     assert.strictEqual(fs.readFileSync(expectedPath, 'utf8'), yamlContent);
   } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    // Restore original home directory
+    if (process.platform === 'win32') {
+      process.env.USERPROFILE = origHome;
+    } else {
+      process.env.HOME = origHome;
+    }
+    fs.rmSync(tmpHome, { recursive: true, force: true });
   }
 });
 
-test('writeConfig - resolves relative orchRoot against workspaceDir', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'config-gen-test-'));
-  try {
-    const relativeOrchRoot = '.github';
-    writeConfig(tmpDir, relativeOrchRoot, 'test: true\n');
-    const expectedPath = path.join(tmpDir, relativeOrchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
-    assert.ok(fs.existsSync(expectedPath));
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-test('writeConfig - uses absolute orchRoot directly when path.isAbsolute() is true', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'config-gen-test-'));
-  try {
-    // orchRoot is already absolute — workspaceDir should not be prepended
-    const absoluteOrchRoot = path.join(tmpDir, 'absolute-orch');
-    const differentWorkspace = path.join(os.tmpdir(), 'some-other-workspace');
-    writeConfig(differentWorkspace, absoluteOrchRoot, 'test: true\n');
-    const expectedPath = path.join(absoluteOrchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
-    assert.ok(fs.existsSync(expectedPath));
-    // Ensure it did NOT write under differentWorkspace
-    const wrongPath = path.join(differentWorkspace, absoluteOrchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
-    assert.ok(!fs.existsSync(wrongPath));
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-// ── Windows path normalization (cross-platform regression) ────────────────────
-
-test('generateConfig - normalizes Windows backslash paths to forward slashes in YAML output', () => {
-  /** @type {import('./types.js').InstallerConfig} */
-  const windowsConfig = {
-    ...sampleConfig,
-    orchRoot: 'C:\\dev\\orchroot',
-    projectsBasePath: 'C:\\dev\\my-projects',
-  };
-  const yaml = generateConfig(windowsConfig);
-  assert.ok(yaml.includes('orch_root: "C:/dev/orchroot"'), 'orchRoot should use forward slashes');
-  assert.ok(yaml.includes('base_path: "C:/dev/my-projects"'), 'projectsBasePath should use forward slashes');
-  // No raw backslashes should appear in the YAML output (except in comments if any)
-  const lines = yaml.split('\n').filter(l => !l.trimStart().startsWith('#'));
-  const hasBackslash = lines.some(l => l.includes('\\'));
-  assert.ok(!hasBackslash, 'YAML output must not contain raw backslashes in value lines');
-});
-
-test('generateConfig emits package_version between schema version and system block', () => {
-  const cfg = {
-    tool: 'claude-code',
-    workspaceDir: '/ws',
-    orchRoot: '.claude',
-    projectsBasePath: 'orchestration-projects',
-    projectsNaming: 'SCREAMING_CASE',
-    maxPhases: 10,
-    maxTasksPerPhase: 8,
-    maxRetriesPerTask: 5,
+test('generateConfig emits the ten canonical keys only', () => {
+  const yaml = generateConfig({
+    packageVersion: '1.1.0',
+    defaultTemplate: 'ask',
+    maxPhases: 10, maxTasksPerPhase: 8, maxRetriesPerTask: 5,
     maxConsecutiveReviewRejections: 3,
-    executionMode: 'ask',
-    autoCommit: 'ask',
-    autoPr: 'ask',
-    provider: 'github',
-    installUi: false,
-    skipConfirmation: false,
-    packageVersion: '1.0.0-alpha.9',
-  };
-  const yaml = generateConfig(cfg);
-  // package_version sits immediately after the schema version line,
-  // before the system block (DD-5).
-  assert.match(
-    yaml,
-    /version:\s*"1\.0"\s*\n\s*\npackage_version:\s*1\.0\.0-alpha\.9\s*\n[\s\S]*\n# ─── System/m,
-    'package_version must be emitted between schema version and system block',
-  );
+    afterPlanning: true, executionMode: 'ask', afterFinalReview: true,
+    autoCommit: 'ask', autoPr: 'ask',
+  });
+  assert.match(yaml, /^version: "1\.0"$/m);
+  assert.match(yaml, /^package_version: 1\.1\.0$/m);
+  assert.match(yaml, /^default_template: ask$/m);
+  assert.match(yaml, /^limits:$/m);
+  assert.match(yaml, /^  max_phases: 10$/m);
+  // Four retired keys absent:
+  assert.doesNotMatch(yaml, /orch_root/);
+  assert.doesNotMatch(yaml, /base_path/);
+  assert.doesNotMatch(yaml, /naming:/);
+  assert.doesNotMatch(yaml, /^\s*provider:/m);
 });

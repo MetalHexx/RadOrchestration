@@ -1,74 +1,54 @@
 // installer/lib/config-generator.js — Config generator module
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { normalizePath } from './path-utils.js';
 
 /** @import { InstallerConfig } from './types.js' */
 
 /**
- * Generates orchestration.yml content with inline comments.
- * @param {InstallerConfig} config - Resolved configuration from wizard
+ * Generates orchestration.yml content with the ten canonical keys.
+ * @param {object} config - Configuration object with version, template, limits, and gates
+ * @param {string} config.packageVersion - rad-orchestration package version
+ * @param {string} config.defaultTemplate - Default template tier (extra-high, high, medium, low)
+ * @param {number} config.maxPhases - Maximum phases per project
+ * @param {number} config.maxTasksPerPhase - Maximum tasks per phase
+ * @param {number} config.maxRetriesPerTask - Auto-retries before escalation
+ * @param {number} config.maxConsecutiveReviewRejections - Review rejects before human escalation
+ * @param {boolean} config.afterPlanning - Gate after planning (hard default: true)
+ * @param {string} config.executionMode - Execution mode (ask, phase, task, autonomous)
+ * @param {boolean} config.afterFinalReview - Gate after final review (hard default: true)
+ * @param {string} config.autoCommit - Auto-commit behavior (always, ask, never)
+ * @param {string} config.autoPr - Auto-PR behavior (always, ask, never)
  * @returns {string} - Complete YAML file content
  */
 export function generateConfig(config) {
   return `# orchestration.yml
-# Orchestration System Configuration
-# -----------------------------------
-
 version: "1.0"
-
 package_version: ${config.packageVersion}
-
-# ─── System ────────────────────────────────────────────────────────
-system:
-  orch_root: "${normalizePath(config.orchRoot)}"                   # Orchestration root folder (relative name or absolute path)
-
-# ─── Project Storage ───────────────────────────────────────────────
-projects:
-  # base_path accepts both relative paths (resolved from workspace root)
-  # and absolute paths (e.g., /shared/projects for git worktree setups).
-  base_path: "${normalizePath(config.projectsBasePath)}"          # Where project folders are created
-  naming: "${config.projectsNaming}"               # SCREAMING_CASE | lowercase | numbered
-
-# ─── Pipeline Limits (Scope Guards) ───────────────────────────────
+default_template: ${config.defaultTemplate}
 limits:
-  max_phases: ${config.maxPhases}                         # Maximum phases per project
-  max_tasks_per_phase: ${config.maxTasksPerPhase}                 # Maximum tasks per phase
-  max_retries_per_task: ${config.maxRetriesPerTask}                # Auto-retries before escalation
-  max_consecutive_review_rejections: ${config.maxConsecutiveReviewRejections}  # Reviewer rejects before human escalation
-
-# ─── Human Gate Defaults ───────────────────────────────────────────
+  max_phases: ${config.maxPhases}
+  max_tasks_per_phase: ${config.maxTasksPerPhase}
+  max_retries_per_task: ${config.maxRetriesPerTask}
+  max_consecutive_review_rejections: ${config.maxConsecutiveReviewRejections}
 human_gates:
-  after_planning: true                   # Always gate after master plan (hard default)
-  execution_mode: "${config.executionMode}"                  # ask | phase | task | autonomous
-  after_final_review: true               # Always gate after final review (hard default)
-
-# ─── Source Control ────────────────────────────────────────────────
+  after_planning: ${config.afterPlanning}
+  execution_mode: "${config.executionMode}"
+  after_final_review: ${config.afterFinalReview}
 source_control:
-  auto_commit: "${config.autoCommit || 'ask'}"          # always | ask | never
-  auto_pr: "${config.autoPr || 'ask'}"                  # always | ask | never
-  provider: "${config.provider || 'github'}"               # reserved: github only in v1
-
-# ─── Notes ─────────────────────────────────────────────────────────
-# Model selection is configured per-agent in agent frontmatter.
-# See ${config.orchRoot}/agents/*.md → \`model\` field.
+  auto_commit: "${config.autoCommit}"
+  auto_pr: "${config.autoPr}"
 `;
 }
 
 /**
- * Writes orchestration.yml to the correct path, creating intermediate directories.
- * @param {string} workspaceDir - Absolute path to target workspace
- * @param {string} orchRoot - Orchestration root folder name or absolute path
+ * Writes orchestration.yml to ~/.radorch/orchestration.yml, creating intermediate directories.
  * @param {string} yamlContent - Generated YAML content
  * @returns {void}
  */
-export function writeConfig(workspaceDir, orchRoot, yamlContent) {
-  const resolvedOrchRoot = path.isAbsolute(orchRoot)
-    ? orchRoot
-    : path.join(workspaceDir, orchRoot);
-
-  const targetDir = path.join(resolvedOrchRoot, 'skills', 'rad-orchestration', 'config');
-  fs.mkdirSync(targetDir, { recursive: true });
-  fs.writeFileSync(path.join(targetDir, 'orchestration.yml'), yamlContent);
+export function writeConfig(yamlContent) {
+  const orchYmlPath = path.join(os.homedir(), '.radorch', 'orchestration.yml');
+  fs.mkdirSync(path.dirname(orchYmlPath), { recursive: true });
+  fs.writeFileSync(orchYmlPath, yamlContent);
 }

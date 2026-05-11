@@ -24,9 +24,6 @@
  * @typedef {Object} InstallerConfig
  * @property {'claude-code'|'copilot-vscode'|'copilot-cli'|'cursor'} tool - Selected AI tool
  * @property {string} workspaceDir - Absolute path to target workspace
- * @property {string} orchRoot - Orchestration root folder name or absolute path
- * @property {string} projectsBasePath - Relative or absolute path for project storage
- * @property {'SCREAMING_CASE'|'lowercase'|'numbered'} projectsNaming - Folder naming convention
  * @property {number} maxPhases - Maximum phases per project
  * @property {number} maxTasksPerPhase - Maximum tasks per phase
  * @property {number} maxRetriesPerTask - Auto-retries before escalation
@@ -34,7 +31,6 @@
  * @property {'ask'|'phase'|'task'|'autonomous'} executionMode - Human gate execution mode
  * @property {'always'|'ask'|'never'} autoCommit - Auto-commit behavior for source control
  * @property {'always'|'ask'|'never'} autoPr - Auto-PR behavior for source control
- * @property {'github'} provider - Source control provider (v1: github only)
  * @property {string} packageVersion - rad-orchestration package version (read from installer/package.json at install time)
  * @property {boolean} installUi - Whether to install the monitoring dashboard
  * @property {string} [uiDir] - Absolute path to UI installation directory (when installUi is true)
