@@ -61,6 +61,11 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
     };
   }
   try {
+    // Ensure standard .radorch subdirectories exist on upgrade path (defensive against partial cleans).
+    fs.mkdirSync(paths.projects, { recursive: true });
+    fs.mkdirSync(paths.logs, { recursive: true });
+    fs.mkdirSync(paths.runtime, { recursive: true });
+    fs.mkdirSync(paths.bin, { recursive: true });
     const priorManifest = loadBundledManifest(opts.pluginRoot, installedVersion);
     const modified = detectModifiedFiles(priorManifest, opts.harness);
     if (modified.length > 0) {
@@ -92,6 +97,8 @@ async function doInstall(args: { paths: ReturnType<typeof userDataPaths>, opts: 
   fs.mkdirSync(args.paths.projects, { recursive: true });
   fs.mkdirSync(args.paths.logs, { recursive: true });
   fs.mkdirSync(args.paths.runtime, { recursive: true });
+  fs.mkdirSync(args.paths.bin, { recursive: true });
+  fs.writeFileSync(path.join(args.paths.bin, 'radorch.mjs'), '');
 
   installManifestFiles(newManifest, args.opts.pluginRoot, args.opts.harness);
   await writeInstallJson(args.paths.installJson, {
