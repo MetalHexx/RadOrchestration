@@ -1,7 +1,7 @@
 // installer/lib/ui-builder.test.js — Tests for ui-builder.js
 //
-// Strategy: mock.module() is used for modules with named imports (node:child_process,
-// ora, env-generator, docker-generator) loaded via dynamic import after mock registration.
+// Strategy: mock.module() is used for modules with named imports (node:child_process, ora)
+// loaded via dynamic import after mock registration.
 // mock.method() is used for node:fs (default import — shared object reference).
 // All mocks are registered before the dynamic import of ui-builder.js.
 
@@ -82,14 +82,6 @@ const oraMock = mock.fn((opts) => {
   return spinner;
 });
 
-const generateEnvLocalMock = mock.fn(
-  () => 'WORKSPACE_ROOT=/workspace\nORCH_ROOT=.github\n'
-);
-
-const generateDockerComposeMock = mock.fn(
-  () => 'services:\n  radorch-ui:\n    image: node:20-alpine\n'
-);
-
 // ── Patch node:fs methods (default import — shared object) ────────────────────
 
 mock.method(fs, 'mkdirSync', mkdirSyncMock);
@@ -99,16 +91,10 @@ mock.method(fs, 'statSync', statSyncMock);
 
 // ── Register module mocks before importing ui-builder.js ─────────────────────
 
-await mock.module('node:child_process', {
+mock.module('node:child_process', {
   namedExports: { execSync: execSyncMock, spawn: spawnMock },
 });
-await mock.module('ora', { defaultExport: oraMock });
-await mock.module('./env-generator.js', {
-  namedExports: { generateEnvLocal: generateEnvLocalMock },
-});
-await mock.module('./docker-generator.js', {
-  namedExports: { generateDockerCompose: generateDockerComposeMock },
-});
+mock.module('ora', { defaultExport: oraMock });
 
 // ── Import module under test ──────────────────────────────────────────────────
 
@@ -118,7 +104,7 @@ const { checkNodeNpm, installUi } = await import('./ui-builder.js');
 
 const ALL_MOCKS = [
   execSyncMock, spawnMock, mkdirSyncMock, cpSyncMock, writeFileSyncMock,
-  statSyncMock, oraMock, generateEnvLocalMock, generateDockerComposeMock,
+  statSyncMock, oraMock,
 ];
 
 function resetMocks() {
@@ -133,9 +119,6 @@ function resetMocks() {
 const DEFAULT_OPTS = {
   repoRoot: '/repo',
   uiDir: '/target/ui',
-  workspaceDir: '/workspace',
-  orchRoot: '.github',
-  projectsBasePath: 'orchestration-projects',
 };
 
 // ── checkNodeNpm() ────────────────────────────────────────────────────────────
@@ -227,24 +210,6 @@ test('installUi - cpSync filter allows non-excluded paths', async () => {
   assert.equal(filter('/repo/ui/package.json', '/ui/package.json'), true);
   assert.equal(filter('/repo/ui/app', '/ui/app'), true);
   assert.equal(filter('/repo/ui/components', '/ui/components'), true);
-});
-
-// ── installUi() — .env.local written before npm commands ─────────────────────
-
-test('installUi - writes .env.local content from generateEnvLocal() before running npm', async () => {
-  resetMocks();
-  await installUi(DEFAULT_OPTS);
-  assert.equal(generateEnvLocalMock.mock.callCount(), 1);
-  // Verify .env.local was written with the content from generateEnvLocal
-  const envWrite = writeFileSyncMock.mock.calls.find((c) =>
-    String(c.arguments[0]).endsWith('.env.local')
-  );
-  assert.ok(envWrite, '.env.local was written');
-  assert.equal(envWrite.arguments[1], 'WORKSPACE_ROOT=/workspace\nORCH_ROOT=.github\n');
-  // .env.local written before first spawn
-  const envWriteIdx = callOrder.indexOf('writeFileSync');
-  const spawnIdx = callOrder.findIndex((e) => e.startsWith('spawn:'));
-  assert.ok(envWriteIdx < spawnIdx, `.env.local (index ${envWriteIdx}) written before first spawn (index ${spawnIdx})`);
 });
 
 // ── installUi() — npm install spawn args ─────────────────────────────────────
@@ -423,15 +388,6 @@ test('installUi - copy failure: copySuccess=false and error is set', async () =>
   assert.ok(result.error.includes('EACCES'));
 });
 
-test('installUi - copy failure: remaining steps are skipped (no writeFileSync)', async () => {
-  resetMocks();
-  state.cpSyncThrows = new Error('ENOENT: no such file');
-
-  await installUi(DEFAULT_OPTS);
-
-  assert.equal(writeFileSyncMock.mock.callCount(), 0, 'no writeFileSync calls after copy failure');
-});
-
 test('installUi - copy failure: remaining steps are skipped (no spawn)', async () => {
   resetMocks();
   state.cpSyncThrows = new Error('ENOENT: no such file');
@@ -439,15 +395,6 @@ test('installUi - copy failure: remaining steps are skipped (no spawn)', async (
   await installUi(DEFAULT_OPTS);
 
   assert.equal(spawnMock.mock.callCount(), 0, 'no spawn calls after copy failure');
-});
-
-test('installUi - copy failure: no generateDockerCompose call', async () => {
-  resetMocks();
-  state.cpSyncThrows = new Error('copy error');
-
-  await installUi(DEFAULT_OPTS);
-
-  assert.equal(generateDockerComposeMock.mock.callCount(), 0);
 });
 
 // ── installUi() — full success ────────────────────────────────────────────────
@@ -470,58 +417,6 @@ test('installUi - full success: no error field populated', async () => {
   resetMocks();
   const result = await installUi(DEFAULT_OPTS);
   assert.equal(result.error, undefined);
-});
-
-// ── installUi() — docker-compose.yml generation ──────────────────────────────
-
-test('installUi - generateDockerCompose is called with correct options', async () => {
-  resetMocks();
-  await installUi(DEFAULT_OPTS);
-  assert.equal(generateDockerComposeMock.mock.callCount(), 1);
-  const [opts] = generateDockerComposeMock.mock.calls[0].arguments;
-  assert.equal(opts.uiDir, DEFAULT_OPTS.uiDir);
-  assert.equal(opts.workspaceDir, DEFAULT_OPTS.workspaceDir);
-  assert.equal(opts.orchRoot, DEFAULT_OPTS.orchRoot);
-});
-
-test('installUi - generateDockerCompose receives resolved projectsDir from relative projectsBasePath', async () => {
-  resetMocks();
-  await installUi(DEFAULT_OPTS);
-  const [opts] = generateDockerComposeMock.mock.calls[0].arguments;
-  // path.resolve('/workspace', 'orchestration-projects') → '/workspace/orchestration-projects'
-  assert.ok(
-    opts.projectsDir.endsWith('/workspace/orchestration-projects') ||
-    opts.projectsDir.endsWith('\\workspace\\orchestration-projects'),
-    `projectsDir should be resolved, got: ${opts.projectsDir}`
-  );
-});
-
-test('installUi - generateDockerCompose receives absolute projectsDir when projectsBasePath is absolute', async () => {
-  resetMocks();
-  await installUi({ ...DEFAULT_OPTS, projectsBasePath: '/data/projects' });
-  const [opts] = generateDockerComposeMock.mock.calls[0].arguments;
-  assert.ok(
-    opts.projectsDir.endsWith('/data/projects') ||
-    opts.projectsDir.endsWith('\\data\\projects'),
-    `projectsDir should be the absolute path, got: ${opts.projectsDir}`
-  );
-});
-
-test('installUi - docker-compose.yml is written to {uiDir}/docker-compose.yml', async () => {
-  resetMocks();
-  await installUi(DEFAULT_OPTS);
-  const dockerWrite = writeFileSyncMock.mock.calls.find((c) =>
-    String(c.arguments[0]).endsWith('docker-compose.yml')
-  );
-  assert.ok(dockerWrite, 'docker-compose.yml was written');
-  assert.equal(
-    dockerWrite.arguments[0],
-    path.join(DEFAULT_OPTS.uiDir, 'docker-compose.yml')
-  );
-  assert.ok(
-    String(dockerWrite.arguments[1]).includes('radorch-ui'),
-    'content from generateDockerCompose'
-  );
 });
 
 // ── installUi() — ora spinner succeed/fail ────────────────────────────────────

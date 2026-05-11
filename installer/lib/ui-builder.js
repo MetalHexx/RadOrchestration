@@ -5,8 +5,6 @@ import path from 'node:path';
 import { execSync, spawn } from 'node:child_process';
 import ora from 'ora';
 import { THEME } from './theme.js';
-import { generateEnvLocal } from './env-generator.js';
-import { generateDockerCompose } from './docker-generator.js';
 
 /** @import { UiBuildResult } from './types.js' */
 
@@ -71,8 +69,7 @@ function runNpmCommand(args, cwd, label) {
 }
 
 /**
- * Runs the full UI installation: copy source, write .env.local,
- * npm install, npm run build, generate docker-compose.yml.
+ * Runs the full UI installation: copy source, npm install, npm run build.
  * Shows ora spinners with elapsed time for long operations.
  * @param {Object} options
  * @param {string} options.repoRoot - Absolute path to installer root (contains src/ui/ source)
@@ -82,7 +79,7 @@ function runNpmCommand(args, cwd, label) {
  * @param {string} options.projectsBasePath - Projects base path (relative or absolute)
  * @returns {Promise<UiBuildResult>}
  */
-export async function installUi({ repoRoot, uiDir, workspaceDir, orchRoot, projectsBasePath }) {
+export async function installUi({ repoRoot, uiDir }) {
   /** @type {UiBuildResult} */
   const result = {
     copySuccess: false,
@@ -116,11 +113,7 @@ export async function installUi({ repoRoot, uiDir, workspaceDir, orchRoot, proje
     return result;
   }
 
-  // Step 2 — Write .env.local
-  const envContent = generateEnvLocal(workspaceDir, orchRoot);
-  fs.writeFileSync(path.join(uiDir, '.env.local'), envContent);
-
-  // Step 3 — npm install
+  // Step 2 — npm install
   const installResult = await runNpmCommand(['install'], uiDir, 'Installing UI dependencies\u2026');
   if (!installResult.success) {
     result.installSuccess = false;
@@ -128,7 +121,7 @@ export async function installUi({ repoRoot, uiDir, workspaceDir, orchRoot, proje
     return result;
   }
 
-  // Step 4 — npm run build
+  // Step 3 — npm run build
   const buildResult = await runNpmCommand(['run', 'build'], uiDir, 'Building UI\u2026');
   if (!buildResult.success) {
     result.buildSuccess = false;
@@ -136,11 +129,6 @@ export async function installUi({ repoRoot, uiDir, workspaceDir, orchRoot, proje
     result.error = `${buildResult.error}\n\nTo retry manually: cd ${uiDir} && npm run build`;
     return result;
   }
-
-  // Step 5 — Generate docker-compose.yml
-  const projectsDir = path.resolve(workspaceDir, projectsBasePath);
-  const dockerContent = generateDockerCompose({ uiDir, workspaceDir, orchRoot, projectsDir });
-  fs.writeFileSync(path.join(uiDir, 'docker-compose.yml'), dockerContent);
 
   result.installSuccess = true;
   result.buildSuccess = true;

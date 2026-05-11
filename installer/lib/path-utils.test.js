@@ -3,33 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { toDockerPath, isValidFolderName, resolveOrchRoot, normalizePath } from './path-utils.js';
-
-// ── toDockerPath ─────────────────────────────────────────────────────────────
-
-test('toDockerPath - C:\\Users\\dev\\project → /c/Users/dev/project', () => {
-  assert.strictEqual(toDockerPath('C:\\Users\\dev\\project'), '/c/Users/dev/project');
-});
-
-test('toDockerPath - D:\\Work\\repo → /d/Work/repo', () => {
-  assert.strictEqual(toDockerPath('D:\\Work\\repo'), '/d/Work/repo');
-});
-
-test('toDockerPath - /home/user/project unchanged (not a Windows path)', () => {
-  assert.strictEqual(toDockerPath('/home/user/project'), '/home/user/project');
-});
-
-test('toDockerPath - C:/Users/dev/project → /c/Users/dev/project (forward-slash variant)', () => {
-  assert.strictEqual(toDockerPath('C:/Users/dev/project'), '/c/Users/dev/project');
-});
-
-test('toDockerPath - empty string returns empty string', () => {
-  assert.strictEqual(toDockerPath(''), '');
-});
-
-test('toDockerPath - D/folder returns D/folder unchanged (no colon, must not be converted)', () => {
-  assert.strictEqual(toDockerPath('D/folder'), 'D/folder');
-});
+import { isValidFolderName, resolveOrchRoot, normalizePath } from './path-utils.js';
 
 // ── isValidFolderName ────────────────────────────────────────────────────────
 

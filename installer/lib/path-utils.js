@@ -2,22 +2,6 @@
 
 import path from 'node:path';
 
-/**
- * Converts a Windows absolute path to Docker volume mount format.
- * e.g., 'C:\Users\dev\project' → '/c/Users/dev/project'
- * Returns the path unchanged if it is not a Windows drive-letter path.
- * @param {string} absolutePath
- * @returns {string}
- */
-export function toDockerPath(absolutePath) {
-  const match = absolutePath.match(/^([a-zA-Z]):[/\\]/);
-  if (!match) return absolutePath;
-  const driveLetter = match[1].toLowerCase();
-  // Slice off the drive letter + colon (2 chars), then replace all backslashes
-  const rest = absolutePath.slice(2).replace(/\\/g, '/');
-  return `/${driveLetter}${rest}`;
-}
-
 const RESERVED_NAMES = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
 
 /**
