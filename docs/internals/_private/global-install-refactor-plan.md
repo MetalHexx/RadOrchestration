@@ -356,7 +356,7 @@ Decisions made during this brainstorm:
 
 - ✅ **Solo-repo path**: explicit `radorch repo add` is primary. Skills offer to register cwd as a fallback when the registry is empty and the user invokes `/rad-brainstorm` from inside a git repo.
 
-### Addendum — four-file model + pipeline-as-path-resolver (2026-05-09, from 1.3-REGISTRY-CRUD brainstorm)
+### Addendum — four-file model + pipeline-as-path-resolver (2026-05-09, from 1.4-REGISTRY-CRUD brainstorm)
 
 The Wave 1 commitment to `registry.yml` + `config.yml` is refined into a four-file model that splits team-portable identity from per-machine specifics consistently across both registry data and preferences. The original two-file model bundled per-machine path bindings AND per-developer preferences into one `config.yml` purely because they shared the "gitignored, per-machine" property. Splitting them aligns file boundaries with conceptual boundaries and pairs each concept's team and local halves with parallel naming.
 
@@ -381,7 +381,7 @@ The new `preferences.yml` enables a capability the original Wave 1 model didn't:
 - Subagents (coder, reviewer, source-control) receive paths via the spawn prompt and never call out to resolve them. Zero extra tool calls per spawn for path resolution.
 
 **Cross-references in the project series**:
-- [GLOBAL-WORKSPACES-1.3-REGISTRY-CRUD](../../../../orchestration-projects/GLOBAL-WORKSPACES-1.3-REGISTRY-CRUD/GLOBAL-WORKSPACES-1.3-REGISTRY-CRUD-BRAINSTORMING.md) Goal 3 (four-file model + schemas) + Goal 5 (removal semantics under live-registry model).
+- [GLOBAL-WORKSPACES-1.4-REGISTRY-CRUD](../../../../orchestration-projects/GLOBAL-WORKSPACES-1.4-REGISTRY-CRUD/GLOBAL-WORKSPACES-1.4-REGISTRY-CRUD-BRAINSTORMING.md) Goal 3 (four-file model + schemas) + Goal 5 (removal semantics under live-registry model).
 - [GLOBAL-WORKSPACES-02-STATE-V6](../../../../orchestration-projects/GLOBAL-WORKSPACES-02-STATE-V6/GLOBAL-WORKSPACES-02-STATE-V6-BRAINSTORMING.md) (`state.project.target` field; pipeline reads target + live registry, no snapshot field).
 
 ---
