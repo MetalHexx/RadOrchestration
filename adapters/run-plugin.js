@@ -160,45 +160,8 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
     }
   }
 
-  // Per-bundle orchestration.yml rewrite for the plugin emit only — replace
-  // the canonical `base_path:` value (an operator-machine-specific absolute
-  // path on the canonical YAML) with the portable plugin default
-  // `~/.radorch/projects/`. The leading `~/` is expanded at read time by
-  // resolveBasePath() in skills/rad-orchestration/scripts/lib/state-io.ts.
-  // The legacy installer emit (runAdapter in run.js) intentionally does NOT
-  // apply this rewrite — its bundle is overwritten at install time by the
-  // user-config generator and keeps the legacy default.
-  const pluginYmlPath = path.join(
-    targetRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml',
-  );
-  rewritePluginOrchestrationYmlBasePath(pluginYmlPath);
-
   // bin/ and dist/ and ui/ are placed by the meta-script (P04-T02), not here.
   return { harness: adapter.name, targetRoot };
-}
-
-/**
- * Rewrites the per-bundle orchestration.yml in the plugin emit: sets
- * `base_path:` (under `projects:`) to the portable home-relative default
- * `~/.radorch/projects/`. All other fields pass through verbatim. No
- * template engine, no AST round-trip — string-level field substitution
- * mirroring the `system.orch_root` rewrite in adapters/run.js.
- */
-function rewritePluginOrchestrationYmlBasePath(absYmlPath) {
-  if (!fs.existsSync(absYmlPath)) return;
-  const text = fs.readFileSync(absYmlPath, 'utf8');
-  const lines = text.split(/\r?\n/);
-  const out = [];
-  for (const line of lines) {
-    // `  base_path: <anything>` under `projects:` — rewrite the value only.
-    const m = line.match(/^(\s*base_path:\s*).*$/);
-    if (m) {
-      out.push(`${m[1]}~/.radorch/projects/`);
-      continue;
-    }
-    out.push(line);
-  }
-  fs.writeFileSync(absYmlPath, out.join('\n'), 'utf8');
 }
 
 // ── Plugin-root substitution ─────────────────────────────────────────
