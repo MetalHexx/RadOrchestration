@@ -123,8 +123,8 @@ describe('promptSourceControl', () => {
     assert.ok(Object.hasOwn(result, 'autoPr'));
   });
 
-  it('returns object with provider property', () => {
-    assert.ok(Object.hasOwn(result, 'provider'));
+  it('does not return a provider property (reserved github-only)', () => {
+    assert.ok(!Object.hasOwn(result, 'provider'));
   });
 
   it('autoCommit matches first select() return value', () => {
@@ -133,10 +133,6 @@ describe('promptSourceControl', () => {
 
   it('autoPr matches second select() return value', () => {
     assert.equal(result.autoPr, 'ask');
-  });
-
-  it('provider is always "github"', () => {
-    assert.equal(result.provider, 'github');
   });
 
   // ── Git check test ──────────────────────────────────────────────────────────
@@ -169,7 +165,6 @@ describe('promptSourceControl', () => {
 
     it('returns valid result despite git failure', () => {
       assert.equal(gitNotFoundResult.autoCommit, 'never');
-      assert.equal(gitNotFoundResult.provider, 'github');
     });
   });
 

@@ -7,7 +7,8 @@ import { execFileSync } from 'node:child_process';
 /**
  * Runs the "Source Control" prompt section.
  * Checks git/gh availability (non-blocking warnings) and collects auto-commit/auto-PR preferences.
- * @returns {Promise<{ autoCommit: 'always'|'ask'|'never', autoPr: 'always'|'ask'|'never', provider: 'github' }>}
+ * Source control provider is reserved github-only — no longer asked here.
+ * @returns {Promise<{ autoCommit: 'always'|'ask'|'never', autoPr: 'always'|'ask'|'never' }>}
  */
 export async function promptSourceControl() {
   // Check if git is available in PATH (non-blocking warning)
@@ -65,5 +66,5 @@ export async function promptSourceControl() {
     }
   }
 
-  return { autoCommit, autoPr, provider: 'github' };
+  return { autoCommit, autoPr };
 }

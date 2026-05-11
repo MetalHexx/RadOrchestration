@@ -54,12 +54,24 @@ export function renderPostInstallSummary(config, copyResults, configPath) {
   console.log('');
 
   if (config.installUi && config.uiDir) {
-    console.log('  ' + THEME.stepNumber('2.') + ' ' + THEME.body('Start the dashboard:'));
+    console.log('  ' + THEME.stepNumber('2.') + ' ' + THEME.body('Start the dashboard from your harness with:'));
     console.log('');
-    console.log('     ' + THEME.command(`Local:   cd ${path.normalize(config.uiDir)} && npm start`));
-    console.log('     ' + THEME.command(`Docker:  docker compose -f ${path.join(config.uiDir, 'docker-compose.yml')} up`));
+    console.log('     ' + THEME.command('/rad-ui-start'));
     console.log('');
   }
+
+  // PATH one-liner — paste-once shell snippet that puts radorch on PATH
+  // for the current shell session. Keyed off process.platform so Windows
+  // users get the PowerShell form, not the bash form (DD-7).
+  console.log('  ' + THEME.stepNumber(config.installUi && config.uiDir ? '3.' : '2.')
+    + ' ' + THEME.body('Add radorch to your shell PATH (this session):'));
+  console.log('');
+  if (process.platform === 'win32') {
+    console.log('     ' + THEME.command('$env:Path += ";$env:APPDATA\\npm"'));
+  } else {
+    console.log('     ' + THEME.command('export PATH="$HOME/.npm-global/bin:$PATH"'));
+  }
+  console.log('');
 
   divider();
 }

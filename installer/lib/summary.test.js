@@ -111,10 +111,19 @@ describe('renderPostInstallSummary', () => {
     );
   });
 
-  it('with installUi: true includes "npm start" and "docker compose" commands', () => {
+  it('with installUi: true points users at the /rad-ui-start slash command', () => {
     const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
-    assert.ok(output.includes('npm start'), 'output should contain "npm start"');
-    assert.ok(output.includes('docker compose'), 'output should contain "docker compose"');
+    assert.ok(output.includes('/rad-ui-start'), 'output should contain "/rad-ui-start"');
+  });
+
+  it('with installUi: true output does NOT contain legacy "npm start" command', () => {
+    const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
+    assert.ok(!output.includes('npm start'), 'output should not contain "npm start"');
+  });
+
+  it('with installUi: true output does NOT contain legacy "docker compose" command', () => {
+    const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
+    assert.ok(!output.includes('docker compose'), 'output should not contain "docker compose"');
   });
 
   it('with installUi: false output contains "skipped" text', () => {
@@ -122,14 +131,9 @@ describe('renderPostInstallSummary', () => {
     assert.ok(output.includes('skipped'), 'output should contain "skipped"');
   });
 
-  it('with installUi: false output does NOT contain "npm start"', () => {
+  it('with installUi: false output does NOT contain "/rad-ui-start"', () => {
     const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
-    assert.ok(!output.includes('npm start'), 'output should not contain "npm start"');
-  });
-
-  it('with installUi: false output does NOT contain "docker compose"', () => {
-    const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
-    assert.ok(!output.includes('docker compose'), 'output should not contain "docker compose"');
+    assert.ok(!output.includes('/rad-ui-start'), 'output should not contain "/rad-ui-start"');
   });
 
   it('with installUi: true output contains "built and ready"', () => {
@@ -137,14 +141,24 @@ describe('renderPostInstallSummary', () => {
     assert.ok(output.includes('built and ready'), 'output should contain "built and ready"');
   });
 
-  it('with installUi: true output contains "docker-compose.yml"', () => {
-    const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
-    assert.ok(output.includes('docker-compose.yml'), 'output should contain "docker-compose.yml"');
-  });
-
   it('with installUi: true output contains step "2."', () => {
     const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
     assert.ok(output.includes('2.'), 'output should contain step "2."');
+  });
+
+  it('includes a PATH one-liner keyed to the current platform', () => {
+    const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
+    if (process.platform === 'win32') {
+      assert.ok(
+        output.includes('$env:Path'),
+        'win32 output should contain a PowerShell $env:Path one-liner'
+      );
+    } else {
+      assert.ok(
+        output.includes('export PATH'),
+        'linux/darwin output should contain an `export PATH=` one-liner'
+      );
+    }
   });
 });
 
