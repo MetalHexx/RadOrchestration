@@ -70,7 +70,7 @@ export async function runCommand<Args, Flags, Result>(
     noColor: noColorEnv || !opts.isTTY,
     json: false,
   };
-  const installRoot = resolveInstallRoot(opts.env);
+  const installRoot = resolveInstallRoot();
   const paths = installPaths(installRoot);
 
   if (def.name !== 'install') {

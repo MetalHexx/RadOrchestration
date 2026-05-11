@@ -14,11 +14,22 @@ let home: string;
 beforeEach(async () => { home = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-skew-')); });
 afterEach(async () => { await fs.rm(home, { recursive: true, force: true }); });
 
+// Set HOME/USERPROFILE in subprocess env so os.homedir() in the CLI returns `home`.
+// resolveInstallRoot() in the spawned process computes path.join(home, '.radorch').
+function homeEnv(home: string): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    HOME: home,
+    USERPROFILE: home,
+    RADORCH_NO_LOG: '1',
+  };
+}
+
 async function radorch(args: string[], home: string, extraEnv: NodeJS.ProcessEnv = {}) {
   try {
     const r = await execP('node', ['dist/bin/radorch.js', ...args, '--non-interactive', '--json'], {
       cwd: cliRoot,
-      env: { ...process.env, RADORCH_HOME: home, RADORCH_NO_LOG: '1', ...extraEnv },
+      env: { ...homeEnv(home), ...extraEnv },
     });
     return { stdout: r.stdout, stderr: r.stderr, code: 0 };
   } catch (e) {
@@ -31,8 +42,9 @@ describe('version skew', () => {
   it('refuses to operate when last_writer_version > local version', async () => {
     await execP('npx', ['tsc'], { cwd: cliRoot, shell: process.platform === 'win32' });
     await radorch(['install', '--default-harness', 'claude'], home);
-    // Tamper install.json: bump last_writer_version far beyond CLI version
-    const ijPath = path.join(home, 'install.json');
+    // Tamper install.json: bump last_writer_version far beyond CLI version.
+    // resolveInstallRoot() in CLI uses path.join(home, '.radorch')
+    const ijPath = path.join(home, '.radorch', 'install.json');
     const ij = JSON.parse(await fs.readFile(ijPath, 'utf8'));
     ij.last_writer_version = '999.0.0';
     await fs.writeFile(ijPath, JSON.stringify(ij, null, 2) + '\n');

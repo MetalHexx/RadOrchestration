@@ -15,10 +15,10 @@ import { parseYaml } from '../../lib/yaml.js';
  * which prevents importing from the pipeline runtime. Pure: no filesystem,
  * no env capture beyond the explicit `env` argument.
  */
-export function expandHome(raw: string, env: NodeJS.ProcessEnv = process.env): string {
+export function expandHome(raw: string): string {
   if (!raw) return raw;
   if (raw.startsWith('~/.radorch')) {
-    const radorchHome = env['RADORCH_HOME'] || path.join(os.homedir(), '.radorch');
+    const radorchHome = path.join(os.homedir(), '.radorch');
     const remainder = raw.slice('~/.radorch'.length).replace(/^[/\\]+/, '');
     const joined = remainder ? path.join(radorchHome, remainder) : radorchHome;
     return joined.replace(/[/\\]+$/, '');
@@ -220,7 +220,7 @@ export async function runPluginChecks(opts: {
   // resolved directory is present and readable. Filesystem `stat`-only.
   {
     const cfg = await readBasePathFromOrchestrationYml(opts.pluginRoot ?? opts.root);
-    const resolved = expandHome(cfg.basePath, process.env);
+    const resolved = expandHome(cfg.basePath);
     let detail: string | undefined;
     let status: CheckStatus = 'pass';
     try {

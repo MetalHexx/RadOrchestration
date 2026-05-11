@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,22 +8,29 @@ import { validateEnvelope } from '../../src/framework/output.js';
 import { runPluginChecks, type CheckResult } from '../../src/commands/doctor/checks.js';
 
 let tmp: string;
-beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc-')); });
-afterEach(async () => { await fs.rm(tmp, { recursive: true, force: true }); });
+let homedirSpy: ReturnType<typeof vi.spyOn>;
+beforeEach(async () => {
+  tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc-'));
+  homedirSpy = vi.spyOn(os, 'homedir').mockReturnValue(tmp);
+});
+afterEach(async () => {
+  homedirSpy.mockRestore();
+  await fs.rm(tmp, { recursive: true, force: true });
+});
 
 describe('radorch doctor', () => {
   it('reports Install failure when ~/.radorch is absent', async () => {
-    const home = path.join(tmp, 'absent');
-    const result = await runDoctor({ env: { RADORCH_HOME: home } });
+    // tmp/.radorch does not exist — spy makes resolveInstallRoot() return tmp/.radorch
+    const result = await runDoctor({ env: process.env });
     expect(result.all_passed).toBe(false);
     const installCategory = result.checks.filter((c) => c.category === 'Install');
     expect(installCategory.some((c) => c.status === 'fail')).toBe(true);
   });
 
   it('reports all_passed=true with a Registry warn when installed but empty', async () => {
-    const home = path.join(tmp, 'rad');
-    await writeInstallSkeleton({ root: home, packageVersion: '0.0.0', defaultHarness: 'claude' });
-    const result = await runDoctor({ env: { RADORCH_HOME: home } });
+    const root = path.join(tmp, '.radorch');
+    await writeInstallSkeleton({ root, packageVersion: '0.0.0', defaultHarness: 'claude' });
+    const result = await runDoctor({ env: process.env });
     expect(result.all_passed).toBe(true); // warns allowed; only fails block
     const reg = result.checks.find((c) => c.category === 'Registry');
     expect(reg?.status).toBe('warn');
@@ -33,9 +40,9 @@ describe('radorch doctor', () => {
   });
 
   it('every check carries a closed-enum status', async () => {
-    const home = path.join(tmp, 'rad');
-    await writeInstallSkeleton({ root: home, packageVersion: '0.0.0', defaultHarness: 'claude' });
-    const result = await runDoctor({ env: { RADORCH_HOME: home } });
+    const root = path.join(tmp, '.radorch');
+    await writeInstallSkeleton({ root, packageVersion: '0.0.0', defaultHarness: 'claude' });
+    const result = await runDoctor({ env: process.env });
     for (const c of result.checks) {
       expect(['pass', 'warn', 'fail']).toContain(c.status);
     }
@@ -279,10 +286,11 @@ describe('runPluginChecks — new plugin-install checks (FR-14)', () => {
 
   it('runDoctor end-to-end does not throw when no rad-orchestration binary is on PATH', async () => {
     // Force PATH to an empty directory so spawn cannot find rad-orchestration.
+    // homedirSpy (outer beforeEach) makes resolveInstallRoot() return tmp/.radorch.
     const emptyDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-empty-path-'));
     try {
       await expect(
-        runDoctor({ env: { RADORCH_HOME: home, PATH: emptyDir, Path: emptyDir } }),
+        runDoctor({ env: { ...process.env, PATH: emptyDir, Path: emptyDir } }),
       ).resolves.toBeDefined();
     } finally {
       await fs.rm(emptyDir, { recursive: true, force: true });

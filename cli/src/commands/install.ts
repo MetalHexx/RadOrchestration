@@ -26,7 +26,7 @@ export async function runInstall(opts: {
   defaultHarness: HarnessName;
   ctx: { env: NodeJS.ProcessEnv; ux: { isTTY: boolean; nonInteractive: boolean; noColor: boolean; json: boolean }; stderr: NodeJS.WriteStream };
 }): Promise<InstallResult> {
-  const root = resolveInstallRoot(opts.ctx.env);
+  const root = resolveInstallRoot();
   const p = installPaths(root);
   if (await pathExists(p.installJson)) {
     // Idempotent path: a healthy install at the same version is a no-op

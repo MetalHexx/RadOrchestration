@@ -9,11 +9,11 @@ import type { CommandContext } from '../framework/context.js';
 export interface HarnessUseResult { active: HarnessName; no_change: boolean }
 export interface HarnessListResult { harnesses: { name: HarnessName; active: boolean }[] }
 
-export async function runHarnessUse(opts: { harness: string; env: NodeJS.ProcessEnv }): Promise<HarnessUseResult> {
+export async function runHarnessUse(opts: { harness: string }): Promise<HarnessUseResult> {
   if (!isHarnessName(opts.harness)) {
     throw new UserError(`Unknown harness "${opts.harness}". Expected one of: ${HarnessName.join(', ')}.`);
   }
-  const root = resolveInstallRoot(opts.env);
+  const root = resolveInstallRoot();
   const p = installPaths(root);
   if (!(await pathExists(p.installJson))) {
     throw new UserError(`radorch install root not found at ${root}. Run \`radorch install\` first.`);
@@ -24,8 +24,8 @@ export async function runHarnessUse(opts: { harness: string; env: NodeJS.Process
   return { active: opts.harness, no_change: false };
 }
 
-export async function runHarnessList(opts: { env: NodeJS.ProcessEnv }): Promise<HarnessListResult> {
-  const root = resolveInstallRoot(opts.env);
+export async function runHarnessList(): Promise<HarnessListResult> {
+  const root = resolveInstallRoot();
   const p = installPaths(root);
   if (!(await pathExists(p.installJson))) {
     throw new UserError(`radorch install root not found at ${root}. Run \`radorch install\` first.`);
@@ -42,7 +42,7 @@ export const harnessUseCommand = defineCommand({
   args: { harness: { description: 'harness name (claude | copilot-vscode | copilot-cli)', required: true } },
   flags: {},
   handler: async ({ args, ctx }: { args: { harness: string }; ctx: CommandContext }) => {
-    const result = await runHarnessUse({ harness: args.harness, env: ctx.env });
+    const result = await runHarnessUse({ harness: args.harness });
     if (result.no_change && !ctx.ux.json) {
       ctx.stderr.write(ctx.theme.hint(`harness "${result.active}" is already active — no change\n`));
     }

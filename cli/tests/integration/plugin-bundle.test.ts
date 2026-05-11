@@ -70,6 +70,8 @@ describe('SessionStart bootstrap (FR-27 #3, #4)', () => {
     const cmd = isWin
       ? { bin: 'powershell', args: ['-NoProfile', '-File', path.join(pluginRoot, 'hooks', 'session-start.ps1')] }
       : { bin: 'bash', args: [path.join(pluginRoot, 'hooks', 'session-start.sh')] };
+    // Hook scripts read RADORCH_HOME directly from the shell environment —
+    // they bypass Node.js os.homedir() — so RADORCH_HOME still works here.
     const env = { ...process.env, RADORCH_HOME: home };
     await execP(cmd.bin, cmd.args, { env });
     expect(await fs.stat(path.join(home, 'projects'))).toBeTruthy();
@@ -83,14 +85,19 @@ describe('SessionStart bootstrap (FR-27 #3, #4)', () => {
 describe('ui lifecycle (FR-27 #5, FR-28)', () => {
   it('ui start → status → stop via the bundled CLI', async () => {
     const bundle = path.join(pluginRoot, 'bin', 'radorch.mjs');
-    // Ensure bootstrap exists before invoking ui commands
+    // Bootstrap: the hook script reads RADORCH_HOME from shell env directly.
+    // Set RADORCH_HOME=<home>/.radorch so the hook bootstraps the same directory
+    // that the bundled CLI computes via os.homedir()/.radorch (with HOME=home).
     const isWin = process.platform === 'win32';
     const hookCmd = isWin
       ? { bin: 'powershell', args: ['-NoProfile', '-File', path.join(pluginRoot, 'hooks', 'session-start.ps1')] }
       : { bin: 'bash', args: [path.join(pluginRoot, 'hooks', 'session-start.sh')] };
-    await execP(hookCmd.bin, hookCmd.args, { env: { ...process.env, RADORCH_HOME: home } });
+    const radorchhome = path.join(home, '.radorch');
+    await execP(hookCmd.bin, hookCmd.args, { env: { ...process.env, RADORCH_HOME: radorchhome } });
 
-    const env = { ...process.env, RADORCH_HOME: home, RADORCH_NO_LOG: '1' };
+    // Set HOME/USERPROFILE so os.homedir() in the bundled CLI returns `home`,
+    // making resolveInstallRoot() return path.join(home, '.radorch').
+    const env = { ...process.env, HOME: home, USERPROFILE: home, RADORCH_NO_LOG: '1' };
     const startR = await execP('node', [bundle, 'ui', 'start', '--non-interactive', '--json'], { env });
     const startEnv = JSON.parse(startR.stdout.trim());
     expect(startEnv.ok).toBe(true);

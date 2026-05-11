@@ -20,7 +20,7 @@ export async function runStart(opts: {
   _probePortFree?: (p: number) => Promise<boolean>;
   _spawn?: typeof defaultSpawn;
 }): Promise<StartResult> {
-  const root = resolveInstallRoot(opts.env);
+  const root = resolveInstallRoot();
   const p = installPaths(root);
   await ensureDir(p.runtimeDir);
   await ensureDir(p.logsDir);

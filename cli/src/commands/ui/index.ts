@@ -25,5 +25,5 @@ export const uiStatusCommand = defineCommand({
   description: 'Report whether the detached UI server is running',
   args: {},
   flags: {},
-  handler: async ({ ctx }: { ctx: CommandContext }) => runStatus({ env: ctx.env }),
+  handler: async () => runStatus(),
 });

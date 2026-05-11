@@ -18,8 +18,7 @@ export interface InstallPaths {
   readonly uiLog: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function resolveInstallRoot(_env: NodeJS.ProcessEnv = process.env): string {
+export function resolveInstallRoot(): string {
   return path.join(os.homedir(), '.radorch');
 }
 

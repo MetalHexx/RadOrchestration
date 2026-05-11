@@ -47,7 +47,7 @@ export interface DoctorResult {
 }
 
 export async function runDoctor(opts: { env: NodeJS.ProcessEnv }): Promise<DoctorResult> {
-  const root = resolveInstallRoot(opts.env);
+  const root = resolveInstallRoot();
   const iter01Version = detectIter01Version(opts.env);
   const checks: CheckResult[] = [
     ...(await runEnvironmentChecks()),

@@ -17,7 +17,7 @@ export async function runStop(opts: {
   _now?: () => number;
   _sleep?: (ms: number) => Promise<void>;
 }): Promise<StopResult> {
-  const p = installPaths(resolveInstallRoot(opts.env));
+  const p = installPaths(resolveInstallRoot());
   const entry = await readPidFile(p.uiPidFile);
   if (!entry) return { stopped: true };
   if (isPidAlive(entry.pid)) {

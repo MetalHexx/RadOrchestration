@@ -8,8 +8,8 @@ export interface StatusResult {
   url?: string;
 }
 
-export async function runStatus(opts: { env: NodeJS.ProcessEnv }): Promise<StatusResult> {
-  const p = installPaths(resolveInstallRoot(opts.env));
+export async function runStatus(): Promise<StatusResult> {
+  const p = installPaths(resolveInstallRoot());
   const entry = await readPidFile(p.uiPidFile);
   if (!entry) return { running: false };
   if (!isPidAlive(entry.pid)) {

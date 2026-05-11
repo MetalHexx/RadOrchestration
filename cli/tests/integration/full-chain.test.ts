@@ -13,11 +13,13 @@ let tmp: string;
 beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-e2e-')); });
 afterEach(async () => { await fs.rm(tmp, { recursive: true, force: true }); });
 
+// Set HOME/USERPROFILE in subprocess env so os.homedir() in the CLI returns `home`.
+// resolveInstallRoot() in the spawned process computes path.join(home, '.radorch').
 async function radorch(args: string[], home: string): Promise<{ stdout: string; stderr: string; code: number }> {
   try {
     const r = await execP('node', ['dist/bin/radorch.js', ...args, '--non-interactive', '--json'], {
       cwd: repoRoot,
-      env: { ...process.env, RADORCH_HOME: home, RADORCH_NO_LOG: '1' },
+      env: { ...process.env, HOME: home, USERPROFILE: home, RADORCH_NO_LOG: '1' },
     });
     return { stdout: r.stdout, stderr: r.stderr, code: 0 };
   } catch (e) {
@@ -27,9 +29,10 @@ async function radorch(args: string[], home: string): Promise<{ stdout: string; 
 }
 
 describe('install → harness use → harness list → doctor', () => {
-  it('completes the full chain against a temp RADORCH_HOME', async () => {
+  it('completes the full chain against a temp home directory', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
-    const home = path.join(tmp, 'rad');
+    const home = path.join(tmp, 'home');
+    await fs.mkdir(home, { recursive: true });
 
     const r1 = await radorch(['install', '--default-harness', 'claude'], home);
     const env1 = JSON.parse(r1.stdout.trim());

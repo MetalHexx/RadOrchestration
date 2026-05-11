@@ -18,7 +18,7 @@ export const harnessListCommand = defineCommand({
   args: {},
   flags: {},
   handler: async ({ ctx }: { ctx: CommandContext }) => {
-    const result = await runHarnessList({ env: ctx.env });
+    const result = await runHarnessList();
     renderTable(result.harnesses, ctx);
     return result;
   },

@@ -5,15 +5,20 @@ import path from 'node:path';
 import { defineCommand, runCommand } from '../../src/framework/command.js';
 
 describe('runCommand E2E (envelope + NDJSON in one run)', () => {
-  let tmpRoot: string;
+  let tmpHome: string;
+  let homedirSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
-    tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'radorch-e2e-'));
-    await fs.mkdir(path.join(tmpRoot, 'logs'), { recursive: true });
+    tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), 'radorch-e2e-'));
+    homedirSpy = vi.spyOn(os, 'homedir').mockReturnValue(tmpHome);
+    // resolveInstallRoot() = path.join(tmpHome, '.radorch')
+    // installPaths(root).cliLog = path.join(tmpHome, '.radorch', 'logs', 'cli.log')
+    await fs.mkdir(path.join(tmpHome, '.radorch', 'logs'), { recursive: true });
   });
 
   afterEach(async () => {
-    await fs.rm(tmpRoot, { recursive: true, force: true });
+    homedirSpy.mockRestore();
+    await fs.rm(tmpHome, { recursive: true, force: true });
   });
 
   it('emits a valid envelope on stdout and a matching NDJSON entry to the log file', async () => {
@@ -47,7 +52,7 @@ describe('runCommand E2E (envelope + NDJSON in one run)', () => {
     try {
       await runCommand(def, {
         argv: [],
-        env: { RADORCH_HOME: tmpRoot } as unknown as NodeJS.ProcessEnv,
+        env: process.env,
         isTTY: false,
         stderr: { write: () => true } as unknown as NodeJS.WriteStream,
       });
@@ -72,8 +77,8 @@ describe('runCommand E2E (envelope + NDJSON in one run)', () => {
     expect(envelope.data).toEqual({ msg: 'hello' });
     expect(exitCode).toBe(0);
 
-    // NDJSON entry in cli.log under tmpRoot/logs/
-    const logPath = path.join(tmpRoot, 'logs', 'cli.log');
+    // NDJSON entry in cli.log under tmpHome/.radorch/logs/
+    const logPath = path.join(tmpHome, '.radorch', 'logs', 'cli.log');
     const logContent = await fs.readFile(logPath, 'utf8');
     const logLines = logContent.split('\n').filter((l) => l.length > 0).map((l) => JSON.parse(l));
     const completeEntry = logLines.find((e) => e.message === 'command_complete');
