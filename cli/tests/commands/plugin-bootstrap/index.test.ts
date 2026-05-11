@@ -159,6 +159,37 @@ describe('pluginBootstrapCommand', () => {
     expect(exitCode).toBe(0);
   });
 
+  it('downgrade path with --quiet suppresses stderr but preserves stdout JSON envelope', async () => {
+    const fakeDowngradeResult = {
+      action: 'downgrade-noop' as const,
+      code: 0,
+      deliveringVersion: '0.9.0',
+      installedVersion: '1.0.0',
+      message: 'Delivering v0.9.0 is older than installed v1.0.0; no-op. If this is unexpected, run `radorch doctor`.',
+    };
+    mockRunPluginBootstrap.mockResolvedValue(fakeDowngradeResult);
+
+    const { stdoutText, stderrText, exitCode } = await runViaFramework([
+      '--quiet', '--harness', 'claude', '--plugin-root', '/fake/root',
+    ]);
+
+    // Stderr must be empty when --quiet is set
+    expect(stderrText).toBe('');
+
+    // Stdout JSON envelope must still reflect the downgrade outcome
+    const lines = stdoutText.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+    expect(lines.length).toBeGreaterThanOrEqual(1);
+    const envelope = JSON.parse(lines[0]!);
+    expect(envelope.ok).toBe(true);
+    expect(envelope.data).toMatchObject({
+      action: 'downgrade-noop',
+      deliveringVersion: '0.9.0',
+      installedVersion: '1.0.0',
+    });
+
+    expect(exitCode).toBe(0);
+  });
+
   it('noop completes within 500ms on warm filesystem', async () => {
     // This test uses a real fixture (no mock for runPluginBootstrap) to measure
     // actual end-to-end latency. We build a minimal plugin root with package.json

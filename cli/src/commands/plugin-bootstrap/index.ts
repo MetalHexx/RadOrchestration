@@ -32,7 +32,7 @@ export const pluginBootstrapCommand = defineCommand({
     });
     // Stderr: human-readable warning for downgrade-noop (DD-5).
     // The message from run.ts already includes the doctor hint — do not repeat it.
-    if (result.action === 'downgrade-noop' && result.message) {
+    if (result.action === 'downgrade-noop' && result.message && !flags.quiet) {
       ctx.stderr.write(result.message + '\n');
     }
     return result;
