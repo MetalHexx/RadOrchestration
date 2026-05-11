@@ -41,7 +41,6 @@ Final:     Comprehensive Review → PR Creation (if auto_pr) → Human Approval 
 ## Configuration
 
 System configuration lives in `~/.radorch/orchestration.yml`. It controls:
-- Project storage path (`projects.base_path`, default `~/.radorch/projects/`)
 - Pipeline limits (max phases, tasks, retries)
 - Human gate defaults
 
@@ -49,7 +48,7 @@ Open the gear panel at any time via `/rad-orchestration:rad-ui-start` to edit se
 
 ## Project Files
 
-Project artifacts are stored in `~/.radorch/projects/` by default (configurable via `orchestration.yml` → `projects.base_path`). Each project gets a subfolder: `~/.radorch/projects/{PROJECT-NAME}/`.
+Project artifacts are stored at `~/.radorch/projects/{PROJECT-NAME}/`.
 
 Contents:
 - Brainstorming: `BRAINSTORMING.md` (optional, created by `@brainstormer`)
