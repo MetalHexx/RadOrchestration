@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -6,9 +6,14 @@ import { scanUserLevelHarnesses } from '../../src/lib/cross-harness-scan.js';
 
 describe('scanUserLevelHarnesses', () => {
   let tmp: string;
+  let homedirSpy: ReturnType<typeof vi.spyOn>;
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-chs-'));
-    vi.spyOn(os, 'homedir').mockReturnValue(tmp);
+    homedirSpy = vi.spyOn(os, 'homedir').mockReturnValue(tmp);
+  });
+  afterEach(() => {
+    homedirSpy.mockRestore();
+    fs.rmSync(tmp, { recursive: true, force: true });
   });
 
   it('returns absent for harnesses with no folder', () => {

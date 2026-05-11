@@ -187,7 +187,7 @@ test('setMode to raw when dirty: stringifyYaml produces valid YAML', () => {
 });
 
 test('setMode to raw when clean: rawYaml stays as original', () => {
-  const originalRawYaml = 'version: "4"\nsystem:\n  orch_root: .github\n';
+  const originalRawYaml = 'version: "4"\nlimits:\n  max_phases: 10\n';
   const config = makeValidConfig();
   const baseline = JSON.stringify(config);
   const formDirty = JSON.stringify(config) !== baseline;

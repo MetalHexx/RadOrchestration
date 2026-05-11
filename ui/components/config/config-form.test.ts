@@ -300,7 +300,7 @@ test("ToggleGroup guards against undefined value — empty array does not fire o
   const onChange = (path: string, value: unknown) => calls.push([path, value]);
   // Simulate: onValueChange receives empty array (deselection) — guard prevents call
   const newVal: string[] = [];
-  if (newVal.length > 0) onChange("projects.naming", newVal[0]);
+  if (newVal.length > 0) onChange("human_gates.execution_mode", newVal[0]);
   assert.strictEqual(calls.length, 0, "onChange should not fire for empty array");
 });
 

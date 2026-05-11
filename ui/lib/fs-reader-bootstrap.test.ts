@@ -13,9 +13,6 @@ let passed = 0;
 let failed = 0;
 
 const MINIMAL_CONFIG_YAML = `version: "1"
-projects:
-  base_path: "projects"
-  naming: SCREAMING_CASE
 limits:
   max_phases: 10
   max_tasks_per_phase: 20
@@ -28,7 +25,6 @@ human_gates:
 source_control:
   auto_commit: always
   auto_pr: never
-  provider: github
 `;
 
 
@@ -97,7 +93,7 @@ async function run() {
       assert.strictEqual(resolveOrchRoot(config), '.claude');
     });
 
-    await test('uses custom orch_root when provided', async () => {
+    await test('returns .claude consistently regardless of input config shape', async () => {
       const config: OrchestrationConfig = {
         version: '1',
         limits: { max_phases: 10, max_tasks_per_phase: 20, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },

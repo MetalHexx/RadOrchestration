@@ -78,7 +78,7 @@ for (const harness of LEGACY_HARNESSES) {
       // file whose current sha256 matches. The orchestration.yml entry is
       // deliberately skipped — its `ownership: 'user-config'` means the
       // installer overwrites it on install, so the runtime hash is allowed
-      // to diverge. (See rewritePerBundleOrchestrationYml in adapters/run.js.)
+      // to diverge.
       for (const entry of manifest.files) {
         if (entry.ownership === 'user-config') continue;
         const filePath = path.join(bundleRoot, entry.bundlePath);
