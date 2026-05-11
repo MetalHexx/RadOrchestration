@@ -51,7 +51,7 @@ export async function runDoctor(opts: { env: NodeJS.ProcessEnv }): Promise<Docto
   const iter01Version = detectIter01Version(opts.env);
   const checks: CheckResult[] = [
     ...(await runEnvironmentChecks()),
-    ...(await runInstallChecks(root)),
+    ...(await runInstallChecks()),
     ...(await runRegistryChecks(root)),
     ...(await runPluginChecks({
       root,

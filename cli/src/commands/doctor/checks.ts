@@ -1,60 +1,17 @@
 import fsP from 'node:fs/promises';
-import os from 'node:os';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathExists } from '../../lib/fs-helpers.js';
 import { installPaths } from '../../lib/paths.js';
-import { readInstallJson, readConfigYml } from '../../lib/config.js';
+import { readInstallJson } from '../../lib/config.js';
 import { readRegistry } from '../../lib/registry.js';
-import { isHarnessName } from '../../framework/harness.js';
 import { cmpSemver } from '../../lib/install-json.js';
 import { parseYaml } from '../../lib/yaml.js';
+import { userDataPaths } from '../../lib/upgrade/user-data-paths.js';
+import { scanUserLevelHarnesses } from '../../lib/cross-harness-scan.js';
 
-/**
- * Mirrors `resolveBasePath` in skills/rad-orchestration/scripts/lib/state-io.ts
- * (P05-T01). Duplicated locally because cli/'s tsconfig pins rootDir to ./src,
- * which prevents importing from the pipeline runtime. Pure: no filesystem,
- * no env capture beyond the explicit `env` argument.
- */
-export function expandHome(raw: string): string {
-  if (!raw) return raw;
-  if (raw.startsWith('~/.radorch')) {
-    const radorchHome = path.join(os.homedir(), '.radorch');
-    const remainder = raw.slice('~/.radorch'.length).replace(/^[/\\]+/, '');
-    const joined = remainder ? path.join(radorchHome, remainder) : radorchHome;
-    return joined.replace(/[/\\]+$/, '');
-  }
-  if (raw.startsWith('~/') || raw.startsWith('~\\')) {
-    const remainder = raw.slice(2).replace(/^[/\\]+/, '');
-    const joined = remainder ? path.join(os.homedir(), remainder) : os.homedir();
-    return joined.replace(/[/\\]+$/, '');
-  }
-  return raw;
-}
-
-/**
- * Locate `orchestration.yml` under the search root and return its
- * `projects.base_path`. Falls back to `<searchRoot>/projects` when no
- * orchestration.yml is present (the standard RADORCH_HOME layout).
- */
-export async function readBasePathFromOrchestrationYml(
-  searchRoot: string,
-): Promise<{ basePath: string }> {
-  const candidates = [
-    path.join(searchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml'),
-    path.join(searchRoot, 'orchestration.yml'),
-  ];
-  for (const candidate of candidates) {
-    try {
-      const text = await fsP.readFile(candidate, 'utf8');
-      const parsed = parseYaml<{ projects?: { base_path?: string } }>(text);
-      const bp = parsed?.projects?.base_path;
-      if (typeof bp === 'string' && bp.length > 0) return { basePath: bp };
-    } catch {
-      // ENOENT or unreadable — try next candidate.
-    }
-  }
-  return { basePath: path.join(searchRoot, 'projects') };
-}
+const require_ = createRequire(import.meta.url);
+const pkg = require_('../../../package.json') as { version: string };
 
 export type CheckStatus = 'pass' | 'warn' | 'fail';
 export type CheckCategory = 'Environment' | 'Install' | 'Registry' | 'Plugin';
@@ -65,6 +22,9 @@ export interface CheckResult {
   status: CheckStatus;
   detail?: string;
 }
+
+/** The four properties retired in 1.3 — present in old orchestration.yml files. */
+const RETIRED_KEYS = ['system.orch_root', 'projects.base_path', 'projects.naming', 'source_control.provider'] as const;
 
 export async function runEnvironmentChecks(): Promise<CheckResult[]> {
   const out: CheckResult[] = [];
@@ -84,39 +44,142 @@ export async function runEnvironmentChecks(): Promise<CheckResult[]> {
   return out;
 }
 
-export async function runInstallChecks(root: string): Promise<CheckResult[]> {
-  const p = installPaths(root);
+export async function runInstallChecks(): Promise<CheckResult[]> {
+  const p = userDataPaths();
   const out: CheckResult[] = [];
+
+  // 1. radorch-home-exists
   const rootExists = await pathExists(p.root);
   out.push({
     category: 'Install',
-    name: 'root-exists',
+    name: 'radorch-home-exists',
     status: rootExists ? 'pass' : 'fail',
     detail: rootExists ? p.root : `missing ${p.root} — run \`radorch install\``,
   });
   if (!rootExists) return out;
-  // install.json
+
+  // 2. install-json-shape
   try {
     const ij = await readInstallJson(p.installJson);
     out.push({
       category: 'Install',
-      name: 'install.json shape',
-      status: typeof ij.package_version === 'string' && typeof ij.installed_at === 'string' ? 'pass' : 'fail',
+      name: 'install-json-shape',
+      status: typeof ij.package_version === 'string' ? 'pass' : 'fail',
     });
   } catch (e) {
-    out.push({ category: 'Install', name: 'install.json shape', status: 'fail', detail: (e as Error).message });
+    out.push({ category: 'Install', name: 'install-json-shape', status: 'fail', detail: (e as Error).message });
   }
-  // config.yml
-  try {
-    const cfg = await readConfigYml(p.configYml);
+
+  // 3. radorch-bin-on-path
+  {
+    const binDir = p.bin;
+    const envPath = process.env['PATH'] ?? '';
+    const sep = process.platform === 'win32' ? ';' : ':';
+    const onPath = envPath.split(sep).some((d) => d === binDir);
+    if (onPath) {
+      out.push({ category: 'Install', name: 'radorch-bin-on-path', status: 'pass', detail: binDir });
+    } else {
+      const addLine =
+        process.platform === 'win32'
+          ? `$env:PATH = "${binDir};$env:PATH"`
+          : `export PATH="${binDir}:$PATH"`;
+      out.push({
+        category: 'Install',
+        name: 'radorch-bin-on-path',
+        status: 'warn',
+        detail: `${binDir} not in PATH — add to shell profile: ${addLine}`,
+      });
+    }
+  }
+
+  // 4. templates-folder-populated
+  {
+    const templatesDir = p.templates;
+    const required = ['extra-high.yml', 'high.yml', 'medium.yml', 'low.yml'];
+    let allPresent = true;
+    const missing: string[] = [];
+    for (const file of required) {
+      if (!(await pathExists(path.join(templatesDir, file)))) {
+        allPresent = false;
+        missing.push(file);
+      }
+    }
     out.push({
       category: 'Install',
-      name: 'config.yml shape',
-      status: isHarnessName(cfg.default_active_harness) ? 'pass' : 'fail',
+      name: 'templates-folder-populated',
+      status: allPresent ? 'pass' : 'warn',
+      detail: allPresent ? undefined : `missing templates: ${missing.join(', ')}`,
     });
-  } catch (e) {
-    out.push({ category: 'Install', name: 'config.yml shape', status: 'fail', detail: (e as Error).message });
   }
+
+  // 5. retired-properties-present
+  {
+    const orchYml = p.orchestrationYml;
+    const found: string[] = [];
+    try {
+      const text = await fsP.readFile(orchYml, 'utf8');
+      const parsed = parseYaml<Record<string, unknown>>(text);
+      if (parsed && typeof parsed === 'object') {
+        for (const key of RETIRED_KEYS) {
+          const parts = key.split('.');
+          const top = parts[0];
+          const sub = parts[1];
+          if (!top) continue;
+          const topVal = (parsed as Record<string, unknown>)[top];
+          if (sub) {
+            if (topVal !== null && typeof topVal === 'object' && sub in (topVal as Record<string, unknown>)) {
+              found.push(key);
+            }
+          } else {
+            if (top in parsed) found.push(key);
+          }
+        }
+      }
+    } catch {
+      // orchestration.yml absent or unreadable — no retired keys to report.
+    }
+    if (found.length > 0) {
+      out.push({
+        category: 'Install',
+        name: 'retired-properties-present',
+        status: 'warn',
+        detail: `stale keys in orchestration.yml (safe to delete): ${found.join(', ')}`,
+      });
+    } else {
+      out.push({
+        category: 'Install',
+        name: 'retired-properties-present',
+        status: 'pass',
+      });
+    }
+  }
+
+  // 6. version-match
+  {
+    let versionStatus: CheckStatus = 'pass';
+    let versionDetail: string | undefined;
+    try {
+      const ij = await readInstallJson(p.installJson);
+      if (typeof ij.package_version !== 'string') {
+        versionStatus = 'warn';
+        versionDetail = 'install.json missing package_version';
+      } else {
+        const cliVersion = pkg.version;
+        if (cliVersion) {
+          const match = cmpSemver(cliVersion, ij.package_version) === 0;
+          versionStatus = match ? 'pass' : 'warn';
+          versionDetail = match
+            ? `${cliVersion}`
+            : `CLI is ${cliVersion}, install.json reports ${ij.package_version} — re-run \`radorch install\``;
+        }
+      }
+    } catch {
+      versionStatus = 'warn';
+      versionDetail = 'install.json unreadable — run `radorch install`';
+    }
+    out.push({ category: 'Install', name: 'version-match', status: versionStatus, detail: versionDetail });
+  }
+
   return out;
 }
 
@@ -215,20 +278,17 @@ export async function runPluginChecks(opts: {
     }
   }
   out.push({ category: 'Plugin', name: 'version-skew', status: skewStatus, detail: skewDetail });
-  // projects-base-path-readable (FR-14, AD-12): resolve `projects.base_path`
-  // from orchestration.yml (or fall back to <root>/projects) and verify the
-  // resolved directory is present and readable. Filesystem `stat`-only.
+  // projects-base-path-readable (legacy check for workspace-relative projects dir)
   {
-    const cfg = await readBasePathFromOrchestrationYml(opts.pluginRoot ?? opts.root);
-    const resolved = expandHome(cfg.basePath);
+    const projectsDir = path.join(opts.root, 'projects');
     let detail: string | undefined;
     let status: CheckStatus = 'pass';
     try {
-      await fsP.access(resolved, fsP.constants.R_OK);
-      detail = resolved;
+      await fsP.access(projectsDir, fsP.constants.R_OK);
+      detail = projectsDir;
     } catch {
       status = 'fail';
-      detail = `${resolved} is missing or unreadable`;
+      detail = `${projectsDir} is missing or unreadable`;
     }
     out.push({ category: 'Plugin', name: 'projects-base-path-readable', status, detail });
   }
@@ -325,6 +385,21 @@ export async function runPluginChecks(opts: {
       name: 'cross-install-version-skew',
       status: crossStatus,
       detail: crossDetail,
+    });
+  }
+  // multi-harness-install-table (DD-8): render per-harness install status from
+  // user-level harness directories via scanUserLevelHarnesses().
+  {
+    const reports = scanUserLevelHarnesses();
+    const lines = reports.map((r) => {
+      const ver = r.installed && r.packageVersion ? r.packageVersion : 'not installed';
+      return `${r.harness}: ${ver}`;
+    });
+    out.push({
+      category: 'Plugin',
+      name: 'multi-harness-install-table',
+      status: 'pass',
+      detail: lines.join('\n'),
     });
   }
   return out;

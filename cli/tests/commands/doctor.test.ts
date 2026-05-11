@@ -5,7 +5,7 @@ import path from 'node:path';
 import { runDoctor, doctorCommand, renderDoctorForTest } from '../../src/commands/doctor/index.js';
 import { writeInstallSkeleton } from '../../src/commands/install/skeleton.js';
 import { validateEnvelope } from '../../src/framework/output.js';
-import { runPluginChecks, type CheckResult } from '../../src/commands/doctor/checks.js';
+import { runPluginChecks, runInstallChecks, type CheckResult } from '../../src/commands/doctor/checks.js';
 
 let tmp: string;
 let homedirSpy: ReturnType<typeof vi.spyOn>;
@@ -295,6 +295,67 @@ describe('runPluginChecks — new plugin-install checks (FR-14)', () => {
     } finally {
       await fs.rm(emptyDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('doctor: 1.3 canonical checks', () => {
+  let tmp13: string;
+  let homedirSpy13: ReturnType<typeof vi.spyOn>;
+  beforeEach(async () => {
+    tmp13 = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc13-'));
+    homedirSpy13 = vi.spyOn(os, 'homedir').mockReturnValue(tmp13);
+  });
+  afterEach(async () => {
+    homedirSpy13.mockRestore();
+    await fs.rm(tmp13, { recursive: true, force: true });
+  });
+
+  it('reports radorch-bin-on-path warn when ~/.radorch/bin is absent from PATH', async () => {
+    // Create ~/.radorch so radorch-home-exists passes and execution reaches radorch-bin-on-path.
+    // userDataPaths().bin resolves to tmp13/.radorch/bin, which is not in PATH.
+    const radorchDir = path.join(tmp13, '.radorch');
+    await fs.mkdir(radorchDir, { recursive: true });
+    const r = await runInstallChecks();
+    const bin = r.find(c => c.name === 'radorch-bin-on-path');
+    expect(bin?.status).toBe('warn');
+    // Platform-aware: Windows emits $env:PATH, Unix emits export PATH=
+    const addPathPattern = process.platform === 'win32' ? /\$env:PATH/ : /export PATH=/;
+    expect(bin?.detail).toMatch(addPathPattern);
+  });
+
+  it('reports retired-properties-present warn when orchestration.yml carries any of the four', async () => {
+    // Arrange ~/.radorch/orchestration.yml with `system.orch_root: .claude`.
+    const radorchDir = path.join(tmp13, '.radorch');
+    await fs.mkdir(radorchDir, { recursive: true });
+    await fs.writeFile(
+      path.join(radorchDir, 'orchestration.yml'),
+      'system:\n  orch_root: .claude\n',
+    );
+    const r = await runInstallChecks();
+    const retired = r.find(c => c.name === 'retired-properties-present');
+    expect(retired?.status).toBe('warn');
+    expect(retired?.detail).toMatch(/system\.orch_root/);
+  });
+
+  it('reports the multi-harness install table', async () => {
+    const r = await runPluginChecks({ root: tmp13, localVersion: '1.1.0' });
+    const t = r.find(c => c.name === 'multi-harness-install-table');
+    expect(t).toBeDefined();
+    expect(t!.detail).toMatch(/claude:/);
+    expect(t!.detail).toMatch(/copilot-vscode:/);
+    expect(t!.detail).toMatch(/copilot-cli:/);
+  });
+
+  it('templates-folder check passes when four canonical tier files present', async () => {
+    // Create ~/.radorch/templates/ with all four canonical tier files.
+    const radorchDir = path.join(tmp13, '.radorch');
+    const templatesDir = path.join(radorchDir, 'templates');
+    await fs.mkdir(templatesDir, { recursive: true });
+    for (const tier of ['extra-high', 'high', 'medium', 'low']) {
+      await fs.writeFile(path.join(templatesDir, `${tier}.yml`), `# ${tier}\n`);
+    }
+    const r = await runInstallChecks();
+    expect(r.find(c => c.name === 'templates-folder-populated')?.status).toBe('pass');
   });
 });
 
