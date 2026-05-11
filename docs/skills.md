@@ -16,9 +16,9 @@ The shipped review-intensity tiers are `extra-high`, `high`, `medium`, and `low`
 
 ### /rad-plan
 
-**What it does** — Starts the full planning pipeline. At the start, you pick a review-intensity tier (`extra-high`, `high`, `medium`, `low`) and a Project Size (`Small`, `Medium`, `Large`, `Extra Large`, or `Custom` prose). The planners then produce a requirements document and an execution plan. If you already have a brainstorming document, your planners will automatically use it to create the formal plans.
+**What it does** — Starts the full planning pipeline. At the start, you pick a review-intensity tier (`extra-high`, `high`, `medium`, `low`) and a Phase/Task Size (`Small`, `Medium`, `Large`, `Extra Large`, or `Custom` prose). The planners then produce a requirements document and an execution plan. If you already have a brainstorming document, your planners will automatically use it to create the formal plans.
 
-The tier governs review depth — `extra-high` runs per-task code review plus phase review plus final review; `low` runs final review only; `high` and `medium` are intermediate. Project Size governs task scope and phase scope, with a `(Recommended)` size that moves with the chosen tier.
+The tier governs review depth — `extra-high` runs per-task code review plus phase review plus final review; `low` runs final review only; `high` and `medium` are intermediate. Phase/Task Size governs task scope and phase scope, with a `(Recommended)` size that moves with the chosen tier.
 
 **When to use it** — Use it after `/rad-brainstorm`, or when you already have planning context and want planning ceremony plus the review depth your project needs.
 

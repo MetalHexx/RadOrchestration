@@ -49,9 +49,9 @@ mandatory anchors in every tier.
   marker is a hint, not a constraint — the user remains free to pick any
   tier without warning.
 
-## Step 2: Choose Project Size (task and phase scope)
+## Step 2: Choose Phase/Task Size
 
-Project Size scales task scope AND phase scope coherently as a single
+Phase/Task Size scales task scope AND phase scope coherently as a single
 knob. The `(Recommended)` marker moves based on the tier resolved in
 Step 1 per this monotonic mapping:
 
@@ -68,8 +68,8 @@ toward larger scope. The marker is a hint, not a constraint — every size
 fires for off-recommendation choices.
 
 Use the `askQuestions` / `AskUserQuestion` tool to ask the user the
-Project Size question. Surface every option as an explicit labeled menu
-item — do NOT rely on the auto-injected `Other` slot. Compute the
+Phase/Task Size question. Surface every option as an explicit labeled
+menu item — do NOT rely on the auto-injected `Other` slot. Compute the
 `(Recommended)` marker from `project_template` and attach it to the one
 matching size.
 
@@ -81,10 +81,11 @@ matching size.
 | `Extra Large` | A standalone feature per task — scope that would be a phase at smaller sizes; phases are thin wrappers. 1–2 tasks per phase, possibly single-phase. |
 | `Custom` | You describe the sizing criterion in your own words; the planner uses your prose as the task-scope target while still applying natural-seam judgment for phase boundaries. |
 
-The question's framing prose: "How big should each task be? Project Size
-scales task scope and phase scope together. The `(Recommended)` marker
-reflects the tier you picked in Step 1 — more review depth pairs with
-smaller scope — but every size remains selectable."
+The question's framing prose: "How big should each task and phase be?
+Phase/Task Size scales task scope and phase scope together. The
+`(Recommended)` marker reflects the tier you picked in Step 1 — more
+review depth pairs with smaller scope — but every size remains
+selectable."
 
 Store the user's choice as `task_size_preference`. If the user picked
 `Custom`, immediately ask a follow-up question via `askQuestions` /

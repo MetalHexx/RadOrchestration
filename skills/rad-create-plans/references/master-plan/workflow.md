@@ -91,9 +91,9 @@ becomes task-local and action-oriented.
    allows, consolidate — group more work per task, or fold thin phases
    together — rather than overflow. The pipeline silently caps any excess
    at expansion time, so overflow drops tail work without warning. Limits
-   are an outer bound the Project Size rubric below operates within.
+   are an outer bound the Phase/Task Size rubric below operates within.
 
-   **Project Size rubric** — The orchestrator's spawn prompt passes a
+   **Phase/Task Size rubric** — The orchestrator's spawn prompt passes a
    `Task size preference` (one of `Small`, `Medium`, `Large`, `Extra Large`,
    or a `Custom: …` prose string). Apply the corresponding scope below.
 

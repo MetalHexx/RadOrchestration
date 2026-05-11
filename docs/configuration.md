@@ -108,7 +108,7 @@ For when commits and PRs fire, commit format, and failure handling, see [pipelin
 ## Process Templates
 
 The process template (review-intensity tier — `extra-high`, `high`,
-`medium`, or `low`) and the Project Size are selected at `/rad-plan`
+`medium`, or `low`) and the Phase/Task Size are selected at `/rad-plan`
 time, not in `orchestration.yml` — see [pipeline.md](pipeline.md#process-templates).
 
 ## State and Snapshots

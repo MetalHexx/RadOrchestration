@@ -81,10 +81,10 @@ The tier is selected at `/rad-plan` time. Plan approval, final review, and
 final approval are mandatory anchors in every tier; only the defensive
 review depth between them varies.
 
-Project Size — task and phase scope — is selected as a separate question
-at `/rad-plan` time, with five options: `Small`, `Medium`, `Large`,
-`Extra Large`, and `Custom` (user-supplied prose criterion). The
-`(Recommended)` Project Size moves with the chosen tier per a monotonic
+Phase/Task Size — task and phase scope — is selected as a separate
+question at `/rad-plan` time, with five options: `Small`, `Medium`,
+`Large`, `Extra Large`, and `Custom` (user-supplied prose criterion).
+The `(Recommended)` size moves with the chosen tier per a monotonic
 mapping: `extra-high` → Small, `high` → Medium, `medium` → Large,
 `low` → Extra Large. More review depth pairs with smaller scope. Every
 size remains selectable in every tier; the marker is a hint, not a
