@@ -193,3 +193,21 @@ test('syncPluginVersion: rewrites plugin.json version from cli/package.json', as
   const v = JSON.parse(fs.readFileSync(path.join(cpDir, 'plugin.json'), 'utf8')).version;
   assert.equal(v, '2.5.7');
 });
+
+test('syncPluginVersion only mutates plugin.json', async () => {
+  const { syncPluginVersion } = await import(buildPluginUrl);
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-spv-'));
+  fs.mkdirSync(path.join(tmp, '.claude-plugin'), { recursive: true });
+  fs.writeFileSync(path.join(tmp, '.claude-plugin', 'plugin.json'),
+    JSON.stringify({ name: 'x', version: '0.0.0' }, null, 2));
+  // Pre-create a hooks dir without sh/ps1 to assert no branch writes to them.
+  fs.mkdirSync(path.join(tmp, 'hooks'));
+  fs.writeFileSync(path.join(tmp, 'hooks', 'hooks.json'),
+    JSON.stringify({ hooks: { SessionStart: [{ command: 'node x' }] } }));
+  syncPluginVersion(tmp, '1.2.3');
+  const pj = JSON.parse(fs.readFileSync(path.join(tmp, '.claude-plugin', 'plugin.json'), 'utf8'));
+  assert.equal(pj.version, '1.2.3');
+  // Ensure no .sh/.ps1 was created as a side effect.
+  assert.ok(!fs.existsSync(path.join(tmp, 'hooks', 'session-start.sh')));
+  assert.ok(!fs.existsSync(path.join(tmp, 'hooks', 'session-start.ps1')));
+});
