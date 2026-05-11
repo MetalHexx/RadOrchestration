@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
 import { enrichActionContext } from '../lib/context-enrichment.js';
 import { initSourceControlForTests } from './fixtures/parity-states.js';
@@ -19,8 +18,6 @@ import type {
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const PROJECT_DIR = '/tmp/test-project/EXEC-INTEGRATION';
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ORCH_ROOT = path.resolve(__dirname, '../../../..');
 
 function makeConfig(overrides: {
   execution_mode?: string;
@@ -30,8 +27,6 @@ function makeConfig(overrides: {
   auto_pr?: string;
 } = {}): OrchestrationConfig {
   return {
-    system: { orch_root: ORCH_ROOT },
-    projects: { base_path: '', naming: 'SCREAMING_CASE' },
     limits: {
       max_phases: 10,
       max_tasks_per_phase: 8,
@@ -46,7 +41,6 @@ function makeConfig(overrides: {
     source_control: {
       auto_commit: overrides.auto_commit ?? 'always',
       auto_pr: overrides.auto_pr ?? 'always',
-      provider: 'github',
     },
     default_template: 'extra-high',
   };

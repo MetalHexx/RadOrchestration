@@ -6,8 +6,6 @@ import { createScaffoldedState } from './fixtures/parity-states.js';
 // ── Minimal config ────────────────────────────────────────────────────────────
 
 const config: OrchestrationConfig = {
-  system: { orch_root: '.github' },
-  projects: { base_path: '', naming: 'SCREAMING_CASE' },
   limits: {
     max_phases: 10,
     max_tasks_per_phase: 8,
@@ -19,7 +17,7 @@ const config: OrchestrationConfig = {
     execution_mode: 'autonomous',
     after_final_review: true,
   },
-  source_control: { auto_commit: 'never', auto_pr: 'never', provider: 'github' },
+  source_control: { auto_commit: 'never', auto_pr: 'never' },
   default_template: 'extra-high',
 };
 

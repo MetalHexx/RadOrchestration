@@ -29,8 +29,6 @@ const IN_PROGRESS_CTX = { step: 'task_executor', phase: 1, task: 1 } as const;
 // ── Default config ────────────────────────────────────────────────────────────
 
 const DEFAULT_CONFIG: OrchestrationConfig = {
-  system: { orch_root: ORCH_ROOT },
-  projects: { base_path: '', naming: 'SCREAMING_CASE' },
   limits: {
     max_phases: 10,
     max_tasks_per_phase: 8,
@@ -45,7 +43,6 @@ const DEFAULT_CONFIG: OrchestrationConfig = {
   source_control: {
     auto_commit: 'always',
     auto_pr: 'always',
-    provider: 'github',
   },
   default_template: 'full',
 };

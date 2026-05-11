@@ -42,12 +42,11 @@ const SAMPLE_STATE: PipelineState = {
 };
 
 const DEFAULT_CONFIG_VALUES = {
-  system: { orch_root: '.claude' },
-  projects: { base_path: '', naming: 'SCREAMING_CASE' },
+  default_template: 'extra-high',
   limits: {
     max_phases: 10,
     max_tasks_per_phase: 8,
-    max_retries_per_task: 2,
+    max_retries_per_task: 5,
     max_consecutive_review_rejections: 3,
   },
   human_gates: {
@@ -58,9 +57,7 @@ const DEFAULT_CONFIG_VALUES = {
   source_control: {
     auto_commit: 'ask',
     auto_pr: 'ask',
-    provider: 'github',
   },
-  default_template: 'extra-high',
 };
 
 // ── Temp dir management ───────────────────────────────────────────────────────
@@ -139,7 +136,7 @@ describe('readConfig', () => {
     const result = readConfig(configPath);
     expect(result.limits.max_phases).toBe(20);
     expect(result.limits.max_tasks_per_phase).toBe(8);
-    expect(result.limits.max_retries_per_task).toBe(2);
+    expect(result.limits.max_retries_per_task).toBe(5);
     expect(result.limits.max_consecutive_review_rejections).toBe(3);
   });
 
@@ -150,7 +147,8 @@ describe('readConfig', () => {
     const result = readConfig(configPath);
     expect(result.source_control.auto_commit).toBe('always');
     expect(result.source_control.auto_pr).toBe('ask');
-    expect(result.source_control.provider).toBe('github');
+    // FR-11: retired source_control.provider key is silently stripped on read.
+    expect((result.source_control as { provider?: unknown }).provider).toBeUndefined();
   });
 });
 

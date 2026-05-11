@@ -22,17 +22,14 @@ import type {
 
 const __filename = fileURLToPath(import.meta.url);
 const TEMPLATES_DIR = path.resolve(path.dirname(__filename), '..', '..', 'templates');
-const ORCH_ROOT = path.resolve(path.dirname(__filename), '..', '..', '..', '..');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function makeConfig(overrides: Partial<OrchestrationConfig> = {}): OrchestrationConfig {
   return {
-    system: { orch_root: ORCH_ROOT },
-    projects: { base_path: '', naming: 'SCREAMING_CASE' },
     limits: { max_phases: 10, max_tasks_per_phase: 8, max_retries_per_task: 2, max_consecutive_review_rejections: 3 },
     human_gates: { after_planning: true, execution_mode: 'ask', after_final_review: true },
-    source_control: { auto_commit: 'ask', auto_pr: 'ask', provider: 'github' },
+    source_control: { auto_commit: 'ask', auto_pr: 'ask' },
     default_template: 'extra-high',
     ...overrides,
   };
@@ -458,7 +455,6 @@ describe('e2e: extra-high.yml full-pipeline smoke test', () => {
       source_control: {
         auto_commit: 'always',
         auto_pr: 'always',
-        provider: 'github',
       },
     });
   }

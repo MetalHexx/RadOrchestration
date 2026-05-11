@@ -14,9 +14,6 @@ const ALLOWLIST_SUBSTRINGS = [
   "// e.g.",
   "// example:",
   "// '.claude'",
-  // state-io DEFAULT_CONFIG authored-install default — overwritten on first
-  // readConfig() call; not a load-bearing runtime path lookup.
-  "authored-install-default",
 ];
 
 function walk(dir: string, acc: string[] = []): string[] {

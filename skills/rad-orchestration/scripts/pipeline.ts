@@ -88,7 +88,9 @@ export function run(argv: string[]): void {
 
   const args = parseArgs(argv);
   const event = args['event'];
-  let orchRoot = detectOrchRoot(); // fallback until config is read
+  // orchRoot is resolved from a pure filesystem signal (detectOrchRoot); the
+  // retired config.system.orch_root key is silently ignored on read (FR-10/11).
+  const orchRoot = detectOrchRoot();
 
   try {
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -112,11 +114,6 @@ export function run(argv: string[]): void {
       process.stdout.write(JSON.stringify(makeErrorResult('Missing required argument: --project-dir', 'unknown'), null, 2) + '\n');
       return;
     }
-
-    // Resolve orchRoot from config early so validation errors report the correct value
-    try {
-      orchRoot = readConfig(configPath).system.orch_root;
-    } catch { /* config unreadable — orchRoot stays as default */ }
 
     // Parse --phase and --task as numbers
     const phaseStr = args['phase'];

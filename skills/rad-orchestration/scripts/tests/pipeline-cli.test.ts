@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { PipelineResult } from '../lib/types.js';
 import { run } from '../pipeline.ts';
 import { processEvent } from '../lib/engine.js';
+import { detectOrchRoot } from '../lib/orch-root.js';
 
 vi.mock('../lib/engine.js', () => ({
   processEvent: vi.fn(),
@@ -214,7 +215,10 @@ describe('pipeline CLI — run()', () => {
     const result = capturedJson();
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('engine exploded');
-    expect(result.orchRoot).toBe('.claude');
+    // post-P06-T01: orchRoot in pipeline.ts comes from detectOrchRoot()
+    // (filesystem signal). Asserting the same call here keeps the test
+    // robust across harness installs.
+    expect(result.orchRoot).toBe(detectOrchRoot());
   });
 
   // ── Output Contract ─────────────────────────────────────────────────────────

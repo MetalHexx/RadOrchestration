@@ -87,8 +87,6 @@ function makeState(): PipelineState {
 }
 
 const baseConfig: OrchestrationConfig = {
-  system: { orch_root: '/orch' },
-  projects: { base_path: '/projects', naming: 'UPPER' },
   limits: {
     max_phases: 5,
     max_tasks_per_phase: 10,
@@ -96,7 +94,7 @@ const baseConfig: OrchestrationConfig = {
     max_consecutive_review_rejections: 3,
   },
   human_gates: { after_planning: true, execution_mode: 'manual', after_final_review: true },
-  source_control: { auto_commit: 'on', auto_pr: 'on', provider: 'github' },
+  source_control: { auto_commit: 'on', auto_pr: 'on' },
   default_template: 'full',
 };
 

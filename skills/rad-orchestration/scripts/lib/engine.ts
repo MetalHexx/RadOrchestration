@@ -1,4 +1,6 @@
+import * as os from 'node:os';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadTemplate } from './template-loader.js';
 import { resolveTemplateName, snapshotTemplate } from './template-resolver.js';
 import { preRead } from './pre-reads.js';
@@ -20,7 +22,21 @@ import type {
 } from './types.js';
 import { scaffoldNodeState } from './scaffold.js';
 import { validateState } from './validator.js';
-import { resolveBasePath } from './state-io.js';
+
+// Canonical user-data projects directory. Mirrors cli/src/lib/upgrade/user-data-paths.ts
+// (userDataPaths().projects); inlined here because the pipeline runtime in
+// skills/rad-orchestration/scripts/ has no shared TS surface with cli/.
+const PROJECTS_BASE_PATH = path.join(os.homedir(), '.radorch', 'projects');
+
+// Absolute templates directory derived from this file's own filesystem location.
+// Mirrors the layout `<install>/<orchRoot>/skills/rad-orchestration/scripts/lib/engine.ts`
+// where templates live at `<install>/<orchRoot>/skills/rad-orchestration/templates/`.
+// Computed once at module load and used in place of the retired
+// `config.system.orch_root + skills/rad-orchestration/templates` path (FR-10).
+const TEMPLATES_DIR = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..', '..', 'templates',
+);
 
 // ── scaffoldState ─────────────────────────────────────────────────────────────
 
@@ -102,15 +118,14 @@ export function processEvent(
   io: IOAdapter,
   configPath?: string,
 ): PipelineResult {
-  let orchRoot = detectOrchRoot();
+  const orchRoot = detectOrchRoot();
 
   try {
     const config = io.readConfig(configPath);
-    orchRoot = config.system.orch_root;
 
     const state = io.readState(projectDir);
 
-    const templatesDir = path.join(orchRoot, 'skills/rad-orchestration/templates');
+    const templatesDir = TEMPLATES_DIR;
     const resolution = resolveTemplateName(state, context.template, config, projectDir, templatesDir);
     // For new-project creation (state === null) always load from the global templates directory.
     // This avoids reading a project-local snapshot that may be mid-write in concurrent scenarios
@@ -264,7 +279,7 @@ export function processEvent(
       if (normalizedContext.doc_path) {
         normalizedContext.doc_path = normalizeDocPath(
           normalizedContext.doc_path,
-          resolveBasePath(config.projects.base_path),
+          PROJECTS_BASE_PATH,
           path.basename(projectDir),
         );
       }
@@ -385,7 +400,7 @@ export function processEvent(
     if (normalizedContext.doc_path) {
       normalizedContext.doc_path = normalizeDocPath(
         normalizedContext.doc_path,
-        resolveBasePath(config.projects.base_path),
+        PROJECTS_BASE_PATH,
         path.basename(projectDir),
       );
     }

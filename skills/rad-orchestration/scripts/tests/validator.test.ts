@@ -27,8 +27,6 @@ const PROJECT_DIR = '/tmp/test-project/VALIDATOR-TEST';
 const ORCH_ROOT = path.resolve(__dirname, '../../../..');
 
 const DEFAULT_CONFIG: OrchestrationConfig = {
-  system: { orch_root: ORCH_ROOT },
-  projects: { base_path: '', naming: 'SCREAMING_CASE' },
   limits: {
     max_phases: 10,
     max_tasks_per_phase: 8,
@@ -43,7 +41,6 @@ const DEFAULT_CONFIG: OrchestrationConfig = {
   source_control: {
     auto_commit: 'ask',
     auto_pr: 'ask',
-    provider: 'github',
   },
   default_template: 'extra-high',
 };

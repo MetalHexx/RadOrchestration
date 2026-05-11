@@ -15,11 +15,11 @@ import type {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const PROJECT_DIR = '/tmp/test-project/PARITY-TEST';
+// Retained for external callers that still resolve the install dir against this
+// constant; post-P06-T01 it is no longer surfaced through the typed config.
 export const ORCH_ROOT = path.resolve(__dirname, '../../../../..');
 
 export const DEFAULT_CONFIG: OrchestrationConfig = {
-  system: { orch_root: ORCH_ROOT },
-  projects: { base_path: '', naming: 'SCREAMING_CASE' },
   limits: {
     max_phases: 10,
     max_tasks_per_phase: 8,
@@ -34,7 +34,6 @@ export const DEFAULT_CONFIG: OrchestrationConfig = {
   source_control: {
     auto_commit: 'ask',
     auto_pr: 'ask',
-    provider: 'github',
   },
   default_template: 'extra-high',
 };
@@ -125,13 +124,9 @@ export function completePlanningSteps(state: PipelineState, through: string): vo
 export function createConfig(overrides: {
   human_gates?: Partial<OrchestrationConfig['human_gates']>;
   source_control?: Partial<OrchestrationConfig['source_control']>;
-  system?: Partial<OrchestrationConfig['system']>;
-  projects?: Partial<OrchestrationConfig['projects']>;
   limits?: Partial<OrchestrationConfig['limits']>;
 }): OrchestrationConfig {
   return {
-    system: { ...DEFAULT_CONFIG.system, ...overrides.system },
-    projects: { ...DEFAULT_CONFIG.projects, ...overrides.projects },
     limits: { ...DEFAULT_CONFIG.limits, ...overrides.limits },
     human_gates: { ...DEFAULT_CONFIG.human_gates, ...overrides.human_gates },
     source_control: { ...DEFAULT_CONFIG.source_control, ...overrides.source_control },

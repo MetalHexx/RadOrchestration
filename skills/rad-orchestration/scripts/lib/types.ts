@@ -319,13 +319,6 @@ export interface EventContext {
 // Orchestration Config (from orchestration.yml)
 
 export interface OrchestrationConfig {
-  system: {
-    orch_root: string;
-  };
-  projects: {
-    base_path: string;
-    naming: string;
-  };
   limits: {
     max_phases: number;
     max_tasks_per_phase: number;
@@ -340,9 +333,8 @@ export interface OrchestrationConfig {
   source_control: {
     auto_commit: string;
     auto_pr: string;
-    provider: string;
   };
-  default_template: string;
+  default_template: 'extra-high' | 'high' | 'medium' | 'low' | 'ask' | string;
 }
 
 // Event Index (built at template load time)

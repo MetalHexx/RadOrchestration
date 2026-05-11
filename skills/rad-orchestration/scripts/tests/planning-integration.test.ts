@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
 import { loadTemplate } from '../lib/template-loader.js';
+import { detectOrchRoot } from '../lib/orch-root.js';
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -17,11 +18,11 @@ import type {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/extra-high.yml');
 const PROJECT_DIR = '/tmp/test-project/INTEGRATION-TEST';
-const ORCH_ROOT = path.resolve(__dirname, '../../../..');
+// post-P06-T01: orchRoot derives from detectOrchRoot() (filesystem signal),
+// not config.system.orch_root.
+const EXPECTED_ORCH_ROOT = detectOrchRoot();
 
 const DEFAULT_CONFIG: OrchestrationConfig = {
-  system: { orch_root: ORCH_ROOT },
-  projects: { base_path: '', naming: 'SCREAMING_CASE' },
   limits: {
     max_phases: 10,
     max_tasks_per_phase: 8,
@@ -36,7 +37,6 @@ const DEFAULT_CONFIG: OrchestrationConfig = {
   source_control: {
     auto_commit: 'ask',
     auto_pr: 'ask',
-    provider: 'github',
   },
   default_template: 'extra-high',
 };
@@ -333,7 +333,7 @@ describe('Planning-tier — error scenarios', () => {
       action: null,
       context: {},
       mutations_applied: [],
-      orchRoot: ORCH_ROOT,
+      orchRoot: EXPECTED_ORCH_ROOT,
       error: { message: expect.any(String), event: 'bogus_event' },
     });
 
@@ -345,7 +345,7 @@ describe('Planning-tier — error scenarios', () => {
       action: null,
       context: {},
       mutations_applied: [],
-      orchRoot: ORCH_ROOT,
+      orchRoot: EXPECTED_ORCH_ROOT,
       error: { message: expect.any(String), event: 'master_plan_completed', field: 'doc_path' },
     });
   });

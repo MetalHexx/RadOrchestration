@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processEvent, normalizeDocPath } from '../lib/engine.js';
 import { loadTemplate } from '../lib/template-loader.js';
 import { getMutation } from '../lib/mutations.js';
 import { OUT_OF_BAND_EVENTS } from '../lib/constants.js';
+import { detectOrchRoot } from '../lib/orch-root.js';
 
 vi.mock('../lib/mutations.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../lib/mutations.js')>();
@@ -26,11 +28,12 @@ import type {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/extra-high.yml');
 const PROJECT_DIR = '/tmp/test-project/DAG-TEST';
-const ORCH_ROOT = path.resolve(__dirname, '../../../..');
+// post-P06-T01: orchRoot is resolved via detectOrchRoot() (filesystem signal),
+// not config.system.orch_root. The expected value is the basename of the
+// install folder (e.g. ".claude" / ".github" / the worktree name in dev).
+const EXPECTED_ORCH_ROOT = detectOrchRoot();
 
 const DEFAULT_CONFIG: OrchestrationConfig = {
-  system: { orch_root: ORCH_ROOT },
-  projects: { base_path: '', naming: 'SCREAMING_CASE' },
   limits: {
     max_phases: 10,
     max_tasks_per_phase: 8,
@@ -45,7 +48,6 @@ const DEFAULT_CONFIG: OrchestrationConfig = {
   source_control: {
     auto_commit: 'ask',
     auto_pr: 'ask',
-    provider: 'github',
   },
   default_template: 'extra-high',
 };
@@ -121,7 +123,7 @@ describe('engine – processEvent', () => {
       expect(ctx.step).toBe('requirements');
       expect(typeof ctx.repository_skills_block).toBe('string');
       expect(result.mutations_applied).toContain('scaffold_initial_state');
-      expect(result.orchRoot).toBe(ORCH_ROOT);
+      expect(result.orchRoot).toBe(EXPECTED_ORCH_ROOT);
     });
 
     it('scaffolded state has correct schema, metadata, config, and graph status', () => {
@@ -439,7 +441,7 @@ describe('engine – processEvent', () => {
       expect(result.error).toBeDefined();
       expect(result.error!.message).toContain('totally_unknown_event');
       expect(result.error!.event).toBe('totally_unknown_event');
-      expect(result.orchRoot).toBe(ORCH_ROOT);
+      expect(result.orchRoot).toBe(EXPECTED_ORCH_ROOT);
     });
 
     it('does not write state on unknown event', () => {
@@ -464,7 +466,7 @@ describe('engine – processEvent', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
       expect(result.error!.field).toBe('doc_path');
-      expect(result.orchRoot).toBe(ORCH_ROOT);
+      expect(result.orchRoot).toBe(EXPECTED_ORCH_ROOT);
     });
 
     it('does not write state on pre-read failure', () => {
@@ -542,7 +544,7 @@ describe('engine – processEvent', () => {
       const result = processEvent('start', PROJECT_DIR, {}, io);
 
       expect(result).toHaveProperty('orchRoot');
-      expect(result.orchRoot).toBe(ORCH_ROOT);
+      expect(result.orchRoot).toBe(EXPECTED_ORCH_ROOT);
     });
 
     it('all error results include orchRoot field', () => {
@@ -551,7 +553,7 @@ describe('engine – processEvent', () => {
       const result = processEvent('totally_unknown_event', PROJECT_DIR, {}, io);
 
       expect(result).toHaveProperty('orchRoot');
-      expect(result.orchRoot).toBe(ORCH_ROOT);
+      expect(result.orchRoot).toBe(EXPECTED_ORCH_ROOT);
     });
   });
 
@@ -858,10 +860,11 @@ describe('out-of-band event routing', () => {
   it('OOB mutation receives normalized doc_path when context.doc_path is a raw absolute path', () => {
     const state = makeScaffoldedState();
     const io = createMockIO(state);
-    // '\DAG-TEST\tasks\T01.md' → normalizeDocPath with basePath='' and projectName='DAG-TEST':
-    //   forward-slash conversion → '/DAG-TEST/tasks/T01.md'
-    //   prefix '/DAG-TEST/' matches → strips to 'tasks/T01.md'
-    const rawDocPath = '\\DAG-TEST\\tasks\\T01.md';
+    // post-P06-T01: pipeline runtime hardcodes basePath = ~/.radorch/projects
+    // (was config.projects.base_path). Compose a doc_path that lives under
+    // <basePath>/DAG-TEST/ so the prefix strip fires.
+    const projectsBase = path.join(os.homedir(), '.radorch', 'projects');
+    const rawDocPath = path.join(projectsBase, 'DAG-TEST', 'tasks', 'T01.md');
 
     let capturedDocPath: string | undefined;
     vi.mocked(getMutation).mockImplementationOnce((_event) => (s, ctx) => {
