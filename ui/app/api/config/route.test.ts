@@ -3,11 +3,11 @@
  * Run with: npx tsx ui/app/api/config/route.test.ts
  *
  * Integration-style tests: creates a temp radorch home directory with a real
- * orchestration.yml, sets RADORCH_HOME to the temp dir, then exercises the
+ * orchestration.yml, stubs os.homedir to the temp dir, then exercises the
  * GET and PUT route handlers via Request/Response objects.
  */
 import assert from 'node:assert';
-import { mkdtemp, writeFile as fsWriteFile, rm, readFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile as fsWriteFile, rm, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import type { OrchestrationConfig } from '@/types/config';
@@ -64,16 +64,20 @@ source_control:
 /* ------------------------------------------------------------------ */
 
 let tmpDir: string;
+let origHomedir: typeof os.homedir;
 
 /** Create a temp radorch home with orchestration.yml populated */
 async function setupWorkspace(yamlContent: string = VALID_YAML): Promise<void> {
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'route-test-'));
-  await fsWriteFile(path.join(tmpDir, 'orchestration.yml'), yamlContent, 'utf-8');
-  process.env.RADORCH_HOME = tmpDir;
+  const radorcDir = path.join(tmpDir, '.radorch');
+  await mkdir(radorcDir, { recursive: true });
+  await fsWriteFile(path.join(radorcDir, 'orchestration.yml'), yamlContent, 'utf-8');
+  origHomedir = os.homedir;
+  (os as unknown as { homedir: () => string }).homedir = () => tmpDir;
 }
 
 async function teardownWorkspace(): Promise<void> {
-  delete process.env.RADORCH_HOME;
+  (os as unknown as { homedir: typeof os.homedir }).homedir = origHomedir;
   if (tmpDir) {
     await rm(tmpDir, { recursive: true, force: true });
   }
@@ -242,19 +246,19 @@ async function run() {
   assert.deepStrictEqual(json.config.source_control, VALID_CONFIG.source_control);
 
   // Verify the file was actually written on disk
-  const configPath = path.join(tmpDir, 'orchestration.yml');
+  const configPath = path.join(tmpDir, '.radorch', 'orchestration.yml');
   const onDisk = await readFile(configPath, 'utf-8');
   assert.ok(onDisk.includes('max_phases: 5'), 'Written file should contain max_phases: 5');
 });
 
   // --- File-system error (write to non-existent dir) ---
   await test('non-writable config returns 403', async () => {
-  // Point RADORCH_HOME to a dir that doesn't exist → orchestration.yml's parent dir is missing
+  // Point os.homedir to a dir that doesn't exist → orchestration.yml's parent dir is missing
   const badDir = path.join(os.tmpdir(), 'route-test-bad-nonexistent-' + Date.now());
-  process.env.RADORCH_HOME = badDir;
+  (os as unknown as { homedir: () => string }).homedir = () => badDir;
   const req = makePutRequest({ mode: 'form', config: VALID_CONFIG });
   const res = await PUT(req);
-  process.env.RADORCH_HOME = tmpDir; // restore
+  (os as unknown as { homedir: () => string }).homedir = () => tmpDir; // restore
   assert.strictEqual(res.status, 403);
   const json = await res.json();
   assert.ok(json.error.includes('not writable'), `Expected writable error: ${json.error}`);

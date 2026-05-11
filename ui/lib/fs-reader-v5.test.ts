@@ -91,8 +91,8 @@ function makeV4State() {
 
 async function setup(): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-v5-test-'));
-  const projectsDir = path.join(dir, 'projects');
-  await mkdir(projectsDir);
+  const projectsDir = path.join(dir, '.radorch', 'projects');
+  await mkdir(projectsDir, { recursive: true });
 
   // v5-project: valid v5 state.json (execution tier, in_progress graph)
   await mkdir(path.join(projectsDir, 'v5-project'));
@@ -155,13 +155,12 @@ async function test(name: string, fn: () => Promise<void>) {
 async function run() {
   try {
     tmpDir = await setup();
-    const prior = process.env.RADORCH_HOME;
-    process.env.RADORCH_HOME = tmpDir;
+    const origHomedir = os.homedir;
+    (os as unknown as { homedir: () => string }).homedir = () => tmpDir;
     const projects = await discoverProjects();
-    if (prior === undefined) delete process.env.RADORCH_HOME;
-    else process.env.RADORCH_HOME = prior;
+    (os as unknown as { homedir: () => string }).homedir = origHomedir;
 
-    const projectsDir = path.join(tmpDir, 'projects');
+    const projectsDir = path.join(tmpDir, '.radorch', 'projects');
 
     console.log('discoverProjects — v5 state support');
 

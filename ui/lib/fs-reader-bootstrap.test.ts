@@ -3,7 +3,7 @@
  * Run with: npx tsx ui/lib/fs-reader-bootstrap.test.ts
  */
 import assert from 'node:assert';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { readConfig, resolveOrchRoot } from './fs-reader';
@@ -52,33 +52,34 @@ async function run() {
 
     // ── readConfig() tests ────────────────────────────────────────────────
 
-    console.log('\nreadConfig() — reads from RADORCH_HOME/orchestration.yml');
+    console.log('\nreadConfig() — reads from ~/.radorch/orchestration.yml');
 
-    await test('reads config from RADORCH_HOME when set', async () => {
-      await writeFile(path.join(tmpDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
+    await test('reads config from ~/.radorch/orchestration.yml', async () => {
+      const radorcDir = path.join(tmpDir, '.radorch');
+      await mkdir(radorcDir, { recursive: true });
+      await writeFile(path.join(radorcDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
 
-      const prior = process.env.RADORCH_HOME;
-      process.env.RADORCH_HOME = tmpDir;
+      const origHomedir = os.homedir;
+      (os as unknown as { homedir: () => string }).homedir = () => tmpDir;
       try {
         const config = await readConfig();
         assert.strictEqual(config.version, '1');
       } finally {
-        if (prior === undefined) delete process.env.RADORCH_HOME;
-        else process.env.RADORCH_HOME = prior;
+        (os as unknown as { homedir: () => string }).homedir = origHomedir;
       }
     });
 
     await test('throws when orchestration.yml does not exist', async () => {
-      const prior = process.env.RADORCH_HOME;
-      process.env.RADORCH_HOME = path.join(tmpDir, 'nonexistent');
+      const fakeHome = path.join(tmpDir, 'nonexistent-home');
+      const origHomedir = os.homedir;
+      (os as unknown as { homedir: () => string }).homedir = () => fakeHome;
       try {
         await assert.rejects(
           () => readConfig(),
           (err: unknown) => err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT'
         );
       } finally {
-        if (prior === undefined) delete process.env.RADORCH_HOME;
-        else process.env.RADORCH_HOME = prior;
+        (os as unknown as { homedir: () => string }).homedir = origHomedir;
       }
     });
 

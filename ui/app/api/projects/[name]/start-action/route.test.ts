@@ -28,19 +28,23 @@ source_control:
 
 let tmpDir = '';
 let projectsDir = '';
+let origHomedir: typeof os.homedir;
 
 async function setup() {
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'start-action-'));
-  // Write orchestration.yml at RADORCH_HOME root
-  await writeFile(path.join(tmpDir, 'orchestration.yml'), VALID_YAML, 'utf-8');
-  projectsDir = path.join(tmpDir, 'projects');
+  const radorcDir = path.join(tmpDir, '.radorch');
+  // Write orchestration.yml under ~/.radorch/
+  await mkdir(radorcDir, { recursive: true });
+  await writeFile(path.join(radorcDir, 'orchestration.yml'), VALID_YAML, 'utf-8');
+  projectsDir = path.join(radorcDir, 'projects');
   await mkdir(path.join(projectsDir, 'DEMO-PROJECT'), { recursive: true });
-  process.env.RADORCH_HOME = tmpDir;
+  origHomedir = os.homedir;
+  (os as unknown as { homedir: () => string }).homedir = () => tmpDir;
   process.env.LAUNCH_CLAUDE_PROJECT_DRY_RUN = '1';
 }
 
 async function teardown() {
-  delete process.env.RADORCH_HOME;
+  (os as unknown as { homedir: typeof os.homedir }).homedir = origHomedir;
   delete process.env.LAUNCH_CLAUDE_PROJECT_DRY_RUN;
   await rm(tmpDir, { recursive: true, force: true });
 }
@@ -104,12 +108,11 @@ async function invokePOST(body: unknown, name: string) {
       console.log('✓ start-planning happy path → 200 success:true');
     }
 
-    // RADORCH_HOME pointing to dir with no projects/ subdir → 500
+    // home pointing to dir with no .radorch/projects/ subdir → 500
     {
-      const saved = process.env.RADORCH_HOME;
       const emptyDir = await mkdtemp(path.join(os.tmpdir(), 'start-action-empty-'));
       try {
-        process.env.RADORCH_HOME = emptyDir;
+        (os as unknown as { homedir: () => string }).homedir = () => emptyDir;
         const res = await invokePOST({ action: 'start-brainstorming' }, 'DEMO-PROJECT');
         assert.equal(res.status, 500);
         const json = await res.json();
@@ -117,8 +120,7 @@ async function invokePOST(body: unknown, name: string) {
         assert.ok(!/[A-Z]:\\|\/home\//.test(json.error), 'error must not echo absolute host path');
         console.log('✓ missing projects dir → 500, concise error, no path leakage');
       } finally {
-        if (saved === undefined) delete process.env.RADORCH_HOME;
-        else process.env.RADORCH_HOME = saved;
+        (os as unknown as { homedir: () => string }).homedir = () => tmpDir; // restore
         await rm(emptyDir, { recursive: true, force: true });
       }
     }

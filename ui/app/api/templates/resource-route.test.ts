@@ -3,7 +3,7 @@
  * Run with: npx tsx --test "app/api/templates/resource-route.test.ts" (from ui/ directory)
  *
  * Integration-style tests: creates a temp radorch home directory with a templates/
- * directory, sets RADORCH_HOME to the temp dir, then exercises the GET and PUT
+ * directory, stubs os.homedir to the temp dir, then exercises the GET and PUT
  * route handlers via Request objects.
  */
 import assert from 'node:assert';
@@ -45,25 +45,21 @@ nodes:
 
 let tmpDir: string;
 let templateDir: string;
-let prevRadorcHome: string | undefined;
+let origHomedir: typeof os.homedir;
 
 /** Create a temp radorch home with an empty templates/ dir */
 async function setupWorkspace(): Promise<void> {
-  prevRadorcHome = process.env.RADORCH_HOME;
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'templates-id-test-'));
-  templateDir = path.join(tmpDir, 'templates');
+  templateDir = path.join(tmpDir, '.radorch', 'templates');
   await mkdir(templateDir, { recursive: true });
-  process.env.RADORCH_HOME = tmpDir;
+  origHomedir = os.homedir;
+  (os as unknown as { homedir: () => string }).homedir = () => tmpDir;
 }
 
 async function teardownWorkspace(): Promise<void> {
+  (os as unknown as { homedir: typeof os.homedir }).homedir = origHomedir;
   if (tmpDir) {
     await rm(tmpDir, { recursive: true, force: true });
-  }
-  if (prevRadorcHome === undefined) {
-    delete process.env.RADORCH_HOME;
-  } else {
-    process.env.RADORCH_HOME = prevRadorcHome;
   }
 }
 

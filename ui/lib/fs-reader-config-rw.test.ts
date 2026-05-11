@@ -4,7 +4,7 @@
  * Run with: npx tsx ui/lib/fs-reader-config-rw.test.ts
  */
 import assert from 'node:assert';
-import { mkdtemp, writeFile as fsWriteFile, rm, readFile, readdir } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile as fsWriteFile, rm, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { getConfigPath, readConfig, readConfigWithRaw, writeConfig } from './fs-reader';
@@ -75,13 +75,12 @@ async function run() {
   try {
     tmpDir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-config-rw-test-'));
 
-    // Helper to set RADORCH_HOME and restore it
-    const withRadorcHome = (dir: string, fn: () => Promise<void>): Promise<void> => {
-      const prior = process.env.RADORCH_HOME;
-      process.env.RADORCH_HOME = dir;
+    // Helper to stub os.homedir to a fake home directory and restore it
+    const withFakeHome = (dir: string, fn: () => Promise<void>): Promise<void> => {
+      const origHomedir = os.homedir;
+      (os as unknown as { homedir: () => string }).homedir = () => dir;
       return fn().finally(() => {
-        if (prior === undefined) delete process.env.RADORCH_HOME;
-        else process.env.RADORCH_HOME = prior;
+        (os as unknown as { homedir: () => string }).homedir = origHomedir;
       });
     };
 
@@ -89,25 +88,18 @@ async function run() {
 
     console.log('\ngetConfigPath()');
 
-    await test('returns RADORCH_HOME/orchestration.yml when RADORCH_HOME is set', async () => {
-      await withRadorcHome(tmpDir, async () => {
+    await test('returns <home>/.radorch/orchestration.yml for a given home dir', async () => {
+      await withFakeHome(tmpDir, async () => {
         const result = getConfigPath();
-        const expected = path.join(tmpDir, 'orchestration.yml');
+        const expected = path.join(tmpDir, '.radorch', 'orchestration.yml');
         assert.strictEqual(result, expected);
       });
     });
 
-    await test('returns ~/.radorch/orchestration.yml when RADORCH_HOME is not set', async () => {
-      const prior = process.env.RADORCH_HOME;
-      delete process.env.RADORCH_HOME;
-      try {
-        const result = getConfigPath();
-        const expected = path.join(os.homedir(), '.radorch', 'orchestration.yml');
-        assert.strictEqual(result, expected);
-      } finally {
-        if (prior === undefined) delete process.env.RADORCH_HOME;
-        else process.env.RADORCH_HOME = prior;
-      }
+    await test('returns ~/.radorch/orchestration.yml unconditionally', async () => {
+      const result = getConfigPath();
+      const expected = path.join(os.homedir(), '.radorch', 'orchestration.yml');
+      assert.strictEqual(result, expected);
     });
 
     // ── readConfig() still works ──────────────────────────────────────────
@@ -115,12 +107,19 @@ async function run() {
     console.log('\nreadConfig() — still works after refactor');
 
     await test('readConfig() reads and parses config', async () => {
-      await withRadorcHome(tmpDir, async () => {
-        await fsWriteFile(path.join(tmpDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
-        const config = await readConfig();
-        assert.strictEqual(config.version, '1');
-        assert.strictEqual(config.projects.base_path, 'projects');
-      });
+      const fakeHome = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-config-rw-readconfig-'));
+      try {
+        const radorcDir = path.join(fakeHome, '.radorch');
+        await mkdir(radorcDir, { recursive: true });
+        await fsWriteFile(path.join(radorcDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
+        await withFakeHome(fakeHome, async () => {
+          const config = await readConfig();
+          assert.strictEqual(config.version, '1');
+          assert.strictEqual(config.projects.base_path, 'projects');
+        });
+      } finally {
+        await rm(fakeHome, { recursive: true, force: true });
+      }
     });
 
     // ── readConfigWithRaw() tests ─────────────────────────────────────────
@@ -128,23 +127,36 @@ async function run() {
     console.log('\nreadConfigWithRaw()');
 
     await test('returns both config and rawYaml', async () => {
-      await withRadorcHome(tmpDir, async () => {
-        const { config, rawYaml } = await readConfigWithRaw();
-        assert.strictEqual(config.version, '1');
-        assert.strictEqual(config.projects.naming, 'SCREAMING_CASE');
-        assert.strictEqual(typeof rawYaml, 'string');
-        assert.ok(rawYaml.includes('version'));
-        assert.ok(rawYaml.includes('SCREAMING_CASE'));
-      });
+      const fakeHome = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-config-rw-rawconfig-'));
+      try {
+        const radorcDir = path.join(fakeHome, '.radorch');
+        await mkdir(radorcDir, { recursive: true });
+        await fsWriteFile(path.join(radorcDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
+        await withFakeHome(fakeHome, async () => {
+          const { config, rawYaml } = await readConfigWithRaw();
+          assert.strictEqual(config.version, '1');
+          assert.strictEqual(config.projects.naming, 'SCREAMING_CASE');
+          assert.strictEqual(typeof rawYaml, 'string');
+          assert.ok(rawYaml.includes('version'));
+          assert.ok(rawYaml.includes('SCREAMING_CASE'));
+        });
+      } finally {
+        await rm(fakeHome, { recursive: true, force: true });
+      }
     });
 
     await test('throws on missing file', async () => {
-      await withRadorcHome(path.join(tmpDir, 'nonexistent'), async () => {
-        await assert.rejects(
-          () => readConfigWithRaw(),
-          (err: unknown) => err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT'
-        );
-      });
+      const fakeHome = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-config-rw-missing-'));
+      try {
+        await withFakeHome(fakeHome, async () => {
+          await assert.rejects(
+            () => readConfigWithRaw(),
+            (err: unknown) => err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT'
+          );
+        });
+      } finally {
+        await rm(fakeHome, { recursive: true, force: true });
+      }
     });
 
     // ── writeConfig() tests ───────────────────────────────────────────────
@@ -152,41 +164,63 @@ async function run() {
     console.log('\nwriteConfig()');
 
     await test('writes atomically — file contains provided content and no temp files remain', async () => {
-      await withRadorcHome(tmpDir, async () => {
-        const newContent = 'version: "2"\n';
-        await writeConfig(newContent);
+      const fakeHome = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-config-rw-write-'));
+      try {
+        const radorcDir = path.join(fakeHome, '.radorch');
+        await mkdir(radorcDir, { recursive: true });
+        await fsWriteFile(path.join(radorcDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
+        await withFakeHome(fakeHome, async () => {
+          const newContent = 'version: "2"\n';
+          await writeConfig(newContent);
 
-        const configPath = getConfigPath();
-        const written = await readFile(configPath, 'utf-8');
-        assert.strictEqual(written, newContent);
+          const configPath = getConfigPath();
+          const written = await readFile(configPath, 'utf-8');
+          assert.strictEqual(written, newContent);
 
-        // No temp files should remain
-        const configDir = path.dirname(configPath);
-        const files = await readdir(configDir);
-        const tmpFiles = files.filter(f => f.startsWith('.orchestration.yml.tmp.'));
-        assert.strictEqual(tmpFiles.length, 0, `Temp files remain: ${tmpFiles.join(', ')}`);
-      });
+          // No temp files should remain
+          const configDir = path.dirname(configPath);
+          const files = await readdir(configDir);
+          const tmpFiles = files.filter(f => f.startsWith('.orchestration.yml.tmp.'));
+          assert.strictEqual(tmpFiles.length, 0, `Temp files remain: ${tmpFiles.join(', ')}`);
+        });
+      } finally {
+        await rm(fakeHome, { recursive: true, force: true });
+      }
     });
 
     await test('temp file is in same directory as config', async () => {
-      await withRadorcHome(tmpDir, async () => {
-        const configPath = getConfigPath();
-        const configDir = path.dirname(configPath);
-        await writeConfig(MINIMAL_CONFIG_YAML);
-        const written = await readFile(configPath, 'utf-8');
-        assert.strictEqual(written, MINIMAL_CONFIG_YAML);
-        const files = await readdir(configDir);
-        assert.ok(files.includes('orchestration.yml'));
-      });
+      const fakeHome = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-config-rw-tempfile-'));
+      try {
+        const radorcDir = path.join(fakeHome, '.radorch');
+        await mkdir(radorcDir, { recursive: true });
+        await fsWriteFile(path.join(radorcDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
+        await withFakeHome(fakeHome, async () => {
+          const configPath = getConfigPath();
+          const configDir = path.dirname(configPath);
+          await writeConfig(MINIMAL_CONFIG_YAML);
+          const written = await readFile(configPath, 'utf-8');
+          assert.strictEqual(written, MINIMAL_CONFIG_YAML);
+          const files = await readdir(configDir);
+          assert.ok(files.includes('orchestration.yml'));
+        });
+      } finally {
+        await rm(fakeHome, { recursive: true, force: true });
+      }
     });
 
-    await test('rejects when RADORCH_HOME directory does not exist', async () => {
-      await withRadorcHome(path.join(tmpDir, 'no-such-dir'), async () => {
-        await assert.rejects(
-          () => writeConfig('version: "3"\n'),
-          (err: unknown) => err instanceof Error
-        );
-      });
+    await test('rejects when home/.radorch directory does not exist', async () => {
+      const fakeHome = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-config-rw-nodir-'));
+      try {
+        // fakeHome exists but has no .radorch subdir, so the write should fail
+        await withFakeHome(fakeHome, async () => {
+          await assert.rejects(
+            () => writeConfig('version: "3"\n'),
+            (err: unknown) => err instanceof Error
+          );
+        });
+      } finally {
+        await rm(fakeHome, { recursive: true, force: true });
+      }
     });
 
     // ── stringifyYaml() tests ─────────────────────────────────────────────
