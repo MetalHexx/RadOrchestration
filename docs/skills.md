@@ -44,14 +44,6 @@ The tier governs review depth — `extra-high` runs per-task code review plus ph
 
 **What it produces** — Nothing is really produced in this command other than the new worktree where `/rad-execute` will be run.
 
-### /rad-configure-system
-
-**What it does** — Walks you through editing `orchestration.yml` to set pipeline limits, gate modes, and source-control modes.
-
-**When to use it** — Use it on first install or whenever you want to change the system-wide defaults.
-
-**What it produces** — Edits to `orchestration.yml`.
-
 ## User-invocable UI skills
 
 Three skills control the dashboard UI lifecycle:

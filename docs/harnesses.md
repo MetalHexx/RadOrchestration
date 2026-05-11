@@ -40,13 +40,12 @@ Install the GitHub Copilot CLI following the [GitHub instructions](https://docs.
 
 ## Slash-Command Surface
 
-The same five slash commands work on every supported harness:
+The same four slash commands work on every supported harness:
 
 - `/rad-brainstorm`
 - `/rad-plan`
 - `/rad-execute`
 - `/rad-execute-parallel`
-- `/rad-configure-system`
 
 Behavior is the same in every harness with one notable per-harness difference in `/rad-execute-parallel`. That command runs the plan in a dedicated worktree and branch. How a new session is opened for the worktree depends on the harness:
 

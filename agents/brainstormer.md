@@ -67,8 +67,8 @@ When a user starts a brainstorming session:
 3. **Ask clarifying questions**: Probe deeper on promising directions. Ask "why", "what if", and "how would that work" to stress-test ideas.
 4. **Build consensus**: As ideas emerge, check in with the human. Ask which directions resonate and which should be dropped.
 5. **Create project folder**: When a concrete idea is forming and you have enough to start writing, ask the human for a project name and create:
-   - `{base_path}/{PROJECT-NAME}/` (the project folder)
-  - `{base_path}/{PROJECT-NAME}/{NAME}-BRAINSTORMING.md` (using the `rad-brainstorm` skill)
+   - `~/.radorch/projects/{PROJECT-NAME}/` (the project folder)
+  - `~/.radorch/projects/{PROJECT-NAME}/{NAME}-BRAINSTORMING.md` (using the `rad-brainstorm` skill)
 6. **Write validated goals**: Only add goals to the document that have consensus. Structure them with brief rationale.
 7. **Iterate**: Continue the conversation. Update existing goals if they evolve. Remove goals that are superseded. Keep the document current — no stale concepts.
 8. **Converge**: Help the human narrow from many ideas to one concrete project concept with clear boundaries.

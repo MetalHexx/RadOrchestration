@@ -4,7 +4,7 @@
 
 ## orchestration.yml Reference
 
-Run `/rad-configure-system` to create or update the file interactively, or edit it directly. The dashboard UI (gear icon) also provides a visual editor.  I recommend using the UI for the best configuration experience.  See: [dashboard](dashboard.md) for more info.
+Edit the file directly, or open the gear panel in the dashboard UI by running `/rad-orchestration:rad-ui-start` and clicking the gear icon. The dashboard provides the best configuration experience — see [dashboard](dashboard.md) for details.
 
 ### `system`
 
@@ -27,7 +27,7 @@ projects:
   naming: SCREAMING_CASE  //this is bugged. Everything uses SCREAMING-CASE right now. :)
 ```
 
-`base_path` accepts a relative path (resolved from the workspace root) or an absolute path — absolute paths are useful when multiple git worktrees share a single project folder. Each project lands in `{base_path}/{PROJECT-NAME}/`. `naming` accepts `SCREAMING_CASE`, `lowercase`, or `numbered`.
+`base_path` accepts a relative path (resolved from the workspace root) or an absolute path — absolute paths are useful when multiple git worktrees share a single project folder. Each project lands in `~/.radorch/projects/{PROJECT-NAME}/` by default. `naming` accepts `SCREAMING_CASE`, `lowercase`, or `numbered`.
 
 ### `default_template`
 
@@ -113,7 +113,7 @@ time, not in `orchestration.yml` — see [pipeline.md](pipeline.md#process-templ
 
 ## State and Snapshots
 
-`state.json` is the resumable record of a project. It lives in the project folder (`{base_path}/{PROJECT-NAME}/state.json`) and tracks project identity, planning-step completion, phase and task progress, review verdicts, and commit references. You do not edit it directly; the pipeline writes it after every action.  If you need to change it for some reason, you can ask an agent to help you.
+`state.json` is the resumable record of a project. It lives in the project folder (`~/.radorch/projects/{PROJECT-NAME}/state.json`) and tracks project identity, planning-step completion, phase and task progress, review verdicts, and commit references. You do not edit it directly; the pipeline writes it after every action.  If you need to change it for some reason, you can ask an agent to help you.
 
 **Snapshot vs live-read** — when a project is created, the pipeline copies `limits`, `human_gates`, and `source_control` modes out of `orchestration.yml` and locks them into `state.json`. Every subsequent pipeline run reads those settings from the snapshot, not from `orchestration.yml`. This means changing `orchestration.yml` mid-project has no effect on that project — only new projects pick up the new values. Settings that are never snapshotted (`system.orch_root`, `projects.*`, `source_control.provider`) are always read live from `orchestration.yml`.
 
