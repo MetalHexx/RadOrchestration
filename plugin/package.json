@@ -10,7 +10,7 @@
     "skills/",
     "hooks/",
     "bin/",
-    "dist/",
+    "manifests/",
     "ui/"
   ],
   "engines": { "node": ">=20" }

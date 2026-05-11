@@ -17,6 +17,7 @@ test('build-plugin meta-script: orchestration order constant exposes the documen
     'pipeline-bundle',
     'ui-standalone',
     'adapters-plugin',
+    'copy-manifest-catalog',
     'copy-bundles-into-claude-plugin',
     'copy-plugin-package-json',
     'sync-plugin-version',
@@ -33,7 +34,7 @@ test('validatePluginTree: detects missing required artifacts', async () => {
   assert.equal(empty.ok, false);
   assert.ok(empty.missing.includes('.claude-plugin/plugin.json'));
   assert.ok(empty.missing.includes('bin/radorch.mjs'));
-  assert.ok(empty.missing.includes('dist/pipeline.js'));
+  assert.ok(empty.missing.includes('skills/rad-orchestration/scripts/pipeline.js'));
   assert.ok(empty.missing.includes('ui/server.js'));
   assert.ok(empty.missing.includes('hooks/hooks.json'));
   assert.ok(empty.missing.some((m) => m.startsWith('skills/rad-ui-start/')));
@@ -50,7 +51,7 @@ test('validatePluginTree: passes on a complete fixture', async () => {
   };
   writeF('.claude-plugin/plugin.json', JSON.stringify({ name: 'rad-orchestration', version: '1.1.0' }));
   writeF('bin/radorch.mjs');
-  writeF('dist/pipeline.js');
+  writeF('skills/rad-orchestration/scripts/pipeline.js');
   writeF('ui/server.js');
   writeF('hooks/hooks.json', '{}');
   writeF('hooks/session-start.sh');
@@ -73,6 +74,112 @@ test('validatePluginTree: passes on a complete fixture', async () => {
   writeF('agents/orchestrator.md', orchTokens);
 
   const ok = validatePluginTree(tmp, repoRoot);
+  assert.equal(ok.ok, true, JSON.stringify(ok));
+});
+
+test('validatePluginTree requires skills/rad-orchestration/scripts/pipeline.js', async () => {
+  const { validatePluginTree } = await import(buildPluginUrl);
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-pl-pipeline-'));
+  // Build a fixture plugin tree that has every required artifact EXCEPT the
+  // new pipeline.js path — simulates a stale build that still emits dist/pipeline.js.
+  const writeF = (rel, body = 'x') => {
+    const f = path.join(tmp, rel);
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, body);
+  };
+  writeF('.claude-plugin/plugin.json', JSON.stringify({ name: 'rad-orchestration', version: '1.1.0' }));
+  writeF('bin/radorch.mjs');
+  // Intentionally write the OLD path instead of the new one.
+  writeF('dist/pipeline.js');
+  writeF('ui/server.js');
+  writeF('hooks/hooks.json', '{}');
+  writeF('hooks/session-start.sh');
+  writeF('hooks/session-start.ps1');
+  for (const s of ['rad-orchestration', 'rad-plan', 'rad-ui-start']) writeF(`skills/${s}/SKILL.md`);
+  const agentsDir = path.join(repoRoot, 'agents');
+  const agentNames = fs.readdirSync(agentsDir)
+    .filter((f) => f.endsWith('.md') && !fs.statSync(path.join(agentsDir, f)).isDirectory())
+    .map((f) => f.replace(/\.md$/, ''));
+  for (const name of agentNames) writeF(`agents/${name}.md`);
+  const nonOrchNames = agentNames.filter((n) => n !== 'orchestrator');
+  const orchTokens = nonOrchNames.map((n) => `rad-orchestration:${n}`).join('\n');
+  writeF('agents/orchestrator.md', orchTokens);
+  // Also supply the manifest so the only missing thing is the new pipeline path.
+  writeF('manifests/v1.1.0.json', '{}');
+
+  const r = validatePluginTree(tmp, repoRoot, '1.1.0');
+  assert.equal(r.ok, false, 'should fail because skills/rad-orchestration/scripts/pipeline.js is missing');
+  assert.ok(
+    r.missing.includes('skills/rad-orchestration/scripts/pipeline.js'),
+    `expected skills/rad-orchestration/scripts/pipeline.js in missing, got: ${JSON.stringify(r.missing)}`,
+  );
+});
+
+test('validatePluginTree requires manifests/v<version>.json', async () => {
+  const { validatePluginTree } = await import(buildPluginUrl);
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-pl-manifest-'));
+  // Build a fixture tree with the new pipeline path but no manifests/ entry.
+  const writeF = (rel, body = 'x') => {
+    const f = path.join(tmp, rel);
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, body);
+  };
+  writeF('.claude-plugin/plugin.json', JSON.stringify({ name: 'rad-orchestration', version: '1.1.0' }));
+  writeF('bin/radorch.mjs');
+  // Write the new pipeline path.
+  writeF('skills/rad-orchestration/scripts/pipeline.js');
+  writeF('ui/server.js');
+  writeF('hooks/hooks.json', '{}');
+  writeF('hooks/session-start.sh');
+  writeF('hooks/session-start.ps1');
+  for (const s of ['rad-orchestration', 'rad-plan', 'rad-ui-start']) writeF(`skills/${s}/SKILL.md`);
+  const agentsDir = path.join(repoRoot, 'agents');
+  const agentNames = fs.readdirSync(agentsDir)
+    .filter((f) => f.endsWith('.md') && !fs.statSync(path.join(agentsDir, f)).isDirectory())
+    .map((f) => f.replace(/\.md$/, ''));
+  for (const name of agentNames) writeF(`agents/${name}.md`);
+  const nonOrchNames = agentNames.filter((n) => n !== 'orchestrator');
+  const orchTokens = nonOrchNames.map((n) => `rad-orchestration:${n}`).join('\n');
+  writeF('agents/orchestrator.md', orchTokens);
+  // Intentionally do NOT write manifests/v1.1.0.json.
+
+  const r = validatePluginTree(tmp, repoRoot, '1.1.0');
+  assert.equal(r.ok, false, 'should fail because manifests/v1.1.0.json is missing');
+  assert.ok(
+    r.missing.includes('manifests/v1.1.0.json'),
+    `expected manifests/v1.1.0.json in missing, got: ${JSON.stringify(r.missing)}`,
+  );
+});
+
+test('happy-path: validatePluginTree passes when pipeline.js and manifest both ship', async () => {
+  const { validatePluginTree } = await import(buildPluginUrl);
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-pl-happy-'));
+  const writeF = (rel, body = 'x') => {
+    const f = path.join(tmp, rel);
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, body);
+  };
+  writeF('.claude-plugin/plugin.json', JSON.stringify({ name: 'rad-orchestration', version: '1.1.0' }));
+  writeF('bin/radorch.mjs');
+  // New pipeline path (not dist/).
+  writeF('skills/rad-orchestration/scripts/pipeline.js');
+  writeF('ui/server.js');
+  writeF('hooks/hooks.json', '{}');
+  writeF('hooks/session-start.sh');
+  writeF('hooks/session-start.ps1');
+  for (const s of ['rad-orchestration', 'rad-plan', 'rad-ui-start']) writeF(`skills/${s}/SKILL.md`);
+  const agentsDir = path.join(repoRoot, 'agents');
+  const agentNames = fs.readdirSync(agentsDir)
+    .filter((f) => f.endsWith('.md') && !fs.statSync(path.join(agentsDir, f)).isDirectory())
+    .map((f) => f.replace(/\.md$/, ''));
+  for (const name of agentNames) writeF(`agents/${name}.md`);
+  const nonOrchNames = agentNames.filter((n) => n !== 'orchestrator');
+  const orchTokens = nonOrchNames.map((n) => `rad-orchestration:${n}`).join('\n');
+  writeF('agents/orchestrator.md', orchTokens);
+  // Both new requirements present.
+  writeF('manifests/v1.1.0.json', '{}');
+
+  const ok = validatePluginTree(tmp, repoRoot, '1.1.0');
   assert.equal(ok.ok, true, JSON.stringify(ok));
 });
 

@@ -35,6 +35,7 @@ export const PIPELINE_STEPS = [
   'pipeline-bundle',
   'ui-standalone',
   'adapters-plugin',
+  'copy-manifest-catalog',
   'copy-bundles-into-claude-plugin',
   'copy-plugin-package-json',
   'sync-plugin-version',
@@ -45,7 +46,7 @@ export const PIPELINE_STEPS = [
 const REQUIRED_ARTIFACTS = [
   '.claude-plugin/plugin.json',
   'bin/radorch.mjs',
-  'dist/pipeline.js',
+  'skills/rad-orchestration/scripts/pipeline.js',
   'ui/server.js',
   'hooks/hooks.json',
   'hooks/session-start.sh',
@@ -80,6 +81,9 @@ function listAgentNames(canonicalRoot) {
  *   read to enumerate expected agent files. Defaults to the module-level
  *   `repoRoot` so callers that know only the plugin dir still get full
  *   agent enumeration without filesystem walking.
+ * @param {string} [version]    - Plugin version string (e.g. `'1.1.0'`). When
+ *   provided, the per-version manifest catalog entry
+ *   `manifests/v<version>.json` is asserted to exist in the plugin tree.
  *
  * Returns `{ ok: boolean, missing: string[] }`.
  *
@@ -88,7 +92,7 @@ function listAgentNames(canonicalRoot) {
  *   - `agents/orchestrator.md:token:rad-orchestration:<name>` — namespaced dispatch
  *     token absent from plugin orchestrator agent body
  */
-export function validatePluginTree(rootDir, canonicalRoot = repoRoot) {
+export function validatePluginTree(rootDir, canonicalRoot = repoRoot, version) {
   const missing = [];
 
   // Static artifact checks.
@@ -133,6 +137,12 @@ export function validatePluginTree(rootDir, canonicalRoot = repoRoot) {
         missing.push(`agents/orchestrator.md:token:${token}`);
       }
     }
+  }
+
+  // Per-version manifest catalog check — manifests/v<version>.json must ship.
+  if (version) {
+    const manifestRel = `manifests/v${version}.json`;
+    if (!fs.existsSync(path.join(rootDir, manifestRel))) missing.push(manifestRel);
   }
 
   return { ok: missing.length === 0, missing };
@@ -192,7 +202,7 @@ async function main() {
     exec(`npm run bundle -- --out=${out}`, path.join(repoRoot, 'cli'));
   });
   await step('pipeline-bundle', () => {
-    const out = path.join(claudeDist, 'dist', 'pipeline.js');
+    const out = path.join(claudeDist, 'skills', 'rad-orchestration', 'scripts', 'pipeline.js');
     fs.mkdirSync(path.dirname(out), { recursive: true });
     exec(`npm run bundle -- --out=${out}`, path.join(repoRoot, 'skills', 'rad-orchestration', 'scripts'));
   });
@@ -218,6 +228,24 @@ async function main() {
       await runAdapterPlugin(a, { canonicalRoot: repoRoot, outputRoot: repoRoot, version });
     }
   });
+  await step('copy-manifest-catalog', () => {
+    // Collect every per-version manifest produced by adapters/run.js during
+    // the non-plugin (legacy installer) build:
+    //   <repoRoot>/<adapter.name>/manifests/v*.json
+    // and copy them flat into <claudeDist>/manifests/ so the plugin payload
+    // ships one combined catalog. Harness routing at install time (P01-T02)
+    // selects the right entry from the combined catalog.
+    const manifestsOutDir = path.join(claudeDist, 'manifests');
+    fs.mkdirSync(manifestsOutDir, { recursive: true });
+    for (const a of adapters) {
+      const catalogDir = path.join(repoRoot, a.name, 'manifests');
+      if (!fs.existsSync(catalogDir)) continue;
+      for (const file of fs.readdirSync(catalogDir)) {
+        if (!file.startsWith('v') || !file.endsWith('.json')) continue;
+        fs.copyFileSync(path.join(catalogDir, file), path.join(manifestsOutDir, file));
+      }
+    }
+  });
   await step('copy-bundles-into-claude-plugin', () => {
     // Bundled artifacts were emitted directly into claudeDist by steps 2-4;
     // run-plugin (step 5) only writes skills + hooks + plugin.json, leaving
@@ -237,7 +265,7 @@ async function main() {
   });
   await step('sync-plugin-version', () => syncPluginVersion(claudeDist, version));
   await step('validate-plugin-tree', () => {
-    const r = validatePluginTree(claudeDist, repoRoot);
+    const r = validatePluginTree(claudeDist, repoRoot, version);
     if (!r.ok) {
       process.stderr.write(`[build:plugin] validate-plugin-tree FAIL — missing:\n  ${r.missing.join('\n  ')}\n`);
       process.exit(1);
