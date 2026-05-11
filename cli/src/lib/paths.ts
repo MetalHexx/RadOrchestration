@@ -18,9 +18,8 @@ export interface InstallPaths {
   readonly uiLog: string;
 }
 
-export function resolveInstallRoot(env: NodeJS.ProcessEnv = process.env): string {
-  const override = env['RADORCH_HOME'];
-  if (override && override.length > 0) return override;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function resolveInstallRoot(_env: NodeJS.ProcessEnv = process.env): string {
   return path.join(os.homedir(), '.radorch');
 }
 
