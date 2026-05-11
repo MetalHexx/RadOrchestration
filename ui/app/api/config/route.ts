@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic';
 
 import path from 'node:path';
 import { access, constants } from 'node:fs/promises';
-import { getWorkspaceRoot } from '@/lib/path-resolver';
 import { getConfigPath, readConfigWithRaw, writeConfig } from '@/lib/fs-reader';
 import { parseYaml, stringifyYaml } from '@/lib/yaml-parser';
 import { validateConfig } from '@/lib/config-validator';
@@ -12,8 +11,7 @@ import type { ConfigPutRequest } from '@/types/config';
 
 export async function GET() {
   try {
-    const root = getWorkspaceRoot();
-    const { config, rawYaml } = await readConfigWithRaw(root);
+    const { config, rawYaml } = await readConfigWithRaw();
 
     return NextResponse.json({ config, rawYaml }, { status: 200 });
   } catch (err) {
@@ -37,7 +35,6 @@ export async function PUT(request: Request) {
     );
   }
 
-  const root = getWorkspaceRoot();
   let yamlString: string;
 
   if (body.mode === 'form') {
@@ -95,7 +92,7 @@ export async function PUT(request: Request) {
   }
 
   // Pre-check: verify config file is writable
-  const configPath = getConfigPath(root);
+  const configPath = getConfigPath();
   try {
     await access(path.dirname(configPath), constants.W_OK);
   } catch {
@@ -106,8 +103,8 @@ export async function PUT(request: Request) {
   }
 
   try {
-    await writeConfig(root, yamlString);
-    const readBack = await readConfigWithRaw(root);
+    await writeConfig(yamlString);
+    const readBack = await readConfigWithRaw();
     return NextResponse.json(
       { success: true, config: readBack.config },
       { status: 200 },

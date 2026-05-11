@@ -7,37 +7,28 @@ import { isV5State } from '@/types/state';
 import type { OrchestrationConfig } from '@/types/config';
 import type { ProjectSummary } from '@/types/components';
 
-import { resolveBasePath, resolveProjectDir } from '@/lib/path-resolver';
+import { getOrchestrationYmlPath, getProjectsRoot, resolveProjectDir } from '@/lib/path-resolver';
 import { parseYaml } from '@/lib/yaml-parser';
 import { derivePlanningStatus, deriveExecutionStatus } from '@/lib/status-derivation';
 
 /**
  * Resolve the absolute path to orchestration.yml.
- * Extracted from readConfig() so the write path uses the same logic.
+ * Always returns ~/.radorch/orchestration.yml.
  *
- * @param workspaceRoot - Absolute path to workspace root
  * @returns Absolute path to orchestration.yml
  */
-export function getConfigPath(workspaceRoot: string): string {
-  const bootstrapRoot = process.env.ORCH_ROOT || '.claude';
-  return path.resolve(workspaceRoot, bootstrapRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
+export function getConfigPath(): string {
+  return getOrchestrationYmlPath();
 }
 
 /**
- * Read and parse orchestration.yml from the workspace root.
+ * Read and parse orchestration.yml from ~/.radorch/orchestration.yml.
  *
- * Bootstrap strategy:
- * 1. Check the `ORCH_ROOT` environment variable for the orchestration root folder name.
- * 2. Fall back to `'.claude'` when `ORCH_ROOT` is unset or empty.
- * 3. Read `orchestration.yml` from `{bootstrapRoot}/skills/rad-orchestration/config/`.
- * 4. Use `system.orch_root` from the loaded config for subsequent operations (downstream responsibility).
- *
- * @param workspaceRoot - Absolute path to workspace root
  * @returns Parsed OrchestrationConfig
  * @throws If orchestration.yml does not exist or is invalid YAML
  */
-export async function readConfig(workspaceRoot: string): Promise<OrchestrationConfig> {
-  const configPath = getConfigPath(workspaceRoot);
+export async function readConfig(): Promise<OrchestrationConfig> {
+  const configPath = getConfigPath();
   const content = await readFile(configPath, 'utf-8');
   return parseYaml<OrchestrationConfig>(content);
 }
@@ -45,15 +36,14 @@ export async function readConfig(workspaceRoot: string): Promise<OrchestrationCo
 /**
  * Read orchestration.yml and return both parsed config and raw YAML string.
  *
- * @param workspaceRoot - Absolute path to workspace root
  * @returns Object with parsed config and raw YAML string
  * @throws If orchestration.yml does not exist or is invalid YAML
  */
-export async function readConfigWithRaw(workspaceRoot: string): Promise<{
+export async function readConfigWithRaw(): Promise<{
   config: OrchestrationConfig;
   rawYaml: string;
 }> {
-  const configPath = getConfigPath(workspaceRoot);
+  const configPath = getConfigPath();
   const rawYaml = await readFile(configPath, 'utf-8');
   const config = parseYaml<OrchestrationConfig>(rawYaml);
   return { config, rawYaml };
@@ -64,12 +54,11 @@ export async function readConfigWithRaw(workspaceRoot: string): Promise<{
  * The temp file is created in the same directory as orchestration.yml to ensure
  * same-filesystem rename semantics.
  *
- * @param workspaceRoot - Absolute path to workspace root
  * @param content - YAML string to write
  * @throws If the write or rename operation fails (e.g., permission denied, disk full)
  */
-export async function writeConfig(workspaceRoot: string, content: string): Promise<void> {
-  const configPath = getConfigPath(workspaceRoot);
+export async function writeConfig(content: string): Promise<void> {
+  const configPath = getConfigPath();
   const configDir = path.dirname(configPath);
   const suffix = randomBytes(8).toString('hex');
   const tmpPath = path.join(configDir, `.orchestration.yml.tmp.${suffix}`);
@@ -102,8 +91,8 @@ export function resolveOrchRoot(config: OrchestrationConfig): string {
 }
 
 /**
- * Discover all projects under the base path. Returns summaries with tier info.
- * Each subdirectory under basePath is treated as a project.
+ * Discover all projects under ~/.radorch/projects/. Returns summaries with tier info.
+ * Each subdirectory is treated as a project.
  * If state.json exists and is parseable, extract the pipeline tier.
  * If state.json is missing, mark hasState: false.
  * If state.json is malformed, mark hasMalformedState: true with errorMessage.
@@ -114,15 +103,10 @@ export function resolveOrchRoot(config: OrchestrationConfig): string {
  * sequential implementation became the dominant cost on large workspaces
  * once Iter 5 grew state.json from ~2 KB to ~50–200 KB per project.
  *
- * @param workspaceRoot - Absolute path to workspace root
- * @param basePath - Base path from orchestration.yml (relative or absolute)
- * @returns Array of ProjectSummary objects (one per directory under basePath)
+ * @returns Array of ProjectSummary objects (one per directory under ~/.radorch/projects/)
  */
-export async function discoverProjects(
-  workspaceRoot: string,
-  basePath: string
-): Promise<ProjectSummary[]> {
-  const absBasePath = resolveBasePath(workspaceRoot, basePath);
+export async function discoverProjects(): Promise<ProjectSummary[]> {
+  const absBasePath = getProjectsRoot();
   const entries = await readdir(absBasePath, { withFileTypes: true });
 
   const summaries = await Promise.all(
@@ -130,7 +114,7 @@ export async function discoverProjects(
       .filter((entry) => entry.isDirectory())
       .map(async (entry): Promise<ProjectSummary> => {
         const projectName = entry.name;
-        const projectDir = resolveProjectDir(workspaceRoot, basePath, projectName);
+        const projectDir = resolveProjectDir(projectName);
         const statePath = path.join(projectDir, 'state.json');
 
         const brainstormingFile = `${projectName}-BRAINSTORMING.md`;

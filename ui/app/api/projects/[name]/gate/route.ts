@@ -5,8 +5,9 @@ import path from 'node:path';
 
 import type { GateApproveResponse, GateErrorResponse } from '@/types/state';
 import { isV5State } from '@/types/state';
-import { getWorkspaceRoot, resolveProjectDir } from '@/lib/path-resolver';
+import { resolveProjectDir } from '@/lib/path-resolver';
 import { readConfig, readProjectState, resolveOrchRoot } from '@/lib/fs-reader';
+import os from 'node:os';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,9 +53,9 @@ export async function POST(
     }
 
     // Resolve project directory and verify existence
-    const root = getWorkspaceRoot();
-    const config = await readConfig(root);
-    const projectDir = resolveProjectDir(root, config.projects.base_path, name);
+    const radorchHome = path.join(os.homedir(), '.radorch');
+    const config = await readConfig();
+    const projectDir = resolveProjectDir(name);
 
     const state = await readProjectState(projectDir);
     if (state === null) {
@@ -65,9 +66,9 @@ export async function POST(
     }
 
     // Resolve pipeline script path and invoke
-    const pipelineScript = path.resolve(root, resolveOrchRoot(config), 'skills', 'rad-orchestration', 'scripts', 'pipeline.js');
+    const pipelineScript = path.resolve(radorchHome, resolveOrchRoot(config), 'skills', 'rad-orchestration', 'scripts', 'pipeline.js');
 
-    const relativeProjectDir = path.relative(root, projectDir);
+    const relativeProjectDir = path.relative(radorchHome, projectDir);
 
     const pipelineArgs = [
       pipelineScript,
@@ -100,7 +101,7 @@ export async function POST(
       const result = await execFileAsync(
         process.execPath,
         pipelineArgs,
-        { encoding: 'utf-8', cwd: root }
+        { encoding: 'utf-8', cwd: radorchHome }
       );
       stdout = result.stdout;
     } catch (err: unknown) {

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getWorkspaceRoot } from '@/lib/path-resolver';
-import { readConfig, discoverProjects } from '@/lib/fs-reader';
+import { discoverProjects } from '@/lib/fs-reader';
+import os from 'node:os';
+import path from 'node:path';
 import { invokeLaunchClaudeProject } from '@/lib/launch-claude-project-invoke';
 
 export const dynamic = 'force-dynamic';
@@ -60,22 +61,10 @@ export async function POST(
     );
   }
 
-  // 3. Resolve workspace root (FR-7, NFR-3)
-  let workspaceRoot: string;
-  try {
-    workspaceRoot = getWorkspaceRoot();
-  } catch {
-    return NextResponse.json(
-      { error: 'Workspace root is not configured.' },
-      { status: 500 }
-    );
-  }
-
-  // 4. Validate project exists under the configured base path (AD-5)
+  // 3. Validate project exists under ~/.radorch/projects/ (AD-5)
   let projectExists = false;
   try {
-    const config = await readConfig(workspaceRoot);
-    const projects = await discoverProjects(workspaceRoot, config.projects.base_path);
+    const projects = await discoverProjects();
     projectExists = projects.some((p) => p.name === name);
   } catch {
     return NextResponse.json(
@@ -87,8 +76,9 @@ export async function POST(
     return NextResponse.json({ error: 'Project not found.' }, { status: 404 });
   }
 
-  // 5. Compose prompt server-side and invoke launcher (FR-4, FR-5, AD-3, AD-4)
+  // 4. Compose prompt server-side and invoke launcher (FR-4, FR-5, AD-3, AD-4)
   const prompt = composePrompt(action, name);
+  const workspaceRoot = path.join(os.homedir(), '.radorch');
   const result = await invokeLaunchClaudeProject({ workspaceRoot, prompt });
 
   if (!result.success) {

@@ -2,14 +2,11 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-import { getWorkspaceRoot } from '@/lib/path-resolver';
-import { readConfig, discoverProjects } from '@/lib/fs-reader';
+import { discoverProjects } from '@/lib/fs-reader';
 
 export async function GET() {
   try {
-    const root = getWorkspaceRoot();
-    const config = await readConfig(root);
-    const projects = await discoverProjects(root, config.projects.base_path);
+    const projects = await discoverProjects();
 
     return NextResponse.json({ projects }, { status: 200 });
   } catch (err) {

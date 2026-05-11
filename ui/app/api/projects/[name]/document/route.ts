@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-import { getWorkspaceRoot, resolveDocPath, resolveProjectDir } from '@/lib/path-resolver';
-import { readConfig, readDocument } from '@/lib/fs-reader';
+import { resolveDocPath, resolveProjectDir } from '@/lib/path-resolver';
+import { readDocument } from '@/lib/fs-reader';
 import { parseDocument } from '@/lib/markdown-parser';
 
 export async function GET(
@@ -28,10 +28,8 @@ export async function GET(
   }
 
   try {
-    const root = getWorkspaceRoot();
-    const config = await readConfig(root);
-    const projectDir = resolveProjectDir(root, config.projects.base_path, params.name);
-    const absPath = resolveDocPath(root, config.projects.base_path, params.name, pathParam);
+    const projectDir = resolveProjectDir(params.name);
+    const absPath = resolveDocPath(params.name, pathParam);
 
     // Defense-in-depth: verify resolved path stays within the project directory
     if (!absPath.startsWith(projectDir)) {

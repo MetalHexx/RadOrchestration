@@ -2,17 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-import { getWorkspaceRoot, resolveProjectDir } from '@/lib/path-resolver';
-import { readConfig, readProjectState } from '@/lib/fs-reader';
+import { resolveProjectDir } from '@/lib/path-resolver';
+import { readProjectState } from '@/lib/fs-reader';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { name: string } }
 ) {
   try {
-    const root = getWorkspaceRoot();
-    const config = await readConfig(root);
-    const projectDir = resolveProjectDir(root, config.projects.base_path, params.name);
+    const projectDir = resolveProjectDir(params.name);
     const raw = await readProjectState(projectDir);
 
     if (raw === null) {

@@ -14,11 +14,13 @@ let tmpDir = '';
 
 async function setup(): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-discover-test-'));
+  const projectsDir = path.join(dir, 'projects');
+  await mkdir(projectsDir);
 
   // (a) initialized-project: valid state.json with project.updated set
-  await mkdir(path.join(dir, 'initialized-project'));
+  await mkdir(path.join(projectsDir, 'initialized-project'));
   await writeFile(
-    path.join(dir, 'initialized-project', 'state.json'),
+    path.join(projectsDir, 'initialized-project', 'state.json'),
     JSON.stringify({
       $schema: 'orchestration-state-v4',
       project: {
@@ -49,11 +51,11 @@ async function setup(): Promise<string> {
   );
 
   // (b) no-state-project: directory without state.json
-  await mkdir(path.join(dir, 'no-state-project'));
+  await mkdir(path.join(projectsDir, 'no-state-project'));
 
   // (c) malformed-project: state.json with invalid JSON
-  await mkdir(path.join(dir, 'malformed-project'));
-  await writeFile(path.join(dir, 'malformed-project', 'state.json'), 'not valid json{{{');
+  await mkdir(path.join(projectsDir, 'malformed-project'));
+  await writeFile(path.join(projectsDir, 'malformed-project', 'state.json'), 'not valid json{{{');
 
   return dir;
 }
@@ -73,7 +75,11 @@ async function test(name: string, fn: () => Promise<void>) {
 async function run() {
   try {
     tmpDir = await setup();
-    const projects = await discoverProjects(tmpDir, '.');
+    const prior = process.env.RADORCH_HOME;
+    process.env.RADORCH_HOME = tmpDir;
+    const projects = await discoverProjects();
+    if (prior === undefined) delete process.env.RADORCH_HOME;
+    else process.env.RADORCH_HOME = prior;
 
     console.log('discoverProjects — lastUpdated behavior');
 

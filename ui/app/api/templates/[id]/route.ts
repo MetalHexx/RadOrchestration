@@ -2,10 +2,8 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-import { getWorkspaceRoot } from '@/lib/path-resolver';
-import { readConfig } from '@/lib/fs-reader';
+import { getTemplatesRoot } from '@/lib/path-resolver';
 import {
-  resolveTemplateDir,
   isValidTemplateId,
   readTemplateFile,
   writeTemplateFile,
@@ -30,9 +28,7 @@ export async function GET(
   }
 
   try {
-    const root = getWorkspaceRoot();
-    const config = await readConfig(root);
-    const templateDir = resolveTemplateDir(root, config);
+    const templateDir = getTemplatesRoot();
     const result = await readTemplateFile(templateDir, id);
 
     if (result === null) {
@@ -86,9 +82,7 @@ export async function PUT(
   }
 
   try {
-    const root = getWorkspaceRoot();
-    const config = await readConfig(root);
-    const templateDir = resolveTemplateDir(root, config);
+    const templateDir = getTemplatesRoot();
 
     const exists = await templateFileExists(templateDir, id);
     if (!exists) {

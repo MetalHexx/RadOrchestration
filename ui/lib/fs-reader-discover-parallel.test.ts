@@ -42,42 +42,57 @@ function makeV5State(projectName: string): string {
 
 async function setupIsolation(): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-parallel-'));
+  const projectsDir = path.join(dir, 'projects');
+  await mkdir(projectsDir);
 
   // Interleave good + malformed entries to prove isolation.
-  await mkdir(path.join(dir, 'good-1'));
-  await writeFile(path.join(dir, 'good-1', 'state.json'), makeV5State('good-1'));
+  await mkdir(path.join(projectsDir, 'good-1'));
+  await writeFile(path.join(projectsDir, 'good-1', 'state.json'), makeV5State('good-1'));
 
-  await mkdir(path.join(dir, 'malformed-1'));
-  await writeFile(path.join(dir, 'malformed-1', 'state.json'), 'not json{');
+  await mkdir(path.join(projectsDir, 'malformed-1'));
+  await writeFile(path.join(projectsDir, 'malformed-1', 'state.json'), 'not json{');
 
-  await mkdir(path.join(dir, 'good-2'));
-  await writeFile(path.join(dir, 'good-2', 'state.json'), makeV5State('good-2'));
+  await mkdir(path.join(projectsDir, 'good-2'));
+  await writeFile(path.join(projectsDir, 'good-2', 'state.json'), makeV5State('good-2'));
 
-  await mkdir(path.join(dir, 'no-state'));
+  await mkdir(path.join(projectsDir, 'no-state'));
 
   return dir;
 }
 
 async function setupLargeFixture(count: number): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-parallel-big-'));
+  const projectsDir = path.join(dir, 'projects');
+  await mkdir(projectsDir);
   // Zero-pad to keep readdir's lexical order deterministic for assertions.
   const pad = String(count).length;
   for (let i = 0; i < count; i++) {
     const name = `project-${String(i).padStart(pad, '0')}`;
-    await mkdir(path.join(dir, name));
-    await writeFile(path.join(dir, name, 'state.json'), makeV5State(name));
+    await mkdir(path.join(projectsDir, name));
+    await writeFile(path.join(projectsDir, name, 'state.json'), makeV5State(name));
   }
   return dir;
+}
+
+async function withRadorcHome<T>(dir: string, fn: () => Promise<T>): Promise<T> {
+  const prior = process.env.RADORCH_HOME;
+  process.env.RADORCH_HOME = dir;
+  try {
+    return await fn();
+  } finally {
+    if (prior === undefined) delete process.env.RADORCH_HOME;
+    else process.env.RADORCH_HOME = prior;
+  }
 }
 
 async function test(name: string, fn: () => Promise<void>) {
   try {
     await fn();
-    console.log(`  \u2713 ${name}`);
+    console.log(`  ✓ ${name}`);
     passed++;
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error(`  \u2717 ${name}\n    ${msg}`);
+    console.error(`  ✗ ${name}\n    ${msg}`);
     failed++;
   }
 }
@@ -89,7 +104,7 @@ async function run() {
     tmpDir = await setupIsolation();
 
     await test('malformed state.json does not poison sibling entries', async () => {
-      const projects = await discoverProjects(tmpDir, '.');
+      const projects = await withRadorcHome(tmpDir, () => discoverProjects());
       const byName = new Map(projects.map((p) => [p.name, p]));
 
       const good1 = byName.get('good-1');
@@ -115,11 +130,12 @@ async function run() {
     await test('result order matches readdir directory-entry order', async () => {
       // readdir order is filesystem-defined; we compare against readdir's
       // own output to prove the Promise.all traversal is stable.
-      const entries = await readdir(tmpDir, { withFileTypes: true });
+      const projectsDir = path.join(tmpDir, 'projects');
+      const entries = await readdir(projectsDir, { withFileTypes: true });
       const expectedNames = entries
         .filter((e) => e.isDirectory())
         .map((e) => e.name);
-      const projects = await discoverProjects(tmpDir, '.');
+      const projects = await withRadorcHome(tmpDir, () => discoverProjects());
       const actualNames = projects.map((p) => p.name);
       assert.deepStrictEqual(actualNames, expectedNames);
     });
@@ -130,7 +146,7 @@ async function run() {
     tmpDir = await setupLargeFixture(50);
 
     await test('50-project fixture returns without error', async () => {
-      const projects = await discoverProjects(tmpDir, '.');
+      const projects = await withRadorcHome(tmpDir, () => discoverProjects());
       assert.strictEqual(projects.length, 50);
       for (const p of projects) {
         assert.strictEqual(p.hasState, true);

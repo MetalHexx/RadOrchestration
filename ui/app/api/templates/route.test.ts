@@ -2,9 +2,9 @@
  * Tests for GET /api/templates and POST /api/templates handlers.
  * Run with: npx tsx --test ui/app/api/templates/route.test.ts (from ui/ directory)
  *
- * Integration-style tests: creates a temp workspace directory with a real
- * orchestration.yml and optional template .yml files, sets WORKSPACE_ROOT to the
- * temp dir, then exercises the GET and POST route handlers via Request objects.
+ * Integration-style tests: creates a temp radorch home directory with a templates/
+ * directory, sets RADORCH_HOME to the temp dir, then exercises the GET and POST
+ * route handlers via Request objects.
  */
 import assert from 'node:assert';
 import { mkdtemp, mkdir, writeFile as fsWriteFile, rm, readFile } from 'node:fs/promises';
@@ -14,27 +14,6 @@ import os from 'node:os';
 /* ------------------------------------------------------------------ */
 /*  Test fixtures                                                      */
 /* ------------------------------------------------------------------ */
-
-const VALID_YAML = `version: "4"
-system:
-  orch_root: .github
-projects:
-  base_path: ../orchestration-projects
-  naming: SCREAMING_CASE
-limits:
-  max_phases: 5
-  max_tasks_per_phase: 10
-  max_retries_per_task: 2
-  max_consecutive_review_rejections: 3
-human_gates:
-  after_planning: true
-  execution_mode: ask
-  after_final_review: true
-source_control:
-  auto_commit: always
-  auto_pr: ask
-  provider: github
-`;
 
 const TEMPLATE_YAML = `template:
   id: test-template
@@ -65,36 +44,26 @@ nodes:
 /* ------------------------------------------------------------------ */
 
 let tmpDir: string;
-let prevWorkspaceRoot: string | undefined;
-let prevOrchRoot: string | undefined;
+let templateDir: string;
+let prevRadorcHome: string | undefined;
 
-/** Create a temp workspace with orchestration.yml and an empty templates dir */
+/** Create a temp radorch home with an empty templates/ dir */
 async function setupWorkspace(): Promise<void> {
-  prevWorkspaceRoot = process.env.WORKSPACE_ROOT;
+  prevRadorcHome = process.env.RADORCH_HOME;
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'templates-test-'));
-  const configDir = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config');
-  await mkdir(configDir, { recursive: true });
-  await fsWriteFile(path.join(configDir, 'orchestration.yml'), VALID_YAML, 'utf-8');
-  const templateDir = path.join(tmpDir, '.github', 'skills', 'rad-orchestration', 'templates');
+  templateDir = path.join(tmpDir, 'templates');
   await mkdir(templateDir, { recursive: true });
-  process.env.WORKSPACE_ROOT = tmpDir;
-  prevOrchRoot = process.env.ORCH_ROOT;
-  delete process.env.ORCH_ROOT;
+  process.env.RADORCH_HOME = tmpDir;
 }
 
 async function teardownWorkspace(): Promise<void> {
   if (tmpDir) {
     await rm(tmpDir, { recursive: true, force: true });
   }
-  if (prevWorkspaceRoot === undefined) {
-    delete process.env.WORKSPACE_ROOT;
+  if (prevRadorcHome === undefined) {
+    delete process.env.RADORCH_HOME;
   } else {
-    process.env.WORKSPACE_ROOT = prevWorkspaceRoot;
-  }
-  if (prevOrchRoot !== undefined) {
-    process.env.ORCH_ROOT = prevOrchRoot;
-  } else {
-    delete process.env.ORCH_ROOT;
+    process.env.RADORCH_HOME = prevRadorcHome;
   }
 }
 
@@ -151,7 +120,6 @@ async function run() {
 
   // --- GET: returns seeded template summaries ---
   await test('GET — returns 200 with templates array containing seeded template summaries', async () => {
-    const templateDir = path.join(tmpDir, '.github', 'skills', 'rad-orchestration', 'templates');
     await fsWriteFile(path.join(templateDir, 'test-template.yml'), TEMPLATE_YAML, 'utf-8');
     const res = await GET();
     assert.strictEqual(res.status, 200);
@@ -174,7 +142,6 @@ async function run() {
 
   // --- GET: surfaces template.status in the response ---
   await test('GET — surfaces template.status from YAML in each template summary', async () => {
-    const templateDir = path.join(tmpDir, '.github', 'skills', 'rad-orchestration', 'templates');
     const deprecatedYaml = TEMPLATE_YAML.replace('description: A test template', 'description: A test template\n  status: deprecated');
     await fsWriteFile(path.join(templateDir, 'old-template.yml'), deprecatedYaml, 'utf-8');
     const res = await GET();
@@ -200,7 +167,6 @@ async function run() {
     const req = makePostRequest({ id: 'my-template', content: NEW_TEMPLATE_YAML });
     const res = await POST(req);
     assert.strictEqual(res.status, 201);
-    const templateDir = path.join(tmpDir, '.github', 'skills', 'rad-orchestration', 'templates');
     const onDisk = await readFile(path.join(templateDir, 'my-template.yml'), 'utf-8');
     assert.ok(onDisk.length > 0, 'Written file should not be empty');
     assert.ok(onDisk.includes('A new template'), 'Written file should contain template content');
@@ -208,7 +174,6 @@ async function run() {
 
   // --- POST: duplicate ID returns 409 ---
   await test('POST — duplicate ID returns 409 with error containing the ID', async () => {
-    const templateDir = path.join(tmpDir, '.github', 'skills', 'rad-orchestration', 'templates');
     await fsWriteFile(path.join(templateDir, 'test-template.yml'), TEMPLATE_YAML, 'utf-8');
     const req = makePostRequest({ id: 'test-template', content: NEW_TEMPLATE_YAML });
     const res = await POST(req);
@@ -280,22 +245,20 @@ async function run() {
     assert.ok(json.error, 'Should return an error message');
   });
 
-  // --- GET: 500 when workspace config is unreadable ---
-  await test('GET — returns 500 when orchestration.yml is missing', async () => {
+  // --- GET: 500 when templates dir is missing ---
+  await test('GET — returns 500 when templates directory is missing', async () => {
     const { rm: fsRm } = await import('node:fs/promises');
-    const configPath = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
-    await fsRm(configPath);
+    await fsRm(templateDir, { recursive: true, force: true });
     const res = await GET();
     assert.strictEqual(res.status, 500);
     const json = await res.json();
     assert.strictEqual(json.error, 'Internal server error');
   });
 
-  // --- POST: 500 when workspace config is unreadable ---
-  await test('POST — returns 500 when orchestration.yml is missing', async () => {
+  // --- POST: 500 when templates dir is missing ---
+  await test('POST — returns 500 when templates directory is missing', async () => {
     const { rm: fsRm } = await import('node:fs/promises');
-    const configPath = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
-    await fsRm(configPath);
+    await fsRm(templateDir, { recursive: true, force: true });
     const req = makePostRequest({ id: 'new-template', content: NEW_TEMPLATE_YAML });
     const res = await POST(req);
     assert.strictEqual(res.status, 500);

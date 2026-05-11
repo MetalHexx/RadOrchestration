@@ -2,10 +2,8 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-import { getWorkspaceRoot } from '@/lib/path-resolver';
-import { readConfig } from '@/lib/fs-reader';
+import { getTemplatesRoot } from '@/lib/path-resolver';
 import {
-  resolveTemplateDir,
   isValidTemplateId,
   listTemplateFiles,
   writeTemplateFile,
@@ -15,9 +13,7 @@ import { parseYaml } from '@/lib/yaml-parser';
 
 export async function GET() {
   try {
-    const root = getWorkspaceRoot();
-    const config = await readConfig(root);
-    const templateDir = resolveTemplateDir(root, config);
+    const templateDir = getTemplatesRoot();
     const templates = await listTemplateFiles(templateDir);
     return NextResponse.json({ templates }, { status: 200 });
   } catch (err) {
@@ -65,9 +61,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const root = getWorkspaceRoot();
-    const config = await readConfig(root);
-    const templateDir = resolveTemplateDir(root, config);
+    const templateDir = getTemplatesRoot();
 
     const exists = await templateFileExists(templateDir, id);
     if (exists) {
