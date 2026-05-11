@@ -10,17 +10,19 @@ The dashboard is a great way to manage all your planned work or read information
 
 ## Run the Dashboard
 
-The dashboard lives under `ui/` as a standalone Next.js app. From that directory:
+On a plugin install, launch the dashboard via the `/rad-ui-start` slash command. To use the command from any terminal without a Claude Code plugin, add `~/.radorch/bin` to your PATH:
 
+**Unix/Linux/macOS:**
 ```bash
-cd ui
-npm install   # first run only
-npm run start # Runs at: http://localhost:3000
+export PATH="$HOME/.radorch/bin:$PATH"
 ```
 
-If you need to rebuild first for whatever reason, use `npm run build-and-start` instead. The app reads `.env.local` (created by the `radorch` installer) for `WORKSPACE_ROOT` and `ORCH_ROOT`, which point it at your projects and orchestration root.
+**Windows (PowerShell or Command Prompt):**
+```powershell
+setx PATH "%PATH%;%USERPROFILE%\.radorch\bin"
+```
 
-On a plugin install, you can also launch the dashboard via the `/rad-orchestration:rad-ui-start` slash command — equivalent to `npm run start` from a cloned repo.
+The dashboard is a standalone Next.js app that reads `.env.local` (created by the `radorch` installer) for `WORKSPACE_ROOT` and `ORCH_ROOT`, which point it at your projects and orchestration root.
 
 ## Features
 
