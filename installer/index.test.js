@@ -110,6 +110,24 @@ test('end-to-end install writes to ~/.radorch and harness folder only', async (t
     '~/.claude/agents/planner.md should exist');
   assert.ok(fs.existsSync(path.join(tmp, '.claude', 'skills', 'rad-orchestration', 'SKILL.md')),
     '~/.claude/skills/rad-orchestration/SKILL.md should exist');
+
+  // orchestration.yml shape: 10 canonical keys, 0 retired keys
+  const ymlContent = fs.readFileSync(path.join(tmp, '.radorch', 'orchestration.yml'), 'utf8');
+  assert.match(ymlContent, /^version: "1\.0"$/m, 'should contain version: "1.0"');
+  assert.match(ymlContent, /^package_version:/m, 'should contain package_version');
+  assert.match(ymlContent, /^default_template:/m, 'should contain default_template');
+  assert.match(ymlContent, /^limits:$/m, 'should contain limits section');
+  assert.match(ymlContent, /^  max_phases:/m, 'should contain max_phases');
+  assert.match(ymlContent, /^  max_tasks_per_phase:/m, 'should contain max_tasks_per_phase');
+  assert.match(ymlContent, /^  max_retries_per_task:/m, 'should contain max_retries_per_task');
+  assert.match(ymlContent, /^  max_consecutive_review_rejections:/m, 'should contain max_consecutive_review_rejections');
+  assert.match(ymlContent, /^human_gates:$/m, 'should contain human_gates section');
+  assert.match(ymlContent, /^source_control:$/m, 'should contain source_control section');
+  // Four retired keys must be absent
+  assert.doesNotMatch(ymlContent, /orch_root/, 'should not contain orch_root');
+  assert.doesNotMatch(ymlContent, /base_path/, 'should not contain base_path');
+  assert.doesNotMatch(ymlContent, /naming:/, 'should not contain naming:');
+  assert.doesNotMatch(ymlContent, /^\s*provider:/m, 'should not contain provider:');
 });
 
 test('installer produces structurally-equivalent state vs plugin-bootstrap', async (t) => {
@@ -157,15 +175,29 @@ test('installer produces structurally-equivalent state vs plugin-bootstrap', asy
   assert.deepEqual(installerClaude, bootstrapClaude,
     '~/.claude/ trees must match between installer and runPluginBootstrap');
 
-  // ~/.radorch/ — every file except install.json (timestamp) and orchestration.yml
-  // (the installer writes one from the wizard config; plugin-bootstrap doesn't
-  // touch it) must match.
-  const ignored = new Set(['install.json', 'orchestration.yml']);
+  // ~/.radorch/ — every file except install.json (timestamp) must match.
+  // Note: orchestration.yml is created by the installer from wizard config and not
+  // touched by runPluginBootstrap. It is validated separately in the end-to-end test.
+  const ignored = new Set(['install.json']);
   const filterIgnored = (tree) => Object.fromEntries(
     Object.entries(tree).filter(([k]) => !ignored.has(k)),
   );
-  assert.deepEqual(filterIgnored(installerRadorch), filterIgnored(bootstrapRadorch),
-    '~/.radorch/ trees (minus install.json + orchestration.yml) must match');
+  // The installer creates orchestration.yml; bootstrap does not. Both should have
+  // matching structure otherwise (bin/, manifests/, etc).
+  const installerFiltered = filterIgnored(installerRadorch);
+  const bootstrapFiltered = filterIgnored(bootstrapRadorch);
+
+  // Extract and validate orchestration.yml separately, since only installer creates it
+  const installerHasOrchYml = 'orchestration.yml' in installerRadorch;
+  const bootstrapHasOrchYml = 'orchestration.yml' in bootstrapRadorch;
+  assert.ok(installerHasOrchYml && !bootstrapHasOrchYml,
+    'Only installer should create orchestration.yml');
+
+  // Compare everything else
+  delete installerFiltered['orchestration.yml'];
+  delete bootstrapFiltered['orchestration.yml'];
+  assert.deepEqual(installerFiltered, bootstrapFiltered,
+    '~/.radorch/ trees (minus install.json and orchestration.yml) must match');
 
   // install.json structural comparison (ignore installed_at timestamp).
   const { installed_at: _a, ...installerStrip } = installJsonA;
