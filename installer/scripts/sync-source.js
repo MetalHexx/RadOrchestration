@@ -21,6 +21,19 @@ const UI_EXCLUDES = new Set(['node_modules', '.next', '.env.local', '.env']);
 const scriptsDir = path.resolve(__dirname, '../../skills/rad-orchestration/scripts');
 
 /**
+ * Allowlist for `skills/rad-orchestration/scripts/` contents in each emitted
+ * bundle (FR-21). The published `radorch` npm package ships only the runtime
+ * artifacts: the esbuild `pipeline.js` bundle plus a handful of operational
+ * helpers. Everything else under `scripts/` — TypeScript sources, lockfiles,
+ * dev configs, lib/, tests/, node_modules/ — is dev-only and must not ship.
+ */
+const SCRIPTS_BUNDLE_KEEP = new Set([
+  'pipeline.js',
+  'list-repo-skills.mjs',
+  'setup-hooks.js',
+]);
+
+/**
  * Compiles the pipeline bundle and copies it into the given target path.
  * Preserves the shebang and executable bit. (FR-6, AD-5, NFR-2)
  *
@@ -121,6 +134,57 @@ export async function emitBundles({ repoRoot, version }) {
         }
       }
     }
+
+    // Trim the bundled `skills/rad-orchestration/scripts/` tree (FR-21):
+    // keep only the runtime artifacts listed in SCRIPTS_BUNDLE_KEEP. Drop
+    // TypeScript sources, lockfiles, dev configs, and the entire lib/,
+    // tests/, node_modules/ subtrees from what ships to end users.
+    const scriptsBundleDir = path.join(
+      installerSrc, adapter.name, 'skills', 'rad-orchestration', 'scripts',
+    );
+    if (fs.existsSync(scriptsBundleDir)) {
+      for (const entry of fs.readdirSync(scriptsBundleDir)) {
+        if (!SCRIPTS_BUNDLE_KEEP.has(entry)) {
+          fs.rmSync(path.join(scriptsBundleDir, entry), { recursive: true, force: true });
+        }
+      }
+      // Re-key the manifest catalog to drop entries for the removed files.
+      // Without this, runPluginBootstrap (and the modified-file hash check)
+      // would treat the absent files as locally modified.
+      const manifestPath = path.join(
+        installerSrc, adapter.name, 'manifests', `v${version}.json`,
+      );
+      if (fs.existsSync(manifestPath)) {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        const beforeCount = manifest.files.length;
+        manifest.files = manifest.files.filter((f) => {
+          const bp = f.bundlePath;
+          if (!bp.startsWith('skills/rad-orchestration/scripts/')) return true;
+          const rest = bp.slice('skills/rad-orchestration/scripts/'.length);
+          // Allow only top-level files in SCRIPTS_BUNDLE_KEEP — drop anything
+          // nested under removed subdirectories (lib/, tests/, node_modules/).
+          if (rest.includes('/')) return false;
+          return SCRIPTS_BUNDLE_KEEP.has(rest);
+        });
+        if (manifest.files.length !== beforeCount) {
+          fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+        }
+      }
+    }
+
+    // Emit a per-bundle `package.json` that carries the delivering version.
+    // `runPluginBootstrap` reads `<pluginRoot>/package.json` for its version,
+    // so the legacy installer needs every bundle to surface this field.
+    const bundlePkgPath = path.join(installerSrc, adapter.name, 'package.json');
+    fs.writeFileSync(
+      bundlePkgPath,
+      JSON.stringify(
+        { name: `@rad-orchestration/${adapter.name}-bundle`, version, private: true },
+        null,
+        2,
+      ) + '\n',
+      'utf8',
+    );
 
     console.log(`Emitted bundle ${adapter.name}: ${fileCount} files → installer/src/${adapter.name}/`);
   }

@@ -1,4 +1,10 @@
-// installer/lib/file-copier.js — Infrastructure module for copying orchestration files
+// installer/lib/file-copier.js — Infrastructure module for copying orchestration files.
+//
+// Deprecated as of the GLOBAL-WORKSPACES refactor: the installer routes
+// copies through the CLI library's `installManifestFiles` via
+// `runPluginBootstrap`. This module is retained because its tests still
+// exercise the historical copy semantics, but no production code path
+// imports it.
 
 /** @import { ManifestCategory, Manifest, CopyResult } from './types.js' */
 

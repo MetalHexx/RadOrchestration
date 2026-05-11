@@ -10,19 +10,29 @@ import path from 'node:path';
 
 /** Map of --flag → config field name */
 const FLAG_MAP = {
-  '--workspace':      'workspaceDir',
-  '--tool':           'tool',
-  '--orch-root':      'orchRoot',
-  '--projects-path':  'projectsBasePath',
-  '--naming':         'projectsNaming',
-  '--max-phases':     'maxPhases',
-  '--max-tasks':      'maxTasksPerPhase',
-  '--max-retries':    'maxRetriesPerTask',
-  '--max-rejections': 'maxConsecutiveReviewRejections',
-  '--execution-mode': 'executionMode',
-  '--auto-commit':    'autoCommit',
-  '--auto-pr':        'autoPr',
-  '--dashboard-dir':  'uiDir',
+  // New shape — used by the rewritten wizard.
+  '--harness':           'harnesses',        // comma-list parsed into a string[]
+  '--mode':              'mode',
+  '--default-template':  'defaultTemplate',
+  '--max-phases':        'maxPhases',
+  '--max-tasks':         'maxTasksPerPhase',
+  '--max-retries':       'maxRetriesPerTask',
+  '--max-rejections':    'maxConsecutiveReviewRejections',
+  '--after-planning':    'afterPlanning',
+  '--execution-mode':    'executionMode',
+  '--after-final-review': 'afterFinalReview',
+  '--auto-commit':       'autoCommit',
+  '--auto-pr':           'autoPr',
+
+  // Legacy flags — accepted for backward-compatible invocation lines but no
+  // longer surface to the wizard's new shape. parseArgs preserves them in
+  // options so other callers can read them; the wizard ignores unknown keys.
+  '--workspace':         'workspaceDir',
+  '--tool':              'tool',
+  '--orch-root':         'orchRoot',
+  '--projects-path':     'projectsBasePath',
+  '--naming':            'projectsNaming',
+  '--dashboard-dir':     'uiDir',
 };
 
 /** Fields that must be parsed as integers */
@@ -33,14 +43,18 @@ const INT_FIELDS = new Set([
 /** Valid values for enum-type fields */
 const ENUM_VALUES = {
   // `cursor` is intentionally omitted: it appears as a disabled "Coming
-  // soon" choice in the interactive prompt, but no manifest backs it, so
-  // accepting it on the CLI would crash deep in getManifest().
+  // soon" choice in the interactive prompt, but no manifest backs it.
   tool:            ['claude-code', 'copilot-vscode', 'copilot-cli'],
+  mode:            ['quick', 'custom'],
+  defaultTemplate: ['extra-high', 'high', 'medium', 'low', 'ask'],
   projectsNaming:  ['SCREAMING_CASE', 'lowercase', 'numbered'],
   executionMode:   ['ask', 'phase', 'task', 'autonomous'],
   autoCommit:      ['always', 'ask', 'never'],
   autoPr:          ['always', 'ask', 'never'],
 };
+
+/** Valid harness names (each value of the comma-list passed to --harness). */
+const HARNESS_NAMES = new Set(['claude', 'copilot-vscode', 'copilot-cli']);
 
 /**
  * Parses a process.argv-style array into a structured command + options object.
@@ -87,7 +101,26 @@ export function parseArgs(argv) {
     const field = FLAG_MAP[flag];
     if (field && i + 1 < argv.length) {
       const raw = argv[i + 1];
-      options[field] = INT_FIELDS.has(field) ? parseInt(raw, 10) : raw;
+      if (field === 'harnesses') {
+        // --harness accepts a comma-separated list: --harness claude,copilot-vscode
+        const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
+        for (const p of parts) {
+          if (!HARNESS_NAMES.has(p)) {
+            throw new Error(
+              `Invalid harness '${p}' for --harness. Allowed: claude, copilot-vscode, copilot-cli`,
+            );
+          }
+        }
+        options.harnesses = parts;
+      } else if (field === 'afterPlanning' || field === 'afterFinalReview') {
+        // Boolean-via-string flag.
+        const lower = raw.toLowerCase();
+        if (lower === 'true' || lower === '1' || lower === 'yes') options[field] = true;
+        else if (lower === 'false' || lower === '0' || lower === 'no') options[field] = false;
+        else throw new Error(`Invalid value '${raw}' for --${fieldToFlag(field)}. Expected true|false.`);
+      } else {
+        options[field] = INT_FIELDS.has(field) ? parseInt(raw, 10) : raw;
+      }
       i++; // skip consumed value
     }
   }

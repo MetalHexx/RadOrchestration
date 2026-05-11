@@ -32,10 +32,15 @@ function sha256OfFile(absPath) {
 // esbuild dropping into scripts/dist*) but are not authored ship content. They
 // won't appear in the manifest and shouldn't trigger the "missing manifest
 // entry" assertion.
+//
+// The bundle-level `package.json` at the bundle root is treated the same way:
+// it carries only the delivering version field consumed by runPluginBootstrap
+// and is not a file the bootstrap library copies into the user's filesystem.
 function isBuildArtifact(relPath) {
   return /^skills\/rad-orchestration\/scripts\/(dist|dist-bundle|node_modules)\//.test(relPath) ||
          /^skills\/rad-orchestration\/scripts\/.*\.log$/.test(relPath) ||
-         relPath === 'skills/rad-orchestration/scripts/package-lock.json';
+         relPath === 'skills/rad-orchestration/scripts/package-lock.json' ||
+         relPath === 'package.json';
 }
 
 function walkRelative(rootDir) {
