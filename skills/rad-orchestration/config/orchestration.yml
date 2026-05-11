@@ -1,9 +1,4 @@
 version: "1.0"
-system:
-  orch_root: .claude
-projects:
-  base_path: C:\dev\orchestration-projects
-  naming: SCREAMING_CASE
 default_template: ask
 limits:
   max_phases: 10
@@ -17,4 +12,3 @@ human_gates:
 source_control:
   auto_commit: ask
   auto_pr: ask
-  provider: github

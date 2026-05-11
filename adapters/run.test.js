@@ -189,16 +189,17 @@ test('runAdapter manifest entries carry sha256 hash of the emitted file content'
   }
 });
 
-test('runAdapter rewrites system.orch_root and stamps package_version in per-bundle orchestration.yml', async () => {
+test('runAdapter copies orchestration.yml verbatim from canonical source', async () => {
   const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-yml-'));
   // Mirror the canonical layout: skills/rad-orchestration/config/orchestration.yml
   const cfgDir = path.join(canonical, 'skills', 'rad-orchestration', 'config');
   fs.mkdirSync(cfgDir, { recursive: true });
   fs.writeFileSync(path.join(canonical, 'skills', 'rad-orchestration', 'SKILL.md'),
     '---\nname: rad-orchestration\ndescription: Orchestration\n---\nbody\n', 'utf8');
+  const canonical_yml = 'version: "1.0"\ndefault_template: ask\nlimits:\n  max_phases: 10\n';
   fs.writeFileSync(
     path.join(cfgDir, 'orchestration.yml'),
-    'version: "1.0"\nsystem:\n  orch_root: .claude\nprojects:\n  base_path: orchestration-projects\n  naming: SCREAMING_CASE\n',
+    canonical_yml,
     'utf8',
   );
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-yml-'));
@@ -210,17 +211,8 @@ test('runAdapter rewrites system.orch_root and stamps package_version in per-bun
     path.join(out, '.github', 'skills', 'rad-orchestration', 'config', 'orchestration.yml'),
     'utf8',
   );
-  // system.orch_root rewritten to adapter.targetDir (without leading dot is acceptable; we match either form).
-  assert.match(written, /orch_root:\s*\.github/, 'system.orch_root must be rewritten to adapter.targetDir');
-  // New package_version stamped at top, after `version: "1.0"`, before `system:`.
-  assert.match(
-    written,
-    /version:\s*"?1\.0"?\s*\npackage_version:\s*1\.0\.0-alpha\.9\s*\nsystem:/,
-    'package_version must be stamped between schema version and system block',
-  );
-  // Other fields pass through verbatim.
-  assert.match(written, /base_path:\s*orchestration-projects/);
-  assert.match(written, /naming:\s*SCREAMING_CASE/);
+  // orchestration.yml must pass through verbatim (no per-bundle rewrite).
+  assert.strictEqual(written, canonical_yml, 'orchestration.yml must be copied verbatim without rewriting');
 });
 
 test('runAdapter skips plugin-only skills (rad-ui-{start,stop,status})', async () => {
@@ -264,13 +256,9 @@ test('runAdapter skips plugin-only skills (rad-ui-{start,stop,status})', async (
   assert.strictEqual(result.skillCount, 1, 'skillCount must exclude plugin-only skills');
 });
 
-test('runAdapter marks the orchestration.yml manifest entry as ownership=user-config', async () => {
-  // Regression: the installer overwrites orchestration.yml with
-  // generateConfig(userConfig) at install time, so the bundled bytes never
-  // match the installed bytes. Marking the entry as user-config is the
-  // signal to detectModifiedFiles to skip the entry and avoid surfacing a
-  // false-positive modified-file warning on every upgrade/uninstall. Other
-  // skill subfiles must keep ownership=orchestration-system.
+test('runAdapter marks orchestration.yml manifest entry with orchestration-system ownership', async () => {
+  // With the per-bundle rewrite retired, orchestration.yml is treated like any
+  // other skill subfile with ownership=orchestration-system.
   const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-own-'));
   const cfgDir = path.join(canonical, 'skills', 'rad-orchestration', 'config');
   fs.mkdirSync(cfgDir, { recursive: true });
@@ -278,10 +266,10 @@ test('runAdapter marks the orchestration.yml manifest entry as ownership=user-co
     '---\nname: rad-orchestration\ndescription: Orchestration\n---\nbody\n', 'utf8');
   fs.writeFileSync(
     path.join(cfgDir, 'orchestration.yml'),
-    'version: "1.0"\nsystem:\n  orch_root: .claude\n',
+    'version: "1.0"\ndefault_template: ask\n',
     'utf8',
   );
-  // Sibling skill subfile to verify ownership doesn't leak to other entries.
+  // Sibling skill subfile to verify ownership consistency.
   fs.mkdirSync(path.join(canonical, 'skills', 'rad-orchestration', 'references'), { recursive: true });
   fs.writeFileSync(
     path.join(canonical, 'skills', 'rad-orchestration', 'references', 'r.md'),
@@ -300,12 +288,30 @@ test('runAdapter marks the orchestration.yml manifest entry as ownership=user-co
     (f) => f.bundlePath === 'skills/rad-orchestration/config/orchestration.yml',
   );
   assert.ok(ymlEntry, 'orchestration.yml entry must be present in manifest');
-  assert.strictEqual(ymlEntry.ownership, 'user-config',
-    'orchestration.yml ownership must be user-config so the hash check skips it');
+  assert.strictEqual(ymlEntry.ownership, 'orchestration-system',
+    'orchestration.yml ownership must be orchestration-system like all other skill subfiles');
   const refEntry = manifest.files.find(
     (f) => f.bundlePath === 'skills/rad-orchestration/references/r.md',
   );
   assert.ok(refEntry, 'reference subfile entry must be present');
   assert.strictEqual(refEntry.ownership, 'orchestration-system',
-    'sibling skill subfiles must remain orchestration-system ownership');
+    'all skill subfiles must have orchestration-system ownership');
+});
+
+test('canonical orchestration.yml carries no system or projects sections', () => {
+  const text = fs.readFileSync(
+    path.join(import.meta.dirname || '.', '..', 'skills', 'rad-orchestration', 'config', 'orchestration.yml'),
+    'utf8',
+  );
+  assert.doesNotMatch(text, /^system:/m);
+  assert.doesNotMatch(text, /^projects:/m);
+  assert.doesNotMatch(text, /^\s*orch_root:/m);
+  assert.doesNotMatch(text, /^\s*base_path:/m);
+  assert.doesNotMatch(text, /^\s*naming:/m);
+  assert.doesNotMatch(text, /^\s*provider:/m);
+});
+
+test('rewritePerBundleOrchestrationYml is no longer exported', async () => {
+  const m = await import('./run.js');
+  assert.equal(m.rewritePerBundleOrchestrationYml, undefined);
 });
