@@ -62,14 +62,14 @@ export function renderPostInstallSummary(config, copyResults, configPath) {
 
   // PATH one-liner — paste-once shell snippet that puts radorch on PATH
   // for the current shell session. Keyed off process.platform so Windows
-  // users get the PowerShell form, not the bash form (DD-7).
+  // users get the setx form, not the bash form (DD-7, FR-5).
   console.log('  ' + THEME.stepNumber(config.installUi && config.uiDir ? '3.' : '2.')
     + ' ' + THEME.body('Add radorch to your shell PATH (this session):'));
   console.log('');
   if (process.platform === 'win32') {
-    console.log('     ' + THEME.command('$env:Path += ";$env:APPDATA\\npm"'));
+    console.log('     ' + THEME.command('setx PATH "%PATH%;%USERPROFILE%\\.radorch\\bin"'));
   } else {
-    console.log('     ' + THEME.command('export PATH="$HOME/.npm-global/bin:$PATH"'));
+    console.log('     ' + THEME.command('export PATH="$HOME/.radorch/bin:$PATH"'));
   }
   console.log('');
 

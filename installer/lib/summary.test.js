@@ -150,13 +150,13 @@ describe('renderPostInstallSummary', () => {
     const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
     if (process.platform === 'win32') {
       assert.ok(
-        output.includes('$env:Path'),
-        'win32 output should contain a PowerShell $env:Path one-liner'
+        output.includes('setx PATH "%PATH%;%USERPROFILE%\\.radorch\\bin"'),
+        'win32 output should contain setx PATH with .radorch\\bin'
       );
     } else {
       assert.ok(
-        output.includes('export PATH'),
-        'linux/darwin output should contain an `export PATH=` one-liner'
+        output.includes('export PATH="$HOME/.radorch/bin:$PATH"'),
+        'linux/darwin output should contain export PATH with $HOME/.radorch/bin'
       );
     }
   });
