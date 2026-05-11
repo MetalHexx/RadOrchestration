@@ -46,7 +46,7 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
       code: 0,
       deliveringVersion,
       installedVersion,
-      message: `Delivering v${deliveringVersion} is older than installed v${installedVersion}; no-op.`,
+      message: `Delivering v${deliveringVersion} is older than installed v${installedVersion}; no-op. If this is unexpected, run \`radorch doctor\`.`,
     };
   }
   // Upgrade path (or --force re-install).

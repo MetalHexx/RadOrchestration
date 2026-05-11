@@ -127,6 +127,8 @@ describe('runPluginBootstrap', () => {
     expect(result.code).toBe(0);
     // The message field must mention the version comparison
     expect(result.message).toMatch(/Delivering v0\.9\.0 is older than installed v1\.0\.0/);
+    // And must include the radorch doctor hint
+    expect(result.message).toMatch(/radorch doctor/);
 
     stderrSpy.mockRestore();
     warnSpy.mockRestore();
@@ -207,6 +209,28 @@ describe('runPluginBootstrap', () => {
 
     // Lock file should still exist (we didn't acquire it)
     expect(fs.existsSync(lockPath)).toBe(true);
+
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  });
+
+  it('force re-installs even when installed === delivering', async () => {
+    // Arrange: installed === delivering === '1.0.0'; both bundled manifests
+    // present; sentinel ~/.radorch/bin/radorch.mjs exists.
+    const pluginRoot = makePluginRoot('1.0.0');
+    writeInstallJson('1.0.0');
+    writeSentinel();
+
+    // Act
+    const result = await runPluginBootstrap({ pluginRoot, harness: 'claude', force: true });
+
+    // Assert
+    expect(result.action).toBe('upgrade-complete');
+    expect(result.code).toBe(0);
+
+    // install.json.last_writer_version should be re-stamped
+    const ijPath = path.join(tmpDir, '.radorch', 'install.json');
+    const ij = JSON.parse(fs.readFileSync(ijPath, 'utf8'));
+    expect(ij.last_writer_version).toBe('1.0.0');
 
     fs.rmSync(pluginRoot, { recursive: true, force: true });
   });
