@@ -2,12 +2,7 @@
   "hooks": {
     "SessionStart": [
       {
-        "shell": "bash",
-        "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
-      },
-      {
-        "shell": "powershell",
-        "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.ps1"
+        "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/radorch.mjs plugin-bootstrap --quiet --harness claude --plugin-root ${CLAUDE_PLUGIN_ROOT}"
       }
     ]
   }

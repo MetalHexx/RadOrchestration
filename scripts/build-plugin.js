@@ -49,8 +49,6 @@ const REQUIRED_ARTIFACTS = [
   'skills/rad-orchestration/scripts/pipeline.js',
   'ui/server.js',
   'hooks/hooks.json',
-  'hooks/session-start.sh',
-  'hooks/session-start.ps1',
   // Representative canonical skills (full enumeration via runAdapterPlugin)
   'skills/rad-orchestration/SKILL.md',
   'skills/rad-plan/SKILL.md',
@@ -229,20 +227,20 @@ async function main() {
     }
   });
   await step('copy-manifest-catalog', () => {
-    // Collect every per-version manifest produced by adapters/run.js during
-    // the non-plugin (legacy installer) build:
-    //   <repoRoot>/<adapter.name>/manifests/v*.json
-    // and copy them flat into <claudeDist>/manifests/ so the plugin payload
-    // ships one combined catalog. Harness routing at install time (P01-T02)
-    // selects the right entry from the combined catalog.
-    const manifestsOutDir = path.join(claudeDist, 'manifests');
-    fs.mkdirSync(manifestsOutDir, { recursive: true });
-    for (const a of adapters) {
-      const catalogDir = path.join(repoRoot, a.name, 'manifests');
-      if (!fs.existsSync(catalogDir)) continue;
-      for (const file of fs.readdirSync(catalogDir)) {
-        if (!file.startsWith('v') || !file.endsWith('.json')) continue;
-        fs.copyFileSync(path.join(catalogDir, file), path.join(manifestsOutDir, file));
+    // Copy the Claude adapter's per-version manifests into the plugin payload.
+    // The plugin ships only the Claude harness manifest since it's the Claude plugin.
+    // At install time (P01-T02), the CLI reads the harness field from the manifest
+    // to route the installation correctly.
+    const claudeAdapter = adapters.find((a) => a.name === 'claude');
+    if (claudeAdapter) {
+      const catalogDir = path.join(repoRoot, claudeAdapter.name, 'manifests');
+      const manifestsOutDir = path.join(claudeDist, 'manifests');
+      fs.mkdirSync(manifestsOutDir, { recursive: true });
+      if (fs.existsSync(catalogDir)) {
+        for (const file of fs.readdirSync(catalogDir)) {
+          if (!file.startsWith('v') || !file.endsWith('.json')) continue;
+          fs.copyFileSync(path.join(catalogDir, file), path.join(manifestsOutDir, file));
+        }
       }
     }
   });

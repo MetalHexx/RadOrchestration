@@ -85,7 +85,14 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
 
 async function doInstall(args: { paths: ReturnType<typeof userDataPaths>, opts: RunOpts, deliveringVersion: string, action: BootstrapResult['action'], installedVersion?: string }): Promise<BootstrapResult> {
   // Fresh install path: skip hash-check + remove, run install + stamp install.json.
+  // Also ensure the standard .radorch subdirectories exist (projects, logs, runtime).
   const newManifest = loadBundledManifest(args.opts.pluginRoot, args.deliveringVersion);
+
+  // Create standard .radorch subdirectories matching the shell script behavior.
+  fs.mkdirSync(args.paths.projects, { recursive: true });
+  fs.mkdirSync(args.paths.logs, { recursive: true });
+  fs.mkdirSync(args.paths.runtime, { recursive: true });
+
   installManifestFiles(newManifest, args.opts.pluginRoot, args.opts.harness);
   await writeInstallJson(args.paths.installJson, {
     package_version: args.deliveringVersion,
