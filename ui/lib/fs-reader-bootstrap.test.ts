@@ -87,38 +87,23 @@ async function run() {
 
     console.log('\nresolveOrchRoot()');
 
-    await test('returns system.orch_root when set', async () => {
+    await test('returns .claude as the orchestration root', async () => {
       const config: OrchestrationConfig = {
         version: '1',
-        system: { orch_root: '.agents' },
-        projects: { base_path: 'projects', naming: 'SCREAMING_CASE' },
         limits: { max_phases: 10, max_tasks_per_phase: 20, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
         human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
-        source_control: { auto_commit: 'always', auto_pr: 'never', provider: 'github' },
+        source_control: { auto_commit: 'always', auto_pr: 'never' },
       };
-      assert.strictEqual(resolveOrchRoot(config), '.agents');
-    });
-
-    await test('returns .claude when system.orch_root is undefined', async () => {
-      const config = {
-        version: '1',
-        system: {},
-        projects: { base_path: 'projects', naming: 'SCREAMING_CASE' },
-        limits: { max_phases: 10, max_tasks_per_phase: 20, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
-        human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
-        source_control: { auto_commit: 'always', auto_pr: 'never', provider: 'github' },
-      } as OrchestrationConfig;
       assert.strictEqual(resolveOrchRoot(config), '.claude');
     });
 
-    await test('returns .claude when system property is absent', async () => {
-      const config = {
+    await test('uses custom orch_root when provided', async () => {
+      const config: OrchestrationConfig = {
         version: '1',
-        projects: { base_path: 'projects', naming: 'SCREAMING_CASE' },
         limits: { max_phases: 10, max_tasks_per_phase: 20, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
         human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
-        source_control: { auto_commit: 'always', auto_pr: 'never', provider: 'github' },
-      } as OrchestrationConfig;
+        source_control: { auto_commit: 'always', auto_pr: 'never' },
+      };
       assert.strictEqual(resolveOrchRoot(config), '.claude');
     });
 

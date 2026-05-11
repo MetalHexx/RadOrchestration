@@ -18,35 +18,7 @@ export const CONFIG_FIELDS: FieldMeta[] = [
     controlType: 'readonly',
   },
 
-  // 2. System Section
-  {
-    key: 'system.orch_root',
-    label: 'Orchestration Root',
-    tooltip:
-      'Root folder for orchestration files relative to workspace.',
-    section: 'system',
-    controlType: 'text',
-  },
-
-  // 3–4. Projects Section
-  {
-    key: 'projects.base_path',
-    label: 'Base Path',
-    tooltip:
-      'Directory where project folders are created. Can be absolute or relative to workspace root.',
-    section: 'projects',
-    controlType: 'text',
-  },
-  {
-    key: 'projects.naming',
-    label: 'Naming Convention',
-    tooltip: 'How project folder names are formatted.',
-    section: 'projects',
-    controlType: 'toggle-group',
-    options: ['SCREAMING_CASE', 'lowercase', 'numbered'],
-  },
-
-  // 5–8. Pipeline Limits Section
+  // 2–5. Pipeline Limits Section
   {
     key: 'limits.max_phases',
     label: 'Max Phases',
@@ -82,7 +54,7 @@ export const CONFIG_FIELDS: FieldMeta[] = [
     min: 1,
   },
 
-  // 9–11. Human Gates Section
+  // 6–8. Human Gates Section
   {
     key: 'human_gates.after_planning',
     label: 'After Planning Gate',
@@ -109,7 +81,7 @@ export const CONFIG_FIELDS: FieldMeta[] = [
     controlType: 'switch',
   },
 
-  // 12–14. Source Control Section
+  // 9–10. Source Control Section
   {
     key: 'source_control.auto_commit',
     label: 'Auto Commit',
@@ -128,12 +100,14 @@ export const CONFIG_FIELDS: FieldMeta[] = [
     controlType: 'toggle-group',
     options: ['always', 'ask', 'never'],
   },
+
+  // 11. Template Section
   {
-    key: 'source_control.provider',
-    label: 'Provider',
-    tooltip: 'Source control provider. Currently only GitHub is supported.',
-    section: 'source-control',
-    controlType: 'readonly',
+    key: 'default_template',
+    label: 'Default Template',
+    tooltip: 'Default orchestration template to use when creating new projects.',
+    section: 'template',
+    controlType: 'text',
   },
 ];
 

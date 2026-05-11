@@ -19,14 +19,13 @@ interface ConfigFormProps {
 }
 
 const SECTION_TITLES: Record<string, string> = {
-  system: "System",
-  projects: "Projects",
   limits: "Pipeline Limits",
   "human-gates": "Human Gates",
   "source-control": "Source Control",
+  template: "Template",
 };
 
-const SECTION_ORDER = ["system", "projects", "limits", "human-gates", "source-control"];
+const SECTION_ORDER = ["limits", "human-gates", "source-control", "template"];
 
 function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
   return path.split(".").reduce<unknown>((acc, key) => {

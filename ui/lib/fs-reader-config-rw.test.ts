@@ -16,8 +16,6 @@ let failed = 0;
 
 const SAMPLE_CONFIG: OrchestrationConfig = {
   version: '1',
-  system: { orch_root: '.github' },
-  projects: { base_path: 'projects', naming: 'SCREAMING_CASE' },
   limits: {
     max_phases: 10,
     max_tasks_per_phase: 20,
@@ -32,16 +30,10 @@ const SAMPLE_CONFIG: OrchestrationConfig = {
   source_control: {
     auto_commit: 'always',
     auto_pr: 'ask',
-    provider: 'github',
   },
 };
 
 const MINIMAL_CONFIG_YAML = `version: "1"
-system:
-  orch_root: .github
-projects:
-  base_path: "projects"
-  naming: SCREAMING_CASE
 limits:
   max_phases: 10
   max_tasks_per_phase: 20
@@ -54,7 +46,6 @@ human_gates:
 source_control:
   auto_commit: always
   auto_pr: ask
-  provider: github
 `;
 
 async function test(name: string, fn: () => Promise<void>) {
@@ -115,7 +106,7 @@ async function run() {
         await withFakeHome(fakeHome, async () => {
           const config = await readConfig();
           assert.strictEqual(config.version, '1');
-          assert.strictEqual(config.projects.base_path, 'projects');
+          assert.strictEqual(config.limits.max_phases, 10);
         });
       } finally {
         await rm(fakeHome, { recursive: true, force: true });
@@ -135,10 +126,10 @@ async function run() {
         await withFakeHome(fakeHome, async () => {
           const { config, rawYaml } = await readConfigWithRaw();
           assert.strictEqual(config.version, '1');
-          assert.strictEqual(config.projects.naming, 'SCREAMING_CASE');
+          assert.strictEqual(config.limits.max_tasks_per_phase, 20);
           assert.strictEqual(typeof rawYaml, 'string');
           assert.ok(rawYaml.includes('version'));
-          assert.ok(rawYaml.includes('SCREAMING_CASE'));
+          assert.ok(rawYaml.includes('max_phases'));
         });
       } finally {
         await rm(fakeHome, { recursive: true, force: true });

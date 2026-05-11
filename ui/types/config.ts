@@ -15,13 +15,6 @@ export type SourceControlProvider = 'github';
 /** Complete orchestration.yml schema — all sections required for the editor */
 export interface OrchestrationConfig {
   version: string;
-  system: {
-    orch_root: string;
-  };
-  projects: {
-    base_path: string;
-    naming: NamingConvention;
-  };
   limits: {
     max_phases: number;
     max_tasks_per_phase: number;
@@ -36,8 +29,8 @@ export interface OrchestrationConfig {
   source_control: {
     auto_commit: SourceControlAction;
     auto_pr: SourceControlAction;
-    provider: SourceControlProvider;
   };
+  default_template?: string;
 }
 
 /** Editor mode */

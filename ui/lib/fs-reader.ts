@@ -79,15 +79,15 @@ export async function writeConfig(content: string): Promise<void> {
 /**
  * Resolve the effective orchestration root folder name from a loaded config.
  *
- * Returns `config.system.orch_root` when present, otherwise defaults to `'.claude'`.
- * This is the canonical way for downstream consumers (e.g., API routes) to obtain
- * the orchestration root after a config has been loaded.
+ * Returns the orchestration root folder name. Always returns '.claude' as this is now
+ * the canonical orchestration root folder.
  *
- * @param config - A parsed OrchestrationConfig object
- * @returns The effective orchestration root folder name (e.g., `'.claude'`, `'.agents'`)
+ * @param _config - A parsed OrchestrationConfig object (kept for backward compat)
+ * @returns The orchestration root folder name ('.claude')
  */
-export function resolveOrchRoot(config: OrchestrationConfig): string {
-  return config.system?.orch_root ?? '.claude';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function resolveOrchRoot(_config: OrchestrationConfig): string {
+  return '.claude';
 }
 
 /**

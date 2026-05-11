@@ -36,8 +36,6 @@ nodes:
 
 const MINIMAL_CONFIG: OrchestrationConfig = {
   version: '4',
-  system: { orch_root: '.github' },
-  projects: { base_path: '../orchestration-projects', naming: 'SCREAMING_CASE' },
   limits: {
     max_phases: 5,
     max_tasks_per_phase: 10,
@@ -52,7 +50,6 @@ const MINIMAL_CONFIG: OrchestrationConfig = {
   source_control: {
     auto_commit: 'always',
     auto_pr: 'ask',
-    provider: 'github',
   },
 };
 
@@ -61,22 +58,19 @@ const MINIMAL_CONFIG: OrchestrationConfig = {
 /* ------------------------------------------------------------------ */
 
 describe('resolveTemplateDir', () => {
-  it('returns correct path given system.orch_root', () => {
-    const config = { ...MINIMAL_CONFIG, system: { orch_root: '.github' } };
-    const result = resolveTemplateDir('/workspace', config);
-    assert.equal(result, path.join('/workspace', '.github', 'skills', 'rad-orchestration', 'templates'));
-  });
-
-  it('defaults to .claude when system.orch_root is undefined', () => {
-    const config = { ...MINIMAL_CONFIG, system: { orch_root: undefined as unknown as string } };
-    const result = resolveTemplateDir('/workspace', config);
+  it('returns correct path with .claude orch root', () => {
+    const result = resolveTemplateDir('/workspace', MINIMAL_CONFIG);
     assert.equal(result, path.join('/workspace', '.claude', 'skills', 'rad-orchestration', 'templates'));
   });
 
-  it('uses custom orch_root when provided', () => {
-    const config = { ...MINIMAL_CONFIG, system: { orch_root: '.agents' } };
-    const result = resolveTemplateDir('/my/workspace', config);
-    assert.equal(result, path.join('/my/workspace', '.agents', 'skills', 'rad-orchestration', 'templates'));
+  it('uses .claude for any config', () => {
+    const result = resolveTemplateDir('/workspace', MINIMAL_CONFIG);
+    assert.equal(result, path.join('/workspace', '.claude', 'skills', 'rad-orchestration', 'templates'));
+  });
+
+  it('always uses .claude as the orch root', () => {
+    const result = resolveTemplateDir('/my/workspace', MINIMAL_CONFIG);
+    assert.equal(result, path.join('/my/workspace', '.claude', 'skills', 'rad-orchestration', 'templates'));
   });
 });
 
