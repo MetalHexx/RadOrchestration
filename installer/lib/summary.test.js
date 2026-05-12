@@ -3,7 +3,6 @@
 import { describe, it, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  renderPreInstallSummary,
   renderPostInstallSummary,
   renderPartialSuccessSummary,
 } from './summary.js';
@@ -68,21 +67,6 @@ const copyResults = [
 ];
 
 const configPath = '/home/user/my-project/.github/skills/rad-orchestration/config/orchestration.yml';
-
-// --- renderPreInstallSummary tests ---
-
-describe('renderPreInstallSummary', () => {
-  it('contains "Installation Summary" section header text', () => {
-    const output = capture(() => renderPreInstallSummary(configBase));
-    assert.ok(output.includes('Installation Summary'), 'output should contain "Installation Summary"');
-  });
-
-  it('contains "Target:" and "Root:" labels', () => {
-    const output = capture(() => renderPreInstallSummary(configBase));
-    assert.ok(output.includes('Target:'), 'output should contain "Target:"');
-    assert.ok(output.includes('Root:'), 'output should contain "Root:"');
-  });
-});
 
 // --- renderPostInstallSummary tests ---
 

@@ -59,9 +59,10 @@ test('copilot-cli emits to its own gitignored marketplaces folder', async () => 
 });
 
 test('plugin emit retains rad-ui-{start,stop,status} (counterpart to run.js skip)', async () => {
-  // Symmetric counterpart to runAdapter's PLUGIN_ONLY_SKILLS skip. Plugin emit
-  // is the *only* path that ships these skills + the bin/radorch.mjs binary
-  // they depend on; if either changes silently, this test fails first.
+  // Plugin emit is the only path that ships rad-ui-{start,stop,status} (the
+  // RESURRECTED set in adapters/run.test.js). The bin/radorch.mjs binary they
+  // depend on rides along the same path; if either side regresses silently,
+  // this test fails first.
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-ui-keep-'));
   const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-can-ui-'));
   for (const name of ['rad-ui-start', 'rad-ui-stop', 'rad-ui-status']) {

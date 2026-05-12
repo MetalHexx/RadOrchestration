@@ -6,21 +6,6 @@ import path from 'node:path';
 import { THEME, sectionHeader, divider } from './theme.js';
 
 /**
- * Renders the pre-install confirmation screen to stdout.
- * Shows section header and target/root labels.
- * @param {InstallerConfig} config
- * @returns {void}
- */
-export function renderPreInstallSummary(config) {
-  console.log('');
-  sectionHeader('::', 'Installation Summary');
-  console.log('');
-  console.log('  ' + THEME.label('Target:') + '  ' + THEME.body(path.normalize(config.workspaceDir)));
-  console.log('  ' + THEME.label('Root:') + '    ' + THEME.body(path.normalize(config.orchRoot)));
-  console.log('');
-}
-
-/**
  * Renders the post-install success screen to stdout.
  * Shows check marks for installed items, config path, and numbered next-steps
  * with runnable commands using resolved paths.

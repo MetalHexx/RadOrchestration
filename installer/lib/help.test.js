@@ -57,13 +57,14 @@ describe('renderHelp', () => {
 
     assert.ok(output.includes('radorch'), 'mentions radorch');
     assert.ok(output.includes('USAGE'), 'includes USAGE section');
-    assert.ok(output.includes('--workspace'), 'includes --workspace');
+    assert.ok(output.includes('--harness'), 'includes --harness');
+    assert.ok(output.includes('--default-template'), 'includes --default-template');
     assert.ok(output.includes('--help'), 'includes --help');
     assert.ok(output.includes('--version'), 'includes --version');
     assert.ok(output.includes('--overwrite'), 'includes --overwrite');
     assert.ok(output.includes('--yes'), 'includes --yes');
-    assert.ok(output.includes('--orch-root'), 'includes --orch-root');
-    assert.ok(output.includes('--dashboard'), 'includes --dashboard');
+    assert.ok(output.includes('--after-planning'), 'includes --after-planning');
+    assert.ok(output.includes('--after-final-review'), 'includes --after-final-review');
     assert.ok(output.includes('EXAMPLES'), 'includes EXAMPLES');
     assert.ok(output.includes('--force'), 'includes --force alias');
     assert.ok(output.includes('--max-phases'), 'includes --max-phases');
