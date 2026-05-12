@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { runApproveFinal } from '../../../src/commands/gate/approve-final.js';
+import { runApproveFinal, approveFinalCommand } from '../../../src/commands/gate/approve-final.js';
+import { runCommand } from '../../../src/framework/command.js';
 
 const TEMPLATES_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'skills', 'rad-orchestration', 'templates');
 
@@ -67,5 +68,48 @@ describe('radorch gate approve final (FR-13, AD-5)', () => {
     } finally {
       process.chdir(cwdBefore);
     }
+  });
+
+  it('emits exactly one JSON blob on stdout (FR-13)', async () => {
+    const dir = await makeProjectAtFinalGate();
+    const stdoutChunks: string[] = [];
+
+    const stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array) => {
+      stdoutChunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'));
+      return true;
+    });
+
+    const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      stdoutChunks.push(args.map(String).join(' ') + '\n');
+    });
+
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
+      // Mock process.exit to just return without actually exiting
+      return undefined as never;
+    });
+
+    try {
+      await runCommand(approveFinalCommand, {
+        argv: ['--project-dir', dir],
+        env: { ...process.env, RADORCH_NO_LOG: '1' },
+        isTTY: false,
+        stderr: process.stderr,
+      });
+    } catch {
+      // Ignore any errors
+    } finally {
+      stdoutWriteSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+      exitSpy.mockRestore();
+    }
+
+    const combined = stdoutChunks.join('');
+    // Single parse must succeed against the entire stdout content.
+    const parsed = JSON.parse(combined);
+    expect(typeof parsed).toBe('object');
+    // FR-13 contract: the parsed payload reaches the pipeline result via `.data`,
+    // mirroring every other radorch subcommand's framework envelope shape.
+    expect(parsed.data).toBeDefined();
+    expect(parsed.data.success).toBeDefined();
   });
 });

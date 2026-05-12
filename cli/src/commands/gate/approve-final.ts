@@ -6,7 +6,6 @@ import {
   resolvePathContext,
   makeIO,
   autoResolveFinalReviewDocPath,
-  emitEnvelope,
 } from './shared.js';
 import { readState } from '../../../../skills/rad-orchestration/scripts/lib/state-io.js';
 import type { PipelineResult } from '../../../../skills/rad-orchestration/scripts/lib/types.js';
@@ -40,7 +39,6 @@ export const approveFinalCommand = defineCommand({
     const dir = flags['project-dir'];
     if (!dir) throw new UserError('--project-dir is required');
     const result = await runApproveFinal({ projectDir: dir });
-    emitEnvelope(result);
     return result;
   },
   mapResult: (r: PipelineResult) => r.success

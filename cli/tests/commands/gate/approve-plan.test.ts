@@ -1,8 +1,9 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { runApprovePlan } from '../../../src/commands/gate/approve-plan.js';
+import { runApprovePlan, approvePlanCommand } from '../../../src/commands/gate/approve-plan.js';
+import { runCommand } from '../../../src/framework/command.js';
 
 // Resolve the canonical templates dir (one walk above the cli root) so
 // processEvent('start') can snapshot the medium template into the project.
@@ -33,7 +34,6 @@ async function scaffoldToPlanApprovalGate(dir: string): Promise<void> {
   processEvent('start', dir, { template: 'medium' }, io, pathContext);
 
   // Mark requirements + master_plan + explode steps as completed with doc paths
-  const state = readState(dir)!;
   const reqDoc = path.join(dir, 'requirements.md');
   fs.writeFileSync(reqDoc, '---\nproject: gate-test\ntype: requirements\n---\n# requirements\n');
   const mpDoc = path.join(dir, 'master-plan.md');
@@ -47,7 +47,6 @@ async function scaffoldToPlanApprovalGate(dir: string): Promise<void> {
   processEvent('explosion_completed', dir, {}, io, pathContext);
   // After explosion_completed walkDAG should reach plan_approval_gate and
   // emit request_plan_approval; the gate node is now ready for plan_approved.
-  void state;
 }
 
 describe('radorch gate approve plan (FR-13, AD-5)', () => {
@@ -81,5 +80,49 @@ describe('radorch gate approve plan (FR-13, AD-5)', () => {
     const state = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
     // Mutation actually landed despite unrelated cwd
     expect(state.graph.nodes.plan_approval_gate.status).toBe('completed');
+  });
+
+  it('emits exactly one JSON blob on stdout (FR-13)', async () => {
+    const dir = makeProject();
+    await scaffoldToPlanApprovalGate(dir);
+    const stdoutChunks: string[] = [];
+
+    const stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array) => {
+      stdoutChunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'));
+      return true;
+    });
+
+    const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      stdoutChunks.push(args.map(String).join(' ') + '\n');
+    });
+
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
+      // Mock process.exit to just return without actually exiting
+      return undefined as never;
+    });
+
+    try {
+      await runCommand(approvePlanCommand, {
+        argv: ['--project-dir', dir],
+        env: { ...process.env, RADORCH_NO_LOG: '1' },
+        isTTY: false,
+        stderr: process.stderr,
+      });
+    } catch {
+      // Ignore any errors
+    } finally {
+      stdoutWriteSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+      exitSpy.mockRestore();
+    }
+
+    const combined = stdoutChunks.join('');
+    // Single parse must succeed against the entire stdout content.
+    const parsed = JSON.parse(combined);
+    expect(typeof parsed).toBe('object');
+    // FR-13 contract: the parsed payload reaches the pipeline result via `.data`,
+    // mirroring every other radorch subcommand's framework envelope shape.
+    expect(parsed.data).toBeDefined();
+    expect(parsed.data.success).toBeDefined();
   });
 });

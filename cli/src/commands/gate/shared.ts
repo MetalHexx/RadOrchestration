@@ -36,7 +36,3 @@ export function autoResolveFinalReviewDocPath(state: unknown): string | undefine
   const s = state as { graph?: { nodes?: Record<string, { doc_path?: string } | undefined> } } | null;
   return s?.graph?.nodes?.['final_review']?.doc_path;
 }
-
-export function emitEnvelope(result: PipelineResult): void {
-  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-}
