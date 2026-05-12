@@ -5,6 +5,8 @@ description: 'End-to-end installer test for a contributor: builds a local tarbal
 
 # rad-build-harness
 
+**Where this fits.** `rad-build-harness` is the quick contributor dogfood loop — pack, install, bootstrap, verify on a single harness. The comprehensive cross-cutting smoke is `.agents/prompts/rad-test-release.prompt.md` (legacy installer) and `.agents/prompts/rad-test-plugin-release.prompt.md` (Claude plugin). Use this skill when you want a fast feedback cycle on a build change; use the release prompts for go/no-go decisions.
+
 Run the real installer end-to-end from local source. This skill selects a harness, removes any prior global install, builds the canonical adapter sources, packs the installer into a tarball, installs it globally, runs the wizard non-interactively, bootstraps the plugin (with `--force` to defeat the version-equal short-circuit on repeat runs), and verifies the result.
 
 `~/.radorch/projects/` is never touched at any point in this workflow — existing user projects survive unchanged.
@@ -63,23 +65,7 @@ npm list -g --depth=0
 
 > `~/.radorch/projects/` is left entirely intact — do not delete it.
 
-### 4. Build canonical adapter sources
-
-From `{repoRoot}`:
-
-```bash
-npm run build:{harness}
-```
-
-Note: for Claude Code the script name is `build:claude`, not `build:claude-code`.
-
-| Harness | Command |
-|---------|---------|
-| `claude` | `npm run build:claude` |
-| `copilot-vscode` | `npm run build:copilot-vscode` |
-| `copilot-cli` | `npm run build:copilot-cli` |
-
-### 5. Pack the installer
+### 4. Pack the installer
 
 ```bash
 cd {repoRoot}/installer && npm pack
@@ -87,7 +73,7 @@ cd {repoRoot}/installer && npm pack
 
 Note the generated tarball filename — something like `rad-orchestration-X.Y.Z.tgz`. Store it as `{tarball}`. The full absolute path is `{repoRoot}/installer/{tarball}`.
 
-### 6. Install from tarball
+### 5. Install from tarball
 
 ```bash
 npm install -g {repoRoot}/installer/{tarball}
@@ -99,7 +85,9 @@ Confirm the install:
 radorch --version
 ```
 
-### 7. Run the installer non-interactively
+### 6. Run the installer non-interactively
+
+Tests the wizard surface: the single harness-question prompt and the canonical `orchestration.yml` write.
 
 ```bash
 radorch --yes --harness {harness}
@@ -108,7 +96,9 @@ radorch --yes --harness {harness}
 > Expected: installer completes without interactive prompts and exits with code 0.
 > `~/.radorch/projects/` is not touched.
 
-### 8. Bootstrap the plugin with --force
+### 7. Bootstrap the plugin with --force
+
+Tests the force-bootstrap path: defeats the version-equal short-circuit so a repeat test on the same version still re-runs the bootstrap.
 
 Locate the bundled plugin root for the harness. The installer unpacks to a global npm prefix; the plugin payload ships at `{repoRoot}/installer/src/{bundleDir}/` where `bundleDir` matches the harness:
 
@@ -126,7 +116,7 @@ radorch plugin-bootstrap --force --harness {harness} --plugin-root {repoRoot}/in
 
 > `--force` ensures the bootstrap runs even when the delivering version equals the installed version. This is required on repeat test runs.
 
-### 9. Verify the install
+### 8. Verify the install
 
 Run all three checks and report any failure:
 
@@ -147,7 +137,7 @@ Open the file and confirm:
 - The file exists.
 - Each entry in the file has a `sha256` field with a non-empty value.
 
-### 10. Report results
+### 9. Report results
 
 Report:
 - The version tested (from Step 5).
@@ -155,7 +145,7 @@ Report:
 - Whether the sha256 manifest check passed.
 - Any step that failed, with the verbatim error output.
 
-### 11. Delete the local tarball
+### 10. Delete the local tarball
 
 ```bash
 cd {repoRoot}/installer && Remove-Item -Force {tarball}

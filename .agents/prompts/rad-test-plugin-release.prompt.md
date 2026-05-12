@@ -78,15 +78,17 @@ Under `${CLAUDE_PLUGIN_ROOT}/rad-orchestration/`:
 - `agents/` — all canonical agents (orchestrator.md, brainstormer.md, planner.md, coder*, reviewer.md, source-control.md, etc.)
 - `skills/` — all canonical skills **including** `rad-ui-start/`, `rad-ui-stop/`, `rad-ui-status/`
 - `bin/radorch.mjs` — exists, executable
-- `dist/pipeline.js` — exists, self-contained ESM bundle
+- `skills/rad-orchestration/scripts/pipeline.js` — exists, self-contained ESM bundle
 - `ui/` — Next.js standalone build (server.js + .next/static)
 - `hooks/hooks.json` — references `session-start.sh` and `session-start.ps1`
 - `.claude-plugin/plugin.json` — version matches Step 3
 
 **Functional checks:**
-- `node ${CLAUDE_PLUGIN_ROOT}\rad-orchestration\dist\pipeline.js --help` prints usage with no missing-module errors.
+- `node ${CLAUDE_PLUGIN_ROOT}\rad-orchestration\skills\rad-orchestration\scripts\pipeline.js --help` prints usage with no missing-module errors.
 - `node ${CLAUDE_PLUGIN_ROOT}\rad-orchestration\bin\radorch.mjs --help` prints usage.
 - `~\.radorch\install.json` exists with `package_version` matching the plugin version (auto-bootstrapped by the SessionStart hook).
+- `~/.radorch/bin/radorch.mjs` is a non-empty executable after SessionStart fires. Run `node ~/.radorch/bin/radorch.mjs --version` and confirm version matches Step 3.
+- `~/.radorch/ui/` contains the Next.js standalone bundle (server.js or .next/static).
 
 **Slash commands (in Claude Code):**
 - `/rad-ui-start`, `/rad-ui-stop`, `/rad-ui-status` are visible.
