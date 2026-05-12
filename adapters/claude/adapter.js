@@ -45,8 +45,9 @@ export const adapter = {
     opus: 'opus',
   }),
 
-  // The harness-specific token that resolves the plugin root path at runtime.
-  // Claude Code exposes ${CLAUDE_PLUGIN_ROOT} as the absolute path to the
-  // installed plugin directory — used to make skill references portable.
-  pluginRootSubstitution: '${CLAUDE_PLUGIN_ROOT}',
+  // The canonical CLI path used by legacy (non-plugin) emit. Installed at the
+  // standard radorch location; shells and Node expand ~ at invocation time.
+  // The plugin-specific ${CLAUDE_PLUGIN_ROOT} token is injected by
+  // adapters/run-plugin.js directly — not via this adapter field.
+  pluginRootSubstitution: '~/.radorch',
 };

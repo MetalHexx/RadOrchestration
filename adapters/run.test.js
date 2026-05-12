@@ -215,46 +215,6 @@ test('runAdapter copies orchestration.yml verbatim from canonical source', async
   assert.strictEqual(written, canonical_yml, 'orchestration.yml must be copied verbatim without rewriting');
 });
 
-test('runAdapter skips plugin-only skills (rad-ui-{start,stop,status})', async () => {
-  // Plugin-only skills depend on the bundled CLI binary at
-  // ${PLUGIN_ROOT}/bin/radorch.mjs which only ships in the Claude plugin emit
-  // (adapters/run-plugin.js). Legacy emit must not include them or they would
-  // fail at runtime in non-plugin installs (empty ${CLAUDE_PLUGIN_ROOT}, no
-  // radorch.mjs on disk).
-  const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-plugin-only-'));
-  fs.mkdirSync(path.join(canonical, 'skills', 'rad-ui-start'), { recursive: true });
-  fs.mkdirSync(path.join(canonical, 'skills', 'rad-ui-stop'), { recursive: true });
-  fs.mkdirSync(path.join(canonical, 'skills', 'rad-ui-status'), { recursive: true });
-  fs.mkdirSync(path.join(canonical, 'skills', 'rad-keep'), { recursive: true });
-  for (const name of ['rad-ui-start', 'rad-ui-stop', 'rad-ui-status', 'rad-keep']) {
-    fs.writeFileSync(
-      path.join(canonical, 'skills', name, 'SKILL.md'),
-      `---\nname: ${name}\ndescription: ${name}\n---\nbody\n`,
-      'utf8',
-    );
-  }
-  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-plugin-only-'));
-  const result = await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.2.3' });
-  // Bundle directory must NOT contain plugin-only skill folders.
-  const bundleSkillsDir = path.join(out, '.fake', 'skills');
-  assert.ok(!fs.existsSync(path.join(bundleSkillsDir, 'rad-ui-start')), 'rad-ui-start must not appear in legacy bundle');
-  assert.ok(!fs.existsSync(path.join(bundleSkillsDir, 'rad-ui-stop')), 'rad-ui-stop must not appear in legacy bundle');
-  assert.ok(!fs.existsSync(path.join(bundleSkillsDir, 'rad-ui-status')), 'rad-ui-status must not appear in legacy bundle');
-  // Non-plugin-only skills still emit.
-  assert.ok(fs.existsSync(path.join(bundleSkillsDir, 'rad-keep', 'SKILL.md')), 'non-plugin-only skill must still emit');
-  // Manifest must not reference any plugin-only skill bundlePaths.
-  const manifest = JSON.parse(
-    fs.readFileSync(path.join(out, 'fake', 'manifests', 'v1.2.3.json'), 'utf8'),
-  );
-  for (const entry of manifest.files) {
-    assert.ok(
-      !/^skills\/rad-ui-(start|stop|status)\//.test(entry.bundlePath),
-      `manifest must not reference plugin-only skill: ${entry.bundlePath}`,
-    );
-  }
-  // skillCount must reflect only non-plugin-only skills (1 of 4 in this fixture).
-  assert.strictEqual(result.skillCount, 1, 'skillCount must exclude plugin-only skills');
-});
 
 test('runAdapter marks orchestration.yml manifest entry with orchestration-system ownership', async () => {
   // With the per-bundle rewrite retired, orchestration.yml is treated like any
@@ -315,3 +275,28 @@ test('rewritePerBundleOrchestrationYml is no longer exported', async () => {
   const m = await import('./run.js');
   assert.equal(m.rewritePerBundleOrchestrationYml, undefined);
 });
+
+// ── Step 1: rad-ui-* resurrection tests (FR-1, FR-2) ─────────────────
+
+import { adapter as claudeAdapter } from './claude/adapter.js';
+import { adapter as copilotVscodeAdapter } from './copilot-vscode/adapter.js';
+import { adapter as copilotCliAdapter } from './copilot-cli/adapter.js';
+
+const repoRoot = path.resolve(import.meta.dirname, '..');
+const RESURRECTED = ['rad-ui-start', 'rad-ui-stop', 'rad-ui-status'];
+
+for (const a of [claudeAdapter, copilotVscodeAdapter, copilotCliAdapter]) {
+  test(`legacy adapter ${a.name} ships rad-ui-* with substituted CLI path`, async () => {
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), `rad-ui-${a.name}-`));
+    await runAdapter({ ...a, targetDir: a.name }, {
+      canonicalRoot: repoRoot, outputRoot: out, version: '0.0.0-test', packageVersion: '0.0.0-test',
+    });
+    for (const name of RESURRECTED) {
+      const skillFile = path.join(out, a.name, 'skills', name, 'SKILL.md');
+      assert.ok(fs.existsSync(skillFile), `${a.name} missing ${name}`);
+      const body = fs.readFileSync(skillFile, 'utf8');
+      assert.ok(body.includes('~/.radorch/bin/radorch.mjs'), `${a.name}/${name} did not substitute CLI path`);
+      assert.ok(!body.includes('${PLUGIN_ROOT}'), `${a.name}/${name} leaked raw placeholder`);
+    }
+  });
+}

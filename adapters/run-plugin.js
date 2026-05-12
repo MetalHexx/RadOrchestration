@@ -114,7 +114,7 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
         if (relPath === 'SKILL.md') {
           const text = fs.readFileSync(absSrc, 'utf8');
           const rawProjected = projectFrontmatterMin(text, (fm) => adapter.skillFrontmatter(fm, { adapter }));
-          const withPluginRoot = applyPluginRootSubstitution(rawProjected, adapter);
+          const withPluginRoot = applyPluginRootSubstitution(rawProjected);
           const projected = applyClaudeNamespacing(withPluginRoot, adapter, canonicalAgentNames);
           fs.writeFileSync(absDest, projected, 'utf8');
           return;
@@ -154,7 +154,7 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
         ? (fm) => adapter.agentFrontmatter(fm, { adapter })
         : (fm) => fm;
       const rawProjected = projectFrontmatterMin(text, projectFn);
-      const withPluginRoot = applyPluginRootSubstitution(rawProjected, adapter);
+      const withPluginRoot = applyPluginRootSubstitution(rawProjected);
       const projected = applyClaudeNamespacing(withPluginRoot, adapter, canonicalAgentNames);
       fs.writeFileSync(absDest, projected, 'utf8');
     }
@@ -168,14 +168,12 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
 
 /**
  * Replaces every occurrence of the canonical `${PLUGIN_ROOT}` placeholder in
- * a projected text body with the adapter's harness-specific substitution string.
- * Applied post-frontmatter-projection; operates on the raw body text only.
- * If the adapter does not declare pluginRootSubstitution, the text is returned
- * unchanged (graceful degradation for adapters that pre-date this field).
+ * a projected text body with the Claude plugin-root token `${CLAUDE_PLUGIN_ROOT}`.
+ * This token is Claude-plugin-specific and is always hardcoded here — the adapter's
+ * `pluginRootSubstitution` field governs the legacy (run.js) path only.
  */
-function applyPluginRootSubstitution(text, adapter) {
-  if (!adapter.pluginRootSubstitution) return text;
-  return text.replaceAll('${PLUGIN_ROOT}', adapter.pluginRootSubstitution);
+function applyPluginRootSubstitution(text) {
+  return text.replaceAll('${PLUGIN_ROOT}', '${CLAUDE_PLUGIN_ROOT}');
 }
 
 // ── Claude plugin agent-name namespacing ─────────────────────────────

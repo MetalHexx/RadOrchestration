@@ -70,9 +70,7 @@ export const adapter = {
   toolDictionary: TOOL_DICTIONARY,
   modelAliases: MODEL_ALIASES,
 
-  // The harness-specific string that replaces ${PLUGIN_ROOT} in skill bodies on
-  // emit. Copilot VS Code has no dedicated plugin-root token; orchRoot is resolved
-  // at runtime from the install location, so skill bodies that reference a plugin
-  // root use the same {orchRoot} placeholder that orchestration.yml already supplies.
-  pluginRootSubstitution: '{orchRoot}',
+  // The canonical CLI path used by legacy emit. Installed at the standard radorch
+  // location; shells and Node expand ~ at invocation time.
+  pluginRootSubstitution: '~/.radorch',
 };

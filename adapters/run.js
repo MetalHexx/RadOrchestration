@@ -8,13 +8,6 @@ import path from 'node:path';
 
 /** @import { Adapter, MetadataStreamEntry } from './types.d.ts' */
 
-// Skills that depend on the bundled CLI binary at `${PLUGIN_ROOT}/bin/radorch.mjs`,
-// which is only emitted by adapters/run-plugin.js into the Claude plugin tree.
-// Legacy emit (this file) ships agents+skills+manifests only — no binary — so
-// these skills must not appear in legacy bundles or they would fail at runtime
-// with an empty ${CLAUDE_PLUGIN_ROOT} and a missing radorch.mjs.
-export const PLUGIN_ONLY_SKILLS = new Set(['rad-ui-start', 'rad-ui-stop', 'rad-ui-status']);
-
 // Test-source files and dev configs that should never ship in a per-harness
 // bundle. Mirrored in adapters/run-plugin.js and installer/lib/file-copier.js
 // — keep in sync.
@@ -107,7 +100,6 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
     for (const skillName of fs.readdirSync(skillsSrc)) {
       const skillSrcDir = path.join(skillsSrc, skillName);
       if (!fs.statSync(skillSrcDir).isDirectory()) continue;
-      if (PLUGIN_ONLY_SKILLS.has(skillName)) continue;
       const skillOutDir = path.join(targetRoot, 'skills', skillName);
       fs.mkdirSync(skillOutDir, { recursive: true });
 
