@@ -216,15 +216,17 @@ async function main() {
     if (fs.existsSync(tplSrc)) fs.cpSync(tplSrc, tplDst, { recursive: true });
   });
   await step('copy-manifest-catalog', () => {
-    // Plugin manifest emitter (AD-4). Reads the Claude adapter's per-version
-    // catalog at <repo>/claude/manifests/, filters out agents/* and skills/*
-    // entries (Claude Code handles plugin-folder placement; our bootstrap
-    // routes only the shared ~/.radorch/-bound assets), augments with
-    // shared-asset entries (bin/, ui/, templates/, scripts/...), then writes
-    // the narrowed catalog into the plugin tree.
+    // Plugin manifest emitter (AD-4). Reads the installer's per-version
+    // per-harness catalog at <repo>/installer/src/<harness>/manifests/,
+    // filters out agents/*, skills/*, bin/*, ui/* (Claude Code handles
+    // plugin-folder placement; bin/* and ui/* are re-augmented below from
+    // the staged plugin tree so the sha256s match the bytes that ship),
+    // augments with shared-asset entries (bin/, ui/, templates/,
+    // orchestration.yml, pipeline.js), then writes the narrowed catalog
+    // into the plugin tree.
     const claudeAdapter = adapters.find(a => a.name === 'claude');
     if (!claudeAdapter) return;
-    const srcCatalog = path.join(repoRoot, claudeAdapter.name, 'manifests');
+    const srcCatalog = path.join(repoRoot, 'installer', 'src', claudeAdapter.name, 'manifests');
     const dstCatalog = path.join(claudeDist, 'manifests');
     fs.mkdirSync(dstCatalog, { recursive: true });
     if (!fs.existsSync(srcCatalog)) return;
@@ -248,7 +250,15 @@ async function main() {
       if (!file.startsWith('v') || !file.endsWith('.json')) continue;
       const m = JSON.parse(fs.readFileSync(path.join(srcCatalog, file), 'utf8'));
       // Drop agents/* and skills/* (Claude owns these via the plugin folder).
-      m.files = m.files.filter(e => !e.bundlePath.startsWith('agents/') && !e.bundlePath.startsWith('skills/'));
+      // Also drop bin/* and ui/* — the installer's manifest already has them,
+      // but we re-augment with fresh sha256 from the staged plugin tree below,
+      // so leaving them in would produce duplicate entries.
+      m.files = m.files.filter(e =>
+        !e.bundlePath.startsWith('agents/') &&
+        !e.bundlePath.startsWith('skills/') &&
+        !e.bundlePath.startsWith('bin/') &&
+        !e.bundlePath.startsWith('ui/')
+      );
       // Re-add the pipeline bundle entry under skills/rad-orchestration/scripts/pipeline.js
       // because that path is shared user-data (ships in ~/.radorch/ via bootstrap).
       const pipelineBundle = path.join(claudeDist, 'skills', 'rad-orchestration', 'scripts', 'pipeline.js');

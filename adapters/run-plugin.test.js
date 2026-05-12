@@ -40,8 +40,6 @@ test('emits plugin layout for claude under expected output path', async () => {
   // Plugin.json version is overwritten with the version arg
   const p = JSON.parse(fs.readFileSync(path.join(out, '.claude-plugin', 'plugin.json'), 'utf8'));
   assert.equal(p.version, '1.1.0');
-  // Skills array populated
-  assert.deepEqual(p.skills, ['./skills']);
 });
 
 test('copilot-cli emits to its own gitignored marketplaces folder', async () => {

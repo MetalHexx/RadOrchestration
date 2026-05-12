@@ -2,7 +2,12 @@
   "hooks": {
     "SessionStart": [
       {
-        "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/radorch.mjs plugin-bootstrap --quiet --harness claude --plugin-root ${CLAUDE_PLUGIN_ROOT}"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/radorch.mjs plugin-bootstrap --quiet --harness claude --plugin-root ${CLAUDE_PLUGIN_ROOT}"
+          }
+        ]
       }
     ]
   }

@@ -59,12 +59,11 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
     fs.mkdirSync(path.dirname(cpDst), { recursive: true });
     const obj = JSON.parse(fs.readFileSync(cpSrc, 'utf8'));
     obj.version = version;
-    // Per Claude's plugin schema, when skills/ is in conventional location we declare a directory entry.
-    if (fs.existsSync(path.join(canonicalRoot, 'skills'))) obj.skills = ['./skills'];
-    // Hooks presence check uses canonicalRoot (AD-10: canonical hooks/ is the sole source).
-    if (fs.existsSync(path.join(canonicalRoot, 'hooks', 'hooks.json'))) obj.hooks = ['./hooks/hooks.json'];
-    // Agents directory — every canonical agent ships in the plugin.
-    if (fs.existsSync(path.join(canonicalRoot, 'agents'))) obj.agents = ['./agents'];
+    // Component paths (skills/, agents/, hooks/hooks.json) are auto-discovered
+    // by Claude Code from conventional locations under the plugin root — see
+    // https://code.claude.com/docs/en/plugins-reference (File locations reference).
+    // Listing them in plugin.json is redundant for `skills` and `hooks`, and
+    // invalid for `agents` (schema requires file paths, not a directory path).
     fs.writeFileSync(cpDst, JSON.stringify(obj, null, 2) + '\n', 'utf8');
   }
 

@@ -40,7 +40,7 @@ describe('bundle existence (FR-27 #1)', () => {
     for (const rel of [
       '.claude-plugin/plugin.json',
       'bin/radorch.mjs',
-      'dist/pipeline.js',
+      'skills/rad-orchestration/scripts/pipeline.js',
       'ui/server.js',
       'hooks/hooks.json',
       'skills/rad-ui-start/SKILL.md',
@@ -155,8 +155,8 @@ describe('plugin completeness (NFR-6, FR-1, FR-2, FR-4, FR-6)', () => {
       expect(text).toMatch(new RegExp(`rad-orchestration:${a}\\b`));
     }
   });
-  it('dist/pipeline.js is the esbuild bundle (no JIT shim markers)', async () => {
-    const text = await fs.readFile(path.join(pluginRoot, 'dist', 'pipeline.js'), 'utf8');
+  it('skills/rad-orchestration/scripts/pipeline.js is the esbuild bundle (no JIT shim markers)', async () => {
+    const text = await fs.readFile(path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'pipeline.js'), 'utf8');
     expect(text).not.toMatch(/\bnpx\s+tsx\b/);
     expect(text).not.toMatch(/\bnpm\s+ci\b/);
   });
