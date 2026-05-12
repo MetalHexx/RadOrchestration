@@ -10,14 +10,16 @@
 //   3. pipeline-bundle          skills/.../main.ts → dist/pipeline.js (P01-T02)
 //   4. ui-standalone            ui/ → ui/.next/standalone + static    (P01-T03)
 //   5. adapters-plugin          run-plugin for every adapter          (P04-T01)
-//   6. copy-bundles-into-claude-plugin   stage bundled artifacts into the
+//   6. copy-shared-config       orchestration.yml + templates/ to top-level (P01-T03)
+//   7. copy-manifest-catalog    emit narrowed manifest into plugin tree
+//   8. copy-bundles-into-claude-plugin   stage bundled artifacts into the
 //                                CLI-emitted Claude plugin tree
-//   7. copy-plugin-package-json copy plugin/package.json into staging dir
+//   9. copy-plugin-package-json copy plugin/package.json into staging dir
 //                                so the published npm tarball carries the
 //                                manifest (FR-8, AD-7, AD-16)
-//   8. sync-plugin-version      plugin.json + package.json version <- cli/package.json
-//   9. validate-plugin-tree     structural assertions on the staging plugin
-//  10. npm-pack-staging         `npm pack --dry-run --json` size assertion
+//  10. sync-plugin-version      plugin.json + package.json version <- cli/package.json
+//  11. validate-plugin-tree     structural assertions on the staging plugin
+//  12. npm-pack-staging         `npm pack --dry-run --json` size assertion
 //                                (NFR-7: ≤ 50 MB unpacked, +10% margin)
 
 import { execSync } from 'node:child_process';
@@ -36,6 +38,7 @@ export const PIPELINE_STEPS = [
   'pipeline-bundle',
   'ui-standalone',
   'adapters-plugin',
+  'copy-shared-config',
   'copy-manifest-catalog',
   'copy-bundles-into-claude-plugin',
   'copy-plugin-package-json',
@@ -201,6 +204,17 @@ async function main() {
       await runAdapterPlugin(a, { canonicalRoot: repoRoot, outputRoot: repoRoot, version });
     }
   });
+  await step('copy-shared-config', () => {
+    // Copy shared assets to the top-level positions the manifest's
+    // bundlePaths point at, so installManifestFiles can source-read them.
+    const orchSrc = path.join(claudeDist, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
+    const orchDst = path.join(claudeDist, 'orchestration.yml');
+    if (fs.existsSync(orchSrc)) fs.cpSync(orchSrc, orchDst);
+
+    const tplSrc = path.join(claudeDist, 'skills', 'rad-orchestration', 'templates');
+    const tplDst = path.join(claudeDist, 'templates');
+    if (fs.existsSync(tplSrc)) fs.cpSync(tplSrc, tplDst, { recursive: true });
+  });
   await step('copy-manifest-catalog', () => {
     // Plugin manifest emitter (AD-4). Reads the Claude adapter's per-version
     // catalog at <repo>/claude/manifests/, filters out agents/* and skills/*
@@ -255,16 +269,15 @@ async function main() {
         m.files.push({ bundlePath: path.posix.join('ui', rel), sourcePath: path.posix.join('ui', rel),
           ownership: 'orchestration-system', version: m.version, harness: 'claude', sha256: sha256(abs) });
       }
-      // templates/ lives at skills/rad-orchestration/templates/ in the plugin tree;
-      // emit with a short top-level bundlePath so the bootstrap installs them at
-      // ~/.radorch/templates/ without the skill-folder prefix.
-      for (const { abs, rel } of walk(path.join(claudeDist, 'skills', 'rad-orchestration', 'templates'))) {
+      // templates/ is now at the top level (copied by copy-shared-config step);
+      // emit with bundlePath and sourcePath both pointing to the top-level location.
+      for (const { abs, rel } of walk(path.join(claudeDist, 'templates'))) {
         m.files.push({ bundlePath: path.posix.join('templates', rel), sourcePath: path.posix.join('templates', rel),
           ownership: 'orchestration-system', version: m.version, harness: 'claude', sha256: sha256(abs) });
       }
-      // orchestration.yml lives at skills/rad-orchestration/config/orchestration.yml;
-      // emit with a top-level bundlePath so the bootstrap installs it at ~/.radorch/orchestration.yml.
-      const orchYml = path.join(claudeDist, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
+      // orchestration.yml is now at the top level (copied by copy-shared-config step);
+      // emit with bundlePath and sourcePath both pointing to the top-level location.
+      const orchYml = path.join(claudeDist, 'orchestration.yml');
       if (fs.existsSync(orchYml)) {
         m.files.push({ bundlePath: 'orchestration.yml', sourcePath: 'orchestration.yml',
           ownership: 'orchestration-system', version: m.version, harness: 'claude', sha256: sha256(orchYml) });

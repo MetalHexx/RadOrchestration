@@ -108,3 +108,16 @@ test('hooks/hooks.json hardcodes --harness claude', () => {
   const text = JSON.stringify(hooks);
   assert.match(text, /--harness\s+claude/, 'plugin SessionStart hook must hardcode --harness claude (AD-12)');
 });
+
+test('plugin manifest bundlePath values resolve to existing files in plugin tree', () => {
+  if (!fs.existsSync(manifestsDir)) return;
+  const versionFiles = fs.readdirSync(manifestsDir).filter(f => /^v.*\.json$/.test(f));
+  assert.ok(versionFiles.length > 0, 'plugin has no manifest files');
+  const m = JSON.parse(fs.readFileSync(path.join(manifestsDir, versionFiles[0]), 'utf8'));
+  const missing = [];
+  for (const entry of m.files) {
+    const resolved = path.join(claudeDist, entry.bundlePath);
+    if (!fs.existsSync(resolved)) missing.push(entry.bundlePath);
+  }
+  assert.deepEqual(missing, [], `manifest entries do not resolve to real files in plugin tree: ${missing.join(', ')}`);
+});
