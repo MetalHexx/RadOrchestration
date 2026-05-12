@@ -21,6 +21,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const installerSrc = path.join(repoRoot, 'installer', 'src');
 
 const LEGACY_HARNESSES = ['claude', 'copilot-cli', 'copilot-vscode'];
 
@@ -81,7 +82,10 @@ for (const harness of LEGACY_HARNESSES) {
       // to diverge.
       for (const entry of manifest.files) {
         if (entry.ownership === 'user-config') continue;
-        const filePath = path.join(bundleRoot, entry.bundlePath);
+        const isShared = entry.bundlePath.startsWith('bin/') || entry.bundlePath.startsWith('ui/');
+        const filePath = isShared
+          ? path.join(installerSrc, entry.bundlePath)
+          : path.join(bundleRoot, entry.bundlePath);
         assert.ok(
           fs.existsSync(filePath),
           `${harness} manifest references missing file: ${entry.bundlePath}`,
