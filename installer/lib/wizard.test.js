@@ -4,10 +4,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { runWizard } from './wizard.js';
 
-test('Quick install fast-exits with canonical defaults', async () => {
+test('wizard returns canonical defaults under --yes with harness override', async () => {
   const r = await runWizard({
     skipConfirmation: true,
-    cliOverrides: { harnesses: ['claude'], mode: 'quick' },
+    cliOverrides: { harnesses: ['claude'] },
   });
   assert.deepEqual(r.harnesses, ['claude']);
   assert.equal(r.defaultTemplate, 'ask');
@@ -22,36 +22,29 @@ test('Quick install fast-exits with canonical defaults', async () => {
   assert.equal(r.sourceControl.autoPr, 'ask');
 });
 
-test('Custom install walks the ten preferences', async () => {
-  const r = await runWizard({
-    skipConfirmation: true,
-    cliOverrides: {
-      harnesses: ['claude', 'copilot-vscode'],
-      mode: 'custom',
-      defaultTemplate: 'high',
-      maxPhases: 6,
-      maxTasksPerPhase: 5,
-      maxRetriesPerTask: 3,
-      maxConsecutiveReviewRejections: 2,
-      afterPlanning: false,
-      executionMode: 'phase',
-      afterFinalReview: true,
-      autoCommit: 'always',
-      autoPr: 'never',
-    },
-  });
-  assert.deepEqual(r.harnesses, ['claude', 'copilot-vscode']);
-  assert.equal(r.defaultTemplate, 'high');
-  assert.equal(r.sourceControl.autoCommit, 'always');
-});
-
 test('No retired wizard fields are read', async () => {
   const r = await runWizard({
     skipConfirmation: true,
-    cliOverrides: { harnesses: ['claude'], mode: 'quick' },
+    cliOverrides: { harnesses: ['claude'] },
   });
   assert.equal(r.orchRoot, undefined);
   assert.equal(r.projectsBasePath, undefined);
   assert.equal(r.projectsNaming, undefined);
   assert.equal(r.provider, undefined);
+});
+
+test('wizard returns canonical defaults unconditionally under --yes (FR-15, FR-16)', async () => {
+  const result = await runWizard({ skipConfirmation: true, cliOverrides: { harnesses: ['claude'] } });
+  assert.deepEqual(result.harnesses, ['claude']);
+  assert.strictEqual(result.defaultTemplate, 'ask');
+  assert.strictEqual(result.maxPhases, 10);
+  assert.strictEqual(result.maxTasksPerPhase, 8);
+  assert.strictEqual(result.maxRetriesPerTask, 5);
+  assert.strictEqual(result.maxConsecutiveReviewRejections, 3);
+  assert.strictEqual(result.humanGates.afterPlanning, true);
+  assert.strictEqual(result.humanGates.executionMode, 'ask');
+  assert.strictEqual(result.humanGates.afterFinalReview, true);
+  assert.strictEqual(result.sourceControl.autoCommit, 'ask');
+  assert.strictEqual(result.sourceControl.autoPr, 'ask');
+  assert.strictEqual(result.mode, undefined, 'mode field must be gone (FR-20)');
 });

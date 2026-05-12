@@ -7,76 +7,61 @@ import path from 'node:path';
 import os from 'node:os';
 import { generateConfig, writeConfig } from './config-generator.js';
 
-/** @type {import('./types.js').InstallerConfig} */
-const sampleConfig = {
-  tool: 'copilot-vscode',
-  workspaceDir: '/workspace',
-  packageVersion: '1.1.0',
-  defaultTemplate: 'high',
-  maxPhases: 6,
-  maxTasksPerPhase: 10,
-  maxRetriesPerTask: 2,
-  maxConsecutiveReviewRejections: 3,
-  afterPlanning: true,
-  executionMode: 'ask',
-  afterFinalReview: true,
-  autoCommit: 'always',
-  autoPr: 'never',
-  installUi: false,
-  skipConfirmation: false,
-};
+// generateConfig now emits canonical defaults unconditionally (FR-16).
+// Only packageVersion is read from the input; all other properties are fixed.
+const PACKAGE_VERSION = '1.1.0';
 
 // ── generateConfig ────────────────────────────────────────────────────────────
 
 test('generateConfig - returns a string containing version: "1.0"', () => {
-  const yaml = generateConfig(sampleConfig);
+  const yaml = generateConfig({ packageVersion: PACKAGE_VERSION });
   assert.ok(typeof yaml === 'string');
   assert.ok(yaml.includes('version: "1.0"'));
 });
 
 test('generateConfig - output contains package_version from config', () => {
-  const yaml = generateConfig(sampleConfig);
-  assert.ok(yaml.includes(`package_version: ${sampleConfig.packageVersion}`));
+  const yaml = generateConfig({ packageVersion: PACKAGE_VERSION });
+  assert.ok(yaml.includes(`package_version: ${PACKAGE_VERSION}`));
 });
 
-test('generateConfig - output contains default_template from config', () => {
-  const yaml = generateConfig(sampleConfig);
-  assert.ok(yaml.includes(`default_template: ${sampleConfig.defaultTemplate}`));
+test('generateConfig - output contains canonical default_template: ask', () => {
+  const yaml = generateConfig({ packageVersion: PACKAGE_VERSION });
+  assert.ok(yaml.includes('default_template: ask'));
 });
 
-test('generateConfig - output contains limits: section with all 4 keys', () => {
-  const yaml = generateConfig(sampleConfig);
+test('generateConfig - output contains limits: section with canonical values', () => {
+  const yaml = generateConfig({ packageVersion: PACKAGE_VERSION });
   assert.ok(yaml.includes('limits:'));
-  assert.ok(yaml.includes(`max_phases: ${sampleConfig.maxPhases}`));
-  assert.ok(yaml.includes(`max_tasks_per_phase: ${sampleConfig.maxTasksPerPhase}`));
-  assert.ok(yaml.includes(`max_retries_per_task: ${sampleConfig.maxRetriesPerTask}`));
-  assert.ok(yaml.includes(`max_consecutive_review_rejections: ${sampleConfig.maxConsecutiveReviewRejections}`));
+  assert.ok(yaml.includes('max_phases: 10'));
+  assert.ok(yaml.includes('max_tasks_per_phase: 8'));
+  assert.ok(yaml.includes('max_retries_per_task: 5'));
+  assert.ok(yaml.includes('max_consecutive_review_rejections: 3'));
 });
 
-test('generateConfig - output contains human_gates: section with all 3 keys', () => {
-  const yaml = generateConfig(sampleConfig);
+test('generateConfig - output contains human_gates: section with canonical values', () => {
+  const yaml = generateConfig({ packageVersion: PACKAGE_VERSION });
   assert.ok(yaml.includes('human_gates:'));
   assert.ok(yaml.includes('after_planning: true'));
-  assert.ok(yaml.includes(`execution_mode: "${sampleConfig.executionMode}"`));
+  assert.ok(yaml.includes('execution_mode: "ask"'));
   assert.ok(yaml.includes('after_final_review: true'));
 });
 
-test('generateConfig - output contains source_control: section with 2 fields', () => {
-  const yaml = generateConfig(sampleConfig);
+test('generateConfig - output contains source_control: section with canonical values', () => {
+  const yaml = generateConfig({ packageVersion: PACKAGE_VERSION });
   assert.ok(yaml.includes('source_control:'));
-  assert.ok(yaml.includes('auto_commit: "always"'));
-  assert.ok(yaml.includes('auto_pr: "never"'));
+  assert.ok(yaml.includes('auto_commit: "ask"'));
+  assert.ok(yaml.includes('auto_pr: "ask"'));
 });
 
 test('generateConfig - source_control block appears after human_gates', () => {
-  const yaml = generateConfig(sampleConfig);
+  const yaml = generateConfig({ packageVersion: PACKAGE_VERSION });
   const humanGatesIndex = yaml.indexOf('human_gates:');
   const sourceControlIndex = yaml.indexOf('source_control:');
   assert.ok(sourceControlIndex > humanGatesIndex, 'source_control should appear after human_gates');
 });
 
 test('generateConfig - output does NOT contain system or projects or provider', () => {
-  const yaml = generateConfig(sampleConfig);
+  const yaml = generateConfig({ packageVersion: PACKAGE_VERSION });
   assert.ok(!yaml.includes('system:'));
   assert.ok(!yaml.includes('projects:'));
   assert.ok(!yaml.includes('provider:'));
@@ -141,6 +126,22 @@ test('writeConfig - writes file to ~/.radorch/orchestration.yml', () => {
     }
     fs.rmSync(tmpHome, { recursive: true, force: true });
   }
+});
+
+test('generateConfig emits the canonical 10 properties unconditionally (FR-16)', () => {
+  const yaml = generateConfig({ packageVersion: '9.9.9' });
+  assert.match(yaml, /^version: "1\.0"$/m);
+  assert.match(yaml, /^package_version: 9\.9\.9$/m);
+  assert.match(yaml, /^default_template: ask$/m);
+  assert.match(yaml, /^  max_phases: 10$/m);
+  assert.match(yaml, /^  max_tasks_per_phase: 8$/m);
+  assert.match(yaml, /^  max_retries_per_task: 5$/m);
+  assert.match(yaml, /^  max_consecutive_review_rejections: 3$/m);
+  assert.match(yaml, /^  after_planning: true$/m);
+  assert.match(yaml, /^  execution_mode: "ask"$/m);
+  assert.match(yaml, /^  after_final_review: true$/m);
+  assert.match(yaml, /^  auto_commit: "ask"$/m);
+  assert.match(yaml, /^  auto_pr: "ask"$/m);
 });
 
 test('generateConfig emits the ten canonical keys only', () => {

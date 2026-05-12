@@ -39,6 +39,9 @@ import { runPluginBootstrap } from './lib/cli-upgrade-bridge.js';
 // Config generation
 import { generateConfig, writeConfig } from './lib/config-generator.js';
 
+// Install-time tooling checks (FR-17, AD-11)
+import { checkGit, checkGh } from './lib/checks/tooling.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = __dirname;
@@ -142,6 +145,11 @@ export async function main() {
   try {
     renderBanner();
 
+    const gitWarn = checkGit();
+    if (gitWarn) console.warn(THEME.warning ? THEME.warning(gitWarn) : `⚠  ${gitWarn}`);
+    const ghWarn = checkGh();
+    if (ghWarn) console.warn(THEME.warning ? THEME.warning(ghWarn) : `⚠  ${ghWarn}`);
+
     const config = await runWizard({ skipConfirmation, cliOverrides: options });
 
     // Bootstrap every selected harness through the canonical CLI library.
@@ -181,19 +189,7 @@ export async function main() {
     const pkgPath = path.join(__dirname, 'package.json');
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
     const ymlSpin = ora({ text: 'Writing orchestration.yml…', color: THEME.spinner }).start();
-    const yaml = generateConfig({
-      packageVersion: pkg.version,
-      defaultTemplate: config.defaultTemplate,
-      maxPhases: config.maxPhases,
-      maxTasksPerPhase: config.maxTasksPerPhase,
-      maxRetriesPerTask: config.maxRetriesPerTask,
-      maxConsecutiveReviewRejections: config.maxConsecutiveReviewRejections,
-      afterPlanning: config.humanGates.afterPlanning,
-      executionMode: config.humanGates.executionMode,
-      afterFinalReview: config.humanGates.afterFinalReview,
-      autoCommit: config.sourceControl.autoCommit,
-      autoPr: config.sourceControl.autoPr,
-    });
+    const yaml = generateConfig({ packageVersion: pkg.version });
     writeConfig(yaml);
     const orchYmlPath = path.join(os.homedir(), '.radorch', 'orchestration.yml');
     ymlSpin.succeed(`Wrote ${orchYmlPath}`);

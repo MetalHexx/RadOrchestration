@@ -1,7 +1,5 @@
 // installer/lib/cli.js — CLI argument parser
 
-import path from 'node:path';
-
 /**
  * @typedef {Object} ParsedCli
  * @property {'help'|'version'|'run'|'uninstall'} command - The resolved command
@@ -10,9 +8,8 @@ import path from 'node:path';
 
 /** Map of --flag → config field name */
 const FLAG_MAP = {
-  // New shape — used by the rewritten wizard.
+  // Active flags — used by the rewritten wizard.
   '--harness':           'harnesses',        // comma-list parsed into a string[]
-  '--mode':              'mode',
   '--default-template':  'defaultTemplate',
   '--max-phases':        'maxPhases',
   '--max-tasks':         'maxTasksPerPhase',
@@ -23,16 +20,6 @@ const FLAG_MAP = {
   '--after-final-review': 'afterFinalReview',
   '--auto-commit':       'autoCommit',
   '--auto-pr':           'autoPr',
-
-  // Legacy flags — accepted for backward-compatible invocation lines but no
-  // longer surface to the wizard's new shape. parseArgs preserves them in
-  // options so other callers can read them; the wizard ignores unknown keys.
-  '--workspace':         'workspaceDir',
-  '--tool':              'tool',
-  '--orch-root':         'orchRoot',
-  '--projects-path':     'projectsBasePath',
-  '--naming':            'projectsNaming',
-  '--dashboard-dir':     'uiDir',
 };
 
 /** Fields that must be parsed as integers */
@@ -42,12 +29,7 @@ const INT_FIELDS = new Set([
 
 /** Valid values for enum-type fields */
 const ENUM_VALUES = {
-  // `cursor` is intentionally omitted: it appears as a disabled "Coming
-  // soon" choice in the interactive prompt, but no manifest backs it.
-  tool:            ['claude-code', 'copilot-vscode', 'copilot-cli'],
-  mode:            ['quick', 'custom'],
   defaultTemplate: ['extra-high', 'high', 'medium', 'low', 'ask'],
-  projectsNaming:  ['SCREAMING_CASE', 'lowercase', 'numbered'],
   executionMode:   ['ask', 'phase', 'task', 'autonomous'],
   autoCommit:      ['always', 'ask', 'never'],
   autoPr:          ['always', 'ask', 'never'],
@@ -88,12 +70,6 @@ export function parseArgs(argv) {
   if (argv.includes('--overwrite') || argv.includes('--force')) {
     options.overwrite = true;
   }
-  if (argv.includes('--no-dashboard')) {
-    options.installUi = false;
-  }
-  if (argv.includes('--dashboard')) {
-    options.installUi = true;
-  }
 
   // Key-value flags
   for (let i = 0; i < argv.length; i++) {
@@ -123,21 +99,6 @@ export function parseArgs(argv) {
       }
       i++; // skip consumed value
     }
-  }
-
-  // Resolve workspace to absolute path
-  if (options.workspaceDir) {
-    options.workspaceDir = path.resolve(options.workspaceDir);
-  }
-
-  // --dashboard-dir implies installUi
-  if (options.uiDir !== undefined && options.installUi === undefined) {
-    options.installUi = true;
-  }
-
-  // Resolve uiDir to absolute path
-  if (options.uiDir) {
-    options.uiDir = path.resolve(options.uiDir);
   }
 
   // Validate enum values

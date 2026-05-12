@@ -1,6 +1,5 @@
 import { describe, it, test } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
 import { parseArgs } from './cli.js';
 
 describe('parseArgs', () => {
@@ -46,49 +45,21 @@ describe('parseArgs', () => {
       const { options } = parseArgs(['--force']);
       assert.strictEqual(options.overwrite, true);
     });
+  });
 
-    it('--dashboard sets installUi to true', () => {
+  describe('retired boolean flags (FR-20)', () => {
+    it('--dashboard is no longer parsed — installUi stays undefined', () => {
       const { options } = parseArgs(['--dashboard']);
-      assert.strictEqual(options.installUi, true);
+      assert.strictEqual(options.installUi, undefined);
     });
 
-    it('--no-dashboard sets installUi to false', () => {
+    it('--no-dashboard is no longer parsed — installUi stays undefined', () => {
       const { options } = parseArgs(['--no-dashboard']);
-      assert.strictEqual(options.installUi, false);
+      assert.strictEqual(options.installUi, undefined);
     });
   });
 
   describe('key-value flags', () => {
-    it('--tool copilot-vscode', () => {
-      const { options } = parseArgs(['--tool', 'copilot-vscode']);
-      assert.strictEqual(options.tool, 'copilot-vscode');
-    });
-
-    it('--tool copilot-cli', () => {
-      const { options } = parseArgs(['--tool', 'copilot-cli']);
-      assert.strictEqual(options.tool, 'copilot-cli');
-    });
-
-    it('--tool claude-code', () => {
-      const { options } = parseArgs(['--tool', 'claude-code']);
-      assert.strictEqual(options.tool, 'claude-code');
-    });
-
-    it('--orch-root .rad', () => {
-      const { options } = parseArgs(['--orch-root', '.rad']);
-      assert.strictEqual(options.orchRoot, '.rad');
-    });
-
-    it('--projects-path some/path', () => {
-      const { options } = parseArgs(['--projects-path', 'some/path']);
-      assert.strictEqual(options.projectsBasePath, 'some/path');
-    });
-
-    it('--naming lowercase', () => {
-      const { options } = parseArgs(['--naming', 'lowercase']);
-      assert.strictEqual(options.projectsNaming, 'lowercase');
-    });
-
     it('--execution-mode autonomous', () => {
       const { options } = parseArgs(['--execution-mode', 'autonomous']);
       assert.strictEqual(options.executionMode, 'autonomous');
@@ -102,6 +73,38 @@ describe('parseArgs', () => {
     it('--auto-pr never', () => {
       const { options } = parseArgs(['--auto-pr', 'never']);
       assert.strictEqual(options.autoPr, 'never');
+    });
+  });
+
+  describe('retired key-value flags (FR-20)', () => {
+    it('--tool is no longer parsed — tool stays undefined', () => {
+      const { options } = parseArgs(['--tool', 'copilot-vscode']);
+      assert.strictEqual(options.tool, undefined);
+    });
+
+    it('--orch-root is no longer parsed — orchRoot stays undefined', () => {
+      const { options } = parseArgs(['--orch-root', '.rad']);
+      assert.strictEqual(options.orchRoot, undefined);
+    });
+
+    it('--projects-path is no longer parsed — projectsBasePath stays undefined', () => {
+      const { options } = parseArgs(['--projects-path', 'some/path']);
+      assert.strictEqual(options.projectsBasePath, undefined);
+    });
+
+    it('--naming is no longer parsed — projectsNaming stays undefined', () => {
+      const { options } = parseArgs(['--naming', 'lowercase']);
+      assert.strictEqual(options.projectsNaming, undefined);
+    });
+
+    it('--workspace is no longer parsed — workspaceDir stays undefined', () => {
+      const { options } = parseArgs(['--workspace', '.']);
+      assert.strictEqual(options.workspaceDir, undefined);
+    });
+
+    it('--dashboard-dir is no longer parsed — uiDir stays undefined', () => {
+      const { options } = parseArgs(['--dashboard-dir', 'ui']);
+      assert.strictEqual(options.uiDir, undefined);
     });
   });
 
@@ -127,36 +130,7 @@ describe('parseArgs', () => {
     });
   });
 
-  describe('path resolution', () => {
-    it('--workspace resolves to absolute path', () => {
-      const { options } = parseArgs(['--workspace', '.']);
-      assert.strictEqual(options.workspaceDir, path.resolve('.'));
-    });
-
-    it('--dashboard-dir resolves to absolute path', () => {
-      const { options } = parseArgs(['--dashboard-dir', 'ui']);
-      assert.strictEqual(options.uiDir, path.resolve('ui'));
-    });
-
-    it('--dashboard-dir implicitly sets installUi to true', () => {
-      const { options } = parseArgs(['--dashboard-dir', 'ui']);
-      assert.strictEqual(options.installUi, true);
-    });
-  });
-
   describe('enum validation', () => {
-    it('--tool invalid throws', () => {
-      assert.throws(() => parseArgs(['--tool', 'invalid']), /Invalid value/);
-    });
-
-    it('--tool cursor throws (no manifest backs it; UI option is disabled)', () => {
-      assert.throws(() => parseArgs(['--tool', 'cursor']), /Invalid value/);
-    });
-
-    it('--naming bad throws', () => {
-      assert.throws(() => parseArgs(['--naming', 'bad']), /Invalid value/);
-    });
-
     it('--execution-mode wrong throws', () => {
       assert.throws(() => parseArgs(['--execution-mode', 'wrong']), /Invalid value/);
     });
@@ -177,14 +151,13 @@ describe('parseArgs', () => {
   });
 
   describe('combined flags', () => {
-    it('parses multiple flags together', () => {
+    it('parses multiple active flags together', () => {
       const { command, options } = parseArgs([
-        '--yes', '--overwrite', '--orch-root', '.rad', '--max-phases', '5',
+        '--yes', '--overwrite', '--max-phases', '5',
       ]);
       assert.strictEqual(command, 'run');
       assert.strictEqual(options.skipConfirmation, true);
       assert.strictEqual(options.overwrite, true);
-      assert.strictEqual(options.orchRoot, '.rad');
       assert.strictEqual(options.maxPhases, 5);
     });
   });
@@ -195,9 +168,9 @@ test('parseArgs returns command="uninstall" when first arg is "uninstall"', () =
   assert.strictEqual(result.command, 'uninstall');
 });
 
-test('parseArgs threads --workspace and --orch-root through the uninstall command', () => {
-  const result = parseArgs(['uninstall', '--workspace', '/tmp/ws', '--orch-root', '.github']);
-  assert.strictEqual(result.command, 'uninstall');
-  assert.strictEqual(result.options.orchRoot, '.github');
-  assert.ok(result.options.workspaceDir.endsWith('ws'));
+test('--mode flag is no longer parsed (FR-20)', () => {
+  // After FR-20, --mode is removed from FLAG_MAP; parseArgs silently ignores it.
+  // Alternative shape: the parsed options must not contain a mode field.
+  const result = parseArgs(['--mode', 'custom']);
+  assert.strictEqual(result.options.mode, undefined, 'mode parsing should be inert or rejected');
 });

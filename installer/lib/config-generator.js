@@ -7,38 +7,32 @@ import path from 'node:path';
 /** @import { InstallerConfig } from './types.js' */
 
 /**
- * Generates orchestration.yml content with the ten canonical keys.
- * @param {object} config - Configuration object with version, template, limits, and gates
+ * Generates orchestration.yml content with the ten canonical properties (FR-16).
+ * The function accepts the input config but ignores branch fields — all ten
+ * properties are emitted unconditionally at their canonical default values.
+ *
+ * @param {object} config - Configuration object
  * @param {string} config.packageVersion - rad-orchestration package version
- * @param {string} config.defaultTemplate - Default template tier (extra-high, high, medium, low)
- * @param {number} config.maxPhases - Maximum phases per project
- * @param {number} config.maxTasksPerPhase - Maximum tasks per phase
- * @param {number} config.maxRetriesPerTask - Auto-retries before escalation
- * @param {number} config.maxConsecutiveReviewRejections - Review rejects before human escalation
- * @param {boolean} config.afterPlanning - Gate after planning (hard default: true)
- * @param {string} config.executionMode - Execution mode (ask, phase, task, autonomous)
- * @param {boolean} config.afterFinalReview - Gate after final review (hard default: true)
- * @param {string} config.autoCommit - Auto-commit behavior (always, ask, never)
- * @param {string} config.autoPr - Auto-PR behavior (always, ask, never)
  * @returns {string} - Complete YAML file content
  */
-export function generateConfig(config) {
+export function generateConfig({ packageVersion }) {
+  // FR-16: canonical 10 properties, no branching on input config.
   return `# orchestration.yml
 version: "1.0"
-package_version: ${config.packageVersion}
-default_template: ${config.defaultTemplate}
+package_version: ${packageVersion}
+default_template: ask
 limits:
-  max_phases: ${config.maxPhases}
-  max_tasks_per_phase: ${config.maxTasksPerPhase}
-  max_retries_per_task: ${config.maxRetriesPerTask}
-  max_consecutive_review_rejections: ${config.maxConsecutiveReviewRejections}
+  max_phases: 10
+  max_tasks_per_phase: 8
+  max_retries_per_task: 5
+  max_consecutive_review_rejections: 3
 human_gates:
-  after_planning: ${config.afterPlanning}
-  execution_mode: "${config.executionMode}"
-  after_final_review: ${config.afterFinalReview}
+  after_planning: true
+  execution_mode: "ask"
+  after_final_review: true
 source_control:
-  auto_commit: "${config.autoCommit}"
-  auto_pr: "${config.autoPr}"
+  auto_commit: "ask"
+  auto_pr: "ask"
 `;
 }
 
