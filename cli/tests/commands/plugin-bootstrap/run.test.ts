@@ -234,4 +234,70 @@ describe('runPluginBootstrap', () => {
 
     fs.rmSync(pluginRoot, { recursive: true, force: true });
   });
+
+  it('bootstrap copies a real bin/radorch.mjs (FR-7, NFR-6)', async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-bin-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-bin-src-'));
+    fs.mkdirSync(path.join(root, 'bin'), { recursive: true });
+    const sourceBytes = '#!/usr/bin/env node\nconsole.log("rad");\n';
+    fs.writeFileSync(path.join(root, 'bin', 'radorch.mjs'), sourceBytes);
+    fs.writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({ name: 'rad-orchestration', version: '0.0.0-test' }),
+      'utf8',
+    );
+    fs.mkdirSync(path.join(root, 'manifests'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'manifests', 'v0.0.0-test.json'), JSON.stringify({
+      version: '0.0.0-test', package_version: '0.0.0-test', harness: 'claude',
+      files: [{ bundlePath: 'bin/radorch.mjs', sourcePath: 'bin/radorch.mjs', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' }],
+    }));
+    const origHomedir = os.homedir;
+    try {
+      (os as unknown as { homedir: () => string }).homedir = () => home;
+      await runPluginBootstrap({ pluginRoot: root, harness: 'claude' });
+    } finally {
+      (os as unknown as { homedir: () => string }).homedir = origHomedir;
+    }
+    const installed = path.join(home, '.radorch', 'bin', 'radorch.mjs');
+    const stat = fs.statSync(installed);
+    expect(stat.size).toBeGreaterThan(0);
+    expect(fs.readFileSync(installed, 'utf8')).toEqual(sourceBytes);
+    if (process.platform !== 'win32') {
+      // POSIX: 0o755 (the chmod NFR-6 prescribes) — owner-exec bit must be set.
+      expect(stat.mode & 0o100).toBe(0o100);
+    }
+    fs.rmSync(home, { recursive: true, force: true });
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('bootstrap preserves a pre-seeded ~/.radorch/projects/ tree (FR-12)', async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-projects-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-projects-src-'));
+    const seededState = path.join(home, '.radorch', 'projects', 'EXISTING-PROJECT', 'state.json');
+    fs.mkdirSync(path.dirname(seededState), { recursive: true });
+    const seededBytes = JSON.stringify({ marker: 'untouched' });
+    fs.writeFileSync(seededState, seededBytes);
+    fs.writeFileSync(
+      path.join(root, 'package.json'),
+      JSON.stringify({ name: 'rad-orchestration', version: '0.0.0-test' }),
+      'utf8',
+    );
+    fs.mkdirSync(path.join(root, 'manifests'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'manifests', 'v0.0.0-test.json'), JSON.stringify({
+      version: '0.0.0-test', package_version: '0.0.0-test', harness: 'claude', files: [],
+    }));
+    const origHomedir = os.homedir;
+    try {
+      (os as unknown as { homedir: () => string }).homedir = () => home;
+      await runPluginBootstrap({ pluginRoot: root, harness: 'claude' });
+      expect(fs.readFileSync(seededState, 'utf8')).toEqual(seededBytes);
+      // Second run = upgrade path.
+      await runPluginBootstrap({ pluginRoot: root, harness: 'claude', force: true });
+      expect(fs.readFileSync(seededState, 'utf8')).toEqual(seededBytes);
+    } finally {
+      (os as unknown as { homedir: () => string }).homedir = origHomedir;
+    }
+    fs.rmSync(home, { recursive: true, force: true });
+    fs.rmSync(root, { recursive: true, force: true });
+  });
 });

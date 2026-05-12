@@ -150,6 +150,12 @@ export async function main() {
     console.log('');
     sectionHeader('::', 'Bootstrapping harnesses');
     console.log('');
+    // AD-3: legacy installer keeps shared assets (bin/, ui/) at installer/src/
+    // and per-harness payloads (agents/, skills/, manifests, package.json) at
+    // installer/src/<harness>/. `sharedRoot` resolves the former; `pluginRoot`
+    // resolves the latter. The plugin channel ships everything under one root
+    // and omits `sharedRoot` (defaults to `pluginRoot`).
+    const sharedRoot = path.join(repoRoot, 'src');
     for (const harness of config.harnesses) {
       const pluginRoot = pluginRootForHarness(harness);
       if (!fs.existsSync(path.join(pluginRoot, 'package.json'))) {
@@ -162,7 +168,7 @@ export async function main() {
       }
       const spinner = ora({ text: `Bootstrapping '${harness}'…`, color: THEME.spinner }).start();
       try {
-        const result = await runPluginBootstrap({ pluginRoot, harness });
+        const result = await runPluginBootstrap({ pluginRoot, sharedRoot, harness });
         spinner.succeed(`Bootstrapped '${harness}' (${result.action})`);
       } catch (err) {
         spinner.fail(`Failed to bootstrap '${harness}': ${err.message}`);

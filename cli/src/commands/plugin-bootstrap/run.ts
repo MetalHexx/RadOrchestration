@@ -14,6 +14,13 @@ import type { BootstrapResult } from './envelope.js';
 
 export interface RunOpts {
   pluginRoot: string;
+  /**
+   * AD-3: optional shared-assets root for the legacy installer channel.
+   * When omitted, defaults to `pluginRoot` (the Claude plugin channel ships a
+   * single bundle root; the legacy installer ships shared `bin/` and `ui/`
+   * one level up from each per-harness payload).
+   */
+  sharedRoot?: string;
   harness: HarnessName;
   force?: boolean;
   quiet?: boolean;
@@ -21,20 +28,21 @@ export interface RunOpts {
 
 export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult> {
   const paths = userDataPaths();
+  const sharedRoot = opts.sharedRoot ?? opts.pluginRoot;
   const require_ = createRequire(import.meta.url);
   const pluginPkg = require_(path.join(opts.pluginRoot, 'package.json')) as { version: string };
   const deliveringVersion = pluginPkg.version;
   const haveInstallJson = fs.existsSync(paths.installJson);
   // Fresh-install short-circuit when no install.json present.
   if (!haveInstallJson) {
-    return await doInstall({ paths, opts, deliveringVersion, action: 'fresh-install' });
+    return await doInstall({ paths, opts, sharedRoot, deliveringVersion, action: 'fresh-install' });
   }
   const ij = await readInstallJson(paths.installJson);
   const installedVersion = ij.package_version;
   // Sanity: if expected files are missing, treat as fresh.
   const expectedSentinel = path.join(paths.bin, 'radorch.mjs');
   if (!fs.existsSync(expectedSentinel)) {
-    return await doInstall({ paths, opts, deliveringVersion, action: 'fresh-install', installedVersion });
+    return await doInstall({ paths, opts, sharedRoot, deliveringVersion, action: 'fresh-install', installedVersion });
   }
   const cmp = cmpSemver(deliveringVersion, installedVersion);
   if (cmp === 0 && !opts.force) {
@@ -62,6 +70,7 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
   }
   try {
     // Ensure standard .radorch subdirectories exist on upgrade path (defensive against partial cleans).
+    // FR-12: projects/ is user-owned; mkdir is recursive (no-op when present), never written into.
     fs.mkdirSync(paths.projects, { recursive: true });
     fs.mkdirSync(paths.logs, { recursive: true });
     fs.mkdirSync(paths.runtime, { recursive: true });
@@ -76,7 +85,7 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
     }
     removeManifestFiles(priorManifest, opts.harness);
     const newManifest = loadBundledManifest(opts.pluginRoot, deliveringVersion);
-    installManifestFiles(newManifest, opts.pluginRoot, opts.harness);
+    installManifestFiles(newManifest, opts.pluginRoot, opts.harness, { sharedRoot });
     await writeInstallJson(paths.installJson, {
       ...ij,
       package_version: deliveringVersion,
@@ -88,19 +97,23 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
   }
 }
 
-async function doInstall(args: { paths: ReturnType<typeof userDataPaths>, opts: RunOpts, deliveringVersion: string, action: BootstrapResult['action'], installedVersion?: string }): Promise<BootstrapResult> {
+async function doInstall(args: { paths: ReturnType<typeof userDataPaths>, opts: RunOpts, sharedRoot: string, deliveringVersion: string, action: BootstrapResult['action'], installedVersion?: string }): Promise<BootstrapResult> {
   // Fresh install path: skip hash-check + remove, run install + stamp install.json.
   // Also ensure the standard .radorch subdirectories exist (projects, logs, runtime).
   const newManifest = loadBundledManifest(args.opts.pluginRoot, args.deliveringVersion);
 
   // Create standard .radorch subdirectories matching the shell script behavior.
+  // FR-12: projects/ is user-owned; mkdir is recursive (no-op when present), never written into.
   fs.mkdirSync(args.paths.projects, { recursive: true });
   fs.mkdirSync(args.paths.logs, { recursive: true });
   fs.mkdirSync(args.paths.runtime, { recursive: true });
   fs.mkdirSync(args.paths.bin, { recursive: true });
-  fs.writeFileSync(path.join(args.paths.bin, 'radorch.mjs'), '');
 
-  installManifestFiles(newManifest, args.opts.pluginRoot, args.opts.harness);
+  // FR-7: the real bin/radorch.mjs lands via the manifest copy below — no
+  // zero-byte sentinel write here. The manifest's bin/radorch.mjs entry
+  // resolves from sharedRoot (legacy channel) or pluginRoot (plugin channel)
+  // per AD-3, and installManifestFiles chmods it 0o755 on POSIX (NFR-6).
+  installManifestFiles(newManifest, args.opts.pluginRoot, args.opts.harness, { sharedRoot: args.sharedRoot });
   await writeInstallJson(args.paths.installJson, {
     package_version: args.deliveringVersion,
     installed_at: new Date().toISOString(),
