@@ -32,7 +32,7 @@ Task Review reads only the inputs below — do NOT load the Requirements doc, Ma
 5. **Conformance pass (first)** — the tiered per-requirement audit. For every FR/NFR/AD/DD tag inlined in the Task Handoff, evaluate whether the diff delivers what this task owes and write one audit-table row carrying `F-N`, `File:Line`, `Evidence`, status, severity, finding, and fix:
    - **`on-track`** — the diff's contribution to this requirement is correct for what the task's slice was supposed to deliver. (On-track does NOT mean the requirement is fully complete project-wide — just that this task's slice is correct. A requirement may remain on-track across several tasks before final review marks it `met`.) Even on-track rows carry evidence — a file range or representative code quote proving the slice is correct.
    - **`drift`** — the diff deviates from what the Task Handoff says the task should deliver for this requirement (wrong contract, missing piece, wrong behaviour). Drift findings drive orchestrator mediation.
-   - **`regression`** — the diff breaks something that previously worked (test failure, deleted export that sibling code imports, behaviour change outside the task's declared scope). Regression findings drive orchestrator mediation and are flagged critical.
+   - **`regression`** — the diff breaks something that previously worked (test failure, deleted export that sibling code imports, behaviour change outside the task's declared scope). Regression findings drive orchestrator mediation; severity is assigned per the finding's impact (see Verdict Rules). Regressions are **high-severity by default** — assign `high` whenever the impact is unclear or you cannot personally bound the corrective. Downgrade to `medium` or `low` only when you can name the exact one-or-two-file fix and the corrective is mechanical (snapshot/path/shape adjustment, not a behavior or contract change).
 
    Use the 7-category conformance checklist (below) as a secondary aggregate view — the audit table is the per-requirement source of truth.
 
@@ -109,11 +109,11 @@ The highest-severity finding across both passes (conformance + quality sweep) de
 | Verdict | When to Apply |
 |---------|---------------|
 | `approved` | No issues found, or only low-severity findings (cosmetic, style), AND every requirement row is `on-track`. |
-| `changes_requested` | At least one medium-severity finding (functional issue, missing coverage), OR at least one `drift` row in the audit table. |
-| `rejected` | At least one high-severity finding (security vulnerability, data loss risk, architectural violation), OR at least one `regression` row in the audit table. |
+| `changes_requested` | At least one medium-severity finding (functional issue, missing coverage), OR at least one `drift` row in the audit table, OR a `regression` row classified medium or low severity (mechanical corrective: pre-existing test learns a new shape, snapshot mismatch, refactor side-effect with a contained one-or-two-file fix). |
+| `rejected` | At least one high-severity finding (security vulnerability, data loss risk, architectural violation), OR a `regression` row classified **high-severity** (production behavior broken, contract or API regression, irrecoverable data state, regression whose corrective scope you cannot bound). |
 
 - **Severity** levels: **low** (cosmetic, style), **medium** (functional issue, missing coverage), **high** (security vulnerability, data loss risk, architectural violation), **none** (no findings). The `severity` frontmatter field records the highest finding severity across both passes, or `none` when no findings were raised.
-- **Status** semantics (audit table): `on-track` is informational only — it does not escalate the verdict. `drift` and `regression` always escalate the verdict to at least `changes_requested` (drift) or `rejected` (regression) even when the associated severity is low.
+- **Status** semantics (audit table): `on-track` is informational only — it does not escalate the verdict. `drift` always escalates to at least `changes_requested`. `regression` escalates per its severity: medium/low regressions escalate to `changes_requested` (routed through orchestrator mediation as a corrective task), high-severity regressions escalate to `rejected`. Regression severity is `high` by default; downgrade only when the corrective is bounded and mechanical, and cite the bounded fix in the finding row.
 - Quality-sweep findings use the same severity levels as conformance findings and CAN escalate the verdict.
 
 ## Output
