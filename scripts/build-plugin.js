@@ -21,6 +21,7 @@
 //                                (NFR-7: ≤ 50 MB unpacked, +10% margin)
 
 import { execSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -201,21 +202,74 @@ async function main() {
     }
   });
   await step('copy-manifest-catalog', () => {
-    // Copy the Claude adapter's per-version manifests into the plugin payload.
-    // The plugin ships only the Claude harness manifest since it's the Claude plugin.
-    // At install time (P01-T02), the CLI reads the harness field from the manifest
-    // to route the installation correctly.
-    const claudeAdapter = adapters.find((a) => a.name === 'claude');
-    if (claudeAdapter) {
-      const catalogDir = path.join(repoRoot, claudeAdapter.name, 'manifests');
-      const manifestsOutDir = path.join(claudeDist, 'manifests');
-      fs.mkdirSync(manifestsOutDir, { recursive: true });
-      if (fs.existsSync(catalogDir)) {
-        for (const file of fs.readdirSync(catalogDir)) {
-          if (!file.startsWith('v') || !file.endsWith('.json')) continue;
-          fs.copyFileSync(path.join(catalogDir, file), path.join(manifestsOutDir, file));
+    // Plugin manifest emitter (AD-4). Reads the Claude adapter's per-version
+    // catalog at <repo>/claude/manifests/, filters out agents/* and skills/*
+    // entries (Claude Code handles plugin-folder placement; our bootstrap
+    // routes only the shared ~/.radorch/-bound assets), augments with
+    // shared-asset entries (bin/, ui/, templates/, scripts/...), then writes
+    // the narrowed catalog into the plugin tree.
+    const claudeAdapter = adapters.find(a => a.name === 'claude');
+    if (!claudeAdapter) return;
+    const srcCatalog = path.join(repoRoot, claudeAdapter.name, 'manifests');
+    const dstCatalog = path.join(claudeDist, 'manifests');
+    fs.mkdirSync(dstCatalog, { recursive: true });
+    if (!fs.existsSync(srcCatalog)) return;
+
+    const sha256 = (p) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+    const walk = (root) => {
+      const out = [];
+      const rec = (dir, rel) => {
+        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+          const abs = path.join(dir, e.name);
+          const r = rel ? path.posix.join(rel, e.name) : e.name;
+          if (e.isDirectory()) rec(abs, r);
+          else if (e.isFile()) out.push({ abs, rel: r });
         }
+      };
+      if (fs.existsSync(root)) rec(root, '');
+      return out;
+    };
+
+    for (const file of fs.readdirSync(srcCatalog)) {
+      if (!file.startsWith('v') || !file.endsWith('.json')) continue;
+      const m = JSON.parse(fs.readFileSync(path.join(srcCatalog, file), 'utf8'));
+      // Drop agents/* and skills/* (Claude owns these via the plugin folder).
+      m.files = m.files.filter(e => !e.bundlePath.startsWith('agents/') && !e.bundlePath.startsWith('skills/'));
+      // Re-add the pipeline bundle entry under skills/rad-orchestration/scripts/pipeline.js
+      // because that path is shared user-data (ships in ~/.radorch/ via bootstrap).
+      const pipelineBundle = path.join(claudeDist, 'skills', 'rad-orchestration', 'scripts', 'pipeline.js');
+      if (fs.existsSync(pipelineBundle)) {
+        m.files.push({
+          bundlePath: 'skills/rad-orchestration/scripts/pipeline.js',
+          sourcePath: 'skills/rad-orchestration/scripts/pipeline.js',
+          ownership: 'orchestration-system', version: m.version, harness: 'claude',
+          sha256: sha256(pipelineBundle),
+        });
       }
+      // Append shared user-data assets present in the plugin payload.
+      for (const { abs, rel } of walk(path.join(claudeDist, 'bin'))) {
+        m.files.push({ bundlePath: path.posix.join('bin', rel), sourcePath: path.posix.join('bin', rel),
+          ownership: 'orchestration-system', version: m.version, harness: 'claude', sha256: sha256(abs) });
+      }
+      for (const { abs, rel } of walk(path.join(claudeDist, 'ui'))) {
+        m.files.push({ bundlePath: path.posix.join('ui', rel), sourcePath: path.posix.join('ui', rel),
+          ownership: 'orchestration-system', version: m.version, harness: 'claude', sha256: sha256(abs) });
+      }
+      // templates/ lives at skills/rad-orchestration/templates/ in the plugin tree;
+      // emit with a short top-level bundlePath so the bootstrap installs them at
+      // ~/.radorch/templates/ without the skill-folder prefix.
+      for (const { abs, rel } of walk(path.join(claudeDist, 'skills', 'rad-orchestration', 'templates'))) {
+        m.files.push({ bundlePath: path.posix.join('templates', rel), sourcePath: path.posix.join('templates', rel),
+          ownership: 'orchestration-system', version: m.version, harness: 'claude', sha256: sha256(abs) });
+      }
+      // orchestration.yml lives at skills/rad-orchestration/config/orchestration.yml;
+      // emit with a top-level bundlePath so the bootstrap installs it at ~/.radorch/orchestration.yml.
+      const orchYml = path.join(claudeDist, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
+      if (fs.existsSync(orchYml)) {
+        m.files.push({ bundlePath: 'orchestration.yml', sourcePath: 'orchestration.yml',
+          ownership: 'orchestration-system', version: m.version, harness: 'claude', sha256: sha256(orchYml) });
+      }
+      fs.writeFileSync(path.join(dstCatalog, file), JSON.stringify(m, null, 2) + '\n', 'utf8');
     }
   });
   await step('copy-bundles-into-claude-plugin', () => {

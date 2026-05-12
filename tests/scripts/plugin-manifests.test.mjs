@@ -51,3 +51,60 @@ test('marketplace.json declares the npm source type pointing at @rad-orchestrati
   assert.ok(!('url' in plugin.source), 'npm-source plugin must not carry a url field');
   assert.ok(!('path' in plugin.source), 'npm-source plugin must not carry a path field');
 });
+
+// --- P01-T03: narrowed plugin manifest assertions ---
+
+const claudeDist = path.join(repoRoot, 'cli', 'dist', 'marketplaces', 'claude', 'plugins', 'rad-orchestration');
+const manifestsDir = path.join(claudeDist, 'manifests');
+const SHA256_RE = /^[a-f0-9]{64}$/;
+
+test('plugin manifest excludes agents/* and skills/* entries', () => {
+  if (!fs.existsSync(manifestsDir)) return;
+  const files = fs.readdirSync(manifestsDir).filter(f => /^v.*\.json$/.test(f));
+  for (const f of files) {
+    const m = JSON.parse(fs.readFileSync(path.join(manifestsDir, f), 'utf8'));
+    // skills/rad-orchestration/scripts/pipeline.js is the sole allowed skills/* entry
+    // because it is a shared user-data binary routed into ~/.radorch/ by the bootstrap.
+    const leaks = m.files.filter(e =>
+      (e.bundlePath.startsWith('agents/') || e.bundlePath.startsWith('skills/')) &&
+      e.bundlePath !== 'skills/rad-orchestration/scripts/pipeline.js',
+    );
+    assert.deepEqual(leaks, [], `${f}: agents/* or skills/* leaked into plugin manifest`);
+  }
+});
+
+test('plugin manifest lists shared user-data assets with sha256', () => {
+  if (!fs.existsSync(manifestsDir)) return;
+  const f = fs.readdirSync(manifestsDir).filter(x => /^v.*\.json$/.test(x))[0];
+  const m = JSON.parse(fs.readFileSync(path.join(manifestsDir, f), 'utf8'));
+  const required = [
+    'bin/radorch.mjs',
+    'orchestration.yml',
+    'skills/rad-orchestration/scripts/pipeline.js',
+  ];
+  for (const bp of required) {
+    const e = m.files.find(x => x.bundlePath === bp);
+    assert.ok(e, `plugin manifest missing ${bp}`);
+    assert.match(e.sha256, SHA256_RE, `${bp} sha256 missing or malformed`);
+  }
+  const uiEntries = m.files.filter(e => e.bundlePath.startsWith('ui/'));
+  assert.ok(uiEntries.length > 0, 'plugin manifest missing ui/** entries');
+  const templateEntries = m.files.filter(e => e.bundlePath.startsWith('templates/'));
+  assert.ok(templateEntries.length > 0, 'plugin manifest missing templates/** entries');
+});
+
+test('plugin payload contains pre-built dashboard UI', () => {
+  const uiRoot = path.join(claudeDist, 'ui');
+  assert.ok(fs.existsSync(uiRoot), 'plugin ui/ not built');
+  // Next.js standalone produces server.js at the top level.
+  assert.ok(
+    fs.existsSync(path.join(uiRoot, 'server.js')) || fs.existsSync(path.join(uiRoot, 'ui', 'server.js')),
+    'plugin ui/ missing standalone server entry',
+  );
+});
+
+test('hooks/hooks.json hardcodes --harness claude', () => {
+  const hooks = JSON.parse(fs.readFileSync(path.join(repoRoot, 'hooks', 'hooks.json'), 'utf8'));
+  const text = JSON.stringify(hooks);
+  assert.match(text, /--harness\s+claude/, 'plugin SessionStart hook must hardcode --harness claude (AD-12)');
+});
