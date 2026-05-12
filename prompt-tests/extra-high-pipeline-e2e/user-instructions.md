@@ -99,7 +99,7 @@ Skip this if you're time-boxed; it's a bonus check that the UI renders the run o
 cd ui && npm run build && npm run dev
 ```
 
-Open `http://localhost:3000`. Point the UI at the run folder's parent (whatever `projects.base_path` the dev instance resolves to — check `.claude/skills/rad-orchestration/config/orchestration.yml`). The DAG timeline should render:
+Open `http://localhost:3000`. The UI reads projects from `~/.radorch/projects` (run `radorch where projects` to confirm). The DAG timeline should render:
 
 - The seeded planning nodes (`requirements`, `master_plan`, `explode_master_plan`, `plan_approval_gate`) all marked completed.
 - Per-phase iterations, each with a `phase_planning` child step pointing at its emitted file in `phases/` via a clickable Doc link.

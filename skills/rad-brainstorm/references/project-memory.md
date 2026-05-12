@@ -15,7 +15,7 @@ Use judgment. If the brainstorm is clearly greenfield with no prior context, ski
 
 ## Finding Candidates
 
-Dispatch an **Explore** subagent to scan the projects directory (from `projects.base_path` in `orchestration.yml`). Instruct it to:
+Dispatch an **Explore** subagent to scan `~/.radorch/projects` (run `radorch where projects` to confirm if `$RADORCH_HOME` is overridden). Instruct it to:
 
 1. **List project folders** in the base path
 2. **Strip suffixes** to surface series siblings: remove trailing `-N`, `-N-FIXES`, `-SPIKE` to find the stem (e.g., `DAG-VIEW-4` → stem `DAG-VIEW`)
