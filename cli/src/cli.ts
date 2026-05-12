@@ -6,6 +6,7 @@ import { harnessUseCommand } from './commands/harness-use.js';
 import { harnessListCommand } from './commands/harness-list.js';
 import { uiStartCommand, uiStopCommand, uiStatusCommand } from './commands/ui/index.js';
 import { pluginBootstrapCommand } from './commands/plugin-bootstrap/index.js';
+import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
 
 export function buildProgram(version: string): Command {
   const program = new Command('radorch');
@@ -29,6 +30,15 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(3);
       await runCommand(doctorCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
+  program
+    .command('where [name]')
+    .description(WHERE_DESCRIPTION)
+    .addHelpText('after', '\n' + whereHelpText())
+    .action(async (name?: string) => {
+      const code = await runWhere({ name, stdout: process.stdout, stderr: process.stderr, env: process.env });
+      process.exit(code);
     });
 
   const harness = program.command('harness').description('harness operations');
@@ -116,6 +126,11 @@ export function buildProgram(version: string): Command {
       const argv = process.argv.slice(5);
       await runCommand(approveFinalCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
+
+  program.addHelpText(
+    'after',
+    "\nTip: use 'radorch where <name>' to resolve any radorch path (projects, registry, config, ...). 'radorch where' with no arg lists them all.",
+  );
 
   return program;
 }

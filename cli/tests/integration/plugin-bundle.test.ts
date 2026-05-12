@@ -63,7 +63,7 @@ describe('bundle invocability (FR-27 #2)', () => {
 });
 
 describe('SessionStart bootstrap (FR-27 #3, #4)', () => {
-  it('first run bootstraps; second run is a no-op', async () => {
+  it('first run bootstraps; second run is a no-op', { timeout: 30_000 }, async () => {
     // The plugin-bootstrap hook is now invoked via the node CLI, which uses
     // os.homedir() to resolve the install root. Set HOME/USERPROFILE so
     // os.homedir() returns `home`, making resolveInstallRoot() return

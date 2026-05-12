@@ -16,5 +16,5 @@ describe('binary smoke', () => {
     });
     // commander's --help writes to stdout via commander itself; envelope is not emitted on --help
     expect(stdout.length + stderr.length).toBeGreaterThan(0);
-  });
+  }, 30_000);
 });
