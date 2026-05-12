@@ -166,7 +166,12 @@ test('installer produces structurally-equivalent state vs plugin-bootstrap', asy
   });
 
   const pluginRoot = pluginRootFor('claude');
-  await runPluginBootstrap({ pluginRoot, harness: 'claude' });
+  // installer/src/claude/ is a legacy-installer bundle: bin/ and ui/ live
+  // at top-level installer/src/, not under the per-harness folder. Pass
+  // sharedRoot explicitly so the manifest's bin/radorch.mjs entry resolves
+  // (same routing the installer flow does at index.js:175,188).
+  const sharedRoot = path.join(__dirname, 'src');
+  await runPluginBootstrap({ pluginRoot, sharedRoot, harness: 'claude' });
   const bootstrapRadorch = snapshotTree(path.join(homeB, '.radorch'));
   const bootstrapClaude = snapshotTree(path.join(homeB, '.claude'));
   const installJsonB = JSON.parse(fs.readFileSync(path.join(homeB, '.radorch', 'install.json'), 'utf8'));
@@ -175,10 +180,14 @@ test('installer produces structurally-equivalent state vs plugin-bootstrap', asy
   assert.deepEqual(installerClaude, bootstrapClaude,
     '~/.claude/ trees must match between installer and runPluginBootstrap');
 
-  // ~/.radorch/ — every file except install.json (timestamp) must match.
+  // ~/.radorch/ — every file except install.json + logs/install.log must
+  // match. Both carry per-run wall-clock timestamps (install.json's
+  // `installed_at`; install.log's JSONL `at` field), so their hashes will
+  // never match across two separate runs even when the install is otherwise
+  // structurally identical.
   // Note: orchestration.yml is created by the installer from wizard config and not
   // touched by runPluginBootstrap. It is validated separately in the end-to-end test.
-  const ignored = new Set(['install.json']);
+  const ignored = new Set(['install.json', 'logs/install.log']);
   const filterIgnored = (tree) => Object.fromEntries(
     Object.entries(tree).filter(([k]) => !ignored.has(k)),
   );
