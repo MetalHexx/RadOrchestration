@@ -1,6 +1,5 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { loadTemplate } from './template-loader.js';
 import { resolveTemplateName, snapshotTemplate } from './template-resolver.js';
 import { preRead } from './pre-reads.js';
@@ -8,7 +7,6 @@ import { getMutation } from './mutations.js';
 import { walkDAG, resolveNodeStatePath } from './dag-walker.js';
 import { enrichActionContext } from './context-enrichment.js';
 import { OUT_OF_BAND_EVENTS } from './constants.js';
-import { detectOrchRoot } from './orch-root.js';
 import type {
   PipelineState,
   PipelineResult,
@@ -18,6 +16,7 @@ import type {
   IOAdapter,
   NodeDef,
   NodeState,
+  PathContext,
   StepNodeDef,
 } from './types.js';
 import { scaffoldNodeState } from './scaffold.js';
@@ -27,16 +26,6 @@ import { validateState } from './validator.js';
 // (userDataPaths().projects); inlined here because the pipeline runtime in
 // skills/rad-orchestration/scripts/ has no shared TS surface with cli/.
 const PROJECTS_BASE_PATH = path.join(os.homedir(), '.radorch', 'projects');
-
-// Absolute templates directory derived from this file's own filesystem location.
-// Mirrors the layout `<install>/<orchRoot>/skills/rad-orchestration/scripts/lib/engine.ts`
-// where templates live at `<install>/<orchRoot>/skills/rad-orchestration/templates/`.
-// Computed once at module load and used in place of the retired
-// `config.system.orch_root + skills/rad-orchestration/templates` path (FR-10).
-const TEMPLATES_DIR = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..', '..', 'templates',
-);
 
 // ── scaffoldState ─────────────────────────────────────────────────────────────
 
@@ -116,16 +105,16 @@ export function processEvent(
   projectDir: string,
   context: Partial<EventContext>,
   io: IOAdapter,
+  pathContext: PathContext,
   configPath?: string,
 ): PipelineResult {
-  const orchRoot = detectOrchRoot();
+  const { orchRoot, templatesDir, scriptsDir } = pathContext;
 
   try {
     const config = io.readConfig(configPath);
 
     const state = io.readState(projectDir);
 
-    const templatesDir = TEMPLATES_DIR;
     const resolution = resolveTemplateName(state, context.template, config, projectDir, templatesDir);
     // For new-project creation (state === null) always load from the global templates directory.
     // This avoids reading a project-local snapshot that may be mid-write in concurrent scenarios
@@ -197,6 +186,7 @@ export function processEvent(
               state: scaffolded,
               config,
               cliContext: context,
+              scriptsDir,
             })
           : {};
 
@@ -233,6 +223,7 @@ export function processEvent(
               state,
               config,
               cliContext: context,
+              scriptsDir,
             })
           : {};
         return {
@@ -323,6 +314,7 @@ export function processEvent(
             state: mutatedState,
             config,
             cliContext: context,
+            scriptsDir,
           })
         : {};
 
@@ -435,6 +427,7 @@ export function processEvent(
         state: mutatedState,
         config,
         cliContext: context,
+        scriptsDir,
       });
       nextAction = { action: stepNode.action, context: enrichedCtx };
       io.writeState(projectDir, mutatedState);
@@ -467,6 +460,7 @@ export function processEvent(
             state: mutatedState,
             config,
             cliContext: context,
+            scriptsDir,
           }),
         };
       } else {

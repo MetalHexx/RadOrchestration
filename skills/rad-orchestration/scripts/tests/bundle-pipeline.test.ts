@@ -33,4 +33,34 @@ describe('pipeline bundle', () => {
     const merged = ((result as { stderr?: string }).stderr ?? '') + ((result as { stdout?: string }).stdout ?? '');
     expect(merged).not.toMatch(/npm (ci|install)/);
   });
+
+  // Bundle geometry sanity — `pipeline.ts` lives at `scripts/pipeline.ts` and
+  // bundles into `scripts/pipeline.js` (same depth), so the runtime
+  // path-resolution in `resolvePathContext()` must locate the templates and
+  // orchRoot correctly when invoked from the in-tree bundle. This guards
+  // against the regression where bundling shifted import.meta.url one level
+  // and template loads returned "Template file not found".
+  it('start event loads a template against the in-tree bundle', async () => {
+    // Use the in-tree bundle that the harness ships (the one at
+    // scripts/pipeline.js), so the geometry assertion exercises the real
+    // distribution layout — not the temp-bundle output.
+    const inTreeBundle = path.resolve(scriptsRoot, 'pipeline.js');
+    const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-pipe-start-'));
+    const result = await execP(
+      'node',
+      [
+        inTreeBundle,
+        '--event', 'start',
+        '--project-dir', projectDir,
+        '--template', 'extra-high',
+      ],
+      { reject: false } as never,
+    ).catch((e: { stderr?: string; stdout?: string; code?: number }) => e);
+    const stdout = (result as { stdout?: string }).stdout ?? '';
+    const parsed = JSON.parse(stdout);
+    expect(parsed.success, JSON.stringify(parsed, null, 2)).toBe(true);
+    expect(parsed.action).toBe('spawn_requirements');
+    expect(typeof parsed.orchRoot).toBe('string');
+    expect(parsed.orchRoot.length).toBeGreaterThan(0);
+  });
 });

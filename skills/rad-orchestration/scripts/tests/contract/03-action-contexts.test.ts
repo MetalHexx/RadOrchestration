@@ -12,6 +12,7 @@ import {
   driveToReviewTier,
   codeReviewDoc,
   phaseReviewDoc,
+  TEST_PATH_CONTEXT,
 } from '../fixtures/parity-states.js';
 import type { StepNodeState } from '../../lib/types.js';
 import { formatPhaseId, formatTaskId } from '../../lib/context-enrichment.js';
@@ -65,7 +66,7 @@ describe('[CONTRACT] Action Contexts — planning spawn actions (full template)'
   // contract shape (string field present) rather than literal text.
   it('first action is spawn_requirements (requirements is first planning node in extra-high template)', () => {
     const io = createMockIO(null);
-    const result = processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_requirements');
     const ctx = result.context as Record<string, unknown>;
@@ -76,8 +77,8 @@ describe('[CONTRACT] Action Contexts — planning spawn actions (full template)'
 
   it('spawn_master_plan returns { step, repository_skills_block, limits } with limits sourced from config', () => {
     const io = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
+    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_master_plan');
     const ctx = result.context as Record<string, unknown>;
@@ -129,11 +130,11 @@ describe('[CONTRACT] Action Contexts — phase-level execution actions', () => {
     const io = driveToExecutionWithConfig(taskConfig, 1);
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     seedDoc(phaseReviewDoc(1));
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('gate_phase');
     expect(result.context).toEqual(expect.objectContaining({
@@ -149,7 +150,7 @@ describe('[CONTRACT] Action Contexts — task-level execution actions', () => {
   it('execute_task returns { phase_number: 1, phase_id: "P01", task_number: 1, task_id: "P01-T01", handoff_doc }', () => {
     // driveToExecutionWithConfig pre-seeds task_handoff with doc_path; walker advances directly to execute_task.
     const io = driveToExecutionWithConfig(config, 1);
-    const result = processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('execute_task');
     expect(result.context).toEqual(expect.objectContaining({
@@ -164,12 +165,12 @@ describe('[CONTRACT] Action Contexts — task-level execution actions', () => {
 
   it('spawn_code_reviewer returns { phase_number: 1, phase_id: "P01", task_number: 1, task_id: "P01-T01" }', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    processEvent('commit_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
+    processEvent('commit_started', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
     const result = processEvent('commit_completed', PROJECT_DIR, {
       phase: 1, task: 1, commit_hash: 'abc123', pushed: 'false',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_code_reviewer');
     expect(result.context).toEqual(expect.objectContaining({
@@ -192,14 +193,14 @@ describe('[CONTRACT] Action Contexts — task-level execution actions', () => {
     const io = driveToExecutionWithConfig(taskConfig, 1);
     // Drive manually to code_review_completed without approving the gate
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     const reviewDoc = codeReviewDoc(1, 1);
     seedDoc(reviewDoc);
     const result = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx, doc_path: reviewDoc, verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('gate_task');
     expect(result.context).toEqual(expect.objectContaining({
@@ -217,12 +218,12 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
   it('request_plan_approval returns {}', () => {
     // Drive all planning steps then fire explosion_completed to reach plan_approval_gate
     const io = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const state = io.currentState!;
     // Complete requirements and master_plan, then fire explosion_completed to complete
     // explode_master_plan and let the walker reach plan_approval_gate
     completePlanningSteps(state, 'master_plan');
-    const result = processEvent('explosion_completed', PROJECT_DIR, {}, io);
+    const result = processEvent('explosion_completed', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('request_plan_approval');
     expect(result.context).toEqual({});
@@ -244,7 +245,7 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
       source_control: { auto_commit: 'never', auto_pr: 'never' },
     });
     const io = driveToReviewTier(reviewConfig);
-    const result = processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const result = processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_final_reviewer');
     expect(result.context).toEqual({ project_base_sha: null, project_head_sha: null });
@@ -260,10 +261,10 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
       source_control: { auto_commit: 'never', auto_pr: 'never' },
     });
     const io = driveToReviewTier(reviewConfig);
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath, { verdict: 'approved' });
-    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
+    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('request_final_approval');
     expect(result.context).toEqual({ pr_url: null });
@@ -279,11 +280,11 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
       source_control: { auto_commit: 'never', auto_pr: 'never' },
     });
     const io = driveToReviewTier(reviewConfig);
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath, { verdict: 'approved' });
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
-    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io, TEST_PATH_CONTEXT);
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');
     expect(result.context).toEqual({});
@@ -300,13 +301,13 @@ describe('[CONTRACT] Action Contexts — empty-context and terminal actions', ()
 describe('[CONTRACT] Action Contexts — display_halted', () => {
   it('display_halted context includes details as a string', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
     seedDoc(codeReviewDoc(1, 1), { verdict: 'rejected' });
     const result = processEvent('code_review_completed', PROJECT_DIR, {
       phase: 1, task: 1, doc_path: codeReviewDoc(1, 1), verdict: 'rejected',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_halted');
     expect(typeof result.context.details).toBe('string');

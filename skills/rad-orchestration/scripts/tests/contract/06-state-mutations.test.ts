@@ -14,6 +14,7 @@ import {
   driveTaskWith,
   codeReviewDoc,
   phaseReviewDoc,
+  TEST_PATH_CONTEXT,
 } from '../fixtures/parity-states.js';
 import type {
   PipelineState,
@@ -134,8 +135,8 @@ const config = createConfig({
 describe('[CONTRACT] State Mutations — Planning step mutations', () => {
   it('master_plan_started: master_plan.status=in_progress and graph.status NOT re-flipped', () => {
     const io = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, io); // scaffold
-    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io); // standard route applies mutation
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT); // scaffold
+    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT); // standard route applies mutation
 
     expect(result.success).toBe(true);
     const mpNode = io.currentState!.graph.nodes['master_plan'] as StepNodeState;
@@ -193,11 +194,11 @@ describe('[CONTRACT] State Mutations — Planning step mutations', () => {
 
   it('master_plan_completed: master_plan.status=completed and doc_path set', () => {
     const io = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, io); // scaffold
-    processEvent('master_plan_started', PROJECT_DIR, {}, io); // master_plan in_progress
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT); // scaffold
+    processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT); // master_plan in_progress
     const docPath = '/tmp/master-plan-doc.md';
     seedDoc(docPath, { total_phases: 1 });
-    const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: docPath }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const mpNode = io.currentState!.graph.nodes['master_plan'] as StepNodeState;
@@ -212,13 +213,13 @@ describe('[CONTRACT] State Mutations — Planning step mutations', () => {
 describe('[CONTRACT] State Mutations — Plan approved mutations', () => {
   it('plan_approved: gate.status=completed, gate_active=true, phase iterations created', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io); // scaffold
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT); // scaffold
     const state = io.currentState!;
     completePlanningSteps(state, 'explode_master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
     seedDoc(mpDoc, { total_phases: 2, total_tasks: 4 });
 
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const gateNode = io.currentState!.graph.nodes['plan_approval_gate'] as GateNodeState;
@@ -242,9 +243,9 @@ describe('[CONTRACT] State Mutations — Code review completed mutations', () =>
   function driveToCodeReviewPosition() {
     const io = driveToExecutionWithConfig(config, 1);
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     seedDoc(codeReviewDoc(1, 1));
     return io;
   }
@@ -255,7 +256,7 @@ describe('[CONTRACT] State Mutations — Code review completed mutations', () =>
 
     const result = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -287,7 +288,7 @@ describe('[CONTRACT] State Mutations — Code review completed mutations', () =>
       orchestrator_mediated: true,
       effective_outcome: 'changes_requested',
       corrective_handoff_path: correctiveHandoffPath,
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -319,7 +320,7 @@ describe('[CONTRACT] State Mutations — Code review completed mutations', () =>
       orchestrator_mediated: true,
       effective_outcome: 'changes_requested',
       corrective_handoff_path: correctiveHandoffPath,
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -337,7 +338,7 @@ describe('[CONTRACT] State Mutations — Code review completed mutations', () =>
 
     const result = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'rejected',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -357,7 +358,7 @@ describe('[CONTRACT] State Mutations — Phase review completed mutations', () =
     const io = driveToExecutionWithConfig(config, 1, 2);
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     seedDoc(phaseReviewDoc(1));
     return io;
   }
@@ -367,7 +368,7 @@ describe('[CONTRACT] State Mutations — Phase review completed mutations', () =
 
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -400,7 +401,7 @@ describe('[CONTRACT] State Mutations — Phase review completed mutations', () =
       orchestrator_mediated: true,
       effective_outcome: 'changes_requested',
       corrective_handoff_path: correctiveHandoffPath,
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -433,7 +434,7 @@ describe('[CONTRACT] State Mutations — Phase review completed mutations', () =
       orchestrator_mediated: true,
       effective_outcome: 'changes_requested',
       corrective_handoff_path: correctiveHandoffPath,
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     // The mutation log emits the birth entry AND the handoff-path assignment.
@@ -447,7 +448,7 @@ describe('[CONTRACT] State Mutations — Phase review completed mutations', () =
 
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1, doc_path: phaseReviewDoc(1), verdict: 'rejected', exit_criteria_met: false,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.status).toBe('halted');
@@ -469,16 +470,16 @@ describe('[CONTRACT] State Mutations — Gate approved mutations', () => {
     });
     const io = driveToExecutionWithConfig(taskConfig, 1);
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     seedDoc(codeReviewDoc(1, 1));
     // In task mode, code_review_completed fires gate_task
     processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
-    const result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+    const result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -502,14 +503,14 @@ describe('[CONTRACT] State Mutations — Gate approved mutations', () => {
     // driveTaskWith approves task gate if it fires (task mode fires task gate)
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     seedDoc(phaseReviewDoc(1));
     // In task mode, phase_review_completed fires gate_phase
     processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
-    const result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
+    const result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -531,17 +532,17 @@ describe('[CONTRACT] State Mutations — Gate approved mutations', () => {
     const io = driveToExecutionWithConfig(commitConfig, 1);
     // Drive task manually to reach commit_gate at task scope
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     seedDoc(codeReviewDoc(1, 1));
     const r = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(r.action).toBe('invoke_source_control_commit');
 
-    processEvent('commit_started', PROJECT_DIR, ctx, io);
-    const result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
+    processEvent('commit_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    const result = processEvent('commit_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -737,7 +738,7 @@ describe('[CONTRACT] State Mutations — Explosion script mutations (Iter 5)', (
       message: 'missing phase id prefix',
     };
 
-    const result = processEvent('explosion_failed', PROJECT_DIR, { parse_error: parseError }, io);
+    const result = processEvent('explosion_failed', PROJECT_DIR, { parse_error: parseError }, io, TEST_PATH_CONTEXT);
 
     // The path that was broken — must no longer return "Unknown event".
     expect(result.success).toBe(true);

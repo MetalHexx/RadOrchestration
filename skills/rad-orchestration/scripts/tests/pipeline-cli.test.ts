@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { PipelineResult } from '../lib/types.js';
 import { run } from '../pipeline.ts';
 import { processEvent } from '../lib/engine.js';
-import { detectOrchRoot } from '../lib/orch-root.js';
+import { TEST_PATH_CONTEXT } from './fixtures/parity-states.js';
 
 vi.mock('../lib/engine.js', () => ({
   processEvent: vi.fn(),
@@ -119,6 +119,11 @@ describe('pipeline CLI — run()', () => {
         readDocument:     expect.any(Function),
         ensureDirectories: expect.any(Function),
       }),
+      expect.objectContaining({
+        scriptsDir:   expect.any(String),
+        templatesDir: expect.any(String),
+        orchRoot:     expect.any(String),
+      }),
       '/tmp/config.yml',
     );
   });
@@ -215,10 +220,10 @@ describe('pipeline CLI — run()', () => {
     const result = capturedJson();
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('engine exploded');
-    // post-P06-T01: orchRoot in pipeline.ts comes from detectOrchRoot()
-    // (filesystem signal). Asserting the same call here keeps the test
-    // robust across harness installs.
-    expect(result.orchRoot).toBe(detectOrchRoot());
+    // orchRoot in pipeline.ts is the basename of the install folder, derived
+    // from filesystem geometry via resolvePathContext(). TEST_PATH_CONTEXT
+    // computes the same value from this test's source location.
+    expect(result.orchRoot).toBe(TEST_PATH_CONTEXT.orchRoot);
   });
 
   // ── Output Contract ─────────────────────────────────────────────────────────

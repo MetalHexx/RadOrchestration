@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
 import { loadTemplate } from '../lib/template-loader.js';
-import { detectOrchRoot } from '../lib/orch-root.js';
+import { TEST_PATH_CONTEXT } from './fixtures/parity-states.js';
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -18,9 +18,10 @@ import type {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/extra-high.yml');
 const PROJECT_DIR = '/tmp/test-project/INTEGRATION-TEST';
-// post-P06-T01: orchRoot derives from detectOrchRoot() (filesystem signal),
-// not config.system.orch_root.
-const EXPECTED_ORCH_ROOT = detectOrchRoot();
+// orchRoot is the basename of the install folder, derived from filesystem
+// geometry and threaded in via PathContext. TEST_PATH_CONTEXT computes it
+// once from the fixture file's own location for source-mode test runs.
+const EXPECTED_ORCH_ROOT = TEST_PATH_CONTEXT.orchRoot;
 
 const DEFAULT_CONFIG: OrchestrationConfig = {
   limits: {
@@ -85,7 +86,7 @@ function createMockIO(initialState: PipelineState | null = null): MockIO {
 // Helper: scaffold a state by running the start event
 function makeScaffoldedState(): PipelineState {
   const io = createMockIO(null);
-  processEvent('start', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
   return io.currentState!;
 }
 
@@ -115,7 +116,7 @@ describe('Planning-tier integration — full sequence', () => {
     let result: PipelineResult;
 
     // ── Step 1: Init (null state → scaffold) ─────────────────────────────
-    result = processEvent('start', PROJECT_DIR, {}, io);
+    result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_master_plan');
     expect(result.context).toEqual({ step: 'master_plan' });
@@ -127,7 +128,7 @@ describe('Planning-tier integration — full sequence', () => {
     }
 
     // ── Step 2: master_plan_started ──────────────────────────────────────
-    result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
+    result = processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_master_plan');
     expect(result.context).toEqual({ step: 'master_plan' });
@@ -140,7 +141,7 @@ describe('Planning-tier integration — full sequence', () => {
     // ── Step 3: master_plan_completed ────────────────────────────────────
     const mpDoc = path.posix.join(PROJECT_DIR, 'docs', 'master-plan.md');
     seedDoc(mpDoc, { total_phases: 1, total_tasks: 1 });
-    result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: mpDoc }, io);
+    result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('request_plan_approval');
     // Gate returns empty context
@@ -157,7 +158,7 @@ describe('Planning-tier integration — full sequence', () => {
     // script seeding phase_planning.doc_path. The plan_approval_gate still
     // closes correctly; the next action is null (walker stalls — production
     // pipeline would have invoked the explosion script before reaching here).
-    result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBeNull();
     {
@@ -184,7 +185,7 @@ describe('Planning-tier — individual step checks', () => {
     (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
     const io = createMockIO(state);
 
-    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
+    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.status).toBe('in_progress');
@@ -197,7 +198,7 @@ describe('Planning-tier — individual step checks', () => {
     (state.graph.nodes['requirements'] as StepNodeState).doc_path = '/tmp/requirements.md';
     const io = createMockIO(state);
 
-    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
+    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const n = io.currentState!.graph.nodes['master_plan'] as StepNodeState;
@@ -213,7 +214,7 @@ describe('Planning-tier — individual step checks', () => {
     seedDoc(docPath, { total_phases: 1 });
     const io = createMockIO(state);
 
-    const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: docPath }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('explode_master_plan');
@@ -236,7 +237,7 @@ describe('Planning-tier — individual step checks', () => {
       content: '---\ntotal_phases: 3\ntotal_tasks: 6\n---\n# Master Plan',
     };
 
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master_plan.md' }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master_plan.md' }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const g = io.currentState!.graph.nodes['plan_approval_gate'] as GateNodeState;
@@ -258,7 +259,7 @@ describe('Planning-tier — error scenarios', () => {
     const state = makeScaffoldedState();
     const io = createMockIO(state);
 
-    const result = processEvent('bogus_event', PROJECT_DIR, {}, io);
+    const result = processEvent('bogus_event', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
@@ -270,7 +271,7 @@ describe('Planning-tier — error scenarios', () => {
     const state = makeScaffoldedState();
     const io = createMockIO(state);
 
-    processEvent('bogus_event', PROJECT_DIR, {}, io);
+    processEvent('bogus_event', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     expect(io.writeCalls.length).toBe(0);
   });
@@ -281,7 +282,7 @@ describe('Planning-tier — error scenarios', () => {
     const io = createMockIO(state);
 
     // master_plan_completed requires doc_path (master_plan has doc_output_field)
-    const result = processEvent('master_plan_completed', PROJECT_DIR, {}, io);
+    const result = processEvent('master_plan_completed', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
@@ -293,7 +294,7 @@ describe('Planning-tier — error scenarios', () => {
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
     const io = createMockIO(state);
 
-    processEvent('master_plan_completed', PROJECT_DIR, {}, io);
+    processEvent('master_plan_completed', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     expect(io.writeCalls.length).toBe(0);
   });
@@ -305,7 +306,7 @@ describe('Planning-tier — error scenarios', () => {
     // doc_path is absolute but NOT seeded in DOC_STORE
     const missingDoc = path.join(PROJECT_DIR, 'nonexistent', 'doc.md');
 
-    const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: missingDoc }, io);
+    const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: missingDoc }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
@@ -318,7 +319,7 @@ describe('Planning-tier — error scenarios', () => {
     const io = createMockIO(state);
     const missingDoc = path.join(PROJECT_DIR, 'nonexistent', 'doc.md');
 
-    processEvent('master_plan_completed', PROJECT_DIR, { doc_path: missingDoc }, io);
+    processEvent('master_plan_completed', PROJECT_DIR, { doc_path: missingDoc }, io, TEST_PATH_CONTEXT);
 
     expect(io.writeCalls.length).toBe(0);
   });
@@ -327,7 +328,7 @@ describe('Planning-tier — error scenarios', () => {
     const state = makeScaffoldedState();
     const io = createMockIO(state);
 
-    const unknownResult = processEvent('bogus_event', PROJECT_DIR, {}, io);
+    const unknownResult = processEvent('bogus_event', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(unknownResult).toMatchObject({
       success: false,
       action: null,
@@ -339,7 +340,7 @@ describe('Planning-tier — error scenarios', () => {
 
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
     const io2 = createMockIO(state);
-    const missingFieldResult = processEvent('master_plan_completed', PROJECT_DIR, {}, io2);
+    const missingFieldResult = processEvent('master_plan_completed', PROJECT_DIR, {}, io2, TEST_PATH_CONTEXT);
     expect(missingFieldResult).toMatchObject({
       success: false,
       action: null,
@@ -367,7 +368,7 @@ describe('Planning-tier — state invariants', () => {
     state.project.updated = pastTimestamp;
     const io = createMockIO(state);
 
-    processEvent('master_plan_started', PROJECT_DIR, {}, io);
+    processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     const updated = io.currentState!.project.updated;
     expect(updated).toBeTruthy();
@@ -383,12 +384,12 @@ describe('Planning-tier — state invariants', () => {
     const state = makeScaffoldedState();
     const io = createMockIO(state);
 
-    processEvent('master_plan_started', PROJECT_DIR, {}, io);
+    processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(io.currentState!.graph.current_node_path).toBe('master_plan');
 
     const mpPath = path.join(PROJECT_DIR, 'master-plan.md');
     seedDoc(mpPath, { total_phases: 1 });
-    processEvent('master_plan_completed', PROJECT_DIR, { doc_path: mpPath }, io);
+    processEvent('master_plan_completed', PROJECT_DIR, { doc_path: mpPath }, io, TEST_PATH_CONTEXT);
     expect(io.currentState!.graph.current_node_path).toBe('master_plan');
   });
 
@@ -402,7 +403,7 @@ describe('Planning-tier — state invariants', () => {
       content: '---\ntotal_phases: 3\ntotal_tasks: 6\n---\n# Master Plan',
     };
 
-    processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master_plan.md' }, io);
+    processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master_plan.md' }, io, TEST_PATH_CONTEXT);
 
     expect(io.currentState!.graph.current_node_path).toBe('plan_approval_gate');
   });
@@ -413,7 +414,7 @@ describe('Planning-tier — state invariants', () => {
     const snapshot = structuredClone(state);
     const io = createMockIO(state);
 
-    processEvent('master_plan_started', PROJECT_DIR, {}, io);
+    processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     // The original state object must be unchanged
     expect(state).toEqual(snapshot);

@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processEvent } from '../../lib/engine.js';
 import type {
+  PathContext,
   PipelineState,
   OrchestrationConfig,
   IOAdapter,
@@ -18,6 +19,17 @@ export const PROJECT_DIR = '/tmp/test-project/PARITY-TEST';
 // Retained for external callers that still resolve the install dir against this
 // constant; post-P06-T01 it is no longer surfaced through the typed config.
 export const ORCH_ROOT = path.resolve(__dirname, '../../../../..');
+
+// Shared PathContext for every test that invokes `processEvent` or
+// `enrichActionContext`. Built from this fixture file's own location
+// (`tests/fixtures/`) so it works in source-mode (vitest/tsx) without
+// depending on the engine's bundled output geometry.
+const FIXTURE_SCRIPTS_DIR = path.resolve(__dirname, '..', '..');
+export const TEST_PATH_CONTEXT: PathContext = {
+  scriptsDir: FIXTURE_SCRIPTS_DIR,
+  templatesDir: path.resolve(FIXTURE_SCRIPTS_DIR, '..', 'templates'),
+  orchRoot: path.basename(path.resolve(FIXTURE_SCRIPTS_DIR, '..', '..', '..')),
+};
 
 export const DEFAULT_CONFIG: OrchestrationConfig = {
   limits: {
@@ -83,7 +95,7 @@ export function createMockIO(initialState: PipelineState | null = null): MockIO 
 
 export function createScaffoldedState(): PipelineState {
   const io = createMockIO(null);
-  processEvent('start', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
   return io.currentState!;
 }
 
@@ -283,7 +295,7 @@ export function driveToExecutionWithConfig(
   tasksPerPhase = 2,
 ): MockIO {
   const io = createMockIOWithConfig(null, config);
-  processEvent('start', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
   const state = io.currentState!;
   completePlanningSteps(state, 'explode_master_plan');
   const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
@@ -291,12 +303,12 @@ export function driveToExecutionWithConfig(
     total_phases: totalPhases,
     total_tasks: totalPhases * tasksPerPhase,
   });
-  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
 
   // gate_mode_selection fires ask_gate_mode for ask configs.
   // Pass through by setting a gate mode, then reset so subsequent gates still see ask behavior.
   if (result.action === 'ask_gate_mode') {
-    processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io);
+    processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io, TEST_PATH_CONTEXT);
     io.currentState!.pipeline.gate_mode = null;
   }
 
@@ -311,7 +323,7 @@ export function driveToExecutionWithConfig(
   // Mirror Iter 5's explosion seeding then re-walk so subsequent events see
   // a state shape consistent with post-explosion production.
   seedExplosionStateFor(io, totalPhases, tasksPerPhase);
-  processEvent('start', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
   return io;
 }
@@ -343,6 +355,7 @@ export function initSourceControlForTests(io: MockIO, config: OrchestrationConfi
       auto_pr: toNormalized(config.source_control.auto_pr),
     },
     io,
+    TEST_PATH_CONTEXT,
   );
 }
 
@@ -355,26 +368,26 @@ export function initSourceControlForTests(io: MockIO, config: OrchestrationConfi
  */
 export function driveTaskWith(io: MockIO, phase: number, task: number): PipelineResult {
   const ctx = { phase, task };
-  processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('task_completed', PROJECT_DIR, ctx, io);
-  processEvent('code_review_started', PROJECT_DIR, ctx, io);
+  processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+  processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+  processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   const reviewDoc = codeReviewDoc(phase, task);
   seedDoc(reviewDoc);
   let result = processEvent('code_review_completed', PROJECT_DIR, {
     ...ctx,
     doc_path: reviewDoc,
     verdict: 'approved',
-  }, io);
+  }, io, TEST_PATH_CONTEXT);
 
   // If commit conditional fires, drive commit events at task scope
   if (result.action === 'invoke_source_control_commit') {
-    processEvent('commit_started', PROJECT_DIR, ctx, io);
-    result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
+    processEvent('commit_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    result = processEvent('commit_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   }
 
   // If task gate fires, approve it to continue (matches drivePhaseReviewApproval pattern)
   if (result.action === 'gate_task') {
-    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   }
 
   return result;
@@ -387,15 +400,15 @@ export function driveTaskWith(io: MockIO, phase: number, task: number): Pipeline
  * Post-Iter 8: phase_review absorbed phase_report; only one doc emitted.
  */
 export function drivePhaseReviewApproval(io: MockIO, phase: number): PipelineResult {
-  processEvent('phase_review_started', PROJECT_DIR, { phase }, io);
+  processEvent('phase_review_started', PROJECT_DIR, { phase }, io, TEST_PATH_CONTEXT);
   seedDoc(phaseReviewDoc(phase));
   let result = processEvent('phase_review_completed', PROJECT_DIR, {
     phase, doc_path: phaseReviewDoc(phase), verdict: 'approved', exit_criteria_met: true,
-  }, io);
+  }, io, TEST_PATH_CONTEXT);
 
   // If phase gate fires, approve it to reach commit conditional
   if (result.action === 'gate_phase') {
-    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase }, io);
+    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase }, io, TEST_PATH_CONTEXT);
   }
 
   return result;
@@ -410,18 +423,18 @@ export function drivePhaseReviewApproval(io: MockIO, phase: number): PipelineRes
  */
 export function driveToReviewTier(config: OrchestrationConfig): MockIO {
   const io = createMockIOWithConfig(null, config);
-  processEvent('start', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
   const state = io.currentState!;
   completePlanningSteps(state, 'explode_master_plan');
   const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
   seedDoc(mpDoc, { total_phases: 1, total_tasks: 2 });
 
-  const planResult = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+  const planResult = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
 
   // Pass through gate_mode_selection if present (ask mode)
   if (planResult.action === 'ask_gate_mode') {
-    processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io);
+    processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io, TEST_PATH_CONTEXT);
     io.currentState!.pipeline.gate_mode = null;
   }
 
@@ -431,43 +444,43 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
   // Mirror Iter 5's explosion-script seeding (phase_planning + task_handoff
   // child nodes pre-completed) and re-walk to advance into the execution tier.
   seedExplosionStateFor(io, 1, 2);
-  processEvent('start', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
   // Drive two tasks (post-Iter 7: no task_handoff events; handoff is pre-seeded)
   for (const t of [1, 2]) {
     const ctx = { phase: 1, task: t };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     const crDoc = path.join(PROJECT_DIR, 'tasks', `p1-t${t}-review.md`);
     seedDoc(crDoc);
     let result = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx, doc_path: crDoc, verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     // If commit conditional fires, drive commit events at task scope
     if (result.action === 'invoke_source_control_commit') {
-      processEvent('commit_started', PROJECT_DIR, ctx, io);
-      result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
+      processEvent('commit_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+      result = processEvent('commit_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     }
 
     // If task gate fires (e.g., ask mode), approve it
     if (result.action === 'gate_task') {
-      processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+      processEvent('task_gate_approved', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     }
   }
 
   // Phase review (post-Iter 8: phase_report absorbed into phase_review)
-  processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+  processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
   const prvDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-review.md');
   seedDoc(prvDoc);
   let result: PipelineResult = processEvent('phase_review_completed', PROJECT_DIR, {
     phase: 1, doc_path: prvDoc, verdict: 'approved', exit_criteria_met: true,
-  }, io);
+  }, io, TEST_PATH_CONTEXT);
 
   // If phase gate fires, approve it
   if (result.action === 'gate_phase') {
-    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
+    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
   }
 
   return io;

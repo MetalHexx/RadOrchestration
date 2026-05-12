@@ -6,7 +6,7 @@ import { processEvent, normalizeDocPath } from '../lib/engine.js';
 import { loadTemplate } from '../lib/template-loader.js';
 import { getMutation } from '../lib/mutations.js';
 import { OUT_OF_BAND_EVENTS } from '../lib/constants.js';
-import { detectOrchRoot } from '../lib/orch-root.js';
+import { TEST_PATH_CONTEXT } from './fixtures/parity-states.js';
 
 vi.mock('../lib/mutations.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('../lib/mutations.js')>();
@@ -28,10 +28,11 @@ import type {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/extra-high.yml');
 const PROJECT_DIR = '/tmp/test-project/DAG-TEST';
-// post-P06-T01: orchRoot is resolved via detectOrchRoot() (filesystem signal),
-// not config.system.orch_root. The expected value is the basename of the
-// install folder (e.g. ".claude" / ".github" / the worktree name in dev).
-const EXPECTED_ORCH_ROOT = detectOrchRoot();
+// orchRoot is the basename of the install folder (e.g. ".claude" / ".github"
+// / the worktree name in dev), derived from filesystem geometry and threaded
+// in via PathContext. TEST_PATH_CONTEXT computes it once from the fixture
+// file's own location for source-mode test runs.
+const EXPECTED_ORCH_ROOT = TEST_PATH_CONTEXT.orchRoot;
 
 const DEFAULT_CONFIG: OrchestrationConfig = {
   limits: {
@@ -92,7 +93,7 @@ function createMockIO(initialState: PipelineState | null = null): IOAdapter & {
 // Helper to create a state that looks like scaffolded state from the real template
 function makeScaffoldedState(): PipelineState {
   const io = createMockIO(null);
-  processEvent('start', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
   // The start event scaffolds state and writes it
   return io.currentState!;
 }
@@ -113,7 +114,7 @@ describe('engine – processEvent', () => {
     // The extra-high template starts with requirements; other templates may differ.
     it('scaffolds state from template and returns first action (spawn_requirements in extra-high template)', () => {
       const io = createMockIO(null);
-      const result = processEvent('start', PROJECT_DIR, {}, io);
+      const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(result.success).toBe(true);
       expect(result.action).toBe('spawn_requirements');
@@ -128,7 +129,7 @@ describe('engine – processEvent', () => {
 
     it('scaffolded state has correct schema, metadata, config, and graph status', () => {
       const io = createMockIO(null);
-      processEvent('start', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       const state = io.currentState!;
       expect(state).not.toBeNull();
@@ -150,7 +151,7 @@ describe('engine – processEvent', () => {
 
     it('scaffolded state includes pipeline section with correct defaults', () => {
       const io = createMockIO(null);
-      processEvent('start', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
       const state = io.currentState!;
       expect(state.pipeline).toEqual({
         gate_mode: null,
@@ -162,7 +163,7 @@ describe('engine – processEvent', () => {
 
     it('scaffolds correct node states for all top-level template nodes', () => {
       const io = createMockIO(null);
-      processEvent('start', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       const nodes = io.currentState!.graph.nodes;
 
@@ -208,13 +209,13 @@ describe('engine – processEvent', () => {
 
     it('calls ensureDirectories on init', () => {
       const io = createMockIO(null);
-      processEvent('start', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
       expect(io.ensureDirCalls).toContain(PROJECT_DIR);
     });
 
     it('writes state on init', () => {
       const io = createMockIO(null);
-      processEvent('start', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
       expect(io.writeCalls.length).toBe(1);
       expect(io.writeCalls[0].projectDir).toBe(PROJECT_DIR);
     });
@@ -223,7 +224,7 @@ describe('engine – processEvent', () => {
   describe('start event – init (null state)', () => {
     it('scaffolds state and returns success: true with first action spawn_requirements (extra-high template)', () => {
       const io = createMockIO(null);
-      const result = processEvent('start', PROJECT_DIR, {}, io);
+      const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(result.success).toBe(true);
       expect(result.action).toBe('spawn_requirements');
@@ -232,7 +233,7 @@ describe('engine – processEvent', () => {
 
     it('scaffolded state has $schema orchestration-state-v5, pipeline section, and graph.status in_progress', () => {
       const io = createMockIO(null);
-      processEvent('start', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       const state = io.currentState!;
       expect(state.$schema).toBe('orchestration-state-v5');
@@ -247,7 +248,7 @@ describe('engine – processEvent', () => {
 
     it('calls io.writeState once and io.ensureDirectories', () => {
       const io = createMockIO(null);
-      processEvent('start', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(io.writeCalls.length).toBe(1);
       expect(io.ensureDirCalls).toContain(PROJECT_DIR);
@@ -259,7 +260,7 @@ describe('engine – processEvent', () => {
       const state = makeScaffoldedState();
       // requirements is not_started → walkDAG should find spawn_requirements as first action
       const io = createMockIO(state);
-      const result = processEvent('start', PROJECT_DIR, {}, io);
+      const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(result.success).toBe(true);
       expect(result.action).toBe('spawn_requirements');
@@ -273,7 +274,7 @@ describe('engine – processEvent', () => {
       (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
 
       const io = createMockIO(state);
-      const result = processEvent('start', PROJECT_DIR, {}, io);
+      const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       // walkDAG returns null for in_progress nodes (no new action to dispatch)
       expect(result.success).toBe(true);
@@ -306,7 +307,7 @@ describe('engine – processEvent', () => {
       ];
 
       const io = createMockIO(baseState);
-      processEvent('start', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       // writeState must have been called (the fix this task adds)
       expect(io.writeCalls.length).toBe(1);
@@ -321,7 +322,7 @@ describe('engine – processEvent', () => {
       const state = makeScaffoldedState();
       const originalUpdated = state.project.updated;
       const io = createMockIO(state);
-      processEvent('start', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(io.writeCalls.length).toBe(1);
       const written = io.writeCalls[0].state;
@@ -333,7 +334,7 @@ describe('engine – processEvent', () => {
   describe('null-state guard (non-start events)', () => {
     it('master_plan_started with null state returns success: false with structured error', () => {
       const io = createMockIO(null);
-      const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
+      const result = processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(result.success).toBe(false);
       expect(result.action).toBeNull();
@@ -343,7 +344,7 @@ describe('engine – processEvent', () => {
 
     it('plan_approved with null state returns success: false with structured error', () => {
       const io = createMockIO(null);
-      const result = processEvent('plan_approved', PROJECT_DIR, {}, io);
+      const result = processEvent('plan_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(result.success).toBe(false);
       expect(result.context.error).toContain('No state.json found');
@@ -358,7 +359,7 @@ describe('engine – processEvent', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
 
-      const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
+      const result = processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(result.success).toBe(true);
       expect(result.action).toBe('spawn_master_plan');
@@ -388,7 +389,7 @@ describe('engine – processEvent', () => {
       };
 
       const io = createMockIO(state);
-      const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+      const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: docPath }, io, TEST_PATH_CONTEXT);
 
       expect(result.success).toBe(true);
       expect(result.action).toBe('explode_master_plan');
@@ -419,7 +420,7 @@ describe('engine – processEvent', () => {
         frontmatter: { total_phases: 3, total_tasks: 6 },
         content: '---\ntotal_phases: 3\ntotal_tasks: 6\n---\n# Master Plan',
       };
-      const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master-plan.md' }, io);
+      const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master-plan.md' }, io, TEST_PATH_CONTEXT);
 
       expect(result.success).toBe(true);
       // State was persisted after walkDAG
@@ -435,7 +436,7 @@ describe('engine – processEvent', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
 
-      const result = processEvent('totally_unknown_event', PROJECT_DIR, {}, io);
+      const result = processEvent('totally_unknown_event', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -448,7 +449,7 @@ describe('engine – processEvent', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
 
-      processEvent('totally_unknown_event', PROJECT_DIR, {}, io);
+      processEvent('totally_unknown_event', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(io.writeCalls.length).toBe(0);
     });
@@ -461,7 +462,7 @@ describe('engine – processEvent', () => {
 
       const io = createMockIO(state);
       // master_plan_completed requires doc_path because master_plan has doc_output_field
-      const result = processEvent('master_plan_completed', PROJECT_DIR, {}, io);
+      const result = processEvent('master_plan_completed', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -474,7 +475,7 @@ describe('engine – processEvent', () => {
       (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
 
       const io = createMockIO(state);
-      processEvent('master_plan_completed', PROJECT_DIR, {}, io);
+      processEvent('master_plan_completed', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(io.writeCalls.length).toBe(0);
     });
@@ -486,7 +487,7 @@ describe('engine – processEvent', () => {
       // Create a state where a mutation will fail — e.g. resolveNodeState for a non-existent node.
       // execution_started needs phase/task context with iterations, which we haven't set up.
       const io = createMockIO(state);
-      const result = processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+      const result = processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
 
       // Should fail because phase_loop has no iterations
       expect(result.success).toBe(false);
@@ -502,7 +503,7 @@ describe('engine – processEvent', () => {
       const readConfigSpy = vi.spyOn(io, 'readConfig');
       const ensureDirSpy = vi.spyOn(io, 'ensureDirectories');
 
-      processEvent('start', PROJECT_DIR, {}, io);
+      processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(readStateSpy).toHaveBeenCalledWith(PROJECT_DIR);
       expect(readConfigSpy).toHaveBeenCalled();
@@ -517,7 +518,7 @@ describe('engine – processEvent', () => {
       const originalUpdated = state.project.updated;
 
       const io = createMockIO(state);
-      processEvent('master_plan_started', PROJECT_DIR, {}, io);
+      processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       const updatedState = io.currentState!;
       // The updated timestamp should be different (or at least set)
@@ -531,7 +532,7 @@ describe('engine – processEvent', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
 
-      processEvent('master_plan_started', PROJECT_DIR, {}, io);
+      processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       const updatedState = io.currentState!;
       expect(updatedState.graph.current_node_path).toBe('master_plan');
@@ -541,7 +542,7 @@ describe('engine – processEvent', () => {
   describe('PipelineResult structure', () => {
     it('all successful results include orchRoot field', () => {
       const io = createMockIO(null);
-      const result = processEvent('start', PROJECT_DIR, {}, io);
+      const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(result).toHaveProperty('orchRoot');
       expect(result.orchRoot).toBe(EXPECTED_ORCH_ROOT);
@@ -550,7 +551,7 @@ describe('engine – processEvent', () => {
     it('all error results include orchRoot field', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
-      const result = processEvent('totally_unknown_event', PROJECT_DIR, {}, io);
+      const result = processEvent('totally_unknown_event', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(result).toHaveProperty('orchRoot');
       expect(result.orchRoot).toBe(EXPECTED_ORCH_ROOT);
@@ -577,7 +578,7 @@ describe('engine – processEvent', () => {
       // but the post-walkDAG validation still runs.
       // With max_phases=0, even 0 iterations won't trigger (no expansion happens on init).
       // So let's use a simpler approach: verify that validation runs post-walkDAG by using the standard route.
-      const result = processEvent('start', PROJECT_DIR, {}, io);
+      const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
       // With max_phases=0, scaffold produces 0 iterations in phase_loop, so validation should pass
       expect(result.success).toBe(true);
     });
@@ -615,7 +616,7 @@ describe('engine – processEvent', () => {
       const io = createMockIO(state);
       io.readConfig = () => structuredClone(lowLimitConfig);
 
-      const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master-plan.md' }, io);
+      const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: '/tmp/master-plan.md' }, io, TEST_PATH_CONTEXT);
 
       // walkDAG caps expansion at max_phases=1, so only 1 iteration created
       expect(result.success).toBe(true);
@@ -632,7 +633,7 @@ describe('engine – processEvent', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
 
-      const result = processEvent('nonexistent_event', PROJECT_DIR, {}, io);
+      const result = processEvent('nonexistent_event', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(result.success).toBe(false);
       expect(result.context.error).toBe('Unknown event: nonexistent_event');
@@ -643,7 +644,7 @@ describe('engine – processEvent', () => {
       const io = createMockIO(state);
       vi.mocked(getMutation).mockReturnValueOnce(undefined);
 
-      const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
+      const result = processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
       expect(result.success).toBe(false);
       expect(result.context.error).toContain('No mutation registered for event:');
@@ -655,7 +656,7 @@ describe('engine – processEvent', () => {
 
       // execution_started with context.phase=1 causes the mutation to throw
       // because the phase_loop has no iterations in the scaffolded state.
-      const result = processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+      const result = processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
 
       expect(result.success).toBe(false);
       expect(typeof result.context.error).toBe('string');
@@ -745,21 +746,21 @@ describe('engine – processEvent', () => {
     it('gate_approved with gate_type: task resolves to task_gate_approved and returns success: true', () => {
       const state = makeStateWithTaskGate();
       const io = createMockIO(state);
-      const result = processEvent('gate_approved', PROJECT_DIR, { gate_type: 'task', phase: 1, task: 1 }, io);
+      const result = processEvent('gate_approved', PROJECT_DIR, { gate_type: 'task', phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
       expect(result.success).toBe(true);
     });
 
     it('gate_approved with gate_type: phase resolves to phase_gate_approved and returns success: true', () => {
       const state = makeStateWithPhaseGate();
       const io = createMockIO(state);
-      const result = processEvent('gate_approved', PROJECT_DIR, { gate_type: 'phase', phase: 1 }, io);
+      const result = processEvent('gate_approved', PROJECT_DIR, { gate_type: 'phase', phase: 1 }, io, TEST_PATH_CONTEXT);
       expect(result.success).toBe(true);
     });
 
     it('gate_approved without gate_type returns success: false with descriptive error', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
-      const result = processEvent('gate_approved', PROJECT_DIR, {}, io);
+      const result = processEvent('gate_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
       expect(result.success).toBe(false);
       expect(result.context.error).toContain('gate_approved requires --gate-type task|phase');
     });
@@ -767,14 +768,14 @@ describe('engine – processEvent', () => {
     it('gate_approved with gate_type: invalid returns success: false with descriptive error', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
-      const result = processEvent('gate_approved', PROJECT_DIR, { gate_type: 'invalid' }, io);
+      const result = processEvent('gate_approved', PROJECT_DIR, { gate_type: 'invalid' }, io, TEST_PATH_CONTEXT);
       expect(result.success).toBe(false);
       expect(result.context.error).toContain("Unknown gate type 'invalid': expected task or phase");
     });
 
     it('gate_approved with null state fires null-state guard before alias resolution', () => {
       const io = createMockIO(null);
-      const result = processEvent('gate_approved', PROJECT_DIR, { gate_type: 'task' }, io);
+      const result = processEvent('gate_approved', PROJECT_DIR, { gate_type: 'task' }, io, TEST_PATH_CONTEXT);
       expect(result.success).toBe(false);
       expect(result.context.error).toContain('No state.json found');
     });
@@ -811,7 +812,7 @@ describe('out-of-band event routing', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
       const eventContext = OOB_EVENT_CONTEXTS[oobEvent] ?? {};
-      const result = processEvent(oobEvent, PROJECT_DIR, eventContext, io);
+      const result = processEvent(oobEvent, PROJECT_DIR, eventContext, io, TEST_PATH_CONTEXT);
       expect(result.success).toBe(true);
     });
   }
@@ -827,7 +828,7 @@ describe('out-of-band event routing', () => {
       const state = makeScaffoldedState();
       const io = createMockIO(state);
       const eventContext = REAL_OOB_CONTEXTS[oobEvent] ?? {};
-      const result = processEvent(oobEvent, PROJECT_DIR, eventContext, io);
+      const result = processEvent(oobEvent, PROJECT_DIR, eventContext, io, TEST_PATH_CONTEXT);
       expect(result.mutations_applied.length).toBeGreaterThan(0);
       expect(result.mutations_applied).not.toContain(`stub: ${oobEvent}`);
     });
@@ -835,7 +836,7 @@ describe('out-of-band event routing', () => {
 
   it('any OOB event with null state returns success: false with context.error containing "No state.json found"', () => {
     const io = createMockIO(null);
-    const result = processEvent('plan_rejected', PROJECT_DIR, {}, io);
+    const result = processEvent('plan_rejected', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(String(result.context.error)).toContain('No state.json found');
   });
@@ -853,7 +854,7 @@ describe('out-of-band event routing', () => {
   it('OOB event writes state via io.writeState', () => {
     const state = makeScaffoldedState();
     const io = createMockIO(state);
-    processEvent('halt', PROJECT_DIR, {}, io);
+    processEvent('halt', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(io.writeCalls.length).toBeGreaterThan(0);
   });
 
@@ -872,7 +873,7 @@ describe('out-of-band event routing', () => {
       return { state: structuredClone(s), mutations_applied: [`stub: ${_event}`] };
     });
 
-    const result = processEvent('halt', PROJECT_DIR, { doc_path: rawDocPath }, io);
+    const result = processEvent('halt', PROJECT_DIR, { doc_path: rawDocPath }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(capturedDocPath).toBe('tasks/T01.md');
   });
@@ -889,7 +890,7 @@ describe('out-of-band event routing', () => {
       return { state: structuredClone(s), mutations_applied: [`stub: ${_event}`] };
     });
 
-    const result = processEvent('halt', PROJECT_DIR, { reason: 'operator requested halt' }, io);
+    const result = processEvent('halt', PROJECT_DIR, { reason: 'operator requested halt' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(capturedDocPath).toBeUndefined();
     expect(capturedReason).toBe('operator requested halt');
@@ -1019,7 +1020,7 @@ describe('wrappedReadDocument – relative path resolution', () => {
     // Fire start event — walkDAG encounters task_loop with 0 iterations,
     // reads iteration.doc_path ('tasks/PHASE-PLAN.md', relative),
     // and wrappedReadDocument must resolve it to the absolute path.
-    const result = processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     // task_loop expansion succeeded → walker entered the task iteration → first action
@@ -1069,7 +1070,7 @@ describe('wrappedReadDocument – relative path resolution', () => {
     ];
 
     const io = createMockIO(state);
-    const result = processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(false);
     expect(result.context.error).toContain('escapes project directory');
@@ -1155,7 +1156,7 @@ describe('auto-resolution in mutation handler loops', () => {
         const state = makeStateWithPhaseIteration('in_progress');
         const io = createMockIO(state);
         // No context.phase supplied
-        const result = processEvent(eventName, PROJECT_DIR, {}, io);
+        const result = processEvent(eventName, PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
         expect(result.success).toBe(true);
         const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
         const targetNode = phaseLoop.iterations[0].nodes[nodeId] as StepNodeState;
@@ -1173,7 +1174,7 @@ describe('auto-resolution in mutation handler loops', () => {
         const state = makeStateWithTaskIteration();
         const io = createMockIO(state);
         // No context.phase or context.task supplied
-        const result = processEvent(eventName, PROJECT_DIR, {}, io);
+        const result = processEvent(eventName, PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
         expect(result.success).toBe(true);
         const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
         const taskLoop = phaseLoop.iterations[0].nodes['task_loop'] as ForEachTaskNodeState;
@@ -1190,7 +1191,7 @@ describe('auto-resolution in mutation handler loops', () => {
       phaseLoop.status = 'in_progress';
       phaseLoop.iterations = [];
       const io = createMockIO(state);
-      const result = processEvent('phase_review_started', PROJECT_DIR, {}, io);
+      const result = processEvent('phase_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
       expect(result.success).toBe(false);
       const errorMsg = String(result.context.error);
       expect(errorMsg).toContain('Cannot apply mutation for');
@@ -1204,7 +1205,7 @@ describe('auto-resolution in mutation handler loops', () => {
       const state = makeStateWithPhaseIteration('in_progress');
       // Provide context.phase so the phase branch is skipped; task_loop has no iterations
       const io = createMockIO(state);
-      const result = processEvent('execution_started', PROJECT_DIR, { phase: 1 }, io);
+      const result = processEvent('execution_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
       expect(result.success).toBe(false);
       const errorMsg = String(result.context.error);
       expect(errorMsg).toContain('no active task');
@@ -1246,7 +1247,7 @@ describe('auto-resolution in mutation handler loops', () => {
       ];
       const io = createMockIO(state);
       // Explicitly target phase 2 (index 1)
-      const result = processEvent('phase_review_started', PROJECT_DIR, { phase: 2 }, io);
+      const result = processEvent('phase_review_started', PROJECT_DIR, { phase: 2 }, io, TEST_PATH_CONTEXT);
       expect(result.success).toBe(true);
       const updatedPhaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
       // Phase 2 (index 1) should be in_progress

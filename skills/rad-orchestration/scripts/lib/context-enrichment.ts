@@ -1,6 +1,5 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -9,9 +8,6 @@ import type {
   ForEachTaskNodeState,
   StepNodeState,
 } from './types.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 /**
  * Invoke `list-repo-skills.mjs` synchronously and render the spawn-prompt
@@ -23,9 +19,13 @@ const __dirname = path.dirname(__filename);
  *   - empty string '' when the manifest is `[]` OR when the invocation failed
  *   - the heading + JSON + orientation sentence block when at least one
  *     eligible skill is present
+ *
+ * `scriptsDir` is the absolute path to `skills/rad-orchestration/scripts/`,
+ * threaded down from `pipeline.ts` via the engine's `PathContext` so the
+ * lookup is independent of this file's bundled/source location.
  */
-function buildRepositorySkillsBlock(): string {
-  const scriptPath = path.resolve(__dirname, '..', 'list-repo-skills.mjs');
+function buildRepositorySkillsBlock(scriptsDir: string): string {
+  const scriptPath = path.resolve(scriptsDir, 'list-repo-skills.mjs');
   let raw: string;
   try {
     const result = spawnSync(process.execPath, [scriptPath], { encoding: 'utf8' });
@@ -67,6 +67,7 @@ export interface EnrichmentInput {
   state: PipelineState;
   config: OrchestrationConfig;
   cliContext: Partial<EventContext>;
+  scriptsDir: string;
 }
 
 export function formatPhaseId(phaseNumber: number): string {
@@ -156,7 +157,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
   // phase/task limits so the orchestrator can inline a `## Plan Size Limits`
   // block into the planner prompt without reading state.json or the YAML.
   if (action in PLANNING_SPAWN_STEPS) {
-    const repository_skills_block = buildRepositorySkillsBlock();
+    const repository_skills_block = buildRepositorySkillsBlock(input.scriptsDir);
     const base = {
       ...walkerContext,
       step: PLANNING_SPAWN_STEPS[action],

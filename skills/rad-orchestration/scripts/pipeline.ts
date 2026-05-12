@@ -10,8 +10,21 @@ import {
   readDocument,
   ensureDirectories,
 } from './lib/state-io.js';
-import { detectOrchRoot } from './lib/orch-root.js';
-import type { EventContext, IOAdapter, PipelineResult } from './lib/types.js';
+import type { EventContext, IOAdapter, PathContext, PipelineResult } from './lib/types.js';
+
+// Resolve the three filesystem roots from this file's own location. `pipeline.ts`
+// sits at `scripts/pipeline.ts` in source AND `scripts/pipeline.js` in the esbuild
+// bundle — same level — so the relative-path math is correct in both runtimes.
+// Library code under `scripts/lib/` receives these values through the PathContext
+// parameter rather than recomputing them; the bundle output sits one level above
+// `scripts/lib/`, so any file-relative walk from there would land at the wrong
+// directory at runtime.
+function resolvePathContext(): PathContext {
+  const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
+  const templatesDir = path.resolve(scriptsDir, '..', 'templates');
+  const orchRoot = path.basename(path.resolve(scriptsDir, '..', '..', '..'));
+  return { scriptsDir, templatesDir, orchRoot };
+}
 
 // ── Argument Parsing ──────────────────────────────────────────────────────────
 
@@ -63,7 +76,7 @@ For the full event reference and behaviour, see
 references/action-event-reference.md in the rad-orchestration skill folder.
 `;
 
-function makeErrorResult(message: string, event: string, orchRoot: string = detectOrchRoot()): PipelineResult {
+function makeErrorResult(message: string, event: string, orchRoot: string): PipelineResult {
   return {
     success: false,
     action: null,
@@ -88,17 +101,15 @@ export function run(argv: string[]): void {
 
   const args = parseArgs(argv);
   const event = args['event'];
-  // orchRoot is resolved from a pure filesystem signal (detectOrchRoot); the
-  // retired config.system.orch_root key is silently ignored on read (FR-10/11).
-  const orchRoot = detectOrchRoot();
+  const pathContext = resolvePathContext();
+  const { orchRoot, scriptsDir } = pathContext;
 
   try {
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const projectDir = args['project-dir'];
     let configPath = args['config'];
 
     if (!configPath) {
-      const discovered = path.resolve(__dirname, '../config/orchestration.yml');
+      const discovered = path.resolve(scriptsDir, '../config/orchestration.yml');
       if (fs.existsSync(discovered)) {
         configPath = discovered;
       }
@@ -106,12 +117,12 @@ export function run(argv: string[]): void {
 
     if (!event) {
       process.exitCode = 1;
-      process.stdout.write(JSON.stringify(makeErrorResult('Missing required argument: --event', 'unknown'), null, 2) + '\n');
+      process.stdout.write(JSON.stringify(makeErrorResult('Missing required argument: --event', 'unknown', orchRoot), null, 2) + '\n');
       return;
     }
     if (!projectDir) {
       process.exitCode = 1;
-      process.stdout.write(JSON.stringify(makeErrorResult('Missing required argument: --project-dir', 'unknown'), null, 2) + '\n');
+      process.stdout.write(JSON.stringify(makeErrorResult('Missing required argument: --project-dir', 'unknown', orchRoot), null, 2) + '\n');
       return;
     }
 
@@ -205,7 +216,7 @@ export function run(argv: string[]): void {
       ensureDirectories,
     };
 
-    const result = processEvent(event, projectDir, context, io, configPath);
+    const result = processEvent(event, projectDir, context, io, pathContext, configPath);
     process.exitCode = result.success ? 0 : 1;
     process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   } catch (err) {

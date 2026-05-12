@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { enrichActionContext, resolveActivePhaseIndex, resolveActiveTaskIndex } from '../lib/context-enrichment.js';
 import type { PipelineState, OrchestrationConfig, ForEachPhaseNodeState, ForEachTaskNodeState, StepNodeState } from '../lib/types.js';
-import { createScaffoldedState } from './fixtures/parity-states.js';
+import { createScaffoldedState, TEST_PATH_CONTEXT } from './fixtures/parity-states.js';
 
 // ── Minimal config ────────────────────────────────────────────────────────────
 
@@ -59,6 +59,7 @@ describe('enrichActionContext — planning spawn actions', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     // Planning-spawn enrichment invokes list-repo-skills.mjs and surfaces the
     // rendered block as `repository_skills_block` so the orchestrator can
@@ -78,6 +79,7 @@ describe('enrichActionContext — planning spawn actions', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.step).toBe('master_plan');
     expect(typeof result.repository_skills_block).toBe('string');
@@ -103,6 +105,7 @@ describe('enrichActionContext — invoke_source_control_commit', () => {
       state,
       config,
       cliContext: { branch: 'cliContext-branch', worktree_path: 'cliContext-worktree' },
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.branch).toBe('feature/my-branch');
     expect(result.worktree_path).toBe('/path/to/worktree');
@@ -116,6 +119,7 @@ describe('enrichActionContext — invoke_source_control_commit', () => {
       state,
       config,
       cliContext: { branch: 'cliContext-branch', worktree_path: 'cliContext-worktree' },
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.branch).toBe('');
     expect(result.worktree_path).toBe('');
@@ -137,6 +141,7 @@ describe('enrichActionContext — invoke_source_control_pr', () => {
         base_branch: 'cliContext-base',
         worktree_path: 'cliContext-worktree',
       },
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.branch).toBe('feature/pr-branch');
     expect(result.base_branch).toBe('main');
@@ -155,6 +160,7 @@ describe('enrichActionContext — invoke_source_control_pr', () => {
         base_branch: 'cliContext-base',
         worktree_path: 'cliContext-worktree',
       },
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.branch).toBe('');
     expect(result.base_branch).toBe('');
@@ -174,6 +180,7 @@ describe('enrichActionContext — ask_gate_mode', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result).toEqual(walkerContext);
   });
@@ -191,6 +198,7 @@ describe('enrichActionContext — display_halted', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.details).toBe('Pipeline is halted due to operator rejection');
   });
@@ -309,6 +317,7 @@ describe('enrichActionContext — request_final_approval', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.pr_url).toBe('https://github.com/org/repo/pull/123');
   });
@@ -322,6 +331,7 @@ describe('enrichActionContext — request_final_approval', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.pr_url).toBeNull();
   });
@@ -334,6 +344,7 @@ describe('enrichActionContext — request_final_approval', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.pr_url).toBeNull();
   });
@@ -348,6 +359,7 @@ describe('enrichActionContext — request_final_approval', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.custom_key).toBe('custom_value');
     expect(result.another).toBe(42);
@@ -405,6 +417,7 @@ describe('enrichActionContext — spawn_code_reviewer', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.head_sha).toBe('abc123def456');
     expect(result.phase_number).toBe(1);
@@ -423,6 +436,7 @@ describe('enrichActionContext — spawn_code_reviewer', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.head_sha).toBe('corrective_hash');
   });
@@ -437,6 +451,7 @@ describe('enrichActionContext — spawn_code_reviewer', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     // Once a corrective cycle is active, its commit_hash is authoritative.
     // The original task's commit is stale — do not return it.
@@ -454,6 +469,7 @@ describe('enrichActionContext — spawn_code_reviewer', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.head_sha).toBe('second_corrective');
   });
@@ -466,6 +482,7 @@ describe('enrichActionContext — spawn_code_reviewer', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.head_sha).toBeNull();
   });
@@ -478,6 +495,7 @@ describe('enrichActionContext — spawn_code_reviewer', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.custom_key).toBe('custom_value');
     expect(result.head_sha).toBe('abc123');
@@ -534,6 +552,7 @@ describe('enrichActionContext — spawn_phase_reviewer', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.phase_first_sha).toBe('abc');
     expect(result.phase_head_sha).toBe('ghi');
@@ -551,6 +570,7 @@ describe('enrichActionContext — spawn_phase_reviewer', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.phase_first_sha).toBe('abc');
     expect(result.phase_head_sha).toBe('jkl');
@@ -566,6 +586,7 @@ describe('enrichActionContext — spawn_phase_reviewer', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.phase_first_sha).toBe('abc');
     expect(result.phase_head_sha).toBe('ghi');
@@ -583,6 +604,7 @@ describe('enrichActionContext — spawn_phase_reviewer', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.phase_head_sha).toBe('second_corr');
   });
@@ -595,6 +617,7 @@ describe('enrichActionContext — spawn_phase_reviewer', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.phase_first_sha).toBeNull();
     expect(result.phase_head_sha).toBeNull();
@@ -608,6 +631,7 @@ describe('enrichActionContext — spawn_phase_reviewer', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.phase_first_sha).toBe('only');
     expect(result.phase_head_sha).toBe('only');
@@ -683,6 +707,7 @@ describe('enrichActionContext — spawn_final_reviewer (Iter 12)', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.project_base_sha).toBe('sha1');
     expect(result.project_head_sha).toBe('sha4');
@@ -708,6 +733,7 @@ describe('enrichActionContext — spawn_final_reviewer (Iter 12)', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.project_base_sha).toBe('sha1');
     expect(result.project_head_sha).toBe('sha2_c1');
@@ -726,6 +752,7 @@ describe('enrichActionContext — spawn_final_reviewer (Iter 12)', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.project_base_sha).toBe('sha1');
     expect(result.project_head_sha).toBe('phase_c1');
@@ -741,6 +768,7 @@ describe('enrichActionContext — spawn_final_reviewer (Iter 12)', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.project_base_sha).toBeNull();
     expect(result.project_head_sha).toBeNull();
@@ -754,6 +782,7 @@ describe('enrichActionContext — spawn_final_reviewer (Iter 12)', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.project_base_sha).toBeNull();
     expect(result.project_head_sha).toBeNull();
@@ -769,6 +798,7 @@ describe('enrichActionContext — spawn_final_reviewer (Iter 12)', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.project_base_sha).toBe('only');
     expect(result.project_head_sha).toBe('only');
@@ -790,6 +820,7 @@ describe('enrichActionContext — spawn_final_reviewer (Iter 12)', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.project_base_sha).toBe('sha_only');
     expect(result.project_head_sha).toBe('sha_only');
@@ -809,6 +840,7 @@ describe('enrichActionContext — spawn_final_reviewer (Iter 12)', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.project_base_sha).toBe('p2_sha1');
     expect(result.project_head_sha).toBe('p2_sha2');
@@ -884,6 +916,7 @@ describe('enrichActionContext — corrective_index exposure', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result).not.toHaveProperty('is_correction');
     expect(result).not.toHaveProperty('corrective_index');
@@ -902,6 +935,7 @@ describe('enrichActionContext — corrective_index exposure', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.is_correction).toBe(true);
     expect(result.corrective_index).toBe(2);
@@ -915,6 +949,7 @@ describe('enrichActionContext — corrective_index exposure', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.is_correction).toBe(true);
     expect(result.corrective_index).toBe(2);
@@ -928,6 +963,7 @@ describe('enrichActionContext — corrective_index exposure', () => {
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result).not.toHaveProperty('is_correction');
     expect(result).not.toHaveProperty('corrective_index');
@@ -997,6 +1033,7 @@ describe('enrichActionContext — execute_task: active corrective handoff routin
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.handoff_doc).toBe(ORIG_HANDOFF);
   });
@@ -1011,6 +1048,7 @@ describe('enrichActionContext — execute_task: active corrective handoff routin
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.handoff_doc).toBe(C1_HANDOFF);
   });
@@ -1025,6 +1063,7 @@ describe('enrichActionContext — execute_task: active corrective handoff routin
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.handoff_doc).toBe(C1_HANDOFF);
   });
@@ -1040,6 +1079,7 @@ describe('enrichActionContext — execute_task: active corrective handoff routin
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.handoff_doc).toBe(C2_HANDOFF);
   });
@@ -1055,6 +1095,7 @@ describe('enrichActionContext — execute_task: active corrective handoff routin
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.handoff_doc).toBe(ORIG_HANDOFF);
   });
@@ -1147,6 +1188,7 @@ describe('enrichActionContext — Iter 11 phase-scope corrective routing', () =>
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.handoff_doc).toBe(PHASE_C1_HANDOFF);
   });
@@ -1162,6 +1204,7 @@ describe('enrichActionContext — Iter 11 phase-scope corrective routing', () =>
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.handoff_doc).toBe(PHASE_C1_HANDOFF);
   });
@@ -1179,6 +1222,7 @@ describe('enrichActionContext — Iter 11 phase-scope corrective routing', () =>
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.handoff_doc).toBe(PHASE_C2_HANDOFF);
   });
@@ -1196,6 +1240,7 @@ describe('enrichActionContext — Iter 11 phase-scope corrective routing', () =>
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     // Falls through to task-scope → original task_handoff (no active task
     // corrective).
@@ -1212,6 +1257,7 @@ describe('enrichActionContext — Iter 11 phase-scope corrective routing', () =>
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.head_sha).toBe('phase_c1_sha');
     expect(result.is_correction).toBe(true);
@@ -1229,6 +1275,7 @@ describe('enrichActionContext — Iter 11 phase-scope corrective routing', () =>
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.head_sha).toBe('phase_c1_sha');
     expect(result.corrective_index).toBe(1);
@@ -1247,6 +1294,7 @@ describe('enrichActionContext — Iter 11 phase-scope corrective routing', () =>
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.corrective_index).toBe(2);
     expect(result.head_sha).toBe('sha2');
@@ -1262,6 +1310,7 @@ describe('enrichActionContext — Iter 11 phase-scope corrective routing', () =>
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.task_number).toBeNull();
     expect(result.task_id).toBe('P01-PHASE');
@@ -1277,6 +1326,7 @@ describe('enrichActionContext — Iter 11 phase-scope corrective routing', () =>
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     expect(result.task_number).toBeNull();
     expect(result.task_id).toBe('P01-PHASE');
@@ -1292,6 +1342,7 @@ describe('enrichActionContext — Iter 11 phase-scope corrective routing', () =>
       state,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
     // No active phase corrective → regular task_id.
     expect(result.task_id).toBe('P01-T01');

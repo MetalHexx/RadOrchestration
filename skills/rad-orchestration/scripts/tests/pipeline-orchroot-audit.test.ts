@@ -47,3 +47,38 @@ describe('pipeline runtime hardcoded-.claude audit', () => {
     expect(offenders, offenders.join('\n')).toEqual([]);
   });
 });
+
+// ── Bundle-geometry guard ─────────────────────────────────────────────────────
+//
+// `lib/*.ts` is bundled by esbuild into `scripts/pipeline.js` — one level
+// shallower than the source files. Any `fileURLToPath(import.meta.url)` call
+// inside `lib/` therefore resolves to the bundle's location at runtime, not
+// the source's, and any `..` walk from there lands at the wrong directory.
+// Resolved filesystem paths must instead be threaded in from `pipeline.ts`
+// (which sits at the same depth as the bundle output) via `PathContext`.
+//
+// This guard fails if any `lib/*.ts` reintroduces `fileURLToPath(import.meta.url)`.
+
+const LIB_DIR = path.resolve(__dirname, '..', 'lib');
+
+describe('pipeline runtime lib/ bundle-geometry guard', () => {
+  it('no file under scripts/lib/ uses fileURLToPath(import.meta.url)', () => {
+    const offenders: string[] = [];
+    for (const e of fs.readdirSync(LIB_DIR, { withFileTypes: true })) {
+      if (!e.isFile() || !/\.ts$/.test(e.name)) continue;
+      const filePath = path.join(LIB_DIR, e.name);
+      const text = fs.readFileSync(filePath, 'utf8');
+      const lines = text.split(/\r?\n/);
+      lines.forEach((line, idx) => {
+        // Strip line comments so doc prose mentioning the forbidden pattern
+        // is not flagged. Block comments are rare here and intentionally
+        // not stripped — flagging them surfaces accidental code.
+        const codeOnly = line.split('//')[0];
+        if (codeOnly.includes('fileURLToPath(import.meta.url)')) {
+          offenders.push(`${path.relative(here, filePath)}:${idx + 1}: ${line.trim()}`);
+        }
+      });
+    }
+    expect(offenders, offenders.join('\n')).toEqual([]);
+  });
+});

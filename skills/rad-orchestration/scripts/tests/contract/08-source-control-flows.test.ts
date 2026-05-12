@@ -8,6 +8,7 @@ import {
   DOC_STORE,
   PROJECT_DIR,
   codeReviewDoc,
+  TEST_PATH_CONTEXT,
 } from '../fixtures/parity-states.js';
 
 beforeEach(() => {
@@ -48,18 +49,18 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
       worktree_path: '/tmp/worktree',
       auto_commit: 'always',
       auto_pr: 'always',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     // Drive task manually to reach commit_gate at task scope
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     seedDoc(codeReviewDoc(1, 1));
     let result = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx,
       doc_path: codeReviewDoc(1, 1),
       verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_commit');
     expect(result.context).toEqual(expect.objectContaining({
@@ -81,8 +82,8 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
     // commit_gate is first reached (after task_completed advances task_executor
     // to completed), the walker must throw rather than silently defaulting.
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    const result = processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    const result = processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toMatch(/Cannot resolve path 'pipeline\.source_control\.auto_commit'/);
     expect(result.error?.message).toMatch(/segment 'source_control'/);
@@ -97,18 +98,18 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
       worktree_path: '/tmp/worktree',
       auto_commit: 'always',
       auto_pr: 'always',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     // Drive Task 1 manually to capture commit action
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     seedDoc(codeReviewDoc(1, 1));
     let result = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx,
       doc_path: codeReviewDoc(1, 1),
       verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_commit');
     expect(result.context).toEqual(expect.objectContaining({
@@ -127,17 +128,17 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_commit', () 
       worktree_path: '/tmp/worktree',
       auto_commit: 'never',
       auto_pr: 'never',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     seedDoc(codeReviewDoc(1, 1));
     const result = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx,
       doc_path: codeReviewDoc(1, 1),
       verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBe('invoke_source_control_commit');
   });
@@ -155,12 +156,12 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_pr', () => {
       worktree_path: '/tmp/worktree',
       auto_commit: 'always',
       auto_pr: 'always',
-    }, io);
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    }, io, TEST_PATH_CONTEXT);
+    processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath, { verdict: 'approved' });
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
-    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io, TEST_PATH_CONTEXT);
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_pr');
     expect(result.context).toEqual(expect.objectContaining({
@@ -178,7 +179,7 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_pr', () => {
     // pr_gate reads state_ref: pipeline.source_control.auto_pr. When pr_gate
     // is first reached (after final_review_completed advances the walker past
     // final_review), the walker must throw rather than silently defaulting.
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath, { verdict: 'approved' });
     const result = processEvent(
@@ -186,6 +187,7 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_pr', () => {
       PROJECT_DIR,
       { doc_path: frDocPath, verdict: 'approved' },
       io,
+      TEST_PATH_CONTEXT,
     );
     expect(result.success).toBe(false);
     expect(result.error?.message).toMatch(/Cannot resolve path 'pipeline\.source_control\.auto_pr'/);
@@ -200,12 +202,12 @@ describe('[CONTRACT] Source Control Flows — invoke_source_control_pr', () => {
       worktree_path: '/tmp/worktree',
       auto_commit: 'never',
       auto_pr: 'never',
-    }, io);
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    }, io, TEST_PATH_CONTEXT);
+    processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath, { verdict: 'approved' });
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
-    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io, TEST_PATH_CONTEXT);
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBe('invoke_source_control_pr');
   });

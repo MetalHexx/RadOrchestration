@@ -9,6 +9,7 @@ import {
   driveTaskWith,
   codeReviewDoc,
   phaseReviewDoc,
+  TEST_PATH_CONTEXT,
 } from '../fixtures/parity-states.js';
 import type { StepNodeState, ForEachPhaseNodeState, ForEachTaskNodeState } from '../../lib/types.js';
 
@@ -51,7 +52,7 @@ describe('[REGRESSION] Auto-resolution — phase_review_completed changes_reques
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
 
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     const correctiveHandoffPath = 'tasks/PHASE-CORRECTIVE-C1.md';
     seedDoc(phaseReviewDoc(1), {
       verdict: 'changes_requested',
@@ -69,7 +70,7 @@ describe('[REGRESSION] Auto-resolution — phase_review_completed changes_reques
       orchestrator_mediated: true,
       effective_outcome: 'changes_requested',
       corrective_handoff_path: correctiveHandoffPath,
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const state = io.currentState!;
@@ -100,7 +101,7 @@ describe('[REGRESSION] Auto-resolution — phase_review_completed approved witho
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
 
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     seedDoc(phaseReviewDoc(1));
 
     // Fire phase_review_completed with NO phase in context, approved.
@@ -108,7 +109,7 @@ describe('[REGRESSION] Auto-resolution — phase_review_completed approved witho
       doc_path: phaseReviewDoc(1),
       verdict: 'approved',
       exit_criteria_met: true,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const state = io.currentState!;
@@ -126,9 +127,9 @@ describe('[ITER 10] code_review_completed — orchestrator filter-down: approved
   it('raw verdict=changes_requested + effective_outcome=approved → no corrective entry birthed, state records approved', () => {
     const io = driveToExecutionWithConfig(config, 1);
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     // The orchestrator judged all findings as decline — filter-down to approved.
     // Validator contract: verdict=changes_requested + effective_outcome=approved,
     // NO corrective_handoff_path (forbidden when effective_outcome=approved).
@@ -144,7 +145,7 @@ describe('[ITER 10] code_review_completed — orchestrator filter-down: approved
       verdict: 'changes_requested',
       orchestrator_mediated: true,
       effective_outcome: 'approved',
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -162,9 +163,9 @@ describe('[ITER 10] code_review_completed — effective_outcome overrides raw ve
   it('state.code_review.verdict mirrors effective_outcome, not the reviewer raw verdict', () => {
     const io = driveToExecutionWithConfig(config, 1);
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     const correctiveHandoffPath = 'tasks/corrective-P01-T01-C1.md';
     seedDoc(codeReviewDoc(1, 1), {
       verdict: 'changes_requested',
@@ -180,7 +181,7 @@ describe('[ITER 10] code_review_completed — effective_outcome overrides raw ve
       orchestrator_mediated: true,
       effective_outcome: 'changes_requested',
       corrective_handoff_path: correctiveHandoffPath,
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -200,7 +201,7 @@ describe('[REGRESSION] phase_review_completed with nonexistent phase throws acti
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
 
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     seedDoc(phaseReviewDoc(1));
 
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
@@ -208,7 +209,7 @@ describe('[REGRESSION] phase_review_completed with nonexistent phase throws acti
       doc_path: phaseReviewDoc(1),
       verdict: 'approved',
       exit_criteria_met: true,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(false);
     expect(result.error?.message).toMatch(/Cannot apply mutation for "phase_review_completed"/);
@@ -225,7 +226,7 @@ describe('[ITER 11] phase_review_completed — filter-down: approved effective_o
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
 
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     seedDoc(phaseReviewDoc(1), {
       verdict: 'changes_requested',
       exit_criteria_met: false,
@@ -240,7 +241,7 @@ describe('[ITER 11] phase_review_completed — filter-down: approved effective_o
       exit_criteria_met: false,
       orchestrator_mediated: true,
       effective_outcome: 'approved',
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -261,7 +262,7 @@ describe('[ITER 11] phase_review_completed — effective_outcome overrides raw v
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
 
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     const correctiveHandoffPath = 'tasks/PHASE-CORRECTIVE-C1.md';
     seedDoc(phaseReviewDoc(1), {
       verdict: 'changes_requested',
@@ -279,7 +280,7 @@ describe('[ITER 11] phase_review_completed — effective_outcome overrides raw v
       orchestrator_mediated: true,
       effective_outcome: 'changes_requested',
       corrective_handoff_path: correctiveHandoffPath,
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as ForEachPhaseNodeState;
@@ -338,7 +339,7 @@ describe('[ITER 11] code_review_completed — ancestor-derivation across scope c
       orchestrator_mediated: true,
       effective_outcome: 'changes_requested',
       corrective_handoff_path: nextHandoff,
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
 
@@ -362,9 +363,9 @@ describe('[ITER 11] code_review_completed — ancestor-derivation across scope c
   it('task-scope hosting: new corrective appends to taskIter.corrective_tasks when no phase-scope corrective is active (iter-10 preserved)', () => {
     const io = driveToExecutionWithConfig(config, 1);
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
 
     const handoffPath = 'tasks/task-scope-C1.md';
     seedDoc(codeReviewDoc(1, 1), {
@@ -381,7 +382,7 @@ describe('[ITER 11] code_review_completed — ancestor-derivation across scope c
       orchestrator_mediated: true,
       effective_outcome: 'changes_requested',
       corrective_handoff_path: handoffPath,
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
 

@@ -2976,7 +2976,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve5.call(this, root, ref);
+      let _sch = resolve4.call(this, root, ref);
       if (_sch === void 0) {
         const schema2 = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3003,7 +3003,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve5(root, ref) {
+    function resolve4(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3578,7 +3578,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve5(baseURI, relativeURI, options) {
+    function resolve4(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse(baseURI, schemelessOptions), parse(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
@@ -3805,7 +3805,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve5,
+      resolve: resolve4,
       resolveComponent,
       equal,
       serialize,
@@ -6478,13 +6478,14 @@ var require_ajv = __commonJS({
 });
 
 // pipeline.ts
-import { fileURLToPath as fileURLToPath3 } from "node:url";
+import { fileURLToPath } from "node:url";
 import * as fs4 from "node:fs";
 import * as path6 from "node:path";
 import process2 from "node:process";
 
 // lib/engine.ts
-import * as path5 from "node:path";
+import * as os from "node:os";
+import * as path4 from "node:path";
 
 // lib/template-loader.ts
 import * as fs from "node:fs";
@@ -9913,11 +9914,8 @@ function scaffoldNodeState(nodeDef) {
 // lib/context-enrichment.ts
 import { spawnSync } from "node:child_process";
 import path3 from "node:path";
-import { fileURLToPath } from "node:url";
-var __filename = fileURLToPath(import.meta.url);
-var __dirname = path3.dirname(__filename);
-function buildRepositorySkillsBlock() {
-  const scriptPath = path3.resolve(__dirname, "..", "list-repo-skills.mjs");
+function buildRepositorySkillsBlock(scriptsDir) {
+  const scriptPath = path3.resolve(scriptsDir, "list-repo-skills.mjs");
   let raw;
   try {
     const result = spawnSync(process.execPath, [scriptPath], { encoding: "utf8" });
@@ -10012,7 +10010,7 @@ var EMPTY_CONTEXT_ACTIONS = /* @__PURE__ */ new Set([
 function enrichActionContext(input) {
   const { action, walkerContext, state } = input;
   if (action in PLANNING_SPAWN_STEPS) {
-    const repository_skills_block = buildRepositorySkillsBlock();
+    const repository_skills_block = buildRepositorySkillsBlock(input.scriptsDir);
     const base = {
       ...walkerContext,
       step: PLANNING_SPAWN_STEPS[action],
@@ -11559,14 +11557,6 @@ function walkDAG(state, template, config, readDocument3) {
   return null;
 }
 
-// lib/orch-root.ts
-import { fileURLToPath as fileURLToPath2 } from "node:url";
-import { dirname, resolve as resolve2, basename as basename2 } from "node:path";
-function detectOrchRoot() {
-  const __dirname2 = dirname(fileURLToPath2(import.meta.url));
-  return basename2(resolve2(__dirname2, "..", "..", "..", ".."));
-}
-
 // lib/schema-validator.ts
 var import_ajv = __toESM(require_ajv(), 1);
 
@@ -12530,139 +12520,8 @@ function compareNodes(prevNodes, currNodes, path7, errors) {
   }
 }
 
-// lib/state-io.ts
-import * as fs3 from "node:fs";
-import * as os from "node:os";
-import * as path4 from "node:path";
-var DEFAULT_CONFIG = {
-  system: {
-    orch_root: ".claude"
-    // authored-install-default — overwritten on first readConfig() call
-  },
-  projects: {
-    base_path: "",
-    naming: "SCREAMING_CASE"
-  },
-  limits: {
-    max_phases: 10,
-    max_tasks_per_phase: 8,
-    max_retries_per_task: 2,
-    max_consecutive_review_rejections: 3
-  },
-  human_gates: {
-    after_planning: true,
-    execution_mode: "ask",
-    after_final_review: true
-  },
-  source_control: {
-    auto_commit: "ask",
-    auto_pr: "ask",
-    provider: "github"
-  },
-  default_template: "extra-high"
-};
-function deepMerge(target, source) {
-  const result = { ...target };
-  for (const key of Object.keys(source)) {
-    const srcVal = source[key];
-    const tgtVal = result[key];
-    if (srcVal !== null && srcVal !== void 0 && typeof srcVal === "object" && !Array.isArray(srcVal) && tgtVal !== null && tgtVal !== void 0 && typeof tgtVal === "object" && !Array.isArray(tgtVal)) {
-      result[key] = deepMerge(
-        tgtVal,
-        srcVal
-      );
-    } else if (srcVal !== void 0) {
-      result[key] = srcVal;
-    }
-  }
-  return result;
-}
-function isEnoent(err) {
-  return err !== null && typeof err === "object" && err.code === "ENOENT";
-}
-function resolveBasePath(raw, env = process.env) {
-  if (!raw) return raw;
-  if (raw.startsWith("~/.radorch")) {
-    const radorchHome = env.RADORCH_HOME || path4.join(os.homedir(), ".radorch");
-    const remainder = raw.slice("~/.radorch".length).replace(/^[/\\]+/, "");
-    const joined = remainder ? path4.join(radorchHome, remainder) : radorchHome;
-    return joined.replace(/[/\\]+$/, "");
-  }
-  if (raw.startsWith("~/") || raw.startsWith("~\\")) {
-    const remainder = raw.slice(2).replace(/^[/\\]+/, "");
-    const joined = remainder ? path4.join(os.homedir(), remainder) : os.homedir();
-    return joined.replace(/[/\\]+$/, "");
-  }
-  return raw;
-}
-function readState(projectDir) {
-  const statePath = path4.join(projectDir, "state.json");
-  try {
-    const raw = fs3.readFileSync(statePath, "utf-8");
-    return JSON.parse(raw);
-  } catch (err) {
-    if (isEnoent(err)) return null;
-    throw err;
-  }
-}
-function writeState(projectDir, state) {
-  fs3.mkdirSync(projectDir, { recursive: true });
-  const statePath = path4.join(projectDir, "state.json");
-  const tmpPath = path4.join(projectDir, "state.json.tmp");
-  try {
-    fs3.writeFileSync(tmpPath, JSON.stringify(state, null, 2), "utf-8");
-    fs3.renameSync(tmpPath, statePath);
-  } catch (err) {
-    fs3.rmSync(tmpPath, { force: true });
-    throw err;
-  }
-}
-function readConfig(configPath) {
-  const base = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-  if (!configPath) {
-    return base;
-  }
-  try {
-    const raw = fs3.readFileSync(configPath, "utf-8");
-    const parsed = jsYaml.load(raw);
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return base;
-    }
-    return deepMerge(base, parsed);
-  } catch (err) {
-    if (isEnoent(err)) return base;
-    throw err;
-  }
-}
-function readDocument2(docPath) {
-  let raw;
-  try {
-    raw = fs3.readFileSync(docPath, "utf-8");
-  } catch (err) {
-    if (isEnoent(err)) return null;
-    throw err;
-  }
-  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/);
-  if (!match) {
-    return { frontmatter: {}, content: raw };
-  }
-  const frontmatterText = match[1] ?? "";
-  const content = match[2] ?? "";
-  const parsed = jsYaml.load(frontmatterText);
-  const frontmatter = parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-  return {
-    frontmatter,
-    content
-  };
-}
-function ensureDirectories(projectDir) {
-  fs3.mkdirSync(projectDir, { recursive: true });
-  for (const subdir of ["phases", "tasks", "reports", "reviews"]) {
-    fs3.mkdirSync(path4.join(projectDir, subdir), { recursive: true });
-  }
-}
-
 // lib/engine.ts
+var PROJECTS_BASE_PATH = path4.join(os.homedir(), ".radorch", "projects");
 function scaffoldState(template, projectName, config) {
   const now = (/* @__PURE__ */ new Date()).toISOString();
   const nodes = {};
@@ -12717,36 +12576,34 @@ function resolveGateApproved(context) {
   if (gateType === "phase") return "phase_gate_approved";
   throw new Error(gateType ? `Unknown gate type '${gateType}': expected task or phase` : "gate_approved requires --gate-type task|phase");
 }
-function processEvent(event, projectDir, context, io, configPath) {
-  let orchRoot = detectOrchRoot();
+function processEvent(event, projectDir, context, io, pathContext, configPath) {
+  const { orchRoot, templatesDir, scriptsDir } = pathContext;
   try {
     const config = io.readConfig(configPath);
-    orchRoot = config.system.orch_root;
     const state = io.readState(projectDir);
-    const templatesDir = path5.join(orchRoot, "skills/rad-orchestration/templates");
     const resolution = resolveTemplateName(state, context.template, config, projectDir, templatesDir);
-    const effectiveLoadPath = state !== null ? resolution.templatePath : path5.join(templatesDir, resolution.templateName + ".yml");
+    const effectiveLoadPath = state !== null ? resolution.templatePath : path4.join(templatesDir, resolution.templateName + ".yml");
     const loadedTemplate = loadTemplate(effectiveLoadPath);
     const { template, eventIndex } = loadedTemplate;
     const wrappedReadDocument = (docPath) => {
-      if (path5.isAbsolute(docPath)) {
+      if (path4.isAbsolute(docPath)) {
         return io.readDocument(docPath);
       }
-      const resolvedProjectDir = path5.resolve(projectDir);
-      const resolved = path5.resolve(resolvedProjectDir, docPath);
-      const relativeToProject = path5.relative(resolvedProjectDir, resolved);
-      if (relativeToProject === ".." || relativeToProject.startsWith(`..${path5.sep}`) || path5.isAbsolute(relativeToProject)) {
+      const resolvedProjectDir = path4.resolve(projectDir);
+      const resolved = path4.resolve(resolvedProjectDir, docPath);
+      const relativeToProject = path4.relative(resolvedProjectDir, resolved);
+      if (relativeToProject === ".." || relativeToProject.startsWith(`..${path4.sep}`) || path4.isAbsolute(relativeToProject)) {
         throw new Error(`Document path escapes project directory: ${docPath}`);
       }
       return io.readDocument(resolved);
     };
     if (event === "start") {
       if (state === null) {
-        const projectName = path5.basename(projectDir);
+        const projectName = path4.basename(projectDir);
         io.ensureDirectories(projectDir);
         try {
           snapshotTemplate(
-            path5.join(templatesDir, resolution.templateName + ".yml"),
+            path4.join(templatesDir, resolution.templateName + ".yml"),
             projectDir
           );
         } catch (err) {
@@ -12775,7 +12632,8 @@ function processEvent(event, projectDir, context, io, configPath) {
           walkerContext: nextAction2.context,
           state: scaffolded,
           config,
-          cliContext: context
+          cliContext: context,
+          scriptsDir
         }) : {};
         return {
           success: true,
@@ -12804,7 +12662,8 @@ function processEvent(event, projectDir, context, io, configPath) {
           walkerContext: walkerResult.context,
           state,
           config,
-          cliContext: context
+          cliContext: context,
+          scriptsDir
         }) : {};
         return {
           success: true,
@@ -12844,8 +12703,8 @@ function processEvent(event, projectDir, context, io, configPath) {
       if (normalizedContext2.doc_path) {
         normalizedContext2.doc_path = normalizeDocPath(
           normalizedContext2.doc_path,
-          resolveBasePath(config.projects.base_path),
-          path5.basename(projectDir)
+          PROJECTS_BASE_PATH,
+          path4.basename(projectDir)
         );
       }
       const mutationResult2 = mutation2(state, normalizedContext2, config, template);
@@ -12880,7 +12739,8 @@ function processEvent(event, projectDir, context, io, configPath) {
         walkerContext: walkerResult.context,
         state: mutatedState2,
         config,
-        cliContext: context
+        cliContext: context,
+        scriptsDir
       }) : {};
       return {
         success: true,
@@ -12951,8 +12811,8 @@ function processEvent(event, projectDir, context, io, configPath) {
     if (normalizedContext.doc_path) {
       normalizedContext.doc_path = normalizeDocPath(
         normalizedContext.doc_path,
-        resolveBasePath(config.projects.base_path),
-        path5.basename(projectDir)
+        PROJECTS_BASE_PATH,
+        path4.basename(projectDir)
       );
     }
     const mutationResult = mutation(state, normalizedContext, config, template);
@@ -12982,7 +12842,8 @@ function processEvent(event, projectDir, context, io, configPath) {
         walkerContext: rawContext,
         state: mutatedState,
         config,
-        cliContext: context
+        cliContext: context,
+        scriptsDir
       });
       nextAction = { action: stepNode.action, context: enrichedCtx };
       io.writeState(projectDir, mutatedState);
@@ -13011,7 +12872,8 @@ function processEvent(event, projectDir, context, io, configPath) {
             walkerContext: walkerResult.context,
             state: mutatedState,
             config,
-            cliContext: context
+            cliContext: context,
+            scriptsDir
           })
         };
       } else {
@@ -13041,7 +12903,130 @@ function processEvent(event, projectDir, context, io, configPath) {
   }
 }
 
+// lib/state-io.ts
+import * as fs3 from "node:fs";
+import * as path5 from "node:path";
+var DEFAULT_CONFIG = {
+  default_template: "extra-high",
+  limits: {
+    max_phases: 10,
+    max_tasks_per_phase: 8,
+    max_retries_per_task: 5,
+    max_consecutive_review_rejections: 3
+  },
+  human_gates: {
+    after_planning: true,
+    execution_mode: "ask",
+    after_final_review: true
+  },
+  source_control: {
+    auto_commit: "ask",
+    auto_pr: "ask"
+  }
+};
+function deepMerge(target, source) {
+  const result = { ...target };
+  for (const key of Object.keys(source)) {
+    const srcVal = source[key];
+    const tgtVal = result[key];
+    if (srcVal !== null && srcVal !== void 0 && typeof srcVal === "object" && !Array.isArray(srcVal) && tgtVal !== null && tgtVal !== void 0 && typeof tgtVal === "object" && !Array.isArray(tgtVal)) {
+      result[key] = deepMerge(
+        tgtVal,
+        srcVal
+      );
+    } else if (srcVal !== void 0) {
+      result[key] = srcVal;
+    }
+  }
+  return result;
+}
+function isEnoent(err) {
+  return err !== null && typeof err === "object" && err.code === "ENOENT";
+}
+function readState(projectDir) {
+  const statePath = path5.join(projectDir, "state.json");
+  try {
+    const raw = fs3.readFileSync(statePath, "utf-8");
+    return JSON.parse(raw);
+  } catch (err) {
+    if (isEnoent(err)) return null;
+    throw err;
+  }
+}
+function writeState(projectDir, state) {
+  fs3.mkdirSync(projectDir, { recursive: true });
+  const statePath = path5.join(projectDir, "state.json");
+  const tmpPath = path5.join(projectDir, "state.json.tmp");
+  try {
+    fs3.writeFileSync(tmpPath, JSON.stringify(state, null, 2), "utf-8");
+    fs3.renameSync(tmpPath, statePath);
+  } catch (err) {
+    fs3.rmSync(tmpPath, { force: true });
+    throw err;
+  }
+}
+function stripRetiredKeys(merged) {
+  delete merged.system;
+  delete merged.projects;
+  const sc = merged.source_control;
+  if (sc !== null && typeof sc === "object" && !Array.isArray(sc)) {
+    delete sc.provider;
+  }
+  return merged;
+}
+function readConfig(configPath) {
+  const base = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  if (!configPath) {
+    return base;
+  }
+  try {
+    const raw = fs3.readFileSync(configPath, "utf-8");
+    const parsed = jsYaml.load(raw);
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return base;
+    }
+    const merged = deepMerge(base, parsed);
+    return stripRetiredKeys(merged);
+  } catch (err) {
+    if (isEnoent(err)) return base;
+    throw err;
+  }
+}
+function readDocument2(docPath) {
+  let raw;
+  try {
+    raw = fs3.readFileSync(docPath, "utf-8");
+  } catch (err) {
+    if (isEnoent(err)) return null;
+    throw err;
+  }
+  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/);
+  if (!match) {
+    return { frontmatter: {}, content: raw };
+  }
+  const frontmatterText = match[1] ?? "";
+  const content = match[2] ?? "";
+  const parsed = jsYaml.load(frontmatterText);
+  const frontmatter = parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  return {
+    frontmatter,
+    content
+  };
+}
+function ensureDirectories(projectDir) {
+  fs3.mkdirSync(projectDir, { recursive: true });
+  for (const subdir of ["phases", "tasks", "reports", "reviews"]) {
+    fs3.mkdirSync(path5.join(projectDir, subdir), { recursive: true });
+  }
+}
+
 // pipeline.ts
+function resolvePathContext() {
+  const scriptsDir = path6.dirname(fileURLToPath(import.meta.url));
+  const templatesDir = path6.resolve(scriptsDir, "..", "templates");
+  const orchRoot = path6.basename(path6.resolve(scriptsDir, "..", "..", ".."));
+  return { scriptsDir, templatesDir, orchRoot };
+}
 function parseArgs(argv) {
   const args = {};
   for (let i = 0; i < argv.length - 1; i += 2) {
@@ -13052,7 +13037,43 @@ function parseArgs(argv) {
   }
   return args;
 }
-function makeErrorResult(message, event, orchRoot = detectOrchRoot()) {
+var HELP_TEXT = `Usage: pipeline.js --event <event-name> --project-dir <path> [options]
+
+Required:
+  --event <name>          Pipeline event signal (see list below)
+  --project-dir <path>    Path to the project directory
+
+Common events:
+  start, requirements_started, requirements_completed,
+  master_plan_started, master_plan_completed,
+  explosion_started, explosion_completed, explosion_failed,
+  plan_approved, plan_rejected,
+  execution_started, code_review_started, code_review_completed,
+  task_completed, commit_started, commit_completed,
+  pr_requested, pr_created,
+  phase_review_started, phase_review_completed,
+  final_review_started, final_review_completed,
+  gate_mode_set, gate_approved, gate_rejected,
+  source_control_init
+
+Common flags:
+  --doc-path <path>       Document path (for *_completed events)
+  --phase <n> --task <n>  Phase/task selectors
+  --gate-mode task|phase|autonomous
+  --verdict approved|changes_requested|rejected
+  --branch <name>         Branch name (source-control events)
+  --commit-hash <hash>    Commit hash (commit_completed)
+  --pr-url <url>          PR URL (pr_created)
+  --parse-error '<json>'  Parse error payload (explosion_failed)
+  --reason <text>         Rejection reason (gate_rejected)
+  --config <path>         Override default orchestration.yml location
+
+Returns a JSON envelope on stdout. Exit code 0 on success, 1 on failure.
+
+For the full event reference and behaviour, see
+references/action-event-reference.md in the rad-orchestration skill folder.
+`;
+function makeErrorResult(message, event, orchRoot) {
   return {
     success: false,
     action: null,
@@ -13063,32 +13084,33 @@ function makeErrorResult(message, event, orchRoot = detectOrchRoot()) {
   };
 }
 function run(argv) {
+  if (argv.includes("--help") || argv.includes("-h")) {
+    process2.exitCode = 0;
+    process2.stdout.write(HELP_TEXT);
+    return;
+  }
   const args = parseArgs(argv);
   const event = args["event"];
-  let orchRoot = detectOrchRoot();
+  const pathContext = resolvePathContext();
+  const { orchRoot, scriptsDir } = pathContext;
   try {
-    const __dirname2 = path6.dirname(fileURLToPath3(import.meta.url));
     const projectDir = args["project-dir"];
     let configPath = args["config"];
     if (!configPath) {
-      const discovered = path6.resolve(__dirname2, "../config/orchestration.yml");
+      const discovered = path6.resolve(scriptsDir, "../config/orchestration.yml");
       if (fs4.existsSync(discovered)) {
         configPath = discovered;
       }
     }
     if (!event) {
       process2.exitCode = 1;
-      process2.stdout.write(JSON.stringify(makeErrorResult("Missing required argument: --event", "unknown"), null, 2) + "\n");
+      process2.stdout.write(JSON.stringify(makeErrorResult("Missing required argument: --event", "unknown", orchRoot), null, 2) + "\n");
       return;
     }
     if (!projectDir) {
       process2.exitCode = 1;
-      process2.stdout.write(JSON.stringify(makeErrorResult("Missing required argument: --project-dir", "unknown"), null, 2) + "\n");
+      process2.stdout.write(JSON.stringify(makeErrorResult("Missing required argument: --project-dir", "unknown", orchRoot), null, 2) + "\n");
       return;
-    }
-    try {
-      orchRoot = readConfig(configPath).system.orch_root;
-    } catch {
     }
     const phaseStr = args["phase"];
     const taskStr = args["task"];
@@ -13176,7 +13198,7 @@ function run(argv) {
       readDocument: readDocument2,
       ensureDirectories
     };
-    const result = processEvent(event, projectDir, context, io, configPath);
+    const result = processEvent(event, projectDir, context, io, pathContext, configPath);
     process2.exitCode = result.success ? 0 : 1;
     process2.stdout.write(JSON.stringify(result, null, 2) + "\n");
   } catch (err) {
@@ -13193,7 +13215,7 @@ function run(argv) {
     process2.stdout.write(JSON.stringify(fallback, null, 2) + "\n");
   }
 }
-if (process2.argv[1] === fileURLToPath3(import.meta.url)) {
+if (process2.argv[1] === fileURLToPath(import.meta.url)) {
   run(process2.argv.slice(2));
 }
 export {

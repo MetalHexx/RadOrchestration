@@ -13,6 +13,7 @@ import {
   seedExplosionStateFor,
   codeReviewDoc,
   phaseReviewDoc,
+  TEST_PATH_CONTEXT,
 } from '../fixtures/parity-states.js';
 import type { StepNodeState } from '../../lib/types.js';
 
@@ -44,9 +45,9 @@ const config = createConfig({
 function driveToCodeReview() {
   const io = driveToExecutionWithConfig(config, 1);
   const ctx = { phase: 1, task: 1 };
-  processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('task_completed', PROJECT_DIR, ctx, io);
-  processEvent('code_review_started', PROJECT_DIR, ctx, io);
+  processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+  processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+  processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   return io;
 }
 
@@ -55,7 +56,7 @@ function driveToPhaseReview() {
   const io = driveToExecutionWithConfig(config, 1);
   driveTaskWith(io, 1, 1);
   driveTaskWith(io, 1, 2);
-  processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+  processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
   return io;
 }
 
@@ -101,14 +102,14 @@ describe('[CONTRACT] Frontmatter — verdict (code_review_completed)', () => {
   it('present value passes', () => {
     const io = driveToCodeReview();
     seedDoc(codeReviewDoc(1, 1), { verdict: 'approved' });
-    const result = processEvent('code_review_completed', PROJECT_DIR, { phase: 1, task: 1, doc_path: codeReviewDoc(1, 1) }, io);
+    const result = processEvent('code_review_completed', PROJECT_DIR, { phase: 1, task: 1, doc_path: codeReviewDoc(1, 1) }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
   });
 
   it("string 'null' coerced → error", () => {
     const io = driveToCodeReview();
     seedDoc(codeReviewDoc(1, 1), { verdict: 'null' });
-    const result = processEvent('code_review_completed', PROJECT_DIR, { phase: 1, task: 1, doc_path: codeReviewDoc(1, 1) }, io);
+    const result = processEvent('code_review_completed', PROJECT_DIR, { phase: 1, task: 1, doc_path: codeReviewDoc(1, 1) }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('Missing required field');
     expect(result.error?.field).toBe('verdict');
@@ -118,7 +119,7 @@ describe('[CONTRACT] Frontmatter — verdict (code_review_completed)', () => {
   it('missing verdict → error', () => {
     const io = driveToCodeReview();
     seedDoc(codeReviewDoc(1, 1), {});
-    const result = processEvent('code_review_completed', PROJECT_DIR, { phase: 1, task: 1, doc_path: codeReviewDoc(1, 1) }, io);
+    const result = processEvent('code_review_completed', PROJECT_DIR, { phase: 1, task: 1, doc_path: codeReviewDoc(1, 1) }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('Missing required field');
     expect(result.error?.field).toBe('verdict');
@@ -325,14 +326,14 @@ describe('[CONTRACT] Frontmatter — verdict (phase_review_completed)', () => {
   it('present value passes', () => {
     const io = driveToPhaseReview();
     seedDoc(phaseReviewDoc(1), { verdict: 'approved', exit_criteria_met: true });
-    const result = processEvent('phase_review_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReviewDoc(1) }, io);
+    const result = processEvent('phase_review_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReviewDoc(1) }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
   });
 
   it("string 'null' coerced → error", () => {
     const io = driveToPhaseReview();
     seedDoc(phaseReviewDoc(1), { verdict: 'null', exit_criteria_met: true });
-    const result = processEvent('phase_review_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReviewDoc(1) }, io);
+    const result = processEvent('phase_review_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReviewDoc(1) }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('Missing required field');
     expect(result.error?.field).toBe('verdict');
@@ -341,7 +342,7 @@ describe('[CONTRACT] Frontmatter — verdict (phase_review_completed)', () => {
   it('missing verdict → error', () => {
     const io = driveToPhaseReview();
     seedDoc(phaseReviewDoc(1), { exit_criteria_met: true });
-    const result = processEvent('phase_review_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReviewDoc(1) }, io);
+    const result = processEvent('phase_review_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReviewDoc(1) }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('Missing required field');
     expect(result.error?.field).toBe('verdict');
@@ -550,14 +551,14 @@ describe('[CONTRACT] Frontmatter — exit_criteria_met (phase_review_completed)'
   it('present value passes', () => {
     const io = driveToPhaseReview();
     seedDoc(phaseReviewDoc(1), { verdict: 'approved', exit_criteria_met: true });
-    const result = processEvent('phase_review_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReviewDoc(1) }, io);
+    const result = processEvent('phase_review_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReviewDoc(1) }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
   });
 
   it('missing exit_criteria_met → error', () => {
     const io = driveToPhaseReview();
     seedDoc(phaseReviewDoc(1), { verdict: 'approved' });
-    const result = processEvent('phase_review_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReviewDoc(1) }, io);
+    const result = processEvent('phase_review_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReviewDoc(1) }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('Missing required field');
     expect(result.error?.field).toBe('exit_criteria_met');
@@ -567,7 +568,7 @@ describe('[CONTRACT] Frontmatter — exit_criteria_met (phase_review_completed)'
   it('explicit null → error', () => {
     const io = driveToPhaseReview();
     seedDoc(phaseReviewDoc(1), { verdict: 'approved', exit_criteria_met: null });
-    const result = processEvent('phase_review_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReviewDoc(1) }, io);
+    const result = processEvent('phase_review_completed', PROJECT_DIR, { phase: 1, doc_path: phaseReviewDoc(1) }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('Missing required field');
     expect(result.error?.field).toBe('exit_criteria_met');
@@ -661,7 +662,7 @@ describe('[CONTRACT] Frontmatter — verdict (final_review_completed)', () => {
 describe('[CONTRACT] Frontmatter — total_phases (plan_approved)', () => {
   function scaffoldForPlanApproved() {
     const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const state = io.currentState!;
     completePlanningSteps(state, 'explode_master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
@@ -671,48 +672,48 @@ describe('[CONTRACT] Frontmatter — total_phases (plan_approved)', () => {
   it('valid positive integer passes', () => {
     const { io, mpDoc } = scaffoldForPlanApproved();
     seedDoc(mpDoc, { total_phases: 2, total_tasks: 4 });
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     // Post-Iter 7: phase_loop is expanded by the walker on plan_approved, but
     // task_loop resolution requires phase_planning.doc_path (pre-seeded by the
     // explosion script). Seed + re-walk so the walker can advance.
     seedExplosionStateFor(io, 2);
-    const afterSeed = processEvent('start', PROJECT_DIR, {}, io);
+    const afterSeed = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(afterSeed.action).not.toBeNull();
   });
 
   it('zero → no phases expanded', () => {
     const { io, mpDoc } = scaffoldForPlanApproved();
     seedDoc(mpDoc, { total_phases: 0 });
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.action).toBeNull();
   });
 
   it('negative → no phases expanded', () => {
     const { io, mpDoc } = scaffoldForPlanApproved();
     seedDoc(mpDoc, { total_phases: -1 });
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.action).toBeNull();
   });
 
   it('string → no phases expanded', () => {
     const { io, mpDoc } = scaffoldForPlanApproved();
     seedDoc(mpDoc, { total_phases: 'three' });
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.action).toBeNull();
   });
 
   it('float → no phases expanded', () => {
     const { io, mpDoc } = scaffoldForPlanApproved();
     seedDoc(mpDoc, { total_phases: 3.5 });
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.action).toBeNull();
   });
 
   it('missing → no phases expanded', () => {
     const { io, mpDoc } = scaffoldForPlanApproved();
     seedDoc(mpDoc, {});
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.action).toBeNull();
   });
 });
@@ -722,7 +723,7 @@ describe('[CONTRACT] Frontmatter — total_phases (plan_approved)', () => {
 describe('[CONTRACT] Frontmatter — total_phases validation error shape (plan_approved)', () => {
   function scaffoldForPlanApprovedValidation() {
     const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
@@ -732,14 +733,14 @@ describe('[CONTRACT] Frontmatter — total_phases validation error shape (plan_a
   it('valid total_phases: 1 → success: true', () => {
     const { io, mpDoc } = scaffoldForPlanApprovedValidation();
     seedDoc(mpDoc, { total_phases: 1, total_tasks: 3 });
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
   });
 
   it('missing total_phases → success: false, structured error', () => {
     const { io, mpDoc } = scaffoldForPlanApprovedValidation();
     seedDoc(mpDoc, {});
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('Missing required field');
     expect(result.error?.field).toBe('total_phases');
@@ -749,7 +750,7 @@ describe('[CONTRACT] Frontmatter — total_phases validation error shape (plan_a
   it('total_phases: 0 → success: false, invalid value error', () => {
     const { io, mpDoc } = scaffoldForPlanApprovedValidation();
     seedDoc(mpDoc, { total_phases: 0 });
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('Invalid value: total_phases must be a positive integer');
     expect(result.error?.field).toBe('total_phases');
@@ -758,7 +759,7 @@ describe('[CONTRACT] Frontmatter — total_phases validation error shape (plan_a
   it('total_phases: "three" → success: false, validation error', () => {
     const { io, mpDoc } = scaffoldForPlanApprovedValidation();
     seedDoc(mpDoc, { total_phases: 'three' });
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.field).toBe('total_phases');
   });
@@ -769,7 +770,7 @@ describe('[CONTRACT] Frontmatter — total_phases validation error shape (plan_a
 describe('[CONTRACT] Frontmatter — total_tasks (plan_approved)', () => {
   function scaffoldForPlanApprovedValidation() {
     const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
@@ -779,7 +780,7 @@ describe('[CONTRACT] Frontmatter — total_tasks (plan_approved)', () => {
   it('missing total_tasks (only total_phases present) → success: false, missing field error for total_tasks', () => {
     const { io, mpDoc } = scaffoldForPlanApprovedValidation();
     seedDoc(mpDoc, { total_phases: 1 });
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('Missing required field');
     expect(result.error?.field).toBe('total_tasks');
@@ -789,14 +790,14 @@ describe('[CONTRACT] Frontmatter — total_tasks (plan_approved)', () => {
   it('valid total_phases + total_tasks → success: true', () => {
     const { io, mpDoc } = scaffoldForPlanApprovedValidation();
     seedDoc(mpDoc, { total_phases: 1, total_tasks: 3 });
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
   });
 
   it('total_tasks: 0 → success: false, invalid value error', () => {
     const { io, mpDoc } = scaffoldForPlanApprovedValidation();
     seedDoc(mpDoc, { total_phases: 1, total_tasks: 0 });
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('Invalid value: total_tasks must be a positive integer');
     expect(result.error?.field).toBe('total_tasks');
@@ -805,7 +806,7 @@ describe('[CONTRACT] Frontmatter — total_tasks (plan_approved)', () => {
   it('total_tasks: "three" → success: false, validation error', () => {
     const { io, mpDoc } = scaffoldForPlanApprovedValidation();
     seedDoc(mpDoc, { total_phases: 1, total_tasks: 'three' });
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.field).toBe('total_tasks');
   });

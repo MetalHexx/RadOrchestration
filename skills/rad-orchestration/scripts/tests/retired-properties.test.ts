@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readConfig } from '../lib/state-io.js';
-import { detectOrchRoot } from '../lib/orch-root.js';
 
 describe('Retired property handling', () => {
   it('reads a YAML carrying retired keys without error', () => {
@@ -38,31 +37,5 @@ human_gates:
     // Live keys preserved:
     expect(cfg.source_control.auto_commit).toBe('ask');
     expect(cfg.default_template).toBe('ask');
-  });
-
-  it('no longer honors RADORCH_HOME', () => {
-    // resolveBasePath / expandHome are gone; the pipeline no longer relocates
-    // its projects home via RADORCH_HOME. detectOrchRoot is a pure filesystem
-    // signal and is unaffected by env.RADORCH_HOME.
-    const prev = process.env.RADORCH_HOME;
-    try {
-      process.env.RADORCH_HOME = '/should/be/ignored';
-      const detected = detectOrchRoot();
-      // detectOrchRoot returns the install-folder basename; it must not
-      // contain or equal the ignored RADORCH_HOME value.
-      expect(detected).not.toBe('/should/be/ignored');
-      expect(detected.includes('should')).toBe(false);
-      // resolveBasePath has been removed from state-io; importing it would
-      // be a compile error. We only assert that detectOrchRoot is the sole
-      // surviving resolver path.
-      expect(typeof detected).toBe('string');
-      expect(detected.length).toBeGreaterThan(0);
-    } finally {
-      if (prev === undefined) {
-        delete process.env.RADORCH_HOME;
-      } else {
-        process.env.RADORCH_HOME = prev;
-      }
-    }
   });
 });

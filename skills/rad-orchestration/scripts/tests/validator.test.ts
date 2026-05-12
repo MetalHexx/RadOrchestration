@@ -5,6 +5,7 @@ import { validateState } from '../lib/validator.js';
 import { processEvent } from '../lib/engine.js';
 import { loadTemplate } from '../lib/template-loader.js';
 import { scaffoldNodeState } from '../lib/scaffold.js';
+import { TEST_PATH_CONTEXT } from './fixtures/parity-states.js';
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -508,7 +509,7 @@ describe('validator – status transitions', () => {
   it('engine integration: illegal transition prevents state write', () => {
     // Scaffold valid initial state via the engine
     const initIO = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, initIO);
+    processEvent('start', PROJECT_DIR, {}, initIO, TEST_PATH_CONTEXT);
     const scaffolded = initIO.currentState!;
 
     // Corrupt the previous state so 'master_plan' is skipped
@@ -519,7 +520,7 @@ describe('validator – status transitions', () => {
     // We simulate this by feeding the engine a previous state with master_plan=skipped
     // so when master_plan_started fires and sets it to in_progress, validation catches it
     const io = createMockIO(corrupted);
-    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
+    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(io.writeCalls.length).toBe(0);
   });
@@ -535,7 +536,7 @@ describe('validator – engine integration', () => {
     state.graph.status = 'in_progress';
     (state.graph.nodes['final_review'] as any).status = 'invalid_bogus';
     const io = createMockIO(state);
-    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
+    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
     expect(io.writeCalls.length).toBe(0);
@@ -544,12 +545,12 @@ describe('validator – engine integration', () => {
   it('engine returns success: true and DOES write state when validation passes', () => {
     // Use the start event to scaffold valid state first
     const initIO = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, initIO);
+    processEvent('start', PROJECT_DIR, {}, initIO, TEST_PATH_CONTEXT);
     const scaffoldedState = initIO.currentState!;
 
     // Now process master_plan_started with existing state (standard route)
     const io = createMockIO(scaffoldedState);
-    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
+    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(io.writeCalls.length).toBe(1);
   });

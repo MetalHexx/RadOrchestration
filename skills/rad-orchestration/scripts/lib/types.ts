@@ -253,6 +253,21 @@ export interface PipelineState {
   graph: GraphState;
 }
 
+// Path Context (filesystem roots threaded into the engine from pipeline.ts)
+//
+// Computed once at CLI entry from `pipeline.ts`'s own location (which sits at
+// `scripts/pipeline.ts` in source AND at `scripts/pipeline.js` in the esbuild
+// bundle — same level), so the relative-path math is correct in both runtimes.
+// Threading the resolved values down avoids `fileURLToPath(import.meta.url)`
+// + `..` walks inside `lib/`, where the source-vs-bundle depth mismatch would
+// silently land them at the wrong directory.
+
+export interface PathContext {
+  scriptsDir: string;      // absolute path of `skills/rad-orchestration/scripts/`
+  templatesDir: string;    // absolute path of `skills/rad-orchestration/templates/`
+  orchRoot: string;        // basename of the orchRoot directory
+}
+
 // Pipeline Result (CLI output contract — SACRED, no changes)
 
 export interface PipelineResult {
