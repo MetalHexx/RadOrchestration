@@ -12,6 +12,7 @@ import { cmpSemver } from '../../lib/install-json.js';
 import { appendInstallLogEntry } from '../../lib/upgrade/install-log.js';
 import type { InstallLogChannel } from '../../lib/upgrade/install-log.js';
 import type { HarnessName } from '../../lib/upgrade/harness-paths.js';
+import { writeBaseFiles } from '../install/skeleton.js';
 import type { BootstrapResult } from './envelope.js';
 
 export interface RunOpts {
@@ -87,6 +88,9 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
     fs.mkdirSync(paths.logs, { recursive: true });
     fs.mkdirSync(paths.runtime, { recursive: true });
     fs.mkdirSync(paths.bin, { recursive: true });
+    // Self-heal: existing-but-broken installs missing the base files (config.yml,
+    // registry.yml, .harness, .gitignore) get them on next session bootstrap.
+    await writeBaseFiles(paths.root, opts.harness);
     const priorManifest = loadBundledManifest(opts.pluginRoot, installedVersion);
     const modified = detectModifiedFiles(priorManifest, opts.harness);
     if (modified.length > 0) {
@@ -137,5 +141,9 @@ async function doInstall(args: { paths: ReturnType<typeof userDataPaths>, opts: 
     last_writer_version: args.deliveringVersion,
     state_schema_version: 'v5',
   });
+  // Base files (config.yml, registry.yml, .harness, .gitignore) — shared helper
+  // also used by `radorch install` so doctor's bootstrap-skeleton check passes
+  // on plugin-installed homes too.
+  await writeBaseFiles(args.paths.root, args.opts.harness);
   return { action: args.action, code: 0, deliveringVersion: args.deliveringVersion, installedVersion: args.installedVersion };
 }

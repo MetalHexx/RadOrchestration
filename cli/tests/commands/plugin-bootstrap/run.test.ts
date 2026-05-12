@@ -270,6 +270,45 @@ describe('runPluginBootstrap', () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
+  it('fresh-install writes all four base files (config.yml, registry.yml, .harness, .gitignore)', async () => {
+    const pluginRoot = makePluginRoot('1.2.0');
+
+    const result = await runPluginBootstrap({ pluginRoot, harness: 'claude' });
+
+    expect(result.action).toBe('fresh-install');
+    const radorch = path.join(tmpDir, '.radorch');
+    expect(fs.existsSync(path.join(radorch, 'config.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(radorch, 'registry.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(radorch, '.harness'))).toBe(true);
+    expect(fs.existsSync(path.join(radorch, '.gitignore'))).toBe(true);
+
+    expect(fs.readFileSync(path.join(radorch, '.harness'), 'utf8').trim()).toBe('claude');
+    expect(fs.readFileSync(path.join(radorch, 'config.yml'), 'utf8')).toMatch(/default_active_harness:\s*claude/);
+    expect(fs.readFileSync(path.join(radorch, 'registry.yml'), 'utf8')).toMatch(/repos:/);
+
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  });
+
+  it('upgrade path self-heals when base files are missing', async () => {
+    const pluginRoot = makePluginRoot('1.1.0', ['1.0.0']);
+    writeInstallJson('1.0.0');
+    writeSentinel();
+    const radorch = path.join(tmpDir, '.radorch');
+
+    expect(fs.existsSync(path.join(radorch, 'config.yml'))).toBe(false);
+    expect(fs.existsSync(path.join(radorch, 'registry.yml'))).toBe(false);
+
+    const result = await runPluginBootstrap({ pluginRoot, harness: 'claude' });
+
+    expect(result.action).toBe('upgrade-complete');
+    expect(fs.existsSync(path.join(radorch, 'config.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(radorch, 'registry.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(radorch, '.harness'))).toBe(true);
+    expect(fs.existsSync(path.join(radorch, '.gitignore'))).toBe(true);
+
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  });
+
   it('bootstrap preserves a pre-seeded ~/.radorch/projects/ tree (FR-12)', async () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-projects-'));
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-projects-src-'));
