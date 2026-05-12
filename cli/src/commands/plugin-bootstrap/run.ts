@@ -9,6 +9,8 @@ import { detectModifiedFiles, confirmModifiedFiles } from '../../lib/upgrade/has
 import { removeManifestFiles } from '../../lib/upgrade/remove.js';
 import { installManifestFiles } from '../../lib/upgrade/install.js';
 import { cmpSemver } from '../../lib/install-json.js';
+import { appendInstallLogEntry } from '../../lib/upgrade/install-log.js';
+import type { InstallLogChannel } from '../../lib/upgrade/install-log.js';
 import type { HarnessName } from '../../lib/upgrade/harness-paths.js';
 import type { BootstrapResult } from './envelope.js';
 
@@ -29,26 +31,35 @@ export interface RunOpts {
 export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult> {
   const paths = userDataPaths();
   const sharedRoot = opts.sharedRoot ?? opts.pluginRoot;
+  const channel: InstallLogChannel = opts.sharedRoot ? 'legacy-installer' : 'claude-plugin';
   const require_ = createRequire(import.meta.url);
   const pluginPkg = require_(path.join(opts.pluginRoot, 'package.json')) as { version: string };
   const deliveringVersion = pluginPkg.version;
   const haveInstallJson = fs.existsSync(paths.installJson);
   // Fresh-install short-circuit when no install.json present.
   if (!haveInstallJson) {
-    return await doInstall({ paths, opts, sharedRoot, deliveringVersion, action: 'fresh-install' });
+    const result = await doInstall({ paths, opts, sharedRoot, deliveringVersion, action: 'fresh-install' });
+    appendInstallLogEntry({ channel, action: result.action, deliveringVersion, installedVersionBefore: null });
+    return result;
   }
   const ij = await readInstallJson(paths.installJson);
   const installedVersion = ij.package_version;
+  // installedVersionBefore is captured here (before any upgrade work) for use in all log entries.
+  const installedVersionBefore: string | null = installedVersion ?? null;
   // Sanity: if expected files are missing, treat as fresh.
   const expectedSentinel = path.join(paths.bin, 'radorch.mjs');
   if (!fs.existsSync(expectedSentinel)) {
-    return await doInstall({ paths, opts, sharedRoot, deliveringVersion, action: 'fresh-install', installedVersion });
+    const result = await doInstall({ paths, opts, sharedRoot, deliveringVersion, action: 'fresh-install', installedVersion });
+    appendInstallLogEntry({ channel, action: result.action, deliveringVersion, installedVersionBefore });
+    return result;
   }
   const cmp = cmpSemver(deliveringVersion, installedVersion);
   if (cmp === 0 && !opts.force) {
+    appendInstallLogEntry({ channel, action: 'noop', deliveringVersion, installedVersionBefore });
     return { action: 'noop', code: 0, deliveringVersion, installedVersion };
   }
   if (cmp < 0) {
+    appendInstallLogEntry({ channel, action: 'downgrade-noop', deliveringVersion, installedVersionBefore });
     return {
       action: 'downgrade-noop',
       code: 0,
@@ -60,6 +71,7 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
   // Upgrade path (or --force re-install).
   const lock = acquireBootstrapLock(paths.bootstrapLock);
   if (!lock.acquired) {
+    appendInstallLogEntry({ channel, action: 'lock-busy', deliveringVersion, installedVersionBefore });
     return {
       action: 'lock-busy',
       code: 0,
@@ -80,6 +92,7 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
     if (modified.length > 0) {
       const proceed = await confirmModifiedFiles(modified, paths.root);
       if (!proceed) {
+        appendInstallLogEntry({ channel, action: 'cancelled-modified-files', deliveringVersion, installedVersionBefore });
         return { action: 'cancelled-modified-files', code: 0, deliveringVersion, installedVersion, modifiedFiles: modified };
       }
     }
@@ -91,7 +104,11 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
       package_version: deliveringVersion,
       last_writer_version: deliveringVersion,
     });
+    appendInstallLogEntry({ channel, action: 'upgrade-complete', deliveringVersion, installedVersionBefore });
     return { action: 'upgrade-complete', code: 0, deliveringVersion, installedVersion };
+  } catch (err) {
+    appendInstallLogEntry({ channel, action: 'error', deliveringVersion, installedVersionBefore });
+    throw err;
   } finally {
     lock.release?.();
   }

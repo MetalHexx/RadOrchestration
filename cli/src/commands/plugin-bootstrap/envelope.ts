@@ -4,7 +4,7 @@
  */
 export interface BootstrapResult {
   /** Outcome discriminant. */
-  action: 'noop' | 'downgrade-noop' | 'fresh-install' | 'upgrade-complete' | 'lock-busy' | 'cancelled-modified-files';
+  action: 'noop' | 'downgrade-noop' | 'fresh-install' | 'upgrade-complete' | 'lock-busy' | 'cancelled-modified-files' | 'error';
   /** Process exit code (always 0 for expected outcomes). */
   code: number;
   /** Human-readable explanation, present for non-trivial outcomes. */
