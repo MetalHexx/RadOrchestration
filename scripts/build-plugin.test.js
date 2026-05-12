@@ -17,6 +17,7 @@ test('build-plugin meta-script: orchestration order constant exposes the documen
     'pipeline-bundle',
     'ui-standalone',
     'adapters-plugin',
+    'copy-shared-config',
     'copy-manifest-catalog',
     'copy-bundles-into-claude-plugin',
     'copy-plugin-package-json',

@@ -22,6 +22,6 @@ test('rad-build-harness SKILL.md describes the installer-wrapper flow', () => {
   assert.doesNotMatch(text, /projects\.naming/);
 });
 
-test('rad-test-release prompt is retired', () => {
-  assert.ok(!fs.existsSync(path.join(repoRoot, '.agents', 'prompts', 'rad-test-release.prompt.md')));
+test('rad-test-release prompt is available in .agents/prompts/', () => {
+  assert.ok(fs.existsSync(path.join(repoRoot, '.agents', 'prompts', 'rad-test-release.prompt.md')));
 });

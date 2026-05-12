@@ -23,11 +23,7 @@ test('skills.md has a rad-ui section with the namespaced slash form', () => {
   assert.match(text, /\/rad-orchestration:rad-ui-start/);
 });
 
-test('dashboard.md mentions the /rad-orchestration:rad-ui-start launch path', () => {
-  const text = fs.readFileSync(path.join(repoRoot, 'docs', 'dashboard.md'), 'utf8');
-  assert.match(text, /\/rad-orchestration:rad-ui-start/);
-});
-
+// rad-ui-start slash command documentation moved to docs/plugins.md per FR-24; dashboard.md no longer carries it
 test('configuration.md limits section notes consolidate-rather-than-overflow', () => {
   const text = fs.readFileSync(path.join(repoRoot, 'docs', 'configuration.md'), 'utf8');
   assert.match(text, /consolidat(e|es)/);
