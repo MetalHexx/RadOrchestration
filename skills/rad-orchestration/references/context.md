@@ -44,8 +44,6 @@ System configuration lives in `~/.radorch/orchestration.yml`. It controls:
 - Pipeline limits (max phases, tasks, retries)
 - Human gate defaults
 
-Open the gear panel at any time via `/rad-orchestration:rad-ui-start` to edit settings interactively.
-
 ## Project Files
 
 Project artifacts are stored at `~/.radorch/projects/{PROJECT-NAME}/`.
@@ -60,5 +58,5 @@ Contents:
 ## Naming Conventions
 
 - **Project files**: `SCREAMING-CASE` with project prefix — `MYAPP-MASTER-PLAN.md`, `MYAPP-TASK-P01-T03-AUTH.md`. See [document-conventions.md](document-conventions.md) for the full set of filename patterns, placement rules, and frontmatter field values.
-- **Skills**: lowercase with hyphens — `~/.radorch/skills/rad-create-plans/`
-- **Agents**: lowercase with hyphens — `~/.radorch/agents/planner.md`
+- **Skills**: lowercase with hyphens (e.g. `rad-create-plans`). The orchestrator resolves skills by name; physical placement varies by install path (harness folders for the legacy installer, plugin folder for the Claude plugin).
+- **Agents**: lowercase with hyphens (e.g. `planner`). Resolved by name; same placement note as skills.

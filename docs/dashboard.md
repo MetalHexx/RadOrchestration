@@ -10,16 +10,10 @@ The dashboard is a great way to manage all your planned work or read information
 
 ## Run the Dashboard
 
-On a plugin install, launch the dashboard via the `/rad-orchestration:rad-ui-start` slash command. To use the command from any terminal without a Claude Code plugin, add `~/.radorch/bin` to your PATH:
+On a Claude Code plugin install, the dashboard is available through the plugin's slash-command surface. On a legacy npm install, run the dashboard from your terminal:
 
-**Unix/Linux/macOS:**
 ```bash
-export PATH="$HOME/.radorch/bin:$PATH"
-```
-
-**Windows (PowerShell or Command Prompt):**
-```powershell
-setx PATH "%PATH%;%USERPROFILE%\.radorch\bin"
+radorch dashboard
 ```
 
 
