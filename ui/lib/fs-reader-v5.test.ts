@@ -7,6 +7,7 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { discoverProjects, readProjectState } from './fs-reader';
+import { withHomedir } from './test-helpers.js';
 
 let passed = 0;
 let failed = 0;
@@ -155,10 +156,11 @@ async function test(name: string, fn: () => Promise<void>) {
 async function run() {
   try {
     tmpDir = await setup();
-    const origHomedir = os.homedir;
-    (os as unknown as { homedir: () => string }).homedir = () => tmpDir;
-    const projects = await discoverProjects();
-    (os as unknown as { homedir: () => string }).homedir = origHomedir;
+    // withHomedir swaps os.homedir for the duration and restores it in finally (AD-9)
+    let projects!: Awaited<ReturnType<typeof discoverProjects>>;
+    await withHomedir(tmpDir, async () => {
+      projects = await discoverProjects();
+    });
 
     const projectsDir = path.join(tmpDir, '.radorch', 'projects');
 

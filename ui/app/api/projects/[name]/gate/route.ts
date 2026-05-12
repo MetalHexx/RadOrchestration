@@ -1,24 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import child_process from 'node:child_process';
 import path from 'node:path';
-
-import type { GateApproveResponse, GateErrorResponse } from '@/types/state';
-import { isV5State } from '@/types/state';
-import { resolveProjectDir } from '@/lib/path-resolver';
-import { readConfig, readProjectState, resolveOrchRoot } from '@/lib/fs-reader';
 import os from 'node:os';
 
-export const dynamic = 'force-dynamic';
+import type { GateApproveResponse, GateErrorResponse } from '@/types/state';
+import { resolveProjectDir } from '@/lib/path-resolver';
+import { readProjectState } from '@/lib/fs-reader';
 
-const execFileAsync = promisify(execFile);
+export const dynamic = 'force-dynamic';
 
 const ALLOWED_GATE_EVENTS: ReadonlySet<string> = new Set(['plan_approved', 'final_approved']);
 const PROJECT_NAME_PATTERN = /^[A-Z0-9][A-Z0-9._-]*$/;
 
+/**
+ * Thin Promise wrapper around child_process.execFile that defers to
+ * child_process.execFile at call time (not at import time), so that
+ * node:test mock.method stubs can intercept it.
+ */
+function execFileP(
+  file: string,
+  args: string[],
+  opts: { encoding: 'utf-8' }
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    child_process.execFile(file, args, opts, (err, result) => {
+      if (err) {
+        const execErr = err as NodeJS.ErrnoException & { stdout?: string; stderr?: string };
+        const enriched = Object.assign(err, {
+          stdout: execErr.stdout ?? (result as unknown as { stdout?: string })?.stdout ?? '',
+          stderr: execErr.stderr ?? (result as unknown as { stderr?: string })?.stderr ?? '',
+        });
+        reject(enriched);
+      } else {
+        resolve(result as unknown as { stdout: string; stderr: string });
+      }
+    });
+  });
+}
+
 export async function POST(
   request: NextRequest,
-  { params }: { params: { name: string } }
+  { params }: { params: Promise<{ name: string }> | { name: string } }
 ): Promise<NextResponse<GateApproveResponse | GateErrorResponse>> {
   try {
     // Parse request body
@@ -42,7 +64,8 @@ export async function POST(
       );
     }
 
-    const name = params.name;
+    const resolvedParams = params instanceof Promise ? await params : params;
+    const name = resolvedParams.name;
 
     // Validate project name format
     if (!PROJECT_NAME_PATTERN.test(name)) {
@@ -53,8 +76,6 @@ export async function POST(
     }
 
     // Resolve project directory and verify existence
-    const radorchHome = path.join(os.homedir(), '.radorch');
-    const config = await readConfig();
     const projectDir = resolveProjectDir(name);
 
     const state = await readProjectState(projectDir);
@@ -65,82 +86,49 @@ export async function POST(
       );
     }
 
-    // Resolve pipeline script path and invoke
-    const pipelineScript = path.resolve(radorchHome, resolveOrchRoot(config), 'skills', 'rad-orchestration', 'scripts', 'pipeline.js');
-
-    const relativeProjectDir = path.relative(radorchHome, projectDir);
-
-    const pipelineArgs = [
-      pipelineScript,
-      '--event', event,
-      '--project-dir', relativeProjectDir,
-    ];
-    if (event === 'plan_approved') {
-      if (!isV5State(state)) {
-        const steps = state.planning?.steps;
-        // steps is an array in v3 format; master_plan is the last entry (index 4)
-        const masterPlanStep = Array.isArray(steps)
-          ? steps.find((s) => s.name === 'master_plan')
-          : (steps as Record<string, { doc_path?: string | null }>)?.['master_plan'];
-        const docPath = masterPlanStep?.doc_path;
-        if (docPath) {
-          pipelineArgs.push('--doc-path', docPath);
-        }
-      }
-    } else if (event === 'final_approved') {
-      if (!isV5State(state)) {
-        const docPath = state.final_review?.doc_path;
-        if (docPath) {
-          pipelineArgs.push('--doc-path', docPath);
-        }
-      }
-    }
+    // Invoke the radorch CLI — it auto-resolves doc paths from state (FR-13).
+    const radorchBin = path.join(os.homedir(), '.radorch', 'bin', 'radorch.mjs');
+    const subcmd = event === 'plan_approved' ? 'plan' : 'final';
+    const args = [radorchBin, 'gate', 'approve', subcmd, '--project-dir', projectDir];
 
     let stdout: string;
     try {
-      const result = await execFileAsync(
-        process.execPath,
-        pipelineArgs,
-        { encoding: 'utf-8', cwd: radorchHome }
-      );
-      stdout = result.stdout;
-    } catch (err: unknown) {
-      const execErr = err as { stderr?: string; message?: string };
+      const r = await execFileP(process.execPath, args, { encoding: 'utf-8' });
+      stdout = r.stdout;
+    } catch (err) {
+      const e = err as { stdout?: string; stderr?: string; message?: string };
+      // CLI may exit non-zero with a valid envelope on stdout; try to parse first.
+      stdout = e.stdout ?? '';
+      if (!stdout) {
+        return NextResponse.json(
+          { error: 'Gate CLI failed.', detail: e.stderr ?? e.message ?? 'unknown' } satisfies GateErrorResponse,
+          { status: 500 },
+        );
+      }
+    }
+
+    // Parse the framework envelope: { ok, data: { success, action, mutations_applied, error }, exit_code }
+    let parsed: { ok?: boolean; data?: { success?: boolean; action?: string; mutations_applied?: string[]; error?: { message?: string } }; error?: { message?: string } };
+    try { parsed = JSON.parse(stdout!); }
+    catch {
       return NextResponse.json(
-        {
-          error: 'Pipeline execution failed.',
-          detail: execErr.stderr || execErr.message || 'Unknown error',
-        } satisfies GateErrorResponse,
-        { status: 500 }
+        { error: 'Invalid CLI response.', detail: stdout! } satisfies GateErrorResponse,
+        { status: 500 },
       );
     }
 
-    // Parse pipeline output
-    let parsed: { success: boolean; action?: string; mutations_applied?: string[] };
-    try {
-      parsed = JSON.parse(stdout);
-    } catch {
+    const pipeline = parsed.data;
+    if (pipeline?.success === true) {
       return NextResponse.json(
-        { error: 'Invalid pipeline response.', detail: stdout } satisfies GateErrorResponse,
-        { status: 500 }
+        { success: true, action: pipeline.action ?? '', mutations_applied: pipeline.mutations_applied ?? [] } satisfies GateApproveResponse,
+        { status: 200 },
       );
     }
 
-    if (parsed.success === true) {
-      return NextResponse.json(
-        {
-          success: true,
-          action: parsed.action ?? '',
-          mutations_applied: parsed.mutations_applied ?? [],
-        } satisfies GateApproveResponse,
-        { status: 200 }
-      );
-    }
-
-    // Pipeline rejected the event
+    const detail = pipeline?.error?.message ?? parsed.error?.message ?? stdout!;
     return NextResponse.json(
-      { error: 'Pipeline rejected the event.', detail: stdout } satisfies GateErrorResponse,
-      { status: 409 }
+      { error: 'Pipeline rejected the event.', detail } satisfies GateErrorResponse,
+      { status: 409 },
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal server error';
