@@ -75,7 +75,7 @@ export function pluginRootForHarness(harness) {
  * @param {object} cfg - Wizard output.
  * @param {string} orchYmlPath - Absolute path to the written orchestration.yml
  */
-function renderPostInstall(cfg, orchYmlPath) {
+export function renderPostInstall(cfg, orchYmlPath) {
   console.log('');
   sectionHeader('::', 'Installation Complete');
   console.log('');
@@ -88,12 +88,21 @@ function renderPostInstall(cfg, orchYmlPath) {
   sectionHeader('::', "What's Next");
   console.log('');
 
-  // PATH one-liner — paste-once snippet for the current shell.
-  console.log('  ' + THEME.body('Add radorch to your PATH (this session):'));
-  console.log('');
   if (process.platform === 'win32') {
-    console.log('     ' + THEME.command('setx PATH "%PATH%;%USERPROFILE%\\.radorch\\bin"'));
+    // DD-1 / FR-21: Windows users — `~/.radorch/bin/radorch.mjs` is just a
+    // .mjs file with a shebang and Windows does not honor shebangs from
+    // cmd.exe / PowerShell. Two working alternatives are surfaced here;
+    // the broken `setx` guidance is gone.
+    console.log('  ' + THEME.body('On Windows:'));
+    console.log('');
+    console.log('     ' + THEME.stepNumber('1.') + ' ' + THEME.body('Install via npm to get `radorch` on PATH automatically:'));
+    console.log('        ' + THEME.command('npm install -g rad-orchestration'));
+    console.log('');
+    console.log('     ' + THEME.stepNumber('2.') + ' ' + THEME.body('Or invoke directly:'));
+    console.log('        ' + THEME.command('node ~/.radorch/bin/radorch.mjs <subcmd>'));
   } else {
+    console.log('  ' + THEME.body('Add radorch to your PATH (this session):'));
+    console.log('');
     console.log('     ' + THEME.command('export PATH="$HOME/.radorch/bin:$PATH"'));
   }
   console.log('');

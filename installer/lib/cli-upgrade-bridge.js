@@ -26,7 +26,9 @@ const __dirname = path.dirname(__filename);
 // We use a dynamic import URL string because the location varies between
 // development and publish. The path is computed once at module load.
 const candidateLocations = [
-  // Monorepo / dev worktree
+  // Monorepo / dev worktree (new dist structure with cli/src subdirs)
+  path.resolve(__dirname, '..', '..', 'cli', 'dist', 'cli', 'src', 'commands', 'plugin-bootstrap', 'run.js'),
+  // Monorepo / dev worktree (legacy flat dist structure)
   path.resolve(__dirname, '..', '..', 'cli', 'dist', 'commands', 'plugin-bootstrap', 'run.js'),
   // Published installer-internal copy (sync-source.js places it here at pack time)
   path.resolve(__dirname, '..', 'vendor', 'cli', 'commands', 'plugin-bootstrap', 'run.js'),
