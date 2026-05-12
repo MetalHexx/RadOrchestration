@@ -60,14 +60,18 @@ export function renderPostInstallSummary(config, copyResults, configPath) {
     console.log('');
   }
 
-  // PATH one-liner — paste-once shell snippet that puts radorch on PATH
-  // for the current shell session. Keyed off process.platform so Windows
-  // users get the setx form, not the bash form (DD-7, FR-5).
-  console.log('  ' + THEME.stepNumber(config.installUi && config.uiDir ? '3.' : '2.')
-    + ' ' + THEME.body('Add radorch to your shell PATH (this session):'));
-  console.log('');
   if (process.platform === 'win32') {
-    console.log('     ' + THEME.command('setx PATH "%PATH%;%USERPROFILE%\\.radorch\\bin"'));
+    // DD-1 / FR-21: Windows users — `~/.radorch/bin/radorch.mjs` is just a
+    // .mjs file with a shebang and Windows does not honor shebangs from
+    // cmd.exe / PowerShell. Two working alternatives are surfaced here;
+    // the broken `setx` guidance is gone.
+    console.log('  ' + THEME.body('On Windows:'));
+    console.log('');
+    console.log('     ' + THEME.stepNumber('1.') + ' ' + THEME.body('Install via npm to get `radorch` on PATH automatically:'));
+    console.log('        ' + THEME.command('npm install -g rad-orchestration'));
+    console.log('');
+    console.log('     ' + THEME.stepNumber('2.') + ' ' + THEME.body('Or invoke directly:'));
+    console.log('        ' + THEME.command('node ~/.radorch/bin/radorch.mjs <subcmd>'));
   } else {
     console.log('     ' + THEME.command('export PATH="$HOME/.radorch/bin:$PATH"'));
   }

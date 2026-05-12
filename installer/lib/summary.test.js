@@ -146,12 +146,20 @@ describe('renderPostInstallSummary', () => {
     assert.ok(output.includes('2.'), 'output should contain step "2."');
   });
 
-  it('includes a PATH one-liner keyed to the current platform', () => {
+  it('includes platform-specific installation guidance (not broken setx)', () => {
     const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
     if (process.platform === 'win32') {
       assert.ok(
-        output.includes('setx PATH "%PATH%;%USERPROFILE%\\.radorch\\bin"'),
-        'win32 output should contain setx PATH with .radorch\\bin'
+        output.includes('npm install -g rad-orchestration'),
+        'win32 output should contain npm install -g guidance (FR-21, DD-1)'
+      );
+      assert.ok(
+        output.includes('node ~/.radorch/bin/radorch.mjs'),
+        'win32 output should contain direct-invoke alternative (DD-1)'
+      );
+      assert.ok(
+        !output.includes('setx PATH'),
+        'win32 output should NOT contain broken setx instruction (FR-21)'
       );
     } else {
       assert.ok(
@@ -219,5 +227,30 @@ describe('renderPartialSuccessSummary', () => {
       renderPartialSuccessSummary(configWithUi, copyResults, configPath, errorMsg)
     );
     assert.ok(output.includes('Retry'), 'output should contain "Retry"');
+  });
+});
+
+// --- Windows platform guidance tests (FR-21, DD-1) ---
+
+describe('renderPostInstallSummary Windows branch', () => {
+  it('Windows summary points to npm install -g, not setx (FR-21, DD-1)', () => {
+    const lines = [];
+    const origWrite = console.log;
+    const origPlatform = process.platform;
+    Object.defineProperty(process, 'platform', { value: 'win32' });
+    console.log = (s) => { lines.push(s ?? ''); };
+    try {
+      renderPostInstallSummary(configBase, copyResults, configPath);
+    } finally {
+      console.log = origWrite;
+      Object.defineProperty(process, 'platform', { value: origPlatform });
+    }
+    const out = lines.join('\n');
+    assert.ok(out.includes('npm install -g rad-orchestration'),
+      'Windows branch must surface the npm install -g guidance (DD-1)');
+    assert.ok(out.includes('node ~/.radorch/bin/radorch.mjs'),
+      'Windows branch must offer the direct-invoke alternative (DD-1)');
+    assert.ok(!out.includes('setx PATH'),
+      'Windows branch must not print the broken setx instruction (FR-21)');
   });
 });
