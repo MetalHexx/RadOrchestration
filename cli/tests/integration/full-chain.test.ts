@@ -17,7 +17,7 @@ afterEach(async () => { await fs.rm(tmp, { recursive: true, force: true }); });
 // resolveInstallRoot() in the spawned process computes path.join(home, '.radorch').
 async function radorch(args: string[], home: string): Promise<{ stdout: string; stderr: string; code: number }> {
   try {
-    const r = await execP('node', ['dist/bin/radorch.js', ...args, '--non-interactive', '--json'], {
+    const r = await execP('node', ['dist/cli/src/bin/radorch.js', ...args, '--non-interactive', '--json'], {
       cwd: repoRoot,
       env: { ...process.env, HOME: home, USERPROFILE: home, RADORCH_NO_LOG: '1' },
     });

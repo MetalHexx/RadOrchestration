@@ -3,15 +3,13 @@
     "target": "ES2023",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "rootDir": "./src",
+    "rootDir": "../",
     "outDir": "./dist",
     "declaration": false,
     "sourceMap": true,
     "strict": true,
-    "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
-    "noPropertyAccessFromIndexSignature": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
@@ -19,6 +17,6 @@
     "verbatimModuleSyntax": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules", "tests"]
+  "include": ["src/**/*.ts", "../skills/rad-orchestration/scripts/lib/**/*.ts"],
+  "exclude": ["dist", "node_modules", "tests", "../skills/rad-orchestration/scripts/tests/**"]
 }

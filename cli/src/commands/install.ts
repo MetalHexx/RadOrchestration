@@ -1,4 +1,3 @@
-import { createRequire } from 'node:module';
 import { pathExists } from '../lib/fs-helpers.js';
 import { readInstallJson } from '../lib/config.js';
 import { resolveInstallRoot, installPaths } from '../lib/paths.js';
@@ -10,9 +9,9 @@ import { writeInstallSkeleton } from './install/skeleton.js';
 import { writeHarnessBundles } from './install/harness-bundles.js';
 import { startSpinner } from '../framework/spinner.js';
 import { renderBanner } from '../framework/banner.js';
+import { getCliVersion } from '../lib/package-version.js';
 
-const require_ = createRequire(import.meta.url);
-const pkg = require_('../../package.json') as { version: string };
+const pkg = { version: getCliVersion() };
 
 export interface InstallResult {
   root: string;

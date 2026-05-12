@@ -1,14 +1,13 @@
 import { spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
 import { defineCommand } from '../../framework/command.js';
 import type { CommandContext } from '../../framework/context.js';
 import { resolveInstallRoot } from '../../lib/paths.js';
 import { renderBanner } from '../../framework/banner.js';
+import { getCliVersion } from '../../lib/package-version.js';
 import type { CheckResult } from './checks.js';
 import { runEnvironmentChecks, runInstallChecks, runRegistryChecks, runPluginChecks } from './checks.js';
 
-const require_ = createRequire(import.meta.url);
-const pkg = require_('../../../package.json') as { version: string };
+const pkg = { version: getCliVersion() };
 
 /**
  * Detect a parallel iter-01 npm install of `radorch` by invoking

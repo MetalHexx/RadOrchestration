@@ -1,5 +1,4 @@
 import fsP from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathExists } from '../../lib/fs-helpers.js';
 import { installPaths } from '../../lib/paths.js';
@@ -9,9 +8,9 @@ import { cmpSemver } from '../../lib/install-json.js';
 import { parseYaml } from '../../lib/yaml.js';
 import { userDataPaths } from '../../lib/upgrade/user-data-paths.js';
 import { scanUserLevelHarnesses } from '../../lib/cross-harness-scan.js';
+import { getCliVersion } from '../../lib/package-version.js';
 
-const require_ = createRequire(import.meta.url);
-const pkg = require_('../../../package.json') as { version: string };
+const pkg = { version: getCliVersion() };
 
 export type CheckStatus = 'pass' | 'warn' | 'fail';
 export type CheckCategory = 'Environment' | 'Install' | 'Registry' | 'Plugin';

@@ -27,7 +27,7 @@ function homeEnv(home: string): NodeJS.ProcessEnv {
 
 async function radorch(args: string[], home: string, extraEnv: NodeJS.ProcessEnv = {}) {
   try {
-    const r = await execP('node', ['dist/bin/radorch.js', ...args, '--non-interactive', '--json'], {
+    const r = await execP('node', ['dist/cli/src/bin/radorch.js', ...args, '--non-interactive', '--json'], {
       cwd: cliRoot,
       env: { ...homeEnv(home), ...extraEnv },
     });

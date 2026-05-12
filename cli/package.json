@@ -9,7 +9,7 @@
     "node": ">=20"
   },
   "bin": {
-    "radorch": "./dist/bin/radorch.js"
+    "radorch": "./dist/cli/src/bin/radorch.js"
   },
   "scripts": {
     "build": "tsc",
@@ -20,8 +20,8 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "start": "node dist/bin/radorch.js",
-    "build-and-start": "tsc && node dist/bin/radorch.js"
+    "start": "node dist/cli/src/bin/radorch.js",
+    "build-and-start": "tsc && node dist/cli/src/bin/radorch.js"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.3.0",

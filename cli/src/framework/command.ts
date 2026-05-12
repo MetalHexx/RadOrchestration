@@ -1,5 +1,4 @@
 import { Command, CommanderError } from 'commander';
-import { createRequire } from 'node:module';
 import { createPrompter } from './prompter.js';
 import { makeTheme } from './theme.js';
 import { createFileSink } from './logger/file-sink.js';
@@ -9,12 +8,12 @@ import { ExitCode } from './exit-codes.js';
 import { RadorchError, SystemError, UserError } from './errors.js';
 import { installPaths, resolveInstallRoot } from '../lib/paths.js';
 import { checkVersionSkew, stampLastWriter } from '../lib/install-json.js';
+import { getCliVersion } from '../lib/package-version.js';
 import type { CommandContext, UxFlags } from './context.js';
 import { LOG_LEVELS } from './logger/types.js';
 import type { LogLevel } from './logger/types.js';
 
-const require_ = createRequire(import.meta.url);
-const pkg = require_('../../package.json') as { version: string };
+const pkg = { version: getCliVersion() };
 
 export function pickLogLevel(flag: string | undefined, env: NodeJS.ProcessEnv): LogLevel {
   if (flag && (LOG_LEVELS as readonly string[]).includes(flag)) return flag as LogLevel;

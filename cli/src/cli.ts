@@ -90,5 +90,32 @@ export function buildProgram(version: string): Command {
       await runCommand(uiStatusCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
+  // Gate subcommands lazy-load their modules so the pipeline-lib import chain
+  // (incl. ajv) only fires when a gate command actually runs. Top-level eager
+  // imports would force every cli invocation — even `--version` — to load the
+  // pipeline runtime and its CJS deps.
+  const gate = program.command('gate').description('pipeline gate operations');
+  const gateApprove = gate.command('approve').description('approve a pipeline gate');
+  gateApprove
+    .command('plan')
+    .description('Approve the project Master Plan')
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const { approvePlanCommand } = await import('./commands/gate/approve-plan.js');
+      const argv = process.argv.slice(5);
+      await runCommand(approvePlanCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  gateApprove
+    .command('final')
+    .description('Approve the project Final Review')
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const { approveFinalCommand } = await import('./commands/gate/approve-final.js');
+      const argv = process.argv.slice(5);
+      await runCommand(approveFinalCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
   return program;
 }
