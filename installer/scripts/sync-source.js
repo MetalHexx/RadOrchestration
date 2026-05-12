@@ -67,6 +67,61 @@ export function syncSource(source, target, excludes) {
 }
 
 /**
+ * Emits the CLI binary once into installer/src/bin/radorch.mjs (AD-2).
+ * Reuses cli/scripts/bundle.mjs via npm to keep the bundle config in one place.
+ *
+ * @param {string} repoRoot - Absolute path to the repository root
+ */
+export function emitSharedBin(repoRoot) {
+  const dest = path.join(repoRoot, 'installer', 'src', 'bin', 'radorch.mjs');
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  execSync(`npm run bundle -- --out=${dest}`, { cwd: path.join(repoRoot, 'cli'), stdio: 'pipe' });
+  try { fs.chmodSync(dest, 0o755); } catch { /* no-op on Windows */ }
+}
+
+/**
+ * Builds the Next.js standalone UI and copies it into installer/src/ui/ (AD-2).
+ * Mirrors the layout that scripts/build-plugin.js's ui-standalone step
+ * already produces for the plugin payload.
+ *
+ * @param {string} repoRoot - Absolute path to the repository root
+ */
+export function emitSharedUi(repoRoot) {
+  const uiDir = path.join(repoRoot, 'ui');
+  execSync('npm run build-standalone', { cwd: uiDir, stdio: 'pipe' });
+  const dest = path.join(repoRoot, 'installer', 'src', 'ui');
+  fs.rmSync(dest, { recursive: true, force: true });
+  fs.mkdirSync(dest, { recursive: true });
+  fs.cpSync(path.join(uiDir, '.next', 'standalone'), dest, { recursive: true });
+  fs.cpSync(path.join(uiDir, '.next', 'static'), path.join(dest, '.next', 'static'), { recursive: true });
+  const pub = path.join(uiDir, 'public');
+  if (fs.existsSync(pub)) fs.cpSync(pub, path.join(dest, 'public'), { recursive: true });
+}
+
+/**
+ * Recursively enumerates all files under `dir`, returning paths relative to
+ * `baseDir`. Used to walk installer/src/bin/ and installer/src/ui/ for
+ * manifest augmentation.
+ *
+ * @param {string} dir      - Absolute path to the directory to walk
+ * @param {string} baseDir  - Absolute path used to compute relative paths
+ * @returns {string[]}      - Array of forward-slash relative paths
+ */
+function walkDir(dir, baseDir) {
+  const results = [];
+  if (!fs.existsSync(dir)) return results;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...walkDir(full, baseDir));
+    } else {
+      results.push(path.relative(baseDir, full).replace(/\\/g, '/'));
+    }
+  }
+  return results;
+}
+
+/**
  * Runs every discovered adapter and writes installer/src/<harness>/ bundles.
  * Each adapter produces a self-contained folder at installer/src/<harness>/
  * containing the transformed files and a per-version manifest catalog under
@@ -188,16 +243,51 @@ export async function emitBundles({ repoRoot, version }) {
 
     console.log(`Emitted bundle ${adapter.name}: ${fileCount} files → installer/src/${adapter.name}/`);
   }
+
+  // Augment every per-harness manifest with entries for the shared bin and ui
+  // assets that were emitted by emitSharedBin/emitSharedUi before this function
+  // was called. Each entry follows the same manifest shape as harness-specific
+  // files: bundlePath, sourcePath, ownership, version, harness, sha256.
+  const sharedAssetDirs = [
+    path.join(installerSrc, 'bin'),
+    path.join(installerSrc, 'ui'),
+  ];
+
+  for (const adapter of adapters) {
+    const manifestPath = path.join(
+      installerSrc, adapter.name, 'manifests', `v${version}.json`,
+    );
+    if (!fs.existsSync(manifestPath)) continue;
+
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+
+    for (const assetDir of sharedAssetDirs) {
+      const relPaths = walkDir(assetDir, installerSrc);
+      for (const relPath of relPaths) {
+        const absPath = path.join(installerSrc, relPath);
+        const sha256 = crypto.createHash('sha256')
+          .update(fs.readFileSync(absPath))
+          .digest('hex');
+        manifest.files.push({
+          bundlePath: relPath,
+          sourcePath: relPath,
+          ownership: 'orchestration-system',
+          version,
+          harness: adapter.name,
+          sha256,
+        });
+      }
+    }
+
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+  }
 }
 
 // Only execute when run directly.
 if (process.argv[1] === __filename) {
   const repoRoot = path.resolve(__dirname, '..', '..');
   const installerPkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'installer', 'package.json'), 'utf8'));
+  emitSharedBin(repoRoot);
+  emitSharedUi(repoRoot);
   await emitBundles({ repoRoot, version: installerPkg.version });
-  syncSource(
-    path.resolve(__dirname, '../../ui'),
-    path.resolve(__dirname, '../src/ui'),
-    UI_EXCLUDES,
-  );
 }
