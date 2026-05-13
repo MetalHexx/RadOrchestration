@@ -291,11 +291,15 @@ for (const a of [claudeAdapter, copilotVscodeAdapter, copilotCliAdapter]) {
     await runAdapter({ ...a, targetDir: a.name }, {
       canonicalRoot: repoRoot, outputRoot: out, version: '0.0.0-test', packageVersion: '0.0.0-test',
     });
+    // The CLI now lives at <harnessRoot>/skills/rad-orchestration/scripts/radorch.mjs
+    // (claude → ~/.claude, copilot → ~/.copilot). ${PLUGIN_ROOT} substitutes
+    // to the harness root.
+    const expectedCliPath = `${a.pluginRootSubstitution}/skills/rad-orchestration/scripts/radorch.mjs`;
     for (const name of RESURRECTED) {
       const skillFile = path.join(out, a.name, 'skills', name, 'SKILL.md');
       assert.ok(fs.existsSync(skillFile), `${a.name} missing ${name}`);
       const body = fs.readFileSync(skillFile, 'utf8');
-      assert.ok(body.includes('~/.radorch/bin/radorch.mjs'), `${a.name}/${name} did not substitute CLI path`);
+      assert.ok(body.includes(expectedCliPath), `${a.name}/${name} did not substitute CLI path to ${expectedCliPath}`);
       assert.ok(!body.includes('${PLUGIN_ROOT}'), `${a.name}/${name} leaked raw placeholder`);
     }
   });

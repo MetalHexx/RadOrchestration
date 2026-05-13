@@ -13,7 +13,7 @@ UI rendering errors or empty state inside the dashboard are NOT a gate (FR-28). 
 1. `/plugin marketplace add MetalHexx/RadOrchestration` — Claude clones the repo, finds `.claude-plugin/marketplace.json`, registers the marketplace. Expected: success message. (FR-4, AD-7)
 2. `/plugin install rad-orchestration` — Claude copies the plugin folder into its cache. Expected: success message. (FR-5, AD-1, AD-25)
 3. New Claude Code session opens. SessionStart hook fires. Expected: `~/.radorch/projects/`, `registry.yml`, `config.yml`, `install.json` all created. (FR-9, FR-10, AD-2, AD-11)
-4. `/rad-orchestration:ui-start`. Expected: skill body invokes `${CLAUDE_PLUGIN_ROOT}/bin/radorch.mjs ui start`; CLI spawns detached UI server, writes PID file at `~/.radorch/runtime/ui.pid`, emits URL on stdout; skill output reports the URL to the user. (FR-11, FR-14, FR-17, AD-5, AD-12, NFR-5, NFR-7, DD-1, DD-2, DD-4)
+4. `/rad-orchestration:ui-start`. Expected: skill body invokes `node ${CLAUDE_PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs ui start`; CLI spawns detached UI server, writes PID file at `~/.radorch/runtime/ui.pid`, emits URL on stdout; skill output reports the URL to the user. (FR-11, FR-14, FR-17, AD-5, AD-12, NFR-5, NFR-7, DD-1, DD-2, DD-4)
 5. Operator opens URL in a browser. Expected: UI loads. UI rendering errors / empty state are NOT a gate (FR-28).
 6. Operator closes the Claude Code session. Expected: UI keeps running; PID still alive. (NFR-4)
 7. Operator opens a new Claude Code session. Expected: UI URL still reachable.

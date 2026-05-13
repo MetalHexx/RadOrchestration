@@ -70,7 +70,9 @@ export const adapter = {
   toolDictionary: TOOL_DICTIONARY,
   modelAliases: MODEL_ALIASES,
 
-  // The canonical CLI path used by legacy emit. Installed at the standard radorch
-  // location; shells and Node expand ~ at invocation time.
-  pluginRootSubstitution: '~/.radorch',
+  // Harness install root used by legacy emit. The CLI now ships inside the
+  // rad-orchestration skill, so `${PLUGIN_ROOT}` substitutes to the harness
+  // root (`~/.copilot`), not the data root (`~/.radorch`). Shells expand ~
+  // at invocation time.
+  pluginRootSubstitution: '~/.copilot',
 };

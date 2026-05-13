@@ -13,10 +13,10 @@ test('build-plugin meta-script: orchestration order constant exposes the documen
   const mod = await import(buildPluginUrl);
   assert.deepEqual(mod.PIPELINE_STEPS, [
     'cli-build',
-    'cli-bundle',
     'pipeline-bundle',
     'ui-standalone',
     'adapters-plugin',
+    'cli-bundle',
     'copy-shared-config',
     'copy-manifest-catalog',
     'copy-bundles-into-claude-plugin',
@@ -34,7 +34,7 @@ test('validatePluginTree: detects missing required artifacts', async () => {
   const empty = validatePluginTree(tmp);
   assert.equal(empty.ok, false);
   assert.ok(empty.missing.includes('.claude-plugin/plugin.json'));
-  assert.ok(empty.missing.includes('bin/radorch.mjs'));
+  assert.ok(empty.missing.includes('skills/rad-orchestration/scripts/radorch.mjs'));
   assert.ok(empty.missing.includes('skills/rad-orchestration/scripts/pipeline.js'));
   assert.ok(empty.missing.includes('ui/server.js'));
   assert.ok(empty.missing.includes('hooks/hooks.json'));
@@ -51,7 +51,7 @@ test('validatePluginTree: passes on a complete fixture', async () => {
     fs.writeFileSync(f, body);
   };
   writeF('.claude-plugin/plugin.json', JSON.stringify({ name: 'rad-orchestration', version: '1.1.0' }));
-  writeF('bin/radorch.mjs');
+  writeF('skills/rad-orchestration/scripts/radorch.mjs');
   writeF('skills/rad-orchestration/scripts/pipeline.js');
   writeF('ui/server.js');
   writeF('hooks/hooks.json', '{}');
@@ -89,7 +89,7 @@ test('validatePluginTree requires skills/rad-orchestration/scripts/pipeline.js',
     fs.writeFileSync(f, body);
   };
   writeF('.claude-plugin/plugin.json', JSON.stringify({ name: 'rad-orchestration', version: '1.1.0' }));
-  writeF('bin/radorch.mjs');
+  writeF('skills/rad-orchestration/scripts/radorch.mjs');
   // Intentionally write the OLD path instead of the new one.
   writeF('dist/pipeline.js');
   writeF('ui/server.js');
@@ -126,7 +126,7 @@ test('validatePluginTree requires manifests/v<version>.json', async () => {
     fs.writeFileSync(f, body);
   };
   writeF('.claude-plugin/plugin.json', JSON.stringify({ name: 'rad-orchestration', version: '1.1.0' }));
-  writeF('bin/radorch.mjs');
+  writeF('skills/rad-orchestration/scripts/radorch.mjs');
   // Write the new pipeline path.
   writeF('skills/rad-orchestration/scripts/pipeline.js');
   writeF('ui/server.js');
@@ -161,7 +161,7 @@ test('happy-path: validatePluginTree passes when pipeline.js and manifest both s
     fs.writeFileSync(f, body);
   };
   writeF('.claude-plugin/plugin.json', JSON.stringify({ name: 'rad-orchestration', version: '1.1.0' }));
-  writeF('bin/radorch.mjs');
+  writeF('skills/rad-orchestration/scripts/radorch.mjs');
   // New pipeline path (not dist/).
   writeF('skills/rad-orchestration/scripts/pipeline.js');
   writeF('ui/server.js');

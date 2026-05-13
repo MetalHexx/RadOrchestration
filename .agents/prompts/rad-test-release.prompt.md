@@ -39,7 +39,7 @@ npm run build:{harness}
 cd installer && node scripts/sync-source.js
 ```
 
-`sync-source.js` emits the shared `installer/src/bin/radorch.mjs` and `installer/src/ui/` once and augments every per-harness manifest with their entries.
+`sync-source.js` emits the shared `installer/src/ui/` once, then emits the CLI bundle per-harness into `installer/src/{harness}/skills/rad-orchestration/scripts/radorch.mjs` and augments every per-harness manifest with the corresponding entries.
 
 ## Step 5 — Pack the installer
 
@@ -68,9 +68,9 @@ radorch --yes --harness {harness}
 
 Run `radorch doctor`. Expected: all checks pass.
 
-Verify the bin landed:
-- POSIX: `test -x ~/.radorch/bin/radorch.mjs && wc -c ~/.radorch/bin/radorch.mjs` — file is non-empty and executable.
-- Windows: confirm `%USERPROFILE%\.radorch\bin\radorch.mjs` exists and is non-empty.
+Verify the CLI landed inside the rad-orchestration skill (the harness root is `~/.claude` for `claude`, `~/.copilot` for the Copilot harnesses):
+- POSIX: `test -x ~/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs && wc -c ~/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs` — file is non-empty and executable.
+- Windows: confirm `%USERPROFILE%\{harnessRoot}\skills\rad-orchestration\scripts\radorch.mjs` exists and is non-empty.
 
 Verify the UI landed: `ls ~/.radorch/ui/` shows the Next.js standalone bundle (server.js or .next/static).
 
@@ -78,13 +78,15 @@ Verify projects survived: `ls ~/.radorch/projects/` matches its pre-install cont
 
 ## Step 9 — Verify the sha256 manifest
 
-Open `{repoRoot}/installer/src/{bundleDir}/manifests/v{version}.json` (`bundleDir` matches the harness — `claude`, `copilot-vscode`, or `copilot-cli`). Confirm: exactly four asset categories present (`bin/radorch.mjs`, `ui/**`, `agents/*`, `skills/*`), the three resurrected `rad-ui-*` skills appear under `skills/`, every entry carries a 64-char `sha256` field.
+Open `{repoRoot}/installer/src/{bundleDir}/manifests/v{version}.json` (`bundleDir` matches the harness — `claude`, `copilot-vscode`, or `copilot-cli`). Confirm: the CLI entry `skills/rad-orchestration/scripts/radorch.mjs` is present, plus `ui/**`, `agents/*`, and `skills/*` entries; the three resurrected `rad-ui-*` skills appear under `skills/`; every entry carries a 64-char `sha256` field; and no `bin/radorch.mjs` entry remains.
 
-## Step 10 — Verify the post-install PATH guidance
+## Step 10 — Verify the post-install guidance
 
-POSIX: copy-paste the `export PATH="$HOME/.radorch/bin:$PATH"` snippet from the summary into a fresh shell session; `radorch --version` works without the absolute path.
+Confirm the summary now points at the in-skill CLI path (not the retired `~/.radorch/bin/`):
+- POSIX: `node $HOME/.claude/skills/rad-orchestration/scripts/radorch.mjs <subcmd>` (or the matching harness root).
+- Windows: `node %USERPROFILE%\.claude\skills\rad-orchestration\scripts\radorch.mjs <subcmd>` plus the `npm install -g rad-orchestration` alternative.
 
-Windows: confirm the summary printed the `npm install -g rad-orchestration` alternative AND the `node ~/.radorch/bin/radorch.mjs <subcmd>` direct-invoke alternative. The broken `setx PATH` instruction must NOT appear.
+Both branches must NOT mention `~/.radorch/bin/` or `setx PATH`.
 
 ## Step 11 — Report results
 

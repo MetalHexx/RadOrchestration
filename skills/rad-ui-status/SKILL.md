@@ -9,7 +9,7 @@ user-invocable: true
 Invoke the bundled CLI to check the radorch dashboard UI:
 
 ```bash
-"${PLUGIN_ROOT}/bin/radorch.mjs" ui status
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" ui status
 ```
 
 The CLI returns `running: true` with `url` when the recorded PID is alive, otherwise `running: false`. Stale PID files are cleaned automatically. Relay the status (and URL when running) to the user.

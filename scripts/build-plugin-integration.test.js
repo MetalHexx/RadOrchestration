@@ -40,7 +40,9 @@ test('validatePluginTree: real claude plugin emit passes end-to-end', async () =
   );
   // Stub bundle artifacts (out of scope for runAdapterPlugin; produced by
   // the meta-script's cli-bundle / pipeline-bundle / ui-standalone steps).
-  for (const rel of ['bin/radorch.mjs', 'ui/server.js']) {
+  // cli-bundle now emits radorch.mjs inside the skill folder (the meta-script
+  // runs cli-bundle AFTER adapters-plugin so it survives the skills/ wipe).
+  for (const rel of ['skills/rad-orchestration/scripts/radorch.mjs', 'ui/server.js']) {
     const f = path.join(claudeDist, rel);
     fs.mkdirSync(path.dirname(f), { recursive: true });
     fs.writeFileSync(f, '');

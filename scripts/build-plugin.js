@@ -34,10 +34,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 export const PIPELINE_STEPS = [
   'cli-build',
-  'cli-bundle',
   'pipeline-bundle',
   'ui-standalone',
   'adapters-plugin',
+  'cli-bundle',
   'copy-shared-config',
   'copy-manifest-catalog',
   'copy-bundles-into-claude-plugin',
@@ -49,7 +49,7 @@ export const PIPELINE_STEPS = [
 
 const REQUIRED_ARTIFACTS = [
   '.claude-plugin/plugin.json',
-  'bin/radorch.mjs',
+  'skills/rad-orchestration/scripts/radorch.mjs',
   'skills/rad-orchestration/scripts/pipeline.js',
   'ui/server.js',
   'hooks/hooks.json',
@@ -172,11 +172,6 @@ async function main() {
   const exec = (cmd, cwd) => execSync(cmd, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
 
   await step('cli-build', () => exec('npm run build', path.join(repoRoot, 'cli')));
-  await step('cli-bundle', () => {
-    const out = path.join(claudeDist, 'bin', 'radorch.mjs');
-    fs.mkdirSync(path.dirname(out), { recursive: true });
-    exec(`npm run bundle -- --out=${out}`, path.join(repoRoot, 'cli'));
-  });
   await step('pipeline-bundle', () => {
     const out = path.join(claudeDist, 'skills', 'rad-orchestration', 'scripts', 'pipeline.js');
     fs.mkdirSync(path.dirname(out), { recursive: true });
@@ -204,6 +199,14 @@ async function main() {
       await runAdapterPlugin(a, { canonicalRoot: repoRoot, outputRoot: repoRoot, version });
     }
   });
+  await step('cli-bundle', () => {
+    // Emit AFTER adapters-plugin: that step wipes skills/ before refilling
+    // from canonical. The CLI bundle lives inside the rad-orchestration skill
+    // (not in a top-level bin/), so it has to land after the wipe.
+    const out = path.join(claudeDist, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    exec(`npm run bundle -- --out=${out}`, path.join(repoRoot, 'cli'));
+  });
   await step('copy-shared-config', () => {
     // Copy shared assets to the top-level positions the manifest's
     // bundlePaths point at, so installManifestFiles can source-read them.
@@ -218,12 +221,14 @@ async function main() {
   await step('copy-manifest-catalog', () => {
     // Plugin manifest emitter (AD-4). Reads the installer's per-version
     // per-harness catalog at <repo>/installer/src/<harness>/manifests/,
-    // filters out agents/*, skills/*, bin/*, ui/* (Claude Code handles
-    // plugin-folder placement; bin/* and ui/* are re-augmented below from
+    // filters out agents/*, skills/*, ui/* (Claude Code handles
+    // plugin-folder placement; ui/* is re-augmented below from
     // the staged plugin tree so the sha256s match the bytes that ship),
-    // augments with shared-asset entries (bin/, ui/, templates/,
+    // augments with shared-asset entries (ui/, templates/,
     // orchestration.yml, pipeline.js), then writes the narrowed catalog
-    // into the plugin tree.
+    // into the plugin tree. The CLI no longer ships under bin/ — it lives
+    // inside skills/rad-orchestration/scripts/radorch.mjs and is filtered
+    // out of the plugin manifest along with the rest of skills/.
     const claudeAdapter = adapters.find(a => a.name === 'claude');
     if (!claudeAdapter) return;
     const srcCatalog = path.join(repoRoot, 'installer', 'src', claudeAdapter.name, 'manifests');
@@ -256,7 +261,6 @@ async function main() {
       m.files = m.files.filter(e =>
         !e.bundlePath.startsWith('agents/') &&
         !e.bundlePath.startsWith('skills/') &&
-        !e.bundlePath.startsWith('bin/') &&
         !e.bundlePath.startsWith('ui/')
       );
       // Re-add the pipeline bundle entry under skills/rad-orchestration/scripts/pipeline.js
@@ -271,10 +275,6 @@ async function main() {
         });
       }
       // Append shared user-data assets present in the plugin payload.
-      for (const { abs, rel } of walk(path.join(claudeDist, 'bin'))) {
-        m.files.push({ bundlePath: path.posix.join('bin', rel), sourcePath: path.posix.join('bin', rel),
-          ownership: 'orchestration-system', version: m.version, harness: 'claude', sha256: sha256(abs) });
-      }
       for (const { abs, rel } of walk(path.join(claudeDist, 'ui'))) {
         m.files.push({ bundlePath: path.posix.join('ui', rel), sourcePath: path.posix.join('ui', rel),
           ownership: 'orchestration-system', version: m.version, harness: 'claude', sha256: sha256(abs) });
@@ -296,10 +296,10 @@ async function main() {
     }
   });
   await step('copy-bundles-into-claude-plugin', () => {
-    // Bundled artifacts were emitted directly into claudeDist by steps 2-4;
-    // run-plugin (step 5) only writes skills + hooks + plugin.json, leaving
-    // bin/ dist/ ui/ in place. Nothing to do here unless rerun ordering is
-    // reversed — kept as a named step for traceability and future moves.
+    // ui-standalone (step 3) emits ui/ before adapters-plugin's wipe, and
+    // adapters-plugin leaves ui/ in place. cli-bundle now runs AFTER
+    // adapters-plugin so the CLI lands inside the post-wipe skill folder.
+    // Kept as a named step for traceability.
   });
   await step('copy-plugin-package-json', () => {
     // Copy plugin/package.json into the staging tree so the published npm

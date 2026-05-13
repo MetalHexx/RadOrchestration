@@ -5,7 +5,6 @@ export interface UserDataPaths {
   readonly root: string;
   readonly installJson: string;
   readonly orchestrationYml: string;
-  readonly bin: string;
   readonly ui: string;
   readonly templates: string;
   readonly projects: string;
@@ -20,7 +19,6 @@ export function userDataPaths(): UserDataPaths {
     root,
     installJson: path.join(root, 'install.json'),
     orchestrationYml: path.join(root, 'orchestration.yml'),
-    bin: path.join(root, 'bin'),
     ui: path.join(root, 'ui'),
     templates: path.join(root, 'templates'),
     projects: path.join(root, 'projects'),

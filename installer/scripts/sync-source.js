@@ -29,6 +29,7 @@ const scriptsDir = path.resolve(__dirname, '../../skills/rad-orchestration/scrip
  */
 const SCRIPTS_BUNDLE_KEEP = new Set([
   'pipeline.js',
+  'radorch.mjs',
   'list-repo-skills.mjs',
   'setup-hooks.js',
 ]);
@@ -67,16 +68,17 @@ export function syncSource(source, target, excludes) {
 }
 
 /**
- * Emits the CLI binary once into installer/src/bin/radorch.mjs (AD-2).
+ * Compiles the CLI bundle and copies it into the given target path.
  * Reuses cli/scripts/bundle.mjs via npm to keep the bundle config in one place.
+ * Preserves the executable bit on POSIX (no-op on Windows).
  *
  * @param {string} repoRoot - Absolute path to the repository root
+ * @param {string} destPath - Absolute path to the destination radorch.mjs
  */
-export function emitSharedBin(repoRoot) {
-  const dest = path.join(repoRoot, 'installer', 'src', 'bin', 'radorch.mjs');
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  execSync(`npm run bundle -- --out=${dest}`, { cwd: path.join(repoRoot, 'cli'), stdio: 'pipe' });
-  try { fs.chmodSync(dest, 0o755); } catch { /* no-op on Windows */ }
+export function emitCliBundle(repoRoot, destPath) {
+  fs.mkdirSync(path.dirname(destPath), { recursive: true });
+  execSync(`npm run bundle -- --out=${destPath}`, { cwd: path.join(repoRoot, 'cli'), stdio: 'pipe' });
+  try { fs.chmodSync(destPath, 0o755); } catch { /* no-op on Windows */ }
 }
 
 /**
@@ -100,8 +102,7 @@ export function emitSharedUi(repoRoot) {
 
 /**
  * Recursively enumerates all files under `dir`, returning paths relative to
- * `baseDir`. Used to walk installer/src/bin/ and installer/src/ui/ for
- * manifest augmentation.
+ * `baseDir`. Used to walk installer/src/ui/ for manifest augmentation.
  *
  * @param {string} dir      - Absolute path to the directory to walk
  * @param {string} baseDir  - Absolute path used to compute relative paths
@@ -190,6 +191,42 @@ export async function emitBundles({ repoRoot, version }) {
       }
     }
 
+    // Emit the CLI bundle into this harness's skill folder alongside pipeline.js.
+    // The CLI now ships inside the rad-orchestration skill (FR-XX) so each
+    // harness install carries its own copy. runAdapter doesn't see it (the
+    // canonical scripts/ folder has no radorch.mjs — it's a build artifact),
+    // so insert the manifest entry here if missing; otherwise update sha256.
+    const cliRelPath = 'skills/rad-orchestration/scripts/radorch.mjs';
+    const cliDest = path.join(
+      installerSrc, adapter.name, ...cliRelPath.split('/'),
+    );
+    if (fs.existsSync(path.dirname(cliDest))) {
+      emitCliBundle(repoRoot, cliDest);
+      const manifestPath = path.join(
+        installerSrc, adapter.name, 'manifests', `v${version}.json`,
+      );
+      if (fs.existsSync(manifestPath)) {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        const cliHash = crypto.createHash('sha256')
+          .update(fs.readFileSync(cliDest))
+          .digest('hex');
+        const existing = manifest.files.find((f) => f.bundlePath === cliRelPath);
+        if (existing) {
+          existing.sha256 = cliHash;
+        } else {
+          manifest.files.push({
+            bundlePath: cliRelPath,
+            sourcePath: cliRelPath,
+            ownership: 'orchestration-system',
+            version: manifest.version ?? version,
+            harness: adapter.name,
+            sha256: cliHash,
+          });
+        }
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+      }
+    }
+
     // Trim the bundled `skills/rad-orchestration/scripts/` tree (FR-21):
     // keep only the runtime artifacts listed in SCRIPTS_BUNDLE_KEEP. Drop
     // TypeScript sources, lockfiles, dev configs, and the entire lib/,
@@ -244,12 +281,13 @@ export async function emitBundles({ repoRoot, version }) {
     console.log(`Emitted bundle ${adapter.name}: ${fileCount} files → installer/src/${adapter.name}/`);
   }
 
-  // Augment every per-harness manifest with entries for the shared bin and ui
-  // assets that were emitted by emitSharedBin/emitSharedUi before this function
-  // was called. Each entry follows the same manifest shape as harness-specific
-  // files: bundlePath, sourcePath, ownership, version, harness, sha256.
+  // Augment every per-harness manifest with entries for the shared ui assets
+  // that were emitted by emitSharedUi before this function was called. The CLI
+  // no longer ships as a shared asset — each harness's emitBundles step emits
+  // its own copy into skills/rad-orchestration/scripts/radorch.mjs above.
+  // Each entry follows the same manifest shape as harness-specific files:
+  // bundlePath, sourcePath, ownership, version, harness, sha256.
   const sharedAssetDirs = [
-    path.join(installerSrc, 'bin'),
     path.join(installerSrc, 'ui'),
   ];
 
@@ -287,7 +325,6 @@ export async function emitBundles({ repoRoot, version }) {
 if (process.argv[1] === __filename) {
   const repoRoot = path.resolve(__dirname, '..', '..');
   const installerPkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'installer', 'package.json'), 'utf8'));
-  emitSharedBin(repoRoot);
   emitSharedUi(repoRoot);
   await emitBundles({ repoRoot, version: installerPkg.version });
 }

@@ -39,7 +39,7 @@ describe('bundle existence (FR-27 #1)', () => {
   it('every required artifact lives at its documented path', async () => {
     for (const rel of [
       '.claude-plugin/plugin.json',
-      'bin/radorch.mjs',
+      'skills/rad-orchestration/scripts/radorch.mjs',
       'skills/rad-orchestration/scripts/pipeline.js',
       'ui/server.js',
       'hooks/hooks.json',
@@ -56,7 +56,7 @@ describe('bundle existence (FR-27 #1)', () => {
 
 describe('bundle invocability (FR-27 #2)', () => {
   it('spawning the bundled CLI runs --version successfully', async () => {
-    const bundle = path.join(pluginRoot, 'bin', 'radorch.mjs');
+    const bundle = path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
     const r = await execP('node', [bundle, '--version']);
     expect(r.stdout.trim()).toMatch(/^\d+\.\d+\.\d+/);
   });
@@ -71,7 +71,7 @@ describe('SessionStart bootstrap (FR-27 #3, #4)', () => {
     const hookCmd = {
       bin: 'node',
       args: [
-        path.join(pluginRoot, 'bin', 'radorch.mjs'),
+        path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs'),
         'plugin-bootstrap',
         '--quiet',
         '--harness', 'claude',
@@ -90,7 +90,7 @@ describe('SessionStart bootstrap (FR-27 #3, #4)', () => {
 
 describe('ui lifecycle (FR-27 #5, FR-28)', () => {
   it('ui start → status → stop via the bundled CLI', async () => {
-    const bundle = path.join(pluginRoot, 'bin', 'radorch.mjs');
+    const bundle = path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
     // Bootstrap: the plugin-bootstrap hook is now invoked via the node CLI, which
     // uses os.homedir() to resolve the install root. Set HOME/USERPROFILE so
     // os.homedir() returns `home`, making resolveInstallRoot() return
@@ -98,7 +98,7 @@ describe('ui lifecycle (FR-27 #5, FR-28)', () => {
     const hookCmd = {
       bin: 'node',
       args: [
-        path.join(pluginRoot, 'bin', 'radorch.mjs'),
+        path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs'),
         'plugin-bootstrap',
         '--quiet',
         '--harness', 'claude',

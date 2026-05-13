@@ -22,18 +22,21 @@ function walk(root: string): Record<string, string> {
 }
 
 function buildSyntheticBundle(root: string, opts: { layout: 'legacy' | 'plugin' }): { manifestPath: string } {
-  // Shared assets (bin/, ui/) — placed under `root` for the plugin layout,
-  // and under `root/shared/` for the legacy layout (sharedRoot vs pluginRoot).
+  // Shared assets are now ui/ only (the CLI moved inside the rad-orchestration
+  // skill). For the legacy layout sharedRoot lives at root/shared; for the
+  // plugin layout sharedRoot IS the pluginRoot. The CLI under skills/* routes
+  // through harnessRoot() to <home>/.claude/skills/..., not ~/.radorch/.
   const sharedBase = opts.layout === 'legacy' ? path.join(root, 'shared') : root;
   const harnessBase = opts.layout === 'legacy' ? path.join(root, 'claude') : root;
-  fs.mkdirSync(path.join(sharedBase, 'bin'), { recursive: true });
-  fs.writeFileSync(path.join(sharedBase, 'bin', 'radorch.mjs'), '#!/usr/bin/env node\nconsole.log("rad");\n');
   fs.mkdirSync(path.join(sharedBase, 'ui'), { recursive: true });
   fs.writeFileSync(path.join(sharedBase, 'ui', 'server.js'), 'export {};\n');
   fs.mkdirSync(path.join(harnessBase, 'agents'), { recursive: true });
   fs.writeFileSync(path.join(harnessBase, 'agents', 'a.md'), '---\nname: a\n---\nbody\n');
   fs.mkdirSync(path.join(harnessBase, 'skills', 's'), { recursive: true });
   fs.writeFileSync(path.join(harnessBase, 'skills', 's', 'SKILL.md'), '---\nname: s\n---\nbody\n');
+  const cliDir = path.join(harnessBase, 'skills', 'rad-orchestration', 'scripts');
+  fs.mkdirSync(cliDir, { recursive: true });
+  fs.writeFileSync(path.join(cliDir, 'radorch.mjs'), '#!/usr/bin/env node\nconsole.log("rad");\n');
   // Plugin-root package.json so runPluginBootstrap's createRequire can read its version.
   fs.writeFileSync(
     path.join(harnessBase, 'package.json'),
@@ -47,7 +50,7 @@ function buildSyntheticBundle(root: string, opts: { layout: 'legacy' | 'plugin' 
     package_version: '0.0.0-test',
     harness: 'claude',
     files: [
-      { bundlePath: 'bin/radorch.mjs', sourcePath: 'bin/radorch.mjs', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' },
+      { bundlePath: 'skills/rad-orchestration/scripts/radorch.mjs', sourcePath: 'skills/rad-orchestration/scripts/radorch.mjs', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' },
       { bundlePath: 'ui/server.js', sourcePath: 'ui/server.js', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' },
       { bundlePath: 'agents/a.md', sourcePath: 'agents/a.md', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' },
       { bundlePath: 'skills/s/SKILL.md', sourcePath: 'skills/s/SKILL.md', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' },

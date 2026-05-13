@@ -69,27 +69,10 @@ export async function runInstallChecks(): Promise<CheckResult[]> {
     out.push({ category: 'Install', name: 'install-json-shape', status: 'fail', detail: (e as Error).message });
   }
 
-  // 3. radorch-bin-on-path
-  {
-    const binDir = p.bin;
-    const envPath = process.env['PATH'] ?? '';
-    const sep = process.platform === 'win32' ? ';' : ':';
-    const onPath = envPath.split(sep).some((d) => d === binDir);
-    if (onPath) {
-      out.push({ category: 'Install', name: 'radorch-bin-on-path', status: 'pass', detail: binDir });
-    } else {
-      const addLine =
-        process.platform === 'win32'
-          ? `$env:PATH = "${binDir};$env:PATH"`
-          : `export PATH="${binDir}:$PATH"`;
-      out.push({
-        category: 'Install',
-        name: 'radorch-bin-on-path',
-        status: 'warn',
-        detail: `${binDir} not in PATH — add to shell profile: ${addLine}`,
-      });
-    }
-  }
+  // 3. (retired) `radorch-bin-on-path` — the CLI no longer ships at
+  // ~/.radorch/bin/; it lives inside the rad-orchestration skill folder and
+  // is invoked through the harness's slash commands or `node <skill-path>`.
+  // There is no PATH-on-shell concern to surface here anymore.
 
   // 4. templates-folder-populated
   {
@@ -217,7 +200,9 @@ export async function runPluginChecks(opts: {
   // Bundle integrity: probe the bundled CLI when CLAUDE_PLUGIN_ROOT is known
   // (deployed plugin), otherwise warn that it could not be verified.
   if (opts.pluginRoot) {
-    const bundle = path.join(opts.pluginRoot, 'bin', 'radorch.mjs');
+    const bundle = path.join(
+      opts.pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs',
+    );
     const exists = await pathExists(bundle);
     out.push({
       category: 'Plugin',
@@ -241,7 +226,7 @@ export async function runPluginChecks(opts: {
     category: 'Plugin',
     name: 'bootstrap-skeleton',
     status: bootstrapOk ? 'pass' : 'fail',
-    detail: bootstrapOk ? undefined : 'missing one or more entries under RADORCH_HOME',
+    detail: bootstrapOk ? undefined : 'missing one or more entries under ~/.radorch',
   });
   // UI PID consistency
   const pidExists = await pathExists(p.uiPidFile);

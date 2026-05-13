@@ -88,30 +88,31 @@ export function renderPostInstall(cfg, orchYmlPath) {
   sectionHeader('::', "What's Next");
   console.log('');
 
-  if (process.platform === 'win32') {
-    // DD-1 / FR-21: Windows users — `~/.radorch/bin/radorch.mjs` is just a
-    // .mjs file with a shebang and Windows does not honor shebangs from
-    // cmd.exe / PowerShell. Two working alternatives are surfaced here;
-    // the broken `setx` guidance is gone.
-    console.log('  ' + THEME.body('On Windows:'));
-    console.log('');
-    console.log('     ' + THEME.stepNumber('1.') + ' ' + THEME.body('Install via npm to get `radorch` on PATH automatically:'));
-    console.log('        ' + THEME.command('npm install -g rad-orchestration'));
-    console.log('');
-    console.log('     ' + THEME.stepNumber('2.') + ' ' + THEME.body('Or invoke directly:'));
-    console.log('        ' + THEME.command('node ~/.radorch/bin/radorch.mjs <subcmd>'));
-  } else {
-    console.log('  ' + THEME.body('Add radorch to your PATH (this session):'));
-    console.log('');
-    console.log('     ' + THEME.command('export PATH="$HOME/.radorch/bin:$PATH"'));
-  }
-  console.log('');
-
+  // The CLI now ships inside each harness's rad-orchestration skill — the
+  // canonical invocation is through the harness's slash commands. Direct
+  // node invocation is still possible for advanced cases.
   if (cfg.harnesses.includes('claude')) {
     console.log('  ' + THEME.body('Claude Code slash command:'));
     console.log('     ' + THEME.command('/rad-orchestration:rad-ui-start'));
     console.log('');
   }
+
+  if (process.platform === 'win32') {
+    console.log('  ' + THEME.body('To invoke the CLI directly:'));
+    console.log('     ' + THEME.command('npm install -g rad-orchestration') + THEME.body('  (puts `radorch` on PATH)'));
+    console.log('     ' + THEME.body('or:'));
+    for (const h of cfg.harnesses) {
+      const harnessRoot = h === 'claude' ? '%USERPROFILE%\\.claude' : '%USERPROFILE%\\.copilot';
+      console.log('     ' + THEME.command(`node ${harnessRoot}\\skills\\rad-orchestration\\scripts\\radorch.mjs <subcmd>`));
+    }
+  } else {
+    console.log('  ' + THEME.body('To invoke the CLI directly:'));
+    for (const h of cfg.harnesses) {
+      const harnessRoot = h === 'claude' ? '$HOME/.claude' : '$HOME/.copilot';
+      console.log('     ' + THEME.command(`node ${harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs <subcmd>`));
+    }
+  }
+  console.log('');
 }
 
 /**
@@ -134,17 +135,17 @@ export async function main() {
   }
 
   // `radorch uninstall` is no longer a top-level installer subcommand —
-  // the bundled CLI (`radorch uninstall`, installed at ~/.radorch/bin/) is
-  // the canonical entry point for that flow. The installer print path
-  // surfaces the pointer in the post-install summary.
+  // the bundled CLI (`radorch uninstall`, shipped inside the
+  // rad-orchestration skill) is the canonical entry point for that flow.
+  // The installer print path surfaces the pointer in the post-install summary.
   if (command === 'uninstall') {
     console.log(THEME.body(
       "`radorch uninstall` is now handled by the bundled CLI. After install, run:",
     ));
     if (process.platform === 'win32') {
-      console.log('  ' + THEME.command('%USERPROFILE%\\.radorch\\bin\\radorch.mjs uninstall'));
+      console.log('  ' + THEME.command('node %USERPROFILE%\\.claude\\skills\\rad-orchestration\\scripts\\radorch.mjs uninstall'));
     } else {
-      console.log('  ' + THEME.command('$HOME/.radorch/bin/radorch.mjs uninstall'));
+      console.log('  ' + THEME.command('node $HOME/.claude/skills/rad-orchestration/scripts/radorch.mjs uninstall'));
     }
     return;
   }

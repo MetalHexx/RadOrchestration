@@ -82,11 +82,13 @@ describe('runPluginBootstrap', () => {
     );
   }
 
-  /** Create the sentinel file that signals a working install exists */
-  function writeSentinel(): void {
-    const binDir = path.join(tmpDir, '.radorch', 'bin');
-    fs.mkdirSync(binDir, { recursive: true });
-    fs.writeFileSync(path.join(binDir, 'radorch.mjs'), '#!/usr/bin/env node\n', 'utf8');
+  /** Create the sentinel file that signals a working install exists.
+   *  The sentinel now lives inside the plugin payload at
+   *  <pluginRoot>/skills/rad-orchestration/scripts/radorch.mjs (FR-7). */
+  function writeSentinel(pluginRoot: string): void {
+    const scriptsDir = path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts');
+    fs.mkdirSync(scriptsDir, { recursive: true });
+    fs.writeFileSync(path.join(scriptsDir, 'radorch.mjs'), '#!/usr/bin/env node\n', 'utf8');
   }
 
   it('fast-exits no-op when installed === delivering', async () => {
@@ -94,7 +96,7 @@ describe('runPluginBootstrap', () => {
     // pluginRoot/package.json carries '1.0.0'.
     const pluginRoot = makePluginRoot('1.0.0');
     writeInstallJson('1.0.0');
-    writeSentinel();
+    writeSentinel(pluginRoot);
     const lockPath = path.join(tmpDir, '.radorch', 'runtime', 'bootstrap.lock');
 
     // Act
@@ -114,7 +116,7 @@ describe('runPluginBootstrap', () => {
     // delivering '0.9.0', installed '1.0.0'.
     const pluginRoot = makePluginRoot('0.9.0');
     writeInstallJson('1.0.0');
-    writeSentinel();
+    writeSentinel(pluginRoot);
 
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -162,7 +164,7 @@ describe('runPluginBootstrap', () => {
     // bundled catalog. No modified files (sha256 check skips missing files).
     const pluginRoot = makePluginRoot('1.1.0', ['1.0.0']);
     writeInstallJson('1.0.0');
-    writeSentinel();
+    writeSentinel(pluginRoot);
 
     // Act
     const result = await runPluginBootstrap({ pluginRoot, harness: 'claude' });
@@ -192,7 +194,7 @@ describe('runPluginBootstrap', () => {
     // Pre-create ~/.radorch/runtime/bootstrap.lock with a fake PID.
     const pluginRoot = makePluginRoot('1.1.0', ['1.0.0']);
     writeInstallJson('1.0.0');
-    writeSentinel();
+    writeSentinel(pluginRoot);
 
     // Pre-create the lock file to simulate a concurrent invocation
     const runtimeDir = path.join(tmpDir, '.radorch', 'runtime');
@@ -215,10 +217,10 @@ describe('runPluginBootstrap', () => {
 
   it('force re-installs even when installed === delivering', async () => {
     // Arrange: installed === delivering === '1.0.0'; both bundled manifests
-    // present; sentinel ~/.radorch/bin/radorch.mjs exists.
+    // present; sentinel <pluginRoot>/skills/rad-orchestration/scripts/radorch.mjs exists.
     const pluginRoot = makePluginRoot('1.0.0');
     writeInstallJson('1.0.0');
-    writeSentinel();
+    writeSentinel(pluginRoot);
 
     // Act
     const result = await runPluginBootstrap({ pluginRoot, harness: 'claude', force: true });
@@ -235,12 +237,14 @@ describe('runPluginBootstrap', () => {
     fs.rmSync(pluginRoot, { recursive: true, force: true });
   });
 
-  it('bootstrap copies a real bin/radorch.mjs (FR-7, NFR-6)', async () => {
+  it('bootstrap copies a real skills/.../radorch.mjs (FR-7, NFR-6)', async () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-bin-'));
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-bin-src-'));
-    fs.mkdirSync(path.join(root, 'bin'), { recursive: true });
+    const cliRel = 'skills/rad-orchestration/scripts/radorch.mjs';
+    const cliRelParts = cliRel.split('/');
+    fs.mkdirSync(path.join(root, ...cliRelParts.slice(0, -1)), { recursive: true });
     const sourceBytes = '#!/usr/bin/env node\nconsole.log("rad");\n';
-    fs.writeFileSync(path.join(root, 'bin', 'radorch.mjs'), sourceBytes);
+    fs.writeFileSync(path.join(root, ...cliRelParts), sourceBytes);
     fs.writeFileSync(
       path.join(root, 'package.json'),
       JSON.stringify({ name: 'rad-orchestration', version: '0.0.0-test' }),
@@ -249,7 +253,7 @@ describe('runPluginBootstrap', () => {
     fs.mkdirSync(path.join(root, 'manifests'), { recursive: true });
     fs.writeFileSync(path.join(root, 'manifests', 'v0.0.0-test.json'), JSON.stringify({
       version: '0.0.0-test', package_version: '0.0.0-test', harness: 'claude',
-      files: [{ bundlePath: 'bin/radorch.mjs', sourcePath: 'bin/radorch.mjs', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' }],
+      files: [{ bundlePath: cliRel, sourcePath: cliRel, ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' }],
     }));
     const origHomedir = os.homedir;
     try {
@@ -258,7 +262,8 @@ describe('runPluginBootstrap', () => {
     } finally {
       (os as unknown as { homedir: () => string }).homedir = origHomedir;
     }
-    const installed = path.join(home, '.radorch', 'bin', 'radorch.mjs');
+    // skills/* routes to harnessRoot('claude') = <home>/.claude (not ~/.radorch).
+    const installed = path.join(home, '.claude', ...cliRelParts);
     const stat = fs.statSync(installed);
     expect(stat.size).toBeGreaterThan(0);
     expect(fs.readFileSync(installed, 'utf8')).toEqual(sourceBytes);
@@ -292,7 +297,7 @@ describe('runPluginBootstrap', () => {
   it('upgrade path self-heals when base files are missing', async () => {
     const pluginRoot = makePluginRoot('1.1.0', ['1.0.0']);
     writeInstallJson('1.0.0');
-    writeSentinel();
+    writeSentinel(pluginRoot);
     const radorch = path.join(tmpDir, '.radorch');
 
     expect(fs.existsSync(path.join(radorch, 'config.yml'))).toBe(false);

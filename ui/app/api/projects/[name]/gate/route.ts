@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import child_process from 'node:child_process';
-import path from 'node:path';
-import os from 'node:os';
 
 import type { GateApproveResponse, GateErrorResponse } from '@/types/state';
 import { resolveProjectDir } from '@/lib/path-resolver';
@@ -87,7 +85,21 @@ export async function POST(
     }
 
     // Invoke the radorch CLI — it auto-resolves doc paths from state (FR-13).
-    const radorchBin = path.join(os.homedir(), '.radorch', 'bin', 'radorch.mjs');
+    // The CLI path is provided by whoever spawned this UI server (see
+    // cli/src/commands/ui/start.ts), which stamps its own location into
+    // RADORCH_CLI_PATH. If the UI was started outside the normal flow the
+    // env var is missing and we hard-fail with a clear error rather than
+    // shelling out to a guessed location.
+    const radorchBin = process.env.RADORCH_CLI_PATH;
+    if (!radorchBin) {
+      return NextResponse.json(
+        {
+          error: 'RADORCH_CLI_PATH not set.',
+          detail: 'The UI server was started without RADORCH_CLI_PATH. Start the UI via `radorch ui start` so the CLI path is plumbed through.',
+        } satisfies GateErrorResponse,
+        { status: 500 },
+      );
+    }
     const subcmd = event === 'plan_approved' ? 'plan' : 'final';
     const args = [radorchBin, 'gate', 'approve', subcmd, '--project-dir', projectDir];
 

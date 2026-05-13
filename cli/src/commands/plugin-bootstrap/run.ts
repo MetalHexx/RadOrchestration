@@ -47,8 +47,12 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
   const installedVersion = ij.package_version;
   // installedVersionBefore is captured here (before any upgrade work) for use in all log entries.
   const installedVersionBefore: string | null = installedVersion ?? null;
-  // Sanity: if expected files are missing, treat as fresh.
-  const expectedSentinel = path.join(paths.bin, 'radorch.mjs');
+  // Sanity: if expected files are missing, treat as fresh. The CLI now lives
+  // inside the rad-orchestration skill (no ~/.radorch/bin/), so check the
+  // plugin payload's copy as the install-completion sentinel.
+  const expectedSentinel = path.join(
+    opts.pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs',
+  );
   if (!fs.existsSync(expectedSentinel)) {
     const result = await doInstall({ paths, opts, sharedRoot, deliveringVersion, action: 'fresh-install', installedVersion });
     appendInstallLogEntry({ channel, action: result.action, deliveringVersion, installedVersionBefore });
@@ -87,7 +91,6 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
     fs.mkdirSync(paths.projects, { recursive: true });
     fs.mkdirSync(paths.logs, { recursive: true });
     fs.mkdirSync(paths.runtime, { recursive: true });
-    fs.mkdirSync(paths.bin, { recursive: true });
     // Self-heal: existing-but-broken installs missing the base files (config.yml,
     // registry.yml, .harness, .gitignore) get them on next session bootstrap.
     await writeBaseFiles(paths.root, opts.harness);
@@ -128,12 +131,11 @@ async function doInstall(args: { paths: ReturnType<typeof userDataPaths>, opts: 
   fs.mkdirSync(args.paths.projects, { recursive: true });
   fs.mkdirSync(args.paths.logs, { recursive: true });
   fs.mkdirSync(args.paths.runtime, { recursive: true });
-  fs.mkdirSync(args.paths.bin, { recursive: true });
 
-  // FR-7: the real bin/radorch.mjs lands via the manifest copy below — no
-  // zero-byte sentinel write here. The manifest's bin/radorch.mjs entry
-  // resolves from sharedRoot (legacy channel) or pluginRoot (plugin channel)
-  // per AD-3, and installManifestFiles chmods it 0o755 on POSIX (NFR-6).
+  // The CLI bundle lands at <harnessRoot>/skills/rad-orchestration/scripts/radorch.mjs
+  // via the manifest copy below — the manifest entry routes through
+  // resolveBundleTarget (skills/ → harnessRoot) and installManifestFiles
+  // chmods it 0o755 on POSIX (NFR-6).
   installManifestFiles(newManifest, args.opts.pluginRoot, args.opts.harness, { sharedRoot: args.sharedRoot });
   await writeInstallJson(args.paths.installJson, {
     package_version: args.deliveringVersion,

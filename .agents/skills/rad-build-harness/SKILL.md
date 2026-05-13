@@ -21,7 +21,7 @@ Run the real installer end-to-end from local source. This skill selects a harnes
 
 - Node.js and npm installed.
 - Working directory is anywhere inside the repo clone (the skill resolves repo root itself).
-- `~/.radorch/bin/` may or may not be on `PATH` — `radorch` commands below assume it is.
+- The `npm install -g` step in this workflow puts `radorch` on `PATH` automatically (via the package's `bin` entry); bare `radorch` commands below depend on that.
 
 ## Workflow
 

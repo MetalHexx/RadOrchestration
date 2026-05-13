@@ -114,8 +114,10 @@ describe('plugin-aware doctor checks', () => {
   it('bundle-integrity: passes when bundle exists at CLAUDE_PLUGIN_ROOT', async () => {
     const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
     try {
-      await fs.mkdir(path.join(pluginRoot, 'bin'), { recursive: true });
-      await fs.writeFile(path.join(pluginRoot, 'bin', 'radorch.mjs'), '// stub bundle');
+      // The CLI bundle now lives inside the rad-orchestration skill folder.
+      const scriptsDir = path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts');
+      await fs.mkdir(scriptsDir, { recursive: true });
+      await fs.writeFile(path.join(scriptsDir, 'radorch.mjs'), '// stub bundle');
       const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
       expect(result.find((c) => c.name === 'bundle-integrity')?.status).toBe('pass');
     } finally {
@@ -308,19 +310,6 @@ describe('doctor: 1.3 canonical checks', () => {
   afterEach(async () => {
     homedirSpy13.mockRestore();
     await fs.rm(tmp13, { recursive: true, force: true });
-  });
-
-  it('reports radorch-bin-on-path warn when ~/.radorch/bin is absent from PATH', async () => {
-    // Create ~/.radorch so radorch-home-exists passes and execution reaches radorch-bin-on-path.
-    // userDataPaths().bin resolves to tmp13/.radorch/bin, which is not in PATH.
-    const radorchDir = path.join(tmp13, '.radorch');
-    await fs.mkdir(radorchDir, { recursive: true });
-    const r = await runInstallChecks();
-    const bin = r.find(c => c.name === 'radorch-bin-on-path');
-    expect(bin?.status).toBe('warn');
-    // Platform-aware: Windows emits $env:PATH, Unix emits export PATH=
-    const addPathPattern = process.platform === 'win32' ? /\$env:PATH/ : /export PATH=/;
-    expect(bin?.detail).toMatch(addPathPattern);
   });
 
   it('reports retired-properties-present warn when orchestration.yml carries any of the four', async () => {

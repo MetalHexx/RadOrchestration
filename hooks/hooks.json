@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/radorch.mjs plugin-bootstrap --quiet --harness claude --plugin-root ${CLAUDE_PLUGIN_ROOT}"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs plugin-bootstrap --quiet --harness claude --plugin-root ${CLAUDE_PLUGIN_ROOT}"
           }
         ]
       }

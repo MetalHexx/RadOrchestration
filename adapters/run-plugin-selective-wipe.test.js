@@ -1,6 +1,9 @@
 // adapters/run-plugin-selective-wipe.test.js — proves that runAdapterPlugin
-// preserves bundle artifacts (bin/, ui/) placed by sibling meta-script
-// steps while still wiping its own directories (skills/, hooks/, .claude-plugin/).
+// preserves bundle artifacts (ui/) placed by sibling meta-script steps
+// while still wiping its own directories (skills/, hooks/, .claude-plugin/).
+// The CLI bundle (skills/rad-orchestration/scripts/radorch.mjs) is owned by
+// the skills/ wipe — the build-plugin meta-script re-emits it AFTER this
+// step runs, so any pre-existing copy here would (correctly) be destroyed.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,7 +21,6 @@ test('selective wipe: bundle subdirs are preserved, owned subdirs are refreshed'
     outputRoot, 'cli', 'dist', 'marketplaces', 'claude', 'plugins', 'rad-orchestration',
   );
   const bundleFiles = [
-    path.join(pluginRoot, 'bin', 'radorch.mjs'),
     path.join(pluginRoot, 'ui', 'server.js'),
   ];
   for (const f of bundleFiles) {
@@ -66,10 +68,6 @@ test('selective wipe: bundle subdirs are preserved, owned subdirs are refreshed'
   // 7. Assert the pre-existing bundle files STILL exist
   assert.ok(
     fs.existsSync(bundleFiles[0]),
-    `bin/radorch.mjs must be preserved but is missing`,
-  );
-  assert.ok(
-    fs.existsSync(bundleFiles[1]),
     `ui/server.js must be preserved but is missing`,
   );
 

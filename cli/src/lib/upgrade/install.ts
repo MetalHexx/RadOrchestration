@@ -1,7 +1,7 @@
 // cli/src/lib/upgrade/install.ts — Copy bundle files to their routed targets.
 //
 // Driven entirely off a manifest. Each entry is read from a source path
-// (resolved per-entry: bin/ and ui/ from `sharedRoot`, everything else from
+// (resolved per-entry: ui/ from `sharedRoot`, everything else from
 // `pluginRoot`) and written to resolveBundleTarget(entry.bundlePath, harness),
 // creating intermediate directories as needed.
 //
@@ -26,12 +26,12 @@ export interface InstallResult {
 
 export interface InstallOpts {
   /**
-   * AD-3: when provided, entries whose `bundlePath` begins with `bin/` or
-   * `ui/` resolve from `sharedRoot` instead of `pluginRoot`. The legacy
-   * installer passes this (its shared-asset tree lives one level up from the
-   * per-harness payload); the plugin channel omits it (single bundle root).
-   * When omitted, `sharedRoot` defaults to `pluginRoot` so the call sites that
-   * don't care stay unchanged.
+   * AD-3: when provided, entries whose `bundlePath` begins with `ui/` resolve
+   * from `sharedRoot` instead of `pluginRoot`. The legacy installer passes
+   * this (its shared-asset tree lives one level up from the per-harness
+   * payload); the plugin channel omits it (single bundle root). When omitted,
+   * `sharedRoot` defaults to `pluginRoot` so the call sites that don't care
+   * stay unchanged.
    */
   readonly sharedRoot?: string;
 }
@@ -41,15 +41,16 @@ export interface InstallOpts {
  * harness-routed target, creating intermediate directories automatically.
  *
  * Source resolution (AD-3):
- *   - bundlePath starts with `bin/` or `ui/` → source = `<sharedRoot>/<bundlePath>`
+ *   - bundlePath starts with `ui/` → source = `<sharedRoot>/<bundlePath>`
  *   - everything else → source = `<pluginRoot>/<bundlePath>`
  *   - when `sharedRoot` is omitted it defaults to `pluginRoot`.
  *
  * AD-7 hard guard: entries whose resolved target path falls under
  * `userDataPaths().projects` are skipped unconditionally.
  *
- * NFR-6: after copying `bin/radorch.mjs`, chmod 0o755 on POSIX so the file is
- * directly executable. On Windows the chmod is a no-op (wrapped in try/catch).
+ * NFR-6: after copying the CLI bundle
+ * (`skills/rad-orchestration/scripts/radorch.mjs`), chmod 0o755 on POSIX so
+ * the file is directly executable. On Windows the chmod is a no-op.
  *
  * @param manifest - Manifest with files array
  * @param pluginRoot - Absolute path to the installed plugin root (default source)
@@ -80,17 +81,15 @@ export function installManifestFiles(
     }
 
     const normalized = entry.bundlePath.split(/[\\/]/).join('/');
-    const sourceRoot = (normalized.startsWith('bin/') || normalized.startsWith('ui/'))
-      ? sharedRoot
-      : pluginRoot;
+    const sourceRoot = normalized.startsWith('ui/') ? sharedRoot : pluginRoot;
     const source = path.join(sourceRoot, entry.bundlePath);
     const targetDir = path.dirname(target);
 
     fs.mkdirSync(targetDir, { recursive: true });
     fs.copyFileSync(source, target);
 
-    // NFR-6: ensure bin/radorch.mjs is executable on POSIX. No-op on Windows.
-    if (normalized === 'bin/radorch.mjs') {
+    // NFR-6: ensure the CLI bundle is executable on POSIX. No-op on Windows.
+    if (normalized === 'skills/rad-orchestration/scripts/radorch.mjs') {
       try {
         fs.chmodSync(target, 0o755);
       } catch {

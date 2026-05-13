@@ -77,8 +77,12 @@ test('plugin manifest lists shared user-data assets with sha256', () => {
   if (!fs.existsSync(manifestsDir)) return;
   const f = fs.readdirSync(manifestsDir).filter(x => /^v.*\.json$/.test(x))[0];
   const m = JSON.parse(fs.readFileSync(path.join(manifestsDir, f), 'utf8'));
+  // The CLI bundle no longer ships under bin/ — it lives inside the
+  // rad-orchestration skill folder, which Claude Code reads directly from
+  // the plugin payload. The plugin manifest (which drives ~/.radorch/ copy)
+  // intentionally excludes skills/ entries; the CLI does not need to be
+  // copied to ~/.radorch/ because it already lives in the plugin payload.
   const required = [
-    'bin/radorch.mjs',
     'orchestration.yml',
     'skills/rad-orchestration/scripts/pipeline.js',
   ];
@@ -87,6 +91,11 @@ test('plugin manifest lists shared user-data assets with sha256', () => {
     assert.ok(e, `plugin manifest missing ${bp}`);
     assert.match(e.sha256, SHA256_RE, `${bp} sha256 missing or malformed`);
   }
+  // Guard: the retired bin/radorch.mjs entry must not reappear.
+  assert.ok(
+    !m.files.find(x => x.bundlePath === 'bin/radorch.mjs'),
+    'plugin manifest still references retired bin/radorch.mjs entry',
+  );
   const uiEntries = m.files.filter(e => e.bundlePath.startsWith('ui/'));
   assert.ok(uiEntries.length > 0, 'plugin manifest missing ui/** entries');
   const templateEntries = m.files.filter(e => e.bundlePath.startsWith('templates/'));

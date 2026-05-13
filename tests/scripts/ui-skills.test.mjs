@@ -16,8 +16,9 @@ for (const verb of ['start', 'stop', 'status']) {
     assert.match(text, /^---\r?\n[\s\S]*?\r?\n---\r?\n/, 'SKILL.md must start with YAML frontmatter');
     // name field with rad- prefix
     assert.match(text, new RegExp(`name:\\s*rad-ui-${verb}\\b`));
-    // body invokes PLUGIN_ROOT bundle
-    assert.match(text, /\$\{PLUGIN_ROOT\}\/bin\/radorch\.mjs/);
+    // Body invokes the in-skill CLI bundle via PLUGIN_ROOT. The CLI now ships
+    // inside the rad-orchestration skill folder, not at ${PLUGIN_ROOT}/bin/.
+    assert.match(text, /\$\{PLUGIN_ROOT\}\/skills\/rad-orchestration\/scripts\/radorch\.mjs/);
     assert.match(text, new RegExp(`\\bui\\s+${verb}\\b`));
   });
 }

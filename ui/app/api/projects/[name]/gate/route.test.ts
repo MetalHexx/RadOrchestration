@@ -1,4 +1,4 @@
-import { test, mock, before, after } from 'node:test';
+import { test, mock, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
 import path from 'node:path';
@@ -27,6 +27,8 @@ const MINIMAL_V5_STATE = JSON.stringify({
 });
 
 let tmpDir = '';
+const FAKE_CLI_PATH = '/fake/install/skills/rad-orchestration/scripts/radorch.mjs';
+const ORIGINAL_CLI_PATH = process.env.RADORCH_CLI_PATH;
 
 before(async () => {
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'gate-route-test-'));
@@ -37,6 +39,15 @@ before(async () => {
 
 after(async () => {
   if (tmpDir) await rm(tmpDir, { recursive: true, force: true });
+});
+
+beforeEach(() => {
+  process.env.RADORCH_CLI_PATH = FAKE_CLI_PATH;
+});
+
+afterEach(() => {
+  if (ORIGINAL_CLI_PATH === undefined) delete process.env.RADORCH_CLI_PATH;
+  else process.env.RADORCH_CLI_PATH = ORIGINAL_CLI_PATH;
 });
 
 function stubExecFile(stdout: string, exitCode = 0): { calls: Array<{ file: string; args: string[] }> } {
@@ -54,7 +65,7 @@ function stubExecFile(stdout: string, exitCode = 0): { calls: Array<{ file: stri
   return { calls };
 }
 
-test('gate route shells out to ~/.radorch/bin/radorch.mjs (FR-14, AD-8)', async (t) => {
+test('gate route shells out to RADORCH_CLI_PATH (FR-14, AD-8)', async (t) => {
   t.after(() => mock.restoreAll());
   // C1-adjusted envelope: framework wraps pipeline result in .data
   const { calls } = stubExecFile(JSON.stringify({ ok: true, data: { success: true, action: 'plan_approved', mutations_applied: [] }, exit_code: 0 }));
@@ -69,8 +80,7 @@ test('gate route shells out to ~/.radorch/bin/radorch.mjs (FR-14, AD-8)', async 
   const { file, args } = calls[0];
   // execFile is invoked with process.execPath (node) as the program.
   assert.ok(file === process.execPath || file === 'node', `unexpected exec program: ${file}`);
-  assert.ok(args[0].replace(/\\/g, '/').endsWith('/.radorch/bin/radorch.mjs'),
-    `argv[0] should be the radorch.mjs bin: ${args[0]}`);
+  assert.strictEqual(args[0], FAKE_CLI_PATH, `argv[0] should be RADORCH_CLI_PATH: ${args[0]}`);
   assert.deepEqual(args.slice(1, 5), ['gate', 'approve', 'plan', '--project-dir']);
   assert.ok(args[5] && args[5].endsWith('PROJECT-X'), `--project-dir target should resolve PROJECT-X: ${args[5]}`);
 });
@@ -99,6 +109,19 @@ test('gate route returns 500 when CLI stdout is unparseable (DD-4)', async (t) =
     });
     const res = await POST(req, { params: Promise.resolve({ name: 'PROJECT-X' }) });
     assert.strictEqual(res.status, 500);
+  });
+});
+
+test('gate route returns 500 with clear error when RADORCH_CLI_PATH is missing', async () => {
+  delete process.env.RADORCH_CLI_PATH;
+  await withHomedir(tmpDir, async () => {
+    const req = new Request('http://localhost/api/projects/PROJECT-X/gate', {
+      method: 'POST', body: JSON.stringify({ event: 'plan_approved' }),
+    });
+    const res = await POST(req, { params: Promise.resolve({ name: 'PROJECT-X' }) });
+    assert.strictEqual(res.status, 500);
+    const body = await res.json();
+    assert.match(JSON.stringify(body), /RADORCH_CLI_PATH/);
   });
 });
 

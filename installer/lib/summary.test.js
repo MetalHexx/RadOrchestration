@@ -130,25 +130,33 @@ describe('renderPostInstallSummary', () => {
     assert.ok(output.includes('2.'), 'output should contain step "2."');
   });
 
-  it('includes platform-specific installation guidance (not broken setx)', () => {
+  it('includes platform-specific installation guidance pointing at the in-skill CLI', () => {
     const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
     if (process.platform === 'win32') {
       assert.ok(
         output.includes('npm install -g rad-orchestration'),
-        'win32 output should contain npm install -g guidance (FR-21, DD-1)'
+        'win32 output should contain npm install -g guidance'
       );
       assert.ok(
-        output.includes('node ~/.radorch/bin/radorch.mjs'),
-        'win32 output should contain direct-invoke alternative (DD-1)'
+        output.includes('skills\\rad-orchestration\\scripts\\radorch.mjs'),
+        'win32 output should reference the in-skill CLI path'
       );
       assert.ok(
         !output.includes('setx PATH'),
-        'win32 output should NOT contain broken setx instruction (FR-21)'
+        'win32 output should NOT contain broken setx instruction'
+      );
+      assert.ok(
+        !output.includes('\\.radorch\\bin\\'),
+        'win32 output must not reference the retired ~/.radorch/bin/ path'
       );
     } else {
       assert.ok(
-        output.includes('export PATH="$HOME/.radorch/bin:$PATH"'),
-        'linux/darwin output should contain export PATH with $HOME/.radorch/bin'
+        output.includes('skills/rad-orchestration/scripts/radorch.mjs'),
+        'linux/darwin output should reference the in-skill CLI path'
+      );
+      assert.ok(
+        !output.includes('$HOME/.radorch/bin'),
+        'linux/darwin output must not reference the retired ~/.radorch/bin/ path'
       );
     }
   });
@@ -217,7 +225,7 @@ describe('renderPartialSuccessSummary', () => {
 // --- Windows platform guidance tests (FR-21, DD-1) ---
 
 describe('renderPostInstallSummary Windows branch', () => {
-  it('Windows summary points to npm install -g, not setx (FR-21, DD-1)', () => {
+  it('Windows summary points to npm install -g and the in-skill CLI, not setx or ~/.radorch/bin/', () => {
     const lines = [];
     const origWrite = console.log;
     const origPlatform = process.platform;
@@ -231,10 +239,12 @@ describe('renderPostInstallSummary Windows branch', () => {
     }
     const out = lines.join('\n');
     assert.ok(out.includes('npm install -g rad-orchestration'),
-      'Windows branch must surface the npm install -g guidance (DD-1)');
-    assert.ok(out.includes('node ~/.radorch/bin/radorch.mjs'),
-      'Windows branch must offer the direct-invoke alternative (DD-1)');
+      'Windows branch must surface the npm install -g guidance');
+    assert.ok(out.includes('skills\\rad-orchestration\\scripts\\radorch.mjs'),
+      'Windows branch must offer the in-skill direct-invoke alternative');
     assert.ok(!out.includes('setx PATH'),
-      'Windows branch must not print the broken setx instruction (FR-21)');
+      'Windows branch must not print the broken setx instruction');
+    assert.ok(!out.includes('\\.radorch\\bin\\'),
+      'Windows branch must not reference the retired ~/.radorch/bin/ path');
   });
 });

@@ -166,10 +166,11 @@ test('installer produces structurally-equivalent state vs plugin-bootstrap', asy
   });
 
   const pluginRoot = pluginRootFor('claude');
-  // installer/src/claude/ is a legacy-installer bundle: bin/ and ui/ live
-  // at top-level installer/src/, not under the per-harness folder. Pass
-  // sharedRoot explicitly so the manifest's bin/radorch.mjs entry resolves
-  // (same routing the installer flow does at index.js:175,188).
+  // installer/src/claude/ is a legacy-installer bundle: ui/ lives at top-level
+  // installer/src/, not under the per-harness folder. The CLI now ships
+  // inside skills/rad-orchestration/scripts/radorch.mjs (per-harness), so
+  // sharedRoot only routes ui/* — but we still pass it for the parallel
+  // ui/server.js resolution (same routing the installer flow does at index.js).
   const sharedRoot = path.join(__dirname, 'src');
   await runPluginBootstrap({ pluginRoot, sharedRoot, harness: 'claude' });
   const bootstrapRadorch = snapshotTree(path.join(homeB, '.radorch'));
