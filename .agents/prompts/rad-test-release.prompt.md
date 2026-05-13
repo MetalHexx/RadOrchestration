@@ -1,5 +1,5 @@
 ---
-description: "End-to-end test of the legacy rad-orchestration npm installer on a clean machine. Builds a tarball locally, installs it globally, runs the wizard, bootstraps, verifies the install via radorch-installer doctor and the sha256 manifest, and checks the post-install PATH guidance works."
+description: "End-to-end test of the legacy rad-orchestration npm installer on a clean machine. Builds a tarball locally, runs the installer via npx, verifies via doctor and the sha256 manifest, and checks post-install guidance."
 ---
 
 # Rad Test Release (Legacy Installer)
@@ -26,11 +26,7 @@ Record the answer as `{harness}`.
 
 `git rev-parse --show-toplevel` from anywhere inside this repo; record as `{repoRoot}`.
 
-## Step 3 — Remove any prior global install
-
-`npm list -g --depth=0`; if `rad-orchestration` appears, `npm uninstall -g rad-orchestration`. Verify removal with another `npm list -g`. Leave `~/.radorch/projects/` entirely intact.
-
-## Step 4 — Build adapter sources and emit shared assets
+## Step 3 — Build adapter sources and emit shared assets
 
 From `{repoRoot}`:
 
@@ -41,7 +37,7 @@ cd installer && node scripts/sync-source.js
 
 `sync-source.js` emits the shared `installer/src/ui/` once, then emits the CLI bundle per-harness into `installer/src/{harness}/skills/rad-orchestration/scripts/radorch.mjs` and augments every per-harness manifest with the corresponding entries.
 
-## Step 5 — Pack the installer
+## Step 4 — Pack the installer
 
 ```
 cd {repoRoot}/installer && npm pack
@@ -49,24 +45,23 @@ cd {repoRoot}/installer && npm pack
 
 Record the generated tarball filename as `{tarball}`.
 
-## Step 6 — Install globally from the tarball
+## Step 5 — Verify the tarball
 
 ```
-npm install -g {repoRoot}/installer/{tarball}
-radorch-installer --version
+npx {repoRoot}/installer/{tarball} --version
 ```
 
-## Step 7 — Run the wizard non-interactively
+## Step 6 — Run the wizard non-interactively
 
 ```
-radorch-installer --yes --harness {harness}
+npx {repoRoot}/installer/{tarball} --yes --harness {harness}
 ```
 
 > Expected: a single harness-checkbox question is bypassed by `--yes`; the wizard prints unconditional git/gh tooling-check warnings (FR-17) and runs the bootstrap; the install completes without errors.
 
-## Step 8 — Verify the install
+## Step 7 — Verify the install
 
-Run `radorch-installer doctor`. Expected: all checks pass.
+Run `npx {repoRoot}/installer/{tarball} doctor`. Expected: all checks pass.
 
 Verify the CLI landed inside the rad-orchestration skill (the harness root is `~/.claude` for `claude`, `~/.copilot` for the Copilot harnesses):
 - POSIX: `test -x ~/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs && wc -c ~/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs` — file is non-empty and executable.
@@ -76,11 +71,11 @@ Verify the UI landed: `ls ~/.radorch/ui/` shows the Next.js standalone bundle (s
 
 Verify projects survived: `ls ~/.radorch/projects/` matches its pre-install contents byte-for-byte.
 
-## Step 9 — Verify the sha256 manifest
+## Step 8 — Verify the sha256 manifest
 
 Open `{repoRoot}/installer/src/{bundleDir}/manifests/v{version}.json` (`bundleDir` matches the harness — `claude`, `copilot-vscode`, or `copilot-cli`). Confirm: the CLI entry `skills/rad-orchestration/scripts/radorch.mjs` is present, plus `ui/**`, `agents/*`, and `skills/*` entries; the three resurrected `rad-ui-*` skills appear under `skills/`; every entry carries a 64-char `sha256` field; and no `bin/radorch.mjs` entry remains.
 
-## Step 10 — Verify the post-install guidance
+## Step 9 — Verify the post-install guidance
 
 Confirm the summary now points at the in-skill CLI path (not the retired `~/.radorch/bin/`):
 - POSIX: `node $HOME/.claude/skills/rad-orchestration/scripts/radorch.mjs <subcmd>` (or the matching harness root).
@@ -88,20 +83,19 @@ Confirm the summary now points at the in-skill CLI path (not the retired `~/.rad
 
 Both branches must NOT mention `~/.radorch/bin/` or `setx PATH`.
 
-## Step 11 — Report results
+## Step 10 — Report results
 
 Report:
 - Harness tested
-- Versions: tarball version, radorch-installer --version, ~/.radorch/install.json package_version
+- Versions: tarball version, `npx {tarball} --version`, ~/.radorch/install.json package_version
 - Pass/fail per check
 - Verbatim error output on any failure
 
-## Step 12 — Cleanup (ask first)
+## Step 11 — Cleanup (ask first)
 
-Ask the user whether to keep or remove the local tarball and the global install. On yes-to-remove:
+Ask the user whether to keep or remove the local tarball. On yes-to-remove:
 
 ```
-npm uninstall -g rad-orchestration
 cd {repoRoot}/installer && Remove-Item -Force {tarball}
 ```
 
