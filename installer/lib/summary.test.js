@@ -134,10 +134,6 @@ describe('renderPostInstallSummary', () => {
     const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
     if (process.platform === 'win32') {
       assert.ok(
-        output.includes('npm install -g rad-orchestration'),
-        'win32 output should contain npm install -g guidance'
-      );
-      assert.ok(
         output.includes('skills\\rad-orchestration\\scripts\\radorch.mjs'),
         'win32 output should reference the in-skill CLI path'
       );
@@ -225,7 +221,7 @@ describe('renderPartialSuccessSummary', () => {
 // --- Windows platform guidance tests (FR-21, DD-1) ---
 
 describe('renderPostInstallSummary Windows branch', () => {
-  it('Windows summary points to npm install -g and the in-skill CLI, not setx or ~/.radorch/bin/', () => {
+  it('Windows summary points to the in-skill CLI, not npm install -g, setx, or ~/.radorch/bin/', () => {
     const lines = [];
     const origWrite = console.log;
     const origPlatform = process.platform;
@@ -238,10 +234,10 @@ describe('renderPostInstallSummary Windows branch', () => {
       Object.defineProperty(process, 'platform', { value: origPlatform });
     }
     const out = lines.join('\n');
-    assert.ok(out.includes('npm install -g rad-orchestration'),
-      'Windows branch must surface the npm install -g guidance');
     assert.ok(out.includes('skills\\rad-orchestration\\scripts\\radorch.mjs'),
       'Windows branch must offer the in-skill direct-invoke alternative');
+    assert.ok(!out.includes('npm install -g rad-orchestration'),
+      'Windows branch must not surface the global install guidance (npx-only)');
     assert.ok(!out.includes('setx PATH'),
       'Windows branch must not print the broken setx instruction');
     assert.ok(!out.includes('\\.radorch\\bin\\'),

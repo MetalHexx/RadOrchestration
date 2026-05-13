@@ -1,6 +1,6 @@
 ---
 name: rad-build-harness
-description: 'End-to-end installer test for a contributor: builds a local tarball from installer/, installs it globally, runs the radorch installer for the chosen harness, bootstraps the plugin, and verifies via radorch doctor and sha256 manifest check. Use when asked to "test the installer", "build and install the harness", or "verify the global install".'
+description: 'End-to-end installer test for a contributor: builds a local tarball from installer/, installs it globally, runs the radorch-installer binary for the chosen harness, bootstraps the plugin, and verifies via radorch-installer doctor and sha256 manifest check. Use when asked to "test the installer", "build and install the harness", or "verify the global install".'
 ---
 
 # rad-build-harness
@@ -15,13 +15,13 @@ Run the real installer end-to-end from local source. This skill selects a harnes
 
 - Testing a local build of the installer before publishing.
 - Verifying that a harness change propagates end-to-end through the pack → install → bootstrap path.
-- Confirming `radorch doctor` reports a clean state after a fresh or upgraded install.
+- Confirming `radorch-installer doctor` reports a clean state after a fresh or upgraded install.
 
 ## Prerequisites
 
 - Node.js and npm installed.
 - Working directory is anywhere inside the repo clone (the skill resolves repo root itself).
-- The `npm install -g` step in this workflow puts `radorch` on `PATH` automatically (via the package's `bin` entry); bare `radorch` commands below depend on that.
+- The `npm install -g` step in this workflow puts `radorch-installer` on `PATH` automatically (via the package's `bin` entry); bare `radorch-installer` commands below depend on that.
 
 ## Workflow
 
@@ -82,7 +82,7 @@ npm install -g {repoRoot}/installer/{tarball}
 Confirm the install:
 
 ```bash
-radorch --version
+radorch-installer --version
 ```
 
 ### 6. Run the installer non-interactively
@@ -90,7 +90,7 @@ radorch --version
 Tests the wizard surface: the single harness-question prompt and the canonical `orchestration.yml` write.
 
 ```bash
-radorch --yes --harness {harness}
+radorch-installer --yes --harness {harness}
 ```
 
 > Expected: installer completes without interactive prompts and exits with code 0.
@@ -111,7 +111,7 @@ Locate the bundled plugin root for the harness. The installer unpacks to a globa
 Run plugin-bootstrap with `--force` to defeat the version-equal short-circuit:
 
 ```bash
-radorch plugin-bootstrap --force --harness {harness} --plugin-root {repoRoot}/installer/src/{bundleDir}
+radorch-installer plugin-bootstrap --force --harness {harness} --plugin-root {repoRoot}/installer/src/{bundleDir}
 ```
 
 > `--force` ensures the bootstrap runs even when the delivering version equals the installed version. This is required on repeat test runs.
@@ -121,8 +121,8 @@ radorch plugin-bootstrap --force --harness {harness} --plugin-root {repoRoot}/in
 Run all three checks and report any failure:
 
 ```bash
-radorch --version
-radorch doctor
+radorch-installer --version
+radorch-installer doctor
 ```
 
 **sha256 manifest check:** The manifest catalog is written into the bundled plugin payload during `npm pack` (via the `prepack` lifecycle hook). Verify that the manifest file for the tested version exists and that every entry carries a `sha256` field.
@@ -141,7 +141,7 @@ Open the file and confirm:
 
 Report:
 - The version tested (from Step 5).
-- Whether `radorch doctor` passed or flagged issues.
+- Whether `radorch-installer doctor` passed or flagged issues.
 - Whether the sha256 manifest check passed.
 - Any step that failed, with the verbatim error output.
 

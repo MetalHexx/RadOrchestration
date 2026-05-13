@@ -154,7 +154,7 @@ For the **first release of a plugin version** (and at the GA boundary), include 
 > /plugin install rad-orchestration
 > ```
 >
-> The plugin install includes the orchestration runtime, the dashboard UI, and three UI-control skills (`rad-ui-start`, `rad-ui-stop`, `rad-ui-status`). Existing `npx radorch` users keep their current setup; both channels remain supported.
+> The plugin install includes the orchestration runtime, the dashboard UI, and three UI-control skills (`rad-ui-start`, `rad-ui-stop`, `rad-ui-status`). Existing `npx rad-orchestration` users keep their current setup; both channels remain supported.
 
 Skip the callout in patch releases that don't change the install experience.
 

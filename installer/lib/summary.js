@@ -47,12 +47,9 @@ export function renderPostInstallSummary(config, copyResults, configPath) {
 
   // The CLI now ships inside the rad-orchestration skill — the canonical
   // invocation is through the harness's slash commands. For direct CLI use
-  // outside the harness, install via npm (puts `radorch` on PATH) or invoke
-  // the in-skill script with node.
+  // outside the harness, invoke the in-skill script with node.
   if (process.platform === 'win32') {
     console.log('  ' + THEME.body('To invoke the CLI directly:'));
-    console.log('     ' + THEME.command('npm install -g rad-orchestration') + THEME.body('  (puts `radorch` on PATH)'));
-    console.log('     ' + THEME.body('or:'));
     console.log('     ' + THEME.command('node %USERPROFILE%\\.claude\\skills\\rad-orchestration\\scripts\\radorch.mjs <subcmd>'));
   } else {
     console.log('  ' + THEME.body('To invoke the CLI directly:'));

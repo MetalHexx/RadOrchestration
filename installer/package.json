@@ -29,7 +29,7 @@
     "prepack": "node scripts/sync-source.js"
   },
   "bin": {
-    "radorch": "./index.js"
+    "radorch-installer": "./index.js"
   },
   "files": [
     "index.js",

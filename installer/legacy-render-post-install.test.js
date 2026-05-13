@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 // we import dynamically only during test execution, not at module load time.
 
 describe('renderPostInstall (legacy installer)', () => {
-  it('emits npm install -g and in-skill direct invoke on Windows, no setx PATH', async () => {
+  it('emits in-skill direct invoke on Windows, no npm install -g, no setx PATH', async () => {
     // Defer the import until test time to avoid module-load errors
     const { renderPostInstall } = await import('./index.js');
 
@@ -40,10 +40,10 @@ describe('renderPostInstall (legacy installer)', () => {
       const output = logs.join('\n')
         .replace(/\x1b\[[0-9;]*m/g, '');
 
-      assert.match(
+      assert.doesNotMatch(
         output,
         /npm install -g rad-orchestration/,
-        'Windows output must suggest npm install -g rad-orchestration'
+        'Windows output must NOT suggest npm install -g (npx-only)'
       );
 
       assert.match(

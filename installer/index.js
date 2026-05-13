@@ -99,8 +99,6 @@ export function renderPostInstall(cfg, orchYmlPath) {
 
   if (process.platform === 'win32') {
     console.log('  ' + THEME.body('To invoke the CLI directly:'));
-    console.log('     ' + THEME.command('npm install -g rad-orchestration') + THEME.body('  (puts `radorch` on PATH)'));
-    console.log('     ' + THEME.body('or:'));
     for (const h of cfg.harnesses) {
       const harnessRoot = h === 'claude' ? '%USERPROFILE%\\.claude' : '%USERPROFILE%\\.copilot';
       console.log('     ' + THEME.command(`node ${harnessRoot}\\skills\\rad-orchestration\\scripts\\radorch.mjs <subcmd>`));

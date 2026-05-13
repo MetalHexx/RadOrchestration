@@ -1,5 +1,5 @@
 ---
-description: "End-to-end test of the legacy rad-orchestration npm installer on a clean machine. Builds a tarball locally, installs it globally, runs the wizard, bootstraps, verifies the install via radorch doctor and the sha256 manifest, and checks the post-install PATH guidance works."
+description: "End-to-end test of the legacy rad-orchestration npm installer on a clean machine. Builds a tarball locally, installs it globally, runs the wizard, bootstraps, verifies the install via radorch-installer doctor and the sha256 manifest, and checks the post-install PATH guidance works."
 ---
 
 # Rad Test Release (Legacy Installer)
@@ -53,20 +53,20 @@ Record the generated tarball filename as `{tarball}`.
 
 ```
 npm install -g {repoRoot}/installer/{tarball}
-radorch --version
+radorch-installer --version
 ```
 
 ## Step 7 — Run the wizard non-interactively
 
 ```
-radorch --yes --harness {harness}
+radorch-installer --yes --harness {harness}
 ```
 
 > Expected: a single harness-checkbox question is bypassed by `--yes`; the wizard prints unconditional git/gh tooling-check warnings (FR-17) and runs the bootstrap; the install completes without errors.
 
 ## Step 8 — Verify the install
 
-Run `radorch doctor`. Expected: all checks pass.
+Run `radorch-installer doctor`. Expected: all checks pass.
 
 Verify the CLI landed inside the rad-orchestration skill (the harness root is `~/.claude` for `claude`, `~/.copilot` for the Copilot harnesses):
 - POSIX: `test -x ~/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs && wc -c ~/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs` — file is non-empty and executable.
@@ -84,7 +84,7 @@ Open `{repoRoot}/installer/src/{bundleDir}/manifests/v{version}.json` (`bundleDi
 
 Confirm the summary now points at the in-skill CLI path (not the retired `~/.radorch/bin/`):
 - POSIX: `node $HOME/.claude/skills/rad-orchestration/scripts/radorch.mjs <subcmd>` (or the matching harness root).
-- Windows: `node %USERPROFILE%\.claude\skills\rad-orchestration\scripts\radorch.mjs <subcmd>` plus the `npm install -g rad-orchestration` alternative.
+- Windows: `node %USERPROFILE%\.claude\skills\rad-orchestration\scripts\radorch.mjs <subcmd>`.
 
 Both branches must NOT mention `~/.radorch/bin/` or `setx PATH`.
 
@@ -92,7 +92,7 @@ Both branches must NOT mention `~/.radorch/bin/` or `setx PATH`.
 
 Report:
 - Harness tested
-- Versions: tarball version, radorch --version, ~/.radorch/install.json package_version
+- Versions: tarball version, radorch-installer --version, ~/.radorch/install.json package_version
 - Pass/fail per check
 - Verbatim error output on any failure
 

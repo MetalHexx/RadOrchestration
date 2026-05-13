@@ -10,11 +10,7 @@ The dashboard is a great way to manage all your planned work or read information
 
 ## Run the Dashboard
 
-On a Claude Code plugin install, the dashboard is available through the plugin's slash-command surface. On a legacy npm install, run the dashboard from your terminal:
-
-```bash
-radorch dashboard
-```
+On a Claude Code plugin install, the dashboard is available through the plugin's slash-command surface. Run `/rad-ui-start` to launch the dashboard, and `/rad-ui-stop` to stop it. The dashboard runs on a local server and opens in your default browser automatically.  Check the status of the UI with `/rad-ui-status`.
 
 
 ## Features
