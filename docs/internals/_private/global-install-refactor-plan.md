@@ -1,5 +1,7 @@
 # Global Install Refactor — Program Plan
 
+> **Addendum (2026-05-12) — `RADORCH_HOME` was dropped.** The env-var override referenced throughout this document was not adopted during implementation. The install root is fixed at `~/.radorch/` with no override mechanism. References to `RADORCH_HOME` and `$RADORCH_HOME` below reflect the original pre-decision design and should be read as historical record, not as current contract.
+
 **Status:** Brainstorming complete through Wave 7 (UI registry-aware). Wave 8+ open. Per-wave lock-ins are captured in this doc; no separate per-wave BRAINSTORMING.md files.
 **Audience:** Maintainers planning the refactor.
 **Scope:** Multi-wave program — moves rad-orchestration from per-repository installs to a single global install that drives multiple repos and "workspaces" of related repos. Replaces the smattering of skill-bound scripts with a unified `radorch` CLI.

@@ -7,7 +7,7 @@ export interface WhereName {
 
 export const WHERE_NAMES: Record<string, WhereName> = {
   projects: {
-    description: 'Global projects folder ($RADORCH_HOME/projects).',
+    description: 'Global projects folder (~/.radorch/projects).',
     resolve: () => installPaths(resolveInstallRoot()).projectsDir,
   },
   registry: {
@@ -19,7 +19,7 @@ export const WHERE_NAMES: Record<string, WhereName> = {
     resolve: () => installPaths(resolveInstallRoot()).configYml,
   },
   root: {
-    description: 'RADORCH_HOME (radorch install root).',
+    description: 'Radorch install root (~/.radorch).',
     resolve: () => installPaths(resolveInstallRoot()).root,
   },
   'install-json': {

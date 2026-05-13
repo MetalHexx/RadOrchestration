@@ -36,17 +36,3 @@ test('resolveProjectDir composes ~/.radorch/projects/<name>', async () => {
   const m = await import('./path-resolver.ts');
   assert.equal(m.resolveProjectDir('MY-PROJ'), path.join(os.homedir(), '.radorch', 'projects', 'MY-PROJ'));
 });
-
-test('RADORCH_HOME is ignored entirely (FR-12)', async () => {
-  const prior = process.env.RADORCH_HOME;
-  process.env.RADORCH_HOME = '/some/legacy/override';
-  try {
-    const m = await import('./path-resolver.ts');
-    const expected = path.join(os.homedir(), '.radorch', 'projects');
-    assert.equal(m.getProjectsRoot(), expected);
-    assert.notEqual(m.getProjectsRoot(), '/some/legacy/override/projects');
-  } finally {
-    if (prior === undefined) delete process.env.RADORCH_HOME;
-    else process.env.RADORCH_HOME = prior;
-  }
-});
