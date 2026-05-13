@@ -265,7 +265,7 @@ export interface PipelineState {
 export interface PathContext {
   scriptsDir: string;      // absolute path of `skills/rad-orchestration/scripts/`
   templatesDir: string;    // absolute path of `skills/rad-orchestration/templates/`
-  orchRoot: string;        // basename of the orchRoot directory
+  orchRoot: string;        // absolute path to the orchestration install root (parent of skills/)
 }
 
 // Pipeline Result (CLI output contract — SACRED, no changes)

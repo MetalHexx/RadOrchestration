@@ -28,7 +28,7 @@ const FIXTURE_SCRIPTS_DIR = path.resolve(__dirname, '..', '..');
 export const TEST_PATH_CONTEXT: PathContext = {
   scriptsDir: FIXTURE_SCRIPTS_DIR,
   templatesDir: path.resolve(FIXTURE_SCRIPTS_DIR, '..', 'templates'),
-  orchRoot: path.basename(path.resolve(FIXTURE_SCRIPTS_DIR, '..', '..', '..')),
+  orchRoot: path.resolve(FIXTURE_SCRIPTS_DIR, '..', '..', '..'),
 };
 
 export const DEFAULT_CONFIG: OrchestrationConfig = {

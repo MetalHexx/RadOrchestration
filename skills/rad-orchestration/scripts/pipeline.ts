@@ -22,7 +22,7 @@ import type { EventContext, IOAdapter, PathContext, PipelineResult } from './lib
 function resolvePathContext(): PathContext {
   const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
   const templatesDir = path.resolve(scriptsDir, '..', 'templates');
-  const orchRoot = path.basename(path.resolve(scriptsDir, '..', '..', '..'));
+  const orchRoot = path.resolve(scriptsDir, '..', '..', '..');
   return { scriptsDir, templatesDir, orchRoot };
 }
 

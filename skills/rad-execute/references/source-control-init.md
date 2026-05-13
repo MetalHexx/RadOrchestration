@@ -56,9 +56,9 @@ Use `askQuestions` tool when auto_commit or auto_pr are set to `"ask"` to prompt
 After resolving all fields, fire the `source_control_init` pipeline event:
 
 ```
-node {repoRoot}/{orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event source_control_init --project-dir "{projectDir}" --branch "{branch}" --base-branch "{baseBranch}" --worktree-path "{worktreePath}" --auto-commit "{resolvedAutoCommit}" --auto-pr "{resolvedAutoPr}" --remote-url "{remoteUrl}" --compare-url "{compareUrl}"
+node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event source_control_init --project-dir "{projectDir}" --branch "{branch}" --base-branch "{baseBranch}" --worktree-path "{worktreePath}" --auto-commit "{resolvedAutoCommit}" --auto-pr "{resolvedAutoPr}" --remote-url "{remoteUrl}" --compare-url "{compareUrl}"
 ```
 
-`{repoRoot}` and `{orchRoot}` come from the `gather-context.js` output. Omit the `--remote-url` and `--compare-url` flags when their resolved values are empty.
+`{orchRoot}` is the absolute install root from `gather-context.js` output. Omit the `--remote-url` and `--compare-url` flags when their resolved values are empty.
 
 Verify the response contains `"success": true`. If it fails, show the error to the user and stop — do not proceed to execute the pipeline.

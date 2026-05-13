@@ -28,10 +28,10 @@ import type {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/extra-high.yml');
 const PROJECT_DIR = '/tmp/test-project/DAG-TEST';
-// orchRoot is the basename of the install folder (e.g. ".claude" / ".github"
-// / the worktree name in dev), derived from filesystem geometry and threaded
-// in via PathContext. TEST_PATH_CONTEXT computes it once from the fixture
-// file's own location for source-mode test runs.
+// orchRoot is the absolute path to the install root (parent of skills/),
+// derived from filesystem geometry and threaded in via PathContext.
+// TEST_PATH_CONTEXT computes it once from the fixture file's own location
+// for source-mode test runs.
 const EXPECTED_ORCH_ROOT = TEST_PATH_CONTEXT.orchRoot;
 
 const DEFAULT_CONFIG: OrchestrationConfig = {

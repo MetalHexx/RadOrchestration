@@ -28,7 +28,7 @@ const SCRIPTS_DIR = path.resolve(path.dirname(__filename), '..');
 const TEST_PATH_CONTEXT: PathContext = {
   scriptsDir: SCRIPTS_DIR,
   templatesDir: path.resolve(SCRIPTS_DIR, '..', 'templates'),
-  orchRoot: path.basename(path.resolve(SCRIPTS_DIR, '..', '..', '..')),
+  orchRoot: path.resolve(SCRIPTS_DIR, '..', '..', '..'),
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
