@@ -5,7 +5,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { runAdapterPlugin } from './run-plugin.js';
 import { adapter as claudeAdapter } from './claude/adapter.js';
-import { adapter as copilotCliAdapter } from './copilot-cli/adapter.js';
 
 test('emits plugin layout for claude under expected output path', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-claude-'));
@@ -40,20 +39,6 @@ test('emits plugin layout for claude under expected output path', async () => {
   // Plugin.json version is overwritten with the version arg
   const p = JSON.parse(fs.readFileSync(path.join(out, '.claude-plugin', 'plugin.json'), 'utf8'));
   assert.equal(p.version, '1.1.0');
-});
-
-test('copilot-cli emits to its own gitignored marketplaces folder', async () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-copilot-'));
-  const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'rp-can-'));
-  // empty canonical sources are tolerated (skills/hooks dirs absent)
-  fs.mkdirSync(path.join(canonical, 'plugin', '.claude-plugin'), { recursive: true });
-  fs.writeFileSync(
-    path.join(canonical, 'plugin', '.claude-plugin', 'plugin.json'),
-    JSON.stringify({ name: 'rad-orchestration', version: '0.0.0' }),
-  );
-  await runAdapterPlugin(copilotCliAdapter, { canonicalRoot: canonical, outputRoot: tmp, version: '1.1.0' });
-  const out = path.join(tmp, 'cli', 'dist', 'marketplaces', 'copilot-cli', 'plugins', 'rad-orchestration');
-  assert.ok(fs.existsSync(path.join(out, '.claude-plugin', 'plugin.json')));
 });
 
 test('plugin emit retains rad-ui-{start,stop,status} (counterpart to run.js skip)', async () => {

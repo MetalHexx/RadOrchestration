@@ -195,7 +195,11 @@ async function main() {
   });
   const adapters = await discoverAdapters(path.join(repoRoot, 'adapters'));
   await step('adapters-plugin', async () => {
-    for (const a of adapters) {
+    // The plugin channel is Claude-only; copilot harnesses have no marketplace
+    // concept. Running all adapters here would produce ghost output trees under
+    // cli/dist/marketplaces/copilot-{vscode,cli}/ that are never consumed.
+    const claudeAdapters = adapters.filter(a => a.name === 'claude');
+    for (const a of claudeAdapters) {
       await runAdapterPlugin(a, { canonicalRoot: repoRoot, outputRoot: repoRoot, version });
     }
   });
