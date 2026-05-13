@@ -54,19 +54,12 @@ export async function runStart(opts: {
       `every port ${PORT_LO}-${PORT_HI} is taken (tried ${tried.join(', ')}); free one and retry`,
     );
   }
-  // UI dir resolution contract (AD-12, FR-17): in the deployed plugin Claude
-  // exports CLAUDE_PLUGIN_ROOT pointing at the plugin cache dir; the bundled
-  // UI lives at <CLAUDE_PLUGIN_ROOT>/ui. RADORCH_UI_DIR is the explicit
-  // override (used by tests). The argv[1]-derived fallback covers the case
-  // where the bundled CLI is invoked directly without CLAUDE_PLUGIN_ROOT
-  // exported (e.g., the integration test in P05-T02 spawns the bundle from
-  // its committed location). The CLI bundle lives at
-  // <pluginRoot>/skills/rad-orchestration/scripts/radorch.mjs, so the UI
-  // sibling sits three directories up from the script's dirname.
+  // UI dir resolution: the bootstrap (SessionStart hook) copies ui/ from the
+  // plugin cache into ~/.radorch/ui/ via the manifest routing in route.ts.
+  // Always launch from ~/.radorch/ui so the UI process is independent of the
+  // plugin cache location. RADORCH_UI_DIR is the explicit override for tests.
   const uiDir = opts.env['RADORCH_UI_DIR']
-    ?? (opts.env['CLAUDE_PLUGIN_ROOT']
-      ? path.join(opts.env['CLAUDE_PLUGIN_ROOT'], 'ui')
-      : path.resolve(path.dirname(process.argv[1] ?? ''), '..', '..', '..', 'ui'));
+    ?? path.join(resolveInstallRoot(), 'ui');
   const serverJs = path.join(uiDir, 'server.js');
   const spawnFn = opts._spawn ?? defaultSpawn;
   // In plugin mode, ~/.radorch is the canonical workspace and orch root in
