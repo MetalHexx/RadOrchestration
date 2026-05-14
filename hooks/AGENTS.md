@@ -2,6 +2,13 @@
 
 Claude Code hook configuration for the `rad-orchestration` plugin. Canonical files at the repo root are wholesale-copied into the plugin payload at build time (`adapters/run-plugin.js`) and ship inside the plugin tarball under `hooks/`.
 
+The plugin registers two hooks with distinct roles:
+
+| Hook | Event | Script | Lifecycle |
+|---|---|---|---|
+| Bootstrap | `UserPromptSubmit` | `bootstrap-then-uninstall.mjs` | One fire per install/update, then self-uninstalls |
+| Drift detection | `SessionStart` | `drift-check.mjs` | Persistent — fires once per Claude Code session |
+
 ## How the bootstrap hook works
 
 The plugin needs to hydrate `~/.radorch/` (the orchestration system's user-data root) once after install and once after every `/plugin update`. After that initial run, the user-data root is stable and there's no further setup work — the hook should disappear and never fire again until the next install or update brings work to do.
@@ -39,6 +46,23 @@ npm run build:plugin → test once → rebuild → test again
 
 For npm-published plugins this caveat does not apply — the cache directory under `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/` is user-owned and disposable.
 
+## Drift detection
+
+`rad-orchestration` ships through two independent channels — the Claude Code plugin (`/plugin update rad-orchestration`) and the legacy installer (`npx rad-orchestration`). When the user updates one channel without the other, `~/.radorch/install.json` and the plugin's bundled `radorch.mjs` fall out of sync. The bundled CLI's `checkVersionSkew` (see `cli/src/lib/install-json.ts`) hard-halts when orchestration is actually invoked against drifted state — that's the safety net.
+
+`drift-check.mjs` is the **soft pre-warning**. It runs as a `SessionStart` hook (matchers: `startup` / `resume` / `clear` / `compact` — no `matcher` field means it fires on all four) and compares two version sources:
+
+- `${CLAUDE_PLUGIN_ROOT}/package.json` → the version the plugin payload is delivering.
+- `~/.radorch/install.json` → the version the user-data root was last bootstrapped to.
+
+On drift, the hook writes a plain-stdout line of the form `[rad-orchestration drift] …` and exits 0. Per the Anthropic hook contract, plain stdout on a SessionStart hook is injected into Claude's conversation context before the first prompt, so Claude reads the drift notice and surfaces it organically to the user on their first message.
+
+On no drift (or any error — missing env var, missing package.json, missing install.json, malformed JSON) the hook stays silent and exits 0. Drift detection is informational and never blocks.
+
+Unlike the bootstrap hook, `drift-check.mjs` **never self-uninstalls**. It needs to fire every session so it can catch drift introduced between sessions (typically by an out-of-Claude installer run).
+
+The companion installer-side check lives in `installer/lib/drift-check.js`. It reads `~/.claude/plugins/installed_plugins.json` (Claude Code's plugin registry) and warns at the moment of drift creation — when the installer just bootstrapped a version that doesn't match the registered plugin version. Both ends warn so the user sees the message whether they notice the installer's post-install output, the SessionStart context, or both.
+
 ## Debugging
 
 When the bootstrap isn't running or `~/.radorch/` isn't hydrating as expected, check:
@@ -56,7 +80,9 @@ The wrapper itself emits stderr only on errors, with the prefix `[rad-orchestrat
 
 | File | Purpose |
 |---|---|
-| `hooks.json` | Hook registration. Single `UserPromptSubmit` entry pointing at the wrapper. |
-| `bootstrap-then-uninstall.mjs` | Wrapper script. Runs `plugin-bootstrap`, then removes itself from `hooks.json`. |
+| `hooks.json` | Hook registration. `UserPromptSubmit` → `bootstrap-then-uninstall.mjs`, `SessionStart` → `drift-check.mjs`. |
+| `bootstrap-then-uninstall.mjs` | Wrapper script. Runs `plugin-bootstrap`, then removes its own `UserPromptSubmit` entry from `hooks.json` (leaves `SessionStart` intact). |
+| `drift-check.mjs` | SessionStart hook. Compares plugin version against `~/.radorch/install.json` and emits a plain-stdout drift notice on mismatch. |
 | `hooks.test.mjs` | Asserts the canonical `hooks.json` shape. Stripped from the plugin payload at adapter build time. |
+| `drift-check.test.mjs` | Unit tests for `drift-check.mjs`. Stripped from the plugin payload at adapter build time. |
 | `AGENTS.md` | This file. |

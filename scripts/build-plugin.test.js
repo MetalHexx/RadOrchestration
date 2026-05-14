@@ -43,6 +43,7 @@ test('validatePluginTree: detects missing required artifacts', async () => {
   assert.ok(empty.missing.includes('ui/server.js'));
   assert.ok(empty.missing.includes('hooks/hooks.json'));
   assert.ok(empty.missing.includes('hooks/bootstrap-then-uninstall.mjs'));
+  assert.ok(empty.missing.includes('hooks/drift-check.mjs'));
   assert.ok(empty.missing.some((m) => m.startsWith('skills/rad-ui-start/')));
 });
 
@@ -64,6 +65,7 @@ test('validatePluginTree: passes on a complete fixture', async () => {
   writeF('ui/server.js');
   writeF('hooks/hooks.json', '{}');
   writeF('hooks/bootstrap-then-uninstall.mjs');
+  writeF('hooks/drift-check.mjs');
   writeF('hooks/session-start.sh');
   writeF('hooks/session-start.ps1');
   // Representative canonical skills (full enumeration)
@@ -104,6 +106,7 @@ test('validatePluginTree requires skills/rad-orchestration/scripts/pipeline.js',
   writeF('ui/server.js');
   writeF('hooks/hooks.json', '{}');
   writeF('hooks/bootstrap-then-uninstall.mjs');
+  writeF('hooks/drift-check.mjs');
   writeF('hooks/session-start.sh');
   writeF('hooks/session-start.ps1');
   for (const s of ['rad-orchestration', 'rad-plan', 'rad-ui-start']) writeF(`skills/${s}/SKILL.md`);
@@ -142,6 +145,7 @@ test('validatePluginTree requires manifests/v<version>.json', async () => {
   writeF('ui/server.js');
   writeF('hooks/hooks.json', '{}');
   writeF('hooks/bootstrap-then-uninstall.mjs');
+  writeF('hooks/drift-check.mjs');
   writeF('hooks/session-start.sh');
   writeF('hooks/session-start.ps1');
   for (const s of ['rad-orchestration', 'rad-plan', 'rad-ui-start']) writeF(`skills/${s}/SKILL.md`);
@@ -181,6 +185,7 @@ test('happy-path: validatePluginTree passes when pipeline.js and manifest both s
   writeF('ui/server.js');
   writeF('hooks/hooks.json', '{}');
   writeF('hooks/bootstrap-then-uninstall.mjs');
+  writeF('hooks/drift-check.mjs');
   writeF('hooks/session-start.sh');
   writeF('hooks/session-start.ps1');
   for (const s of ['rad-orchestration', 'rad-plan', 'rad-ui-start']) writeF(`skills/${s}/SKILL.md`);

@@ -1,16 +1,14 @@
 #!/usr/bin/env node
 // hooks/bootstrap-then-uninstall.mjs — UserPromptSubmit hook wrapper.
 //
-// Why this exists (and why there is no SessionStart hook):
-//   Claude Code does NOT fire SessionStart on `/plugin install` or
-//   `/reload-plugins` — only on a true session startup / resume / clear /
-//   compact. A SessionStart-only bootstrap leaves `~/.radorch/` un-hydrated
-//   until the user fully quits and reopens the app.
-//
-//   UserPromptSubmit fires on the first prompt of any session, including
-//   the one immediately after install. We use it as a one-shot bootstrap
-//   trigger and then rewrite hooks.json to remove ourselves so the hook
-//   never fires again until the next install or update.
+// One-shot install/upgrade bootstrap. Fires on the first prompt after a
+// fresh `/plugin install` or `/plugin update` (UserPromptSubmit is the only
+// hook event Claude Code fires reliably in those flows), runs
+// `plugin-bootstrap` to hydrate `~/.radorch/`, then rewrites the canonical
+// `hooks.json` to remove its own `UserPromptSubmit` entry so it never fires
+// again until the next install or update. The `SessionStart` entry for
+// `drift-check.mjs` (see sibling) is left in place — different role,
+// different lifecycle.
 //
 // Self-healing across `/plugin update`:
 //   `/plugin update` reinstalls the plugin payload fresh, which restores

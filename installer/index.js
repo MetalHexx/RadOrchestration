@@ -42,6 +42,9 @@ import { generateConfig, writeConfig } from './lib/config-generator.js';
 // Install-time tooling checks (FR-17, AD-11)
 import { checkGit, checkGh } from './lib/checks/tooling.js';
 
+// Cross-channel version-drift detection (Claude Code plugin vs installer)
+import { detectPluginDrift } from './lib/drift-check.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = __dirname;
@@ -74,8 +77,11 @@ export function pluginRootForHarness(harness) {
  *
  * @param {object} cfg - Wizard output.
  * @param {string} orchYmlPath - Absolute path to the written orchestration.yml
+ * @param {string} [installedVersion] - Version just installed. When provided,
+ *   triggers cross-channel drift detection against Claude Code's plugin
+ *   registry. Omitted in legacy unit tests that don't mock HOME.
  */
-export function renderPostInstall(cfg, orchYmlPath) {
+export function renderPostInstall(cfg, orchYmlPath, installedVersion) {
   console.log('');
   sectionHeader('::', 'Installation Complete');
   console.log('');
@@ -111,6 +117,25 @@ export function renderPostInstall(cfg, orchYmlPath) {
     }
   }
   console.log('');
+
+  if (installedVersion) {
+    const drift = detectPluginDrift(installedVersion);
+    if (drift.drift) {
+      sectionHeader('::', 'Plugin version drift detected');
+      console.log('');
+      console.log('  ' + (THEME.warning ? THEME.warning('⚠') : '⚠') + ' ' + THEME.body(
+        `This installer just wrote rad-orchestration ${installedVersion} to ~/.radorch, but the`,
+      ));
+      console.log('     ' + THEME.body('Claude Code plugin is at a different version:'));
+      for (const p of drift.plugins) {
+        console.log('       ' + THEME.body(`- ${p.key} → ${p.version}`));
+      }
+      console.log('');
+      console.log('  ' + THEME.body('Run the following in Claude Code to keep both channels in sync:'));
+      console.log('     ' + THEME.command('/plugin update rad-orchestration'));
+      console.log('');
+    }
+  }
 }
 
 /**
@@ -210,7 +235,7 @@ export async function main() {
     // Ensure ~/.radorch/projects/ exists so the dashboard and agents can scan it.
     fs.mkdirSync(path.join(os.homedir(), '.radorch', 'projects'), { recursive: true });
 
-    renderPostInstall(config, orchYmlPath);
+    renderPostInstall(config, orchYmlPath, pkg.version);
   } catch (err) {
     if (err && err.name === 'ExitPromptError') {
       console.log('');

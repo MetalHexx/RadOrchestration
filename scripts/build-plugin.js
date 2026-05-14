@@ -78,6 +78,7 @@ const REQUIRED_ARTIFACTS = [
   'ui/server.js',
   'hooks/hooks.json',
   'hooks/bootstrap-then-uninstall.mjs',
+  'hooks/drift-check.mjs',
   // Representative canonical skills (full enumeration via runAdapterPlugin)
   'skills/rad-orchestration/SKILL.md',
   'skills/rad-plan/SKILL.md',

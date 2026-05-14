@@ -11,8 +11,13 @@ test('runAdapterPlugin copies canonical hooks/ into the plugin hooks/', async ()
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rap-hooks-'));
   await runAdapterPlugin(adapter, { canonicalRoot: repoRoot, outputRoot: tmp, version: '0.0.0-test' });
   const claudeDist = path.join(tmp, 'cli', 'dist', 'marketplaces', 'claude', 'plugins', 'rad-orchestration');
-  for (const f of ['hooks.json']) {
+  for (const f of ['hooks.json', 'bootstrap-then-uninstall.mjs', 'drift-check.mjs']) {
     const abs = path.join(claudeDist, 'hooks', f);
     assert.ok(fs.existsSync(abs), `plugin emit missing hooks/${f}`);
+  }
+  // Test files MUST NOT ship (TEST_FILE_RE filter).
+  for (const f of ['hooks.test.mjs', 'drift-check.test.mjs']) {
+    const abs = path.join(claudeDist, 'hooks', f);
+    assert.ok(!fs.existsSync(abs), `plugin emit must strip hooks/${f}`);
   }
 });

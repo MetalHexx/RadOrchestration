@@ -102,6 +102,99 @@ function withTempHome(t) {
   return tmp;
 }
 
+// renderPostInstall drift-warning tests run first so that the heavier
+// end-to-end test below doesn't crash the process (via process.exit on a
+// pre-existing manifest issue) before they get a chance to execute.
+test('renderPostInstall warns when a Claude Code plugin entry mismatches the installed version', async (t) => {
+  const { renderPostInstall } = await import('./index.js');
+  const tmp = withTempHome(t);
+
+  const dir = path.join(tmp, '.claude', 'plugins');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'installed_plugins.json'),
+    JSON.stringify({
+      plugins: {
+        'rad-orchestration@radorch-local': [{
+          scope: 'user', installPath: '/whatever', version: '1.0.0-alpha.8',
+        }],
+      },
+    }),
+  );
+
+  const logs = [];
+  const orig = console.log;
+  console.log = (...args) => logs.push(args.join(''));
+  try {
+    renderPostInstall(
+      { harnesses: ['claude'] },
+      path.join(tmp, '.radorch', 'orchestration.yml'),
+      '1.0.0-alpha.9',
+    );
+  } finally {
+    console.log = orig;
+  }
+
+  const output = logs.join('\n').replace(/\x1b\[[0-9;]*m/g, '');
+  assert.match(output, /Plugin version drift detected/);
+  assert.match(output, /1\.0\.0-alpha\.8/);
+  assert.match(output, /1\.0\.0-alpha\.9/);
+  assert.match(output, /\/plugin update rad-orchestration/);
+});
+
+test('renderPostInstall is silent on the drift block when no plugin registry exists', async (t) => {
+  const { renderPostInstall } = await import('./index.js');
+  withTempHome(t);
+
+  const logs = [];
+  const orig = console.log;
+  console.log = (...args) => logs.push(args.join(''));
+  try {
+    renderPostInstall(
+      { harnesses: ['claude'] },
+      '/home/x/.radorch/orchestration.yml',
+      '1.0.0-alpha.9',
+    );
+  } finally {
+    console.log = orig;
+  }
+
+  const output = logs.join('\n').replace(/\x1b\[[0-9;]*m/g, '');
+  assert.doesNotMatch(output, /Plugin version drift detected/);
+  assert.doesNotMatch(output, /\/plugin update rad-orchestration/);
+});
+
+test('renderPostInstall is silent on the drift block when version is omitted', async (t) => {
+  const { renderPostInstall } = await import('./index.js');
+  const tmp = withTempHome(t);
+
+  const dir = path.join(tmp, '.claude', 'plugins');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'installed_plugins.json'),
+    JSON.stringify({
+      plugins: {
+        'rad-orchestration@radorch-local': [{ version: '1.0.0-alpha.8' }],
+      },
+    }),
+  );
+
+  const logs = [];
+  const orig = console.log;
+  console.log = (...args) => logs.push(args.join(''));
+  try {
+    renderPostInstall(
+      { harnesses: ['claude'] },
+      '/home/x/.radorch/orchestration.yml',
+    );
+  } finally {
+    console.log = orig;
+  }
+
+  const output = logs.join('\n').replace(/\x1b\[[0-9;]*m/g, '');
+  assert.doesNotMatch(output, /Plugin version drift detected/);
+});
+
 test('end-to-end install writes to ~/.radorch and harness folder only', async (t) => {
   if (!pluginRootAvailable('claude')) {
     t.skip('installer/src/claude/ not built; run installer/scripts/sync-source.js first');
