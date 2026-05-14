@@ -77,6 +77,7 @@ const REQUIRED_ARTIFACTS = [
   'skills/rad-orchestration/scripts/fix-ghost-v5.js',
   'ui/server.js',
   'hooks/hooks.json',
+  'hooks/bootstrap-then-uninstall.mjs',
   // Representative canonical skills (full enumeration via runAdapterPlugin)
   'skills/rad-orchestration/SKILL.md',
   'skills/rad-plan/SKILL.md',

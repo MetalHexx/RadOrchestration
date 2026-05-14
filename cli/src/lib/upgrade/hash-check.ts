@@ -1,15 +1,16 @@
-// cli/src/lib/upgrade/hash-check.ts — Symmetric content-hash detect-and-warn
-// primitive.
+// cli/src/lib/upgrade/hash-check.ts — Symmetric content-hash detect primitive.
 //   - Uses expandDestinationTokens(entry.destinationPath, harness) for path
 //     resolution — destinationPath is baked into the manifest by adapters/.
 //   - Explicit AD-7 skip: entries resolving under userDataPaths().projects
 //     are never enumerated
 //   - ownership: 'user-config' skip rule preserved verbatim
+//
+// plugin-bootstrap is always headless (runs from hooks + scripted install
+// flows). detectModifiedFiles returns the path list for informational logging
+// only — there is no prompt/confirm flow in this codebase.
 
 import fs from 'node:fs';
-import path from 'node:path';
 import crypto from 'node:crypto';
-import { confirm } from '@inquirer/prompts';
 import { expandDestinationTokens } from './expand-tokens.js';
 import { userDataPaths } from './user-data-paths.js';
 import type { HarnessName } from './harness-paths.js';
@@ -67,34 +68,3 @@ export function detectModifiedFiles(manifest: DetectManifest, harness: HarnessNa
   return modified.sort();
 }
 
-/**
- * Renders the modified-file warning UX and prompts the user to confirm.
- * Returns true if the user confirmed, false otherwise. Default is `false`
- * — strict posture (NFR-5).
- *
- * No --force flag, no environment-variable bypass.
- *
- * @param modifiedBundlePaths - Output of detectModifiedFiles()
- * @param orchRoot - Absolute path used for display purposes
- * @param promptConfirm - Optional injectable confirm function for test isolation
- * @param options - Optional options; `message` overrides the confirm prompt text
- */
-export async function confirmModifiedFiles(
-  modifiedBundlePaths: string[],
-  orchRoot: string,
-  promptConfirm?: (opts: { message: string; default: boolean }) => Promise<boolean>,
-  options?: { message?: string },
-): Promise<boolean> {
-  const doConfirm = promptConfirm ?? confirm;
-  const message = options?.message ?? 'Continue?';
-
-  console.warn('');
-  console.warn('⚠ The following files have been locally modified since install:');
-  for (const rel of modifiedBundlePaths) {
-    console.warn('  ' + path.join(orchRoot, rel));
-  }
-  console.warn('');
-
-
-  return await doConfirm({ message, default: false });
-}

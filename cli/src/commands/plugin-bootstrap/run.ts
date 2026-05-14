@@ -5,7 +5,7 @@ import { userDataPaths } from '../../lib/upgrade/user-data-paths.js';
 import { readInstallJson, writeInstallJson } from '../../lib/upgrade/install-json-access.js';
 import { acquireBootstrapLock } from '../../lib/upgrade/bootstrap-lock.js';
 import { loadBundledManifest } from '../../lib/upgrade/catalog.js';
-import { detectModifiedFiles, confirmModifiedFiles } from '../../lib/upgrade/hash-check.js';
+import { detectModifiedFiles } from '../../lib/upgrade/hash-check.js';
 import { removeManifestFiles } from '../../lib/upgrade/remove.js';
 import { installManifestFiles } from '../../lib/upgrade/install.js';
 import { cmpSemver } from '../../lib/install-json.js';
@@ -97,11 +97,11 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
     const priorManifest = loadBundledManifest(opts.pluginRoot, installedVersion);
     const modified = detectModifiedFiles(priorManifest, opts.harness);
     if (modified.length > 0) {
-      const proceed = await confirmModifiedFiles(modified, paths.root);
-      if (!proceed) {
-        appendInstallLogEntry({ channel, action: 'cancelled-modified-files', deliveringVersion, installedVersionBefore });
-        return { action: 'cancelled-modified-files', code: 0, deliveringVersion, installedVersion, modifiedFiles: modified };
-      }
+      // plugin-bootstrap is always headless — log the modified-paths list to
+      // stderr for diagnostic visibility and proceed with the upgrade.
+      // Locally modified files are overwritten by the manifest install below.
+      console.warn(`[plugin-bootstrap] overwriting ${modified.length} locally-modified file(s):`);
+      for (const rel of modified) console.warn(`  ${path.join(paths.root, rel)}`);
     }
     removeManifestFiles(priorManifest, opts.harness);
     const newManifest = loadBundledManifest(opts.pluginRoot, deliveringVersion);

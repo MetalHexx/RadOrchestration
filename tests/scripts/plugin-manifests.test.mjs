@@ -121,10 +121,20 @@ test('plugin payload contains pre-built dashboard UI', () => {
   );
 });
 
-test('hooks/hooks.json hardcodes --harness claude', () => {
-  const hooks = JSON.parse(fs.readFileSync(path.join(repoRoot, 'hooks', 'hooks.json'), 'utf8'));
-  const text = JSON.stringify(hooks);
-  assert.match(text, /--harness\s+claude/, 'plugin SessionStart hook must hardcode --harness claude (AD-12)');
+test('bootstrap wrapper hardcodes --harness claude (AD-12)', () => {
+  // The hook command in hooks.json invokes bootstrap-then-uninstall.mjs;
+  // the wrapper script is what spawns plugin-bootstrap with --harness claude.
+  // AD-12 invariant: plugin payload is Claude-only and the harness flag is
+  // never derived dynamically.
+  const wrapper = fs.readFileSync(
+    path.join(repoRoot, 'hooks', 'bootstrap-then-uninstall.mjs'),
+    'utf8',
+  );
+  assert.match(
+    wrapper,
+    /['"]--harness['"]\s*,\s*['"]claude['"]/,
+    'bootstrap wrapper must hardcode --harness claude (AD-12)',
+  );
 });
 
 test('plugin manifest bundlePath values resolve to existing files in plugin tree', () => {

@@ -3,7 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { detectModifiedFiles, confirmModifiedFiles, hexSha256OfBytes } from '../../../src/lib/upgrade/hash-check.js';
+import { detectModifiedFiles, hexSha256OfBytes } from '../../../src/lib/upgrade/hash-check.js';
 
 function sha256(content: string): string {
   return crypto.createHash('sha256').update(Buffer.from(content, 'utf8')).digest('hex');
@@ -173,40 +173,3 @@ describe('detectModifiedFiles', () => {
   });
 });
 
-describe('confirmModifiedFiles', () => {
-  it('calls the injected confirm with default: false and returns its result', async () => {
-    const fakeConfirm = vi.fn().mockResolvedValue(true);
-    const result = await confirmModifiedFiles(
-      ['agents/planner.md'],
-      '/fake/orch',
-      fakeConfirm as never,
-    );
-    expect(result).toBe(true);
-    expect(fakeConfirm).toHaveBeenCalledWith(
-      expect.objectContaining({ default: false }),
-    );
-  });
-
-  it('returns false when user declines', async () => {
-    const fakeConfirm = vi.fn().mockResolvedValue(false);
-    const result = await confirmModifiedFiles(
-      ['agents/coder.md'],
-      '/fake/orch',
-      fakeConfirm as never,
-    );
-    expect(result).toBe(false);
-  });
-
-  it('accepts a custom message via options', async () => {
-    const fakeConfirm = vi.fn().mockResolvedValue(true);
-    await confirmModifiedFiles(
-      ['agents/planner.md'],
-      '/fake/orch',
-      fakeConfirm as never,
-      { message: 'Overwrite anyway?' },
-    );
-    expect(fakeConfirm).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Overwrite anyway?' }),
-    );
-  });
-});
