@@ -27,10 +27,49 @@ const SKIP_FILE_NAMES = new Set([
   'tsconfig.tsbuildinfo',
 ]);
 
-function shouldSkipPluginEntry(name, isDir) {
-  if (isDir) return SKIP_DIR_NAMES.has(name);
-  if (SKIP_FILE_NAMES.has(name)) return true;
-  if (TEST_FILE_RE.test(name)) return true;
+/**
+ * Per-skill targeted exclusions for `rad-orchestration/scripts/` ONLY.
+ * Other skills' scripts/ trees ship as-is (their `package.json` markers etc.
+ * are part of their runtime contract). For rad-orchestration the entire
+ * dev-toolchain surface (TS sources, lib/, bundler, npm metadata, ts/test
+ * configs) is stripped at plugin emit time — the runtime needs only the
+ * esbuild `.js` bundles plus a handful of `.mjs`/`.js` helpers.
+ */
+const RAD_ORCH_SCRIPTS_SKIP_DIR_NAMES = new Set(['lib']);
+const RAD_ORCH_SCRIPTS_SKIP_FILE_NAMES = new Set([
+  'bundle.mjs',
+  'package.json',
+  'package-lock.json',
+  'tsconfig.json',
+  'env.d.ts',
+]);
+
+function shouldSkipPluginEntry(name, isDir, ctx) {
+  if (isDir) {
+    if (SKIP_DIR_NAMES.has(name)) return true;
+  } else {
+    if (SKIP_FILE_NAMES.has(name)) return true;
+    if (TEST_FILE_RE.test(name)) return true;
+  }
+  // Rad-orchestration scripts tree: strip the dev toolchain. Bundled `.js`
+  // outputs land via a separate build step (scripts/build-plugin.js's
+  // runtime-bundles step), not via this wholesale copy.
+  if (ctx && ctx.skillName === 'rad-orchestration' && ctx.relPath) {
+    const segments = ctx.relPath.split(/[\\/]/);
+    if (segments[0] === 'scripts') {
+      if (isDir && segments.length >= 2 && RAD_ORCH_SCRIPTS_SKIP_DIR_NAMES.has(segments[1])) {
+        return true;
+      }
+      if (!isDir) {
+        // Any `.ts` file at any depth under rad-orchestration/scripts/.
+        if (name.endsWith('.ts')) return true;
+        // Top-level dev files immediately under scripts/.
+        if (segments.length === 2 && RAD_ORCH_SCRIPTS_SKIP_FILE_NAMES.has(name)) {
+          return true;
+        }
+      }
+    }
+  }
   return false;
 }
 
@@ -102,7 +141,7 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
         const absDest = path.join(skillOutDir, relPath);
         const stat = fs.statSync(absSrc);
         const basename = path.basename(relPath);
-        if (shouldSkipPluginEntry(basename, stat.isDirectory())) return;
+        if (shouldSkipPluginEntry(basename, stat.isDirectory(), { skillName, relPath })) return;
         if (stat.isDirectory()) {
           fs.mkdirSync(absDest, { recursive: true });
           for (const child of fs.readdirSync(absSrc)) {

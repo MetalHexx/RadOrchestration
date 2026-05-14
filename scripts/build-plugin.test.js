@@ -12,10 +12,11 @@ const buildPluginUrl = pathToFileURL(path.join(repoRoot, 'scripts', 'build-plugi
 test('build-plugin meta-script: orchestration order constant exposes the documented sequence', async () => {
   const mod = await import(buildPluginUrl);
   assert.deepEqual(mod.PIPELINE_STEPS, [
+    'prep',
     'cli-build',
-    'pipeline-bundle',
     'ui-standalone',
     'adapters-plugin',
+    'runtime-bundles',
     'cli-bundle',
     'copy-shared-config',
     'copy-manifest-catalog',
@@ -36,6 +37,9 @@ test('validatePluginTree: detects missing required artifacts', async () => {
   assert.ok(empty.missing.includes('.claude-plugin/plugin.json'));
   assert.ok(empty.missing.includes('skills/rad-orchestration/scripts/radorch.mjs'));
   assert.ok(empty.missing.includes('skills/rad-orchestration/scripts/pipeline.js'));
+  assert.ok(empty.missing.includes('skills/rad-orchestration/scripts/explode-master-plan.js'));
+  assert.ok(empty.missing.includes('skills/rad-orchestration/scripts/migrate-to-v5.js'));
+  assert.ok(empty.missing.includes('skills/rad-orchestration/scripts/fix-ghost-v5.js'));
   assert.ok(empty.missing.includes('ui/server.js'));
   assert.ok(empty.missing.includes('hooks/hooks.json'));
   assert.ok(empty.missing.some((m) => m.startsWith('skills/rad-ui-start/')));
@@ -53,6 +57,9 @@ test('validatePluginTree: passes on a complete fixture', async () => {
   writeF('.claude-plugin/plugin.json', JSON.stringify({ name: 'rad-orchestration', version: '1.1.0' }));
   writeF('skills/rad-orchestration/scripts/radorch.mjs');
   writeF('skills/rad-orchestration/scripts/pipeline.js');
+  writeF('skills/rad-orchestration/scripts/explode-master-plan.js');
+  writeF('skills/rad-orchestration/scripts/migrate-to-v5.js');
+  writeF('skills/rad-orchestration/scripts/fix-ghost-v5.js');
   writeF('ui/server.js');
   writeF('hooks/hooks.json', '{}');
   writeF('hooks/session-start.sh');
@@ -164,6 +171,9 @@ test('happy-path: validatePluginTree passes when pipeline.js and manifest both s
   writeF('skills/rad-orchestration/scripts/radorch.mjs');
   // New pipeline path (not dist/).
   writeF('skills/rad-orchestration/scripts/pipeline.js');
+  writeF('skills/rad-orchestration/scripts/explode-master-plan.js');
+  writeF('skills/rad-orchestration/scripts/migrate-to-v5.js');
+  writeF('skills/rad-orchestration/scripts/fix-ghost-v5.js');
   writeF('ui/server.js');
   writeF('hooks/hooks.json', '{}');
   writeF('hooks/session-start.sh');

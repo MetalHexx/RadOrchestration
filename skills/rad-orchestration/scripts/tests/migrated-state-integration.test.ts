@@ -24,7 +24,7 @@ const SCRIPTS_DIR = path.resolve(__dirname, '..');
 const TEST_PATH_CONTEXT: PathContext = {
   scriptsDir: SCRIPTS_DIR,
   templatesDir: path.resolve(SCRIPTS_DIR, '..', 'templates'),
-  orchRoot: path.basename(path.resolve(SCRIPTS_DIR, '..', '..', '..')),
+  orchRoot: path.resolve(SCRIPTS_DIR, '..', '..', '..'),
 };
 // Deviation from handoff (path): handoff specified '../../../orchestration-projects' (3 levels
 // up from ORCH_ROOT), but the actual directory is at c:\dev\orchestration-projects which

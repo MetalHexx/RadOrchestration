@@ -3,3 +3,7 @@ dist/
 dist-bundle/
 # Ephemeral vitest / build run logs — captured locally, never committed.
 *.log
+pipeline.js
+explode-master-plan.js
+migrate-to-v5.js
+fix-ghost-v5.js

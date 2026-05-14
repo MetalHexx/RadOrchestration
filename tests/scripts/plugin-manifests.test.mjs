@@ -61,13 +61,19 @@ const SHA256_RE = /^[a-f0-9]{64}$/;
 test('plugin manifest excludes agents/* and skills/* entries', () => {
   if (!fs.existsSync(manifestsDir)) return;
   const files = fs.readdirSync(manifestsDir).filter(f => /^v.*\.json$/.test(f));
+  // The four runtime bundles are shared user-data binaries routed into ~/.radorch/
+  // by the bootstrap — they are the only allowed skills/* entries in the manifest.
+  const ALLOWED_SKILLS_ENTRIES = new Set([
+    'skills/rad-orchestration/scripts/pipeline.js',
+    'skills/rad-orchestration/scripts/explode-master-plan.js',
+    'skills/rad-orchestration/scripts/migrate-to-v5.js',
+    'skills/rad-orchestration/scripts/fix-ghost-v5.js',
+  ]);
   for (const f of files) {
     const m = JSON.parse(fs.readFileSync(path.join(manifestsDir, f), 'utf8'));
-    // skills/rad-orchestration/scripts/pipeline.js is the sole allowed skills/* entry
-    // because it is a shared user-data binary routed into ~/.radorch/ by the bootstrap.
     const leaks = m.files.filter(e =>
       (e.bundlePath.startsWith('agents/') || e.bundlePath.startsWith('skills/')) &&
-      e.bundlePath !== 'skills/rad-orchestration/scripts/pipeline.js',
+      !ALLOWED_SKILLS_ENTRIES.has(e.bundlePath),
     );
     assert.deepEqual(leaks, [], `${f}: agents/* or skills/* leaked into plugin manifest`);
   }
@@ -85,6 +91,9 @@ test('plugin manifest lists shared user-data assets with sha256', () => {
   const required = [
     'orchestration.yml',
     'skills/rad-orchestration/scripts/pipeline.js',
+    'skills/rad-orchestration/scripts/explode-master-plan.js',
+    'skills/rad-orchestration/scripts/migrate-to-v5.js',
+    'skills/rad-orchestration/scripts/fix-ghost-v5.js',
   ];
   for (const bp of required) {
     const e = m.files.find(x => x.bundlePath === bp);

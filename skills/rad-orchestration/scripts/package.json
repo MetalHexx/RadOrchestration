@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "pretest": "node bundle.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "bundle": "node bundle.mjs"

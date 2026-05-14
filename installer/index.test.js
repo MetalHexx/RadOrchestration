@@ -266,9 +266,16 @@ test('installer no longer ships TS source tree in the bundled scripts/ folder', 
       `installer/src/claude/skills/rad-orchestration/scripts/${name} must not ship`,
     );
   }
-  // pipeline.js MUST ship.
-  assert.ok(
-    fs.existsSync(path.join(scriptsDir, 'pipeline.js')),
-    'pipeline.js must remain in the bundled scripts folder',
-  );
+  // All four runtime bundles MUST ship.
+  for (const bundle of [
+    'pipeline.js',
+    'explode-master-plan.js',
+    'migrate-to-v5.js',
+    'fix-ghost-v5.js',
+  ]) {
+    assert.ok(
+      fs.existsSync(path.join(scriptsDir, bundle)),
+      `${bundle} must ship in the bundled scripts folder`,
+    );
+  }
 });

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { execSync, execFileSync } from 'node:child_process';
-import { join, dirname, basename, resolve } from 'node:path';
+import { join, dirname, basename, resolve, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // ── Module-level mocks ───────────────────────────────────────────────────────
@@ -339,33 +339,16 @@ describe('pipeline.js — JIT dependency installer', () => {
     });
   });
 
-  // ── detectOrchRoot: install-time orchRoot discovery ──────────────────────
+  // ── resolvePathContext contract ───────────────────────────────────────────
 
-  // Note: detectOrchRoot is tested via pure path logic without importing pipeline.js
-  // (which has module-level side effects). We test the algorithm in isolation.
-
-  describe('detectOrchRoot', () => {
-    /**
-     * Replicates the detectOrchRoot logic to test without importing pipeline.js.
-     * If the detectOrchRoot implementation in pipeline.js changes, these tests must be manually synchronized.
-     */
-    function detectOrchRootTestImpl(scriptsDir: string): string {
-      return basename(resolve(scriptsDir, '..', '..', '..'));
-    }
-
-    it("returns '.claude' when scripts dir parent grandparent is named '.claude'", () => {
-      const scriptsDir = resolve('/install', '.claude', 'skills', 'rad-orchestration', 'scripts');
-      expect(detectOrchRootTestImpl(scriptsDir)).toBe('.claude');
-    });
-
-    it("returns '.github' when scripts dir parent grandparent is named '.github'", () => {
-      const scriptsDir = resolve('/install', '.github', 'skills', 'rad-orchestration', 'scripts');
-      expect(detectOrchRootTestImpl(scriptsDir)).toBe('.github');
-    });
-
-    it('returns the basename of any custom orchRoot folder', () => {
-      const scriptsDir = resolve('/install', 'my-custom-root', 'skills', 'rad-orchestration', 'scripts');
-      expect(detectOrchRootTestImpl(scriptsDir)).toBe('my-custom-root');
+  describe('resolvePathContext contract', () => {
+    it('orchRoot is an absolute path and pipeline.js exists at the expected location', () => {
+      const orchRoot = resolve(scriptsDir, '..', '..', '..');
+      expect(isAbsolute(orchRoot)).toBe(true);
+      const pipelinePath = join(orchRoot, 'skills', 'rad-orchestration', 'scripts', 'pipeline.js');
+      let exists = false;
+      try { statSync(pipelinePath); exists = true; } catch { exists = false; }
+      expect(exists).toBe(true);
     });
   });
 });

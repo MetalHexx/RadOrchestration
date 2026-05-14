@@ -6,10 +6,14 @@
 //
 // Steps (FR-2):
 //   1. cli-build                cli/ → cli/dist/                     (existing tsc)
-//   2. cli-bundle               cli/dist/bin/radorch.js → bundle .mjs (P01-T01)
-//   3. pipeline-bundle          skills/.../main.ts → dist/pipeline.js (P01-T02)
-//   4. ui-standalone            ui/ → ui/.next/standalone + static    (P01-T03)
-//   5. adapters-plugin          run-plugin for every adapter          (P04-T01)
+//   2. ui-standalone            ui/ → ui/.next/standalone + static    (P01-T03)
+//   3. adapters-plugin          run-plugin for every adapter          (P04-T01)
+//   4. runtime-bundles          skills/.../*.ts → skills/.../*.js     (P01-T02)
+//                                (four entries: pipeline, explode-master-plan,
+//                                migrate-to-v5, fix-ghost-v5; runs AFTER
+//                                adapters-plugin so the wipe-and-refill in
+//                                that step doesn't clobber fresh bundles)
+//   5. cli-bundle               cli/dist/bin/radorch.js → bundle .mjs (P01-T01)
 //   6. copy-shared-config       orchestration.yml + templates/ to top-level (P01-T03)
 //   7. copy-manifest-catalog    emit narrowed manifest into plugin tree
 //   8. copy-bundles-into-claude-plugin   stage bundled artifacts into the
@@ -29,14 +33,31 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { discoverAdapters } from '../adapters/discover.js';
 import { runAdapterPlugin } from '../adapters/run-plugin.js';
+import { resolveDestinationPath } from '../adapters/destination-routing.js';
+import { ensureCliBuilt, ensureRuntimeBundled, ensureUiDeps, emitBundles } from '../installer/scripts/sync-source.js';
+
+/**
+ * Every runtime `.ts` entry under `skills/rad-orchestration/scripts/` that
+ * must ship into the plugin tree as a self-contained esbuild `.js` bundle.
+ * Mirrors bundle.mjs's RUNTIME_ENTRIES and sync-source.js's
+ * RUNTIME_BUNDLE_ENTRIES — kept inline here so this script doesn't pull
+ * bundle.mjs into Node's module graph just to read the list.
+ */
+const RUNTIME_BUNDLE_ENTRIES = [
+  'pipeline',
+  'explode-master-plan',
+  'migrate-to-v5',
+  'fix-ghost-v5',
+];
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 export const PIPELINE_STEPS = [
+  'prep',
   'cli-build',
-  'pipeline-bundle',
   'ui-standalone',
   'adapters-plugin',
+  'runtime-bundles',
   'cli-bundle',
   'copy-shared-config',
   'copy-manifest-catalog',
@@ -51,6 +72,9 @@ const REQUIRED_ARTIFACTS = [
   '.claude-plugin/plugin.json',
   'skills/rad-orchestration/scripts/radorch.mjs',
   'skills/rad-orchestration/scripts/pipeline.js',
+  'skills/rad-orchestration/scripts/explode-master-plan.js',
+  'skills/rad-orchestration/scripts/migrate-to-v5.js',
+  'skills/rad-orchestration/scripts/fix-ghost-v5.js',
   'ui/server.js',
   'hooks/hooks.json',
   // Representative canonical skills (full enumeration via runAdapterPlugin)
@@ -171,12 +195,30 @@ async function main() {
   const pluginManifest = path.join(repoRoot, 'plugin', 'package.json');
   const exec = (cmd, cwd) => execSync(cmd, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
 
-  await step('cli-build', () => exec('npm run build', path.join(repoRoot, 'cli')));
-  await step('pipeline-bundle', () => {
-    const out = path.join(claudeDist, 'skills', 'rad-orchestration', 'scripts', 'pipeline.js');
-    fs.mkdirSync(path.dirname(out), { recursive: true });
-    exec(`npm run bundle -- --out=${out}`, path.join(repoRoot, 'skills', 'rad-orchestration', 'scripts'));
+  await step('prep', async () => {
+    // Cold-clone heal. Idempotent on warm clones.
+    //   1. ensureCliBuilt: install cli/ deps + build cli/dist/ if missing —
+    //      otherwise the next step's `tsc` invocation fails on fresh clones.
+    //   2. Generate installer/src/<harness>/manifests/v<version>.json if
+    //      missing. copy-manifest-catalog reads from this path and silently
+    //      no-ops if absent, which trips validate-plugin-tree downstream.
+    // Installer flow is unaffected: this only consumes sync-source.js's
+    // exported helpers; nothing under installer/ is modified.
+    ensureCliBuilt(repoRoot);
+    ensureUiDeps(repoRoot);
+    const prepAdapters = await discoverAdapters(path.join(repoRoot, 'adapters'));
+    const claudeAdapter = prepAdapters.find((a) => a.name === 'claude');
+    if (claudeAdapter) {
+      const manifestPath = path.join(
+        repoRoot, 'installer', 'src', claudeAdapter.name,
+        'manifests', `v${version}.json`,
+      );
+      if (!fs.existsSync(manifestPath)) {
+        await emitBundles({ repoRoot, version });
+      }
+    }
   });
+  await step('cli-build', () => exec('npm run build', path.join(repoRoot, 'cli')));
   await step('ui-standalone', () => {
     exec('npm run build-standalone', path.join(repoRoot, 'ui'));
     const uiDest = path.join(claudeDist, 'ui');
@@ -201,6 +243,19 @@ async function main() {
     const claudeAdapters = adapters.filter(a => a.name === 'claude');
     for (const a of claudeAdapters) {
       await runAdapterPlugin(a, { canonicalRoot: repoRoot, outputRoot: repoRoot, version });
+    }
+  });
+  await step('runtime-bundles', () => {
+    // Emit AFTER adapters-plugin: that step wipes skills/ before refilling
+    // from canonical, so any pre-emitted `.js` bundles would be clobbered.
+    // Bundle all four runtime entries (pipeline + the three CLIs) into the
+    // staged plugin's skills/rad-orchestration/scripts/ folder.
+    const scriptsDir = path.join(repoRoot, 'skills', 'rad-orchestration', 'scripts');
+    const destDir = path.join(claudeDist, 'skills', 'rad-orchestration', 'scripts');
+    fs.mkdirSync(destDir, { recursive: true });
+    for (const entryName of RUNTIME_BUNDLE_ENTRIES) {
+      const out = path.join(destDir, `${entryName}.js`);
+      exec(`npm run bundle -- --entry=${entryName} --out=${out}`, scriptsDir);
     }
   });
   await step('cli-bundle', () => {
@@ -267,26 +322,35 @@ async function main() {
         !e.bundlePath.startsWith('skills/') &&
         !e.bundlePath.startsWith('ui/')
       );
-      // Re-add the pipeline bundle entry under skills/rad-orchestration/scripts/pipeline.js
+      // Re-add every runtime bundle entry under skills/rad-orchestration/scripts/<name>.js
       // because that path is shared user-data (ships in ~/.radorch/ via bootstrap).
-      const pipelineBundle = path.join(claudeDist, 'skills', 'rad-orchestration', 'scripts', 'pipeline.js');
-      if (fs.existsSync(pipelineBundle)) {
+      for (const entryName of RUNTIME_BUNDLE_ENTRIES) {
+        const bundleAbs = path.join(
+          claudeDist, 'skills', 'rad-orchestration', 'scripts', `${entryName}.js`,
+        );
+        if (!fs.existsSync(bundleAbs)) continue;
+        const bp = `skills/rad-orchestration/scripts/${entryName}.js`;
         m.files.push({
-          bundlePath: 'skills/rad-orchestration/scripts/pipeline.js',
-          sourcePath: 'skills/rad-orchestration/scripts/pipeline.js',
+          bundlePath: bp,
+          sourcePath: bp,
+          destinationPath: resolveDestinationPath(bp, 'claude'),
           ownership: 'orchestration-system', version: m.version, harness: 'claude',
-          sha256: sha256(pipelineBundle),
+          sha256: sha256(bundleAbs),
         });
       }
       // Append shared user-data assets present in the plugin payload.
       for (const { abs, rel } of walk(path.join(claudeDist, 'ui'))) {
-        m.files.push({ bundlePath: path.posix.join('ui', rel), sourcePath: path.posix.join('ui', rel),
+        const bp = path.posix.join('ui', rel);
+        m.files.push({ bundlePath: bp, sourcePath: bp,
+          destinationPath: resolveDestinationPath(bp, 'claude'),
           ownership: 'orchestration-system', version: m.version, harness: 'claude', sha256: sha256(abs) });
       }
       // templates/ is now at the top level (copied by copy-shared-config step);
       // emit with bundlePath and sourcePath both pointing to the top-level location.
       for (const { abs, rel } of walk(path.join(claudeDist, 'templates'))) {
-        m.files.push({ bundlePath: path.posix.join('templates', rel), sourcePath: path.posix.join('templates', rel),
+        const bp = path.posix.join('templates', rel);
+        m.files.push({ bundlePath: bp, sourcePath: bp,
+          destinationPath: resolveDestinationPath(bp, 'claude'),
           ownership: 'orchestration-system', version: m.version, harness: 'claude', sha256: sha256(abs) });
       }
       // orchestration.yml is now at the top level (copied by copy-shared-config step);
@@ -294,6 +358,7 @@ async function main() {
       const orchYml = path.join(claudeDist, 'orchestration.yml');
       if (fs.existsSync(orchYml)) {
         m.files.push({ bundlePath: 'orchestration.yml', sourcePath: 'orchestration.yml',
+          destinationPath: resolveDestinationPath('orchestration.yml', 'claude'),
           ownership: 'orchestration-system', version: m.version, harness: 'claude', sha256: sha256(orchYml) });
       }
       fs.writeFileSync(path.join(dstCatalog, file), JSON.stringify(m, null, 2) + '\n', 'utf8');

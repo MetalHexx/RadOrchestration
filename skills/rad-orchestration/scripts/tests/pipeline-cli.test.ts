@@ -220,7 +220,7 @@ describe('pipeline CLI — run()', () => {
     const result = capturedJson();
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe('engine exploded');
-    // orchRoot in pipeline.ts is the basename of the install folder, derived
+    // orchRoot in pipeline.ts is the absolute path to the install root, derived
     // from filesystem geometry via resolvePathContext(). TEST_PATH_CONTEXT
     // computes the same value from this test's source location.
     expect(result.orchRoot).toBe(TEST_PATH_CONTEXT.orchRoot);

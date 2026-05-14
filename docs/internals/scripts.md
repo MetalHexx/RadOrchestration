@@ -66,11 +66,11 @@ node .claude/skills/rad-orchestration/scripts/pipeline.js \
 | `--template <name>` | `template` | `start` |
 | `--parse-error <json>` | `parse_error` | `explosion_failed` |
 
-### migrate-to-v5.ts
+### migrate-to-v5.js
 
 ```bash
 # Default .claude root shown. Adjust if you configured a custom orch_root.
-npx tsx .claude/skills/rad-orchestration/scripts/migrate-to-v5.ts --project-dir <project-dir>
+node .claude/skills/rad-orchestration/scripts/migrate-to-v5.js --project-dir <project-dir>
 ```
 
 | Flag | Required | Description |

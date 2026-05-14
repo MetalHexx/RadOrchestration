@@ -31,7 +31,7 @@ describe('pipeline bundle', () => {
     await fs.copyFile(bundlePath, copy);
     const result = await execP('node', [copy], { reject: false } as never).catch((e: { stderr?: string; stdout?: string; code?: number }) => e);
     const merged = ((result as { stderr?: string }).stderr ?? '') + ((result as { stdout?: string }).stdout ?? '');
-    expect(merged).not.toMatch(/npm (ci|install)/);
+    expect(merged).not.toMatch(/SyntaxError|Cannot find|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND|npm (ci|install)/);
   });
 
   // Bundle geometry sanity — `pipeline.ts` lives at `scripts/pipeline.ts` and
@@ -62,5 +62,80 @@ describe('pipeline bundle', () => {
     expect(parsed.action).toBe('spawn_requirements');
     expect(typeof parsed.orchRoot).toBe('string');
     expect(parsed.orchRoot.length).toBeGreaterThan(0);
+  });
+});
+
+describe('explode-master-plan bundle', () => {
+  let tmp: string;
+  let bundlePath: string;
+  beforeAll(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-explode-'));
+    bundlePath = path.join(tmp, 'explode-master-plan.js');
+    await execP('npm', ['run', 'bundle', '--', '--entry=explode-master-plan', `--out=${bundlePath}`], { cwd: scriptsRoot, shell: process.platform === 'win32' });
+  }, 120_000);
+
+  it('emits a single-file bundle under 1 MB and over 10 KB', async () => {
+    const stat = await fs.stat(bundlePath);
+    expect(stat.size).toBeLessThan(1 * 1024 * 1024);
+    expect(stat.size).toBeGreaterThan(10 * 1024);
+  });
+
+  it('loads without npm-install bootstrap when run with no args', async () => {
+    const isolated = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-explode-iso-'));
+    const copy = path.join(isolated, 'explode-master-plan.js');
+    await fs.copyFile(bundlePath, copy);
+    const result = await execP('node', [copy], { reject: false } as never).catch((e: { stderr?: string; stdout?: string; code?: number }) => e);
+    const merged = ((result as { stderr?: string }).stderr ?? '') + ((result as { stdout?: string }).stdout ?? '');
+    expect(merged).not.toMatch(/SyntaxError|Cannot find|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND|npm (ci|install)/);
+  });
+});
+
+describe('migrate-to-v5 bundle', () => {
+  let tmp: string;
+  let bundlePath: string;
+  beforeAll(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-migrate-'));
+    bundlePath = path.join(tmp, 'migrate-to-v5.js');
+    await execP('npm', ['run', 'bundle', '--', '--entry=migrate-to-v5', `--out=${bundlePath}`], { cwd: scriptsRoot, shell: process.platform === 'win32' });
+  }, 120_000);
+
+  it('emits a single-file bundle under 1 MB and over 10 KB', async () => {
+    const stat = await fs.stat(bundlePath);
+    expect(stat.size).toBeLessThan(1 * 1024 * 1024);
+    expect(stat.size).toBeGreaterThan(10 * 1024);
+  });
+
+  it('loads without npm-install bootstrap when run with no args', async () => {
+    const isolated = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-migrate-iso-'));
+    const copy = path.join(isolated, 'migrate-to-v5.js');
+    await fs.copyFile(bundlePath, copy);
+    const result = await execP('node', [copy], { reject: false } as never).catch((e: { stderr?: string; stdout?: string; code?: number }) => e);
+    const merged = ((result as { stderr?: string }).stderr ?? '') + ((result as { stdout?: string }).stdout ?? '');
+    expect(merged).not.toMatch(/SyntaxError|Cannot find|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND|npm (ci|install)/);
+  });
+});
+
+describe('fix-ghost-v5 bundle', () => {
+  let tmp: string;
+  let bundlePath: string;
+  beforeAll(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-fixghost-'));
+    bundlePath = path.join(tmp, 'fix-ghost-v5.js');
+    await execP('npm', ['run', 'bundle', '--', '--entry=fix-ghost-v5', `--out=${bundlePath}`], { cwd: scriptsRoot, shell: process.platform === 'win32' });
+  }, 120_000);
+
+  it('emits a single-file bundle under 1 MB and over 10 KB', async () => {
+    const stat = await fs.stat(bundlePath);
+    expect(stat.size).toBeLessThan(1 * 1024 * 1024);
+    expect(stat.size).toBeGreaterThan(10 * 1024);
+  });
+
+  it('loads without npm-install bootstrap when run with no args', async () => {
+    const isolated = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-fixghost-iso-'));
+    const copy = path.join(isolated, 'fix-ghost-v5.js');
+    await fs.copyFile(bundlePath, copy);
+    const result = await execP('node', [copy], { reject: false } as never).catch((e: { stderr?: string; stdout?: string; code?: number }) => e);
+    const merged = ((result as { stderr?: string }).stderr ?? '') + ((result as { stdout?: string }).stdout ?? '');
+    expect(merged).not.toMatch(/SyntaxError|Cannot find|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND|npm (ci|install)/);
   });
 });
