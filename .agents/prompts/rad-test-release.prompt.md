@@ -26,14 +26,15 @@ Record the answer as `{harness}`.
 
 `git rev-parse --show-toplevel` from anywhere inside this repo; record as `{repoRoot}`.
 
-## Step 3 — Build adapter sources and emit shared assets
+## Step 3 — Sync installer bundle assets
 
 From `{repoRoot}`:
 
 ```
-npm run build:{harness}
 cd installer && node scripts/sync-source.js
 ```
+
+Do **not** run `npm run build:{harness}` here — that would deploy agents/skills directly to `~/.claude/` or `~/.copilot/` and pre-pollute the destination before the installer runs, defeating the purpose of the cold-install test. `sync-source.js` already runs the adapters fresh into `installer/src/<harness>/` on its own.
 
 `sync-source.js` ensures `cli/node_modules/` and `cli/dist/` are populated (running `npm ci && npm run build` in `cli/` if missing — no manual prereq), emits the shared `installer/src/ui/` once, emits the CLI bundle per-harness into `installer/src/{harness}/skills/rad-orchestration/scripts/radorch.mjs`, and augments every per-harness manifest with the corresponding entries (including `destinationPath`, which the installer expands at install time).
 
@@ -70,6 +71,12 @@ Expected: all checks pass.
 Verify the CLI landed inside the rad-orchestration skill (the harness root is `~/.claude` for `claude`, `~/.copilot` for the Copilot harnesses):
 - POSIX: `test -x ~/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs && wc -c ~/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs` — file is non-empty and executable.
 - Windows: confirm `%USERPROFILE%\{harnessRoot}\skills\rad-orchestration\scripts\radorch.mjs` exists and is non-empty.
+
+Verify the in-skill CLI reports a version that matches the installer:
+- POSIX: `node $HOME/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs --version`
+- Windows: `node %USERPROFILE%\{harnessRoot}\skills\rad-orchestration\scripts\radorch.mjs --version`
+
+Expected: prints a version string (e.g. `1.0.0-alpha.8`) that exactly matches `package_version` in `~/.radorch/install.json` (recorded in Step 10). Any mismatch indicates the bundle and the manifest are out of sync.
 
 Verify the UI landed: `ls ~/.radorch/ui/` shows the Next.js standalone bundle (server.js or .next/static).
 
