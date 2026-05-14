@@ -2,8 +2,9 @@
 //
 // Driven entirely off a manifest. Each entry is read from a source path
 // (resolved per-entry: ui/ from `sharedRoot`, everything else from
-// `pluginRoot`) and written to resolveBundleTarget(entry.bundlePath, harness),
-// creating intermediate directories as needed.
+// `pluginRoot`) and written to expandDestinationTokens(entry.destinationPath,
+// harness) — the templated destination is baked into the manifest at
+// adapter emit time (see adapters/destination-routing.js).
 //
 // AD-7 hard guard: any entry whose resolved target path falls under
 // userDataPaths().projects is skipped unconditionally — the projects
@@ -11,12 +12,12 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveBundleTarget } from './route.js';
+import { expandDestinationTokens } from './expand-tokens.js';
 import { userDataPaths } from './user-data-paths.js';
 import type { HarnessName } from './harness-paths.js';
 
 export interface InstallManifest {
-  readonly files: ReadonlyArray<{ readonly bundlePath: string }>;
+  readonly files: ReadonlyArray<{ readonly bundlePath: string; readonly destinationPath: string }>;
 }
 
 export interface InstallResult {
@@ -69,7 +70,7 @@ export function installManifestFiles(
   let skippedCount = 0;
 
   for (const entry of manifest.files) {
-    const target = resolveBundleTarget(entry.bundlePath, harness);
+    const target = expandDestinationTokens(entry.destinationPath, harness);
 
     // AD-7: hard guard — never write anything under projects/
     if (target.startsWith(projectsRoot)) {

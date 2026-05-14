@@ -38,7 +38,7 @@ See `skills/rad-create-skill/SKILL.md` for the matching authoring convention.
 
 ## Source layout
 
-Canonical agent and skill source lives at the **repo root** in `agents/` and `skills/`, authored in Claude shape (the format Claude Code accepts natively). `.claude/` is a gitignored, generated artifact — populated by `npm run build` (default Claude adapter) and refreshed after any edit to `agents/` or `skills/`. Do not commit changes under `.claude/agents/` or `.claude/skills/`; edit the repo-root canonical source instead.
+Canonical agent and skill source lives at the **repo root** in `agents/` and `skills/`, authored in Claude shape (the format Claude Code accepts natively). Nothing is generated *at the repo root* by the build — `npm run build` stages adapter output under `dist/staging/<harness>/` and then deploys it to the harness's user-level location (`~/.claude/` or `~/.copilot/`) via the same manifest-driven library the installer uses. Edit the canonical source; never edit the deployed output.
 
 The `rad-*` reserved-namespace rule above applies to `skills/` at the repo root — it does not change with the restructure.
 
@@ -46,17 +46,21 @@ The `rad-*` reserved-namespace rule above applies to `skills/` at the repo root 
 
 ## Multi-harness build (repo root)
 
-After editing any file under `agents/` or `skills/`, refresh the dogfood folder for the harness you are running in:
+After editing any file under `agents/` or `skills/`, run the build for the harness you're testing against. The build deploys to user-level (`~/.claude/` or `~/.copilot/`) — no repo-root dogfood folder is produced:
 
 ```bash
-npm run build                  # Claude Code (default) → .claude/
+npm run build                  # Claude Code (default) → ~/.claude/
 npm run build:claude           # explicit
-npm run build:copilot-vscode   # → .github/
-npm run build:copilot-cli      # → .github/
-npm run build:all              # every adapter, sequentially
+npm run build:copilot-vscode   # → ~/.copilot/
+npm run build:copilot-cli      # → ~/.copilot/
+npm run build:all              # every adapter, sequentially (last one wins for shared user-level paths)
 ```
 
-**First clone of the repo requires `npm run build`** before the in-repo Claude Code instance can read agents and skills (the canonical sources at `agents/` and `skills/` are not the files Claude Code reads — `.claude/agents/` and `.claude/skills/` are, and they're gitignored).
+Scope of `npm run build:<harness>`: agents + skills only. The CLI bundle (`radorch.mjs`) and the dashboard UI are NOT rebuilt — those are heavier emissions owned by `installer/scripts/sync-source.js` (publish-time) and the end-user install flow. For a full local install identical to `npx rad-orchestration` end-to-end, run `cd installer && npm pack && npx ./<tarball> --yes --harness <harness>`.
+
+**First clone of the repo requires `npm run build`** before the in-repo Claude Code instance can read up-to-date canonical content from `~/.claude/`. Note that `~/.claude/` is shared across all worktrees of this repo and across all Claude Code projects — only one branch's content can be the active dogfood at a time. Switch worktrees → re-run the build to swap.
+
+**Be aware:** the system agents shipped from `agents/` have bare names (no `rad-` prefix). If you have personal agents at `~/.claude/agents/` sharing those filenames, the build will overwrite them on deploy. The build's cleanup pass uses the prior dogfood manifest as the sole source of truth — no namespace globbing — so non-rad files outside the prior manifest are untouched.
 
 ## Tests by sub-package
 
@@ -116,7 +120,7 @@ The system targets multiple AI coding harnesses (Claude Code, GitHub Copilot in 
 
 - `agents/` and `skills/` at the repo root are the **only** authored source — written in Claude shape, which is also the format Claude Code reads natively.
 - `adapters/<harness>/adapter.js` is a self-contained per-harness projection: filename rule, frontmatter shape, tool-name dictionary, and model alias map. Adapters never transform the body of agents or skills, never modify `rad-*` skill names, and never ship settings or top-level instruction files.
-- `scripts/build.js` discovers adapters via `adapters/discover.js`, runs them via `adapters/run.js`, and emits each harness's gitignored target folder (`.claude/`, `.github/`).
+- `scripts/build.js` discovers adapters via `adapters/discover.js`, runs them via `adapters/run.js` into `dist/staging/<harness>/`, then deploys to user-level (`~/.claude/`, `~/.copilot/`) using the same manifest-driven library the installer uses — no repo-root dogfood is produced.
 - `installer/src/<harness>/` holds **pre-compiled bundles** that the published `rad-orchestration` npm installer ships to end users. These are produced by `installer/scripts/sync-source.js` at pack time — do not hand-edit.
 - A new harness is added by mirroring `adapters/_template/` (an empty adapter scaffold with its own README and tests).
 
@@ -137,13 +141,13 @@ The pipeline runtime is the load-bearing piece. Key files in `skills/rad-orchest
 
 ## Skill and agent loading
 
-The canonical sources at `agents/` and `skills/` are **not** what Claude Code loads at runtime — Claude Code reads from `.claude/agents/` and `.claude/skills/`, which are gitignored and produced by `npm run build`. After editing any agent or skill, run the appropriate build command before invoking it from the harness, otherwise you'll be running stale content. The same applies in reverse on Copilot — never edit `.claude/` or `.github/` and expect those changes to survive a build.  When we edit the project skills and agents, we are editing the canonical source. The build process transforms that canonical source into the shape required by each harness and outputs it to the respective target folder.
+The canonical sources at `agents/` and `skills/` are **not** what Claude Code loads at runtime — Claude Code reads from `~/.claude/agents/` and `~/.claude/skills/` (user-level, shared across all projects and worktrees on your machine). `npm run build:claude` populates those paths by running the adapter into `dist/staging/claude/` and then calling the installer's `installManifestFiles` library to deploy. The same pattern applies to Copilot (`~/.copilot/`). After editing any agent or skill, run the appropriate build command before invoking it from the harness, otherwise the harness reads stale user-level content. When we edit project skills and agents, we are editing the canonical source — never edit the deployed output and expect those changes to survive a build.
 
 ## Where things live
 
 - `agents/`, `skills/` — canonical source (committed)
 - `adapters/<harness>/` — self-contained per-harness adapter (committed)
-- `scripts/build.js` — repo-root multi-harness build CLI (committed)
+- `scripts/build.js` — dogfood build CLI: stages adapters under `dist/staging/<harness>/` and deploys to user-level (committed)
 - `installer/` — `rad-orchestration` npm package (binary: `radorch-installer`) (committed)
 - `installer/src/<harness>/` — pre-compiled bundles for publish (committed; regenerated by `sync-source.js`)
 - `ui/` — Next.js dashboard (committed)
@@ -151,4 +155,5 @@ The canonical sources at `agents/` and `skills/` are **not** what Claude Code lo
 - `tests/scripts/` — repo-wide cross-cutting tests (e.g., reserved-namespace, agent-skill ref integrity)
 - `docs/` — user-facing docs; `docs/internals/` for refactor design notes
 - `.agents/` — non-production / dev-only skills and prompts (e.g., `rad-create-skill` scaffolding)
-- `.claude/`, `.github/agents/`, `.github/skills/`, `dist/`, `claude/`, `copilot-vscode/`, `copilot-cli/` — **gitignored** generated artifacts
+- `dist/staging/<harness>/`, `dist/dogfood-prior-<harness>.json`, `dist/marketplaces/...`, `dist/` — **gitignored** generated artifacts (build outputs, staging hopper, prior-manifest snapshots, plugin tree staging)
+- `~/.claude/`, `~/.copilot/`, `~/.radorch/` — **user-level destinations** that the build/installer write to (NOT in the repo)

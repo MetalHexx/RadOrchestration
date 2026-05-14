@@ -5,6 +5,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { resolveDestinationPath } from './destination-routing.js';
 
 /** @import { Adapter, MetadataStreamEntry } from './types.d.ts' */
 
@@ -84,6 +85,7 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
       files.push({
         bundlePath,
         sourcePath,
+        destinationPath: resolveDestinationPath(bundlePath, adapter.name),
         ownership: 'orchestration-system',
         version,
         harness: adapter.name,
@@ -129,6 +131,7 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
           files.push({
             bundlePath,
             sourcePath: path.posix.join('skills', skillName, 'SKILL.md'),
+            destinationPath: resolveDestinationPath(bundlePath, adapter.name),
             ownership: 'orchestration-system',
             version,
             harness: adapter.name,
@@ -147,6 +150,7 @@ export async function runAdapter(adapter, { canonicalRoot, outputRoot, version, 
           files.push({
             bundlePath,
             sourcePath: path.posix.join('skills', skillName, rel.split(path.sep).join('/')),
+            destinationPath: resolveDestinationPath(bundlePath, adapter.name),
             ownership: 'orchestration-system',
             version,
             harness: adapter.name,

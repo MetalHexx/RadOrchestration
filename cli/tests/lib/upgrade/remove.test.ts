@@ -29,7 +29,7 @@ describe('removeManifestFiles', () => {
     expect(fs.existsSync(agentFile)).toBe(true);
 
     const manifest = {
-      files: [{ bundlePath: 'agents/planner.md' }],
+      files: [{ bundlePath: 'agents/planner.md', destinationPath: '${HARNESS_ROOT}/agents/planner.md' }],
     };
 
     const result = removeManifestFiles(manifest, 'claude');
@@ -47,7 +47,7 @@ describe('removeManifestFiles', () => {
     expect(fs.existsSync(templateFile)).toBe(true);
 
     const manifest = {
-      files: [{ bundlePath: 'templates/high.yml' }],
+      files: [{ bundlePath: 'templates/high.yml', destinationPath: '${RAD_HOME}/templates/high.yml' }],
     };
 
     const result = removeManifestFiles(manifest, 'claude');
@@ -64,7 +64,7 @@ describe('removeManifestFiles', () => {
     fs.writeFileSync(skillFile, 'skill content', 'utf8');
 
     const manifest = {
-      files: [{ bundlePath: 'skills/rad-plan/SKILL.md' }],
+      files: [{ bundlePath: 'skills/rad-plan/SKILL.md', destinationPath: '${HARNESS_ROOT}/skills/rad-plan/SKILL.md' }],
     };
 
     const result = removeManifestFiles(manifest, 'claude');
@@ -86,7 +86,7 @@ describe('removeManifestFiles', () => {
     fs.writeFileSync(file2, 'coder', 'utf8');
 
     const manifest = {
-      files: [{ bundlePath: 'agents/planner.md' }],
+      files: [{ bundlePath: 'agents/planner.md', destinationPath: '${HARNESS_ROOT}/agents/planner.md' }],
     };
 
     const result = removeManifestFiles(manifest, 'claude');
@@ -98,7 +98,7 @@ describe('removeManifestFiles', () => {
 
   it('ignores manifest entries whose files do not exist on disk', () => {
     const manifest = {
-      files: [{ bundlePath: 'agents/nonexistent.md' }],
+      files: [{ bundlePath: 'agents/nonexistent.md', destinationPath: '${HARNESS_ROOT}/agents/nonexistent.md' }],
     };
 
     const result = removeManifestFiles(manifest, 'claude');
@@ -117,7 +117,7 @@ describe('removeManifestFiles', () => {
 
     // Stray manifest entry that would route to projects/
     const manifest = {
-      files: [{ bundlePath: 'projects/my-project/state.json' }],
+      files: [{ bundlePath: 'projects/my-project/state.json', destinationPath: '${RAD_HOME}/projects/my-project/state.json' }],
     };
 
     const result = removeManifestFiles(manifest, 'claude');
@@ -140,9 +140,9 @@ describe('removeManifestFiles', () => {
 
     const manifest = {
       files: [
-        { bundlePath: 'agents/planner.md' },
-        { bundlePath: 'agents/coder.md' },
-        { bundlePath: 'skills/rad-plan/SKILL.md' },
+        { bundlePath: 'agents/planner.md', destinationPath: '${HARNESS_ROOT}/agents/planner.md' },
+        { bundlePath: 'agents/coder.md', destinationPath: '${HARNESS_ROOT}/agents/coder.md' },
+        { bundlePath: 'skills/rad-plan/SKILL.md', destinationPath: '${HARNESS_ROOT}/skills/rad-plan/SKILL.md' },
       ],
     };
 

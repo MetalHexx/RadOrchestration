@@ -35,7 +35,7 @@ describe('installManifestFiles', () => {
 
   it('copies harness-routed entry (agents/) to the correct target location', () => {
     const manifest = {
-      files: [{ bundlePath: 'agents/planner.md' }],
+      files: [{ bundlePath: 'agents/planner.md', destinationPath: '${HARNESS_ROOT}/agents/planner.md' }],
     };
 
     const result = installManifestFiles(manifest, pluginRoot, 'claude');
@@ -49,7 +49,7 @@ describe('installManifestFiles', () => {
 
   it('copies root-routed entry (templates/) to the correct target location', () => {
     const manifest = {
-      files: [{ bundlePath: 'templates/high.yml' }],
+      files: [{ bundlePath: 'templates/high.yml', destinationPath: '${RAD_HOME}/templates/high.yml' }],
     };
 
     const result = installManifestFiles(manifest, pluginRoot, 'claude');
@@ -63,7 +63,7 @@ describe('installManifestFiles', () => {
 
   it('creates intermediate directories automatically', () => {
     const manifest = {
-      files: [{ bundlePath: 'skills/rad-plan/SKILL.md' }],
+      files: [{ bundlePath: 'skills/rad-plan/SKILL.md', destinationPath: '${HARNESS_ROOT}/skills/rad-plan/SKILL.md' }],
     };
 
     const result = installManifestFiles(manifest, pluginRoot, 'claude');
@@ -77,9 +77,9 @@ describe('installManifestFiles', () => {
   it('handles multiple entries and returns correct counts', () => {
     const manifest = {
       files: [
-        { bundlePath: 'agents/planner.md' },
-        { bundlePath: 'templates/high.yml' },
-        { bundlePath: 'skills/rad-plan/SKILL.md' },
+        { bundlePath: 'agents/planner.md', destinationPath: '${HARNESS_ROOT}/agents/planner.md' },
+        { bundlePath: 'templates/high.yml', destinationPath: '${RAD_HOME}/templates/high.yml' },
+        { bundlePath: 'skills/rad-plan/SKILL.md', destinationPath: '${HARNESS_ROOT}/skills/rad-plan/SKILL.md' },
       ],
     };
 
@@ -97,7 +97,7 @@ describe('installManifestFiles', () => {
     fs.writeFileSync(path.join(projectsDir, 'state.json'), '{"evil":"payload"}', 'utf8');
 
     const manifest = {
-      files: [{ bundlePath: 'projects/my-project/state.json' }],
+      files: [{ bundlePath: 'projects/my-project/state.json', destinationPath: '${RAD_HOME}/projects/my-project/state.json' }],
     };
 
     const result = installManifestFiles(manifest, pluginRoot, 'claude');

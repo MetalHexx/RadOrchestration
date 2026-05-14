@@ -6,21 +6,15 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-test('rad-build-harness SKILL.md describes the installer-wrapper flow', () => {
-  const p = path.join(repoRoot, '.agents', 'skills', 'rad-build-harness', 'SKILL.md');
-  const text = fs.readFileSync(p, 'utf8');
-  // Must reference each load-bearing step of the wrapper flow (vocabulary only):
-  assert.match(text, /npm uninstall -g rad-orchestration/);
-  assert.match(text, /npm pack/);
-  assert.match(text, /radorch --yes/);
-  assert.match(text, /plugin-bootstrap.*--force/);
-  assert.match(text, /sha256/);
-  assert.match(text, /radorch doctor/);
-  // Must NOT carry retired references:
-  assert.doesNotMatch(text, /base_path/);
-  assert.doesNotMatch(text, /orch_root/);
-  assert.doesNotMatch(text, /projects\.naming/);
-});
+// The previous `rad-build-harness SKILL.md describes the installer-wrapper flow`
+// shape test was deleted (2026-05-13). It pinned a phrase-by-phrase vocabulary
+// against the SKILL.md body — exactly the brittle markdown-shape pattern that
+// CLAUDE.md's "DO NOT Write Markdown-Shape Tests Without Explicit Instruction"
+// rule warns against. The SKILL.md has since evolved past the pinned terms
+// (e.g., the installer's retired `--force`, retired `doctor` subcommand, retired
+// `npm uninstall -g` path), and every prose edit risked re-breaking it. Skill
+// content correctness lives in the workflow text itself; the in-skill smoke
+// flow (rad-test-release.prompt.md) is the actionable regression catcher.
 
 test('rad-test-release prompt is available in .agents/prompts/', () => {
   assert.ok(fs.existsSync(path.join(repoRoot, '.agents', 'prompts', 'rad-test-release.prompt.md')));

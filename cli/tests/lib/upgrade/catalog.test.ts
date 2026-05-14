@@ -28,7 +28,7 @@ describe('loadBundledManifest', () => {
       harness: 'claude',
       version: '1.2.3',
       files: [
-        { bundlePath: 'agents/planner.md', sha256: 'abc123', ownership: 'managed' },
+        { bundlePath: 'agents/planner.md', destinationPath: '${HARNESS_ROOT}/agents/planner.md', sha256: 'abc123', ownership: 'managed' },
       ],
     };
     fs.writeFileSync(path.join(manifestsDir, 'v1.2.3.json'), JSON.stringify(manifest), 'utf8');
@@ -46,8 +46,8 @@ describe('loadBundledManifest', () => {
       harness: 'claude',
       version: '2.0.0',
       files: [
-        { bundlePath: 'agents/coder.md', sha256: 'def456', ownership: 'managed' },
-        { bundlePath: 'templates/high.yml', sha256: 'ghi789', ownership: 'managed' },
+        { bundlePath: 'agents/coder.md', destinationPath: '${HARNESS_ROOT}/agents/coder.md', sha256: 'def456', ownership: 'managed' },
+        { bundlePath: 'templates/high.yml', destinationPath: '${RAD_HOME}/templates/high.yml', sha256: 'ghi789', ownership: 'managed' },
       ],
     };
     fs.writeFileSync(path.join(manifestsDir, 'v2.0.0.json'), JSON.stringify(manifest), 'utf8');

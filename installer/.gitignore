@@ -49,8 +49,20 @@ temp/
 .DS_Store?
 ._*
 
-# Assembled source files (populated at publish time only)
-src/
+# Assembled per-harness bundles (regenerated at publish time by
+# scripts/sync-source.js). Each release wipes and regenerates these — they're
+# not source of truth, so they stay out of git.
+src/*/agents/
+src/*/skills/
+src/*/package.json
+src/ui/
+
+# IMPORTANT: src/<harness>/manifests/ is NOT ignored. The manifest catalog
+# is committed and grows append-only — every release adds a new v<version>.json,
+# and prior versions stay so the installer can do clean upgrades by reading the
+# previously-installed version's manifest and removing its files before installing
+# the new version. The committed catalog is the source of truth shipped in the npm
+# tarball (via `files: ["src/"]` in installer/package.json).
 .Spotlight-V100
 .Trashes
 ehthumbs.db

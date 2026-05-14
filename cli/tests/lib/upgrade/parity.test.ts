@@ -50,10 +50,10 @@ function buildSyntheticBundle(root: string, opts: { layout: 'legacy' | 'plugin' 
     package_version: '0.0.0-test',
     harness: 'claude',
     files: [
-      { bundlePath: 'skills/rad-orchestration/scripts/radorch.mjs', sourcePath: 'skills/rad-orchestration/scripts/radorch.mjs', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' },
-      { bundlePath: 'ui/server.js', sourcePath: 'ui/server.js', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' },
-      { bundlePath: 'agents/a.md', sourcePath: 'agents/a.md', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' },
-      { bundlePath: 'skills/s/SKILL.md', sourcePath: 'skills/s/SKILL.md', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' },
+      { bundlePath: 'skills/rad-orchestration/scripts/radorch.mjs', destinationPath: '${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs', sourcePath: 'skills/rad-orchestration/scripts/radorch.mjs', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' },
+      { bundlePath: 'ui/server.js', destinationPath: '${RAD_HOME}/ui/server.js', sourcePath: 'ui/server.js', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' },
+      { bundlePath: 'agents/a.md', destinationPath: '${HARNESS_ROOT}/agents/a.md', sourcePath: 'agents/a.md', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' },
+      { bundlePath: 'skills/s/SKILL.md', destinationPath: '${HARNESS_ROOT}/skills/s/SKILL.md', sourcePath: 'skills/s/SKILL.md', ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' },
     ],
   };
   const manifestPath = path.join(manifestDir, 'v0.0.0-test.json');

@@ -33,8 +33,8 @@ import { renderHelp } from './lib/help.js';
 // Application
 import { runWizard } from './lib/wizard.js';
 
-// Upgrade composition — single canonical path shared with the plugin hook.
-import { runPluginBootstrap } from './lib/cli-upgrade-bridge.js';
+// Install/upgrade orchestrator — native installer logic, independent of `cli/`.
+import { installHarness } from './lib/install/install-harness.js';
 
 // Config generation
 import { generateConfig, writeConfig } from './lib/config-generator.js';
@@ -184,8 +184,13 @@ export async function main() {
       }
       const spinner = ora({ text: `Bootstrapping '${harness}'…`, color: THEME.spinner }).start();
       try {
-        const result = await runPluginBootstrap({ pluginRoot, sharedRoot, harness });
-        spinner.succeed(`Bootstrapped '${harness}' (${result.action})`);
+        const result = await installHarness({ pluginRoot, sharedRoot, harness });
+        if (result.action === 'downgrade-refused') {
+          spinner.warn(`Bootstrapped '${harness}' (${result.action})`);
+          if (result.message) console.warn(THEME.warning ? THEME.warning(result.message) : result.message);
+        } else {
+          spinner.succeed(`Bootstrapped '${harness}' (${result.action})`);
+        }
       } catch (err) {
         spinner.fail(`Failed to bootstrap '${harness}': ${err.message}`);
         throw err;

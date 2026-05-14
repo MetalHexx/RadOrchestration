@@ -1,7 +1,6 @@
-// cli/src/lib/upgrade/remove.ts — Single shared removal path. Ported from
-// installer/lib/remove.js with adaptations:
-//   - Uses resolveBundleTarget(entry.bundlePath, harness) for path resolution
-//     instead of path.join(resolvedOrchRoot, entry.bundlePath)
+// cli/src/lib/upgrade/remove.ts — Single shared removal path.
+//   - Uses expandDestinationTokens(entry.destinationPath, harness) for path
+//     resolution — destinationPath is baked into the manifest by adapters/.
 //   - Hard AD-7 guard: any entry resolving under userDataPaths().projects is
 //     skipped with a debug warning — never deleted.
 //
@@ -11,12 +10,12 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveBundleTarget } from './route.js';
+import { expandDestinationTokens } from './expand-tokens.js';
 import { userDataPaths } from './user-data-paths.js';
 import type { HarnessName } from './harness-paths.js';
 
 export interface RemoveManifest {
-  readonly files: ReadonlyArray<{ readonly bundlePath: string }>;
+  readonly files: ReadonlyArray<{ readonly bundlePath: string; readonly destinationPath: string }>;
 }
 
 export interface RemoveResult {
@@ -41,7 +40,7 @@ export function removeManifestFiles(manifest: RemoveManifest, harness: HarnessNa
   const dirsTouched = new Set<string>();
 
   for (const entry of manifest.files) {
-    const abs = resolveBundleTarget(entry.bundlePath, harness);
+    const abs = expandDestinationTokens(entry.destinationPath, harness);
 
     // AD-7: hard guard — never delete anything under projects/
     if (abs.startsWith(projectsRoot)) {

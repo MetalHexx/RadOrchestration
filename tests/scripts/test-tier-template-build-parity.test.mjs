@@ -16,15 +16,16 @@ function templatesAt(rel) {
   return fs.readdirSync(dir).filter(f => f.endsWith('.yml')).sort();
 }
 
-test('npm run build:all produces canonical, .claude, and .github with exactly the four tier templates', () => {
+test('npm run build:all produces canonical + per-harness staging with exactly the four tier templates', () => {
   execSync('npm run build:all', { cwd: REPO_ROOT, stdio: 'pipe' });
 
   const canonical = templatesAt('skills/rad-orchestration/templates');
-  const claude = templatesAt('.claude/skills/rad-orchestration/templates');
-  const github = templatesAt('.github/skills/rad-orchestration/templates');
+  const claude = templatesAt('dist/staging/claude/skills/rad-orchestration/templates');
+  const copilotVscode = templatesAt('dist/staging/copilot-vscode/skills/rad-orchestration/templates');
+  const copilotCli = templatesAt('dist/staging/copilot-cli/skills/rad-orchestration/templates');
 
-  for (const dir of [canonical, claude, github]) {
-    if (dir === null) continue; // dogfold target may be absent in CI
+  for (const dir of [canonical, claude, copilotVscode, copilotCli]) {
+    if (dir === null) continue; // staging may be absent for a harness if its adapter skipped
     assert.deepEqual(dir, EXPECTED_TIERS.slice().sort(), `Templates dir mismatch: ${JSON.stringify(dir)}`);
     for (const f of FORBIDDEN) assert.ok(!dir.includes(f), `${f} still present`);
   }

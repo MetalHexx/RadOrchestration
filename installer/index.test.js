@@ -12,13 +12,32 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { main as installerMain } from './index.js';
-import { runPluginBootstrap } from './lib/cli-upgrade-bridge.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Test-only direct import of the CLI's runPluginBootstrap for the structural
+// parity test below. Production code in installer/ has no `cli/` imports —
+// this test verifies that the legacy installer's native install path produces
+// the same on-disk state the plugin/SessionStart channel produces, even though
+// they're now independent implementations sharing only the manifest contract.
+async function loadRunPluginBootstrap() {
+  const candidates = [
+    '../cli/dist/cli/src/commands/plugin-bootstrap/run.js',
+    '../cli/dist/commands/plugin-bootstrap/run.js',
+  ];
+  for (const rel of candidates) {
+    const abs = path.resolve(__dirname, rel);
+    if (fs.existsSync(abs)) {
+      const mod = await import(pathToFileURL(abs).href);
+      return mod.runPluginBootstrap;
+    }
+  }
+  return null; // CLI not built; parity test will be skipped.
+}
 
 /**
  * Locate the bundled plugin payload the installer ships. The bundle is produced
@@ -131,14 +150,17 @@ test('end-to-end install writes to ~/.radorch and harness folder only', async (t
 });
 
 test('installer produces structurally-equivalent state vs plugin-bootstrap', async (t) => {
-  // Pragmatic substitute for the byte-identical assertion (per handoff
-  // Execution Notes): we cannot get byte-for-byte equality because
-  // install.json carries `installed_at: new Date().toISOString()` which
-  // differs per run. We therefore assert structural equivalence — the same
-  // set of files at the same relative paths, with matching content for every
-  // entry EXCEPT install.json (compared structurally, ignoring timestamps).
+  // Cross-implementation guard: the legacy installer (native JS, this PR) and
+  // the plugin channel (radorch.mjs plugin-bootstrap via SessionStart hook)
+  // are independent implementations that both consume the same manifest
+  // contract. They must produce equivalent on-disk state.
   if (!pluginRootAvailable('claude')) {
     t.skip('installer/src/claude/ not built; run installer/scripts/sync-source.js first');
+    return;
+  }
+  const runPluginBootstrap = await loadRunPluginBootstrap();
+  if (!runPluginBootstrap) {
+    t.skip('cli/dist/ not built; run `cd cli && npm run build` first');
     return;
   }
 

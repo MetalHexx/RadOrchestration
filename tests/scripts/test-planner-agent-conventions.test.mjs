@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
-const md = readFileSync(path.join(repoRoot, '.claude/agents/planner.md'), 'utf8');
+const md = readFileSync(path.join(repoRoot, 'agents/planner.md'), 'utf8');
 assert.match(md, /^## Spawn Prompt Conventions\s*$/m, 'planner.md must carry an H2 `## Spawn Prompt Conventions` section');
 assert.match(md, /## Repository Skills Available/, 'planner.md must reference the literal `## Repository Skills Available` heading');
 assert.match(md, /catalog only|Catalog only/i, 'planner.md must clarify entries are catalog-only');

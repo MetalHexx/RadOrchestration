@@ -42,7 +42,7 @@ describe('detectModifiedFiles', () => {
 
     const manifest = {
       files: [
-        { bundlePath: 'agents/planner.md', sha256: sha256(content), ownership: 'managed' },
+        { bundlePath: 'agents/planner.md', destinationPath: '${HARNESS_ROOT}/agents/planner.md', sha256: sha256(content), ownership: 'managed' },
       ],
     };
 
@@ -61,7 +61,7 @@ describe('detectModifiedFiles', () => {
 
     const manifest = {
       files: [
-        { bundlePath: 'agents/coder.md', sha256: sha256(originalContent), ownership: 'managed' },
+        { bundlePath: 'agents/coder.md', destinationPath: '${HARNESS_ROOT}/agents/coder.md', sha256: sha256(originalContent), ownership: 'managed' },
       ],
     };
 
@@ -72,7 +72,7 @@ describe('detectModifiedFiles', () => {
   it('ignores files that do not exist on disk', () => {
     const manifest = {
       files: [
-        { bundlePath: 'agents/missing.md', sha256: 'somesha', ownership: 'managed' },
+        { bundlePath: 'agents/missing.md', destinationPath: '${HARNESS_ROOT}/agents/missing.md', sha256: 'somesha', ownership: 'managed' },
       ],
     };
 
@@ -89,7 +89,7 @@ describe('detectModifiedFiles', () => {
 
     const manifest = {
       files: [
-        { bundlePath: 'orchestration.yml', sha256: sha256('bundled content'), ownership: 'user-config' },
+        { bundlePath: 'orchestration.yml', destinationPath: '${RAD_HOME}/orchestration.yml', sha256: sha256('bundled content'), ownership: 'user-config' },
       ],
     };
 
@@ -115,7 +115,7 @@ describe('detectModifiedFiles', () => {
     const manifest = {
       files: [
         {
-          bundlePath: 'projects/my-project/state.json',
+          bundlePath: 'projects/my-project/state.json', destinationPath: '${RAD_HOME}/projects/my-project/state.json',
           sha256: sha256('different content'),
           ownership: 'managed',
         },
@@ -138,8 +138,8 @@ describe('detectModifiedFiles', () => {
 
     const manifest = {
       files: [
-        { bundlePath: 'agents/zzz.md', sha256: wrongHash, ownership: 'managed' },
-        { bundlePath: 'agents/aaa.md', sha256: wrongHash, ownership: 'managed' },
+        { bundlePath: 'agents/zzz.md', destinationPath: '${HARNESS_ROOT}/agents/zzz.md', sha256: wrongHash, ownership: 'managed' },
+        { bundlePath: 'agents/aaa.md', destinationPath: '${HARNESS_ROOT}/agents/aaa.md', sha256: wrongHash, ownership: 'managed' },
       ],
     };
 
@@ -162,8 +162,8 @@ describe('detectModifiedFiles', () => {
 
     const manifest = {
       files: [
-        { bundlePath: 'agents/planner.md', sha256: sha256(agentContent), ownership: 'managed' },
-        { bundlePath: 'templates/high.yml', sha256: sha256(templateContent), ownership: 'managed' },
+        { bundlePath: 'agents/planner.md', destinationPath: '${HARNESS_ROOT}/agents/planner.md', sha256: sha256(agentContent), ownership: 'managed' },
+        { bundlePath: 'templates/high.yml', destinationPath: '${RAD_HOME}/templates/high.yml', sha256: sha256(templateContent), ownership: 'managed' },
       ],
     };
 

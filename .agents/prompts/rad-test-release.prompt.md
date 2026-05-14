@@ -35,7 +35,7 @@ npm run build:{harness}
 cd installer && node scripts/sync-source.js
 ```
 
-`sync-source.js` emits the shared `installer/src/ui/` once, then emits the CLI bundle per-harness into `installer/src/{harness}/skills/rad-orchestration/scripts/radorch.mjs` and augments every per-harness manifest with the corresponding entries.
+`sync-source.js` ensures `cli/node_modules/` and `cli/dist/` are populated (running `npm ci && npm run build` in `cli/` if missing — no manual prereq), emits the shared `installer/src/ui/` once, emits the CLI bundle per-harness into `installer/src/{harness}/skills/rad-orchestration/scripts/radorch.mjs`, and augments every per-harness manifest with the corresponding entries (including `destinationPath`, which the installer expands at install time).
 
 ## Step 4 — Pack the installer
 
@@ -57,11 +57,15 @@ npx {repoRoot}/installer/{tarball} --version
 npx {repoRoot}/installer/{tarball} --yes --harness {harness}
 ```
 
-> Expected: a single harness-checkbox question is bypassed by `--yes`; the wizard prints unconditional git/gh tooling-check warnings (FR-17) and runs the bootstrap; the install completes without errors.
+> Expected: a single harness-checkbox question is bypassed by `--yes`; the wizard runs git/gh tooling checks (FR-17) — warnings appear ONLY if either tool is missing; absence of warnings is the correct outcome when both are installed; the bootstrap runs and the install completes without errors.
 
 ## Step 7 — Verify the install
 
-Run `npx {repoRoot}/installer/{tarball} doctor`. Expected: all checks pass.
+Health checks have moved to the in-skill CLI. Run:
+- POSIX: `node $HOME/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs doctor`
+- Windows: `node %USERPROFILE%\{harnessRoot}\skills\rad-orchestration\scripts\radorch.mjs doctor`
+
+Expected: all checks pass.
 
 Verify the CLI landed inside the rad-orchestration skill (the harness root is `~/.claude` for `claude`, `~/.copilot` for the Copilot harnesses):
 - POSIX: `test -x ~/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs && wc -c ~/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs` — file is non-empty and executable.
@@ -69,11 +73,18 @@ Verify the CLI landed inside the rad-orchestration skill (the harness root is `~
 
 Verify the UI landed: `ls ~/.radorch/ui/` shows the Next.js standalone bundle (server.js or .next/static).
 
-Verify projects survived: `ls ~/.radorch/projects/` matches its pre-install contents byte-for-byte.
-
 ## Step 8 — Verify the sha256 manifest
 
-Open `{repoRoot}/installer/src/{bundleDir}/manifests/v{version}.json` (`bundleDir` matches the harness — `claude`, `copilot-vscode`, or `copilot-cli`). Confirm: the CLI entry `skills/rad-orchestration/scripts/radorch.mjs` is present, plus `ui/**`, `agents/*`, and `skills/*` entries; the three resurrected `rad-ui-*` skills appear under `skills/`; every entry carries a 64-char `sha256` field; and no `bin/radorch.mjs` entry remains.
+Open `{repoRoot}/installer/src/{bundleDir}/manifests/v{version}.json` (`bundleDir` matches the harness — `claude`, `copilot-vscode`, or `copilot-cli`). Each manifest entry carries `bundlePath`, `sourcePath`, `destinationPath`, `sha256`, `ownership`, `version`, and `harness`. There is no `path` field — use `bundlePath` for in-bundle relative paths.
+
+Confirm:
+
+- A `bundlePath` entry equal to `skills/rad-orchestration/scripts/radorch.mjs` is present.
+- `bundlePath` entries under `ui/**`, `agents/*`, and `skills/*` are present.
+- The three `rad-ui-*` skills appear under `skills/`.
+- **Every entry carries a 64-char `sha256` field.**
+- **Every entry carries a `destinationPath` field templated with `${HARNESS_ROOT}/...` (for `agents/` and `skills/`) or `${RAD_HOME}/...` (for everything else).** This is the routing-as-data contract both the installer and the in-skill CLI consume.
+- No `bin/radorch.mjs` entry remains.
 
 ## Step 9 — Verify the post-install guidance
 

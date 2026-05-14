@@ -11,6 +11,13 @@ import path from 'node:path';
 
 export interface ManifestEntry {
   readonly bundlePath: string;
+  /**
+   * Templated absolute destination, e.g. "${HARNESS_ROOT}/skills/foo" or
+   * "${RAD_HOME}/ui/server.js". Single source of truth for "where does this
+   * file go on the user's machine." Owned by adapters/destination-routing.js
+   * at build time; consumed by install/remove/hash-check via expandDestinationTokens.
+   */
+  readonly destinationPath: string;
   readonly sourcePath?: string;
   readonly ownership?: string;
   readonly version?: string;

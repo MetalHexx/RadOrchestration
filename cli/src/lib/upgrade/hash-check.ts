@@ -1,8 +1,8 @@
 // cli/src/lib/upgrade/hash-check.ts — Symmetric content-hash detect-and-warn
-// primitive. Ported from installer/lib/hash-check.js with adaptations:
-//   - Uses resolveBundleTarget(entry.bundlePath, harness) for path resolution
-//     instead of path.join(resolvedOrchRoot, entry.bundlePath)
-//   - Adds explicit AD-7 skip: entries resolving under userDataPaths().projects
+// primitive.
+//   - Uses expandDestinationTokens(entry.destinationPath, harness) for path
+//     resolution — destinationPath is baked into the manifest by adapters/.
+//   - Explicit AD-7 skip: entries resolving under userDataPaths().projects
 //     are never enumerated
 //   - ownership: 'user-config' skip rule preserved verbatim
 
@@ -10,13 +10,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { confirm } from '@inquirer/prompts';
-import { resolveBundleTarget } from './route.js';
+import { expandDestinationTokens } from './expand-tokens.js';
 import { userDataPaths } from './user-data-paths.js';
 import type { HarnessName } from './harness-paths.js';
 import type { ManifestEntry } from './catalog.js';
 
 export interface DetectManifest {
-  readonly files: ReadonlyArray<Pick<ManifestEntry, 'bundlePath' | 'sha256' | 'ownership'>>;
+  readonly files: ReadonlyArray<Pick<ManifestEntry, 'bundlePath' | 'destinationPath' | 'sha256' | 'ownership'>>;
 }
 
 /**
@@ -51,7 +51,7 @@ export function detectModifiedFiles(manifest: DetectManifest, harness: HarnessNa
     // Preserve verbatim ownership: 'user-config' skip rule from installer
     if (entry.ownership === 'user-config') continue;
 
-    const abs = resolveBundleTarget(entry.bundlePath, harness);
+    const abs = expandDestinationTokens(entry.destinationPath, harness);
 
     // AD-7: never enumerate anything under projects/
     if (abs.startsWith(projectsRoot)) continue;

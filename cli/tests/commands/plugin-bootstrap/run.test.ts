@@ -40,8 +40,8 @@ describe('runPluginBootstrap', () => {
         harness: 'claude',
         version: ver,
         files: [
-          { bundlePath: `agents/planner-${ver}.md`, sha256: 'aabbcc', ownership: 'managed' },
-          { bundlePath: `templates/high-${ver}.yml`, sha256: 'ddeeff', ownership: 'managed' },
+          { bundlePath: `agents/planner-${ver}.md`, destinationPath: `\${HARNESS_ROOT}/agents/planner-${ver}.md`, sha256: 'aabbcc', ownership: 'managed' },
+          { bundlePath: `templates/high-${ver}.yml`, destinationPath: `\${RAD_HOME}/templates/high-${ver}.yml`, sha256: 'ddeeff', ownership: 'managed' },
         ],
       };
       fs.writeFileSync(
@@ -253,7 +253,7 @@ describe('runPluginBootstrap', () => {
     fs.mkdirSync(path.join(root, 'manifests'), { recursive: true });
     fs.writeFileSync(path.join(root, 'manifests', 'v0.0.0-test.json'), JSON.stringify({
       version: '0.0.0-test', package_version: '0.0.0-test', harness: 'claude',
-      files: [{ bundlePath: cliRel, sourcePath: cliRel, ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' }],
+      files: [{ bundlePath: cliRel, destinationPath: '${HARNESS_ROOT}/' + cliRel, sourcePath: cliRel, ownership: 'orchestration-system', version: '0.0.0-test', harness: 'claude' }],
     }));
     const origHomedir = os.homedir;
     try {
