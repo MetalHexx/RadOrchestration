@@ -14,7 +14,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { expandDestinationTokens } from './expand-tokens.js';
 import { userDataPaths } from './user-data-paths.js';
+import { harnessRoot } from './harness-paths.js';
 import type { HarnessName } from './harness-paths.js';
+import type { InstallChannel } from '../config.js';
 
 export interface InstallManifest {
   readonly files: ReadonlyArray<{ readonly bundlePath: string; readonly destinationPath: string }>;
@@ -35,6 +37,12 @@ export interface InstallOpts {
    * stay unchanged.
    */
   readonly sharedRoot?: string;
+  /**
+   * When `channel === 'plugin'`, skip entries whose resolved target lives under
+   * `harnessRoot(harness)` — the plugin cache is the source of truth for
+   * plugin-channel installs.
+   */
+  readonly channel?: InstallChannel;
 }
 
 /**
@@ -49,6 +57,10 @@ export interface InstallOpts {
  * AD-7 hard guard: entries whose resolved target path falls under
  * `userDataPaths().projects` are skipped unconditionally.
  *
+ * Plugin-channel filter: when `channel === 'plugin'`, entries whose resolved
+ * target path falls under `harnessRoot(harness)` are skipped — the plugin
+ * cache is the source of truth for plugin-channel installs.
+ *
  * NFR-6: after copying the CLI bundle
  * (`skills/rad-orchestration/scripts/radorch.mjs`), chmod 0o755 on POSIX so
  * the file is directly executable. On Windows the chmod is a no-op.
@@ -56,7 +68,7 @@ export interface InstallOpts {
  * @param manifest - Manifest with files array
  * @param pluginRoot - Absolute path to the installed plugin root (default source)
  * @param harness - Target harness name for path resolution
- * @param opts - Optional install options (e.g. `sharedRoot` for shared assets)
+ * @param opts - Optional install options (e.g. `sharedRoot` for shared assets, `channel` for install mode)
  */
 export function installManifestFiles(
   manifest: InstallManifest,
@@ -77,6 +89,12 @@ export function installManifestFiles(
       console.warn(
         `[install] AD-7: skipping projects/ entry '${entry.bundlePath}' — projects directory is untouchable`,
       );
+      skippedCount++;
+      continue;
+    }
+
+    // Plugin-channel filter: skip entries under harnessRoot
+    if (opts.channel === 'plugin' && target.startsWith(harnessRoot(harness))) {
       skippedCount++;
       continue;
     }

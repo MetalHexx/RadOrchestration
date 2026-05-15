@@ -209,7 +209,7 @@ export async function runPluginBootstrap(opts: RunOpts): Promise<BootstrapResult
     }
     removeManifestFiles(priorManifest, opts.harness);
     const newManifest = loadBundledManifest(opts.pluginRoot, deliveringVersion);
-    installManifestFiles(newManifest, opts.pluginRoot, opts.harness, { sharedRoot });
+    installManifestFiles(newManifest, opts.pluginRoot, opts.harness, { sharedRoot, channel });
 
     // Folder mutex: replace partner copilot variant if registered.
     const mutexResult = resolveFolderConflict(ij.harnesses, installKey);
@@ -258,7 +258,7 @@ async function doInstall(args: {
   fs.mkdirSync(args.paths.logs, { recursive: true });
   fs.mkdirSync(args.paths.runtime, { recursive: true });
 
-  installManifestFiles(newManifest, args.opts.pluginRoot, args.opts.harness, { sharedRoot: args.sharedRoot });
+  installManifestFiles(newManifest, args.opts.pluginRoot, args.opts.harness, { sharedRoot: args.sharedRoot, channel: args.channel });
 
   // Read-modify-write the v6 registry. If install.json already exists (e.g.
   // sentinel-missing fresh re-install), preserve other harness entries.

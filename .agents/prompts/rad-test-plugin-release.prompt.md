@@ -74,18 +74,7 @@ Print a block like the following to the user, substituting `<REPO_ROOT>` with th
 >
 > Reload Claude Code if prompted. The SessionStart hook will auto-bootstrap `~/.radorch/` on next session start.
 >
-> Two quick post-install sanity checks (parity with the legacy installer's smoke test — catches bundle regressions the plugin-tree manifest can't see):
->
-> ```
-> node %USERPROFILE%\.claude\skills\rad-orchestration\scripts\radorch.mjs --version
-> node %USERPROFILE%\.claude\skills\rad-orchestration\scripts\radorch.mjs doctor
-> ```
->
-> Expected: `--version` prints **`<VERSION>`**; `doctor` exits 0 with no failing checks.
->
 > Come back here when you're done dogfooding — I'll offer cleanup.
-
-Beyond those two sanity checks, the user decides what else to verify.
 
 ---
 

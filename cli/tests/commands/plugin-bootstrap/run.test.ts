@@ -177,21 +177,23 @@ describe('runPluginBootstrap', () => {
   it('upgrade composes hash-check → remove → install → stamp', async () => {
     // installed '1.0.0', delivering '1.1.0', both manifests present in
     // bundled catalog. No modified files (sha256 check skips missing files).
+    // Using legacy-installer channel (sharedRoot set) so the test exercises
+    // the full harness-root file deployment path.
     const pluginRoot = makePluginRoot('1.1.0', ['1.0.0']);
-    writeInstallJson('1.0.0');
+    writeInstallJson('1.0.0', 'claude', 'legacy-installer');
     writeSentinel(pluginRoot);
 
     // Act
-    const result = await runPluginBootstrap({ pluginRoot, harness: 'claude' });
+    const result = await runPluginBootstrap({ pluginRoot, sharedRoot: pluginRoot, harness: 'claude' });
 
     // Assert
     expect(result.action).toBe('upgrade-complete');
     expect(result.code).toBe(0);
 
-    // install.json must be updated to the new version (v6 claude-plugin entry)
+    // install.json must be updated to the new version (v6 claude entry)
     const ijPath = path.join(tmpDir, '.radorch', 'install.json');
     const ij = JSON.parse(fs.readFileSync(ijPath, 'utf8'));
-    expect(ij.harnesses['claude-plugin'].version).toBe('1.1.0');
+    expect(ij.harnesses['claude'].version).toBe('1.1.0');
 
     // New manifest files should now exist at their target paths
     const newAgentTarget = path.join(tmpDir, '.claude', 'agents', 'planner-1.1.0.md');
@@ -252,7 +254,7 @@ describe('runPluginBootstrap', () => {
     fs.rmSync(pluginRoot, { recursive: true, force: true });
   });
 
-  it('bootstrap copies a real skills/.../radorch.mjs (FR-7, NFR-6)', async () => {
+  it('legacy-installer bootstrap copies a real skills/.../radorch.mjs (FR-7, NFR-6)', async () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-bin-'));
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-bin-src-'));
     const cliRel = 'skills/rad-orchestration/scripts/radorch.mjs';
@@ -273,7 +275,7 @@ describe('runPluginBootstrap', () => {
     const origHomedir = os.homedir;
     try {
       (os as unknown as { homedir: () => string }).homedir = () => home;
-      await runPluginBootstrap({ pluginRoot: root, harness: 'claude' });
+      await runPluginBootstrap({ pluginRoot: root, sharedRoot: root, harness: 'claude' });
     } finally {
       (os as unknown as { homedir: () => string }).homedir = origHomedir;
     }
@@ -428,6 +430,138 @@ describe('runPluginBootstrap', () => {
     expect(ij.state_schema_version).toBe('v6');
     expect(ij.harnesses['claude-plugin']).toBeDefined();
     expect(ij.harnesses['claude-plugin'].version).toBe('1.1.0');
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  });
+
+  it('plugin-channel fresh install does not deploy skills/* to ~/.claude/', async () => {
+    const pluginRoot = makePluginRoot('1.0.0');
+    // Manifest with a ${HARNESS_ROOT}/skills/... entry (not deployed on plugin channel).
+    const manifestPath = path.join(pluginRoot, 'manifests', 'v1.0.0.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    manifest.files.push({
+      bundlePath: 'agents/test-agent.md',
+      destinationPath: '${HARNESS_ROOT}/agents/test-agent.md',
+      sha256: 'aabbcc',
+      ownership: 'managed',
+    });
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+    fs.writeFileSync(path.join(pluginRoot, 'agents', 'test-agent.md'), 'test agent content', 'utf8');
+
+    const result = await runPluginBootstrap({ pluginRoot, harness: 'claude' });
+
+    expect(result.action).toBe('fresh-install');
+    // Plugin channel must NOT deploy to ~/.claude/agents/...
+    const agentPath = path.join(tmpDir, '.claude', 'agents', 'test-agent.md');
+    expect(fs.existsSync(agentPath)).toBe(false);
+    // But install.json and base files must be stamped.
+    const ijPath = path.join(tmpDir, '.radorch', 'install.json');
+    expect(fs.existsSync(ijPath)).toBe(true);
+    const ij = JSON.parse(fs.readFileSync(ijPath, 'utf8'));
+    expect(ij.harnesses['claude-plugin']).toBeDefined();
+    // Base files must be present.
+    expect(fs.existsSync(path.join(tmpDir, '.radorch', 'config.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.radorch', 'registry.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.radorch', '.harness'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.radorch', '.gitignore'))).toBe(true);
+
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  });
+
+  it('plugin-channel upgrade does not deploy and gracefully removes prior manifest\'s nonexistent files', async () => {
+    const pluginRoot = makePluginRoot('1.1.0', ['1.0.0']);
+    // Both manifests have ${HARNESS_ROOT}/agents/... entries that won't be deployed on plugin channel.
+    const v1Path = path.join(pluginRoot, 'manifests', 'v1.0.0.json');
+    const v1Manifest = JSON.parse(fs.readFileSync(v1Path, 'utf8'));
+    v1Manifest.files.push({
+      bundlePath: 'agents/old-agent.md',
+      destinationPath: '${HARNESS_ROOT}/agents/old-agent.md',
+      sha256: 'oldsha',
+      ownership: 'managed',
+    });
+    fs.writeFileSync(v1Path, JSON.stringify(v1Manifest));
+    fs.writeFileSync(path.join(pluginRoot, 'agents', 'old-agent.md'), 'old agent content', 'utf8');
+
+    const v11Path = path.join(pluginRoot, 'manifests', 'v1.1.0.json');
+    const v11Manifest = JSON.parse(fs.readFileSync(v11Path, 'utf8'));
+    v11Manifest.files.push({
+      bundlePath: 'agents/new-agent.md',
+      destinationPath: '${HARNESS_ROOT}/agents/new-agent.md',
+      sha256: 'newsha',
+      ownership: 'managed',
+    });
+    fs.writeFileSync(v11Path, JSON.stringify(v11Manifest));
+    fs.writeFileSync(path.join(pluginRoot, 'agents', 'new-agent.md'), 'new agent content', 'utf8');
+
+    // Pre-write install.json + sentinel at 1.0.0
+    writeInstallJson('1.0.0');
+    writeSentinel(pluginRoot);
+
+    const result = await runPluginBootstrap({ pluginRoot, harness: 'claude' });
+
+    expect(result.action).toBe('upgrade-complete');
+    // Neither old nor new agent should be deployed (plugin channel skips harness-root).
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'agents', 'old-agent.md'))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'agents', 'new-agent.md'))).toBe(false);
+    // install.json must be updated to 1.1.0.
+    const ijPath = path.join(tmpDir, '.radorch', 'install.json');
+    const ij = JSON.parse(fs.readFileSync(ijPath, 'utf8'));
+    expect(ij.harnesses['claude-plugin'].version).toBe('1.1.0');
+
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  });
+
+  it('plugin-channel --force re-install also does not deploy', async () => {
+    const pluginRoot = makePluginRoot('1.0.0');
+    // Manifest with a harness-root entry.
+    const manifestPath = path.join(pluginRoot, 'manifests', 'v1.0.0.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    manifest.files.push({
+      bundlePath: 'skills/test-skill/SKILL.md',
+      destinationPath: '${HARNESS_ROOT}/skills/test-skill/SKILL.md',
+      sha256: 'skillsha',
+      ownership: 'managed',
+    });
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+    fs.mkdirSync(path.join(pluginRoot, 'skills', 'test-skill'), { recursive: true });
+    fs.writeFileSync(path.join(pluginRoot, 'skills', 'test-skill', 'SKILL.md'), 'skill content', 'utf8');
+
+    writeInstallJson('1.0.0');
+    writeSentinel(pluginRoot);
+
+    const result = await runPluginBootstrap({ pluginRoot, harness: 'claude', force: true });
+
+    expect(result.action).toBe('upgrade-complete');
+    // Plugin channel --force must also skip harness-root writes.
+    const skillPath = path.join(tmpDir, '.claude', 'skills', 'test-skill', 'SKILL.md');
+    expect(fs.existsSync(skillPath)).toBe(false);
+
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  });
+
+  it('plugin-channel install over a registered legacy claude entry still emits the coexistence warning', async () => {
+    const pluginRoot = makePluginRoot('1.0.0');
+    // Pre-seed install.json with a legacy claude entry.
+    writeInstallJson('0.9.0', 'claude', 'legacy-installer');
+
+    const origWrite = process.stderr.write.bind(process.stderr);
+    let captured = '';
+    (process.stderr.write as unknown) = (chunk: string | Uint8Array) => { captured += String(chunk); return true; };
+    let result;
+    try {
+      result = await runPluginBootstrap({ pluginRoot, harness: 'claude' });
+    } finally {
+      (process.stderr.write as unknown) = origWrite;
+    }
+
+    expect(result.action).toBe('fresh-install');
+    const ijPath = path.join(tmpDir, '.radorch', 'install.json');
+    const ij = JSON.parse(fs.readFileSync(ijPath, 'utf8'));
+    // Both entries must coexist.
+    expect(ij.harnesses['claude']).toBeDefined();
+    expect(ij.harnesses['claude-plugin']).toBeDefined();
+    // Warning must be emitted.
+    expect(captured).toMatch(/legacy install of rad-orchestration is also registered/);
+
     fs.rmSync(pluginRoot, { recursive: true, force: true });
   });
 });
