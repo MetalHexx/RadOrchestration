@@ -214,26 +214,43 @@ export async function runPluginChecks(opts: {
 }): Promise<CheckResult[]> {
   const out: CheckResult[] = [];
   const p = installPaths(opts.root);
-  // Bundle integrity: probe the bundled CLI when CLAUDE_PLUGIN_ROOT is known
-  // (deployed plugin), otherwise warn that it could not be verified.
-  if (opts.pluginRoot) {
-    const bundle = path.join(
-      opts.pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs',
-    );
-    const exists = await pathExists(bundle);
-    out.push({
-      category: 'Plugin',
-      name: 'bundle-integrity',
-      status: exists ? 'pass' : 'fail',
-      detail: exists ? bundle : `missing ${bundle} — run \`npm run build:plugin\``,
-    });
-  } else {
-    out.push({
-      category: 'Plugin',
-      name: 'bundle-integrity',
-      status: 'warn',
-      detail: 'CLAUDE_PLUGIN_ROOT not set — bundle presence not verified',
-    });
+
+  // Precondition: the three plugin-specific checks (bundle-integrity,
+  // plugin-skills-enumerable, plugin-agents-resolvable) are only meaningful
+  // when the system is running inside the Claude Code plugin or when a plugin
+  // install is registered. If neither signal is present, skip those three
+  // checks entirely — they would degrade to noisy CLAUDE_PLUGIN_ROOT warnings
+  // on every Copilot harness and every legacy-installer Claude install.
+  const registeredReports = scanUserLevelHarnesses();
+  const claudePluginRegistered = registeredReports.some(
+    (r) => r.installKey === 'claude-plugin' && r.installed,
+  );
+  const runPluginSpecificChecks = opts.pluginRoot !== undefined || claudePluginRegistered;
+
+  // Bundle integrity: probe the bundled CLI when CLAUDE_PLUGIN_ROOT is known.
+  if (runPluginSpecificChecks) {
+    if (opts.pluginRoot) {
+      const bundle = path.join(
+        opts.pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs',
+      );
+      const exists = await pathExists(bundle);
+      out.push({
+        category: 'Plugin',
+        name: 'bundle-integrity',
+        status: exists ? 'pass' : 'fail',
+        detail: exists ? bundle : `missing ${bundle} — run \`npm run build:plugin\``,
+      });
+    } else {
+      // Plugin registered in install.json but env var absent (e.g. running
+      // doctor outside a Claude Code session) — warn that the bundle can't be
+      // located without CLAUDE_PLUGIN_ROOT.
+      out.push({
+        category: 'Plugin',
+        name: 'bundle-integrity',
+        status: 'warn',
+        detail: 'CLAUDE_PLUGIN_ROOT not set — bundle presence not verified',
+      });
+    }
   }
   // Bootstrap skeleton
   const required = [p.projectsDir, p.registryYml, p.configYml, p.installJson];
@@ -295,77 +312,78 @@ export async function runPluginChecks(opts: {
     }
     out.push({ category: 'Plugin', name: 'projects-base-path-readable', status, detail });
   }
-  // plugin-skills-enumerable (FR-14): every shipped skills/<name>/ folder
-  // must contain a SKILL.md. Warn when the plugin root is unknown or the
-  // skills/ directory itself is missing — the check is irrelevant outside
-  // a deployed plugin (AD-12 missing-data warn), and a missing skills/
-  // dir signals a structurally broken plugin (warn so it surfaces).
-  if (opts.pluginRoot) {
-    const skillsDir = path.join(opts.pluginRoot, 'skills');
-    if (!(await pathExists(skillsDir))) {
+  // plugin-skills-enumerable: every shipped skills/<name>/ folder must contain
+  // a SKILL.md. Only runs when the plugin is active or registered.
+  if (runPluginSpecificChecks) {
+    if (opts.pluginRoot) {
+      const skillsDir = path.join(opts.pluginRoot, 'skills');
+      if (!(await pathExists(skillsDir))) {
+        out.push({
+          category: 'Plugin',
+          name: 'plugin-skills-enumerable',
+          status: 'warn',
+          detail: 'skills/ directory missing under CLAUDE_PLUGIN_ROOT',
+        });
+      } else {
+        const missing: string[] = [];
+        for (const name of await fsP.readdir(skillsDir)) {
+          const f = path.join(skillsDir, name, 'SKILL.md');
+          if (!(await pathExists(f))) missing.push(name);
+        }
+        out.push({
+          category: 'Plugin',
+          name: 'plugin-skills-enumerable',
+          status: missing.length === 0 ? 'pass' : 'fail',
+          detail: missing.length === 0 ? undefined : `skills missing SKILL.md: ${missing.join(', ')}`,
+        });
+      }
+    } else {
+      // Plugin registered but env var absent — warn that skills can't be verified.
       out.push({
         category: 'Plugin',
         name: 'plugin-skills-enumerable',
         status: 'warn',
-        detail: 'skills/ directory missing under CLAUDE_PLUGIN_ROOT',
-      });
-    } else {
-      const missing: string[] = [];
-      for (const name of await fsP.readdir(skillsDir)) {
-        const f = path.join(skillsDir, name, 'SKILL.md');
-        if (!(await pathExists(f))) missing.push(name);
-      }
-      out.push({
-        category: 'Plugin',
-        name: 'plugin-skills-enumerable',
-        status: missing.length === 0 ? 'pass' : 'fail',
-        detail: missing.length === 0 ? undefined : `skills missing SKILL.md: ${missing.join(', ')}`,
+        detail: 'CLAUDE_PLUGIN_ROOT not set — skills not verifiable outside a plugin session',
       });
     }
-  } else {
-    out.push({
-      category: 'Plugin',
-      name: 'plugin-skills-enumerable',
-      status: 'warn',
-      detail: 'CLAUDE_PLUGIN_ROOT not set',
-    });
   }
-  // plugin-agents-resolvable (FR-14, DD-3): the plugin ships canonical agent
-  // files under agents/; namespacing is a body transform inside the plugin.
-  // Enumerate dynamically and require agents/ to be non-empty, every entry
-  // .md-suffixed and readable on R_OK; report per-file misses.
-  if (opts.pluginRoot) {
-    const agentsDir = path.join(opts.pluginRoot, 'agents');
-    const missing: string[] = [];
-    if (!(await pathExists(agentsDir))) {
-      missing.push('agents/ directory');
-    } else {
-      const entries = (await fsP.readdir(agentsDir)).filter((f) => f.endsWith('.md'));
-      if (entries.length === 0) {
-        missing.push('no .md agent files under agents/');
+  // plugin-agents-resolvable: the plugin ships canonical agent files under
+  // agents/. Only runs when the plugin is active or registered.
+  if (runPluginSpecificChecks) {
+    if (opts.pluginRoot) {
+      const agentsDir = path.join(opts.pluginRoot, 'agents');
+      const missing: string[] = [];
+      if (!(await pathExists(agentsDir))) {
+        missing.push('agents/ directory');
       } else {
-        for (const f of entries) {
-          try {
-            await fsP.access(path.join(agentsDir, f), fsP.constants.R_OK);
-          } catch {
-            missing.push(f);
+        const entries = (await fsP.readdir(agentsDir)).filter((f) => f.endsWith('.md'));
+        if (entries.length === 0) {
+          missing.push('no .md agent files under agents/');
+        } else {
+          for (const f of entries) {
+            try {
+              await fsP.access(path.join(agentsDir, f), fsP.constants.R_OK);
+            } catch {
+              missing.push(f);
+            }
           }
         }
       }
+      out.push({
+        category: 'Plugin',
+        name: 'plugin-agents-resolvable',
+        status: missing.length === 0 ? 'pass' : 'fail',
+        detail: missing.length === 0 ? undefined : `missing or unreadable: ${missing.join(', ')}`,
+      });
+    } else {
+      // Plugin registered but env var absent — warn that agents can't be verified.
+      out.push({
+        category: 'Plugin',
+        name: 'plugin-agents-resolvable',
+        status: 'warn',
+        detail: 'CLAUDE_PLUGIN_ROOT not set — agents not verifiable outside a plugin session',
+      });
     }
-    out.push({
-      category: 'Plugin',
-      name: 'plugin-agents-resolvable',
-      status: missing.length === 0 ? 'pass' : 'fail',
-      detail: missing.length === 0 ? undefined : `missing or unreadable: ${missing.join(', ')}`,
-    });
-  } else {
-    out.push({
-      category: 'Plugin',
-      name: 'plugin-agents-resolvable',
-      status: 'warn',
-      detail: 'CLAUDE_PLUGIN_ROOT not set',
-    });
   }
   // cross-install-version-skew (FR-14, AD-12, NFR-8): warn when a parallel
   // iter-01 npm install of `radorch` reports a different version from the
@@ -395,7 +413,7 @@ export async function runPluginChecks(opts: {
   // line with `(channel)` suffix. When both `claude` and `claude-plugin` are
   // present, append an info line recommending consolidation.
   {
-    const reports = scanUserLevelHarnesses();
+    const reports = registeredReports;
     const lines = reports.map((r) => {
       if (!r.installed) return `${r.installKey}: not installed`;
       const channel = r.channel ? ` (${r.channel})` : '';

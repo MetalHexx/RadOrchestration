@@ -104,11 +104,11 @@ describe('plugin-aware doctor checks', () => {
     expect(result.find((c) => c.name === 'ui-pid-consistency')?.status).toBe('warn');
   });
 
-  it('bundle-integrity: warns when CLAUDE_PLUGIN_ROOT is unset', async () => {
+  it('bundle-integrity: not emitted when CLAUDE_PLUGIN_ROOT is unset and no claude-plugin registered', async () => {
+    // No pluginRoot + no claude-plugin in install.json → precondition not met → check skipped entirely.
     const result = await runPluginChecks({ root: home, localVersion: '1.0.0' });
     const bi = result.find((c) => c.name === 'bundle-integrity');
-    expect(bi?.status).toBe('warn');
-    expect(bi?.detail).toMatch(/CLAUDE_PLUGIN_ROOT not set/);
+    expect(bi).toBeUndefined();
   });
 
   it('bundle-integrity: passes when bundle exists at CLAUDE_PLUGIN_ROOT', async () => {
@@ -189,12 +189,11 @@ describe('runPluginChecks — new plugin-install checks (FR-14)', () => {
     }
   });
 
-  it('plugin-agents-resolvable warns when CLAUDE_PLUGIN_ROOT is unset', async () => {
+  it('plugin-agents-resolvable: not emitted when CLAUDE_PLUGIN_ROOT is unset and no claude-plugin registered', async () => {
+    // No pluginRoot + no claude-plugin in install.json → precondition not met → check skipped entirely.
     const result = await runPluginChecks({ root: home, localVersion: '1.0.0' });
     const check = result.find((c) => c.name === 'plugin-agents-resolvable');
-    expect(check).toBeDefined();
-    expect(check?.status).toBe('warn');
-    expect(check?.detail).toMatch(/CLAUDE_PLUGIN_ROOT not set/);
+    expect(check).toBeUndefined();
   });
 
   it('cross-install-version-skew warns when both an iter-01 npm-installed radorch and the plugin CLI report different versions', async () => {
@@ -410,6 +409,92 @@ describe('doctor: 1.3 canonical checks', () => {
     }
     const r = await runInstallChecks();
     expect(r.find(c => c.name === 'templates-folder-populated')?.status).toBe('pass');
+  });
+});
+
+describe('Section 9 — plugin check noise suppression', () => {
+  // Each test needs its own temp home so scanUserLevelHarnesses reads the right install.json.
+  let s9Home: string;
+  let s9HoSpy: ReturnType<typeof vi.spyOn>;
+  beforeEach(async () => {
+    s9Home = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc-s9-'));
+    s9HoSpy = vi.spyOn(os, 'homedir').mockReturnValue(s9Home);
+  });
+  afterEach(async () => {
+    s9HoSpy.mockRestore();
+    await fs.rm(s9Home, { recursive: true, force: true });
+  });
+
+  it('S9-1: no plugin-prefixed check names when neither CLAUDE_PLUGIN_ROOT nor claude-plugin registered', async () => {
+    // No pluginRoot, no ~/.radorch/install.json with claude-plugin.
+    // bundle-integrity, plugin-skills-enumerable, plugin-agents-resolvable must be absent.
+    const root = path.join(s9Home, '.radorch');
+    const result = await runPluginChecks({ root, localVersion: '1.0.0' });
+    const pluginSpecific = ['bundle-integrity', 'plugin-skills-enumerable', 'plugin-agents-resolvable'];
+    for (const name of pluginSpecific) {
+      expect(result.find((c) => c.name === name)).toBeUndefined();
+    }
+    // Other checks still emit.
+    expect(result.find((c) => c.name === 'bootstrap-skeleton')).toBeDefined();
+    expect(result.find((c) => c.name === 'multi-harness-install-table')).toBeDefined();
+  });
+
+  it('S9-2: all three plugin checks run and report pass when CLAUDE_PLUGIN_ROOT is set and tree is valid', async () => {
+    const root = path.join(s9Home, '.radorch');
+    const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-s9-'));
+    try {
+      // Build a minimal valid plugin tree.
+      const scriptsDir = path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts');
+      await fs.mkdir(scriptsDir, { recursive: true });
+      await fs.writeFile(path.join(scriptsDir, 'radorch.mjs'), '// stub bundle');
+      // skills/ folder with one skill that has SKILL.md.
+      const skillDir = path.join(pluginRoot, 'skills', 'rad-orchestration');
+      await fs.mkdir(skillDir, { recursive: true });
+      await fs.writeFile(path.join(skillDir, 'SKILL.md'), '# stub skill\n');
+      // agents/ folder with one readable .md file.
+      const agentsDir = path.join(pluginRoot, 'agents');
+      await fs.mkdir(agentsDir, { recursive: true });
+      await fs.writeFile(path.join(agentsDir, 'orchestrator.md'), '# stub agent\n');
+
+      const result = await runPluginChecks({ root, localVersion: '1.0.0', pluginRoot });
+      expect(result.find((c) => c.name === 'bundle-integrity')?.status).toBe('pass');
+      expect(result.find((c) => c.name === 'plugin-skills-enumerable')?.status).toBe('pass');
+      expect(result.find((c) => c.name === 'plugin-agents-resolvable')?.status).toBe('pass');
+    } finally {
+      await fs.rm(pluginRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('S9-3: three plugin checks emit (not skipped) when claude-plugin is registered in install.json but env var absent', async () => {
+    // Simulate running doctor outside a Claude Code session: env var absent but
+    // claude-plugin is registered in the v6 registry.
+    const radorchDir = path.join(s9Home, '.radorch');
+    await fs.mkdir(radorchDir, { recursive: true });
+    await fs.writeFile(
+      path.join(radorchDir, 'install.json'),
+      JSON.stringify({
+        state_schema_version: 'v6',
+        harnesses: {
+          'claude-plugin': {
+            version: '1.0.0-alpha.9',
+            channel: 'plugin',
+            installed_at: '2026-01-01T00:00:00.000Z',
+            last_writer_version: '1.0.0-alpha.9',
+          },
+        },
+      }, null, 2) + '\n',
+    );
+    const root = radorchDir;
+    // No pluginRoot passed — env var absent.
+    const result = await runPluginChecks({ root, localVersion: '1.0.0-alpha.9' });
+    // All three checks must be present (not skipped).
+    expect(result.find((c) => c.name === 'bundle-integrity')).toBeDefined();
+    expect(result.find((c) => c.name === 'plugin-skills-enumerable')).toBeDefined();
+    expect(result.find((c) => c.name === 'plugin-agents-resolvable')).toBeDefined();
+    // Without CLAUDE_PLUGIN_ROOT, all three warn that the payload can't be located.
+    expect(result.find((c) => c.name === 'bundle-integrity')?.status).toBe('warn');
+    expect(result.find((c) => c.name === 'plugin-skills-enumerable')?.status).toBe('warn');
+    expect(result.find((c) => c.name === 'plugin-agents-resolvable')?.status).toBe('warn');
   });
 });
 
