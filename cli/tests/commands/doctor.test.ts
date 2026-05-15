@@ -331,8 +331,73 @@ describe('doctor: 1.3 canonical checks', () => {
     const t = r.find(c => c.name === 'multi-harness-install-table');
     expect(t).toBeDefined();
     expect(t!.detail).toMatch(/claude:/);
+    expect(t!.detail).toMatch(/claude-plugin:/);
     expect(t!.detail).toMatch(/copilot-vscode:/);
     expect(t!.detail).toMatch(/copilot-cli:/);
+  });
+
+  it('table renders one line per install-key with (channel) suffix', async () => {
+    // Stage a v6 install.json with all four install-keys present except one.
+    const radorchDir = path.join(tmp13, '.radorch');
+    await fs.mkdir(radorchDir, { recursive: true });
+    await fs.writeFile(
+      path.join(radorchDir, 'install.json'),
+      JSON.stringify({
+        state_schema_version: 'v6',
+        harnesses: {
+          'claude': { version: '1.0.0-alpha.9', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0-alpha.9' },
+          'claude-plugin': { version: '1.0.0-alpha.9', channel: 'plugin', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0-alpha.9' },
+          'copilot-cli': { version: '1.0.0-alpha.8', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0-alpha.8' },
+        },
+      }, null, 2) + '\n',
+    );
+    const r = await runPluginChecks({ root: tmp13, localVersion: '1.0.0-alpha.9' });
+    const t = r.find(c => c.name === 'multi-harness-install-table');
+    expect(t).toBeDefined();
+    // Each registered install-key appears with version + channel suffix.
+    expect(t!.detail).toMatch(/claude: 1\.0\.0-alpha\.9 \(legacy-installer\)/);
+    expect(t!.detail).toMatch(/claude-plugin: 1\.0\.0-alpha\.9 \(plugin\)/);
+    expect(t!.detail).toMatch(/copilot-cli: 1\.0\.0-alpha\.8 \(legacy-installer\)/);
+    // The unregistered copilot-vscode key emits not-installed.
+    expect(t!.detail).toMatch(/copilot-vscode: not installed/);
+  });
+
+  it('appends a consolidation recommendation when both claude and claude-plugin are present', async () => {
+    const radorchDir = path.join(tmp13, '.radorch');
+    await fs.mkdir(radorchDir, { recursive: true });
+    await fs.writeFile(
+      path.join(radorchDir, 'install.json'),
+      JSON.stringify({
+        state_schema_version: 'v6',
+        harnesses: {
+          'claude': { version: '1.0.0', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0' },
+          'claude-plugin': { version: '1.0.0', channel: 'plugin', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0' },
+        },
+      }) + '\n',
+    );
+    const r = await runPluginChecks({ root: tmp13, localVersion: '1.0.0' });
+    const t = r.find(c => c.name === 'multi-harness-install-table');
+    expect(t!.detail).toMatch(/Both .*claude.* and .*claude-plugin.* are registered/);
+    expect(t!.detail).toMatch(/npx rad-orchestration uninstall/);
+  });
+
+  it('copilot mutex — only one copilot key present at a time produces a single registered copilot row', async () => {
+    // Registered: copilot-cli only. copilot-vscode must render as not installed.
+    const radorchDir = path.join(tmp13, '.radorch');
+    await fs.mkdir(radorchDir, { recursive: true });
+    await fs.writeFile(
+      path.join(radorchDir, 'install.json'),
+      JSON.stringify({
+        state_schema_version: 'v6',
+        harnesses: {
+          'copilot-cli': { version: '1.0.0', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0' },
+        },
+      }) + '\n',
+    );
+    const r = await runPluginChecks({ root: tmp13, localVersion: '1.0.0' });
+    const t = r.find(c => c.name === 'multi-harness-install-table');
+    expect(t!.detail).toMatch(/copilot-cli: 1\.0\.0 \(legacy-installer\)/);
+    expect(t!.detail).toMatch(/copilot-vscode: not installed/);
   });
 
   it('templates-folder check passes when four canonical tier files present', async () => {

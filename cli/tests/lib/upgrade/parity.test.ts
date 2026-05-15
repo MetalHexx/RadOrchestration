@@ -96,12 +96,26 @@ describe('cross-channel parity (NFR-1)', () => {
     delete pluginTree['install.json'];
     expect(legacyTree).toEqual(pluginTree);
 
-    // Cross-check install.json content parity modulo the non-deterministic
-    // `installed_at` field — every other field must match.
+    // Section 6: install.json content INTENTIONALLY diverges between channels.
+    // Legacy writes harnesses.claude with channel=legacy-installer; plugin
+    // writes harnesses.claude-plugin with channel=plugin. Parity now means
+    // each channel writes a v6 file with a single entry under its own key
+    // carrying its own channel value — same delivering version, same
+    // last_writer_version.
     const legacyIj = JSON.parse(fs.readFileSync(path.join(legacyHome, '.radorch', 'install.json'), 'utf8'));
     const pluginIj = JSON.parse(fs.readFileSync(path.join(pluginHome, '.radorch', 'install.json'), 'utf8'));
-    delete legacyIj.installed_at;
-    delete pluginIj.installed_at;
-    expect(legacyIj).toEqual(pluginIj);
+    expect(legacyIj.state_schema_version).toBe('v6');
+    expect(pluginIj.state_schema_version).toBe('v6');
+    const legacyEntry = legacyIj.harnesses['claude'];
+    const pluginEntry = pluginIj.harnesses['claude-plugin'];
+    expect(legacyEntry).toBeDefined();
+    expect(pluginEntry).toBeDefined();
+    expect(legacyEntry.channel).toBe('legacy-installer');
+    expect(pluginEntry.channel).toBe('plugin');
+    expect(legacyEntry.version).toBe(pluginEntry.version);
+    expect(legacyEntry.last_writer_version).toBe(pluginEntry.last_writer_version);
+    // The legacy file must not have the plugin's key set (and vice versa).
+    expect(legacyIj.harnesses['claude-plugin']).toBeUndefined();
+    expect(pluginIj.harnesses['claude']).toBeUndefined();
   });
 });

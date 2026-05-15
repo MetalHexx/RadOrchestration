@@ -66,17 +66,28 @@ describe('runPluginBootstrap', () => {
     return pluginRoot;
   }
 
-  /** Write install.json to the fake home ~/.radorch/install.json */
-  function writeInstallJson(packageVersion: string): void {
+  /** Write a v6 install.json to the fake home with the supplied harness entry
+   *  (defaults to claude-plugin since runPluginBootstrap's default channel is
+   *  plugin). */
+  function writeInstallJson(
+    packageVersion: string,
+    installKey: 'claude' | 'claude-plugin' | 'copilot-cli' | 'copilot-vscode' = 'claude-plugin',
+    channel: 'plugin' | 'legacy-installer' = 'plugin',
+  ): void {
     const radorch = path.join(tmpDir, '.radorch');
     fs.mkdirSync(radorch, { recursive: true });
     fs.writeFileSync(
       path.join(radorch, 'install.json'),
       JSON.stringify({
-        package_version: packageVersion,
-        installed_at: new Date().toISOString(),
-        last_writer_version: packageVersion,
-        state_schema_version: 'v5',
+        state_schema_version: 'v6',
+        harnesses: {
+          [installKey]: {
+            version: packageVersion,
+            channel,
+            installed_at: new Date().toISOString(),
+            last_writer_version: packageVersion,
+          },
+        },
       }, null, 2) + '\n',
       'utf8',
     );
@@ -107,7 +118,8 @@ describe('runPluginBootstrap', () => {
     expect(result.code).toBe(0);
     expect(fs.existsSync(lockPath)).toBe(false);
     const ij = JSON.parse(fs.readFileSync(path.join(tmpDir, '.radorch', 'install.json'), 'utf8'));
-    expect(ij.package_version).toBe('1.0.0');
+    expect(ij.state_schema_version).toBe('v6');
+    expect(ij.harnesses['claude-plugin'].version).toBe('1.0.0');
 
     fs.rmSync(pluginRoot, { recursive: true, force: true });
   });
@@ -149,12 +161,15 @@ describe('runPluginBootstrap', () => {
     expect(result.action).toBe('fresh-install');
     expect(result.code).toBe(0);
 
-    // install.json must be stamped
+    // install.json must be stamped with the v6 claude-plugin entry.
     const ijPath = path.join(tmpDir, '.radorch', 'install.json');
     expect(fs.existsSync(ijPath)).toBe(true);
     const ij = JSON.parse(fs.readFileSync(ijPath, 'utf8'));
-    expect(ij.package_version).toBe('1.1.0');
-    expect(ij.last_writer_version).toBe('1.1.0');
+    expect(ij.state_schema_version).toBe('v6');
+    const entry = ij.harnesses['claude-plugin'];
+    expect(entry.version).toBe('1.1.0');
+    expect(entry.last_writer_version).toBe('1.1.0');
+    expect(entry.channel).toBe('plugin');
 
     fs.rmSync(pluginRoot, { recursive: true, force: true });
   });
@@ -173,10 +188,10 @@ describe('runPluginBootstrap', () => {
     expect(result.action).toBe('upgrade-complete');
     expect(result.code).toBe(0);
 
-    // install.json must be updated to the new version
+    // install.json must be updated to the new version (v6 claude-plugin entry)
     const ijPath = path.join(tmpDir, '.radorch', 'install.json');
     const ij = JSON.parse(fs.readFileSync(ijPath, 'utf8'));
-    expect(ij.package_version).toBe('1.1.0');
+    expect(ij.harnesses['claude-plugin'].version).toBe('1.1.0');
 
     // New manifest files should now exist at their target paths
     const newAgentTarget = path.join(tmpDir, '.claude', 'agents', 'planner-1.1.0.md');
@@ -229,10 +244,10 @@ describe('runPluginBootstrap', () => {
     expect(result.action).toBe('upgrade-complete');
     expect(result.code).toBe(0);
 
-    // install.json.last_writer_version should be re-stamped
+    // install.json.last_writer_version should be re-stamped (v6 claude-plugin entry)
     const ijPath = path.join(tmpDir, '.radorch', 'install.json');
     const ij = JSON.parse(fs.readFileSync(ijPath, 'utf8'));
-    expect(ij.last_writer_version).toBe('1.0.0');
+    expect(ij.harnesses['claude-plugin'].last_writer_version).toBe('1.0.0');
 
     fs.rmSync(pluginRoot, { recursive: true, force: true });
   });
@@ -343,5 +358,76 @@ describe('runPluginBootstrap', () => {
     }
     fs.rmSync(home, { recursive: true, force: true });
     fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('writes claude-plugin key on fresh plugin install', async () => {
+    const pluginRoot = makePluginRoot('1.0.0');
+    const result = await runPluginBootstrap({ pluginRoot, harness: 'claude' });
+    expect(result.action).toBe('fresh-install');
+    const ij = JSON.parse(fs.readFileSync(path.join(tmpDir, '.radorch', 'install.json'), 'utf8'));
+    expect(ij.state_schema_version).toBe('v6');
+    expect(ij.harnesses['claude-plugin']).toBeDefined();
+    expect(ij.harnesses['claude-plugin'].channel).toBe('plugin');
+    expect(ij.harnesses['claude-plugin'].version).toBe('1.0.0');
+    expect(ij.harnesses['claude']).toBeUndefined();
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  });
+
+  it('legacy-installer path (sharedRoot set) writes claude key, not claude-plugin', async () => {
+    const pluginRoot = makePluginRoot('1.0.0');
+    // sharedRoot toggles channel detection to legacy-installer.
+    const result = await runPluginBootstrap({ pluginRoot, sharedRoot: pluginRoot, harness: 'claude' });
+    expect(result.action).toBe('fresh-install');
+    const ij = JSON.parse(fs.readFileSync(path.join(tmpDir, '.radorch', 'install.json'), 'utf8'));
+    expect(ij.harnesses['claude']).toBeDefined();
+    expect(ij.harnesses['claude'].channel).toBe('legacy-installer');
+    expect(ij.harnesses['claude-plugin']).toBeUndefined();
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  });
+
+  it('plugin install warns to stderr when legacy claude entry is registered (coexist)', async () => {
+    const pluginRoot = makePluginRoot('1.0.0');
+    // Pre-existing legacy claude entry.
+    writeInstallJson('0.9.0', 'claude', 'legacy-installer');
+
+    const origWrite = process.stderr.write.bind(process.stderr);
+    let captured = '';
+    (process.stderr.write as unknown) = (chunk: string | Uint8Array) => { captured += String(chunk); return true; };
+    let result;
+    try {
+      result = await runPluginBootstrap({ pluginRoot, harness: 'claude' });
+    } finally {
+      (process.stderr.write as unknown) = origWrite;
+    }
+    expect(result.action).toBe('fresh-install');
+    const ij = JSON.parse(fs.readFileSync(path.join(tmpDir, '.radorch', 'install.json'), 'utf8'));
+    expect(ij.harnesses['claude']).toBeDefined();
+    expect(ij.harnesses['claude-plugin']).toBeDefined();
+    // Both coexist; warning was emitted.
+    expect(captured).toMatch(/legacy install of rad-orchestration is also registered/);
+    expect(captured).toMatch(/npx rad-orchestration uninstall/);
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  });
+
+  it('plugin install migrates a v5 install.json on read and writes v6 with claude-plugin key', async () => {
+    const pluginRoot = makePluginRoot('1.1.0', ['1.0.0']);
+    // Stage a v5 install.json. After bootstrap it should be migrated to v6.
+    const radorch = path.join(tmpDir, '.radorch');
+    fs.mkdirSync(radorch, { recursive: true });
+    fs.writeFileSync(path.join(radorch, 'install.json'), JSON.stringify({
+      package_version: '1.0.0',
+      installed_at: '2026-04-01T00:00:00.000Z',
+      last_writer_version: '1.0.0',
+      state_schema_version: 'v5',
+    }, null, 2) + '\n');
+    writeSentinel(pluginRoot);
+
+    const result = await runPluginBootstrap({ pluginRoot, harness: 'claude' });
+    expect(result.action).toBe('upgrade-complete');
+    const ij = JSON.parse(fs.readFileSync(path.join(radorch, 'install.json'), 'utf8'));
+    expect(ij.state_schema_version).toBe('v6');
+    expect(ij.harnesses['claude-plugin']).toBeDefined();
+    expect(ij.harnesses['claude-plugin'].version).toBe('1.1.0');
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
   });
 });

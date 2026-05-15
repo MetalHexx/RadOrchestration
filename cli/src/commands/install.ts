@@ -1,5 +1,6 @@
 import { pathExists } from '../lib/fs-helpers.js';
 import { readInstallJson } from '../lib/config.js';
+import { isInstallJsonV6 } from '../lib/install-json.js';
 import { resolveInstallRoot, installPaths } from '../lib/paths.js';
 import { UserError } from '../framework/errors.js';
 import { defineCommand } from '../framework/command.js';
@@ -34,22 +35,31 @@ export async function runInstall(opts: {
     // install` themselves — otherwise users following generic docs would
     // hit a dead-end UserError. Older versions or corrupted install.json
     // still error with guidance.
-    let existing: { package_version?: string } | null = null;
+    let existingVersion: string | undefined;
     try {
-      existing = await readInstallJson(p.installJson);
+      const ij = await readInstallJson(p.installJson);
+      if (isInstallJsonV6(ij)) {
+        // Pick any registered entry's version — install.ts is the standalone
+        // `radorch install` flow used pre-multi-harness; for an existing v6
+        // install, treat the first present entry as the install identity.
+        const first = Object.values(ij.harnesses).find(Boolean);
+        existingVersion = first?.version;
+      } else {
+        existingVersion = ij.package_version;
+      }
     } catch {
       throw new UserError(
         `radorch install root at ${root} contains an unreadable install.json. ` +
         `Remove the directory and re-run install.`,
       );
     }
-    if (!existing || typeof existing.package_version !== 'string') {
+    if (typeof existingVersion !== 'string') {
       throw new UserError(
         `radorch install root at ${root} contains a malformed install.json (missing package_version). ` +
         `Remove the directory and re-run install.`,
       );
     }
-    if (existing.package_version === pkg.version) {
+    if (existingVersion === pkg.version) {
       return {
         root,
         version: pkg.version,
@@ -59,7 +69,7 @@ export async function runInstall(opts: {
       };
     }
     throw new UserError(
-      `radorch install root at ${root} contains an older install (v${existing.package_version}); ` +
+      `radorch install root at ${root} contains an older install (v${existingVersion}); ` +
       `current CLI is v${pkg.version}. Remove the directory and re-run install to upgrade.`,
     );
   }

@@ -7,6 +7,7 @@ import {
   writeInstallJson,
   stampLastWriter,
 } from '../../../src/lib/upgrade/install-json-access.js';
+import type { InstallJsonV5 } from '../../../src/lib/config.js';
 
 let tmp: string;
 beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-ijaccess-')); });
@@ -22,7 +23,7 @@ describe('readInstallJson / writeInstallJson round-trip', () => {
       state_schema_version: 'v5',
     };
     await writeInstallJson(file, sample);
-    const result = await readInstallJson(file);
+    const result = await readInstallJson(file) as InstallJsonV5;
     expect(result.package_version).toBe(sample.package_version);
     expect(result.installed_at).toBe(sample.installed_at);
     expect(result.last_writer_version).toBe(sample.last_writer_version);
@@ -40,7 +41,7 @@ describe('stampLastWriter', () => {
       state_schema_version: 'v5',
     });
     await stampLastWriter(file, '1.2.0');
-    const ij = await readInstallJson(file);
+    const ij = await readInstallJson(file) as InstallJsonV5;
     expect(ij.last_writer_version).toBe('1.2.0');
   });
 
@@ -60,13 +61,13 @@ describe('stampLastWriter', () => {
 
     // First call: should set installed_at
     await stampLastWriter(file, '1.1.0');
-    const afterFirst = await readInstallJson(file);
+    const afterFirst = await readInstallJson(file) as InstallJsonV5;
     expect(afterFirst.installed_at).toBeTruthy();
     const firstTimestamp = afterFirst.installed_at;
 
     // Second call: installed_at must not change
     await stampLastWriter(file, '1.2.0');
-    const afterSecond = await readInstallJson(file);
+    const afterSecond = await readInstallJson(file) as InstallJsonV5;
     expect(afterSecond.last_writer_version).toBe('1.2.0');
     expect(afterSecond.installed_at).toBe(firstTimestamp);
   });

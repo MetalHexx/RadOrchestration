@@ -324,10 +324,21 @@ test('installer produces structurally-equivalent state vs plugin-bootstrap', asy
   assert.deepEqual(installerFiltered, bootstrapFiltered,
     '~/.radorch/ trees (minus install.json and orchestration.yml) must match');
 
-  // install.json structural comparison (ignore installed_at timestamp).
-  const { installed_at: _a, ...installerStrip } = installJsonA;
-  const { installed_at: _b, ...bootstrapStrip } = installJsonB;
-  assert.deepEqual(installerStrip, bootstrapStrip,
+  // install.json structural comparison (ignore installed_at timestamps).
+  // Section 6: install.json is v6 with `harnesses[<install-key>].installed_at`.
+  // Both code paths write to harnesses.claude with channel=legacy-installer when
+  // runPluginBootstrap is called with sharedRoot set. Strip the timestamp
+  // from each nested entry before deep-equal.
+  function stripTimestamps(ij) {
+    const copy = JSON.parse(JSON.stringify(ij));
+    if (copy.harnesses) {
+      for (const k of Object.keys(copy.harnesses)) {
+        if (copy.harnesses[k]) delete copy.harnesses[k].installed_at;
+      }
+    }
+    return copy;
+  }
+  assert.deepEqual(stripTimestamps(installJsonA), stripTimestamps(installJsonB),
     'install.json structure must match (ignoring installed_at)');
 });
 

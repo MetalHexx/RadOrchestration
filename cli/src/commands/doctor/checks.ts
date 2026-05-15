@@ -3,12 +3,26 @@ import path from 'node:path';
 import { pathExists } from '../../lib/fs-helpers.js';
 import { installPaths } from '../../lib/paths.js';
 import { readInstallJson } from '../../lib/config.js';
+import type { InstallJson, InstallJsonV5, InstallJsonV6 } from '../../lib/config.js';
 import { readRegistry } from '../../lib/registry.js';
-import { cmpSemver } from '../../lib/install-json.js';
+import { cmpSemver, isInstallJsonV6, readLastWriterVersion } from '../../lib/install-json.js';
 import { parseYaml } from '../../lib/yaml.js';
 import { userDataPaths } from '../../lib/upgrade/user-data-paths.js';
 import { scanUserLevelHarnesses } from '../../lib/cross-harness-scan.js';
 import { getCliVersion } from '../../lib/package-version.js';
+
+/** Pull a representative `version` from either v5 (top-level package_version)
+ * or v6 (any entry's version). Used by doctor's install-shape checks where the
+ * specific install-key isn't disambiguated. */
+function readAnyVersion(ij: InstallJson): string | undefined {
+  if (isInstallJsonV6(ij)) {
+    for (const entry of Object.values((ij as InstallJsonV6).harnesses)) {
+      if (entry?.version) return entry.version;
+    }
+    return undefined;
+  }
+  return (ij as InstallJsonV5).package_version;
+}
 
 const pkg = { version: getCliVersion() };
 
@@ -57,13 +71,15 @@ export async function runInstallChecks(): Promise<CheckResult[]> {
   });
   if (!rootExists) return out;
 
-  // 2. install-json-shape
+  // 2. install-json-shape — accepts both v5 (top-level package_version) and v6
+  // (any registered harness entry's version).
   try {
     const ij = await readInstallJson(p.installJson);
+    const version = readAnyVersion(ij);
     out.push({
       category: 'Install',
       name: 'install-json-shape',
-      status: typeof ij.package_version === 'string' ? 'pass' : 'fail',
+      status: typeof version === 'string' ? 'pass' : 'fail',
     });
   } catch (e) {
     out.push({ category: 'Install', name: 'install-json-shape', status: 'fail', detail: (e as Error).message });
@@ -136,23 +152,24 @@ export async function runInstallChecks(): Promise<CheckResult[]> {
     }
   }
 
-  // 6. version-match
+  // 6. version-match — operates on the union; v6 picks the first registered entry.
   {
     let versionStatus: CheckStatus = 'pass';
     let versionDetail: string | undefined;
     try {
       const ij = await readInstallJson(p.installJson);
-      if (typeof ij.package_version !== 'string') {
+      const installedVersion = readAnyVersion(ij);
+      if (typeof installedVersion !== 'string') {
         versionStatus = 'warn';
         versionDetail = 'install.json missing package_version';
       } else {
         const cliVersion = pkg.version;
         if (cliVersion) {
-          const match = cmpSemver(cliVersion, ij.package_version) === 0;
+          const match = cmpSemver(cliVersion, installedVersion) === 0;
           versionStatus = match ? 'pass' : 'warn';
           versionDetail = match
             ? `${cliVersion}`
-            : `CLI is ${cliVersion}, install.json reports ${ij.package_version} — re-run \`radorch install\``;
+            : `CLI is ${cliVersion}, install.json reports ${installedVersion} — re-run \`radorch install\``;
         }
       }
     } catch {
@@ -248,17 +265,19 @@ export async function runPluginChecks(opts: {
     }
   }
   out.push({ category: 'Plugin', name: 'ui-pid-consistency', status: pidStatus, detail: pidDetail });
-  // Version skew
+  // Version skew — reads the latest last_writer_version across v5 (top-level)
+  // or v6 (max across all registered harness entries).
   let skewStatus: CheckStatus = 'pass';
   let skewDetail: string | undefined;
   if (await pathExists(p.installJson)) {
     const ij = await readInstallJson(p.installJson);
-    if (!ij.last_writer_version) {
+    const lastWriter = readLastWriterVersion(ij);
+    if (!lastWriter) {
       skewStatus = 'pass';
       skewDetail = 'install.json has no last_writer_version (iter-01 install — skipping skew check)';
-    } else if (cmpSemver(opts.localVersion, ij.last_writer_version) < 0) {
+    } else if (cmpSemver(opts.localVersion, lastWriter) < 0) {
       skewStatus = 'fail';
-      skewDetail = `state last written by ${ij.last_writer_version}; this CLI is ${opts.localVersion}`;
+      skewDetail = `state last written by ${lastWriter}; this CLI is ${opts.localVersion}`;
     }
   }
   out.push({ category: 'Plugin', name: 'version-skew', status: skewStatus, detail: skewDetail });
@@ -371,14 +390,26 @@ export async function runPluginChecks(opts: {
       detail: crossDetail,
     });
   }
-  // multi-harness-install-table (DD-8): render per-harness install status from
-  // user-level harness directories via scanUserLevelHarnesses().
+  // multi-harness-install-table (DD-8 + Section 6): render per-install-key status
+  // from the v6 registry at ~/.radorch/install.json. Each install-key emits one
+  // line with `(channel)` suffix. When both `claude` and `claude-plugin` are
+  // present, append an info line recommending consolidation.
   {
     const reports = scanUserLevelHarnesses();
     const lines = reports.map((r) => {
-      const ver = r.installed && r.packageVersion ? r.packageVersion : 'not installed';
-      return `${r.harness}: ${ver}`;
+      if (!r.installed) return `${r.installKey}: not installed`;
+      const channel = r.channel ? ` (${r.channel})` : '';
+      const ver = r.packageVersion ?? 'unknown';
+      return `${r.installKey}: ${ver}${channel}`;
     });
+    const hasClaude = reports.some((r) => r.installed && r.installKey === 'claude');
+    const hasClaudePlugin = reports.some((r) => r.installed && r.installKey === 'claude-plugin');
+    if (hasClaude && hasClaudePlugin) {
+      lines.push('');
+      lines.push('Both `claude` and `claude-plugin` are registered — they share ~/.claude/.');
+      lines.push('The plugin is the recommended channel. To remove the legacy install,');
+      lines.push('run `npx rad-orchestration uninstall`.');
+    }
     out.push({
       category: 'Plugin',
       name: 'multi-harness-install-table',
