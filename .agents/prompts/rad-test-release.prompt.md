@@ -26,49 +26,41 @@ Record the answer as `{harness}`.
 
 `git rev-parse --show-toplevel` from anywhere inside this repo; record as `{repoRoot}`.
 
-## Step 3 — Sync installer bundle assets
+## Step 3 — Pack the installer
 
-From `{repoRoot}`:
+From `{repoRoot}/installer`, clean up any stale tarballs first, then pack:
 
+PowerShell:
 ```
-cd installer && node scripts/sync-source.js
+Remove-Item -Force *.tgz -ErrorAction SilentlyContinue
+npm pack
 ```
 
-Do **not** run `npm run build:{harness}` here — that would deploy agents/skills directly to `~/.claude/` or `~/.copilot/` and pre-pollute the destination before the installer runs, defeating the purpose of the cold-install test. `sync-source.js` already runs the adapters fresh into `installer/src/<harness>/` on its own.
-
-`sync-source.js` ensures `cli/node_modules/` and `cli/dist/` are populated (running `npm ci && npm run build` in `cli/` if missing — no manual prereq), emits the shared `installer/src/ui/` once, emits the CLI bundle per-harness into `installer/src/{harness}/skills/rad-orchestration/scripts/radorch.mjs`, and augments every per-harness manifest with the corresponding entries (including `destinationPath`, which the installer expands at install time).
-
-## Step 4 — Pack the installer
-
+POSIX:
 ```
-cd {repoRoot}/installer && npm pack
+rm -f ./*.tgz
+npm pack
 ```
 
 Record the generated tarball filename as `{tarball}`.
 
-## Step 5 — Verify the tarball
+The `installer/package.json` `prepack` hook automatically runs `node scripts/sync-source.js` when `npm pack` fires, ensuring the bundle assets are fresh — no separate sync step needed.
 
-Stay in `{repoRoot}/installer` (Step 4 already `cd`'d there) and invoke the tarball by relative path:
+> **Expect:** Cold run (fresh clone, no `cli/node_modules`, no `ui/node_modules`): 5–10 minutes. Warm run (caches populated): 1–2 minutes. If `npm pack` appears stuck for >15 minutes, suspect the ENOENT race in the UI build — investigate `ui/.next/standalone/` before retrying.
 
-```
-npx ./{tarball} --version
-```
+## Step 4 — Run the wizard
 
-> Do **not** use the absolute-path form (`npx {repoRoot}/installer/{tarball} ...`). On Windows + PowerShell, npx silently ignores absolute-path local-tarball specs and exits 0 without invoking the bin — the smoke test then reports false negatives. The `./<tarball>` form (run from `installer/`) works correctly.
-
-## Step 6 — Run the wizard non-interactively
-
-Still from `{repoRoot}/installer`:
+Stay in `{repoRoot}/installer` and invoke the installer non-interactively:
 
 ```
-npx ./{tarball} --yes --harness {harness}
+npx --yes ./{tarball} --yes --harness {harness}
 ```
 
-Same npx-absolute-path caveat as Step 5 applies.
+> Do **not** use the absolute-path form (`npx {repoRoot}/installer/{tarball} ...`). On Windows + PowerShell, npx silently ignores absolute-path local-tarball specs and exits 0 without invoking the bin — the smoke test then reports false negatives. The `./<tarball>` form (run from `installer/`) works correctly. The first `--yes` is consumed by npx to skip its own confirmation prompt; the second `--yes` is consumed by the installer wizard.
 
-> Expected: a single harness-checkbox question is bypassed by `--yes`; the wizard runs git/gh tooling checks (FR-17) — warnings appear ONLY if either tool is missing; absence of warnings is the correct outcome when both are installed; the bootstrap runs and the install completes without errors.
+Expected: the harness-checkbox question is bypassed by the second `--yes`; the wizard runs git/gh tooling checks — warnings appear ONLY if either tool is missing; absence of warnings is the correct outcome when both are installed; the bootstrap runs and the install completes without errors.
 
-## Step 7 — Verify the install
+## Step 5 — Verify the install
 
 Health checks have moved to the in-skill CLI. Run:
 - POSIX: `node $HOME/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs doctor`
@@ -84,24 +76,28 @@ Verify the in-skill CLI reports a version that matches the installer:
 - POSIX: `node $HOME/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs --version`
 - Windows: `node %USERPROFILE%\{harnessRoot}\skills\rad-orchestration\scripts\radorch.mjs --version`
 
-Expected: prints a version string (e.g. `1.0.0-alpha.8`) that exactly matches `package_version` in `~/.radorch/install.json` (recorded in Step 10). Any mismatch indicates the bundle and the manifest are out of sync.
+Expected: prints a version string (e.g. `1.0.0-alpha.8`) that exactly matches `package_version` in `~/.radorch/install.json` (reported in Step 8). Any mismatch indicates the bundle and the manifest are out of sync.
 
 Verify the UI landed: `ls ~/.radorch/ui/` shows the Next.js standalone bundle (server.js or .next/static).
 
-## Step 8 — Verify the sha256 manifest
+## Step 6 — Verify the sha256 manifest
 
-Open `{repoRoot}/installer/src/{bundleDir}/manifests/v{version}.json` (`bundleDir` matches the harness — `claude`, `copilot-vscode`, or `copilot-cli`). Each manifest entry carries `bundlePath`, `sourcePath`, `destinationPath`, `sha256`, `ownership`, `version`, and `harness`. There is no `path` field — use `bundlePath` for in-bundle relative paths.
+Run the verification one-liner against the manifest file for the harness you installed:
 
-Confirm:
+```
+node -e "const m=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));const r=/^[a-f0-9]{64}$/;const cli=m.files.find(f=>f.bundlePath==='skills/rad-orchestration/scripts/radorch.mjs');const ui=m.files.filter(f=>f.bundlePath.startsWith('ui/')).length;const agents=m.files.filter(f=>f.bundlePath.startsWith('agents/')).length;const skills=m.files.filter(f=>f.bundlePath.startsWith('skills/')).length;const bad=m.files.filter(f=>!r.test(f.sha256||''));const noDest=m.files.filter(f=>!f.destinationPath);console.log({cli:!!cli,ui,agents,skills,badSha:bad.length,noDest:noDest.length,hasBinEntry:!!m.files.find(f=>f.bundlePath==='bin/radorch.mjs')});" {repoRoot}/manifests/{harness}/v{version}.json
+```
 
-- A `bundlePath` entry equal to `skills/rad-orchestration/scripts/radorch.mjs` is present.
-- `bundlePath` entries under `ui/**`, `agents/*`, and `skills/*` are present.
-- The three `rad-ui-*` skills appear under `skills/`.
-- **Every entry carries a 64-char `sha256` field.**
-- **Every entry carries a `destinationPath` field templated with `${HARNESS_ROOT}/...` (for `agents/` and `skills/`) or `${RAD_HOME}/...` (for everything else).** This is the routing-as-data contract both the installer and the in-skill CLI consume.
-- No `bin/radorch.mjs` entry remains.
+Expected output (all these must be true):
+- `cli: true` — the radorch.mjs bundle is present
+- `ui: [number > 0]` — UI files are included
+- `agents: [number > 0]` — agent files are included
+- `skills: [number > 0]` — skill files are included
+- `badSha: 0` — all entries have valid 64-char sha256 hashes
+- `noDest: 0` — all entries have `destinationPath` fields
+- `hasBinEntry: false` — the retired `bin/radorch.mjs` entry is absent
 
-## Step 9 — Verify the post-install guidance
+## Step 7 — Verify the post-install guidance
 
 Confirm the summary now points at the in-skill CLI path (not the retired `~/.radorch/bin/`):
 - POSIX: `node $HOME/.claude/skills/rad-orchestration/scripts/radorch.mjs <subcmd>` (or the matching harness root).
@@ -109,15 +105,15 @@ Confirm the summary now points at the in-skill CLI path (not the retired `~/.rad
 
 Both branches must NOT mention `~/.radorch/bin/` or `setx PATH`.
 
-## Step 10 — Report results
+## Step 8 — Report results
 
 Report:
 - Harness tested
-- Versions: tarball version, `npx {tarball} --version`, ~/.radorch/install.json package_version
+- Versions: tarball version, ~/.radorch/install.json package_version
 - Pass/fail per check
 - Verbatim error output on any failure
 
-## Step 11 — Cleanup (ask first)
+## Step 9 — Cleanup (ask first)
 
 Ask the user whether to keep or remove the local tarball. On yes-to-remove:
 
