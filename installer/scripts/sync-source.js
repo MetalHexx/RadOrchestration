@@ -326,14 +326,15 @@ export function restoreCommittedManifests(repoRoot, harnessName) {
 /**
  * Auto-promotes the freshly-generated runtime manifest at
  * `installer/src/<harness>/manifests/v<version>.json` into the committed
- * catalog at `<repoRoot>/manifests/<harness>/v<version>.json`. Four cases
- * (one precondition guard + three committed-state outcomes):
+ * catalog at `<repoRoot>/manifests/<harness>/v<version>.json`. Five cases
+ * (one precondition guard + four committed-state outcomes):
  *
  *   0. **Runtime manifest missing** → no-op, return `'missing-runtime'`.
  *      Precondition guard — nothing to promote if `emitBundles` did not
  *      produce a runtime manifest for the requested version.
- *   1. **Committed doesn't exist** → write. (First time the operator runs
- *      sync-source after a version bump; catalog grows naturally on release.)
+ *   1. **Committed doesn't exist AND promote=true** → write. (First time the
+ *      operator runs sync-source after a version bump; catalog grows naturally
+ *      on release.) When promote=false, skip the write and return `'skipped'`.
  *   2. **Committed exists and matches runtime** → no-op. (Idempotent re-runs
  *      are safe.)
  *   3. **Committed exists and differs from runtime** → log a warning and
@@ -344,14 +345,22 @@ export function restoreCommittedManifests(repoRoot, harnessName) {
  * Dev workflow stays unblocked — the runtime regen happens regardless, only
  * the committed catalog is protected.
  *
- * @param {string} repoRoot     - Absolute path to the repository root.
- * @param {string} harnessName  - Adapter / harness name.
- * @param {string} version      - Version being emitted (e.g. `'1.0.0-alpha.9'`).
- * @returns {'wrote'|'matches'|'drift-warned'|'missing-runtime'}
+ * promote: when true, case 1 writes new committed manifests. Default false so
+ * dev iteration / smoke tests don't pollute the committed catalog at
+ * manifests/<harness>/. The release prompt sets --promote explicitly when
+ * bumping versions.
+ *
+ * @param {string}  repoRoot     - Absolute path to the repository root.
+ * @param {string}  harnessName  - Adapter / harness name.
+ * @param {string}  version      - Version being emitted (e.g. `'1.0.0-alpha.9'`).
+ * @param {boolean} [promote]    - When true, write case 1 (new committed manifest).
+ *   Default false.
+ * @returns {'wrote'|'matches'|'drift-warned'|'missing-runtime'|'skipped'}
  *   Outcome tag for tests / callers. `'missing-runtime'` means the runtime
- *   manifest itself doesn't exist (skip — nothing to promote).
+ *   manifest itself doesn't exist (skip — nothing to promote). `'skipped'`
+ *   means promote=false and the committed file was absent (no write).
  */
-export function autoPromoteCommittedManifest(repoRoot, harnessName, version) {
+export function autoPromoteCommittedManifest(repoRoot, harnessName, version, promote = false) {
   const runtimePath = path.join(
     repoRoot, 'installer', 'src', harnessName, 'manifests', `v${version}.json`,
   );
@@ -362,6 +371,13 @@ export function autoPromoteCommittedManifest(repoRoot, harnessName, version) {
   const runtimeBytes = fs.readFileSync(runtimePath);
 
   if (!fs.existsSync(committedPath)) {
+    if (!promote) {
+      console.log(
+        `[sync-source] manifests/${harnessName}/v${version}.json not yet committed; ` +
+        `pass --promote to write (only the release prompt should set this).`,
+      );
+      return 'skipped';
+    }
     fs.mkdirSync(committedDir, { recursive: true });
     fs.writeFileSync(committedPath, runtimeBytes);
     console.log(
@@ -391,16 +407,21 @@ export function autoPromoteCommittedManifest(repoRoot, harnessName, version) {
  * The committed source-of-truth catalog at `<repoRoot>/manifests/<harness>/`
  * is restored into the runtime location at the start of every run (so the
  * npm tarball ships every prior release's manifest), and auto-promoted from
- * the runtime location at the end of every run via the four-case write
+ * the runtime location at the end of every run via the five-case write
  * protocol in `autoPromoteCommittedManifest`.
  *
  * Uses outputRoot=installer/src/ and targetDir=adapter.name so that runAdapter
  * writes files to installer/src/<harness>/ and the manifest to
  * installer/src/<harness>/manifests/v<version>.json (single level, no double-nesting).
  *
- * @param {{ repoRoot: string, version: string }} opts
+ * promote: when true, autoPromoteCommittedManifest writes new committed
+ * manifests (case 1). Default false so dev iteration / smoke tests don't
+ * pollute the committed catalog at manifests/<harness>/. The release prompt
+ * sets --promote explicitly when bumping versions.
+ *
+ * @param {{ repoRoot: string, version: string, promote?: boolean }} opts
  */
-export async function emitBundles({ repoRoot, version }) {
+export async function emitBundles({ repoRoot, version, promote = false }) {
   // Ensure the in-tree `.js` bundles exist and are fresh before the per-
   // harness emit loop reads them. Idempotent on warm clones.
   ensureRuntimeBundled(repoRoot);
@@ -624,7 +645,7 @@ export async function emitBundles({ repoRoot, version }) {
   // every augmentation (runtime bundles, radorch.mjs, ui/**) has settled, so
   // the committed manifest reflects the final shipped bytes.
   for (const adapter of adapters) {
-    autoPromoteCommittedManifest(repoRoot, adapter.name, version);
+    autoPromoteCommittedManifest(repoRoot, adapter.name, version, promote);
   }
 }
 
@@ -632,7 +653,8 @@ export async function emitBundles({ repoRoot, version }) {
 if (process.argv[1] === __filename) {
   const repoRoot = path.resolve(__dirname, '..', '..');
   const installerPkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'installer', 'package.json'), 'utf8'));
+  const promote = process.argv.includes('--promote');
   ensureCliBuilt(repoRoot);
   emitSharedUi(repoRoot);
-  await emitBundles({ repoRoot, version: installerPkg.version });
+  await emitBundles({ repoRoot, version: installerPkg.version, promote });
 }

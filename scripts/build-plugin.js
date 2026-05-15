@@ -201,25 +201,17 @@ async function main() {
     // Cold-clone heal. Idempotent on warm clones.
     //   1. ensureCliBuilt: install cli/ deps + build cli/dist/ if missing —
     //      otherwise the next step's `tsc` invocation fails on fresh clones.
-    //   2. Generate <repoRoot>/manifests/<harness>/v<version>.json if
-    //      missing. copy-manifest-catalog reads from this path and silently
-    //      no-ops if absent, which trips validate-plugin-tree downstream.
-    //      emitBundles' auto-promote step writes the committed manifest when
-    //      it's missing, which covers fresh dev branches before a release.
+    //   2. Populate the runtime catalog at installer/src/<harness>/manifests/
+    //      by calling emitBundles unconditionally (it is idempotent on warm
+    //      clones). copy-manifest-catalog reads from the runtime catalog, so
+    //      this ensures it always has content. Do NOT pass promote:true —
+    //      plugin builds must never write to the committed catalog at
+    //      manifests/<harness>/.
     // Installer flow is unaffected: this only consumes sync-source.js's
     // exported helpers; nothing under installer/ is modified.
     ensureCliBuilt(repoRoot);
     ensureUiDeps(repoRoot);
-    const prepAdapters = await discoverAdapters(path.join(repoRoot, 'adapters'));
-    const claudeAdapter = prepAdapters.find((a) => a.name === 'claude');
-    if (claudeAdapter) {
-      const manifestPath = path.join(
-        repoRoot, 'manifests', claudeAdapter.name, `v${version}.json`,
-      );
-      if (!fs.existsSync(manifestPath)) {
-        await emitBundles({ repoRoot, version });
-      }
-    }
+    await emitBundles({ repoRoot, version });
   });
   await step('cli-build', () => exec('npm run build', path.join(repoRoot, 'cli')));
   await step('ui-standalone', () => {
@@ -281,13 +273,9 @@ async function main() {
     if (fs.existsSync(tplSrc)) fs.cpSync(tplSrc, tplDst, { recursive: true });
   });
   await step('copy-manifest-catalog', () => {
-    // Plugin manifest emitter (AD-4). Reads the per-harness catalog at
-    // <repoRoot>/manifests/<harness>/ (committed source of truth, neutral
-    // top-level location — moves the catalog read path out of
-    // installer/src/<harness>/manifests/. The build script still imports
-    // emitBundles from installer/scripts/sync-source.js, so the control-flow
-    // coupling remains — only the data location moved), filters out
-    // agents/*, skills/*, ui/*
+    // Plugin manifest emitter (AD-4). Reads the per-harness runtime catalog at
+    // installer/src/<harness>/manifests/ (always populated by the prep step's
+    // emitBundles call), filters out agents/*, skills/*, ui/*
     // (Claude Code handles plugin-folder placement; ui/* is re-augmented
     // below from the staged plugin tree so the sha256s match the bytes
     // that ship), augments with shared-asset entries (ui/, templates/,
@@ -297,7 +285,7 @@ async function main() {
     // out of the plugin manifest along with the rest of skills/.
     const claudeAdapter = adapters.find(a => a.name === 'claude');
     if (!claudeAdapter) return;
-    const srcCatalog = path.join(repoRoot, 'manifests', claudeAdapter.name);
+    const srcCatalog = path.join(repoRoot, 'installer', 'src', claudeAdapter.name, 'manifests');
     const dstCatalog = path.join(claudeDist, 'manifests');
     fs.mkdirSync(dstCatalog, { recursive: true });
     if (!fs.existsSync(srcCatalog)) return;

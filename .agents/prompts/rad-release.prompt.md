@@ -71,8 +71,10 @@ Run the steps below in order. **Do not commit until step 5.**
 2. **Generate the per-harness manifest catalog for the new version.** From the repo root:
 
    ```
-   node installer/scripts/sync-source.js
+   node installer/scripts/sync-source.js --promote
    ```
+
+   The `--promote` flag tells sync-source to write the freshly-emitted manifest into the committed catalog at `manifests/<harness>/v<version>.json` (the "case 1 → write" branch of autoPromoteCommittedManifest). Without the flag, sync-source emits only the runtime catalog and skips committed writes — that's the default behavior used by smoke tests and dev iteration, so they never pollute the committed source of truth.
 
    This runs `emitBundles` for every adapter. Its `autoPromoteCommittedManifest` step writes a new `manifests/<harness>/v{version}.json` file for each harness (the file doesn't exist yet for the new version, so the "case 1 → write" branch fires). After this step, three new committed-catalog files exist on disk and are flagged as untracked by `git status`.
 
@@ -110,7 +112,7 @@ After the bump commit, re-run the build pipeline and assert the working tree sta
 From the repo root:
 
 ```
-node installer/scripts/sync-source.js
+node installer/scripts/sync-source.js --promote
 npm run build:plugin
 git status --porcelain
 ```

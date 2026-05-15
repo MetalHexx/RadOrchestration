@@ -250,17 +250,41 @@ function writeRuntimeManifest(repo, harness, version, body) {
   fs.writeFileSync(path.join(dir, `v${version}.json`), body);
 }
 
-test('autoPromoteCommittedManifest: case 1 — committed does not exist → write', () => {
+test('autoPromoteCommittedManifest: case 1 with promote=true — committed does not exist → writes', () => {
   const repo = makeRestoreFixture(['claude']);
   const body = '{"harness":"claude","version":"1.0.0-alpha.8","files":[]}';
   writeRuntimeManifest(repo, 'claude', '1.0.0-alpha.8', body);
 
-  const result = autoPromoteCommittedManifest(repo, 'claude', '1.0.0-alpha.8');
+  const result = autoPromoteCommittedManifest(repo, 'claude', '1.0.0-alpha.8', true);
 
   assert.equal(result, 'wrote');
   const committedPath = path.join(repo, 'manifests', 'claude', 'v1.0.0-alpha.8.json');
   assert.ok(fs.existsSync(committedPath));
   assert.equal(fs.readFileSync(committedPath, 'utf8'), body);
+});
+
+test('autoPromoteCommittedManifest: case 1 with promote=false (default) — committed does not exist → skips, no file written, returns skipped', () => {
+  const repo = makeRestoreFixture(['claude']);
+  const body = '{"harness":"claude","version":"1.0.0-alpha.8","files":[]}';
+  writeRuntimeManifest(repo, 'claude', '1.0.0-alpha.8', body);
+
+  const logs = [];
+  const originalLog = console.log;
+  console.log = (...args) => logs.push(args.join(' '));
+  let result;
+  try {
+    result = autoPromoteCommittedManifest(repo, 'claude', '1.0.0-alpha.8');
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.equal(result, 'skipped');
+  const committedPath = path.join(repo, 'manifests', 'claude', 'v1.0.0-alpha.8.json');
+  assert.ok(!fs.existsSync(committedPath), 'committed file must not be written when promote=false');
+  assert.ok(
+    logs.some((l) => l.includes('--promote') && l.includes('1.0.0-alpha.8')),
+    `expected a skip log with --promote hint, got: ${JSON.stringify(logs)}`,
+  );
 });
 
 test('autoPromoteCommittedManifest: case 2 — committed matches runtime → no-op', () => {
@@ -271,7 +295,7 @@ test('autoPromoteCommittedManifest: case 2 — committed matches runtime → no-
   fs.writeFileSync(committedPath, body);
   const bytesBefore = fs.readFileSync(committedPath);
 
-  const result = autoPromoteCommittedManifest(repo, 'claude', '1.0.0-alpha.8');
+  const result = autoPromoteCommittedManifest(repo, 'claude', '1.0.0-alpha.8', true);
 
   assert.equal(result, 'matches');
   // Byte-level no-op check — mtime granularity varies across filesystems
@@ -296,7 +320,7 @@ test('autoPromoteCommittedManifest: case 3 — committed differs → warn, do no
   console.warn = (...args) => warnings.push(args.join(' '));
   let result;
   try {
-    result = autoPromoteCommittedManifest(repo, 'claude', '1.0.0-alpha.8');
+    result = autoPromoteCommittedManifest(repo, 'claude', '1.0.0-alpha.8', true);
   } finally {
     console.warn = originalWarn;
   }
@@ -313,7 +337,7 @@ test('autoPromoteCommittedManifest: case 3 — committed differs → warn, do no
 test('autoPromoteCommittedManifest: missing runtime → no-op signal', () => {
   const repo = makeRestoreFixture(['claude']);
   // No runtime manifest at all.
-  const result = autoPromoteCommittedManifest(repo, 'claude', '1.0.0-alpha.99');
+  const result = autoPromoteCommittedManifest(repo, 'claude', '1.0.0-alpha.99', true);
   assert.equal(result, 'missing-runtime');
   assert.ok(
     !fs.existsSync(path.join(repo, 'manifests', 'claude', 'v1.0.0-alpha.99.json')),
@@ -323,7 +347,7 @@ test('autoPromoteCommittedManifest: missing runtime → no-op signal', () => {
 
 test('emitBundles end-to-end: writes runtime manifest AND auto-promotes to <repoRoot>/manifests/<harness>/', async () => {
   const repo = makeRepo();
-  await emitBundles({ repoRoot: repo, version: '0.0.0-test' });
+  await emitBundles({ repoRoot: repo, version: '0.0.0-test', promote: true });
   for (const harness of ['claude', 'copilot-vscode', 'copilot-cli']) {
     const runtimePath = path.join(
       repo, 'installer', 'src', harness, 'manifests', 'v0.0.0-test.json',
@@ -338,6 +362,24 @@ test('emitBundles end-to-end: writes runtime manifest AND auto-promotes to <repo
       Buffer.compare(fs.readFileSync(runtimePath), fs.readFileSync(committedPath)),
       0,
       `${harness} runtime/committed manifests must be byte-identical after auto-promote`,
+    );
+  }
+});
+
+test('emitBundles with promote=false (default) does NOT write to <repoRoot>/manifests/<harness>/', async () => {
+  const repo = makeRepo();
+  await emitBundles({ repoRoot: repo, version: '0.0.0-test' });
+  for (const harness of ['claude', 'copilot-vscode', 'copilot-cli']) {
+    const runtimePath = path.join(
+      repo, 'installer', 'src', harness, 'manifests', 'v0.0.0-test.json',
+    );
+    const committedPath = path.join(
+      repo, 'manifests', harness, 'v0.0.0-test.json',
+    );
+    assert.ok(fs.existsSync(runtimePath), `${harness} runtime manifest must still be written`);
+    assert.ok(
+      !fs.existsSync(committedPath),
+      `${harness} committed manifest must NOT be written when promote=false`,
     );
   }
 });
