@@ -70,6 +70,34 @@ test('installManifestFiles — AD-7: skips entries under projects/', () => {
   assert.equal(result.skippedCount, 1);
 });
 
+test('installManifestFiles — tier templates install to ${RAD_HOME}/templates/ (not harness skill folder)', () => {
+  // Tier templates use bundlePath skills/rad-orchestration/templates/<name>.yml
+  // but destinationPath ${RAD_HOME}/templates/<name>.yml — source comes from
+  // the plugin root's skills/ subtree, destination is the shared user-data folder.
+  const tierNames = ['extra-high', 'high', 'medium', 'low'];
+  const templatesDir = path.join(pluginRoot, 'skills', 'rad-orchestration', 'templates');
+  fs.mkdirSync(templatesDir, { recursive: true });
+  for (const name of tierNames) {
+    fs.writeFileSync(path.join(templatesDir, `${name}.yml`), `template: ${name}`);
+  }
+  const manifest = {
+    files: tierNames.map(name => ({
+      bundlePath: `skills/rad-orchestration/templates/${name}.yml`,
+      destinationPath: `\${RAD_HOME}/templates/${name}.yml`,
+    })),
+  };
+  const result = installManifestFiles(manifest, pluginRoot, 'claude');
+  assert.equal(result.copiedCount, tierNames.length);
+  for (const name of tierNames) {
+    const target = path.join(tmp, '.radorch', 'templates', `${name}.yml`);
+    assert.ok(fs.existsSync(target), `${name}.yml must be in ~/.radorch/templates/`);
+    assert.equal(fs.readFileSync(target, 'utf8'), `template: ${name}`);
+    // Must NOT be in the harness skill folder
+    const wrongTarget = path.join(tmp, '.claude', 'skills', 'rad-orchestration', 'templates', `${name}.yml`);
+    assert.ok(!fs.existsSync(wrongTarget), `${name}.yml must NOT be in harness skill folder`);
+  }
+});
+
 test('installManifestFiles — ui/ resolves from sharedRoot when provided', () => {
   const sharedRoot = path.join(tmp, 'shared');
   fs.mkdirSync(path.join(sharedRoot, 'ui'), { recursive: true });

@@ -79,11 +79,13 @@ export function snapshotTemplate(
  * Lists available templates by scanning the global templates directory.
  * Returns template names (filename stems, without .yml extension).
  * Returns empty array if the templates directory does not exist.
+ *
+ * @param templatesDir - Absolute path to the templates directory, typically
+ *   path.join(os.homedir(), '.radorch', 'templates') as resolved by pipeline.ts.
  */
 export function listAvailableTemplates(
-  orchRoot: string,
+  templatesDir: string,
 ): string[] {
-  const templatesDir = path.join(orchRoot, 'skills/rad-orchestration/templates/');
   if (!fs.existsSync(templatesDir)) {
     return [];
   }

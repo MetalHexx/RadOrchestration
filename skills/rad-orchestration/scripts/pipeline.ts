@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import process from 'node:process';
 import { processEvent } from './lib/engine.js';
@@ -21,7 +22,11 @@ import type { EventContext, IOAdapter, PathContext, PipelineResult } from './lib
 // directory at runtime.
 function resolvePathContext(): PathContext {
   const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
-  const templatesDir = path.resolve(scriptsDir, '..', 'templates');
+  // templatesDir points at ~/.radorch/templates/ — the user-data folder where
+  // tier-classification templates are installed (and where the doctor check and
+  // dashboard UI already look). The skill folder no longer hosts these files at
+  // runtime; it remains the dev-time canonical source only.
+  const templatesDir = path.join(os.homedir(), '.radorch', 'templates');
   const orchRoot = path.resolve(scriptsDir, '..', '..', '..');
   return { scriptsDir, templatesDir, orchRoot };
 }

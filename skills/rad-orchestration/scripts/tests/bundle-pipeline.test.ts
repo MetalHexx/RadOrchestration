@@ -40,12 +40,35 @@ describe('pipeline bundle', () => {
   // orchRoot correctly when invoked from the in-tree bundle. This guards
   // against the regression where bundling shifted import.meta.url one level
   // and template loads returned "Template file not found".
+  //
+  // After tier-template centralization, `templatesDir` resolves to
+  // ~/.radorch/templates/ (via os.homedir()). This test sets up a temp home
+  // directory containing the expected templates so the pipeline can find them
+  // without requiring a real rad-orchestration install.
   it('start event loads a template against the in-tree bundle', async () => {
     // Use the in-tree bundle that the harness ships (the one at
     // scripts/pipeline.js), so the geometry assertion exercises the real
     // distribution layout — not the temp-bundle output.
     const inTreeBundle = path.resolve(scriptsRoot, 'pipeline.js');
     const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-pipe-start-'));
+
+    // Set up a temp home with ~/.radorch/templates/ populated from the canonical
+    // source templates. The pipeline resolves templatesDir as
+    // path.join(os.homedir(), '.radorch', 'templates') — on Windows os.homedir()
+    // reads USERPROFILE; on POSIX it reads HOME.
+    const fakeHome = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-pipe-home-'));
+    const fakeTemplatesDir = path.join(fakeHome, '.radorch', 'templates');
+    await fs.mkdir(fakeTemplatesDir, { recursive: true });
+    // Copy canonical tier templates into the fake home so the pipeline finds them.
+    const canonicalTemplatesDir = path.resolve(scriptsRoot, '..', 'templates');
+    for (const name of ['extra-high', 'high', 'medium', 'low']) {
+      await fs.copyFile(
+        path.join(canonicalTemplatesDir, `${name}.yml`),
+        path.join(fakeTemplatesDir, `${name}.yml`),
+      );
+    }
+
+    const homeEnvKey = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
     const result = await execP(
       'node',
       [
@@ -54,8 +77,12 @@ describe('pipeline bundle', () => {
         '--project-dir', projectDir,
         '--template', 'extra-high',
       ],
-      { reject: false } as never,
+      { reject: false, env: { ...process.env, [homeEnvKey]: fakeHome } } as never,
     ).catch((e: { stderr?: string; stdout?: string; code?: number }) => e);
+
+    // Clean up fake home after the test.
+    await fs.rm(fakeHome, { recursive: true, force: true });
+
     const stdout = (result as { stdout?: string }).stdout ?? '';
     const parsed = JSON.parse(stdout);
     expect(parsed.success, JSON.stringify(parsed, null, 2)).toBe(true);

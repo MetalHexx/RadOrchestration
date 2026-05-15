@@ -276,6 +276,78 @@ test('rewritePerBundleOrchestrationYml is no longer exported', async () => {
   assert.equal(m.rewritePerBundleOrchestrationYml, undefined);
 });
 
+// ── destination-routing: tier template special case ───────────────────
+
+import { resolveDestinationPath } from './destination-routing.js';
+
+const TIER_TEMPLATE_NAMES = ['extra-high', 'high', 'medium', 'low'];
+
+for (const name of TIER_TEMPLATE_NAMES) {
+  test(`resolveDestinationPath routes skills/rad-orchestration/templates/${name}.yml to \${RAD_HOME}/templates/${name}.yml`, () => {
+    const bundlePath = `skills/rad-orchestration/templates/${name}.yml`;
+    const result = resolveDestinationPath(bundlePath, 'claude');
+    assert.strictEqual(result, `\${RAD_HOME}/templates/${name}.yml`);
+  });
+}
+
+test('resolveDestinationPath: other skills/rad-orchestration files still go to ${HARNESS_ROOT}', () => {
+  // Scripts, references, config — not tier templates — stay in the skill folder.
+  const cases = [
+    'skills/rad-orchestration/SKILL.md',
+    'skills/rad-orchestration/scripts/radorch.mjs',
+    'skills/rad-orchestration/config/orchestration.yml',
+    'skills/rad-orchestration/references/context.md',
+  ];
+  for (const bp of cases) {
+    const result = resolveDestinationPath(bp, 'claude');
+    assert.strictEqual(result, `\${HARNESS_ROOT}/${bp}`, `expected HARNESS_ROOT for ${bp}`);
+  }
+});
+
+test('resolveDestinationPath: other skills templates/ folders still go to ${HARNESS_ROOT}', () => {
+  // e.g. rad-brainstorm/templates/BRAINSTORMING.md — these are skill-local,
+  // NOT the tier-classification templates. They stay in the harness skill folder.
+  const cases = [
+    'skills/rad-brainstorm/templates/BRAINSTORMING.md',
+    'skills/rad-log-error/templates/ERROR-LOG.md',
+    'skills/rad-create-plans/references/master-plan/templates/MASTER-PLAN.md',
+  ];
+  for (const bp of cases) {
+    const result = resolveDestinationPath(bp, 'claude');
+    assert.strictEqual(result, `\${HARNESS_ROOT}/${bp}`, `expected HARNESS_ROOT for ${bp}`);
+  }
+});
+
+test('runAdapter manifest destinationPath for tier templates resolves to ${RAD_HOME}/templates/<name>.yml', async () => {
+  // Builds a canonical fixture that mirrors the rad-orchestration templates layout
+  // and verifies that runAdapter emits the correct destinationPath in the manifest.
+  const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-tier-'));
+  const skillDir = path.join(canonical, 'skills', 'rad-orchestration');
+  const templatesDir = path.join(skillDir, 'templates');
+  fs.mkdirSync(templatesDir, { recursive: true });
+  fs.writeFileSync(path.join(skillDir, 'SKILL.md'),
+    '---\nname: rad-orchestration\ndescription: Orchestration\n---\nbody\n', 'utf8');
+  for (const name of TIER_TEMPLATE_NAMES) {
+    fs.writeFileSync(path.join(templatesDir, `${name}.yml`), `template:\n  id: ${name}\n`, 'utf8');
+  }
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'out-tier-'));
+  await runAdapter(fakeAdapter, { canonicalRoot: canonical, outputRoot: out, version: '1.0.0-test' });
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(out, 'fake', 'manifests', 'v1.0.0-test.json'), 'utf8'),
+  );
+  for (const name of TIER_TEMPLATE_NAMES) {
+    const entry = manifest.files.find(
+      (f) => f.bundlePath === `skills/rad-orchestration/templates/${name}.yml`,
+    );
+    assert.ok(entry, `manifest must contain tier template entry for ${name}.yml`);
+    assert.strictEqual(
+      entry.destinationPath,
+      `\${RAD_HOME}/templates/${name}.yml`,
+      `${name}.yml destinationPath must route to RAD_HOME/templates/`,
+    );
+  }
+});
+
 // ── Step 1: rad-ui-* resurrection tests (FR-1, FR-2) ─────────────────
 
 import { adapter as claudeAdapter } from './claude/adapter.js';
