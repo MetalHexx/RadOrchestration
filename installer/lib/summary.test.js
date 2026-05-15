@@ -89,7 +89,7 @@ describe('renderPostInstallSummary', () => {
 
   it('contains getting started guide link exactly once', () => {
     const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
-    const count = (output.match(/https:\/\/github\.com\/MetalHexx\/RadOrchestration\/blob\/main\/docs\/guides\.md/g) || []).length;
+    const count = (output.match(/https:\/\/github\.com\/MetalHexx\/RadOrchestration\/blob\/main\/docs\/getting-started\.md/g) || []).length;
     assert.strictEqual(count, 1, 'output should contain getting started guide link exactly once');
   });
 
@@ -207,7 +207,7 @@ describe('renderPartialSuccessSummary', () => {
       renderPartialSuccessSummary(configWithUi, copyResults, configPath, errorMsg)
     );
     assert.ok(
-      output.includes('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/guides.md'),
+      output.includes('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/getting-started.md'),
       'output should contain getting started guide link'
     );
   });

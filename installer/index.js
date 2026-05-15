@@ -111,7 +111,7 @@ export function renderPostInstall(cfg, orchYmlPath, installedVersion) {
     console.log('');
   }
 
-  console.log('  ' + THEME.body('Full guide: ') + THEME.command('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/guides.md'));
+  console.log('  ' + THEME.body('Full guide: ') + THEME.command('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/getting-started.md'));
   console.log('');
 
   if (installedVersion) {

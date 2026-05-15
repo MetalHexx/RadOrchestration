@@ -50,7 +50,7 @@ export function renderPostInstallSummary(config, copyResults, configPath) {
     console.log('');
   }
 
-  console.log('  ' + THEME.body('Full guide: ') + THEME.command('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/guides.md'));
+  console.log('  ' + THEME.body('Full guide: ') + THEME.command('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/getting-started.md'));
   console.log('');
 
   divider();
@@ -92,7 +92,7 @@ export function renderPartialSuccessSummary(config, copyResults, configPath, err
 
   console.log('  ' + THEME.stepNumber('1.') + ' ' + THEME.body('Get started — visit the guide:'));
   console.log('');
-  console.log('     ' + THEME.command('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/guides.md'));
+  console.log('     ' + THEME.command('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/getting-started.md'));
   console.log('');
 
   console.log('  ' + THEME.stepNumber('2.') + ' ' + THEME.body('Retry the UI build:'));

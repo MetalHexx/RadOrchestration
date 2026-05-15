@@ -95,7 +95,7 @@ describe('renderPostInstall (legacy installer)', () => {
       renderPostInstall({ harnesses: ['claude'] }, '/home/user/.radorch/orchestration.yml')
     );
 
-    const count = (output.match(/https:\/\/github\.com\/MetalHexx\/RadOrchestration\/blob\/main\/docs\/guides\.md/g) || []).length;
+    const count = (output.match(/https:\/\/github\.com\/MetalHexx\/RadOrchestration\/blob\/main\/docs\/getting-started\.md/g) || []).length;
     assert.strictEqual(count, 1, 'output must contain the guide URL exactly once');
   });
 });
