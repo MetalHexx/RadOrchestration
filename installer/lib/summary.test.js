@@ -87,11 +87,23 @@ describe('renderPostInstallSummary', () => {
     assert.ok(output.includes("What's Next"), 'output should contain "What\'s Next"');
   });
 
-  it('contains getting started guide link', () => {
+  it('contains getting started guide link exactly once', () => {
     const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
+    const count = (output.match(/https:\/\/github\.com\/MetalHexx\/RadOrchestration\/blob\/main\/docs\/guides\.md/g) || []).length;
+    assert.strictEqual(count, 1, 'output should contain getting started guide link exactly once');
+  });
+
+  it('contains /rad-brainstorm, /rad-plan, /rad-execute in that order', () => {
+    const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
+    const brainstormIdx = output.indexOf('/rad-brainstorm');
+    const planIdx = output.indexOf('/rad-plan');
+    const executeIdx = output.indexOf('/rad-execute');
+    assert.ok(brainstormIdx >= 0, 'output should contain "/rad-brainstorm"');
+    assert.ok(planIdx >= 0, 'output should contain "/rad-plan"');
+    assert.ok(executeIdx >= 0, 'output should contain "/rad-execute"');
     assert.ok(
-      output.includes('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/guides.md'),
-      'output should contain getting started guide link'
+      brainstormIdx < planIdx && planIdx < executeIdx,
+      '/rad-brainstorm, /rad-plan, /rad-execute should appear in that order'
     );
   });
 
@@ -100,14 +112,16 @@ describe('renderPostInstallSummary', () => {
     assert.ok(output.includes('/rad-ui-start'), 'output should contain "/rad-ui-start"');
   });
 
-  it('with installUi: true output does NOT contain legacy "npm start" command', () => {
-    const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
-    assert.ok(!output.includes('npm start'), 'output should not contain "npm start"');
+  it('does NOT contain radorch.mjs direct invocation', () => {
+    const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
+    assert.ok(!output.includes('radorch.mjs'), 'output should not contain "radorch.mjs"');
   });
 
-  it('with installUi: true output does NOT contain legacy "docker compose" command', () => {
-    const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
-    assert.ok(!output.includes('docker compose'), 'output should not contain "docker compose"');
+  it('does NOT contain %USERPROFILE%, $HOME, or node ~ paths', () => {
+    const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
+    assert.ok(!output.includes('%USERPROFILE%'), 'output should not contain "%USERPROFILE%"');
+    assert.ok(!output.includes('$HOME'), 'output should not contain "$HOME"');
+    assert.ok(!output.includes('node ~/.'), 'output should not contain "node ~"');
   });
 
   it('with installUi: false output contains "skipped" text', () => {
@@ -120,6 +134,11 @@ describe('renderPostInstallSummary', () => {
     assert.ok(!output.includes('/rad-ui-start'), 'output should not contain "/rad-ui-start"');
   });
 
+  it('with installUi: false output does NOT contain step "3."', () => {
+    const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
+    assert.ok(!output.includes('3.'), 'output should not contain step "3." when installUi is false');
+  });
+
   it('with installUi: true output contains "built and ready"', () => {
     const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
     assert.ok(output.includes('built and ready'), 'output should contain "built and ready"');
@@ -130,31 +149,14 @@ describe('renderPostInstallSummary', () => {
     assert.ok(output.includes('2.'), 'output should contain step "2."');
   });
 
-  it('includes platform-specific installation guidance pointing at the in-skill CLI', () => {
+  it('does not include platform-specific branching', () => {
     const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
-    if (process.platform === 'win32') {
-      assert.ok(
-        output.includes('skills\\rad-orchestration\\scripts\\radorch.mjs'),
-        'win32 output should reference the in-skill CLI path'
-      );
-      assert.ok(
-        !output.includes('setx PATH'),
-        'win32 output should NOT contain broken setx instruction'
-      );
-      assert.ok(
-        !output.includes('\\.radorch\\bin\\'),
-        'win32 output must not reference the retired ~/.radorch/bin/ path'
-      );
-    } else {
-      assert.ok(
-        output.includes('skills/rad-orchestration/scripts/radorch.mjs'),
-        'linux/darwin output should reference the in-skill CLI path'
-      );
-      assert.ok(
-        !output.includes('$HOME/.radorch/bin'),
-        'linux/darwin output must not reference the retired ~/.radorch/bin/ path'
-      );
-    }
+    // No platform-specific paths should appear; output is generic across all harnesses
+    assert.ok(!output.includes('%USERPROFILE%'), 'output should not contain Windows CMD syntax');
+    assert.ok(!output.includes('$HOME'), 'output should not contain POSIX shell syntax');
+    assert.ok(!output.includes('setx PATH'), 'output should not contain setx instruction');
+    assert.ok(!output.includes('\\.radorch\\bin\\'), 'output should not reference retired ~/.radorch/bin/');
+    assert.ok(!output.includes('$HOME/.radorch/bin'), 'output should not reference retired ~/.radorch/bin/');
   });
 });
 
@@ -215,32 +217,5 @@ describe('renderPartialSuccessSummary', () => {
       renderPartialSuccessSummary(configWithUi, copyResults, configPath, errorMsg)
     );
     assert.ok(output.includes('Retry'), 'output should contain "Retry"');
-  });
-});
-
-// --- Windows platform guidance tests (FR-21, DD-1) ---
-
-describe('renderPostInstallSummary Windows branch', () => {
-  it('Windows summary points to the in-skill CLI, not npm install -g, setx, or ~/.radorch/bin/', () => {
-    const lines = [];
-    const origWrite = console.log;
-    const origPlatform = process.platform;
-    Object.defineProperty(process, 'platform', { value: 'win32' });
-    console.log = (s) => { lines.push(s ?? ''); };
-    try {
-      renderPostInstallSummary(configBase, copyResults, configPath);
-    } finally {
-      console.log = origWrite;
-      Object.defineProperty(process, 'platform', { value: origPlatform });
-    }
-    const out = lines.join('\n');
-    assert.ok(out.includes('skills\\rad-orchestration\\scripts\\radorch.mjs'),
-      'Windows branch must offer the in-skill direct-invoke alternative');
-    assert.ok(!out.includes('npm install -g rad-orchestration'),
-      'Windows branch must not surface the global install guidance (npx-only)');
-    assert.ok(!out.includes('setx PATH'),
-      'Windows branch must not print the broken setx instruction');
-    assert.ok(!out.includes('\\.radorch\\bin\\'),
-      'Windows branch must not reference the retired ~/.radorch/bin/ path');
   });
 });

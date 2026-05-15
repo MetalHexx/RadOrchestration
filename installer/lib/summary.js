@@ -33,28 +33,24 @@ export function renderPostInstallSummary(config, copyResults, configPath) {
   sectionHeader('::', "What's Next");
   console.log('');
 
-  console.log('  ' + THEME.stepNumber('1.') + ' ' + THEME.body('Get started — visit the guide:'));
+  console.log('  ' + THEME.stepNumber('1.') + ' ' + THEME.body('Open your harness and start a new conversation.'));
   console.log('');
-  console.log('     ' + THEME.command('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/guides.md'));
+
+  console.log('  ' + THEME.stepNumber('2.') + ' ' + THEME.body('Walk through the orchestration workflow:'));
+  console.log('');
+  console.log('     ' + THEME.command('/rad-brainstorm') + '  →  ' + THEME.body('refine a project idea'));
+  console.log('     ' + THEME.command('/rad-plan') + '        →  ' + THEME.body('produce requirements + master plan'));
+  console.log('     ' + THEME.command('/rad-execute') + '     →  ' + THEME.body('run the pipeline through implementation'));
   console.log('');
 
   if (config.installUi && config.uiDir) {
-    console.log('  ' + THEME.stepNumber('2.') + ' ' + THEME.body('Start the dashboard from your harness with:'));
+    console.log('  ' + THEME.stepNumber('3.') + ' ' + THEME.body('(optional) Start the dashboard from inside your harness:'));
     console.log('');
     console.log('     ' + THEME.command('/rad-ui-start'));
     console.log('');
   }
 
-  // The CLI now ships inside the rad-orchestration skill — the canonical
-  // invocation is through the harness's slash commands. For direct CLI use
-  // outside the harness, invoke the in-skill script with node.
-  if (process.platform === 'win32') {
-    console.log('  ' + THEME.body('To invoke the CLI directly:'));
-    console.log('     ' + THEME.command('node %USERPROFILE%\\.claude\\skills\\rad-orchestration\\scripts\\radorch.mjs <subcmd>'));
-  } else {
-    console.log('  ' + THEME.body('To invoke the CLI directly:'));
-    console.log('     ' + THEME.command('node $HOME/.claude/skills/rad-orchestration/scripts/radorch.mjs <subcmd>'));
-  }
+  console.log('  ' + THEME.body('Full guide: ') + THEME.command('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/guides.md'));
   console.log('');
 
   divider();
