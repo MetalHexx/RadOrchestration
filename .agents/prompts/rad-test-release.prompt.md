@@ -99,11 +99,16 @@ Expected output (all these must be true):
 
 ## Step 7 — Verify the post-install guidance
 
-Confirm the summary now points at the in-skill CLI path (not the retired `~/.radorch/bin/`):
-- POSIX: `node $HOME/.claude/skills/rad-orchestration/scripts/radorch.mjs <subcmd>` (or the matching harness root).
-- Windows: `node %USERPROFILE%\.claude\skills\rad-orchestration\scripts\radorch.mjs <subcmd>`.
+Confirm the "What's Next" block in the installer's terminal output shows the in-harness orchestration workflow (the prior CLI-direct-invoke guidance was retired):
 
-Both branches must NOT mention `~/.radorch/bin/` or `setx PATH`.
+The output must contain, in this order:
+- `/rad-brainstorm` (refine a project idea)
+- `/rad-plan` (produce requirements + master plan)
+- `/rad-execute` (run the pipeline through implementation)
+
+The output must NOT contain: `radorch.mjs`, `%USERPROFILE%`, `$HOME`, `~/.radorch/bin/`, or `setx PATH`.
+
+If the `claude` harness was installed, `/rad-ui-start` also appears as an optional dashboard step.
 
 ## Step 8 — Report results
 
