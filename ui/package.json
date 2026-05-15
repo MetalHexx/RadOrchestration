@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build-and-start": "next build && next start",
     "build": "next build",
+    "prebuild-standalone": "node ./scripts/clean-standalone.mjs",
     "build-standalone": "next build",
     "start": "next start",
     "lint": "next lint",
