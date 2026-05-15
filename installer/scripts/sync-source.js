@@ -261,7 +261,7 @@ export function emitCliBundle(repoRoot, destPath) {
 export function emitSharedUi(repoRoot) {
   ensureUiDeps(repoRoot);
   const uiDir = path.join(repoRoot, 'ui');
-  execSync('npm run build-standalone', { cwd: uiDir, stdio: 'pipe' });
+  execSync('npm run build-standalone', { cwd: uiDir, stdio: 'inherit' });
   const dest = path.join(repoRoot, 'installer', 'src', 'ui');
   fs.rmSync(dest, { recursive: true, force: true });
   fs.mkdirSync(dest, { recursive: true });
