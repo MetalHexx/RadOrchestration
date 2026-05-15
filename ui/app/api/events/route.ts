@@ -5,8 +5,7 @@ import chokidar from 'chokidar';
 
 import type { SSEEvent, SSEEventType, SSEPayloadMap } from '@/types/events';
 import type { ProjectState } from '@/types/state';
-import { getWorkspaceRoot, resolveBasePath } from '@/lib/path-resolver';
-import { readConfig } from '@/lib/fs-reader';
+import { getProjectsRoot } from '@/lib/path-resolver';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,9 +45,7 @@ function extractProjectName(filePath: string, projectsDir: string): string {
 export async function GET(request: Request) {
   const encoder = new TextEncoder();
 
-  const workspaceRoot = getWorkspaceRoot();
-  const config = await readConfig(workspaceRoot);
-  const absoluteProjectsDir = resolveBasePath(workspaceRoot, config.projects.base_path);
+  const absoluteProjectsDir = getProjectsRoot();
   const usePolling = process.env.CHOKIDAR_USEPOLLING === '1';
 
   const stream = new ReadableStream({

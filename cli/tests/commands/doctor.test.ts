@@ -1,29 +1,36 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runDoctor, doctorCommand, renderDoctorForTest } from '../../src/commands/doctor/index.js';
 import { writeInstallSkeleton } from '../../src/commands/install/skeleton.js';
 import { validateEnvelope } from '../../src/framework/output.js';
-import { runPluginChecks, type CheckResult } from '../../src/commands/doctor/checks.js';
+import { runPluginChecks, runInstallChecks, type CheckResult } from '../../src/commands/doctor/checks.js';
 
 let tmp: string;
-beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc-')); });
-afterEach(async () => { await fs.rm(tmp, { recursive: true, force: true }); });
+let homedirSpy: ReturnType<typeof vi.spyOn>;
+beforeEach(async () => {
+  tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc-'));
+  homedirSpy = vi.spyOn(os, 'homedir').mockReturnValue(tmp);
+});
+afterEach(async () => {
+  homedirSpy.mockRestore();
+  await fs.rm(tmp, { recursive: true, force: true });
+});
 
 describe('radorch doctor', () => {
   it('reports Install failure when ~/.radorch is absent', async () => {
-    const home = path.join(tmp, 'absent');
-    const result = await runDoctor({ env: { RADORCH_HOME: home } });
+    // tmp/.radorch does not exist — spy makes resolveInstallRoot() return tmp/.radorch
+    const result = await runDoctor({ env: process.env });
     expect(result.all_passed).toBe(false);
     const installCategory = result.checks.filter((c) => c.category === 'Install');
     expect(installCategory.some((c) => c.status === 'fail')).toBe(true);
   });
 
   it('reports all_passed=true with a Registry warn when installed but empty', async () => {
-    const home = path.join(tmp, 'rad');
-    await writeInstallSkeleton({ root: home, packageVersion: '0.0.0', defaultHarness: 'claude' });
-    const result = await runDoctor({ env: { RADORCH_HOME: home } });
+    const root = path.join(tmp, '.radorch');
+    await writeInstallSkeleton({ root, packageVersion: '0.0.0', defaultHarness: 'claude' });
+    const result = await runDoctor({ env: process.env });
     expect(result.all_passed).toBe(true); // warns allowed; only fails block
     const reg = result.checks.find((c) => c.category === 'Registry');
     expect(reg?.status).toBe('warn');
@@ -33,9 +40,9 @@ describe('radorch doctor', () => {
   });
 
   it('every check carries a closed-enum status', async () => {
-    const home = path.join(tmp, 'rad');
-    await writeInstallSkeleton({ root: home, packageVersion: '0.0.0', defaultHarness: 'claude' });
-    const result = await runDoctor({ env: { RADORCH_HOME: home } });
+    const root = path.join(tmp, '.radorch');
+    await writeInstallSkeleton({ root, packageVersion: '0.0.0', defaultHarness: 'claude' });
+    const result = await runDoctor({ env: process.env });
     for (const c of result.checks) {
       expect(['pass', 'warn', 'fail']).toContain(c.status);
     }
@@ -97,18 +104,20 @@ describe('plugin-aware doctor checks', () => {
     expect(result.find((c) => c.name === 'ui-pid-consistency')?.status).toBe('warn');
   });
 
-  it('bundle-integrity: warns when CLAUDE_PLUGIN_ROOT is unset', async () => {
+  it('bundle-integrity: not emitted when CLAUDE_PLUGIN_ROOT is unset and no claude-plugin registered', async () => {
+    // No pluginRoot + no claude-plugin in install.json → precondition not met → check skipped entirely.
     const result = await runPluginChecks({ root: home, localVersion: '1.0.0' });
     const bi = result.find((c) => c.name === 'bundle-integrity');
-    expect(bi?.status).toBe('warn');
-    expect(bi?.detail).toMatch(/CLAUDE_PLUGIN_ROOT not set/);
+    expect(bi).toBeUndefined();
   });
 
   it('bundle-integrity: passes when bundle exists at CLAUDE_PLUGIN_ROOT', async () => {
     const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-'));
     try {
-      await fs.mkdir(path.join(pluginRoot, 'bin'), { recursive: true });
-      await fs.writeFile(path.join(pluginRoot, 'bin', 'radorch.mjs'), '// stub bundle');
+      // The CLI bundle now lives inside the rad-orchestration skill folder.
+      const scriptsDir = path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts');
+      await fs.mkdir(scriptsDir, { recursive: true });
+      await fs.writeFile(path.join(scriptsDir, 'radorch.mjs'), '// stub bundle');
       const result = await runPluginChecks({ root: home, localVersion: '1.0.0', pluginRoot });
       expect(result.find((c) => c.name === 'bundle-integrity')?.status).toBe('pass');
     } finally {
@@ -180,12 +189,11 @@ describe('runPluginChecks — new plugin-install checks (FR-14)', () => {
     }
   });
 
-  it('plugin-agents-resolvable warns when CLAUDE_PLUGIN_ROOT is unset', async () => {
+  it('plugin-agents-resolvable: not emitted when CLAUDE_PLUGIN_ROOT is unset and no claude-plugin registered', async () => {
+    // No pluginRoot + no claude-plugin in install.json → precondition not met → check skipped entirely.
     const result = await runPluginChecks({ root: home, localVersion: '1.0.0' });
     const check = result.find((c) => c.name === 'plugin-agents-resolvable');
-    expect(check).toBeDefined();
-    expect(check?.status).toBe('warn');
-    expect(check?.detail).toMatch(/CLAUDE_PLUGIN_ROOT not set/);
+    expect(check).toBeUndefined();
   });
 
   it('cross-install-version-skew warns when both an iter-01 npm-installed radorch and the plugin CLI report different versions', async () => {
@@ -279,14 +287,214 @@ describe('runPluginChecks — new plugin-install checks (FR-14)', () => {
 
   it('runDoctor end-to-end does not throw when no rad-orchestration binary is on PATH', async () => {
     // Force PATH to an empty directory so spawn cannot find rad-orchestration.
+    // homedirSpy (outer beforeEach) makes resolveInstallRoot() return tmp/.radorch.
     const emptyDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-empty-path-'));
     try {
       await expect(
-        runDoctor({ env: { RADORCH_HOME: home, PATH: emptyDir, Path: emptyDir } }),
+        runDoctor({ env: { ...process.env, PATH: emptyDir, Path: emptyDir } }),
       ).resolves.toBeDefined();
     } finally {
       await fs.rm(emptyDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('doctor: 1.3 canonical checks', () => {
+  let tmp13: string;
+  let homedirSpy13: ReturnType<typeof vi.spyOn>;
+  beforeEach(async () => {
+    tmp13 = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc13-'));
+    homedirSpy13 = vi.spyOn(os, 'homedir').mockReturnValue(tmp13);
+  });
+  afterEach(async () => {
+    homedirSpy13.mockRestore();
+    await fs.rm(tmp13, { recursive: true, force: true });
+  });
+
+  it('reports retired-properties-present warn when orchestration.yml carries any of the four', async () => {
+    // Arrange ~/.radorch/orchestration.yml with `system.orch_root: .claude`.
+    const radorchDir = path.join(tmp13, '.radorch');
+    await fs.mkdir(radorchDir, { recursive: true });
+    await fs.writeFile(
+      path.join(radorchDir, 'orchestration.yml'),
+      'system:\n  orch_root: .claude\n',
+    );
+    const r = await runInstallChecks();
+    const retired = r.find(c => c.name === 'retired-properties-present');
+    expect(retired?.status).toBe('warn');
+    expect(retired?.detail).toMatch(/system\.orch_root/);
+  });
+
+  it('reports the multi-harness install table', async () => {
+    const r = await runPluginChecks({ root: tmp13, localVersion: '1.1.0' });
+    const t = r.find(c => c.name === 'multi-harness-install-table');
+    expect(t).toBeDefined();
+    expect(t!.detail).toMatch(/claude:/);
+    expect(t!.detail).toMatch(/claude-plugin:/);
+    expect(t!.detail).toMatch(/copilot-vscode:/);
+    expect(t!.detail).toMatch(/copilot-cli:/);
+  });
+
+  it('table renders one line per install-key with (channel) suffix', async () => {
+    // Stage a v6 install.json with all four install-keys present except one.
+    const radorchDir = path.join(tmp13, '.radorch');
+    await fs.mkdir(radorchDir, { recursive: true });
+    await fs.writeFile(
+      path.join(radorchDir, 'install.json'),
+      JSON.stringify({
+        state_schema_version: 'v6',
+        harnesses: {
+          'claude': { version: '1.0.0-alpha.9', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0-alpha.9' },
+          'claude-plugin': { version: '1.0.0-alpha.9', channel: 'plugin', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0-alpha.9' },
+          'copilot-cli': { version: '1.0.0-alpha.8', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0-alpha.8' },
+        },
+      }, null, 2) + '\n',
+    );
+    const r = await runPluginChecks({ root: tmp13, localVersion: '1.0.0-alpha.9' });
+    const t = r.find(c => c.name === 'multi-harness-install-table');
+    expect(t).toBeDefined();
+    // Each registered install-key appears with version + channel suffix.
+    expect(t!.detail).toMatch(/claude: 1\.0\.0-alpha\.9 \(legacy-installer\)/);
+    expect(t!.detail).toMatch(/claude-plugin: 1\.0\.0-alpha\.9 \(plugin\)/);
+    expect(t!.detail).toMatch(/copilot-cli: 1\.0\.0-alpha\.8 \(legacy-installer\)/);
+    // The unregistered copilot-vscode key emits not-installed.
+    expect(t!.detail).toMatch(/copilot-vscode: not installed/);
+  });
+
+  it('appends a consolidation recommendation when both claude and claude-plugin are present', async () => {
+    const radorchDir = path.join(tmp13, '.radorch');
+    await fs.mkdir(radorchDir, { recursive: true });
+    await fs.writeFile(
+      path.join(radorchDir, 'install.json'),
+      JSON.stringify({
+        state_schema_version: 'v6',
+        harnesses: {
+          'claude': { version: '1.0.0', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0' },
+          'claude-plugin': { version: '1.0.0', channel: 'plugin', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0' },
+        },
+      }) + '\n',
+    );
+    const r = await runPluginChecks({ root: tmp13, localVersion: '1.0.0' });
+    const t = r.find(c => c.name === 'multi-harness-install-table');
+    expect(t!.detail).toMatch(/Both .*claude.* and .*claude-plugin.* are registered/);
+    expect(t!.detail).toMatch(/npx rad-orchestration uninstall/);
+  });
+
+  it('copilot mutex — only one copilot key present at a time produces a single registered copilot row', async () => {
+    // Registered: copilot-cli only. copilot-vscode must render as not installed.
+    const radorchDir = path.join(tmp13, '.radorch');
+    await fs.mkdir(radorchDir, { recursive: true });
+    await fs.writeFile(
+      path.join(radorchDir, 'install.json'),
+      JSON.stringify({
+        state_schema_version: 'v6',
+        harnesses: {
+          'copilot-cli': { version: '1.0.0', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0' },
+        },
+      }) + '\n',
+    );
+    const r = await runPluginChecks({ root: tmp13, localVersion: '1.0.0' });
+    const t = r.find(c => c.name === 'multi-harness-install-table');
+    expect(t!.detail).toMatch(/copilot-cli: 1\.0\.0 \(legacy-installer\)/);
+    expect(t!.detail).toMatch(/copilot-vscode: not installed/);
+  });
+
+  it('templates-folder check passes when four canonical tier files present', async () => {
+    // Create ~/.radorch/templates/ with all four canonical tier files.
+    const radorchDir = path.join(tmp13, '.radorch');
+    const templatesDir = path.join(radorchDir, 'templates');
+    await fs.mkdir(templatesDir, { recursive: true });
+    for (const tier of ['extra-high', 'high', 'medium', 'low']) {
+      await fs.writeFile(path.join(templatesDir, `${tier}.yml`), `# ${tier}\n`);
+    }
+    const r = await runInstallChecks();
+    expect(r.find(c => c.name === 'templates-folder-populated')?.status).toBe('pass');
+  });
+});
+
+describe('Section 9 — plugin check noise suppression', () => {
+  // Each test needs its own temp home so scanUserLevelHarnesses reads the right install.json.
+  let s9Home: string;
+  let s9HoSpy: ReturnType<typeof vi.spyOn>;
+  beforeEach(async () => {
+    s9Home = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc-s9-'));
+    s9HoSpy = vi.spyOn(os, 'homedir').mockReturnValue(s9Home);
+  });
+  afterEach(async () => {
+    s9HoSpy.mockRestore();
+    await fs.rm(s9Home, { recursive: true, force: true });
+  });
+
+  it('S9-1: no plugin-prefixed check names when neither CLAUDE_PLUGIN_ROOT nor claude-plugin registered', async () => {
+    // No pluginRoot, no ~/.radorch/install.json with claude-plugin.
+    // bundle-integrity, plugin-skills-enumerable, plugin-agents-resolvable must be absent.
+    const root = path.join(s9Home, '.radorch');
+    const result = await runPluginChecks({ root, localVersion: '1.0.0' });
+    const pluginSpecific = ['bundle-integrity', 'plugin-skills-enumerable', 'plugin-agents-resolvable'];
+    for (const name of pluginSpecific) {
+      expect(result.find((c) => c.name === name)).toBeUndefined();
+    }
+    // Other checks still emit.
+    expect(result.find((c) => c.name === 'bootstrap-skeleton')).toBeDefined();
+    expect(result.find((c) => c.name === 'multi-harness-install-table')).toBeDefined();
+  });
+
+  it('S9-2: all three plugin checks run and report pass when CLAUDE_PLUGIN_ROOT is set and tree is valid', async () => {
+    const root = path.join(s9Home, '.radorch');
+    const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-s9-'));
+    try {
+      // Build a minimal valid plugin tree.
+      const scriptsDir = path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts');
+      await fs.mkdir(scriptsDir, { recursive: true });
+      await fs.writeFile(path.join(scriptsDir, 'radorch.mjs'), '// stub bundle');
+      // skills/ folder with one skill that has SKILL.md.
+      const skillDir = path.join(pluginRoot, 'skills', 'rad-orchestration');
+      await fs.mkdir(skillDir, { recursive: true });
+      await fs.writeFile(path.join(skillDir, 'SKILL.md'), '# stub skill\n');
+      // agents/ folder with one readable .md file.
+      const agentsDir = path.join(pluginRoot, 'agents');
+      await fs.mkdir(agentsDir, { recursive: true });
+      await fs.writeFile(path.join(agentsDir, 'orchestrator.md'), '# stub agent\n');
+
+      const result = await runPluginChecks({ root, localVersion: '1.0.0', pluginRoot });
+      expect(result.find((c) => c.name === 'bundle-integrity')?.status).toBe('pass');
+      expect(result.find((c) => c.name === 'plugin-skills-enumerable')?.status).toBe('pass');
+      expect(result.find((c) => c.name === 'plugin-agents-resolvable')?.status).toBe('pass');
+    } finally {
+      await fs.rm(pluginRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('S9-3: three plugin checks emit (not skipped) when claude-plugin is registered in install.json but env var absent', async () => {
+    // Simulate running doctor outside a Claude Code session: env var absent but
+    // claude-plugin is registered in the v6 registry.
+    const radorchDir = path.join(s9Home, '.radorch');
+    await fs.mkdir(radorchDir, { recursive: true });
+    await fs.writeFile(
+      path.join(radorchDir, 'install.json'),
+      JSON.stringify({
+        state_schema_version: 'v6',
+        harnesses: {
+          'claude-plugin': {
+            version: '1.0.0-alpha.9',
+            channel: 'plugin',
+            installed_at: '2026-01-01T00:00:00.000Z',
+            last_writer_version: '1.0.0-alpha.9',
+          },
+        },
+      }, null, 2) + '\n',
+    );
+    const root = radorchDir;
+    // No pluginRoot passed — env var absent.
+    const result = await runPluginChecks({ root, localVersion: '1.0.0-alpha.9' });
+    // All three checks must be present (not skipped).
+    expect(result.find((c) => c.name === 'bundle-integrity')).toBeDefined();
+    expect(result.find((c) => c.name === 'plugin-skills-enumerable')).toBeDefined();
+    expect(result.find((c) => c.name === 'plugin-agents-resolvable')).toBeDefined();
+    // Without CLAUDE_PLUGIN_ROOT, all three warn that the payload can't be located.
+    expect(result.find((c) => c.name === 'bundle-integrity')?.status).toBe('warn');
+    expect(result.find((c) => c.name === 'plugin-skills-enumerable')?.status).toBe('warn');
+    expect(result.find((c) => c.name === 'plugin-agents-resolvable')?.status).toBe('warn');
   });
 });
 

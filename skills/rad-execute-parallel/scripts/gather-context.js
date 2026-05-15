@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
@@ -113,13 +114,19 @@ const platform = platformMap[process.platform] || 'linux';
 
 // ─── Orchestration config ───────────────────────────────────────────────────
 
-// Discover config via __dirname → skills/rad-execute-parallel/scripts → up to orch root
-// Then look for skills/rad-orchestration/config/orchestration.yml
-const orchRootGuess = path.resolve(__dirname, '..', '..', '..');  // scripts → rad-execute-parallel → skills → .claude
-const configPath = path.join(orchRootGuess, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
+// orchRoot is the absolute install root — the directory that contains skills/.
+// Derived at runtime from this script's own location: __dirname is always
+// <install>/skills/rad-execute-parallel/scripts/ regardless of which layout
+// the plugin was installed into (canonical, dogfood, marketplace, end-user).
+const orchRoot = path.resolve(__dirname, '..', '..', '..');
 
-let orchRoot = '.claude';
-let projectsBasePath = path.join(repoRoot, '.claude', 'projects');
+// projectsBasePath is fixed at <homedir>/.radorch/projects/ — runtime-derived
+// per-user via os.homedir() (Windows: C:\Users\<user>; macOS: /Users/<user>;
+// Linux: /home/<user>). Matches the canonical resolver in cli/src/lib/paths.ts.
+const projectsBasePath = path.join(os.homedir(), '.radorch', 'projects');
+
+const configPath = path.join(orchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
+
 let configAutoCommit = 'ask';
 let configAutoPr = 'ask';
 
@@ -128,13 +135,6 @@ if (fs.existsSync(configPath)) {
     const content = fs.readFileSync(configPath, 'utf8');
     const yaml = parseSimpleYaml(content);
 
-    if (yaml['system.orch_root']) {
-      orchRoot = yaml['system.orch_root'];
-    }
-    if (yaml['projects.base_path']) {
-      const raw = yaml['projects.base_path'];
-      projectsBasePath = path.isAbsolute(raw) ? raw : path.resolve(repoRoot, raw);
-    }
     if (yaml['source_control.auto_commit']) {
       configAutoCommit = yaml['source_control.auto_commit'];
     }

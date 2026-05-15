@@ -6,7 +6,7 @@
 // on the `rad-orchestration:<name>` token contract surfaces immediately.
 //
 // runAdapterPlugin emits skills/, agents/, hooks/, .claude-plugin/. The
-// publish-time meta-script (scripts/build-plugin.js main) layers bin/, dist/,
+// publish-time meta-script (scripts/build-plugin.js main) layers bin/ and
 // ui/ bundle artifacts on top via separate steps before validatePluginTree
 // runs. To isolate the namespacing producer-consumer seam under test here,
 // stub-touch those static bundle artifacts after runAdapterPlugin so the
@@ -40,7 +40,16 @@ test('validatePluginTree: real claude plugin emit passes end-to-end', async () =
   );
   // Stub bundle artifacts (out of scope for runAdapterPlugin; produced by
   // the meta-script's cli-bundle / pipeline-bundle / ui-standalone steps).
-  for (const rel of ['bin/radorch.mjs', 'dist/pipeline.js', 'ui/server.js']) {
+  // cli-bundle now emits radorch.mjs inside the skill folder (the meta-script
+  // runs cli-bundle AFTER adapters-plugin so it survives the skills/ wipe).
+  for (const rel of [
+    'skills/rad-orchestration/scripts/radorch.mjs',
+    'skills/rad-orchestration/scripts/pipeline.js',
+    'skills/rad-orchestration/scripts/explode-master-plan.js',
+    'skills/rad-orchestration/scripts/migrate-to-v5.js',
+    'skills/rad-orchestration/scripts/fix-ghost-v5.js',
+    'ui/server.js',
+  ]) {
     const f = path.join(claudeDist, rel);
     fs.mkdirSync(path.dirname(f), { recursive: true });
     fs.writeFileSync(f, '');

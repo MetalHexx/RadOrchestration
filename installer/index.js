@@ -1,21 +1,30 @@
 #!/usr/bin/env node
+// installer/index.js — Legacy `radorch` installer entry point.
+//
+// This installer routes every harness through the same `runPluginBootstrap`
+// the Claude plugin SessionStart hook calls. The legacy CLI's job is now:
+//
+//   1. Run the wizard (interactive or --yes), producing a config that
+//      describes the selected harnesses + user preferences.
+//   2. For each selected harness: call `runPluginBootstrap` with the bundled
+//      plugin payload at `installer/src/<harness>/`. The bootstrap library
+//      writes harness-routed files to `~/<harness-dir>/` and ~/.radorch/.
+//   3. Write `~/.radorch/orchestration.yml` from the wizard preferences.
+//   4. Print the post-install summary.
+//
+// All workspace-relative install paths are retired (FR-1, FR-21). All file
+// copying flows through the CLI library (AD-1, AD-9). No `installScriptsDeps`
+// — `pipeline.js` is an esbuild bundle, no runtime npm install is needed.
 
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
 import fs from 'node:fs';
-import { spawn } from 'node:child_process';
-import { confirm } from '@inquirer/prompts';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import ora from 'ora';
-import { createRequire } from 'node:module';
 
 // Presentation
 import { renderBanner } from './lib/banner.js';
 import { THEME, sectionHeader } from './lib/theme.js';
-import {
-  renderPreInstallSummary,
-  renderPostInstallSummary,
-  renderPartialSuccessSummary,
-} from './lib/summary.js';
 
 // CLI
 import { parseArgs } from './lib/cli.js';
@@ -23,75 +32,106 @@ import { renderHelp } from './lib/help.js';
 
 // Application
 import { runWizard } from './lib/wizard.js';
-import { checkNodeNpm, installUi } from './lib/ui-builder.js';
 
-// Domain
-import { getManifest } from './lib/manifest.js';
+// Install/upgrade orchestrator — native installer logic, independent of `cli/`.
+import { installHarness } from './lib/install/install-harness.js';
+
+// Config generation
 import { generateConfig, writeConfig } from './lib/config-generator.js';
-import { resolveOrchRoot } from './lib/path-utils.js';
 
-// Infrastructure
-import { copyCategory } from './lib/file-copier.js';
+// Install-time tooling checks (FR-17, AD-11)
+import { checkGit, checkGh } from './lib/checks/tooling.js';
 
-// Upgrade composition (manifest-aware)
-import { readInstalledPackageVersion } from './lib/installed-version.js';
-import { loadBundledManifest } from './lib/catalog.js';
-import { detectModifiedFiles, confirmModifiedFiles } from './lib/hash-check.js';
-import { removeManifestFiles } from './lib/remove.js';
-import { findPriorInstallAtOtherOrchRoot, inferToolFromOrchRoot } from './lib/cross-harness-scan.js';
+// Cross-channel version-drift detection (Claude Code plugin vs installer)
+import { detectPluginDrift } from './lib/drift-check.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = __dirname;
-const __require = createRequire(import.meta.url);
-const { version: __installerVersion } = __require('./package.json');
+
+// Map wizard harness names → installer/src/<dir>/ bundle subdirectories.
+const HARNESS_BUNDLE_DIR = {
+  'claude':         'claude',
+  'copilot-vscode': 'copilot-vscode',
+  'copilot-cli':    'copilot-cli',
+};
 
 /**
- * Runs `npm install --omit=dev` in the scripts directory with a spinner.
- * Non-fatal — logs error with manual instructions on failure.
- * @param {string} scriptsDir - Absolute path to the scripts directory
- * @returns {Promise<{success: boolean, error?: string}>}
+ * Resolves the absolute path to the bundled plugin payload for a harness.
+ * @param {string} harness
+ * @returns {string} absolute path to <repoRoot>/src/<bundleDir>/
  */
-export function installScriptsDeps(scriptsDir) {
-  return new Promise((resolve) => {
-    const label = 'Installing pipeline engine dependencies\u2026';
-    const spinner = ora({ text: label, color: THEME.spinner }).start();
-    let seconds = 0;
-    const interval = setInterval(() => {
-      seconds += 1;
-      spinner.text = `${label} (${seconds}s)`;
-    }, 1000);
+export function pluginRootForHarness(harness) {
+  const bundleDir = HARNESS_BUNDLE_DIR[harness];
+  if (!bundleDir) {
+    throw new Error(`pluginRootForHarness: unknown harness '${harness}'`);
+  }
+  return path.join(repoRoot, 'src', bundleDir);
+}
 
-    const child = spawn('npm install --omit=dev', { cwd: scriptsDir, stdio: 'pipe', shell: true });
-    let stderr = '';
 
-    child.stdout.on('data', () => {});
+/**
+ * Renders the post-install summary to stdout. Minimal and harness-aware:
+ * lists every harness that was bootstrapped, the canonical config path, the
+ * PATH one-liner, and the slash-command pointer for Claude.
+ *
+ * @param {object} cfg - Wizard output.
+ * @param {string} orchYmlPath - Absolute path to the written orchestration.yml
+ * @param {string} [installedVersion] - Version just installed. When provided,
+ *   triggers cross-channel drift detection against Claude Code's plugin
+ *   registry. Omitted in legacy unit tests that don't mock HOME.
+ */
+export function renderPostInstall(cfg, orchYmlPath, installedVersion) {
+  console.log('');
+  sectionHeader('::', 'Installation Complete');
+  console.log('');
+  for (const h of cfg.harnesses) {
+    console.log('  ' + THEME.success('✔') + ' ' + THEME.body(`harness '${h}' bootstrapped`));
+  }
+  console.log('  ' + THEME.success('✔') + ' ' + THEME.body('Configuration: ') + THEME.secondary(orchYmlPath));
 
-    child.stderr.on('data', (chunk) => {
-      stderr += chunk.toString();
-    });
+  console.log('');
+  sectionHeader('::', "What's Next");
+  console.log('');
 
-    child.on('close', (code) => {
-      clearInterval(interval);
-      if (code === 0) {
-        spinner.succeed('Pipeline engine dependencies installed');
-        resolve({ success: true });
-      } else {
-        spinner.fail('Pipeline engine dependencies: npm install failed');
-        console.log(`  Scripts directory: ${scriptsDir}`);
-        console.log(`  Run manually: cd ${scriptsDir} && npm install --omit=dev`);
-        resolve({ success: false, error: stderr });
+  console.log('  ' + THEME.stepNumber('1.') + ' ' + THEME.body('Open your harness and start a new conversation.'));
+  console.log('');
+
+  console.log('  ' + THEME.stepNumber('2.') + ' ' + THEME.body('Walk through the orchestration workflow:'));
+  console.log('');
+  console.log('     ' + THEME.command('/rad-brainstorm') + '  →  ' + THEME.body('refine a project idea'));
+  console.log('     ' + THEME.command('/rad-plan') + '        →  ' + THEME.body('produce requirements + master plan'));
+  console.log('     ' + THEME.command('/rad-execute') + '     →  ' + THEME.body('run the pipeline through implementation'));
+  console.log('');
+
+  if (cfg.harnesses.includes('claude')) {
+    console.log('  ' + THEME.stepNumber('3.') + ' ' + THEME.body('(optional) Start the dashboard from inside your harness:'));
+    console.log('');
+    console.log('     ' + THEME.command('/rad-ui-start'));
+    console.log('');
+  }
+
+  console.log('  ' + THEME.body('Full guide: ') + THEME.command('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/getting-started.md'));
+  console.log('');
+
+  if (installedVersion) {
+    const drift = detectPluginDrift(installedVersion);
+    if (drift.drift) {
+      sectionHeader('::', 'Plugin version drift detected');
+      console.log('');
+      console.log('  ' + (THEME.warning ? THEME.warning('⚠') : '⚠') + ' ' + THEME.body(
+        `This installer just wrote rad-orchestration ${installedVersion} to ~/.radorch, but the`,
+      ));
+      console.log('     ' + THEME.body('Claude Code plugin is at a different version:'));
+      for (const p of drift.plugins) {
+        console.log('       ' + THEME.body(`- ${p.key} → ${p.version}`));
       }
-    });
-
-    child.on('error', (err) => {
-      clearInterval(interval);
-      spinner.fail('Pipeline engine dependencies: npm install failed');
-      console.log(`  Scripts directory: ${scriptsDir}`);
-      console.log(`  Run manually: cd ${scriptsDir} && npm install --omit=dev`);
-      resolve({ success: false, error: err.message });
-    });
-  });
+      console.log('');
+      console.log('  ' + THEME.body('Run the following in Claude Code to keep both channels in sync:'));
+      console.log('     ' + THEME.command('/plugin update rad-orchestration'));
+      console.log('');
+    }
+  }
 }
 
 /**
@@ -102,247 +142,98 @@ export async function main() {
   const args = process.argv.slice(2);
   const { command, options } = parseArgs(args);
 
-  // --help → render and exit
   if (command === 'help') {
     renderHelp();
     return;
   }
-
-  // --version → print and exit
   if (command === 'version') {
-    const require = createRequire(import.meta.url);
-    const { version } = require('./package.json');
-    console.log(version);
+    const pkgPath = path.join(__dirname, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    console.log(pkg.version);
     return;
   }
 
-  // uninstall subcommand → resolve orchRoot, delegate to runUninstall.
-  // When --tool is omitted, infer it from the orchRoot folder name so a
-  // bare `radorch uninstall` works correctly for Copilot installs (where
-  // the manifest paths are .agent.md, not .md). Explicit --tool wins.
+  // `radorch uninstall` is no longer a top-level installer subcommand —
+  // the bundled CLI (`radorch uninstall`, shipped inside the
+  // rad-orchestration skill) is the canonical entry point for that flow.
+  // The installer print path surfaces the pointer in the post-install summary.
   if (command === 'uninstall') {
-    const { runUninstall } = await import('./lib/uninstall.js');
-    const workspaceDir = options.workspaceDir ?? process.cwd();
-    const orchRoot = options.orchRoot ?? '.claude';
-    const tool = options.tool ?? inferToolFromOrchRoot(path.basename(orchRoot)) ?? 'claude-code';
-    const resolvedOrchRoot = resolveOrchRoot(workspaceDir, orchRoot);
-    await runUninstall({ installerRoot: repoRoot, resolvedOrchRoot, tool });
+    console.log(THEME.body(
+      "`radorch uninstall` is now handled by the bundled CLI. After install, run:",
+    ));
+    if (process.platform === 'win32') {
+      console.log('  ' + THEME.command('node %USERPROFILE%\\.claude\\skills\\rad-orchestration\\scripts\\radorch.mjs uninstall'));
+    } else {
+      console.log('  ' + THEME.command('node $HOME/.claude/skills/rad-orchestration/scripts/radorch.mjs uninstall'));
+    }
     return;
   }
 
   const skipConfirmation = options.skipConfirmation ?? false;
-  // Note: `options.overwrite` is still parsed by cli.js for backward-compat
-  // invocation strings, but the upgrade path no longer reads it (NFR-5 — the
-  // modified-file UX is the only confirmation surface and cannot be bypassed).
 
   try {
     renderBanner();
 
+    const gitWarn = checkGit();
+    if (gitWarn) console.warn(THEME.warning ? THEME.warning(gitWarn) : `⚠  ${gitWarn}`);
+    const ghWarn = checkGh();
+    if (ghWarn) console.warn(THEME.warning ? THEME.warning(ghWarn) : `⚠  ${ghWarn}`);
+
     const config = await runWizard({ skipConfirmation, cliOverrides: options });
-    config.packageVersion = __installerVersion;
 
-    // Existing-install detection — manifest-aware upgrade composition.
-    // Reads the user's package_version, looks up the prior bundled manifest
-    // from the catalog, runs the modified-file check, and removes the prior
-    // install before proceeding. Pre-manifest installs follow the DD-1 path.
-    const resolvedRoot = resolveOrchRoot(config.workspaceDir, config.orchRoot);
-
-    // Cross-harness switch detection (DD-4, AD-7).
-    // Surfaces a prior install at a well-known orchRoot under the workspace
-    // whose path differs from the one the user just chose. Reuses the
-    // catalog/hash/remove primitives so this path inherits all the same
-    // safety properties as the in-place upgrade path (AD-8). orchestration.yml
-    // is filtered out of the manifest passed to removeManifestFiles and
-    // removed LAST — same composition rule as runUninstall (F-5 invariant).
-    const priorAtOther = findPriorInstallAtOtherOrchRoot(config.workspaceDir, config.orchRoot);
-    if (priorAtOther) {
-      console.log('');
-      sectionHeader('::', 'Prior Install Detected');
-      console.log('');
-      console.log(THEME.body(
-        `An existing rad-orchestration install was found at ${priorAtOther.orchRoot} `
-        + `(version ${priorAtOther.packageVersion}). You're installing into ${resolvedRoot}.`,
-      ));
-      console.log('');
-      const cleanup = await confirm({
-        message: `Uninstall the prior install at ${priorAtOther.orchRoot} before continuing?`,
-        default: true,
-      });
-      if (cleanup) {
-        // Reuse the same primitives as `radorch uninstall` against the prior orchRoot.
-        // Use priorAtOther.tool (the prior harness) — not config.tool (the newly chosen harness) —
-        // so the manifest matches the files actually on disk in the prior orchRoot.
-        const fullPriorManifest = loadBundledManifest(repoRoot, priorAtOther.tool, priorAtOther.packageVersion);
-        // Filter orchestration.yml out of the slice passed to removeManifestFiles —
-        // it must be removed LAST (clean-slate signal). Mirrors runUninstall.
-        const ORC_YML_PATH = 'skills/rad-orchestration/config/orchestration.yml';
-        const priorManifest = {
-          ...fullPriorManifest,
-          files: fullPriorManifest.files.filter((f) => f.bundlePath !== ORC_YML_PATH),
-        };
-        // Hash-check uses the FULL manifest so the yml file is included in the diff.
-        const modified = detectModifiedFiles(fullPriorManifest, priorAtOther.orchRoot);
-        if (modified.length > 0) {
-          const proceedModified = await confirmModifiedFiles(
-            modified, priorAtOther.orchRoot, undefined, { message: 'Continue and delete these files?' },
-          );
-          if (!proceedModified) {
-            console.log('Installation cancelled.');
-            process.exit(0);
-          }
-        }
-        const spin = ora({
-          text: `Removing prior install at ${priorAtOther.orchRoot} (v${priorAtOther.packageVersion})…`,
-          color: THEME.spinner,
-        }).start();
-        const result = removeManifestFiles(priorManifest, priorAtOther.orchRoot);
-        spin.succeed(
-          `Removed ${result.removedCount} files from ${priorAtOther.orchRoot}`,
-        );
-        // Remove the prior orchestration.yml LAST — clean-slate signal.
-        const ymlPath = path.join(
-          priorAtOther.orchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml',
-        );
-        if (fs.existsSync(ymlPath)) fs.rmSync(ymlPath, { force: true });
-      }
-    }
-
-    const installed = readInstalledPackageVersion(resolvedRoot);
-    if (installed && installed.packageVersion === null) {
-      // DD-1: pre-manifest install — print guidance, exit without modifying files.
-      console.log('');
-      sectionHeader('::', 'Pre-Manifest Install Detected');
-      console.log('');
-      console.log(THEME.body(
-        `The orchestration.yml at ${resolvedRoot} was installed by a pre-manifest version `
-        + `(v1.0.0-alpha.7 or earlier). Auto-upgrade is not supported for these installs.`,
-      ));
-      console.log(THEME.body(
-        `Back up any local edits, delete ${resolvedRoot}, then re-run \`radorch\` for a clean install. `
-        + `See the MULTI-HARNESS-1 release notes:`,
-      ));
-      console.log('  ' + THEME.command(
-        'https://github.com/MetalHexx/RadOrchestration/blob/main/README.md',
-      ));
-      process.exit(0);
-    }
-    if (installed && installed.packageVersion) {
-      const priorVersion = installed.packageVersion;
-      const priorManifest = loadBundledManifest(repoRoot, config.tool, priorVersion);
-      const modified = detectModifiedFiles(priorManifest, resolvedRoot);
-      if (modified.length > 0) {
-        const proceed = await confirmModifiedFiles(modified, resolvedRoot, undefined, { message: 'Continue and overwrite these files?' });
-        if (!proceed) {
-          console.log('Installation cancelled.');
-          process.exit(0);
-        }
-      }
-      const spin = ora({ text: `Removing prior install (v${priorVersion})…`, color: THEME.spinner }).start();
-      const result = removeManifestFiles(priorManifest, resolvedRoot);
-      spin.succeed(`Removed ${result.removedCount} files from prior install (v${priorVersion})`);
-    }
-
-    const manifest = getManifest(config.orchRoot, config.tool);
-    renderPreInstallSummary(config);
-
-    // Pre-install confirmation gate
-    if (!skipConfirmation) {
-      const proceed = await confirm({
-        message: 'Proceed with installation?',
-        default: true,
-      });
-      if (!proceed) {
-        console.log('Installation cancelled.');
-        process.exit(0);
-      }
-    }
-
-    // Copy files with per-category ora spinners
+    // Bootstrap every selected harness through the canonical CLI library.
+    // Each call writes harness-routed files into ~/<harness-dir>/ and shared
+    // files into ~/.radorch/.
     console.log('');
-    sectionHeader('::', 'Installing');
+    sectionHeader('::', 'Bootstrapping harnesses');
     console.log('');
-    const targetBase = resolveOrchRoot(config.workspaceDir, config.orchRoot);
-
-    /** @type {import('./lib/types.js').CopyResult[]} */
-    const results = [];
-
-    for (const category of manifest.categories) {
-      const mergedCategory = {
-        ...category,
-        excludeDirs: [...(category.excludeDirs || []), ...manifest.globalExcludes],
-        excludeFiles: [...(category.excludeFiles || []), ...manifest.globalExcludes],
-      };
-
-      const spinner = ora({ text: `Copying ${category.name}...`, color: THEME.spinner }).start();
-      const result = copyCategory(mergedCategory, repoRoot, targetBase);
-
-      if (result.skipped) {
-        spinner.stop();
-      } else if (result.success) {
-        spinner.succeed(`Copied ${category.name}  (${result.fileCount} files)`);
-      } else {
-        spinner.fail(`Failed to copy ${category.name}: ${result.error}`);
+    // AD-3: legacy installer keeps shared assets (bin/, ui/) at installer/src/
+    // and per-harness payloads (agents/, skills/, manifests, package.json) at
+    // installer/src/<harness>/. `sharedRoot` resolves the former; `pluginRoot`
+    // resolves the latter. The plugin channel ships everything under one root
+    // and omits `sharedRoot` (defaults to `pluginRoot`).
+    const sharedRoot = path.join(repoRoot, 'src');
+    for (const harness of config.harnesses) {
+      const pluginRoot = pluginRootForHarness(harness);
+      if (!fs.existsSync(path.join(pluginRoot, 'package.json'))) {
+        console.error(THEME.error(
+          `✖ Bundled plugin payload missing for harness '${harness}' at ${pluginRoot}. `
+          + 'Run `node installer/scripts/sync-source.js` and retry.',
+        ));
+        process.exit(1);
+        return;
       }
-
-      results.push(result);
-    }
-
-    // Generate and write config
-    const configSpinner = ora({ text: 'Generating orchestration.yml...', color: THEME.spinner }).start();
-    const yamlContent = generateConfig(config);
-    writeConfig(config.workspaceDir, config.orchRoot, yamlContent);
-    configSpinner.succeed('Generated orchestration.yml');
-
-    // Create the project storage directory so the dashboard and agents can scan it immediately
-    const projectsSpinner = ora({ text: 'Creating projects directory...', color: THEME.spinner }).start();
-    const resolvedProjectsPath = path.isAbsolute(config.projectsBasePath)
-      ? config.projectsBasePath
-      : path.join(config.workspaceDir, config.projectsBasePath);
-    fs.mkdirSync(resolvedProjectsPath, { recursive: true });
-    projectsSpinner.succeed('Created projects directory');
-
-    // Install pipeline engine dependencies (non-fatal)
-    const scriptsDir = path.join(targetBase, 'skills', 'rad-orchestration', 'scripts');
-    await installScriptsDeps(scriptsDir);
-
-    const configPath = path.join(resolvedRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
-
-    if (config.installUi) {
-      console.log('');
-      sectionHeader('::', 'Dashboard UI');
-      console.log('');
-
-      const nodeCheck = checkNodeNpm();
-      if (!nodeCheck.available) {
-        console.log(THEME.warning('⚠ ' + nodeCheck.error));
-        const continueWithout = await confirm({
-          message: 'Continue without the dashboard UI?',
-          default: true,
-        });
-        if (!continueWithout) {
-          console.log('Installation cancelled.');
-          process.exit(0);
+      const spinner = ora({ text: `Bootstrapping '${harness}'…`, color: THEME.spinner }).start();
+      try {
+        const result = await installHarness({ pluginRoot, sharedRoot, harness });
+        if (result.action === 'downgrade-refused') {
+          spinner.warn(`Bootstrapped '${harness}' (${result.action})`);
+          if (result.message) console.warn(THEME.warning ? THEME.warning(result.message) : result.message);
+        } else {
+          spinner.succeed(`Bootstrapped '${harness}' (${result.action})`);
         }
-        config.installUi = false;
-      } else {
-        const uiResult = await installUi({
-          repoRoot,
-          uiDir: config.uiDir,
-          workspaceDir: config.workspaceDir,
-          orchRoot: config.orchRoot,
-          projectsBasePath: config.projectsBasePath,
-        });
-
-        if (!uiResult.buildSuccess) {
-          renderPartialSuccessSummary(config, results, configPath, uiResult.error);
-          return;
-        }
+      } catch (err) {
+        spinner.fail(`Failed to bootstrap '${harness}': ${err.message}`);
+        throw err;
       }
     }
 
-    renderPostInstallSummary(config, results, configPath);
+    // Write ~/.radorch/orchestration.yml from the wizard preferences. The
+    // canonical user-data root is always ~/.radorch/, regardless of harness.
+    const pkgPath = path.join(__dirname, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    const ymlSpin = ora({ text: 'Writing orchestration.yml…', color: THEME.spinner }).start();
+    const yaml = generateConfig({ packageVersion: pkg.version });
+    writeConfig(yaml);
+    const orchYmlPath = path.join(os.homedir(), '.radorch', 'orchestration.yml');
+    ymlSpin.succeed(`Wrote ${orchYmlPath}`);
+
+    // Ensure ~/.radorch/projects/ exists so the dashboard and agents can scan it.
+    fs.mkdirSync(path.join(os.homedir(), '.radorch', 'projects'), { recursive: true });
+
+    renderPostInstall(config, orchYmlPath, pkg.version);
   } catch (err) {
-    if (err.name === 'ExitPromptError') {
+    if (err && err.name === 'ExitPromptError') {
       console.log('');
       process.exit(0);
     }
@@ -354,7 +245,7 @@ export async function main() {
 // Auto-invoke only when run directly (not when imported by tests).
 // Use fs.realpathSync to resolve symlinks created by `npm link` / global installs.
 const __scriptPath = fs.realpathSync(fileURLToPath(import.meta.url));
-const __argvPath = fs.realpathSync(process.argv[1]);
+const __argvPath = process.argv[1] ? fs.realpathSync(process.argv[1]) : '';
 if (__scriptPath === __argvPath) {
   main();
 }

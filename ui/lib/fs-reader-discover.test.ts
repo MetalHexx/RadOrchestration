@@ -7,6 +7,7 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { discoverProjects } from './fs-reader';
+import { withHomedir } from './test-helpers.js';
 
 let passed = 0;
 let failed = 0;
@@ -14,11 +15,13 @@ let tmpDir = '';
 
 async function setup(): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-discover-test-'));
+  const projectsDir = path.join(dir, '.radorch', 'projects');
+  await mkdir(projectsDir, { recursive: true });
 
   // (a) initialized-project: valid state.json with project.updated set
-  await mkdir(path.join(dir, 'initialized-project'));
+  await mkdir(path.join(projectsDir, 'initialized-project'));
   await writeFile(
-    path.join(dir, 'initialized-project', 'state.json'),
+    path.join(projectsDir, 'initialized-project', 'state.json'),
     JSON.stringify({
       $schema: 'orchestration-state-v4',
       project: {
@@ -49,11 +52,11 @@ async function setup(): Promise<string> {
   );
 
   // (b) no-state-project: directory without state.json
-  await mkdir(path.join(dir, 'no-state-project'));
+  await mkdir(path.join(projectsDir, 'no-state-project'));
 
   // (c) malformed-project: state.json with invalid JSON
-  await mkdir(path.join(dir, 'malformed-project'));
-  await writeFile(path.join(dir, 'malformed-project', 'state.json'), 'not valid json{{{');
+  await mkdir(path.join(projectsDir, 'malformed-project'));
+  await writeFile(path.join(projectsDir, 'malformed-project', 'state.json'), 'not valid json{{{');
 
   return dir;
 }
@@ -73,7 +76,11 @@ async function test(name: string, fn: () => Promise<void>) {
 async function run() {
   try {
     tmpDir = await setup();
-    const projects = await discoverProjects(tmpDir, '.');
+    // withHomedir swaps os.homedir for the duration and restores it in finally (AD-9)
+    let projects!: Awaited<ReturnType<typeof discoverProjects>>;
+    await withHomedir(tmpDir, async () => {
+      projects = await discoverProjects();
+    });
 
     console.log('discoverProjects — lastUpdated behavior');
 

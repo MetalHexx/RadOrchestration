@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,33 +8,42 @@ import { resolveInstallRoot, installPaths } from '../../src/lib/paths.js';
 import { UserError } from '../../src/framework/errors.js';
 
 let tmp: string;
-beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-h-')); });
-afterEach(async () => { await fs.rm(tmp, { recursive: true, force: true }); });
+let homedirSpy: ReturnType<typeof vi.spyOn>;
+beforeEach(async () => {
+  tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-h-'));
+  homedirSpy = vi.spyOn(os, 'homedir').mockReturnValue(tmp);
+});
+afterEach(async () => {
+  homedirSpy.mockRestore();
+  await fs.rm(tmp, { recursive: true, force: true });
+});
 
 describe('radorch harness use', () => {
   it('errors when install root is missing', async () => {
-    await expect(runHarnessUse({ harness: 'claude', env: { RADORCH_HOME: path.join(tmp, 'absent') } })).rejects.toMatchObject({ type: 'user_error' });
+    // tmp/.radorch does not exist — resolveInstallRoot() will return tmp/.radorch which is missing
+    await expect(runHarnessUse({ harness: 'claude', env: process.env })).rejects.toMatchObject({ type: 'user_error' });
   });
   it('rejects unknown harness with user_error', async () => {
-    const home = path.join(tmp, 'rad');
-    await writeInstallSkeleton({ root: home, packageVersion: '0.0.0', defaultHarness: 'claude' });
-    await expect(runHarnessUse({ harness: 'cursor' as never, env: { RADORCH_HOME: home } })).rejects.toMatchObject({ type: 'user_error' });
+    const root = path.join(tmp, '.radorch');
+    await writeInstallSkeleton({ root, packageVersion: '0.0.0', defaultHarness: 'claude' });
+    await expect(runHarnessUse({ harness: 'cursor' as never, env: process.env })).rejects.toMatchObject({ type: 'user_error' });
   });
   it('switches active harness and is idempotent', async () => {
-    const home = path.join(tmp, 'rad');
-    await writeInstallSkeleton({ root: home, packageVersion: '0.0.0', defaultHarness: 'claude' });
-    const r1 = await runHarnessUse({ harness: 'copilot-cli', env: { RADORCH_HOME: home } });
+    const root = path.join(tmp, '.radorch');
+    await writeInstallSkeleton({ root, packageVersion: '0.0.0', defaultHarness: 'claude' });
+    const r1 = await runHarnessUse({ harness: 'copilot-cli', env: process.env });
     expect(r1.active).toBe('copilot-cli');
     expect(r1.no_change).toBe(false);
-    const r2 = await runHarnessUse({ harness: 'copilot-cli', env: { RADORCH_HOME: home } });
+    const r2 = await runHarnessUse({ harness: 'copilot-cli', env: process.env });
     expect(r2.no_change).toBe(true);
   });
   it('emits a stderr info line when the requested harness is already active', async () => {
-    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'radorch-harness-c1-'));
+    const innerTmp = await fs.mkdtemp(path.join(os.tmpdir(), 'radorch-harness-c1-'));
+    // Override the outer spy so this test's isolated innerTmp is used as homedir.
+    homedirSpy.mockReturnValue(innerTmp);
     try {
-      // Set up an installed root with claude already active.
-      const env = { RADORCH_HOME: tmp } as unknown as NodeJS.ProcessEnv;
-      const root = resolveInstallRoot(env);
+      // Set up an installed root at innerTmp/.radorch with claude already active.
+      const root = resolveInstallRoot();
       const p = installPaths(root);
       await fs.mkdir(p.logsDir, { recursive: true });
       await fs.writeFile(p.installJson, '{}');
@@ -49,7 +58,7 @@ describe('radorch harness use', () => {
       } as unknown as NodeJS.WriteStream;
 
       const ctx = {
-        env,
+        env: process.env,
         stderr: fakeStderr,
         logger: { info: async () => {}, warn: async () => {}, error: async () => {}, debug: async () => {}, flush: async () => {} },
         prompter: { input: async () => '', confirm: async () => false, select: async () => 'a' },
@@ -63,16 +72,16 @@ describe('radorch harness use', () => {
       expect(stderrText.length).toBeGreaterThan(0);
       expect(stderrText).toMatch(/already active|no change/i);
     } finally {
-      await fs.rm(tmp, { recursive: true, force: true });
+      await fs.rm(innerTmp, { recursive: true, force: true });
     }
   });
 });
 
 describe('radorch harness list', () => {
   it('lists three harnesses with the active flag set', async () => {
-    const home = path.join(tmp, 'rad');
-    await writeInstallSkeleton({ root: home, packageVersion: '0.0.0', defaultHarness: 'copilot-vscode' });
-    const r = await runHarnessList({ env: { RADORCH_HOME: home } });
+    const root = path.join(tmp, '.radorch');
+    await writeInstallSkeleton({ root, packageVersion: '0.0.0', defaultHarness: 'copilot-vscode' });
+    const r = await runHarnessList({ env: process.env });
     expect(r.harnesses).toEqual([
       { name: 'claude', active: false },
       { name: 'copilot-vscode', active: true },
@@ -80,12 +89,13 @@ describe('radorch harness list', () => {
     ]);
   });
   it('runHarnessList errors with user_error when install root is missing', async () => {
-    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'radorch-harness-list-missing-'));
+    const innerTmp = await fs.mkdtemp(path.join(os.tmpdir(), 'radorch-harness-list-missing-'));
+    homedirSpy.mockReturnValue(innerTmp);
     try {
-      const env = { RADORCH_HOME: tmp } as unknown as NodeJS.ProcessEnv;
-      await expect(runHarnessList({ env })).rejects.toBeInstanceOf(UserError);
+      // innerTmp/.radorch does not exist — resolveInstallRoot() returns innerTmp/.radorch
+      await expect(runHarnessList({ env: process.env })).rejects.toBeInstanceOf(UserError);
     } finally {
-      await fs.rm(tmp, { recursive: true, force: true });
+      await fs.rm(innerTmp, { recursive: true, force: true });
     }
   });
 });

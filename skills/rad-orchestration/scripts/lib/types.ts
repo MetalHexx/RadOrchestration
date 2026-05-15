@@ -253,6 +253,21 @@ export interface PipelineState {
   graph: GraphState;
 }
 
+// Path Context (filesystem roots threaded into the engine from pipeline.ts)
+//
+// Computed once at CLI entry from `pipeline.ts`'s own location (which sits at
+// `scripts/pipeline.ts` in source AND at `scripts/pipeline.js` in the esbuild
+// bundle — same level), so the relative-path math is correct in both runtimes.
+// Threading the resolved values down avoids `fileURLToPath(import.meta.url)`
+// + `..` walks inside `lib/`, where the source-vs-bundle depth mismatch would
+// silently land them at the wrong directory.
+
+export interface PathContext {
+  scriptsDir: string;      // absolute path of `skills/rad-orchestration/scripts/`
+  templatesDir: string;    // absolute path of `skills/rad-orchestration/templates/`
+  orchRoot: string;        // absolute path to the orchestration install root (parent of skills/)
+}
+
 // Pipeline Result (CLI output contract — SACRED, no changes)
 
 export interface PipelineResult {
@@ -319,13 +334,6 @@ export interface EventContext {
 // Orchestration Config (from orchestration.yml)
 
 export interface OrchestrationConfig {
-  system: {
-    orch_root: string;
-  };
-  projects: {
-    base_path: string;
-    naming: string;
-  };
   limits: {
     max_phases: number;
     max_tasks_per_phase: number;
@@ -340,9 +348,8 @@ export interface OrchestrationConfig {
   source_control: {
     auto_commit: string;
     auto_pr: string;
-    provider: string;
   };
-  default_template: string;
+  default_template: 'extra-high' | 'high' | 'medium' | 'low' | 'ask' | string;
 }
 
 // Event Index (built at template load time)

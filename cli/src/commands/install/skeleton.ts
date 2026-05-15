@@ -15,6 +15,15 @@ worktrees/
 runtime/
 `;
 
+export async function writeBaseFiles(root: string, harness: HarnessName): Promise<void> {
+  const p = installPaths(root);
+  await ensureDir(p.root);
+  await writeConfigYml(p.configYml, { default_active_harness: harness });
+  await writeRegistrySkeleton(p.registryYml);
+  await writeFileAtomic(p.harnessPointer, harness + '\n');
+  await writeFileAtomic(p.gitignore, GITIGNORE);
+}
+
 export async function writeInstallSkeleton(opts: {
   root: string;
   packageVersion: string;
@@ -28,10 +37,7 @@ export async function writeInstallSkeleton(opts: {
     last_writer_version: opts.packageVersion,
     state_schema_version: 'v5',
   });
-  await writeConfigYml(p.configYml, { default_active_harness: opts.defaultHarness });
-  await writeRegistrySkeleton(p.registryYml);
-  await writeFileAtomic(p.harnessPointer, opts.defaultHarness + '\n');
-  await writeFileAtomic(p.gitignore, GITIGNORE);
+  await writeBaseFiles(opts.root, opts.defaultHarness);
   await ensureDir(p.projectsDir);
   await ensureDir(p.worktreesDir);
   await ensureDir(p.logsDir);

@@ -1,3 +1,4 @@
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { loadTemplate } from './template-loader.js';
 import { resolveTemplateName, snapshotTemplate } from './template-resolver.js';
@@ -6,7 +7,6 @@ import { getMutation } from './mutations.js';
 import { walkDAG, resolveNodeStatePath } from './dag-walker.js';
 import { enrichActionContext } from './context-enrichment.js';
 import { OUT_OF_BAND_EVENTS } from './constants.js';
-import { detectOrchRoot } from './orch-root.js';
 import type {
   PipelineState,
   PipelineResult,
@@ -16,11 +16,16 @@ import type {
   IOAdapter,
   NodeDef,
   NodeState,
+  PathContext,
   StepNodeDef,
 } from './types.js';
 import { scaffoldNodeState } from './scaffold.js';
 import { validateState } from './validator.js';
-import { resolveBasePath } from './state-io.js';
+
+// Canonical user-data projects directory. Mirrors cli/src/lib/upgrade/user-data-paths.ts
+// (userDataPaths().projects); inlined here because the pipeline runtime in
+// skills/rad-orchestration/scripts/ has no shared TS surface with cli/.
+const PROJECTS_BASE_PATH = path.join(os.homedir(), '.radorch', 'projects');
 
 // ── scaffoldState ─────────────────────────────────────────────────────────────
 
@@ -100,17 +105,16 @@ export function processEvent(
   projectDir: string,
   context: Partial<EventContext>,
   io: IOAdapter,
+  pathContext: PathContext,
   configPath?: string,
 ): PipelineResult {
-  let orchRoot = detectOrchRoot();
+  const { orchRoot, templatesDir, scriptsDir } = pathContext;
 
   try {
     const config = io.readConfig(configPath);
-    orchRoot = config.system.orch_root;
 
     const state = io.readState(projectDir);
 
-    const templatesDir = path.join(orchRoot, 'skills/rad-orchestration/templates');
     const resolution = resolveTemplateName(state, context.template, config, projectDir, templatesDir);
     // For new-project creation (state === null) always load from the global templates directory.
     // This avoids reading a project-local snapshot that may be mid-write in concurrent scenarios
@@ -182,6 +186,7 @@ export function processEvent(
               state: scaffolded,
               config,
               cliContext: context,
+              scriptsDir,
             })
           : {};
 
@@ -218,6 +223,7 @@ export function processEvent(
               state,
               config,
               cliContext: context,
+              scriptsDir,
             })
           : {};
         return {
@@ -264,7 +270,7 @@ export function processEvent(
       if (normalizedContext.doc_path) {
         normalizedContext.doc_path = normalizeDocPath(
           normalizedContext.doc_path,
-          resolveBasePath(config.projects.base_path),
+          PROJECTS_BASE_PATH,
           path.basename(projectDir),
         );
       }
@@ -308,6 +314,7 @@ export function processEvent(
             state: mutatedState,
             config,
             cliContext: context,
+            scriptsDir,
           })
         : {};
 
@@ -385,7 +392,7 @@ export function processEvent(
     if (normalizedContext.doc_path) {
       normalizedContext.doc_path = normalizeDocPath(
         normalizedContext.doc_path,
-        resolveBasePath(config.projects.base_path),
+        PROJECTS_BASE_PATH,
         path.basename(projectDir),
       );
     }
@@ -420,6 +427,7 @@ export function processEvent(
         state: mutatedState,
         config,
         cliContext: context,
+        scriptsDir,
       });
       nextAction = { action: stepNode.action, context: enrichedCtx };
       io.writeState(projectDir, mutatedState);
@@ -452,6 +460,7 @@ export function processEvent(
             state: mutatedState,
             config,
             cliContext: context,
+            scriptsDir,
           }),
         };
       } else {

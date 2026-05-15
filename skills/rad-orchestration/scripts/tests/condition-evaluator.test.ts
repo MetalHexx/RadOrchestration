@@ -3,8 +3,6 @@ import { evaluateCondition } from '../lib/condition-evaluator.js';
 import type { OrchestrationConfig, PipelineState } from '../lib/types.js';
 
 const baseConfig: OrchestrationConfig = {
-  system: { orch_root: '/orch' },
-  projects: { base_path: '/projects', naming: '{name}' },
   limits: {
     max_phases: 10,
     max_tasks_per_phase: 20,
@@ -19,7 +17,6 @@ const baseConfig: OrchestrationConfig = {
   source_control: {
     auto_commit: 'ask',
     auto_pr: 'never',
-    provider: 'github',
   },
   default_template: 'extra-high',
 };

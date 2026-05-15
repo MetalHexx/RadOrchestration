@@ -3,11 +3,11 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
-const groupA = ['brainstorm', 'code-review', 'configure-system'];
+const groupA = ['brainstorm', 'code-review'];
 for (const oldName of groupA) {
   const newName = `rad-${oldName}`;
-  const oldDir = path.join(repoRoot, '.claude/skills', oldName);
-  const newDir = path.join(repoRoot, '.claude/skills', newName);
+  const oldDir = path.join(repoRoot, 'skills', oldName);
+  const newDir = path.join(repoRoot, 'skills', newName);
   assert.equal(existsSync(oldDir), false, `${oldDir} must not exist after rename`);
   assert.equal(existsSync(newDir), true, `${newDir} must exist after rename`);
   const fm = readFileSync(path.join(newDir, 'SKILL.md'), 'utf8').slice(0, 600);

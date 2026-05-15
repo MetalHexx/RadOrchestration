@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 const REPO_ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '..', '..');
 
 const EXPECTED_TIERS = ['extra-high.yml', 'high.yml', 'medium.yml', 'low.yml'];
+const TIER_NAMES = EXPECTED_TIERS.map(f => f.replace('.yml', ''));
 const FORBIDDEN = ['default.yml', 'quick.yml', 'full.yml'];
 
 function templatesAt(rel) {
@@ -16,17 +17,41 @@ function templatesAt(rel) {
   return fs.readdirSync(dir).filter(f => f.endsWith('.yml')).sort();
 }
 
-test('npm run build:all produces canonical, .claude, and .github with exactly the four tier templates', () => {
+test('npm run build:all produces canonical + per-harness staging with exactly the four tier templates', () => {
   execSync('npm run build:all', { cwd: REPO_ROOT, stdio: 'pipe' });
 
   const canonical = templatesAt('skills/rad-orchestration/templates');
-  const claude = templatesAt('.claude/skills/rad-orchestration/templates');
-  const github = templatesAt('.github/skills/rad-orchestration/templates');
+  const claude = templatesAt('dist/staging/claude/skills/rad-orchestration/templates');
+  const copilotVscode = templatesAt('dist/staging/copilot-vscode/skills/rad-orchestration/templates');
+  const copilotCli = templatesAt('dist/staging/copilot-cli/skills/rad-orchestration/templates');
 
-  for (const dir of [canonical, claude, github]) {
-    if (dir === null) continue; // dogfold target may be absent in CI
+  for (const dir of [canonical, claude, copilotVscode, copilotCli]) {
+    if (dir === null) continue; // staging may be absent for a harness if its adapter skipped
     assert.deepEqual(dir, EXPECTED_TIERS.slice().sort(), `Templates dir mismatch: ${JSON.stringify(dir)}`);
     for (const f of FORBIDDEN) assert.ok(!dir.includes(f), `${f} still present`);
+  }
+
+  // Verify the staging manifests route tier templates to ${RAD_HOME}/templates/,
+  // not the harness skill folder. The physical staging files remain under
+  // skills/rad-orchestration/templates/ (runAdapter always stages there) but
+  // destinationPath must point at the user-data location.
+  for (const harness of ['claude', 'copilot-vscode', 'copilot-cli']) {
+    const stagingDir = path.join(REPO_ROOT, 'dist', 'staging');
+    // Find the latest manifest for this harness in the staging catalog.
+    const catalogDir = path.join(stagingDir, harness, 'manifests');
+    if (!fs.existsSync(catalogDir)) continue;
+    const manifests = fs.readdirSync(catalogDir).filter(f => f.startsWith('v') && f.endsWith('.json'));
+    if (manifests.length === 0) continue;
+    const manifest = JSON.parse(fs.readFileSync(path.join(catalogDir, manifests[manifests.length - 1]), 'utf8'));
+    for (const name of TIER_NAMES) {
+      const entry = manifest.files.find(f => f.bundlePath === `skills/rad-orchestration/templates/${name}.yml`);
+      assert.ok(entry, `${harness} manifest must contain tier template entry for ${name}.yml`);
+      assert.strictEqual(
+        entry.destinationPath,
+        `\${RAD_HOME}/templates/${name}.yml`,
+        `${harness}/${name}.yml destinationPath must route to \${RAD_HOME}/templates/`,
+      );
+    }
   }
 });
 

@@ -7,6 +7,7 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { discoverProjects, readProjectState } from './fs-reader';
+import { withHomedir } from './test-helpers.js';
 
 let passed = 0;
 let failed = 0;
@@ -91,15 +92,17 @@ function makeV4State() {
 
 async function setup(): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-v5-test-'));
+  const projectsDir = path.join(dir, '.radorch', 'projects');
+  await mkdir(projectsDir, { recursive: true });
 
   // v5-project: valid v5 state.json (execution tier, in_progress graph)
-  await mkdir(path.join(dir, 'v5-project'));
-  await writeFile(path.join(dir, 'v5-project', 'state.json'), makeV5State());
+  await mkdir(path.join(projectsDir, 'v5-project'));
+  await writeFile(path.join(projectsDir, 'v5-project', 'state.json'), makeV5State());
 
   // v5-completed-project: v5 state with graph.status === 'completed'
-  await mkdir(path.join(dir, 'v5-completed-project'));
+  await mkdir(path.join(projectsDir, 'v5-completed-project'));
   await writeFile(
-    path.join(dir, 'v5-completed-project', 'state.json'),
+    path.join(projectsDir, 'v5-completed-project', 'state.json'),
     makeV5State({
       pipeline: {
         gate_mode: null,
@@ -125,15 +128,15 @@ async function setup(): Promise<string> {
   );
 
   // v4-project: valid v4 state.json
-  await mkdir(path.join(dir, 'v4-project'));
-  await writeFile(path.join(dir, 'v4-project', 'state.json'), makeV4State());
+  await mkdir(path.join(projectsDir, 'v4-project'));
+  await writeFile(path.join(projectsDir, 'v4-project', 'state.json'), makeV4State());
 
   // no-state-project: directory without state.json
-  await mkdir(path.join(dir, 'no-state-project'));
+  await mkdir(path.join(projectsDir, 'no-state-project'));
 
   // malformed-project: state.json with invalid JSON
-  await mkdir(path.join(dir, 'malformed-project'));
-  await writeFile(path.join(dir, 'malformed-project', 'state.json'), 'not valid json{{{');
+  await mkdir(path.join(projectsDir, 'malformed-project'));
+  await writeFile(path.join(projectsDir, 'malformed-project', 'state.json'), 'not valid json{{{');
 
   return dir;
 }
@@ -153,7 +156,13 @@ async function test(name: string, fn: () => Promise<void>) {
 async function run() {
   try {
     tmpDir = await setup();
-    const projects = await discoverProjects(tmpDir, '.');
+    // withHomedir swaps os.homedir for the duration and restores it in finally (AD-9)
+    let projects!: Awaited<ReturnType<typeof discoverProjects>>;
+    await withHomedir(tmpDir, async () => {
+      projects = await discoverProjects();
+    });
+
+    const projectsDir = path.join(tmpDir, '.radorch', 'projects');
 
     console.log('discoverProjects — v5 state support');
 
@@ -262,14 +271,14 @@ async function run() {
     console.log('\nreadProjectState — v5 state support');
 
     await test('readProjectState — parses v5 state and returns $schema === "orchestration-state-v5"', async () => {
-      const projectDir = path.join(tmpDir, 'v5-project');
+      const projectDir = path.join(projectsDir, 'v5-project');
       const state = await readProjectState(projectDir);
       assert.ok(state, 'state should not be null');
       assert.strictEqual(state!.$schema, 'orchestration-state-v5');
     });
 
     await test('readProjectState — parses v4 state correctly (no regression)', async () => {
-      const projectDir = path.join(tmpDir, 'v4-project');
+      const projectDir = path.join(projectsDir, 'v4-project');
       const state = await readProjectState(projectDir);
       assert.ok(state, 'state should not be null');
       assert.strictEqual(state!.$schema, 'orchestration-state-v4');

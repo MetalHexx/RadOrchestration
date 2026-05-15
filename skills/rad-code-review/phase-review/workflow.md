@@ -116,11 +116,11 @@ The highest-severity finding across both passes (conformance + quality sweep) de
 | Verdict | When to Apply |
 |---------|---------------|
 | `approved` | No issues found, or only low-severity findings (cosmetic, style), AND every requirement row is `on-track`, AND every exit criterion is met. |
-| `changes_requested` | At least one medium-severity finding (functional issue, missing coverage), OR at least one `drift` row in the audit table, OR any exit criterion unmet. |
-| `rejected` | At least one high-severity finding (security vulnerability, data loss risk, architectural violation), OR at least one `regression` row in the audit table. |
+| `changes_requested` | At least one medium-severity finding (functional issue, missing coverage), OR at least one `drift` row in the audit table, OR a `regression` row classified medium or low severity (mechanical corrective: bounded one-or-two-file fix), OR any exit criterion unmet. |
+| `rejected` | At least one high-severity finding (security vulnerability, data loss risk, architectural violation), OR a `regression` row classified **high-severity** (production behavior broken, contract or API regression, irrecoverable data state, regression whose corrective scope cannot be bounded). |
 
 - **Severity** levels: **low** (cosmetic, style), **medium** (functional issue, missing coverage), **high** (security vulnerability, data loss risk, architectural violation), **none** (no findings).
-- **Status** semantics (audit table): `on-track` is informational only. `drift` and `regression` always escalate the verdict to at least `changes_requested` (drift) or `rejected` (regression) even when the associated severity is low.
+- **Status** semantics (audit table): `on-track` is informational only. `drift` always escalates to at least `changes_requested`. `regression` escalates per severity: medium/low regressions route through orchestrator mediation as a corrective task (`changes_requested`); high-severity regressions halt the phase (`rejected`). Regression severity is `high` by default; downgrade only when the corrective is bounded and mechanical, and cite the bounded fix in the finding row.
 - Quality-sweep findings use the same severity levels as conformance findings and CAN escalate the verdict.
 
 ## Output

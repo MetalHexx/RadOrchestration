@@ -27,8 +27,6 @@ import type {
 
 function makeConfig(overrides?: Partial<OrchestrationConfig['human_gates']>): OrchestrationConfig {
   return {
-    system: { orch_root: '/tmp' },
-    projects: { base_path: '/tmp/projects', naming: 'SCREAMING_CASE' },
     limits: {
       max_phases: 10,
       max_tasks_per_phase: 8,
@@ -44,7 +42,6 @@ function makeConfig(overrides?: Partial<OrchestrationConfig['human_gates']>): Or
     source_control: {
       auto_commit: 'ask',
       auto_pr: 'ask',
-      provider: 'github',
     },
     default_template: 'extra-high',
   };

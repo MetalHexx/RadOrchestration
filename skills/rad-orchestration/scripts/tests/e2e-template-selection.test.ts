@@ -16,23 +16,28 @@ import type {
   ConditionalNodeState,
   ForEachPhaseNodeState,
   ForEachTaskNodeState,
+  PathContext,
 } from '../lib/types.js';
 
 // ── Real templates directory ──────────────────────────────────────────────────
 
 const __filename = fileURLToPath(import.meta.url);
 const TEMPLATES_DIR = path.resolve(path.dirname(__filename), '..', '..', 'templates');
-const ORCH_ROOT = path.resolve(path.dirname(__filename), '..', '..', '..', '..');
+
+const SCRIPTS_DIR = path.resolve(path.dirname(__filename), '..');
+const TEST_PATH_CONTEXT: PathContext = {
+  scriptsDir: SCRIPTS_DIR,
+  templatesDir: path.resolve(SCRIPTS_DIR, '..', 'templates'),
+  orchRoot: path.resolve(SCRIPTS_DIR, '..', '..', '..'),
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function makeConfig(overrides: Partial<OrchestrationConfig> = {}): OrchestrationConfig {
   return {
-    system: { orch_root: ORCH_ROOT },
-    projects: { base_path: '', naming: 'SCREAMING_CASE' },
     limits: { max_phases: 10, max_tasks_per_phase: 8, max_retries_per_task: 2, max_consecutive_review_rejections: 3 },
     human_gates: { after_planning: true, execution_mode: 'ask', after_final_review: true },
-    source_control: { auto_commit: 'ask', auto_pr: 'ask', provider: 'github' },
+    source_control: { auto_commit: 'ask', auto_pr: 'ask' },
     default_template: 'extra-high',
     ...overrides,
   };
@@ -210,7 +215,7 @@ describe('e2e: extra-high template pipeline processing', () => {
   it('processEvent start with null state and default config scaffolds on extra-high.yml', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-extra-high-'));
     const io = createMockIO(null, makeConfig());
-    const result = processEvent('start', tmpDir, {}, io);
+    const result = processEvent('start', tmpDir, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(Object.values(NEXT_ACTIONS)).toContain(result.action);
     expect(io.currentState!.graph.template_id).toBe('extra-high');
@@ -219,7 +224,7 @@ describe('e2e: extra-high template pipeline processing', () => {
   it('processEvent start with --template extra-high scaffolds state with template_id: extra-high and the extra-high.yml node tree', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-extra-high-'));
     const io = createMockIO(null);
-    const result = processEvent('start', tmpDir, { template: 'extra-high' }, io);
+    const result = processEvent('start', tmpDir, { template: 'extra-high' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.template_id).toBe('extra-high');
 
@@ -243,7 +248,7 @@ describe('e2e: extra-high template pipeline processing', () => {
   it('extra-high template first action is spawn_requirements (Requirements is the top node)', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-extra-high-'));
     const io = createMockIO(null);
-    const result = processEvent('start', tmpDir, { template: 'extra-high' }, io);
+    const result = processEvent('start', tmpDir, { template: 'extra-high' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_requirements');
   });
@@ -263,7 +268,7 @@ describe('e2e: low template pipeline processing', () => {
   it('processEvent start with --template low scaffolds state with template_id: low', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-low-'));
     const io = createMockIO(null);
-    const result = processEvent('start', tmpDir, { template: 'low' }, io);
+    const result = processEvent('start', tmpDir, { template: 'low' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(Object.values(NEXT_ACTIONS)).toContain(result.action);
     expect(io.currentState!.graph.template_id).toBe('low');
@@ -272,7 +277,7 @@ describe('e2e: low template pipeline processing', () => {
   it('low template scaffolded state contains requirements, plan_approval_gate, phase_loop', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-low-'));
     const io = createMockIO(null);
-    processEvent('start', tmpDir, { template: 'low' }, io);
+    processEvent('start', tmpDir, { template: 'low' }, io, TEST_PATH_CONTEXT);
     const nodes = io.currentState!.graph.nodes;
     for (const nodeId of ['requirements', 'plan_approval_gate', 'phase_loop']) {
       expect(nodes).toHaveProperty(nodeId);
@@ -294,7 +299,7 @@ describe('e2e: medium template pipeline processing', () => {
   it('processEvent start with --template medium scaffolds state with template_id: medium', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-medium-'));
     const io = createMockIO(null);
-    const result = processEvent('start', tmpDir, { template: 'medium' }, io);
+    const result = processEvent('start', tmpDir, { template: 'medium' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(Object.values(NEXT_ACTIONS)).toContain(result.action);
     expect(io.currentState!.graph.template_id).toBe('medium');
@@ -303,7 +308,7 @@ describe('e2e: medium template pipeline processing', () => {
   it('medium template scaffolded state contains requirements, plan_approval_gate, phase_loop', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-medium-'));
     const io = createMockIO(null);
-    processEvent('start', tmpDir, { template: 'medium' }, io);
+    processEvent('start', tmpDir, { template: 'medium' }, io, TEST_PATH_CONTEXT);
     const nodes = io.currentState!.graph.nodes;
     for (const nodeId of ['requirements', 'plan_approval_gate', 'phase_loop']) {
       expect(nodes).toHaveProperty(nodeId);
@@ -325,7 +330,7 @@ describe('e2e: high template pipeline processing', () => {
   it('processEvent start with --template high scaffolds state with template_id: high', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-high-'));
     const io = createMockIO(null);
-    const result = processEvent('start', tmpDir, { template: 'high' }, io);
+    const result = processEvent('start', tmpDir, { template: 'high' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(Object.values(NEXT_ACTIONS)).toContain(result.action);
     expect(io.currentState!.graph.template_id).toBe('high');
@@ -334,7 +339,7 @@ describe('e2e: high template pipeline processing', () => {
   it('high template scaffolded state contains requirements, plan_approval_gate, phase_loop', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-high-'));
     const io = createMockIO(null);
-    processEvent('start', tmpDir, { template: 'high' }, io);
+    processEvent('start', tmpDir, { template: 'high' }, io, TEST_PATH_CONTEXT);
     const nodes = io.currentState!.graph.nodes;
     for (const nodeId of ['requirements', 'plan_approval_gate', 'phase_loop']) {
       expect(nodes).toHaveProperty(nodeId);
@@ -378,7 +383,7 @@ describe('e2e: isProjectLocal template resolution', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-local-'));
     snapshotTemplate(path.join(TEMPLATES_DIR, 'extra-high.yml'), tmpDir);
     const io = createMockIO(null);
-    const result = processEvent('start', tmpDir, {}, io);
+    const result = processEvent('start', tmpDir, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.template_id).toBe('extra-high');
   });
@@ -398,7 +403,7 @@ describe('e2e: default_template config resolution', () => {
   it('default_template: "default" in config remaps to extra-high template', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-extra-high-'));
     const io = createMockIO(null, makeConfig({ default_template: 'default' }));
-    const result = processEvent('start', tmpDir, {}, io);
+    const result = processEvent('start', tmpDir, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.template_id).toBe('extra-high');
   });
@@ -406,7 +411,7 @@ describe('e2e: default_template config resolution', () => {
   it('default_template: "quick" in config remaps to low template', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-low-'));
     const io = createMockIO(null, makeConfig({ default_template: 'quick' }));
-    const result = processEvent('start', tmpDir, {}, io);
+    const result = processEvent('start', tmpDir, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.template_id).toBe('low');
   });
@@ -414,7 +419,7 @@ describe('e2e: default_template config resolution', () => {
   it('default_template: "full" in config remaps to extra-high template', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-extra-high-'));
     const io = createMockIO(null, makeConfig({ default_template: 'full' }));
-    const result = processEvent('start', tmpDir, {}, io);
+    const result = processEvent('start', tmpDir, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.template_id).toBe('extra-high');
   });
@@ -458,7 +463,6 @@ describe('e2e: extra-high.yml full-pipeline smoke test', () => {
       source_control: {
         auto_commit: 'always',
         auto_pr: 'always',
-        provider: 'github',
       },
     });
   }
@@ -480,41 +484,41 @@ describe('e2e: extra-high.yml full-pipeline smoke test', () => {
     const io = createMockIO(null, makeAutonomousConfig(), DOC_STORE);
 
     // ── start (scaffolds state) ────────────────────────────────────────────
-    let result = processEvent('start', PROJECT_DIR, { template: 'extra-high' }, io);
+    let result = processEvent('start', PROJECT_DIR, { template: 'extra-high' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_requirements');
     expect(io.currentState!.graph.template_id).toBe('extra-high');
 
     // ── requirements_started → requirements_completed ──────────────────────
-    result = processEvent('requirements_started', PROJECT_DIR, {}, io);
+    result = processEvent('requirements_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
 
     const reqDoc = path.join(PROJECT_DIR, 'docs', 'requirements.md');
     seedDoc(reqDoc, { requirement_count: 4 });
-    result = processEvent('requirements_completed', PROJECT_DIR, { doc_path: reqDoc }, io);
+    result = processEvent('requirements_completed', PROJECT_DIR, { doc_path: reqDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_master_plan');
 
     // ── master_plan_started → master_plan_completed ────────────────────────
-    result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
+    result = processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
 
     const masterPlanDoc = path.join(PROJECT_DIR, 'docs', 'master-plan.md');
     seedDoc(masterPlanDoc, { total_phases: 1, total_tasks: 1 });
-    result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: masterPlanDoc }, io);
+    result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: masterPlanDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('explode_master_plan');
 
     // ── explosion_started → explosion_completed ─────────────────────────────
-    result = processEvent('explosion_started', PROJECT_DIR, {}, io);
+    result = processEvent('explosion_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
 
-    result = processEvent('explosion_completed', PROJECT_DIR, {}, io);
+    result = processEvent('explosion_completed', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('request_plan_approval');
 
     // ── plan_approved ──────────────────────────────────────────────────────
-    result = processEvent('plan_approved', PROJECT_DIR, { doc_path: masterPlanDoc }, io);
+    result = processEvent('plan_approved', PROJECT_DIR, { doc_path: masterPlanDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
 
     // ── source_control_init ────────────────────────────────────────────────
@@ -527,7 +531,7 @@ describe('e2e: extra-high.yml full-pipeline smoke test', () => {
       auto_commit: 'always',
       auto_pr: 'always',
       remote_url: 'https://github.com/test/repo',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
 
     // ── Seed the per-iteration state this smoke test needs after plan_approved:
@@ -575,29 +579,29 @@ describe('e2e: extra-high.yml full-pipeline smoke test', () => {
     ];
 
     // Re-trigger walker post-seeding.
-    result = processEvent('start', PROJECT_DIR, {}, io);
+    result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.action).toBe('execute_task');
 
     // ── Task 1 execution ───────────────────────────────────────────────────
     const taskCtx = { phase: 1, task: 1 };
-    result = processEvent('execution_started', PROJECT_DIR, taskCtx, io);
+    result = processEvent('execution_started', PROJECT_DIR, taskCtx, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
 
-    result = processEvent('task_completed', PROJECT_DIR, taskCtx, io);
+    result = processEvent('task_completed', PROJECT_DIR, taskCtx, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     // commit_gate fires first (body order: executor → commit_gate → code_review → task_gate)
     expect(result.action).toBe('invoke_source_control_commit');
 
     // ── commit_started → commit_completed ──────────────────────────────────
-    result = processEvent('commit_started', PROJECT_DIR, taskCtx, io);
+    result = processEvent('commit_started', PROJECT_DIR, taskCtx, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
 
-    result = processEvent('commit_completed', PROJECT_DIR, { ...taskCtx, commit_hash: 'abc123' }, io);
+    result = processEvent('commit_completed', PROJECT_DIR, { ...taskCtx, commit_hash: 'abc123' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_code_reviewer');
 
     // ── code_review_started → code_review_completed ───────────────────────
-    result = processEvent('code_review_started', PROJECT_DIR, taskCtx, io);
+    result = processEvent('code_review_started', PROJECT_DIR, taskCtx, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
 
     const codeReviewDoc = path.join(PROJECT_DIR, 'tasks', 'p1-t1-review.md');
@@ -606,7 +610,7 @@ describe('e2e: extra-high.yml full-pipeline smoke test', () => {
       ...taskCtx,
       doc_path: codeReviewDoc,
       verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     // In autonomous mode, task_gate auto-approves via verdict check → advances to phase_review
     expect(result.action).toBe('spawn_phase_reviewer');
@@ -620,7 +624,7 @@ describe('e2e: extra-high.yml full-pipeline smoke test', () => {
     }
 
     // ── phase_review_started → phase_review_completed ─────────────────────
-    result = processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    result = processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
 
     const phaseReviewDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-review.md');
@@ -630,7 +634,7 @@ describe('e2e: extra-high.yml full-pipeline smoke test', () => {
       doc_path: phaseReviewDoc,
       verdict: 'approved',
       exit_criteria_met: true,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     // In autonomous mode, phase_gate auto-approves via verdict check → advances to final_review
     expect(result.action).toBe('spawn_final_reviewer');
@@ -644,7 +648,7 @@ describe('e2e: extra-high.yml full-pipeline smoke test', () => {
     }
 
     // ── final_review_started → final_review_completed ─────────────────────
-    result = processEvent('final_review_started', PROJECT_DIR, {}, io);
+    result = processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
 
     const finalReviewDoc = path.join(PROJECT_DIR, 'docs', 'final-review.md');
@@ -652,21 +656,21 @@ describe('e2e: extra-high.yml full-pipeline smoke test', () => {
     result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: finalReviewDoc,
       verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     // auto_pr='always' neq 'never' → pr_gate true branch → invoke PR
     expect(result.action).toBe('invoke_source_control_pr');
 
     // ── pr_requested → pr_created ──────────────────────────────────────────
-    result = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    result = processEvent('pr_requested', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
 
-    result = processEvent('pr_created', PROJECT_DIR, { pr_url: 'https://github.com/test/repo/pull/1' }, io);
+    result = processEvent('pr_created', PROJECT_DIR, { pr_url: 'https://github.com/test/repo/pull/1' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('request_final_approval');
 
     // ── final_approved ─────────────────────────────────────────────────────
-    result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    result = processEvent('final_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');
 

@@ -6,21 +6,6 @@ import path from 'node:path';
 import { THEME, sectionHeader, divider } from './theme.js';
 
 /**
- * Renders the pre-install confirmation screen to stdout.
- * Shows section header and target/root labels.
- * @param {InstallerConfig} config
- * @returns {void}
- */
-export function renderPreInstallSummary(config) {
-  console.log('');
-  sectionHeader('::', 'Installation Summary');
-  console.log('');
-  console.log('  ' + THEME.label('Target:') + '  ' + THEME.body(path.normalize(config.workspaceDir)));
-  console.log('  ' + THEME.label('Root:') + '    ' + THEME.body(path.normalize(config.orchRoot)));
-  console.log('');
-}
-
-/**
  * Renders the post-install success screen to stdout.
  * Shows check marks for installed items, config path, and numbered next-steps
  * with runnable commands using resolved paths.
@@ -48,18 +33,25 @@ export function renderPostInstallSummary(config, copyResults, configPath) {
   sectionHeader('::', "What's Next");
   console.log('');
 
-  console.log('  ' + THEME.stepNumber('1.') + ' ' + THEME.body('Get started — visit the guide:'));
+  console.log('  ' + THEME.stepNumber('1.') + ' ' + THEME.body('Open your harness and start a new conversation.'));
   console.log('');
-  console.log('     ' + THEME.command('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/guides.md'));
+
+  console.log('  ' + THEME.stepNumber('2.') + ' ' + THEME.body('Walk through the orchestration workflow:'));
+  console.log('');
+  console.log('     ' + THEME.command('/rad-brainstorm') + '  →  ' + THEME.body('refine a project idea'));
+  console.log('     ' + THEME.command('/rad-plan') + '        →  ' + THEME.body('produce requirements + master plan'));
+  console.log('     ' + THEME.command('/rad-execute') + '     →  ' + THEME.body('run the pipeline through implementation'));
   console.log('');
 
   if (config.installUi && config.uiDir) {
-    console.log('  ' + THEME.stepNumber('2.') + ' ' + THEME.body('Start the dashboard:'));
+    console.log('  ' + THEME.stepNumber('3.') + ' ' + THEME.body('(optional) Start the dashboard from inside your harness:'));
     console.log('');
-    console.log('     ' + THEME.command(`Local:   cd ${path.normalize(config.uiDir)} && npm start`));
-    console.log('     ' + THEME.command(`Docker:  docker compose -f ${path.join(config.uiDir, 'docker-compose.yml')} up`));
+    console.log('     ' + THEME.command('/rad-ui-start'));
     console.log('');
   }
+
+  console.log('  ' + THEME.body('Full guide: ') + THEME.command('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/getting-started.md'));
+  console.log('');
 
   divider();
 }
@@ -100,7 +92,7 @@ export function renderPartialSuccessSummary(config, copyResults, configPath, err
 
   console.log('  ' + THEME.stepNumber('1.') + ' ' + THEME.body('Get started — visit the guide:'));
   console.log('');
-  console.log('     ' + THEME.command('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/guides.md'));
+  console.log('     ' + THEME.command('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/getting-started.md'));
   console.log('');
 
   console.log('  ' + THEME.stepNumber('2.') + ' ' + THEME.body('Retry the UI build:'));

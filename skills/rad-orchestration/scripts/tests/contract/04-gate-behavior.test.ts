@@ -11,6 +11,7 @@ import {
   driveTaskWith,
   codeReviewDoc,
   phaseReviewDoc,
+  TEST_PATH_CONTEXT,
 } from '../fixtures/parity-states.js';
 import type {
   StepNodeState,
@@ -68,22 +69,22 @@ function askConfig() {
 
 /** Drives a task through to code_review_completed with the given verdict. */
 function driveTaskToCodeReview(io: MockIO, phase: number, task: number, verdict: string) {
-  processEvent('execution_started', PROJECT_DIR, { phase, task }, io);
-  processEvent('task_completed', PROJECT_DIR, { phase, task }, io);
-  processEvent('code_review_started', PROJECT_DIR, { phase, task }, io);
+  processEvent('execution_started', PROJECT_DIR, { phase, task }, io, TEST_PATH_CONTEXT);
+  processEvent('task_completed', PROJECT_DIR, { phase, task }, io, TEST_PATH_CONTEXT);
+  processEvent('code_review_started', PROJECT_DIR, { phase, task }, io, TEST_PATH_CONTEXT);
   seedDoc(codeReviewDoc(phase, task));
   return processEvent('code_review_completed', PROJECT_DIR, {
     phase, task, doc_path: codeReviewDoc(phase, task), verdict,
-  }, io);
+  }, io, TEST_PATH_CONTEXT);
 }
 
 /** Drives phase review through to phase_review_completed with the given verdict. */
 function driveToPhaseReviewCompleted(io: MockIO, verdict: string) {
-  processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+  processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
   seedDoc(phaseReviewDoc(1));
   return processEvent('phase_review_completed', PROJECT_DIR, {
     phase: 1, doc_path: phaseReviewDoc(1), verdict, exit_criteria_met: true,
-  }, io);
+  }, io, TEST_PATH_CONTEXT);
 }
 
 /** Returns the task_gate state for the given (phase, task) iteration. */
@@ -257,12 +258,12 @@ describe('[CONTRACT] Gate Behavior — Human gate (plan_approval_gate)', () => {
       source_control: NO_SC,
     });
     const io = createMockIOWithConfig(null, cfg);
-    processEvent('start', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     // Directly complete planning through master_plan; the explosion_completed
     // event below drives the walker past explode_master_plan to plan_approval_gate
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
-    return processEvent('explosion_completed', PROJECT_DIR, {}, io);
+    return processEvent('explosion_completed', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
   }
 
   for (const mode of ['autonomous', 'phase', 'task', 'ask']) {

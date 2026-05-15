@@ -6,10 +6,11 @@
     "dev": "next dev",
     "build-and-start": "next build && next start",
     "build": "next build",
+    "prebuild-standalone": "node ./scripts/clean-standalone.mjs",
     "build-standalone": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --test --import tsx \"lib/**/*.test.ts\" \"hooks/**/*.test.ts\" \"hooks/**/*.test.tsx\" \"components/**/*.test.ts\" \"components/**/*.test.tsx\" \"app/**/*.test.ts\" \"app/**/*.test.tsx\" \"tests/**/*.test.ts\""
+    "test": "node --test --import tsx \"lib/**/*.test.ts\" \"lib/**/*.test.mjs\" \"hooks/**/*.test.ts\" \"hooks/**/*.test.tsx\" \"components/**/*.test.ts\" \"components/**/*.test.tsx\" \"app/**/*.test.ts\" \"app/**/*.test.tsx\" \"tests/**/*.test.ts\""
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",

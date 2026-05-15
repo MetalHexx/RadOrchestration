@@ -45,8 +45,11 @@ export const adapter = {
     opus: 'opus',
   }),
 
-  // The harness-specific token that resolves the plugin root path at runtime.
-  // Claude Code exposes ${CLAUDE_PLUGIN_ROOT} as the absolute path to the
-  // installed plugin directory — used to make skill references portable.
-  pluginRootSubstitution: '${CLAUDE_PLUGIN_ROOT}',
+  // Harness install root used by legacy (non-plugin) emit. The CLI now ships
+  // inside the rad-orchestration skill, and skills/ entries route to
+  // harnessRoot() — so `${PLUGIN_ROOT}` substitutes to the harness root
+  // (`~/.claude`), not the data root (`~/.radorch`). The plugin-specific
+  // ${CLAUDE_PLUGIN_ROOT} token is injected by adapters/run-plugin.js
+  // directly — not via this adapter field.
+  pluginRootSubstitution: '~/.claude',
 };

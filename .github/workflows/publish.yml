@@ -88,6 +88,12 @@ jobs:
       - name: Install pipeline scripts deps
         working-directory: skills/rad-orchestration/scripts
         run: npm install
+      - name: Install installer deps
+        working-directory: installer
+        run: npm ci
+      - name: Emit per-harness installer bundles (so build:plugin can read manifests)
+        working-directory: installer
+        run: node scripts/sync-source.js
       - name: Build plugin
         run: npm run build:plugin
       - name: Verify plugin version matches tag

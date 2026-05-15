@@ -1,60 +1,30 @@
 import fsP from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { pathExists } from '../../lib/fs-helpers.js';
 import { installPaths } from '../../lib/paths.js';
-import { readInstallJson, readConfigYml } from '../../lib/config.js';
+import { readInstallJson } from '../../lib/config.js';
+import type { InstallJson, InstallJsonV5, InstallJsonV6 } from '../../lib/config.js';
 import { readRegistry } from '../../lib/registry.js';
-import { isHarnessName } from '../../framework/harness.js';
-import { cmpSemver } from '../../lib/install-json.js';
+import { cmpSemver, isInstallJsonV6, readLastWriterVersion } from '../../lib/install-json.js';
 import { parseYaml } from '../../lib/yaml.js';
+import { userDataPaths } from '../../lib/upgrade/user-data-paths.js';
+import { scanUserLevelHarnesses } from '../../lib/cross-harness-scan.js';
+import { getCliVersion } from '../../lib/package-version.js';
 
-/**
- * Mirrors `resolveBasePath` in skills/rad-orchestration/scripts/lib/state-io.ts
- * (P05-T01). Duplicated locally because cli/'s tsconfig pins rootDir to ./src,
- * which prevents importing from the pipeline runtime. Pure: no filesystem,
- * no env capture beyond the explicit `env` argument.
- */
-export function expandHome(raw: string, env: NodeJS.ProcessEnv = process.env): string {
-  if (!raw) return raw;
-  if (raw.startsWith('~/.radorch')) {
-    const radorchHome = env['RADORCH_HOME'] || path.join(os.homedir(), '.radorch');
-    const remainder = raw.slice('~/.radorch'.length).replace(/^[/\\]+/, '');
-    const joined = remainder ? path.join(radorchHome, remainder) : radorchHome;
-    return joined.replace(/[/\\]+$/, '');
-  }
-  if (raw.startsWith('~/') || raw.startsWith('~\\')) {
-    const remainder = raw.slice(2).replace(/^[/\\]+/, '');
-    const joined = remainder ? path.join(os.homedir(), remainder) : os.homedir();
-    return joined.replace(/[/\\]+$/, '');
-  }
-  return raw;
-}
-
-/**
- * Locate `orchestration.yml` under the search root and return its
- * `projects.base_path`. Falls back to `<searchRoot>/projects` when no
- * orchestration.yml is present (the standard RADORCH_HOME layout).
- */
-export async function readBasePathFromOrchestrationYml(
-  searchRoot: string,
-): Promise<{ basePath: string }> {
-  const candidates = [
-    path.join(searchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml'),
-    path.join(searchRoot, 'orchestration.yml'),
-  ];
-  for (const candidate of candidates) {
-    try {
-      const text = await fsP.readFile(candidate, 'utf8');
-      const parsed = parseYaml<{ projects?: { base_path?: string } }>(text);
-      const bp = parsed?.projects?.base_path;
-      if (typeof bp === 'string' && bp.length > 0) return { basePath: bp };
-    } catch {
-      // ENOENT or unreadable — try next candidate.
+/** Pull a representative `version` from either v5 (top-level package_version)
+ * or v6 (any entry's version). Used by doctor's install-shape checks where the
+ * specific install-key isn't disambiguated. */
+function readAnyVersion(ij: InstallJson): string | undefined {
+  if (isInstallJsonV6(ij)) {
+    for (const entry of Object.values((ij as InstallJsonV6).harnesses)) {
+      if (entry?.version) return entry.version;
     }
+    return undefined;
   }
-  return { basePath: path.join(searchRoot, 'projects') };
+  return (ij as InstallJsonV5).package_version;
 }
+
+const pkg = { version: getCliVersion() };
 
 export type CheckStatus = 'pass' | 'warn' | 'fail';
 export type CheckCategory = 'Environment' | 'Install' | 'Registry' | 'Plugin';
@@ -65,6 +35,9 @@ export interface CheckResult {
   status: CheckStatus;
   detail?: string;
 }
+
+/** The four properties retired in 1.3 — present in old orchestration.yml files. */
+const RETIRED_KEYS = ['system.orch_root', 'projects.base_path', 'projects.naming', 'source_control.provider'] as const;
 
 export async function runEnvironmentChecks(): Promise<CheckResult[]> {
   const out: CheckResult[] = [];
@@ -84,39 +57,128 @@ export async function runEnvironmentChecks(): Promise<CheckResult[]> {
   return out;
 }
 
-export async function runInstallChecks(root: string): Promise<CheckResult[]> {
-  const p = installPaths(root);
+export async function runInstallChecks(): Promise<CheckResult[]> {
+  const p = userDataPaths();
   const out: CheckResult[] = [];
+
+  // 1. radorch-home-exists
   const rootExists = await pathExists(p.root);
   out.push({
     category: 'Install',
-    name: 'root-exists',
+    name: 'radorch-home-exists',
     status: rootExists ? 'pass' : 'fail',
     detail: rootExists ? p.root : `missing ${p.root} — run \`radorch install\``,
   });
   if (!rootExists) return out;
-  // install.json
+
+  // 2. install-json-shape — accepts both v5 (top-level package_version) and v6
+  // (any registered harness entry's version).
   try {
     const ij = await readInstallJson(p.installJson);
+    const version = readAnyVersion(ij);
     out.push({
       category: 'Install',
-      name: 'install.json shape',
-      status: typeof ij.package_version === 'string' && typeof ij.installed_at === 'string' ? 'pass' : 'fail',
+      name: 'install-json-shape',
+      status: typeof version === 'string' ? 'pass' : 'fail',
     });
   } catch (e) {
-    out.push({ category: 'Install', name: 'install.json shape', status: 'fail', detail: (e as Error).message });
+    out.push({ category: 'Install', name: 'install-json-shape', status: 'fail', detail: (e as Error).message });
   }
-  // config.yml
-  try {
-    const cfg = await readConfigYml(p.configYml);
+
+  // 3. (retired) `radorch-bin-on-path` — the CLI no longer ships at
+  // ~/.radorch/bin/; it lives inside the rad-orchestration skill folder and
+  // is invoked through the harness's slash commands or `node <skill-path>`.
+  // There is no PATH-on-shell concern to surface here anymore.
+
+  // 4. templates-folder-populated
+  {
+    const templatesDir = p.templates;
+    const required = ['extra-high.yml', 'high.yml', 'medium.yml', 'low.yml'];
+    let allPresent = true;
+    const missing: string[] = [];
+    for (const file of required) {
+      if (!(await pathExists(path.join(templatesDir, file)))) {
+        allPresent = false;
+        missing.push(file);
+      }
+    }
     out.push({
       category: 'Install',
-      name: 'config.yml shape',
-      status: isHarnessName(cfg.default_active_harness) ? 'pass' : 'fail',
+      name: 'templates-folder-populated',
+      status: allPresent ? 'pass' : 'warn',
+      detail: allPresent ? undefined : `missing templates: ${missing.join(', ')}`,
     });
-  } catch (e) {
-    out.push({ category: 'Install', name: 'config.yml shape', status: 'fail', detail: (e as Error).message });
   }
+
+  // 5. retired-properties-present
+  {
+    const orchYml = p.orchestrationYml;
+    const found: string[] = [];
+    try {
+      const text = await fsP.readFile(orchYml, 'utf8');
+      const parsed = parseYaml<Record<string, unknown>>(text);
+      if (parsed && typeof parsed === 'object') {
+        for (const key of RETIRED_KEYS) {
+          const parts = key.split('.');
+          const top = parts[0];
+          const sub = parts[1];
+          if (!top) continue;
+          const topVal = (parsed as Record<string, unknown>)[top];
+          if (sub) {
+            if (topVal !== null && typeof topVal === 'object' && sub in (topVal as Record<string, unknown>)) {
+              found.push(key);
+            }
+          } else {
+            if (top in parsed) found.push(key);
+          }
+        }
+      }
+    } catch {
+      // orchestration.yml absent or unreadable — no retired keys to report.
+    }
+    if (found.length > 0) {
+      out.push({
+        category: 'Install',
+        name: 'retired-properties-present',
+        status: 'warn',
+        detail: `stale keys in orchestration.yml (safe to delete): ${found.join(', ')}`,
+      });
+    } else {
+      out.push({
+        category: 'Install',
+        name: 'retired-properties-present',
+        status: 'pass',
+      });
+    }
+  }
+
+  // 6. version-match — operates on the union; v6 picks the first registered entry.
+  {
+    let versionStatus: CheckStatus = 'pass';
+    let versionDetail: string | undefined;
+    try {
+      const ij = await readInstallJson(p.installJson);
+      const installedVersion = readAnyVersion(ij);
+      if (typeof installedVersion !== 'string') {
+        versionStatus = 'warn';
+        versionDetail = 'install.json missing package_version';
+      } else {
+        const cliVersion = pkg.version;
+        if (cliVersion) {
+          const match = cmpSemver(cliVersion, installedVersion) === 0;
+          versionStatus = match ? 'pass' : 'warn';
+          versionDetail = match
+            ? `${cliVersion}`
+            : `CLI is ${cliVersion}, install.json reports ${installedVersion} — re-run \`radorch install\``;
+        }
+      }
+    } catch {
+      versionStatus = 'warn';
+      versionDetail = 'install.json unreadable — run `radorch install`';
+    }
+    out.push({ category: 'Install', name: 'version-match', status: versionStatus, detail: versionDetail });
+  }
+
   return out;
 }
 
@@ -152,24 +214,43 @@ export async function runPluginChecks(opts: {
 }): Promise<CheckResult[]> {
   const out: CheckResult[] = [];
   const p = installPaths(opts.root);
-  // Bundle integrity: probe the bundled CLI when CLAUDE_PLUGIN_ROOT is known
-  // (deployed plugin), otherwise warn that it could not be verified.
-  if (opts.pluginRoot) {
-    const bundle = path.join(opts.pluginRoot, 'bin', 'radorch.mjs');
-    const exists = await pathExists(bundle);
-    out.push({
-      category: 'Plugin',
-      name: 'bundle-integrity',
-      status: exists ? 'pass' : 'fail',
-      detail: exists ? bundle : `missing ${bundle} — run \`npm run build:plugin\``,
-    });
-  } else {
-    out.push({
-      category: 'Plugin',
-      name: 'bundle-integrity',
-      status: 'warn',
-      detail: 'CLAUDE_PLUGIN_ROOT not set — bundle presence not verified',
-    });
+
+  // Precondition: the three plugin-specific checks (bundle-integrity,
+  // plugin-skills-enumerable, plugin-agents-resolvable) are only meaningful
+  // when the system is running inside the Claude Code plugin or when a plugin
+  // install is registered. If neither signal is present, skip those three
+  // checks entirely — they would degrade to noisy CLAUDE_PLUGIN_ROOT warnings
+  // on every Copilot harness and every legacy-installer Claude install.
+  const registeredReports = scanUserLevelHarnesses();
+  const claudePluginRegistered = registeredReports.some(
+    (r) => r.installKey === 'claude-plugin' && r.installed,
+  );
+  const runPluginSpecificChecks = opts.pluginRoot !== undefined || claudePluginRegistered;
+
+  // Bundle integrity: probe the bundled CLI when CLAUDE_PLUGIN_ROOT is known.
+  if (runPluginSpecificChecks) {
+    if (opts.pluginRoot) {
+      const bundle = path.join(
+        opts.pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs',
+      );
+      const exists = await pathExists(bundle);
+      out.push({
+        category: 'Plugin',
+        name: 'bundle-integrity',
+        status: exists ? 'pass' : 'fail',
+        detail: exists ? bundle : `missing ${bundle} — run \`npm run build:plugin\``,
+      });
+    } else {
+      // Plugin registered in install.json but env var absent (e.g. running
+      // doctor outside a Claude Code session) — warn that the bundle can't be
+      // located without CLAUDE_PLUGIN_ROOT.
+      out.push({
+        category: 'Plugin',
+        name: 'bundle-integrity',
+        status: 'warn',
+        detail: 'CLAUDE_PLUGIN_ROOT not set — bundle presence not verified',
+      });
+    }
   }
   // Bootstrap skeleton
   const required = [p.projectsDir, p.registryYml, p.configYml, p.installJson];
@@ -179,7 +260,7 @@ export async function runPluginChecks(opts: {
     category: 'Plugin',
     name: 'bootstrap-skeleton',
     status: bootstrapOk ? 'pass' : 'fail',
-    detail: bootstrapOk ? undefined : 'missing one or more entries under RADORCH_HOME',
+    detail: bootstrapOk ? undefined : 'missing one or more entries under ~/.radorch',
   });
   // UI PID consistency
   const pidExists = await pathExists(p.uiPidFile);
@@ -201,108 +282,108 @@ export async function runPluginChecks(opts: {
     }
   }
   out.push({ category: 'Plugin', name: 'ui-pid-consistency', status: pidStatus, detail: pidDetail });
-  // Version skew
+  // Version skew — reads the latest last_writer_version across v5 (top-level)
+  // or v6 (max across all registered harness entries).
   let skewStatus: CheckStatus = 'pass';
   let skewDetail: string | undefined;
   if (await pathExists(p.installJson)) {
     const ij = await readInstallJson(p.installJson);
-    if (!ij.last_writer_version) {
+    const lastWriter = readLastWriterVersion(ij);
+    if (!lastWriter) {
       skewStatus = 'pass';
       skewDetail = 'install.json has no last_writer_version (iter-01 install — skipping skew check)';
-    } else if (cmpSemver(opts.localVersion, ij.last_writer_version) < 0) {
+    } else if (cmpSemver(opts.localVersion, lastWriter) < 0) {
       skewStatus = 'fail';
-      skewDetail = `state last written by ${ij.last_writer_version}; this CLI is ${opts.localVersion}`;
+      skewDetail = `state last written by ${lastWriter}; this CLI is ${opts.localVersion}`;
     }
   }
   out.push({ category: 'Plugin', name: 'version-skew', status: skewStatus, detail: skewDetail });
-  // projects-base-path-readable (FR-14, AD-12): resolve `projects.base_path`
-  // from orchestration.yml (or fall back to <root>/projects) and verify the
-  // resolved directory is present and readable. Filesystem `stat`-only.
+  // projects-base-path-readable (legacy check for workspace-relative projects dir)
   {
-    const cfg = await readBasePathFromOrchestrationYml(opts.pluginRoot ?? opts.root);
-    const resolved = expandHome(cfg.basePath, process.env);
+    const projectsDir = path.join(opts.root, 'projects');
     let detail: string | undefined;
     let status: CheckStatus = 'pass';
     try {
-      await fsP.access(resolved, fsP.constants.R_OK);
-      detail = resolved;
+      await fsP.access(projectsDir, fsP.constants.R_OK);
+      detail = projectsDir;
     } catch {
       status = 'fail';
-      detail = `${resolved} is missing or unreadable`;
+      detail = `${projectsDir} is missing or unreadable`;
     }
     out.push({ category: 'Plugin', name: 'projects-base-path-readable', status, detail });
   }
-  // plugin-skills-enumerable (FR-14): every shipped skills/<name>/ folder
-  // must contain a SKILL.md. Warn when the plugin root is unknown or the
-  // skills/ directory itself is missing — the check is irrelevant outside
-  // a deployed plugin (AD-12 missing-data warn), and a missing skills/
-  // dir signals a structurally broken plugin (warn so it surfaces).
-  if (opts.pluginRoot) {
-    const skillsDir = path.join(opts.pluginRoot, 'skills');
-    if (!(await pathExists(skillsDir))) {
+  // plugin-skills-enumerable: every shipped skills/<name>/ folder must contain
+  // a SKILL.md. Only runs when the plugin is active or registered.
+  if (runPluginSpecificChecks) {
+    if (opts.pluginRoot) {
+      const skillsDir = path.join(opts.pluginRoot, 'skills');
+      if (!(await pathExists(skillsDir))) {
+        out.push({
+          category: 'Plugin',
+          name: 'plugin-skills-enumerable',
+          status: 'warn',
+          detail: 'skills/ directory missing under CLAUDE_PLUGIN_ROOT',
+        });
+      } else {
+        const missing: string[] = [];
+        for (const name of await fsP.readdir(skillsDir)) {
+          const f = path.join(skillsDir, name, 'SKILL.md');
+          if (!(await pathExists(f))) missing.push(name);
+        }
+        out.push({
+          category: 'Plugin',
+          name: 'plugin-skills-enumerable',
+          status: missing.length === 0 ? 'pass' : 'fail',
+          detail: missing.length === 0 ? undefined : `skills missing SKILL.md: ${missing.join(', ')}`,
+        });
+      }
+    } else {
+      // Plugin registered but env var absent — warn that skills can't be verified.
       out.push({
         category: 'Plugin',
         name: 'plugin-skills-enumerable',
         status: 'warn',
-        detail: 'skills/ directory missing under CLAUDE_PLUGIN_ROOT',
-      });
-    } else {
-      const missing: string[] = [];
-      for (const name of await fsP.readdir(skillsDir)) {
-        const f = path.join(skillsDir, name, 'SKILL.md');
-        if (!(await pathExists(f))) missing.push(name);
-      }
-      out.push({
-        category: 'Plugin',
-        name: 'plugin-skills-enumerable',
-        status: missing.length === 0 ? 'pass' : 'fail',
-        detail: missing.length === 0 ? undefined : `skills missing SKILL.md: ${missing.join(', ')}`,
+        detail: 'CLAUDE_PLUGIN_ROOT not set — skills not verifiable outside a plugin session',
       });
     }
-  } else {
-    out.push({
-      category: 'Plugin',
-      name: 'plugin-skills-enumerable',
-      status: 'warn',
-      detail: 'CLAUDE_PLUGIN_ROOT not set',
-    });
   }
-  // plugin-agents-resolvable (FR-14, DD-3): the plugin ships canonical agent
-  // files under agents/; namespacing is a body transform inside the plugin.
-  // Enumerate dynamically and require agents/ to be non-empty, every entry
-  // .md-suffixed and readable on R_OK; report per-file misses.
-  if (opts.pluginRoot) {
-    const agentsDir = path.join(opts.pluginRoot, 'agents');
-    const missing: string[] = [];
-    if (!(await pathExists(agentsDir))) {
-      missing.push('agents/ directory');
-    } else {
-      const entries = (await fsP.readdir(agentsDir)).filter((f) => f.endsWith('.md'));
-      if (entries.length === 0) {
-        missing.push('no .md agent files under agents/');
+  // plugin-agents-resolvable: the plugin ships canonical agent files under
+  // agents/. Only runs when the plugin is active or registered.
+  if (runPluginSpecificChecks) {
+    if (opts.pluginRoot) {
+      const agentsDir = path.join(opts.pluginRoot, 'agents');
+      const missing: string[] = [];
+      if (!(await pathExists(agentsDir))) {
+        missing.push('agents/ directory');
       } else {
-        for (const f of entries) {
-          try {
-            await fsP.access(path.join(agentsDir, f), fsP.constants.R_OK);
-          } catch {
-            missing.push(f);
+        const entries = (await fsP.readdir(agentsDir)).filter((f) => f.endsWith('.md'));
+        if (entries.length === 0) {
+          missing.push('no .md agent files under agents/');
+        } else {
+          for (const f of entries) {
+            try {
+              await fsP.access(path.join(agentsDir, f), fsP.constants.R_OK);
+            } catch {
+              missing.push(f);
+            }
           }
         }
       }
+      out.push({
+        category: 'Plugin',
+        name: 'plugin-agents-resolvable',
+        status: missing.length === 0 ? 'pass' : 'fail',
+        detail: missing.length === 0 ? undefined : `missing or unreadable: ${missing.join(', ')}`,
+      });
+    } else {
+      // Plugin registered but env var absent — warn that agents can't be verified.
+      out.push({
+        category: 'Plugin',
+        name: 'plugin-agents-resolvable',
+        status: 'warn',
+        detail: 'CLAUDE_PLUGIN_ROOT not set — agents not verifiable outside a plugin session',
+      });
     }
-    out.push({
-      category: 'Plugin',
-      name: 'plugin-agents-resolvable',
-      status: missing.length === 0 ? 'pass' : 'fail',
-      detail: missing.length === 0 ? undefined : `missing or unreadable: ${missing.join(', ')}`,
-    });
-  } else {
-    out.push({
-      category: 'Plugin',
-      name: 'plugin-agents-resolvable',
-      status: 'warn',
-      detail: 'CLAUDE_PLUGIN_ROOT not set',
-    });
   }
   // cross-install-version-skew (FR-14, AD-12, NFR-8): warn when a parallel
   // iter-01 npm install of `radorch` reports a different version from the
@@ -325,6 +406,33 @@ export async function runPluginChecks(opts: {
       name: 'cross-install-version-skew',
       status: crossStatus,
       detail: crossDetail,
+    });
+  }
+  // multi-harness-install-table (DD-8 + Section 6): render per-install-key status
+  // from the v6 registry at ~/.radorch/install.json. Each install-key emits one
+  // line with `(channel)` suffix. When both `claude` and `claude-plugin` are
+  // present, append an info line recommending consolidation.
+  {
+    const reports = registeredReports;
+    const lines = reports.map((r) => {
+      if (!r.installed) return `${r.installKey}: not installed`;
+      const channel = r.channel ? ` (${r.channel})` : '';
+      const ver = r.packageVersion ?? 'unknown';
+      return `${r.installKey}: ${ver}${channel}`;
+    });
+    const hasClaude = reports.some((r) => r.installed && r.installKey === 'claude');
+    const hasClaudePlugin = reports.some((r) => r.installed && r.installKey === 'claude-plugin');
+    if (hasClaude && hasClaudePlugin) {
+      lines.push('');
+      lines.push('Both `claude` and `claude-plugin` are registered — they share ~/.claude/.');
+      lines.push('The plugin is the recommended channel. To remove the legacy install,');
+      lines.push('run `npx rad-orchestration uninstall`.');
+    }
+    out.push({
+      category: 'Plugin',
+      name: 'multi-harness-install-table',
+      status: 'pass',
+      detail: lines.join('\n'),
     });
   }
   return out;

@@ -1,198 +1,141 @@
 ---
-description: "Test the rad-orchestration installer locally before publishing — cleans global npm, builds a local tarball, creates an ephemeral test directory inside the repo (test-installer/), runs the installer with a custom orch_root (.rad), verifies the installation, and offers an interactive cleanup step."
+description: "End-to-end test of the legacy rad-orchestration npm installer on a clean machine. Builds a tarball locally, runs the installer via npx, verifies via doctor and the sha256 manifest, and checks post-install guidance."
 ---
 
-# Rad Test Release
+# Rad Test Release (Legacy Installer)
 
-You are running a local end-to-end test of the `rad-orchestration` installer. Follow each step precisely. Do not skip steps or assume state — verify at each checkpoint.
+You are running a local end-to-end smoke of the `rad-orchestration` npm installer (the legacy install path). Follow each step precisely; verify at each checkpoint. This is the legacy-channel companion to `rad-test-plugin-release.prompt.md`.
 
----
-
-## Step 0 — Select harness
-
-**CRITICAL: Use the `vscode_askQuestions` tool for this step.**
-
-Ask the user which AI harness to test:
-
-> "Which harness do you want to test?"
-
-Options: `claude-code` / `copilot-vscode` / `copilot-cli`
-
-Record the answer as `{harness}`. Use it wherever `{harness}` appears in the steps below.
+`~/.radorch/projects/` is sacred — never delete or mutate it during this flow.
 
 ---
 
-## Step 1 — Clean global npm
+## What you're testing
 
-Check for any existing global install and remove it.
+This smoke test packs the **current state of the working tree** with whatever version is in `package.json`. It is safe to run at any point during pre-release development:
 
-```
-npm list -g --depth=0
-```
+- Nothing reaches npm without a deliberate `npm publish` (auth-gated, separate flow).
+- The committed catalog at `manifests/<harness>/` is protected from in-development changes — `sync-source.js`'s auto-promote step drift-warns rather than overwriting when current HEAD doesn't byte-match the committed copy.
+- The runtime catalog at `installer/src/<harness>/manifests/` is local-only and ephemeral; it is regenerated on every sync-source run.
 
-If `rad-orchestration` appears in the output:
-
-```
-npm uninstall -g rad-orchestration
-```
-
-Verify it is gone:
-
-```
-npm list -g --depth=0
-```
-
-> Expected: no `rad-orchestration` entry.
+If `package.json`'s version was already published, the report's "tested version X" line refers to **current HEAD packed under the X label** — not the bytes that npm shipped as X. Version bumps happen at actual release time (`rad-release.prompt.md`), not before smoke-testing.
 
 ---
 
-## Step 2 — Build local tarball
+## Step 1 — Pick a harness
 
+Use `AskUserQuestion` (or the harness-equivalent) to ask which harness to test:
+
+| Label | Value |
+|-------|-------|
+| Claude Code | `claude` |
+| GitHub Copilot in VS Code | `copilot-vscode` |
+| GitHub Copilot CLI | `copilot-cli` |
+
+Record the answer as `{harness}`.
+
+## Step 2 — Resolve repo root
+
+`git rev-parse --show-toplevel` from anywhere inside this repo; record as `{repoRoot}`.
+
+## Step 3 — Pack the installer
+
+From `{repoRoot}/installer`, clean up any stale tarballs first, then pack:
+
+PowerShell:
 ```
-cd c:\dev\src\RadOrchestration\installer
+Remove-Item -Force *.tgz -ErrorAction SilentlyContinue
 npm pack
 ```
 
-Note the generated filename — it will be something like `rad-orchestration-X.X.X.tgz`. You will use the full path in the next step.
-
----
-
-## Step 3 — Install from tarball (simulates npx)
-
+POSIX:
 ```
-npm install -g c:\dev\src\RadOrchestration\installer\rad-orchestration-X.X.X.tgz
+rm -f ./*.tgz
+npm pack
 ```
 
-Replace `X.X.X` with the actual filename from Step 2.
+Record the generated tarball filename as `{tarball}`.
 
-Verify the install and discover available CLI flags:
+The `installer/package.json` `prepack` hook automatically runs `node scripts/sync-source.js` when `npm pack` fires, ensuring the bundle assets are fresh — no separate sync step needed.
 
-```
-radorch --version
-radorch --help
-```
+> **Expect:** Cold run (fresh clone, no `cli/node_modules`, no `ui/node_modules`): 5–10 minutes. Warm run (caches populated): 1–2 minutes. If `npm pack` appears stuck for >15 minutes, suspect the ENOENT race in the UI build — investigate `ui/.next/standalone/` before retrying.
 
-> Expected: the version number prints without error, and `--help` outputs the full flag reference.
+## Step 4 — Run the wizard
 
-Read the `--help` output carefully. You will use the appropriate flags in Step 5 to run the installer non-interactively. Pay attention to the flag names for: AI harness (`--tool`), workspace directory (`--workspace`), orchestration root (`--orch-root`), dashboard directory (`--dashboard-dir`), skip-all-prompts (`--yes`), and any others relevant to this test. If the flag names differ from what this document specifies, use whatever `--help` reports — the help output is the authoritative source.
-
----
-
-## Step 4 — Create ephemeral test directory
-
-Create a minimal project stub at `c:\dev\src\RadOrchestration\test-installer`. This directory sits inside the repo root for easy access and is gitignored — it exists only for this test session. **Do not pre-create any orchestration folders** (no `.rad`, no `.github`, no `.agents`) — the installer must create them on its own.
+Stay in `{repoRoot}/installer` and invoke the installer non-interactively:
 
 ```
-mkdir c:\dev\src\RadOrchestration\test-installer
+npx --yes ./{tarball} --yes --harness {harness}
 ```
 
-Create a minimal `package.json`:
+> Do **not** use the absolute-path form (`npx {repoRoot}/installer/{tarball} ...`). On Windows + PowerShell, npx silently ignores absolute-path local-tarball specs and exits 0 without invoking the bin — the smoke test then reports false negatives. The `./<tarball>` form (run from `installer/`) works correctly. The first `--yes` is consumed by npx to skip its own confirmation prompt; the second `--yes` is consumed by the installer wizard.
 
-```json
-{
-  "name": "test-app",
-  "version": "1.0.0",
-  "description": "Minimal test app for rad-orchestration installer testing"
-}
-```
+Expected: the harness-checkbox question is bypassed by the second `--yes`; the wizard runs git/gh tooling checks — warnings appear ONLY if either tool is missing; absence of warnings is the correct outcome when both are installed; the bootstrap runs and the install completes without errors.
 
-Create a minimal `README.md`:
+## Step 5 — Verify the install
 
-```
-# test-app
+Health checks have moved to the in-skill CLI. Run:
+- POSIX: `node $HOME/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs doctor`
+- Windows: `node %USERPROFILE%\{harnessRoot}\skills\rad-orchestration\scripts\radorch.mjs doctor`
 
-Minimal test application for rad-orchestration installer testing.
-```
+Expected: all checks pass.
 
-> Checkpoint: `c:\dev\src\RadOrchestration\test-installer` exists with only `package.json` and `README.md`. No orchestration folders, no git history.
+Verify the CLI landed inside the rad-orchestration skill (the harness root is `~/.claude` for `claude`, `~/.copilot` for the Copilot harnesses):
+- POSIX: `test -x ~/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs && wc -c ~/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs` — file is non-empty and executable.
+- Windows: confirm `%USERPROFILE%\{harnessRoot}\skills\rad-orchestration\scripts\radorch.mjs` exists and is non-empty.
 
----
+Verify the in-skill CLI reports a version that matches the installer:
+- POSIX: `node $HOME/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs --version`
+- Windows: `node %USERPROFILE%\{harnessRoot}\skills\rad-orchestration\scripts\radorch.mjs --version`
 
-## Step 5 — Run installer
+Expected: prints a version string (e.g. `1.0.0-alpha.8`) that exactly matches `harnesses.{harness}.version` in `~/.radorch/install.json` (reported in Step 8). Any mismatch indicates the bundle and the manifest are out of sync.
 
-Using the flag names you confirmed from `radorch --help` in Step 3, run the installer non-interactively. The intent is:
+Verify the UI landed: `ls ~/.radorch/ui/` shows the Next.js standalone bundle (server.js or .next/static).
 
-- AI harness: `{harness}` (chosen in Step 0)
-- Target workspace: `c:\dev\src\RadOrchestration\test-installer`
-- Orchestration root: `.rad` (custom, non-default)
-- Dashboard directory: `c:\dev\src\RadOrchestration\test-installer\ui`
-- Skip all interactive prompts, accepting defaults for everything not explicitly set
+## Step 6 — Verify the sha256 manifest
 
-Based on the `--help` output, construct and run the equivalent of:
+Run the verification one-liner against the **runtime catalog** — the manifest that `npm pack` just regenerated and is about to ship inside the tarball. This is **not** the committed catalog at `<repoRoot>/manifests/<harness>/v<version>.json`; that one is the historical record of what was tagged at release time and is intentionally not regenerated by `sync-source.js` for already-released versions (the auto-promote step drift-warns instead of overwriting). Smoke validation needs the runtime location:
 
 ```
-cd c:\dev\src\RadOrchestration\test-installer
-radorch --yes --tool {harness} --orch-root .rad --workspace c:\dev\src\RadOrchestration\test-installer --dashboard --dashboard-dir c:\dev\src\RadOrchestration\test-installer\ui
+node -e "const m=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));const r=/^[a-f0-9]{64}$/;const cli=m.files.find(f=>f.bundlePath==='skills/rad-orchestration/scripts/radorch.mjs');const ui=m.files.filter(f=>f.bundlePath.startsWith('ui/')).length;const agents=m.files.filter(f=>f.bundlePath.startsWith('agents/')).length;const skills=m.files.filter(f=>f.bundlePath.startsWith('skills/')).length;const bad=m.files.filter(f=>!r.test(f.sha256||''));const noDest=m.files.filter(f=>!f.destinationPath);console.log({cli:!!cli,ui,agents,skills,badSha:bad.length,noDest:noDest.length,hasBinEntry:!!m.files.find(f=>f.bundlePath==='bin/radorch.mjs')});" {repoRoot}/installer/src/{harness}/manifests/v{version}.json
 ```
 
-> `--tool` selects the AI harness whose bundle is installed (`claude-code`, `copilot-vscode`, or `copilot-cli`). This is required — `--yes` does not auto-select a harness.
+Expected output (all these must be true):
+- `cli: true` — the radorch.mjs bundle is present
+- `ui: [number > 0]` — UI files are included
+- `agents: [number > 0]` — agent files are included
+- `skills: [number > 0]` — skill files are included
+- `badSha: 0` — all entries have valid 64-char sha256 hashes
+- `noDest: 0` — all entries have `destinationPath` fields
+- `hasBinEntry: false` — the retired `bin/radorch.mjs` entry is absent
 
-> Modified-file detect-and-warn is unconditional and cannot be bypassed. If the installer prompts about locally-modified files (e.g., on a repeat run), that is expected — respond interactively. There is no `--force` escape hatch.
+## Step 7 — Verify the post-install guidance
 
-> If the flag names from `--help` differ from the above, use the correct names from the help output. The command above is a template — `--help` is authoritative.
+Confirm the "What's Next" block in the installer's terminal output shows the in-harness orchestration workflow (the prior CLI-direct-invoke guidance was retired):
 
-> Expected: installer runs without prompts, prints a success summary, and exits with code 0.
+The output must contain, in this order:
+- `/rad-brainstorm` (refine a project idea)
+- `/rad-plan` (produce requirements + master plan)
+- `/rad-execute` (run the pipeline through implementation)
 
----
+The output must NOT contain: `radorch.mjs`, `%USERPROFILE%`, `$HOME`, `~/.radorch/bin/`, or `setx PATH`.
 
-## Step 6 — Verify installation
+If the `claude` harness was installed, `/rad-ui-start` also appears as an optional dashboard step.
 
-Check for each of the following. Report any missing items.
+## Step 8 — Report results
 
-**Folder structure:**
-- `c:\dev\src\RadOrchestration\test-installer\.rad\` exists
-- `c:\dev\src\RadOrchestration\test-installer\.rad\agents\` exists
-- `c:\dev\src\RadOrchestration\test-installer\.rad\skills\` exists
+Report:
+- Harness tested
+- Versions: tarball version, `~/.radorch/install.json` `harnesses.{harness}.version`
+- Pass/fail per check
+- Verbatim error output on any failure
 
-**Config:**
-- `c:\dev\src\RadOrchestration\test-installer\.rad\skills\rad-orchestration\config\orchestration.yml` exists
-- Open the file and confirm:
-  - `system.orch_root` is set to `.rad`
-  - A top-level `package_version` field is present and matches the version from Step 2
+## Step 9 — Cleanup (ask first)
 
-**Dashboard (if installed):**
-- `c:\dev\src\RadOrchestration\test-installer\ui\` exists with a `package.json`
-
-**Manifest catalog (new in MULTI-HARNESS-2):**
-
-Note: the manifest directory name uses the adapter's internal name, which differs from the `--tool` value for one harness:
-
-| `--tool` value | Manifest directory |
-|---|---|
-| `claude-code` | `installer\src\claude\manifests\` |
-| `copilot-vscode` | `installer\src\copilot-vscode\manifests\` |
-| `copilot-cli` | `installer\src\copilot-cli\manifests\` |
-
-Using the correct directory for `{harness}` from the table above:
-
-- The manifests directory exists
-- A file named `v<version>.json` (matching the version from Step 2) exists in that directory
-- Open the manifest and confirm each file entry contains a `sha256` field
-
-> Note: manifests are always generated during `npm pack` (Step 2) via the `prepack` lifecycle hook. They are guaranteed to be present after Step 2 completes.
-
----
-
-## Step 7 — Review and cleanup
-
-Report a summary of:
-- What passed
-- What failed or was missing
-- The version that was tested (from Step 2)
-
-Then use the `vscode_askQuestions` tool to ask the user whether they want to clean up the test directory and the installer tarball:
-
-> "The test directory `c:\dev\src\RadOrchestration\test-installer` has been left intact for your inspection. Would you like to delete it now, along with the installer tarball? Note: the global installation will stay installed."
-
-If the user answers **yes**, remove both:
+Ask the user whether to keep or remove the local tarball. On yes-to-remove:
 
 ```
-Remove-Item -Recurse -Force c:\dev\src\RadOrchestration\test-installer
-Remove-Item -Force c:\dev\src\RadOrchestration\installer\rad-orchestration-*.tgz
+cd {repoRoot}/installer && Remove-Item -Force {tarball}
 ```
 
-> The tarball is safe to delete — the global install extracts the package at install time and no longer references the file.
-
-Confirm deletion and report that cleanup is complete.
-
-If the user answers **no**, leave the directory intact and note its location (`c:\dev\src\RadOrchestration\test-installer`).
+Do NOT delete `~/.radorch/projects/`.

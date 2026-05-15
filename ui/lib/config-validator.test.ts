@@ -9,8 +9,6 @@ import type { OrchestrationConfig } from '@/types/config';
 function makeValidConfig(): OrchestrationConfig {
   return {
     version: '4',
-    system: { orch_root: '.github' },
-    projects: { base_path: '../orchestration-projects', naming: 'SCREAMING_CASE' },
     limits: {
       max_phases: 5,
       max_tasks_per_phase: 10,
@@ -25,7 +23,6 @@ function makeValidConfig(): OrchestrationConfig {
     source_control: {
       auto_commit: 'always',
       auto_pr: 'ask',
-      provider: 'github',
     },
   };
 }
@@ -55,61 +52,6 @@ test('valid config returns empty object', () => {
   assert.strictEqual(Object.keys(result).length, 0);
 });
 
-// --- system.orch_root ---
-
-test('system.orch_root empty string returns error', () => {
-  const cfg = makeValidConfig();
-  cfg.system.orch_root = '';
-  const result = validateConfig(cfg);
-  assert.strictEqual(result['system.orch_root'], 'Orchestration root is required');
-});
-
-test('system.orch_root whitespace-only returns error', () => {
-  const cfg = makeValidConfig();
-  cfg.system.orch_root = '   ';
-  const result = validateConfig(cfg);
-  assert.strictEqual(result['system.orch_root'], 'Orchestration root is required');
-});
-
-// --- projects.base_path ---
-
-test('projects.base_path empty string returns error', () => {
-  const cfg = makeValidConfig();
-  cfg.projects.base_path = '';
-  const result = validateConfig(cfg);
-  assert.strictEqual(result['projects.base_path'], 'Base path is required');
-});
-
-// --- projects.naming ---
-
-test('projects.naming invalid value returns error', () => {
-  const cfg = makeValidConfig();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (cfg.projects as any).naming = 'invalid';
-  const result = validateConfig(cfg);
-  assert.strictEqual(result['projects.naming'], 'Invalid naming convention');
-});
-
-test('projects.naming SCREAMING_CASE is valid', () => {
-  const cfg = makeValidConfig();
-  cfg.projects.naming = 'SCREAMING_CASE';
-  const result = validateConfig(cfg);
-  assert.strictEqual(result['projects.naming'], undefined);
-});
-
-test('projects.naming lowercase is valid', () => {
-  const cfg = makeValidConfig();
-  cfg.projects.naming = 'lowercase';
-  const result = validateConfig(cfg);
-  assert.strictEqual(result['projects.naming'], undefined);
-});
-
-test('projects.naming numbered is valid', () => {
-  const cfg = makeValidConfig();
-  cfg.projects.naming = 'numbered';
-  const result = validateConfig(cfg);
-  assert.strictEqual(result['projects.naming'], undefined);
-});
 
 // --- limits.max_phases ---
 
@@ -233,11 +175,11 @@ test('source_control.auto_pr invalid returns error', () => {
 
 test('multiple invalid fields returns all errors', () => {
   const cfg = makeValidConfig();
-  cfg.system.orch_root = '';
   cfg.limits.max_phases = 0;
+  cfg.limits.max_tasks_per_phase = -1;
   const result = validateConfig(cfg);
-  assert.strictEqual(result['system.orch_root'], 'Orchestration root is required');
   assert.strictEqual(result['limits.max_phases'], 'Must be a positive integer');
+  assert.strictEqual(result['limits.max_tasks_per_phase'], 'Must be a positive integer');
   assert.strictEqual(Object.keys(result).length, 2);
 });
 
@@ -251,23 +193,6 @@ test('does not mutate input config', () => {
 });
 
 // --- Missing sections ---
-
-test('missing system section returns section-level error', () => {
-  const cfg = makeValidConfig();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  delete (cfg as any).system;
-  const result = validateConfig(cfg);
-  assert.strictEqual(result['system'], 'Missing system section');
-  assert.strictEqual(result['system.orch_root'], undefined);
-});
-
-test('missing projects section returns section-level error', () => {
-  const cfg = makeValidConfig();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  delete (cfg as any).projects;
-  const result = validateConfig(cfg);
-  assert.strictEqual(result['projects'], 'Missing projects section');
-});
 
 test('missing limits section returns section-level error', () => {
   const cfg = makeValidConfig();
@@ -297,12 +222,25 @@ test('all sections missing returns all section-level errors', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cfg = { version: '4' } as any;
   const result = validateConfig(cfg);
-  assert.strictEqual(result['system'], 'Missing system section');
-  assert.strictEqual(result['projects'], 'Missing projects section');
   assert.strictEqual(result['limits'], 'Missing limits section');
   assert.strictEqual(result['human_gates'], 'Missing human_gates section');
   assert.strictEqual(result['source_control'], 'Missing source_control section');
-  assert.strictEqual(Object.keys(result).length, 5);
+  assert.strictEqual(Object.keys(result).length, 3);
+});
+
+// --- Retired fields pruning ---
+
+test('validator no longer requires retired fields', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const errors = validateConfig({
+    version: '1.0',
+    limits: { max_phases: 10, max_tasks_per_phase: 8, max_retries_per_task: 5, max_consecutive_review_rejections: 3 },
+    human_gates: { after_planning: true, execution_mode: 'ask', after_final_review: true },
+    source_control: { auto_commit: 'ask', auto_pr: 'ask' },
+    default_template: 'ask',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
+  assert.strictEqual(Object.keys(errors).length, 0);
 });
 
 // --- Summary ---

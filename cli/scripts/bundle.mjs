@@ -28,28 +28,24 @@ execSync('npx tsc', { cwd: cliRoot, stdio: 'inherit' });
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
 const VERSION = pkg.version;
-const PKG_INLINE = JSON.stringify({ version: VERSION });
 
-// Pattern matching `const require_ = createRequire(import.meta.url);`
-// followed by `const pkg = require_('../../package.json');` (or up to '../../../').
-// These appear in compiled output files that load the version at runtime.
-// We inline the version at bundle time so the bundle is fully self-contained.
-const CJS_PKG_PATTERN =
-  /const require_ = createRequire\(import\.meta\.url\);\s*const pkg = require_\(['"]\.\.(\/\.\.){0,2}\/package\.json['"]\)[^;]*;/g;
+// The cli source uses a runtime walk (lib/package-version.ts → getCliVersion())
+// because the post-rootDir-widening tsc output sits deeper in dist/ than before,
+// breaking the old createRequire-relative path math. At bundle time we replace
+// that walk with the inlined version so the bundle is fully self-contained.
+const PKG_VERSION_FILE_SUFFIX = path.join('dist', 'cli', 'src', 'lib', 'package-version.js');
 
-// Plugin: inline package.json version in any bundled file that uses createRequire to load it.
+// Plugin: inline cli version in the package-version module so the bundled
+// radorch.mjs never needs to fs-walk for cli/package.json at runtime.
 const inlineVersionPlugin = {
   name: 'inline-version',
   setup(b) {
-    b.onLoad({ filter: /\.js$/ }, async (loadArgs) => {
-      let src = await fs.promises.readFile(loadArgs.path, 'utf8');
-      if (CJS_PKG_PATTERN.test(src)) {
-        CJS_PKG_PATTERN.lastIndex = 0;
-        src = src
-          .replace(/import \{ createRequire \} from ['"]node:module['"];\s*/g, '')
-          .replace(CJS_PKG_PATTERN, `const pkg = ${PKG_INLINE};`);
+    b.onLoad({ filter: /package-version\.js$/ }, async (loadArgs) => {
+      if (!loadArgs.path.endsWith(PKG_VERSION_FILE_SUFFIX)) {
+        return null;
       }
-      return { contents: src, loader: 'js' };
+      const inlined = `export function getCliVersion() { return ${JSON.stringify(VERSION)}; }\n`;
+      return { contents: inlined, loader: 'js' };
     });
   },
 };
@@ -62,7 +58,7 @@ const require = __cjsRequireHelper(import.meta.url);
 `;
 
 await build({
-  entryPoints: [path.join(cliRoot, 'dist', 'bin', 'radorch.js')],
+  entryPoints: [path.join(cliRoot, 'dist', 'cli', 'src', 'bin', 'radorch.js')],
   bundle: true,
   platform: 'node',
   format: 'esm',

@@ -9,7 +9,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
-const EXCLUDED_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'out', 'coverage']);
+const EXCLUDED_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'out', 'coverage', 'prompt-tests']);
 
 function* walkSkillFiles(root) {
   const stack = [root];

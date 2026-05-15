@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
-const reqWf = readFileSync(path.join(repoRoot, '.claude/skills/rad-create-plans/references/requirements/workflow.md'), 'utf8');
-const mpWf  = readFileSync(path.join(repoRoot, '.claude/skills/rad-create-plans/references/master-plan/workflow.md'), 'utf8');
+const reqWf = readFileSync(path.join(repoRoot, 'skills/rad-create-plans/references/requirements/workflow.md'), 'utf8');
+const mpWf  = readFileSync(path.join(repoRoot, 'skills/rad-create-plans/references/master-plan/workflow.md'), 'utf8');
 for (const [label, text] of [['requirements', reqWf], ['master-plan', mpWf]]) {
   assert.match(text, /## Repository Skills Available/, `${label} workflow must reference the literal heading`);
   assert.match(text, /no Grep\/Glob hunt|no Grep\/Glob|do not Grep|absolute `path` directly/i, `${label} workflow must instruct the planner to read the absolute path directly`);

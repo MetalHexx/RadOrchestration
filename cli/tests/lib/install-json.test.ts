@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { readInstallJson, writeInstallJson } from '../../src/lib/config.js';
+import type { InstallJsonV5 } from '../../src/lib/config.js';
 import { stampLastWriter, checkVersionSkew, cmpSemver } from '../../src/lib/install-json.js';
 
 let tmp: string;
@@ -18,7 +19,7 @@ describe('install-json schema', () => {
       last_writer_version: '1.1.0',
       state_schema_version: 'v5',
     });
-    const round = await readInstallJson(file);
+    const round = await readInstallJson(file) as InstallJsonV5;
     expect(round.package_version).toBe('1.1.0');
     expect(round.last_writer_version).toBe('1.1.0');
     expect(round.state_schema_version).toBe('v5');
@@ -35,7 +36,7 @@ describe('stampLastWriter', () => {
       state_schema_version: 'v5',
     });
     await stampLastWriter(file, '1.2.0');
-    const ij = await readInstallJson(file);
+    const ij = await readInstallJson(file) as InstallJsonV5;
     expect(ij.last_writer_version).toBe('1.2.0');
   });
 });

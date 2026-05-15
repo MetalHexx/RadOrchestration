@@ -27,7 +27,7 @@ This skill bundles:
 - **`config/orchestration.yml`** — System configuration
 - **`schemas/state-v4.schema.json`** — State file JSON Schema
 - **`scripts/pipeline.js`** — Pipeline runtime entry point. All CLI arguments pass through transparently. 
-- **`scripts/migrate-to-v5.ts`** — Migration CLI
+- **`scripts/migrate-to-v5.js`** — Migration CLI
 - **`scripts/lib/`** — Pipeline engine, resolver, mutations, state I/O, validator
-- **`templates/`** — Pipeline templates for the four review-intensity tiers (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`)
+- **`templates/`** — Canonical source for the four review-intensity tier templates (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`); installed to `~/.radorch/templates/` at deploy time
 - **`references/`** — Role-specific reference documents

@@ -25,11 +25,11 @@
   ],
   "scripts": {
     "start": "node scripts/sync-source.js && node index.js",
-    "test": "node --test --experimental-test-module-mocks \"lib/**/*.test.js\" \"scripts/**/*.test.js\" \"index.test.js\"",
+    "test": "node --test --experimental-test-module-mocks \"lib/**/*.test.js\" \"scripts/**/*.test.js\" \"index.test.js\" \"legacy-render-post-install.test.js\"",
     "prepack": "node scripts/sync-source.js"
   },
   "bin": {
-    "radorch": "./index.js"
+    "radorch-installer": "./index.js"
   },
   "files": [
     "index.js",

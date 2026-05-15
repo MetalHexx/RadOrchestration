@@ -58,7 +58,7 @@ If the user offers documentation that could help with planning, offer to link it
 |-------|--------|
 | Conversation context | User dialogue — ideas, problems, goals |
 | Project name | User-provided, `SCREAMING-CASE` |
-| Base path | `orchestration.yml` → `projects.base_path` |
+| Base path | `~/.radorch/projects` |
 
 ## Core Principles
 

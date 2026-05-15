@@ -2,8 +2,8 @@
  * Tests for PUT /api/config handler in route.ts.
  * Run with: npx tsx ui/app/api/config/route.test.ts
  *
- * Integration-style tests: creates a temp workspace directory with a real
- * orchestration.yml, sets WORKSPACE_ROOT to the temp dir, then exercises the
+ * Integration-style tests: creates a temp radorch home directory with a real
+ * orchestration.yml, stubs os.homedir to the temp dir, then exercises the
  * GET and PUT route handlers via Request/Response objects.
  */
 import assert from 'node:assert';
@@ -18,8 +18,6 @@ import type { OrchestrationConfig } from '@/types/config';
 
 const VALID_CONFIG: OrchestrationConfig = {
   version: '4',
-  system: { orch_root: '.github' },
-  projects: { base_path: '../orchestration-projects', naming: 'SCREAMING_CASE' },
   limits: {
     max_phases: 5,
     max_tasks_per_phase: 10,
@@ -34,16 +32,10 @@ const VALID_CONFIG: OrchestrationConfig = {
   source_control: {
     auto_commit: 'always',
     auto_pr: 'ask',
-    provider: 'github',
   },
 };
 
 const VALID_YAML = `version: "4"
-system:
-  orch_root: .github
-projects:
-  base_path: ../orchestration-projects
-  naming: SCREAMING_CASE
 limits:
   max_phases: 5
   max_tasks_per_phase: 10
@@ -56,7 +48,6 @@ human_gates:
 source_control:
   auto_commit: always
   auto_pr: ask
-  provider: github
 `;
 
 /* ------------------------------------------------------------------ */
@@ -64,20 +55,20 @@ source_control:
 /* ------------------------------------------------------------------ */
 
 let tmpDir: string;
+let origHomedir: typeof os.homedir;
 
-/** Create a temp workspace with orchestration.yml populated */
+/** Create a temp radorch home with orchestration.yml populated */
 async function setupWorkspace(yamlContent: string = VALID_YAML): Promise<void> {
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'route-test-'));
-  // getConfigPath uses: {root}/{ORCH_ROOT || .claude}/skills/rad-orchestration/config/orchestration.yml
-  const configDir = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config');
-  await mkdir(configDir, { recursive: true });
-  await fsWriteFile(path.join(configDir, 'orchestration.yml'), yamlContent, 'utf-8');
-  process.env.WORKSPACE_ROOT = tmpDir;
-  // Ensure ORCH_ROOT is unset so it defaults to '.claude'
-  delete process.env.ORCH_ROOT;
+  const radorcDir = path.join(tmpDir, '.radorch');
+  await mkdir(radorcDir, { recursive: true });
+  await fsWriteFile(path.join(radorcDir, 'orchestration.yml'), yamlContent, 'utf-8');
+  origHomedir = os.homedir;
+  (os as unknown as { homedir: () => string }).homedir = () => tmpDir;
 }
 
 async function teardownWorkspace(): Promise<void> {
+  (os as unknown as { homedir: typeof os.homedir }).homedir = origHomedir;
   if (tmpDir) {
     await rm(tmpDir, { recursive: true, force: true });
   }
@@ -246,22 +237,22 @@ async function run() {
   assert.deepStrictEqual(json.config.source_control, VALID_CONFIG.source_control);
 
   // Verify the file was actually written on disk
-  const configPath = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
+  const configPath = path.join(tmpDir, '.radorch', 'orchestration.yml');
   const onDisk = await readFile(configPath, 'utf-8');
   assert.ok(onDisk.includes('max_phases: 5'), 'Written file should contain max_phases: 5');
 });
 
   // --- File-system error (write to non-existent dir) ---
   await test('non-writable config returns 403', async () => {
-  // Point to a workspace that doesn't have the config dir
-  const badDir = await mkdtemp(path.join(os.tmpdir(), 'route-test-bad-'));
-  process.env.WORKSPACE_ROOT = badDir;
+  // Point os.homedir to a dir that doesn't exist → orchestration.yml's parent dir is missing
+  const badDir = path.join(os.tmpdir(), 'route-test-bad-nonexistent-' + Date.now());
+  (os as unknown as { homedir: () => string }).homedir = () => badDir;
   const req = makePutRequest({ mode: 'form', config: VALID_CONFIG });
   const res = await PUT(req);
+  (os as unknown as { homedir: () => string }).homedir = () => tmpDir; // restore
   assert.strictEqual(res.status, 403);
   const json = await res.json();
   assert.ok(json.error.includes('not writable'), `Expected writable error: ${json.error}`);
-  await rm(badDir, { recursive: true, force: true });
 });
 
   // --- GET handler still works ---

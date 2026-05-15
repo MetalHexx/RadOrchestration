@@ -38,18 +38,15 @@ Final:     Comprehensive Review → PR Creation (if auto_pr) → Human Approval 
 5. **Documents are the interface** — agents communicate through structured markdown files, never through shared state or memory.
 6. **PR creation is non-blocking** — when `auto_pr === 'always'`, the pipeline creates a GitHub PR after the comprehensive review and before the human gate. If PR creation fails, the human gate fires without a PR URL. PR failure never blocks the pipeline.
 
-> **Note:** `{orch_root}` is your orchestration root folder — `.claude` by default. Set via `system.orch_root` in `orchestration.yml`. See [Configuration](docs/configuration.md).
-
 ## Configuration
 
-System configuration lives in `{orch_root}/skills/rad-orchestration/config/orchestration.yml`. It controls:
-- Project storage paths (`projects.base_path`)
+System configuration lives in `~/.radorch/orchestration.yml`. It controls:
 - Pipeline limits (max phases, tasks, retries)
 - Human gate defaults
 
 ## Project Files
 
-Project artifacts are stored in a configurable location set by `orchestration.yml` → `projects.base_path` (supports both relative and absolute paths). Each project gets a subfolder: `{base_path}/{PROJECT-NAME}/`.
+Project artifacts are stored at `~/.radorch/projects/{PROJECT-NAME}/`.
 
 Contents:
 - Brainstorming: `BRAINSTORMING.md` (optional, created by `@brainstormer`)
@@ -61,5 +58,5 @@ Contents:
 ## Naming Conventions
 
 - **Project files**: `SCREAMING-CASE` with project prefix — `MYAPP-MASTER-PLAN.md`, `MYAPP-TASK-P01-T03-AUTH.md`. See [document-conventions.md](document-conventions.md) for the full set of filename patterns, placement rules, and frontmatter field values.
-- **Skills**: lowercase with hyphens — `{orch_root}/skills/rad-create-plans/`
-- **Agents**: lowercase with hyphens — `{orch_root}/agents/planner.md`
+- **Skills**: lowercase with hyphens (e.g. `rad-create-plans`). The orchestrator resolves skills by name; physical placement varies by install path (harness folders for the legacy installer, plugin folder for the Claude plugin).
+- **Agents**: lowercase with hyphens (e.g. `planner`). Resolved by name; same placement note as skills.

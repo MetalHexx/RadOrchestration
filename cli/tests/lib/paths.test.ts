@@ -4,12 +4,8 @@ import path from 'node:path';
 import { resolveInstallRoot, installPaths } from '../../src/lib/paths.js';
 
 describe('resolveInstallRoot', () => {
-  it('returns $RADORCH_HOME when set', () => {
-    const root = resolveInstallRoot({ RADORCH_HOME: '/tmp/rad-x' });
-    expect(root).toBe('/tmp/rad-x');
-  });
-  it('falls back to ~/.radorch when unset', () => {
-    const root = resolveInstallRoot({});
+  it('returns ~/.radorch', () => {
+    const root = resolveInstallRoot();
     expect(root).toBe(path.join(os.homedir(), '.radorch'));
   });
 });

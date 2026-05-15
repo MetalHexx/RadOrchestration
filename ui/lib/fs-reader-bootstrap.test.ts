@@ -1,5 +1,5 @@
 /**
- * Tests for readConfig() ORCH_ROOT bootstrap and resolveOrchRoot().
+ * Tests for readConfig() and resolveOrchRoot().
  * Run with: npx tsx ui/lib/fs-reader-bootstrap.test.ts
  */
 import assert from 'node:assert';
@@ -13,9 +13,6 @@ let passed = 0;
 let failed = 0;
 
 const MINIMAL_CONFIG_YAML = `version: "1"
-projects:
-  base_path: "../orchestration-projects"
-  naming: SCREAMING_CASE
 limits:
   max_phases: 10
   max_tasks_per_phase: 20
@@ -28,7 +25,6 @@ human_gates:
 source_control:
   auto_commit: always
   auto_pr: never
-  provider: github
 `;
 
 
@@ -50,78 +46,60 @@ async function run() {
   try {
     tmpDir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-bootstrap-test-'));
 
-    // ── readConfig() bootstrap tests ──────────────────────────────────────
+    // ── readConfig() tests ────────────────────────────────────────────────
 
-    console.log('\nreadConfig() — ORCH_ROOT bootstrap');
+    console.log('\nreadConfig() — reads from ~/.radorch/orchestration.yml');
 
-    await test('uses .claude when ORCH_ROOT is not set', async () => {
-      const configDir = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config');
-      await mkdir(configDir, { recursive: true });
-      await writeFile(path.join(configDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
+    await test('reads config from ~/.radorch/orchestration.yml', async () => {
+      const radorcDir = path.join(tmpDir, '.radorch');
+      await mkdir(radorcDir, { recursive: true });
+      await writeFile(path.join(radorcDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
 
-      delete process.env.ORCH_ROOT;
-      const config = await readConfig(tmpDir);
-      assert.strictEqual(config.version, '1');
+      const origHomedir = os.homedir;
+      (os as unknown as { homedir: () => string }).homedir = () => tmpDir;
+      try {
+        const config = await readConfig();
+        assert.strictEqual(config.version, '1');
+      } finally {
+        (os as unknown as { homedir: () => string }).homedir = origHomedir;
+      }
     });
 
-    await test('uses .agents when ORCH_ROOT=.agents', async () => {
-      const configDir = path.join(tmpDir, '.agents', 'skills', 'rad-orchestration', 'config');
-      await mkdir(configDir, { recursive: true });
-      await writeFile(path.join(configDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
-
-      process.env.ORCH_ROOT = '.agents';
-      const config = await readConfig(tmpDir);
-      assert.strictEqual(config.version, '1');
-      delete process.env.ORCH_ROOT;
+    await test('throws when orchestration.yml does not exist', async () => {
+      const fakeHome = path.join(tmpDir, 'nonexistent-home');
+      const origHomedir = os.homedir;
+      (os as unknown as { homedir: () => string }).homedir = () => fakeHome;
+      try {
+        await assert.rejects(
+          () => readConfig(),
+          (err: unknown) => err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT'
+        );
+      } finally {
+        (os as unknown as { homedir: () => string }).homedir = origHomedir;
+      }
     });
 
-    await test('constructs path using ORCH_ROOT value', async () => {
-      const configDir = path.join(tmpDir, '.copilot', 'skills', 'rad-orchestration', 'config');
-      await mkdir(configDir, { recursive: true });
-      await writeFile(path.join(configDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
-
-      process.env.ORCH_ROOT = '.copilot';
-      const config = await readConfig(tmpDir);
-      assert.strictEqual(config.version, '1');
-      delete process.env.ORCH_ROOT;
-    });
-
-    // ── resolveOrchRoot() tests ────────────────────────────────────────────
+    // ── resolveOrchRoot() tests ────────────────────────────────────────────────
 
     console.log('\nresolveOrchRoot()');
 
-    await test('returns system.orch_root when set', async () => {
+    await test('returns .claude as the orchestration root', async () => {
       const config: OrchestrationConfig = {
         version: '1',
-        system: { orch_root: '.agents' },
-        projects: { base_path: '../projects', naming: 'SCREAMING_CASE' },
         limits: { max_phases: 10, max_tasks_per_phase: 20, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
         human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
-        source_control: { auto_commit: 'always', auto_pr: 'never', provider: 'github' },
+        source_control: { auto_commit: 'always', auto_pr: 'never' },
       };
-      assert.strictEqual(resolveOrchRoot(config), '.agents');
-    });
-
-    await test('returns .claude when system.orch_root is undefined', async () => {
-      const config = {
-        version: '1',
-        system: {},
-        projects: { base_path: '../projects', naming: 'SCREAMING_CASE' },
-        limits: { max_phases: 10, max_tasks_per_phase: 20, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
-        human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
-        source_control: { auto_commit: 'always', auto_pr: 'never', provider: 'github' },
-      } as OrchestrationConfig;
       assert.strictEqual(resolveOrchRoot(config), '.claude');
     });
 
-    await test('returns .claude when system property is absent', async () => {
-      const config = {
+    await test('returns .claude consistently regardless of input config shape', async () => {
+      const config: OrchestrationConfig = {
         version: '1',
-        projects: { base_path: '../projects', naming: 'SCREAMING_CASE' },
         limits: { max_phases: 10, max_tasks_per_phase: 20, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
         human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true },
-        source_control: { auto_commit: 'always', auto_pr: 'never', provider: 'github' },
-      } as OrchestrationConfig;
+        source_control: { auto_commit: 'always', auto_pr: 'never' },
+      };
       assert.strictEqual(resolveOrchRoot(config), '.claude');
     });
 

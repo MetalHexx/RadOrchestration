@@ -14,13 +14,19 @@ import type {
   ConditionalNodeState,
   ForEachPhaseNodeState,
   ForEachTaskNodeState,
+  PathContext,
 } from '../lib/types.js';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = '/tmp/test-project/CORRECTIVE-INTEGRATION';
-const ORCH_ROOT = path.resolve(__dirname, '../../../..');
+
+const SCRIPTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const TEST_PATH_CONTEXT: PathContext = {
+  scriptsDir: SCRIPTS_DIR,
+  templatesDir: path.resolve(SCRIPTS_DIR, '..', 'templates'),
+  orchRoot: path.resolve(SCRIPTS_DIR, '..', '..', '..'),
+};
 
 function makeConfig(overrides: {
   execution_mode?: string;
@@ -31,8 +37,6 @@ function makeConfig(overrides: {
   max_retries_per_task?: number;
 } = {}): OrchestrationConfig {
   return {
-    system: { orch_root: ORCH_ROOT },
-    projects: { base_path: '', naming: 'SCREAMING_CASE' },
     limits: {
       max_phases: 10,
       max_tasks_per_phase: 8,
@@ -47,7 +51,6 @@ function makeConfig(overrides: {
     source_control: {
       auto_commit: overrides.auto_commit ?? 'always',
       auto_pr: overrides.auto_pr ?? 'always',
-      provider: 'github',
     },
     default_template: 'extra-high',
   };
@@ -179,20 +182,20 @@ function seedExplosionState(io: MockIO, phaseTasks: Array<typeof TASKS_FIXTURE>)
  */
 function drivePlanningTier(io: MockIO): PipelineResult {
   // Init scaffold
-  processEvent('start', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
   // requirements → master_plan → explode_master_plan (extra-high planning sequence)
-  processEvent('requirements_started', PROJECT_DIR, {}, io);
+  processEvent('requirements_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
   const reqsDoc = path.join(PROJECT_DIR, 'docs', 'requirements.md');
   seedDoc(reqsDoc, { requirement_count: 5 });
-  processEvent('requirements_completed', PROJECT_DIR, { doc_path: reqsDoc }, io);
+  processEvent('requirements_completed', PROJECT_DIR, { doc_path: reqsDoc }, io, TEST_PATH_CONTEXT);
 
-  processEvent('master_plan_started', PROJECT_DIR, {}, io);
+  processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
   seedDoc(DOC_PATHS.masterPlan, { total_phases: 2, total_tasks: 4 });
-  processEvent('master_plan_completed', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+  processEvent('master_plan_completed', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io, TEST_PATH_CONTEXT);
 
-  processEvent('explosion_started', PROJECT_DIR, {}, io);
-  processEvent('explosion_completed', PROJECT_DIR, {}, io);
+  processEvent('explosion_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
+  processEvent('explosion_completed', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
   // Seed explosion state BEFORE plan_approved so the walker's first pass
   // after plan_approved advances through phase_loop in a single walk.
@@ -203,11 +206,11 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   // crashing (pipeline.source_control would be null otherwise).
   initSourceControlForTests(io, io.readConfig());
 
-  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io, TEST_PATH_CONTEXT);
 
   return result.action === 'ask_gate_mode'
     ? result
-    : processEvent('start', PROJECT_DIR, {}, io);
+    : processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 }
 
 /**
@@ -217,10 +220,10 @@ function drivePlanningTier(io: MockIO): PipelineResult {
 function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
   const ctx = { phase, task };
 
-  processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('task_completed', PROJECT_DIR, ctx, io);
+  processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+  processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
 
-  processEvent('code_review_started', PROJECT_DIR, ctx, io);
+  processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
 
   const reviewDoc = DOC_PATHS.codeReview(phase, task);
   seedDoc(reviewDoc);
@@ -228,17 +231,17 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
     ...ctx,
     doc_path: reviewDoc,
     verdict: 'approved',
-  }, io);
+  }, io, TEST_PATH_CONTEXT);
 
   // If commit conditional fires, drive commit events at task scope
   if (result.action === 'invoke_source_control_commit') {
-    processEvent('commit_started', PROJECT_DIR, ctx, io);
-    result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
+    processEvent('commit_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    result = processEvent('commit_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   }
 
   // If task gate fires, approve it to continue
   if (result.action === 'gate_task') {
-    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   }
 
   return result;
@@ -283,10 +286,10 @@ function driveTaskWithVerdict(
 ): PipelineResult {
   const ctx = { phase, task };
 
-  processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('task_completed', PROJECT_DIR, ctx, io);
+  processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+  processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
 
-  processEvent('code_review_started', PROJECT_DIR, ctx, io);
+  processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
 
   const reviewDoc = DOC_PATHS.codeReview(phase, task);
   const correctiveHandoffPath = verdict === 'changes_requested'
@@ -300,7 +303,7 @@ function driveTaskWithVerdict(
     ...ctx,
     doc_path: reviewDoc,
     ...reviewFrontmatter,
-  } as Record<string, unknown>, io);
+  } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 }
 
 /**
@@ -319,10 +322,10 @@ function driveCorrectiveTask(
 ): PipelineResult {
   const ctx = { phase, task };
 
-  processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('task_completed', PROJECT_DIR, ctx, io);
+  processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+  processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
 
-  processEvent('code_review_started', PROJECT_DIR, ctx, io);
+  processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
 
   const reviewDoc = DOC_PATHS.codeReview(phase, task);
   // On `changes_requested`, the next corrective index is (corrective + 1)
@@ -339,17 +342,17 @@ function driveCorrectiveTask(
     ...ctx,
     doc_path: reviewDoc,
     ...reviewFrontmatter,
-  } as Record<string, unknown>, io);
+  } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
   // If commit conditional fires, drive commit events at task scope
   if (result.action === 'invoke_source_control_commit') {
-    processEvent('commit_started', PROJECT_DIR, ctx, io);
-    result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
+    processEvent('commit_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    result = processEvent('commit_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   }
 
   // If task gate fires (verdict='approve' path), approve it to continue
   if (result.action === 'gate_task') {
-    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   }
 
   return result;
@@ -363,7 +366,7 @@ function driveCorrectiveTask(
 function drivePhasePostTasks(io: MockIO, phase: number): PipelineResult {
   const ctx = { phase };
 
-  processEvent('phase_review_started', PROJECT_DIR, ctx, io);
+  processEvent('phase_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   const reviewDoc = DOC_PATHS.phaseReview(phase);
   seedDoc(reviewDoc);
   let reviewResult = processEvent('phase_review_completed', PROJECT_DIR, {
@@ -371,11 +374,11 @@ function drivePhasePostTasks(io: MockIO, phase: number): PipelineResult {
     doc_path: reviewDoc,
     verdict: 'approved',
     exit_criteria_met: true,
-  }, io);
+  }, io, TEST_PATH_CONTEXT);
 
   // If phase gate fires, approve it to continue
   if (reviewResult.action === 'gate_phase') {
-    reviewResult = processEvent('phase_gate_approved', PROJECT_DIR, ctx, io);
+    reviewResult = processEvent('phase_gate_approved', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   }
 
   return reviewResult;
@@ -391,7 +394,7 @@ function drivePhasePostTasksWithVerdict(
 ): PipelineResult {
   const ctx = { phase };
 
-  processEvent('phase_review_started', PROJECT_DIR, ctx, io);
+  processEvent('phase_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   const reviewDoc = DOC_PATHS.phaseReview(phase);
   seedDoc(reviewDoc);
   return processEvent('phase_review_completed', PROJECT_DIR, {
@@ -399,7 +402,7 @@ function drivePhasePostTasksWithVerdict(
     doc_path: reviewDoc,
     verdict,
     exit_criteria_met: true,
-  }, io);
+  }, io, TEST_PATH_CONTEXT);
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -478,6 +481,7 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
       state: io.currentState!,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
 
     // ── Drive original through code_review with changes_requested → births C1 ──
@@ -491,6 +495,7 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
       state: io.currentState!,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
 
     // ── Identical key set — same execution path, no mode branching ──
@@ -544,6 +549,7 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
         state: io.currentState!,
         config,
         cliContext: {},
+        scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
       });
       expect(enrichedExec.handoff_doc).toBe(DOC_PATHS.correctiveHandoff(1, 1, 1));
       // spawn_code_reviewer enrichment exposes corrective_index for round 1
@@ -553,6 +559,7 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
         state: io.currentState!,
         config,
         cliContext: {},
+        scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
       });
       expect(enrichedReviewer.is_correction).toBe(true);
       expect(enrichedReviewer.corrective_index).toBe(1);
@@ -591,6 +598,7 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
         state: io.currentState!,
         config,
         cliContext: {},
+        scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
       });
       expect(enrichedExec.handoff_doc).toBe(DOC_PATHS.correctiveHandoff(1, 1, 2));
       const enrichedReviewer = enrichActionContext({
@@ -599,6 +607,7 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
         state: io.currentState!,
         config,
         cliContext: {},
+        scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
       });
       expect(enrichedReviewer.is_correction).toBe(true);
       expect(enrichedReviewer.corrective_index).toBe(2);
@@ -689,9 +698,9 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
     // corrective_handoff_path — simulating the orchestrator following the
     // playbook's budget-exhaustion protocol.
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
 
     const reviewDoc = DOC_PATHS.codeReview(1, 1);
     const reviewFrontmatter = {
@@ -705,7 +714,7 @@ describe('Corrective-tier integration — task-level corrective loops', () => {
       ...ctx,
       doc_path: reviewDoc,
       ...reviewFrontmatter,
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_halted');
@@ -773,7 +782,7 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
     handoffPath?: string,
   ): PipelineResult {
     const ctx = { phase };
-    processEvent('phase_review_started', PROJECT_DIR, ctx, io);
+    processEvent('phase_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     const reviewDoc = DOC_PATHS.phaseReview(phase);
     const frontmatter: Record<string, unknown> = {
       verdict: 'changes_requested',
@@ -789,7 +798,7 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
       ...ctx,
       doc_path: reviewDoc,
       ...frontmatter,
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
   }
 
   /**
@@ -809,9 +818,9 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
     // for resolution; the engine's `task_id` sentinel is `{phase_id}-PHASE`).
     const ctx = { phase, task: 1 };
 
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
 
     const reviewDoc = phaseCorrectiveCodeReview(phase, corrective);
     const fm: Record<string, unknown> = { verdict: reviewVerdict };
@@ -826,15 +835,15 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
       ...ctx,
       doc_path: reviewDoc,
       ...fm,
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     // Commit conditional / task gate approvals (autonomous mode auto-approves).
     if (result.action === 'invoke_source_control_commit') {
-      processEvent('commit_started', PROJECT_DIR, ctx, io);
-      result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
+      processEvent('commit_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+      result = processEvent('commit_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     }
     if (result.action === 'gate_task') {
-      result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+      result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     }
     return result;
   }
@@ -890,6 +899,7 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
         state: io.currentState!,
         config: makeConfig(),
         cliContext: {},
+        scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
       });
       expect(enrichedExec.handoff_doc).toBe(handoffPath);
       // task_number → null, task_id → P01-PHASE sentinel.
@@ -962,6 +972,7 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
         state: io.currentState!,
         config,
         cliContext: {},
+        scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
       });
       expect(enrichedExec.handoff_doc).toBe(h2);
       const enrichedReviewer = enrichActionContext({
@@ -970,6 +981,7 @@ describe('Corrective-tier integration — phase-level corrective loops', () => {
         state: io.currentState!,
         config,
         cliContext: {},
+        scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
       });
       expect(enrichedReviewer.is_correction).toBe(true);
       expect(enrichedReviewer.corrective_index).toBe(2);
@@ -1073,7 +1085,7 @@ describe('Corrective-tier integration — validator enforcement', () => {
     // Fire a subsequent event — mutation sets phase_review to in_progress,
     // validator sees completed phase_loop with in_progress child → rejects.
     // (Post-Iter 8: phase_review_started is the first post-task-loop _started event.)
-    const result = processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    const result = processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
 
     // No state write should have occurred

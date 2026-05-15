@@ -1,163 +1,90 @@
 // installer/lib/wizard.js — Interactive wizard orchestrator
+//
+// Surface order per DD-2:
+//   1. Harness multi-select (claude / copilot-vscode / copilot-cli),
+//      pre-checking entries auto-detected under the user's home directory.
+//   2. Return canonical defaults unconditionally (FR-15, FR-16).
 
+import os from 'node:os';
 import path from 'node:path';
-import { THEME, sectionHeader } from './theme.js';
-import { promptGettingStarted } from './prompts/getting-started.js';
-import { promptOrchRoot, HARNESS_DEFAULTS } from './prompts/orch-root.js';
-import { promptProjectStorage } from './prompts/project-storage.js';
-import { promptPipelineLimits } from './prompts/pipeline-limits.js';
-import { promptGateBehavior } from './prompts/gate-behavior.js';
-import { promptSourceControl } from './prompts/source-control.js';
-import { promptUiInstall } from './prompts/ui-install.js';
+import fs from 'node:fs';
+import { checkbox } from '@inquirer/prompts';
+import { INQUIRER_THEME, THEME, sectionHeader } from './theme.js';
 
 /**
- * Default values for each prompt section, used when --yes fills in unspecified CLI options.
- * @type {import('./types.js').InstallerConfig}
+ * Canonical defaults applied unconditionally by the wizard (FR-16).
  */
-const DEFAULTS = {
-  tool: 'claude-code',
-  workspaceDir: process.cwd(),
-  orchRoot: '.claude',
-  projectsBasePath: 'orchestration-projects',
-  projectsNaming: 'SCREAMING_CASE',
+const CANONICAL = {
+  defaultTemplate: 'ask',
   maxPhases: 10,
   maxTasksPerPhase: 8,
   maxRetriesPerTask: 5,
   maxConsecutiveReviewRejections: 3,
-  executionMode: 'ask',
-  autoCommit: 'ask',
-  autoPr: 'ask',
-  provider: 'github',
-  installUi: true,
-  skipConfirmation: false,
+  humanGates: { afterPlanning: true, executionMode: 'ask', afterFinalReview: true },
+  sourceControl: { autoCommit: 'ask', autoPr: 'ask' },
 };
 
+const HARNESS_CHOICES = [
+  { value: 'claude',         name: 'Claude Code' },
+  { value: 'copilot-vscode', name: 'GitHub Copilot (VS Code)' },
+  { value: 'copilot-cli',    name: 'GitHub Copilot CLI' },
+];
+
 /**
- * Runs the wizard prompt sequence. When cliOverrides are provided and
- * skipConfirmation is true, prompts are skipped for sections whose values
- * are fully covered by the overrides + defaults.
+ * Probes the user's home directory for harness install hints.
+ * Currently checks `~/.claude` and `~/.copilot`.
+ * @returns {string[]} subset of HARNESS_CHOICES values that look present
+ */
+export function detectInstalledHarnesses() {
+  const home = os.homedir();
+  const out = [];
+  if (fs.existsSync(path.join(home, '.claude'))) out.push('claude');
+  if (fs.existsSync(path.join(home, '.copilot'))) {
+    // `.copilot` is the shared Copilot config root; surface both VS Code
+    // and CLI as detected so the user can multi-select what's actually used.
+    out.push('copilot-vscode');
+    out.push('copilot-cli');
+  }
+  return out;
+}
+
+/**
+ * Runs the wizard prompt sequence.
+ *
+ * Asks exactly the harness-checkbox question and returns the canonical defaults.
+ * The Quick/Custom branch and all ten preference prompts are retired (FR-15, FR-20).
  *
  * @param {Object} options
- * @param {boolean} options.skipConfirmation - Whether to skip interactive prompts
- * @param {Partial<import('./types.js').CliOptions>} [options.cliOverrides] - CLI-provided values
- * @returns {Promise<import('./types.js').InstallerConfig>}
+ * @param {boolean} options.skipConfirmation - Whether to skip interactive prompts where possible
+ * @param {Partial<Record<string, any>>} [options.cliOverrides] - CLI-provided values
+ * @returns {Promise<Object>} The resolved config object with canonical defaults
  */
 export async function runWizard({ skipConfirmation, cliOverrides = {} }) {
-  const has = (/** @type {string} */ key) => cliOverrides[key] !== undefined;
-  const useDefaults = skipConfirmation; // --yes means use defaults for unspecified values
-
-  // ── Getting Started ──────────────────────────────────────────────────────
-  let gettingStarted;
-  if (useDefaults || (has('tool') && has('workspaceDir'))) {
-    gettingStarted = {
-      tool: cliOverrides.tool ?? DEFAULTS.tool,
-      workspaceDir: cliOverrides.workspaceDir ?? DEFAULTS.workspaceDir,
-    };
+  // DD-2: surface order — harness selection first, then return canonical defaults.
+  let harnesses;
+  if (cliOverrides.harnesses !== undefined) {
+    harnesses = cliOverrides.harnesses;
+  } else if (skipConfirmation) {
+    const detected = detectInstalledHarnesses();
+    harnesses = detected.length > 0 ? detected : ['claude'];
   } else {
     console.log('');
-    sectionHeader('::', 'Getting Started');
+    sectionHeader('::', 'Harnesses');
     console.log('');
-    gettingStarted = await promptGettingStarted();
-  }
-
-  // ── Orchestration Root ───────────────────────────────────────────────────
-  // Default folder follows the resolved tool: copilot-* lands in `.github/`,
-  // claude-code in `.claude/`. Without this, `--yes --tool copilot-vscode`
-  // would write Copilot bundles into `.claude/`.
-  const harnessDefaultOrchRoot = HARNESS_DEFAULTS[gettingStarted.tool] ?? DEFAULTS.orchRoot;
-  let orchRoot;
-  if (useDefaults || has('orchRoot')) {
-    orchRoot = { orchRoot: cliOverrides.orchRoot ?? harnessDefaultOrchRoot };
-  } else {
+    console.log(THEME.hint('  Which harnesses do you want radorch installed into?'));
     console.log('');
-    sectionHeader('::', 'Orchestration Root');
-    console.log('');
-    console.log(THEME.hint('  Folder where agents, skills, and prompts are installed. Relative to workspace or absolute.'));
-    console.log('');
-    orchRoot = await promptOrchRoot({ tool: gettingStarted.tool });
-  }
-
-  // ── Project Storage ──────────────────────────────────────────────────────
-  let projectStorage;
-  if (useDefaults || (has('projectsBasePath') && has('projectsNaming'))) {
-    projectStorage = {
-      projectsBasePath: cliOverrides.projectsBasePath ?? DEFAULTS.projectsBasePath,
-      projectsNaming: cliOverrides.projectsNaming ?? DEFAULTS.projectsNaming,
-    };
-  } else {
-    console.log('');
-    sectionHeader('::', 'Project Storage');
-    console.log('');
-    console.log(THEME.hint('  Folder for project files (PRDs, plans, reports). Relative to workspace or absolute.'));
-    console.log('');
-    projectStorage = await promptProjectStorage();
-  }
-
-  // ── Pipeline Limits ──────────────────────────────────────────────────────
-  let pipelineLimits;
-  if (useDefaults || (has('maxPhases') && has('maxTasksPerPhase') && has('maxRetriesPerTask') && has('maxConsecutiveReviewRejections'))) {
-    pipelineLimits = {
-      maxPhases: cliOverrides.maxPhases ?? DEFAULTS.maxPhases,
-      maxTasksPerPhase: cliOverrides.maxTasksPerPhase ?? DEFAULTS.maxTasksPerPhase,
-      maxRetriesPerTask: cliOverrides.maxRetriesPerTask ?? DEFAULTS.maxRetriesPerTask,
-      maxConsecutiveReviewRejections: cliOverrides.maxConsecutiveReviewRejections ?? DEFAULTS.maxConsecutiveReviewRejections,
-    };
-  } else {
-    console.log('');
-    sectionHeader('::', 'Pipeline Limits');
-    console.log('');
-    pipelineLimits = await promptPipelineLimits();
-  }
-
-  // ── Gate Behavior ────────────────────────────────────────────────────────
-  let gateBehavior;
-  if (useDefaults || has('executionMode')) {
-    gateBehavior = { executionMode: cliOverrides.executionMode ?? DEFAULTS.executionMode };
-  } else {
-    console.log('');
-    sectionHeader('::', 'Gate Behavior');
-    console.log('');
-    gateBehavior = await promptGateBehavior();
-  }
-
-  // ── Source Control ───────────────────────────────────────────────────────
-  let sourceControl;
-  if (useDefaults || (has('autoCommit') && has('autoPr'))) {
-    sourceControl = {
-      autoCommit: cliOverrides.autoCommit ?? DEFAULTS.autoCommit,
-      autoPr: cliOverrides.autoPr ?? DEFAULTS.autoPr,
-      provider: DEFAULTS.provider,
-    };
-  } else {
-    console.log('');
-    sectionHeader('::', 'Source Control');
-    console.log('');
-    sourceControl = await promptSourceControl();
-  }
-
-  // ── Dashboard UI ─────────────────────────────────────────────────────────
-  let uiInstall;
-  if (useDefaults || has('installUi')) {
-    const installUi = cliOverrides.installUi ?? DEFAULTS.installUi;
-    uiInstall = { installUi };
-    if (installUi) {
-      uiInstall.uiDir = cliOverrides.uiDir ?? path.join(gettingStarted.workspaceDir, 'ui');
-    }
-  } else {
-    console.log('');
-    sectionHeader('::', 'Dashboard UI');
-    console.log('');
-    uiInstall = await promptUiInstall(gettingStarted.workspaceDir);
+    const detected = new Set(detectInstalledHarnesses());
+    harnesses = await checkbox({
+      message: 'Which harnesses do you want radorch installed into?',
+      theme: INQUIRER_THEME,
+      choices: HARNESS_CHOICES.map((c) => ({ ...c, checked: detected.has(c.value) })),
+      validate: (s) => s.length > 0 || 'Select at least one harness.',
+    });
   }
 
   return {
-    ...gettingStarted,
-    ...orchRoot,
-    ...projectStorage,
-    ...pipelineLimits,
-    ...gateBehavior,
-    ...sourceControl,
-    ...uiInstall,
+    harnesses,
+    ...JSON.parse(JSON.stringify(CANONICAL)), // structural deep-clone
     skipConfirmation,
   };
 }

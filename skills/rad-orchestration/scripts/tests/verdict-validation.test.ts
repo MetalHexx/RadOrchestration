@@ -12,6 +12,7 @@ import {
   driveToReviewTier,
   codeReviewDoc,
   phaseReviewDoc,
+  TEST_PATH_CONTEXT,
 } from './fixtures/parity-states.js';
 
 // ── Clear DOC_STORE between tests ─────────────────────────────────────────────
@@ -44,9 +45,9 @@ const config = createConfig({
 
 function driveToCodeReview(io: ReturnType<typeof createMockIOWithConfig>): void {
   const ctx = { phase: 1, task: 1 };
-  processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('task_completed', PROJECT_DIR, ctx, io);
-  processEvent('code_review_started', PROJECT_DIR, ctx, io);
+  processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+  processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+  processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   seedDoc(codeReviewDoc(1, 1));
 }
 
@@ -59,9 +60,9 @@ function driveToPhaseReview(io: ReturnType<typeof createMockIOWithConfig>): void
     ...ctx,
     doc_path: codeReviewDoc(1, 1),
     verdict: 'approved',
-  }, io);
+  }, io, TEST_PATH_CONTEXT);
 
-  processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+  processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
   seedDoc(phaseReviewDoc(1), { exit_criteria_met: true });
 }
 
@@ -80,7 +81,7 @@ function driveToFinalReview(): ReturnType<typeof createMockIOWithConfig> {
     },
   });
   const io = driveToReviewTier(reviewConfig);
-  processEvent('final_review_started', PROJECT_DIR, {}, io);
+  processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
   return io;
 }
 
@@ -100,7 +101,7 @@ describe('code_review_completed — verdict validation', () => {
       task: 1,
       doc_path: codeReviewDoc(1, 1),
       verdict: 'approvd',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(false);
     expect(result.error?.field).toBe('verdict');
@@ -119,7 +120,7 @@ describe('code_review_completed — verdict validation', () => {
       task: 1,
       doc_path: codeReviewDoc(1, 1),
       verdict: 'approvd',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     // Old contract: action would be `display_halted` (mutation halted with
     // unknown-verdict reason). New contract: validator rejects upfront so the
@@ -137,7 +138,7 @@ describe('code_review_completed — verdict validation', () => {
       task: 1,
       doc_path: codeReviewDoc(1, 1),
       verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.status).not.toBe('halted');
@@ -165,7 +166,7 @@ describe('code_review_completed — verdict validation', () => {
       orchestrator_mediated: true,
       effective_outcome: 'changes_requested',
       corrective_handoff_path: correctiveHandoffPath,
-    } as Record<string, unknown>, io);
+    } as Record<string, unknown>, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.status).not.toBe('halted');
@@ -181,7 +182,7 @@ describe('code_review_completed — verdict validation', () => {
       task: 1,
       doc_path: codeReviewDoc(1, 1),
       verdict: 'rejected',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.status).toBe('halted');
@@ -199,7 +200,7 @@ describe('code_review_completed — verdict validation', () => {
       task: 1,
       doc_path: codeReviewDoc(1, 1),
       verdict: null as unknown as string,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(false);
     expect(result.error?.field).toBe('verdict');
@@ -225,7 +226,7 @@ describe('phase_review_completed — verdict validation', () => {
       phase: 1,
       doc_path: phaseReviewDoc(1),
       verdict: 'approvd',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(false);
     expect(result.error?.field).toBe('verdict');
@@ -244,7 +245,7 @@ describe('phase_review_completed — verdict validation', () => {
       phase: 1,
       doc_path: phaseReviewDoc(1),
       verdict: 'approvd',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     // Old contract: action would be `display_halted` (mutation halted with
     // unknown-verdict reason). Iter-11 contract: validator rejects upfront so
@@ -263,7 +264,7 @@ describe('phase_review_completed — verdict validation', () => {
       doc_path: phaseReviewDoc(1),
       verdict: 'approved',
       exit_criteria_met: true,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.status).not.toBe('halted');
@@ -278,7 +279,7 @@ describe('phase_review_completed — verdict validation', () => {
       phase: 1,
       doc_path: phaseReviewDoc(1),
       verdict: 'rejected',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.status).toBe('halted');
@@ -297,7 +298,7 @@ describe('phase_review_completed — verdict validation', () => {
       phase: 1,
       doc_path: phaseReviewDoc(1),
       verdict: null as unknown as string,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(false);
     expect(result.error?.field).toBe('verdict');
@@ -322,7 +323,7 @@ describe('final_review_completed — verdict validation', () => {
     const result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: finalReviewDoc,
       verdict: 'approvd',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(false);
     expect(result.error?.field).toBe('verdict');
@@ -340,7 +341,7 @@ describe('final_review_completed — verdict validation', () => {
     const result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: finalReviewDoc,
       verdict: 'approvd',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     // Old contract: action would be `display_halted` (mutation halted with
     // unknown-verdict reason). New contract: validator rejects upfront so the
@@ -357,7 +358,7 @@ describe('final_review_completed — verdict validation', () => {
     const result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: finalReviewDoc,
       verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(io.currentState!.graph.status).not.toBe('halted');
@@ -372,7 +373,7 @@ describe('final_review_completed — verdict validation', () => {
     const result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: finalReviewDoc,
       verdict: null as unknown as string,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(false);
     expect(result.error?.field).toBe('verdict');

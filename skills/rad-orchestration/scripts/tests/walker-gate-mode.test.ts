@@ -16,8 +16,6 @@ import type {
 
 function makeConfig(executionMode = 'ask'): OrchestrationConfig {
   return {
-    system: { orch_root: '/tmp' },
-    projects: { base_path: '/tmp/projects', naming: 'SCREAMING_CASE' },
     limits: {
       max_phases: 10,
       max_tasks_per_phase: 8,
@@ -32,7 +30,6 @@ function makeConfig(executionMode = 'ask'): OrchestrationConfig {
     source_control: {
       auto_commit: 'ask',
       auto_pr: 'ask',
-      provider: 'github',
     },
     default_template: 'full',
   };

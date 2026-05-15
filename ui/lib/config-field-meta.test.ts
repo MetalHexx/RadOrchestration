@@ -24,9 +24,9 @@ console.log('\nconfig-field-meta tests\n');
 
 // --- CONFIG_FIELDS array ---
 
-test('CONFIG_FIELDS is an array of exactly 14 entries', () => {
+test('CONFIG_FIELDS is an array of exactly 11 entries', () => {
   assert.ok(Array.isArray(CONFIG_FIELDS));
-  assert.strictEqual(CONFIG_FIELDS.length, 14);
+  assert.strictEqual(CONFIG_FIELDS.length, 11);
 });
 
 test('every entry conforms to FieldMeta interface', () => {
@@ -44,9 +44,9 @@ test('every entry conforms to FieldMeta interface', () => {
 
 // --- CONFIG_FIELD_MAP ---
 
-test('CONFIG_FIELD_MAP contains exactly 14 keys matching CONFIG_FIELDS', () => {
+test('CONFIG_FIELD_MAP contains exactly 11 keys matching CONFIG_FIELDS', () => {
   const keys = Object.keys(CONFIG_FIELD_MAP);
-  assert.strictEqual(keys.length, 14);
+  assert.strictEqual(keys.length, 11);
   for (const field of CONFIG_FIELDS) {
     assert.ok(keys.includes(field.key), `missing key in map: ${field.key}`);
   }
@@ -62,12 +62,6 @@ test('limits.max_phases has correct metadata', () => {
   assert.strictEqual(f.min, 1);
 });
 
-test('projects.naming has correct toggle-group and options', () => {
-  const f = CONFIG_FIELD_MAP['projects.naming'];
-  assert.ok(f);
-  assert.strictEqual(f.controlType, 'toggle-group');
-  assert.deepStrictEqual(f.options, ['SCREAMING_CASE', 'lowercase', 'numbered']);
-});
 
 test('human_gates.after_planning is switch with no options or min', () => {
   const f = CONFIG_FIELD_MAP['human_gates.after_planning'];
@@ -84,12 +78,6 @@ test('version is readonly with section "version"', () => {
   assert.strictEqual(f.section, 'version');
 });
 
-test('source_control.provider is readonly with section "source-control"', () => {
-  const f = CONFIG_FIELD_MAP['source_control.provider'];
-  assert.ok(f);
-  assert.strictEqual(f.controlType, 'readonly');
-  assert.strictEqual(f.section, 'source-control');
-});
 
 // --- Number field min values ---
 
@@ -109,9 +97,8 @@ test('all four number fields have correct min values', () => {
 
 // --- Toggle-group option values ---
 
-test('all four toggle-group fields have correct options', () => {
+test('all three toggle-group fields have correct options', () => {
   const expected: Record<string, string[]> = {
-    'projects.naming': ['SCREAMING_CASE', 'lowercase', 'numbered'],
     'human_gates.execution_mode': ['ask', 'phase', 'task', 'autonomous'],
     'source_control.auto_commit': ['always', 'ask', 'never'],
     'source_control.auto_pr': ['always', 'ask', 'never'],
@@ -135,13 +122,28 @@ test('no field has both options and min defined', () => {
 // --- Case-sensitive option values ---
 
 test('option values are case-sensitive correct', () => {
-  const naming = CONFIG_FIELD_MAP['projects.naming'];
-  assert.ok(naming.options!.includes('SCREAMING_CASE'), 'SCREAMING_CASE must be uppercase');
-  assert.ok(!naming.options!.includes('screaming_case'), 'screaming_case must not appear');
-
   const exec = CONFIG_FIELD_MAP['human_gates.execution_mode'];
   assert.ok(exec.options!.includes('ask'), "'ask' must be lowercase");
   assert.ok(!exec.options!.includes('Ask'), "'Ask' must not appear");
+});
+
+// --- Retired rows pruning ---
+
+test('four retired rows are gone', () => {
+  const retired = ['system.orch_root', 'projects.base_path', 'projects.naming', 'source_control.provider'];
+  for (const k of retired) {
+    assert.strictEqual(CONFIG_FIELD_MAP[k], undefined, `expected ${k} retired`);
+    assert.strictEqual(CONFIG_FIELDS.find(f => f.key === k), undefined);
+  }
+});
+
+test('Projects section is gone entirely', () => {
+  const projects = CONFIG_FIELDS.filter(f => f.section === 'projects');
+  assert.strictEqual(projects.length, 0);
+});
+
+test('default_template row present', () => {
+  assert.ok(CONFIG_FIELD_MAP['default_template']);
 });
 
 // --- Summary ---

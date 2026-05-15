@@ -10,6 +10,7 @@ import {
   driveToExecutionWithConfig,
   driveTaskWith,
   codeReviewDoc,
+  TEST_PATH_CONTEXT,
 } from '../fixtures/parity-states.js';
 import type { StepNodeState } from '../../lib/types.js';
 
@@ -33,7 +34,7 @@ const config = createConfig({
 
 function driveToApprovalReadiness() {
   const io = createMockIOWithConfig(null, config);
-  processEvent('start', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
   const state = io.currentState!;
   completePlanningSteps(state, 'master_plan');
   const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
@@ -48,9 +49,9 @@ function driveToApprovalReadiness() {
 function driveToCodeReviewReadiness() {
   const io = driveToExecutionWithConfig(config, 1);
   const ctx = { phase: 1, task: 1 };
-  processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('task_completed', PROJECT_DIR, ctx, io);
-  processEvent('code_review_started', PROJECT_DIR, ctx, io);
+  processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+  processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+  processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   return io;
 }
 
@@ -59,7 +60,7 @@ function driveToCodeReviewReadiness() {
 describe('[CONTRACT] Error shape — doc_path derivation: state is null', () => {
   it('returns structured error when state is null for non-start event', () => {
     const io = createMockIOWithConfig(null, config);
-    const result = processEvent('plan_approved', PROJECT_DIR, {}, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.action).toBe(null);
     expect(result.error?.message).toBe(
@@ -79,7 +80,7 @@ describe('[CONTRACT] Error shape — doc_path derivation: doc_path not set in st
     const io = driveToApprovalReadiness();
     // Clear the master_plan doc_path in the mock state to simulate missing derivation
     (io.currentState!.graph.nodes['master_plan'] as StepNodeState).doc_path = null;
-    const result = processEvent('plan_approved', PROJECT_DIR, {}, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe(
       'Cannot derive master plan path: graph.nodes.master_plan.doc_path is not set',
@@ -99,6 +100,7 @@ describe('[CONTRACT] Error shape — validation error structure', () => {
       PROJECT_DIR,
       { phase: 1, task: 1, doc_path: codeReviewDoc(1, 1) },
       io,
+      TEST_PATH_CONTEXT,
     );
     expect(result.success).toBe(false);
     expect(result.action).toBe(null);
@@ -115,7 +117,7 @@ describe('[CONTRACT] Error shape — validation error structure', () => {
 describe('[CONTRACT] Error shape — missing doc_path for completed event', () => {
   it('returns structured error when doc_path is omitted for code_review_completed', () => {
     const io = driveToCodeReviewReadiness();
-    const result = processEvent('code_review_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    const result = processEvent('code_review_completed', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toBe(
       "Pre-read failed: missing required field 'doc_path' in event context",
@@ -134,6 +136,7 @@ describe('[CONTRACT] Error shape — document not found', () => {
       PROJECT_DIR,
       { phase: 1, task: 1, doc_path: '/nonexistent/doc.md' },
       io,
+      TEST_PATH_CONTEXT,
     );
     expect(result.success).toBe(false);
     expect(result.error?.message).toContain('document not found or unreadable');

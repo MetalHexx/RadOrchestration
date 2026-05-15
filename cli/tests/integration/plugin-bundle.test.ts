@@ -39,12 +39,10 @@ describe('bundle existence (FR-27 #1)', () => {
   it('every required artifact lives at its documented path', async () => {
     for (const rel of [
       '.claude-plugin/plugin.json',
-      'bin/radorch.mjs',
-      'dist/pipeline.js',
+      'skills/rad-orchestration/scripts/radorch.mjs',
+      'skills/rad-orchestration/scripts/pipeline.js',
       'ui/server.js',
       'hooks/hooks.json',
-      'hooks/session-start.sh',
-      'hooks/session-start.ps1',
       'skills/rad-ui-start/SKILL.md',
       'skills/rad-ui-stop/SKILL.md',
       'skills/rad-ui-status/SKILL.md',
@@ -58,39 +56,57 @@ describe('bundle existence (FR-27 #1)', () => {
 
 describe('bundle invocability (FR-27 #2)', () => {
   it('spawning the bundled CLI runs --version successfully', async () => {
-    const bundle = path.join(pluginRoot, 'bin', 'radorch.mjs');
+    const bundle = path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
     const r = await execP('node', [bundle, '--version']);
     expect(r.stdout.trim()).toMatch(/^\d+\.\d+\.\d+/);
   });
 });
 
 describe('SessionStart bootstrap (FR-27 #3, #4)', () => {
-  it('first run bootstraps; second run is a no-op', async () => {
-    const isWin = process.platform === 'win32';
-    const cmd = isWin
-      ? { bin: 'powershell', args: ['-NoProfile', '-File', path.join(pluginRoot, 'hooks', 'session-start.ps1')] }
-      : { bin: 'bash', args: [path.join(pluginRoot, 'hooks', 'session-start.sh')] };
-    const env = { ...process.env, RADORCH_HOME: home };
-    await execP(cmd.bin, cmd.args, { env });
-    expect(await fs.stat(path.join(home, 'projects'))).toBeTruthy();
-    const before = await fs.readFile(path.join(home, 'install.json'), 'utf8');
-    await execP(cmd.bin, cmd.args, { env });
-    const after = await fs.readFile(path.join(home, 'install.json'), 'utf8');
+  it('first run bootstraps; second run is a no-op', { timeout: 30_000 }, async () => {
+    // The plugin-bootstrap hook is now invoked via the node CLI, which uses
+    // os.homedir() to resolve the install root. Set HOME/USERPROFILE so
+    // os.homedir() returns `home`, making resolveInstallRoot() return
+    // path.join(home, '.radorch').
+    const hookCmd = {
+      bin: 'node',
+      args: [
+        path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs'),
+        'plugin-bootstrap',
+        '--quiet',
+        '--harness', 'claude',
+        '--plugin-root', pluginRoot,
+      ],
+    };
+    const env = { ...process.env, HOME: home, USERPROFILE: home };
+    await execP(hookCmd.bin, hookCmd.args, { env });
+    expect(await fs.stat(path.join(home, '.radorch', 'projects'))).toBeTruthy();
+    const before = await fs.readFile(path.join(home, '.radorch', 'install.json'), 'utf8');
+    await execP(hookCmd.bin, hookCmd.args, { env });
+    const after = await fs.readFile(path.join(home, '.radorch', 'install.json'), 'utf8');
     expect(before).toBe(after);
   });
 });
 
 describe('ui lifecycle (FR-27 #5, FR-28)', () => {
   it('ui start → status → stop via the bundled CLI', async () => {
-    const bundle = path.join(pluginRoot, 'bin', 'radorch.mjs');
-    // Ensure bootstrap exists before invoking ui commands
-    const isWin = process.platform === 'win32';
-    const hookCmd = isWin
-      ? { bin: 'powershell', args: ['-NoProfile', '-File', path.join(pluginRoot, 'hooks', 'session-start.ps1')] }
-      : { bin: 'bash', args: [path.join(pluginRoot, 'hooks', 'session-start.sh')] };
-    await execP(hookCmd.bin, hookCmd.args, { env: { ...process.env, RADORCH_HOME: home } });
-
-    const env = { ...process.env, RADORCH_HOME: home, RADORCH_NO_LOG: '1' };
+    const bundle = path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
+    // Bootstrap: the plugin-bootstrap hook is now invoked via the node CLI, which
+    // uses os.homedir() to resolve the install root. Set HOME/USERPROFILE so
+    // os.homedir() returns `home`, making resolveInstallRoot() return
+    // path.join(home, '.radorch').
+    const hookCmd = {
+      bin: 'node',
+      args: [
+        path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs'),
+        'plugin-bootstrap',
+        '--quiet',
+        '--harness', 'claude',
+        '--plugin-root', pluginRoot,
+      ],
+    };
+    const env = { ...process.env, HOME: home, USERPROFILE: home, RADORCH_NO_LOG: '1' };
+    await execP(hookCmd.bin, hookCmd.args, { env });
     const startR = await execP('node', [bundle, 'ui', 'start', '--non-interactive', '--json'], { env });
     const startEnv = JSON.parse(startR.stdout.trim());
     expect(startEnv.ok).toBe(true);
@@ -139,8 +155,8 @@ describe('plugin completeness (NFR-6, FR-1, FR-2, FR-4, FR-6)', () => {
       expect(text).toMatch(new RegExp(`rad-orchestration:${a}\\b`));
     }
   });
-  it('dist/pipeline.js is the esbuild bundle (no JIT shim markers)', async () => {
-    const text = await fs.readFile(path.join(pluginRoot, 'dist', 'pipeline.js'), 'utf8');
+  it('skills/rad-orchestration/scripts/pipeline.js is the esbuild bundle (no JIT shim markers)', async () => {
+    const text = await fs.readFile(path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'pipeline.js'), 'utf8');
     expect(text).not.toMatch(/\bnpx\s+tsx\b/);
     expect(text).not.toMatch(/\bnpm\s+ci\b/);
   });

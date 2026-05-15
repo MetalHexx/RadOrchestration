@@ -1,74 +1,48 @@
 // installer/lib/config-generator.js — Config generator module
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { normalizePath } from './path-utils.js';
 
 /** @import { InstallerConfig } from './types.js' */
 
 /**
- * Generates orchestration.yml content with inline comments.
- * @param {InstallerConfig} config - Resolved configuration from wizard
+ * Generates orchestration.yml content with the ten canonical properties (FR-16).
+ * The function accepts the input config but ignores branch fields — all ten
+ * properties are emitted unconditionally at their canonical default values.
+ *
+ * @param {object} config - Configuration object
+ * @param {string} config.packageVersion - rad-orchestration package version
  * @returns {string} - Complete YAML file content
  */
-export function generateConfig(config) {
+export function generateConfig({ packageVersion }) {
+  // FR-16: canonical 10 properties, no branching on input config.
   return `# orchestration.yml
-# Orchestration System Configuration
-# -----------------------------------
-
 version: "1.0"
-
-package_version: ${config.packageVersion}
-
-# ─── System ────────────────────────────────────────────────────────
-system:
-  orch_root: "${normalizePath(config.orchRoot)}"                   # Orchestration root folder (relative name or absolute path)
-
-# ─── Project Storage ───────────────────────────────────────────────
-projects:
-  # base_path accepts both relative paths (resolved from workspace root)
-  # and absolute paths (e.g., /shared/projects for git worktree setups).
-  base_path: "${normalizePath(config.projectsBasePath)}"          # Where project folders are created
-  naming: "${config.projectsNaming}"               # SCREAMING_CASE | lowercase | numbered
-
-# ─── Pipeline Limits (Scope Guards) ───────────────────────────────
+package_version: ${packageVersion}
+default_template: ask
 limits:
-  max_phases: ${config.maxPhases}                         # Maximum phases per project
-  max_tasks_per_phase: ${config.maxTasksPerPhase}                 # Maximum tasks per phase
-  max_retries_per_task: ${config.maxRetriesPerTask}                # Auto-retries before escalation
-  max_consecutive_review_rejections: ${config.maxConsecutiveReviewRejections}  # Reviewer rejects before human escalation
-
-# ─── Human Gate Defaults ───────────────────────────────────────────
+  max_phases: 10
+  max_tasks_per_phase: 8
+  max_retries_per_task: 5
+  max_consecutive_review_rejections: 3
 human_gates:
-  after_planning: true                   # Always gate after master plan (hard default)
-  execution_mode: "${config.executionMode}"                  # ask | phase | task | autonomous
-  after_final_review: true               # Always gate after final review (hard default)
-
-# ─── Source Control ────────────────────────────────────────────────
+  after_planning: true
+  execution_mode: "ask"
+  after_final_review: true
 source_control:
-  auto_commit: "${config.autoCommit || 'ask'}"          # always | ask | never
-  auto_pr: "${config.autoPr || 'ask'}"                  # always | ask | never
-  provider: "${config.provider || 'github'}"               # reserved: github only in v1
-
-# ─── Notes ─────────────────────────────────────────────────────────
-# Model selection is configured per-agent in agent frontmatter.
-# See ${config.orchRoot}/agents/*.md → \`model\` field.
+  auto_commit: "ask"
+  auto_pr: "ask"
 `;
 }
 
 /**
- * Writes orchestration.yml to the correct path, creating intermediate directories.
- * @param {string} workspaceDir - Absolute path to target workspace
- * @param {string} orchRoot - Orchestration root folder name or absolute path
+ * Writes orchestration.yml to ~/.radorch/orchestration.yml, creating intermediate directories.
  * @param {string} yamlContent - Generated YAML content
  * @returns {void}
  */
-export function writeConfig(workspaceDir, orchRoot, yamlContent) {
-  const resolvedOrchRoot = path.isAbsolute(orchRoot)
-    ? orchRoot
-    : path.join(workspaceDir, orchRoot);
-
-  const targetDir = path.join(resolvedOrchRoot, 'skills', 'rad-orchestration', 'config');
-  fs.mkdirSync(targetDir, { recursive: true });
-  fs.writeFileSync(path.join(targetDir, 'orchestration.yml'), yamlContent);
+export function writeConfig(yamlContent) {
+  const orchYmlPath = path.join(os.homedir(), '.radorch', 'orchestration.yml');
+  fs.mkdirSync(path.dirname(orchYmlPath), { recursive: true });
+  fs.writeFileSync(orchYmlPath, yamlContent);
 }

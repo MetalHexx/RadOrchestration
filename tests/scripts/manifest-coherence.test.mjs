@@ -1,12 +1,19 @@
 // tests/scripts/manifest-coherence.test.mjs
 //
-// Asserts that each per-harness manifest at
-// installer/src/<harness>/manifests/v<version>.json is internally coherent
-// with what was emitted into installer/src/<harness>/:
+// Asserts that the **current version's** per-harness manifest at the runtime
+// catalog `installer/src/<harness>/manifests/v<version>.json` is internally
+// coherent with what was emitted into installer/src/<harness>/:
 //
 //   • Every manifest entry's recorded sha256 matches the file on disk now.
 //   • Every shipped file (excluding build artifacts) has a manifest entry.
 //   • No manifest entry references a missing file.
+//
+// Scoped to the current version because the restore step in
+// sync-source.js copies every prior committed version's manifest into the
+// runtime catalog, but only the current version's files exist on disk in
+// installer/src/<harness>/. Historical versions reference release-time bytes
+// that no longer live in the runtime tree — coherence is a current-version
+// invariant.
 //
 // All hashes are computed at test time. There is no pinned fixture, so this
 // test is platform-stable: line-ending or other byte-level differences across
@@ -21,6 +28,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const installerSrc = path.join(repoRoot, 'installer', 'src');
+const installerPkg = JSON.parse(
+  fs.readFileSync(path.join(repoRoot, 'installer', 'package.json'), 'utf8'),
+);
+const currentVersion = installerPkg.version;
 
 const LEGACY_HARNESSES = ['claude', 'copilot-cli', 'copilot-vscode'];
 
@@ -32,10 +44,15 @@ function sha256OfFile(absPath) {
 // esbuild dropping into scripts/dist*) but are not authored ship content. They
 // won't appear in the manifest and shouldn't trigger the "missing manifest
 // entry" assertion.
+//
+// The bundle-level `package.json` at the bundle root is treated the same way:
+// it carries only the delivering version field consumed by runPluginBootstrap
+// and is not a file the bootstrap library copies into the user's filesystem.
 function isBuildArtifact(relPath) {
   return /^skills\/rad-orchestration\/scripts\/(dist|dist-bundle|node_modules)\//.test(relPath) ||
          /^skills\/rad-orchestration\/scripts\/.*\.log$/.test(relPath) ||
-         relPath === 'skills/rad-orchestration/scripts/package-lock.json';
+         relPath === 'skills/rad-orchestration/scripts/package-lock.json' ||
+         relPath === 'package.json';
 }
 
 function walkRelative(rootDir) {
@@ -53,53 +70,53 @@ function walkRelative(rootDir) {
 }
 
 for (const harness of LEGACY_HARNESSES) {
-  test(`manifest at installer/src/${harness}/manifests/v*.json is coherent with shipped files`, () => {
+  test(`manifest at installer/src/${harness}/manifests/v${currentVersion}.json is coherent with shipped files`, () => {
     const bundleRoot = path.join(repoRoot, 'installer', 'src', harness);
-    const manifestsDir = path.join(bundleRoot, 'manifests');
-    assert.ok(fs.existsSync(manifestsDir), `manifests dir missing for ${harness}`);
+    const manifestPath = path.join(bundleRoot, 'manifests', `v${currentVersion}.json`);
+    assert.ok(
+      fs.existsSync(manifestPath),
+      `current-version runtime manifest missing for ${harness}: ${manifestPath} — run \`cd installer && node scripts/sync-source.js\` first`,
+    );
 
-    const manifestFiles = fs.readdirSync(manifestsDir).filter((f) => f.endsWith('.json'));
-    assert.ok(manifestFiles.length > 0, `no manifest catalog file under ${manifestsDir}`);
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    assert.equal(manifest.harness, harness, `manifest harness field mismatch`);
+    assert.ok(Array.isArray(manifest.files), `manifest has no files array`);
 
-    for (const manifestFile of manifestFiles) {
-      const manifestPath = path.join(manifestsDir, manifestFile);
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-      assert.equal(manifest.harness, harness, `manifest ${manifestFile} harness field mismatch`);
-      assert.ok(Array.isArray(manifest.files), `manifest ${manifestFile} has no files array`);
+    const manifestEntries = new Map(manifest.files.map((f) => [f.bundlePath, f]));
 
-      const manifestEntries = new Map(manifest.files.map((f) => [f.bundlePath, f]));
+    // Forward direction: every manifest entry must point to an existing
+    // file whose current sha256 matches. The orchestration.yml entry is
+    // deliberately skipped — its `ownership: 'user-config'` means the
+    // installer overwrites it on install, so the runtime hash is allowed
+    // to diverge.
+    for (const entry of manifest.files) {
+      if (entry.ownership === 'user-config') continue;
+      const isShared = entry.bundlePath.startsWith('bin/') || entry.bundlePath.startsWith('ui/');
+      const filePath = isShared
+        ? path.join(installerSrc, entry.bundlePath)
+        : path.join(bundleRoot, entry.bundlePath);
+      assert.ok(
+        fs.existsSync(filePath),
+        `${harness} manifest references missing file: ${entry.bundlePath}`,
+      );
+      const observed = sha256OfFile(filePath);
+      assert.equal(
+        observed,
+        entry.sha256,
+        `${harness} manifest sha mismatch at ${entry.bundlePath}`,
+      );
+    }
 
-      // Forward direction: every manifest entry must point to an existing
-      // file whose current sha256 matches. The orchestration.yml entry is
-      // deliberately skipped — its `ownership: 'user-config'` means the
-      // installer overwrites it on install, so the runtime hash is allowed
-      // to diverge. (See rewritePerBundleOrchestrationYml in adapters/run.js.)
-      for (const entry of manifest.files) {
-        if (entry.ownership === 'user-config') continue;
-        const filePath = path.join(bundleRoot, entry.bundlePath);
-        assert.ok(
-          fs.existsSync(filePath),
-          `${harness} manifest references missing file: ${entry.bundlePath}`,
-        );
-        const observed = sha256OfFile(filePath);
-        assert.equal(
-          observed,
-          entry.sha256,
-          `${harness} manifest sha mismatch at ${entry.bundlePath}`,
-        );
-      }
-
-      // Reverse direction: every shipped file (excluding build artifacts and
-      // the manifest tree itself) must have a manifest entry.
-      const shipped = walkRelative(bundleRoot)
-        .filter((rel) => !rel.startsWith('manifests/'))
-        .filter((rel) => !isBuildArtifact(rel));
-      for (const rel of shipped) {
-        assert.ok(
-          manifestEntries.has(rel),
-          `${harness} shipped file has no manifest entry: ${rel}`,
-        );
-      }
+    // Reverse direction: every shipped file (excluding build artifacts and
+    // the manifest tree itself) must have a manifest entry.
+    const shipped = walkRelative(bundleRoot)
+      .filter((rel) => !rel.startsWith('manifests/'))
+      .filter((rel) => !isBuildArtifact(rel));
+    for (const rel of shipped) {
+      assert.ok(
+        manifestEntries.has(rel),
+        `${harness} shipped file has no manifest entry: ${rel}`,
+      );
     }
   });
 }

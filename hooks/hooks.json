@@ -1,13 +1,23 @@
 {
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/bootstrap-then-uninstall.mjs"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
-        "shell": "bash",
-        "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
-      },
-      {
-        "shell": "powershell",
-        "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.ps1"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/drift-check.mjs"
+          }
+        ]
       }
     ]
   }

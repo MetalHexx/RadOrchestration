@@ -1,117 +1,127 @@
 ---
 name: rad-build-harness
-description: 'Refresh the local dogfood harness for a contributor by running the matching npm build script. Use when asked to "build the harness", "rebuild .claude", "refresh the copilot bundle", "run the adapter build", or after editing canonical agents/ or skills/ at repo root. Asks which harness to target (claude-code / copilot-vscode / copilot-cli / all) and runs npm run build:<harness> from repo root.'
+description: 'End-to-end installer test for a contributor: builds a local tarball from installer/, runs the installer via npx for the chosen harness, bootstraps the plugin, and verifies via doctor and sha256 manifest check. Use when asked to "test the installer", "build and install the harness", or "verify the install".'
 ---
 
 # rad-build-harness
 
-A contributor convenience for refreshing the local dogfood harness after edits to canonical `agents/` or `skills/` at the repo root. Asks which harness to build, runs the matching npm script, and surfaces the result.
+**Where this fits.** `rad-build-harness` is the quick contributor dogfood loop — pack, install, bootstrap, verify on a single harness. The comprehensive cross-cutting smoke is `.agents/prompts/rad-test-release.prompt.md` (legacy installer) and `.agents/prompts/rad-test-plugin-release.prompt.md` (Claude plugin). Use this skill when you want a fast feedback cycle on a build change; use the release prompts for go/no-go decisions.
+
+Run the real installer end-to-end from local source. This skill selects a harness, builds the canonical adapter sources, packs the installer into a tarball, runs the wizard non-interactively via npx, bootstraps the plugin (with `--force` to defeat the version-equal short-circuit on repeat runs), and verifies the result.
+
+`~/.radorch/projects/` is never touched at any point in this workflow — existing user projects survive unchanged.
 
 ## When to Use This Skill
 
-- After editing canonical `agents/` or `skills/` and the harness needs to pick up the changes.
-- Right after a fresh clone, before launching Claude Code or any Copilot harness against the repo.
-- When switching the contributor's working harness (e.g., from Claude Code to Copilot CLI).
-- When the runtime harness folder (`.claude/` or `.github/agents/` and `.github/skills/`) looks stale or out of sync with `agents/` and `skills/`.
+- Testing a local build of the installer before publishing.
+- Verifying that a harness change propagates end-to-end through the pack → install → bootstrap path.
+- Confirming `doctor` reports a clean state after a fresh or upgraded install.
 
 ## Prerequisites
 
-- Node.js installed (the build CLI uses Node built-ins — no `npm install` required).
+- Node.js and npm installed.
 - Working directory is anywhere inside the repo clone (the skill resolves repo root itself).
 
 ## Workflow
 
-### 1. Resolve repo root
+### 1. Ask which harness
 
-The build CLI must run from repo root. Resolve it with:
+Use `AskUserQuestion` with these options:
+
+| Label | Value |
+|-------|-------|
+| Claude Code | `claude` |
+| GitHub Copilot in VS Code | `copilot-vscode` |
+| GitHub Copilot CLI | `copilot-cli` |
+
+Record the answer as `{harness}`.
+
+### 2. Resolve repo root
 
 ```bash
 git rev-parse --show-toplevel
 ```
 
-Use that as the cwd for the build command in step 4.
+Use the result as `{repoRoot}` for every subsequent command.
 
-### 2. Ask which harness
-
-Use `AskUserQuestion` with these four options:
-
-| Label | Description |
-|-------|-------------|
-| `claude-code` | Builds into `.claude/` for Claude Code. |
-| `copilot-vscode` | Builds into `.github/agents/` and `.github/skills/` for GitHub Copilot in VS Code. |
-| `copilot-cli` | Builds into `.github/agents/` and `.github/skills/` for GitHub Copilot CLI. |
-| `all` | Runs every adapter sequentially. |
-
-### 3. Ask for projects base path
-
-Read the current value of `projects.base_path` from the canonical config at `<repo-root>/skills/rad-orchestration/config/orchestration.yml`. Extract the line:
+### 3. Pack the installer
 
 ```bash
-grep "base_path:" skills/rad-orchestration/config/orchestration.yml
+cd {repoRoot}/installer && npm pack
 ```
 
-Then use the `askQuestions` tool with a single question:
+Note the generated tarball filename — something like `rad-orchestration-X.Y.Z.tgz`. Store it as `{tarball}`. The full absolute path is `{repoRoot}/installer/{tarball}`.
 
-- **Header:** `projects_base_path`
-- **Question:** "Where should orchestration projects be stored? (`projects.base_path` in `orchestration.yml`)"
-- **Options:** one option labeled `Keep current: <current-value>` (marked recommended)
-- **`allowFreeformInput`: true** so the contributor can type an alternate absolute path
-
-Store the answer (call it `newBasePath`). If the user selected the current value option or typed the same path, no patch is needed — set a flag `basepathChanged = false`. Otherwise set `basepathChanged = true`.
-
-### 4. Map the answer to an npm script
-
-| Answer | Command |
-|--------|---------|
-| `claude-code` | `npm run build:claude` |
-| `copilot-vscode` | `npm run build:copilot-vscode` |
-| `copilot-cli` | `npm run build:copilot-cli` |
-| `all` | `npm run build:all` |
-
-Note: the npm script for Claude is `build:claude`, not `build:claude-code`.
-
-### 5. Run the build
-
-Invoke the chosen command from repo root via the Bash tool.
-
-### 6. Patch base_path in the output orchestration.yml
-
-Run this step only if `basepathChanged = true`.
-
-Determine the output yml path(s) based on the chosen harness:
-
-| Harness | Output path |
-|---------|-------------|
-| `claude-code` | `<repo-root>/.claude/skills/rad-orchestration/config/orchestration.yml` |
-| `copilot-vscode` | `<repo-root>/.github/skills/rad-orchestration/config/orchestration.yml` |
-| `copilot-cli` | `<repo-root>/.github/skills/rad-orchestration/config/orchestration.yml` |
-| `all` | Both paths above |
-
-For each output path that exists, replace the `base_path:` line in-place using PowerShell:
-
-```powershell
-$f = "<output-yml-path>"
-(Get-Content $f) -replace '^(\s*base_path:\s*).*$', "`${1}<newBasePath>" | Set-Content $f
-```
-
-Confirm the patch was applied by printing the updated line.
-
-### 7. Report the result
-
-On success, surface the one-line per-harness output the build CLI prints, e.g.:
-
-```
-Built claude: 12 agents, 18 skills → .claude/
-```
-
-On failure, surface the exit code and the error output verbatim — do not paper over a non-zero exit.
-
-## Verbose mode
-
-If a contributor wants to see every file the adapter emits, set `BUILD_VERBOSE=1`:
+### 4. Verify the tarball
 
 ```bash
-BUILD_VERBOSE=1 npm run build:claude
+npx {repoRoot}/installer/{tarball} --version
 ```
 
-This is sourced by `adapters/run.js` and prints one line per emitted file.
+### 5. Run the installer non-interactively
+
+Tests the wizard surface: the single harness-question prompt and the canonical `orchestration.yml` write.
+
+```bash
+npx {repoRoot}/installer/{tarball} --yes --harness {harness}
+```
+
+> Expected: installer completes without interactive prompts and exits with code 0.
+> `~/.radorch/projects/` is not touched.
+
+### 6. Bootstrap the plugin with --force
+
+Tests the force-bootstrap path: defeats the version-equal short-circuit so a repeat test on the same version still re-runs the bootstrap.
+
+Locate the bundled plugin root for the harness. The plugin payload ships at `{repoRoot}/installer/src/{bundleDir}/` where `bundleDir` matches the harness:
+
+| Harness | Bundle directory |
+|---------|-----------------|
+| `claude` | `installer/src/claude/` |
+| `copilot-vscode` | `installer/src/copilot-vscode/` |
+| `copilot-cli` | `installer/src/copilot-cli/` |
+
+Run plugin-bootstrap with `--force` to defeat the version-equal short-circuit:
+
+```bash
+npx {repoRoot}/installer/{tarball} plugin-bootstrap --force --harness {harness} --plugin-root {repoRoot}/installer/src/{bundleDir}
+```
+
+> `--force` ensures the bootstrap runs even when the delivering version equals the installed version. This is required on repeat test runs.
+
+### 7. Verify the install
+
+Run all three checks and report any failure:
+
+```bash
+npx {repoRoot}/installer/{tarball} --version
+npx {repoRoot}/installer/{tarball} doctor
+```
+
+**sha256 manifest check:** The manifest catalog is written into the bundled plugin payload during `npm pack` (via the `prepack` lifecycle hook). Verify that the manifest file for the tested version exists and that every entry carries a `sha256` field.
+
+The manifest path is:
+
+```
+{repoRoot}/installer/src/{bundleDir}/manifests/v{version}.json
+```
+
+Open the file and confirm:
+- The file exists.
+- Each entry in the file has a `sha256` field with a non-empty value.
+
+### 8. Report results
+
+Report:
+- The version tested (from Step 5).
+- Whether `doctor` passed or flagged issues.
+- Whether the sha256 manifest check passed.
+- Any step that failed, with the verbatim error output.
+
+### 9. Delete the local tarball
+
+```bash
+cd {repoRoot}/installer && Remove-Item -Force {tarball}
+```
+
+The global install extracts the package at install time and no longer references the file. Delete it to keep the working tree clean.

@@ -8,8 +8,20 @@ import { runStatus } from '../../src/commands/ui/status.js';
 import { writePidFile, readPidFile } from '../../src/commands/ui/pid-file.js';
 
 let home: string;
-beforeEach(async () => { home = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-ui-')); });
-afterEach(async () => { await fs.rm(home, { recursive: true, force: true }); });
+let homedirSpy: ReturnType<typeof vi.spyOn>;
+beforeEach(async () => {
+  home = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-ui-'));
+  homedirSpy = vi.spyOn(os, 'homedir').mockReturnValue(home);
+});
+afterEach(async () => {
+  homedirSpy.mockRestore();
+  await fs.rm(home, { recursive: true, force: true });
+});
+
+// resolveInstallRoot() = path.join(home, '.radorch')
+// installPaths(root).uiPidFile = path.join(home, '.radorch', 'runtime', 'ui.pid')
+function pidFilePath(): string { return path.join(home, '.radorch', 'runtime', 'ui.pid'); }
+function runtimeDir(): string { return path.join(home, '.radorch', 'runtime'); }
 
 describe('pid-file', () => {
   it('writes and reads {pid, port, started_at}', async () => {
@@ -26,23 +38,23 @@ describe('pid-file', () => {
 
 describe('ui status', () => {
   it('reports stopped when no PID file', async () => {
-    const r = await runStatus({ env: { RADORCH_HOME: home } });
+    const r = await runStatus({ env: process.env });
     expect(r.running).toBe(false);
   });
   it('cleans stale pid file when process is dead', async () => {
-    const f = path.join(home, 'runtime', 'ui.pid');
-    await fs.mkdir(path.dirname(f), { recursive: true });
+    const f = pidFilePath();
+    await fs.mkdir(runtimeDir(), { recursive: true });
     await writePidFile(f, { pid: 999999, port: 3000, started_at: new Date().toISOString() });
-    const r = await runStatus({ env: { RADORCH_HOME: home } });
+    const r = await runStatus({ env: process.env });
     expect(r.running).toBe(false);
     const after = await readPidFile(f);
     expect(after).toBeNull();
   });
   it('reports running when PID is alive (using current process)', async () => {
-    const f = path.join(home, 'runtime', 'ui.pid');
-    await fs.mkdir(path.dirname(f), { recursive: true });
+    const f = pidFilePath();
+    await fs.mkdir(runtimeDir(), { recursive: true });
     await writePidFile(f, { pid: process.pid, port: 3007, started_at: new Date().toISOString() });
-    const r = await runStatus({ env: { RADORCH_HOME: home } });
+    const r = await runStatus({ env: process.env });
     expect(r.running).toBe(true);
     expect(r.url).toBe('http://localhost:3007');
   });
@@ -50,29 +62,29 @@ describe('ui status', () => {
 
 describe('ui stop', () => {
   it('reports stopped + removes pid file when pid is dead', async () => {
-    const f = path.join(home, 'runtime', 'ui.pid');
-    await fs.mkdir(path.dirname(f), { recursive: true });
+    const f = pidFilePath();
+    await fs.mkdir(runtimeDir(), { recursive: true });
     await writePidFile(f, { pid: 999998, port: 3000, started_at: new Date().toISOString() });
     const probe = vi.fn().mockResolvedValue(true);
-    const r = await runStop({ env: { RADORCH_HOME: home }, _probePortFree: probe });
+    const r = await runStop({ env: process.env, _probePortFree: probe });
     expect(r.stopped).toBe(true);
     expect(r.port_released).toBe(true);
     const after = await readPidFile(f);
     expect(after).toBeNull();
   });
   it('reports stopped when no pid file existed', async () => {
-    const r = await runStop({ env: { RADORCH_HOME: home } });
+    const r = await runStop({ env: process.env });
     expect(r.stopped).toBe(true);
   });
   it('returns port_released:true after polling succeeds on a later attempt', async () => {
-    const f = path.join(home, 'runtime', 'ui.pid');
-    await fs.mkdir(path.dirname(f), { recursive: true });
+    const f = pidFilePath();
+    await fs.mkdir(runtimeDir(), { recursive: true });
     await writePidFile(f, { pid: 999997, port: 3007, started_at: new Date().toISOString() });
     // First two probes report port still bound; third reports free.
     const probe = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
     let mockTime = 0;
     const r = await runStop({
-      env: { RADORCH_HOME: home },
+      env: process.env,
       _probePortFree: probe,
       _now: () => mockTime,
       _sleep: async (ms) => { mockTime += ms; },
@@ -83,13 +95,13 @@ describe('ui stop', () => {
     expect(probe).toHaveBeenCalledWith(3007);
   });
   it('returns port_released:false when probe never succeeds within timeout', async () => {
-    const f = path.join(home, 'runtime', 'ui.pid');
-    await fs.mkdir(path.dirname(f), { recursive: true });
+    const f = pidFilePath();
+    await fs.mkdir(runtimeDir(), { recursive: true });
     await writePidFile(f, { pid: 999996, port: 3000, started_at: new Date().toISOString() });
     const probe = vi.fn().mockResolvedValue(false);
     let mockTime = 0;
     const r = await runStop({
-      env: { RADORCH_HOME: home },
+      env: process.env,
       _probePortFree: probe,
       _now: () => mockTime,
       _sleep: async (ms) => { mockTime += ms; },
@@ -105,20 +117,20 @@ describe('ui stop', () => {
 describe('ui start (with mocked spawn)', () => {
   it('emits user_error when every port 3000-3010 is taken', async () => {
     const probe = vi.fn().mockResolvedValue(false); // no port free
-    await expect(runStart({ env: { RADORCH_HOME: home }, _probePortFree: probe })).rejects.toThrow(/3000.*3010/);
+    await expect(runStart({ env: process.env, _probePortFree: probe })).rejects.toThrow(/3000.*3010/);
     expect(probe).toHaveBeenCalledTimes(11);
   });
   it('writes pid file with {pid, port, started_at} on successful spawn', async () => {
     const probe = vi.fn().mockResolvedValue(true);
     const fakeSpawn = vi.fn().mockReturnValue({ pid: 4242, unref: () => {} });
     const r = await runStart({
-      env: { RADORCH_HOME: home, RADORCH_UI_DIR: path.join(home, 'fake-ui') },
+      env: { ...process.env, RADORCH_UI_DIR: path.join(home, 'fake-ui') },
       _probePortFree: probe,
       _spawn: fakeSpawn as never,
     });
     expect(r.url).toBe('http://localhost:3000');
     expect(r.pid).toBe(4242);
-    const pidFile = await readPidFile(path.join(home, 'runtime', 'ui.pid'));
+    const pidFile = await readPidFile(pidFilePath());
     expect(pidFile?.pid).toBe(4242);
     expect(pidFile?.port).toBe(3000);
     // verify env-bridge: in plugin mode ~/.radorch IS the canonical workspace
@@ -126,20 +138,20 @@ describe('ui start (with mocked spawn)', () => {
     // path-resolver then reads orchestration.yml at <root>/skills/...
     const spawnCall = fakeSpawn.mock.calls[0];
     const spawnEnv = spawnCall[2].env;
-    expect(spawnEnv.WORKSPACE_ROOT).toBe(home);
+    expect(spawnEnv.WORKSPACE_ROOT).toBe(path.join(home, '.radorch'));
     expect(spawnEnv.ORCH_ROOT).toBe('.');
     expect(spawnCall[2].detached).toBe(true);
     expect(spawnCall[2].windowsHide).toBe(true);
   });
   it('is idempotent: returns existing handle without re-spawning when a live PID is recorded', async () => {
-    const f = path.join(home, 'runtime', 'ui.pid');
-    await fs.mkdir(path.dirname(f), { recursive: true });
+    const f = pidFilePath();
+    await fs.mkdir(runtimeDir(), { recursive: true });
     // current process pid is alive — simulates a live UI server entry
     await writePidFile(f, { pid: process.pid, port: 3007, started_at: '2026-05-08T00:00:00.000Z' });
     const probe = vi.fn().mockResolvedValue(true);
     const fakeSpawn = vi.fn();
     const r = await runStart({
-      env: { RADORCH_HOME: home, RADORCH_UI_DIR: path.join(home, 'fake-ui') },
+      env: { ...process.env, RADORCH_UI_DIR: path.join(home, 'fake-ui') },
       _probePortFree: probe,
       _spawn: fakeSpawn as never,
     });
@@ -151,13 +163,13 @@ describe('ui start (with mocked spawn)', () => {
     expect(r.started_at).toBe('2026-05-08T00:00:00.000Z');
   });
   it('clears a stale PID file (dead process) and proceeds to a fresh spawn', async () => {
-    const f = path.join(home, 'runtime', 'ui.pid');
-    await fs.mkdir(path.dirname(f), { recursive: true });
+    const f = pidFilePath();
+    await fs.mkdir(runtimeDir(), { recursive: true });
     await writePidFile(f, { pid: 999996, port: 3007, started_at: new Date().toISOString() });
     const probe = vi.fn().mockResolvedValue(true);
     const fakeSpawn = vi.fn().mockReturnValue({ pid: 5151, unref: () => {} });
     const r = await runStart({
-      env: { RADORCH_HOME: home, RADORCH_UI_DIR: path.join(home, 'fake-ui') },
+      env: { ...process.env, RADORCH_UI_DIR: path.join(home, 'fake-ui') },
       _probePortFree: probe,
       _spawn: fakeSpawn as never,
     });

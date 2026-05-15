@@ -18,7 +18,7 @@ Restart your session. After restart, the slash-command surface is populated and 
 
 ## State location
 
-Project state lives at `~/.radorch/projects/` by default. Override with `RADORCH_HOME` to relocate `.radorch` (state preserved on uninstall).
+Project state lives at `~/.radorch/projects/` (state preserved on uninstall).
 
 ## Slash command surface
 

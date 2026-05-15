@@ -14,6 +14,7 @@ import {
   seedExplosionStateFor,
   codeReviewDoc,
   phaseReviewDoc,
+  TEST_PATH_CONTEXT,
 } from '../fixtures/parity-states.js';
 import type { StepNodeState } from '../../lib/types.js';
 
@@ -70,20 +71,20 @@ const prConfig = createConfig({
 describe('[CONTRACT] Event Names — planning tier events', () => {
   it('master_plan_started is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
+    const result = processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
 
   it('master_plan_completed is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const state = io.currentState!;
     (state.graph.nodes['master_plan'] as StepNodeState).status = 'in_progress';
     const docPath = '/tmp/master_plan.md';
     seedDoc(docPath, { total_phases: 1 });
-    const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: docPath }, io);
+    const result = processEvent('master_plan_completed', PROJECT_DIR, { doc_path: docPath }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
@@ -94,34 +95,34 @@ describe('[CONTRACT] Event Names — planning tier events', () => {
 describe('[CONTRACT] Event Names — gate events', () => {
   it('plan_approved is a valid v5 event', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const state = io.currentState!;
     completePlanningSteps(state, 'explode_master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
     seedDoc(mpDoc, { total_phases: 1, total_tasks: 2 });
-    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io);
+    const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: mpDoc }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     // Post-Iter 7: phase_loop expanded by the walker but task_loop resolution
     // requires phase_planning.doc_path (pre-seeded by the explosion script).
     // Without seeding, the walker stalls at task_loop expansion; with seeding,
     // it advances into execute_task.
     seedExplosionStateFor(io, 1);
-    const afterSeed = processEvent('start', PROJECT_DIR, {}, io);
+    const afterSeed = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(afterSeed.action).not.toBeNull();
   });
 
   it('task_gate_approved is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(taskGateConfig, 1);
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     seedDoc(codeReviewDoc(1, 1));
     const gateResult = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(gateResult.action).toBe('gate_task');
-    const result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+    const result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
@@ -130,13 +131,13 @@ describe('[CONTRACT] Event Names — gate events', () => {
     const io = driveToExecutionWithConfig(taskGateConfig, 1);
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     seedDoc(phaseReviewDoc(1));
     const gateResult = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(gateResult.action).toBe('gate_phase');
-    const result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
+    const result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
@@ -151,11 +152,11 @@ describe('[CONTRACT] Event Names — gate events', () => {
       source_control: { auto_commit: 'never', auto_pr: 'never' },
     });
     const io = driveToReviewTier(reviewConfig);
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath, { verdict: 'approved' });
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
-    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io, TEST_PATH_CONTEXT);
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
@@ -171,24 +172,24 @@ describe('[CONTRACT] Event Names — gate events', () => {
 describe('[CONTRACT] Event Names — task execution events', () => {
   it('execution_started is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    const result = processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    const result = processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
 
   it('task_completed is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    const result = processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
+    const result = processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
 
   it('code_review_started is a valid v5 event', () => {
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    const result = processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
+    const result = processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
@@ -196,13 +197,13 @@ describe('[CONTRACT] Event Names — task execution events', () => {
   it('code_review_completed is a valid v5 event', () => {
     // Autonomous mode: no task gate fires, code_review_completed advances to next state
     const io = driveToExecutionWithConfig(config, 1);
-    processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
     seedDoc(codeReviewDoc(1, 1));
     const result = processEvent('code_review_completed', PROJECT_DIR, {
       phase: 1, task: 1, doc_path: codeReviewDoc(1, 1), verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
@@ -218,7 +219,7 @@ describe('[CONTRACT] Event Names — phase review events', () => {
     const io = driveToExecutionWithConfig(config, 1);
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-    const result = processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    const result = processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
@@ -227,11 +228,11 @@ describe('[CONTRACT] Event Names — phase review events', () => {
     const io = driveToExecutionWithConfig(config, 1);
     driveTaskWith(io, 1, 1);
     driveTaskWith(io, 1, 2);
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     seedDoc(phaseReviewDoc(1));
     const result = processEvent('phase_review_completed', PROJECT_DIR, {
       phase: 1, doc_path: phaseReviewDoc(1), verdict: 'approved', exit_criteria_met: true,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
@@ -242,17 +243,17 @@ describe('[CONTRACT] Event Names — phase review events', () => {
 describe('[CONTRACT] Event Names — final review events', () => {
   it('final_review_started is a valid v5 event', () => {
     const io = driveToReviewTier(config);
-    const result = processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const result = processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
 
   it('final_review_completed is a valid v5 event', () => {
     const io = driveToReviewTier(config);
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath, { verdict: 'approved' });
-    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
+    const result = processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
@@ -265,10 +266,10 @@ describe('[CONTRACT] Event Names — source control events', () => {
     const io = driveToExecutionWithConfig(commitConfig, 1);
     // Drive task manually up to task_completed to reach commit_gate (commit runs before code_review)
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    const r = processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    const r = processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     expect(r.action).toBe('invoke_source_control_commit');
-    const result = processEvent('commit_started', PROJECT_DIR, ctx, io);
+    const result = processEvent('commit_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
@@ -277,38 +278,38 @@ describe('[CONTRACT] Event Names — source control events', () => {
     const io = driveToExecutionWithConfig(commitConfig, 1);
     // Drive task manually up to task_completed to reach commit_gate (commit runs before code_review)
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    const r = processEvent('task_completed', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    const r = processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     expect(r.action).toBe('invoke_source_control_commit');
-    processEvent('commit_started', PROJECT_DIR, ctx, io);
-    const result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
+    processEvent('commit_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    const result = processEvent('commit_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
 
   it('pr_requested is a valid v5 event', () => {
     const io = driveToReviewTier(prConfig);
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath, { verdict: 'approved' });
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
-    const invokeResult = processEvent('final_approved', PROJECT_DIR, {}, io);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io, TEST_PATH_CONTEXT);
+    const invokeResult = processEvent('final_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(invokeResult.action).toBe('invoke_source_control_pr');
-    const result = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    const result = processEvent('pr_requested', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
 
   it('pr_created is a valid v5 event', () => {
     const io = driveToReviewTier(prConfig);
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath, { verdict: 'approved' });
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
-    const invokeResult = processEvent('final_approved', PROJECT_DIR, {}, io);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io, TEST_PATH_CONTEXT);
+    const invokeResult = processEvent('final_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(invokeResult.action).toBe('invoke_source_control_pr');
-    processEvent('pr_requested', PROJECT_DIR, {}, io);
-    const result = processEvent('pr_created', PROJECT_DIR, {}, io);
+    processEvent('pr_requested', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
+    const result = processEvent('pr_created', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
@@ -319,8 +320,8 @@ describe('[CONTRACT] Event Names — source control events', () => {
 describe('[CONTRACT] Event Names — unknown / invalid event names', () => {
   it('"unknown_event" produces success: false with structured error', () => {
     const io = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('unknown_event', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
+    const result = processEvent('unknown_event', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.action).toBeNull();
     expect(result.error?.message).toBe('Unknown event: unknown_event');
@@ -329,8 +330,8 @@ describe('[CONTRACT] Event Names — unknown / invalid event names', () => {
 
   it('"reserch_started" (misspelling) produces success: false with structured error', () => {
     const io = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('reserch_started', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
+    const result = processEvent('reserch_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.action).toBeNull();
     expect(result.error?.message).toBe('Unknown event: reserch_started');
@@ -339,8 +340,8 @@ describe('[CONTRACT] Event Names — unknown / invalid event names', () => {
 
   it('"gate_mode_set" is a valid v5 OOB event and produces success: true', () => {
     const io = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
+    const result = processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
   });
 });
@@ -350,38 +351,38 @@ describe('[CONTRACT] Event Names — unknown / invalid event names', () => {
 describe('[CONTRACT] Event Names — OOB events', () => {
   it('plan_rejected is a valid v5 OOB event and produces success: true', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const state = io.currentState!;
     completePlanningSteps(state, 'master_plan');
     const mpDoc = (state.graph.nodes['master_plan'] as StepNodeState).doc_path!;
     seedDoc(mpDoc, { total_phases: 1 });
-    const result = processEvent('plan_rejected', PROJECT_DIR, {}, io);
+    const result = processEvent('plan_rejected', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
 
   it('gate_rejected is a valid v5 OOB event and produces success: true', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('gate_rejected', PROJECT_DIR, { gate_type: 'task', reason: 'Rejected by operator' }, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
+    const result = processEvent('gate_rejected', PROJECT_DIR, { gate_type: 'task', reason: 'Rejected by operator' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
   });
 
   it('final_rejected is a valid v5 OOB event and produces success: true', () => {
     const io = driveToReviewTier(config);
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath, { verdict: 'approved' });
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
-    const result = processEvent('final_rejected', PROJECT_DIR, {}, io);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io, TEST_PATH_CONTEXT);
+    const result = processEvent('final_rejected', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).not.toBeNull();
   });
 
   it('halt is a valid v5 OOB event and produces success: true', () => {
     const io = createMockIOWithConfig(null, config);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('halt', PROJECT_DIR, { reason: 'Emergency stop' }, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
+    const result = processEvent('halt', PROJECT_DIR, { reason: 'Emergency stop' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
   });
 });

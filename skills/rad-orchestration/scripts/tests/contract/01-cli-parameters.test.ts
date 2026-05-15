@@ -4,6 +4,7 @@ import {
   createMockIO,
   DOC_STORE,
   PROJECT_DIR,
+  TEST_PATH_CONTEXT,
 } from '../fixtures/parity-states.js';
 
 beforeEach(() => {
@@ -37,6 +38,7 @@ describe('[CONTRACT] CLI Parameters — all 17 v4 CLI parameters are accepted', 
         pr_url: 'https://github.com/org/repo/pull/1',
       },
       io,
+      TEST_PATH_CONTEXT,
     );
     expect(result.success).toBe(true);
   });
@@ -61,7 +63,7 @@ describe('[CONTRACT] CLI Parameters — all 17 v4 CLI parameters are accepted', 
   for (const [field, context] of optionalContextFields) {
     it(`accepts context field "${field}" without error`, () => {
       const io = createMockIO(null);
-      const result = processEvent('start', PROJECT_DIR, context, io);
+      const result = processEvent('start', PROJECT_DIR, context, io, TEST_PATH_CONTEXT);
       expect(result.success).toBe(true);
     });
   }
@@ -72,7 +74,7 @@ describe('[CONTRACT] CLI Parameters — all 17 v4 CLI parameters are accepted', 
 describe('[CONTRACT] CLI Parameters — optional parameters do not cause errors when omitted', () => {
   it('succeeds with only required positional args (event, projectDir, empty context, io)', () => {
     const io = createMockIO(null);
-    const result = processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
   });
 });
@@ -82,13 +84,13 @@ describe('[CONTRACT] CLI Parameters — optional parameters do not cause errors 
 describe('[CONTRACT] CLI Parameters — --config optional fallback', () => {
   it('succeeds when configPath is undefined', () => {
     const io = createMockIO(null);
-    const result = processEvent('start', PROJECT_DIR, {}, io, undefined);
+    const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT, undefined);
     expect(result.success).toBe(true);
   });
 
   it('succeeds when configPath is omitted entirely (5th arg not provided)', () => {
     const io = createMockIO(null);
-    const result = processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
   });
 });
@@ -98,7 +100,7 @@ describe('[CONTRACT] CLI Parameters — --config optional fallback', () => {
 describe('[CONTRACT] CLI Parameters — internal parameters accepted but not required', () => {
   it('succeeds when internal parameters (phase, task, step, verdict) are omitted', () => {
     const io = createMockIO(null);
-    const result = processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
   });
 
@@ -109,6 +111,7 @@ describe('[CONTRACT] CLI Parameters — internal parameters accepted but not req
       PROJECT_DIR,
       { phase: 1, task: 1, step: 'research', verdict: 'approved' },
       io,
+      TEST_PATH_CONTEXT,
     );
     expect(result.success).toBe(true);
   });
@@ -119,8 +122,8 @@ describe('[CONTRACT] CLI Parameters — internal parameters accepted but not req
 describe('[CONTRACT] CLI Parameters — unknown event produces structured error', () => {
   it('returns success=false with error message containing "Unknown event"', () => {
     const io = createMockIO(null);
-    processEvent('start', PROJECT_DIR, {}, io);
-    const result = processEvent('nonexistent_event', PROJECT_DIR, {}, io);
+    processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
+    const result = processEvent('nonexistent_event', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(false);
     expect(result.error?.message).toContain('Unknown event');
   });
@@ -140,6 +143,7 @@ describe('[CONTRACT] CLI Parameters — multiple optional parameters flow throug
         worktree_path: '/tmp/wt',
       },
       io,
+      TEST_PATH_CONTEXT,
     );
     expect(result.success).toBe(true);
   });

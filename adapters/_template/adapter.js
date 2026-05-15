@@ -34,10 +34,13 @@ export const adapter = {
 
   // pluginRootSubstitution — required for every adapter (AD-15).
   // The string that replaces the canonical ${PLUGIN_ROOT} placeholder in skill
-  // bodies during emit. Set this to the harness-specific token or path expression
-  // that resolves to the installed plugin root at runtime.
-  //   • Claude Code: '${CLAUDE_PLUGIN_ROOT}'  (native Claude plugin-root variable)
-  //   • Copilot adapters: '{orchRoot}'         (runtime-resolved orch root)
-  //   • New harness: replace '<harness-plugin-root>' below with the harness token.
+  // bodies during emit. Set this to the harness install-root token or path:
+  // skills land at <harnessRoot>/skills/..., so this is the prefix that lets a
+  // skill body reach its sibling files (including the bundled CLI).
+  //   • Claude legacy: '~/.claude' (harness install root used by resolveBundleTarget)
+  //   • Claude plugin: '${CLAUDE_PLUGIN_ROOT}' is injected directly by
+  //     adapters/run-plugin.js — not via this field.
+  //   • Copilot adapters: '~/.copilot' (same shape, different harness root).
+  //   • New harness: set this to your harness install root.
   pluginRootSubstitution: '<harness-plugin-root>',
 };

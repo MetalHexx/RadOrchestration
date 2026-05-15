@@ -77,7 +77,7 @@ This makes project boundaries explicit and ensures each project's scope is self-
 When the user agrees to a series:
 
 1. **Agree on boundaries** — which goals belong to which project in the series
-2. **Create project folders** — `{base_path}/{STEM}-1/`, `{base_path}/{STEM}-2/`, etc.
+2. **Create project folders** — `~/.radorch/projects/{STEM}-1/`, `~/.radorch/projects/{STEM}-2/`, etc.
 3. **Write brainstorming docs** — one per project, each with its own goals, scope, and series context
 4. **Cross-link** — ensure prev/next links and dependency sections connect the series
 5. **Focus the session** — after creating the series structure, zoom into whichever project the user wants to start with

@@ -3,7 +3,6 @@
 import { describe, it, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  renderPreInstallSummary,
   renderPostInstallSummary,
   renderPartialSuccessSummary,
 } from './summary.js';
@@ -69,21 +68,6 @@ const copyResults = [
 
 const configPath = '/home/user/my-project/.github/skills/rad-orchestration/config/orchestration.yml';
 
-// --- renderPreInstallSummary tests ---
-
-describe('renderPreInstallSummary', () => {
-  it('contains "Installation Summary" section header text', () => {
-    const output = capture(() => renderPreInstallSummary(configBase));
-    assert.ok(output.includes('Installation Summary'), 'output should contain "Installation Summary"');
-  });
-
-  it('contains "Target:" and "Root:" labels', () => {
-    const output = capture(() => renderPreInstallSummary(configBase));
-    assert.ok(output.includes('Target:'), 'output should contain "Target:"');
-    assert.ok(output.includes('Root:'), 'output should contain "Root:"');
-  });
-});
-
 // --- renderPostInstallSummary tests ---
 
 describe('renderPostInstallSummary', () => {
@@ -103,18 +87,41 @@ describe('renderPostInstallSummary', () => {
     assert.ok(output.includes("What's Next"), 'output should contain "What\'s Next"');
   });
 
-  it('contains getting started guide link', () => {
+  it('contains getting started guide link exactly once', () => {
     const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
+    const count = (output.match(/https:\/\/github\.com\/MetalHexx\/RadOrchestration\/blob\/main\/docs\/getting-started\.md/g) || []).length;
+    assert.strictEqual(count, 1, 'output should contain getting started guide link exactly once');
+  });
+
+  it('contains /rad-brainstorm, /rad-plan, /rad-execute in that order', () => {
+    const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
+    const brainstormIdx = output.indexOf('/rad-brainstorm');
+    const planIdx = output.indexOf('/rad-plan');
+    const executeIdx = output.indexOf('/rad-execute');
+    assert.ok(brainstormIdx >= 0, 'output should contain "/rad-brainstorm"');
+    assert.ok(planIdx >= 0, 'output should contain "/rad-plan"');
+    assert.ok(executeIdx >= 0, 'output should contain "/rad-execute"');
     assert.ok(
-      output.includes('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/guides.md'),
-      'output should contain getting started guide link'
+      brainstormIdx < planIdx && planIdx < executeIdx,
+      '/rad-brainstorm, /rad-plan, /rad-execute should appear in that order'
     );
   });
 
-  it('with installUi: true includes "npm start" and "docker compose" commands', () => {
+  it('with installUi: true points users at the /rad-ui-start slash command', () => {
     const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
-    assert.ok(output.includes('npm start'), 'output should contain "npm start"');
-    assert.ok(output.includes('docker compose'), 'output should contain "docker compose"');
+    assert.ok(output.includes('/rad-ui-start'), 'output should contain "/rad-ui-start"');
+  });
+
+  it('does NOT contain radorch.mjs direct invocation', () => {
+    const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
+    assert.ok(!output.includes('radorch.mjs'), 'output should not contain "radorch.mjs"');
+  });
+
+  it('does NOT contain %USERPROFILE%, $HOME, or node ~ paths', () => {
+    const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
+    assert.ok(!output.includes('%USERPROFILE%'), 'output should not contain "%USERPROFILE%"');
+    assert.ok(!output.includes('$HOME'), 'output should not contain "$HOME"');
+    assert.ok(!output.includes('node ~/.'), 'output should not contain "node ~"');
   });
 
   it('with installUi: false output contains "skipped" text', () => {
@@ -122,14 +129,14 @@ describe('renderPostInstallSummary', () => {
     assert.ok(output.includes('skipped'), 'output should contain "skipped"');
   });
 
-  it('with installUi: false output does NOT contain "npm start"', () => {
+  it('with installUi: false output does NOT contain "/rad-ui-start"', () => {
     const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
-    assert.ok(!output.includes('npm start'), 'output should not contain "npm start"');
+    assert.ok(!output.includes('/rad-ui-start'), 'output should not contain "/rad-ui-start"');
   });
 
-  it('with installUi: false output does NOT contain "docker compose"', () => {
+  it('with installUi: false output does NOT contain step "3."', () => {
     const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
-    assert.ok(!output.includes('docker compose'), 'output should not contain "docker compose"');
+    assert.ok(!output.includes('3.'), 'output should not contain step "3." when installUi is false');
   });
 
   it('with installUi: true output contains "built and ready"', () => {
@@ -137,14 +144,19 @@ describe('renderPostInstallSummary', () => {
     assert.ok(output.includes('built and ready'), 'output should contain "built and ready"');
   });
 
-  it('with installUi: true output contains "docker-compose.yml"', () => {
-    const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
-    assert.ok(output.includes('docker-compose.yml'), 'output should contain "docker-compose.yml"');
-  });
-
   it('with installUi: true output contains step "2."', () => {
     const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
     assert.ok(output.includes('2.'), 'output should contain step "2."');
+  });
+
+  it('does not include platform-specific branching', () => {
+    const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
+    // No platform-specific paths should appear; output is generic across all harnesses
+    assert.ok(!output.includes('%USERPROFILE%'), 'output should not contain Windows CMD syntax');
+    assert.ok(!output.includes('$HOME'), 'output should not contain POSIX shell syntax');
+    assert.ok(!output.includes('setx PATH'), 'output should not contain setx instruction');
+    assert.ok(!output.includes('\\.radorch\\bin\\'), 'output should not reference retired ~/.radorch/bin/');
+    assert.ok(!output.includes('$HOME/.radorch/bin'), 'output should not reference retired ~/.radorch/bin/');
   });
 });
 
@@ -195,7 +207,7 @@ describe('renderPartialSuccessSummary', () => {
       renderPartialSuccessSummary(configWithUi, copyResults, configPath, errorMsg)
     );
     assert.ok(
-      output.includes('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/guides.md'),
+      output.includes('https://github.com/MetalHexx/RadOrchestration/blob/main/docs/getting-started.md'),
       'output should contain getting started guide link'
     );
   });

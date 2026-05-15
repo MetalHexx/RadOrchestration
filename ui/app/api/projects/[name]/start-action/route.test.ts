@@ -6,11 +6,6 @@ import type { NextRequest } from 'next/server';
 
 // --- Fixtures ---------------------------------------------------------
 const VALID_YAML = `version: "4"
-system:
-  orch_root: .claude
-projects:
-  base_path: orchestration-projects
-  naming: SCREAMING_CASE
 limits:
   max_phases: 5
   max_tasks_per_phase: 10
@@ -23,26 +18,27 @@ human_gates:
 source_control:
   auto_commit: always
   auto_pr: ask
-  provider: github
 `;
 
-let tmpDir: string;
-let projectsDir: string;
+let tmpDir = '';
+let projectsDir = '';
+let origHomedir: typeof os.homedir;
 
 async function setup() {
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'start-action-'));
-  const configDir = path.join(tmpDir, '.claude', 'skills', 'rad-orchestration', 'config');
-  await mkdir(configDir, { recursive: true });
-  await writeFile(path.join(configDir, 'orchestration.yml'), VALID_YAML, 'utf-8');
-  projectsDir = path.join(tmpDir, 'orchestration-projects');
+  const radorcDir = path.join(tmpDir, '.radorch');
+  // Write orchestration.yml under ~/.radorch/
+  await mkdir(radorcDir, { recursive: true });
+  await writeFile(path.join(radorcDir, 'orchestration.yml'), VALID_YAML, 'utf-8');
+  projectsDir = path.join(radorcDir, 'projects');
   await mkdir(path.join(projectsDir, 'DEMO-PROJECT'), { recursive: true });
-  process.env.WORKSPACE_ROOT = tmpDir;
+  origHomedir = os.homedir;
+  (os as unknown as { homedir: () => string }).homedir = () => tmpDir;
   process.env.LAUNCH_CLAUDE_PROJECT_DRY_RUN = '1';
-  delete process.env.ORCH_ROOT;
 }
 
 async function teardown() {
-  delete process.env.WORKSPACE_ROOT;
+  (os as unknown as { homedir: typeof os.homedir }).homedir = origHomedir;
   delete process.env.LAUNCH_CLAUDE_PROJECT_DRY_RUN;
   await rm(tmpDir, { recursive: true, force: true });
 }
@@ -106,18 +102,21 @@ async function invokePOST(body: unknown, name: string) {
       console.log('✓ start-planning happy path → 200 success:true');
     }
 
-    // WORKSPACE_ROOT unset → 500 with concise error, no absolute path leakage
+    // home pointing to dir with no .radorch/projects/ subdir → 500
     {
-      const saved = process.env.WORKSPACE_ROOT;
-      delete process.env.WORKSPACE_ROOT;
-      const res = await invokePOST({ action: 'start-brainstorming' }, 'DEMO-PROJECT');
-      process.env.WORKSPACE_ROOT = saved;
-      assert.equal(res.status, 500);
-      const json = await res.json();
-      assert.match(json.error, /workspace/i);
-      assert.ok(!/[A-Z]:\\|\/home\//.test(json.error), 'error must not echo absolute host path');
-      assert.ok(!/WORKSPACE_ROOT/.test(json.error), 'error must not echo env var name');
-      console.log('✓ unset WORKSPACE_ROOT → 500, concise error, no path/env leakage');
+      const emptyDir = await mkdtemp(path.join(os.tmpdir(), 'start-action-empty-'));
+      try {
+        (os as unknown as { homedir: () => string }).homedir = () => emptyDir;
+        const res = await invokePOST({ action: 'start-brainstorming' }, 'DEMO-PROJECT');
+        assert.equal(res.status, 500);
+        const json = await res.json();
+        assert.ok(typeof json.error === 'string', 'error must be a string');
+        assert.ok(!/[A-Z]:\\|\/home\//.test(json.error), 'error must not echo absolute host path');
+        console.log('✓ missing projects dir → 500, concise error, no path leakage');
+      } finally {
+        (os as unknown as { homedir: () => string }).homedir = () => tmpDir; // restore
+        await rm(emptyDir, { recursive: true, force: true });
+      }
     }
 
     // Forced launcher failure → 500 with structured error, no path leakage
@@ -172,7 +171,7 @@ async function invokePOST(body: unknown, name: string) {
       assert.equal(typeof json.error, 'string');
       assert.ok(!/[A-Z]:\\|\/home\//.test(json.error), 'execute-plan error must not echo absolute host path');
       assert.ok(
-        !/LAUNCH_CLAUDE_PROJECT_FORCE_FAIL|WORKSPACE_ROOT/.test(json.error),
+        !/LAUNCH_CLAUDE_PROJECT_FORCE_FAIL/.test(json.error),
         'execute-plan error must not echo env var name'
       );
       console.log('✓ execute-plan forced launcher failure → 500, no path/env leakage');

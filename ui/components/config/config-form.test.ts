@@ -35,14 +35,13 @@ function test(name: string, fn: () => void) {
 /* ------------------------------------------------------------------ */
 
 const SECTION_TITLES: Record<string, string> = {
-  system: "System",
-  projects: "Projects",
   limits: "Pipeline Limits",
   "human-gates": "Human Gates",
   "source-control": "Source Control",
+  template: "Template",
 };
 
-const SECTION_ORDER = ["system", "projects", "limits", "human-gates", "source-control"];
+const SECTION_ORDER = ["limits", "human-gates", "source-control", "template"];
 
 function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
   return path.split(".").reduce<unknown>((acc, key) => {
@@ -70,8 +69,6 @@ function groupFieldsBySection(fields: FieldMeta[]): Map<string, FieldMeta[]> {
 
 const MOCK_CONFIG: OrchestrationConfig = {
   version: "4",
-  system: { orch_root: ".github" },
-  projects: { base_path: "../orchestration-projects", naming: "SCREAMING_CASE" },
   limits: {
     max_phases: 10,
     max_tasks_per_phase: 8,
@@ -86,7 +83,6 @@ const MOCK_CONFIG: OrchestrationConfig = {
   source_control: {
     auto_commit: "always",
     auto_pr: "ask",
-    provider: "github",
   },
 };
 
@@ -103,9 +99,9 @@ test("getNestedValue extracts top-level key", () => {
   assert.strictEqual(val, "4");
 });
 
-test("getNestedValue extracts nested key (system.orch_root)", () => {
-  const val = getNestedValue(MOCK_CONFIG as unknown as Record<string, unknown>, "system.orch_root");
-  assert.strictEqual(val, ".github");
+test("getNestedValue extracts nested key (default_template)", () => {
+  const val = getNestedValue(MOCK_CONFIG as unknown as Record<string, unknown>, "default_template");
+  assert.strictEqual(val, undefined);
 });
 
 test("getNestedValue extracts deeply nested key (limits.max_phases)", () => {
@@ -139,12 +135,12 @@ test("groupFieldsBySection excludes version field", () => {
   assert.strictEqual(grouped.has("version"), false);
 });
 
-test("groupFieldsBySection produces exactly 5 sections", () => {
+test("groupFieldsBySection produces exactly 4 sections", () => {
   const grouped = groupFieldsBySection(CONFIG_FIELDS);
-  assert.strictEqual(grouped.size, 5);
+  assert.strictEqual(grouped.size, 4);
 });
 
-test("All 5 section keys are present in grouped fields", () => {
+test("All 4 section keys are present in grouped fields", () => {
   const grouped = groupFieldsBySection(CONFIG_FIELDS);
   for (const key of SECTION_ORDER) {
     assert.ok(grouped.has(key), `Missing section: ${key}`);
@@ -153,21 +149,19 @@ test("All 5 section keys are present in grouped fields", () => {
 
 test("Section field counts are correct", () => {
   const grouped = groupFieldsBySection(CONFIG_FIELDS);
-  assert.strictEqual(grouped.get("system")!.length, 1);
-  assert.strictEqual(grouped.get("projects")!.length, 2);
   assert.strictEqual(grouped.get("limits")!.length, 4);
   assert.strictEqual(grouped.get("human-gates")!.length, 3);
-  assert.strictEqual(grouped.get("source-control")!.length, 3);
+  assert.strictEqual(grouped.get("source-control")!.length, 2);
+  assert.strictEqual(grouped.get("template")!.length, 1);
 });
 
 // --- Section titles ---
 
-test("All 5 accordion sections have correct display titles", () => {
-  assert.strictEqual(SECTION_TITLES["system"], "System");
-  assert.strictEqual(SECTION_TITLES["projects"], "Projects");
+test("All 4 accordion sections have correct display titles", () => {
   assert.strictEqual(SECTION_TITLES["limits"], "Pipeline Limits");
   assert.strictEqual(SECTION_TITLES["human-gates"], "Human Gates");
   assert.strictEqual(SECTION_TITLES["source-control"], "Source Control");
+  assert.strictEqual(SECTION_TITLES["template"], "Template");
 });
 
 // --- Version field rendering ---
@@ -183,11 +177,10 @@ test("Version field renders as 'Schema version: {value}' text", () => {
 
 // --- Control type mapping ---
 
-test("String fields (orch_root, base_path) have controlType 'text'", () => {
+test("String fields (default_template) have controlType 'text'", () => {
   const textFields = CONFIG_FIELDS.filter((f) => f.controlType === "text");
   const textKeys = textFields.map((f) => f.key);
-  assert.ok(textKeys.includes("system.orch_root"));
-  assert.ok(textKeys.includes("projects.base_path"));
+  assert.ok(textKeys.includes("default_template"));
 });
 
 test("Number fields (4 limits) have controlType 'number' with min values", () => {
@@ -215,23 +208,17 @@ test("Boolean fields (after_planning, after_final_review) have controlType 'swit
   assert.strictEqual(switchFields.length, 2);
 });
 
-test("Enum fields (naming, execution_mode, auto_commit, auto_pr) have controlType 'toggle-group'", () => {
+test("Enum fields (execution_mode, auto_commit, auto_pr) have controlType 'toggle-group'", () => {
   const toggleFields = CONFIG_FIELDS.filter((f) => f.controlType === "toggle-group");
   const toggleKeys = toggleFields.map((f) => f.key);
-  assert.ok(toggleKeys.includes("projects.naming"));
   assert.ok(toggleKeys.includes("human_gates.execution_mode"));
   assert.ok(toggleKeys.includes("source_control.auto_commit"));
   assert.ok(toggleKeys.includes("source_control.auto_pr"));
-  assert.strictEqual(toggleFields.length, 4);
+  assert.strictEqual(toggleFields.length, 3);
 });
 
 test("Toggle-group fields have correct options", () => {
   const fieldMap = new Map(CONFIG_FIELDS.map((f) => [f.key, f]));
-  assert.deepStrictEqual(fieldMap.get("projects.naming")!.options, [
-    "SCREAMING_CASE",
-    "lowercase",
-    "numbered",
-  ]);
   assert.deepStrictEqual(fieldMap.get("human_gates.execution_mode")!.options, [
     "ask",
     "phase",
@@ -250,12 +237,11 @@ test("Toggle-group fields have correct options", () => {
   ]);
 });
 
-test("Read-only fields (version, provider) have controlType 'readonly'", () => {
+test("Read-only fields (version) have controlType 'readonly'", () => {
   const readonlyFields = CONFIG_FIELDS.filter((f) => f.controlType === "readonly");
   const readonlyKeys = readonlyFields.map((f) => f.key);
   assert.ok(readonlyKeys.includes("version"));
-  assert.ok(readonlyKeys.includes("source_control.provider"));
-  assert.strictEqual(readonlyFields.length, 2);
+  assert.strictEqual(readonlyFields.length, 1);
 });
 
 // --- onChange callback contracts ---
@@ -264,10 +250,10 @@ test("Text input onChange produces (dotPath, stringValue) pair", () => {
   const calls: [string, unknown][] = [];
   const onChange = (path: string, value: unknown) => calls.push([path, value]);
   // Simulate text input change
-  const field = CONFIG_FIELDS.find((f) => f.key === "system.orch_root")!;
-  const newValue = ".custom";
+  const field = CONFIG_FIELDS.find((f) => f.key === "default_template")!;
+  const newValue = "high.yml";
   onChange(field.key, newValue);
-  assert.deepStrictEqual(calls[0], ["system.orch_root", ".custom"]);
+  assert.deepStrictEqual(calls[0], ["default_template", "high.yml"]);
 });
 
 test("Number input onChange produces (dotPath, numericValue) pair", () => {
@@ -302,11 +288,11 @@ test("Switch onChange produces (dotPath, booleanValue) pair", () => {
 test("ToggleGroup onChange produces (dotPath, selectedOptionString) pair", () => {
   const calls: [string, unknown][] = [];
   const onChange = (path: string, value: unknown) => calls.push([path, value]);
-  const field = CONFIG_FIELDS.find((f) => f.key === "projects.naming")!;
+  const field = CONFIG_FIELDS.find((f) => f.key === "human_gates.execution_mode")!;
   // Simulate: onValueChange receives array, we extract first element
-  const newVal = ["lowercase"];
+  const newVal = ["phase"];
   onChange(field.key, newVal[0]);
-  assert.deepStrictEqual(calls[0], ["projects.naming", "lowercase"]);
+  assert.deepStrictEqual(calls[0], ["human_gates.execution_mode", "phase"]);
 });
 
 test("ToggleGroup guards against undefined value — empty array does not fire onChange", () => {
@@ -314,7 +300,7 @@ test("ToggleGroup guards against undefined value — empty array does not fire o
   const onChange = (path: string, value: unknown) => calls.push([path, value]);
   // Simulate: onValueChange receives empty array (deselection) — guard prevents call
   const newVal: string[] = [];
-  if (newVal.length > 0) onChange("projects.naming", newVal[0]);
+  if (newVal.length > 0) onChange("human_gates.execution_mode", newVal[0]);
   assert.strictEqual(calls.length, 0, "onChange should not fire for empty array");
 });
 
@@ -330,7 +316,7 @@ test("ToggleGroup value prop handles undefined gracefully (produces empty array)
 test("Validation errors are keyed by dot-path matching field keys", () => {
   const errors: ConfigValidationErrors = {
     "limits.max_phases": "Must be at least 1",
-    "system.orch_root": "Required",
+    "human_gates.execution_mode": "Invalid execution mode",
   };
   // The component passes errors[field.key] to ConfigFieldRow error prop
   const maxPhasesField = CONFIG_FIELDS.find((f) => f.key === "limits.max_phases")!;
@@ -341,8 +327,8 @@ test("Fields without errors receive undefined error prop", () => {
   const errors: ConfigValidationErrors = {
     "limits.max_phases": "Must be at least 1",
   };
-  const orchRootField = CONFIG_FIELDS.find((f) => f.key === "system.orch_root")!;
-  assert.strictEqual(errors[orchRootField.key], undefined);
+  const defaultTemplateField = CONFIG_FIELDS.find((f) => f.key === "default_template")!;
+  assert.strictEqual(errors[defaultTemplateField.key], undefined);
 });
 
 // --- All fields have label and tooltip ---
@@ -361,21 +347,20 @@ test("Every non-version CONFIG_FIELD has a non-empty tooltip", () => {
 
 // --- Section order ---
 
-test("SECTION_ORDER contains exactly 5 sections in correct order", () => {
+test("SECTION_ORDER contains exactly 4 sections in correct order", () => {
   assert.deepStrictEqual(SECTION_ORDER, [
-    "system",
-    "projects",
     "limits",
     "human-gates",
     "source-control",
+    "template",
   ]);
 });
 
 // --- Default accordion expansion ---
 
-test("defaultValue for accordion matches all 5 section keys", () => {
+test("defaultValue for accordion matches all 4 section keys", () => {
   const defaultValue = [...SECTION_ORDER];
-  assert.strictEqual(defaultValue.length, 5);
+  assert.strictEqual(defaultValue.length, 4);
   assert.deepStrictEqual(defaultValue, SECTION_ORDER);
 });
 

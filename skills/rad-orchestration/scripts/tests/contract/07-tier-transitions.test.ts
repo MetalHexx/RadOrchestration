@@ -9,6 +9,7 @@ import {
   driveTaskWith,
   drivePhaseReviewApproval,
   codeReviewDoc,
+  TEST_PATH_CONTEXT,
 } from '../fixtures/parity-states.js';
 
 // ── Clear DOC_STORE between tests ─────────────────────────────────────────────
@@ -37,7 +38,7 @@ describe('[CONTRACT] Tier Transitions — planning to execution', () => {
     // driveToExecutionWithConfig pre-seeds the explosion-script post-condition,
     // so the walker advances directly to execute_task.
     const io = driveToExecutionWithConfig(config, 2);
-    const result = processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('execute_task');
@@ -56,19 +57,19 @@ describe('[CONTRACT] Tier Transitions — task cycle to next task', () => {
   it('code_review_completed (approved) on task 1 of 2 → execute_task for task 2', () => {
     const io = driveToExecutionWithConfig(config, 1, 2);
     const ctx = { phase: 1, task: 1 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     seedDoc(codeReviewDoc(1, 1));
     let result = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx,
       doc_path: codeReviewDoc(1, 1),
       verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     // Task gate fires before advancing to the next task (even in autonomous mode)
     if (result.action === 'gate_task') {
-      result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+      result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     }
 
     expect(result.success).toBe(true);
@@ -85,19 +86,19 @@ describe('[CONTRACT] Tier Transitions — task cycle to next task', () => {
     driveTaskWith(io, 1, 1);
 
     const ctx = { phase: 1, task: 2 };
-    processEvent('execution_started', PROJECT_DIR, ctx, io);
-    processEvent('task_completed', PROJECT_DIR, ctx, io);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io);
+    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     seedDoc(codeReviewDoc(1, 2));
     let result = processEvent('code_review_completed', PROJECT_DIR, {
       ...ctx,
       doc_path: codeReviewDoc(1, 2),
       verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     // Task gate fires before advancing to phase review (even in autonomous mode)
     if (result.action === 'gate_task') {
-      result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+      result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     }
 
     expect(result.success).toBe(true);
@@ -120,7 +121,7 @@ describe('[CONTRACT] Tier Transitions — phase completion to next phase', () =>
     drivePhaseReviewApproval(io, 1);
 
     // Walker advances directly into phase 2's first execute_task
-    const result = processEvent('start', PROJECT_DIR, {}, io);
+    const result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('execute_task');
@@ -138,7 +139,7 @@ describe('[CONTRACT] Tier Transitions — phase completion to next phase', () =>
 
     drivePhaseReviewApproval(io, 1);
 
-    const result = processEvent('final_review_started', PROJECT_DIR, {}, io);
+    const result = processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_final_reviewer');
@@ -156,11 +157,11 @@ describe('[CONTRACT] Tier Transitions — phase completion to next phase', () =>
 
     drivePhaseReviewApproval(io, 1);
 
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     const frDocPath = '/tmp/final-review.md';
     seedDoc(frDocPath, { verdict: 'approved' });
-    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io);
-    const result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    processEvent('final_review_completed', PROJECT_DIR, { doc_path: frDocPath, verdict: 'approved' }, io, TEST_PATH_CONTEXT);
+    const result = processEvent('final_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');

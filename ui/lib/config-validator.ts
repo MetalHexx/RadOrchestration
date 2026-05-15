@@ -3,7 +3,6 @@ import type {
   ConfigValidationErrors,
 } from '@/types/config';
 
-const VALID_NAMING: readonly string[] = ['SCREAMING_CASE', 'lowercase', 'numbered'];
 const VALID_EXECUTION_MODE: readonly string[] = ['ask', 'phase', 'task', 'autonomous'];
 const VALID_SOURCE_CONTROL_ACTION: readonly string[] = ['always', 'ask', 'never'];
 
@@ -14,27 +13,7 @@ function isSection(value: unknown): value is Record<string, unknown> {
 export function validateConfig(config: OrchestrationConfig): ConfigValidationErrors {
   const errors: ConfigValidationErrors = {};
 
-  // 1. system.orch_root — non-empty string
-  if (!isSection(config.system)) {
-    errors['system'] = 'Missing system section';
-  } else if (typeof config.system.orch_root !== 'string' || config.system.orch_root.trim().length === 0) {
-    errors['system.orch_root'] = 'Orchestration root is required';
-  }
-
-  // 2. projects.base_path — non-empty string
-  // 3. projects.naming — must be valid enum
-  if (!isSection(config.projects)) {
-    errors['projects'] = 'Missing projects section';
-  } else {
-    if (typeof config.projects.base_path !== 'string' || config.projects.base_path.trim().length === 0) {
-      errors['projects.base_path'] = 'Base path is required';
-    }
-    if (!VALID_NAMING.includes(config.projects.naming as string)) {
-      errors['projects.naming'] = 'Invalid naming convention';
-    }
-  }
-
-  // 4–7. limits — all integer constraints
+  // 1–4. limits — all integer constraints
   if (!isSection(config.limits)) {
     errors['limits'] = 'Missing limits section';
   } else {
@@ -55,7 +34,7 @@ export function validateConfig(config: OrchestrationConfig): ConfigValidationErr
     }
   }
 
-  // 8–10. human_gates
+  // 5–7. human_gates
   if (!isSection(config.human_gates)) {
     errors['human_gates'] = 'Missing human_gates section';
   } else {
@@ -70,7 +49,7 @@ export function validateConfig(config: OrchestrationConfig): ConfigValidationErr
     }
   }
 
-  // 11–13. source_control
+  // 8–9. source_control
   if (!isSection(config.source_control)) {
     errors['source_control'] = 'Missing source_control section';
   } else {
@@ -79,9 +58,6 @@ export function validateConfig(config: OrchestrationConfig): ConfigValidationErr
     }
     if (!VALID_SOURCE_CONTROL_ACTION.includes(config.source_control.auto_pr as string)) {
       errors['source_control.auto_pr'] = 'Invalid auto PR setting';
-    }
-    if (config.source_control.provider !== 'github') {
-      errors['source_control.provider'] = 'Unsupported provider';
     }
   }
 

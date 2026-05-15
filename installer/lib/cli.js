@@ -1,7 +1,5 @@
 // installer/lib/cli.js — CLI argument parser
 
-import path from 'node:path';
-
 /**
  * @typedef {Object} ParsedCli
  * @property {'help'|'version'|'run'|'uninstall'} command - The resolved command
@@ -10,19 +8,18 @@ import path from 'node:path';
 
 /** Map of --flag → config field name */
 const FLAG_MAP = {
-  '--workspace':      'workspaceDir',
-  '--tool':           'tool',
-  '--orch-root':      'orchRoot',
-  '--projects-path':  'projectsBasePath',
-  '--naming':         'projectsNaming',
-  '--max-phases':     'maxPhases',
-  '--max-tasks':      'maxTasksPerPhase',
-  '--max-retries':    'maxRetriesPerTask',
-  '--max-rejections': 'maxConsecutiveReviewRejections',
-  '--execution-mode': 'executionMode',
-  '--auto-commit':    'autoCommit',
-  '--auto-pr':        'autoPr',
-  '--dashboard-dir':  'uiDir',
+  // Active flags — used by the rewritten wizard.
+  '--harness':           'harnesses',        // comma-list parsed into a string[]
+  '--default-template':  'defaultTemplate',
+  '--max-phases':        'maxPhases',
+  '--max-tasks':         'maxTasksPerPhase',
+  '--max-retries':       'maxRetriesPerTask',
+  '--max-rejections':    'maxConsecutiveReviewRejections',
+  '--after-planning':    'afterPlanning',
+  '--execution-mode':    'executionMode',
+  '--after-final-review': 'afterFinalReview',
+  '--auto-commit':       'autoCommit',
+  '--auto-pr':           'autoPr',
 };
 
 /** Fields that must be parsed as integers */
@@ -32,15 +29,14 @@ const INT_FIELDS = new Set([
 
 /** Valid values for enum-type fields */
 const ENUM_VALUES = {
-  // `cursor` is intentionally omitted: it appears as a disabled "Coming
-  // soon" choice in the interactive prompt, but no manifest backs it, so
-  // accepting it on the CLI would crash deep in getManifest().
-  tool:            ['claude-code', 'copilot-vscode', 'copilot-cli'],
-  projectsNaming:  ['SCREAMING_CASE', 'lowercase', 'numbered'],
+  defaultTemplate: ['extra-high', 'high', 'medium', 'low', 'ask'],
   executionMode:   ['ask', 'phase', 'task', 'autonomous'],
   autoCommit:      ['always', 'ask', 'never'],
   autoPr:          ['always', 'ask', 'never'],
 };
+
+/** Valid harness names (each value of the comma-list passed to --harness). */
+const HARNESS_NAMES = new Set(['claude', 'copilot-vscode', 'copilot-cli']);
 
 /**
  * Parses a process.argv-style array into a structured command + options object.
@@ -74,12 +70,6 @@ export function parseArgs(argv) {
   if (argv.includes('--overwrite') || argv.includes('--force')) {
     options.overwrite = true;
   }
-  if (argv.includes('--no-dashboard')) {
-    options.installUi = false;
-  }
-  if (argv.includes('--dashboard')) {
-    options.installUi = true;
-  }
 
   // Key-value flags
   for (let i = 0; i < argv.length; i++) {
@@ -87,24 +77,28 @@ export function parseArgs(argv) {
     const field = FLAG_MAP[flag];
     if (field && i + 1 < argv.length) {
       const raw = argv[i + 1];
-      options[field] = INT_FIELDS.has(field) ? parseInt(raw, 10) : raw;
+      if (field === 'harnesses') {
+        // --harness accepts a comma-separated list: --harness claude,copilot-vscode
+        const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
+        for (const p of parts) {
+          if (!HARNESS_NAMES.has(p)) {
+            throw new Error(
+              `Invalid harness '${p}' for --harness. Allowed: claude, copilot-vscode, copilot-cli`,
+            );
+          }
+        }
+        options.harnesses = parts;
+      } else if (field === 'afterPlanning' || field === 'afterFinalReview') {
+        // Boolean-via-string flag.
+        const lower = raw.toLowerCase();
+        if (lower === 'true' || lower === '1' || lower === 'yes') options[field] = true;
+        else if (lower === 'false' || lower === '0' || lower === 'no') options[field] = false;
+        else throw new Error(`Invalid value '${raw}' for --${fieldToFlag(field)}. Expected true|false.`);
+      } else {
+        options[field] = INT_FIELDS.has(field) ? parseInt(raw, 10) : raw;
+      }
       i++; // skip consumed value
     }
-  }
-
-  // Resolve workspace to absolute path
-  if (options.workspaceDir) {
-    options.workspaceDir = path.resolve(options.workspaceDir);
-  }
-
-  // --dashboard-dir implies installUi
-  if (options.uiDir !== undefined && options.installUi === undefined) {
-    options.installUi = true;
-  }
-
-  // Resolve uiDir to absolute path
-  if (options.uiDir) {
-    options.uiDir = path.resolve(options.uiDir);
   }
 
   // Validate enum values

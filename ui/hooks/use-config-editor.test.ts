@@ -25,8 +25,6 @@ import { stringifyYaml } from '@/lib/yaml-parser';
 function makeValidConfig(): OrchestrationConfig {
   return {
     version: '4',
-    system: { orch_root: '.github' },
-    projects: { base_path: '../orchestration-projects', naming: 'SCREAMING_CASE' },
     limits: {
       max_phases: 5,
       max_tasks_per_phase: 10,
@@ -41,7 +39,6 @@ function makeValidConfig(): OrchestrationConfig {
     source_control: {
       auto_commit: 'always',
       auto_pr: 'ask',
-      provider: 'github',
     },
   };
 }
@@ -103,12 +100,6 @@ test('updateField: limits.max_phases updates to 12', () => {
   assert.strictEqual(updated.limits.max_phases, 12);
   // Original is not mutated
   assert.strictEqual(config.limits.max_phases, 5);
-});
-
-test('updateField: system.orch_root updates to new value', () => {
-  const config = makeValidConfig();
-  const updated = updateFieldOnObject(config, 'system.orch_root', '/new/root');
-  assert.strictEqual(updated.system.orch_root, '/new/root');
 });
 
 test('updateField: human_gates.execution_mode updates to phase', () => {
@@ -196,7 +187,7 @@ test('setMode to raw when dirty: stringifyYaml produces valid YAML', () => {
 });
 
 test('setMode to raw when clean: rawYaml stays as original', () => {
-  const originalRawYaml = 'version: "4"\nsystem:\n  orch_root: .github\n';
+  const originalRawYaml = 'version: "4"\nlimits:\n  max_phases: 10\n';
   const config = makeValidConfig();
   const baseline = JSON.stringify(config);
   const formDirty = JSON.stringify(config) !== baseline;

@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { processEvent } from '../lib/engine.js';
 import { enrichActionContext } from '../lib/context-enrichment.js';
-import { initSourceControlForTests } from './fixtures/parity-states.js';
+import { initSourceControlForTests, TEST_PATH_CONTEXT } from './fixtures/parity-states.js';
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -19,8 +18,6 @@ import type {
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const PROJECT_DIR = '/tmp/test-project/EXEC-INTEGRATION';
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ORCH_ROOT = path.resolve(__dirname, '../../../..');
 
 function makeConfig(overrides: {
   execution_mode?: string;
@@ -30,8 +27,6 @@ function makeConfig(overrides: {
   auto_pr?: string;
 } = {}): OrchestrationConfig {
   return {
-    system: { orch_root: ORCH_ROOT },
-    projects: { base_path: '', naming: 'SCREAMING_CASE' },
     limits: {
       max_phases: 10,
       max_tasks_per_phase: 8,
@@ -46,7 +41,6 @@ function makeConfig(overrides: {
     source_control: {
       auto_commit: overrides.auto_commit ?? 'always',
       auto_pr: overrides.auto_pr ?? 'always',
-      provider: 'github',
     },
     default_template: 'extra-high',
   };
@@ -183,20 +177,20 @@ function seedExplosionState(io: MockIO, phaseTasks: Array<typeof TASKS_FIXTURE>)
  */
 function drivePlanningTier(io: MockIO): PipelineResult {
   // Init scaffold
-  processEvent('start', PROJECT_DIR, {}, io);
+  processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
   // requirements → master_plan → explode_master_plan (extra-high planning sequence)
-  processEvent('requirements_started', PROJECT_DIR, {}, io);
+  processEvent('requirements_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
   const reqsDoc = path.join(PROJECT_DIR, 'docs', 'requirements.md');
   seedDoc(reqsDoc, { requirement_count: 5 });
-  processEvent('requirements_completed', PROJECT_DIR, { doc_path: reqsDoc }, io);
+  processEvent('requirements_completed', PROJECT_DIR, { doc_path: reqsDoc }, io, TEST_PATH_CONTEXT);
 
-  processEvent('master_plan_started', PROJECT_DIR, {}, io);
+  processEvent('master_plan_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
   seedDoc(DOC_PATHS.masterPlan, { total_phases: 2, total_tasks: 4 });
-  processEvent('master_plan_completed', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+  processEvent('master_plan_completed', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io, TEST_PATH_CONTEXT);
 
-  processEvent('explosion_started', PROJECT_DIR, {}, io);
-  processEvent('explosion_completed', PROJECT_DIR, {}, io);
+  processEvent('explosion_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
+  processEvent('explosion_completed', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
   // Mirror the production explosion script: seed phase_loop iterations with
   // doc_path on each iteration + task_loop.iterations BEFORE plan_approved so
@@ -209,11 +203,11 @@ function drivePlanningTier(io: MockIO): PipelineResult {
   // initSourceControlForTests for the "ask" → "always" normalization rationale.
   initSourceControlForTests(io, io.readConfig());
 
-  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io);
+  const result = processEvent('plan_approved', PROJECT_DIR, { doc_path: DOC_PATHS.masterPlan }, io, TEST_PATH_CONTEXT);
 
   return result.action === 'ask_gate_mode'
     ? result
-    : processEvent('start', PROJECT_DIR, {}, io);
+    : processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 }
 
 /**
@@ -224,10 +218,10 @@ function drivePlanningTier(io: MockIO): PipelineResult {
 function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
   const ctx = { phase, task };
 
-  processEvent('execution_started', PROJECT_DIR, ctx, io);
-  processEvent('task_completed', PROJECT_DIR, ctx, io);
+  processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+  processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
 
-  processEvent('code_review_started', PROJECT_DIR, ctx, io);
+  processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
 
   const reviewDoc = DOC_PATHS.codeReview(phase, task);
   seedDoc(reviewDoc);
@@ -235,17 +229,17 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
     ...ctx,
     doc_path: reviewDoc,
     verdict: 'approved',
-  }, io);
+  }, io, TEST_PATH_CONTEXT);
 
   // If commit conditional fires, drive commit events at task scope
   if (result.action === 'invoke_source_control_commit') {
-    processEvent('commit_started', PROJECT_DIR, ctx, io);
-    result = processEvent('commit_completed', PROJECT_DIR, ctx, io);
+    processEvent('commit_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+    result = processEvent('commit_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   }
 
   // If task gate fires, approve it to continue
   if (result.action === 'gate_task') {
-    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io);
+    result = processEvent('task_gate_approved', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   }
 
   return result;
@@ -258,7 +252,7 @@ function driveTask(io: MockIO, phase: number, task: number): PipelineResult {
 function drivePhasePostTasks(io: MockIO, phase: number): PipelineResult {
   const ctx = { phase };
 
-  processEvent('phase_review_started', PROJECT_DIR, ctx, io);
+  processEvent('phase_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   const reviewDoc = DOC_PATHS.phaseReview(phase);
   seedDoc(reviewDoc);
   let reviewResult = processEvent('phase_review_completed', PROJECT_DIR, {
@@ -266,11 +260,11 @@ function drivePhasePostTasks(io: MockIO, phase: number): PipelineResult {
     doc_path: reviewDoc,
     verdict: 'approved',
     exit_criteria_met: true,
-  }, io);
+  }, io, TEST_PATH_CONTEXT);
 
   // If phase gate fires, approve it to continue
   if (reviewResult.action === 'gate_phase') {
-    reviewResult = processEvent('phase_gate_approved', PROJECT_DIR, ctx, io);
+    reviewResult = processEvent('phase_gate_approved', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   }
 
   return reviewResult;
@@ -405,7 +399,7 @@ describe('Execution-tier integration — complete pipeline run', () => {
     // ══════════════════════════════════════════════════════════════════════
 
     // ── final_review_started ─────────────────────────────────────────────
-    result = processEvent('final_review_started', PROJECT_DIR, {}, io);
+    result = processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('spawn_final_reviewer');
 
@@ -414,7 +408,7 @@ describe('Execution-tier integration — complete pipeline run', () => {
     result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: DOC_PATHS.finalReview,
       verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     // pr_gate: auto_pr='always' neq 'never' → true branch → invoke PR
     expect(result.action).toBe('invoke_source_control_pr');
@@ -427,19 +421,19 @@ describe('Execution-tier integration — complete pipeline run', () => {
     }
 
     // ── pr_requested ────────────────────────────────────────
-    result = processEvent('pr_requested', PROJECT_DIR, {}, io);
+    result = processEvent('pr_requested', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_pr');
 
     // ── pr_created → final_approval_gate ───────────────────
-    result = processEvent('pr_created', PROJECT_DIR, { pr_url: 'https://github.com/test/repo/pull/1' }, io);
+    result = processEvent('pr_created', PROJECT_DIR, { pr_url: 'https://github.com/test/repo/pull/1' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     // final_approval_gate active (after_final_review = true)
     expect(result.action).toBe('request_final_approval');
     expect(result.context.pr_url).toBe('https://github.com/test/repo/pull/1');
 
     // ── final_approved → display_complete ────────────────────────
-    result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    result = processEvent('final_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');
 
@@ -477,6 +471,7 @@ describe('Execution-tier integration — complete pipeline run', () => {
       state: io.currentState!,
       config,
       cliContext: {},
+      scriptsDir: TEST_PATH_CONTEXT.scriptsDir,
     });
 
     // Present — the handoff doc path and the identity fields the coder needs.
@@ -506,7 +501,7 @@ describe('Execution-tier integration — complete pipeline run', () => {
     const dispatched: string[] = [];
     function signal(event: string, ctx: Record<string, unknown> = {}) {
       dispatched.push(event);
-      return processEvent(event, PROJECT_DIR, ctx, io);
+      return processEvent(event, PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     }
 
     // ── Planning tier — mirrors post-Iter-7 flow: requirements → master_plan →
@@ -598,10 +593,10 @@ describe('Execution-tier integration — gate mode variations', () => {
     // Pass through gate_mode_selection — phase_loop expands during this event.
     // Then seed explosion-script child nodes (Iter 5 behavior) so the walker
     // can advance past the missing phase_planning / task_handoff body nodes.
-    result = processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io);
+    result = processEvent('gate_mode_set', PROJECT_DIR, { gate_mode: 'task' }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     seedExplosionState(io, [TASKS_FIXTURE, TASKS_FIXTURE]);
-    result = processEvent('start', PROJECT_DIR, {}, io);
+    result = processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.action).toBe('execute_task');
     // Reset gate_mode so subsequent gates see ask behavior
     io.currentState!.pipeline.gate_mode = null;
@@ -609,19 +604,19 @@ describe('Execution-tier integration — gate mode variations', () => {
     // Phase 1, Task 1 — drive up to code review completion
     {
       const ctx = { phase: 1, task: 1 };
-      processEvent('execution_started', PROJECT_DIR, ctx, io);
-      processEvent('task_completed', PROJECT_DIR, ctx, io);
-      processEvent('code_review_started', PROJECT_DIR, ctx, io);
+      processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+      processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+      processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
       const r = DOC_PATHS.codeReview(1, 1); seedDoc(r);
-      result = processEvent('code_review_completed', PROJECT_DIR, { ...ctx, doc_path: r, verdict: 'approved' }, io);
+      result = processEvent('code_review_completed', PROJECT_DIR, { ...ctx, doc_path: r, verdict: 'approved' }, io, TEST_PATH_CONTEXT);
     }
     expect(result.success).toBe(true);
     // commit_gate fires before task_gate → invoke_source_control_commit
     expect(result.action).toBe('invoke_source_control_commit');
 
     // Drive commit events at task scope
-    processEvent('commit_started', PROJECT_DIR, { phase: 1, task: 1 }, io);
-    result = processEvent('commit_completed', PROJECT_DIR, { phase: 1, task: 1 }, io);
+    processEvent('commit_started', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
+    result = processEvent('commit_completed', PROJECT_DIR, { phase: 1, task: 1 }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     // pipeline.gate_mode is null and execution_mode='ask' → walker returns ask_gate_mode
     // before activating the task_gate, prompting the operator to choose a gate mode
@@ -668,7 +663,7 @@ describe('Execution-tier integration — gate mode variations', () => {
     expect(result.action).toBe('spawn_phase_reviewer');
 
     // Drive phase review (post-Iter 8: phase_report absorbed into phase_review)
-    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io);
+    processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     const reviewDoc = DOC_PATHS.phaseReview(1);
     seedDoc(reviewDoc);
     result = processEvent('phase_review_completed', PROJECT_DIR, {
@@ -676,13 +671,13 @@ describe('Execution-tier integration — gate mode variations', () => {
       doc_path: reviewDoc,
       verdict: 'approved',
       exit_criteria_met: true,
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     // phase_gate fires in 'task' mode
     expect(result.action).toBe('gate_phase');
 
     // Approve phase gate → advance to next phase's first execute_task
-    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io);
+    result = processEvent('phase_gate_approved', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('execute_task');
 
@@ -747,16 +742,16 @@ describe('Execution-tier integration — conditional branch variations', () => {
     }
 
     // Final review
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     seedDoc(DOC_PATHS.finalReview);
     result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: DOC_PATHS.finalReview,
       verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.action).toBe('request_final_approval');
 
     // final_approved → display_complete (pr_gate already completed with false branch after final_review)
-    result = processEvent('final_approved', PROJECT_DIR, {}, io);
+    result = processEvent('final_approved', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('display_complete');
 
@@ -777,16 +772,16 @@ describe('Execution-tier integration — conditional branch variations', () => {
     // Drive task 1 manually to observe invoke_source_control_commit action
     {
       const ctx = { phase: 1, task: 1 };
-      processEvent('execution_started', PROJECT_DIR, ctx, io);
-      processEvent('task_completed', PROJECT_DIR, ctx, io);
-      processEvent('code_review_started', PROJECT_DIR, ctx, io);
+      processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+      processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+      processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
       const reviewDoc = DOC_PATHS.codeReview(1, 1);
       seedDoc(reviewDoc);
       const result = processEvent('code_review_completed', PROJECT_DIR, {
         ...ctx,
         doc_path: reviewDoc,
         verdict: 'approved',
-      }, io);
+      }, io, TEST_PATH_CONTEXT);
       expect(result.success).toBe(true);
       // commit_gate: auto_commit=always neq never → true branch → invoke_source_control_commit
       expect(result.action).toBe('invoke_source_control_commit');
@@ -815,13 +810,13 @@ describe('Execution-tier integration — conditional branch variations', () => {
     }
 
     // Final review
-    processEvent('final_review_started', PROJECT_DIR, {}, io);
+    processEvent('final_review_started', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
     seedDoc(DOC_PATHS.finalReview);
     // final_review_completed → pr_gate: 'always' neq 'never' → true → invoke PR
     const result = processEvent('final_review_completed', PROJECT_DIR, {
       doc_path: DOC_PATHS.finalReview,
       verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_pr');
 
@@ -906,9 +901,9 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
     }
 
     // Complete task 2 → task_loop completes → phase_review
-    processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 2 }, io);
-    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 2 }, io);
-    processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 2 }, io);
+    processEvent('execution_started', PROJECT_DIR, { phase: 1, task: 2 }, io, TEST_PATH_CONTEXT);
+    processEvent('task_completed', PROJECT_DIR, { phase: 1, task: 2 }, io, TEST_PATH_CONTEXT);
+    processEvent('code_review_started', PROJECT_DIR, { phase: 1, task: 2 }, io, TEST_PATH_CONTEXT);
     const reviewDoc = DOC_PATHS.codeReview(1, 2);
     seedDoc(reviewDoc);
     result = processEvent('code_review_completed', PROJECT_DIR, {
@@ -916,20 +911,20 @@ describe('Execution-tier integration — multi-iteration boundaries', () => {
       task: 2,
       doc_path: reviewDoc,
       verdict: 'approved',
-    }, io);
+    }, io, TEST_PATH_CONTEXT);
 
     // commit_gate fires at task scope → invoke_source_control_commit
     expect(result.success).toBe(true);
     expect(result.action).toBe('invoke_source_control_commit');
 
     // Drive commit events at task scope
-    processEvent('commit_started', PROJECT_DIR, { phase: 1, task: 2 }, io);
-    result = processEvent('commit_completed', PROJECT_DIR, { phase: 1, task: 2 }, io);
+    processEvent('commit_started', PROJECT_DIR, { phase: 1, task: 2 }, io, TEST_PATH_CONTEXT);
+    result = processEvent('commit_completed', PROJECT_DIR, { phase: 1, task: 2 }, io, TEST_PATH_CONTEXT);
 
     // Task gate fires after commit → approve it
     expect(result.success).toBe(true);
     if (result.action === 'gate_task') {
-      result = processEvent('task_gate_approved', PROJECT_DIR, { phase: 1, task: 2 }, io);
+      result = processEvent('task_gate_approved', PROJECT_DIR, { phase: 1, task: 2 }, io, TEST_PATH_CONTEXT);
     }
 
     // task_loop completes → spawn_phase_reviewer (post-Iter 8)

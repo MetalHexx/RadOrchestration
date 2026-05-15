@@ -13,12 +13,19 @@ import type {
   ForEachTaskNodeState,
   IterationEntry,
   CorrectiveTaskEntry,
+  PathContext,
 } from '../lib/types.js';
 
 // ── Path resolution ───────────────────────────────────────────────────────────
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ORCH_ROOT = path.resolve(__dirname, '../../../..'); // .claude
+const SCRIPTS_DIR = path.resolve(__dirname, '..');
+const TEST_PATH_CONTEXT: PathContext = {
+  scriptsDir: SCRIPTS_DIR,
+  templatesDir: path.resolve(SCRIPTS_DIR, '..', 'templates'),
+  orchRoot: path.resolve(SCRIPTS_DIR, '..', '..', '..'),
+};
 // Deviation from handoff (path): handoff specified '../../../orchestration-projects' (3 levels
 // up from ORCH_ROOT), but the actual directory is at c:\dev\orchestration-projects which
 // requires 4 levels up from ORCH_ROOT (.claude) → DAG-PIPELINE-2 → v3-worktrees → orchestration → c:\dev.
@@ -29,8 +36,6 @@ const IN_PROGRESS_CTX = { step: 'task_executor', phase: 1, task: 1 } as const;
 // ── Default config ────────────────────────────────────────────────────────────
 
 const DEFAULT_CONFIG: OrchestrationConfig = {
-  system: { orch_root: ORCH_ROOT },
-  projects: { base_path: '', naming: 'SCREAMING_CASE' },
   limits: {
     max_phases: 10,
     max_tasks_per_phase: 8,
@@ -45,7 +50,6 @@ const DEFAULT_CONFIG: OrchestrationConfig = {
   source_control: {
     auto_commit: 'always',
     auto_pr: 'always',
-    provider: 'github',
   },
   default_template: 'full',
 };
@@ -254,28 +258,28 @@ describe.skipIf(!fs.existsSync(PROJECTS_BASE))('Migrated state compatibility', (
     it('AUTO-COMMIT (completed, simple): processes start event without throwing', () => {
       const io = createMockIO(autoCommitState);
       expect(() => {
-        processEvent('start', '/tmp/AUTO-COMMIT', {}, io);
+        processEvent('start', '/tmp/AUTO-COMMIT', {}, io, TEST_PATH_CONTEXT);
       }).not.toThrow();
     });
 
     it('DAG-PIPELINE (completed, with corrective_tasks): processes start event without throwing', () => {
       const io = createMockIO(dagPipelineState);
       expect(() => {
-        processEvent('start', '/tmp/DAG-PIPELINE', {}, io);
+        processEvent('start', '/tmp/DAG-PIPELINE', {}, io, TEST_PATH_CONTEXT);
       }).not.toThrow();
     });
 
     it('In-progress fixture: processes execution_started event without throwing', () => {
       const io = createMockIO(inProgressFixture);
       expect(() => {
-        processEvent('execution_started', '/tmp/DAG-PIPELINE-2', IN_PROGRESS_CTX, io);
+        processEvent('execution_started', '/tmp/DAG-PIPELINE-2', IN_PROGRESS_CTX, io, TEST_PATH_CONTEXT);
       }).not.toThrow();
     });
 
     it('Halted fixture: processes start event without throwing', () => {
       const io = createMockIO(haltedFixture);
       expect(() => {
-        processEvent('start', '/tmp/HALTED-FIXTURE', {}, io);
+        processEvent('start', '/tmp/HALTED-FIXTURE', {}, io, TEST_PATH_CONTEXT);
       }).not.toThrow();
     });
   });
@@ -285,25 +289,25 @@ describe.skipIf(!fs.existsSync(PROJECTS_BASE))('Migrated state compatibility', (
   describe('processEvent returns valid PipelineResult shape for all variants', () => {
     it('AUTO-COMMIT (completed, simple): returns valid PipelineResult', () => {
       const io = createMockIO(autoCommitState);
-      const result = processEvent('start', '/tmp/AUTO-COMMIT', {}, io);
+      const result = processEvent('start', '/tmp/AUTO-COMMIT', {}, io, TEST_PATH_CONTEXT);
       assertValidPipelineResult(result, 'AUTO-COMMIT');
     });
 
     it('DAG-PIPELINE (completed, with corrective_tasks): returns valid PipelineResult', () => {
       const io = createMockIO(dagPipelineState);
-      const result = processEvent('start', '/tmp/DAG-PIPELINE', {}, io);
+      const result = processEvent('start', '/tmp/DAG-PIPELINE', {}, io, TEST_PATH_CONTEXT);
       assertValidPipelineResult(result, 'DAG-PIPELINE');
     });
 
     it('In-progress fixture: returns valid PipelineResult', () => {
       const io = createMockIO(inProgressFixture);
-      const result = processEvent('execution_started', '/tmp/DAG-PIPELINE-2', IN_PROGRESS_CTX, io);
+      const result = processEvent('execution_started', '/tmp/DAG-PIPELINE-2', IN_PROGRESS_CTX, io, TEST_PATH_CONTEXT);
       assertValidPipelineResult(result, 'DAG-PIPELINE-2');
     });
 
     it('Halted fixture: returns valid PipelineResult', () => {
       const io = createMockIO(haltedFixture);
-      const result = processEvent('start', '/tmp/HALTED-FIXTURE', {}, io);
+      const result = processEvent('start', '/tmp/HALTED-FIXTURE', {}, io, TEST_PATH_CONTEXT);
       assertValidPipelineResult(result, 'halted-fixture');
     });
   });
@@ -313,7 +317,7 @@ describe.skipIf(!fs.existsSync(PROJECTS_BASE))('Migrated state compatibility', (
   describe('Action routing correctness', () => {
     it('AUTO-COMMIT (completed): action is null or valid NEXT_ACTIONS member', () => {
       const io = createMockIO(autoCommitState);
-      const result = processEvent('start', '/tmp/AUTO-COMMIT', {}, io);
+      const result = processEvent('start', '/tmp/AUTO-COMMIT', {}, io, TEST_PATH_CONTEXT);
       if (result.action !== null) {
         expect(VALID_ACTIONS.has(result.action), `'${result.action}' is not in NEXT_ACTIONS`).toBe(true);
       }
@@ -321,7 +325,7 @@ describe.skipIf(!fs.existsSync(PROJECTS_BASE))('Migrated state compatibility', (
 
     it('DAG-PIPELINE (completed, corrective_tasks): action is null or valid NEXT_ACTIONS member', () => {
       const io = createMockIO(dagPipelineState);
-      const result = processEvent('start', '/tmp/DAG-PIPELINE', {}, io);
+      const result = processEvent('start', '/tmp/DAG-PIPELINE', {}, io, TEST_PATH_CONTEXT);
       if (result.action !== null) {
         expect(VALID_ACTIONS.has(result.action), `'${result.action}' is not in NEXT_ACTIONS`).toBe(true);
       }
@@ -329,7 +333,7 @@ describe.skipIf(!fs.existsSync(PROJECTS_BASE))('Migrated state compatibility', (
 
     it('In-progress fixture: success === true and action is a valid NEXT_ACTIONS member', () => {
       const io = createMockIO(inProgressFixture);
-      const result = processEvent('execution_started', '/tmp/DAG-PIPELINE-2', IN_PROGRESS_CTX, io);
+      const result = processEvent('execution_started', '/tmp/DAG-PIPELINE-2', IN_PROGRESS_CTX, io, TEST_PATH_CONTEXT);
       expect(result.success).toBe(true);
       expect(result.action).not.toBeNull();
       expect(VALID_ACTIONS.has(result.action!), `'${result.action}' is not in NEXT_ACTIONS`).toBe(true);
@@ -337,7 +341,7 @@ describe.skipIf(!fs.existsSync(PROJECTS_BASE))('Migrated state compatibility', (
 
     it('Halted fixture: action is null or valid NEXT_ACTIONS member (no unhandled exceptions)', () => {
       const io = createMockIO(haltedFixture);
-      const result = processEvent('start', '/tmp/HALTED-FIXTURE', {}, io);
+      const result = processEvent('start', '/tmp/HALTED-FIXTURE', {}, io, TEST_PATH_CONTEXT);
       expect(typeof result.success).toBe('boolean');
       if (result.action !== null) {
         expect(VALID_ACTIONS.has(result.action), `'${result.action}' is not in NEXT_ACTIONS`).toBe(true);
@@ -357,10 +361,10 @@ describe.skipIf(!fs.existsSync(PROJECTS_BASE))('Migrated state compatibility', (
 
     it('Engine processes all states with template_id "full" without template resolution errors', () => {
       const results = [
-        processEvent('start', '/tmp/AUTO-COMMIT', {}, createMockIO(autoCommitState)),
-        processEvent('start', '/tmp/DAG-PIPELINE', {}, createMockIO(dagPipelineState)),
-        processEvent('execution_started', '/tmp/DAG-PIPELINE-2', IN_PROGRESS_CTX, createMockIO(inProgressFixture)),
-        processEvent('start', '/tmp/HALTED-FIXTURE', {}, createMockIO(haltedFixture)),
+        processEvent('start', '/tmp/AUTO-COMMIT', {}, createMockIO(autoCommitState), TEST_PATH_CONTEXT),
+        processEvent('start', '/tmp/DAG-PIPELINE', {}, createMockIO(dagPipelineState), TEST_PATH_CONTEXT),
+        processEvent('execution_started', '/tmp/DAG-PIPELINE-2', IN_PROGRESS_CTX, createMockIO(inProgressFixture), TEST_PATH_CONTEXT),
+        processEvent('start', '/tmp/HALTED-FIXTURE', {}, createMockIO(haltedFixture), TEST_PATH_CONTEXT),
       ];
       for (const result of results) {
         // If there's an error, it should not be a template-resolution failure

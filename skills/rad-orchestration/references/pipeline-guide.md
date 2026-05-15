@@ -6,13 +6,11 @@ Reference document for the Orchestrator agent. Covers the pipeline event loop, a
 
 ### Orchestration Root {orchRoot}
 
-Before constructing any path, determine the orchestration root folder:
-1. Find `orchestration.yml` in the workspace.
-2. If found, use its directory as `orchRoot`.
-3. Every pipeline JSON result includes an `orchRoot` field. Use `result.orchRoot` for all path construction after the first pipeline call.
-4. {orchRoot} is the base for all file paths in the pipeline — planning docs, code files, logs, and even subsequent pipeline calls.
-- `projects.base_path`: Where project folders live
-- Use `base_path` to locate the project directory: `{base_path}/{PROJECT-NAME}/`.
+`{orchRoot}` is the **absolute filesystem path** to the orchestration install root — the directory that contains `skills/`. It is the base for constructing pipeline-script paths (e.g., `{orchRoot}/skills/rad-orchestration/scripts/pipeline.js`).
+
+1. Every pipeline JSON result includes an `orchRoot` field (already absolute). Use `result.orchRoot` for all path construction after the first pipeline call.
+2. The very first call's `{orchRoot}` is supplied by `gather-context.js` output (`orchRoot` field).
+3. Projects live unconditionally at `~/.radorch/projects/{PROJECT-NAME}/` (resolved at runtime per-user via `os.homedir()`). Project paths are not derived from `{orchRoot}`.
 
 ## Runtime Entry
 
@@ -159,7 +157,7 @@ If the pipeline exits with code 1, the result contains error details:
 **On every `success: false` result:**
 
 1. **Classify** the error using the table above
-2. **Log the error**: Invoke the `rad-log-error` skill to append a structured entry to `{NAME}-ERROR-LOG.md` in the project directory (e.g., `{base_path}/MYAPP/MYAPP-ERROR-LOG.md`). Populate the entry fields from the pipeline result:
+2. **Log the error**: Invoke the `rad-log-error` skill to append a structured entry to `{NAME}-ERROR-LOG.md` in the project directory (e.g., `~/.radorch/projects/MYAPP/MYAPP-ERROR-LOG.md`). Populate the entry fields from the pipeline result:
    - **Pipeline Event**: from `result.event`
    - **Pipeline Action**: from `result.action` (or `N/A` if not present)
    - **Severity**: classify using the skill's severity guide (`critical` = blocks execution, `high` = incorrect state, `medium` = degraded behavior, `low` = cosmetic)
@@ -190,7 +188,7 @@ When spawning a subagent, always provide:
 4. **Output expectations**: Where to save the output document (derive from project naming conventions)
 
 Example spawn instructions:
-> "Create the requirements for the MYAPP project. If a brainstorming document exists at `{base_path}/MYAPP/MYAPP-BRAINSTORMING.md`, read that. Save the requirements to `{base_path}/MYAPP/MYAPP-REQUIREMENTS.md`."
+> "Create the requirements for the MYAPP project. If a brainstorming document exists at `~/.radorch/projects/MYAPP/MYAPP-BRAINSTORMING.md`, read that. Save the requirements to `~/.radorch/projects/MYAPP/MYAPP-REQUIREMENTS.md`."
 
 ### Source Control — PR Mode
 

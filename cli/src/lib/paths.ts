@@ -18,9 +18,7 @@ export interface InstallPaths {
   readonly uiLog: string;
 }
 
-export function resolveInstallRoot(env: NodeJS.ProcessEnv = process.env): string {
-  const override = env['RADORCH_HOME'];
-  if (override && override.length > 0) return override;
+export function resolveInstallRoot(): string {
   return path.join(os.homedir(), '.radorch');
 }
 

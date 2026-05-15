@@ -27,10 +27,49 @@ const SKIP_FILE_NAMES = new Set([
   'tsconfig.tsbuildinfo',
 ]);
 
-function shouldSkipPluginEntry(name, isDir) {
-  if (isDir) return SKIP_DIR_NAMES.has(name);
-  if (SKIP_FILE_NAMES.has(name)) return true;
-  if (TEST_FILE_RE.test(name)) return true;
+/**
+ * Per-skill targeted exclusions for `rad-orchestration/scripts/` ONLY.
+ * Other skills' scripts/ trees ship as-is (their `package.json` markers etc.
+ * are part of their runtime contract). For rad-orchestration the entire
+ * dev-toolchain surface (TS sources, lib/, bundler, npm metadata, ts/test
+ * configs) is stripped at plugin emit time — the runtime needs only the
+ * esbuild `.js` bundles plus a handful of `.mjs`/`.js` helpers.
+ */
+const RAD_ORCH_SCRIPTS_SKIP_DIR_NAMES = new Set(['lib']);
+const RAD_ORCH_SCRIPTS_SKIP_FILE_NAMES = new Set([
+  'bundle.mjs',
+  'package.json',
+  'package-lock.json',
+  'tsconfig.json',
+  'env.d.ts',
+]);
+
+function shouldSkipPluginEntry(name, isDir, ctx) {
+  if (isDir) {
+    if (SKIP_DIR_NAMES.has(name)) return true;
+  } else {
+    if (SKIP_FILE_NAMES.has(name)) return true;
+    if (TEST_FILE_RE.test(name)) return true;
+  }
+  // Rad-orchestration scripts tree: strip the dev toolchain. Bundled `.js`
+  // outputs land via a separate build step (scripts/build-plugin.js's
+  // runtime-bundles step), not via this wholesale copy.
+  if (ctx && ctx.skillName === 'rad-orchestration' && ctx.relPath) {
+    const segments = ctx.relPath.split(/[\\/]/);
+    if (segments[0] === 'scripts') {
+      if (isDir && segments.length >= 2 && RAD_ORCH_SCRIPTS_SKIP_DIR_NAMES.has(segments[1])) {
+        return true;
+      }
+      if (!isDir) {
+        // Any `.ts` file at any depth under rad-orchestration/scripts/.
+        if (name.endsWith('.ts')) return true;
+        // Top-level dev files immediately under scripts/.
+        if (segments.length === 2 && RAD_ORCH_SCRIPTS_SKIP_FILE_NAMES.has(name)) {
+          return true;
+        }
+      }
+    }
+  }
   return false;
 }
 
@@ -59,12 +98,11 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
     fs.mkdirSync(path.dirname(cpDst), { recursive: true });
     const obj = JSON.parse(fs.readFileSync(cpSrc, 'utf8'));
     obj.version = version;
-    // Per Claude's plugin schema, when skills/ is in conventional location we declare a directory entry.
-    if (fs.existsSync(path.join(canonicalRoot, 'skills'))) obj.skills = ['./skills'];
-    // Hooks presence check uses canonicalRoot (AD-10: canonical hooks/ is the sole source).
-    if (fs.existsSync(path.join(canonicalRoot, 'hooks', 'hooks.json'))) obj.hooks = ['./hooks/hooks.json'];
-    // Agents directory — every canonical agent ships in the plugin.
-    if (fs.existsSync(path.join(canonicalRoot, 'agents'))) obj.agents = ['./agents'];
+    // Component paths (skills/, agents/, hooks/hooks.json) are auto-discovered
+    // by Claude Code from conventional locations under the plugin root — see
+    // https://code.claude.com/docs/en/plugins-reference (File locations reference).
+    // Listing them in plugin.json is redundant for `skills` and `hooks`, and
+    // invalid for `agents` (schema requires file paths, not a directory path).
     fs.writeFileSync(cpDst, JSON.stringify(obj, null, 2) + '\n', 'utf8');
   }
 
@@ -103,7 +141,7 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
         const absDest = path.join(skillOutDir, relPath);
         const stat = fs.statSync(absSrc);
         const basename = path.basename(relPath);
-        if (shouldSkipPluginEntry(basename, stat.isDirectory())) return;
+        if (shouldSkipPluginEntry(basename, stat.isDirectory(), { skillName, relPath })) return;
         if (stat.isDirectory()) {
           fs.mkdirSync(absDest, { recursive: true });
           for (const child of fs.readdirSync(absSrc)) {
@@ -114,7 +152,7 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
         if (relPath === 'SKILL.md') {
           const text = fs.readFileSync(absSrc, 'utf8');
           const rawProjected = projectFrontmatterMin(text, (fm) => adapter.skillFrontmatter(fm, { adapter }));
-          const withPluginRoot = applyPluginRootSubstitution(rawProjected, adapter);
+          const withPluginRoot = applyPluginRootSubstitution(rawProjected);
           const projected = applyClaudeNamespacing(withPluginRoot, adapter, canonicalAgentNames);
           fs.writeFileSync(absDest, projected, 'utf8');
           return;
@@ -154,65 +192,26 @@ export async function runAdapterPlugin(adapter, { canonicalRoot, outputRoot, ver
         ? (fm) => adapter.agentFrontmatter(fm, { adapter })
         : (fm) => fm;
       const rawProjected = projectFrontmatterMin(text, projectFn);
-      const withPluginRoot = applyPluginRootSubstitution(rawProjected, adapter);
+      const withPluginRoot = applyPluginRootSubstitution(rawProjected);
       const projected = applyClaudeNamespacing(withPluginRoot, adapter, canonicalAgentNames);
       fs.writeFileSync(absDest, projected, 'utf8');
     }
   }
 
-  // Per-bundle orchestration.yml rewrite for the plugin emit only — replace
-  // the canonical `base_path:` value (an operator-machine-specific absolute
-  // path on the canonical YAML) with the portable plugin default
-  // `~/.radorch/projects/`. The leading `~/` is expanded at read time by
-  // resolveBasePath() in skills/rad-orchestration/scripts/lib/state-io.ts.
-  // The legacy installer emit (runAdapter in run.js) intentionally does NOT
-  // apply this rewrite — its bundle is overwritten at install time by the
-  // user-config generator and keeps the legacy default.
-  const pluginYmlPath = path.join(
-    targetRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml',
-  );
-  rewritePluginOrchestrationYmlBasePath(pluginYmlPath);
-
   // bin/ and dist/ and ui/ are placed by the meta-script (P04-T02), not here.
   return { harness: adapter.name, targetRoot };
-}
-
-/**
- * Rewrites the per-bundle orchestration.yml in the plugin emit: sets
- * `base_path:` (under `projects:`) to the portable home-relative default
- * `~/.radorch/projects/`. All other fields pass through verbatim. No
- * template engine, no AST round-trip — string-level field substitution
- * mirroring the `system.orch_root` rewrite in adapters/run.js.
- */
-function rewritePluginOrchestrationYmlBasePath(absYmlPath) {
-  if (!fs.existsSync(absYmlPath)) return;
-  const text = fs.readFileSync(absYmlPath, 'utf8');
-  const lines = text.split(/\r?\n/);
-  const out = [];
-  for (const line of lines) {
-    // `  base_path: <anything>` under `projects:` — rewrite the value only.
-    const m = line.match(/^(\s*base_path:\s*).*$/);
-    if (m) {
-      out.push(`${m[1]}~/.radorch/projects/`);
-      continue;
-    }
-    out.push(line);
-  }
-  fs.writeFileSync(absYmlPath, out.join('\n'), 'utf8');
 }
 
 // ── Plugin-root substitution ─────────────────────────────────────────
 
 /**
  * Replaces every occurrence of the canonical `${PLUGIN_ROOT}` placeholder in
- * a projected text body with the adapter's harness-specific substitution string.
- * Applied post-frontmatter-projection; operates on the raw body text only.
- * If the adapter does not declare pluginRootSubstitution, the text is returned
- * unchanged (graceful degradation for adapters that pre-date this field).
+ * a projected text body with the Claude plugin-root token `${CLAUDE_PLUGIN_ROOT}`.
+ * This token is Claude-plugin-specific and is always hardcoded here — the adapter's
+ * `pluginRootSubstitution` field governs the legacy (run.js) path only.
  */
-function applyPluginRootSubstitution(text, adapter) {
-  if (!adapter.pluginRootSubstitution) return text;
-  return text.replaceAll('${PLUGIN_ROOT}', adapter.pluginRootSubstitution);
+function applyPluginRootSubstitution(text) {
+  return text.replaceAll('${PLUGIN_ROOT}', '${CLAUDE_PLUGIN_ROOT}');
 }
 
 // ── Claude plugin agent-name namespacing ─────────────────────────────

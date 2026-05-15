@@ -18,11 +18,9 @@ function makeTempDir(): string {
 
 function makeConfig(overrides: Partial<OrchestrationConfig> = {}): OrchestrationConfig {
   return {
-    system: { orch_root: '.github' },
-    projects: { base_path: '', naming: 'SCREAMING_CASE' },
     limits: { max_phases: 10, max_tasks_per_phase: 8, max_retries_per_task: 2, max_consecutive_review_rejections: 3 },
     human_gates: { after_planning: true, execution_mode: 'ask', after_final_review: true },
-    source_control: { auto_commit: 'ask', auto_pr: 'ask', provider: 'github' },
+    source_control: { auto_commit: 'ask', auto_pr: 'ask' },
     default_template: 'full',
     ...overrides,
   };
@@ -286,13 +284,12 @@ describe('listAvailableTemplates', () => {
 
   it('returns filename stems for .yml files in the templates directory', () => {
     tmpDir = makeTempDir();
-    const orchRoot = tmpDir;
-    const templatesDir = path.join(orchRoot, 'skills/rad-orchestration/templates');
+    const templatesDir = path.join(tmpDir, 'templates');
     fs.mkdirSync(templatesDir, { recursive: true });
     fs.writeFileSync(path.join(templatesDir, 'full.yml'), '');
     fs.writeFileSync(path.join(templatesDir, 'default.yml'), '');
 
-    const result = listAvailableTemplates(orchRoot);
+    const result = listAvailableTemplates(templatesDir);
     expect(result.sort()).toEqual(['default', 'full'].sort());
   });
 
@@ -304,14 +301,13 @@ describe('listAvailableTemplates', () => {
 
   it('ignores non-.yml files (e.g., .gitkeep)', () => {
     tmpDir = makeTempDir();
-    const orchRoot = tmpDir;
-    const templatesDir = path.join(orchRoot, 'skills/rad-orchestration/templates');
+    const templatesDir = path.join(tmpDir, 'templates');
     fs.mkdirSync(templatesDir, { recursive: true });
     fs.writeFileSync(path.join(templatesDir, 'full.yml'), '');
     fs.writeFileSync(path.join(templatesDir, '.gitkeep'), '');
     fs.writeFileSync(path.join(templatesDir, 'readme.txt'), '');
 
-    const result = listAvailableTemplates(orchRoot);
+    const result = listAvailableTemplates(templatesDir);
     expect(result).toEqual(['full']);
   });
 });
