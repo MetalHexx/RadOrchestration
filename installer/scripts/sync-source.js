@@ -294,10 +294,105 @@ function walkDir(dir, baseDir) {
 }
 
 /**
+ * Restores every committed per-version manifest at
+ * `<repoRoot>/manifests/<harness>/v*.json` into the runtime catalog at
+ * `installer/src/<harness>/manifests/`. Called at the start of emitBundles so
+ * the per-version catalog shipped in the npm tarball carries every prior
+ * release's manifest (upgrade-cleanup contract: the installer reads the
+ * previously-installed version's manifest to know what to remove).
+ *
+ * No-op when `<repoRoot>/manifests/<harness>/` does not exist (e.g. test
+ * fixtures).
+ *
+ * @param {string} repoRoot     - Absolute path to the repository root.
+ * @param {string} harnessName  - Adapter / harness name (e.g. `'claude'`).
+ */
+export function restoreCommittedManifests(repoRoot, harnessName) {
+  const committedDir = path.join(repoRoot, 'manifests', harnessName);
+  if (!fs.existsSync(committedDir)) return;
+  const runtimeDir = path.join(
+    repoRoot, 'installer', 'src', harnessName, 'manifests',
+  );
+  fs.mkdirSync(runtimeDir, { recursive: true });
+  for (const entry of fs.readdirSync(committedDir)) {
+    if (!entry.startsWith('v') || !entry.endsWith('.json')) continue;
+    fs.copyFileSync(
+      path.join(committedDir, entry),
+      path.join(runtimeDir, entry),
+    );
+  }
+}
+
+/**
+ * Auto-promotes the freshly-generated runtime manifest at
+ * `installer/src/<harness>/manifests/v<version>.json` into the committed
+ * catalog at `<repoRoot>/manifests/<harness>/v<version>.json`. Four cases
+ * (one precondition guard + three committed-state outcomes):
+ *
+ *   0. **Runtime manifest missing** → no-op, return `'missing-runtime'`.
+ *      Precondition guard — nothing to promote if `emitBundles` did not
+ *      produce a runtime manifest for the requested version.
+ *   1. **Committed doesn't exist** → write. (First time the operator runs
+ *      sync-source after a version bump; catalog grows naturally on release.)
+ *   2. **Committed exists and matches runtime** → no-op. (Idempotent re-runs
+ *      are safe.)
+ *   3. **Committed exists and differs from runtime** → log a warning and
+ *      **skip the write**. The committed source of truth is never silently
+ *      corrupted by dev iteration; the operator must bump the version (or
+ *      revert the drift) before the next release ships.
+ *
+ * Dev workflow stays unblocked — the runtime regen happens regardless, only
+ * the committed catalog is protected.
+ *
+ * @param {string} repoRoot     - Absolute path to the repository root.
+ * @param {string} harnessName  - Adapter / harness name.
+ * @param {string} version      - Version being emitted (e.g. `'1.0.0-alpha.9'`).
+ * @returns {'wrote'|'matches'|'drift-warned'|'missing-runtime'}
+ *   Outcome tag for tests / callers. `'missing-runtime'` means the runtime
+ *   manifest itself doesn't exist (skip — nothing to promote).
+ */
+export function autoPromoteCommittedManifest(repoRoot, harnessName, version) {
+  const runtimePath = path.join(
+    repoRoot, 'installer', 'src', harnessName, 'manifests', `v${version}.json`,
+  );
+  if (!fs.existsSync(runtimePath)) return 'missing-runtime';
+
+  const committedDir = path.join(repoRoot, 'manifests', harnessName);
+  const committedPath = path.join(committedDir, `v${version}.json`);
+  const runtimeBytes = fs.readFileSync(runtimePath);
+
+  if (!fs.existsSync(committedPath)) {
+    fs.mkdirSync(committedDir, { recursive: true });
+    fs.writeFileSync(committedPath, runtimeBytes);
+    console.log(
+      `Auto-promoted manifests/${harnessName}/v${version}.json to committed catalog`,
+    );
+    return 'wrote';
+  }
+
+  const committedBytes = fs.readFileSync(committedPath);
+  if (Buffer.compare(runtimeBytes, committedBytes) === 0) return 'matches';
+
+  console.warn(
+    `[sync-source] canonical sources have drifted from committed manifest ` +
+    `for ${harnessName}/v${version}.json; bump the version if this is ` +
+    `intentional. Committed source is unchanged.`,
+  );
+  return 'drift-warned';
+}
+
+/**
  * Runs every discovered adapter and writes installer/src/<harness>/ bundles.
  * Each adapter produces a self-contained folder at installer/src/<harness>/
  * containing the transformed files and a per-version manifest catalog under
- * installer/src/<harness>/manifests/v<version>.json.
+ * installer/src/<harness>/manifests/v<version>.json (the runtime location;
+ * gitignored; populated fresh on every run).
+ *
+ * The committed source-of-truth catalog at `<repoRoot>/manifests/<harness>/`
+ * is restored into the runtime location at the start of every run (so the
+ * npm tarball ships every prior release's manifest), and auto-promoted from
+ * the runtime location at the end of every run via the four-case write
+ * protocol in `autoPromoteCommittedManifest`.
  *
  * Uses outputRoot=installer/src/ and targetDir=adapter.name so that runAdapter
  * writes files to installer/src/<harness>/ and the manifest to
@@ -315,13 +410,21 @@ export async function emitBundles({ repoRoot, version }) {
 
   for (const adapter of adapters) {
     const bundleDir = path.join(installerSrc, adapter.name);
-    // Scoped clean — wipe the bundle's emitted subpaths but preserve the
-    // per-version manifest catalog so prior releases stay shipped.
+    // Scoped clean — wipe the bundle's emitted subpaths. The manifests dir is
+    // also wiped (runtime is fully ephemeral; the committed catalog at
+    // <repoRoot>/manifests/<harness>/ is the source of truth) and then
+    // repopulated below by restoreCommittedManifests.
     fs.mkdirSync(bundleDir, { recursive: true });
     for (const entry of fs.readdirSync(bundleDir)) {
-      if (entry === 'manifests') continue;
       fs.rmSync(path.join(bundleDir, entry), { recursive: true, force: true });
     }
+
+    // Restore every committed prior-version manifest into the runtime location
+    // before the adapter runs. The current version's manifest (if committed)
+    // is also restored; it gets overwritten by runAdapter below, and then
+    // auto-promoted back to committed (or warned, on drift) at the end of
+    // emitBundles.
+    restoreCommittedManifests(repoRoot, adapter.name);
 
     // Override adapter.targetDir to be the harness name so runAdapter writes:
     //   files  → outputRoot/<adapter.name>/  (= installer/src/<harness>/)
@@ -514,6 +617,14 @@ export async function emitBundles({ repoRoot, version }) {
     }
 
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+  }
+
+  // Auto-promote every per-harness runtime manifest into the committed
+  // source-of-truth catalog at <repoRoot>/manifests/<harness>/. Fires after
+  // every augmentation (runtime bundles, radorch.mjs, ui/**) has settled, so
+  // the committed manifest reflects the final shipped bytes.
+  for (const adapter of adapters) {
+    autoPromoteCommittedManifest(repoRoot, adapter.name, version);
   }
 }
 

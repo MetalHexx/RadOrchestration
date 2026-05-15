@@ -53,45 +53,74 @@ Options: `Yes, squash merge to main` / `No, tag from this branch`
 
 **Follow this order exactly. The version bump always happens on the working branch before any merge.**
 
-### 3a — Update the version (always first, before any merge)
+### 3a — Bump versions, build catalogs, validate, then commit (one tagged unit of work)
 
-Edit each of these files — set `"version"` to the confirmed version number. All five must carry the same version:
-- `installer/package.json`
-- `ui/package.json`
-- `skills/rad-orchestration/scripts/package.json`
-- `cli/package.json`
-- `plugin/package.json`
+The version bump, the per-harness manifest catalog generation, and the plugin tree validation **must all land in a single commit**. The committed manifest catalog at `manifests/<harness>/v<version>.json` is the source of truth for what shipped at this version — if the bump commit doesn't include the new manifest files, the catalog never grows in HEAD and the installer's upgrade-cleanup contract breaks for users on this version going forward.
 
-Note: `package_version` inside each per-harness bundle's `orchestration.yml` (e.g., `installer/src/claude/skills/rad-orchestration/config/orchestration.yml`) is **auto-stamped at build time** by the contributor build / publish step from `installer/package.json`. Do not edit it manually as part of the release flow.
+Run the steps below in order. **Do not commit until step 5.**
 
-Stage and commit the version bump on the current branch:
+1. **Bump versions in all five package.json files.** Set `"version"` to the confirmed version number in:
+   - `installer/package.json`
+   - `ui/package.json`
+   - `skills/rad-orchestration/scripts/package.json`
+   - `cli/package.json`
+   - `plugin/package.json`
 
-```
-git add installer/package.json ui/package.json skills/rad-orchestration/scripts/package.json cli/package.json plugin/package.json
-git commit -m "chore: bump version to {version}"
-```
+   Note: `package_version` inside each per-harness bundle's `orchestration.yml` (e.g., `installer/src/claude/skills/rad-orchestration/config/orchestration.yml`) is **auto-stamped at build time** from `installer/package.json`. Do not edit it manually.
 
-### 3a.5 — Pre-tag local validation (always, regardless of merge choice)
+2. **Generate the per-harness manifest catalog for the new version.** From the repo root:
 
-Before tagging, stage and validate both distribution surfaces locally. This catches build failures before the tag triggers `publish-plugin`, which would otherwise leave a half-published release on npm (the `publish` job succeeds but `publish-plugin` fails on the same tag).
+   ```
+   node installer/scripts/sync-source.js
+   ```
 
-Run from the repo root:
+   This runs `emitBundles` for every adapter. Its `autoPromoteCommittedManifest` step writes a new `manifests/<harness>/v{version}.json` file for each harness (the file doesn't exist yet for the new version, so the "case 1 → write" branch fires). After this step, three new committed-catalog files exist on disk and are flagged as untracked by `git status`.
+
+3. **Build the plugin tree end-to-end.** From the repo root:
+
+   ```
+   npm run build:plugin
+   ```
+
+   This validates `cli/dist/marketplaces/claude/plugins/rad-orchestration/` — agent files, skill files, manifests/v{version}.json, hooks, UI standalone bundle. The validate-plugin-tree step fails fast on missing artifacts.
+
+4. **Plugin tarball size budget check.**
+
+   ```
+   cd cli/dist/marketplaces/claude/plugins/rad-orchestration
+   npm pack --dry-run --json
+   ```
+
+   Confirm the reported `unpackedSize` is under **57,671,680 bytes** (50 MB ceiling + 10% headroom). If size has grown past that, audit the included assets — do not raise the budget without an explicit decision.
+
+   If any step above fails, **do not commit yet**. Fix locally; re-run from step 2.
+
+5. **Stage and commit — version bumps and new manifest catalog entries land together.**
+
+   ```
+   git add installer/package.json ui/package.json skills/rad-orchestration/scripts/package.json cli/package.json plugin/package.json
+   git add manifests/claude/v{version}.json manifests/copilot-cli/v{version}.json manifests/copilot-vscode/v{version}.json
+   git commit -m "chore: bump version to {version}"
+   ```
+
+### 3a.5 — Reproducibility assertion (always, regardless of merge choice)
+
+After the bump commit, re-run the build pipeline and assert the working tree stays clean. A dirty tree means the build is non-deterministic and the committed manifest would falsify what CI eventually ships — block the tag in that case until the non-determinism is resolved.
+
+From the repo root:
 
 ```
 node installer/scripts/sync-source.js
 npm run build:plugin
+git status --porcelain
 ```
 
-Then check the staged plugin tarball size budget:
+The expected output of `git status --porcelain` is **empty**. If anything appears:
 
-```
-cd cli/dist/marketplaces/claude/plugins/rad-orchestration
-npm pack --dry-run --json
-```
+- A new or modified `manifests/<harness>/v{version}.json` means `autoPromoteCommittedManifest` fired the `'drift-warned'` branch on the second run — the canonical sources don't reproduce byte-identical sha256s across runs (typically a line-ending issue, a non-deterministic build input, or a stale dependency).
+- Any other dirty path means an asset emitter is non-deterministic.
 
-Confirm the reported `unpackedSize` is under **57,671,680 bytes** (50 MB ceiling + 10% headroom). If size has grown past that, audit the included assets — do not raise the budget without an explicit decision.
-
-If any of these fail, **do not push the tag yet**. Fix locally and re-bump only if the version is unreleased.
+Do not push the tag until the working tree is clean on a second pass. Investigate the drift, fix the root cause, re-run from step 3a, and re-verify this assertion.
 
 ### 3b — Merge to main (only if the user chose to merge)
 

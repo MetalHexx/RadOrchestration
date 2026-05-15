@@ -1,6 +1,10 @@
 // adapters/run.js — Per-adapter runtime: project frontmatter, copy bodies + subfolders,
 // emit per-file metadata stream into a per-version catalog at
-// installer/src/<harness>/manifests/v<version>.json.
+// <outputRoot>/<adapter.name>/manifests/v<version>.json. When called from
+// sync-source.js this is the runtime catalog under installer/src/<harness>/
+// manifests/ (gitignored). The committed source-of-truth catalog lives at
+// <repoRoot>/manifests/<harness>/ and is owned by sync-source.js's
+// auto-promote step — runAdapter never writes there directly.
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';

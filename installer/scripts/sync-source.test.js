@@ -4,7 +4,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { emitBundles, syncSource } from './sync-source.js';
+import {
+  autoPromoteCommittedManifest,
+  emitBundles,
+  restoreCommittedManifests,
+  syncSource,
+} from './sync-source.js';
 
 function makeRepo() {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'repo-'));
@@ -180,5 +185,159 @@ test('without excludes, all files are copied including node_modules', () => {
     assert.ok(fs.existsSync(path.join(target, 'node_modules', 'pkg', 'index.js')), 'node_modules should be copied when no excludes');
   } finally {
     cleanup();
+  }
+});
+
+// ── Committed-manifest restore + four-case auto-promote ───────────────────────
+
+/**
+ * Builds a minimal temp repo with `<repoRoot>/manifests/<harness>/` committed
+ * source-of-truth catalogs, plus the runtime location (`installer/src/<harness>/
+ * manifests/`) empty. Mirrors the real repo layout closely enough that
+ * `restoreCommittedManifests` and `autoPromoteCommittedManifest` exercise their
+ * real I/O paths.
+ */
+function makeRestoreFixture(harnesses = ['claude']) {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'restore-fixture-'));
+  for (const h of harnesses) {
+    fs.mkdirSync(path.join(repo, 'manifests', h), { recursive: true });
+    fs.mkdirSync(path.join(repo, 'installer', 'src', h), { recursive: true });
+  }
+  return repo;
+}
+
+test('restoreCommittedManifests copies every committed v*.json into runtime', () => {
+  const repo = makeRestoreFixture(['claude']);
+  fs.writeFileSync(
+    path.join(repo, 'manifests', 'claude', 'v1.0.0-alpha.8.json'),
+    '{"harness":"claude","version":"1.0.0-alpha.8","files":[]}',
+  );
+  fs.writeFileSync(
+    path.join(repo, 'manifests', 'claude', 'v1.0.0-alpha.9.json'),
+    '{"harness":"claude","version":"1.0.0-alpha.9","files":[]}',
+  );
+  // README sibling — must not be copied; only v*.json files are restored.
+  fs.writeFileSync(path.join(repo, 'manifests', 'claude', 'README.md'), 'x');
+
+  restoreCommittedManifests(repo, 'claude');
+
+  const runtimeDir = path.join(repo, 'installer', 'src', 'claude', 'manifests');
+  assert.ok(fs.existsSync(path.join(runtimeDir, 'v1.0.0-alpha.8.json')));
+  assert.ok(fs.existsSync(path.join(runtimeDir, 'v1.0.0-alpha.9.json')));
+  assert.ok(!fs.existsSync(path.join(runtimeDir, 'README.md')),
+    'non-v*.json siblings must not be copied into runtime');
+});
+
+test('restoreCommittedManifests is a no-op when <repoRoot>/manifests/<harness>/ does not exist', () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'restore-noop-'));
+  fs.mkdirSync(path.join(repo, 'installer', 'src', 'claude'), { recursive: true });
+  // No <repoRoot>/manifests/ directory. Must not throw.
+  restoreCommittedManifests(repo, 'claude');
+  const runtimeDir = path.join(repo, 'installer', 'src', 'claude', 'manifests');
+  // Either the dir was never created or it's empty — either is acceptable.
+  if (fs.existsSync(runtimeDir)) {
+    assert.equal(fs.readdirSync(runtimeDir).length, 0);
+  }
+});
+
+/**
+ * Writes a minimal runtime manifest for a given harness/version so the
+ * auto-promote function has something to read.
+ */
+function writeRuntimeManifest(repo, harness, version, body) {
+  const dir = path.join(repo, 'installer', 'src', harness, 'manifests');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, `v${version}.json`), body);
+}
+
+test('autoPromoteCommittedManifest: case 1 — committed does not exist → write', () => {
+  const repo = makeRestoreFixture(['claude']);
+  const body = '{"harness":"claude","version":"1.0.0-alpha.8","files":[]}';
+  writeRuntimeManifest(repo, 'claude', '1.0.0-alpha.8', body);
+
+  const result = autoPromoteCommittedManifest(repo, 'claude', '1.0.0-alpha.8');
+
+  assert.equal(result, 'wrote');
+  const committedPath = path.join(repo, 'manifests', 'claude', 'v1.0.0-alpha.8.json');
+  assert.ok(fs.existsSync(committedPath));
+  assert.equal(fs.readFileSync(committedPath, 'utf8'), body);
+});
+
+test('autoPromoteCommittedManifest: case 2 — committed matches runtime → no-op', () => {
+  const repo = makeRestoreFixture(['claude']);
+  const body = '{"harness":"claude","version":"1.0.0-alpha.8","files":[]}';
+  writeRuntimeManifest(repo, 'claude', '1.0.0-alpha.8', body);
+  const committedPath = path.join(repo, 'manifests', 'claude', 'v1.0.0-alpha.8.json');
+  fs.writeFileSync(committedPath, body);
+  const bytesBefore = fs.readFileSync(committedPath);
+
+  const result = autoPromoteCommittedManifest(repo, 'claude', '1.0.0-alpha.8');
+
+  assert.equal(result, 'matches');
+  // Byte-level no-op check — mtime granularity varies across filesystems
+  // (FAT32: 2s, ReFS: ~1s, NTFS: 100ns), so compare contents directly.
+  assert.equal(
+    Buffer.compare(bytesBefore, fs.readFileSync(committedPath)),
+    0,
+    'committed file must be byte-identical when content matches',
+  );
+});
+
+test('autoPromoteCommittedManifest: case 3 — committed differs → warn, do not overwrite', () => {
+  const repo = makeRestoreFixture(['claude']);
+  const runtimeBody = '{"harness":"claude","version":"1.0.0-alpha.8","files":[{"bundlePath":"a"}]}';
+  writeRuntimeManifest(repo, 'claude', '1.0.0-alpha.8', runtimeBody);
+  const committedBody = '{"harness":"claude","version":"1.0.0-alpha.8","files":[{"bundlePath":"b"}]}';
+  const committedPath = path.join(repo, 'manifests', 'claude', 'v1.0.0-alpha.8.json');
+  fs.writeFileSync(committedPath, committedBody);
+
+  const warnings = [];
+  const originalWarn = console.warn;
+  console.warn = (...args) => warnings.push(args.join(' '));
+  let result;
+  try {
+    result = autoPromoteCommittedManifest(repo, 'claude', '1.0.0-alpha.8');
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.equal(result, 'drift-warned');
+  assert.equal(fs.readFileSync(committedPath, 'utf8'), committedBody,
+    'committed file must not be overwritten when drift is detected');
+  assert.ok(
+    warnings.some((w) => w.includes('drifted') && w.includes('1.0.0-alpha.8')),
+    `expected a drift warning, got: ${JSON.stringify(warnings)}`,
+  );
+});
+
+test('autoPromoteCommittedManifest: missing runtime → no-op signal', () => {
+  const repo = makeRestoreFixture(['claude']);
+  // No runtime manifest at all.
+  const result = autoPromoteCommittedManifest(repo, 'claude', '1.0.0-alpha.99');
+  assert.equal(result, 'missing-runtime');
+  assert.ok(
+    !fs.existsSync(path.join(repo, 'manifests', 'claude', 'v1.0.0-alpha.99.json')),
+    'must not create a committed entry when runtime is missing',
+  );
+});
+
+test('emitBundles end-to-end: writes runtime manifest AND auto-promotes to <repoRoot>/manifests/<harness>/', async () => {
+  const repo = makeRepo();
+  await emitBundles({ repoRoot: repo, version: '0.0.0-test' });
+  for (const harness of ['claude', 'copilot-vscode', 'copilot-cli']) {
+    const runtimePath = path.join(
+      repo, 'installer', 'src', harness, 'manifests', 'v0.0.0-test.json',
+    );
+    const committedPath = path.join(
+      repo, 'manifests', harness, 'v0.0.0-test.json',
+    );
+    assert.ok(fs.existsSync(runtimePath), `${harness} runtime manifest missing`);
+    assert.ok(fs.existsSync(committedPath), `${harness} committed manifest missing — auto-promote did not fire`);
+    // Byte-level compare mirrors autoPromoteCommittedManifest's own Buffer.compare.
+    assert.equal(
+      Buffer.compare(fs.readFileSync(runtimePath), fs.readFileSync(committedPath)),
+      0,
+      `${harness} runtime/committed manifests must be byte-identical after auto-promote`,
+    );
   }
 });

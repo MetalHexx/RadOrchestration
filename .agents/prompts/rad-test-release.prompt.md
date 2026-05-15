@@ -48,15 +48,23 @@ Record the generated tarball filename as `{tarball}`.
 
 ## Step 5 — Verify the tarball
 
+Stay in `{repoRoot}/installer` (Step 4 already `cd`'d there) and invoke the tarball by relative path:
+
 ```
-npx {repoRoot}/installer/{tarball} --version
+npx ./{tarball} --version
 ```
+
+> Do **not** use the absolute-path form (`npx {repoRoot}/installer/{tarball} ...`). On Windows + PowerShell, npx silently ignores absolute-path local-tarball specs and exits 0 without invoking the bin — the smoke test then reports false negatives. The `./<tarball>` form (run from `installer/`) works correctly.
 
 ## Step 6 — Run the wizard non-interactively
 
+Still from `{repoRoot}/installer`:
+
 ```
-npx {repoRoot}/installer/{tarball} --yes --harness {harness}
+npx ./{tarball} --yes --harness {harness}
 ```
+
+Same npx-absolute-path caveat as Step 5 applies.
 
 > Expected: a single harness-checkbox question is bypassed by `--yes`; the wizard runs git/gh tooling checks (FR-17) — warnings appear ONLY if either tool is missing; absence of warnings is the correct outcome when both are installed; the bootstrap runs and the install completes without errors.
 

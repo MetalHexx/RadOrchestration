@@ -201,9 +201,11 @@ async function main() {
     // Cold-clone heal. Idempotent on warm clones.
     //   1. ensureCliBuilt: install cli/ deps + build cli/dist/ if missing —
     //      otherwise the next step's `tsc` invocation fails on fresh clones.
-    //   2. Generate installer/src/<harness>/manifests/v<version>.json if
+    //   2. Generate <repoRoot>/manifests/<harness>/v<version>.json if
     //      missing. copy-manifest-catalog reads from this path and silently
     //      no-ops if absent, which trips validate-plugin-tree downstream.
+    //      emitBundles' auto-promote step writes the committed manifest when
+    //      it's missing, which covers fresh dev branches before a release.
     // Installer flow is unaffected: this only consumes sync-source.js's
     // exported helpers; nothing under installer/ is modified.
     ensureCliBuilt(repoRoot);
@@ -212,8 +214,7 @@ async function main() {
     const claudeAdapter = prepAdapters.find((a) => a.name === 'claude');
     if (claudeAdapter) {
       const manifestPath = path.join(
-        repoRoot, 'installer', 'src', claudeAdapter.name,
-        'manifests', `v${version}.json`,
+        repoRoot, 'manifests', claudeAdapter.name, `v${version}.json`,
       );
       if (!fs.existsSync(manifestPath)) {
         await emitBundles({ repoRoot, version });
@@ -280,19 +281,23 @@ async function main() {
     if (fs.existsSync(tplSrc)) fs.cpSync(tplSrc, tplDst, { recursive: true });
   });
   await step('copy-manifest-catalog', () => {
-    // Plugin manifest emitter (AD-4). Reads the installer's per-version
-    // per-harness catalog at <repo>/installer/src/<harness>/manifests/,
-    // filters out agents/*, skills/*, ui/* (Claude Code handles
-    // plugin-folder placement; ui/* is re-augmented below from
-    // the staged plugin tree so the sha256s match the bytes that ship),
-    // augments with shared-asset entries (ui/, templates/,
+    // Plugin manifest emitter (AD-4). Reads the per-harness catalog at
+    // <repoRoot>/manifests/<harness>/ (committed source of truth, neutral
+    // top-level location — moves the catalog read path out of
+    // installer/src/<harness>/manifests/. The build script still imports
+    // emitBundles from installer/scripts/sync-source.js, so the control-flow
+    // coupling remains — only the data location moved), filters out
+    // agents/*, skills/*, ui/*
+    // (Claude Code handles plugin-folder placement; ui/* is re-augmented
+    // below from the staged plugin tree so the sha256s match the bytes
+    // that ship), augments with shared-asset entries (ui/, templates/,
     // orchestration.yml, pipeline.js), then writes the narrowed catalog
     // into the plugin tree. The CLI no longer ships under bin/ — it lives
     // inside skills/rad-orchestration/scripts/radorch.mjs and is filtered
     // out of the plugin manifest along with the rest of skills/.
     const claudeAdapter = adapters.find(a => a.name === 'claude');
     if (!claudeAdapter) return;
-    const srcCatalog = path.join(repoRoot, 'installer', 'src', claudeAdapter.name, 'manifests');
+    const srcCatalog = path.join(repoRoot, 'manifests', claudeAdapter.name);
     const dstCatalog = path.join(claudeDist, 'manifests');
     fs.mkdirSync(dstCatalog, { recursive: true });
     if (!fs.existsSync(srcCatalog)) return;

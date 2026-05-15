@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const installerSrc = path.join(repoRoot, 'installer', 'src');
+const installerPkg = JSON.parse(
+  fs.readFileSync(path.join(repoRoot, 'installer', 'package.json'), 'utf8'),
+);
+const currentVersion = installerPkg.version;
 const SHA256_RE = /^[a-f0-9]{64}$/;
 const LEGACY_HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
 const CLI_REL_PATH = 'skills/rad-orchestration/scripts/radorch.mjs';
@@ -26,13 +30,21 @@ test('shared UI standalone bundle exists at installer/src/ui/', () => {
             'expected Next.js standalone server entry under installer/src/ui/');
 });
 
+// Manifest catalog assertions target the **runtime** catalog at
+// installer/src/<harness>/manifests/v<version>.json. The runtime is where
+// sync-source.js's emitBundles step writes — including the ui/** entries
+// appended by the shared-asset augmentation pass — and is what the npm
+// tarball ships via files: ["src/"]. Hash format is checked but not
+// byte-level coherence (that's manifest-coherence.test.mjs's job).
+// Precondition: sync-source.js must have populated the runtime location.
 for (const harness of LEGACY_HARNESSES) {
-  test(`installer/src/${harness}/manifests/v*.json lists skill-resident radorch.mjs and ui/** with sha256`, () => {
-    const manifestsDir = path.join(installerSrc, harness, 'manifests');
-    if (!fs.existsSync(manifestsDir)) return;
-    const versionFiles = fs.readdirSync(manifestsDir).filter(f => /^v.*\.json$/.test(f));
-    assert.ok(versionFiles.length > 0, `${harness} has no manifest files`);
-    const m = JSON.parse(fs.readFileSync(path.join(manifestsDir, versionFiles[0]), 'utf8'));
+  test(`installer/src/${harness}/manifests/v${currentVersion}.json lists skill-resident radorch.mjs and ui/** with sha256`, () => {
+    const manifestPath = path.join(installerSrc, harness, 'manifests', `v${currentVersion}.json`);
+    assert.ok(
+      fs.existsSync(manifestPath),
+      `runtime manifest missing for ${harness}: ${manifestPath} — run \`cd installer && node scripts/sync-source.js\` first`,
+    );
+    const m = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     const cliEntry = m.files.find(f => f.bundlePath === CLI_REL_PATH);
     assert.ok(cliEntry, `${harness} manifest missing ${CLI_REL_PATH} entry`);
     assert.match(cliEntry.sha256, SHA256_RE);
