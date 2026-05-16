@@ -1,0 +1,6 @@
+# Engine-translated harness-shape files. Trivially nukeable; each engine run
+# clears its adapter subtree before writing. No manifests, no caches, no
+# destination-shaped artifacts land here — those belong to downstream
+# installer-bundlers.
+/output/*
+!/output/.gitkeep
