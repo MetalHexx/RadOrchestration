@@ -2,6 +2,8 @@ node_modules/
 package-lock.json
 # CI's `npm ci` for the cli subpackage needs a committed lockfile
 !cli/package-lock.json
+# Engine needs a committed lockfile for dependency repeatability
+!greenfield/harness-adapters/engine/package-lock.json
 # The plugin tree is now built into a gitignored staging dir
 # (cli/dist/marketplaces/claude/plugins/rad-orchestration/) and shipped via
 # `npm pack` of plugin/package.json — see scripts/build-plugin.js. The tree

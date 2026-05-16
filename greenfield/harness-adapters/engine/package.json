@@ -1,0 +1,14 @@
+{
+  "name": "harness-adapters-engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Harness-blind translator from greenfield/harness-files/ to output/<adapter.name>/.",
+  "main": "index.js",
+  "bin": {
+    "engine-build": "build.js"
+  },
+  "dependencies": {
+    "yaml": "^2.5.0"
+  }
+}
