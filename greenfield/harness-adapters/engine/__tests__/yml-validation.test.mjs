@@ -5,14 +5,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadYml } from '../index.js';
 
-test('loadYml accepts a parseable yml with name + description', async () => {
+test('loadYml accepts a parseable yml with name + description and returns { data, raw }', async () => {
   const root = mkdtempSync(join(tmpdir(), 'yml-ok-'));
   try {
     const p = join(root, 'good.yml');
     writeFileSync(p, 'name: foo\ndescription: a thing\nmodel: opus\n');
-    const data = await loadYml(p);
+    const { data, raw } = await loadYml(p);
     assert.strictEqual(data.name, 'foo');
     assert.strictEqual(data.description, 'a thing');
+    assert.strictEqual(raw, 'name: foo\ndescription: a thing\nmodel: opus', 'raw is pre-trimmed of trailing newlines');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

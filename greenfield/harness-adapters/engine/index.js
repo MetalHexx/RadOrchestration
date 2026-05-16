@@ -88,15 +88,15 @@ function canonicalAgentName(bodyPath) {
 }
 
 export async function loadYml(path) {
-  let raw;
+  let fileText;
   try {
-    raw = readFileSync(path, 'utf8');
+    fileText = readFileSync(path, 'utf8');
   } catch (err) {
     throw new Error(`per-harness yml not found: ${path}`);
   }
   let data;
   try {
-    data = YAML.parse(raw);
+    data = YAML.parse(fileText);
   } catch (err) {
     throw new Error(`per-harness yml failed to parse: ${path} — ${err.message}`);
   }
@@ -109,23 +109,19 @@ export async function loadYml(path) {
   if (!data.description || String(data.description).trim() === '') {
     throw new Error(`per-harness yml ${path} missing required field: description`);
   }
-  return data;
+  // `raw` is pre-trimmed so callers wrapping it as a frontmatter block don't
+  // emit doubled trailing newlines before the closing `---` delimiter.
+  return { data, raw: fileText.replace(/\n+$/, '') };
 }
 
 export async function translateAgent({ bodyPath, ymlPath, adapter, outDir }) {
-  const data = await loadYml(ymlPath); // throws with named path on any failure (FR-16, DD-7)
+  const { raw } = await loadYml(ymlPath); // throws with named path on any failure (FR-16, DD-7)
   const body = readFileSync(bodyPath, 'utf8');
   // FR-11 + AD-5: replace the literal token with the yml content wrapped in
-  // --- delimiters. Trim trailing newline on the yml block so we emit a
-  // single, well-formed frontmatter section.
-  const ymlBlock = readFileSync(ymlPath, 'utf8').replace(/\n+$/, '');
-  const wrapped = `---\n${ymlBlock}\n---`;
+  // --- delimiters.
+  const wrapped = `---\n${raw}\n---`;
   const substituted = body.split('{{FRONTMATTER}}').join(wrapped);
   const withTokens = applyBodyTokens(substituted, adapter.bodyTokens);
-  // Touch `data` so the validated parse is not dead — keeps loadYml in the
-  // hot path even when the engine itself doesn't otherwise use the parsed
-  // fields (AD-6 strictness depends on this).
-  void data;
   const name = canonicalAgentName(bodyPath);
   const filename = resolveFilename(adapter.filenames.agent, name);
   const target = join(outDir, adapter.name, 'agents', filename);
