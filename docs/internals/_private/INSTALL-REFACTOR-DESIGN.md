@@ -281,6 +281,12 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 - Each installer knows its own destination: legacy npm installs at `~/.claude` / `~/.copilot`, the Claude plugin installs under `${CLAUDE_PLUGIN_ROOT}` (a runtime env var), future installers do whatever they do.
 - **Rationale:** the same Claude adapter output can serve both the legacy installer and the plugin installer because each runs its own destination pass. Mixing destination knowledge into the adapter would re-couple translation to packaging — the exact layering this rearchitecture exists to fix. Known surface today: `${PLUGIN_ROOT}` in three UI skills. Latent fix to handle during installer rebuild: tokenize the hardcoded `.claude/skills/...` references in the planning skills.
 
+### Decision 12: `publish.yml` updates at cutover, not during iteration rebuilds
+- During the greenfield iterations (claude-plugin in iteration 1, standard installer in iteration 2), `.github/workflows/publish.yml` stays unchanged. The legacy installer (`installer/`) and the legacy plugin build path (`cli/dist/marketplaces/claude/plugins/rad-orchestration/`) continue to publish from their current locations on git tag push.
+- At cutover, `publish.yml` updates in lockstep with the folder deletion: the `publish` job's `working-directory` swaps to the new standard installer location, and the `publish-plugin` job swaps to publish from `installers/claude-plugin/output/` (or whichever location the new build emits to). Both swaps happen in the cutover commit alongside old-folder removal.
+- Per-iteration dev loops are local-only: build locally (`npm run build` in the installer package), test via `claude --plugin-dir ./output` or a local marketplace install. No npm publish during iteration rebuilds.
+- **Rationale:** keeps existing users on the legacy installer with no surprise upgrades during the rebuild. Cutover is the single atomic switchover from old paths to new paths — `publish.yml` is one of the files that participates in that switchover, alongside the folder deletion. Adding pre-release publish paths during iterations was considered and rejected as unnecessary CI complexity given that local-only testing covers the iteration dev loop.
+
 ---
 
 ## Migration scope
