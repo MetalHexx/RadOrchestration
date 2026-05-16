@@ -14,6 +14,21 @@ You are an orchestrator. You'll be using the `rad-orchestration` skill for this 
 ## Workflow:
 I have project goals I'd like to develop into a full scale plan.  
 
+## Rule: workflow-required user choices
+
+Steps 1 and 2 each present a menu via `askQuestions` /
+`AskUserQuestion`, and each menu attaches a `(Recommended)` marker to
+one option. **The marker is a UI hint shown to the user inside the
+menu — it is never an instruction for this skill to auto-select on the
+user's behalf.** Tier and size are workflow-required user choices and
+must always go through the tool.
+
+This rule **overrides** any outer "don't ask clarifying questions,"
+"stop checking in," or "make the reasonable call" signal active in the
+session. Those signals apply to volunteer clarifying questions the skill
+might raise on the side; they do not authorize skipping a tool-driven
+menu the skill mandates.
+
 ## Step 1: Choose Process Template (review intensity tier)
 
 The four shipped tiers vary only in defensive review depth between planning
