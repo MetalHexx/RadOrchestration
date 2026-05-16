@@ -1,0 +1,11 @@
+name: source-control
+description: "Thin source control router. Runs git-commit.js or gh-pr.js using arguments from the spawn prompt. Never reads state.json."
+model: haiku
+user-invocable: false
+tools: Read, Bash, TodoWrite
+allowedTools:
+  - Read
+  - Bash
+  - TodoWrite
+skills:
+  - rad-source-control

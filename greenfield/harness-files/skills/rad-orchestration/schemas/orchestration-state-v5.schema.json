@@ -1,0 +1,595 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Orchestration State v5",
+  "description": "Canonical schema for the orchestration system's v5 state format.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "project", "config", "pipeline", "graph"],
+  "properties": {
+    "$schema": {
+      "title": "Schema Version",
+      "description": "Schema version identifier. Must be orchestration-state-v5.",
+      "const": "orchestration-state-v5"
+    },
+    "project": {
+      "title": "Project Metadata",
+      "description": "Core project identity and timestamps.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "created", "updated"],
+      "properties": {
+        "name": {
+          "title": "Project Name",
+          "description": "Unique project identifier derived from the project directory name.",
+          "type": "string"
+        },
+        "created": {
+          "title": "Created Timestamp",
+          "description": "ISO 8601 timestamp when the project was initialized.",
+          "type": "string"
+        },
+        "updated": {
+          "title": "Updated Timestamp",
+          "description": "ISO 8601 timestamp of the last state mutation.",
+          "type": "string"
+        }
+      }
+    },
+    "config": {
+      "title": "Project Configuration",
+      "description": "Static configuration values set at project initialization.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_mode", "limits", "source_control"],
+      "properties": {
+        "gate_mode": {
+          "title": "Gate Mode",
+          "description": "Default human gate frequency. Values: ask, task, phase, autonomous.",
+          "type": "string",
+          "enum": ["ask", "task", "phase", "autonomous"]
+        },
+        "limits": {
+          "title": "Execution Limits",
+          "description": "Safeguard limits for the execution pipeline.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "max_phases",
+            "max_tasks_per_phase",
+            "max_retries_per_task",
+            "max_consecutive_review_rejections"
+          ],
+          "properties": {
+            "max_phases": {
+              "title": "Max Phases",
+              "description": "Maximum number of phases allowed per pipeline run.",
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_tasks_per_phase": {
+              "title": "Max Tasks Per Phase",
+              "description": "Maximum number of tasks allowed in a single phase.",
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_retries_per_task": {
+              "title": "Max Retries Per Task",
+              "description": "Maximum number of retry attempts per task.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "max_consecutive_review_rejections": {
+              "title": "Max Consecutive Review Rejections",
+              "description": "Maximum number of consecutive review rejections before the pipeline halts.",
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "source_control": {
+          "title": "Source Control Configuration",
+          "description": "Default source control settings for the project.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["auto_commit", "auto_pr"],
+          "properties": {
+            "auto_commit": {
+              "title": "Auto Commit Mode",
+              "description": "Controls when commits are made automatically. Values: ask, always, never.",
+              "type": "string",
+              "enum": ["ask", "always", "never"]
+            },
+            "auto_pr": {
+              "title": "Auto PR Mode",
+              "description": "Controls when pull requests are created automatically. Values: ask, always, never.",
+              "type": "string",
+              "enum": ["ask", "always", "never"]
+            }
+          }
+        }
+      }
+    },
+    "pipeline": {
+      "title": "Pipeline Section",
+      "description": "Current pipeline execution state including tier, source control, and halt information.",
+      "allOf": [{ "$ref": "#/definitions/PipelineSection" }]
+    },
+    "graph": {
+      "title": "Graph State",
+      "description": "DAG execution state including the template, current position, and all node states.",
+      "allOf": [{ "$ref": "#/definitions/GraphState" }]
+    }
+  },
+  "definitions": {
+    "NodeStatus": {
+      "title": "Node Status",
+      "description": "Execution status of a node. Values: not_started, in_progress, completed, failed, halted, skipped.",
+      "type": "string",
+      "enum": ["not_started", "in_progress", "completed", "failed", "halted", "skipped"]
+    },
+    "GraphStatus": {
+      "title": "Graph Status",
+      "description": "Execution status of the graph. Values: not_started, in_progress, completed, halted.",
+      "type": "string",
+      "enum": ["not_started", "in_progress", "completed", "halted"]
+    },
+    "NodesRecord": {
+      "title": "Nodes Record",
+      "description": "A map of node IDs to their NodeState. Keys are string node identifiers.",
+      "type": "object",
+      "additionalProperties": {
+        "title": "Node State Entry",
+        "description": "The state of a single node, discriminated by the kind field.",
+        "$ref": "#/definitions/NodeState"
+      }
+    },
+    "NodeState": {
+      "title": "Node State",
+      "description": "Discriminated union of all possible node state variants, discriminated by the kind field.",
+      "oneOf": [
+        { "$ref": "#/definitions/StepNodeState" },
+        { "$ref": "#/definitions/GateNodeState" },
+        { "$ref": "#/definitions/ConditionalNodeState" },
+        { "$ref": "#/definitions/ParallelNodeState" },
+        { "$ref": "#/definitions/ForEachPhaseNodeState" },
+        { "$ref": "#/definitions/ForEachTaskNodeState" }
+      ]
+    },
+    "StepNodeState": {
+      "title": "Step Node State",
+      "description": "State for a step node that executes an action and tracks its document output.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "doc_path", "retries"],
+      "properties": {
+        "kind": {
+          "title": "Node Kind",
+          "description": "Discriminant for the step node variant. Must be 'step'.",
+          "const": "step"
+        },
+        "status": {
+          "title": "Node Status",
+          "description": "Current execution status of this node.",
+          "$ref": "#/definitions/NodeStatus"
+        },
+        "doc_path": {
+          "title": "Document Path",
+          "description": "Path to the output document produced by this step, or null if not yet created.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "retries": {
+          "title": "Retry Count",
+          "description": "Number of retry attempts taken for this step.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "verdict": {
+          "title": "Verdict",
+          "description": "Review verdict for this step, or null if not yet reviewed.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "last_parse_error": {
+          "title": "Last Parse Error",
+          "description": "Structured error info from the most recent failed Master Plan parse attempt by the explosion script. Populated on explosion_failed, cleared on explosion_completed. Used by the planner's recovery branch to self-correct.",
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["line", "expected", "found", "message"],
+              "properties": {
+                "line": { "type": "integer", "minimum": 1 },
+                "expected": { "type": "string" },
+                "found": { "type": "string" },
+                "message": { "type": "string" }
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "parse_retry_count": {
+          "title": "Parse Retry Count",
+          "description": "Number of times the explosion script's parser has rejected the planner's Master Plan output for this node. Reset to 0 on explosion_completed. Hardcoded cap of 3 enforced in the explosion_failed mutation handler.",
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "GateNodeState": {
+      "title": "Gate Node State",
+      "description": "State for a gate node that pauses pipeline execution for human approval.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "gate_active"],
+      "properties": {
+        "kind": {
+          "title": "Node Kind",
+          "description": "Discriminant for the gate node variant. Must be 'gate'.",
+          "const": "gate"
+        },
+        "status": {
+          "title": "Node Status",
+          "description": "Current execution status of this node.",
+          "$ref": "#/definitions/NodeStatus"
+        },
+        "gate_active": {
+          "title": "Gate Active",
+          "description": "When true, the gate is currently blocking pipeline execution awaiting human approval.",
+          "type": "boolean"
+        }
+      }
+    },
+    "ConditionalNodeState": {
+      "title": "Conditional Node State",
+      "description": "State for a conditional node that routes execution based on an evaluated condition.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "branch_taken"],
+      "properties": {
+        "kind": {
+          "title": "Node Kind",
+          "description": "Discriminant for the conditional node variant. Must be 'conditional'.",
+          "const": "conditional"
+        },
+        "status": {
+          "title": "Node Status",
+          "description": "Current execution status of this node.",
+          "$ref": "#/definitions/NodeStatus"
+        },
+        "branch_taken": {
+          "title": "Branch Taken",
+          "description": "Which branch was selected after condition evaluation: 'true', 'false', or null if not yet evaluated.",
+          "oneOf": [
+            { "type": "string", "enum": ["true", "false"] },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "ParallelNodeState": {
+      "title": "Parallel Node State",
+      "description": "State for a parallel node that executes multiple child nodes concurrently or serially.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "nodes"],
+      "properties": {
+        "kind": {
+          "title": "Node Kind",
+          "description": "Discriminant for the parallel node variant. Must be 'parallel'.",
+          "const": "parallel"
+        },
+        "status": {
+          "title": "Node Status",
+          "description": "Current execution status of this node.",
+          "$ref": "#/definitions/NodeStatus"
+        },
+        "nodes": {
+          "title": "Child Nodes",
+          "description": "Map of child node IDs to their execution state.",
+          "$ref": "#/definitions/NodesRecord"
+        }
+      }
+    },
+    "ForEachPhaseNodeState": {
+      "title": "For-Each-Phase Node State",
+      "description": "State for a for_each_phase node that iterates over all phases defined in the master plan.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "iterations"],
+      "properties": {
+        "kind": {
+          "title": "Node Kind",
+          "description": "Discriminant for the for_each_phase node variant. Must be 'for_each_phase'.",
+          "const": "for_each_phase"
+        },
+        "status": {
+          "title": "Node Status",
+          "description": "Current execution status of this node.",
+          "$ref": "#/definitions/NodeStatus"
+        },
+        "iterations": {
+          "title": "Phase Iterations",
+          "description": "Ordered list of phase iteration entries, one per phase in the master plan.",
+          "type": "array",
+          "items": {
+            "title": "Phase Iteration Entry",
+            "description": "State for a single phase iteration.",
+            "$ref": "#/definitions/IterationEntry"
+          }
+        }
+      }
+    },
+    "ForEachTaskNodeState": {
+      "title": "For-Each-Task Node State",
+      "description": "State for a for_each_task node that iterates over all tasks in the current phase.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "iterations"],
+      "properties": {
+        "kind": {
+          "title": "Node Kind",
+          "description": "Discriminant for the for_each_task node variant. Must be 'for_each_task'.",
+          "const": "for_each_task"
+        },
+        "status": {
+          "title": "Node Status",
+          "description": "Current execution status of this node.",
+          "$ref": "#/definitions/NodeStatus"
+        },
+        "iterations": {
+          "title": "Task Iterations",
+          "description": "Ordered list of task iteration entries, one per task in the current phase.",
+          "type": "array",
+          "items": {
+            "title": "Task Iteration Entry",
+            "description": "State for a single task iteration.",
+            "$ref": "#/definitions/IterationEntry"
+          }
+        }
+      }
+    },
+    "IterationEntry": {
+      "title": "Iteration Entry",
+      "description": "State for a single phase or task iteration within a for-each node.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "status", "nodes", "corrective_tasks", "commit_hash"],
+      "properties": {
+        "index": {
+          "title": "Iteration Index",
+          "description": "0-based iteration index.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "title": "Iteration Status",
+          "description": "Current execution status of this iteration.",
+          "$ref": "#/definitions/NodeStatus"
+        },
+        "nodes": {
+          "title": "Iteration Nodes",
+          "description": "Map of node IDs to their execution state for this iteration.",
+          "$ref": "#/definitions/NodesRecord"
+        },
+        "corrective_tasks": {
+          "title": "Corrective Tasks",
+          "description": "Ordered list of corrective task entries injected during this iteration.",
+          "type": "array",
+          "items": {
+            "title": "Corrective Task Entry",
+            "description": "State for a single corrective task injected into this iteration.",
+            "$ref": "#/definitions/CorrectiveTaskEntry"
+          }
+        },
+        "doc_path": {
+          "title": "Iteration Doc Path",
+          "description": "Relative path to the authoring doc for this iteration (phase plan or task handoff). Optional; absent on iterations that have not yet been authored.",
+          "type": ["string", "null"]
+        },
+        "commit_hash": {
+          "title": "Commit Hash",
+          "description": "Per-task commit hash set by the COMMIT_COMPLETED mutation, or null if no commit has been made for this iteration.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "CorrectiveTaskEntry": {
+      "title": "Corrective Task Entry",
+      "description": "State for a corrective task injected into the pipeline after a review rejection.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "reason", "injected_after", "status", "nodes", "commit_hash"],
+      "properties": {
+        "index": {
+          "title": "Corrective Task Index",
+          "description": "1-based corrective attempt number within this iteration.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "reason": {
+          "title": "Injection Reason",
+          "description": "Human-readable explanation of why this corrective task was injected.",
+          "type": "string"
+        },
+        "injected_after": {
+          "title": "Injected After",
+          "description": "Node ID of the node that triggered the corrective task injection (e.g., 'code_review').",
+          "type": "string"
+        },
+        "status": {
+          "title": "Corrective Task Status",
+          "description": "Current execution status of this corrective task.",
+          "$ref": "#/definitions/NodeStatus"
+        },
+        "nodes": {
+          "title": "Corrective Task Nodes",
+          "description": "Map of node IDs to their execution state for this corrective task.",
+          "$ref": "#/definitions/NodesRecord"
+        },
+        "doc_path": {
+          "title": "Corrective Task Doc Path",
+          "description": "Relative path to the corrective task handoff doc. Optional; absent on entries that have not yet been authored.",
+          "type": ["string", "null"]
+        },
+        "commit_hash": {
+          "title": "Commit Hash",
+          "description": "Per-corrective-task commit hash set by the COMMIT_COMPLETED mutation, or null if no commit has been made for this corrective task.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "SourceControlState": {
+      "title": "Source Control State",
+      "description": "Source control configuration and runtime state for the project. Does not include commit_hash (tracked per-iteration instead).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "branch",
+        "base_branch",
+        "worktree_path",
+        "auto_commit",
+        "auto_pr",
+        "remote_url",
+        "compare_url",
+        "pr_url"
+      ],
+      "properties": {
+        "branch": {
+          "title": "Feature Branch",
+          "description": "Git branch name used for the project's code changes.",
+          "type": "string"
+        },
+        "base_branch": {
+          "title": "Base Branch",
+          "description": "Git branch to merge into when the pull request is created.",
+          "type": "string"
+        },
+        "worktree_path": {
+          "title": "Worktree Path",
+          "description": "Absolute path to the git worktree directory for this project.",
+          "type": "string"
+        },
+        "auto_commit": {
+          "title": "Auto Commit Mode",
+          "description": "Controls when commits are made automatically. Values: ask, always, never.",
+          "type": "string",
+          "enum": ["ask", "always", "never"]
+        },
+        "auto_pr": {
+          "title": "Auto PR Mode",
+          "description": "Controls when pull requests are created automatically. Values: ask, always, never.",
+          "type": "string",
+          "enum": ["ask", "always", "never"]
+        },
+        "remote_url": {
+          "title": "Remote URL",
+          "description": "URL of the remote repository, or null if not configured.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "compare_url": {
+          "title": "Compare URL",
+          "description": "URL to compare the feature branch against base branch, or null if not yet available.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "pr_url": {
+          "title": "Pull Request URL",
+          "description": "URL of the created pull request, or null if not yet created.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "PipelineSection": {
+      "title": "Pipeline Section",
+      "description": "Current pipeline execution state including tier, source control configuration, and halt information.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_mode", "source_control", "current_tier", "halt_reason"],
+      "properties": {
+        "gate_mode": {
+          "title": "Gate Mode Override",
+          "description": "Human gate frequency override for this project, or null to use config default. Values: task, phase, autonomous.",
+          "oneOf": [
+            { "type": "string", "enum": ["task", "phase", "autonomous"] },
+            { "type": "null" }
+          ]
+        },
+        "source_control": {
+          "title": "Source Control State",
+          "description": "Source control runtime state for this project, or null if not yet initialized.",
+          "oneOf": [
+            { "$ref": "#/definitions/SourceControlState" },
+            { "type": "null" }
+          ]
+        },
+        "current_tier": {
+          "title": "Current Tier",
+          "description": "Active pipeline tier. Values: planning, execution, review, halted.",
+          "type": "string",
+          "enum": ["planning", "execution", "review", "halted"]
+        },
+        "halt_reason": {
+          "title": "Halt Reason",
+          "description": "Human-readable reason why the pipeline halted, or null if the pipeline is not halted.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "GraphState": {
+      "title": "Graph State",
+      "description": "DAG execution state including the pipeline template, current node position, and all node states.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template_id", "status", "current_node_path", "nodes"],
+      "properties": {
+        "template_id": {
+          "title": "Template ID",
+          "description": "Identifier of the pipeline template being executed.",
+          "type": "string"
+        },
+        "status": {
+          "title": "Graph Status",
+          "description": "Current execution status of the entire graph.",
+          "$ref": "#/definitions/GraphStatus"
+        },
+        "current_node_path": {
+          "title": "Current Node Path",
+          "description": "Dot/bracket path to the currently active node for observability (e.g., 'phase_loop[1].task_loop[2].code_review'), or null if no node is active.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "nodes": {
+          "title": "Root Nodes",
+          "description": "Map of root-level node IDs to their execution state.",
+          "$ref": "#/definitions/NodesRecord"
+        }
+      }
+    }
+  }
+}
