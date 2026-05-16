@@ -18,8 +18,8 @@ test('loadYml accepts a parseable yml with name + description and returns { data
 });
 
 test('loadYml errors when the file is missing, with the exact path in the message', async () => {
-  await assert.rejects(loadYml('/no/such/path/agent.claude.yml'),
-    /\/no\/such\/path\/agent\.claude\.yml/, 'message names the missing path (DD-7, FR-16)');
+  await assert.rejects(loadYml('/no/such/path/agent.test-harness.yml'),
+    /\/no\/such\/path\/agent\.test-harness\.yml/, 'message names the missing path (DD-7, FR-16)');
 });
 
 test('loadYml errors on parse failure, on missing name, and on missing description', async () => {
