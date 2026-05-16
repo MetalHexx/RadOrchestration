@@ -2,10 +2,45 @@
 // for any harness name lives in this folder (NFR-2 is enforced by audit
 // in P05). Implementation is filled in by P03-T02 / P03-T03 / P04-T01.
 
-import { readdirSync, readFileSync, existsSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
+import { readdirSync, readFileSync, existsSync, rmSync, mkdirSync, writeFileSync, copyFileSync, statSync } from 'node:fs';
+import { join, resolve, dirname, extname, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import YAML from 'yaml';
+
+// FR-18 + AD-9: engine-owned skip-list. Not adapter-tunable — per-harness
+// customization would create surprises where the same fixture lands in one
+// bundle but not another.
+const SKIP_DIRS = new Set(['__tests__', 'node_modules', '.next', 'dist', 'dist-bundle']);
+const SKIP_FILES = new Set(['vitest.config.ts', 'vitest.config.js', 'vitest.config.mjs', 'tsconfig.tsbuildinfo']);
+const TEST_FILE = /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/i;
+
+// Text extensions get bodyToken substitution; everything else is copied verbatim.
+const TEXT_EXTS = new Set(['.md', '.txt', '.js', '.mjs', '.cjs', '.ts', '.tsx', '.json', '.yml', '.yaml', '.sh', '.css', '.html']);
+
+function isText(p) {
+  return TEXT_EXTS.has(extname(p).toLowerCase());
+}
+
+function copyTree(srcDir, destDir, bodyTokens) {
+  mkdirSync(destDir, { recursive: true });
+  for (const entry of readdirSync(srcDir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      if (SKIP_DIRS.has(entry.name)) continue;
+      copyTree(join(srcDir, entry.name), join(destDir, entry.name), bodyTokens);
+      continue;
+    }
+    const name = entry.name;
+    if (SKIP_FILES.has(name) || TEST_FILE.test(name)) continue;
+    const srcPath = join(srcDir, name);
+    const destPath = join(destDir, name);
+    if (isText(srcPath)) {
+      const text = readFileSync(srcPath, 'utf8');
+      writeFileSync(destPath, applyBodyTokens(text, bodyTokens));
+    } else {
+      copyFileSync(srcPath, destPath);
+    }
+  }
+}
 
 export async function discoverAdapters(adaptersDir) {
   const entries = readdirSync(adaptersDir, { withFileTypes: true })
@@ -99,7 +134,18 @@ export async function translateAgent({ bodyPath, ymlPath, adapter, outDir }) {
 }
 
 export async function translateSkill({ skillDir, adapter, outDir }) {
-  throw new Error('translateSkill not yet implemented');
+  const skillName = basename(skillDir);
+  const target = join(outDir, adapter.name, 'skills', skillName);
+  copyTree(skillDir, target, adapter.bodyTokens);
+  // FR-12 + FR-8: ensure the SKILL.md output filename comes from the
+  // adapter's `filenames.skill` template. Day-one adapters all resolve to
+  // 'SKILL.md', so the verbatim copy is already correct; for templates that
+  // resolve to a different name we'd rename here.
+  const desired = resolveFilename(adapter.filenames.skill, skillName);
+  if (desired !== 'SKILL.md') {
+    const fs = await import('node:fs');
+    fs.renameSync(join(target, 'SKILL.md'), join(target, desired));
+  }
 }
 
 export async function build({ harness } = {}) {
