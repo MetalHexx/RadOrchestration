@@ -48,11 +48,14 @@ test('FIXTURE: skill subfolders recurse with text + binary handling (FR-24)', as
     writeFileSync(join(src, 'SKILL.md'), '---\nname: sub\ndescription: d\n---\n');
     writeFileSync(join(src, 'scripts/run.js'), 'console.log("ok");');
     writeFileSync(join(src, 'references/note.md'), '# notes');
+    writeFileSync(join(src, 'references/icon.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
     writeFileSync(join(src, 'templates/T.md'), '# template');
     await translateSkill({ skillDir: src, adapter: ALPHA, outDir: join(root, 'out') });
-    for (const p of ['SKILL.md', 'scripts/run.js', 'references/note.md', 'templates/T.md']) {
+    for (const p of ['SKILL.md', 'scripts/run.js', 'references/note.md', 'references/icon.png', 'templates/T.md']) {
       assert.ok(existsSync(join(root, 'out/alpha/skills/sub', p)), `missing ${p}`);
     }
+    const png = readFileSync(join(root, 'out/alpha/skills/sub/references/icon.png'));
+    assert.deepStrictEqual([...png], [0x89, 0x50, 0x4e, 0x47], 'binary bytes preserved verbatim');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

@@ -2,7 +2,7 @@
 // for any harness name lives in this folder (NFR-2 is enforced by audit
 // in P05). Implementation is filled in by P03-T02 / P03-T03 / P04-T01.
 
-import { readdirSync, readFileSync, existsSync, rmSync, mkdirSync, writeFileSync, copyFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync, rmSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs';
 import { join, resolve, dirname, extname, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import YAML from 'yaml';
