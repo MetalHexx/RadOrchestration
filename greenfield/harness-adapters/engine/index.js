@@ -2,8 +2,8 @@
 // for any harness name lives in this folder (NFR-2 is enforced by audit
 // in P05). Implementation is filled in by P03-T02 / P03-T03 / P04-T01.
 
-import { readdirSync, readFileSync, existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { readdirSync, readFileSync, existsSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join, resolve, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import YAML from 'yaml';
 
@@ -23,6 +23,33 @@ export async function discoverAdapters(adaptersDir) {
     adapters.push(mod.adapter);
   }
   return adapters;
+}
+
+export function applyBodyTokens(text, bodyTokens) {
+  let out = text;
+  for (const [find, replace] of Object.entries(bodyTokens ?? {})) {
+    out = out.split(find).join(replace);
+  }
+  return out;
+}
+
+export async function clearOutputForAdapter(adapter, outDir) {
+  // Stateless: every run starts from scratch for this adapter's subtree.
+  // ${...} destination tokens pass through bodies unchanged — engine never
+  // substitutes, validates, or warns on them.
+  const adapterOut = join(outDir, adapter.name);
+  rmSync(join(adapterOut, 'agents'), { recursive: true, force: true });
+  rmSync(join(adapterOut, 'skills'), { recursive: true, force: true });
+}
+
+function resolveFilename(template, canonicalName) {
+  // FR-8: '{name}' is the canonical-name substitution token.
+  return template.split('{name}').join(canonicalName);
+}
+
+function canonicalAgentName(bodyPath) {
+  const base = bodyPath.replace(/.*[\\/]/, '');
+  return base.replace(/\.md$/i, '');
 }
 
 export async function loadYml(path) {
@@ -51,7 +78,24 @@ export async function loadYml(path) {
 }
 
 export async function translateAgent({ bodyPath, ymlPath, adapter, outDir }) {
-  throw new Error('translateAgent not yet implemented');
+  const data = await loadYml(ymlPath); // throws with named path on any failure (FR-16, DD-7)
+  const body = readFileSync(bodyPath, 'utf8');
+  // FR-11 + AD-5: replace the literal token with the yml content wrapped in
+  // --- delimiters. Trim trailing newline on the yml block so we emit a
+  // single, well-formed frontmatter section.
+  const ymlBlock = readFileSync(ymlPath, 'utf8').replace(/\n+$/, '');
+  const wrapped = `---\n${ymlBlock}\n---`;
+  const substituted = body.split('{{FRONTMATTER}}').join(wrapped);
+  const withTokens = applyBodyTokens(substituted, adapter.bodyTokens);
+  // Touch `data` so the validated parse is not dead — keeps loadYml in the
+  // hot path even when the engine itself doesn't otherwise use the parsed
+  // fields (AD-6 strictness depends on this).
+  void data;
+  const name = canonicalAgentName(bodyPath);
+  const filename = resolveFilename(adapter.filenames.agent, name);
+  const target = join(outDir, adapter.name, 'agents', filename);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, withTokens);
 }
 
 export async function translateSkill({ skillDir, adapter, outDir }) {
