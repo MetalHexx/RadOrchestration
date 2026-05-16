@@ -148,6 +148,52 @@ export async function translateSkill({ skillDir, adapter, outDir }) {
   }
 }
 
-export async function build({ harness } = {}) {
-  throw new Error('build not yet implemented');
+function defaultFilesRoot() {
+  return resolve('greenfield/harness-files');
+}
+function defaultAdaptersRoot() {
+  return resolve('greenfield/harness-adapters/adapters');
+}
+function defaultOutDir() {
+  return resolve('greenfield/harness-adapters/output');
+}
+
+export async function build({
+  harness,
+  filesRoot = defaultFilesRoot(),
+  adaptersRoot = defaultAdaptersRoot(),
+  outDir = defaultOutDir(),
+} = {}) {
+  const adapters = await discoverAdapters(adaptersRoot);
+  let selected = adapters;
+  if (harness) {
+    selected = adapters.filter((a) => a.name === harness);
+    if (selected.length === 0) {
+      throw new Error(`--harness=${harness} did not match any discovered adapter under ${adaptersRoot}`);
+    }
+  }
+  const agentsDir = join(filesRoot, 'agents');
+  const skillsDir = join(filesRoot, 'skills');
+  const agentBodies = existsSync(agentsDir)
+    ? readdirSync(agentsDir).filter((f) => f.endsWith('.md'))
+    : [];
+  const skillFolders = existsSync(skillsDir)
+    ? readdirSync(skillsDir, { withFileTypes: true })
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name)
+    : [];
+
+  for (const adapter of selected) {
+    await clearOutputForAdapter(adapter, outDir);
+    console.log(`[engine] building adapter: ${adapter.name}`);
+    for (const body of agentBodies) {
+      const name = body.replace(/\.md$/i, '');
+      const bodyPath = join(agentsDir, body);
+      const ymlPath = join(agentsDir, `${name}.${adapter.name}.yml`);
+      await translateAgent({ bodyPath, ymlPath, adapter, outDir });
+    }
+    for (const skill of skillFolders) {
+      await translateSkill({ skillDir: join(skillsDir, skill), adapter, outDir });
+    }
+  }
 }
