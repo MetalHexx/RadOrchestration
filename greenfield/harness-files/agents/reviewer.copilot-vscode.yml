@@ -1,0 +1,12 @@
+name: reviewer
+description: "Review code, phases, and projects for quality, correctness, and conformance. Supports three modes: task review (Action #6), phase review (Action #8), and final review (Action #9). Each mode uses a dual-pass approach — conformance checking against planning documents followed by an independent quality assessment."
+model: Claude Sonnet 4.6 (copilot)
+user-invocable: false
+tools:
+  - read
+  - search
+  - edit
+  - execute
+  - todo
+skills:
+  - rad-code-review

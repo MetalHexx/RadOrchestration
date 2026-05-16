@@ -1,0 +1,14 @@
+name: coder
+description: "Execute coding tasks from self-contained Task Handoff documents. Use when implementing code, writing tests, running builds, creating files, modifying source code, or executing implementation steps from a task handoff. Reads only the Task Handoff — produces code and tests."
+model: Claude Sonnet 4.6 (copilot)
+user-invocable: false
+tools:
+  - read
+  - search
+  - edit
+  - execute
+  - todo
+skills:
+  - rad-orchestration
+  - rad-execute-coding-task
+  - rad-run-tests
