@@ -4,5 +4,8 @@
   "private": true,
   "type": "module",
   "description": "Mechanical, installer-blind helpers for installer build orchestrators.",
-  "main": "expand-tokens.js"
+  "main": "expand-tokens.js",
+  "dependencies": {
+    "esbuild": "^0.21.0"
+  }
 }
