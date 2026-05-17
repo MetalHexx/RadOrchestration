@@ -6,7 +6,7 @@ user-invocable: false
 
 # Orchestration
 
-Unified orchestration skill containing the pipeline runtime, system configuration (`orchestration.yml`), validator, and role-specific reference documents. All pipeline agents load this skill for system context.
+Unified orchestration skill containing the pipeline runtime, validator, and role-specific reference documents. System configuration (`orchestration.yml`) and tier templates live at `~/.radorch/` and are documented below. All pipeline agents load this skill for system context.
 
 ## Reference Documents
 

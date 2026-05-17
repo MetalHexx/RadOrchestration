@@ -125,7 +125,7 @@ const orchRoot = path.resolve(__dirname, '..', '..', '..');
 // Linux: /home/<user>). Matches the canonical resolver in cli/src/lib/paths.ts.
 const projectsBasePath = path.join(os.homedir(), '.radorch', 'projects');
 
-const configPath = path.join(orchRoot, 'skills', 'rad-orchestration', 'config', 'orchestration.yml');
+const configPath = path.join(os.homedir(), '.radorch', 'orchestration.yml');
 
 let configAutoCommit = 'ask';
 let configAutoPr = 'ask';
