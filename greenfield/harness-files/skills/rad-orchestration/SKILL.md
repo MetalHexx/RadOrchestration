@@ -26,7 +26,7 @@ This skill bundles:
 
 - **`schemas/state-v4.schema.json`** — State file JSON Schema
 - **`scripts/pipeline.js`** — Pipeline runtime entry point. All CLI arguments pass through transparently. 
-- **`scripts/migrate-to-v5.js`** — Migration CLI
+- **`scripts/explode-master-plan.js`** — Pipeline branching and phase expansion engine
 - **`scripts/lib/`** — Pipeline engine, resolver, mutations, state I/O, validator
 - **`references/`** — Role-specific reference documents
 
