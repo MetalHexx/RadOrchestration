@@ -1,0 +1,152 @@
+#!/usr/bin/env node
+// build.js — Single entry point for the Claude marketplace plugin build.
+// 13 steps in fixed order per FR-23. Fail-fast on any step (NFR-13).
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
+import { emitCliBundle } from '../../shared/build-helpers/emit-cli-bundle.js';
+import { emitPipelineBundle } from '../../shared/build-helpers/emit-pipeline-bundle.js';
+import { emitHookBundle } from '../../shared/build-helpers/emit-hook-bundle.js';
+import { emitUiBundle } from '../../shared/build-helpers/emit-ui-bundle.js';
+import { expandTokens } from '../../shared/build-helpers/expand-tokens.js';
+import { synthesizePackageJson } from './synthesize-package-json.js';
+import { validatePluginTree } from './validate.js'; // landed in P05-T02
+
+function step(name, fn) {
+  const t0 = Date.now();
+  process.stderr.write(`[build:claude-plugin] ${name} ...\n`);
+  return Promise.resolve(fn()).then((r) => {
+    process.stderr.write(`[build:claude-plugin] ${name} done (${Date.now() - t0}ms)\n`);
+    return r;
+  }).catch((err) => {
+    throw new Error(`[build:claude-plugin] step "${name}" failed: ${err.message}`);
+  });
+}
+
+/** @param {{ rootDir: string, skipAdapterEngine?: boolean, skipUiRunner?: boolean,
+ *            greenfieldRel?: string }} opts
+ *  `rootDir` is the repo root. `greenfieldRel` (default 'greenfield') names
+ *  the relative folder under `rootDir` that hosts the new staged subsystems
+ *  (`installers/`, `runtime-config/`, `harness-files/`, `harness-adapters/`).
+ *  Per parent design Decision 10, repo-root folders `cli/` and `ui/` stay at
+ *  the repo root for the duration of iteration 1 and are referenced directly.
+ *  Unit tests construct a synthetic fixture without a `greenfield/` parent,
+ *  so they pass `greenfieldRel: '.'` to flatten the layout. */
+export async function runBuild(opts) {
+  const root = path.resolve(opts.rootDir);
+  const greenfieldRel = opts.greenfieldRel ?? 'greenfield';
+  const greenfield = path.join(root, greenfieldRel);
+  const installerDir = path.join(greenfield, 'installers/claude-plugin');
+  const out = path.join(installerDir, 'output');
+  const adapterOut = path.join(greenfield, 'harness-adapters/output/claude');
+
+  // Step 0 — adapter engine first (FR-24, AD-3, AD-15). Skipped in unit
+  // tests; production end-to-end runs through this branch.
+  if (!opts.skipAdapterEngine) {
+    await step('adapter-engine', () => {
+      execSync(`node ${path.posix.join(greenfieldRel, 'harness-adapters/engine/build.js')} --harness=claude`,
+        { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' });
+    });
+  }
+
+  await step('clean-output', () => fs.rmSync(out, { recursive: true, force: true }));
+  fs.mkdirSync(out, { recursive: true });
+
+  await step('copy-agents', () =>
+    fs.cpSync(path.join(adapterOut, 'agents'), path.join(out, 'agents'), { recursive: true }));
+  await step('copy-skills', () =>
+    fs.cpSync(path.join(adapterOut, 'skills'), path.join(out, 'skills'), { recursive: true }));
+
+  await step('copy-runtime-config', () => {
+    fs.cpSync(path.join(greenfield, 'runtime-config/orchestration.yml'), path.join(out, 'orchestration.yml'));
+    fs.cpSync(path.join(greenfield, 'runtime-config/templates'), path.join(out, 'templates'), { recursive: true });
+  });
+
+  // cli/ lives at the repo root for the duration of iteration 1 per parent
+  // design Decision 10 — read from `root`, not from `greenfield`.
+  await step('emit-cli-bundle', () => emitCliBundle({
+    source: path.join(root, 'cli'),
+    target: path.join(out, 'skills/rad-orchestration/scripts/radorch.mjs'),
+    entryPoint: path.join(root, 'cli/src/main.js'),
+  }));
+
+  await step('emit-pipeline-bundle', () => emitPipelineBundle({
+    source: path.join(greenfield, 'harness-files/skills/rad-orchestration/scripts'),
+    target: path.join(out, 'skills/rad-orchestration/scripts'),
+  }));
+
+  // ui/ lives at the repo root for the duration of iteration 1 per parent
+  // design Decision 10 — read from `root`, not from `greenfield`.
+  await step('emit-ui-bundle', () => emitUiBundle({
+    source: path.join(root, 'ui'),
+    target: path.join(out, 'ui'),
+    runner: opts.skipUiRunner ? async () => { /* unit-test fast path */ } : undefined,
+  }));
+
+  await step('emit-hook-bundle', () => emitHookBundle({
+    source: path.join(installerDir, 'hooks'),
+    target: path.join(out, 'hooks'),
+  }));
+
+  // Token + namespacing transforms — run over agents/, skills/, hooks/
+  // (every body file the installer ships, per NFR-12). Walk in place.
+  await step('expand-tokens', async () => {
+    const agentNames = fs.readdirSync(path.join(out, 'agents'))
+      .filter((f) => f.endsWith('.md')).map((f) => f.replace(/\.md$/, ''))
+      .filter((n) => n !== 'orchestrator');
+    const tokenMap = {
+      '${SKILLS_ROOT}': '${CLAUDE_PLUGIN_ROOT}/skills',
+      '${PLUGIN_ROOT}': '${CLAUDE_PLUGIN_ROOT}',
+    };
+    // In-place: read from out/ subtree, write to a sibling staging dir,
+    // then atomically move into place to avoid mid-walk read-after-write.
+    const staging = path.join(installerDir, '.expand-staging');
+    fs.rmSync(staging, { recursive: true, force: true });
+    await expandTokens({ source: path.join(out, 'agents'), target: path.join(staging, 'agents'), tokenMap, agentNames });
+    await expandTokens({ source: path.join(out, 'skills'), target: path.join(staging, 'skills'), tokenMap, agentNames });
+    fs.rmSync(path.join(out, 'agents'), { recursive: true, force: true });
+    fs.rmSync(path.join(out, 'skills'), { recursive: true, force: true });
+    fs.cpSync(path.join(staging, 'agents'), path.join(out, 'agents'), { recursive: true });
+    fs.cpSync(path.join(staging, 'skills'), path.join(out, 'skills'), { recursive: true });
+    fs.rmSync(staging, { recursive: true, force: true });
+  });
+
+  // .claude-plugin/plugin.json — copy verbatim and stamp version from itself.
+  await step('copy-plugin-manifest', () => {
+    const src = path.join(installerDir, '.claude-plugin/plugin.json');
+    const dst = path.join(out, '.claude-plugin/plugin.json');
+    fs.mkdirSync(path.dirname(dst), { recursive: true });
+    fs.copyFileSync(src, dst);
+  });
+
+  // package.json synthesis from wrapper + plugin.json (plugin.json wins).
+  await step('synthesize-package-json', () => synthesizePackageJson({
+    wrapperPath: path.join(installerDir, 'package.json'),
+    pluginJsonPath: path.join(installerDir, '.claude-plugin/plugin.json'),
+    outPath: path.join(out, 'package.json'),
+  }));
+
+  // Manifest catalog: every committed v*.json copies to output/manifests/.
+  await step('copy-manifest-catalog', () => {
+    const src = path.join(installerDir, 'manifests');
+    fs.mkdirSync(path.join(out, 'manifests'), { recursive: true });
+    for (const f of fs.readdirSync(src)) {
+      if (/^v.+\.json$/.test(f)) fs.copyFileSync(path.join(src, f), path.join(out, 'manifests', f));
+    }
+  });
+
+  // Structural validation gates (P05-T02).
+  await step('validate', () => validatePluginTree({
+    outputDir: out,
+    installerDir,
+    canonicalAgentsDir: path.join(greenfield, 'harness-files/agents'),
+  }));
+}
+
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1'))) {
+  runBuild({ rootDir: process.cwd() }).catch((err) => {
+    process.stderr.write(`${err.message}\n`);
+    process.exit(1);
+  });
+}
