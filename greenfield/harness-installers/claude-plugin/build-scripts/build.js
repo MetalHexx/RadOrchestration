@@ -25,7 +25,7 @@ function step(name, fn) {
 }
 
 /** @param {{ rootDir: string, skipAdapterEngine?: boolean, skipUiRunner?: boolean,
- *            greenfieldRel?: string }} opts
+ *            skipBootstrap?: boolean, greenfieldRel?: string }} opts
  *  `rootDir` is the repo root. `greenfieldRel` (default 'greenfield') names
  *  the relative folder under `rootDir` that hosts the new staged subsystems
  *  (`harness-installers/`, `runtime-config/`, `harness-files/`, `harness-adapters/`).
@@ -40,6 +40,30 @@ export async function runBuild(opts) {
   const installerDir = path.join(greenfield, 'harness-installers/claude-plugin');
   const out = path.join(installerDir, 'output');
   const adapterOut = path.join(greenfield, 'harness-adapters/output/claude');
+
+  // Bootstrap missing sub-package node_modules on first run. The build reads
+  // from three sub-packages whose node_modules are owned by the sub-package
+  // (build-helpers needs esbuild; engine needs yaml; cli is the esbuild source
+  // for emit-cli-bundle and needs its own runtime deps resolvable). Without
+  // this, a fresh clone hits ERR_MODULE_NOT_FOUND three times in a row.
+  // Idempotent (skip when node_modules exists) and fixture-safe (skip when
+  // package.json is absent — synthetic test fixtures have neither).
+  // opt-out for tests that pin their own dep state: opts.skipBootstrap.
+  if (!opts.skipBootstrap) {
+    const BOOTSTRAP_TARGETS = [
+      path.join(greenfield, 'harness-installers/shared/build-helpers'),
+      path.join(greenfield, 'harness-adapters/engine'),
+      path.join(root, 'cli'),
+    ];
+    await step('bootstrap-deps', () => {
+      for (const pkgDir of BOOTSTRAP_TARGETS) {
+        if (!fs.existsSync(path.join(pkgDir, 'package.json'))) continue;
+        if (fs.existsSync(path.join(pkgDir, 'node_modules'))) continue;
+        process.stderr.write(`[build:claude-plugin] bootstrapping ${path.relative(root, pkgDir)} ...\n`);
+        execSync('npm install', { cwd: pkgDir, stdio: 'inherit', shell: process.platform === 'win32' });
+      }
+    });
+  }
 
   // Step 0 — adapter engine first. Skipped in unit
   // tests; production end-to-end runs through this branch.

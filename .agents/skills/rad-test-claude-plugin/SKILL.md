@@ -35,6 +35,7 @@ Surface this reminder in your handoff message — do not assume the user remembe
 
 - Node.js and npm installed.
 - Working directory is anywhere inside the repo clone (the skill resolves repo root itself).
+- **No manual `npm install` required.** The plugin build self-bootstraps `node_modules` in three sub-packages on first run: `greenfield/harness-installers/shared/build-helpers/` (esbuild), `greenfield/harness-adapters/engine/` (yaml), and `cli/` (commander, chalk, @inquirer/prompts, js-yaml). Subsequent runs no-op when those packages already have `node_modules`. If you ever need to pre-install them out-of-band (e.g. air-gapped network, debugging), the build's `bootstrap-deps` step is the source of truth for what gets installed where.
 
 ## Workflow
 
@@ -55,6 +56,10 @@ node greenfield/harness-installers/claude-plugin/build-scripts/build.js
 ```
 
 > Expected: exit 0; `greenfield/harness-installers/claude-plugin/output/` populated; the build's final `validate` step (from `build-scripts/validate.js`) reports no missing artifacts and the per-version manifest exists.
+>
+> On first run (or any run after a sub-package `node_modules` was deleted), the first step is `bootstrap-deps`, which runs `npm install` in up to three sub-packages. Expect the build duration to be longer on the first run; subsequent runs skip the installs entirely.
+>
+> On Windows and Linux, `next build` (invoked during `emit-ui-bundle`) emits a non-fatal `Module not found: Can't resolve 'fsevents'` warning. `fsevents` is a macOS-only file-watcher used by `chokidar` (a transitive `next` dependency); the warning is cosmetic and the build completes normally. Ignore unless the build's overall exit code is non-zero.
 
 If the build fails, stop and report the failure. Do not continue.
 

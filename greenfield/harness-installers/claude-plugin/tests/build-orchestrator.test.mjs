@@ -58,7 +58,7 @@ function makeUpstream() {
 test('runBuild emits the full plugin payload to output/ in correct shape', async () => {
   const root = makeUpstream();
   try {
-    await runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, greenfieldRel: '.' });
+    await runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, skipBootstrap: true, greenfieldRel: '.' });
     const out = join(root, 'harness-installers/claude-plugin/output');
     assert.ok(fs.existsSync(join(out, 'agents/orchestrator.md')), 'agents copied');
     assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/SKILL.md')), 'skills copied');
@@ -84,7 +84,7 @@ test('runBuild emits the full plugin payload to output/ in correct shape', async
 test('destination tokens are substituted across body files', async () => {
   const root = makeUpstream();
   try {
-    await runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, greenfieldRel: '.' });
+    await runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, skipBootstrap: true, greenfieldRel: '.' });
     const out = join(root, 'harness-installers/claude-plugin/output');
     const orch = fs.readFileSync(join(out, 'agents/orchestrator.md'), 'utf8');
     assert.ok(orch.includes('${CLAUDE_PLUGIN_ROOT}/skills/rad-orchestration/SKILL.md'),
@@ -97,7 +97,7 @@ test('destination tokens are substituted across body files', async () => {
 test('synthesized output/package.json version equals plugin.json version, not wrapper version', async () => {
   const root = makeUpstream();
   try {
-    await runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, greenfieldRel: '.' });
+    await runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, skipBootstrap: true, greenfieldRel: '.' });
     const synthesized = JSON.parse(fs.readFileSync(
       join(root, 'harness-installers/claude-plugin/output/package.json'), 'utf8'));
     assert.strictEqual(synthesized.version, '1.2.3', 'version from plugin.json');
@@ -113,7 +113,7 @@ test('build aborts fail-fast on step error', async () => {
   const root = makeUpstream();
   try {
     fs.rmSync(join(root, 'runtime-config/orchestration.yml'));
-    await assert.rejects(runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, greenfieldRel: '.' }),
+    await assert.rejects(runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, skipBootstrap: true, greenfieldRel: '.' }),
       /orchestration\.yml/, 'error names the failing step');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
