@@ -46,9 +46,10 @@ const ALLOWED_NEW_ONLY = new Set([
   // bootstrap hook intentionally renamed from bootstrap-then-uninstall.mjs
   // to bootstrap.mjs (the uninstall side-effect is removed in the new design).
   'hooks/bootstrap.mjs',
-  // Placeholder manifest version during greenfield iteration 1; replaced by
-  // version-stamped entry at publish time (same as legacy's versioned manifest).
-  'manifests/v0.0.0.json',
+  // Current in-tree per-version manifest entry. Renamed on each release bump
+  // (e.g. v1.0.0-alpha.9.json → v1.0.0-alpha.10.json); update this allowlist
+  // entry to match when bumping. Same role as legacy's versioned manifest.
+  'manifests/v1.0.0-alpha.9.json',
 ]);
 
 // Prefix-based allow patterns for new-only files.

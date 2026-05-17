@@ -1,5 +1,5 @@
 {
-  "version": "0.0.0",
+  "version": "1.0.0-alpha.9",
   "channel": "claude-plugin",
   "files": [
     { "destinationPath": "${RAD_HOME}/orchestration.yml", "sourcePath": "orchestration.yml", "ownership": "user-config" },

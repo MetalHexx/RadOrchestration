@@ -1,6 +1,6 @@
 {
   "name": "harness-adapters-engine",
-  "version": "0.0.0",
+  "version": "1.0.0-alpha.9",
   "private": true,
   "type": "module",
   "description": "Harness-blind translator from greenfield/harness-files/ to output/<adapter.name>/.",

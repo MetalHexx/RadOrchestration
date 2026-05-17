@@ -1,6 +1,6 @@
 {
   "name": "@rad-orchestration/claude-plugin",
-  "version": "1.0.0-alpha.8",
+  "version": "1.0.0-alpha.9",
   "description": "Claude Code plugin for rad-orchestration: full orchestration loop installed via /plugin install rad-orchestration",
   "license": "MIT",
   "type": "module",

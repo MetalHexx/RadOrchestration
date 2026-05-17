@@ -1,6 +1,6 @@
 {
   "name": "@rad-orchestration/cli",
-  "version": "1.0.0-alpha.8",
+  "version": "1.0.0-alpha.9",
   "private": true,
   "type": "module",
   "description": "radorch CLI — global orchestration root manager",
