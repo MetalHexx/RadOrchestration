@@ -1,3 +1,73 @@
-// Stub — fully implemented in P05-T02. Returns ok unconditionally so the
-// P05-T01 build orchestrator passes its tests in isolation.
-export function validatePluginTree() { return true; }
+import fs from 'node:fs';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
+
+const REQUIRED_ARTIFACTS = [
+  '.claude-plugin/plugin.json',
+  'package.json',
+  'skills/rad-orchestration/scripts/radorch.mjs',
+  'skills/rad-orchestration/scripts/pipeline.js',
+  'skills/rad-orchestration/scripts/explode-master-plan.js',
+  'hooks/hooks.json',
+  'hooks/bootstrap.mjs',
+  'hooks/drift-check.mjs',
+];
+const SIZE_LIMIT = Math.round(50 * 1024 * 1024 * 1.1);
+
+function defaultSizer(outputDir) {
+  const out = execSync('npm pack --dry-run --json', {
+    cwd: outputDir, shell: process.platform === 'win32', encoding: 'utf8',
+  });
+  const parsed = JSON.parse(out);
+  const entry = Array.isArray(parsed) ? parsed[0] : parsed;
+  return { unpackedSize: entry?.unpackedSize ?? entry?.size ?? 0 };
+}
+
+/** @param {{ outputDir: string, installerDir: string, canonicalAgentsDir: string, sizer?: (d:string)=>{unpackedSize:number} }} opts */
+export function validatePluginTree(opts) {
+  const { outputDir, canonicalAgentsDir } = opts;
+  const sizer = opts.sizer ?? defaultSizer;
+  const plugin = JSON.parse(fs.readFileSync(path.join(outputDir, '.claude-plugin/plugin.json'), 'utf8'));
+  const version = plugin.version;
+
+  // Gate 1: required artifacts.
+  for (const rel of REQUIRED_ARTIFACTS) {
+    if (!fs.existsSync(path.join(outputDir, rel))) {
+      throw new Error(`validate: missing required artifact ${rel} (FR-33 gate 1)`);
+    }
+  }
+
+  // Gate 2: every canonical agent appears at output/agents/<name>.md.
+  const canonical = fs.readdirSync(canonicalAgentsDir)
+    .filter((f) => f.endsWith('.md') && !f.includes('.copilot') && !f.includes('.claude.'))
+    .map((f) => f.replace(/\.md$/, ''));
+  for (const name of canonical) {
+    if (!fs.existsSync(path.join(outputDir, 'agents', `${name}.md`))) {
+      throw new Error(`validate: missing agents/${name}.md (FR-33 gate 2)`);
+    }
+  }
+
+  // Gate 3: namespaced dispatch tokens present in orchestrator.md.
+  const orchOut = fs.readFileSync(path.join(outputDir, 'agents/orchestrator.md'), 'utf8');
+  const orchCanon = fs.readFileSync(path.join(canonicalAgentsDir, 'orchestrator.md'), 'utf8');
+  for (const name of canonical) {
+    if (name === 'orchestrator') continue;
+    if (!new RegExp(`\\b${name}\\b`).test(orchCanon)) continue;
+    const token = `rad-orchestration:${name}`;
+    if (!orchOut.includes(token)) {
+      throw new Error(`validate: orchestrator.md missing namespaced token ${token} (FR-33 gate 3)`);
+    }
+  }
+
+  // Gate 4: per-version manifest present.
+  const manifestRel = `manifests/v${version}.json`;
+  if (!fs.existsSync(path.join(outputDir, manifestRel))) {
+    throw new Error(`validate: missing ${manifestRel} (FR-33 gate 4)`);
+  }
+
+  // Gate 5: tarball size budget.
+  const { unpackedSize } = sizer(outputDir);
+  if (unpackedSize > SIZE_LIMIT) {
+    throw new Error(`validate: unpacked size ${unpackedSize} exceeds size budget of ${SIZE_LIMIT} bytes (NFR-5 / FR-33 gate 5)`);
+  }
+}

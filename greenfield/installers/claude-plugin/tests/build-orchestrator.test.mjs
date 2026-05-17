@@ -24,6 +24,10 @@ function makeUpstream() {
   fs.mkdirSync(join(root, 'cli/src'), { recursive: true });
   fs.writeFileSync(join(root, 'cli/src/main.js'), 'console.log("radorch");\n');
   fs.writeFileSync(join(root, 'cli/package.json'), JSON.stringify({ name: 'cli', type: 'module', main: 'src/main.js' }));
+  // canonical agents (harness-files/agents/) — required by validatePluginTree gate 2 & 3.
+  fs.mkdirSync(join(root, 'harness-files/agents'), { recursive: true });
+  fs.writeFileSync(join(root, 'harness-files/agents/orchestrator.md'), 'Spawn **coder** agent.\n');
+  fs.writeFileSync(join(root, 'harness-files/agents/coder.md'), '# Coder\n');
   // pipeline source TS
   fs.mkdirSync(join(root, 'harness-files/skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(root, 'harness-files/skills/rad-orchestration/scripts/pipeline.ts'), 'export const main = () => 1;\n');
