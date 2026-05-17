@@ -1,26 +1,14 @@
 import { Command } from 'commander';
 import { runCommand } from './framework/command.js';
-import { installCommand } from './commands/install.js';
 import { doctorCommand } from './commands/doctor/index.js';
 import { harnessUseCommand } from './commands/harness-use.js';
 import { harnessListCommand } from './commands/harness-list.js';
 import { uiStartCommand, uiStopCommand, uiStatusCommand } from './commands/ui/index.js';
-import { pluginBootstrapCommand } from './commands/plugin-bootstrap/index.js';
 import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
 
 export function buildProgram(version: string): Command {
   const program = new Command('radorch');
   program.description('radorch CLI — global orchestration root manager').version(version);
-
-  program
-    .command('install')
-    .description(installCommand.description)
-    .allowUnknownOption()
-    .allowExcessArguments(true)
-    .action(async () => {
-      const argv = process.argv.slice(3);
-      await runCommand(installCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
-    });
 
   program
     .command('doctor')
@@ -59,16 +47,6 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(harnessListCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
-    });
-
-  program
-    .command('plugin-bootstrap')
-    .description(pluginBootstrapCommand.description)
-    .allowUnknownOption()
-    .allowExcessArguments(true)
-    .action(async () => {
-      const argv = process.argv.slice(3);
-      await runCommand(pluginBootstrapCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   const ui = program.command('ui').description('UI server lifecycle');

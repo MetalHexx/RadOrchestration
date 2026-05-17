@@ -1,13 +1,12 @@
 import fsP from 'node:fs/promises';
 import path from 'node:path';
 import { pathExists } from '../../lib/fs-helpers.js';
-import { installPaths } from '../../lib/paths.js';
+import { installPaths, userDataPaths } from '../../lib/paths.js';
 import { readInstallJson } from '../../lib/config.js';
 import type { InstallJson, InstallJsonV5, InstallJsonV6 } from '../../lib/config.js';
 import { readRegistry } from '../../lib/registry.js';
 import { cmpSemver, isInstallJsonV6, readLastWriterVersion } from '../../lib/install-json.js';
 import { parseYaml } from '../../lib/yaml.js';
-import { userDataPaths } from '../../lib/upgrade/user-data-paths.js';
 import { scanUserLevelHarnesses } from '../../lib/cross-harness-scan.js';
 import { getCliVersion } from '../../lib/package-version.js';
 

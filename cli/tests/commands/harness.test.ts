@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runHarnessUse, runHarnessList, harnessUseCommand } from '../../src/commands/harness-use.js';
-import { writeInstallSkeleton } from '../../src/commands/install/skeleton.js';
+import { writeInstallSkeleton } from '../../src/lib/install-skeleton.js';
 import { resolveInstallRoot, installPaths } from '../../src/lib/paths.js';
 import { UserError } from '../../src/framework/errors.js';
 

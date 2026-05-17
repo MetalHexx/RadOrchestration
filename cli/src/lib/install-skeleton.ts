@@ -1,8 +1,8 @@
-import { ensureDir, writeFileAtomic } from '../../lib/fs-helpers.js';
-import { writeInstallJson, writeConfigYml } from '../../lib/config.js';
-import { writeRegistrySkeleton } from '../../lib/registry.js';
-import { installPaths } from '../../lib/paths.js';
-import type { HarnessName } from '../../framework/harness.js';
+import { ensureDir, writeFileAtomic } from './fs-helpers.js';
+import { writeInstallJson, writeConfigYml } from './config.js';
+import { writeRegistrySkeleton } from './registry.js';
+import { installPaths } from './paths.js';
+import type { HarnessName } from '../framework/harness.js';
 
 const GITIGNORE = `# radorch global install — versioned vs. gitignored paths
 # Versioned (committed by radorch operations): install.json, registry.yml

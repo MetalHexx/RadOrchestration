@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runDoctor, doctorCommand, renderDoctorForTest } from '../../src/commands/doctor/index.js';
-import { writeInstallSkeleton } from '../../src/commands/install/skeleton.js';
+import { writeInstallSkeleton } from '../../src/lib/install-skeleton.js';
 import { validateEnvelope } from '../../src/framework/output.js';
 import { runPluginChecks, runInstallChecks, type CheckResult } from '../../src/commands/doctor/checks.js';
 
