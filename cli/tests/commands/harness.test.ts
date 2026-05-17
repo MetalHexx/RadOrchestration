@@ -3,9 +3,27 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runHarnessUse, runHarnessList, harnessUseCommand } from '../../src/commands/harness-use.js';
-import { writeInstallSkeleton } from '../../src/lib/install-skeleton.js';
 import { resolveInstallRoot, installPaths } from '../../src/lib/paths.js';
 import { UserError } from '../../src/framework/errors.js';
+
+/**
+ * Seed a minimal ~/.radorch layout for harness-use / harness-list tests.
+ * Replaces the deleted writeInstallSkeleton helper — only the files these
+ * commands actually depend on.
+ */
+async function seedRadorcDir(root: string, harness = 'claude'): Promise<void> {
+  await fs.mkdir(root, { recursive: true });
+  await fs.mkdir(path.join(root, 'projects'), { recursive: true });
+  await fs.mkdir(path.join(root, 'worktrees'), { recursive: true });
+  await fs.mkdir(path.join(root, 'logs'), { recursive: true });
+  await fs.writeFile(
+    path.join(root, 'install.json'),
+    JSON.stringify({ package_version: '0.0.0', installed_at: new Date().toISOString(), last_writer_version: '0.0.0', state_schema_version: 'v5' }, null, 2) + '\n',
+  );
+  await fs.writeFile(path.join(root, 'config.yml'), `default_active_harness: ${harness}\n`);
+  await fs.writeFile(path.join(root, 'registry.yml'), 'repos: []\nworkspaces: []\n');
+  await fs.writeFile(path.join(root, '.harness'), `${harness}\n`);
+}
 
 let tmp: string;
 let homedirSpy: ReturnType<typeof vi.spyOn>;
@@ -25,12 +43,12 @@ describe('radorch harness use', () => {
   });
   it('rejects unknown harness with user_error', async () => {
     const root = path.join(tmp, '.radorch');
-    await writeInstallSkeleton({ root, packageVersion: '0.0.0', defaultHarness: 'claude' });
+    await seedRadorcDir(root, 'claude');
     await expect(runHarnessUse({ harness: 'cursor' as never, env: process.env })).rejects.toMatchObject({ type: 'user_error' });
   });
   it('switches active harness and is idempotent', async () => {
     const root = path.join(tmp, '.radorch');
-    await writeInstallSkeleton({ root, packageVersion: '0.0.0', defaultHarness: 'claude' });
+    await seedRadorcDir(root, 'claude');
     const r1 = await runHarnessUse({ harness: 'copilot-cli', env: process.env });
     expect(r1.active).toBe('copilot-cli');
     expect(r1.no_change).toBe(false);
@@ -80,7 +98,7 @@ describe('radorch harness use', () => {
 describe('radorch harness list', () => {
   it('lists three harnesses with the active flag set', async () => {
     const root = path.join(tmp, '.radorch');
-    await writeInstallSkeleton({ root, packageVersion: '0.0.0', defaultHarness: 'copilot-vscode' });
+    await seedRadorcDir(root, 'copilot-vscode');
     const r = await runHarnessList({ env: process.env });
     expect(r.harnesses).toEqual([
       { name: 'claude', active: false },

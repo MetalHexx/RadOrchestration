@@ -13,14 +13,17 @@ function makePluginRoot(version) {
   fs.writeFileSync(join(dir, 'orchestration.yml'), 'pipeline: {}\n');
   fs.mkdirSync(join(dir, 'templates'), { recursive: true });
   fs.writeFileSync(join(dir, 'templates/medium.yml'), 'name: medium\n');
-  fs.mkdirSync(join(dir, 'ui'), { recursive: true });
+  // UI subtree — populated for tree-copy (FR-7); not listed per-file in the manifest
+  fs.mkdirSync(join(dir, 'ui/.next/static/chunks'), { recursive: true });
+  fs.mkdirSync(join(dir, 'ui/public'), { recursive: true });
   fs.writeFileSync(join(dir, 'ui/server.js'), '// ui\n');
+  fs.writeFileSync(join(dir, 'ui/.next/static/chunks/main.js'), '// chunk\n');
+  fs.writeFileSync(join(dir, 'ui/public/logo.svg'), '<svg/>\n');
   fs.mkdirSync(join(dir, 'manifests'), { recursive: true });
   fs.writeFileSync(join(dir, `manifests/v${version}.json`),
     JSON.stringify({ version, files: [
       { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: 'orchestration.yml', ownership: 'user-config' },
       { destinationPath: '${RAD_HOME}/templates/medium.yml', sourcePath: 'templates/medium.yml', ownership: 'installer-owned' },
-      { destinationPath: '${RAD_HOME}/ui/server.js', sourcePath: 'ui/server.js', ownership: 'installer-owned' },
     ]}));
   return dir;
 }
@@ -107,6 +110,33 @@ test('cross-channel coexistence warning fires when claude key is present alongsi
     const joined = warns.join('\n');
     assert.match(joined, /legacy.*installer|standard.*installer|claude.*coexist/i,
       'multi-line stderr warning naming both installs (FR-20)');
+  } finally {
+    fs.rmSync(radHome, { recursive: true, force: true });
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  }
+});
+
+test('--force bypasses the same-version noop short-circuit (FR-10)', async () => {
+  const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-force-'));
+  const pluginRoot = makePluginRoot('1.0.0');
+  try {
+    await runInstall({ pluginRoot, radHome });
+    const result = await runInstall({ pluginRoot, radHome, force: true });
+    assert.notStrictEqual(result.action, 'noop', '--force must not short-circuit on same-version re-run');
+  } finally {
+    fs.rmSync(radHome, { recursive: true, force: true });
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  }
+});
+
+test('fresh install copies ui/ tree to ~/.radorch/ui/ (FR-7 tree-copy)', async () => {
+  const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-ui-'));
+  const pluginRoot = makePluginRoot('1.0.0');
+  try {
+    await runInstall({ pluginRoot, radHome });
+    assert.ok(fs.existsSync(join(radHome, 'ui/server.js')),                'ui/server.js hydrated via tree-copy');
+    assert.ok(fs.existsSync(join(radHome, 'ui/.next/static/chunks/main.js')), 'ui/.next static asset hydrated');
+    assert.ok(fs.existsSync(join(radHome, 'ui/public/logo.svg')),         'ui/public/ asset hydrated');
   } finally {
     fs.rmSync(radHome, { recursive: true, force: true });
     fs.rmSync(pluginRoot, { recursive: true, force: true });

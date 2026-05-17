@@ -51,9 +51,7 @@ export async function runInstall(opts) {
   // Lift legacy shapes (flat single-record or harnesses-keyed-with-version-field)
   // into the current unversioned harnesses-keyed shape on first read. New writes
   // never carry state_schema_version; shape is identified structurally (FR-18).
-  let ij = rawIj
-    ? (isCurrentShape(rawIj) ? migrateInstallJson(rawIj, INSTALL_KEY) : migrateInstallJson(rawIj, INSTALL_KEY))
-    : { harnesses: {} };
+  let ij = rawIj ? migrateInstallJson(rawIj, INSTALL_KEY) : { harnesses: {} };
   const prior = ij.harnesses[INSTALL_KEY];
   const installedVersionBefore = prior?.version ?? null;
   const sentinelPresent = fs.existsSync(sentinel);
@@ -84,6 +82,11 @@ export async function runInstall(opts) {
     }
     const manifest = loadManifest(opts.pluginRoot, deliveringVersion);
     installManifestFiles(manifest, opts.pluginRoot, { radHome: opts.radHome });
+
+    const pluginUiDir = path.join(opts.pluginRoot, 'ui');
+    if (fs.existsSync(pluginUiDir)) {
+      fs.cpSync(pluginUiDir, paths.ui, { recursive: true });
+    }
 
     ij.harnesses[INSTALL_KEY] = buildClaudePluginEntry(deliveringVersion);
     writeInstallJson(paths.installJson, ij);

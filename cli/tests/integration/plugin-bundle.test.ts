@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { execFile, execSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +19,7 @@ const pluginRoot = path.join(
   'plugins',
   'rad-orchestration',
 );
+const bootstrapScript = path.join(repoRoot, 'greenfield', 'installers', 'claude-plugin', 'hooks', 'bootstrap.mjs');
 
 beforeAll(async () => {
   if (!(await fs.stat(pluginRoot).catch(() => null))) {
@@ -30,6 +32,31 @@ beforeAll(async () => {
     });
   }
 }, 180_000);
+
+/**
+ * Creates a minimal synthetic plugin root that run-install.js accepts.
+ * The built plugin bundle uses ${HARNESS_ROOT}/... paths (for Claude Code skill
+ * installation) which install-files.js rejects as escaping ~/.radorch/. Bootstrap
+ * integration tests use this synthetic root so runInstall succeeds; bundle
+ * artifact tests continue to use the real pluginRoot.
+ */
+async function makeBootstrapRoot(version: string): Promise<string> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-bp-'));
+  await fs.mkdir(path.join(dir, 'skills', 'rad-orchestration', 'scripts'), { recursive: true });
+  await fs.writeFile(path.join(dir, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs'), '#!/usr/bin/env node\n');
+  await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify({ name: '@rad-orchestration/claude-plugin', version }));
+  await fs.mkdir(path.join(dir, 'manifests'), { recursive: true });
+  await fs.writeFile(
+    path.join(dir, 'manifests', `v${version}.json`),
+    JSON.stringify({ version, files: [] }),
+  );
+  // Copy the real ui/ tree so the tree-copy step in runInstall hydrates radHome correctly.
+  const realUiDir = path.join(pluginRoot, 'ui');
+  if (fsSync.existsSync(realUiDir)) {
+    fsSync.cpSync(realUiDir, path.join(dir, 'ui'), { recursive: true });
+  }
+  return dir;
+}
 
 let home: string;
 beforeEach(async () => { home = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-')); });
@@ -64,72 +91,64 @@ describe('bundle invocability (FR-27 #2)', () => {
 
 describe('SessionStart bootstrap (FR-27 #3, #4)', () => {
   it('first run bootstraps; second run is a no-op', { timeout: 30_000 }, async () => {
-    // The plugin-bootstrap hook is now invoked via the node CLI, which uses
-    // os.homedir() to resolve the install root. Set HOME/USERPROFILE so
-    // os.homedir() returns `home`, making resolveInstallRoot() return
-    // path.join(home, '.radorch').
-    const hookCmd = {
-      bin: 'node',
-      args: [
-        path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs'),
-        'plugin-bootstrap',
-        '--quiet',
-        '--harness', 'claude',
-        '--plugin-root', pluginRoot,
-      ],
-    };
-    const env = { ...process.env, HOME: home, USERPROFILE: home };
-    await execP(hookCmd.bin, hookCmd.args, { env });
-    expect(await fs.stat(path.join(home, '.radorch', 'projects'))).toBeTruthy();
-    const before = await fs.readFile(path.join(home, '.radorch', 'install.json'), 'utf8');
-    await execP(hookCmd.bin, hookCmd.args, { env });
-    const after = await fs.readFile(path.join(home, '.radorch', 'install.json'), 'utf8');
-    expect(before).toBe(after);
+    // Use a synthetic plugin root with ${RAD_HOME} manifest paths; the real
+    // built bundle uses ${HARNESS_ROOT} paths (for Claude Code skill installation)
+    // which install-files.js correctly rejects as escaping ~/.radorch/.
+    const version = JSON.parse(fsSync.readFileSync(path.join(pluginRoot, 'package.json'), 'utf8')).version as string;
+    const bpRoot = await makeBootstrapRoot(version);
+    const radHome = path.join(home, '.radorch');
+    try {
+      const env = { ...process.env, CLAUDE_PLUGIN_ROOT: bpRoot, RAD_HOME: radHome };
+      await execP('node', [bootstrapScript], { env });
+      expect(await fs.stat(path.join(radHome, 'projects'))).toBeTruthy();
+      const before = await fs.readFile(path.join(radHome, 'install.json'), 'utf8');
+      await execP('node', [bootstrapScript], { env });
+      const after = await fs.readFile(path.join(radHome, 'install.json'), 'utf8');
+      expect(before).toBe(after);
+    } finally {
+      await fs.rm(bpRoot, { recursive: true, force: true });
+    }
   });
 });
 
 describe('ui lifecycle (FR-27 #5, FR-28)', () => {
   it('ui start → status → stop via the bundled CLI', async () => {
     const bundle = path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
-    // Bootstrap: the plugin-bootstrap hook is now invoked via the node CLI, which
-    // uses os.homedir() to resolve the install root. Set HOME/USERPROFILE so
-    // os.homedir() returns `home`, making resolveInstallRoot() return
-    // path.join(home, '.radorch').
-    const hookCmd = {
-      bin: 'node',
-      args: [
-        path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs'),
-        'plugin-bootstrap',
-        '--quiet',
-        '--harness', 'claude',
-        '--plugin-root', pluginRoot,
-      ],
-    };
-    const env = { ...process.env, HOME: home, USERPROFILE: home, RADORCH_NO_LOG: '1' };
-    await execP(hookCmd.bin, hookCmd.args, { env });
-    const startR = await execP('node', [bundle, 'ui', 'start', '--non-interactive', '--json'], { env });
-    const startEnv = JSON.parse(startR.stdout.trim());
-    expect(startEnv.ok).toBe(true);
-    expect(startEnv.data.url).toMatch(/^http:\/\/localhost:\d+$/);
-    expect(startEnv.data.pid).toBeGreaterThan(0);
+    // Bootstrap via bootstrap.mjs directly (plugin-bootstrap subcommand was removed).
+    // Use a synthetic plugin root for the bootstrap step — the real bundle manifest
+    // uses ${HARNESS_ROOT} paths (incompatible with install-files.js).
+    const version = JSON.parse(fsSync.readFileSync(path.join(pluginRoot, 'package.json'), 'utf8')).version as string;
+    const bpRoot = await makeBootstrapRoot(version);
+    const radHome = path.join(home, '.radorch');
+    const env = { ...process.env, CLAUDE_PLUGIN_ROOT: bpRoot, RAD_HOME: radHome, RADORCH_NO_LOG: '1', HOME: home, USERPROFILE: home };
+    try {
+      await execP('node', [bootstrapScript], { env });
+      const startR = await execP('node', [bundle, 'ui', 'start', '--non-interactive', '--json'], { env });
+      const startEnv = JSON.parse(startR.stdout.trim());
+      expect(startEnv.ok).toBe(true);
+      expect(startEnv.data.url).toMatch(/^http:\/\/localhost:\d+$/);
+      expect(startEnv.data.pid).toBeGreaterThan(0);
 
-    // Give the UI a moment to mount before status probes
-    await new Promise((r) => setTimeout(r, 800));
-    const statusR = await execP('node', [bundle, 'ui', 'status', '--non-interactive', '--json'], { env });
-    const statusEnv = JSON.parse(statusR.stdout.trim());
-    expect(statusEnv.ok).toBe(true);
-    expect(statusEnv.data.running).toBe(true);
-    expect(statusEnv.data.url).toBe(startEnv.data.url);
+      // Give the UI a moment to mount before status probes
+      await new Promise((r) => setTimeout(r, 800));
+      const statusR = await execP('node', [bundle, 'ui', 'status', '--non-interactive', '--json'], { env });
+      const statusEnv = JSON.parse(statusR.stdout.trim());
+      expect(statusEnv.ok).toBe(true);
+      expect(statusEnv.data.running).toBe(true);
+      expect(statusEnv.data.url).toBe(startEnv.data.url);
 
-    const stopR = await execP('node', [bundle, 'ui', 'stop', '--non-interactive', '--json'], { env });
-    const stopEnv = JSON.parse(stopR.stdout.trim());
-    expect(stopEnv.ok).toBe(true);
-    expect(stopEnv.data.stopped).toBe(true);
+      const stopR = await execP('node', [bundle, 'ui', 'stop', '--non-interactive', '--json'], { env });
+      const stopEnv = JSON.parse(stopR.stdout.trim());
+      expect(stopEnv.ok).toBe(true);
+      expect(stopEnv.data.stopped).toBe(true);
 
-    const statusR2 = await execP('node', [bundle, 'ui', 'status', '--non-interactive', '--json'], { env });
-    const statusEnv2 = JSON.parse(statusR2.stdout.trim());
-    expect(statusEnv2.ok).toBe(true);
-    expect(statusEnv2.data.running).toBe(false);
+      const statusR2 = await execP('node', [bundle, 'ui', 'status', '--non-interactive', '--json'], { env });
+      const statusEnv2 = JSON.parse(statusR2.stdout.trim());
+      expect(statusEnv2.ok).toBe(true);
+      expect(statusEnv2.data.running).toBe(false);
+    } finally {
+      await fs.rm(bpRoot, { recursive: true, force: true });
+    }
   }, 30_000);
 });
 
