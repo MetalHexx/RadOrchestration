@@ -25,3 +25,24 @@ test('emitCliBundle writes one bundle to the requested outfile, never creates cl
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
 });
+
+test('emitCliBundle output has exactly one shebang even when the entry source begins with its own shebang', async () => {
+  // Guards against a double-prepend bug: esbuild's `banner` does not deduplicate
+  // against a shebang already in the entry source, so a stray shebang in the
+  // entry .ts plus the banner produced a `radorch.mjs` whose line 2 was a second
+  // `#!/usr/bin/env node` — invalid ESM that Node rejects with SyntaxError.
+  const tmpRoot = fs.mkdtempSync(join(os.tmpdir(), 'emit-cli-shebang-'));
+  try {
+    const src = join(tmpRoot, 'src-cli');
+    fs.mkdirSync(src, { recursive: true });
+    fs.writeFileSync(join(src, 'entry.js'), '#!/usr/bin/env node\nexport const hi = () => "ok";\n');
+    fs.writeFileSync(join(src, 'package.json'), JSON.stringify({ name: 'x', type: 'module' }));
+    const out = join(tmpRoot, 'out/radorch.mjs');
+    await emitCliBundle({ source: src, target: out, entryPoint: join(src, 'entry.js') });
+    const lines = fs.readFileSync(out, 'utf8').split(/\r?\n/);
+    assert.strictEqual(lines[0], '#!/usr/bin/env node', 'line 1 is the canonical shebang');
+    assert.ok(!lines[1].startsWith('#!'), `line 2 must not start with "#!" (got: ${JSON.stringify(lines[1])})`);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
