@@ -2,13 +2,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { execSync } from 'node:child_process';
-import { join, resolve } from 'node:path';
+import path, { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 // The e2e harness drives the real build from repo root. The build invokes
 // the adapter engine first (FR-24), then every helper. UI build is real;
 // expect ~10-30s for the full run (FR-29). Skipped when SKIP_E2E=1.
 test('end-to-end build produces a valid plugin payload', { skip: process.env.SKIP_E2E === '1' }, () => {
-  const repoRoot = resolve('.');
+  const repoRoot = REPO_ROOT;
   execSync('node greenfield/installers/claude-plugin/build-scripts/build.js', {
     cwd: repoRoot, stdio: 'inherit', shell: process.platform === 'win32',
   });
@@ -49,7 +52,7 @@ test('end-to-end build produces a valid plugin payload', { skip: process.env.SKI
 test('post-build: no source-folder litter (NFR-4)', { skip: process.env.SKIP_E2E === '1' }, () => {
   // Build helpers respect no-litter: no cli/dist/, no ui/.next/ after build.
   // cli/ and ui/ live at the repo root per parent design Decision 10.
-  const repoRoot = resolve('.');
+  const repoRoot = REPO_ROOT;
   assert.ok(!fs.existsSync(join(repoRoot, 'cli/dist')), 'no cli/dist/ litter');
   assert.ok(!fs.existsSync(join(repoRoot, 'ui/.next')), 'no ui/.next/ litter');
 });

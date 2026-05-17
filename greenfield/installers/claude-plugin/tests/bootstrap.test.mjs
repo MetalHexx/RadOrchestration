@@ -2,8 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
-import { join } from 'node:path';
+import path, { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+
+const BOOTSTRAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../hooks/bootstrap.mjs');
 
 function makeFakePluginRoot(version) {
   // bootstrap.mjs is the source-side entry; the bundled output lands in
@@ -31,7 +34,7 @@ test('bootstrap.mjs self-uninstalls UserPromptSubmit on success, leaves SessionS
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-'));
   try {
     const result = spawnSync(process.execPath, [
-      'greenfield/installers/claude-plugin/hooks/bootstrap.mjs',
+      BOOTSTRAP,
     ], {
       env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginRoot, RAD_HOME: radHome },
       encoding: 'utf8',
@@ -53,7 +56,7 @@ test('bootstrap.mjs leaves hooks.json intact on install failure so the next prom
     // Sabotage: delete the per-version manifest so loadManifest throws.
     fs.rmSync(join(pluginRoot, 'manifests/v1.0.0.json'));
     const result = spawnSync(process.execPath, [
-      'greenfield/installers/claude-plugin/hooks/bootstrap.mjs',
+      BOOTSTRAP,
     ], {
       env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginRoot, RAD_HOME: radHome },
       encoding: 'utf8',
@@ -71,7 +74,7 @@ test('hooks.json self-rewrite is atomic — no leftover .tmp file on success (FR
   const pluginRoot = makeFakePluginRoot('1.0.0');
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-'));
   try {
-    spawnSync(process.execPath, ['greenfield/installers/claude-plugin/hooks/bootstrap.mjs'], {
+    spawnSync(process.execPath, [BOOTSTRAP], {
       env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginRoot, RAD_HOME: radHome },
     });
     const leftover = fs.readdirSync(join(pluginRoot, 'hooks')).filter((n) => n.includes('.tmp'));

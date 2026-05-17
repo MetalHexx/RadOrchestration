@@ -2,13 +2,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { execSync, spawnSync } from 'node:child_process';
-import { join, resolve } from 'node:path';
+import path, { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 // Operator-driven parity validation. Skipped in CI; the parity script is
 // one-shot (AD-23) and retires after migration validation. Set
 // RUN_PARITY=1 to drive it locally.
 test('legacy plugin and new installer output match modulo intentional drops', { skip: process.env.RUN_PARITY !== '1' }, () => {
-  const repoRoot = resolve('.');
+  const repoRoot = REPO_ROOT;
   // 1. Build today's legacy plugin via the existing script.
   execSync('npm run build:plugin', { cwd: repoRoot, stdio: 'inherit', shell: process.platform === 'win32' });
   const legacy = join(repoRoot, 'cli/dist/marketplaces/claude/plugins/rad-orchestration');

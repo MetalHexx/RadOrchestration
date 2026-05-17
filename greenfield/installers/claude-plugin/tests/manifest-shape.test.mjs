@@ -3,9 +3,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const MANIFESTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../manifests');
 
 test('every manifests/v*.json has version + files; each file has destinationPath, sourcePath, ownership (FR-36, DD-10)', () => {
-  const dir = 'greenfield/installers/claude-plugin/manifests';
+  const dir = MANIFESTS_DIR;
   const files = readdirSync(dir).filter((f) => /^v.+\.json$/.test(f));
   assert.ok(files.length >= 1, 'at least one committed per-version manifest');
   for (const f of files) {
@@ -23,7 +26,7 @@ test('every manifests/v*.json has version + files; each file has destinationPath
 
 test('orchestration.yml entry is ownership:user-config so upgrade skips removal (FR-11, AD-10)', () => {
   const m = JSON.parse(fs.readFileSync(
-    'greenfield/installers/claude-plugin/manifests/v0.0.0.json', 'utf8'));
+    path.join(MANIFESTS_DIR, 'v0.0.0.json'), 'utf8'));
   const orch = m.files.find((e) => e.destinationPath === '${RAD_HOME}/orchestration.yml');
   assert.ok(orch, 'orchestration.yml entry present (FR-7)');
   assert.strictEqual(orch.ownership, 'user-config');

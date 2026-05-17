@@ -2,8 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
-import { join } from 'node:path';
+import path, { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+
+const DRIFT_CHECK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../hooks/drift-check.mjs');
 
 function makeCase(pluginVer, installedVer) {
   const pluginRoot = fs.mkdtempSync(join(os.tmpdir(), 'pr-'));
@@ -22,7 +25,7 @@ function makeCase(pluginVer, installedVer) {
 test('drift-check emits a single stdout line on mismatch (DD-14, FR-6)', () => {
   const { pluginRoot, radHome } = makeCase('1.1.0', '1.0.0');
   const result = spawnSync(process.execPath, [
-    'greenfield/installers/claude-plugin/hooks/drift-check.mjs',
+    DRIFT_CHECK,
   ], {
     env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginRoot, RAD_HOME: radHome },
     encoding: 'utf8',
@@ -39,7 +42,7 @@ test('drift-check emits a single stdout line on mismatch (DD-14, FR-6)', () => {
 test('drift-check is silent when versions match (FR-6)', () => {
   const { pluginRoot, radHome } = makeCase('1.0.0', '1.0.0');
   const result = spawnSync(process.execPath, [
-    'greenfield/installers/claude-plugin/hooks/drift-check.mjs',
+    DRIFT_CHECK,
   ], {
     env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginRoot, RAD_HOME: radHome },
     encoding: 'utf8',
