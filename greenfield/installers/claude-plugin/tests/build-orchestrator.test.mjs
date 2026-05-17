@@ -21,9 +21,9 @@ function makeUpstream() {
   fs.writeFileSync(join(root, 'runtime-config/orchestration.yml'), 'pipeline: {}\n');
   fs.writeFileSync(join(root, 'runtime-config/templates/medium.yml'), 'name: medium\n');
   // cli/ source synthetic
-  fs.mkdirSync(join(root, 'cli/src'), { recursive: true });
-  fs.writeFileSync(join(root, 'cli/src/main.js'), 'console.log("radorch");\n');
-  fs.writeFileSync(join(root, 'cli/package.json'), JSON.stringify({ name: 'cli', type: 'module', main: 'src/main.js' }));
+  fs.mkdirSync(join(root, 'cli/src/bin'), { recursive: true });
+  fs.writeFileSync(join(root, 'cli/src/bin/radorch.ts'), 'console.log("radorch");\n');
+  fs.writeFileSync(join(root, 'cli/package.json'), JSON.stringify({ name: 'cli', type: 'module' }));
   // canonical agents (harness-files/agents/) — required by validatePluginTree gate 2 & 3.
   fs.mkdirSync(join(root, 'harness-files/agents'), { recursive: true });
   fs.writeFileSync(join(root, 'harness-files/agents/orchestrator.md'), 'Spawn **coder** agent.\n');
