@@ -6,12 +6,26 @@
 // its own UserPromptSubmit entry; SessionStart drift-check stays in place.
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { runInstall } from '../lib/install/run-install.js';
 
 function log(msg) { process.stderr.write(`[rad-orchestration:bootstrap] ${msg}\n`); }
 
+function isUnderClaudeCache(pluginRoot) {
+  const cacheRoot = path.join(os.homedir(), '.claude', 'plugins', 'cache');
+  const normalized = path.resolve(pluginRoot);
+  const prefix = cacheRoot + path.sep;
+  return process.platform === 'win32'
+    ? normalized.toLowerCase().startsWith(prefix.toLowerCase())
+    : normalized.startsWith(prefix);
+}
+
 function selfUninstall(pluginRoot) {
+  if (!isUnderClaudeCache(pluginRoot) && process.env.RAD_BOOTSTRAP_SELFUNINSTALL_ALLOW_NONCACHE !== '1') {
+    log(`selfUninstall skipped: pluginRoot=${pluginRoot} is not under Claude Code cache`);
+    return;
+  }
   const hooksJson = path.join(pluginRoot, 'hooks', 'hooks.json');
   try {
     const manifest = JSON.parse(fs.readFileSync(hooksJson, 'utf8'));

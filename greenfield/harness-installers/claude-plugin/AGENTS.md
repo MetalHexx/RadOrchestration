@@ -32,7 +32,26 @@ A self-contained npm package (`@rad-orchestration/claude-plugin-source`) whose `
 - `hooks/` — hook source; see `hooks/AGENTS.md`
 - `lib/install/` — install state machine; see `lib/install/AGENTS.md`
 - `manifests/` — per-version file manifests (`v*.json`)
-- `output/` — gitignored build output
+- `output/` — gitignored build output; canonical npm-pack source
+- `dogfood-marketplace/` — gitignored ephemeral marketplace tree created and managed by the `rad-test-claude-plugin` skill for local `/plugin install` testing; see "Dogfood install" below
+
+## Dogfood install
+
+`output/` is the npm-pack source — what real installs eventually pull from the marketplace. But Claude Code's `/plugin install` cannot consume `output/` directly. Per [Anthropic's marketplace spec](https://code.claude.com/docs/en/plugin-marketplaces), a plugin's `source` in `marketplace.json` must be one of: a relative-path string starting with `./` (resolving to a subpath of the marketplace root), or an object form (`github`, `url`, `git-subdir`, `npm`). Parent-directory traversal (`../`) and absolute paths are explicitly rejected.
+
+So the dogfood marketplace stages the plugin as a `./<subpath>` of its own root:
+
+```
+dogfood-marketplace/
+├── .claude-plugin/
+│   └── marketplace.json         # source: "./plugins/rad-orchestration"
+└── plugins/
+    └── rad-orchestration/       # copy of output/
+```
+
+The `.agents/skills/rad-test-claude-plugin/SKILL.md` skill is the operational entry point. It builds, copies `output/` into `plugins/rad-orchestration/`, writes `marketplace.json`, and hands off `/plugin marketplace add` + `/plugin install` commands. The layout intentionally matches the legacy `rad-test-plugin-release` prompt's layout so both dogfood channels feel the same.
+
+The copy is per-skill-invocation. Iterating means re-running the skill after each build — `output/` is the truth, the marketplace tree is a derived snapshot.
 
 ## Coding conventions
 

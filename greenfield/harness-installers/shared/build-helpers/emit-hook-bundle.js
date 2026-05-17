@@ -21,6 +21,10 @@ export async function emitHookBundle(opts) {
   fs.mkdirSync(target, { recursive: true });
   const bootstrapEntry = path.join(source, 'bootstrap.mjs');
   const bootstrapOut = path.join(target, 'bootstrap.mjs');
+  // esbuild preserves the source's shebang automatically; do NOT add one via
+  // banner — that yielded a double shebang (banner + source) and Node
+  // rejected line 2 as a SyntaxError when the hook fired. Source's shebang
+  // is the single source of truth.
   await build({
     entryPoints: [bootstrapEntry],
     bundle: true,
@@ -28,7 +32,6 @@ export async function emitHookBundle(opts) {
     format: 'esm',
     target: 'node20',
     outfile: bootstrapOut,
-    banner: { js: '#!/usr/bin/env node' },
     logLevel: 'warning',
   });
   for (const verbatim of ['drift-check.mjs', 'hooks.json', 'AGENTS.md']) {

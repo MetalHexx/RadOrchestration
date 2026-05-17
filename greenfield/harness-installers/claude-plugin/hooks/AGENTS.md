@@ -10,6 +10,8 @@ Two hooks that ship inside the Claude plugin payload and manage install lifecycl
 
 Runs once on the user's first prompt after plugin installation. Calls `runInstall({ pluginRoot, radHome })` from `lib/install/run-install.js`. On success, calls `selfUninstall(pluginRoot)`: reads `hooks/hooks.json`, deletes the `UserPromptSubmit` entry, and atomically renames a `.tmp` file into place so the hook never fires again. On failure, leaves `hooks.json` intact so the user can retry. Reads `CLAUDE_PLUGIN_ROOT` from the environment; `RAD_HOME` is optional (tests override it; production falls back to `~/.radorch`).
 
+`selfUninstall` refuses to mutate `hooks.json` unless `pluginRoot` is under `~/.claude/plugins/cache/` — the directory Claude Code owns and re-copies on `/plugin update`. This protects `"source": "directory"` dogfood marketplaces from accidental clobber if `bootstrap.mjs` ever runs with `CLAUDE_PLUGIN_ROOT` pointed at the marketplace tree (manual `node bootstrap.mjs`, stray test fixture, prior dogfood session quirk). Tests that intentionally run against `os.tmpdir()` fixtures override the guard via `RAD_BOOTSTRAP_SELFUNINSTALL_ALLOW_NONCACHE=1`.
+
 **`drift-check.mjs` — `SessionStart` hook**
 
 Persistent — never self-uninstalls. Reads `${CLAUDE_PLUGIN_ROOT}/package.json` for `pkg.version` (the delivering version) and `${RAD_HOME}/install.json` for the installed version, found at `installed.harnesses['claude-plugin'].version` or the legacy `installed.package_version` field. Writes a single line to stdout when the two differ; Claude injects that line as conversation context. Silent on match or when either version is unavailable.
