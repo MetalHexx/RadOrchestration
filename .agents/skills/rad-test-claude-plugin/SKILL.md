@@ -35,7 +35,7 @@ Surface this reminder in your handoff message — do not assume the user remembe
 
 - Node.js and npm installed.
 - Working directory is anywhere inside the repo clone (the skill resolves repo root itself).
-- **No manual `npm install` required.** The plugin build self-bootstraps `node_modules` in four sub-packages on first run: `greenfield/harness-installers/shared/build-helpers/` (esbuild), `greenfield/harness-adapters/engine/` (yaml), `cli/` (commander, chalk, @inquirer/prompts, js-yaml), and `ui/` (next, react — large; expect ~minute-scale install on a fresh clone). Subsequent runs no-op when those packages already have `node_modules`. If you ever need to pre-install them out-of-band (e.g. air-gapped network, debugging), the build's `bootstrap-deps` step is the source of truth for what gets installed where.
+- **A pre-bootstrap step is required on a fresh clone** (see Step 2 below). `build.js` has top-level `import` statements that load from `greenfield/harness-installers/shared/build-helpers/` — specifically `emit-cli-bundle.js`, `emit-pipeline-bundle.js`, `emit-hook-bundle.js`, `emit-ui-bundle.js`, and `expand-tokens.js`. Those modules require `esbuild`, which lives in `build-helpers/node_modules`. On a fresh clone that directory does not exist, so Node rejects the imports before any code in `build.js` runs — including the `bootstrap-deps` step that would otherwise install them. The fix is to run `npm install` in `build-helpers` once, pre-emptively, before invoking the build. The build's own `bootstrap-deps` step then handles the remaining three packages (`harness-adapters/engine`, `cli/`, `ui/`) during the normal build run.
 
 ## Workflow
 
@@ -47,7 +47,22 @@ git rev-parse --show-toplevel
 
 Use the result as `{repoRoot}` for every subsequent path. The user is on Windows — backslash-separate paths in the handoff message.
 
-### 2. Build the greenfield plugin
+### 2. Pre-install build-helpers dependencies (fresh-clone guard)
+
+Before running the build, check whether `greenfield/harness-installers/shared/build-helpers/node_modules` exists. If it does not, install it now — this is the only package that must exist before `build.js` is invoked, because `build.js` imports from it at module-load time:
+
+```powershell
+$bhDir = "{repoRoot}\greenfield\harness-installers\shared\build-helpers"
+if (-not (Test-Path "$bhDir\node_modules")) {
+    npm install --prefix $bhDir
+}
+```
+
+Expected: `npm install` completes (or is skipped because `node_modules` already exists). If `npm install` fails, stop and report — the build cannot proceed.
+
+The build's own `bootstrap-deps` step will handle the remaining three packages (`greenfield/harness-adapters/engine`, `cli/`, `ui/`) during the build run; those do not need pre-installation.
+
+### 3. Build the greenfield plugin
 
 From the repo root:
 
@@ -57,19 +72,19 @@ node greenfield/harness-installers/claude-plugin/build-scripts/build.js
 
 > Expected: exit 0; `greenfield/harness-installers/claude-plugin/output/` populated; the build's final `validate` step (from `build-scripts/validate.js`) reports no missing artifacts and the per-version manifest exists.
 >
-> On first run (or any run after a sub-package `node_modules` was deleted), the first step is `bootstrap-deps`, which runs `npm install` in up to three sub-packages. Expect the build duration to be longer on the first run; subsequent runs skip the installs entirely.
+> On first run (or any run after `cli/` or `ui/` `node_modules` were deleted), the `bootstrap-deps` step runs `npm install` in those sub-packages. Expect longer build times on first run; subsequent runs skip the installs. The `ui/` install is the largest (~1 min on a cold network).
 >
 > On Windows and Linux, `next build` (invoked during `emit-ui-bundle`) emits a non-fatal `Module not found: Can't resolve 'fsevents'` warning. `fsevents` is a macOS-only file-watcher used by `chokidar` (a transitive `next` dependency); the warning is cosmetic and the build completes normally. Ignore unless the build's overall exit code is non-zero.
 
 If the build fails, stop and report the failure. Do not continue.
 
-### 3. Verify the staged plugin tree and capture the version
+### 4. Verify the staged plugin tree and capture the version
 
 Confirm that `{repoRoot}/greenfield/harness-installers/claude-plugin/output/.claude-plugin/plugin.json` exists. Read its `version` field and remember it as `{version}` — you will print it in the handoff message so the user can confirm it after install.
 
 If the file is missing, stop and report. Build must have silently produced an incomplete tree.
 
-### 4. Write the ephemeral dogfood marketplace.json
+### 5. Write the ephemeral dogfood marketplace.json
 
 The dogfood marketplace lives at `{repoRoot}/greenfield/harness-installers/claude-plugin/dogfood-marketplace/` — a **sibling** of `output/`, not a subfolder. This is deliberate: the build's first step wipes `output/` on every invocation, so a marketplace nested inside `output/` would be destroyed by every rebuild. Keeping it as a sibling means the marketplace.json survives rebuilds and the user can iterate (`rebuild → /plugin install` in the test session) without re-running this skill.
 
@@ -94,7 +109,7 @@ After writing, parse the file back as JSON to confirm it is syntactically valid.
 
 The `source` field uses the relative path `"../output"` — resolved from the marketplace root it points at the sibling `output/` plugin tree. No copy of the plugin tree is required.
 
-### 5. Print install instructions for the user
+### 6. Print install instructions for the user
 
 Print a block like the following, substituting `{repoRoot}` and `{version}` with the values you captured. Use backslash-separated Windows paths.
 
@@ -118,7 +133,7 @@ Print a block like the following, substituting `{repoRoot}` and `{version}` with
 >
 > Come back here when you're done dogfooding — I'll offer cleanup.
 
-### 6. Wait for the user, then offer cleanup
+### 7. Wait for the user, then offer cleanup
 
 After printing the instructions, your next turn waits for the user to say they're done. When they return, call `AskUserQuestion` to offer cleanup. Surface both options explicitly — do not rely on an auto-injected "Other":
 
