@@ -1,4 +1,4 @@
-# installers/
+# harness-installers/
 
 ## Purpose
 

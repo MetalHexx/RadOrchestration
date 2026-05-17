@@ -59,4 +59,4 @@ Certain tokens in agent and skill bodies are destination placeholders intended f
 - `${PLUGIN_ROOT}` — Placeholder for the plugin root directory at install time.
 - Any other `${...}` tokens not defined in the adapter's `bodyTokens` map.
 
-The engine does not resolve these tokens; it preserves them verbatim. The installer-bundler (per AD-8) is responsible for resolving these placeholders during the bundling phase, after translation is complete. Harness adapters must not define or consume these tokens.
+The engine does not resolve these tokens; it preserves them verbatim. The installer-bundler is responsible for resolving these placeholders during the bundling phase, after translation is complete. Harness adapters must not define or consume these tokens.
