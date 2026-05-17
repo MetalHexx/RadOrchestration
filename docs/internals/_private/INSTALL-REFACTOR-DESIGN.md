@@ -87,30 +87,29 @@ This document captures the target architecture for the installer + bundler side.
     │   │   └── ui/                           # built next-standalone, copied from /ui/ at pack time
     │   └── tests/
     │
-    ├── claude-plugin/                        # SessionStart-invoked installer
-    │   ├── package.json                      # publishes as the Claude marketplace plugin
-    │   ├── index.js                          # entry invoked by SessionStart hook
+    ├── claude-plugin/                        # UserPromptSubmit-triggered installer
+    │   ├── package.json                      # PRIVATE — build-tool dev deps + scripts; never published
     │   ├── .claude-plugin/
-    │   │   └── plugin.json                   # marketplace manifest
-    │   ├── hooks/
-    │   │   └── hooks.json                    # SessionStart hook config
+    │   │   └── plugin.json                   # plugin manifest (NOT marketplace catalog; see Decision 13)
+    │   ├── hooks/                            # canonical hook source (ships in plugin payload)
+    │   │   ├── hooks.json                    # registers UserPromptSubmit + SessionStart
+    │   │   ├── bootstrap.mjs                 # merged install orchestrator (the entry — replaces parent design's index.js)
+    │   │   └── drift-check.mjs               # SessionStart cross-channel drift soft warning
     │   ├── lib/
-    │   │   └── install/                      # per-installer install state machine
+    │   │   └── install/                      # install state machine modules (imported by bootstrap.mjs at runtime)
     │   │       ├── install-files.js
     │   │       ├── remove-files.js
     │   │       ├── catalog.js
     │   │       ├── expand-tokens.js
-    │   │       ├── install-json.js
-    │   │       ├── hash-check.js             # claude-plugin only — drift detection
-    │   │       ├── bootstrap-lock.js         # claude-plugin only — serializes concurrent sessions
-    │   │       ├── install-log.js            # claude-plugin only — jsonl install log
+    │   │       ├── install-json.js           # atomic tmp+rename
+    │   │       ├── install-log.js            # claude-plugin only — jsonl install log (6 actions)
     │   │       ├── user-data-paths.js
     │   │       └── harness-paths.js
     │   ├── build-scripts/
-    │   │   └── build.js
+    │   │   └── build.js                      # transforms + structural validation; emits to output/
     │   ├── manifests/
     │   │   └── v*.json                       # COMMITTED — single stream, no harness subfolder
-    │   ├── dist/                             # gitignored — marketplace tarball staging
+    │   ├── output/                           # gitignored — build artifact; the publishable plugin payload
     │   └── tests/
     │
     ├── copilot-cli-plugin/                   # placeholder — future Copilot CLI plugin installer
@@ -166,7 +165,7 @@ Top-level monorepo of installer variants and shared installer helpers.
 
 - **`shared/build-helpers/`** — small helpers like `emit-cli-bundle.js`, `emit-ui-bundle.js`. Adapter knowledge is **not** here; it lives in `harness-adapters/`. Installers consume the adapter engine's output tree as input.
 - **`standard/`** — user-facing legacy installer. One npm tarball ships all three harnesses; the wizard selects which to deploy. Mutually-exclusive Copilot harness selection. Owns `lib/install/` for its install state machine, including `base-files.js` for `config.yml`/`registry.yml`/`.harness` skeleton.
-- **`claude-plugin/`** — SessionStart-invoked headless installer. Ships only the claude variant. Adds plugin-specific lib modules (`hash-check`, `bootstrap-lock`, `install-log`) that legacy doesn't need.
+- **`claude-plugin/`** — UserPromptSubmit-triggered headless installer. Ships only the claude variant. Adds plugin-specific concerns: `install-log` (jsonl), atomic `install.json` + `hooks.json` writes, sentinel-driven self-heal. Earlier design iterations included `hash-check` (file-level drift detection) and `bootstrap-lock` (concurrency lock); both were dropped during INSTALL-REFACTOR-CLAUDE-PLUGIN iteration 1 scrutiny (see that brainstorm's scrutiny section for rationale).
 - **`copilot-cli-plugin/`** and **`copilot-vscode-plugin/`** — placeholders for future plugin-style installers.
 
 Each installer is a separately publishable npm package with its own `package.json`, version cadence, and tarball.
@@ -186,15 +185,27 @@ Each installer is a separately publishable npm package with its own `package.jso
 7. Writes skeleton config files via `base-files.js`.
 8. Stamps `~/.radorch/install.json`.
 
-### Claude plugin install flow (SessionStart hook)
+### Claude plugin install flow (UserPromptSubmit hook)
 
-1. User installs the Claude plugin via marketplace.
-2. Claude Code's SessionStart hook fires, configured by `installers/claude-plugin/hooks/hooks.json`.
-3. The hook invokes `node <plugin-install-root>/index.js`.
-4. `installers/claude-plugin/index.js` acquires a bootstrap lock via `bootstrap-lock.js`.
-5. `hash-check.js` detects modified user files; on drift it prompts for confirmation.
-6. Same manifest-driven remove + install sequence as standard, with claude-plugin's `lib/install/`.
-7. Appends a JSONL line to `~/.radorch/logs/install.log` via `install-log.js`.
+Updated by INSTALL-REFACTOR-CLAUDE-PLUGIN (iteration 1) — see that brainstorm for full design.
+
+1. User installs the Claude plugin via marketplace. Claude Code copies the plugin payload to `~/.claude/plugins/cache/<marketplace>/rad-orchestration/<version>/`.
+2. User submits their first prompt in any Claude Code session. Claude Code's `UserPromptSubmit` hook fires (the platform's only reliably-fired event after `/plugin install` or `/plugin update`).
+3. The hook invokes `node ${CLAUDE_PLUGIN_ROOT}/hooks/bootstrap.mjs` (the merged install orchestrator — replaces parent design's earlier `index.js` reference).
+4. `bootstrap.mjs` reads delivering version from `${CLAUDE_PLUGIN_ROOT}/package.json`, compares against `~/.radorch/install.json`'s `claude-plugin` InstallKey entry; sentinel-checks for `radorch.mjs` on disk.
+5. On version match + sentinel pass: no-op, self-uninstall the `UserPromptSubmit` entry from `hooks.json`, exit.
+6. On version mismatch or fresh install: import stages from `installers/claude-plugin/lib/install/*` (bundled into `bootstrap.mjs` at build time so plugin cache doesn't need `node_modules/`) and run them in order:
+   - Load prior version's manifest from bundled catalog
+   - Remove prior version's files (skip entries with `ownership: 'user-config'` like `orchestration.yml`); prune emptied parent directories upward
+   - `mkdir -p ~/.radorch/projects/`, `~/.radorch/logs/`
+   - Copy runtime-config to `~/.radorch/orchestration.yml` and `~/.radorch/templates/`
+   - Copy UI bundle to `~/.radorch/ui/`
+   - Stamp `~/.radorch/install.json` atomically (tmp + rename) under `InstallKey = 'claude-plugin'`
+   - Append a JSONL entry to `~/.radorch/logs/install.log` (6-action vocabulary, best-effort write)
+   - On success, atomically rewrite `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` to remove the `UserPromptSubmit` entry (leave `SessionStart` intact). On failure, leave `hooks.json` untouched so next prompt retries.
+
+   (Note: this is the new claude-plugin install flow. The legacy plugin install today also runs `writeBaseFiles` to populate `~/.radorch/config.yml`/`registry.yml`/`.harness`/`.gitignore` + `mkdir runtime/`. The new plugin installer drops all of these per INSTALL-REFACTOR-CLAUDE-PLUGIN — see that brainstorm for rationale. Cross-harness selection state moves to the standard installer's ownership in iteration 2.)
+7. SessionStart's `drift-check.mjs` hook continues firing every session for cross-channel drift detection (plugin version vs `~/.radorch/install.json`); never self-uninstalls.
 
 ### Build flow (pack time, per installer)
 
@@ -248,7 +259,7 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 
 ### Decision 5: Each installer owns its own install state machine
 - `installers/standard/lib/install/` and `installers/claude-plugin/lib/install/` each contain a full state machine.
-- **Rationale:** the two installers diverge meaningfully (claude-plugin needs hash-check / lock / log; standard needs config.yml skeleton writes). Independent copies preserve self-containment without coupling them through a shared library.
+- **Rationale:** the two installers diverge meaningfully (claude-plugin needs the install log + atomic-write invariants + sentinel self-heal; standard needs config.yml skeleton writes + interactive wizard + harness selection). Independent copies preserve self-containment without coupling them through a shared library. (Earlier design iterations included `hash-check` and `bootstrap-lock` for claude-plugin; both dropped during iteration 1 scrutiny.)
 
 ### Decision 6: Manifest catalogs live inside each installer
 - `installers/standard/manifests/<harness>/v*.json` (per-harness streams).
@@ -277,15 +288,27 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 
 ### Decision 11: Destination-token substitution is an installer responsibility
 - The adapter subsystem is install-destination-blind. It translates harness vocabulary (tool names, frontmatter shape, filename conventions) and passes destination-shaped tokens through the body unchanged.
-- Installer-bundlers resolve any destination-shaped tokens in body text per their target layout — `${PLUGIN_ROOT}` (where the harness install root lives), and potentially `${SKILLS_ROOT}` (path to skills inside an install) once the latent hardcoded-path cases are tokenized.
+- Installer-bundlers resolve any destination-shaped tokens in body text per their target layout — `${PLUGIN_ROOT}` (where the harness install root lives), and `${SKILLS_ROOT}` (path to skills inside an install). ADAPTERS' canonical tokenization pass converted literal `.claude/skills/...` references to `${SKILLS_ROOT}/...` in skill bodies and reference docs.
 - Each installer knows its own destination: legacy npm installs at `~/.claude` / `~/.copilot`, the Claude plugin installs under `${CLAUDE_PLUGIN_ROOT}` (a runtime env var), future installers do whatever they do.
-- **Rationale:** the same Claude adapter output can serve both the legacy installer and the plugin installer because each runs its own destination pass. Mixing destination knowledge into the adapter would re-couple translation to packaging — the exact layering this rearchitecture exists to fix. Known surface today: `${PLUGIN_ROOT}` in three UI skills. Latent fix to handle during installer rebuild: tokenize the hardcoded `.claude/skills/...` references in the planning skills.
+- **A second build-time transform exists for the plugin installer specifically:** agent-namespacing rewrite (`@coder` → `@rad-orchestration:coder` in dispatch contexts) — required because plugin-installed skills are namespaced by Claude Code. This transform is Claude-plugin-specific; the standard installer doesn't run it because standalone-installed skills aren't namespaced. Both transforms run in the same build pass over body content.
+- **Rationale:** the same Claude adapter output can serve both the legacy installer and the plugin installer because each runs its own destination pass. Mixing destination knowledge into the adapter would re-couple translation to packaging — the exact layering this rearchitecture exists to fix.
 
 ### Decision 12: `publish.yml` updates at cutover, not during iteration rebuilds
 - During the greenfield iterations (claude-plugin in iteration 1, standard installer in iteration 2), `.github/workflows/publish.yml` stays unchanged. The legacy installer (`installer/`) and the legacy plugin build path (`cli/dist/marketplaces/claude/plugins/rad-orchestration/`) continue to publish from their current locations on git tag push.
 - At cutover, `publish.yml` updates in lockstep with the folder deletion: the `publish` job's `working-directory` swaps to the new standard installer location, and the `publish-plugin` job swaps to publish from `installers/claude-plugin/output/` (or whichever location the new build emits to). Both swaps happen in the cutover commit alongside old-folder removal.
 - Per-iteration dev loops are local-only: build locally (`npm run build` in the installer package), test via `claude --plugin-dir ./output` or a local marketplace install. No npm publish during iteration rebuilds.
 - **Rationale:** keeps existing users on the legacy installer with no surprise upgrades during the rebuild. Cutover is the single atomic switchover from old paths to new paths — `publish.yml` is one of the files that participates in that switchover, alongside the folder deletion. Adding pre-release publish paths during iterations was considered and rejected as unnecessary CI complexity given that local-only testing covers the iteration dev loop.
+
+### Decision 13: Marketplace catalog stays at repo root; plugin manifest lives in plugin payload
+- The repo-root file `/.claude-plugin/marketplace.json` is the **marketplace catalog** that Claude Code resolves when a user runs `/plugin marketplace add MetalHexx/RadOrchestration`. Per Anthropic docs, this location is load-bearing — the catalog MUST live at `<repo-root>/.claude-plugin/marketplace.json`. The rearchitecture does **not** move it.
+- The file `installers/claude-plugin/.claude-plugin/plugin.json` is the **plugin manifest** that ships inside the plugin payload (today at `plugin/.claude-plugin/plugin.json`; relocates to `installers/claude-plugin/.claude-plugin/plugin.json` in iteration 1). Build stamps the version into `output/.claude-plugin/plugin.json` per Anthropic docs' precedence rule (the plugin manifest's `version` always wins over a marketplace entry's `version`).
+- **Two distinct manifests, two distinct locations, different roles.** The marketplace catalog points at the published npm package (`@rad-orchestration/claude-plugin`); the plugin manifest identifies the plugin from inside the cache copy.
+- **Rationale:** the location of the marketplace catalog is an Anthropic-platform constraint; the location of the plugin manifest is convention. Earlier brainstorming risked conflating them, which would have broken the `/plugin marketplace add` flow.
+
+### Decision 14: Build-time structural validation gates protect the published payload
+- Every installer's `build-scripts/build.js` runs a final structural-validation pass before tarballing. Today's gates (from `scripts/build-plugin.js:123-177`'s `validatePluginTree`) carry forward into the new installer builds: required artifacts present, agent enumeration, namespaced-token rewrite verified in `orchestrator.md`, per-version manifest present, tarball size ≤ 50 MB × 1.1.
+- Build failure aborts before npm publish; runtime detection of a broken plugin is a much worse user experience.
+- **Rationale:** the build is the right time to catch structural breakage. Shipping an unvalidated plugin payload was a real bug class in earlier iterations and is now a documented gate.
 
 ---
 
@@ -299,10 +322,10 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 | `/installer/` | `installers/standard/` | Rename; restructure subfolders per the target layout. |
 | `/installer/src/` | `installers/standard/dist/` | Rename — currently misnamed as `src/`; gitignored except manifests. |
 | Manifest catalogs in `/installer/src/<h>/manifests/` | `installers/standard/manifests/<h>/` | Pull out of `dist/`, commit to git separately. |
-| `/plugin/` | `installers/claude-plugin/` | Rename; the installer's `index.js` becomes the SessionStart entry point. |
-| `/cli/src/commands/install.ts`, `install/skeleton.ts`, `install/harness-bundles.ts` | **Delete** | Vestigial. |
-| `/cli/src/commands/plugin-bootstrap/` | `installers/claude-plugin/` (logic absorbed into `index.js` + `lib/install/`) | radorch loses this subcommand. |
-| `/cli/src/lib/upgrade/` | `installers/claude-plugin/lib/install/` | Folds with plugin-bootstrap. |
+| `/plugin/` | `installers/claude-plugin/` | Rename; plugin manifest moves to `.claude-plugin/plugin.json`; `bin/` payload dropped (vestigial). The plugin's SessionStart/UserPromptSubmit entry is the hook scripts under `hooks/`, not an `index.js` (the parent design's earlier `index.js` reference is superseded by Iteration 1's hook-as-entry decision; see INSTALL-REFACTOR-CLAUDE-PLUGIN brainstorm). |
+| `/cli/src/commands/install.ts`, `install/skeleton.ts`, `install/harness-bundles.ts` | **Delete** | Vestigial install-shaped commands; absorbed into each installer's own state machine. |
+| `/cli/src/commands/plugin-bootstrap/` | `installers/claude-plugin/hooks/bootstrap.mjs` + `installers/claude-plugin/lib/install/` | Subcommand absorbed; the hook script (renamed from `bootstrap-then-uninstall.mjs` to `bootstrap.mjs`) imports stages directly from `lib/install/` — no subprocess spawn. radorch loses this subcommand. |
+| `/cli/src/lib/upgrade/` | `installers/claude-plugin/lib/install/` | Folds with plugin-bootstrap absorption. |
 | `/adapters/` | Read-only reference during migration; deleted at cutover. The new adapter subsystem lives in `greenfield/harness-adapters/`. The existing adapter code is the source of truth for per-harness frontmatter shapes while authoring the new ymls. |
 | `/scripts/build.js` and dogfood machinery | **Delete** | Per Decision 9. |
 | `/scripts/build-plugin.js` | `installers/claude-plugin/build-scripts/build.js` | Move; gains shared helper imports. |
