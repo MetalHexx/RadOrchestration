@@ -33,7 +33,7 @@ export function validatePluginTree(opts) {
   // Gate 1: required artifacts.
   for (const rel of REQUIRED_ARTIFACTS) {
     if (!fs.existsSync(path.join(outputDir, rel))) {
-      throw new Error(`validate: missing required artifact ${rel} (FR-33 gate 1)`);
+      throw new Error(`validate: missing required artifact ${rel} (gate 1)`);
     }
   }
 
@@ -43,7 +43,7 @@ export function validatePluginTree(opts) {
     .map((f) => f.replace(/\.md$/, ''));
   for (const name of canonical) {
     if (!fs.existsSync(path.join(outputDir, 'agents', `${name}.md`))) {
-      throw new Error(`validate: missing agents/${name}.md (FR-33 gate 2)`);
+      throw new Error(`validate: missing agents/${name}.md (gate 2)`);
     }
   }
 
@@ -55,19 +55,19 @@ export function validatePluginTree(opts) {
     if (!new RegExp(`\\b${name}\\b`).test(orchCanon)) continue;
     const token = `rad-orchestration:${name}`;
     if (!orchOut.includes(token)) {
-      throw new Error(`validate: orchestrator.md missing namespaced token ${token} (FR-33 gate 3)`);
+      throw new Error(`validate: orchestrator.md missing namespaced token ${token} (gate 3)`);
     }
   }
 
   // Gate 4: per-version manifest present.
   const manifestRel = `manifests/v${version}.json`;
   if (!fs.existsSync(path.join(outputDir, manifestRel))) {
-    throw new Error(`validate: missing ${manifestRel} (FR-33 gate 4)`);
+    throw new Error(`validate: missing ${manifestRel} (gate 4)`);
   }
 
   // Gate 5: tarball size budget.
   const { unpackedSize } = sizer(outputDir);
   if (unpackedSize > SIZE_LIMIT) {
-    throw new Error(`validate: unpacked size ${unpackedSize} exceeds size budget of ${SIZE_LIMIT} bytes (NFR-5 / FR-33 gate 5)`);
+    throw new Error(`validate: unpacked size ${unpackedSize} exceeds size budget of ${SIZE_LIMIT} bytes (gate 5)`);
   }
 }

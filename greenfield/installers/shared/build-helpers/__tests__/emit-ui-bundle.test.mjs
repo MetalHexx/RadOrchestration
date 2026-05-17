@@ -29,7 +29,7 @@ test('emitUiBundle copies standalone, static, public and removes .next after bui
     assert.ok(fs.existsSync(join(target, 'server.js')), 'standalone copied');
     assert.ok(fs.existsSync(join(target, '.next/static/chunks/main.js')), 'static copied');
     assert.ok(fs.existsSync(join(target, 'public/logo.svg')), 'public/ copied');
-    assert.ok(!fs.existsSync(join(ui, '.next')), '.next/ removed after build (NFR-4)');
+    assert.ok(!fs.existsSync(join(ui, '.next')), '.next/ removed after build');
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }

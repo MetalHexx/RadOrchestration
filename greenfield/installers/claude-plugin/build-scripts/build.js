@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // build.js — Single entry point for the Claude marketplace plugin build.
-// 14 steps in fixed order per FR-23. Fail-fast on any step (NFR-13).
+// 14 steps in fixed order. Fail-fast on any step.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -41,7 +41,7 @@ export async function runBuild(opts) {
   const out = path.join(installerDir, 'output');
   const adapterOut = path.join(greenfield, 'harness-adapters/output/claude');
 
-  // Step 0 — adapter engine first (FR-24, AD-3, AD-15). Skipped in unit
+  // Step 0 — adapter engine first. Skipped in unit
   // tests; production end-to-end runs through this branch.
   if (!opts.skipAdapterEngine) {
     await step('adapter-engine', () => {
@@ -79,7 +79,7 @@ export async function runBuild(opts) {
   // tree. copy-skills pulls the full harness-files tree from adapter output,
   // which includes raw .ts sources, tests/, package.json, tsconfig.json etc.
   // Only runtime artifacts (.js, .mjs, .gitignore) and the list-repo-skills
-  // utility belong in the published plugin payload (FR-22).
+  // utility belong in the published plugin payload.
   await step('prune-scripts-sources', () => {
     const scriptsDir = path.join(out, 'skills/rad-orchestration/scripts');
     const KEEP_EXTENSIONS = new Set(['.js', '.mjs']);

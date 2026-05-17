@@ -1,7 +1,7 @@
 // emit-cli-bundle.js — Single-file ESM bundle of a CLI source root via esbuild.
 // Installer-blind: source root and outfile path are parameters; chmod mode is
 // a tunable knob with a sane default. Never creates intermediate dist/ folders
-// (no-litter discipline, NFR-4). On Windows, chmod is silently a no-op.
+// (no-litter discipline). On Windows, chmod is silently a no-op.
 
 import { build } from 'esbuild';
 import fs from 'node:fs';

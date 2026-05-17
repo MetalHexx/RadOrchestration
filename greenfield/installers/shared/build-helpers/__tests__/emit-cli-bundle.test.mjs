@@ -15,11 +15,11 @@ test('emitCliBundle writes one bundle to the requested outfile, never creates cl
     fs.writeFileSync(join(src, 'package.json'), JSON.stringify({ name: 'x', type: 'module', main: 'index.js' }));
     const out = join(tmpRoot, 'out/radorch.mjs');
     await emitCliBundle({ source: src, target: out, entryPoint: join(src, 'index.js') });
-    assert.ok(fs.existsSync(out), 'outfile written at caller-specified path (FR-26, DD-12)');
-    assert.ok(!fs.existsSync(join(src, 'dist')), 'no cli/dist/ litter created (NFR-4)');
+    assert.ok(fs.existsSync(out), 'outfile written at caller-specified path');
+    assert.ok(!fs.existsSync(join(src, 'dist')), 'no cli/dist/ litter created');
     if (process.platform !== 'win32') {
       const mode = fs.statSync(out).mode & 0o777;
-      assert.strictEqual(mode, 0o755, 'POSIX chmod 0o755 applied at build time (FR-21)');
+      assert.strictEqual(mode, 0o755, 'POSIX chmod 0o755 applied at build time');
     }
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });

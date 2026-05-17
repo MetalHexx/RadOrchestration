@@ -3,7 +3,7 @@
 // pass, copies binary files verbatim. Installer-blind: every installer-specific
 // value (token map, agent names) flows in as a parameter. The text-extension
 // list mirrors the engine's at greenfield/harness-adapters/engine/index.js:18
-// so the two stay in sync (DD-11).
+// so the two stay in sync.
 
 import fs from 'node:fs';
 import path from 'node:path';

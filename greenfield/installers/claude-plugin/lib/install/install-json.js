@@ -9,7 +9,7 @@ export function readInstallJson(file) {
 /**
  * Writes install.json atomically and strips any incoming state_schema_version
  * field — new writes are unversioned and identified structurally by the
- * presence of the `harnesses` object (FR-18).
+ * presence of the `harnesses` object.
  */
 export function writeInstallJson(file, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -23,7 +23,7 @@ export function writeInstallJson(file, value) {
 /**
  * The current install.json shape is identified structurally by presence of
  * the `harnesses` object. No version literal is consulted — there is no
- * version namespace (FR-18).
+ * version namespace.
  */
 export function isCurrentShape(ij) {
   return !!ij && typeof ij.harnesses === 'object' && ij.harnesses !== null;
@@ -37,7 +37,7 @@ export function isCurrentShape(ij) {
  *   - earlier `harnesses`-keyed record that still carries a
  *     `state_schema_version` field (historically `'v6'`)
  * Either way, the lifted record drops `state_schema_version` entirely so
- * the next write is field-less (FR-18).
+ * the next write is field-less.
  */
 export function migrateInstallJson(ij, installKey) {
   if (isCurrentShape(ij)) {

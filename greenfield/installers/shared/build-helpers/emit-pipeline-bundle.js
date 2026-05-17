@@ -1,8 +1,8 @@
 // emit-pipeline-bundle.js — Bundles the two pipeline runtime entries
 // (pipeline, explode-master-plan) from a TS source root to per-entry .js
 // files under a target folder. Absorbs today's bundle.mjs logic from the
-// skill source per AD-21. v5 entries (migrate-to-v5, fix-ghost-v5) retire
-// entirely per FR-37 / AD-20 — they target schema v5 (current is v6) with
+// skill source. v5 entries (migrate-to-v5, fix-ghost-v5) retire
+// entirely — they target schema v5 (current is v6) with
 // zero automated callers.
 
 import { build } from 'esbuild';

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // parity-check.js — One-shot diff of the new installer's output/ against
 // today's legacy plugin output. Not wired into CI; not part of permanent
-// tests; retires after migration validation per AD-23 / FR-42.
+// tests; retires after migration validation.
 //
 // Compares: file presence (modulo a known-difference allowlist:
 // bin/ retired, build-scripts/ source-only filter, .gitignore differences,
@@ -19,12 +19,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ALLOWED_LEGACY_ONLY = new Set([
-  // FR-22: bin/ retired; CLI now lives in skills/rad-orchestration/scripts/radorch.mjs
+  // bin/ retired; CLI now lives in skills/rad-orchestration/scripts/radorch.mjs
   'bin/',
-  // FR-37: v5 migration CLIs retire; schema v6 is current with zero automated callers
+  // v5 migration CLIs retire; schema v6 is current with zero automated callers
   'skills/rad-orchestration/scripts/migrate-to-v5.js',
   'skills/rad-orchestration/scripts/fix-ghost-v5.js',
-  // FR-22: bootstrap hook intentionally renamed from bootstrap-then-uninstall.mjs to bootstrap.mjs
+  // bootstrap hook intentionally renamed from bootstrap-then-uninstall.mjs to bootstrap.mjs
   'hooks/bootstrap-then-uninstall.mjs',
 ]);
 
@@ -33,11 +33,9 @@ const ALLOWED_LEGACY_ONLY = new Set([
 // build-time nondeterminism (e.g. Next.js content-hash directory names) and
 // per-release versioned files whose exact names vary per build.
 const ALLOWED_LEGACY_ONLY_PREFIXES = [
-  // Next.js content-hash dirs differ per build invocation (NFR-11).
+  // Next.js content-hash dirs differ per build invocation.
   'ui/.next/static/',
   // Version-stamped manifest catalog entry; exact filename varies per release.
-  // The new installer ships a placeholder v0.0.0.json during greenfield
-  // iteration 1 and will emit the versioned entry at publish time.
   'manifests/v',
 ];
 
@@ -45,7 +43,7 @@ const ALLOWED_LEGACY_ONLY_PREFIXES = [
 // These are intentional additions or build-time nondeterminism (e.g. Next.js
 // content-hash directory names differ per build invocation).
 const ALLOWED_NEW_ONLY = new Set([
-  // FR-22: bootstrap hook intentionally renamed from bootstrap-then-uninstall.mjs
+  // bootstrap hook intentionally renamed from bootstrap-then-uninstall.mjs
   // to bootstrap.mjs (the uninstall side-effect is removed in the new design).
   'hooks/bootstrap.mjs',
   // Placeholder manifest version during greenfield iteration 1; replaced by
@@ -55,7 +53,7 @@ const ALLOWED_NEW_ONLY = new Set([
 
 // Prefix-based allow patterns for new-only files.
 const ALLOWED_NEW_ONLY_PREFIXES = [
-  // Next.js content-hash dirs differ per build invocation (NFR-11).
+  // Next.js content-hash dirs differ per build invocation.
   'ui/.next/static/',
 ];
 

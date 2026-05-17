@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const MANIFESTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../manifests');
 
-test('every manifests/v*.json has version + files; each file has destinationPath, sourcePath, ownership (FR-36, DD-10)', () => {
+test('every manifests/v*.json has version + files; each file has destinationPath, sourcePath, ownership', () => {
   const dir = MANIFESTS_DIR;
   const files = readdirSync(dir).filter((f) => /^v.+\.json$/.test(f));
   assert.ok(files.length >= 1, 'at least one committed per-version manifest');
@@ -19,15 +19,15 @@ test('every manifests/v*.json has version + files; each file has destinationPath
       assert.ok(entry.destinationPath, `${f}: entry.destinationPath`);
       assert.ok(entry.sourcePath, `${f}: entry.sourcePath`);
       assert.ok(['installer-owned', 'user-config'].includes(entry.ownership),
-        `${f}: entry.ownership must be 'installer-owned' or 'user-config' (AD-10)`);
+        `${f}: entry.ownership must be 'installer-owned' or 'user-config'`);
     }
   }
 });
 
-test('orchestration.yml entry is ownership:user-config so upgrade skips removal (FR-11, AD-10)', () => {
+test('orchestration.yml entry is ownership:user-config so upgrade skips removal', () => {
   const m = JSON.parse(fs.readFileSync(
     path.join(MANIFESTS_DIR, 'v0.0.0.json'), 'utf8'));
   const orch = m.files.find((e) => e.destinationPath === '${RAD_HOME}/orchestration.yml');
-  assert.ok(orch, 'orchestration.yml entry present (FR-7)');
+  assert.ok(orch, 'orchestration.yml entry present');
   assert.strictEqual(orch.ownership, 'user-config');
 });

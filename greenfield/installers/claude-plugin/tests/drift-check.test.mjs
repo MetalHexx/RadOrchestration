@@ -14,7 +14,7 @@ function makeCase(pluginVer, installedVer) {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rh-'));
   if (installedVer) {
     // Current install.json shape — unversioned, identified by presence of
-    // the harnesses object (FR-18).
+    // the harnesses object.
     fs.writeFileSync(join(radHome, 'install.json'), JSON.stringify({
       harnesses: { 'claude-plugin': { version: installedVer, channel: 'claude-plugin', installed_at: 'x', last_writer_version: installedVer } },
     }));
@@ -22,7 +22,7 @@ function makeCase(pluginVer, installedVer) {
   return { pluginRoot, radHome };
 }
 
-test('drift-check emits a single stdout line on mismatch (DD-14, FR-6)', () => {
+test('drift-check emits a single stdout line on mismatch', () => {
   const { pluginRoot, radHome } = makeCase('1.1.0', '1.0.0');
   const result = spawnSync(process.execPath, [
     DRIFT_CHECK,
@@ -39,7 +39,7 @@ test('drift-check emits a single stdout line on mismatch (DD-14, FR-6)', () => {
   fs.rmSync(radHome, { recursive: true, force: true });
 });
 
-test('drift-check is silent when versions match (FR-6)', () => {
+test('drift-check is silent when versions match', () => {
   const { pluginRoot, radHome } = makeCase('1.0.0', '1.0.0');
   const result = spawnSync(process.execPath, [
     DRIFT_CHECK,

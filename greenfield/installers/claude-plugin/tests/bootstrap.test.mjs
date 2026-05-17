@@ -29,7 +29,7 @@ function makeFakePluginRoot(version) {
   return dir;
 }
 
-test('bootstrap.mjs self-uninstalls UserPromptSubmit on success, leaves SessionStart in place (FR-5, DD-15)', async () => {
+test('bootstrap.mjs self-uninstalls UserPromptSubmit on success, leaves SessionStart in place', async () => {
   const pluginRoot = makeFakePluginRoot('1.0.0');
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-'));
   try {
@@ -41,15 +41,15 @@ test('bootstrap.mjs self-uninstalls UserPromptSubmit on success, leaves SessionS
     });
     assert.strictEqual(result.status, 0, `bootstrap exit 0; stderr=${result.stderr}`);
     const hooks = JSON.parse(fs.readFileSync(join(pluginRoot, 'hooks/hooks.json'), 'utf8'));
-    assert.ok(!hooks.hooks.UserPromptSubmit, 'UserPromptSubmit removed on success (DD-15)');
-    assert.ok(hooks.hooks.SessionStart, 'SessionStart left intact (DD-15)');
+    assert.ok(!hooks.hooks.UserPromptSubmit, 'UserPromptSubmit removed on success');
+    assert.ok(hooks.hooks.SessionStart, 'SessionStart left intact');
   } finally {
     fs.rmSync(pluginRoot, { recursive: true, force: true });
     fs.rmSync(radHome, { recursive: true, force: true });
   }
 });
 
-test('bootstrap.mjs leaves hooks.json intact on install failure so the next prompt retries (FR-5)', async () => {
+test('bootstrap.mjs leaves hooks.json intact on install failure so the next prompt retries', async () => {
   const pluginRoot = makeFakePluginRoot('1.0.0');
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-'));
   try {
@@ -70,7 +70,7 @@ test('bootstrap.mjs leaves hooks.json intact on install failure so the next prom
   }
 });
 
-test('hooks.json self-rewrite is atomic — no leftover .tmp file on success (FR-14)', async () => {
+test('hooks.json self-rewrite is atomic — no leftover .tmp file on success', async () => {
   const pluginRoot = makeFakePluginRoot('1.0.0');
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-'));
   try {
@@ -78,7 +78,7 @@ test('hooks.json self-rewrite is atomic — no leftover .tmp file on success (FR
       env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginRoot, RAD_HOME: radHome },
     });
     const leftover = fs.readdirSync(join(pluginRoot, 'hooks')).filter((n) => n.includes('.tmp'));
-    assert.deepStrictEqual(leftover, [], 'no .tmp files remain (FR-14)');
+    assert.deepStrictEqual(leftover, [], 'no .tmp files remain');
   } finally {
     fs.rmSync(pluginRoot, { recursive: true, force: true });
     fs.rmSync(radHome, { recursive: true, force: true });

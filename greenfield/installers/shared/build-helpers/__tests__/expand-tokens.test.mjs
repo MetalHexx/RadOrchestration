@@ -40,15 +40,15 @@ test('expandTokens substitutes destination tokens and applies agent-namespacing 
     assert.ok(skill.includes('subagent_type: rad-orchestration:planner'), 'subagent_type namespaced');
     const refs = readFileSync(join(root, 'out/skills/rad-x/references/r.md'), 'utf8');
     assert.ok(refs.includes('rad-orchestration:coder, rad-orchestration:planner, and rad-orchestration:reviewer agents'),
-      'comma-list dispatch namespaced (NFR-12: substitution scope includes reference docs)');
+      'comma-list dispatch namespaced');
     const bin = readFileSync(join(root, 'out/skills/rad-x/binary.png'));
-    assert.deepStrictEqual([...bin], [0x89, 0x50, 0x4e, 0x47], 'binary file copied verbatim (DD-11)');
+    assert.deepStrictEqual([...bin], [0x89, 0x50, 0x4e, 0x47], 'binary file copied verbatim');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test('expandTokens leaves unknown ${...} tokens untouched (FR-30 pass-through)', async () => {
+test('expandTokens leaves unknown ${...} tokens untouched', async () => {
   const root = mkdtempSync(join(tmpdir(), 'expand-tokens-unknown-'));
   try {
     mkdirSync(join(root, 'in'), { recursive: true });

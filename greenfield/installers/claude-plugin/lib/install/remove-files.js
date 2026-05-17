@@ -3,7 +3,7 @@ import path from 'node:path';
 import { userDataPaths } from './user-data-paths.js';
 
 /** Removes every non-user-config entry then prunes empty parent dirs upward,
- *  with ~/.radorch/projects/ always skipped (FR-11, AD-13). */
+ *  with ~/.radorch/projects/ always skipped. */
 export function removeManifestFiles(manifest, opts = {}) {
   const paths = userDataPaths(opts);
   const touched = new Set();

@@ -2,7 +2,7 @@
 // standalone + static + public/ to <target>, then removes <source>/.next/.
 // Dev workflows (npm run dev inside ui/) remain unaffected — they create
 // .next/ on demand and own it themselves; this helper applies only to
-// installer builds (FR-29).
+// installer builds.
 
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';

@@ -8,15 +8,15 @@ import { fileURLToPath } from 'node:url';
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 // The e2e harness drives the real build from repo root. The build invokes
-// the adapter engine first (FR-24), then every helper. UI build is real;
-// expect ~10-30s for the full run (FR-29). Skipped when SKIP_E2E=1.
+// the adapter engine first, then every helper. UI build is real;
+// expect ~10-30s for the full run. Skipped when SKIP_E2E=1.
 test('end-to-end build produces a valid plugin payload', { skip: process.env.SKIP_E2E === '1' }, () => {
   const repoRoot = REPO_ROOT;
   execSync('node greenfield/installers/claude-plugin/build-scripts/build.js', {
     cwd: repoRoot, stdio: 'inherit', shell: process.platform === 'win32',
   });
   const out = join(repoRoot, 'greenfield/installers/claude-plugin/output');
-  // Required surfaces present (FR-22, FR-33 gate 1).
+  // Required surfaces present.
   for (const rel of [
     '.claude-plugin/plugin.json',
     'package.json',
@@ -34,11 +34,11 @@ test('end-to-end build produces a valid plugin payload', { skip: process.env.SKI
   ]) {
     assert.ok(fs.existsSync(join(out, rel)), `missing ${rel}`);
   }
-  // No leftover bin/ or build-scripts/ (FR-22).
+  // No leftover bin/ or build-scripts/.
   assert.ok(!fs.existsSync(join(out, 'bin')), 'no bin/');
   assert.ok(!fs.existsSync(join(out, 'build-scripts')), 'no build-scripts/');
 
-  // npm pack --dry-run --json succeeds and reports size under budget (NFR-5).
+  // npm pack --dry-run --json succeeds and reports size under budget.
   const packOut = execSync('npm pack --dry-run --json', {
     cwd: out, shell: process.platform === 'win32', encoding: 'utf8',
   });
@@ -46,10 +46,10 @@ test('end-to-end build produces a valid plugin payload', { skip: process.env.SKI
   const entry = Array.isArray(parsed) ? parsed[0] : parsed;
   const size = entry?.unpackedSize ?? entry?.size ?? 0;
   const limit = Math.round(50 * 1024 * 1024 * 1.1);
-  assert.ok(size > 0 && size <= limit, `pack size ${size} must be > 0 and ≤ ${limit} (NFR-5)`);
+  assert.ok(size > 0 && size <= limit, `pack size ${size} must be > 0 and ≤ ${limit}`);
 });
 
-test('post-build: no source-folder litter (NFR-4)', { skip: process.env.SKIP_E2E === '1' }, () => {
+test('post-build: no source-folder litter', { skip: process.env.SKIP_E2E === '1' }, () => {
   // Build helpers respect no-litter: no cli/dist/, no ui/.next/ after build.
   // cli/ and ui/ live at the repo root per parent design Decision 10.
   const repoRoot = REPO_ROOT;

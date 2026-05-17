@@ -55,52 +55,52 @@ function makeUpstream() {
   return root;
 }
 
-test('runBuild emits the full plugin payload to output/ in correct shape (FR-22, FR-23, FR-31, FR-34, DD-4)', async () => {
+test('runBuild emits the full plugin payload to output/ in correct shape', async () => {
   const root = makeUpstream();
   try {
     await runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, greenfieldRel: '.' });
     const out = join(root, 'installers/claude-plugin/output');
-    assert.ok(fs.existsSync(join(out, 'agents/orchestrator.md')), 'agents copied (FR-22)');
-    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/SKILL.md')), 'skills copied (FR-22)');
-    assert.ok(fs.existsSync(join(out, 'orchestration.yml')), 'orchestration.yml staged at top level (FR-22)');
-    assert.ok(fs.existsSync(join(out, 'templates/medium.yml')), 'templates staged (FR-22)');
-    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/pipeline.js')), 'pipeline bundle (FR-39)');
-    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/explode-master-plan.js')), 'explode-master-plan bundle (FR-39)');
-    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/radorch.mjs')), 'CLI bundle (FR-22)');
+    assert.ok(fs.existsSync(join(out, 'agents/orchestrator.md')), 'agents copied');
+    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/SKILL.md')), 'skills copied');
+    assert.ok(fs.existsSync(join(out, 'orchestration.yml')), 'orchestration.yml staged at top level');
+    assert.ok(fs.existsSync(join(out, 'templates/medium.yml')), 'templates staged');
+    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/pipeline.js')), 'pipeline bundle');
+    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/explode-master-plan.js')), 'explode-master-plan bundle');
+    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/radorch.mjs')), 'CLI bundle');
     assert.ok(fs.existsSync(join(out, 'hooks/bootstrap.mjs')), 'hook bundle');
     assert.ok(fs.existsSync(join(out, 'hooks/drift-check.mjs')), 'drift-check verbatim');
     assert.ok(fs.existsSync(join(out, 'hooks/hooks.json')), 'hooks.json verbatim');
-    assert.ok(fs.existsSync(join(out, '.claude-plugin/plugin.json')), 'plugin.json (FR-35)');
-    assert.ok(fs.existsSync(join(out, 'package.json')), 'package.json synthesized (FR-34)');
-    assert.ok(fs.existsSync(join(out, 'manifests/v1.2.3.json')), 'manifest catalog (FR-36)');
-    // bin/ filtered out (FR-22).
-    assert.ok(!fs.existsSync(join(out, 'bin')), 'no bin/ (FR-22)');
+    assert.ok(fs.existsSync(join(out, '.claude-plugin/plugin.json')), 'plugin.json');
+    assert.ok(fs.existsSync(join(out, 'package.json')), 'package.json synthesized');
+    assert.ok(fs.existsSync(join(out, 'manifests/v1.2.3.json')), 'manifest catalog');
+    // bin/ filtered out.
+    assert.ok(!fs.existsSync(join(out, 'bin')), 'no bin/');
     // Source-only files not present.
-    assert.ok(!fs.existsSync(join(out, 'build-scripts')), 'no build-scripts/ (FR-22)');
-    assert.ok(!fs.existsSync(join(out, 'lib/install')), 'no source lib/install/ (DD-8)');
+    assert.ok(!fs.existsSync(join(out, 'build-scripts')), 'no build-scripts/');
+    assert.ok(!fs.existsSync(join(out, 'lib/install')), 'no source lib/install/');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('destination tokens are substituted across body files (FR-30, FR-31, AD-17)', async () => {
+test('destination tokens are substituted across body files', async () => {
   const root = makeUpstream();
   try {
     await runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, greenfieldRel: '.' });
     const out = join(root, 'installers/claude-plugin/output');
     const orch = fs.readFileSync(join(out, 'agents/orchestrator.md'), 'utf8');
     assert.ok(orch.includes('${CLAUDE_PLUGIN_ROOT}/skills/rad-orchestration/SKILL.md'),
-      '${SKILLS_ROOT} replaced with ${CLAUDE_PLUGIN_ROOT}/skills (FR-31)');
+      '${SKILLS_ROOT} replaced with ${CLAUDE_PLUGIN_ROOT}/skills');
     assert.ok(orch.includes('**rad-orchestration:coder**'),
-      'agent-namespacing applied (FR-32, AD-17)');
+      'agent-namespacing applied');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('synthesized output/package.json version equals plugin.json version, not wrapper version (FR-34, FR-35, AD-11)', async () => {
+test('synthesized output/package.json version equals plugin.json version, not wrapper version', async () => {
   const root = makeUpstream();
   try {
     await runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, greenfieldRel: '.' });
     const synthesized = JSON.parse(fs.readFileSync(
       join(root, 'installers/claude-plugin/output/package.json'), 'utf8'));
-    assert.strictEqual(synthesized.version, '1.2.3', 'version from plugin.json (FR-35)');
+    assert.strictEqual(synthesized.version, '1.2.3', 'version from plugin.json');
     assert.strictEqual(synthesized.name, '@rad-orchestration/claude-plugin');
     assert.deepStrictEqual(synthesized.files.sort(), [
       '.claude-plugin/', 'agents/', 'hooks/', 'lib/', 'manifests/',
@@ -109,11 +109,11 @@ test('synthesized output/package.json version equals plugin.json version, not wr
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('build aborts fail-fast on step error (NFR-13)', async () => {
+test('build aborts fail-fast on step error', async () => {
   const root = makeUpstream();
   try {
     fs.rmSync(join(root, 'runtime-config/orchestration.yml'));
     await assert.rejects(runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, greenfieldRel: '.' }),
-      /orchestration\.yml/, 'error names the failing step (NFR-13)');
+      /orchestration\.yml/, 'error names the failing step');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

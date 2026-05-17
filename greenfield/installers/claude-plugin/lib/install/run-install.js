@@ -50,22 +50,22 @@ export async function runInstall(opts) {
   const rawIj = readInstallJson(paths.installJson);
   // Lift legacy shapes (flat single-record or harnesses-keyed-with-version-field)
   // into the current unversioned harnesses-keyed shape on first read. New writes
-  // never carry state_schema_version; shape is identified structurally (FR-18).
+  // never carry state_schema_version; shape is identified structurally.
   let ij = rawIj ? migrateInstallJson(rawIj, INSTALL_KEY) : { harnesses: {} };
   const prior = ij.harnesses[INSTALL_KEY];
   const installedVersionBefore = prior?.version ?? null;
   const sentinelPresent = fs.existsSync(sentinel);
 
-  // Coexistence warning when the other channel is also registered (FR-20).
+  // Coexistence warning when the other channel is also registered.
   if (ij.harnesses.claude) emitCoexistenceWarning(stderr, 'legacy (claude) installer');
 
-  // Same-version fast path with sentinel self-heal (FR-9, FR-10, NFR-8).
+  // Same-version fast path with sentinel self-heal.
   if (prior && installedVersionBefore === deliveringVersion && sentinelPresent && !opts.force) {
     appendInstallLog(paths.installLog, { action: 'noop', deliveringVersion, installedVersionBefore });
     return { action: 'noop', deliveringVersion, installedVersionBefore };
   }
 
-  // Downgrade-noop (FR-19).
+  // Downgrade-noop.
   if (prior && cmpSemver(deliveringVersion, installedVersionBefore) < 0 && !opts.force) {
     stderr(`[install] Delivering v${deliveringVersion} is older than installed v${installedVersionBefore}; downgrade accepted as no-op.\n`);
     appendInstallLog(paths.installLog, { action: 'downgrade-noop', deliveringVersion, installedVersionBefore });
@@ -92,7 +92,7 @@ export async function runInstall(opts) {
     writeInstallJson(paths.installJson, ij);
 
     // Sentinel-missing is a self-heal: treat as fresh-install regardless of
-    // prior version record so callers know a full re-hydration occurred (FR-9, AD-13).
+    // prior version record so callers know a full re-hydration occurred.
     const action = (installedVersionBefore && sentinelPresent) ? 'upgrade-complete' : 'fresh-install';
     appendInstallLog(paths.installLog, { action, deliveringVersion, installedVersionBefore });
     return { action, deliveringVersion, installedVersionBefore };

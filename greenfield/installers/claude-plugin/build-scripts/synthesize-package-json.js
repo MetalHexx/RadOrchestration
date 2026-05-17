@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /** Produces output/package.json from wrapper package.json + plugin.json.
- *  plugin.json's version always wins per Anthropic precedence (AD-11). */
+ *  plugin.json's version always wins per Anthropic precedence. */
 export function synthesizePackageJson({ wrapperPath, pluginJsonPath, outPath }) {
   const wrapper = JSON.parse(fs.readFileSync(wrapperPath, 'utf8'));
   const pluginJson = JSON.parse(fs.readFileSync(pluginJsonPath, 'utf8'));

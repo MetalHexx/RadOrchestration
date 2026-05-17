@@ -7,7 +7,7 @@ function expand(destPath, paths) {
 }
 
 /** Copies every entry in the manifest from <pluginRoot>/<sourcePath> to its
- *  expanded destinationPath. AD-2: every destination must live under
+ *  expanded destinationPath. Every destination must live under
  *  paths.root. */
 export function installManifestFiles(manifest, pluginRoot, opts = {}) {
   const paths = userDataPaths(opts);

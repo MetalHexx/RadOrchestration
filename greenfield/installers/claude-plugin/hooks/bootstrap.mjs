@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // bootstrap.mjs — UserPromptSubmit hook. Merged successor of legacy
 // bootstrap-then-uninstall.mjs + the radorch plugin-bootstrap subcommand.
-// Imports lib/install/* directly — esbuild inlines them at build time
-// (FR-13). On install success, atomically rewrites hooks.json to remove
+// Imports lib/install/* directly — esbuild inlines them at build time.
+// On install success, atomically rewrites hooks.json to remove
 // its own UserPromptSubmit entry; SessionStart drift-check stays in place.
 
 import fs from 'node:fs';

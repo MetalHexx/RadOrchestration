@@ -6,7 +6,7 @@ export const INSTALL_LOG_ACTIONS = Object.freeze(new Set([
   'downgrade-noop', 'cancelled-modified-files', 'error',
 ]));
 
-/** Best-effort append; never throws to caller (NFR-10). */
+/** Best-effort append; never throws to caller. */
 export function appendInstallLog(file, { action, deliveringVersion, installedVersionBefore }, opts = {}) {
   const { mkdirAncestors = true } = opts;
   try {
@@ -23,6 +23,6 @@ export function appendInstallLog(file, { action, deliveringVersion, installedVer
     if (mkdirAncestors) fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.appendFileSync(file, JSON.stringify(entry) + '\n');
   } catch {
-    /* best-effort; NFR-10 */
+    /* best-effort */
   }
 }

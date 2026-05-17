@@ -5,14 +5,14 @@ import os from 'node:os';
 import { join } from 'node:path';
 import { appendInstallLog, INSTALL_LOG_ACTIONS } from '../lib/install/install-log.js';
 
-test('INSTALL_LOG_ACTIONS is exactly the six-action vocabulary (FR-16)', () => {
+test('INSTALL_LOG_ACTIONS is exactly the six-action vocabulary', () => {
   assert.deepStrictEqual([...INSTALL_LOG_ACTIONS].sort(), [
     'cancelled-modified-files', 'downgrade-noop', 'error',
     'fresh-install', 'noop', 'upgrade-complete',
   ]);
 });
 
-test('appendInstallLog writes a single JSON object per line with the five canonical fields (FR-15, DD-2)', async () => {
+test('appendInstallLog writes a single JSON object per line with the five canonical fields', async () => {
   const dir = fs.mkdtempSync(join(os.tmpdir(), 'log-'));
   try {
     const f = join(dir, 'install.log');
@@ -25,7 +25,7 @@ test('appendInstallLog writes a single JSON object per line with the five canoni
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('appendInstallLog is best-effort — write to an unwritable path resolves without throwing (NFR-10)', async () => {
+test('appendInstallLog is best-effort — write to an unwritable path resolves without throwing', async () => {
   // EBADF / EACCES is the realistic class; here we drive the same code path
   // by passing a path under a non-existent ancestor and refusing mkdir.
   await assert.doesNotReject(async () => {

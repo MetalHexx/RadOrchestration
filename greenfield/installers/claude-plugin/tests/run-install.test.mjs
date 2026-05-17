@@ -13,7 +13,7 @@ function makePluginRoot(version) {
   fs.writeFileSync(join(dir, 'orchestration.yml'), 'pipeline: {}\n');
   fs.mkdirSync(join(dir, 'templates'), { recursive: true });
   fs.writeFileSync(join(dir, 'templates/medium.yml'), 'name: medium\n');
-  // UI subtree — populated for tree-copy (FR-7); not listed per-file in the manifest
+  // UI subtree — populated for tree-copy; not listed per-file in the manifest
   fs.mkdirSync(join(dir, 'ui/.next/static/chunks'), { recursive: true });
   fs.mkdirSync(join(dir, 'ui/public'), { recursive: true });
   fs.writeFileSync(join(dir, 'ui/server.js'), '// ui\n');
@@ -28,7 +28,7 @@ function makePluginRoot(version) {
   return dir;
 }
 
-test('fresh install hydrates ~/.radorch/, stamps install.json under claude-plugin, logs fresh-install (FR-7, FR-17, NFR-8)', async () => {
+test('fresh install hydrates ~/.radorch/, stamps install.json under claude-plugin, logs fresh-install', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-'));
   const pluginRoot = makePluginRoot('1.0.0');
   try {
@@ -40,7 +40,7 @@ test('fresh install hydrates ~/.radorch/, stamps install.json under claude-plugi
     const ij = JSON.parse(fs.readFileSync(join(radHome, 'install.json'), 'utf8'));
     assert.strictEqual(ij.harnesses['claude-plugin'].version, '1.0.0');
     assert.ok(!('state_schema_version' in ij),
-      'fresh install.json carries no state_schema_version field — current shape is unversioned (FR-18)');
+      'fresh install.json carries no state_schema_version field — current shape is unversioned');
     const log = fs.readFileSync(join(radHome, 'logs/install.log'), 'utf8').trim();
     assert.strictEqual(JSON.parse(log).action, 'fresh-install');
   } finally {
@@ -49,7 +49,7 @@ test('fresh install hydrates ~/.radorch/, stamps install.json under claude-plugi
   }
 });
 
-test('same-version re-run takes the noop fast path with no writes besides best-effort log (FR-9 short-circuit, NFR-8)', async () => {
+test('same-version re-run takes the noop fast path with no writes besides best-effort log', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-noop-'));
   const pluginRoot = makePluginRoot('1.0.0');
   try {
@@ -65,7 +65,7 @@ test('same-version re-run takes the noop fast path with no writes besides best-e
   }
 });
 
-test('sentinel missing forces fresh-install even on version match (FR-9, AD-13)', async () => {
+test('sentinel missing forces fresh-install even on version match', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-sentinel-'));
   const pluginRoot = makePluginRoot('1.0.0');
   try {
@@ -79,7 +79,7 @@ test('sentinel missing forces fresh-install even on version match (FR-9, AD-13)'
   }
 });
 
-test('downgrade emits downgrade-noop and warns, never refuses (FR-19)', async () => {
+test('downgrade emits downgrade-noop and warns, never refuses', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-down-'));
   const pluginNew = makePluginRoot('1.1.0');
   const pluginOld = makePluginRoot('1.0.0');
@@ -96,12 +96,12 @@ test('downgrade emits downgrade-noop and warns, never refuses (FR-19)', async ()
   }
 });
 
-test('cross-channel coexistence warning fires when claude key is present alongside claude-plugin (FR-20, AD-12)', async () => {
+test('cross-channel coexistence warning fires when claude key is present alongside claude-plugin', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-coex-'));
   const pluginRoot = makePluginRoot('1.0.0');
   try {
     // Pre-existing install.json in the current shape — identified structurally by
-    // presence of the harnesses object; no state_schema_version field (FR-18).
+    // presence of the harnesses object; no state_schema_version field.
     fs.writeFileSync(join(radHome, 'install.json'), JSON.stringify({
       harnesses: { 'claude': { version: '0.9.0', channel: 'legacy-installer', installed_at: 'x', last_writer_version: '0.9.0' } },
     }));
@@ -109,14 +109,14 @@ test('cross-channel coexistence warning fires when claude key is present alongsi
     await runInstall({ pluginRoot, radHome, stderr: (msg) => warns.push(msg) });
     const joined = warns.join('\n');
     assert.match(joined, /legacy.*installer|standard.*installer|claude.*coexist/i,
-      'multi-line stderr warning naming both installs (FR-20)');
+      'multi-line stderr warning naming both installs');
   } finally {
     fs.rmSync(radHome, { recursive: true, force: true });
     fs.rmSync(pluginRoot, { recursive: true, force: true });
   }
 });
 
-test('--force bypasses the same-version noop short-circuit (FR-10)', async () => {
+test('--force bypasses the same-version noop short-circuit', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-force-'));
   const pluginRoot = makePluginRoot('1.0.0');
   try {
@@ -129,7 +129,7 @@ test('--force bypasses the same-version noop short-circuit (FR-10)', async () =>
   }
 });
 
-test('fresh install copies ui/ tree to ~/.radorch/ui/ (FR-7 tree-copy)', async () => {
+test('fresh install copies ui/ tree to ~/.radorch/ui/', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-ui-'));
   const pluginRoot = makePluginRoot('1.0.0');
   try {
@@ -143,15 +143,15 @@ test('fresh install copies ui/ tree to ~/.radorch/ui/ (FR-7 tree-copy)', async (
   }
 });
 
-test('AD-8 hydration scope — no config.yml / registry.yml / .harness / .gitignore / runtime/ writes (FR-8)', async () => {
+test('hydration scope — no config.yml / registry.yml / .harness / .gitignore / runtime/ writes', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-ad8-'));
   const pluginRoot = makePluginRoot('1.0.0');
   try {
     await runInstall({ pluginRoot, radHome });
     for (const banned of ['config.yml', 'registry.yml', '.harness', '.gitignore']) {
-      assert.ok(!fs.existsSync(join(radHome, banned)), `installer must not write ${banned} (FR-8)`);
+      assert.ok(!fs.existsSync(join(radHome, banned)), `installer must not write ${banned}`);
     }
-    assert.ok(!fs.existsSync(join(radHome, 'runtime')), 'installer must not mkdir ~/.radorch/runtime/ (FR-8)');
+    assert.ok(!fs.existsSync(join(radHome, 'runtime')), 'installer must not mkdir ~/.radorch/runtime/');
   } finally {
     fs.rmSync(radHome, { recursive: true, force: true });
     fs.rmSync(pluginRoot, { recursive: true, force: true });
