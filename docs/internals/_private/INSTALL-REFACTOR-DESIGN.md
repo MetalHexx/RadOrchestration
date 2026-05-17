@@ -45,7 +45,7 @@ This document captures the target architecture for the installer + bundler side.
 ├── ui/                                       # Next.js dashboard
 │                                             #   deployed to ~/.radorch/ui/ by both installers
 │
-└── installers/
+└── harness-installers/
     │
     ├── shared/
     │   └── build-helpers/                    # emit-cli-bundle, emit-ui-bundle
@@ -155,12 +155,12 @@ Source of `radorch.mjs` — the runtime utility belt that ships inside the `rad-
 radorch is a pure runtime utility belt: `doctor`, `where`, `harness use/list`, `ui start/stop/status`, `gate approve plan/final`. It should **not** contain:
 - An `install` subcommand — install logic belongs to installers, not the runtime CLI.
 - A `plugin-bootstrap` subcommand — the claude-plugin installer's entry point handles SessionStart bootstrapping directly.
-- `cli/src/lib/upgrade/*` — upgrade logic lives inside the claude-plugin installer (`installers/claude-plugin/lib/install/`), its only real consumer.
+- `cli/src/lib/upgrade/*` — upgrade logic lives inside the claude-plugin installer (`harness-installers/claude-plugin/lib/install/`), its only real consumer.
 
 ### `/ui/`
 Next.js dashboard. Lives at repo root: a self-contained npm package, deployed to `~/.radorch/ui/` (not into a harness folder), shared across all installers. Both installers consume it via the same `emit-ui-bundle` helper.
 
-### `/installers/`
+### `/harness-installers/`
 Top-level monorepo of installer variants and shared installer helpers.
 
 - **`shared/build-helpers/`** — small helpers like `emit-cli-bundle.js`, `emit-ui-bundle.js`. Adapter knowledge is **not** here; it lives in `harness-adapters/`. Installers consume the adapter engine's output tree as input.
@@ -177,9 +177,9 @@ Each installer is a separately publishable npm package with its own `package.jso
 ### Standard installer install flow (end-user)
 
 1. User runs `npx rad-orchestration` (or `npx ./<tarball>`).
-2. `installers/standard/index.js` runs the wizard (or `--yes` headless mode) and collects harness selection.
-3. The bundled tarball contains `installers/standard/dist/<harness>/` with translated agents/skills (sourced from `harness-adapters/output/<harness>/` at pack time), the bundled `radorch.mjs`, the built UI, and the manifest catalog.
-4. `installers/standard/lib/install/install-harness.js` reads `~/.radorch/install.json` to detect prior install version.
+2. `harness-installers/standard/index.js` runs the wizard (or `--yes` headless mode) and collects harness selection.
+3. The bundled tarball contains `harness-installers/standard/dist/<harness>/` with translated agents/skills (sourced from `harness-adapters/output/<harness>/` at pack time), the bundled `radorch.mjs`, the built UI, and the manifest catalog.
+4. `harness-installers/standard/lib/install/install-harness.js` reads `~/.radorch/install.json` to detect prior install version.
 5. On upgrade: loads prior version's manifest from `dist/<harness>/manifests/v<prior>.json`, calls `removeManifestFiles` to clean up old files at their templated destinations.
 6. Loads current version's manifest, calls `installManifestFiles` to copy from `dist/<harness>/` to `~/.claude/` or `~/.copilot/` (and `~/.radorch/` for shared assets).
 7. Writes skeleton config files via `base-files.js`.
@@ -194,7 +194,7 @@ Updated by INSTALL-REFACTOR-CLAUDE-PLUGIN (iteration 1) — see that brainstorm 
 3. The hook invokes `node ${CLAUDE_PLUGIN_ROOT}/hooks/bootstrap.mjs` (the merged install orchestrator — replaces parent design's earlier `index.js` reference).
 4. `bootstrap.mjs` reads delivering version from `${CLAUDE_PLUGIN_ROOT}/package.json`, compares against `~/.radorch/install.json`'s `claude-plugin` InstallKey entry; sentinel-checks for `radorch.mjs` on disk.
 5. On version match + sentinel pass: no-op, self-uninstall the `UserPromptSubmit` entry from `hooks.json`, exit.
-6. On version mismatch or fresh install: import stages from `installers/claude-plugin/lib/install/*` (bundled into `bootstrap.mjs` at build time so plugin cache doesn't need `node_modules/`) and run them in order:
+6. On version mismatch or fresh install: import stages from `harness-installers/claude-plugin/lib/install/*` (bundled into `bootstrap.mjs` at build time so plugin cache doesn't need `node_modules/`) and run them in order:
    - Load prior version's manifest from bundled catalog
    - Remove prior version's files (skip entries with `ownership: 'user-config'` like `orchestration.yml`); prune emptied parent directories upward
    - `mkdir -p ~/.radorch/projects/`, `~/.radorch/logs/`
@@ -210,15 +210,15 @@ Updated by INSTALL-REFACTOR-CLAUDE-PLUGIN (iteration 1) — see that brainstorm 
 ### Build flow (pack time, per installer)
 
 1. The adapter engine runs first: `harness-files/` → `harness-adapters/output/<harness>/` (translated files).
-2. `installers/<name>/build-scripts/build.js` runs:
+2. `harness-installers/<name>/build-scripts/build.js` runs:
    - Reads translated files from `harness-adapters/output/<harness>/`
    - `shared/build-helpers/emit-cli-bundle.js` bundles `/cli/` → `dist/<harness>/skills/rad-orchestration/scripts/radorch.mjs`
    - `shared/build-helpers/emit-ui-bundle.js` builds `/ui/` standalone → `dist/ui/`
    - Generates the per-installer manifest with sha256s and destination paths; writes to both `manifests/<harness>/v<current>.json` (committed) and `dist/<harness>/manifests/v<current>.json`
    - Copies all prior `manifests/<harness>/v*.json` into `dist/<harness>/manifests/` so the tarball contains the full release-history catalog
-3. `npm pack` reads `installers/<name>/dist/` and produces the tarball.
+3. `npm pack` reads `harness-installers/<name>/dist/` and produces the tarball.
 
-Same pattern for `installers/claude-plugin/build-scripts/build.js`, except the manifest catalog is a single stream (no harness subfolder) and the plugin's `.claude-plugin/plugin.json` and `hooks/hooks.json` get copied into `dist/` too.
+Same pattern for `harness-installers/claude-plugin/build-scripts/build.js`, except the manifest catalog is a single stream (no harness subfolder) and the plugin's `.claude-plugin/plugin.json` and `hooks/hooks.json` get copied into `dist/` too.
 
 ### Dogfooding (developer inner loop)
 
@@ -226,8 +226,8 @@ No dedicated dogfood machinery. The inner loop runs the adapter engine and then 
 
 ```
 cd harness-adapters && node engine/build.js                       # populate harness-adapters/output/
-cd installers/standard && node build-scripts/build.js             # build tarball staging
-node installers/standard/index.js --yes --harness claude --bundle-root ./dist/
+cd harness-installers/standard && node build-scripts/build.js             # build tarball staging
+node harness-installers/standard/index.js --yes --harness claude --bundle-root ./dist/
 ```
 
 The adapter engine separates `harness-files/ → output/` (translation) from `output/ → installable tarball` (packaging), so each step runs independently for tight iteration.
@@ -239,13 +239,13 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 ### Decision 1: Source content lives under `/harness-files/`
 - `harness-files/agents/` holds body files plus per-harness frontmatter ymls.
 - `harness-files/skills/` holds skills with inline frontmatter (LCD authored).
-- `/hooks/` lives under `installers/claude-plugin/hooks/` — it's plugin-specific.
+- `/hooks/` lives under `harness-installers/claude-plugin/hooks/` — it's plugin-specific.
 - `/ui/` and `/cli/` stay at repo root — they're self-contained npm packages with their own build systems.
 - Adapter-side details: [INSTALL-REFACTOR-ADAPTERS](~/.radorch/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md).
 - **Rationale:** "harness-files" names the role: files that get harness-adapted. Keeping them in one folder separates source content from generated artifacts and packages.
 
 ### Decision 2: Adapter subsystem owns translation; installers own packaging
-- `harness-adapters/` produces translated harness-shape files; `installers/<name>/` packages them into install shapes.
+- `harness-adapters/` produces translated harness-shape files; `harness-installers/<name>/` packages them into install shapes.
 - The boundary between subsystems is `harness-adapters/output/`.
 - **Rationale:** translation (per-harness content shape) and packaging (per-install-target shape) are distinct concerns. Separating them lets the adapter subsystem stay harness-blind and the installer subsystem stay install-shape-focused.
 
@@ -258,12 +258,12 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 - **Rationale:** UI is consumed by both installers and deploys to `~/.radorch/ui/`. It's a self-contained npm package, not harness-translated content.
 
 ### Decision 5: Each installer owns its own install state machine
-- `installers/standard/lib/install/` and `installers/claude-plugin/lib/install/` each contain a full state machine.
+- `harness-installers/standard/lib/install/` and `harness-installers/claude-plugin/lib/install/` each contain a full state machine.
 - **Rationale:** the two installers diverge meaningfully (claude-plugin needs the install log + atomic-write invariants + sentinel self-heal; standard needs config.yml skeleton writes + interactive wizard + harness selection). Independent copies preserve self-containment without coupling them through a shared library. (Earlier design iterations included `hash-check` and `bootstrap-lock` for claude-plugin; both dropped during iteration 1 scrutiny.)
 
 ### Decision 6: Manifest catalogs live inside each installer
-- `installers/standard/manifests/<harness>/v*.json` (per-harness streams).
-- `installers/claude-plugin/manifests/v*.json` (single stream).
+- `harness-installers/standard/manifests/<harness>/v*.json` (per-harness streams).
+- `harness-installers/claude-plugin/manifests/v*.json` (single stream).
 - **Rationale:** each installer's upgrade catalog ships inside its own npm tarball so end users at any prior version have access to clean upgrade paths.
 
 ### Decision 7: Standard installer ships all three harnesses in one tarball
@@ -271,9 +271,9 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 - **Rationale:** smallest user surface (`npx rad-orchestration` works for everyone) versus three separate npm packages with lockstep versions.
 
 ### Decision 8: Shared build helpers stay narrow; adapters are not shared
-- `installers/shared/build-helpers/` holds `emit-cli-bundle.js`, `emit-ui-bundle.js`.
+- `harness-installers/shared/build-helpers/` holds `emit-cli-bundle.js`, `emit-ui-bundle.js`.
 - Adapter code is **not** here — it lives in `harness-adapters/`. Installers consume the engine's output tree.
-- **Rationale:** clean boundary — translation belongs to `harness-adapters/`; packaging belongs to `installers/`.
+- **Rationale:** clean boundary — translation belongs to `harness-adapters/`; packaging belongs to `harness-installers/`.
 
 ### Decision 9: No dogfood machinery
 - No `scripts/build.js`, no `dogfood-prior-<harness>.json`, no `/dist/staging/`.
@@ -295,13 +295,13 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 
 ### Decision 12: `publish.yml` updates at cutover, not during iteration rebuilds
 - During the greenfield iterations (claude-plugin in iteration 1, standard installer in iteration 2), `.github/workflows/publish.yml` stays unchanged. The legacy installer (`installer/`) and the legacy plugin build path (`cli/dist/marketplaces/claude/plugins/rad-orchestration/`) continue to publish from their current locations on git tag push.
-- At cutover, `publish.yml` updates in lockstep with the folder deletion: the `publish` job's `working-directory` swaps to the new standard installer location, and the `publish-plugin` job swaps to publish from `installers/claude-plugin/output/` (or whichever location the new build emits to). Both swaps happen in the cutover commit alongside old-folder removal.
+- At cutover, `publish.yml` updates in lockstep with the folder deletion: the `publish` job's `working-directory` swaps to the new standard installer location, and the `publish-plugin` job swaps to publish from `harness-installers/claude-plugin/output/` (or whichever location the new build emits to). Both swaps happen in the cutover commit alongside old-folder removal.
 - Per-iteration dev loops are local-only: build locally (`npm run build` in the installer package), test via `claude --plugin-dir ./output` or a local marketplace install. No npm publish during iteration rebuilds.
 - **Rationale:** keeps existing users on the legacy installer with no surprise upgrades during the rebuild. Cutover is the single atomic switchover from old paths to new paths — `publish.yml` is one of the files that participates in that switchover, alongside the folder deletion. Adding pre-release publish paths during iterations was considered and rejected as unnecessary CI complexity given that local-only testing covers the iteration dev loop.
 
 ### Decision 13: Marketplace catalog stays at repo root; plugin manifest lives in plugin payload
 - The repo-root file `/.claude-plugin/marketplace.json` is the **marketplace catalog** that Claude Code resolves when a user runs `/plugin marketplace add MetalHexx/RadOrchestration`. Per Anthropic docs, this location is load-bearing — the catalog MUST live at `<repo-root>/.claude-plugin/marketplace.json`. The rearchitecture does **not** move it.
-- The file `installers/claude-plugin/.claude-plugin/plugin.json` is the **plugin manifest** that ships inside the plugin payload (today at `plugin/.claude-plugin/plugin.json`; relocates to `installers/claude-plugin/.claude-plugin/plugin.json` in iteration 1). Build stamps the version into `output/.claude-plugin/plugin.json` per Anthropic docs' precedence rule (the plugin manifest's `version` always wins over a marketplace entry's `version`).
+- The file `harness-installers/claude-plugin/.claude-plugin/plugin.json` is the **plugin manifest** that ships inside the plugin payload (today at `plugin/.claude-plugin/plugin.json`; relocates to `harness-installers/claude-plugin/.claude-plugin/plugin.json` in iteration 1). Build stamps the version into `output/.claude-plugin/plugin.json` per Anthropic docs' precedence rule (the plugin manifest's `version` always wins over a marketplace entry's `version`).
 - **Two distinct manifests, two distinct locations, different roles.** The marketplace catalog points at the published npm package (`@rad-orchestration/claude-plugin`); the plugin manifest identifies the plugin from inside the cache copy.
 - **Rationale:** the location of the marketplace catalog is an Anthropic-platform constraint; the location of the plugin manifest is convention. Earlier brainstorming risked conflating them, which would have broken the `/plugin marketplace add` flow.
 
@@ -318,19 +318,19 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 |---|---|---|
 | `/agents/` | `greenfield/harness-files/agents/` | Copy bodies; strip existing frontmatter; replace with `{{FRONTMATTER}}` token. Hand-author per-harness ymls alongside, using current `/adapters/<harness>/adapter.js` as the reference for each harness's expected frontmatter shape. |
 | `/skills/` | `greenfield/harness-files/skills/` | Copy verbatim (frontmatter stays inline, LCD authored). |
-| `/hooks/` | `installers/claude-plugin/hooks/` | Move; update build script (becomes `installers/claude-plugin/build-scripts/build.js`). |
-| `/installer/` | `installers/standard/` | Rename; restructure subfolders per the target layout. |
-| `/installer/src/` | `installers/standard/dist/` | Rename — currently misnamed as `src/`; gitignored except manifests. |
-| Manifest catalogs in `/installer/src/<h>/manifests/` | `installers/standard/manifests/<h>/` | Pull out of `dist/`, commit to git separately. |
-| `/plugin/` | `installers/claude-plugin/` | Rename; plugin manifest moves to `.claude-plugin/plugin.json`; `bin/` payload dropped (vestigial). The plugin's SessionStart/UserPromptSubmit entry is the hook scripts under `hooks/`, not an `index.js` (the parent design's earlier `index.js` reference is superseded by Iteration 1's hook-as-entry decision; see INSTALL-REFACTOR-CLAUDE-PLUGIN brainstorm). |
+| `/hooks/` | `harness-installers/claude-plugin/hooks/` | Move; update build script (becomes `harness-installers/claude-plugin/build-scripts/build.js`). |
+| `/installer/` | `harness-installers/standard/` | Rename; restructure subfolders per the target layout. |
+| `/installer/src/` | `harness-installers/standard/dist/` | Rename — currently misnamed as `src/`; gitignored except manifests. |
+| Manifest catalogs in `/installer/src/<h>/manifests/` | `harness-installers/standard/manifests/<h>/` | Pull out of `dist/`, commit to git separately. |
+| `/plugin/` | `harness-installers/claude-plugin/` | Rename; plugin manifest moves to `.claude-plugin/plugin.json`; `bin/` payload dropped (vestigial). The plugin's SessionStart/UserPromptSubmit entry is the hook scripts under `hooks/`, not an `index.js` (the parent design's earlier `index.js` reference is superseded by Iteration 1's hook-as-entry decision; see INSTALL-REFACTOR-CLAUDE-PLUGIN brainstorm). |
 | `/cli/src/commands/install.ts`, `install/skeleton.ts`, `install/harness-bundles.ts` | **Delete** | Vestigial install-shaped commands; absorbed into each installer's own state machine. |
-| `/cli/src/commands/plugin-bootstrap/` | `installers/claude-plugin/hooks/bootstrap.mjs` + `installers/claude-plugin/lib/install/` | Subcommand absorbed; the hook script (renamed from `bootstrap-then-uninstall.mjs` to `bootstrap.mjs`) imports stages directly from `lib/install/` — no subprocess spawn. radorch loses this subcommand. |
-| `/cli/src/lib/upgrade/` | `installers/claude-plugin/lib/install/` | Folds with plugin-bootstrap absorption. |
+| `/cli/src/commands/plugin-bootstrap/` | `harness-installers/claude-plugin/hooks/bootstrap.mjs` + `harness-installers/claude-plugin/lib/install/` | Subcommand absorbed; the hook script (renamed from `bootstrap-then-uninstall.mjs` to `bootstrap.mjs`) imports stages directly from `lib/install/` — no subprocess spawn. radorch loses this subcommand. |
+| `/cli/src/lib/upgrade/` | `harness-installers/claude-plugin/lib/install/` | Folds with plugin-bootstrap absorption. |
 | `/adapters/` | Read-only reference during migration; deleted at cutover. The new adapter subsystem lives in `greenfield/harness-adapters/`. The existing adapter code is the source of truth for per-harness frontmatter shapes while authoring the new ymls. |
 | `/scripts/build.js` and dogfood machinery | **Delete** | Per Decision 9. |
-| `/scripts/build-plugin.js` | `installers/claude-plugin/build-scripts/build.js` | Move; gains shared helper imports. |
+| `/scripts/build-plugin.js` | `harness-installers/claude-plugin/build-scripts/build.js` | Move; gains shared helper imports. |
 | `/scripts/build-*.test.js` | Distributed to each installer's `tests/` | Move with the scripts they cover. |
-| Shared bundle/UI emit logic | `installers/shared/build-helpers/` | Extract from current `installer/scripts/sync-source.js` and `scripts/build-plugin.js`. |
+| Shared bundle/UI emit logic | `harness-installers/shared/build-helpers/` | Extract from current `installer/scripts/sync-source.js` and `scripts/build-plugin.js`. |
 
 References across the codebase update with every move — tests, CLAUDE.md, docs, build scripts, package.json `files` arrays.
 
@@ -340,8 +340,8 @@ References across the codebase update with every move — tests, CLAUDE.md, docs
 
 - **No dedicated dogfood architecture.** Inner-loop development uses the same code paths as end users (Decision 9).
 - **No shared install-lib package.** Each installer keeps its own `lib/install/` (Decision 5).
-- **No shared adapter library inside `installers/`.** Adapter knowledge lives in `harness-adapters/` (Decision 8).
-- **No splitting `installers/standard/` into per-harness npm packages.** One tarball, wizard selects (Decision 7).
+- **No shared adapter library inside `harness-installers/`.** Adapter knowledge lives in `harness-adapters/` (Decision 8).
+- **No splitting `harness-installers/standard/` into per-harness npm packages.** One tarball, wizard selects (Decision 7).
 - **No top-level `dist/` at the repo root.** Each installer's `dist/` lives under its own folder; `cli/dist/` and `ui/.next/` stay where they are (package-local). `harness-adapters/output/` is gitignored too.
 - **No changes to `radorch.mjs`'s naming or location post-deploy.** It still ships inside `<harness-root>/skills/rad-orchestration/scripts/radorch.mjs`.
 - **No retroactive rewrite of past committed manifests.** The append-only catalog continues from wherever it lands at rearchitecture commit time.

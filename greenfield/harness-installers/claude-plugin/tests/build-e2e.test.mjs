@@ -12,10 +12,10 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 // expect ~10-30s for the full run. Skipped when SKIP_E2E=1.
 test('end-to-end build produces a valid plugin payload', { skip: process.env.SKIP_E2E === '1' }, () => {
   const repoRoot = REPO_ROOT;
-  execSync('node greenfield/installers/claude-plugin/build-scripts/build.js', {
+  execSync('node greenfield/harness-installers/claude-plugin/build-scripts/build.js', {
     cwd: repoRoot, stdio: 'inherit', shell: process.platform === 'win32',
   });
-  const out = join(repoRoot, 'greenfield/installers/claude-plugin/output');
+  const out = join(repoRoot, 'greenfield/harness-installers/claude-plugin/output');
   // Required surfaces present.
   for (const rel of [
     '.claude-plugin/plugin.json',

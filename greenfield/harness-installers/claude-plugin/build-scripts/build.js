@@ -28,7 +28,7 @@ function step(name, fn) {
  *            greenfieldRel?: string }} opts
  *  `rootDir` is the repo root. `greenfieldRel` (default 'greenfield') names
  *  the relative folder under `rootDir` that hosts the new staged subsystems
- *  (`installers/`, `runtime-config/`, `harness-files/`, `harness-adapters/`).
+ *  (`harness-installers/`, `runtime-config/`, `harness-files/`, `harness-adapters/`).
  *  Per parent design Decision 10, repo-root folders `cli/` and `ui/` stay at
  *  the repo root for the duration of iteration 1 and are referenced directly.
  *  Unit tests construct a synthetic fixture without a `greenfield/` parent,
@@ -37,7 +37,7 @@ export async function runBuild(opts) {
   const root = path.resolve(opts.rootDir);
   const greenfieldRel = opts.greenfieldRel ?? 'greenfield';
   const greenfield = path.join(root, greenfieldRel);
-  const installerDir = path.join(greenfield, 'installers/claude-plugin');
+  const installerDir = path.join(greenfield, 'harness-installers/claude-plugin');
   const out = path.join(installerDir, 'output');
   const adapterOut = path.join(greenfield, 'harness-adapters/output/claude');
 

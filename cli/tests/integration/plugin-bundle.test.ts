@@ -19,7 +19,7 @@ const pluginRoot = path.join(
   'plugins',
   'rad-orchestration',
 );
-const bootstrapScript = path.join(repoRoot, 'greenfield', 'installers', 'claude-plugin', 'hooks', 'bootstrap.mjs');
+const bootstrapScript = path.join(repoRoot, 'greenfield', 'harness-installers', 'claude-plugin', 'hooks', 'bootstrap.mjs');
 
 beforeAll(async () => {
   if (!(await fs.stat(pluginRoot).catch(() => null))) {

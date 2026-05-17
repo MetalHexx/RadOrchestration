@@ -17,13 +17,13 @@ test('legacy plugin and new installer output match modulo intentional drops', { 
   const legacy = join(repoRoot, 'cli/dist/marketplaces/claude/plugins/rad-orchestration');
   assert.ok(fs.existsSync(legacy), 'legacy plugin payload present after build:plugin');
   // 2. Build the new installer (idempotent; cheap if output/ already in place).
-  execSync('node greenfield/installers/claude-plugin/build-scripts/build.js', {
+  execSync('node greenfield/harness-installers/claude-plugin/build-scripts/build.js', {
     cwd: repoRoot, stdio: 'inherit', shell: process.platform === 'win32',
   });
-  const fresh = join(repoRoot, 'greenfield/installers/claude-plugin/output');
+  const fresh = join(repoRoot, 'greenfield/harness-installers/claude-plugin/output');
   // 3. Diff via parity-check.js.
   const result = spawnSync(process.execPath, [
-    'greenfield/installers/claude-plugin/build-scripts/parity-check.js',
+    'greenfield/harness-installers/claude-plugin/build-scripts/parity-check.js',
     `--new=${fresh}`, `--legacy=${legacy}`,
   ], { cwd: repoRoot, encoding: 'utf8' });
   assert.strictEqual(result.status, 0, `parity-check FAIL:\n${result.stderr}`);

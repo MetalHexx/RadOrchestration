@@ -10,7 +10,7 @@
 //
 // Usage:
 //   node parity-check.js \
-//     --new=installers/claude-plugin/output \
+//     --new=harness-installers/claude-plugin/output \
 //     --legacy=cli/dist/marketplaces/claude/plugins/rad-orchestration
 //
 // Exits 0 on match, 1 on diff with structured stderr report.

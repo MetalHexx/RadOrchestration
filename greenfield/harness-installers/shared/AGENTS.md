@@ -17,7 +17,7 @@ Every function in `shared/` accepts all installer-specific values as parameters.
 - Hardcoded destination paths (`~/.radorch/`, `${CLAUDE_PLUGIN_ROOT}`, etc.)
 - Hardcoded token maps or agent name lists
 
-The current consumer is `installers/claude-plugin/build-scripts/build.js`. Future installer variants will import from the same helpers with their own parameter sets.
+The current consumer is `harness-installers/claude-plugin/build-scripts/build.js`. Future installer variants will import from the same helpers with their own parameter sets.
 
 ## Coding conventions
 

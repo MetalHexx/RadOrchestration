@@ -10,7 +10,7 @@ const BOOTSTRAP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 
 function makeFakePluginRoot(version) {
   // bootstrap.mjs is the source-side entry; the bundled output lands in
-  // installers/claude-plugin/output/hooks/bootstrap.mjs via emit-hook-bundle.
+  // harness-installers/claude-plugin/output/hooks/bootstrap.mjs via emit-hook-bundle.
   // Tests against bootstrap import the source-side entry directly so
   // lib/install/* resolves at runtime.
   const dir = fs.mkdtempSync(join(os.tmpdir(), 'bp-'));

@@ -37,20 +37,20 @@ function makeUpstream() {
   fs.mkdirSync(join(root, 'ui/.next/static'), { recursive: true });
   fs.writeFileSync(join(root, 'ui/.next/standalone/server.js'), '// ui\n');
   // installer source root: hooks/, lib/install/, .claude-plugin/, manifests/
-  fs.mkdirSync(join(root, 'installers/claude-plugin/hooks'), { recursive: true });
-  fs.writeFileSync(join(root, 'installers/claude-plugin/hooks/bootstrap.mjs'), 'console.error("boot");\n');
-  fs.writeFileSync(join(root, 'installers/claude-plugin/hooks/drift-check.mjs'), 'console.log("drift");\n');
-  fs.writeFileSync(join(root, 'installers/claude-plugin/hooks/hooks.json'), '{}\n');
-  fs.writeFileSync(join(root, 'installers/claude-plugin/hooks/AGENTS.md'), '# Hooks AGENTS\n');
-  fs.mkdirSync(join(root, 'installers/claude-plugin/.claude-plugin'), { recursive: true });
-  fs.writeFileSync(join(root, 'installers/claude-plugin/.claude-plugin/plugin.json'),
+  fs.mkdirSync(join(root, 'harness-installers/claude-plugin/hooks'), { recursive: true });
+  fs.writeFileSync(join(root, 'harness-installers/claude-plugin/hooks/bootstrap.mjs'), 'console.error("boot");\n');
+  fs.writeFileSync(join(root, 'harness-installers/claude-plugin/hooks/drift-check.mjs'), 'console.log("drift");\n');
+  fs.writeFileSync(join(root, 'harness-installers/claude-plugin/hooks/hooks.json'), '{}\n');
+  fs.writeFileSync(join(root, 'harness-installers/claude-plugin/hooks/AGENTS.md'), '# Hooks AGENTS\n');
+  fs.mkdirSync(join(root, 'harness-installers/claude-plugin/.claude-plugin'), { recursive: true });
+  fs.writeFileSync(join(root, 'harness-installers/claude-plugin/.claude-plugin/plugin.json'),
     JSON.stringify({ name: 'rad-orchestration', version: '1.2.3' }, null, 2));
-  fs.mkdirSync(join(root, 'installers/claude-plugin/manifests'), { recursive: true });
-  fs.writeFileSync(join(root, 'installers/claude-plugin/manifests/v1.2.3.json'),
+  fs.mkdirSync(join(root, 'harness-installers/claude-plugin/manifests'), { recursive: true });
+  fs.writeFileSync(join(root, 'harness-installers/claude-plugin/manifests/v1.2.3.json'),
     JSON.stringify({ version: '1.2.3', files: [
       { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: 'orchestration.yml', ownership: 'user-config' },
     ]}));
-  fs.writeFileSync(join(root, 'installers/claude-plugin/package.json'),
+  fs.writeFileSync(join(root, 'harness-installers/claude-plugin/package.json'),
     JSON.stringify({ name: '@rad-orchestration/claude-plugin-source', private: true, type: 'module' }));
   return root;
 }
@@ -59,7 +59,7 @@ test('runBuild emits the full plugin payload to output/ in correct shape', async
   const root = makeUpstream();
   try {
     await runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, greenfieldRel: '.' });
-    const out = join(root, 'installers/claude-plugin/output');
+    const out = join(root, 'harness-installers/claude-plugin/output');
     assert.ok(fs.existsSync(join(out, 'agents/orchestrator.md')), 'agents copied');
     assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/SKILL.md')), 'skills copied');
     assert.ok(fs.existsSync(join(out, 'orchestration.yml')), 'orchestration.yml staged at top level');
@@ -85,7 +85,7 @@ test('destination tokens are substituted across body files', async () => {
   const root = makeUpstream();
   try {
     await runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, greenfieldRel: '.' });
-    const out = join(root, 'installers/claude-plugin/output');
+    const out = join(root, 'harness-installers/claude-plugin/output');
     const orch = fs.readFileSync(join(out, 'agents/orchestrator.md'), 'utf8');
     assert.ok(orch.includes('${CLAUDE_PLUGIN_ROOT}/skills/rad-orchestration/SKILL.md'),
       '${SKILLS_ROOT} replaced with ${CLAUDE_PLUGIN_ROOT}/skills');
@@ -99,7 +99,7 @@ test('synthesized output/package.json version equals plugin.json version, not wr
   try {
     await runBuild({ rootDir: root, skipAdapterEngine: true, skipUiRunner: true, greenfieldRel: '.' });
     const synthesized = JSON.parse(fs.readFileSync(
-      join(root, 'installers/claude-plugin/output/package.json'), 'utf8'));
+      join(root, 'harness-installers/claude-plugin/output/package.json'), 'utf8'));
     assert.strictEqual(synthesized.version, '1.2.3', 'version from plugin.json');
     assert.strictEqual(synthesized.name, '@rad-orchestration/claude-plugin');
     assert.deepStrictEqual(synthesized.files.sort(), [

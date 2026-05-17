@@ -27,6 +27,6 @@ The `build-scripts/build.js` `copy-runtime-config` step copies `orchestration.ym
 ## Rules for making updates
 
 - `orchestration.yml` is user-owned after install; changes here update only fresh installs or plugin updates, not existing user copies.
-- Adding a new template: create a new `.yml` in `templates/`, add a matching entry to the manifest at `installers/claude-plugin/manifests/v*.json`, and verify the build copies it correctly.
+- Adding a new template: create a new `.yml` in `templates/`, add a matching entry to the manifest at `harness-installers/claude-plugin/manifests/v*.json`, and verify the build copies it correctly.
 - Renaming an existing template file: update every reference in `orchestration.yml`, pipeline runtime code, and the manifest catalog.
 - No adapter pass reads this folder at build time — the harness-adapters engine does not touch `runtime-config/`. Keep it that way.
