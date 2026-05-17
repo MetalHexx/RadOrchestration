@@ -42,18 +42,20 @@ export async function runBuild(opts) {
   const adapterOut = path.join(greenfield, 'harness-adapters/output/claude');
 
   // Bootstrap missing sub-package node_modules on first run. The build reads
-  // from three sub-packages whose node_modules are owned by the sub-package
+  // from four sub-packages whose node_modules are owned by the sub-package
   // (build-helpers needs esbuild; engine needs yaml; cli is the esbuild source
-  // for emit-cli-bundle and needs its own runtime deps resolvable). Without
-  // this, a fresh clone hits ERR_MODULE_NOT_FOUND three times in a row.
-  // Idempotent (skip when node_modules exists) and fixture-safe (skip when
-  // package.json is absent — synthetic test fixtures have neither).
-  // opt-out for tests that pin their own dep state: opts.skipBootstrap.
+  // for emit-cli-bundle and needs its own runtime deps resolvable; ui runs
+  // `next build` via emit-ui-bundle and needs next on PATH from ui/node_modules).
+  // Without this, a fresh clone hits ERR_MODULE_NOT_FOUND / `next not recognized`
+  // mid-build, one package at a time. Idempotent (skip when node_modules exists)
+  // and fixture-safe (skip when package.json is absent — synthetic test fixtures
+  // have neither). opt-out for tests that pin their own dep state: opts.skipBootstrap.
   if (!opts.skipBootstrap) {
     const BOOTSTRAP_TARGETS = [
       path.join(greenfield, 'harness-installers/shared/build-helpers'),
       path.join(greenfield, 'harness-adapters/engine'),
       path.join(root, 'cli'),
+      path.join(root, 'ui'),
     ];
     await step('bootstrap-deps', () => {
       for (const pkgDir of BOOTSTRAP_TARGETS) {

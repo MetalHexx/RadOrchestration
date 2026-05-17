@@ -35,7 +35,7 @@ Surface this reminder in your handoff message — do not assume the user remembe
 
 - Node.js and npm installed.
 - Working directory is anywhere inside the repo clone (the skill resolves repo root itself).
-- **No manual `npm install` required.** The plugin build self-bootstraps `node_modules` in three sub-packages on first run: `greenfield/harness-installers/shared/build-helpers/` (esbuild), `greenfield/harness-adapters/engine/` (yaml), and `cli/` (commander, chalk, @inquirer/prompts, js-yaml). Subsequent runs no-op when those packages already have `node_modules`. If you ever need to pre-install them out-of-band (e.g. air-gapped network, debugging), the build's `bootstrap-deps` step is the source of truth for what gets installed where.
+- **No manual `npm install` required.** The plugin build self-bootstraps `node_modules` in four sub-packages on first run: `greenfield/harness-installers/shared/build-helpers/` (esbuild), `greenfield/harness-adapters/engine/` (yaml), `cli/` (commander, chalk, @inquirer/prompts, js-yaml), and `ui/` (next, react — large; expect ~minute-scale install on a fresh clone). Subsequent runs no-op when those packages already have `node_modules`. If you ever need to pre-install them out-of-band (e.g. air-gapped network, debugging), the build's `bootstrap-deps` step is the source of truth for what gets installed where.
 
 ## Workflow
 
