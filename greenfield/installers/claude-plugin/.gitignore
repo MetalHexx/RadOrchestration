@@ -1,0 +1,5 @@
+# Built plugin payload — emitted fresh by build-scripts/build.js on every
+# invocation. The folder is the publishable tarball staging area; it must
+# never enter git so contributors never accidentally commit build artifacts.
+output/
+node_modules/
