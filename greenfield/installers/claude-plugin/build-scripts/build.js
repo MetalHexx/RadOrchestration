@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // build.js — Single entry point for the Claude marketplace plugin build.
-// 13 steps in fixed order per FR-23. Fail-fast on any step (NFR-13).
+// 14 steps in fixed order per FR-23. Fail-fast on any step (NFR-13).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,7 +11,7 @@ import { emitHookBundle } from '../../shared/build-helpers/emit-hook-bundle.js';
 import { emitUiBundle } from '../../shared/build-helpers/emit-ui-bundle.js';
 import { expandTokens } from '../../shared/build-helpers/expand-tokens.js';
 import { synthesizePackageJson } from './synthesize-package-json.js';
-import { validatePluginTree } from './validate.js'; // landed in P05-T02
+import { validatePluginTree } from './validate.js';
 
 function step(name, fn) {
   const t0 = Date.now();
@@ -89,8 +89,10 @@ export async function runBuild(opts) {
     target: path.join(out, 'hooks'),
   }));
 
-  // Token + namespacing transforms — run over agents/, skills/, hooks/
-  // (every body file the installer ships, per NFR-12). Walk in place.
+  // Token + namespacing transforms — run over agents/ and skills/. The hooks/
+  // tree is intentionally excluded: bootstrap.mjs is already bundled, and
+  // hooks.json + drift-check.mjs carry no build-time substitution tokens
+  // (only runtime CLAUDE_PLUGIN_ROOT env reads).
   await step('expand-tokens', async () => {
     const agentNames = fs.readdirSync(path.join(out, 'agents'))
       .filter((f) => f.endsWith('.md')).map((f) => f.replace(/\.md$/, ''))
@@ -139,7 +141,6 @@ export async function runBuild(opts) {
   // Structural validation gates (P05-T02).
   await step('validate', () => validatePluginTree({
     outputDir: out,
-    installerDir,
     canonicalAgentsDir: path.join(greenfield, 'harness-files/agents'),
   }));
 }

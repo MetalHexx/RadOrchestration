@@ -40,7 +40,7 @@ test('gate 1: missing required artifact aborts (FR-33)', () => {
   const { out, inst, canonicalAgentsDir } = makeMinimalOutput('1.0.0', { namespaced: true });
   fs.rmSync(join(out, 'skills/rad-orchestration/scripts/pipeline.js'));
   assert.throws(
-    () => validatePluginTree({ outputDir: out, installerDir: inst, canonicalAgentsDir }),
+    () => validatePluginTree({ outputDir: out, canonicalAgentsDir }),
     /pipeline\.js/,
   );
 });
@@ -48,18 +48,18 @@ test('gate 1: missing required artifact aborts (FR-33)', () => {
 test('gate 2: missing agent file aborts (FR-33)', () => {
   const { out, inst, canonicalAgentsDir } = makeMinimalOutput('1.0.0', { namespaced: true });
   fs.rmSync(join(out, 'agents/coder.md'));
-  assert.throws(() => validatePluginTree({ outputDir: out, installerDir: inst, canonicalAgentsDir }), /agents\/coder\.md/);
+  assert.throws(() => validatePluginTree({ outputDir: out, canonicalAgentsDir }), /agents\/coder\.md/);
 });
 
 test('gate 3: missing namespaced token in orchestrator.md aborts (FR-33, AD-17)', () => {
   const { out, inst, canonicalAgentsDir } = makeMinimalOutput('1.0.0', { namespaced: false });
-  assert.throws(() => validatePluginTree({ outputDir: out, installerDir: inst, canonicalAgentsDir }), /rad-orchestration:coder/);
+  assert.throws(() => validatePluginTree({ outputDir: out, canonicalAgentsDir }), /rad-orchestration:coder/);
 });
 
 test('gate 4: missing per-version manifest aborts (FR-33)', () => {
   const { out, inst, canonicalAgentsDir } = makeMinimalOutput('1.0.0', { namespaced: true });
   fs.rmSync(join(out, 'manifests/v1.0.0.json'));
-  assert.throws(() => validatePluginTree({ outputDir: out, installerDir: inst, canonicalAgentsDir }), /manifests\/v1\.0\.0\.json/);
+  assert.throws(() => validatePluginTree({ outputDir: out, canonicalAgentsDir }), /manifests\/v1\.0\.0\.json/);
 });
 
 test('gate 5: tarball size budget enforced via npm pack --dry-run --json (NFR-5)', () => {

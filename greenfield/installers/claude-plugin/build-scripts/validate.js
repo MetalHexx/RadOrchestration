@@ -23,7 +23,7 @@ function defaultSizer(outputDir) {
   return { unpackedSize: entry?.unpackedSize ?? entry?.size ?? 0 };
 }
 
-/** @param {{ outputDir: string, installerDir: string, canonicalAgentsDir: string, sizer?: (d:string)=>{unpackedSize:number} }} opts */
+/** @param {{ outputDir: string, canonicalAgentsDir: string, sizer?: (d:string)=>{unpackedSize:number} }} opts */
 export function validatePluginTree(opts) {
   const { outputDir, canonicalAgentsDir } = opts;
   const sizer = opts.sizer ?? defaultSizer;

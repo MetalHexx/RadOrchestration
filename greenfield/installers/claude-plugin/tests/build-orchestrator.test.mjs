@@ -103,7 +103,7 @@ test('synthesized output/package.json version equals plugin.json version, not wr
     assert.strictEqual(synthesized.version, '1.2.3', 'version from plugin.json (FR-35)');
     assert.strictEqual(synthesized.name, '@rad-orchestration/claude-plugin');
     assert.deepStrictEqual(synthesized.files.sort(), [
-      '.claude-plugin/', 'agents/', 'hooks/', 'manifests/',
+      '.claude-plugin/', 'agents/', 'hooks/', 'lib/', 'manifests/',
       'orchestration.yml', 'skills/', 'templates/', 'ui/',
     ]);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
