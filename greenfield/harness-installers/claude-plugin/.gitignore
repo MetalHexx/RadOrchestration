@@ -2,4 +2,9 @@
 # invocation. The folder is the publishable tarball staging area; it must
 # never enter git so contributors never accidentally commit build artifacts.
 output/
+# Ephemeral local dogfood marketplace staging produced by the
+# .agents/skills/rad-test-claude-plugin skill. Sibling of output/ so the
+# marketplace.json survives rebuilds (output/ is wiped on every build);
+# user removes the dir to clean up after manual install testing.
+dogfood-marketplace/
 node_modules/
