@@ -68,7 +68,6 @@ export async function runBuild(opts) {
   await step('emit-cli-bundle', () => emitCliBundle({
     source: path.join(root, 'cli'),
     target: path.join(out, 'skills/rad-orchestration/scripts/radorch.mjs'),
-    entryPoint: path.join(root, 'cli/src/main.js'),
   }));
 
   await step('emit-pipeline-bundle', () => emitPipelineBundle({
