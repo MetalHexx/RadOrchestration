@@ -13,8 +13,8 @@ Two types of content:
 **`templates/`** — four review-intensity tier templates that the pipeline engine loads when a project is started. Each file defines a `template` header (`id`, `version`, `description`) and a `nodes` DAG:
 - `extra-high.yml` — per-task code review + phase review + final review
 - `high.yml` — per-task code review + final review (no phase review)
-- `medium.yml` — final review only
-- `low.yml` — no review gates
+- `medium.yml` — phase review + final review (no per-task review)
+- `low.yml` — final review only
 
 The `build-scripts/build.js` `copy-runtime-config` step copies `orchestration.yml` and `templates/` into `output/`; the plugin's `installManifestFiles` then places them under `~/.radorch/`.
 

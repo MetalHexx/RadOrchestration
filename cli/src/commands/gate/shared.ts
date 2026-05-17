@@ -22,7 +22,11 @@ export type { PipelineResult };
 export function resolvePathContext(): PathContext {
   const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
   const templatesDir = path.join(os.homedir(), '.radorch', 'templates');
-  const orchRoot = path.basename(path.resolve(scriptsDir, '..', '..', '..'));
+  // PathContext.orchRoot is documented as the absolute path to the orchestration
+  // install root, matching pipeline.ts's resolvePathContext(). It bubbles into
+  // PipelineResult.orchRoot, so returning a basename would mislead any consumer
+  // that resolves references off it.
+  const orchRoot = path.resolve(scriptsDir, '..', '..', '..');
   return { scriptsDir, templatesDir, orchRoot };
 }
 

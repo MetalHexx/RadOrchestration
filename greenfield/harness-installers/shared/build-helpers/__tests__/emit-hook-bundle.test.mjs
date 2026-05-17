@@ -22,7 +22,7 @@ test('emitHookBundle bundles bootstrap.mjs with deps inlined and copies drift-ch
     fs.writeFileSync(join(hooks, 'AGENTS.md'), '# Hooks AGENTS.md\n');
 
     const target = join(tmpRoot, 'out/hooks');
-    await emitHookBundle({ source: hooks, target, libRoot: join(tmpRoot, 'lib') });
+    await emitHookBundle({ source: hooks, target });
     const bundled = fs.readFileSync(join(target, 'bootstrap.mjs'), 'utf8');
     assert.ok(bundled.includes('42'), 'lib/install/install-json.js inlined into bootstrap.mjs');
     assert.ok(!bundled.includes("from '../lib/install/install-json.js'"), 'no unresolved imports remain');

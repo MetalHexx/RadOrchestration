@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expandTokens } from '../expand-tokens.js';
@@ -43,6 +43,32 @@ test('expandTokens substitutes destination tokens and applies agent-namespacing 
       'comma-list dispatch namespaced');
     const bin = readFileSync(join(root, 'out/skills/rad-x/binary.png'));
     assert.deepStrictEqual([...bin], [0x89, 0x50, 0x4e, 0x47], 'binary file copied verbatim');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('expandTokens preserves the POSIX file mode of rewritten text files (no exec-bit drop)', async () => {
+  // Regression: in the plugin build, emit-cli-bundle and emit-pipeline-bundle
+  // chmod radorch.mjs / pipeline.js / explode-master-plan.js to 0o755 so they
+  // run directly on POSIX. expand-tokens later rewrites those files via
+  // writeFileSync; without explicit mode preservation the exec bit is silently
+  // dropped to the default 0o644.
+  if (process.platform === 'win32') return; // POSIX-only assertion
+  const root = mkdtempSync(join(tmpdir(), 'expand-tokens-mode-'));
+  try {
+    mkdirSync(join(root, 'in/skills/rad-x/scripts'), { recursive: true });
+    const src = join(root, 'in/skills/rad-x/scripts/pipeline.js');
+    writeFileSync(src, '#!/usr/bin/env node\n// uses ${SKILLS_ROOT} placeholder\n');
+    chmodSync(src, 0o755);
+    await expandTokens({
+      source: join(root, 'in'),
+      target: join(root, 'out'),
+      tokenMap: { '${SKILLS_ROOT}': '${CLAUDE_PLUGIN_ROOT}/skills' },
+      agentNames: [],
+    });
+    const outMode = statSync(join(root, 'out/skills/rad-x/scripts/pipeline.js')).mode & 0o777;
+    assert.strictEqual(outMode, 0o755, 'rewritten file keeps the source 0o755 mode');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -11,7 +11,7 @@ import { runPluginChecks, runInstallChecks, type CheckResult } from '../../src/c
  * Replaces the deleted writeInstallSkeleton helper — inline only the
  * files each test actually depends on.
  */
-async function seedRadorcDir(root: string, harness = 'claude'): Promise<void> {
+async function seedRadorchDir(root: string, harness = 'claude'): Promise<void> {
   await fs.mkdir(root, { recursive: true });
   await fs.mkdir(path.join(root, 'projects'), { recursive: true });
   await fs.mkdir(path.join(root, 'worktrees'), { recursive: true });
@@ -47,7 +47,7 @@ describe('radorch doctor', () => {
 
   it('reports all_passed=true with a Registry warn when installed but empty', async () => {
     const root = path.join(tmp, '.radorch');
-    await seedRadorcDir(root);
+    await seedRadorchDir(root);
     const result = await runDoctor({ env: process.env });
     expect(result.all_passed).toBe(true); // warns allowed; only fails block
     const reg = result.checks.find((c) => c.category === 'Registry');
@@ -59,7 +59,7 @@ describe('radorch doctor', () => {
 
   it('every check carries a closed-enum status', async () => {
     const root = path.join(tmp, '.radorch');
-    await seedRadorcDir(root);
+    await seedRadorchDir(root);
     const result = await runDoctor({ env: process.env });
     for (const c of result.checks) {
       expect(['pass', 'warn', 'fail']).toContain(c.status);

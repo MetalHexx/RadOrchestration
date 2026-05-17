@@ -11,7 +11,7 @@ import { UserError } from '../../src/framework/errors.js';
  * Replaces the deleted writeInstallSkeleton helper — only the files these
  * commands actually depend on.
  */
-async function seedRadorcDir(root: string, harness = 'claude'): Promise<void> {
+async function seedRadorchDir(root: string, harness = 'claude'): Promise<void> {
   await fs.mkdir(root, { recursive: true });
   await fs.mkdir(path.join(root, 'projects'), { recursive: true });
   await fs.mkdir(path.join(root, 'worktrees'), { recursive: true });
@@ -43,12 +43,12 @@ describe('radorch harness use', () => {
   });
   it('rejects unknown harness with user_error', async () => {
     const root = path.join(tmp, '.radorch');
-    await seedRadorcDir(root, 'claude');
+    await seedRadorchDir(root, 'claude');
     await expect(runHarnessUse({ harness: 'cursor' as never, env: process.env })).rejects.toMatchObject({ type: 'user_error' });
   });
   it('switches active harness and is idempotent', async () => {
     const root = path.join(tmp, '.radorch');
-    await seedRadorcDir(root, 'claude');
+    await seedRadorchDir(root, 'claude');
     const r1 = await runHarnessUse({ harness: 'copilot-cli', env: process.env });
     expect(r1.active).toBe('copilot-cli');
     expect(r1.no_change).toBe(false);
@@ -98,7 +98,7 @@ describe('radorch harness use', () => {
 describe('radorch harness list', () => {
   it('lists three harnesses with the active flag set', async () => {
     const root = path.join(tmp, '.radorch');
-    await seedRadorcDir(root, 'copilot-vscode');
+    await seedRadorchDir(root, 'copilot-vscode');
     const r = await runHarnessList({ env: process.env });
     expect(r.harnesses).toEqual([
       { name: 'claude', active: false },

@@ -18,11 +18,10 @@ import type { TemplateSummary, TemplateDefinition } from '@/types/template';
 /**
  * Resolve the absolute path to the global templates directory.
  * Path: ~/.radorch/templates/ — the user-data root, provisioned at install time.
- * workspaceRoot and config are no longer consulted; the templates always live at
- * the fixed user-data location regardless of per-workspace orch root.
+ * Params are retained on the public signature for caller stability but no longer
+ * consulted; underscore prefix marks them intentionally unused.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function resolveTemplateDir(workspaceRoot: string, config: OrchestrationConfig): string {
+export function resolveTemplateDir(_workspaceRoot: string, _config: OrchestrationConfig): string {
   return path.join(os.homedir(), '.radorch', 'templates');
 }
 

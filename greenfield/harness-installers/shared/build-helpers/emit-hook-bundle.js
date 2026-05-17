@@ -8,13 +8,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
- * @param {{ source: string, target: string, libRoot?: string }} opts
+ * @param {{ source: string, target: string }} opts
  *  - source: hooks/ folder containing bootstrap.mjs + drift-check.mjs +
  *    hooks.json + AGENTS.md
  *  - target: output hooks/ folder under the installer's output/
- *  - libRoot: parent folder containing the lib/install/* modules that
- *    bootstrap.mjs imports; defaults to <source>/../lib so esbuild
- *    resolves them naturally.
+ *
+ * esbuild resolves bootstrap.mjs's `../lib/install/*` imports naturally from
+ * the entry's own location, so no explicit libRoot parameter is needed.
  */
 export async function emitHookBundle(opts) {
   const { source, target } = opts;

@@ -6,14 +6,25 @@ import { userDataPaths } from './user-data-paths.js';
  *  with ~/.radorch/projects/ always skipped. */
 export function removeManifestFiles(manifest, opts = {}) {
   const paths = userDataPaths(opts);
+  // Resolve both anchors once so containment checks survive mixed separators
+  // (manifest paths use POSIX `/`, paths.* use the platform separator) and the
+  // sibling-prefix bypass that plain startsWith allows.
+  const rootResolved = path.resolve(paths.root);
+  const projectsResolved = path.resolve(paths.projects);
+  const isUnder = (parent, child) => {
+    const rel = path.relative(parent, child);
+    return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+  };
   const touched = new Set();
   for (const entry of manifest.files) {
     if (entry.ownership === 'user-config') continue;
-    const dest = entry.destinationPath.replaceAll('${RAD_HOME}', paths.root);
-    if (dest.startsWith(paths.projects)) continue;
+    const dest = path.resolve(entry.destinationPath.replaceAll('${RAD_HOME}', paths.root));
+    // Hard guards: never delete outside paths.root; never touch the projects tree.
+    if (!isUnder(rootResolved, dest)) continue;
+    if (dest === projectsResolved || isUnder(projectsResolved, dest)) continue;
     if (fs.existsSync(dest)) fs.rmSync(dest, { force: true });
     let parent = path.dirname(dest);
-    while (parent.startsWith(paths.root) && parent !== paths.root && parent !== paths.projects) {
+    while (isUnder(rootResolved, parent) && parent !== projectsResolved) {
       touched.add(parent);
       parent = path.dirname(parent);
     }

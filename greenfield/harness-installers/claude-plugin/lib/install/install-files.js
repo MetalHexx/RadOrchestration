@@ -11,10 +11,15 @@ function expand(destPath, paths) {
  *  paths.root. */
 export function installManifestFiles(manifest, pluginRoot, opts = {}) {
   const paths = userDataPaths(opts);
+  // Resolved-relative containment: works across mixed separators (manifest paths
+  // use POSIX `/`, paths.root uses the platform separator) and is not bypassable
+  // by sibling-prefix paths like `${RAD_HOME}-evil/...`.
+  const rootResolved = path.resolve(paths.root);
   let copied = 0;
   for (const entry of manifest.files) {
-    const dest = expand(entry.destinationPath, paths);
-    if (!dest.startsWith(paths.root)) {
+    const dest = path.resolve(expand(entry.destinationPath, paths));
+    const rel = path.relative(rootResolved, dest);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) {
       throw new Error(`install: destination escapes ~/.radorch/: ${dest}`);
     }
     const src = path.join(pluginRoot, entry.sourcePath);
