@@ -75,6 +75,33 @@ export async function runBuild(opts) {
     target: path.join(out, 'skills/rad-orchestration/scripts'),
   }));
 
+  // Prune TypeScript sources, test fixtures, and dev tooling from the scripts/
+  // tree. copy-skills pulls the full harness-files tree from adapter output,
+  // which includes raw .ts sources, tests/, package.json, tsconfig.json etc.
+  // Only runtime artifacts (.js, .mjs, .gitignore) and the list-repo-skills
+  // utility belong in the published plugin payload (FR-22).
+  await step('prune-scripts-sources', () => {
+    const scriptsDir = path.join(out, 'skills/rad-orchestration/scripts');
+    const KEEP_EXTENSIONS = new Set(['.js', '.mjs']);
+    const KEEP_FILES = new Set(['.gitignore']);
+    function pruneDir(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const abs = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          // Remove lib/ and tests/ entirely — they are compiled into the bundles
+          // or are test-only fixtures not needed at runtime.
+          fs.rmSync(abs, { recursive: true, force: true });
+        } else {
+          const ext = path.extname(entry.name).toLowerCase();
+          if (!KEEP_EXTENSIONS.has(ext) && !KEEP_FILES.has(entry.name)) {
+            fs.rmSync(abs, { force: true });
+          }
+        }
+      }
+    }
+    if (fs.existsSync(scriptsDir)) pruneDir(scriptsDir);
+  });
+
   // ui/ lives at the repo root for the duration of iteration 1 per parent
   // design Decision 10 — read from `root`, not from `greenfield`.
   await step('emit-ui-bundle', () => emitUiBundle({
