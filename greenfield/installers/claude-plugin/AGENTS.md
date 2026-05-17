@@ -1,53 +1,49 @@
-# claude-plugin Module
+# claude-plugin/
 
 ## Purpose
 
-This folder is a self-contained npm package that produces the publishable Claude marketplace plugin. It assembles adapters, runtime config, hooks, and CLI into a single deliverable.
+A self-contained npm package (`@rad-orchestration/claude-plugin-source`) whose `npm run build` produces the publishable Claude marketplace plugin. The source package is never published; `npm pack` runs against `output/` after build.
 
-## Committed Source Layout
+## How it works
 
-- `package.json` — npm package metadata; defines `build` and test scripts
-- `.claude-plugin/` — Claude plugin manifest and metadata
-- `hooks/` — hook implementations (`bootstrap.mjs`, `drift-check.mjs`) and registration manifest
-- `lib/install/` — install state machine modules; consumed at build time by bootstrap
-- `build-scripts/` — build orchestration; produces the final plugin payload
-- `manifests/` — manifest templates and configuration
-- `tests/` — unit and integration tests for the plugin
+`build-scripts/build.js` exports `runBuild(opts)` and is the single entry point. It executes 14 steps in fixed order, fail-fast:
 
-## Build Output Convention
+1. **adapter-engine** — runs `harness-adapters/engine/build.js --harness=claude` (skippable in tests via `opts.skipAdapterEngine`)
+2. **clean-output** — wipes `output/`
+3. **copy-agents** / **copy-skills** — copies adapter output from `harness-adapters/output/claude/`
+4. **copy-runtime-config** — copies `runtime-config/orchestration.yml` and `runtime-config/templates/` verbatim
+5. **emit-cli-bundle** — bundles `cli/` via `emitCliBundle`
+6. **emit-pipeline-bundle** — bundles the pipeline runtime TS via `emitPipelineBundle`
+7. **prune-scripts-sources** — removes `.ts` sources, tests, and tooling from `output/skills/rad-orchestration/scripts/`; retains only `.js`, `.mjs`, and `.gitignore`
+8. **emit-ui-bundle** — builds Next.js standalone via `emitUiBundle`
+9. **emit-hook-bundle** — bundles `hooks/bootstrap.mjs` and copies verbatim files via `emitHookBundle`
+10. **expand-tokens** — substitutes `${SKILLS_ROOT}` and `${PLUGIN_ROOT}` tokens and applies agent namespacing (`rad-orchestration:<name>`) via `expandTokens`; runs through a staging dir to avoid mid-walk read-after-write
+11. **copy-plugin-manifest** — copies `.claude-plugin/plugin.json` verbatim
+12. **synthesize-package-json** — merges wrapper `package.json` with `plugin.json`; `plugin.json.version` always wins; writes to `output/package.json`
+13. **copy-manifest-catalog** — copies `manifests/v*.json` to `output/manifests/`
+14. **validate** — calls `validatePluginTree` to confirm required artifacts, agent presence, namespaced dispatch tokens, version manifest, and size budget
 
-- `output/` — gitignored; produced by `build-scripts/build.js` at build time
-- Contains the final plugin tarball and intermediate artifacts
-- Never committed; regenerated fresh on every build
+`opts.rootDir` is the repo root. `opts.greenfieldRel` (default `'greenfield'`) names the relative path to the greenfield folder; tests pass `'.'` to use a synthetic fixture tree.
 
-## Inputs Consumed (But Not Owned)
+## Source layout
 
-The package reads—but never modifies—content from upstream modules:
+- `build-scripts/` — `build.js`, `validate.js`, `synthesize-package-json.js`, `parity-check.js`
+- `.claude-plugin/plugin.json` — plugin metadata; its `version` field is the authoritative version for the published package
+- `hooks/` — hook source; see `hooks/AGENTS.md`
+- `lib/install/` — install state machine; see `lib/install/AGENTS.md`
+- `manifests/` — per-version file manifests (`v*.json`)
+- `output/` — gitignored build output
 
-- `harness-adapters/output/claude/` — compiled agents and skills for the Claude harness
-- `runtime-config/` — harness-neutral system configuration and templates
-- `cli/` — CLI codebase (assembled by a separate build process)
-- `ui/` — dashboard UI (assembled by a separate build process)
-- `harness-files/skills/rad-orchestration/scripts/*.ts` — pipeline runtime TypeScript source (bundled into the plugin)
+## Coding conventions
 
-## Seams
+- `build.js` calls each step through the local `step(name, fn)` wrapper which times and labels every phase; all step failures throw with a prefixed message.
+- Paths are always resolved via `path.resolve` / `path.join` from `rootDir`; no hardcoded absolute paths.
+- `output/` is wiped clean at the start of every build; the output tree is never partially updated.
 
-**Upstream boundary:** Adapter subsystem
-- The build consumes `harness-adapters/output/claude/` as read-only input
-- Adapter knowledge is not embedded here; the build script simply packages whatever the adapters produce
+## Rules for making updates
 
-**Downstream boundary:** npm publish
-- The final tarball is published to the npm registry for marketplace distribution
-- Publication is a separate step outside the build script
-
-## Coding Standards
-
-- Build scripts are deterministic and idempotent
-- All inputs are clearly documented in build metadata
-- Tests verify the final plugin structure and hook functionality
-- No hardcoded paths; all paths are resolved relative to module root
-
-## Further Reading
-
-- `hooks/AGENTS.md` — hook lifecycle, bundling strategy, and responsibilities
-- `lib/install/AGENTS.md` — install state machine module patterns and coding standards
+- Step order is load-bearing: adapter output must exist before `copy-agents`/`copy-skills`; bundles must exist before `expand-tokens`; `validate` must run last.
+- `validatePluginTree`'s `REQUIRED_ARTIFACTS` list in `validate.js` must stay in sync with what the build actually produces.
+- Adding a new step: place it in the correct position in `runBuild`, update the step-count comment, and update `validate.js` if a new required artifact is introduced.
+- `synthesizePackageJson` hard-codes `name: '@rad-orchestration/claude-plugin'`; changing the published package name requires updating it there.
+- Tests in `tests/` cover the build orchestration end-to-end; run them after any build-script change.

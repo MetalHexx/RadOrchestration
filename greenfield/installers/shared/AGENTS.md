@@ -1,36 +1,36 @@
-# shared Module
+# shared/
 
 ## Purpose
 
-This folder contains shared installer helpers reusable across every installer variant. It embodies the "write once, consume multiple times" principle for mechanical, installer-agnostic utilities.
+Container for installer helpers that are reusable across every installer variant. Code here must not contain any installer-specific knowledge — names, paths, or config values that belong to a particular installer (`claude-plugin`, etc.) must not appear here.
 
-## Day-One Contents
+## Contents
 
-**Phase 1:**
-- `build-helpers/` — five mechanical helpers that emit bundles and run transforms
+- `build-helpers/` — five mechanical helpers (`emitCliBundle`, `emitPipelineBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens`) that installer build scripts import directly via relative path.
 
-**Iteration 2:**
-- Additional shared modules as new installer variants are added
+No install-time (runtime) logic lives here. These are build-time tools only.
 
-## Installer-Blindness Discipline
+## Installer-blindness discipline
 
-This folder enforces strict separation of concerns. **No shared `lib/install/` exists here**—each installer owns its own install state machine per design decision 5. This ensures:
+Every function in `shared/` accepts all installer-specific values as parameters. No function here references:
+- Installer names (`claude-plugin`, `standard`, etc.)
+- Hardcoded destination paths (`~/.radorch/`, `${CLAUDE_PLUGIN_ROOT}`, etc.)
+- Hardcoded token maps or agent name lists
 
-- Install logic remains variant-specific and maintainable
-- Shared code is truly installer-agnostic
-- Each installer variant can evolve independently without breaking others
+The current consumer is `installers/claude-plugin/build-scripts/build.js`. Future installer variants will import from the same helpers with their own parameter sets.
 
-## Seam
+## Coding conventions
 
-The day-one consumer is `installers/claude-plugin/build-scripts/build.js`. When iteration 2 adds the `standard/` installer variant, it will consume the same helpers via `installers/standard/build-scripts/build.js`.
+- All exports are named async functions accepting a single `opts` object.
+- No global state; all inputs flow through function parameters.
+- No side effects outside the `source`/`target` paths passed in.
 
-## Coding Standards
+## Rules for making updates
 
-- Shared helpers must not contain installer-specific logic
-- Helpers are pure, deterministic, and side-effect-free where possible
-- All public exports are documented with parameter types and return types
-- No hardcoded paths or installer names; everything is parameterized
+- New shared utilities belong here only if they are genuinely installer-agnostic. Anything that references a specific installer, harness, or destination path belongs in the installer package itself.
+- Changing a helper's parameter shape is a breaking change for all callers. Locate every import before modifying a signature.
+- Do not add `require`/`import` of installer-local files from within `shared/`; the dependency direction is installer → shared, never shared → installer.
 
-## Further Reading
+## Further reading
 
-- `build-helpers/AGENTS.md` — five mechanical helpers and the installer-blind parameter contract
+- `build-helpers/AGENTS.md` — function signatures and per-helper contracts

@@ -1,41 +1,36 @@
-# installers Module
+# installers/
 
 ## Purpose
 
-This module hosts every installer variant and shared installer helpers for the rad-orchestration ecosystem. It serves as the assembly layer where adapter output, runtime configuration, and harness files converge into publishable, harness-specific plugins and CLIs.
+Top-level container for every installer variant and the shared mechanical helpers that installer builds draw on. No code lives directly in this folder — it exists to group sibling packages with a shared discipline.
 
 ## Organization
 
-**Day-one contents (Phase 1):**
-- `claude-plugin/` — self-contained npm package producing the Claude marketplace plugin
-- `shared/build-helpers/` — mechanical helpers (bundle emitters, token expansion) reusable across installer variants
+- `claude-plugin/` — self-contained npm package that builds and publishes the Claude marketplace plugin. `build-scripts/build.js` is the entry point; `npm run build` drives the full 14-step pipeline.
+- `shared/build-helpers/` — five installer-blind helpers (`emitCliBundle`, `emitPipelineBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens`) shared by every installer build script. No installer-specific logic lives here.
 
-**Iteration-2 expansion:**
-- `standard/` — additional installer variant for non-Claude targets
+The legacy `/installer/` folder at the repo root remains untouched; it is not part of this subtree and is not referenced by anything here.
 
-## Freeze Rule
+## Inputs this layer consumes (but does not own)
 
-The legacy `/installer/` folder at the repo root remains untouched during iteration 1. It is replaced entirely by this greenfield structure in a later cutover phase.
+- `greenfield/harness-adapters/output/claude/` — compiled agents and skills produced by the adapter engine
+- `greenfield/runtime-config/` — `orchestration.yml` and `templates/` copied verbatim into each build output
+- `cli/` and `ui/` at the repo root — bundled into the plugin output by `emitCliBundle` and `emitUiBundle`
+- `greenfield/harness-files/skills/rad-orchestration/scripts/` — pipeline TypeScript source bundled by `emitPipelineBundle`
 
-## Seams to Other Modules
+## Coding conventions
 
-**Upstream input boundary:** `harness-adapters/output/`
-- Adapters produce the compiled agent/skill payloads that each installer consumes
-- Installers never read canonical adapter source; they read only the adapter engine's output tree
+- Each installer variant is a standalone `npm` package with its own `package.json` and test suite.
+- Build outputs land in a gitignored `output/` folder inside each installer package; nothing generated is committed.
+- Cross-variant sharing happens only through `shared/build-helpers/`; no other cross-installer imports.
 
-**Harness-neutral content source:** `runtime-config/`
-- System configuration (`orchestration.yml`) and review-intensity templates ship verbatim from this folder
-- Installers consume but do not modify this content
+## Rules for making updates
 
-## Coding Standards
+- Adding a new installer variant: create a sibling folder, add `package.json`, consume `shared/build-helpers/` directly via relative path.
+- Changing what `shared/build-helpers/` exports: update every installer build script that imports the changed function — all callers are local to this subtree.
+- Never import from `shared/build-helpers/` at runtime (in hook code or install logic); these are build-time tools only.
 
-- Each installer owns its own directory with self-contained `package.json`, build scripts, and tests
-- Build outputs are gitignored (`.gitignore` entries maintain cleanliness)
-- No cross-installer shared code except via `shared/build-helpers/`
-- Module-level documentation (this file) is the reference for newcomers
+## Further reading
 
-## Further Reading
-
-- `claude-plugin/AGENTS.md` — structure and build contract of the Claude plugin variant
-- `shared/build-helpers/AGENTS.md` — installer-blind mechanical helper patterns
-- `runtime-config/AGENTS.md` — harness-neutral configuration content
+- `claude-plugin/AGENTS.md` — build orchestration, output layout, and seams
+- `shared/build-helpers/AGENTS.md` — helper signatures and installer-blindness contract

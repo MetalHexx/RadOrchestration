@@ -1,74 +1,60 @@
-# build-helpers Module
+# build-helpers/
 
 ## Purpose
 
-This folder contains five mechanical helpers that emit bundles and run token-expansion transforms. These helpers are installer-blind and reusable across every installer variant.
+Five mechanical helpers that installer build scripts use to emit bundles and run transforms. Published as `@rad-orchestration/build-helpers` (private). Every installer-specific value flows in as a parameter; no file here hard-codes installer names, destination paths, or token maps.
 
-## Installer-Blindness Rule (Critical)
+## Helpers
 
-**No file in this folder may contain:**
+**`expandTokens(opts)` — `expand-tokens.js`**
 
-- Hardcoded installer names (`claude-plugin`, `standard`, etc.)
-- Hardcoded destination paths (`~/.radorch/`, `${CLAUDE_PLUGIN_ROOT}`, etc.)
-- Hardcoded token maps or config values
+`opts: { source: string, target: string, tokenMap: Record<string,string>, agentNames?: string[] }`
 
-**Every installer-specific value flows in as a parameter.** This ensures the helpers remain universal and maintainable as new installer variants are added.
+Walks `source` recursively. Text files (extensions in `TEXT_EXTS`: `.md .txt .js .mjs .cjs .ts .tsx .json .yml .yaml .sh .css .html`) get token substitution via `substituteTokens` and optional agent namespacing via `applyNamespacing`; binary files are copied verbatim. `agentNames` drives the namespacing rewrite that prefixes bare agent names with `rad-orchestration:` in dispatch contexts (`**<name>**`, `<name> agent(s)`, `<name> spawn(s)`, `subagent_type: <name>`, and comma-separated lists). The `TEXT_EXTS` set mirrors the list in `greenfield/harness-adapters/engine/index.js` — keep the two in sync.
 
-## Helper Contract Shape
+**`emitCliBundle(opts)` — `emit-cli-bundle.js`**
 
-Each helper exports a function with signature:
+`opts: { source: string, target: string, entryPoint?: string, mode?: number }`
 
-```javascript
-async function helperName(opts: {
-  source: string,          // input directory path
-  target: string,          // output directory path
-  [key: string]: unknown   // variant-specific knobs
-}) => Promise<void>
-```
+Bundles `entryPoint` (default `${source}/src/bin/radorch.ts`) to a single ESM file at `target` using esbuild (`platform: node`, `format: esm`, `target: node20`). Creates parent directories of `target`. Applies `mode` (default `0o755`) via `fs.chmodSync`; chmod is silently a no-op on Windows.
 
-## Five Helpers
+**`emitPipelineBundle(opts)` — `emit-pipeline-bundle.js`**
 
-**`emit-cli-bundle`**
-- Produces the bundled CLI executable
-- Reads from the `cli/` codebase
-- Emits to installer-specified target path
-- Parameters: `source`, `target`, `version`, `platform`
+`opts: { source: string, target: string }`
 
-**`emit-pipeline-bundle`**
-- Produces the pipeline runtime bundle
-- Reads from `harness-files/skills/rad-orchestration/scripts/`
-- Emits to installer-specified target path
-- Parameters: `source`, `target`, `minify`
+Bundles the two entries listed in `RUNTIME_ENTRIES` (`['pipeline', 'explode-master-plan']`) from `source` to `target/${entryName}.js`, each via a separate esbuild call. Adds a `#!/usr/bin/env node` banner and applies `0o755` chmod on each output file.
 
-**`emit-hook-bundle`**
-- Produces the esbuilt hook bundle (e.g., `bootstrap.mjs`)
-- Reads hook source and inlined dependencies
-- Emits to installer-specified target path
-- Parameters: `source`, `target`, `entrypoint`
+**`emitUiBundle(opts)` — `emit-ui-bundle.js`**
 
-**`emit-ui-bundle`**
-- Produces the dashboard UI bundle
-- Reads from the `ui/` codebase
-- Emits to installer-specified target path
-- Parameters: `source`, `target`, `production`
+`opts: { source: string, target: string, runner?: () => Promise<void> }`
 
-**`expand-tokens`**
-- Performs variable substitution in template files
-- Reads token definitions from caller-provided map
-- Emits expanded files to target directory
-- Parameters: `source`, `target`, `tokens` (object of key-value pairs)
+Invokes `runner` (default: `npm run build-standalone` inside `source`) to produce a Next.js standalone build, then copies `source/.next/standalone`, `source/.next/static`, and `source/public` to `target`. Removes `source/.next/` after copying. Tests inject a no-op `runner` via `opts.runner` to skip the actual build.
 
-## Seam
+**`emitHookBundle(opts)` — `emit-hook-bundle.js`**
 
-These helpers consume output from the adapter engine (`harness-adapters/output/`) but do **not** contain adapter knowledge. The installers invoke these helpers with paths pointing to the adapter output, abstracting the adapter complexity away.
+`opts: { source: string, target: string, libRoot?: string }`
 
-## Coding Standards
+Bundles `${source}/bootstrap.mjs` (with `lib/install/*` inlined by esbuild) to `${target}/bootstrap.mjs`. Copies `drift-check.mjs`, `hooks.json`, and `AGENTS.md` from `source` to `target` verbatim if they exist. `libRoot` defaults to `${source}/../lib` and is the esbuild module resolution root for the inlined dependencies.
 
-- Helpers are deterministic and produce identical output given identical inputs
-- Error messages clearly reference the helper name and the failing operation
-- All transforms are reversible or at least auditable (logs are always produced)
-- No global state; all state flows through function parameters
+## Installer-blindness contract
 
-## Further Reading
+No function in this folder may reference:
+- Installer package names (`claude-plugin`, `standard`, etc.)
+- Destination paths (`~/.radorch/`, `${CLAUDE_PLUGIN_ROOT}`, etc.)
+- Specific token keys or agent names
 
-- `installers/AGENTS.md` — overview of the installer module structure
+All such values are supplied by the caller.
+
+## Coding conventions
+
+- Every exported function accepts a single `opts` object.
+- All I/O is scoped to the `source` and `target` paths passed in; no writes outside those trees.
+- esbuild failures propagate as thrown errors; callers (build scripts) catch them through the `step()` wrapper.
+- No global state; no module-level side effects.
+
+## Rules for making updates
+
+- Changing `TEXT_EXTS` in `expand-tokens.js` requires the same change in `greenfield/harness-adapters/engine/index.js` to keep token-processing scope in sync.
+- Adding a new entry to `RUNTIME_ENTRIES` in `emit-pipeline-bundle.js` causes both an additional bundle to be emitted and an additional artifact to validate in `claude-plugin/build-scripts/validate.js`; update both together.
+- `emitHookBundle`'s verbatim-copy list (`['drift-check.mjs', 'hooks.json', 'AGENTS.md']`) must match what `hooks/` actually ships; update here when adding new verbatim hook files.
+- Tests in `__tests__/` cover each helper; run them after any signature or behavior change.

@@ -1,44 +1,38 @@
-# hooks Module
+# hooks/
 
 ## Purpose
 
-This folder contains the two hook implementations that ship in the plugin payload, enabling one-shot install and persistent cross-channel drift detection.
+Two hooks that ship inside the Claude plugin payload and manage install lifecycle and drift detection. They are the bridge between Claude's hook system and the install state machine in `lib/install/`.
 
-## Hooks Overview
+## How it works
 
-**`bootstrap.mjs` (UserPromptSubmit hook)**
-- Lifecycle: one-shot, self-uninstalling on successful completion
-- Responsibility: orchestrate the install state machine, create `install.json`, populate initial workspace content
-- Integration: esbuilt and bundled with inlined `lib/install/*` modules
-- Execution: triggered on user's first interaction with the plugin
+**`bootstrap.mjs` — `UserPromptSubmit` hook**
 
-**`drift-check.mjs` (SessionStart hook)**
-- Lifecycle: persistent, never self-uninstalls
-- Responsibility: detect and report discrepancies between installed content and workspace state
-- Integration: shipped verbatim (no bundling required)
-- Execution: triggered on every session start to maintain consistency
+Runs once on the user's first prompt after plugin installation. Calls `runInstall({ pluginRoot, radHome })` from `lib/install/run-install.js`. On success, calls `selfUninstall(pluginRoot)`: reads `hooks/hooks.json`, deletes the `UserPromptSubmit` entry, and atomically renames a `.tmp` file into place so the hook never fires again. On failure, leaves `hooks.json` intact so the user can retry. Reads `CLAUDE_PLUGIN_ROOT` from the environment; `RAD_HOME` is optional (tests override it; production falls back to `~/.radorch`).
 
-## Registration Manifest
+**`drift-check.mjs` — `SessionStart` hook**
 
-`hooks.json` registers both hooks with Claude's hook system. Changes to hook signatures or event names require updates here.
+Persistent — never self-uninstalls. Reads `${CLAUDE_PLUGIN_ROOT}/package.json` for `pkg.version` (the delivering version) and `${RAD_HOME}/install.json` for the installed version, found at `installed.harnesses['claude-plugin'].version` or the legacy `installed.package_version` field. Writes a single line to stdout when the two differ; Claude injects that line as conversation context. Silent on match or when either version is unavailable.
 
-## Bundle/Verbatim Split
+**`hooks.json`**
 
-- `bootstrap.mjs` — esbuilt with `lib/install/*` modules inlined; produces a single self-contained file
-- `drift-check.mjs` — copied verbatim into the plugin payload
-- `hooks.json` — copied verbatim into the plugin payload
+Registers both hooks with Claude's hook system. `UserPromptSubmit` runs `node ${CLAUDE_PLUGIN_ROOT}/hooks/bootstrap.mjs`; `SessionStart` runs `node ${CLAUDE_PLUGIN_ROOT}/hooks/drift-check.mjs`.
 
-## Seam to Install State Machine
+## Build treatment
 
-`lib/install/` contains the atomic state machine modules that `bootstrap.mjs` imports at build time. These modules are never shipped as separate files in the plugin payload—they exist only in source and are inlined into the final `bootstrap.mjs` bundle.
+- `bootstrap.mjs` is bundled by `emitHookBundle`: esbuild inlines `lib/install/*` dependencies, producing a single self-contained file. It is never shipped as separate source modules.
+- `drift-check.mjs`, `hooks.json`, and this `AGENTS.md` are copied verbatim by `emitHookBundle`.
 
-## Coding Standards
+## Coding conventions
 
-- Hook code is minimal and focused on orchestration; heavy lifting is delegated to `lib/install/`
-- Error handling is defensive; transient failures are logged and retried
-- No synchronous file operations without careful error handling
-- Hook lifecycle (self-uninstall vs. persistent) is enforced by the hook implementation, not by external configuration
+- `bootstrap.mjs` uses a top-level `async main()` with `process.exit(await main())` so the hook exits with the correct code.
+- The atomic rename for `selfUninstall` follows the same write-then-rename pattern used throughout `lib/install/`: write to a `.tmp-<pid>-<timestamp>` file, then `fs.renameSync`.
+- `drift-check.mjs` is synchronous and has no external dependencies — it must stay that way so it ships verbatim without bundling.
+- Both hooks read env vars (`CLAUDE_PLUGIN_ROOT`, `RAD_HOME`) only; they never read from relative paths that would vary by working directory.
 
-## Further Reading
+## Rules for making updates
 
-- `lib/install/AGENTS.md` — install state machine module design and atomic write patterns
+- If `bootstrap.mjs` gains new `lib/install/` imports, the build step `emit-hook-bundle` in `build-scripts/build.js` handles them automatically via esbuild bundling — no build-script change needed.
+- Changes to `hooks.json` hook names or event types must match Claude's hook system contract; test with `tests/bootstrap.test.mjs` and `tests/drift-check.test.mjs`.
+- `drift-check.mjs` must remain dependency-free (Node built-ins only) so it can ship verbatim.
+- Do not add synchronous file operations in `bootstrap.mjs` outside of `selfUninstall`; the install itself is async via `runInstall`.
