@@ -37,7 +37,7 @@ The rad-orchestration package version that wrote this file. Updated automaticall
 
 ### default_template
 
-Default review-intensity tier the planner proposes when starting a new project. Accepts `ask`, `extra-high`, `high`, `medium`, or `low`. The default `ask` defers the choice to project-creation time. Tier names map to the four templates under `skills/rad-orchestration/templates/`.
+Default review-intensity tier the planner proposes when starting a new project. Accepts `ask`, `extra-high`, `high`, `medium`, or `low`. The default `ask` defers the choice to project-creation time. Tier names map to the four templates under `~/.radorch/templates/`.
 
 ### limits.max_phases
 

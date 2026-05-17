@@ -9,7 +9,7 @@ import { parseTemplateToGraph, serializeGraphToYaml } from './template-serialize
 // ── Fixture loading ───────────────────────────────────────────────────────────
 
 const EXTRA_HIGH_YAML = readFileSync(
-  join(__dirname, '../../.claude/skills/rad-orchestration/templates/extra-high.yml'),
+  join(__dirname, '../../greenfield/runtime-config/templates/extra-high.yml'),
   'utf-8'
 );
 

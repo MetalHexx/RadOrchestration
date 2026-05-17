@@ -1,3 +1,4 @@
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { processEvent } from '../../../../skills/rad-orchestration/scripts/lib/engine.js';
@@ -15,10 +16,12 @@ export type { PipelineResult };
  * AD-6: radorch gate approve resolves all paths from --project-dir + the
  * bundle's own import.meta.url; the process cwd is never consulted. Mirrors
  * pipeline.ts's resolvePathContext() so both entry points share path math.
+ * templatesDir points at ~/.radorch/templates/ (the user-data root), not the
+ * skill folder — matching the runtime resolution in pipeline.ts.
  */
 export function resolvePathContext(): PathContext {
   const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
-  const templatesDir = path.resolve(scriptsDir, '..', 'templates');
+  const templatesDir = path.join(os.homedir(), '.radorch', 'templates');
   const orchRoot = path.basename(path.resolve(scriptsDir, '..', '..', '..'));
   return { scriptsDir, templatesDir, orchRoot };
 }

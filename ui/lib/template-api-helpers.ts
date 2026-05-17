@@ -1,3 +1,4 @@
+import os from 'node:os';
 import path from 'node:path';
 import {
   readFile,
@@ -11,16 +12,18 @@ import {
 import { randomBytes } from 'node:crypto';
 
 import { parseYaml } from '@/lib/yaml-parser';
-import { resolveOrchRoot } from '@/lib/fs-reader';
 import type { OrchestrationConfig } from '@/types/config';
 import type { TemplateSummary, TemplateDefinition } from '@/types/template';
 
 /**
  * Resolve the absolute path to the global templates directory.
- * Path: {workspaceRoot}/{orchRoot}/skills/rad-orchestration/templates/
+ * Path: ~/.radorch/templates/ — the user-data root, provisioned at install time.
+ * workspaceRoot and config are no longer consulted; the templates always live at
+ * the fixed user-data location regardless of per-workspace orch root.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function resolveTemplateDir(workspaceRoot: string, config: OrchestrationConfig): string {
-  return path.join(workspaceRoot, resolveOrchRoot(config), 'skills', 'rad-orchestration', 'templates');
+  return path.join(os.homedir(), '.radorch', 'templates');
 }
 
 /**

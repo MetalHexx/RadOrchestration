@@ -66,7 +66,7 @@ Run the steps below in order. **Do not commit until step 5.**
    - `cli/package.json`
    - `plugin/package.json`
 
-   Note: `package_version` inside each per-harness bundle's `orchestration.yml` (e.g., `installer/src/claude/skills/rad-orchestration/config/orchestration.yml`) is **auto-stamped at build time** from `installer/package.json`. Do not edit it manually.
+   Note: `package_version` inside `greenfield/runtime-config/orchestration.yml` is **auto-stamped at build time** from `installer/package.json`. Do not edit it manually.
 
 2. **Generate the per-harness manifest catalog for the new version.** From the repo root:
 
