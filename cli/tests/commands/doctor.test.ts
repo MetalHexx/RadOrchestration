@@ -382,13 +382,12 @@ describe('doctor: 1.3 canonical checks', () => {
   });
 
   it('table renders one line per install-key with (channel) suffix', async () => {
-    // Stage a v6 install.json with all four install-keys present except one.
+    // Stage an install.json with all four install-keys present except one.
     const radorchDir = path.join(tmp13, '.radorch');
     await fs.mkdir(radorchDir, { recursive: true });
     await fs.writeFile(
       path.join(radorchDir, 'install.json'),
       JSON.stringify({
-        state_schema_version: 'v6',
         harnesses: {
           'claude': { version: '1.0.0-alpha.9', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0-alpha.9' },
           'claude-plugin': { version: '1.0.0-alpha.9', channel: 'plugin', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0-alpha.9' },
@@ -413,7 +412,6 @@ describe('doctor: 1.3 canonical checks', () => {
     await fs.writeFile(
       path.join(radorchDir, 'install.json'),
       JSON.stringify({
-        state_schema_version: 'v6',
         harnesses: {
           'claude': { version: '1.0.0', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0' },
           'claude-plugin': { version: '1.0.0', channel: 'plugin', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0' },
@@ -433,7 +431,6 @@ describe('doctor: 1.3 canonical checks', () => {
     await fs.writeFile(
       path.join(radorchDir, 'install.json'),
       JSON.stringify({
-        state_schema_version: 'v6',
         harnesses: {
           'copilot-cli': { version: '1.0.0', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0' },
         },
@@ -512,13 +509,12 @@ describe('Section 9 — plugin check noise suppression', () => {
 
   it('S9-3: three plugin checks emit (not skipped) when claude-plugin is registered in install.json but env var absent', async () => {
     // Simulate running doctor outside a Claude Code session: env var absent but
-    // claude-plugin is registered in the v6 registry.
+    // claude-plugin is registered.
     const radorchDir = path.join(s9Home, '.radorch');
     await fs.mkdir(radorchDir, { recursive: true });
     await fs.writeFile(
       path.join(radorchDir, 'install.json'),
       JSON.stringify({
-        state_schema_version: 'v6',
         harnesses: {
           'claude-plugin': {
             version: '1.0.0-alpha.9',

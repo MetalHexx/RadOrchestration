@@ -71,10 +71,6 @@ export function isCurrentShape(ij) {
   );
 }
 
-export function isInstallKey(value) {
-  return INSTALL_KEYS.includes(value);
-}
-
 /**
  * Structural-lift loader. Returns `{ harnesses: {} }` when the file is
  * missing, unreadable, malformed JSON, or fails `isCurrentShape`.
