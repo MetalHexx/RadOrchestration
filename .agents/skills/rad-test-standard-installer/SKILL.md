@@ -79,7 +79,7 @@ From the repo root:
 node greenfield/harness-installers/standard/build-scripts/build.js
 ```
 
-> Expected: exit 0; `greenfield/harness-installers/standard/output/` populated; `output/<harness>/manifests/v<version>.json` exists; `output/package.json` exists.
+> Expected: exit 0; `greenfield/harness-installers/standard/output/` populated; `output/<harness>/manifests/v<version>.json` exists. (The publish `package.json` lives at the source root `standard/package.json` — the build does not write a top-level `output/package.json`.)
 >
 > On first run (or any run after `cli/` or `ui/` `node_modules` were deleted), the `bootstrap-deps` step runs `npm install` in those sub-packages. Expect longer build times on first run; subsequent runs skip the installs. The `ui/` install is the largest (~1 min on a cold network).
 >
@@ -89,14 +89,14 @@ If the build fails, stop and report the failure. Do not continue.
 
 ### Step 4 — Pack the tarball
 
-Navigate to the output directory and pack:
+Navigate to the installer source directory and pack. The pack site is `standard/` (not `output/`) because the source-side `standard/package.json` is the publish package — its `files` allowlist names `index.js`, `lib/`, and `output/` so the per-harness payloads and the shared `output/ui/` (including its vendored `node_modules/`) all end up in the tarball:
 
 ```
-cd {repoRoot}\greenfield\harness-installers\standard\output
+cd {repoRoot}\greenfield\harness-installers\standard
 npm pack
 ```
 
-Capture the resulting tarball filename (matching pattern `rad-orchestration-<version>.tgz`) as `{tarballPath}`. Read `output/package.json` to confirm the version and note it as `{version}` — you will print it in the handoff message so the user can confirm it after install.
+Capture the resulting tarball filename (matching pattern `rad-orchestration-<version>.tgz`) as `{tarballPath}`. Read `standard/package.json` to confirm the version and note it as `{version}` — you will print it in the handoff message so the user can confirm it after install.
 
 Expected: `npm pack` exits 0; the tarball file exists at `{tarballPath}`.
 

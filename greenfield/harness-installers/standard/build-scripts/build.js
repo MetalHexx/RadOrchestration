@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // build.js — Single entry point for the standard npm installer build.
 // Fans the adapter engine output for three harnesses (claude, copilot-vscode,
-// copilot-cli) into per-harness staged trees under output/<harness>/, plus a
-// shared top-level output/ui/ and a synthesized output/package.json. Fail-fast on
-// any step (AD-7).
+// copilot-cli) into per-harness staged trees under output/<harness>/ plus a
+// shared top-level output/ui/. The publish package.json is the source-side
+// standard/package.json itself (npm pack runs from standard/, not output/),
+// so no output-side package.json synthesis is performed. Fail-fast on any
+// step (AD-7).
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -13,7 +15,6 @@ import { execSync } from 'node:child_process';
 // esbuild lives in shared/build-helpers/node_modules which `bootstrap-deps`
 // populates. They are dynamic-imported inside runBuild() after that step.
 import { emitManifest } from './emit-manifest.js';
-import { synthesizePackageJson } from './synthesize-package-json.js';
 import { validatePackageTree } from './validate.js';
 
 const HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
@@ -227,12 +228,6 @@ export async function runBuild(opts) {
       }
     }
   });
-
-  // output/package.json — synthesized for publish (FR-26, FR-28, AD-17).
-  await step('synthesize-package-json', () => synthesizePackageJson({
-    sourcePkgPath: path.join(installerDir, 'package.json'),
-    outPath: path.join(out, 'package.json'),
-  }));
 
   // Per-harness package.json stub — written AFTER emit-manifest so it stays
   // out of the manifest (which would otherwise copy it to ~/.<harness>/).

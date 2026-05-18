@@ -119,7 +119,7 @@ function makeFixture() {
   return root;
 }
 
-test('runBuild produces output/<harness>/ per harness, shared output/ui/, and synthesized output/package.json', async () => {
+test('runBuild produces output/<harness>/ per harness and shared output/ui/', async () => {
   const root = makeFixture();
   try {
     await runBuild({
@@ -207,23 +207,11 @@ test('runBuild produces output/<harness>/ per harness, shared output/ui/, and sy
         `${h} orchestrator.md: **coder** kept bare (no rad-orchestration: prefix)`);
     }
 
-    // output/package.json synthesis (FR-26, FR-28, AD-17).
-    const pkg = JSON.parse(fs.readFileSync(path.join(out, 'package.json'), 'utf8'));
-    assert.strictEqual(pkg.name, 'rad-orchestration', 'synthesized name');
-    assert.strictEqual(pkg.version, '1.0.0-alpha.9', 'version matches source');
-    assert.strictEqual(pkg.type, 'module', 'type: module');
-    assert.deepStrictEqual(pkg.bin, { 'radorch-installer': 'index.js' }, 'bin map');
-    assert.deepStrictEqual(pkg.engines, { node: '>=18' }, 'engines node>=18');
-    assert.deepStrictEqual(pkg.files, ['index.js', 'lib/', 'output/', 'manifests/'], 'files allowlist');
-    assert.deepStrictEqual(pkg.dependencies, { chalk: '^5.0.0' }, 'dependencies carried from source');
-    // Verbatim carry-forward (FR-26, AD-17).
-    assert.strictEqual(pkg.description, 'Standard installer source wrapper.');
-    assert.strictEqual(pkg.author, 'rad-orchestration');
-    assert.strictEqual(pkg.license, 'MIT');
-    assert.strictEqual(pkg.homepage, 'https://example.test/home');
-    assert.deepStrictEqual(pkg.repository, { type: 'git', url: 'https://example.test/repo' });
-    assert.deepStrictEqual(pkg.bugs, { url: 'https://example.test/bugs' });
-    assert.deepStrictEqual(pkg.keywords, ['orchestration', 'installer']);
+    // Build no longer synthesizes a top-level output/package.json — the source-side
+    // standard/package.json IS the publish package.json now, and `npm pack` runs
+    // from standard/ (one level up from output/).
+    assert.ok(!fs.existsSync(path.join(out, 'package.json')),
+      'output/package.json is not produced by the build (pack site is standard/)');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

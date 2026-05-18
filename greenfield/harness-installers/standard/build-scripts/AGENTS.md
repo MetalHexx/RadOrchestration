@@ -6,7 +6,7 @@ Single end-to-end build orchestrator that consumes canonical sources (`agents/`,
 
 ## How it works
 
-`build.js` executes a fixed sequence of named steps. Every step runs inside the `step()` helper, which prints `[build:standard] <name> ...` before the body and `[build:standard] <name> done (Nms)` after, re-throwing any error wrapped as `[build:standard] step "<name>" failed: <msg>` (AD-7 fail-fast). Shared helpers come from `harness-installers/shared/build-helpers/` (AD-8); the local helpers in this folder are `emit-manifest.js` and `synthesize-package-json.js`.
+`build.js` executes a fixed sequence of named steps. Every step runs inside the `step()` helper, which prints `[build:standard] <name> ...` before the body and `[build:standard] <name> done (Nms)` after, re-throwing any error wrapped as `[build:standard] step "<name>" failed: <msg>` (AD-7 fail-fast). Shared helpers come from `harness-installers/shared/build-helpers/` (AD-8); the only local helper in this folder is `emit-manifest.js`. The publish `package.json` is the source-side `standard/package.json` itself — `npm pack` runs from `standard/`, so no output-side package.json synthesis is performed.
 
 The steps, in execution order:
 
@@ -21,16 +21,15 @@ The steps, in execution order:
 9. `emit-ui-bundle` — single emission to `output/ui/` at the top level (AD-9 — not per-harness).
 10. `expand-tokens` — per-harness token substitution over `output/<harness>/agents/` and `skills/` with `agentNames: []` (AD-6 — no `rad-orchestration:` namespacing rewrite).
 11. `emit-manifest` — per-harness manifest write to `manifests/<harness>/v<version>.json`, then copy that file plus every prior `manifests/<harness>/v*.json` into `output/<harness>/manifests/` (AD-4).
-12. `synthesize-package-json` — writes `output/package.json` with the verbatim-carry-forward fields plus the seven overrides (FR-26).
-13. `emit-per-harness-package-json` — writes a minimal `{name, version}` stub into each `output/<harness>/package.json` so `installHarness` can resolve the delivering version per harness without reading the top-level `output/package.json`.
-14. `validate` — structural validation gate (FR-27, FR-28, NFR-5, NFR-7, AD-7): confirms per-harness artifacts, canonical agents, manifests, and unpacked size budget. Throws to abort the build.
+12. `emit-per-harness-package-json` — writes a minimal `{name, version}` stub into each `output/<harness>/package.json` so `installHarness` can resolve the delivering version per harness without reading the source `standard/package.json`.
+13. `validate` — structural validation gate (NFR-5, NFR-7, AD-7): confirms per-harness artifacts, canonical agents, manifests, and unpacked size budget (sized from `standard/` since that's the npm-pack cwd). Throws to abort the build.
 
 ## Coding standards
 
 - **Fixed step order**: Steps execute in the sequence above. No conditional reordering. If a step is not applicable, it still runs (and is a noop).
 - **Fail-fast validation**: Every step that produces output immediately checks for expected files. Missing outputs are fatal.
 - **Shared helper contracts**: Every call to `harness-installers/shared/build-helpers/` (e.g., `emit-cli-bundle`, `emit-pipeline-bundle`, `emit-ui-bundle`, `expand-tokens`) passes all required installer-specific knowledge as parameters — no shared state, no imported config (AD-8).
-- **Local helpers parameterized**: `emit-manifest.js` and `synthesize-package-json.js` accept all harness and version information as parameters so they can be reused without modification.
+- **Local helper parameterized**: `emit-manifest.js` accepts all harness and version information as parameters so it can be reused without modification.
 - **No hooks**: `emit-hook-bundle` exists in shared helpers but is unused here (AD-8); it is reserved for marketplace plugin builders and does not apply to the standard installer.
 - **Token map without agent namespacing**: The token expansion in `expand-tokens.js` uses a flat namespace — no `rad-` prefix filtering or special agent-bundle handling (AD-6).
 - **UI emitted once**: The dashboard is compiled and emitted once, then shared across all harnesses (AD-9); no per-harness duplication.

@@ -5,3 +5,7 @@
 # harness-adapters/ across the greenfield tree.
 output/
 node_modules/
+
+# Packed tarballs produced by `npm pack` during smoke-tests. The publishable
+# tarball is regenerated on demand from the source tree, never committed.
+*.tgz

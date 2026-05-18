@@ -16,8 +16,11 @@ const REQUIRED_PER_HARNESS = [
 const SIZE_LIMIT = Math.round(50 * 1024 * 1024 * 1.1);
 
 function defaultSizer(outputDir) {
+  // npm pack runs from the source-side `standard/` (one level up from `output/`)
+  // because the publish package.json lives at `standard/package.json`. Sizing the
+  // tarball must happen from the same cwd.
   const out = execSync('npm pack --dry-run --json', {
-    cwd: outputDir, shell: process.platform === 'win32', encoding: 'utf8',
+    cwd: path.dirname(outputDir), shell: process.platform === 'win32', encoding: 'utf8',
   });
   const parsed = JSON.parse(out);
   const entry = Array.isArray(parsed) ? parsed[0] : parsed;
