@@ -70,7 +70,6 @@ This document captures the target architecture for the installer + bundler side.
     │   │       ├── catalog.js
     │   │       ├── expand-tokens.js
     │   │       ├── install-json.js
-    │   │       ├── base-files.js             # writes ~/.radorch/{config.yml, registry.yml, .harness}
     │   │       ├── user-data-paths.js
     │   │       └── harness-paths.js
     │   ├── build-scripts/
@@ -164,7 +163,7 @@ Next.js dashboard. Lives at repo root: a self-contained npm package, deployed to
 Top-level monorepo of installer variants and shared installer helpers.
 
 - **`shared/build-helpers/`** — small helpers like `emit-cli-bundle.js`, `emit-ui-bundle.js`. Adapter knowledge is **not** here; it lives in `harness-adapters/`. Installers consume the adapter engine's output tree as input.
-- **`standard/`** — user-facing legacy installer. One npm tarball ships all three harnesses; the wizard selects which to deploy. Mutually-exclusive Copilot harness selection. Owns `lib/install/` for its install state machine, including `base-files.js` for `config.yml`/`registry.yml`/`.harness` skeleton.
+- **`standard/`** — user-facing npm installer. One npm tarball ships all three harnesses; the wizard selects which to deploy. Mutually-exclusive Copilot harness selection (vscode XOR cli, mutex on `~/.copilot/`). Owns `lib/install/` for its install state machine. Hydrates `~/.radorch/` to the same shape the claude-plugin writes: `install.json`, `orchestration.yml`, `templates/`, `ui/`, plus empty `projects/` and `logs/`. Cross-channel coexistence warning (`claude` ↔ `claude-plugin`) emitted at install end.
 - **`claude-plugin/`** — UserPromptSubmit-triggered headless installer. Ships only the claude variant. Adds plugin-specific concerns: `install-log` (jsonl), atomic `install.json` + `hooks.json` writes, sentinel-driven self-heal. Earlier design iterations included `hash-check` (file-level drift detection) and `bootstrap-lock` (concurrency lock); both were dropped during INSTALL-REFACTOR-CLAUDE-PLUGIN iteration 1 scrutiny (see that brainstorm's scrutiny section for rationale).
 - **`copilot-cli-plugin/`** and **`copilot-vscode-plugin/`** — placeholders for future plugin-style installers.
 
@@ -181,9 +180,10 @@ Each installer is a separately publishable npm package with its own `package.jso
 3. The bundled tarball contains `harness-installers/standard/dist/<harness>/` with translated agents/skills (sourced from `harness-adapters/output/<harness>/` at pack time), the bundled `radorch.mjs`, the built UI, and the manifest catalog.
 4. `harness-installers/standard/lib/install/install-harness.js` reads `~/.radorch/install.json` to detect prior install version.
 5. On upgrade: loads prior version's manifest from `dist/<harness>/manifests/v<prior>.json`, calls `removeManifestFiles` to clean up old files at their templated destinations.
-6. Loads current version's manifest, calls `installManifestFiles` to copy from `dist/<harness>/` to `~/.claude/` or `~/.copilot/` (and `~/.radorch/` for shared assets).
-7. Writes skeleton config files via `base-files.js`.
-8. Stamps `~/.radorch/install.json`.
+6. Loads current version's manifest, calls `installManifestFiles` to copy from `dist/<harness>/` to `~/.claude/` or `~/.copilot/`.
+7. Hydrates `~/.radorch/` shared assets — copies `orchestration.yml` and `templates/` from the bundle, copies the UI standalone bundle to `~/.radorch/ui/`, `mkdir -p ~/.radorch/projects/` and `~/.radorch/logs/`.
+8. Stamps `~/.radorch/install.json` atomically (tmp + rename) under the harness's `InstallKey`.
+9. Prints post-install summary; emits cross-channel drift warning if `install.json` shows a `claude-plugin` entry at a different version.
 
 ### Claude plugin install flow (UserPromptSubmit hook)
 
@@ -203,9 +203,9 @@ Updated by INSTALL-REFACTOR-CLAUDE-PLUGIN (iteration 1) — see that brainstorm 
    - Stamp `~/.radorch/install.json` atomically (tmp + rename) under `InstallKey = 'claude-plugin'`
    - Append a JSONL entry to `~/.radorch/logs/install.log` (6-action vocabulary, best-effort write)
    - On success, atomically rewrite `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` to remove the `UserPromptSubmit` entry (leave `SessionStart` intact). On failure, leave `hooks.json` untouched so next prompt retries.
-
-   (Note: this is the new claude-plugin install flow. The legacy plugin install today also runs `writeBaseFiles` to populate `~/.radorch/config.yml`/`registry.yml`/`.harness`/`.gitignore` + `mkdir runtime/`. The new plugin installer drops all of these per INSTALL-REFACTOR-CLAUDE-PLUGIN — see that brainstorm for rationale. Cross-harness selection state moves to the standard installer's ownership in iteration 2.)
 7. SessionStart's `drift-check.mjs` hook continues firing every session for cross-channel drift detection (plugin version vs `~/.radorch/install.json`); never self-uninstalls.
+
+Both installers write the same shape to `~/.radorch/`: `install.json`, `orchestration.yml`, `templates/`, `ui/`, plus empty `projects/` and `logs/`.
 
 ### Build flow (pack time, per installer)
 
@@ -259,7 +259,7 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 
 ### Decision 5: Each installer owns its own install state machine
 - `harness-installers/standard/lib/install/` and `harness-installers/claude-plugin/lib/install/` each contain a full state machine.
-- **Rationale:** the two installers diverge meaningfully (claude-plugin needs the install log + atomic-write invariants + sentinel self-heal; standard needs config.yml skeleton writes + interactive wizard + harness selection). Independent copies preserve self-containment without coupling them through a shared library. (Earlier design iterations included `hash-check` and `bootstrap-lock` for claude-plugin; both dropped during iteration 1 scrutiny.)
+- **Rationale:** the two installers diverge meaningfully — claude-plugin needs the install log + atomic-write invariants + sentinel self-heal + the agent-namespacing rewrite; standard needs the interactive wizard + multi-harness selection + the copilot folder mutex + the loud `downgrade-refused` action + per-harness destination tokens. Independent copies preserve self-containment without coupling them through a shared library.
 
 ### Decision 6: Manifest catalogs live inside each installer
 - `harness-installers/standard/manifests/<harness>/v*.json` (per-harness streams).
