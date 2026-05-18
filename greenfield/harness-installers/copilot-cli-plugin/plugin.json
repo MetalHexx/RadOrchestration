@@ -1,0 +1,10 @@
+{
+  "name": "rad-orchestration-copilot-cli",
+  "description": "Document-driven, multi-agent orchestration loop for GitHub Copilot CLI.",
+  "version": "1.0.0-alpha.1",
+  "author": { "name": "metalhexx" },
+  "repository": "https://github.com/MetalHexx/RadOrchestration",
+  "license": "MIT",
+  "homepage": "https://github.com/MetalHexx/RadOrchestration",
+  "keywords": ["copilot-cli", "orchestration", "rad-orchestration"]
+}
