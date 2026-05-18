@@ -4,12 +4,12 @@ import figlet from 'figlet';
 import { THEME, FIGLET_FONT } from './theme.js';
 
 /**
- * Renders the RadOrch figlet banner centered in the terminal.
+ * Renders the Rad Orc figlet banner centered in the terminal.
  * No box border. No subtitle. Narrow fallback at < 60 cols.
  *
  * Rendering logic:
- *   1. If terminal width < 60: print centered plain text "RadOrch" styled with THEME.banner
- *   2. Else: render figlet.textSync('RadOrch', { font: FIGLET_FONT }) →
+ *   1. If terminal width < 60: print centered plain text "Rad Orc" styled with THEME.banner
+ *   2. Else: render figlet.textSync('Rad Orc', { font: FIGLET_FONT }) →
  *      for each line: strip ANSI → measure visible width →
  *      pad left with Math.floor((cols - visibleWidth) / 2) spaces →
  *      apply THEME.banner → print
@@ -25,13 +25,13 @@ export function renderBanner() {
   // Narrow fallback
   if (cols < 60) {
     const padding = ' '.repeat(Math.max(0, Math.floor((cols - 7) / 2)));
-    console.log(padding + THEME.banner('RadOrch'));
+    console.log(padding + THEME.banner('Rad Orc'));
     console.log('');
     return;
   }
 
   // Normal rendering
-  const figletText = figlet.textSync('RadOrch', { font: FIGLET_FONT });
+  const figletText = figlet.textSync('Rad Orc', { font: FIGLET_FONT });
   const lines = figletText.split('\n');
 
   for (const line of lines) {

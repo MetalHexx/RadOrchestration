@@ -1,21 +1,16 @@
 #!/usr/bin/env node
 // greenfield/harness-installers/standard/index.js — CLI entry for the standard
-// installer. Orchestrates the surface order spec'd by DD-2:
+// installer.
 //
-//   1. parseArgs → command + options
-//   2. Early-return for help / version / uninstall (uninstall is a pointer
-//      message only — FR-29, AD-18: actual deletion is owned by the bundled
-//      CLI inside the harness).
-//   3. renderBanner.
-//   4. checkGit / checkGh → non-blocking warnings to stderr (FR-6, DD-4).
-//   5. runWizard → harness selection (FR-4, FR-5).
-//   6. Per-harness install loop, sequential, no rollback on per-harness
-//      failure (AD-11). Each iteration is wrapped in an ora spinner (FR-7).
-//   7. After the harness loop, hydrate ~/.radorch/ exactly once (FR-20 — the
-//      runtime-config + templates are identical across per-harness payloads,
-//      so any one harness's `output/<h>` is a valid bundleRoot).
-//   8. Compute drift hint by re-reading ~/.radorch/install.json (FR-9, AD-15).
-//   9. renderPostInstallSummary → stdout (drift hint, if any, goes to stderr).
+// Surface:
+//   1. parseArgs → command + options (help, version, uninstall, run).
+//   2. Early-return for help / version.
+//   3. `uninstall` positional sets forceAction='uninstall' on the wizard.
+//      `--yes` without `--harness` errors (no silent default).
+//   4. renderBanner + tooling checks.
+//   5. runWizard returns { action, harnesses, skipConfirmation }.
+//   6. action === 'install' → install loop + hydrateUserData + install summary.
+//      action === 'uninstall' → uninstall loop + uninstall summary.
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -23,26 +18,23 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ora from 'ora';
 
-// Presentation
 import { renderBanner } from './lib/banner.js';
 import { THEME, sectionHeader } from './lib/theme.js';
 
-// CLI
 import { parseArgs } from './lib/cli.js';
 import { renderHelp } from './lib/help.js';
 
-// Application
 import { runWizard } from './lib/wizard.js';
-import { renderPostInstallSummary } from './lib/summary.js';
+import { renderPostInstallSummary, renderUninstallSummary } from './lib/summary.js';
 
-// Install/upgrade orchestrator + user-data hydration (AD-1, AD-11, FR-20).
 import { installHarness } from './lib/install/install-harness.js';
+import { uninstallHarness } from './lib/install/uninstall-harness.js';
 import { hydrateUserData } from './lib/install/hydrate-user-data.js';
+import { loadRegistry } from './lib/install/install-json.js';
+import { userDataPaths } from './lib/install/user-data-paths.js';
 
-// Install-time tooling checks (FR-6, AD-11).
 import { checkGit, checkGh } from './lib/checks/tooling.js';
 
-// Cross-channel drift detection (FR-9, AD-15).
 import { computeDriftHint } from './lib/drift-hint.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -68,35 +60,23 @@ export async function main() {
     return;
   }
 
-  if (command === 'uninstall') {
-    // FR-29, AD-18: the standard installer no longer owns deletion. The
-    // bundled CLI inside the user's harness is the canonical entry point.
-    console.log('Run /rad-ui-stop and then radorch uninstall from inside your harness.');
-    return;
-  }
-
-  // Resolve where the bundled payloads live. When this file is shipped inside
-  // the published tarball, `output/<harness>/` sits next to index.js.
-  // RADORCH_PACKAGE_ROOT env var allows tests to point at a synthetic fixture
-  // without touching the real ~/.claude or ~/.radorch.
   const packageRoot = process.env.RADORCH_PACKAGE_ROOT ?? __dirname;
   const sharedRoot = path.join(packageRoot, 'output');
 
   const skipConfirmation = options.skipConfirmation ?? false;
+  const forceAction = command === 'uninstall' ? 'uninstall' : undefined;
 
-  // `--yes` is "accept defaults non-interactively". Without `--harness`, that
-  // would silently install Claude regardless of what the user actually
-  // wants — a UX trap. Require an explicit harness in headless mode.
+  // `--yes` alone is a UX trap (would silently default to claude). Require
+  // explicit --harness in headless mode for both install and uninstall.
   if (skipConfirmation && (!Array.isArray(options.harnesses) || options.harnesses.length === 0)) {
+    const verb = forceAction === 'uninstall' ? 'uninstall' : 'install';
     console.error(
-      THEME.error('✖ --yes requires --harness <claude|copilot-vscode|copilot-cli>. Headless mode will not pick a default harness for you.'),
+      THEME.error(`✖ --yes requires --harness <claude|copilot-vscode|copilot-cli>. Headless ${verb} will not pick a default for you.`),
     );
     process.exit(2);
     return;
   }
 
-  // Delivering version is read once from the package root and passed to the
-  // wizard so it can detect downgrades against the registry.
   const rootPkg = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
   const deliveringVersion = rootPkg.version;
 
@@ -108,64 +88,18 @@ export async function main() {
     const ghWarn = checkGh();
     if (ghWarn) process.stderr.write((THEME.warning ? THEME.warning(`⚠  ${ghWarn}`) : `⚠  ${ghWarn}`) + '\n');
 
-    const cfg = await runWizard({ skipConfirmation, cliOverrides: options, deliveringVersion });
+    const cfg = await runWizard({ skipConfirmation, cliOverrides: options, deliveringVersion, forceAction });
 
     if (!Array.isArray(cfg.harnesses) || cfg.harnesses.length === 0) {
-      throw new Error('Wizard returned no harnesses to install.');
+      throw new Error('Wizard returned no harnesses.');
     }
 
-    console.log('');
-    sectionHeader('::', 'Bootstrapping harnesses');
-    console.log('');
-
-    /** @type {import('./lib/summary.js').HarnessResult[]} */
-    const harnessResults = [];
-
-    // AD-11: sequential harness loop. Per-harness failures do NOT roll back
-    // priors — they're logged and the loop continues so the rest of the
-    // selected harnesses still install.
-    for (const harness of cfg.harnesses) {
-      const bundleRoot = path.join(packageRoot, 'output', harness);
-      const spinner = ora({ text: `Bootstrapping '${harness}'…`, color: THEME.spinner }).start();
-      try {
-        const result = await installHarness({ bundleRoot, sharedRoot, harness });
-        if (result.action === 'downgrade-refused') {
-          spinner.fail(`Bootstrapping '${harness}' refused (${result.action})`);
-          harnessResults.push({ harness, action: result.action, message: result.message });
-        } else {
-          spinner.succeed(`Bootstrapped '${harness}' (${result.action})`);
-          harnessResults.push({ harness, action: result.action });
-        }
-      } catch (err) {
-        spinner.fail(`Failed to bootstrap '${harness}': ${err.message}`);
-        // AD-11: continue to next harness — failures do not roll back priors.
-        // 'failed' (not 'downgrade-refused') so summary distinguishes unexpected
-        // exceptions from the install state machine's intentional refusal path.
-        harnessResults.push({ harness, action: 'failed', message: err.message });
-      }
+    if (cfg.action === 'uninstall') {
+      await runUninstallFlow({ packageRoot, harness: cfg.harnesses[0] });
+      return;
     }
 
-    // Hydrate ~/.radorch/ exactly once after the harness loop. The runtime
-    // config and templates are identical across per-harness payloads (FR-20),
-    // so the first harness's bundle is a valid source.
-    const firstHarness = cfg.harnesses[0];
-    await hydrateUserData({
-      bundleRoot: path.join(packageRoot, 'output', firstHarness),
-      sharedRoot,
-    });
-
-    const configPath = path.join(os.homedir(), '.radorch', 'orchestration.yml');
-
-    // FR-9, AD-15: compute drift from install.json — claude vs claude-plugin
-    // entries diverging on version is the drift signal the summary surfaces.
-    const driftHint = computeDriftHint();
-
-    renderPostInstallSummary({
-      harnessResults,
-      configPath,
-      driftHint,
-      uiBuilt: true,
-    });
+    await runInstallFlow({ packageRoot, sharedRoot, harnesses: cfg.harnesses });
   } catch (err) {
     if (err && err.name === 'ExitPromptError') {
       console.log('');
@@ -174,17 +108,100 @@ export async function main() {
     }
     if (err && err.code === 'CANCELLED_AT_CONFIRM') {
       console.log('');
-      console.log(THEME.hint('Install cancelled.'));
+      console.log(THEME.hint('Cancelled.'));
       process.exit(0);
       return;
     }
-    console.error(THEME.error(`✖ Installation failed: ${err.message}`));
+    if (err && (err.code === 'NOT_INSTALLED' || err.code === 'NOTHING_TO_UNINSTALL')) {
+      console.error(THEME.error(`✖ ${err.message}`));
+      process.exit(1);
+      return;
+    }
+    console.error(THEME.error(`✖ ${forceAction === 'uninstall' ? 'Uninstall' : 'Installation'} failed: ${err.message}`));
     process.exit(1);
   }
 }
 
-// Auto-invoke only when run directly (not when imported by tests). Use
-// fs.realpathSync to resolve symlinks created by `npm link` / global installs.
+async function runInstallFlow({ packageRoot, sharedRoot, harnesses }) {
+  console.log('');
+  sectionHeader('::', 'Bootstrapping harnesses');
+  console.log('');
+
+  /** @type {import('./lib/summary.js').HarnessResult[]} */
+  const harnessResults = [];
+
+  for (const harness of harnesses) {
+    const bundleRoot = path.join(packageRoot, 'output', harness);
+    const spinner = ora({ text: `Bootstrapping '${harness}'…`, color: THEME.spinner }).start();
+    try {
+      const result = await installHarness({ bundleRoot, sharedRoot, harness });
+      if (result.action === 'downgrade-refused') {
+        spinner.fail(`Bootstrapping '${harness}' refused (${result.action})`);
+        harnessResults.push({ harness, action: result.action, message: result.message });
+      } else {
+        spinner.succeed(`Bootstrapped '${harness}' (${result.action})`);
+        harnessResults.push({ harness, action: result.action });
+      }
+    } catch (err) {
+      spinner.fail(`Failed to bootstrap '${harness}': ${err.message}`);
+      harnessResults.push({ harness, action: 'failed', message: err.message });
+    }
+  }
+
+  const firstHarness = harnesses[0];
+  await hydrateUserData({
+    bundleRoot: path.join(packageRoot, 'output', firstHarness),
+    sharedRoot,
+  });
+
+  const configPath = path.join(os.homedir(), '.radorch', 'orchestration.yml');
+  const driftHint = computeDriftHint();
+
+  renderPostInstallSummary({
+    harnessResults,
+    configPath,
+    driftHint,
+    uiBuilt: true,
+  });
+}
+
+async function runUninstallFlow({ packageRoot, harness }) {
+  console.log('');
+  sectionHeader('::', 'Uninstalling');
+  console.log('');
+
+  const bundleRoot = path.join(packageRoot, 'output', harness);
+  const spinner = ora({ text: `Uninstalling '${harness}'…`, color: THEME.spinner }).start();
+
+  let result;
+  try {
+    result = await uninstallHarness({ bundleRoot, harness });
+  } catch (err) {
+    spinner.fail(`Uninstall of '${harness}' failed: ${err.message}`);
+    throw err;
+  }
+
+  if (result.action === 'not-installed') {
+    spinner.warn(`'${harness}' is not installed — nothing to do.`);
+    return;
+  }
+
+  spinner.succeed(`Uninstalled '${harness}' (v${result.removedVersion})`);
+
+  // Re-load the registry to surface what's left.
+  const paths = userDataPaths();
+  const registry = loadRegistry(paths.installJson);
+
+  renderUninstallSummary({
+    harness,
+    removedVersion: result.removedVersion,
+    removedCount: result.removedCount,
+    prunedDirs: result.prunedDirs,
+    remainingHarnesses: registry.harnesses ?? {},
+    configPath: paths.orchestrationYml,
+  });
+}
+
 const __scriptPath = fs.realpathSync(fileURLToPath(import.meta.url));
 const __argvPath = process.argv[1] ? fs.realpathSync(process.argv[1]) : '';
 if (__scriptPath === __argvPath) {

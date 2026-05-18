@@ -114,3 +114,97 @@ export function renderPostInstallSummary({ harnessResults, configPath, driftHint
     process.stderr.write(line);
   }
 }
+
+const HARNESS_DISPLAY_NAME = {
+  'claude':                'Claude Code',
+  'claude-plugin':         'Claude Code (plugin)',
+  'copilot-vscode':        'Copilot VS Code',
+  'copilot-vscode-plugin': 'Copilot VS Code (plugin)',
+  'copilot-cli':           'Copilot CLI',
+  'copilot-cli-plugin':    'Copilot CLI (plugin)',
+};
+
+/**
+ * Renders the post-uninstall summary. Mirrors `renderPostInstallSummary`'s
+ * shape so the two flows feel cohesive: section header, the removed harness
+ * with file/dir counts, a "Remaining harnesses" block read fresh from
+ * `install.json`, and the workspace block with `(preserved)` suffixes that
+ * make the safety contract visible at a glance.
+ *
+ * @param {{
+ *   harness: string,
+ *   removedVersion: string,
+ *   removedCount: number,
+ *   prunedDirs: number,
+ *   remainingHarnesses: Record<string, { version: string }>,
+ *   configPath: string,
+ * }} opts
+ * @returns {void}
+ */
+export function renderUninstallSummary({
+  harness,
+  removedVersion,
+  removedCount,
+  prunedDirs,
+  remainingHarnesses,
+  configPath,
+}) {
+  const paths = userDataPaths();
+  const displayName = HARNESS_DISPLAY_NAME[harness] ?? harness;
+
+  console.log('');
+  sectionHeader('::', 'Uninstall Complete');
+  console.log('');
+
+  console.log(
+    '  ' + THEME.success('✔') + ' ' +
+    THEME.body(`Uninstalled '${harness}' (v${removedVersion})`),
+  );
+  try {
+    const installRoot = harnessRoot(harness);
+    console.log('      ' + THEME.secondary('Removed from  ') + THEME.command(installRoot));
+  } catch {
+    /* unknown harness key — skip path line silently */
+  }
+  const filesWord = removedCount === 1 ? 'file' : 'files';
+  const dirsWord = prunedDirs === 1 ? 'directory' : 'directories';
+  console.log(
+    '      ' + THEME.secondary(`${removedCount} ${filesWord} removed, ${prunedDirs} ${dirsWord} pruned`),
+  );
+
+  console.log('');
+  const remainingEntries = Object.entries(remainingHarnesses);
+  if (remainingEntries.length > 0) {
+    console.log('  ' + THEME.label('Remaining harnesses'));
+    console.log('');
+    const rows = remainingEntries
+      .map(([key, entry]) => ({
+        name: HARNESS_DISPLAY_NAME[key] ?? key,
+        version: entry.version,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const nameCol = Math.max(...rows.map((r) => r.name.length)) + 4;
+    for (const r of rows) {
+      console.log(`    ${THEME.body(r.name.padEnd(nameCol, ' '))}${THEME.secondary('v' + r.version)}`);
+    }
+  } else {
+    console.log('  ' + THEME.label('Remaining harnesses'));
+    console.log('');
+    console.log('    ' + THEME.hint('(none — workspace is preserved and ready for a future install)'));
+  }
+
+  console.log('');
+  console.log(
+    '  ' + THEME.success('✔') + ' ' +
+    THEME.body('Workspace     ') + THEME.command(paths.root) + '  ' + THEME.secondary('(preserved)'),
+  );
+  console.log(
+    '      ' + THEME.secondary('Configuration ') + THEME.command(configPath) + '  ' + THEME.secondary('(preserved)'),
+  );
+  console.log(
+    '      ' + THEME.secondary('Projects      ') + THEME.command(paths.projects) + '  ' + THEME.secondary('(preserved)'),
+  );
+
+  console.log('');
+  divider();
+}

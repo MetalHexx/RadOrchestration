@@ -51,6 +51,65 @@ describe('runWizard — headless (skipConfirmation) behavior', () => {
     }
   });
 
+  it('headless uninstall: forceAction + cliOverrides returns action="uninstall" and bypasses confirmation', async () => {
+    const home = mkHome('std-wiz-uninstall-headless-');
+    try {
+      const radorchDir = path.join(home, '.radorch');
+      fs.mkdirSync(radorchDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(radorchDir, 'install.json'),
+        JSON.stringify({
+          harnesses: {
+            'copilot-cli': {
+              version: '1.0.0-alpha.9',
+              channel: 'legacy-installer',
+              installed_at: 't',
+              last_writer_version: '1.0.0-alpha.9',
+            },
+          },
+        }),
+        'utf8',
+      );
+
+      const result = await runWizard({
+        skipConfirmation: true,
+        cliOverrides: { harnesses: ['copilot-cli'] },
+        homeDir: home,
+        forceAction: 'uninstall',
+      });
+      assert.equal(result.action, 'uninstall');
+      assert.deepEqual(result.harnesses, ['copilot-cli']);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it('headless uninstall: throws NOT_INSTALLED when the override harness is not registered', async () => {
+    const home = mkHome('std-wiz-uninstall-not-installed-');
+    try {
+      const radorchDir = path.join(home, '.radorch');
+      fs.mkdirSync(radorchDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(radorchDir, 'install.json'),
+        JSON.stringify({ harnesses: {} }),
+        'utf8',
+      );
+
+      await assert.rejects(
+        async () =>
+          runWizard({
+            skipConfirmation: true,
+            cliOverrides: { harnesses: ['copilot-cli'] },
+            homeDir: home,
+            forceAction: 'uninstall',
+          }),
+        (err) => err.code === 'NOT_INSTALLED',
+      );
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
   it('skipConfirmation bypasses the destructive-pick confirm even when the override would otherwise prompt', async () => {
     // Stage a synthetic ~/.radorch/install.json with copilot-vscode already
     // registered. Picking copilot-cli would normally be destructive (mutex

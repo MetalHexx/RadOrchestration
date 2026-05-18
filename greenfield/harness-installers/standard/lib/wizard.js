@@ -1,19 +1,22 @@
 // greenfield/harness-installers/standard/lib/wizard.js — Interactive wizard
-// orchestrator. Selects exactly one harness per install run (AD-18).
+// orchestrator. Single-select harness per run; install OR uninstall.
 //
-// Surface order:
-//   1. Single-select picker over the three installable harnesses, labelled
-//      with current registry state (not installed / same variant present /
-//      will REPLACE a cross-UI variant on disk).
-//   2. If the pick would overwrite another variant's on-disk files OR
-//      downgrade the same variant, prompt for an explicit Y/N (default No).
-//   3. Return { harnesses: [<pick>], skipConfirmation } — the install loop
-//      iterates this array (always length 1 from the picker).
+// Two-step picker:
+//   1. If the registry has at least one entry AND we're not headless AND
+//      caller didn't force an action via `forceAction`, ask whether the user
+//      wants to install or uninstall.
+//   2. Then a sub-picker:
+//        install   — three-variant single-select (today's behavior).
+//        uninstall — single-select over currently-installed harnesses only.
 //
-// Headless behavior is in index.js, not here: `--harness <X> --yes` skips
-// both prompts; `--harness <X>` alone skips only the picker and still
-// applies the destructive-pick confirmation; `--yes` alone errors out at
-// the CLI layer before this wizard runs.
+// Confirmation:
+//   install   — explicit Y/N (default No) only when the pick would overwrite
+//               another variant's on-disk files OR downgrade the same variant.
+//   uninstall — explicit Y/N (default No) every time, in yellow, listing
+//               what gets removed and what's preserved.
+//
+// Returns `{ action, harnesses, skipConfirmation }` where action is 'install'
+// or 'uninstall' and harnesses is always length 1.
 
 import os from 'node:os';
 import path from 'node:path';
@@ -46,14 +49,13 @@ const COPILOT_UI_LABEL = {
 };
 
 /**
- * Folder-presence probe used only by the headless `--yes` fallback path,
- * which today returns `['claude']` when `~/.claude/` exists (or as a final
- * default if not). The interactive picker no longer auto-pre-checks based
- * on this — the user must explicitly select.
+ * Folder-presence probe used only by the headless `--yes` fallback path.
+ * Today returns `['claude']` when `~/.claude/` exists. The interactive picker
+ * no longer auto-pre-checks based on this — the user must explicitly select.
  *
- * `~/.copilot/` is intentionally NOT consulted: that directory is created
- * by Copilot tooling regardless of whether the user uses any rad-installed
- * Copilot harness, so its presence is not a meaningful install signal.
+ * `~/.copilot/` is intentionally NOT consulted: that directory is created by
+ * Copilot tooling regardless of whether any rad-installed Copilot harness is
+ * present, so its existence is not a meaningful install signal.
  *
  * @param {{ homeDir?: string }} [opts]
  * @returns {string[]}
@@ -65,23 +67,18 @@ export function detectInstalledHarnesses(opts = {}) {
   return out;
 }
 
-/**
- * Build the picker's row labels. Always just the harness name — the
- * destructive-pick confirmation handles all "you're replacing X" messaging,
- * so the picker stays uncluttered.
- *
- * @param {Record<string, { version: string }>} _harnesses
- * @returns {Array<{ value: string, name: string }>}
- */
-function buildChoices(_harnesses) {
+function buildInstallChoices() {
   return HARNESS_CHOICES.map(({ value, name }) => ({ value, name }));
 }
 
+function buildUninstallChoices(harnesses) {
+  return Object.keys(harnesses)
+    .sort()
+    .map((key) => ({ value: key, name: HARNESS_DISPLAY_NAME[key] ?? key }));
+}
+
 /**
- * Render a short summary block above the picker: either a tidy table of the
- * harnesses already registered in install.json, or a single line saying none
- * are installed yet. The point is to orient the user before they pick.
- *
+ * Renders the "Currently installed" block above the picker.
  * @param {Record<string, { version: string }>} harnesses
  */
 function renderInstalledSummary(harnesses) {
@@ -106,22 +103,23 @@ function renderInstalledSummary(harnesses) {
 }
 
 /**
- * Returns the destructive-confirmation message as an array of pre-wrapped
- * lines for clean rendering above the `Continue?` prompt, or null if no
- * confirmation is needed (fresh install, same-version reinstall, upgrade,
- * or same-UI different-channel coexistence).
+ * Returns the install destructive-confirmation message as an array of
+ * pre-wrapped lines (for clean rendering above the `Continue?` prompt) or
+ * null if no confirmation is needed.
  *
  * @param {Record<string, { version: string }>} harnesses
  * @param {string} pick
  * @param {string} deliveringVersion
  * @returns {string[] | null}
  */
-function destructivePromptLines(harnesses, pick, deliveringVersion) {
+function installDestructivePromptLines(harnesses, pick, deliveringVersion) {
   const conflicts = detectFolderConflicts(harnesses, pick);
   if (conflicts.length > 0) {
     const newUi = COPILOT_UI_LABEL[pick];
     const oldUi = COPILOT_UI_LABEL[conflicts[0].key];
-    const partnerSummary = conflicts.map((c) => `${HARNESS_DISPLAY_NAME[c.key]} (v${c.entry.version})`).join(' and ');
+    const partnerSummary = conflicts
+      .map((c) => `${HARNESS_DISPLAY_NAME[c.key]} (v${c.entry.version})`)
+      .join(' and ');
     return [
       `Installing ${HARNESS_DISPLAY_NAME[pick]} will replace your existing ${partnerSummary}.`,
       '',
@@ -139,71 +137,172 @@ function destructivePromptLines(harnesses, pick, deliveringVersion) {
 }
 
 /**
- * Runs the wizard.
+ * Returns the uninstall confirmation lines: spelled-out "Will remove" and
+ * "Will keep" blocks. Always renders for uninstall — uninstall is intrinsically
+ * destructive, so there's no "skip if non-destructive" case.
  *
- * Resolution order:
- *   1. `cliOverrides.harnesses` (explicit, length 1) wins; if the pick is
- *      destructive AND `skipConfirmation` is false, the confirm prompt
- *      still fires.
- *   2. Otherwise, when `skipConfirmation` is true with no `--harness`,
- *      this path is unreachable — index.js rejects that combination before
- *      calling runWizard. Defensive fallback returns ['claude'].
- *   3. Otherwise (interactive), present the single-select picker with
- *      state-aware labels; then fire a confirm prompt if the pick is
- *      destructive.
+ * @param {string} pick
+ * @param {{ root: string }} paths
+ */
+function uninstallPromptLines(pick) {
+  const installRootForPick = (() => {
+    if (pick === 'claude' || pick === 'claude-plugin') return path.join(os.homedir(), '.claude');
+    return path.join(os.homedir(), '.copilot');
+  })();
+  return [
+    `Uninstalling '${pick}'.`,
+    '',
+    'Will remove:',
+    `    Agent and skill files under ${installRootForPick}`,
+    `    The '${pick}' entry from ~/.radorch/install.json`,
+    '',
+    'Will keep:',
+    '    ~/.radorch/orchestration.yml, templates/, projects/, ui/',
+    '    Any other harnesses you have installed',
+    `    Any files in ${installRootForPick} you created yourself`,
+  ];
+}
+
+/**
+ * Runs the wizard.
  *
  * @param {{
  *   skipConfirmation: boolean,
  *   cliOverrides?: { harnesses?: string[] } & Record<string, unknown>,
  *   homeDir?: string,
  *   deliveringVersion?: string,
+ *   forceAction?: 'install' | 'uninstall',
  * }} options
- * @returns {Promise<{ harnesses: string[], skipConfirmation: boolean }>}
+ * @returns {Promise<{ action: 'install' | 'uninstall', harnesses: string[], skipConfirmation: boolean }>}
  */
-export async function runWizard({ skipConfirmation, cliOverrides = {}, homeDir, deliveringVersion }) {
+export async function runWizard({
+  skipConfirmation,
+  cliOverrides = {},
+  homeDir,
+  deliveringVersion,
+  forceAction,
+}) {
   const paths = userDataPaths(homeDir ? { home: homeDir } : {});
   const registry = loadRegistry(paths.installJson);
   const harnesses = registry.harnesses ?? {};
+  const installedCount = Object.keys(harnesses).length;
 
-  let pick;
+  // ─── Headless path ─────────────────────────────────────────────────────
   if (cliOverrides.harnesses !== undefined && cliOverrides.harnesses.length > 0) {
-    pick = cliOverrides.harnesses[0];
-  } else if (skipConfirmation) {
+    const pick = cliOverrides.harnesses[0];
+    const action = forceAction ?? 'install';
+
+    if (action === 'uninstall' && !harnesses[pick]) {
+      const err = new Error(`Cannot uninstall '${pick}' — not currently installed.`);
+      err.code = 'NOT_INSTALLED';
+      throw err;
+    }
+
+    if (!skipConfirmation) {
+      if (action === 'install' && deliveringVersion) {
+        await maybeConfirmInstallDestructive(harnesses, pick, deliveringVersion);
+      } else if (action === 'uninstall') {
+        await confirmUninstall(pick);
+      }
+    }
+    return { action, harnesses: [pick], skipConfirmation };
+  }
+
+  if (skipConfirmation) {
     // Defensive: index.js rejects `--yes` without `--harness` before we run.
-    pick = 'claude';
+    return { action: forceAction ?? 'install', harnesses: ['claude'], skipConfirmation };
+  }
+
+  // ─── Interactive path ──────────────────────────────────────────────────
+  console.log('');
+  sectionHeader('::', 'Harness Installer');
+  console.log('');
+  renderInstalledSummary(harnesses);
+  console.log('');
+
+  // Step 1 — action picker. Only fires when the user has at least one
+  // harness installed AND the caller didn't already force an action.
+  let action;
+  if (forceAction) {
+    action = forceAction;
+    if (action === 'uninstall' && installedCount === 0) {
+      const err = new Error('No harnesses are installed. Nothing to uninstall.');
+      err.code = 'NOTHING_TO_UNINSTALL';
+      throw err;
+    }
+  } else if (installedCount > 0) {
+    action = await select({
+      message: 'What would you like to do?',
+      theme: INQUIRER_THEME,
+      choices: [
+        { value: 'install',   name: 'Install or reinstall a harness' },
+        { value: 'uninstall', name: 'Uninstall a harness' },
+      ],
+    });
   } else {
-    console.log('');
-    sectionHeader('::', 'Harness');
-    console.log('');
-    renderInstalledSummary(harnesses);
-    console.log('');
+    action = 'install';
+  }
+
+  // Step 2 — harness picker.
+  let pick;
+  if (action === 'install') {
     pick = await select({
       message: 'Which harness do you want to install?',
       theme: INQUIRER_THEME,
-      choices: buildChoices(harnesses),
+      choices: buildInstallChoices(),
     });
-  }
-
-  if (!skipConfirmation && deliveringVersion) {
-    const lines = destructivePromptLines(harnesses, pick, deliveringVersion);
-    if (lines) {
-      console.log('');
-      for (const line of lines) {
-        console.log(`  ${THEME.warning ? THEME.warning(line) : line}`);
-      }
-      console.log('');
-      const proceed = await confirm({
-        message: 'Continue?',
-        theme: INQUIRER_THEME,
-        default: false,
-      });
-      if (!proceed) {
-        const err = new Error('Install cancelled at confirmation prompt.');
-        err.code = 'CANCELLED_AT_CONFIRM';
-        throw err;
-      }
+    if (deliveringVersion) {
+      await maybeConfirmInstallDestructive(harnesses, pick, deliveringVersion);
     }
+  } else {
+    pick = await select({
+      message: 'Which harness do you want to uninstall?',
+      theme: INQUIRER_THEME,
+      choices: buildUninstallChoices(harnesses),
+    });
+    await confirmUninstall(pick);
   }
 
-  return { harnesses: [pick], skipConfirmation };
+  return { action, harnesses: [pick], skipConfirmation };
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
+
+async function maybeConfirmInstallDestructive(harnesses, pick, deliveringVersion) {
+  const lines = installDestructivePromptLines(harnesses, pick, deliveringVersion);
+  if (!lines) return;
+  console.log('');
+  for (const line of lines) {
+    console.log(`  ${THEME.warning ? THEME.warning(line) : line}`);
+  }
+  console.log('');
+  const proceed = await confirm({
+    message: 'Continue?',
+    theme: INQUIRER_THEME,
+    default: false,
+  });
+  if (!proceed) {
+    const err = new Error('Install cancelled at confirmation prompt.');
+    err.code = 'CANCELLED_AT_CONFIRM';
+    throw err;
+  }
+}
+
+async function confirmUninstall(pick) {
+  const lines = uninstallPromptLines(pick);
+  console.log('');
+  for (const line of lines) {
+    console.log(`  ${THEME.warning ? THEME.warning(line) : line}`);
+  }
+  console.log('');
+  const proceed = await confirm({
+    message: 'Continue?',
+    theme: INQUIRER_THEME,
+    default: false,
+  });
+  if (!proceed) {
+    const err = new Error('Uninstall cancelled at confirmation prompt.');
+    err.code = 'CANCELLED_AT_CONFIRM';
+    throw err;
+  }
 }
