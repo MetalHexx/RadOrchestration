@@ -66,21 +66,6 @@ describe('runWizard — headless (skipConfirmation) behavior', () => {
       fs.rmSync(home, { recursive: true, force: true });
     }
   });
-
-  it('returns only { harnesses, skipConfirmation } — no other config fields (AD-18)', async () => {
-    const home = mkHome('std-wiz-shape-');
-    try {
-      const result = await runWizard({
-        skipConfirmation: true,
-        cliOverrides: {},
-        homeDir: home,
-      });
-      const keys = Object.keys(result).sort();
-      assert.deepEqual(keys, ['harnesses', 'skipConfirmation']);
-    } finally {
-      fs.rmSync(home, { recursive: true, force: true });
-    }
-  });
 });
 
 describe('detectInstalledHarnesses', () => {

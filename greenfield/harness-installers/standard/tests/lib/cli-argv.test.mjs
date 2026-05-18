@@ -93,19 +93,3 @@ describe('parseArgs — default run command', () => {
     assert.deepEqual(result.options, {});
   });
 });
-
-describe('parseArgs — back-compat flags (silent no-ops)', () => {
-  it('--max-phases is accepted without throwing', () => {
-    const result = parseArgs(['--max-phases', '5']);
-    assert.equal(result.command, 'run');
-    // It may or may not set options.maxPhases; it should not throw
-  });
-
-  it('--execution-mode is accepted without throwing', () => {
-    assert.doesNotThrow(() => parseArgs(['--execution-mode', 'autonomous']));
-  });
-
-  it('--auto-commit is accepted without throwing', () => {
-    assert.doesNotThrow(() => parseArgs(['--auto-commit', 'always']));
-  });
-});

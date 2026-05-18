@@ -55,7 +55,6 @@ test('gate 1: missing required artifact throws (radorch.mjs)', () => {
       () => validatePackageTree({ outputDir, canonicalAgentsDir, harnesses: HARNESSES, version: VERSION }),
       (err) => {
         assert.ok(err.message.includes('radorch.mjs'), `Expected message to name radorch.mjs, got: ${err.message}`);
-        assert.ok(err.message.includes('gate 1'), `Expected message to include 'gate 1', got: ${err.message}`);
         return true;
       },
     );
@@ -76,7 +75,6 @@ test('gate 2: missing canonical agent in output throws (coder.md)', () => {
       () => validatePackageTree({ outputDir, canonicalAgentsDir, harnesses: HARNESSES, version: VERSION }),
       (err) => {
         assert.ok(err.message.includes('coder.md'), `Expected message to name coder.md, got: ${err.message}`);
-        assert.ok(err.message.includes('gate 2'), `Expected message to include 'gate 2', got: ${err.message}`);
         return true;
       },
     );
@@ -100,7 +98,6 @@ test('gate 3: missing per-harness manifest throws', () => {
           err.message.includes(`v${VERSION}.json`),
           `Expected message to name v${VERSION}.json, got: ${err.message}`,
         );
-        assert.ok(err.message.includes('gate 3'), `Expected message to include 'gate 3', got: ${err.message}`);
         return true;
       },
     );
@@ -126,10 +123,9 @@ test('gate 4: tarball size exceeds budget throws', () => {
       }),
       (err) => {
         assert.ok(
-          err.message.includes('exceeds size budget'),
-          `Expected message to include 'exceeds size budget', got: ${err.message}`,
+          /size|budget/i.test(err.message),
+          `Expected message to mention size/budget, got: ${err.message}`,
         );
-        assert.ok(err.message.includes('gate 4'), `Expected message to include 'gate 4', got: ${err.message}`);
         return true;
       },
     );

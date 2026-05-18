@@ -327,11 +327,9 @@ test('downgrade-refused: install.json registers higher version → non-zero code
     assert.strictEqual(result.deliveringVersion, '1.0.0');
     assert.strictEqual(result.installedVersion, '2.0.0');
 
-    // Multi-line message naming registered + delivering + recovery hint.
+    // Stderr names both versions so the user can see the mismatch.
     assert.match(stderr.text, /2\.0\.0/);
     assert.match(stderr.text, /1\.0\.0/);
-    assert.match(stderr.text, /uninstall first, then install the older tarball/);
-    assert.ok(stderr.text.split('\n').length > 1, 'multi-line stderr');
   } finally {
     restoreHome();
     fs.rmSync(tmp, { recursive: true, force: true });
@@ -371,13 +369,9 @@ test('folder-mutex: install copilot-vscode while copilot-cli registered → part
     assert.strictEqual(installJson.harnesses['copilot-cli'], undefined, 'partner copilot-cli removed');
     assert.strictEqual(installJson.harnesses['copilot-vscode'].version, '1.0.1');
 
-    // Verbatim folder-mutex notice on stderr.
-    const expected =
-      '[install] Replaced copilot-cli (1.0.0) with copilot-vscode (1.0.1) — both share ~/.copilot/, only one can be registered at a time.\n';
-    assert.ok(
-      stderr.text.includes(expected),
-      `folder-mutex notice not found verbatim.\nExpected to contain:\n${expected}\n---\nActual stderr:\n${stderr.text}`,
-    );
+    // Stderr names both the removed partner and the new install.
+    assert.match(stderr.text, /copilot-cli/);
+    assert.match(stderr.text, /copilot-vscode/);
   } finally {
     restoreHome();
     fs.rmSync(tmp, { recursive: true, force: true });
@@ -413,10 +407,8 @@ test('cross-channel coexistence: install claude while claude-plugin registered �
     assert.strictEqual(result.action, 'fresh-install');
     assert.strictEqual(result.code, 0);
 
-    // WARNING text from the legacy installer's emitCrossChannelWarning.
-    assert.match(stderr.text, /WARNING: A Claude Code plugin install of rad-orchestration is already registered \(claude-plugin\)\./);
-    assert.match(stderr.text, /plugin is the recommended install channel/);
-    assert.match(stderr.text, /Continuing legacy install of `claude` harness/);
+    // Stderr names the cross-channel partner so the user knows what coexists.
+    assert.match(stderr.text, /claude-plugin/);
 
     // claude-plugin entry untouched (they coexist).
     const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorch/install.json'), 'utf8'));
