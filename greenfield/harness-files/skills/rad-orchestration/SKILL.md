@@ -6,7 +6,7 @@ user-invocable: false
 
 # Orchestration
 
-Unified orchestration skill containing the pipeline runtime, system configuration (`orchestration.yml`), validator, and role-specific reference documents. All pipeline agents load this skill for system context.
+Unified orchestration skill containing the pipeline runtime, validator, and role-specific reference documents. System configuration (`orchestration.yml`) and tier templates live at `~/.radorch/` and are documented below. All pipeline agents load this skill for system context.
 
 ## Reference Documents
 
@@ -24,10 +24,13 @@ Read `references/context.md` first. If your role appears in the table below with
 
 This skill bundles:
 
-- **`config/orchestration.yml`** — System configuration
 - **`schemas/state-v4.schema.json`** — State file JSON Schema
 - **`scripts/pipeline.js`** — Pipeline runtime entry point. All CLI arguments pass through transparently. 
-- **`scripts/migrate-to-v5.js`** — Migration CLI
+- **`scripts/explode-master-plan.js`** — Pipeline branching and phase expansion engine
 - **`scripts/lib/`** — Pipeline engine, resolver, mutations, state I/O, validator
-- **`templates/`** — Canonical source for the four review-intensity tier templates (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`); installed to `~/.radorch/templates/` at deploy time
 - **`references/`** — Role-specific reference documents
+
+Runtime user-data files (not shipped inside the skill folder):
+
+- **`~/.radorch/orchestration.yml`** — System configuration; provisioned to the user-data root at install time from `greenfield/runtime-config/orchestration.yml`
+- **`~/.radorch/templates/`** — The four review-intensity tier templates (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`); provisioned from `greenfield/runtime-config/templates/` at install time

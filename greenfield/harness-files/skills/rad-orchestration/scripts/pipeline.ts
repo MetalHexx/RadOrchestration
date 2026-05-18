@@ -20,15 +20,21 @@ import type { EventContext, IOAdapter, PathContext, PipelineResult } from './lib
 // parameter rather than recomputing them; the bundle output sits one level above
 // `scripts/lib/`, so any file-relative walk from there would land at the wrong
 // directory at runtime.
-function resolvePathContext(): PathContext {
+export function resolvePathContext(): PathContext {
   const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
-  // templatesDir points at ~/.radorch/templates/ — the user-data folder where
-  // tier-classification templates are installed (and where the doctor check and
-  // dashboard UI already look). The skill folder no longer hosts these files at
-  // runtime; it remains the dev-time canonical source only.
+  // templatesDir points at ~/.radorch/templates/ — the single canonical home
+  // for both orchestration.yml and templates/ in the user-data root. The
+  // repo-side canonical source lives at greenfield/runtime-config/; the skill
+  // folder no longer hosts these files at any point in the pipeline.
   const templatesDir = path.join(os.homedir(), '.radorch', 'templates');
   const orchRoot = path.resolve(scriptsDir, '..', '..', '..');
   return { scriptsDir, templatesDir, orchRoot };
+}
+
+// The pipeline runtime ships in the plugin cache but reads its config from
+// the user-data root. One canonical reader, one canonical location.
+export function resolveDiscoveredConfigPath(): string {
+  return path.join(os.homedir(), '.radorch', 'orchestration.yml');
 }
 
 // ── Argument Parsing ──────────────────────────────────────────────────────────
@@ -114,7 +120,7 @@ export function run(argv: string[]): void {
     let configPath = args['config'];
 
     if (!configPath) {
-      const discovered = path.resolve(scriptsDir, '../config/orchestration.yml');
+      const discovered = resolveDiscoveredConfigPath();
       if (fs.existsSync(discovered)) {
         configPath = discovered;
       }

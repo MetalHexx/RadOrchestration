@@ -5,10 +5,10 @@ import path from 'node:path';
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
 const targets = [
   'skills/rad-orchestration/scripts/pipeline.ts',
-  'skills/rad-orchestration/templates/extra-high.yml',
-  'skills/rad-orchestration/templates/high.yml',
-  'skills/rad-orchestration/templates/medium.yml',
-  'skills/rad-orchestration/templates/low.yml',
+  'greenfield/runtime-config/templates/extra-high.yml',
+  'greenfield/runtime-config/templates/high.yml',
+  'greenfield/runtime-config/templates/medium.yml',
+  'greenfield/runtime-config/templates/low.yml',
 ];
 const libDir = path.join(repoRoot, 'skills/rad-orchestration/scripts/lib');
 for (const f of readdirSync(libDir).filter(n => n.endsWith('.ts'))) targets.push(`skills/rad-orchestration/scripts/lib/${f}`);

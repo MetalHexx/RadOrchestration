@@ -20,7 +20,7 @@ function templatesAt(rel) {
 test('npm run build:all produces canonical + per-harness staging with exactly the four tier templates', () => {
   execSync('npm run build:all', { cwd: REPO_ROOT, stdio: 'pipe' });
 
-  const canonical = templatesAt('skills/rad-orchestration/templates');
+  const canonical = templatesAt('greenfield/runtime-config/templates');
   const claude = templatesAt('dist/staging/claude/skills/rad-orchestration/templates');
   const copilotVscode = templatesAt('dist/staging/copilot-vscode/skills/rad-orchestration/templates');
   const copilotCli = templatesAt('dist/staging/copilot-cli/skills/rad-orchestration/templates');

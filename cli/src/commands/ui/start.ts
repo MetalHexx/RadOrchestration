@@ -63,8 +63,8 @@ export async function runStart(opts: {
   const serverJs = path.join(uiDir, 'server.js');
   const spawnFn = opts._spawn ?? defaultSpawn;
   // In plugin mode, ~/.radorch is the canonical workspace and orch root in
-  // one. WORKSPACE_ROOT must be the dir that contains
-  // skills/rad-orchestration/config/orchestration.yml (provisioned by the
+  // one. WORKSPACE_ROOT must point at ~/.radorch so the UI can read
+  // orchestration.yml at ~/.radorch/orchestration.yml (provisioned by the
   // SessionStart hook); ORCH_ROOT="." means workspace IS the orch root.
   // The UI's ui/lib/path-resolver.ts then reads orchestration.yml's
   // base_path field (default "projects") to resolve the projects dir.

@@ -13,9 +13,11 @@
 //   ${HARNESS_ROOT} → ~/.claude for claude, ~/.copilot for copilot-vscode and copilot-cli
 //   ${RAD_HOME}     → ~/.radorch (always)
 
-// Matches the four tier-classification template files under the rad-orchestration skill.
-// These are the ONLY files from skills/rad-orchestration/templates/ that should land in
-// ~/.radorch/templates/; all other skills' templates/ subfolders stay in the skill folder.
+// Matches the four tier-classification template files staged under the rad-orchestration
+// skill bundle path. The adapter stages these files at skills/rad-orchestration/templates/
+// during the build but routes their *destination* to ~/.radorch/templates/ so they land
+// in the shared user-data root. All other skills' templates/ subfolders stay in the harness
+// skill folder.
 const TIER_TEMPLATE_RE = /^skills\/rad-orchestration\/templates\/([^/]+\.yml)$/;
 
 /**

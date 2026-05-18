@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { buildProgram } from '../cli.js';
 import { getCliVersion } from '../lib/package-version.js';
 const program = buildProgram(getCliVersion());

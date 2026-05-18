@@ -51,7 +51,7 @@ All paths below are relative to the repo root unless noted.
 
    > The `state.json` is pre-seeded — do NOT invoke the installer or run `--event start` fresh. Skip step 3 of the plan-pipeline harness setup. The engine will detect the existing `state.json` when you signal `start`, and the walker will resume from the current graph position.
 
-3. Set your `<run-folder>` variable — every `pipeline.js` call uses `--project-dir <run-folder>` AND `--config <run-folder>/orchestration.yml`. The fixture ships a local `orchestration.yml` with `auto_commit: never` and `auto_pr: never` so the conditional `commit_gate` routes to its `false` branch. Without `--config`, the engine falls back to the global `.claude/skills/rad-orchestration/config/orchestration.yml` which has `auto_commit: ask` and the corrective cycle will request a real commit — not what the harness wants.
+3. Set your `<run-folder>` variable — every `pipeline.js` call uses `--project-dir <run-folder>` AND `--config <run-folder>/orchestration.yml`. The fixture ships a local `orchestration.yml` with `auto_commit: never` and `auto_pr: never` so the conditional `commit_gate` routes to its `false` branch. Without `--config`, the engine falls back to the global `~/.radorch/orchestration.yml` which has `auto_commit: ask` and the corrective cycle will request a real commit — not what the harness wants.
 
 ---
 

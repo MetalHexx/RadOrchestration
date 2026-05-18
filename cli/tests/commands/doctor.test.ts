@@ -3,9 +3,27 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runDoctor, doctorCommand, renderDoctorForTest } from '../../src/commands/doctor/index.js';
-import { writeInstallSkeleton } from '../../src/commands/install/skeleton.js';
 import { validateEnvelope } from '../../src/framework/output.js';
 import { runPluginChecks, runInstallChecks, type CheckResult } from '../../src/commands/doctor/checks.js';
+
+/**
+ * Seed a minimal ~/.radorch layout so doctor checks pass / warn.
+ * Replaces the deleted writeInstallSkeleton helper — inline only the
+ * files each test actually depends on.
+ */
+async function seedRadorchDir(root: string, harness = 'claude'): Promise<void> {
+  await fs.mkdir(root, { recursive: true });
+  await fs.mkdir(path.join(root, 'projects'), { recursive: true });
+  await fs.mkdir(path.join(root, 'worktrees'), { recursive: true });
+  await fs.mkdir(path.join(root, 'logs'), { recursive: true });
+  await fs.writeFile(
+    path.join(root, 'install.json'),
+    JSON.stringify({ package_version: '0.0.0', installed_at: new Date().toISOString(), last_writer_version: '0.0.0', state_schema_version: 'v5' }, null, 2) + '\n',
+  );
+  await fs.writeFile(path.join(root, 'config.yml'), `default_active_harness: ${harness}\n`);
+  await fs.writeFile(path.join(root, 'registry.yml'), 'repos: []\nworkspaces: []\n');
+  await fs.writeFile(path.join(root, '.harness'), `${harness}\n`);
+}
 
 let tmp: string;
 let homedirSpy: ReturnType<typeof vi.spyOn>;
@@ -29,7 +47,7 @@ describe('radorch doctor', () => {
 
   it('reports all_passed=true with a Registry warn when installed but empty', async () => {
     const root = path.join(tmp, '.radorch');
-    await writeInstallSkeleton({ root, packageVersion: '0.0.0', defaultHarness: 'claude' });
+    await seedRadorchDir(root);
     const result = await runDoctor({ env: process.env });
     expect(result.all_passed).toBe(true); // warns allowed; only fails block
     const reg = result.checks.find((c) => c.category === 'Registry');
@@ -41,7 +59,7 @@ describe('radorch doctor', () => {
 
   it('every check carries a closed-enum status', async () => {
     const root = path.join(tmp, '.radorch');
-    await writeInstallSkeleton({ root, packageVersion: '0.0.0', defaultHarness: 'claude' });
+    await seedRadorchDir(root);
     const result = await runDoctor({ env: process.env });
     for (const c of result.checks) {
       expect(['pass', 'warn', 'fail']).toContain(c.status);

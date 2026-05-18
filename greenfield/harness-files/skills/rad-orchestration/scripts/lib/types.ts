@@ -264,7 +264,7 @@ export interface PipelineState {
 
 export interface PathContext {
   scriptsDir: string;      // absolute path of `skills/rad-orchestration/scripts/`
-  templatesDir: string;    // absolute path of `skills/rad-orchestration/templates/`
+  templatesDir: string;    // absolute path of `~/.radorch/templates/`
   orchRoot: string;        // absolute path to the orchestration install root (parent of skills/)
 }
 

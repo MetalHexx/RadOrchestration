@@ -2,6 +2,12 @@
 
 The `harness-files/` folder is the **single source of truth** for all agents and skills across multiple AI coding harnesses (Claude Code, GitHub Copilot in VS Code, GitHub Copilot CLI).
 
+Different harnesses express agent metadata differently (model names, tool names, frontmatter fields), so we use a combination of **neutral body files** and **per-harness YAML files**.  
+
+Model names per-harness are important to make sure the correct model is used in each harness environment and ensure coding is efficient and that an orchestrator can select the appropriate agent for a given task and model.
+
+Tool names are also harmonized per-harness to match the expected input for each environment. Without per-harness YAML files, tooling won't work as expected which could lead to more (or less) tools being available to agents than expected.
+
 ## Folder Structure
 
 ```

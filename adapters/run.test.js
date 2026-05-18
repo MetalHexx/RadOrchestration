@@ -191,7 +191,7 @@ test('runAdapter manifest entries carry sha256 hash of the emitted file content'
 
 test('runAdapter copies orchestration.yml verbatim from canonical source', async () => {
   const canonical = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-yml-'));
-  // Mirror the canonical layout: skills/rad-orchestration/config/orchestration.yml
+  // Mirror the legacy skill-subfolder layout to exercise adapter generic-copy behavior.
   const cfgDir = path.join(canonical, 'skills', 'rad-orchestration', 'config');
   fs.mkdirSync(cfgDir, { recursive: true });
   fs.writeFileSync(path.join(canonical, 'skills', 'rad-orchestration', 'SKILL.md'),
@@ -260,7 +260,7 @@ test('runAdapter marks orchestration.yml manifest entry with orchestration-syste
 
 test('canonical orchestration.yml carries no system or projects sections', () => {
   const text = fs.readFileSync(
-    path.join(import.meta.dirname || '.', '..', 'skills', 'rad-orchestration', 'config', 'orchestration.yml'),
+    path.join(import.meta.dirname || '.', '..', 'greenfield', 'runtime-config', 'orchestration.yml'),
     'utf8',
   );
   assert.doesNotMatch(text, /^system:/m);
