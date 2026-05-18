@@ -22,6 +22,8 @@ The steps, in execution order:
 10. `expand-tokens` — per-harness token substitution over `dist/<harness>/agents/` and `skills/` with `agentNames: []` (AD-6 — no `rad-orchestration:` namespacing rewrite).
 11. `emit-manifest` — per-harness manifest write to `manifests/<harness>/v<version>.json`, then copy that file plus every prior `manifests/<harness>/v*.json` into `dist/<harness>/manifests/` (AD-4).
 12. `synthesize-package-json` — writes `dist/package.json` with the verbatim-carry-forward fields plus the seven overrides (FR-26).
+13. `emit-per-harness-package-json` — writes a minimal `{name, version}` stub into each `dist/<harness>/package.json` so `installHarness` can resolve the delivering version per harness without reading the top-level `dist/package.json`.
+14. `validate` — structural validation gate (FR-27, FR-28, NFR-5, NFR-7, AD-7): confirms per-harness artifacts, canonical agents, manifests, and unpacked size budget. Throws to abort the build.
 
 ## Coding standards
 

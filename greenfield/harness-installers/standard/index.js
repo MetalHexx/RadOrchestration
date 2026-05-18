@@ -123,7 +123,9 @@ export async function main() {
       } catch (err) {
         spinner.fail(`Failed to bootstrap '${harness}': ${err.message}`);
         // AD-11: continue to next harness — failures do not roll back priors.
-        harnessResults.push({ harness, action: 'downgrade-refused', message: err.message });
+        // 'failed' (not 'downgrade-refused') so summary distinguishes unexpected
+        // exceptions from the install state machine's intentional refusal path.
+        harnessResults.push({ harness, action: 'failed', message: err.message });
       }
     }
 

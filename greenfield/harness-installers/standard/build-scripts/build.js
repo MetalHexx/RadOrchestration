@@ -9,10 +9,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import { emitCliBundle } from '../../shared/build-helpers/emit-cli-bundle.js';
-import { emitPipelineBundle } from '../../shared/build-helpers/emit-pipeline-bundle.js';
-import { emitUiBundle } from '../../shared/build-helpers/emit-ui-bundle.js';
-import { expandTokens } from '../../shared/build-helpers/expand-tokens.js';
+// Shared build-helpers transitively import esbuild at module-load time, and
+// esbuild lives in shared/build-helpers/node_modules which `bootstrap-deps`
+// populates. They are dynamic-imported inside runBuild() after that step.
 import { emitManifest } from './emit-manifest.js';
 import { synthesizePackageJson } from './synthesize-package-json.js';
 import { validatePackageTree } from './validate.js';
@@ -74,6 +73,13 @@ export async function runBuild(opts) {
       }
     });
   }
+
+  // Shared helpers are dynamic-imported here, after bootstrap-deps, because
+  // emit-cli-bundle and emit-pipeline-bundle top-level-import esbuild.
+  const { emitCliBundle } = await import('../../shared/build-helpers/emit-cli-bundle.js');
+  const { emitPipelineBundle } = await import('../../shared/build-helpers/emit-pipeline-bundle.js');
+  const { emitUiBundle } = await import('../../shared/build-helpers/emit-ui-bundle.js');
+  const { expandTokens } = await import('../../shared/build-helpers/expand-tokens.js');
 
   // Step 0 — adapter engine, once per harness. Skipped in unit tests.
   if (!opts.skipAdapterEngine) {

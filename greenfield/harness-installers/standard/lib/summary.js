@@ -22,8 +22,8 @@ import { THEME, sectionHeader, divider } from './theme.js';
 /**
  * @typedef {Object} HarnessResult
  * @property {string} harness - Harness key (claude / copilot-vscode / copilot-cli)
- * @property {'fresh-install' | 'upgrade-complete' | 'noop' | 'downgrade-refused'} action
- * @property {string} [message] - Optional message (typically set on downgrade-refused)
+ * @property {'fresh-install' | 'upgrade-complete' | 'noop' | 'downgrade-refused' | 'failed'} action
+ * @property {string} [message] - Optional message (typically set on downgrade-refused or failed)
  */
 
 /**
@@ -45,17 +45,16 @@ export function renderPostInstallSummary({ harnessResults, configPath, driftHint
   console.log('');
 
   for (const r of harnessResults) {
-    if (r.action === 'downgrade-refused') {
-      console.log(
-        '  ' + THEME.error('✖') + ' ' +
-        THEME.body(`harness '${r.harness}' bootstrapped (action: ${r.action})`),
-      );
-    } else {
-      console.log(
-        '  ' + THEME.success('✔') + ' ' +
-        THEME.body(`harness '${r.harness}' bootstrapped (action: ${r.action})`),
-      );
-    }
+    const isError = r.action === 'downgrade-refused' || r.action === 'failed';
+    const mark = isError ? THEME.error('✖') : THEME.success('✔');
+    let verb;
+    if (r.action === 'downgrade-refused') verb = 'install refused';
+    else if (r.action === 'failed') verb = 'install failed';
+    else verb = 'bootstrapped';
+    console.log(
+      '  ' + mark + ' ' +
+      THEME.body(`harness '${r.harness}' ${verb} (action: ${r.action})`),
+    );
   }
 
   console.log('  ' + THEME.success('✔') + ' ' + THEME.body('Configuration: ') + THEME.secondary(configPath));
