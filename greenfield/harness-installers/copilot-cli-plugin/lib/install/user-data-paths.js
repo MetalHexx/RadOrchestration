@@ -14,5 +14,6 @@ export function userDataPaths(opts = {}) {
     logs: path.join(root, 'logs'),
     installLog: path.join(root, 'logs', 'install.log'),
     bootstrapMarker: path.join(root, '.copilot-cli-plugin-bootstrap.json'),
+    manifestSnapshot: path.join(root, '.copilot-cli-plugin-manifest.json'),
   };
 }

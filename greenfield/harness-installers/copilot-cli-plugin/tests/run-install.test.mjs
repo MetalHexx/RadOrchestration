@@ -27,6 +27,23 @@ function makePluginRoot(version) {
   return dir;
 }
 
+function makePluginRootWithVersionedTemplate(version) {
+  const dir = makePluginRoot(version);
+  // Add an installer-owned template that is unique per version so the test can
+  // observe remove-before-write semantics on upgrade.
+  fs.writeFileSync(join(dir, 'templates', `tier-${version}.yml`), `name: tier-${version}\n`);
+  // Rewrite the manifest to include the per-version template alongside the
+  // standard files. Keep orchestration.yml as user-config so the assertion can
+  // verify it survives the upgrade untouched.
+  fs.writeFileSync(join(dir, `manifests/v${version}.json`), JSON.stringify({
+    version, channel: 'copilot-cli-plugin', files: [
+      { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: 'orchestration.yml', ownership: 'user-config' },
+      { destinationPath: `\${RAD_HOME}/templates/tier-${version}.yml`, sourcePath: `templates/tier-${version}.yml`, ownership: 'installer-owned' },
+    ],
+  }));
+  return dir;
+}
+
 test('fresh install hydrates ~/.radorch/, stamps install.json under copilot-cli-plugin, logs fresh-install', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-'));
   const pluginRoot = makePluginRoot('1.0.0');
@@ -127,5 +144,31 @@ test('hydration drop-list — installer never writes config.yml, registry.yml, .
   } finally {
     fs.rmSync(radHome, { recursive: true, force: true });
     fs.rmSync(pluginRoot, { recursive: true, force: true });
+  }
+});
+
+test('upgrade-complete: version bump removes prior installer-owned files, installs new ones, preserves user-config (FR-14, AD-8, FR-11)', async () => {
+  const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-up-'));
+  const pluginOld = makePluginRootWithVersionedTemplate('1.0.0');
+  const pluginNew = makePluginRootWithVersionedTemplate('1.1.0');
+  try {
+    await runInstall({ pluginRoot: pluginOld, radHome });
+    assert.ok(fs.existsSync(join(radHome, 'templates/tier-1.0.0.yml')), 'old tier present after fresh install');
+    assert.ok(fs.existsSync(join(radHome, 'orchestration.yml')), 'orchestration.yml present after fresh install');
+    // Mark orchestration.yml so we can detect rewrite (user-config must be preserved).
+    fs.writeFileSync(join(radHome, 'orchestration.yml'), 'pipeline: {}\nuser_edit: keep-me\n');
+
+    const result = await runInstall({ pluginRoot: pluginNew, radHome });
+    assert.strictEqual(result.action, 'upgrade-complete', 'version bump emits upgrade-complete');
+    assert.ok(!fs.existsSync(join(radHome, 'templates/tier-1.0.0.yml')), 'prior installer-owned template removed');
+    assert.ok(fs.existsSync(join(radHome, 'templates/tier-1.1.0.yml')), 'new installer-owned template installed');
+    const orchAfter = fs.readFileSync(join(radHome, 'orchestration.yml'), 'utf8');
+    assert.match(orchAfter, /user_edit: keep-me/, 'user-config orchestration.yml preserved untouched');
+    const ij = JSON.parse(fs.readFileSync(join(radHome, 'install.json'), 'utf8'));
+    assert.strictEqual(ij.harnesses['copilot-cli-plugin'].version, '1.1.0', 'install.json now records new version');
+  } finally {
+    fs.rmSync(radHome, { recursive: true, force: true });
+    fs.rmSync(pluginOld, { recursive: true, force: true });
+    fs.rmSync(pluginNew, { recursive: true, force: true });
   }
 });

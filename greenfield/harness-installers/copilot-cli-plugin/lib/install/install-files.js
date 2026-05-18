@@ -8,17 +8,19 @@ function expand(destPath, paths) {
 
 export function installManifestFiles(manifest, pluginRoot, opts = {}) {
   const paths = userDataPaths(opts);
+  const resolvedRoot = path.resolve(paths.root);
   let copied = 0;
   for (const entry of manifest.files) {
     const dest = expand(entry.destinationPath, paths);
-    if (!dest.startsWith(paths.root)) {
+    const resolvedDest = path.resolve(dest);
+    if (resolvedDest !== resolvedRoot && !resolvedDest.startsWith(resolvedRoot + path.sep)) {
       throw new Error(`install: destination escapes ~/.radorch/: ${dest}`);
     }
     // FR-11: orchestration.yml preserved on existing (user-config ownership skipped on re-install if file exists).
-    if (entry.ownership === 'user-config' && fs.existsSync(dest)) continue;
+    if (entry.ownership === 'user-config' && fs.existsSync(resolvedDest)) continue;
     const src = path.join(pluginRoot, entry.sourcePath);
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.copyFileSync(src, dest);
+    fs.mkdirSync(path.dirname(resolvedDest), { recursive: true });
+    fs.copyFileSync(src, resolvedDest);
     copied++;
   }
   return { copied };
