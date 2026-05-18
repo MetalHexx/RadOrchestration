@@ -36,7 +36,7 @@ A self-contained npm package (`@rad-orchestration/copilot-cli-plugin-source`) wh
 | Agent filename suffix | `.md` | `.agent.md` |
 | Agent namespacing | `rad-orchestration:<name>` injected by `expand-tokens` | No namespacing — `expand-tokens` is a no-op for that transform |
 | Bootstrap idempotency | `selfUninstall` rewrites `hooks.json` in-place | Marker file at `~/.radorch/.copilot-cli-plugin-bootstrap.json` — mid-session `hooks.json` rewrites are unsafe under Copilot CLI's cache-and-read semantics |
-| Coexistence partners | warns on `harnesses.claude` | warns on both `harnesses.claude` and `harnesses.claude-plugin` |
+| Coexistence partners | warns on `harnesses.claude` | warns on both `harnesses['copilot-cli']` and `harnesses['copilot-vscode']` |
 | Build step stderr prefix | `[build:claude-plugin]` | `[build:copilot-cli-plugin]` |
 | Validate gate 3 | namespaced-token check | omitted (no namespacing) |
 

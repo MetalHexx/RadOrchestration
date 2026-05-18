@@ -21,8 +21,9 @@ function cmpSemver(a, b) {
     if (x === undefined) return typeof y === 'string' ? 1 : -1;
     if (y === undefined) return typeof x === 'string' ? -1 : 1;
     if (typeof x === 'number' && typeof y === 'number') { if (x !== y) return x < y ? -1 : 1; }
-    else if (typeof x === 'number') return 1;
-    else if (typeof y === 'number') return -1;
+    // SemVer §11.4.3: numeric identifiers always have lower precedence than non-numeric ones.
+    else if (typeof x === 'number') return -1;
+    else if (typeof y === 'number') return 1;
     else if (x !== y) return x < y ? -1 : 1;
   }
   return 0;

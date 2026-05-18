@@ -52,17 +52,18 @@ function readDeliveringVersion(root) {
 async function main() {
   const radHome = process.env.RAD_HOME ?? path.join(os.homedir(), '.radorch');
   const paths = userDataPaths({ radHome });
-  const deliveringVersion = readDeliveringVersion(process.env.COPILOT_CLI_PLUGIN_ROOT);
-
-  // FR-7 idempotency: marker fast-path covers (a) success + version match.
-  // Error marker (b) and version-mismatch (c) fall through to runInstall.
-  const marker = readMarker(paths.bootstrapMarker);
-  if (marker && marker.status === 'success' && marker.version === deliveringVersion) {
-    // DD-9 silent noop — no log line, no marker rewrite.
-    return 0;
-  }
-
+  let deliveringVersion = null;
   try {
+    deliveringVersion = readDeliveringVersion(process.env.COPILOT_CLI_PLUGIN_ROOT);
+
+    // FR-7 idempotency: marker fast-path covers (a) success + version match.
+    // Error marker (b) and version-mismatch (c) fall through to runInstall.
+    const marker = readMarker(paths.bootstrapMarker);
+    if (marker && marker.status === 'success' && marker.version === deliveringVersion) {
+      // DD-9 silent noop — no log line, no marker rewrite.
+      return 0;
+    }
+
     const result = await runInstall({ pluginRoot: process.env.COPILOT_CLI_PLUGIN_ROOT, radHome });
     log(`install action=${result.action}`);
     // DD-14: marker is the LAST write so its state always reflects the most recent outcome.

@@ -30,15 +30,18 @@ function defaultSizer(outputDir) {
 export function validatePluginTree(opts) {
   const { outputDir, canonicalAgentsDir } = opts;
   const sizer = opts.sizer ?? defaultSizer;
-  const plugin = JSON.parse(fs.readFileSync(path.join(outputDir, 'plugin.json'), 'utf8'));
-  const version = plugin.version;
 
-  // Gate 1: required artifacts present.
+  // Gate 1: required artifacts present. Runs FIRST so a missing plugin.json
+  // surfaces as the actionable gate-1 message rather than a raw ENOENT/JSON
+  // parse error from the read below.
   for (const rel of REQUIRED_ARTIFACTS) {
     if (!fs.existsSync(path.join(outputDir, rel))) {
       throw new Error(`validate: missing required artifact ${rel} (gate 1)`);
     }
   }
+
+  const plugin = JSON.parse(fs.readFileSync(path.join(outputDir, 'plugin.json'), 'utf8'));
+  const version = plugin.version;
 
   // Gate 2: every canonical agent appears at output/agents/<name>.agent.md (Copilot filename suffix).
   // Guard against missing canonicalAgentsDir (e.g. synthetic test fixtures that seed no agents).

@@ -8,7 +8,7 @@ Two hooks that ship inside the Copilot CLI plugin payload and manage install lif
 
 **`bootstrap.mjs` — `userPromptSubmitted` hook**
 
-Runs once on the user's first prompt after plugin installation. Calls `runInstall({ pluginRoot, radHome })` from `lib/install/run-install.js`. On success, writes a marker file at `~/.radorch/.copilot-cli-plugin-bootstrap.json` so the hook skips all subsequent runs (marker-file idempotency). On failure, leaves the marker absent so the user can retry on the next prompt.
+Runs once on the user's first prompt after plugin installation. Calls `runInstall({ pluginRoot, radHome })` from `lib/install/run-install.js`. On success, writes a marker file at `~/.radorch/.copilot-cli-plugin-bootstrap.json` so the hook skips all subsequent runs (marker-file idempotency). On failure, writes an error marker (`status: "error"`) with the delivering version (per DD-14) so the next bootstrap invocation reads the marker, sees `status !== "success"`, and falls through to a retry (per DD-16). The marker is the last write in both success and failure paths, so its state always reflects the most recent outcome.
 
 Idempotency uses a marker file rather than rewriting `hooks.json` in place — Copilot CLI reads `hooks.json` from a disk cache at session start and does not re-read it mid-session, making mid-session `hooks.json` rewrites unsafe. The marker approach matches the platform's cache-and-read semantics.
 
