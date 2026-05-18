@@ -21,7 +21,7 @@ Per-harness install orchestrator consumed by `lib/wizard.js` and (via `index.js`
 - **Best-effort post-install side effects**: Dashboard setup hints, missing environment variable warnings, and other non-critical operations are wrapped in `try`/`catch` and swallowed per NFR-4. Warnings are logged; execution continues.
 - **User-data preservation rules**: Tested explicitly (NFR-10). Tests assert that fresh installs leave no prior content, upgrades preserve `orchestration.yml` untouched, and shipped tier templates are refreshed while user-added templates survive.
 - **Error messages**: Always name observed state, action attempted, and recovery path per NFR-11. Example: "Detected downgrade from v1.5 to v1.3; refusing install. To proceed, uninstall then reinstall at v1.3."
-- **Closed `InstallKey` values**: The four valid harness keys are `claude`, `copilot-vscode`, `copilot-cli`, `dashboard`. No other keys are accepted.
+- **Closed `InstallKey` values**: The four valid harness keys are `claude`, `claude-plugin`, `copilot-cli`, `copilot-vscode`. No other keys are accepted (AD-10). Note that the standard installer itself only writes the three non-plugin keys; `claude-plugin` is present in the closed set because both installers share the same `install.json` shape and the cross-channel coexistence detector consults entries written by either installer (AD-15).
 
 ## Seams to other modules
 

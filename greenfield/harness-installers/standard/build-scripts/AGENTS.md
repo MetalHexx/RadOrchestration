@@ -6,26 +6,22 @@ Single end-to-end build orchestrator that consumes canonical sources (`agents/`,
 
 ## How it works
 
-`build.js` executes a fixed 14-step sequence:
+`build.js` executes a fixed sequence of named steps. Every step runs inside the `step()` helper, which prints `[build:standard] <name> ...` before the body and `[build:standard] <name> done (Nms)` after, re-throwing any error wrapped as `[build:standard] step "<name>" failed: <msg>` (AD-7 fail-fast). Shared helpers come from `harness-installers/shared/build-helpers/` (AD-8); the local helpers in this folder are `emit-manifest.js` and `synthesize-package-json.js`.
 
-1. Validates that all source directories exist and are readable.
-2. Clears prior `dist/` state.
-3. Invokes `expand-tokens.js` to interpolate version strings and build metadata into manifest templates.
-4. Runs per-harness adapters over canonical agent and skill sources via `emit-cli-bundle.js` (produces `dist/<harness>/agents/`, `dist/<harness>/skills/`).
-5. Calls `emit-pipeline-bundle.js` to copy the pipeline runtime (`pipeline.js`, `main.ts`, `lib/`) into each harness's skills folder.
-6. Runs `emit-ui-bundle.js` to compile and emit the dashboard (once at the top level per AD-9; shared across all harnesses).
-7. Runs `emit-manifest.js` to generate per-harness file manifests (used by the installer to copy files to user-level).
-8. Runs `synthesize-package-json.js` to generate the final `package.json` for the tarball.
-9. Copies `runtime-config/orchestration.yml` and the four tier templates into `dist/runtime-config/`.
-10. Copies CLI source into `dist/cli/`.
-11. Validates that all expected outputs exist in `dist/`.
-12. Runs final manifest integrity checks.
-13. Prints build summary.
-14. Exits with code 0 on success, 1 on any failure.
+The steps, in execution order:
 
-**Fail-fast** (AD-7): Any validation failure or missing output halts the build immediately. The installer receives either a complete, valid `dist/` or nothing at all.
-
-All emitters that produce per-harness content delegate their harness-specific knowledge (file paths, naming rules, manifest shape) to the local helpers `emit-manifest.js` and `synthesize-package-json.js` via parameter passing, not global configuration (AD-8 — no installer-blindness).
+1. `bootstrap-deps` — conditional sub-package `npm install` for `harness-installers/shared/build-helpers`, `harness-adapters/engine`, `cli/`, and `ui/` (skipped via `opts.skipBootstrap`).
+2. `adapter-engine` — runs the adapter engine per harness (skipped via `opts.skipAdapterEngine` in unit tests).
+3. `clean-output` — `rm -rf dist/` then `mkdir dist/`.
+4. `copy-adapter-output` — per-harness `cpSync` of `harness-adapters/output/<harness>/agents/` and `skills/` into `dist/<harness>/`.
+5. `copy-runtime-config` — per-harness copy of `runtime-config/orchestration.yml` and `runtime-config/templates/` into each `dist/<harness>/`.
+6. `emit-cli-bundle` — per-harness emit of the bundled `radorch.mjs` CLI into `dist/<harness>/skills/rad-orchestration/scripts/`; chmod 0o755 on POSIX (NFR-6).
+7. `emit-pipeline-bundle` — per-harness emit of the pipeline runtime (`pipeline.js`, `explode-master-plan.js`) into the same scripts dir.
+8. `prune-scripts-sources` — per-harness prune leaving only `.js` / `.mjs` / `.gitignore` under each `dist/<harness>/skills/rad-orchestration/scripts/`.
+9. `emit-ui-bundle` — single emission to `dist/ui/` at the top level (AD-9 — not per-harness).
+10. `expand-tokens` — per-harness token substitution over `dist/<harness>/agents/` and `skills/` with `agentNames: []` (AD-6 — no `rad-orchestration:` namespacing rewrite).
+11. `emit-manifest` — per-harness manifest write to `manifests/<harness>/v<version>.json`, then copy that file plus every prior `manifests/<harness>/v*.json` into `dist/<harness>/manifests/` (AD-4).
+12. `synthesize-package-json` — writes `dist/package.json` with the verbatim-carry-forward fields plus the seven overrides (FR-26).
 
 ## Coding standards
 
