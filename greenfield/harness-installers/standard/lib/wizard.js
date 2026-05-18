@@ -78,6 +78,34 @@ function buildChoices(_harnesses) {
 }
 
 /**
+ * Render a short summary block above the picker: either a tidy table of the
+ * harnesses already registered in install.json, or a single line saying none
+ * are installed yet. The point is to orient the user before they pick.
+ *
+ * @param {Record<string, { version: string }>} harnesses
+ */
+function renderInstalledSummary(harnesses) {
+  const entries = Object.entries(harnesses);
+  if (entries.length === 0) {
+    console.log(`  ${THEME.hint('No harnesses currently installed.')}`);
+    return;
+  }
+  const rows = entries
+    .map(([key, entry]) => ({
+      name: HARNESS_DISPLAY_NAME[key] ?? key,
+      version: entry.version,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const nameCol = Math.max(...rows.map((r) => r.name.length)) + 4;
+
+  console.log(`  ${THEME.label('Currently installed')}`);
+  console.log('');
+  for (const r of rows) {
+    console.log(`    ${THEME.body(r.name.padEnd(nameCol, ' '))}${THEME.secondary('v' + r.version)}`);
+  }
+}
+
+/**
  * Returns the destructive-confirmation message as an array of pre-wrapped
  * lines for clean rendering above the `Continue?` prompt, or null if no
  * confirmation is needed (fresh install, same-version reinstall, upgrade,
@@ -147,8 +175,7 @@ export async function runWizard({ skipConfirmation, cliOverrides = {}, homeDir, 
     console.log('');
     sectionHeader('::', 'Harness');
     console.log('');
-    console.log(THEME.hint('  Install the Copilot variant matching the UI you use most often —'));
-    console.log(THEME.hint('  per-agent model routing works only in the variant whose agent files are on disk.'));
+    renderInstalledSummary(harnesses);
     console.log('');
     pick = await select({
       message: 'Which harness do you want to install?',
