@@ -66,56 +66,46 @@ export function detectInstalledHarnesses(opts = {}) {
 }
 
 /**
- * Build the picker's row labels from the current registry state.
+ * Build the picker's row labels. Always just the harness name — the
+ * destructive-pick confirmation handles all "you're replacing X" messaging,
+ * so the picker stays uncluttered.
  *
- * @param {Record<string, { version: string }>} harnesses
+ * @param {Record<string, { version: string }>} _harnesses
  * @returns {Array<{ value: string, name: string }>}
  */
-function buildChoices(harnesses) {
-  return HARNESS_CHOICES.map(({ value, name }) => {
-    const sameInstalled = harnesses[value];
-    if (sameInstalled) {
-      return { value, name: `${name} (currently installed v${sameInstalled.version} — will reinstall)` };
-    }
-    const conflicts = detectFolderConflicts(harnesses, value);
-    if (conflicts.length > 0) {
-      const partnerLabels = conflicts.map((c) => `${HARNESS_DISPLAY_NAME[c.key]} (v${c.entry.version})`).join(' and ');
-      return { value, name: `${name} (will REPLACE ${partnerLabels})` };
-    }
-    return { value, name };
-  });
+function buildChoices(_harnesses) {
+  return HARNESS_CHOICES.map(({ value, name }) => ({ value, name }));
 }
 
 /**
- * Returns the destructive-confirmation message for a pick, or null if no
+ * Returns the destructive-confirmation message as an array of pre-wrapped
+ * lines for clean rendering above the `Continue?` prompt, or null if no
  * confirmation is needed (fresh install, same-version reinstall, upgrade,
  * or same-UI different-channel coexistence).
  *
  * @param {Record<string, { version: string }>} harnesses
  * @param {string} pick
  * @param {string} deliveringVersion
+ * @returns {string[] | null}
  */
-function destructivePromptMessage(harnesses, pick, deliveringVersion) {
-  // Cross-UI mutex eviction (one or more partners present).
+function destructivePromptLines(harnesses, pick, deliveringVersion) {
   const conflicts = detectFolderConflicts(harnesses, pick);
   if (conflicts.length > 0) {
     const newUi = COPILOT_UI_LABEL[pick];
-    // All conflicts are the "other UI" by construction (FOLDER_MUTEX_PARTNERS
-    // only crosses cli ↔ vscode), so the OLD-UI label is taken from the first.
     const oldUi = COPILOT_UI_LABEL[conflicts[0].key];
     const partnerSummary = conflicts.map((c) => `${HARNESS_DISPLAY_NAME[c.key]} (v${c.entry.version})`).join(' and ');
-    return (
-      `Installing ${HARNESS_DISPLAY_NAME[pick]} will replace your existing ${partnerSummary}. ` +
-      `After the switch, agents will model-route correctly in ${newUi} but no longer in ${oldUi} — ` +
-      `${oldUi} will run every agent on its main-chat model.`
-    );
+    return [
+      `Installing ${HARNESS_DISPLAY_NAME[pick]} will replace your existing ${partnerSummary}.`,
+      '',
+      `Agents will model-route correctly in ${newUi} after the switch, but no`,
+      `longer in ${oldUi} — ${oldUi} will run every agent on its main-chat model.`,
+    ];
   }
-  // Downgrade of the same variant.
   const same = harnesses[pick];
   if (same && cmpSemver(deliveringVersion, same.version) < 0) {
-    return (
-      `Installing v${deliveringVersion} will downgrade ${HARNESS_DISPLAY_NAME[pick]} from v${same.version}.`
-    );
+    return [
+      `Installing v${deliveringVersion} will downgrade ${HARNESS_DISPLAY_NAME[pick]} from v${same.version}.`,
+    ];
   }
   return null;
 }
@@ -168,10 +158,15 @@ export async function runWizard({ skipConfirmation, cliOverrides = {}, homeDir, 
   }
 
   if (!skipConfirmation && deliveringVersion) {
-    const message = destructivePromptMessage(harnesses, pick, deliveringVersion);
-    if (message) {
+    const lines = destructivePromptLines(harnesses, pick, deliveringVersion);
+    if (lines) {
+      console.log('');
+      for (const line of lines) {
+        console.log(`  ${THEME.warning ? THEME.warning(line) : line}`);
+      }
+      console.log('');
       const proceed = await confirm({
-        message: `${message} Continue?`,
+        message: 'Continue?',
         theme: INQUIRER_THEME,
         default: false,
       });
