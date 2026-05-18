@@ -18,7 +18,9 @@ Persistent — never self-uninstalls. Reads `${CLAUDE_PLUGIN_ROOT}/package.json`
 
 **`hooks.json`**
 
-Registers both hooks with Claude's hook system. `UserPromptSubmit` runs `node ${CLAUDE_PLUGIN_ROOT}/hooks/bootstrap.mjs`; `SessionStart` runs `node ${CLAUDE_PLUGIN_ROOT}/hooks/drift-check.mjs`.
+Registers both hooks with Claude's hook system. Each command is an inline `node -e "..."` shim that reads `process.env.CLAUDE_PLUGIN_ROOT`, normalizes a leading `/<drive>/...` form into `<DRIVE>:/...` (Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` Unix-style on Windows; native Node can't load `/c/foo/bar.mjs`), writes the normalized value back to the env, then dynamic-imports `${pluginRoot}/hooks/bootstrap.mjs` (UserPromptSubmit) or `${pluginRoot}/hooks/drift-check.mjs` (SessionStart) via `pathToFileURL`. The shim contains no backslash literals — every cross-shell escaping level (JSON decode, bash double-quote, `cmd /d /s /c`) tends to collapse them differently, and forward slashes work everywhere Node accepts paths.
+
+`tests/hooks-shim.test.mjs` is the regression guard. It pins the shim shape (no backslash literals, both targets correct) and spawns the live command string through both `bash -c` and the OS-default shell against a fixture plugin root — catches shell-quoting regressions without requiring a plugin reinstall.
 
 ## Build treatment
 
@@ -35,6 +37,6 @@ Registers both hooks with Claude's hook system. `UserPromptSubmit` runs `node ${
 ## Rules for making updates
 
 - If `bootstrap.mjs` gains new `lib/install/` imports, the build step `emit-hook-bundle` in `build-scripts/build.js` handles them automatically via esbuild bundling — no build-script change needed.
-- Changes to `hooks.json` hook names or event types must match Claude's hook system contract; test with `tests/bootstrap.test.mjs` and `tests/drift-check.test.mjs`.
+- Changes to `hooks.json` hook names or event types must match Claude's hook system contract; test with `tests/bootstrap.test.mjs` and `tests/drift-check.test.mjs`. Changes to the inline shim itself must keep `tests/hooks-shim.test.mjs` green — that suite runs the live command string through `bash -c` and the OS-default shell, which is what catches shell-quoting regressions before they ship.
 - `drift-check.mjs` must remain dependency-free (Node built-ins only) so it can ship verbatim.
 - Do not add synchronous file operations in `bootstrap.mjs` outside of `selfUninstall`; the install itself is async via `runInstall`.
