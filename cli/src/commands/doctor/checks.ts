@@ -25,7 +25,7 @@ function readAnyVersion(ij: InstallJson): string | undefined {
 const pkg = { version: getCliVersion() };
 
 export type CheckStatus = 'pass' | 'warn' | 'fail';
-export type CheckCategory = 'Environment' | 'Install' | 'Registry' | 'Plugin';
+export type CheckCategory = 'Environment' | 'Install' | 'Plugin';
 
 export interface CheckResult {
   category: CheckCategory;
@@ -180,27 +180,6 @@ export async function runInstallChecks(): Promise<CheckResult[]> {
   return out;
 }
 
-export async function runRegistryChecks(root: string): Promise<CheckResult[]> {
-  const p = installPaths(root);
-  const out: CheckResult[] = [];
-  try {
-    const text = await fsP.readFile(p.registryYml, 'utf8');
-    const parsed = parseYaml<{ repos?: unknown[]; workspaces?: unknown[] }>(text) ?? { repos: [], workspaces: [] };
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      throw new Error(`registry.yml at ${p.registryYml} is malformed: expected an object`);
-    }
-    const empty = (parsed.repos ?? []).length === 0 && (parsed.workspaces ?? []).length === 0;
-    out.push({
-      category: 'Registry',
-      name: 'registry has entries',
-      status: empty ? 'warn' : 'pass',
-      detail: empty ? 'nothing registered yet (lands in #1.1)' : undefined,
-    });
-  } catch (e) {
-    out.push({ category: 'Registry', name: 'registry shape', status: 'fail', detail: (e as Error).message });
-  }
-  return out;
-}
 
 export async function runPluginChecks(opts: {
   root: string;
@@ -254,16 +233,6 @@ export async function runPluginChecks(opts: {
       });
     }
   }
-  // Bootstrap skeleton
-  const required = [p.projectsDir, p.registryYml, p.configYml, p.installJson];
-  let bootstrapOk = true;
-  for (const f of required) if (!(await pathExists(f))) bootstrapOk = false;
-  out.push({
-    category: 'Plugin',
-    name: 'bootstrap-skeleton',
-    status: bootstrapOk ? 'pass' : 'fail',
-    detail: bootstrapOk ? undefined : 'missing one or more entries under ~/.radorch',
-  });
   // UI PID consistency
   const pidExists = await pathExists(p.uiPidFile);
   let pidStatus: CheckStatus = 'pass';

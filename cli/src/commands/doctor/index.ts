@@ -5,7 +5,7 @@ import { resolveInstallRoot } from '../../lib/paths.js';
 import { renderBanner } from '../../framework/banner.js';
 import { getCliVersion } from '../../lib/package-version.js';
 import type { CheckResult } from './checks.js';
-import { runEnvironmentChecks, runInstallChecks, runRegistryChecks, runPluginChecks } from './checks.js';
+import { runEnvironmentChecks, runInstallChecks, runPluginChecks } from './checks.js';
 
 const pkg = { version: getCliVersion() };
 
@@ -51,7 +51,6 @@ export async function runDoctor(opts: { env: NodeJS.ProcessEnv }): Promise<Docto
   const checks: CheckResult[] = [
     ...(await runEnvironmentChecks()),
     ...(await runInstallChecks()),
-    ...(await runRegistryChecks(root)),
     ...(await runPluginChecks({
       root,
       localVersion: pkg.version,
