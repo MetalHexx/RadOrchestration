@@ -17,7 +17,7 @@ Every function in `shared/` accepts all installer-specific values as parameters.
 - Hardcoded destination paths (`~/.radorch/`, `${CLAUDE_PLUGIN_ROOT}`, etc.)
 - Hardcoded token maps or agent name lists
 
-The current consumer is `harness-installers/claude-plugin/build-scripts/build.js`. Future installer variants will import from the same helpers with their own parameter sets.
+Current consumers are `harness-installers/claude-plugin/build-scripts/build.js` and `harness-installers/copilot-cli-plugin/build-scripts/build.js`. Each installer imports the same helpers with its own parameter set — the claude-plugin variant passes an `agentNames` list to enable agent-namespacing in `expandTokens`, the copilot-cli-plugin variant passes none so the namespacing pass is a no-op (per FR-3 / AD-10).
 
 ## Coding conventions
 

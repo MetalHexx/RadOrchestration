@@ -41,10 +41,6 @@ Gate 3 of the claude-plugin (namespaced-token check) is intentionally absent —
 
 Hard-codes `name: '@rad-orchestration/copilot-cli-plugin'`. Merges wrapper `package.json` with `plugin.json`; `plugin.json.version` always wins.
 
-**`parity-check.js`**
-
-Operator-only content-equivalence check: diffs the copilot-cli-plugin `output/` against the claude-plugin `output/` modulo a known-difference allowlist (filename suffix, plugin manifest path, namespacing tokens). NOT wired into CI — run ad-hoc during migration validation or when suspecting divergence.
-
 ## Coding conventions
 
 - Every step runs through the local `step(name, fn)` wrapper: timed, labeled with `[build:copilot-cli-plugin]`, fail-fast on throw.
@@ -56,5 +52,4 @@ Operator-only content-equivalence check: diffs the copilot-cli-plugin `output/` 
 - Step order is load-bearing: adapter output must exist before `copy-agents`/`copy-skills`; bundles before `expand-tokens`; `validate` last.
 - `REQUIRED_ARTIFACTS` in `validate.js` must stay in sync with build output. Gate 3 (namespaced tokens) must not be added — Copilot CLI has no agent namespacing.
 - Adding a new step: place it in the correct sequence, update the step-count comment, and update `validate.js` if a new required artifact is introduced.
-- `parity-check.js` is an operator tool; do not wire it into CI or import it from `build.js`.
 - Tests in `tests/` cover the build orchestration end-to-end; run them after any build-script change.

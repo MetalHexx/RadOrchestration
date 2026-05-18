@@ -12,7 +12,7 @@ A self-contained npm package (`@rad-orchestration/copilot-cli-plugin-source`) wh
 
 ## Source layout
 
-- `build-scripts/` — `build.js`, `validate.js`, `synthesize-package-json.js`, `parity-check.js`; see `build-scripts/AGENTS.md`
+- `build-scripts/` — `build.js`, `validate.js`, `synthesize-package-json.js`; see `build-scripts/AGENTS.md`
 - `plugin.json` — plugin metadata at the package root (not nested under `.claude-plugin/`); its `version` field is the authoritative version for the published package
 - `hooks/` — hook source; see `hooks/AGENTS.md`
 - `lib/install/` — install state machine; see `lib/install/AGENTS.md`
@@ -63,5 +63,5 @@ A self-contained npm package (`@rad-orchestration/copilot-cli-plugin-source`) wh
 
 - `hooks/AGENTS.md` — hook lifecycle and bundle/verbatim split
 - `lib/install/AGENTS.md` — install state machine modules
-- `build-scripts/AGENTS.md` — step sequence, validate gates, and parity-check operator tool
+- `build-scripts/AGENTS.md` — step sequence and validate gates
 - `greenfield/harness-installers/shared/build-helpers/AGENTS.md` — shared helper signatures
