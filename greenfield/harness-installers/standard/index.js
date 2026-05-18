@@ -42,6 +42,9 @@ import { hydrateUserData } from './lib/install/hydrate-user-data.js';
 // Install-time tooling checks (FR-6, AD-11).
 import { checkGit, checkGh } from './lib/checks/tooling.js';
 
+// Cross-channel drift detection (FR-9, AD-15).
+import { computeDriftHint } from './lib/drift-hint.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -153,33 +156,6 @@ export async function main() {
     }
     console.error(THEME.error(`✖ Installation failed: ${err.message}`));
     process.exit(1);
-  }
-}
-
-/**
- * FR-9, AD-15. Reads ~/.radorch/install.json (best-effort) and surfaces a
- * drift hint when the standard installer's `claude` entry and the plugin
- * channel's `claude-plugin` entry disagree on version. Returns null when
- * either side is absent or when the versions match.
- *
- * @returns {{ installedVersion: string, pluginVersion: string } | null}
- */
-function computeDriftHint() {
-  try {
-    const installJsonPath = path.join(os.homedir(), '.radorch', 'install.json');
-    if (!fs.existsSync(installJsonPath)) return null;
-    const raw = fs.readFileSync(installJsonPath, 'utf8');
-    const parsed = JSON.parse(raw);
-    const harnesses = parsed?.harnesses;
-    if (!harnesses || typeof harnesses !== 'object') return null;
-    const standard = harnesses['claude'];
-    const plugin = harnesses['claude-plugin'];
-    if (!standard || !plugin) return null;
-    if (typeof standard.version !== 'string' || typeof plugin.version !== 'string') return null;
-    if (standard.version === plugin.version) return null;
-    return { installedVersion: standard.version, pluginVersion: plugin.version };
-  } catch {
-    return null;
   }
 }
 

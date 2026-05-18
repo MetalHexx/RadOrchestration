@@ -46,7 +46,7 @@ export function renderHelp() {
     `    ${flag('--help')}, ${flag('-h')}                      Show this help message`,
     '',
     `  ${THEME.heading('SUBCOMMANDS')}`,
-    `    ${THEME.command('uninstall')}                       Remove a prior rad-orchestration install`,
+    `    ${THEME.command('uninstall')}                       Print a pointer to the in-harness uninstall command.`,
     '',
     `  ${THEME.heading('EXAMPLES')}`,
     `    ${THEME.command('radorch')}`,
@@ -62,7 +62,7 @@ export function renderHelp() {
     `      Re-install with defaults, overwrite existing files`,
     '',
     `    ${THEME.command('radorch uninstall')}`,
-    `      Remove every file the prior install's manifest lists, including orchestration.yml.`,
+    `      Standard installer's 'uninstall' prints guidance only — it does not delete files. Run /rad-ui-stop, then run radorch uninstall from inside your harness for the actual cleanup.`,
     '',
   ];
 
