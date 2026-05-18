@@ -32,7 +32,7 @@ describe('runWizard — headless (skipConfirmation) behavior', () => {
     }
   });
 
-  it('auto-detects ["claude","copilot-vscode","copilot-cli"] when both folders exist', async () => {
+  it('auto-detects only ["claude"] even when both ~/.claude and ~/.copilot exist (Copilot is opt-in)', async () => {
     const home = mkHome('std-wiz-both-');
     try {
       fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
@@ -43,7 +43,7 @@ describe('runWizard — headless (skipConfirmation) behavior', () => {
         cliOverrides: {},
         homeDir: home,
       });
-      assert.deepEqual(result.harnesses, ['claude', 'copilot-vscode', 'copilot-cli']);
+      assert.deepEqual(result.harnesses, ['claude']);
     } finally {
       fs.rmSync(home, { recursive: true, force: true });
     }
@@ -88,29 +88,22 @@ describe('detectInstalledHarnesses', () => {
     }
   });
 
-  it('returns ["copilot-vscode","copilot-cli"] when only .copilot exists', () => {
+  it('returns [] when only .copilot exists (~/.copilot/ is not a Copilot install signal)', () => {
     const home = mkHome('std-det-copilot-');
     try {
       fs.mkdirSync(path.join(home, '.copilot'), { recursive: true });
-      assert.deepEqual(detectInstalledHarnesses({ homeDir: home }), [
-        'copilot-vscode',
-        'copilot-cli',
-      ]);
+      assert.deepEqual(detectInstalledHarnesses({ homeDir: home }), []);
     } finally {
       fs.rmSync(home, { recursive: true, force: true });
     }
   });
 
-  it('returns the full union when both .claude and .copilot exist', () => {
+  it('returns only ["claude"] when both .claude and .copilot exist (Copilot is opt-in)', () => {
     const home = mkHome('std-det-both-');
     try {
       fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
       fs.mkdirSync(path.join(home, '.copilot'), { recursive: true });
-      assert.deepEqual(detectInstalledHarnesses({ homeDir: home }), [
-        'claude',
-        'copilot-vscode',
-        'copilot-cli',
-      ]);
+      assert.deepEqual(detectInstalledHarnesses({ homeDir: home }), ['claude']);
     } finally {
       fs.rmSync(home, { recursive: true, force: true });
     }

@@ -263,11 +263,6 @@
       "sha256": "d59141b54afb381e5b0943738680973d5371aba593078e4e27e9d71c3b540194"
     },
     {
-      "bundlePath": "skills/rad-orchestration/scripts/.gitignore",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/.gitignore",
-      "sha256": "c4b21bf8e915b265cdfc2837d1518fca2006ff18b6f1e218870c20bc4d60e11f"
-    },
-    {
       "bundlePath": "skills/rad-orchestration/scripts/explode-master-plan.js",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/explode-master-plan.js",
       "sha256": "978b2520332d71b191142686ad9f0655984f555d4d00b5bff60ba601e1377a35"

@@ -25,8 +25,13 @@ const HARNESS_CHOICES = [
 /**
  * Probes a home directory for harness install hints.
  *   ~/.claude/  → claude
- *   ~/.copilot/ → copilot-vscode AND copilot-cli (both share the same root,
- *                 so surface both as detected for the user to confirm).
+ *
+ * Only `~/.claude/` is used as an auto-detect signal. `~/.copilot/` is NOT
+ * checked: that directory is created by Copilot tooling regardless of which
+ * variant (or any variant) the user actually uses, so its presence is not a
+ * meaningful install signal. Copilot harnesses must be selected explicitly
+ * — via the wizard checkbox (spacebar) or `--harness` flag — so users are
+ * never opted into a Copilot install they didn't ask for.
  *
  * @param {{ homeDir?: string }} [opts]
  * @returns {string[]} subset of HARNESS_CHOICES values that look present
@@ -35,10 +40,6 @@ export function detectInstalledHarnesses(opts = {}) {
   const home = opts.homeDir ?? os.homedir();
   const out = [];
   if (fs.existsSync(path.join(home, '.claude'))) out.push('claude');
-  if (fs.existsSync(path.join(home, '.copilot'))) {
-    out.push('copilot-vscode');
-    out.push('copilot-cli');
-  }
   return out;
 }
 

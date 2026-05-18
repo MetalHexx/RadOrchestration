@@ -142,10 +142,13 @@ export async function runBuild(opts) {
   });
 
   // Prune TS sources, tests/, package.json, tsconfig.json from per-harness
-  // scripts trees. Only runtime artifacts (.js, .mjs, .gitignore) survive.
+  // scripts trees. Only runtime artifacts (.js, .mjs) survive.
+  // Files named `.gitignore` are not kept because npm-packlist hardcodes
+  // them as ignored when building the tarball — they would never reach the
+  // user anyway and listing them in the manifest would break install with
+  // ENOENT on copyFile.
   await step('prune-scripts-sources', () => {
     const KEEP_EXTENSIONS = new Set(['.js', '.mjs']);
-    const KEEP_FILES = new Set(['.gitignore']);
     function pruneDir(dir) {
       if (!fs.existsSync(dir)) return;
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -154,7 +157,7 @@ export async function runBuild(opts) {
           fs.rmSync(abs, { recursive: true, force: true });
         } else {
           const ext = path.extname(entry.name).toLowerCase();
-          if (!KEEP_EXTENSIONS.has(ext) && !KEEP_FILES.has(entry.name)) {
+          if (!KEEP_EXTENSIONS.has(ext)) {
             fs.rmSync(abs, { force: true });
           }
         }
