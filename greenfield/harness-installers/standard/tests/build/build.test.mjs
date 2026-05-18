@@ -1,0 +1,215 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { runBuild } from '../../build-scripts/build.js';
+
+const HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
+
+function makeFixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'std-build-'));
+
+  // Per-harness adapter engine output. Each harness gets agents + skills with
+  // tokenized references the build's expand-tokens step must replace.
+  for (const h of HARNESSES) {
+    const agentsDir = path.join(root, 'harness-adapters/output', h, 'agents');
+    const skillsDir = path.join(root, 'harness-adapters/output', h, 'skills/rad-orchestration');
+    fs.mkdirSync(agentsDir, { recursive: true });
+    fs.mkdirSync(skillsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(agentsDir, 'orchestrator.md'),
+      [
+        '---',
+        'name: orchestrator',
+        'description: test',
+        '---',
+        '',
+        'Spawn **coder** agent. The **planner** writes the plan.',
+        'See ${SKILLS_ROOT}/rad-orchestration/SKILL.md.',
+        'Plugin root is ${PLUGIN_ROOT}.',
+        '',
+      ].join('\n'),
+    );
+    fs.writeFileSync(
+      path.join(agentsDir, 'coder.md'),
+      '---\nname: coder\ndescription: test\n---\n# Coder\n',
+    );
+    fs.writeFileSync(
+      path.join(skillsDir, 'SKILL.md'),
+      '---\nname: rad-orchestration\ndescription: t\n---\nReference: ${SKILLS_ROOT}/rad-orchestration/scripts/pipeline.js\n',
+    );
+  }
+
+  // runtime-config/
+  const rcDir = path.join(root, 'runtime-config');
+  const rcTemplates = path.join(rcDir, 'templates');
+  fs.mkdirSync(rcTemplates, { recursive: true });
+  fs.writeFileSync(path.join(rcDir, 'orchestration.yml'), 'pipeline: {}\n');
+  for (const tier of ['extra-high', 'high', 'medium', 'low']) {
+    fs.writeFileSync(path.join(rcTemplates, `${tier}.yml`), `name: ${tier}\n`);
+  }
+
+  // cli/ source — synthetic. esbuild needs a real entry to bundle, but the
+  // unit test skips emitCliBundle by virtue of the helper being called and
+  // tolerating a trivial entry. We don't skip it: we provide a real entry.
+  const cliBin = path.join(root, 'cli/src/bin');
+  fs.mkdirSync(cliBin, { recursive: true });
+  fs.writeFileSync(path.join(cliBin, 'radorch.ts'), 'console.log("radorch");\n');
+  fs.writeFileSync(
+    path.join(root, 'cli/package.json'),
+    JSON.stringify({ name: 'cli', type: 'module', version: '0.0.0-fixture' }),
+  );
+
+  // ui/ — emit-ui-bundle's `runner` will be stubbed via opts.skipUiRunner.
+  // We still need the .next/standalone + static dirs to exist so the helper's
+  // cpSync succeeds; the runner stub does nothing.
+  fs.mkdirSync(path.join(root, 'ui/.next/standalone'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'ui/.next/static'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'ui/.next/standalone/server.js'), '// ui\n');
+
+  // harness-files/skills/rad-orchestration/scripts/ — TS sources for the
+  // pipeline bundler.
+  const pipeSrc = path.join(root, 'harness-files/skills/rad-orchestration/scripts');
+  fs.mkdirSync(pipeSrc, { recursive: true });
+  fs.writeFileSync(path.join(pipeSrc, 'pipeline.ts'), 'export const main = () => 1;\n');
+  fs.writeFileSync(path.join(pipeSrc, 'explode-master-plan.ts'), 'export const main = () => 2;\n');
+  // A stray .ts source the prune-pass must strip from the output.
+  fs.writeFileSync(path.join(pipeSrc, 'stray.ts'), '// stray\n');
+
+  // harness-installers/standard/ source — needs package.json for synth.
+  const installerSrc = path.join(root, 'harness-installers/standard');
+  fs.mkdirSync(installerSrc, { recursive: true });
+  fs.writeFileSync(
+    path.join(installerSrc, 'package.json'),
+    JSON.stringify({
+      name: '@rad-orchestration/standard-source',
+      version: '1.0.0-alpha.9',
+      private: true,
+      type: 'module',
+      description: 'Standard installer source wrapper.',
+      author: 'rad-orchestration',
+      license: 'MIT',
+      homepage: 'https://example.test/home',
+      repository: { type: 'git', url: 'https://example.test/repo' },
+      bugs: { url: 'https://example.test/bugs' },
+      keywords: ['orchestration', 'installer'],
+      dependencies: { chalk: '^5.0.0' },
+      devDependencies: { esbuild: '^0.24.0' },
+    }, null, 2),
+  );
+  // manifests/<harness>/ dirs (emit-manifest writes into them); leave empty.
+  for (const h of HARNESSES) {
+    fs.mkdirSync(path.join(installerSrc, 'manifests', h), { recursive: true });
+  }
+  return root;
+}
+
+test('runBuild produces dist/<harness>/ per harness, shared dist/ui/, and synthesized dist/package.json', async () => {
+  const root = makeFixture();
+  try {
+    await runBuild({
+      rootDir: root,
+      greenfieldRel: '.',
+      skipAdapterEngine: true,
+      skipUiRunner: true,
+      skipBootstrap: true,
+    });
+    const out = path.join(root, 'harness-installers/standard/dist');
+
+    // Per-harness payload (FR-19, FR-20, FR-21, FR-22).
+    for (const h of HARNESSES) {
+      const hOut = path.join(out, h);
+      assert.ok(fs.existsSync(path.join(hOut, 'agents/orchestrator.md')),
+        `${h}: agents/orchestrator.md`);
+      assert.ok(fs.existsSync(path.join(hOut, 'skills/rad-orchestration/SKILL.md')),
+        `${h}: skills/rad-orchestration/SKILL.md`);
+      assert.ok(fs.existsSync(path.join(hOut, 'orchestration.yml')),
+        `${h}: orchestration.yml`);
+      assert.ok(fs.existsSync(path.join(hOut, 'templates/medium.yml')),
+        `${h}: templates/medium.yml`);
+      assert.ok(fs.existsSync(path.join(hOut, 'skills/rad-orchestration/scripts/radorch.mjs')),
+        `${h}: bundled CLI`);
+      assert.ok(fs.existsSync(path.join(hOut, 'skills/rad-orchestration/scripts/pipeline.js')),
+        `${h}: pipeline bundle`);
+      assert.ok(fs.existsSync(path.join(hOut, 'skills/rad-orchestration/scripts/explode-master-plan.js')),
+        `${h}: explode-master-plan bundle`);
+      // v5 entries retire — neither is shipped (FR-22).
+      assert.ok(!fs.existsSync(path.join(hOut, 'skills/rad-orchestration/scripts/migrate-to-v5.js')),
+        `${h}: no migrate-to-v5.js`);
+      assert.ok(!fs.existsSync(path.join(hOut, 'skills/rad-orchestration/scripts/fix-ghost-v5.js')),
+        `${h}: no fix-ghost-v5.js`);
+      // Prune-pass: stray TS source is gone.
+      assert.ok(!fs.existsSync(path.join(hOut, 'skills/rad-orchestration/scripts/stray.ts')),
+        `${h}: stray.ts pruned`);
+      // Per-harness manifest copy-forward (FR-25, AD-4).
+      assert.ok(fs.existsSync(path.join(hOut, 'manifests/v1.0.0-alpha.9.json')),
+        `${h}: per-harness manifest copied forward`);
+    }
+
+    // UI bundle emitted ONCE at top-level dist/ui/ — never per-harness (FR-23, AD-9).
+    assert.ok(fs.existsSync(path.join(out, 'ui/server.js')),
+      'dist/ui/server.js exists at top level');
+    for (const h of HARNESSES) {
+      assert.ok(!fs.existsSync(path.join(out, h, 'ui')),
+        `dist/${h}/ui/ must NOT exist (AD-9)`);
+    }
+
+    // Token substitution per harness (FR-24, AD-6, AD-16).
+    // Claude → ~/.claude
+    const claudeRoot = path.join(os.homedir(), '.claude');
+    const claudeSkillsRoot = path.join(claudeRoot, 'skills');
+    const orchClaude = fs.readFileSync(path.join(out, 'claude/agents/orchestrator.md'), 'utf8');
+    assert.ok(orchClaude.includes(`${claudeSkillsRoot}/rad-orchestration/SKILL.md`)
+      || orchClaude.includes(`${claudeSkillsRoot}\\rad-orchestration/SKILL.md`)
+      || orchClaude.includes(claudeSkillsRoot),
+      'claude orchestrator.md: ${SKILLS_ROOT} replaced with ~/.claude/skills');
+    assert.ok(orchClaude.includes(claudeRoot),
+      'claude orchestrator.md: ${PLUGIN_ROOT} replaced with ~/.claude');
+    // No bare ${SKILLS_ROOT} or ${PLUGIN_ROOT} should remain.
+    assert.ok(!orchClaude.includes('${SKILLS_ROOT}'), 'claude: no unsubstituted ${SKILLS_ROOT}');
+    assert.ok(!orchClaude.includes('${PLUGIN_ROOT}'), 'claude: no unsubstituted ${PLUGIN_ROOT}');
+    // AD-6: no namespacing rewrite — agent body still references bare names.
+    assert.ok(orchClaude.includes('**coder**'),
+      'claude orchestrator.md: **coder** kept bare (no rad-orchestration: prefix)');
+    assert.ok(orchClaude.includes('**planner**'),
+      'claude orchestrator.md: **planner** kept bare (no rad-orchestration: prefix)');
+    assert.ok(!orchClaude.includes('rad-orchestration:coder'),
+      'claude: no rad-orchestration:coder namespacing applied (AD-6)');
+
+    // Copilot variants → ~/.copilot
+    const copilotRoot = path.join(os.homedir(), '.copilot');
+    const copilotSkillsRoot = path.join(copilotRoot, 'skills');
+    for (const h of ['copilot-vscode', 'copilot-cli']) {
+      const orch = fs.readFileSync(path.join(out, h, 'agents/orchestrator.md'), 'utf8');
+      assert.ok(orch.includes(copilotSkillsRoot),
+        `${h} orchestrator.md: ${`\${SKILLS_ROOT}`} replaced with ~/.copilot/skills`);
+      assert.ok(orch.includes(copilotRoot),
+        `${h} orchestrator.md: ${`\${PLUGIN_ROOT}`} replaced with ~/.copilot`);
+      assert.ok(!orch.includes('${SKILLS_ROOT}'), `${h}: no unsubstituted ${`\${SKILLS_ROOT}`}`);
+      assert.ok(!orch.includes('${PLUGIN_ROOT}'), `${h}: no unsubstituted ${`\${PLUGIN_ROOT}`}`);
+      assert.ok(orch.includes('**coder**'),
+        `${h} orchestrator.md: **coder** kept bare (no rad-orchestration: prefix)`);
+    }
+
+    // dist/package.json synthesis (FR-26, FR-28, AD-17).
+    const pkg = JSON.parse(fs.readFileSync(path.join(out, 'package.json'), 'utf8'));
+    assert.strictEqual(pkg.name, 'rad-orchestration', 'synthesized name');
+    assert.strictEqual(pkg.version, '1.0.0-alpha.9', 'version matches source');
+    assert.strictEqual(pkg.type, 'module', 'type: module');
+    assert.deepStrictEqual(pkg.bin, { 'radorch-installer': 'index.js' }, 'bin map');
+    assert.deepStrictEqual(pkg.engines, { node: '>=18' }, 'engines node>=18');
+    assert.deepStrictEqual(pkg.files, ['index.js', 'lib/', 'dist/', 'manifests/'], 'files allowlist');
+    assert.deepStrictEqual(pkg.dependencies, { chalk: '^5.0.0' }, 'dependencies carried from source');
+    // Verbatim carry-forward (FR-26, AD-17).
+    assert.strictEqual(pkg.description, 'Standard installer source wrapper.');
+    assert.strictEqual(pkg.author, 'rad-orchestration');
+    assert.strictEqual(pkg.license, 'MIT');
+    assert.strictEqual(pkg.homepage, 'https://example.test/home');
+    assert.deepStrictEqual(pkg.repository, { type: 'git', url: 'https://example.test/repo' });
+    assert.deepStrictEqual(pkg.bugs, { url: 'https://example.test/bugs' });
+    assert.deepStrictEqual(pkg.keywords, ['orchestration', 'installer']);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
