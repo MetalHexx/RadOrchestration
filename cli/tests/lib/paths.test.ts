@@ -15,9 +15,6 @@ describe('installPaths', () => {
     const root = '/tmp/rad-x';
     const p = installPaths(root);
     expect(p.installJson).toBe(path.join(root, 'install.json'));
-    expect(p.configYml).toBe(path.join(root, 'config.yml'));
-    expect(p.registryYml).toBe(path.join(root, 'registry.yml'));
-    expect(p.harnessPointer).toBe(path.join(root, '.harness'));
     expect(p.gitignore).toBe(path.join(root, '.gitignore'));
     expect(p.projectsDir).toBe(path.join(root, 'projects'));
     expect(p.worktreesDir).toBe(path.join(root, 'worktrees'));

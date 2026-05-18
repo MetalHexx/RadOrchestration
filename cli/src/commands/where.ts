@@ -10,14 +10,6 @@ export const WHERE_NAMES: Record<string, WhereName> = {
     description: 'Global projects folder (~/.radorch/projects).',
     resolve: () => installPaths(resolveInstallRoot()).projectsDir,
   },
-  registry: {
-    description: 'Workspace/repo registry file.',
-    resolve: () => installPaths(resolveInstallRoot()).registryYml,
-  },
-  config: {
-    description: 'Active-harness config file.',
-    resolve: () => installPaths(resolveInstallRoot()).configYml,
-  },
   root: {
     description: 'Radorch install root (~/.radorch).',
     resolve: () => installPaths(resolveInstallRoot()).root,

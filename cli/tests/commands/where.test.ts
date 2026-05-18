@@ -47,20 +47,6 @@ describe('runWhere', () => {
     expect(s.readStderr()).toBe('');
   });
 
-  it('registry resolves to <home>/.radorch/registry.yml', async () => {
-    const s = makeStreams();
-    const code = await runWhere({ name: 'registry', stdout: s.stdout, stderr: s.stderr, env: {} });
-    expect(code).toBe(0);
-    expect(s.readStdout().trim()).toBe(path.join(tmp, '.radorch', 'registry.yml'));
-  });
-
-  it('config resolves to <home>/.radorch/config.yml', async () => {
-    const s = makeStreams();
-    const code = await runWhere({ name: 'config', stdout: s.stdout, stderr: s.stderr, env: {} });
-    expect(code).toBe(0);
-    expect(s.readStdout().trim()).toBe(path.join(tmp, '.radorch', 'config.yml'));
-  });
-
   it('root resolves to <home>/.radorch', async () => {
     const s = makeStreams();
     const code = await runWhere({ name: 'root', stdout: s.stdout, stderr: s.stderr, env: {} });
