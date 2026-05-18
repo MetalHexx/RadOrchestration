@@ -13,6 +13,7 @@ import { emitHookBundle } from '../../shared/build-helpers/emit-hook-bundle.js';
 import { emitUiBundle } from '../../shared/build-helpers/emit-ui-bundle.js';
 import { expandTokens } from '../../shared/build-helpers/expand-tokens.js';
 import { synthesizePackageJson } from './synthesize-package-json.js';
+import { validatePluginTree } from './validate.js';
 
 function step(name, fn) {
   const t0 = Date.now();
@@ -159,6 +160,11 @@ export async function runBuild(opts) {
       if (/^v.+\.json$/.test(f)) fs.copyFileSync(path.join(src, f), path.join(out, 'manifests', f));
     }
   });
+
+  await step('validate', () => validatePluginTree({
+    outputDir: out,
+    canonicalAgentsDir: path.join(greenfield, 'harness-files/agents'),
+  }));
 }
 
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1'))) {
