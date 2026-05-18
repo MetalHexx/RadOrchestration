@@ -5,15 +5,21 @@ import assert from 'node:assert/strict';
 import { parseArgs } from '../../lib/cli.js';
 
 describe('parseArgs — harness selection', () => {
-  it('parses --harness with comma-separated list into harnesses array', () => {
-    const result = parseArgs(['--harness', 'claude,copilot-cli']);
+  it('parses single --harness value into a length-1 array', () => {
+    const result = parseArgs(['--harness', 'claude']);
     assert.equal(result.command, 'run');
-    assert.deepEqual(result.options.harnesses, ['claude', 'copilot-cli']);
+    assert.deepEqual(result.options.harnesses, ['claude']);
   });
 
-  it('parses single --harness value', () => {
-    const result = parseArgs(['--harness', 'claude']);
-    assert.deepEqual(result.options.harnesses, ['claude']);
+  it('rejects --harness with a comma-list (single-select model)', () => {
+    assert.throws(
+      () => parseArgs(['--harness', 'claude,copilot-cli']),
+      (err) => {
+        assert.ok(err.message.includes('single value'), 'error should explain single-value contract');
+        assert.ok(err.message.includes('claude,copilot-cli'), 'error should echo the bad input');
+        return true;
+      },
+    );
   });
 
   it('throws for invalid harness value, naming allowed values', () => {

@@ -9,7 +9,7 @@
 /** Map of --flag → config field name */
 const FLAG_MAP = {
   // Active flags — used by the standard wizard.
-  '--harness':           'harnesses',        // comma-list parsed into a string[]
+  '--harness':           'harnesses',        // single harness name (stored as a length-1 array for the wizard contract)
   '--default-template':  'defaultTemplate',
   '--max-phases':        'maxPhases',
   '--max-tasks':         'maxTasksPerPhase',
@@ -78,16 +78,21 @@ export function parseArgs(argv) {
     if (field && i + 1 < argv.length) {
       const raw = argv[i + 1];
       if (field === 'harnesses') {
-        // --harness accepts a comma-separated list: --harness claude,copilot-vscode
-        const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
-        for (const p of parts) {
-          if (!HARNESS_NAMES.has(p)) {
-            throw new Error(
-              `Invalid harness '${p}' for --harness. Allowed: claude, copilot-vscode, copilot-cli`,
-            );
-          }
+        // --harness accepts a single value. The installer is single-select:
+        // one harness per run, re-invoke for additional harnesses.
+        if (raw.includes(',')) {
+          throw new Error(
+            `--harness accepts a single value, not a comma-list. Got '${raw}'. Re-run the installer once per harness.`,
+          );
         }
-        options.harnesses = parts;
+        const value = raw.trim();
+        if (!HARNESS_NAMES.has(value)) {
+          throw new Error(
+            `Invalid harness '${value}' for --harness. Allowed: claude, copilot-vscode, copilot-cli`,
+          );
+        }
+        // Stored as a length-1 array to match the wizard's return contract.
+        options.harnesses = [value];
       } else if (field === 'afterPlanning' || field === 'afterFinalReview') {
         // Boolean-via-string flag.
         const lower = raw.toLowerCase();

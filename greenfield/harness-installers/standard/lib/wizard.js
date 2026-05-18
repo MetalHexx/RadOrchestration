@@ -1,20 +1,27 @@
 // greenfield/harness-installers/standard/lib/wizard.js — Interactive wizard
-// orchestrator trimmed to AD-18: harness selection is the ONLY thing the
-// wizard collects. The four review-intensity tier templates and the
-// orchestration.yml that ships in runtime-config/ are deployed verbatim by
-// `hydrateUserData`; the wizard does not collect any planning preference,
-// tier choice, workspace root, or gate behavior (FR-15, FR-20, AD-18).
+// orchestrator. Selects exactly one harness per install run (AD-18).
 //
-// Surface order per DD-2:
-//   1. Harness multi-select (claude / copilot-vscode / copilot-cli),
-//      pre-checking entries auto-detected under the user's home directory.
-//   2. Return { harnesses, skipConfirmation } — no other fields.
+// Surface order:
+//   1. Single-select picker over the three installable harnesses, labelled
+//      with current registry state (not installed / same variant present /
+//      will REPLACE a cross-UI variant on disk).
+//   2. If the pick would overwrite another variant's on-disk files OR
+//      downgrade the same variant, prompt for an explicit Y/N (default No).
+//   3. Return { harnesses: [<pick>], skipConfirmation } — the install loop
+//      iterates this array (always length 1 from the picker).
+//
+// Headless behavior is in index.js, not here: `--harness <X> --yes` skips
+// both prompts; `--harness <X>` alone skips only the picker and still
+// applies the destructive-pick confirmation; `--yes` alone errors out at
+// the CLI layer before this wizard runs.
 
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
-import { checkbox } from '@inquirer/prompts';
+import { select, confirm } from '@inquirer/prompts';
 import { INQUIRER_THEME, THEME, sectionHeader } from './theme.js';
+import { userDataPaths } from './install/user-data-paths.js';
+import { loadRegistry, detectFolderConflicts, cmpSemver } from './install/install-json.js';
 
 const HARNESS_CHOICES = [
   { value: 'claude',         name: 'Claude Code' },
@@ -22,19 +29,34 @@ const HARNESS_CHOICES = [
   { value: 'copilot-cli',    name: 'GitHub Copilot CLI' },
 ];
 
+const HARNESS_DISPLAY_NAME = {
+  'claude':                'Claude Code',
+  'claude-plugin':         'Claude Code (plugin)',
+  'copilot-vscode':        'Copilot VS Code',
+  'copilot-vscode-plugin': 'Copilot VS Code (plugin)',
+  'copilot-cli':           'Copilot CLI',
+  'copilot-cli-plugin':    'Copilot CLI (plugin)',
+};
+
+const COPILOT_UI_LABEL = {
+  'copilot-vscode':        'Copilot VS Code',
+  'copilot-vscode-plugin': 'Copilot VS Code',
+  'copilot-cli':           'Copilot CLI',
+  'copilot-cli-plugin':    'Copilot CLI',
+};
+
 /**
- * Probes a home directory for harness install hints.
- *   ~/.claude/  → claude
+ * Folder-presence probe used only by the headless `--yes` fallback path,
+ * which today returns `['claude']` when `~/.claude/` exists (or as a final
+ * default if not). The interactive picker no longer auto-pre-checks based
+ * on this — the user must explicitly select.
  *
- * Only `~/.claude/` is used as an auto-detect signal. `~/.copilot/` is NOT
- * checked: that directory is created by Copilot tooling regardless of which
- * variant (or any variant) the user actually uses, so its presence is not a
- * meaningful install signal. Copilot harnesses must be selected explicitly
- * — via the wizard checkbox (spacebar) or `--harness` flag — so users are
- * never opted into a Copilot install they didn't ask for.
+ * `~/.copilot/` is intentionally NOT consulted: that directory is created
+ * by Copilot tooling regardless of whether the user uses any rad-installed
+ * Copilot harness, so its presence is not a meaningful install signal.
  *
  * @param {{ homeDir?: string }} [opts]
- * @returns {string[]} subset of HARNESS_CHOICES values that look present
+ * @returns {string[]}
  */
 export function detectInstalledHarnesses(opts = {}) {
   const home = opts.homeDir ?? os.homedir();
@@ -44,43 +66,122 @@ export function detectInstalledHarnesses(opts = {}) {
 }
 
 /**
+ * Build the picker's row labels from the current registry state.
+ *
+ * @param {Record<string, { version: string }>} harnesses
+ * @returns {Array<{ value: string, name: string }>}
+ */
+function buildChoices(harnesses) {
+  return HARNESS_CHOICES.map(({ value, name }) => {
+    const sameInstalled = harnesses[value];
+    if (sameInstalled) {
+      return { value, name: `${name} (currently installed v${sameInstalled.version} — will reinstall)` };
+    }
+    const conflicts = detectFolderConflicts(harnesses, value);
+    if (conflicts.length > 0) {
+      const partnerLabels = conflicts.map((c) => `${HARNESS_DISPLAY_NAME[c.key]} (v${c.entry.version})`).join(' and ');
+      return { value, name: `${name} (will REPLACE ${partnerLabels})` };
+    }
+    return { value, name };
+  });
+}
+
+/**
+ * Returns the destructive-confirmation message for a pick, or null if no
+ * confirmation is needed (fresh install, same-version reinstall, upgrade,
+ * or same-UI different-channel coexistence).
+ *
+ * @param {Record<string, { version: string }>} harnesses
+ * @param {string} pick
+ * @param {string} deliveringVersion
+ */
+function destructivePromptMessage(harnesses, pick, deliveringVersion) {
+  // Cross-UI mutex eviction (one or more partners present).
+  const conflicts = detectFolderConflicts(harnesses, pick);
+  if (conflicts.length > 0) {
+    const newUi = COPILOT_UI_LABEL[pick];
+    // All conflicts are the "other UI" by construction (FOLDER_MUTEX_PARTNERS
+    // only crosses cli ↔ vscode), so the OLD-UI label is taken from the first.
+    const oldUi = COPILOT_UI_LABEL[conflicts[0].key];
+    const partnerSummary = conflicts.map((c) => `${HARNESS_DISPLAY_NAME[c.key]} (v${c.entry.version})`).join(' and ');
+    return (
+      `Installing ${HARNESS_DISPLAY_NAME[pick]} will replace your existing ${partnerSummary}. ` +
+      `After the switch, agents will model-route correctly in ${newUi} but no longer in ${oldUi} — ` +
+      `${oldUi} will run every agent on its main-chat model.`
+    );
+  }
+  // Downgrade of the same variant.
+  const same = harnesses[pick];
+  if (same && cmpSemver(deliveringVersion, same.version) < 0) {
+    return (
+      `Installing v${deliveringVersion} will downgrade ${HARNESS_DISPLAY_NAME[pick]} from v${same.version}.`
+    );
+  }
+  return null;
+}
+
+/**
  * Runs the wizard.
  *
- * Headless resolution order:
- *   1. `cliOverrides.harnesses` (explicit) wins unconditionally.
- *   2. Otherwise, when `skipConfirmation` is true, auto-detect from the home
- *      directory; if nothing detected, fall back to ['claude'] (FR-5).
- *   3. Otherwise (interactive), present the harness multi-select with
- *      auto-detected entries pre-checked (DD-2).
+ * Resolution order:
+ *   1. `cliOverrides.harnesses` (explicit, length 1) wins; if the pick is
+ *      destructive AND `skipConfirmation` is false, the confirm prompt
+ *      still fires.
+ *   2. Otherwise, when `skipConfirmation` is true with no `--harness`,
+ *      this path is unreachable — index.js rejects that combination before
+ *      calling runWizard. Defensive fallback returns ['claude'].
+ *   3. Otherwise (interactive), present the single-select picker with
+ *      state-aware labels; then fire a confirm prompt if the pick is
+ *      destructive.
  *
  * @param {{
  *   skipConfirmation: boolean,
  *   cliOverrides?: { harnesses?: string[] } & Record<string, unknown>,
  *   homeDir?: string,
+ *   deliveringVersion?: string,
  * }} options
  * @returns {Promise<{ harnesses: string[], skipConfirmation: boolean }>}
  */
-export async function runWizard({ skipConfirmation, cliOverrides = {}, homeDir }) {
-  let harnesses;
-  if (cliOverrides.harnesses !== undefined) {
-    harnesses = cliOverrides.harnesses;
+export async function runWizard({ skipConfirmation, cliOverrides = {}, homeDir, deliveringVersion }) {
+  const paths = userDataPaths(homeDir ? { home: homeDir } : {});
+  const registry = loadRegistry(paths.installJson);
+  const harnesses = registry.harnesses ?? {};
+
+  let pick;
+  if (cliOverrides.harnesses !== undefined && cliOverrides.harnesses.length > 0) {
+    pick = cliOverrides.harnesses[0];
   } else if (skipConfirmation) {
-    const detected = detectInstalledHarnesses({ homeDir });
-    harnesses = detected.length > 0 ? detected : ['claude'];
+    // Defensive: index.js rejects `--yes` without `--harness` before we run.
+    pick = 'claude';
   } else {
     console.log('');
-    sectionHeader('::', 'Harnesses');
+    sectionHeader('::', 'Harness');
     console.log('');
-    console.log(THEME.hint('  Which harnesses do you want radorch installed into?'));
+    console.log(THEME.hint('  Install the Copilot variant matching the UI you use most often —'));
+    console.log(THEME.hint('  per-agent model routing works only in the variant whose agent files are on disk.'));
     console.log('');
-    const detected = new Set(detectInstalledHarnesses({ homeDir }));
-    harnesses = await checkbox({
-      message: 'Which harnesses do you want radorch installed into?',
+    pick = await select({
+      message: 'Which harness do you want to install?',
       theme: INQUIRER_THEME,
-      choices: HARNESS_CHOICES.map((c) => ({ ...c, checked: detected.has(c.value) })),
-      validate: (s) => s.length > 0 || 'Select at least one harness.',
+      choices: buildChoices(harnesses),
     });
   }
 
-  return { harnesses, skipConfirmation };
+  if (!skipConfirmation && deliveringVersion) {
+    const message = destructivePromptMessage(harnesses, pick, deliveringVersion);
+    if (message) {
+      const proceed = await confirm({
+        message: `${message} Continue?`,
+        theme: INQUIRER_THEME,
+        default: false,
+      });
+      if (!proceed) {
+        const err = new Error('Install cancelled at confirmation prompt.');
+        err.code = 'CANCELLED_AT_CONFIRM';
+        throw err;
+      }
+    }
+  }
+
+  return { harnesses: [pick], skipConfirmation };
 }

@@ -22,14 +22,18 @@ test('writeInstallJson is atomic (tmp + rename) and strips state_schema_version'
   } finally { fs.rmSync(tmpDir, { recursive: true, force: true }); }
 });
 
-test('resolveFolderConflict removes the partner copilot variant (FR-11)', () => {
+test('resolveFolderConflict removes every cross-UI partner currently registered', () => {
   const harnesses = {
-    'copilot-cli': { version: '1.0.0', channel: 'legacy-installer', installed_at: 't', last_writer_version: '1.0.0' },
+    'copilot-cli':        { version: '1.0.0', channel: 'legacy-installer', installed_at: 't', last_writer_version: '1.0.0' },
+    'copilot-cli-plugin': { version: '1.0.0', channel: 'plugin',           installed_at: 't', last_writer_version: '1.0.0' },
   };
   const r = resolveFolderConflict(harnesses, 'copilot-vscode');
-  assert.ok(r.removed, 'partner present');
-  assert.strictEqual(r.removed.key, 'copilot-cli');
-  assert.strictEqual(harnesses['copilot-cli'], undefined, 'partner removed from registry');
+  assert.ok(Array.isArray(r.removed), 'removed is an array');
+  assert.strictEqual(r.removed.length, 2, 'both cross-UI partners evicted');
+  const keys = r.removed.map((p) => p.key).sort();
+  assert.deepStrictEqual(keys, ['copilot-cli', 'copilot-cli-plugin']);
+  assert.strictEqual(harnesses['copilot-cli'], undefined);
+  assert.strictEqual(harnesses['copilot-cli-plugin'], undefined);
 });
 
 test('detectChannelOverlap returns claude-plugin when installing claude alongside claude-plugin (AD-15)', () => {

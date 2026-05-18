@@ -84,6 +84,22 @@ export async function main() {
 
   const skipConfirmation = options.skipConfirmation ?? false;
 
+  // `--yes` is "accept defaults non-interactively". Without `--harness`, that
+  // would silently install Claude regardless of what the user actually
+  // wants — a UX trap. Require an explicit harness in headless mode.
+  if (skipConfirmation && (!Array.isArray(options.harnesses) || options.harnesses.length === 0)) {
+    console.error(
+      THEME.error('✖ --yes requires --harness <claude|copilot-vscode|copilot-cli>. Headless mode will not pick a default harness for you.'),
+    );
+    process.exit(2);
+    return;
+  }
+
+  // Delivering version is read once from the package root and passed to the
+  // wizard so it can detect downgrades against the registry.
+  const rootPkg = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
+  const deliveringVersion = rootPkg.version;
+
   try {
     renderBanner();
 
@@ -92,7 +108,7 @@ export async function main() {
     const ghWarn = checkGh();
     if (ghWarn) process.stderr.write((THEME.warning ? THEME.warning(`⚠  ${ghWarn}`) : `⚠  ${ghWarn}`) + '\n');
 
-    const cfg = await runWizard({ skipConfirmation, cliOverrides: options });
+    const cfg = await runWizard({ skipConfirmation, cliOverrides: options, deliveringVersion });
 
     if (!Array.isArray(cfg.harnesses) || cfg.harnesses.length === 0) {
       throw new Error('Wizard returned no harnesses to install.');
@@ -153,6 +169,12 @@ export async function main() {
   } catch (err) {
     if (err && err.name === 'ExitPromptError') {
       console.log('');
+      process.exit(0);
+      return;
+    }
+    if (err && err.code === 'CANCELLED_AT_CONFIRM') {
+      console.log('');
+      console.log(THEME.hint('Install cancelled.'));
       process.exit(0);
       return;
     }

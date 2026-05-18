@@ -151,7 +151,7 @@ function doFreshInstall({
   installManifestFiles(newManifest, opts.bundleRoot, opts.harness, { sharedRoot });
 
   // Folder mutex + cross-channel emission, best-effort (NFR-4).
-  emitPostInstallNotices({ registry, installKey, deliveringVersion, stderr });
+  emitPostInstallNotices({ registry, installKey, stderr });
 
   // Update registry entry. Preserve installed_at if it happens to exist
   // (defensive — fresh-install usually has no prior entry, but the
@@ -187,7 +187,7 @@ function doUpgrade({
   const newManifest = loadBundledManifest(opts.bundleRoot, opts.harness, deliveringVersion);
   installManifestFiles(newManifest, opts.bundleRoot, opts.harness, { sharedRoot });
 
-  emitPostInstallNotices({ registry, installKey, deliveringVersion, stderr });
+  emitPostInstallNotices({ registry, installKey, stderr });
 
   // Preserve installed_at on upgrade; bump version + last_writer_version.
   registry.harnesses[installKey] = {
@@ -207,20 +207,19 @@ function doUpgrade({
 }
 
 /**
- * Folder mutex (FR-11, AD-12) + cross-channel coexistence (FR-13, AD-15)
- * emission, wrapped in a single try/catch so that stderr write failures do
- * not abort the install (NFR-4). Mutates `registry.harnesses` in place
- * (mutex partner removal) regardless of stderr success.
+ * Folder mutex (FR-11, AD-12) eviction + cross-channel coexistence (FR-13,
+ * AD-15) warning. Wrapped in a try/catch so stderr write failures do not
+ * abort the install (NFR-4). The mutex eviction is now confirmed pre-install
+ * by the wizard, so this function only performs the registry mutation here —
+ * no stderr line about it. The cross-channel coexistence WARNING is still
+ * surfaced post-install since coexistence cases proceed without a prompt.
  */
-function emitPostInstallNotices({ registry, installKey, deliveringVersion, stderr }) {
+function emitPostInstallNotices({ registry, installKey, stderr }) {
   try {
-    const mutexResult = resolveFolderConflict(registry.harnesses, installKey);
-    if (mutexResult.removed) {
-      const { key, entry } = mutexResult.removed;
-      stderr.write(
-        `[install] Replaced ${key} (${entry.version}) with ${installKey} (${deliveringVersion}) — both share ~/.copilot/, only one can be registered at a time.\n`,
-      );
-    }
+    // Mutex eviction: prune cross-UI partners from the registry. Already
+    // confirmed by the user at the picker, so no stderr line here.
+    resolveFolderConflict(registry.harnesses, installKey);
+
     const overlap = detectChannelOverlap(registry.harnesses, installKey);
     if (overlap) {
       emitCrossChannelWarning(installKey, overlap, stderr);

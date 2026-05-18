@@ -336,7 +336,7 @@ test('downgrade-refused: install.json registers higher version → non-zero code
   }
 });
 
-test('folder-mutex: install copilot-vscode while copilot-cli registered → partner removed, exact notice emitted (FR-11)', async () => {
+test('folder-mutex: install copilot-vscode while copilot-cli registered → partner removed from registry (mutex eviction is now silent at install-time; the user-facing confirmation lives in the wizard)', async () => {
   const tmp = mkTmp('std-ih-mutex-');
   const restoreHome = withHome(path.join(tmp, 'home'));
   try {
@@ -369,9 +369,11 @@ test('folder-mutex: install copilot-vscode while copilot-cli registered → part
     assert.strictEqual(installJson.harnesses['copilot-cli'], undefined, 'partner copilot-cli removed');
     assert.strictEqual(installJson.harnesses['copilot-vscode'].version, '1.0.1');
 
-    // Stderr names both the removed partner and the new install.
-    assert.match(stderr.text, /copilot-cli/);
-    assert.match(stderr.text, /copilot-vscode/);
+    // The wizard now confirms mutex eviction pre-install, so install-harness
+    // no longer emits a "Replaced …" line to stderr at this layer. The
+    // cross-channel coexistence WARNING (claude ↔ claude-plugin) still does
+    // — see the next test.
+    assert.doesNotMatch(stderr.text, /Replaced/);
   } finally {
     restoreHome();
     fs.rmSync(tmp, { recursive: true, force: true });

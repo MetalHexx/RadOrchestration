@@ -10,23 +10,55 @@
 //   - loadRegistry(installJsonPath)        — structural-lift; missing/non-conforming → { harnesses: {} }
 //   - INSTALL_KEYS                         — the four valid install keys (AD-10)
 //   - cmpSemver(a, b)                      — semver-aware comparator (release > pre-release per §11) [lifted from installer/lib/install/install-json.js lines 159–179]
-//   - resolveFolderConflict(harnesses, k)  — mutates harnesses, returns { removed: { key, entry } } | {} (FR-11, AD-12)
-//   - detectChannelOverlap(harnesses, k)   — claude ↔ claude-plugin coexistence detector (AD-15)
+//   - resolveFolderConflict(harnesses, k)  — mutates harnesses, returns { removed: [{ key, entry }, …] } | {} (FR-11, AD-12)
+//   - detectFolderConflicts(harnesses, k)  — pure look-up variant (no mutation) for pre-install confirmation
+//   - detectChannelOverlap(harnesses, k)   — same-UI different-channel coexistence detector (AD-15)
 
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** Four valid install-keys. */
-export const INSTALL_KEYS = ['claude', 'claude-plugin', 'copilot-cli', 'copilot-vscode'];
+/**
+ * Six valid install-keys. Each UI (claude, copilot-vscode, copilot-cli) has a
+ * legacy-installer slug and a plugin-channel slug; the plugin slugs are
+ * reserved here for forward-compat with the upcoming plugin installers — the
+ * standard installer itself never writes plugin entries.
+ */
+export const INSTALL_KEYS = [
+  'claude',
+  'claude-plugin',
+  'copilot-cli',
+  'copilot-cli-plugin',
+  'copilot-vscode',
+  'copilot-vscode-plugin',
+];
 
-const FOLDER_MUTEX_PARTNER = {
-  'copilot-cli': 'copilot-vscode',
-  'copilot-vscode': 'copilot-cli',
+/**
+ * Folder-mutex relationships. Two slugs are mutex partners when their on-disk
+ * agent files live in the same harness folder but encode incompatible UI
+ * targets — installing one overwrites the other's files. All vscode-flavored
+ * slugs (legacy + plugin) mutex against all cli-flavored slugs.
+ */
+const FOLDER_MUTEX_PARTNERS = {
+  'copilot-cli':           ['copilot-vscode', 'copilot-vscode-plugin'],
+  'copilot-cli-plugin':    ['copilot-vscode', 'copilot-vscode-plugin'],
+  'copilot-vscode':        ['copilot-cli',    'copilot-cli-plugin'],
+  'copilot-vscode-plugin': ['copilot-cli',    'copilot-cli-plugin'],
 };
 
+/**
+ * Channel-overlap relationships. Two slugs overlap when they target the same
+ * UI through different install channels (legacy installer vs plugin) — both
+ * write to the same harness folder but their agent files are compatible with
+ * the same UI. Most-recent-install wins on disk; both registry entries
+ * coexist with a coexistence WARNING.
+ */
 const CHANNEL_OVERLAP_PARTNER = {
-  'claude': 'claude-plugin',
-  'claude-plugin': 'claude',
+  'claude':                'claude-plugin',
+  'claude-plugin':         'claude',
+  'copilot-vscode':        'copilot-vscode-plugin',
+  'copilot-vscode-plugin': 'copilot-vscode',
+  'copilot-cli':           'copilot-cli-plugin',
+  'copilot-cli-plugin':    'copilot-cli',
 };
 
 export function readInstallJson(file) {
@@ -87,22 +119,47 @@ export function loadRegistry(installJsonPath) {
 }
 
 /**
- * Folder-shared mutual exclusion: copilot-cli ↔ copilot-vscode share
- * ~/.copilot/. If installing one variant while the other is registered, the
- * prior partner is removed from the registry. Returns `{ removed: { key, entry } }`
- * or `{}` if no partner exists. Mutates `harnesses` in place.
+ * Folder-shared mutual exclusion across UI variants. Any vscode-flavored slug
+ * (legacy or plugin) mutexes against any cli-flavored slug — installing one
+ * overwrites the other's on-disk agent files. All matching partners are
+ * removed from the registry; returns `{ removed: [{ key, entry }, …] }` (or
+ * `{}` if there's nothing to evict). Mutates `harnesses` in place.
  *
  * claude ↔ claude-plugin are NOT folder-mutex partners (they coexist) — see
  * `detectChannelOverlap`.
  */
 export function resolveFolderConflict(harnesses, installKey) {
-  const partner = FOLDER_MUTEX_PARTNER[installKey];
-  if (!partner) return {};
-  const existing = harnesses[partner];
-  if (!existing) return {};
-  const removed = { key: partner, entry: existing };
-  delete harnesses[partner];
-  return { removed };
+  const partners = FOLDER_MUTEX_PARTNERS[installKey];
+  if (!partners) return {};
+  const removed = [];
+  for (const partner of partners) {
+    const existing = harnesses[partner];
+    if (!existing) continue;
+    removed.push({ key: partner, entry: existing });
+    delete harnesses[partner];
+  }
+  return removed.length > 0 ? { removed } : {};
+}
+
+/**
+ * Pure look-up variant of `resolveFolderConflict` — returns the list of
+ * partner slugs currently registered that would be evicted by installing
+ * `installKey`. Does NOT mutate. Used by the wizard to surface a pre-install
+ * confirmation prompt with accurate text.
+ *
+ * @param {Record<string, { version: string } & object>} harnesses
+ * @param {string} installKey
+ * @returns {Array<{ key: string, entry: object }>}
+ */
+export function detectFolderConflicts(harnesses, installKey) {
+  const partners = FOLDER_MUTEX_PARTNERS[installKey];
+  if (!partners) return [];
+  const conflicts = [];
+  for (const partner of partners) {
+    const existing = harnesses[partner];
+    if (existing) conflicts.push({ key: partner, entry: existing });
+  }
+  return conflicts;
 }
 
 /**

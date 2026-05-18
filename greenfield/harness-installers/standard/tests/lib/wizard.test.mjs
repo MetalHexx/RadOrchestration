@@ -1,7 +1,12 @@
 // tests/lib/wizard.test.mjs — Headless wizard behavior and harness auto-detection.
 //
+// The wizard is single-select: it returns a length-1 array. Interactive
+// branches (the inquirer `select` and `confirm` prompts) are not covered
+// here — they would require mocking @inquirer/prompts and are exercised
+// end-to-end via the smoke-test skill.
+//
 // All tests pass a synthetic `homeDir` (a tmpdir staging area) so the test
-// suite never touches the real ~/.claude or ~/.copilot — that would couple
+// suite never touches the real ~/.claude or ~/.radorch — that would couple
 // CI results to the developer's local machine.
 
 import { describe, it } from 'node:test';
@@ -17,7 +22,7 @@ function mkHome(prefix) {
 }
 
 describe('runWizard — headless (skipConfirmation) behavior', () => {
-  it('falls back to ["claude"] when no harness folders are detected', async () => {
+  it('defensive fallback returns ["claude"] when no override is provided', async () => {
     const home = mkHome('std-wiz-empty-');
     try {
       const result = await runWizard({
@@ -32,34 +37,49 @@ describe('runWizard — headless (skipConfirmation) behavior', () => {
     }
   });
 
-  it('auto-detects only ["claude"] even when both ~/.claude and ~/.copilot exist (Copilot is opt-in)', async () => {
-    const home = mkHome('std-wiz-both-');
+  it('honors cliOverrides.harnesses verbatim', async () => {
+    const home = mkHome('std-wiz-override-');
     try {
-      fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
-      fs.mkdirSync(path.join(home, '.copilot'), { recursive: true });
-
       const result = await runWizard({
         skipConfirmation: true,
-        cliOverrides: {},
+        cliOverrides: { harnesses: ['copilot-cli'] },
         homeDir: home,
       });
-      assert.deepEqual(result.harnesses, ['claude']);
+      assert.deepEqual(result.harnesses, ['copilot-cli']);
     } finally {
       fs.rmSync(home, { recursive: true, force: true });
     }
   });
 
-  it('honors cliOverrides.harnesses verbatim regardless of detection', async () => {
-    const home = mkHome('std-wiz-override-');
+  it('skipConfirmation bypasses the destructive-pick confirm even when the override would otherwise prompt', async () => {
+    // Stage a synthetic ~/.radorch/install.json with copilot-vscode already
+    // registered. Picking copilot-cli would normally be destructive (mutex
+    // eviction) and fire the confirm prompt — but skipConfirmation=true
+    // short-circuits that.
+    const home = mkHome('std-wiz-destructive-headless-');
     try {
-      // Stage every folder so detection would otherwise return everything.
-      fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
-      fs.mkdirSync(path.join(home, '.copilot'), { recursive: true });
+      const radorchDir = path.join(home, '.radorch');
+      fs.mkdirSync(radorchDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(radorchDir, 'install.json'),
+        JSON.stringify({
+          harnesses: {
+            'copilot-vscode': {
+              version: '1.0.0-alpha.9',
+              channel: 'legacy-installer',
+              installed_at: 't',
+              last_writer_version: '1.0.0-alpha.9',
+            },
+          },
+        }),
+        'utf8',
+      );
 
       const result = await runWizard({
         skipConfirmation: true,
         cliOverrides: { harnesses: ['copilot-cli'] },
         homeDir: home,
+        deliveringVersion: '1.0.0-alpha.9',
       });
       assert.deepEqual(result.harnesses, ['copilot-cli']);
     } finally {
