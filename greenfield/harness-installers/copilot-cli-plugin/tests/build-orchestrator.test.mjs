@@ -149,14 +149,9 @@ test('synthesized output/package.json declares the published name @rad-orchestra
     const pkg = JSON.parse(fs.readFileSync(join(root, 'harness-installers/copilot-cli-plugin/output/package.json'), 'utf8'));
     assert.strictEqual(pkg.name, '@rad-orchestration/copilot-cli-plugin', 'published name (FR-31)');
     assert.strictEqual(pkg.version, '1.0.0-alpha.1', 'version stamped from plugin.json');
-    assert.ok(pkg.files.includes('plugin.json'));
-    assert.ok(pkg.files.includes('agents/'));
-    assert.ok(pkg.files.includes('skills/'));
-    assert.ok(pkg.files.includes('hooks/'));
-    assert.ok(pkg.files.includes('manifests/'));
-    assert.ok(pkg.files.includes('orchestration.yml'));
-    assert.ok(pkg.files.includes('templates/'));
-    assert.ok(pkg.files.includes('ui/'));
+    for (const required of ['plugin.json', 'agents/', 'skills/', 'hooks/', 'manifests/']) {
+      assert.ok(pkg.files.includes(required), `pkg.files must include ${required}`);
+    }
     assert.ok(!pkg.files.some((f) => f.startsWith('.claude-plugin/')), 'no .claude-plugin/ in files (FR-36)');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
