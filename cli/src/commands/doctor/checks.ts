@@ -4,7 +4,6 @@ import { pathExists } from '../../lib/fs-helpers.js';
 import { installPaths, userDataPaths } from '../../lib/paths.js';
 import { readInstallJson } from '../../lib/config.js';
 import type { InstallJson, InstallJsonV5, InstallJsonV6 } from '../../lib/config.js';
-import { readRegistry } from '../../lib/registry.js';
 import { cmpSemver, isInstallJsonV6, readLastWriterVersion } from '../../lib/install-json.js';
 import { parseYaml } from '../../lib/yaml.js';
 import { scanUserLevelHarnesses } from '../../lib/cross-harness-scan.js';
@@ -185,8 +184,12 @@ export async function runRegistryChecks(root: string): Promise<CheckResult[]> {
   const p = installPaths(root);
   const out: CheckResult[] = [];
   try {
-    const reg = await readRegistry(p.registryYml);
-    const empty = (reg.repos ?? []).length === 0 && (reg.workspaces ?? []).length === 0;
+    const text = await fsP.readFile(p.registryYml, 'utf8');
+    const parsed = parseYaml<{ repos?: unknown[]; workspaces?: unknown[] }>(text) ?? { repos: [], workspaces: [] };
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new Error(`registry.yml at ${p.registryYml} is malformed: expected an object`);
+    }
+    const empty = (parsed.repos ?? []).length === 0 && (parsed.workspaces ?? []).length === 0;
     out.push({
       category: 'Registry',
       name: 'registry has entries',

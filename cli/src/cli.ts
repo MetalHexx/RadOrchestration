@@ -1,8 +1,6 @@
 import { Command } from 'commander';
 import { runCommand } from './framework/command.js';
 import { doctorCommand } from './commands/doctor/index.js';
-import { harnessUseCommand } from './commands/harness-use.js';
-import { harnessListCommand } from './commands/harness-list.js';
 import { uiStartCommand, uiStopCommand, uiStatusCommand } from './commands/ui/index.js';
 import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
 
@@ -27,26 +25,6 @@ export function buildProgram(version: string): Command {
     .action(async (name?: string) => {
       const code = await runWhere({ name, stdout: process.stdout, stderr: process.stderr, env: process.env });
       process.exit(code);
-    });
-
-  const harness = program.command('harness').description('harness operations');
-  harness
-    .command('use <harness>')
-    .description(harnessUseCommand.description)
-    .allowUnknownOption()
-    .allowExcessArguments(true)
-    .action(async (harnessName: string) => {
-      const argv = ['--harness', harnessName, ...process.argv.slice(5)];
-      await runCommand(harnessUseCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
-    });
-  harness
-    .command('list')
-    .description(harnessListCommand.description)
-    .allowUnknownOption()
-    .allowExcessArguments(true)
-    .action(async () => {
-      const argv = process.argv.slice(4);
-      await runCommand(harnessListCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   const ui = program.command('ui').description('UI server lifecycle');
