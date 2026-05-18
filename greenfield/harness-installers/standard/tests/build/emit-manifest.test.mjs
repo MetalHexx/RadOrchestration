@@ -1,0 +1,42 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { emitManifest } from '../../build-scripts/emit-manifest.js';
+
+test('emitManifest produces { version, channel, files[] } with sha256 and destinationPath, omits user-data assets', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'std-mf-'));
+  try {
+    // Synthetic dist/<harness>/ tree.
+    const harnessOut = path.join(tmp, 'dist/claude');
+    fs.mkdirSync(path.join(harnessOut, 'agents'), { recursive: true });
+    fs.mkdirSync(path.join(harnessOut, 'skills/rad-orchestration/scripts'), { recursive: true });
+    fs.mkdirSync(path.join(harnessOut, 'templates'), { recursive: true });
+    fs.writeFileSync(path.join(harnessOut, 'agents/orchestrator.md'), 'orch');
+    fs.writeFileSync(path.join(harnessOut, 'skills/rad-orchestration/scripts/radorch.mjs'), '#!/usr/bin/env node\n');
+    fs.writeFileSync(path.join(harnessOut, 'skills/rad-orchestration/scripts/pipeline.js'), '// p');
+    fs.writeFileSync(path.join(harnessOut, 'templates/extra-high.yml'), 'x');
+    fs.writeFileSync(path.join(harnessOut, 'orchestration.yml'), 'x');
+    const manifestDir = path.join(tmp, 'manifests/claude');
+    fs.mkdirSync(manifestDir, { recursive: true });
+    await emitManifest({ harnessOutputDir: harnessOut, harness: 'claude', version: '1.0.0-alpha.9', manifestDir });
+    const written = JSON.parse(fs.readFileSync(path.join(manifestDir, 'v1.0.0-alpha.9.json'), 'utf8'));
+    assert.strictEqual(written.version, '1.0.0-alpha.9');
+    assert.strictEqual(written.channel, 'legacy-installer');
+    const paths = written.files.map((f) => f.bundlePath).sort();
+    // Per-harness installable tree only — no orchestration.yml, no templates/, no ui/.
+    assert.ok(paths.includes('agents/orchestrator.md'));
+    assert.ok(paths.includes('skills/rad-orchestration/scripts/radorch.mjs'));
+    assert.ok(paths.includes('skills/rad-orchestration/scripts/pipeline.js'));
+    assert.ok(!paths.includes('orchestration.yml'), 'AD-3: user-data assets not in manifest');
+    assert.ok(!paths.some((p) => p.startsWith('templates/')), 'AD-3: templates not in manifest');
+    // destinationPath uses ${HARNESS_ROOT} (per-harness install root) for installable tree.
+    const orch = written.files.find((f) => f.bundlePath === 'agents/orchestrator.md');
+    assert.strictEqual(orch.destinationPath, '${HARNESS_ROOT}/agents/orchestrator.md');
+    // sha256 present per entry — 64 hex chars (NFR-12 — minimal synthetic content).
+    assert.ok(/^[a-f0-9]{64}$/.test(orch.sha256));
+    // No `ownership` field anywhere (AD-3).
+    for (const f of written.files) assert.strictEqual(f.ownership, undefined);
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
