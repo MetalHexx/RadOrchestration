@@ -18,6 +18,8 @@
 //   4. (DD-4 — diagnostic): drift hint emitted on stderr if `driftHint` is truthy.
 
 import { THEME, sectionHeader, divider } from './theme.js';
+import { harnessRoot } from './install/harness-paths.js';
+import { userDataPaths } from './install/user-data-paths.js';
 
 /**
  * @typedef {Object} HarnessResult
@@ -40,6 +42,8 @@ import { THEME, sectionHeader, divider } from './theme.js';
  * @returns {void}
  */
 export function renderPostInstallSummary({ harnessResults, configPath, driftHint, uiBuilt }) {
+  const paths = userDataPaths();
+
   console.log('');
   sectionHeader('::', 'Installation Complete');
   console.log('');
@@ -55,11 +59,24 @@ export function renderPostInstallSummary({ harnessResults, configPath, driftHint
       '  ' + mark + ' ' +
       THEME.body(`harness '${r.harness}' ${verb} (action: ${r.action})`),
     );
+    if (!isError) {
+      try {
+        const installRoot = harnessRoot(r.harness);
+        console.log('      ' + THEME.secondary('Installed to  ') + THEME.command(installRoot));
+      } catch {
+        /* unknown harness key — skip the path line silently */
+      }
+    }
   }
 
-  console.log('  ' + THEME.success('✔') + ' ' + THEME.body('Configuration: ') + THEME.secondary(configPath));
+  console.log('');
+  console.log('  ' + THEME.success('✔') + ' ' + THEME.body('Workspace     ') + THEME.command(paths.root));
+  console.log('      ' + THEME.secondary('Configuration ') + THEME.command(configPath));
+  console.log('      ' + THEME.secondary('Projects      ') + THEME.command(paths.projects));
+
   if (uiBuilt) {
-    console.log('  ' + THEME.success('✔') + ' ' + THEME.body('Dashboard UI: ') + THEME.success('built and ready'));
+    console.log('');
+    console.log('  ' + THEME.success('✔') + ' ' + THEME.body('Dashboard UI built and ready'));
   }
 
   console.log('');
