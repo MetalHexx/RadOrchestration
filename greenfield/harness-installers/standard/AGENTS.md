@@ -8,7 +8,7 @@ This folder is a self-contained npm package that produces the publishable `rad-o
 
 **Build stage** (`build-scripts/build.js`): Runs adapters over canonical sources (`agents/`, `skills/`) and emits per-harness bundles to `dist/` (gitignored). The `npm pack` step operates from the `dist/` directory, bundling the built artifacts into the tarball.
 
-**User-facing wizard** (`lib/wizard.js`): Interactive CLI entry point that walks the user through harness selection, workspace root discovery, and configuration template choice (extra-high, high, medium, low review intensity).
+**User-facing wizard** (`lib/wizard.js`): Interactive CLI entry point whose only required output is harness selection — one or more InstallKey values plus a small set of configuration paths (AD-18). Planning-tier templates, gate behavior, and auto-commit settings are NOT collected by the wizard; they come from `runtime-config/orchestration.yml` shipping verbatim. There is no `lib/config-generator.js`.
 
 **Per-harness install state machine** (`lib/install/`): Isolated install flow for each harness (Claude, Copilot in VS Code, Copilot CLI). Each state machine owns its own file write logic, symlink/copy decisions, and integration points with the chosen harness. The state machine ensures atomic, idempotent writes.
 
@@ -26,7 +26,7 @@ This folder is a self-contained npm package that produces the publishable `rad-o
 
 **Inputs (read at build and runtime)**:
 - **`harness-adapters/output/<harness>/`** — Per-harness adapted agents, skills, and marketplace plugin definitions. The installer consumes these pre-built bundles and copies them into user-level locations. Adapters run once at build time (not at install time), so the installer always works offline.
-- **`runtime-config/`** — `orchestration.yml` template and the four review-intensity tier templates (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`). Copied to `~/.radorch/` on first install or when user chooses a new tier.
+- **`runtime-config/`** — `orchestration.yml` template and the four review-intensity tier templates (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`). `orchestration.yml` is copied to `~/.radorch/orchestration.yml` only on fresh install (FR-14) — present files are preserved untouched so user edits survive upgrades. The four shipped tier templates always overwrite their counterparts under `~/.radorch/templates/` on every install (FR-15); any user-added templates in that folder are preserved.
 - **`cli/`** — CLI parsing and launch surface (separate from the installer wizard proper). The installer is invoked by `radorch-installer` binary, which delegates to the wizard.
 - **`ui/`** — Pre-compiled dashboard bundle (if included). Conditionally installed based on user choice in the wizard.
 - **`harness-files/skills/rad-orchestration/scripts/`** — The pipeline runtime itself (`pipeline.js`, `main.ts`, and `lib/`). Copied to user-level harness skill locations so orchestration projects can invoke `rad-orchestration` at runtime.
