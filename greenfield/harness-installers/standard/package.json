@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Greenfield standard installer for the Rad orchestration system.",
   "bin": {
-    "radorch-installer": "index.js"
+    "rad-orchestration": "index.js"
   },
   "files": [
     "index.js",

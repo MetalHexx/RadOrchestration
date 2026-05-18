@@ -105,8 +105,10 @@ Expected: `npm pack` exits 0; the tarball file exists at `{tarballPath}`.
 Before installing, provide the user with the exact command they must run in their shell:
 
 ```
-npx {tarballPath} --yes --harness {harness}
+npx file:{tarballPath} --yes --harness {harness}
 ```
+
+The `file:` prefix is required on npm 11+ — without it, `npm exec` treats the raw tarball path as a command name instead of a package spec and silently exits 0. Post-publish users invoke this as `npx rad-orchestration` (no path, no `file:` prefix); the prefix is only for local smoke-testing.
 
 Instruct the user to run this command and report back when the install completes. Do **not** run the install yourself.
 

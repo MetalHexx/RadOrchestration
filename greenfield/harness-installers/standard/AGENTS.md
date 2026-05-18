@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This folder is a self-contained npm package that produces the publishable `rad-orchestration` tarball distributed to end users via `npx rad-orchestration`. The binary is `radorch-installer`, and the package coordinates remain the same as the legacy installer with the next version slot per the refactor direction. Contributors landing here are authoring the end-user installation experience that copies greenfield bundles to user-level harness folders (`~/.claude/`, `~/.copilot/`), generates `orchestration.yml`, and optionally sets up the dashboard.
+This folder is a self-contained npm package that produces the publishable `rad-orchestration` tarball distributed to end users via `npx rad-orchestration`. The binary is `rad-orchestration` (matches the package name so `npx rad-orchestration` resolves under npm exec's name-match path), and the package coordinates remain the same as the legacy installer with the next version slot per the refactor direction. Contributors landing here are authoring the end-user installation experience that copies greenfield bundles to user-level harness folders (`~/.claude/`, `~/.copilot/`), generates `orchestration.yml`, and optionally sets up the dashboard.
 
 ## How it works
 
@@ -27,7 +27,7 @@ This folder is a self-contained npm package that produces the publishable `rad-o
 **Inputs (read at build and runtime)**:
 - **`harness-adapters/output/<harness>/`** — Per-harness adapted agents, skills, and marketplace plugin definitions. The installer consumes these pre-built bundles and copies them into user-level locations. Adapters run once at build time (not at install time), so the installer always works offline.
 - **`runtime-config/`** — `orchestration.yml` template and the four review-intensity tier templates (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`). `orchestration.yml` is copied to `~/.radorch/orchestration.yml` only on fresh install (FR-14) — present files are preserved untouched so user edits survive upgrades. The four shipped tier templates always overwrite their counterparts under `~/.radorch/templates/` on every install (FR-15); any user-added templates in that folder are preserved.
-- **`cli/`** — CLI parsing and launch surface (separate from the installer wizard proper). The installer is invoked by `radorch-installer` binary, which delegates to the wizard.
+- **`cli/`** — CLI parsing and launch surface (separate from the installer wizard proper). The installer is invoked by the `rad-orchestration` binary, which delegates to the wizard.
 - **`ui/`** — Pre-compiled dashboard bundle (if included). Conditionally installed based on user choice in the wizard.
 - **`harness-files/skills/rad-orchestration/scripts/`** — The pipeline runtime itself (`pipeline.js`, `main.ts`, and `lib/`). Copied to user-level harness skill locations so orchestration projects can invoke `rad-orchestration` at runtime.
 
