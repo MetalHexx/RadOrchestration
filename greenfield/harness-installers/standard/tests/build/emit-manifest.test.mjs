@@ -8,8 +8,8 @@ import { emitManifest } from '../../build-scripts/emit-manifest.js';
 test('emitManifest produces { version, channel, files[] } with sha256 and destinationPath, omits user-data assets', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'std-mf-'));
   try {
-    // Synthetic dist/<harness>/ tree.
-    const harnessOut = path.join(tmp, 'dist/claude');
+    // Synthetic output/<harness>/ tree.
+    const harnessOut = path.join(tmp, 'output/claude');
     fs.mkdirSync(path.join(harnessOut, 'agents'), { recursive: true });
     fs.mkdirSync(path.join(harnessOut, 'skills/rad-orchestration/scripts'), { recursive: true });
     fs.mkdirSync(path.join(harnessOut, 'templates'), { recursive: true });

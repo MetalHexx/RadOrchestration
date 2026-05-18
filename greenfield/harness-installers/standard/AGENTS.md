@@ -6,7 +6,7 @@ This folder is a self-contained npm package that produces the publishable `rad-o
 
 ## How it works
 
-**Build stage** (`build-scripts/build.js`): Runs adapters over canonical sources (`agents/`, `skills/`) and emits per-harness bundles to `dist/` (gitignored). The `npm pack` step operates from the `dist/` directory, bundling the built artifacts into the tarball.
+**Build stage** (`build-scripts/build.js`): Runs adapters over canonical sources (`agents/`, `skills/`) and emits per-harness bundles to `output/` (gitignored). The `npm pack` step operates from the `output/` directory, bundling the built artifacts into the tarball.
 
 **User-facing wizard** (`lib/wizard.js`): Interactive CLI entry point whose only required output is harness selection — one or more InstallKey values plus a small set of configuration paths (AD-18). Planning-tier templates, gate behavior, and auto-commit settings are NOT collected by the wizard; they come from `runtime-config/orchestration.yml` shipping verbatim. There is no `lib/config-generator.js`.
 
@@ -32,7 +32,7 @@ This folder is a self-contained npm package that produces the publishable `rad-o
 - **`harness-files/skills/rad-orchestration/scripts/`** — The pipeline runtime itself (`pipeline.js`, `main.ts`, and `lib/`). Copied to user-level harness skill locations so orchestration projects can invoke `rad-orchestration` at runtime.
 
 **Build-time helpers (no runtime imports)**:
-- **`shared/build-helpers/`** — Manifest-driven file installation utilities used during the build stage to deploy adapted files to `dist/`. Note: `emit-hook-bundle` exists in shared helpers but is unused here (AD-8); it is reserved for marketplace plugin builders and does not apply to the standard installer.
+- **`shared/build-helpers/`** — Manifest-driven file installation utilities used during the build stage to deploy adapted files to `output/`. Note: `emit-hook-bundle` exists in shared helpers but is unused here (AD-8); it is reserved for marketplace plugin builders and does not apply to the standard installer.
 
 **Outputs (written at install time)**:
 - **`~/.claude/agents/`** — Claude Code agents (if Claude harness chosen).

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // build.js — Single entry point for the standard npm installer build.
 // Fans the adapter engine output for three harnesses (claude, copilot-vscode,
-// copilot-cli) into per-harness staged trees under dist/<harness>/, plus a
-// shared top-level dist/ui/ and a synthesized dist/package.json. Fail-fast on
+// copilot-cli) into per-harness staged trees under output/<harness>/, plus a
+// shared top-level output/ui/ and a synthesized output/package.json. Fail-fast on
 // any step (AD-7).
 
 import fs from 'node:fs';
@@ -31,7 +31,7 @@ function step(name, fn) {
 
 /** Per-harness install-root token map. Both copilot variants share ~/.copilot.
  *  Standard installer does NOT apply agent-namespacing (AD-6) — bare agent names
- *  in canonical content survive to the dist/ payload. */
+ *  in canonical content survive to the output/ payload. */
 function tokenMapFor(harness) {
   const installRoot = harness === 'claude'
     ? path.join(os.homedir(), '.claude')
@@ -53,7 +53,7 @@ export async function runBuild(opts) {
   const greenfieldRel = opts.greenfieldRel ?? 'greenfield';
   const greenfield = path.join(root, greenfieldRel);
   const installerDir = path.join(greenfield, 'harness-installers/standard');
-  const out = path.join(installerDir, 'dist');
+  const out = path.join(installerDir, 'output');
 
   // Bootstrap missing sub-package node_modules on first run. Idempotent and
   // fixture-safe (skipped when package.json absent). Opt-out via skipBootstrap.
@@ -61,6 +61,7 @@ export async function runBuild(opts) {
     const BOOTSTRAP_TARGETS = [
       path.join(greenfield, 'harness-installers/shared/build-helpers'),
       path.join(greenfield, 'harness-adapters/engine'),
+      path.join(greenfield, 'harness-files/skills/rad-orchestration/scripts'),
       path.join(root, 'cli'),
       path.join(root, 'ui'),
     ];
@@ -94,7 +95,7 @@ export async function runBuild(opts) {
   await step('clean-output', () => fs.rmSync(out, { recursive: true, force: true }));
   fs.mkdirSync(out, { recursive: true });
 
-  // Per-harness staging: adapter output → dist/<harness>/{agents,skills}/.
+  // Per-harness staging: adapter output → output/<harness>/{agents,skills}/.
   await step('copy-adapter-output', () => {
     for (const h of HARNESSES) {
       const adapterOut = path.join(greenfield, 'harness-adapters/output', h);
@@ -163,8 +164,8 @@ export async function runBuild(opts) {
     }
   });
 
-  // UI bundle ONCE at top-level dist/ui/ — shared across all three harnesses
-  // (AD-9). Never duplicated under dist/<harness>/.
+  // UI bundle ONCE at top-level output/ui/ — shared across all three harnesses
+  // (AD-9). Never duplicated under output/<harness>/.
   await step('emit-ui-bundle', () => emitUiBundle({
     source: path.join(root, 'ui'),
     target: path.join(out, 'ui'),
@@ -227,7 +228,7 @@ export async function runBuild(opts) {
     }
   });
 
-  // dist/package.json — synthesized for publish (FR-26, FR-28, AD-17).
+  // output/package.json — synthesized for publish (FR-26, FR-28, AD-17).
   await step('synthesize-package-json', () => synthesizePackageJson({
     sourcePkgPath: path.join(installerDir, 'package.json'),
     outPath: path.join(out, 'package.json'),

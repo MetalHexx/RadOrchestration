@@ -1,8 +1,8 @@
-// synthesize-package-json.js — Produces dist/package.json for publish from
+// synthesize-package-json.js — Produces output/package.json for publish from
 // the standard installer's source-side wrapper package.json. Overrides the
 // publish-critical fields (name, bin, files, engines, dependencies) and
 // carries the metadata fields verbatim. The source wrapper itself never
-// publishes; only dist/ does.
+// publishes; only output/ does.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,7 +24,7 @@ export function synthesizePackageJson({ sourcePkgPath, outPath }) {
     bin: { 'radorch-installer': 'index.js' },
     engines: { node: '>=18' },
     dependencies: pkg.dependencies ?? {},
-    files: ['index.js', 'lib/', 'dist/', 'manifests/'],
+    files: ['index.js', 'lib/', 'output/', 'manifests/'],
   };
   for (const field of VERBATIM_FIELDS) {
     if (pkg[field] !== undefined) out[field] = pkg[field];

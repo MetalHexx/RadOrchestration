@@ -13,7 +13,7 @@
 //      failure (AD-11). Each iteration is wrapped in an ora spinner (FR-7).
 //   7. After the harness loop, hydrate ~/.radorch/ exactly once (FR-20 — the
 //      runtime-config + templates are identical across per-harness payloads,
-//      so any one harness's `dist/<h>` is a valid bundleRoot).
+//      so any one harness's `output/<h>` is a valid bundleRoot).
 //   8. Compute drift hint by re-reading ~/.radorch/install.json (FR-9, AD-15).
 //   9. renderPostInstallSummary → stdout (drift hint, if any, goes to stderr).
 
@@ -76,11 +76,11 @@ export async function main() {
   }
 
   // Resolve where the bundled payloads live. When this file is shipped inside
-  // the published tarball, `dist/<harness>/` sits next to index.js.
+  // the published tarball, `output/<harness>/` sits next to index.js.
   // RADORCH_PACKAGE_ROOT env var allows tests to point at a synthetic fixture
   // without touching the real ~/.claude or ~/.radorch.
   const packageRoot = process.env.RADORCH_PACKAGE_ROOT ?? __dirname;
-  const sharedRoot = path.join(packageRoot, 'dist');
+  const sharedRoot = path.join(packageRoot, 'output');
 
   const skipConfirmation = options.skipConfirmation ?? false;
 
@@ -109,7 +109,7 @@ export async function main() {
     // priors — they're logged and the loop continues so the rest of the
     // selected harnesses still install.
     for (const harness of cfg.harnesses) {
-      const bundleRoot = path.join(packageRoot, 'dist', harness);
+      const bundleRoot = path.join(packageRoot, 'output', harness);
       const spinner = ora({ text: `Bootstrapping '${harness}'…`, color: THEME.spinner }).start();
       try {
         const result = await installHarness({ bundleRoot, sharedRoot, harness });
@@ -134,7 +134,7 @@ export async function main() {
     // so the first harness's bundle is a valid source.
     const firstHarness = cfg.harnesses[0];
     await hydrateUserData({
-      bundleRoot: path.join(packageRoot, 'dist', firstHarness),
+      bundleRoot: path.join(packageRoot, 'output', firstHarness),
       sharedRoot,
     });
 

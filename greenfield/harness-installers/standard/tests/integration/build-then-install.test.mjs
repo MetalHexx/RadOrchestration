@@ -2,7 +2,7 @@
 // End-to-end cross-phase integration test. Stages a synthetic greenfield tree
 // under a tmp dir, runs the real `runBuild` against it (with adapter-engine /
 // ui-runner / bootstrap skipped), and then drives `installHarness` and
-// `hydrateUserData` against the produced `dist/<harness>/` payload. Asserts
+// `hydrateUserData` against the produced `output/<harness>/` payload. Asserts
 // on the resulting `~/.radorch/` and `~/.<harness>/` on-disk shapes against
 // every FR-2 / FR-3 / FR-14 / FR-15 / FR-16 expectation in a single test.
 //
@@ -143,15 +143,15 @@ test('build then install produces correct ~/.radorch/ and ~/.<harness>/ shapes f
       skipBootstrap: true,
     });
 
-    const distRoot = path.join(tmp, 'harness-installers/standard/dist');
+    const outputRoot = path.join(tmp, 'harness-installers/standard/output');
 
-    // Install each harness against the real dist/<h>/ payload. The
+    // Install each harness against the real output/<h>/ payload. The
     // copilot-cli ↔ copilot-vscode folder mutex is tested separately in P03;
     // here we install claude and copilot-vscode (which can coexist on disk).
     for (const h of ['claude', 'copilot-vscode']) {
       const result = await installHarness({
-        bundleRoot: path.join(distRoot, h),
-        sharedRoot: distRoot,
+        bundleRoot: path.join(outputRoot, h),
+        sharedRoot: outputRoot,
         harness: h,
         stderr: { write() { /* swallow */ } },
       });
@@ -159,10 +159,10 @@ test('build then install produces correct ~/.radorch/ and ~/.<harness>/ shapes f
     }
 
     // Hydrate user-data from one of the per-harness bundles. The shared UI
-    // bundle lives at dist/ui/, so sharedRoot = distRoot.
+    // bundle lives at output/ui/, so sharedRoot = outputRoot.
     await hydrateUserData({
-      bundleRoot: path.join(distRoot, 'claude'),
-      sharedRoot: distRoot,
+      bundleRoot: path.join(outputRoot, 'claude'),
+      sharedRoot: outputRoot,
     });
 
     // ---------------------------------------------------------------------
@@ -229,8 +229,8 @@ test('build then install produces correct ~/.radorch/ and ~/.<harness>/ shapes f
     const userEdited = '# user-edited content\n';
     fs.writeFileSync(path.join(rad, 'orchestration.yml'), userEdited);
     await hydrateUserData({
-      bundleRoot: path.join(distRoot, 'claude'),
-      sharedRoot: distRoot,
+      bundleRoot: path.join(outputRoot, 'claude'),
+      sharedRoot: outputRoot,
     });
     assert.strictEqual(
       fs.readFileSync(path.join(rad, 'orchestration.yml'), 'utf8'),
@@ -246,8 +246,8 @@ test('build then install produces correct ~/.radorch/ and ~/.<harness>/ shapes f
       path.join(rad, 'templates/extra-high.yml'), 'utf8');
     fs.writeFileSync(path.join(rad, 'templates/extra-high.yml'), 'tampered');
     await hydrateUserData({
-      bundleRoot: path.join(distRoot, 'claude'),
-      sharedRoot: distRoot,
+      bundleRoot: path.join(outputRoot, 'claude'),
+      sharedRoot: outputRoot,
     });
     assert.strictEqual(
       fs.readFileSync(path.join(rad, 'templates/my-custom.yml'), 'utf8'),
@@ -267,8 +267,8 @@ test('build then install produces correct ~/.radorch/ and ~/.<harness>/ shapes f
     const stalePath = path.join(rad, 'ui/stale-from-prior-install.js');
     fs.writeFileSync(stalePath, '// stale\n');
     await hydrateUserData({
-      bundleRoot: path.join(distRoot, 'claude'),
-      sharedRoot: distRoot,
+      bundleRoot: path.join(outputRoot, 'claude'),
+      sharedRoot: outputRoot,
     });
     assert.ok(!fs.existsSync(stalePath),
       'FR-16: prior ui/ contents wiped on re-hydrate (atomic tmp-rename)');
@@ -284,8 +284,8 @@ test('build then install produces correct ~/.radorch/ and ~/.<harness>/ shapes f
     // whether the sentinel + install.json entry match — either way no copies
     // may land in projects/).
     await installHarness({
-      bundleRoot: path.join(distRoot, 'claude'),
-      sharedRoot: distRoot,
+      bundleRoot: path.join(outputRoot, 'claude'),
+      sharedRoot: outputRoot,
       harness: 'claude',
       stderr: { write() { /* swallow */ } },
     });

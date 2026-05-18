@@ -1,5 +1,5 @@
 // greenfield/harness-installers/standard/build-scripts/emit-manifest.js —
-// Walks a dist/<harness>/ output tree, computes sha256 per file, and writes
+// Walks a output/<harness>/ build tree, computes sha256 per file, and writes
 // manifests/<harness>/v<version>.json with the per-harness installable tree
 // only (no user-data assets per AD-3). Atomic write per NFR-3.
 

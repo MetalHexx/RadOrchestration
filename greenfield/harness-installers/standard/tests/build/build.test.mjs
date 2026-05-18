@@ -78,7 +78,7 @@ function makeFixture() {
   fs.writeFileSync(path.join(pipeSrc, 'stray.ts'), '// stray\n');
 
   // harness-files/agents/ — canonical agents dir required by the validate step.
-  // Must list only the agents that also appear in dist/<harness>/agents/ so
+  // Must list only the agents that also appear in output/<harness>/agents/ so
   // gate 2 passes. The adapter output above ships orchestrator.md + coder.md.
   const canonicalAgentsDir = path.join(root, 'harness-files/agents');
   fs.mkdirSync(canonicalAgentsDir, { recursive: true });
@@ -113,7 +113,7 @@ function makeFixture() {
   return root;
 }
 
-test('runBuild produces dist/<harness>/ per harness, shared dist/ui/, and synthesized dist/package.json', async () => {
+test('runBuild produces output/<harness>/ per harness, shared output/ui/, and synthesized output/package.json', async () => {
   const root = makeFixture();
   try {
     await runBuild({
@@ -123,7 +123,7 @@ test('runBuild produces dist/<harness>/ per harness, shared dist/ui/, and synthe
       skipUiRunner: true,
       skipBootstrap: true,
     });
-    const out = path.join(root, 'harness-installers/standard/dist');
+    const out = path.join(root, 'harness-installers/standard/output');
 
     // Per-harness payload (FR-19, FR-20, FR-21, FR-22).
     for (const h of HARNESSES) {
@@ -155,12 +155,12 @@ test('runBuild produces dist/<harness>/ per harness, shared dist/ui/, and synthe
         `${h}: per-harness manifest copied forward`);
     }
 
-    // UI bundle emitted ONCE at top-level dist/ui/ — never per-harness (FR-23, AD-9).
+    // UI bundle emitted ONCE at top-level output/ui/ — never per-harness (FR-23, AD-9).
     assert.ok(fs.existsSync(path.join(out, 'ui/server.js')),
-      'dist/ui/server.js exists at top level');
+      'output/ui/server.js exists at top level');
     for (const h of HARNESSES) {
       assert.ok(!fs.existsSync(path.join(out, h, 'ui')),
-        `dist/${h}/ui/ must NOT exist (AD-9)`);
+        `output/${h}/ui/ must NOT exist (AD-9)`);
     }
 
     // Token substitution per harness (FR-24, AD-6, AD-16).
@@ -200,14 +200,14 @@ test('runBuild produces dist/<harness>/ per harness, shared dist/ui/, and synthe
         `${h} orchestrator.md: **coder** kept bare (no rad-orchestration: prefix)`);
     }
 
-    // dist/package.json synthesis (FR-26, FR-28, AD-17).
+    // output/package.json synthesis (FR-26, FR-28, AD-17).
     const pkg = JSON.parse(fs.readFileSync(path.join(out, 'package.json'), 'utf8'));
     assert.strictEqual(pkg.name, 'rad-orchestration', 'synthesized name');
     assert.strictEqual(pkg.version, '1.0.0-alpha.9', 'version matches source');
     assert.strictEqual(pkg.type, 'module', 'type: module');
     assert.deepStrictEqual(pkg.bin, { 'radorch-installer': 'index.js' }, 'bin map');
     assert.deepStrictEqual(pkg.engines, { node: '>=18' }, 'engines node>=18');
-    assert.deepStrictEqual(pkg.files, ['index.js', 'lib/', 'dist/', 'manifests/'], 'files allowlist');
+    assert.deepStrictEqual(pkg.files, ['index.js', 'lib/', 'output/', 'manifests/'], 'files allowlist');
     assert.deepStrictEqual(pkg.dependencies, { chalk: '^5.0.0' }, 'dependencies carried from source');
     // Verbatim carry-forward (FR-26, AD-17).
     assert.strictEqual(pkg.description, 'Standard installer source wrapper.');

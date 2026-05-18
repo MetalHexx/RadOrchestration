@@ -8,7 +8,7 @@ import { validatePackageTree } from '../../build-scripts/validate.js';
 const HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
 const VERSION = '1.0.0-alpha.9';
 
-/** Build a minimal synthetic dist tree satisfying all four gates. */
+/** Build a minimal synthetic output tree satisfying all four gates. */
 function makeValidDist(root, canonicalAgentsDir, agents = ['orchestrator', 'coder']) {
   for (const h of HARNESSES) {
     const hOut = path.join(root, h);
@@ -46,7 +46,7 @@ function makeCanonicalAgentsDir(root, agents = ['orchestrator', 'coder']) {
 test('gate 1: missing required artifact throws (radorch.mjs)', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'validate-gate1-'));
   try {
-    const outputDir = path.join(root, 'dist');
+    const outputDir = path.join(root, 'output');
     const canonicalAgentsDir = makeCanonicalAgentsDir(root, ['orchestrator', 'coder']);
     makeValidDist(outputDir, canonicalAgentsDir, ['orchestrator', 'coder']);
     // Remove radorch.mjs from the claude harness to trigger gate 1
@@ -66,7 +66,7 @@ test('gate 1: missing required artifact throws (radorch.mjs)', () => {
 test('gate 2: missing canonical agent in output throws (coder.md)', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'validate-gate2-'));
   try {
-    const outputDir = path.join(root, 'dist');
+    const outputDir = path.join(root, 'output');
     const canonicalAgentsDir = makeCanonicalAgentsDir(root, ['orchestrator', 'coder']);
     makeValidDist(outputDir, canonicalAgentsDir, ['orchestrator', 'coder']);
     // Remove coder.md from the claude harness agents directory
@@ -86,7 +86,7 @@ test('gate 2: missing canonical agent in output throws (coder.md)', () => {
 test('gate 3: missing per-harness manifest throws', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'validate-gate3-'));
   try {
-    const outputDir = path.join(root, 'dist');
+    const outputDir = path.join(root, 'output');
     const canonicalAgentsDir = makeCanonicalAgentsDir(root, ['orchestrator', 'coder']);
     makeValidDist(outputDir, canonicalAgentsDir, ['orchestrator', 'coder']);
     // Remove the manifest for claude harness
@@ -109,7 +109,7 @@ test('gate 3: missing per-harness manifest throws', () => {
 test('gate 4: tarball size exceeds budget throws', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'validate-gate4-'));
   try {
-    const outputDir = path.join(root, 'dist');
+    const outputDir = path.join(root, 'output');
     const canonicalAgentsDir = makeCanonicalAgentsDir(root, ['orchestrator', 'coder']);
     makeValidDist(outputDir, canonicalAgentsDir, ['orchestrator', 'coder']);
     const bigSizer = () => ({ unpackedSize: 60 * 1024 * 1024 });
@@ -134,10 +134,10 @@ test('gate 4: tarball size exceeds budget throws', () => {
   }
 });
 
-test('happy path: valid synthetic dist passes all four gates without throwing', () => {
+test('happy path: valid synthetic output passes all four gates without throwing', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'validate-happy-'));
   try {
-    const outputDir = path.join(root, 'dist');
+    const outputDir = path.join(root, 'output');
     const canonicalAgentsDir = makeCanonicalAgentsDir(root, ['orchestrator', 'coder']);
     makeValidDist(outputDir, canonicalAgentsDir, ['orchestrator', 'coder']);
     // Use a sizer that returns an acceptable size

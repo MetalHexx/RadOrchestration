@@ -1,6 +1,6 @@
 ---
 name: rad-test-standard-installer
-description: 'Build, pack, and end-to-end install-test the greenfield standard installer (`rad-orchestration` npm package) against a single harness. Builds via `node greenfield/harness-installers/standard/build-scripts/build.js`, packs `dist/`, runs `npx ./<tarball> --yes --harness <h>`, verifies post-install state via `radorch doctor` and the per-harness manifest sha. Use when asked to "smoke-test the greenfield standard installer", "test the new npm installer install", or "validate the standard installer end-to-end".'
+description: 'Build, pack, and end-to-end install-test the greenfield standard installer (`rad-orchestration` npm package) against a single harness. Builds via `node greenfield/harness-installers/standard/build-scripts/build.js`, packs `output/`, runs `npx ./<tarball> --yes --harness <h>`, verifies post-install state via `radorch doctor` and the per-harness manifest sha. Use when asked to "smoke-test the greenfield standard installer", "test the new npm installer install", or "validate the standard installer end-to-end".'
 ---
 
 # rad-test-standard-installer
@@ -8,7 +8,7 @@ description: 'Build, pack, and end-to-end install-test the greenfield standard i
 **Where this fits.** `rad-test-standard-installer` is the greenfield counterpart to `.agents/prompts/rad-test-release.prompt.md` (legacy installer) and mirrors the single-harness smoke-test discipline of `.agents/skills/rad-test-claude-plugin/SKILL.md` (plugin channel). Both the greenfield and legacy channels support `npx rad-orchestration` install for the standard harness targets (Claude Code, GitHub Copilot VS Code, GitHub Copilot CLI), but they use different build chains:
 
 - `.agents/prompts/rad-test-release.prompt.md` → **legacy** build (`npm run build:installer` at repo root, output at `cli/dist/installers/`)
-- **this skill** → **greenfield** build (`node greenfield/harness-installers/standard/build-scripts/build.js`, output at `greenfield/harness-installers/standard/dist/`)
+- **this skill** → **greenfield** build (`node greenfield/harness-installers/standard/build-scripts/build.js`, output at `greenfield/harness-installers/standard/output/`)
 
 Pick the one matching the channel you want to validate. Single-harness per run keeps the diagnostic focused; you can re-run the skill for the other harnesses afterward. You do **not** install or verify the installer yourself — you build, pack, hand off the exact command for the user to run, and then verify the installed artifacts.
 
@@ -79,7 +79,7 @@ From the repo root:
 node greenfield/harness-installers/standard/build-scripts/build.js
 ```
 
-> Expected: exit 0; `greenfield/harness-installers/standard/dist/` populated; `dist/<harness>/manifests/v<version>.json` exists; `dist/package.json` exists.
+> Expected: exit 0; `greenfield/harness-installers/standard/output/` populated; `output/<harness>/manifests/v<version>.json` exists; `output/package.json` exists.
 >
 > On first run (or any run after `cli/` or `ui/` `node_modules` were deleted), the `bootstrap-deps` step runs `npm install` in those sub-packages. Expect longer build times on first run; subsequent runs skip the installs. The `ui/` install is the largest (~1 min on a cold network).
 >
@@ -89,14 +89,14 @@ If the build fails, stop and report the failure. Do not continue.
 
 ### Step 4 — Pack the tarball
 
-Navigate to the dist directory and pack:
+Navigate to the output directory and pack:
 
 ```
-cd {repoRoot}\greenfield\harness-installers\standard\dist
+cd {repoRoot}\greenfield\harness-installers\standard\output
 npm pack
 ```
 
-Capture the resulting tarball filename (matching pattern `rad-orchestration-<version>.tgz`) as `{tarballPath}`. Read `dist/package.json` to confirm the version and note it as `{version}` — you will print it in the handoff message so the user can confirm it after install.
+Capture the resulting tarball filename (matching pattern `rad-orchestration-<version>.tgz`) as `{tarballPath}`. Read `output/package.json` to confirm the version and note it as `{version}` — you will print it in the handoff message so the user can confirm it after install.
 
 Expected: `npm pack` exits 0; the tarball file exists at `{tarballPath}`.
 
@@ -120,7 +120,7 @@ Once the user reports the install is complete, verify the installed artifacts by
 
 2. **Sentinel file check**: Confirm that `~/.<harness-dir>/skills/rad-orchestration/scripts/radorch.mjs` exists (sentinel for installed pipeline).
 
-3. **Per-harness manifest sha validation**: Load the manifest at `{repoRoot}/greenfield/harness-installers/standard/dist/{harness}/manifests/v{version}.json`. For every file entry in the manifest, read `~/.<harness-dir>/<skill-or-agent-path>` on disk and compute its sha256 hash. Compare each computed hash to the manifest's recorded sha for that file. All hashes must match.
+3. **Per-harness manifest sha validation**: Load the manifest at `{repoRoot}/greenfield/harness-installers/standard/output/{harness}/manifests/v{version}.json`. For every file entry in the manifest, read `~/.<harness-dir>/<skill-or-agent-path>` on disk and compute its sha256 hash. Compare each computed hash to the manifest's recorded sha for that file. All hashes must match.
 
 ### Step 7 — Run radorch doctor
 
@@ -148,7 +148,7 @@ question: "Delete the tarball at {tarballPath}? Keeping it around lets you re-ru
 options:
   - label: "Yes, delete the tarball"
     value: "delete"
-    description: "Removes {tarballPath}. Safe — the build artifacts in dist/ stay intact."
+    description: "Removes {tarballPath}. Safe — the build artifacts in output/ stay intact."
   - label: "No, keep the tarball"
     value: "keep"
     description: "Leaves {tarballPath} on disk for additional install attempts."

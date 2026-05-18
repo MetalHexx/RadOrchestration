@@ -1,6 +1,6 @@
 // greenfield/harness-installers/standard/lib/install/catalog.js —
 // Per-harness manifest catalog reader. Each per-harness payload at
-// `dist/<harness>/` carries a flat `manifests/` folder containing
+// `output/<harness>/` carries a flat `manifests/` folder containing
 // `v<version>.json` for every shipped version (AD-4). Upgrade flows resolve
 // the prior-version manifest by reading from this folder, never from a
 // repo-root catalog.
@@ -11,7 +11,7 @@ import path from 'node:path';
 /**
  * Build the absolute path to a versioned manifest within a per-harness bundle.
  *
- * @param {string} bundleRoot — the per-harness payload root (e.g. dist/claude/)
+ * @param {string} bundleRoot — the per-harness payload root (e.g. output/claude/)
  * @param {string} harness    — install-key (informational; not used in path today)
  * @param {string} version    — semver string (without the leading 'v')
  * @returns {string}
