@@ -8,3 +8,8 @@ node_modules/
 # for local copilot plugin install testing. Same gitignore posture the
 # claude-plugin sibling takes.
 dogfood-marketplace/
+
+# Ephemeral expand-tokens staging dir — created by build-scripts/build.js
+# inside the installer dir; deleted on success, but can persist if the
+# expand-tokens step throws mid-run.
+.expand-staging/

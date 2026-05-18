@@ -172,3 +172,42 @@ test('upgrade-complete: version bump removes prior installer-owned files, instal
     fs.rmSync(pluginNew, { recursive: true, force: true });
   }
 });
+
+test('upgrade with stale snapshot falls back to bundled manifest and removes the real prior installer-owned files (R2-2)', async () => {
+  const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-stale-snap-'));
+  const pluginOld = makePluginRootWithVersionedTemplate('1.0.0');
+  const pluginNew = makePluginRootWithVersionedTemplate('1.1.0');
+  try {
+    // Fresh install of v1.0.0 writes the snapshot + installs tier-1.0.0.yml.
+    await runInstall({ pluginRoot: pluginOld, radHome });
+    assert.ok(fs.existsSync(join(radHome, 'templates/tier-1.0.0.yml')), 'old tier present after fresh install');
+
+    // Corrupt the snapshot — wrong version, wrong file list. If trusted, the
+    // upgrade path would remove paths that don't exist and leave tier-1.0.0.yml.
+    fs.writeFileSync(join(radHome, '.copilot-cli-plugin-manifest.json'), JSON.stringify({
+      version: 'wrong',
+      channel: 'copilot-cli-plugin',
+      files: [
+        { destinationPath: '${RAD_HOME}/templates/nonexistent.yml', sourcePath: 'templates/nonexistent.yml', ownership: 'installer-owned' },
+      ],
+    }) + '\n', 'utf8');
+
+    // pluginNew also needs the v1.0.0 manifest so loadManifest fallback can find it.
+    fs.copyFileSync(
+      join(pluginOld, 'manifests/v1.0.0.json'),
+      join(pluginNew, 'manifests/v1.0.0.json'),
+    );
+
+    const result = await runInstall({ pluginRoot: pluginNew, radHome });
+    assert.strictEqual(result.action, 'upgrade-complete', 'version bump still emits upgrade-complete');
+    assert.ok(!fs.existsSync(join(radHome, 'templates/tier-1.0.0.yml')),
+      'real prior tier was removed via loadManifest fallback (snapshot was stale)');
+    assert.ok(fs.existsSync(join(radHome, 'templates/tier-1.1.0.yml')), 'new tier installed');
+    const ij = JSON.parse(fs.readFileSync(join(radHome, 'install.json'), 'utf8'));
+    assert.strictEqual(ij.harnesses['copilot-cli-plugin'].version, '1.1.0', 'install.json records new version');
+  } finally {
+    fs.rmSync(radHome, { recursive: true, force: true });
+    fs.rmSync(pluginOld, { recursive: true, force: true });
+    fs.rmSync(pluginNew, { recursive: true, force: true });
+  }
+});

@@ -90,12 +90,19 @@ export async function runInstall(opts) {
     // Upgrade or fresh install — remove prior manifest entries (skip user-config), install new.
     // Prefer the snapshot persisted at install time (the new plugin's bundle does not
     // carry old-version manifests); fall back to loading from the current pluginRoot
-    // for backwards compatibility with installs that predate the snapshot.
+    // for backwards compatibility with installs that predate the snapshot. Validate the
+    // snapshot belongs to the recorded prior install before trusting it — a stale or
+    // wrong-channel snapshot could otherwise cause us to remove the wrong files.
     if (prior && installedVersionBefore !== deliveringVersion) {
       let priorManifest = null;
       try {
         if (fs.existsSync(paths.manifestSnapshot)) {
-          priorManifest = JSON.parse(fs.readFileSync(paths.manifestSnapshot, 'utf8'));
+          const snapshot = JSON.parse(fs.readFileSync(paths.manifestSnapshot, 'utf8'));
+          if (snapshot.version === installedVersionBefore && snapshot.channel === INSTALL_KEY) {
+            priorManifest = snapshot;
+          } else {
+            priorManifest = loadManifest(opts.pluginRoot, installedVersionBefore);
+          }
         } else {
           priorManifest = loadManifest(opts.pluginRoot, installedVersionBefore);
         }
