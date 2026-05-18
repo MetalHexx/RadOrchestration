@@ -3,24 +3,10 @@ import path from 'node:path';
 import { pathExists } from '../../lib/fs-helpers.js';
 import { installPaths, userDataPaths } from '../../lib/paths.js';
 import { readInstallJson } from '../../lib/config.js';
-import type { InstallJson, InstallJsonV5, InstallJsonV6 } from '../../lib/config.js';
-import { cmpSemver, isInstallJsonV6, readLastWriterVersion } from '../../lib/install-json.js';
+import { cmpSemver, readLastWriterVersion } from '../../lib/install-json.js';
 import { parseYaml } from '../../lib/yaml.js';
 import { scanUserLevelHarnesses } from '../../lib/cross-harness-scan.js';
 import { getCliVersion } from '../../lib/package-version.js';
-
-/** Pull a representative `version` from either v5 (top-level package_version)
- * or v6 (any entry's version). Used by doctor's install-shape checks where the
- * specific install-key isn't disambiguated. */
-function readAnyVersion(ij: InstallJson): string | undefined {
-  if (isInstallJsonV6(ij)) {
-    for (const entry of Object.values((ij as InstallJsonV6).harnesses)) {
-      if (entry?.version) return entry.version;
-    }
-    return undefined;
-  }
-  return (ij as InstallJsonV5).package_version;
-}
 
 const pkg = { version: getCliVersion() };
 
@@ -69,11 +55,11 @@ export async function runInstallChecks(): Promise<CheckResult[]> {
   });
   if (!rootExists) return out;
 
-  // 2. install-json-shape — accepts both v5 (top-level package_version) and v6
-  // (any registered harness entry's version).
+  // 2. install-json-shape — single structural shape; pick any registered
+  // harness entry's version as the representative.
   try {
     const ij = await readInstallJson(p.installJson);
-    const version = readAnyVersion(ij);
+    const version = Object.values(ij.harnesses)[0]?.version;
     out.push({
       category: 'Install',
       name: 'install-json-shape',
@@ -150,16 +136,16 @@ export async function runInstallChecks(): Promise<CheckResult[]> {
     }
   }
 
-  // 6. version-match — operates on the union; v6 picks the first registered entry.
+  // 6. version-match — picks the first registered harness entry's version.
   {
     let versionStatus: CheckStatus = 'pass';
     let versionDetail: string | undefined;
     try {
       const ij = await readInstallJson(p.installJson);
-      const installedVersion = readAnyVersion(ij);
+      const installedVersion = Object.values(ij.harnesses)[0]?.version;
       if (typeof installedVersion !== 'string') {
         versionStatus = 'warn';
-        versionDetail = 'install.json missing package_version';
+        versionDetail = 'install.json missing version';
       } else {
         const cliVersion = pkg.version;
         if (cliVersion) {

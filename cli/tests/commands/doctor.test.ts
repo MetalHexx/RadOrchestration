@@ -41,7 +41,16 @@ async function seedRadorchDir(root: string, _harness = 'claude'): Promise<void> 
   await fs.mkdir(path.join(root, 'logs'), { recursive: true });
   await fs.writeFile(
     path.join(root, 'install.json'),
-    JSON.stringify({ package_version: '0.0.0', installed_at: new Date().toISOString(), last_writer_version: '0.0.0', state_schema_version: 'v5' }, null, 2) + '\n',
+    JSON.stringify({
+      harnesses: {
+        claude: {
+          version: '0.0.0',
+          channel: 'legacy-installer',
+          installed_at: new Date().toISOString(),
+          last_writer_version: '0.0.0',
+        },
+      },
+    }, null, 2) + '\n',
   );
 }
 
@@ -119,10 +128,14 @@ describe('plugin-aware doctor checks', () => {
 
     // Write install.json with a newer last_writer_version
     await fs.writeFile(path.join(home, 'install.json'), JSON.stringify({
-      package_version: '1.1.0',
-      installed_at: '2026-05-08T00:00:00.000Z',
-      last_writer_version: '1.5.0',
-      state_schema_version: 'v5',
+      harnesses: {
+        claude: {
+          version: '1.1.0',
+          channel: 'legacy-installer',
+          installed_at: '2026-05-08T00:00:00.000Z',
+          last_writer_version: '1.5.0',
+        },
+      },
     }));
     result = await runPluginChecks({ root: home, localVersion: '1.1.0' });
     expect(result.find((c) => c.name === 'version-skew')?.status).toBe('fail');

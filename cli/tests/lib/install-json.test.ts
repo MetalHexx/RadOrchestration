@@ -3,7 +3,6 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { readInstallJson, writeInstallJson } from '../../src/lib/config.js';
-import type { InstallJsonV5 } from '../../src/lib/config.js';
 import { stampLastWriter, checkVersionSkew, cmpSemver } from '../../src/lib/install-json.js';
 
 let tmp: string;
@@ -11,18 +10,21 @@ beforeEach(async () => { tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-ij-'
 afterEach(async () => { await fs.rm(tmp, { recursive: true, force: true }); });
 
 describe('install-json schema', () => {
-  it('round-trips all four fields', async () => {
+  it('round-trips the harnesses registry', async () => {
     const file = path.join(tmp, 'install.json');
     await writeInstallJson(file, {
-      package_version: '1.1.0',
-      installed_at: '2026-05-08T00:00:00.000Z',
-      last_writer_version: '1.1.0',
-      state_schema_version: 'v5',
+      harnesses: {
+        claude: {
+          version: '1.1.0',
+          channel: 'legacy-installer',
+          installed_at: '2026-05-08T00:00:00.000Z',
+          last_writer_version: '1.1.0',
+        },
+      },
     });
-    const round = await readInstallJson(file) as InstallJsonV5;
-    expect(round.package_version).toBe('1.1.0');
-    expect(round.last_writer_version).toBe('1.1.0');
-    expect(round.state_schema_version).toBe('v5');
+    const round = await readInstallJson(file);
+    expect(round.harnesses.claude?.version).toBe('1.1.0');
+    expect(round.harnesses.claude?.last_writer_version).toBe('1.1.0');
   });
 });
 
@@ -30,14 +32,18 @@ describe('stampLastWriter', () => {
   it('updates last_writer_version when newer', async () => {
     const file = path.join(tmp, 'install.json');
     await writeInstallJson(file, {
-      package_version: '1.1.0',
-      installed_at: '2026-05-08T00:00:00.000Z',
-      last_writer_version: '1.0.0',
-      state_schema_version: 'v5',
+      harnesses: {
+        claude: {
+          version: '1.1.0',
+          channel: 'legacy-installer',
+          installed_at: '2026-05-08T00:00:00.000Z',
+          last_writer_version: '1.0.0',
+        },
+      },
     });
     await stampLastWriter(file, '1.2.0');
-    const ij = await readInstallJson(file) as InstallJsonV5;
-    expect(ij.last_writer_version).toBe('1.2.0');
+    const ij = await readInstallJson(file);
+    expect(ij.harnesses.claude?.last_writer_version).toBe('1.2.0');
   });
 });
 
@@ -45,10 +51,14 @@ describe('checkVersionSkew', () => {
   it('rejects when local CLI is older than last_writer_version', async () => {
     const file = path.join(tmp, 'install.json');
     await writeInstallJson(file, {
-      package_version: '1.0.0',
-      installed_at: '2026-05-08T00:00:00.000Z',
-      last_writer_version: '1.3.0',
-      state_schema_version: 'v5',
+      harnesses: {
+        claude: {
+          version: '1.0.0',
+          channel: 'legacy-installer',
+          installed_at: '2026-05-08T00:00:00.000Z',
+          last_writer_version: '1.3.0',
+        },
+      },
     });
     const result = await checkVersionSkew({ installJsonPath: file, localVersion: '1.2.0' });
     expect(result.ok).toBe(false);
@@ -61,10 +71,14 @@ describe('checkVersionSkew', () => {
   it('passes when local CLI is newer or equal', async () => {
     const file = path.join(tmp, 'install.json');
     await writeInstallJson(file, {
-      package_version: '1.2.0',
-      installed_at: '2026-05-08T00:00:00.000Z',
-      last_writer_version: '1.2.0',
-      state_schema_version: 'v5',
+      harnesses: {
+        claude: {
+          version: '1.2.0',
+          channel: 'legacy-installer',
+          installed_at: '2026-05-08T00:00:00.000Z',
+          last_writer_version: '1.2.0',
+        },
+      },
     });
     const result = await checkVersionSkew({ installJsonPath: file, localVersion: '1.2.0' });
     expect(result.ok).toBe(true);
@@ -78,10 +92,14 @@ describe('checkVersionSkew', () => {
   it('does not block stable release upgrade from a pre-release (1.0.0 > 1.0.0-alpha.8)', async () => {
     const file = path.join(tmp, 'install.json');
     await writeInstallJson(file, {
-      package_version: '1.0.0',
-      installed_at: '2026-05-08T00:00:00.000Z',
-      last_writer_version: '1.0.0-alpha.8',
-      state_schema_version: 'v5',
+      harnesses: {
+        claude: {
+          version: '1.0.0',
+          channel: 'legacy-installer',
+          installed_at: '2026-05-08T00:00:00.000Z',
+          last_writer_version: '1.0.0-alpha.8',
+        },
+      },
     });
     const result = await checkVersionSkew({ installJsonPath: file, localVersion: '1.0.0' });
     expect(result.ok).toBe(true);

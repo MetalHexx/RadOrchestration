@@ -1,14 +1,12 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { InstallChannel, InstallKey, InstallJson, InstallJsonV5, InstallJsonV6, InstallEntry } from './config.js';
-import { INSTALL_KEYS, isInstallJsonV6, migrateInstallJson, detectChannelHeuristic, resolveActiveHarnessKey } from './install-json.js';
+import type { InstallChannel, InstallKey, InstallJson, InstallEntry } from './config.js';
+import { INSTALL_KEYS } from './install-json.js';
 
 /**
- * Section 6: doctor reads ~/.radorch/install.json directly and emits one row per
- * install-key in the v6 registry. v5-shape install.json is migrated in memory
- * via the channel and active-harness heuristics so old installs render through
- * the same table.
+ * doctor reads ~/.radorch/install.json directly and emits one row per
+ * install-key in the registry.
  */
 export interface HarnessInstallReport {
   installKey: InstallKey;
@@ -22,18 +20,14 @@ export function scanUserLevelHarnesses(): HarnessInstallReport[] {
   const installJson = path.join(home, '.radorch', 'install.json');
   const reports: HarnessInstallReport[] = [];
 
-  let registry: InstallJsonV6 | undefined;
+  let registry: InstallJson | undefined;
   if (fs.existsSync(installJson)) {
     try {
-      const parsed = JSON.parse(fs.readFileSync(installJson, 'utf8')) as InstallJson;
-      if (isInstallJsonV6(parsed)) {
-        registry = parsed;
+      const parsed = JSON.parse(fs.readFileSync(installJson, 'utf8')) as Record<string, unknown>;
+      if (typeof parsed.harnesses === 'object' && parsed.harnesses !== null) {
+        registry = { harnesses: parsed.harnesses as InstallJson['harnesses'] };
       } else {
-        // v5 → v6 in memory only (we do not write back here — read path).
-        const v5 = parsed as InstallJsonV5;
-        const activeKey = resolveActiveHarnessKey({ home }) ?? 'claude';
-        const channel = detectChannelHeuristic({ home });
-        registry = migrateInstallJson(v5, activeKey, channel);
+        registry = { harnesses: {} };
       }
     } catch {
       // Unreadable / malformed — treat as no registry. Every key emits
