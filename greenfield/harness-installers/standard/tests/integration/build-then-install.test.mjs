@@ -1,0 +1,306 @@
+// greenfield/harness-installers/standard/tests/integration/build-then-install.test.mjs —
+// End-to-end cross-phase integration test. Stages a synthetic greenfield tree
+// under a tmp dir, runs the real `runBuild` against it (with adapter-engine /
+// ui-runner / bootstrap skipped), and then drives `installHarness` and
+// `hydrateUserData` against the produced `dist/<harness>/` payload. Asserts
+// on the resulting `~/.radorch/` and `~/.<harness>/` on-disk shapes against
+// every FR-2 / FR-3 / FR-14 / FR-15 / FR-16 expectation in a single test.
+//
+// This test is the cross-cutting validator that exercises P03+P04 modules
+// together — when it fails, the fix belongs in the originating module, never
+// in the test (the test is the spec of these requirements acting together).
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+import { runBuild } from '../../build-scripts/build.js';
+import { installHarness } from '../../lib/install/install-harness.js';
+import { hydrateUserData } from '../../lib/install/hydrate-user-data.js';
+
+const HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
+
+/**
+ * Stage a self-contained synthetic greenfield tree under `root`. Mirrors the
+ * structure expected by `runBuild` with `greenfieldRel: '.'` — i.e. the
+ * greenfield content lives at the root rather than under a `greenfield/`
+ * subfolder. Returns nothing; everything is written to disk.
+ */
+function makeFixture(root) {
+  // Per-harness adapter engine output — agents + skills with tokenized
+  // references that the build's expand-tokens step will replace.
+  for (const h of HARNESSES) {
+    const agentsDir = path.join(root, 'harness-adapters/output', h, 'agents');
+    const skillsDir = path.join(root, 'harness-adapters/output', h, 'skills/rad-orchestration');
+    fs.mkdirSync(agentsDir, { recursive: true });
+    fs.mkdirSync(skillsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(agentsDir, 'orchestrator.md'),
+      [
+        '---',
+        'name: orchestrator',
+        'description: test',
+        '---',
+        '',
+        'Spawn **coder** agent. See ${SKILLS_ROOT}/rad-orchestration/SKILL.md.',
+        '',
+      ].join('\n'),
+    );
+    fs.writeFileSync(
+      path.join(agentsDir, 'coder.md'),
+      '---\nname: coder\ndescription: test\n---\n# Coder\n',
+    );
+    fs.writeFileSync(
+      path.join(skillsDir, 'SKILL.md'),
+      '---\nname: rad-orchestration\ndescription: t\n---\nReference: ${SKILLS_ROOT}/rad-orchestration/scripts/pipeline.js\n',
+    );
+  }
+
+  // runtime-config/ — orchestration.yml + four tier templates.
+  const rcDir = path.join(root, 'runtime-config');
+  const rcTemplates = path.join(rcDir, 'templates');
+  fs.mkdirSync(rcTemplates, { recursive: true });
+  fs.writeFileSync(path.join(rcDir, 'orchestration.yml'), 'pipeline: {}\n');
+  for (const tier of ['extra-high', 'high', 'medium', 'low']) {
+    fs.writeFileSync(path.join(rcTemplates, `${tier}.yml`), `name: ${tier}\n`);
+  }
+
+  // cli/ source — esbuild needs a real entry to bundle.
+  const cliBin = path.join(root, 'cli/src/bin');
+  fs.mkdirSync(cliBin, { recursive: true });
+  fs.writeFileSync(path.join(cliBin, 'radorch.ts'), 'console.log("radorch");\n');
+  fs.writeFileSync(
+    path.join(root, 'cli/package.json'),
+    JSON.stringify({ name: 'cli', type: 'module', version: '0.0.0-fixture' }),
+  );
+
+  // ui/ — emit-ui-bundle's `runner` is stubbed via opts.skipUiRunner. The
+  // helper still cpSync's .next/standalone + static; we provide those dirs.
+  fs.mkdirSync(path.join(root, 'ui/.next/standalone'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'ui/.next/static'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'ui/.next/standalone/server.js'), '// ui\n');
+
+  // harness-files/skills/rad-orchestration/scripts/ — TS sources for the
+  // pipeline bundler.
+  const pipeSrc = path.join(root, 'harness-files/skills/rad-orchestration/scripts');
+  fs.mkdirSync(pipeSrc, { recursive: true });
+  fs.writeFileSync(path.join(pipeSrc, 'pipeline.ts'), 'export const main = () => 1;\n');
+  fs.writeFileSync(path.join(pipeSrc, 'explode-master-plan.ts'), 'export const main = () => 2;\n');
+
+  // harness-files/agents/ — canonical agents listing for the validate step.
+  const canonicalAgentsDir = path.join(root, 'harness-files/agents');
+  fs.mkdirSync(canonicalAgentsDir, { recursive: true });
+  fs.writeFileSync(path.join(canonicalAgentsDir, 'orchestrator.md'), '# orchestrator\n');
+  fs.writeFileSync(path.join(canonicalAgentsDir, 'coder.md'), '# coder\n');
+
+  // harness-installers/standard/ source — needs package.json for synthesize.
+  const installerSrc = path.join(root, 'harness-installers/standard');
+  fs.mkdirSync(installerSrc, { recursive: true });
+  fs.writeFileSync(
+    path.join(installerSrc, 'package.json'),
+    JSON.stringify({
+      name: '@rad-orchestration/standard-source',
+      version: '1.0.0-alpha.9',
+      private: true,
+      type: 'module',
+      description: 'Standard installer source wrapper (fixture).',
+      author: 'rad-orchestration',
+      license: 'MIT',
+      dependencies: { chalk: '^5.0.0' },
+    }, null, 2),
+  );
+  for (const h of HARNESSES) {
+    fs.mkdirSync(path.join(installerSrc, 'manifests', h), { recursive: true });
+  }
+}
+
+test('build then install produces correct ~/.radorch/ and ~/.<harness>/ shapes for each harness', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'std-e2e-'));
+  // Capture and restore HOME / USERPROFILE so we don't pollute the real user
+  // home if the test throws between set and finally-block.
+  const prevHome = process.env.HOME;
+  const prevUserProfile = process.env.USERPROFILE;
+  try {
+    makeFixture(tmp);
+
+    // Point HOME and USERPROFILE at a fresh tmp home BEFORE invoking runBuild —
+    // the build's expand-tokens step bakes ~/.claude and ~/.copilot absolute
+    // paths into agent content via os.homedir() — and BEFORE installHarness /
+    // hydrateUserData, both of which call userDataPaths() / harnessRoot().
+    const home = path.join(tmp, 'home');
+    fs.mkdirSync(home, { recursive: true });
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+
+    // Build against the synthetic fixture.
+    await runBuild({
+      rootDir: tmp,
+      greenfieldRel: '.',
+      skipAdapterEngine: true,
+      skipUiRunner: true,
+      skipBootstrap: true,
+    });
+
+    const distRoot = path.join(tmp, 'harness-installers/standard/dist');
+
+    // Install each harness against the real dist/<h>/ payload. The
+    // copilot-cli ↔ copilot-vscode folder mutex is tested separately in P03;
+    // here we install claude and copilot-vscode (which can coexist on disk).
+    for (const h of ['claude', 'copilot-vscode']) {
+      const result = await installHarness({
+        bundleRoot: path.join(distRoot, h),
+        sharedRoot: distRoot,
+        harness: h,
+        stderr: { write() { /* swallow */ } },
+      });
+      assert.strictEqual(result.code, 0, `${h} install must succeed (got action=${result.action})`);
+    }
+
+    // Hydrate user-data from one of the per-harness bundles. The shared UI
+    // bundle lives at dist/ui/, so sharedRoot = distRoot.
+    await hydrateUserData({
+      bundleRoot: path.join(distRoot, 'claude'),
+      sharedRoot: distRoot,
+    });
+
+    // ---------------------------------------------------------------------
+    // FR-2: ~/.radorch/ shape — canonical single-shape user-data tree.
+    // ---------------------------------------------------------------------
+    const rad = path.join(home, '.radorch');
+    assert.ok(fs.existsSync(path.join(rad, 'install.json')),
+      'FR-2: install.json present');
+    assert.ok(fs.existsSync(path.join(rad, 'orchestration.yml')),
+      'FR-2: orchestration.yml present');
+    assert.ok(fs.existsSync(path.join(rad, 'templates/extra-high.yml')),
+      'FR-2: templates/extra-high.yml present');
+    assert.ok(fs.existsSync(path.join(rad, 'templates/high.yml')),
+      'FR-2: templates/high.yml present');
+    assert.ok(fs.existsSync(path.join(rad, 'templates/medium.yml')),
+      'FR-2: templates/medium.yml present');
+    assert.ok(fs.existsSync(path.join(rad, 'templates/low.yml')),
+      'FR-2: templates/low.yml present');
+    assert.ok(fs.existsSync(path.join(rad, 'ui')), 'FR-2: ui/ present');
+    assert.ok(fs.existsSync(path.join(rad, 'projects')), 'FR-2: projects/ present');
+    assert.ok(fs.existsSync(path.join(rad, 'logs')), 'FR-2: logs/ present');
+
+    // FR-2 negative shape — none of the legacy artifacts may be created.
+    assert.ok(!fs.existsSync(path.join(rad, 'config.yml')),
+      'FR-2: no config.yml (legacy)');
+    assert.ok(!fs.existsSync(path.join(rad, 'registry.yml')),
+      'FR-2: no registry.yml (legacy)');
+    assert.ok(!fs.existsSync(path.join(rad, '.harness')),
+      'FR-2: no .harness pointer');
+    assert.ok(!fs.existsSync(path.join(rad, 'runtime')),
+      'FR-2: no runtime/ — UI creates it lazily, not the installer');
+
+    // ---------------------------------------------------------------------
+    // FR-3: per-harness install root populated for each installed harness.
+    // ---------------------------------------------------------------------
+    assert.ok(fs.existsSync(path.join(home, '.claude/agents/orchestrator.md')),
+      'FR-3: claude orchestrator.md installed');
+    assert.ok(fs.existsSync(path.join(home, '.claude/agents/coder.md')),
+      'FR-3: claude coder.md installed');
+    assert.ok(fs.existsSync(path.join(home, '.claude/skills/rad-orchestration/scripts/radorch.mjs')),
+      'FR-3: claude CLI sentinel installed');
+    assert.ok(fs.existsSync(path.join(home, '.claude/skills/rad-orchestration/scripts/pipeline.js')),
+      'FR-3: claude pipeline bundle installed');
+    assert.ok(fs.existsSync(path.join(home, '.claude/skills/rad-orchestration/SKILL.md')),
+      'FR-3: claude SKILL.md installed');
+
+    assert.ok(fs.existsSync(path.join(home, '.copilot/agents/orchestrator.md')),
+      'FR-3: copilot orchestrator.md installed');
+    assert.ok(fs.existsSync(path.join(home, '.copilot/skills/rad-orchestration/scripts/radorch.mjs')),
+      'FR-3: copilot CLI sentinel installed');
+
+    // FR-3 content fidelity — the installed agent must carry the token-
+    // expanded body (not the bundle's raw `${SKILLS_ROOT}` placeholder).
+    const claudeOrch = fs.readFileSync(
+      path.join(home, '.claude/agents/orchestrator.md'), 'utf8');
+    assert.ok(!claudeOrch.includes('${SKILLS_ROOT}'),
+      'FR-3: claude orchestrator.md token-expanded (no bare ${SKILLS_ROOT})');
+    assert.ok(claudeOrch.includes(path.join(home, '.claude')),
+      'FR-3: claude orchestrator.md references ~/.claude/');
+
+    // ---------------------------------------------------------------------
+    // FR-14: orchestration.yml preservation on second hydrate.
+    // ---------------------------------------------------------------------
+    const userEdited = '# user-edited content\n';
+    fs.writeFileSync(path.join(rad, 'orchestration.yml'), userEdited);
+    await hydrateUserData({
+      bundleRoot: path.join(distRoot, 'claude'),
+      sharedRoot: distRoot,
+    });
+    assert.strictEqual(
+      fs.readFileSync(path.join(rad, 'orchestration.yml'), 'utf8'),
+      userEdited,
+      'FR-14: user-edited orchestration.yml preserved on second hydrate',
+    );
+
+    // ---------------------------------------------------------------------
+    // FR-15: user-added template preserved; shipped tier files overwrite.
+    // ---------------------------------------------------------------------
+    fs.writeFileSync(path.join(rad, 'templates/my-custom.yml'), 'custom');
+    const shippedBefore = fs.readFileSync(
+      path.join(rad, 'templates/extra-high.yml'), 'utf8');
+    fs.writeFileSync(path.join(rad, 'templates/extra-high.yml'), 'tampered');
+    await hydrateUserData({
+      bundleRoot: path.join(distRoot, 'claude'),
+      sharedRoot: distRoot,
+    });
+    assert.strictEqual(
+      fs.readFileSync(path.join(rad, 'templates/my-custom.yml'), 'utf8'),
+      'custom',
+      'FR-15: user-added template my-custom.yml preserved',
+    );
+    assert.strictEqual(
+      fs.readFileSync(path.join(rad, 'templates/extra-high.yml'), 'utf8'),
+      shippedBefore,
+      'FR-15: shipped tier file (extra-high.yml) overwritten from bundle',
+    );
+
+    // ---------------------------------------------------------------------
+    // FR-16: ui/ replaced atomically — prior file gone, new bundle content
+    //        present after re-hydrate.
+    // ---------------------------------------------------------------------
+    const stalePath = path.join(rad, 'ui/stale-from-prior-install.js');
+    fs.writeFileSync(stalePath, '// stale\n');
+    await hydrateUserData({
+      bundleRoot: path.join(distRoot, 'claude'),
+      sharedRoot: distRoot,
+    });
+    assert.ok(!fs.existsSync(stalePath),
+      'FR-16: prior ui/ contents wiped on re-hydrate (atomic tmp-rename)');
+    assert.ok(fs.existsSync(path.join(rad, 'ui/server.js')),
+      'FR-16: bundle ui/server.js present after re-hydrate');
+
+    // ---------------------------------------------------------------------
+    // NFR-10c: ~/.radorch/projects/ is never written into by manifest copies.
+    // ---------------------------------------------------------------------
+    fs.mkdirSync(path.join(rad, 'projects/sample'), { recursive: true });
+    fs.writeFileSync(path.join(rad, 'projects/sample/state.json'), '{}');
+    // Re-install claude (this will hit the noop or upgrade path depending on
+    // whether the sentinel + install.json entry match — either way no copies
+    // may land in projects/).
+    await installHarness({
+      bundleRoot: path.join(distRoot, 'claude'),
+      sharedRoot: distRoot,
+      harness: 'claude',
+      stderr: { write() { /* swallow */ } },
+    });
+    assert.ok(fs.existsSync(path.join(rad, 'projects/sample/state.json')),
+      'NFR-10c: ~/.radorch/projects/sample/state.json survives second install');
+    assert.strictEqual(
+      fs.readFileSync(path.join(rad, 'projects/sample/state.json'), 'utf8'),
+      '{}',
+      'NFR-10c: projects/ file contents untouched',
+    );
+  } finally {
+    if (prevHome === undefined) delete process.env.HOME;
+    else process.env.HOME = prevHome;
+    if (prevUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = prevUserProfile;
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});

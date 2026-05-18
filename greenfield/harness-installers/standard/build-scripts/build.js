@@ -227,6 +227,21 @@ export async function runBuild(opts) {
     outPath: path.join(out, 'package.json'),
   }));
 
+  // Per-harness package.json stub — written AFTER emit-manifest so it stays
+  // out of the manifest (which would otherwise copy it to ~/.<harness>/).
+  // `installHarness` reads `bundleRoot/package.json` to resolve the delivering
+  // version (and the noop/upgrade/downgrade decision), so each per-harness
+  // payload must carry its own version stub.
+  await step('emit-per-harness-package-json', () => {
+    for (const h of HARNESSES) {
+      const stub = { name: 'rad-orchestration', version: pkg.version };
+      fs.writeFileSync(
+        path.join(out, h, 'package.json'),
+        JSON.stringify(stub, null, 2) + '\n',
+      );
+    }
+  });
+
   // Structural validation — final gate before npm pack (FR-27, FR-28, NFR-5, NFR-7, AD-7).
   // A throw aborts the build with a non-zero exit code.
   await step('validate', () => validatePackageTree({
