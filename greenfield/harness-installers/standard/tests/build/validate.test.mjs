@@ -6,6 +6,7 @@ import path from 'node:path';
 import { validatePackageTree } from '../../build-scripts/validate.js';
 
 const HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
+const COPILOT_AGENT_SUFFIX_HARNESSES = new Set(['copilot-vscode', 'copilot-cli']);
 const VERSION = '1.0.0-alpha.9';
 
 /** Build a minimal synthetic output tree satisfying all four gates. */
@@ -22,10 +23,12 @@ function makeValidDist(root, canonicalAgentsDir, agents = ['orchestrator', 'code
     fs.writeFileSync(path.join(hOut, 'skills/rad-orchestration/scripts/radorch.mjs'), '// radorch\n');
     fs.writeFileSync(path.join(hOut, 'skills/rad-orchestration/scripts/pipeline.js'), '// pipeline\n');
     fs.writeFileSync(path.join(hOut, 'skills/rad-orchestration/scripts/explode-master-plan.js'), '// explode\n');
-    // Canonical agents (gate 2)
+    // Canonical agents (gate 2). Per-harness filename suffix matches the adapter:
+    // claude emits `<name>.md`, copilot variants emit `<name>.agent.md`.
     fs.mkdirSync(path.join(hOut, 'agents'), { recursive: true });
+    const suffix = COPILOT_AGENT_SUFFIX_HARNESSES.has(h) ? '.agent.md' : '.md';
     for (const name of agents) {
-      fs.writeFileSync(path.join(hOut, `agents/${name}.md`), `# ${name}\n`);
+      fs.writeFileSync(path.join(hOut, `agents/${name}${suffix}`), `# ${name}\n`);
     }
     // Per-harness manifest (gate 3)
     fs.mkdirSync(path.join(hOut, 'manifests'), { recursive: true });
@@ -75,6 +78,30 @@ test('gate 2: missing canonical agent in output throws (coder.md)', () => {
       () => validatePackageTree({ outputDir, canonicalAgentsDir, harnesses: HARNESSES, version: VERSION }),
       (err) => {
         assert.ok(err.message.includes('coder.md'), `Expected message to name coder.md, got: ${err.message}`);
+        return true;
+      },
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('gate 2: missing copilot-suffixed agent in output throws (coder.agent.md)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'validate-gate2-copilot-'));
+  try {
+    const outputDir = path.join(root, 'output');
+    const canonicalAgentsDir = makeCanonicalAgentsDir(root, ['orchestrator', 'coder']);
+    makeValidDist(outputDir, canonicalAgentsDir, ['orchestrator', 'coder']);
+    // Remove the .agent.md-suffixed file from copilot-vscode. The validator must
+    // check the documented per-harness suffix; bare `.md` here would be wrong.
+    fs.rmSync(path.join(outputDir, 'copilot-vscode/agents/coder.agent.md'));
+    assert.throws(
+      () => validatePackageTree({ outputDir, canonicalAgentsDir, harnesses: HARNESSES, version: VERSION }),
+      (err) => {
+        assert.ok(
+          err.message.includes('copilot-vscode/agents/coder.agent.md'),
+          `Expected message to name copilot-vscode/agents/coder.agent.md, got: ${err.message}`,
+        );
         return true;
       },
     );

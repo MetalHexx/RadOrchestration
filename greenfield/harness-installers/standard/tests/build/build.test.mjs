@@ -6,19 +6,25 @@ import path from 'node:path';
 import { runBuild } from '../../build-scripts/build.js';
 
 const HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
+const COPILOT_AGENT_SUFFIX_HARNESSES = new Set(['copilot-vscode', 'copilot-cli']);
+
+function agentFilename(h, name) {
+  return COPILOT_AGENT_SUFFIX_HARNESSES.has(h) ? `${name}.agent.md` : `${name}.md`;
+}
 
 function makeFixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'std-build-'));
 
   // Per-harness adapter engine output. Each harness gets agents + skills with
-  // tokenized references the build's expand-tokens step must replace.
+  // tokenized references the build's expand-tokens step must replace. Filename
+  // suffix follows the adapter rule: claude `<name>.md`, copilot `<name>.agent.md`.
   for (const h of HARNESSES) {
     const agentsDir = path.join(root, 'harness-adapters/output', h, 'agents');
     const skillsDir = path.join(root, 'harness-adapters/output', h, 'skills/rad-orchestration');
     fs.mkdirSync(agentsDir, { recursive: true });
     fs.mkdirSync(skillsDir, { recursive: true });
     fs.writeFileSync(
-      path.join(agentsDir, 'orchestrator.md'),
+      path.join(agentsDir, agentFilename(h, 'orchestrator')),
       [
         '---',
         'name: orchestrator',
@@ -32,7 +38,7 @@ function makeFixture() {
       ].join('\n'),
     );
     fs.writeFileSync(
-      path.join(agentsDir, 'coder.md'),
+      path.join(agentsDir, agentFilename(h, 'coder')),
       '---\nname: coder\ndescription: test\n---\n# Coder\n',
     );
     fs.writeFileSync(
@@ -128,8 +134,9 @@ test('runBuild produces output/<harness>/ per harness, shared output/ui/, and sy
     // Per-harness payload (FR-19, FR-20, FR-21, FR-22).
     for (const h of HARNESSES) {
       const hOut = path.join(out, h);
-      assert.ok(fs.existsSync(path.join(hOut, 'agents/orchestrator.md')),
-        `${h}: agents/orchestrator.md`);
+      const orchestratorFile = agentFilename(h, 'orchestrator');
+      assert.ok(fs.existsSync(path.join(hOut, 'agents', orchestratorFile)),
+        `${h}: agents/${orchestratorFile}`);
       assert.ok(fs.existsSync(path.join(hOut, 'skills/rad-orchestration/SKILL.md')),
         `${h}: skills/rad-orchestration/SKILL.md`);
       assert.ok(fs.existsSync(path.join(hOut, 'orchestration.yml')),
@@ -189,7 +196,7 @@ test('runBuild produces output/<harness>/ per harness, shared output/ui/, and sy
     const copilotRoot = path.join(os.homedir(), '.copilot');
     const copilotSkillsRoot = path.join(copilotRoot, 'skills');
     for (const h of ['copilot-vscode', 'copilot-cli']) {
-      const orch = fs.readFileSync(path.join(out, h, 'agents/orchestrator.md'), 'utf8');
+      const orch = fs.readFileSync(path.join(out, h, 'agents', agentFilename(h, 'orchestrator')), 'utf8');
       assert.ok(orch.includes(copilotSkillsRoot),
         `${h} orchestrator.md: ${`\${SKILLS_ROOT}`} replaced with ~/.copilot/skills`);
       assert.ok(orch.includes(copilotRoot),

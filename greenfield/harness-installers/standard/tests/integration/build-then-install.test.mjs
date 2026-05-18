@@ -21,6 +21,11 @@ import { installHarness } from '../../lib/install/install-harness.js';
 import { hydrateUserData } from '../../lib/install/hydrate-user-data.js';
 
 const HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
+const COPILOT_AGENT_SUFFIX_HARNESSES = new Set(['copilot-vscode', 'copilot-cli']);
+
+function agentFilename(h, name) {
+  return COPILOT_AGENT_SUFFIX_HARNESSES.has(h) ? `${name}.agent.md` : `${name}.md`;
+}
 
 /**
  * Stage a self-contained synthetic greenfield tree under `root`. Mirrors the
@@ -30,14 +35,15 @@ const HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
  */
 function makeFixture(root) {
   // Per-harness adapter engine output — agents + skills with tokenized
-  // references that the build's expand-tokens step will replace.
+  // references that the build's expand-tokens step will replace. Filename
+  // suffix follows the adapter rule: claude `<name>.md`, copilot `<name>.agent.md`.
   for (const h of HARNESSES) {
     const agentsDir = path.join(root, 'harness-adapters/output', h, 'agents');
     const skillsDir = path.join(root, 'harness-adapters/output', h, 'skills/rad-orchestration');
     fs.mkdirSync(agentsDir, { recursive: true });
     fs.mkdirSync(skillsDir, { recursive: true });
     fs.writeFileSync(
-      path.join(agentsDir, 'orchestrator.md'),
+      path.join(agentsDir, agentFilename(h, 'orchestrator')),
       [
         '---',
         'name: orchestrator',
@@ -49,7 +55,7 @@ function makeFixture(root) {
       ].join('\n'),
     );
     fs.writeFileSync(
-      path.join(agentsDir, 'coder.md'),
+      path.join(agentsDir, agentFilename(h, 'coder')),
       '---\nname: coder\ndescription: test\n---\n# Coder\n',
     );
     fs.writeFileSync(
@@ -209,8 +215,8 @@ test('build then install produces correct ~/.radorch/ and ~/.<harness>/ shapes f
     assert.ok(fs.existsSync(path.join(home, '.claude/skills/rad-orchestration/SKILL.md')),
       'FR-3: claude SKILL.md installed');
 
-    assert.ok(fs.existsSync(path.join(home, '.copilot/agents/orchestrator.md')),
-      'FR-3: copilot orchestrator.md installed');
+    assert.ok(fs.existsSync(path.join(home, '.copilot/agents/orchestrator.agent.md')),
+      'FR-3: copilot orchestrator.agent.md installed');
     assert.ok(fs.existsSync(path.join(home, '.copilot/skills/rad-orchestration/scripts/radorch.mjs')),
       'FR-3: copilot CLI sentinel installed');
 

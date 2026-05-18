@@ -38,12 +38,17 @@ export function validatePackageTree(opts) {
     }
   }
 
-  // Gate 2: every canonical agent appears at output/<harness>/agents/<name>.md.
-  const canonical = fs.readdirSync(canonicalAgentsDir)
+  // Gate 2: every canonical agent appears at output/<harness>/agents/<name><suffix>,
+  // where the suffix matches the adapter's documented filename rule for that
+  // harness — claude emits `<name>.md`, copilot variants emit `<name>.agent.md`.
+  const COPILOT_AGENT_SUFFIX_HARNESSES = new Set(['copilot-vscode', 'copilot-cli']);
+  const canonicalNames = fs.readdirSync(canonicalAgentsDir)
     .filter((f) => f.endsWith('.md') && !f.includes('.copilot.') && !f.includes('.claude.'))
-    .map((f) => path.basename(f));
+    .map((f) => f.replace(/\.md$/, ''));
   for (const h of harnesses) {
-    for (const filename of canonical) {
+    const suffix = COPILOT_AGENT_SUFFIX_HARNESSES.has(h) ? '.agent.md' : '.md';
+    for (const name of canonicalNames) {
+      const filename = `${name}${suffix}`;
       if (!fs.existsSync(path.join(outputDir, h, 'agents', filename))) {
         throw new Error(`validate: missing ${h}/agents/${filename} (gate 2)`);
       }
