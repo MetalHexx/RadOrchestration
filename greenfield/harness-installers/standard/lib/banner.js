@@ -18,7 +18,7 @@ import { THEME, FIGLET_FONT } from './theme.js';
  * @returns {void}
  */
 export function renderBanner() {
-  const cols = process.stdout.columns || 80;
+  const cols = process.stdout.columns || (process.env.COLUMNS ? parseInt(process.env.COLUMNS, 10) : 80);
 
   console.log('');
 

@@ -74,7 +74,9 @@ export async function main() {
 
   // Resolve where the bundled payloads live. When this file is shipped inside
   // the published tarball, `dist/<harness>/` sits next to index.js.
-  const packageRoot = __dirname;
+  // RADORCH_PACKAGE_ROOT env var allows tests to point at a synthetic fixture
+  // without touching the real ~/.claude or ~/.radorch.
+  const packageRoot = process.env.RADORCH_PACKAGE_ROOT ?? __dirname;
   const sharedRoot = path.join(packageRoot, 'dist');
 
   const skipConfirmation = options.skipConfirmation ?? false;
