@@ -77,6 +77,14 @@ function makeFixture() {
   // A stray .ts source the prune-pass must strip from the output.
   fs.writeFileSync(path.join(pipeSrc, 'stray.ts'), '// stray\n');
 
+  // harness-files/agents/ — canonical agents dir required by the validate step.
+  // Must list only the agents that also appear in dist/<harness>/agents/ so
+  // gate 2 passes. The adapter output above ships orchestrator.md + coder.md.
+  const canonicalAgentsDir = path.join(root, 'harness-files/agents');
+  fs.mkdirSync(canonicalAgentsDir, { recursive: true });
+  fs.writeFileSync(path.join(canonicalAgentsDir, 'orchestrator.md'), '# orchestrator\n');
+  fs.writeFileSync(path.join(canonicalAgentsDir, 'coder.md'), '# coder\n');
+
   // harness-installers/standard/ source — needs package.json for synth.
   const installerSrc = path.join(root, 'harness-installers/standard');
   fs.mkdirSync(installerSrc, { recursive: true });

@@ -15,6 +15,7 @@ import { emitUiBundle } from '../../shared/build-helpers/emit-ui-bundle.js';
 import { expandTokens } from '../../shared/build-helpers/expand-tokens.js';
 import { emitManifest } from './emit-manifest.js';
 import { synthesizePackageJson } from './synthesize-package-json.js';
+import { validatePackageTree } from './validate.js';
 
 const HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
 
@@ -224,6 +225,15 @@ export async function runBuild(opts) {
   await step('synthesize-package-json', () => synthesizePackageJson({
     sourcePkgPath: path.join(installerDir, 'package.json'),
     outPath: path.join(out, 'package.json'),
+  }));
+
+  // Structural validation — final gate before npm pack (FR-27, FR-28, NFR-5, NFR-7, AD-7).
+  // A throw aborts the build with a non-zero exit code.
+  await step('validate', () => validatePackageTree({
+    outputDir: out,
+    canonicalAgentsDir: path.join(greenfield, 'harness-files/agents'),
+    harnesses: ['claude', 'copilot-vscode', 'copilot-cli'],
+    version: pkg.version,
   }));
 }
 
