@@ -5,6 +5,35 @@ import type { InstallChannel, InstallKey, InstallJson, InstallEntry } from './co
 import { INSTALL_KEYS } from './install-json.js';
 
 /**
+ * Default Copilot CLI plugin-install segments derived from the conventional
+ * kebab-case form Copilot CLI produces from the `OWNER/REPO` slug.
+ */
+export const COPILOT_CLI_PLUGIN_MARKETPLACE = 'MetalHexx-RadOrchestration';
+export const COPILOT_CLI_PLUGIN_NAME = 'rad-orchestration-copilot-cli';
+
+/**
+ * Probes `~/.copilot/installed-plugins/<marketplace>/<plugin>/` for Copilot CLI
+ * plugin presence. Unlike the Claude side (which can also gate on
+ * `CLAUDE_PLUGIN_ROOT`), the Copilot CLI side has no plugin-root env var, so
+ * path-inspection is the sole detection signal.
+ */
+export function detectCopilotCliPlugin(opts?: {
+  home?: string;
+  marketplace?: string;
+  pluginName?: string;
+}): boolean {
+  const home = opts?.home ?? os.homedir();
+  const marketplace = opts?.marketplace ?? COPILOT_CLI_PLUGIN_MARKETPLACE;
+  const pluginName = opts?.pluginName ?? COPILOT_CLI_PLUGIN_NAME;
+  const pluginDir = path.join(home, '.copilot', 'installed-plugins', marketplace, pluginName);
+  try {
+    return fs.existsSync(pluginDir);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * doctor reads ~/.radorch/install.json directly and emits one row per
  * install-key in the registry.
  */

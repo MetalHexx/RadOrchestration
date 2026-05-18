@@ -7,8 +7,17 @@ export interface InstallEntry {
   installed_at: string;
   last_writer_version: string;
 }
-export type InstallChannel = 'plugin' | 'legacy-installer' | 'unknown';
-export type InstallKey = 'claude' | 'claude-plugin' | 'copilot-cli' | 'copilot-vscode';
+export type InstallChannel =
+  | 'plugin'
+  | 'legacy-installer'
+  | 'unknown'
+  | 'claude-plugin'
+  | 'copilot-cli-plugin';
+
+/** The five valid install-keys (install identities). See `INSTALL_KEYS` in
+ * install-json.ts for the runtime value list. */
+export type InstallKey = 'claude' | 'claude-plugin' | 'copilot-cli' | 'copilot-cli-plugin' | 'copilot-vscode';
+
 export interface InstallJson {
   harnesses: Partial<Record<InstallKey, InstallEntry>>;
 }
