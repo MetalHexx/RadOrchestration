@@ -15,7 +15,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { runWizard, detectInstalledHarnesses } from '../../lib/wizard.js';
+import { runWizard, detectInstalledHarnesses, installDestructivePromptLines, buildUninstallChoices } from '../../lib/wizard.js';
 
 function mkHome(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -62,7 +62,7 @@ describe('runWizard — headless (skipConfirmation) behavior', () => {
           harnesses: {
             'copilot-cli': {
               version: '1.0.0-alpha.9',
-              channel: 'legacy-installer',
+              channel: 'standard',
               installed_at: 't',
               last_writer_version: '1.0.0-alpha.9',
             },
@@ -125,7 +125,7 @@ describe('runWizard — headless (skipConfirmation) behavior', () => {
           harnesses: {
             'copilot-vscode': {
               version: '1.0.0-alpha.9',
-              channel: 'legacy-installer',
+              channel: 'standard',
               installed_at: 't',
               last_writer_version: '1.0.0-alpha.9',
             },
@@ -144,6 +144,115 @@ describe('runWizard — headless (skipConfirmation) behavior', () => {
     } finally {
       fs.rmSync(home, { recursive: true, force: true });
     }
+  });
+});
+
+describe('installDestructivePromptLines — plugin coexistence + folder mutex + downgrade', () => {
+  function entry(version = '1.0.0', channel = 'plugin') {
+    return { version, channel, installed_at: 't', last_writer_version: version };
+  }
+
+  it('no triggers → null', () => {
+    const home = mkHome('std-pl-null-');
+    try {
+      assert.equal(installDestructivePromptLines({}, 'claude', '1.0.0', { home }), null);
+    } finally { fs.rmSync(home, { recursive: true, force: true }); }
+  });
+
+  it('claude + claude-plugin (registry) → lines mention claude-plugin and the duplicate-loading consequence', () => {
+    const home = mkHome('std-pl-claude-');
+    try {
+      const lines = installDestructivePromptLines(
+        { 'claude-plugin': entry('1.0.0') },
+        'claude',
+        '1.0.0',
+        { home },
+      );
+      assert.ok(lines, 'expected non-null lines');
+      const text = lines.join('\n');
+      assert.match(text, /Claude Code \(plugin\)/);
+      assert.match(text, /DUPLICATE rad-orc:<name> entries/);
+      assert.match(text, /To avoid duplicates, cancel and run/);
+    } finally { fs.rmSync(home, { recursive: true, force: true }); }
+  });
+
+  it('copilot-cli + copilot-cli-plugin (registry) → lines mention the plugin partner and duplicate-loading', () => {
+    const home = mkHome('std-pl-cli-');
+    try {
+      const lines = installDestructivePromptLines(
+        { 'copilot-cli-plugin': entry('1.0.0') },
+        'copilot-cli',
+        '1.0.0',
+        { home },
+      );
+      assert.ok(lines);
+      const text = lines.join('\n');
+      assert.match(text, /Copilot CLI \(plugin\)/);
+      assert.match(text, /DUPLICATE rad-orc:<name> entries/);
+    } finally { fs.rmSync(home, { recursive: true, force: true }); }
+  });
+
+  it('copilot-cli + copilot-vscode-plugin (cross-UI registry) → lines mention the cross-UI plugin', () => {
+    const home = mkHome('std-pl-cli-cross-');
+    try {
+      const lines = installDestructivePromptLines(
+        { 'copilot-vscode-plugin': entry('1.0.0') },
+        'copilot-cli',
+        '1.0.0',
+        { home },
+      );
+      assert.ok(lines);
+      assert.match(lines.join('\n'), /Copilot VS Code \(plugin\)/);
+    } finally { fs.rmSync(home, { recursive: true, force: true }); }
+  });
+
+  it('copilot-vscode + disk-only plugin under ~/.copilot/installed-plugins/<mp>/rad-orc/ → lines surface "detected on disk"', () => {
+    const home = mkHome('std-pl-disk-');
+    try {
+      fs.mkdirSync(path.join(home, '.copilot', 'installed-plugins', 'test-mp', 'rad-orc'), { recursive: true });
+      const lines = installDestructivePromptLines({}, 'copilot-vscode', '1.0.0', { home });
+      assert.ok(lines);
+      const text = lines.join('\n');
+      assert.match(text, /detected on disk/);
+      assert.match(text, /Copilot VS Code \(plugin\)/, 'same-UI canonical partner reported');
+    } finally { fs.rmSync(home, { recursive: true, force: true }); }
+  });
+
+  it('copilot-cli + cross-UI mutex partner AND plugin partner → both blocks appear, separated by blank line', () => {
+    const home = mkHome('std-pl-combined-');
+    try {
+      const lines = installDestructivePromptLines(
+        {
+          'copilot-vscode':     entry('1.0.0', 'standard'),
+          'copilot-cli-plugin': entry('1.0.0'),
+        },
+        'copilot-cli',
+        '1.0.0',
+        { home },
+      );
+      assert.ok(lines);
+      const text = lines.join('\n');
+      assert.match(text, /will replace your existing Copilot VS Code/, 'block 1 (mutex) present');
+      assert.match(text, /A Copilot CLI \(plugin\)/, 'block 2 (coexistence) present');
+      // Verify order: mutex line precedes coexistence line.
+      const mutexIdx = text.indexOf('will replace your existing');
+      const coexistIdx = text.indexOf('install is already present');
+      assert.ok(mutexIdx >= 0 && coexistIdx > mutexIdx, 'mutex block precedes coexistence block');
+    } finally { fs.rmSync(home, { recursive: true, force: true }); }
+  });
+
+  it('downgrade-only → returns the downgrade line', () => {
+    const home = mkHome('std-pl-downgrade-');
+    try {
+      const lines = installDestructivePromptLines(
+        { 'claude': entry('2.0.0', 'standard') },
+        'claude',
+        '1.0.0',
+        { home },
+      );
+      assert.ok(lines);
+      assert.match(lines.join('\n'), /will downgrade Claude Code from v2\.0\.0/);
+    } finally { fs.rmSync(home, { recursive: true, force: true }); }
   });
 });
 
@@ -186,5 +295,82 @@ describe('detectInstalledHarnesses', () => {
     } finally {
       fs.rmSync(home, { recursive: true, force: true });
     }
+  });
+});
+
+describe('runWizard — uninstall plugin filtering', () => {
+  function seedRegistry(home, harnesses) {
+    const radorchDir = path.join(home, '.radorch');
+    fs.mkdirSync(radorchDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(radorchDir, 'install.json'),
+      JSON.stringify({ harnesses }),
+      'utf8',
+    );
+  }
+
+  function entry(version = '1.0.0-alpha.9', channel = 'claude-plugin') {
+    return { version, channel, installed_at: 't', last_writer_version: version };
+  }
+
+  for (const pluginKey of ['claude-plugin', 'copilot-cli-plugin', 'copilot-vscode-plugin']) {
+    it(`headless --uninstall --harness ${pluginKey} → PLUGIN_NOT_UNINSTALLABLE_HERE`, async () => {
+      const home = mkHome(`std-wiz-uninstall-${pluginKey}-`);
+      try {
+        seedRegistry(home, { [pluginKey]: entry('1.0.0-alpha.9', pluginKey) });
+        await assert.rejects(
+          async () =>
+            runWizard({
+              skipConfirmation: true,
+              cliOverrides: { harnesses: [pluginKey] },
+              homeDir: home,
+              forceAction: 'uninstall',
+            }),
+          (err) =>
+            err.code === 'PLUGIN_NOT_UNINSTALLABLE_HERE' &&
+            /\/plugin uninstall rad-orc/.test(err.message) &&
+            err.message.includes(pluginKey),
+        );
+      } finally {
+        fs.rmSync(home, { recursive: true, force: true });
+      }
+    });
+  }
+
+  it('forceAction uninstall against registry with only plugin entries → NOTHING_TO_UNINSTALL', async () => {
+    // Interactive path (no cliOverrides.harnesses), forceAction='uninstall'.
+    // standardInstalledCount === 0 even though installedCount > 0, so the
+    // guard must fire on the standard-only count.
+    const home = mkHome('std-wiz-uninstall-only-plugins-');
+    try {
+      seedRegistry(home, {
+        'claude-plugin':      entry('1.0.0-alpha.9', 'claude-plugin'),
+        'copilot-cli-plugin': entry('1.0.0-alpha.9', 'copilot-cli-plugin'),
+      });
+      await assert.rejects(
+        async () =>
+          runWizard({
+            skipConfirmation: false,
+            cliOverrides: {},
+            homeDir: home,
+            forceAction: 'uninstall',
+          }),
+        (err) => err.code === 'NOTHING_TO_UNINSTALL',
+      );
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it('buildUninstallChoices excludes plugin install-keys', () => {
+    const choices = buildUninstallChoices({
+      'claude':              { version: '1.0.0' },
+      'claude-plugin':       { version: '1.0.0' },
+      'copilot-cli':         { version: '1.0.0' },
+      'copilot-cli-plugin':  { version: '1.0.0' },
+      'copilot-vscode-plugin': { version: '1.0.0' },
+    });
+    const values = choices.map((c) => c.value).sort();
+    assert.deepEqual(values, ['claude', 'copilot-cli']);
   });
 });

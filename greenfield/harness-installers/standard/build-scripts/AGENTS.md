@@ -19,7 +19,7 @@ The steps, in execution order:
 7. `emit-pipeline-bundle` — per-harness emit of the pipeline runtime (`pipeline.js`, `explode-master-plan.js`) into the same scripts dir.
 8. `prune-scripts-sources` — per-harness prune leaving only `.js` / `.mjs` under each `output/<harness>/skills/rad-orchestration/scripts/`. `.gitignore` is excluded because `npm-packlist` hardcodes that filename as ignored; deploying it would break install with ENOENT (manifest references a file the tarball never ships).
 9. `emit-ui-bundle` — single emission to `output/ui/` at the top level (AD-9 — not per-harness).
-10. `expand-tokens` — per-harness token substitution over `output/<harness>/agents/` and `skills/` with `agentNames: []` (AD-6 — no `rad-orchestration:` namespacing rewrite).
+10. `expand-tokens` — per-harness token substitution over `output/<harness>/agents/` and `skills/` with `agentNames: []` (AD-6 — no `rad-orc:` namespacing rewrite).
 11. `emit-manifest` — per-harness manifest write to `manifests/<harness>/v<version>.json`, then copy that file plus every prior `manifests/<harness>/v*.json` into `output/<harness>/manifests/` (AD-4).
 12. `emit-per-harness-package-json` — writes a minimal `{name, version}` stub into each `output/<harness>/package.json` so `installHarness` can resolve the delivering version per harness without reading the source `standard/package.json`.
 13. `validate` — structural validation gate (NFR-5, NFR-7, AD-7): confirms per-harness artifacts, canonical agents, manifests, and unpacked size budget (sized from `standard/` since that's the npm-pack cwd). Throws to abort the build.

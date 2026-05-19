@@ -7,27 +7,33 @@ import { pathExists } from './fs-helpers.js';
 
 // install.json multi-harness/multi-channel registry — single structural shape.
 //
-// Four valid install-keys:
-//  - `claude`         (legacy installer claude harness)
-//  - `claude-plugin`  (Claude Code plugin install)
-//  - `copilot-cli`    (legacy installer copilot-cli harness)
-//  - `copilot-vscode` (legacy installer copilot-vscode harness)
+// Five valid install-keys:
+//  - `claude`              (legacy installer claude harness)
+//  - `claude-plugin`       (Claude Code plugin install)
+//  - `copilot-cli`         (legacy installer copilot-cli harness)
+//  - `copilot-cli-plugin`  (Copilot CLI plugin install)
+//  - `copilot-vscode`      (legacy installer copilot-vscode harness)
 //
 // Conflict semantics:
 //  - copilot-cli ↔ copilot-vscode share ~/.copilot/: mutually exclusive
 //    (`resolveFolderConflict` removes the prior partner before write).
 //  - claude ↔ claude-plugin both touch ~/.claude/: coexist in the registry;
-//    `detectChannelOverlap` returns the partner key for warning surfaces.
-export const INSTALL_KEYS = ['claude', 'claude-plugin', 'copilot-cli', 'copilot-vscode'] as const;
+//    `detectChannelOverlap` returns the partner keys for warning surfaces.
+//  - copilot-cli-plugin ↔ copilot-cli / copilot-vscode: both shadow agents
+//    through ~/.copilot/agents/; coexist in the registry with overlap warning.
+export const INSTALL_KEYS = ['claude', 'claude-plugin', 'copilot-cli', 'copilot-cli-plugin', 'copilot-vscode'] as const;
 
 const FOLDER_MUTEX_PARTNER: Partial<Record<InstallKey, InstallKey>> = {
   'copilot-cli': 'copilot-vscode',
   'copilot-vscode': 'copilot-cli',
 };
 
-const CHANNEL_OVERLAP_PARTNER: Partial<Record<InstallKey, InstallKey>> = {
-  'claude': 'claude-plugin',
-  'claude-plugin': 'claude',
+const CHANNEL_OVERLAP_PARTNER: Partial<Record<InstallKey, InstallKey[]>> = {
+  'claude': ['claude-plugin'],
+  'claude-plugin': ['claude'],
+  'copilot-cli-plugin': ['copilot-cli', 'copilot-vscode'],
+  'copilot-cli': ['copilot-cli-plugin'],
+  'copilot-vscode': ['copilot-cli-plugin'],
 };
 
 /**
@@ -53,34 +59,43 @@ export function resolveFolderConflict(
 }
 
 /**
- * Cross-channel coexistence detector: claude ↔ claude-plugin coexist on disk
- * (both write into ~/.claude/) but the writer surfaces a one-line stderr warning
- * recommending consolidation. Returns the partner key if present so the caller
- * can emit the channel-specific warning text. Does NOT mutate the registry.
+ * Cross-channel coexistence detector: detects when an install-key coexists with
+ * one or more overlap partners on disk. Returns an array of present partner keys
+ * (non-empty when overlap exists), or undefined when no partner is present.
+ *
+ * Overlap pairs:
+ *  - claude ↔ claude-plugin (both write into ~/.claude/)
+ *  - copilot-cli-plugin ↔ copilot-cli / copilot-vscode (both shadow ~/.copilot/agents/)
+ *
+ * Does NOT mutate the registry.
  */
 export function detectChannelOverlap(
   harnesses: InstallJson['harnesses'],
   installKey: InstallKey,
-): InstallKey | undefined {
-  const partner = CHANNEL_OVERLAP_PARTNER[installKey];
-  if (!partner) return undefined;
-  return harnesses[partner] ? partner : undefined;
+): InstallKey[] | undefined {
+  const partners = CHANNEL_OVERLAP_PARTNER[installKey];
+  if (!partners) return undefined;
+  const present = partners.filter((p) => harnesses[p]);
+  return present.length > 0 ? present : undefined;
 }
 
 /**
  * Channel-detection heuristic. The plugin and the legacy installer both write
  * install.json to the same path, so we cannot tell them apart from file content
- * alone. Signal: presence of ~/.claude/plugins/rad-orchestration/ implies the
+ * alone. Signal: presence of ~/.claude/plugins/rad-orc/ (greenfield plugin name)
+ * or ~/.claude/plugins/rad-orchestration/ (legacy plugin name) implies the
  * plugin is loaded → 'plugin'. Otherwise, if the install root exists, presume
  * 'legacy-installer'. If both signals are absent, fall back to 'unknown'.
  */
 export function detectChannelHeuristic(opts?: { home?: string }): InstallChannel {
   const home = opts?.home ?? os.homedir();
-  const pluginDir = path.join(home, '.claude', 'plugins', 'rad-orchestration');
-  try {
-    if (fs.existsSync(pluginDir)) return 'plugin';
-  } catch {
-    // ignore filesystem errors and fall through
+  const pluginsDir = path.join(home, '.claude', 'plugins');
+  for (const pluginName of ['rad-orc', 'rad-orchestration']) {
+    try {
+      if (fs.existsSync(path.join(pluginsDir, pluginName))) return 'plugin';
+    } catch {
+      // ignore filesystem errors and fall through
+    }
   }
   // The presence of ~/.radorch/ at all signals a legacy install — fresh systems
   // have neither, and we return 'unknown'.

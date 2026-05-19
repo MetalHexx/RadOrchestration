@@ -8,20 +8,30 @@
 //   - writeInstallJson(file, value)        — atomic tmp+rename; strips state_schema_version (NFR-3, AD-1)
 //   - isCurrentShape(ij)                   — structural-lift: harnesses-is-object → true
 //   - loadRegistry(installJsonPath)        — structural-lift; missing/non-conforming → { harnesses: {} }
-//   - INSTALL_KEYS                         — the four valid install keys (AD-10)
+//   - INSTALL_KEYS                         — the six valid install keys (AD-10)
 //   - cmpSemver(a, b)                      — semver-aware comparator (release > pre-release per §11) [lifted from installer/lib/install/install-json.js lines 159–179]
-//   - resolveFolderConflict(harnesses, k)  — mutates harnesses, returns { removed: [{ key, entry }, …] } | {} (FR-11, AD-12)
+//   - resolveFolderConflict(harnesses, k)  — mutates harnesses (legacy↔legacy only), returns { removed: [{ key, entry }, …] } | {} (FR-11, AD-12)
 //   - detectFolderConflicts(harnesses, k)  — pure look-up variant (no mutation) for pre-install confirmation
-//   - detectChannelOverlap(harnesses, k)   — same-UI different-channel coexistence detector (AD-15)
+//   - detectPluginCoexistence(harnesses, k, opts)
+//                                          — plugin-partner detector across registry AND on-disk plugin roots.
+//                                            Plugin entries are NEVER evicted from the registry by the standard
+//                                            installer — coexistence is surfaced via a yellow + Y/N prompt
+//                                            pre-install (wizard) and an stderr notice post-install (headless).
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 /**
  * Six valid install-keys. Each UI (claude, copilot-vscode, copilot-cli) has a
- * legacy-installer slug and a plugin-channel slug; the plugin slugs are
- * reserved here for forward-compat with the upcoming plugin installers — the
- * standard installer itself never writes plugin entries.
+ * standard-installer slug and a plugin-channel slug; the plugin slugs are
+ * reserved here for forward-compat with the plugin installers — the standard
+ * installer itself never writes plugin entries.
+ *
+ * The `channel` value the standard installer writes into each registry entry
+ * is `'standard'` (formerly `'legacy-installer'`). On-disk entries written by
+ * older builds keep the old value until their next install rewrites it — the
+ * field is metadata, no code branches on it.
  */
 export const INSTALL_KEYS = [
   'claude',
@@ -33,33 +43,68 @@ export const INSTALL_KEYS = [
 ];
 
 /**
- * Folder-mutex relationships. Two slugs are mutex partners when their on-disk
- * agent files live in the same harness folder but encode incompatible UI
- * targets — installing one overwrites the other's files. All vscode-flavored
- * slugs (legacy + plugin) mutex against all cli-flavored slugs.
+ * Folder-mutex relationships, LEGACY-ONLY. Two legacy slugs are mutex partners
+ * when their on-disk agent files live in the same harness folder but encode
+ * incompatible UI targets — installing one overwrites the other's files and
+ * the standard installer evicts the partner from the registry.
+ *
+ * Plugin slugs deliberately do NOT appear in this map — the standard installer
+ * must never delete a plugin entry from install.json. Cross-channel
+ * coexistence (legacy ↔ plugin in the same folder) is handled by
+ * `detectPluginCoexistence` below: the plugin registry entry is preserved and
+ * the user is warned via a yellow + Y/N prompt (interactive) or stderr notice
+ * (headless).
  */
 const FOLDER_MUTEX_PARTNERS = {
-  'copilot-cli':           ['copilot-vscode', 'copilot-vscode-plugin'],
-  'copilot-cli-plugin':    ['copilot-vscode', 'copilot-vscode-plugin'],
-  'copilot-vscode':        ['copilot-cli',    'copilot-cli-plugin'],
-  'copilot-vscode-plugin': ['copilot-cli',    'copilot-cli-plugin'],
+  'copilot-cli':    ['copilot-vscode'],
+  'copilot-vscode': ['copilot-cli'],
 };
 
 /**
- * Channel-overlap relationships. Two slugs overlap when they target the same
- * UI through different install channels (legacy installer vs plugin) — both
- * write to the same harness folder but their agent files are compatible with
- * the same UI. Most-recent-install wins on disk; both registry entries
- * coexist with a coexistence WARNING.
+ * Plugin partners that coexist with a legacy installKey in the same on-disk
+ * harness folder. When ANY of these is present (registry OR disk), the wizard
+ * surfaces a yellow + Y/N confirmation pre-install. Registry entries for these
+ * partners are ALWAYS preserved across legacy installs — the plugin owns its
+ * own registry lifecycle.
+ *
+ * Same-UI partners come first so disk-fallback detection (which cannot
+ * distinguish which plugin lives on disk) reports the most likely canonical
+ * partner.
  */
-const CHANNEL_OVERLAP_PARTNER = {
-  'claude':                'claude-plugin',
-  'claude-plugin':         'claude',
-  'copilot-vscode':        'copilot-vscode-plugin',
-  'copilot-vscode-plugin': 'copilot-vscode',
-  'copilot-cli':           'copilot-cli-plugin',
-  'copilot-cli-plugin':    'copilot-cli',
+const PLUGIN_COEXIST_PARTNERS = {
+  'claude':         ['claude-plugin'],
+  'copilot-cli':    ['copilot-cli-plugin', 'copilot-vscode-plugin'],
+  'copilot-vscode': ['copilot-vscode-plugin', 'copilot-cli-plugin'],
 };
+
+/**
+ * Plugin leaf-directory names probed on disk. Both the current `rad-orc`
+ * greenfield name and the pre-rename names are accepted so that prior installs
+ * are still detected. Mirrors detectChannelHeuristic in
+ * cli/src/lib/install-json.ts.
+ */
+const CLAUDE_PLUGIN_LEAVES = ['rad-orc', 'rad-orchestration'];
+const COPILOT_PLUGIN_LEAVES = ['rad-orc', 'rad-orchestration-copilot-cli'];
+
+function probeClaudePluginOnDisk(home) {
+  const root = path.join(home, '.claude', 'plugins');
+  return CLAUDE_PLUGIN_LEAVES.some((leaf) => fs.existsSync(path.join(root, leaf)));
+}
+
+function probeCopilotPluginOnDisk(home) {
+  const root = path.join(home, '.copilot', 'installed-plugins');
+  if (!fs.existsSync(root)) return false;
+  let entries;
+  try { entries = fs.readdirSync(root, { withFileTypes: true }); }
+  catch { return false; }
+  for (const marketplaceDir of entries) {
+    if (!marketplaceDir.isDirectory()) continue;
+    for (const leaf of COPILOT_PLUGIN_LEAVES) {
+      if (fs.existsSync(path.join(root, marketplaceDir.name, leaf))) return true;
+    }
+  }
+  return false;
+}
 
 export function readInstallJson(file) {
   const text = fs.readFileSync(file, 'utf8');
@@ -119,14 +164,15 @@ export function loadRegistry(installJsonPath) {
 }
 
 /**
- * Folder-shared mutual exclusion across UI variants. Any vscode-flavored slug
- * (legacy or plugin) mutexes against any cli-flavored slug — installing one
- * overwrites the other's on-disk agent files. All matching partners are
- * removed from the registry; returns `{ removed: [{ key, entry }, …] }` (or
- * `{}` if there's nothing to evict). Mutates `harnesses` in place.
+ * Folder-shared mutual exclusion, LEGACY-ONLY. The two legacy Copilot variants
+ * (`copilot-cli` ↔ `copilot-vscode`) share `~/.copilot/` with incompatible
+ * agent content — installing one overwrites the other's on-disk agent files,
+ * so we evict the partner from the registry. Plugin partners are intentionally
+ * absent from the mutex map: plugin registry entries are preserved across
+ * legacy installs (see `detectPluginCoexistence`).
  *
- * claude ↔ claude-plugin are NOT folder-mutex partners (they coexist) — see
- * `detectChannelOverlap`.
+ * Returns `{ removed: [{ key, entry }, …] }` (or `{}` if there's nothing to
+ * evict). Mutates `harnesses` in place.
  */
 export function resolveFolderConflict(harnesses, installKey) {
   const partners = FOLDER_MUTEX_PARTNERS[installKey];
@@ -163,15 +209,44 @@ export function detectFolderConflicts(harnesses, installKey) {
 }
 
 /**
- * Cross-channel coexistence detector: claude ↔ claude-plugin coexist on disk
- * (both write into ~/.claude/) but warrant a one-line warning recommending
- * consolidation. Returns the partner key if present (or `undefined`). Does
- * NOT mutate.
+ * Plugin-partner coexistence detector. Returns the list of plugin partner
+ * installKeys that share the on-disk harness folder with `installKey`. A
+ * partner is reported when EITHER its registry entry is present, OR a plugin
+ * directory exists on disk under the corresponding harness plugin root.
+ *
+ * Each entry carries its source so callers can tailor prompt text — registry
+ * hits include the `entry` (with version, etc.); disk hits do not.
+ *
+ * Disk-fallback only fires when no registry partner was found, and reports
+ * the same-UI canonical partner (cross-UI plugin is indistinguishable from
+ * disk alone).
+ *
+ * Does NOT mutate.
+ *
+ * @param {Record<string, object>} harnesses
+ * @param {string} installKey
+ * @param {{ home?: string }} [opts]
+ * @returns {Array<{ partner: string, source: 'registry' | 'disk', entry?: object }>}
  */
-export function detectChannelOverlap(harnesses, installKey) {
-  const partner = CHANNEL_OVERLAP_PARTNER[installKey];
-  if (!partner) return undefined;
-  return harnesses[partner] ? partner : undefined;
+export function detectPluginCoexistence(harnesses, installKey, opts = {}) {
+  const home = opts.home ?? os.homedir();
+  const partners = PLUGIN_COEXIST_PARTNERS[installKey] ?? [];
+  const found = [];
+  for (const partner of partners) {
+    if (harnesses[partner]) {
+      found.push({ partner, source: 'registry', entry: harnesses[partner] });
+    }
+  }
+  if (found.length > 0) return found;
+
+  const diskHit =
+    (installKey === 'claude' && probeClaudePluginOnDisk(home)) ||
+    ((installKey === 'copilot-cli' || installKey === 'copilot-vscode') && probeCopilotPluginOnDisk(home));
+  if (diskHit) {
+    const canonical = partners[0];
+    if (canonical) found.push({ partner: canonical, source: 'disk' });
+  }
+  return found;
 }
 
 /**

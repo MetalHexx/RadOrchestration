@@ -23,7 +23,7 @@ test('emitManifest produces { version, channel, files[] } with sha256 and destin
     await emitManifest({ harnessOutputDir: harnessOut, harness: 'claude', version: '1.0.0-alpha.9', manifestDir });
     const written = JSON.parse(fs.readFileSync(path.join(manifestDir, 'v1.0.0-alpha.9.json'), 'utf8'));
     assert.strictEqual(written.version, '1.0.0-alpha.9');
-    assert.strictEqual(written.channel, 'legacy-installer');
+    assert.strictEqual(written.channel, 'standard');
     const paths = written.files.map((f) => f.bundlePath).sort();
     // Per-harness installable tree only — no orchestration.yml, no templates/, no ui/.
     assert.ok(paths.includes('agents/orchestrator.md'));

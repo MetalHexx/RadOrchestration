@@ -53,7 +53,7 @@ export function validatePluginTree(opts) {
   for (const name of canonical) {
     if (name === 'orchestrator') continue;
     if (!new RegExp(`\\b${name}\\b`).test(orchCanon)) continue;
-    const token = `rad-orchestration:${name}`;
+    const token = `rad-orc:${name}`;
     if (!orchOut.includes(token)) {
       throw new Error(`validate: orchestrator.md missing namespaced token ${token} (gate 3)`);
     }

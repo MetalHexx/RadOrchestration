@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptSubmitted": [
+      { "type": "command", "command": "node hooks/launcher.cjs bootstrap.mjs" }
+    ],
+    "sessionStart": [
+      { "type": "command", "command": "node hooks/launcher.cjs drift-check.mjs" }
+    ]
+  }
+}
