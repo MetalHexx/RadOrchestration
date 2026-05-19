@@ -82,17 +82,20 @@ export function detectChannelOverlap(
 /**
  * Channel-detection heuristic. The plugin and the legacy installer both write
  * install.json to the same path, so we cannot tell them apart from file content
- * alone. Signal: presence of ~/.claude/plugins/rad-orchestration/ implies the
+ * alone. Signal: presence of ~/.claude/plugins/rad-orc/ (greenfield plugin name)
+ * or ~/.claude/plugins/rad-orchestration/ (legacy plugin name) implies the
  * plugin is loaded → 'plugin'. Otherwise, if the install root exists, presume
  * 'legacy-installer'. If both signals are absent, fall back to 'unknown'.
  */
 export function detectChannelHeuristic(opts?: { home?: string }): InstallChannel {
   const home = opts?.home ?? os.homedir();
-  const pluginDir = path.join(home, '.claude', 'plugins', 'rad-orchestration');
-  try {
-    if (fs.existsSync(pluginDir)) return 'plugin';
-  } catch {
-    // ignore filesystem errors and fall through
+  const pluginsDir = path.join(home, '.claude', 'plugins');
+  for (const pluginName of ['rad-orc', 'rad-orchestration']) {
+    try {
+      if (fs.existsSync(path.join(pluginsDir, pluginName))) return 'plugin';
+    } catch {
+      // ignore filesystem errors and fall through
+    }
   }
   // The presence of ~/.radorch/ at all signals a legacy install — fresh systems
   // have neither, and we return 'unknown'.

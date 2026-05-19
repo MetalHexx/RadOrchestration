@@ -10,7 +10,7 @@ Five mechanical helpers that installer build scripts use to emit bundles and run
 
 `opts: { source: string, target: string, tokenMap: Record<string,string>, agentNames?: string[] }`
 
-Walks `source` recursively. Text files (extensions in `TEXT_EXTS`: `.md .txt .js .mjs .cjs .ts .tsx .json .yml .yaml .sh .css .html`) get token substitution via `substituteTokens` and optional agent namespacing via `applyNamespacing`; binary files are copied verbatim. `agentNames` drives the namespacing rewrite that prefixes bare agent names with `rad-orchestration:` in dispatch contexts (`**<name>**`, `<name> agent(s)`, `<name> spawn(s)`, `subagent_type: <name>`, and comma-separated lists). The `TEXT_EXTS` set mirrors the list in `greenfield/harness-adapters/engine/index.js` — keep the two in sync.
+Walks `source` recursively. Text files (extensions in `TEXT_EXTS`: `.md .txt .js .mjs .cjs .ts .tsx .json .yml .yaml .sh .css .html`) get token substitution via `substituteTokens` and optional agent namespacing via `applyNamespacing`; binary files are copied verbatim. `agentNames` drives the namespacing rewrite that prefixes bare agent names with `rad-orc:` in dispatch contexts (`**<name>**`, `<name> agent(s)`, `<name> spawn(s)`, `subagent_type: <name>`, and comma-separated lists). For back-compat the rewrite also normalizes already-prefixed `rad-orchestration:<name>` occurrences to `rad-orc:<name>`. The `TEXT_EXTS` set mirrors the list in `greenfield/harness-adapters/engine/index.js` — keep the two in sync.
 
 **`emitCliBundle(opts)` — `emit-cli-bundle.js`**
 

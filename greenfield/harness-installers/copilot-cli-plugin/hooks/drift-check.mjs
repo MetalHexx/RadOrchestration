@@ -28,7 +28,7 @@ function run() {
     process.stdout.write(
       `[rad-orchestration drift] ~/.radorch/install.json is at version ${installedVersion}. ` +
       `The Copilot CLI plugin's bundled rad-orchestration is at version ${deliveringVersion}. ` +
-      `Recommend running \`copilot plugin update rad-orchestration-copilot-cli\` (or re-running the standard installer) to keep them in sync.\n`,
+      `Recommend running \`copilot plugin update rad-orc\` (or re-running the standard installer) to keep them in sync.\n`,
     );
   }
   // DD-11: surface stale bootstrap-error marker on its own line.

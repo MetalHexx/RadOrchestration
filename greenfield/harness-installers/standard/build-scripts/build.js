@@ -177,7 +177,7 @@ export async function runBuild(opts) {
   }));
 
   // Per-harness token expansion. Standard installer passes agentNames: [] so
-  // NO `rad-orchestration:` namespacing is applied (AD-6). Read from out/<h>/,
+  // NO `rad-orc:` namespacing is applied (AD-6). Read from out/<h>/,
   // write through a staging dir to avoid mid-walk read-after-write, then
   // atomically move back over.
   await step('expand-tokens', async () => {

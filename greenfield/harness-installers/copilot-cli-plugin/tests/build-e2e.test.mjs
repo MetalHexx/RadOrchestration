@@ -11,7 +11,7 @@ test('repo-root .github/plugin/marketplace.json advertises the plugin under FR-3
   assert.ok(fs.existsSync(file), 'marketplace catalog exists at repo root');
   const cat = JSON.parse(fs.readFileSync(file, 'utf8'));
   assert.ok(Array.isArray(cat.plugins), 'plugins array present');
-  const entry = cat.plugins.find((p) => p.name === 'rad-orchestration-copilot-cli');
+  const entry = cat.plugins.find((p) => p.name === 'rad-orc');
   assert.ok(entry, 'plugin listed under FR-34 name');
   assert.strictEqual(entry.strict, true, 'strict mode (FR-35)');
   // AD-15: source is the structured source: github object (only form attested in live marketplaces).

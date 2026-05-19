@@ -9,7 +9,7 @@ import { INSTALL_KEYS } from './install-json.js';
  * kebab-case form Copilot CLI produces from the `OWNER/REPO` slug.
  */
 export const COPILOT_CLI_PLUGIN_MARKETPLACE = 'MetalHexx-RadOrchestration';
-export const COPILOT_CLI_PLUGIN_NAME = 'rad-orchestration-copilot-cli';
+export const COPILOT_CLI_PLUGIN_NAME = 'rad-orc';
 
 /**
  * Probes `~/.copilot/installed-plugins/<marketplace>/<plugin>/` for Copilot CLI

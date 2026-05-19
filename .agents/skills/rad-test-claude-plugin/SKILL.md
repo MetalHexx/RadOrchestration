@@ -5,7 +5,7 @@ description: 'Stage the greenfield rad-orchestration Claude plugin as a local do
 
 # rad-test-claude-plugin
 
-**Where this fits.** `rad-test-claude-plugin` is the greenfield counterpart to `.agents/prompts/rad-test-plugin-release.prompt.md`. Both stage the `rad-orchestration` Claude plugin as a local marketplace for manual `/plugin install`, but they target different build chains:
+**Where this fits.** `rad-test-claude-plugin` is the greenfield counterpart to `.agents/prompts/rad-test-plugin-release.prompt.md`. Both stage a Claude plugin as a local marketplace for manual `/plugin install`, but they target different build chains and ship under different plugin names — greenfield installs as `rad-orc`, legacy installs as `rad-orchestration`:
 
 - `.agents/prompts/rad-test-plugin-release.prompt.md` → **legacy** build (`npm run build:plugin` at repo root, output at `cli/dist/marketplaces/claude/`)
 - **this skill** → **greenfield** build (`node greenfield/harness-installers/claude-plugin/build-scripts/build.js`, output at `greenfield/harness-installers/claude-plugin/output/`)
@@ -20,9 +20,9 @@ You do **not** install or verify the plugin yourself — that happens in a separ
 - Verifying that a greenfield build change reaches a real Claude Code session via `/plugin install`.
 - Reproducing a user-reported install issue against the current greenfield build.
 
-## Important — marketplace name collision with legacy
+## Important — coexisting with the legacy `rad-orchestration` channel
 
-This skill and the legacy `rad-test-plugin-release` prompt both use the marketplace name `rad-orchestration-dogfood`. Only one channel can be installed in a Claude Code session at a time. If the user previously installed the legacy dogfood marketplace, they must run the following inside the test session **before** the install commands you hand them in Step 4:
+This skill installs the greenfield plugin under name `rad-orc` (marketplace `rad-orc-dogfood`), distinct from the legacy `rad-test-plugin-release` channel which installs as `rad-orchestration` (marketplace `rad-orchestration-dogfood`). The two CAN coexist as separate Claude plugins, but both deliver the same `skills/rad-orchestration/` set and both bootstrap `~/.radorch/`, so running them side-by-side will produce duplicate skills and racy bootstrap behavior. If the user previously installed the legacy dogfood marketplace, they should remove it inside the test session **before** the install commands you hand them in Step 6:
 
 ```
 /plugin uninstall rad-orchestration
@@ -86,15 +86,15 @@ If the file is missing, stop and report. Build must have silently produced an in
 
 ### 5. Stage the dogfood marketplace tree
 
-The dogfood marketplace lives at `{repoRoot}/greenfield/harness-installers/claude-plugin/dogfood-marketplace/` — a sibling of `output/`. The plugin tree must live as a `./<subpath>` of the marketplace root: Claude Code's marketplace spec ([docs](https://code.claude.com/docs/en/plugin-marketplaces)) requires relative-path sources to start with `./` and forbids parent-directory traversal (`../`) and absolute paths. The plugin therefore lives at `dogfood-marketplace/plugins/rad-orchestration/` as a copy of `output/`. This mirrors the legacy `rad-test-plugin-release` prompt's layout. `output/` itself remains the canonical npm-pack source and is untouched.
+The dogfood marketplace lives at `{repoRoot}/greenfield/harness-installers/claude-plugin/dogfood-marketplace/` — a sibling of `output/`. The plugin tree must live as a `./<subpath>` of the marketplace root: Claude Code's marketplace spec ([docs](https://code.claude.com/docs/en/plugin-marketplaces)) requires relative-path sources to start with `./` and forbids parent-directory traversal (`../`) and absolute paths. The plugin therefore lives at `dogfood-marketplace/plugins/rad-orc/` as a copy of `output/`. This mirrors the legacy `rad-test-plugin-release` prompt's layout. `output/` itself remains the canonical npm-pack source and is untouched.
 
 **Stage in two parts:**
 
-**(a)** Remove any prior `dogfood-marketplace/plugins/rad-orchestration/` (so a stale copy never lingers across rebuilds), then copy the current `output/` tree into place. PowerShell:
+**(a)** Remove any prior `dogfood-marketplace/plugins/rad-orc/` (so a stale copy never lingers across rebuilds), then copy the current `output/` tree into place. PowerShell:
 
 ```powershell
 $mkt = "{repoRoot}\greenfield\harness-installers\claude-plugin\dogfood-marketplace"
-$pluginDest = "$mkt\plugins\rad-orchestration"
+$pluginDest = "$mkt\plugins\rad-orc"
 if (Test-Path $pluginDest) { Remove-Item -Recurse -Force $pluginDest }
 New-Item -ItemType Directory -Force -Path (Split-Path $pluginDest) | Out-Null
 Copy-Item -Recurse -Force "{repoRoot}\greenfield\harness-installers\claude-plugin\output" $pluginDest
@@ -106,13 +106,13 @@ Confirm `$pluginDest\.claude-plugin\plugin.json` exists after the copy.
 
 ```json
 {
-  "name": "rad-orchestration-dogfood",
+  "name": "rad-orc-dogfood",
   "owner": { "name": "metalhexx" },
   "description": "Ephemeral local dogfood marketplace for the greenfield rad-orchestration Claude plugin build. Generated by rad-test-claude-plugin skill; do not publish.",
   "plugins": [
     {
-      "name": "rad-orchestration",
-      "source": "./plugins/rad-orchestration",
+      "name": "rad-orc",
+      "source": "./plugins/rad-orc",
       "description": "RAD multi-agent orchestration system for Claude Code (greenfield build)."
     }
   ]
@@ -138,7 +138,7 @@ Print a block like the following, substituting `{repoRoot}` and `{version}` with
 >
 > ```
 > /plugin marketplace add {repoRoot}\greenfield\harness-installers\claude-plugin\dogfood-marketplace
-> /plugin install rad-orchestration@rad-orchestration-dogfood
+> /plugin install rad-orc@rad-orc-dogfood
 > ```
 >
 > Reload Claude Code if prompted. The `UserPromptSubmit` hook will auto-bootstrap `~/.radorch/` on your first prompt in the new session. `SessionStart`'s drift-check stays silent unless the cache's plugin version differs from `~/.radorch/install.json`.
@@ -151,7 +151,7 @@ After printing the instructions, your next turn waits for the user to say they'r
 
 - **Question:** "Done dogfooding the greenfield plugin? You can remove the staged dogfood marketplace, or leave it in place for another round of testing."
 - **Options:**
-  - **Yes, clean up** — "Remove `{repoRoot}\greenfield\harness-installers\claude-plugin\dogfood-marketplace` (deletes both the marketplace.json and the plugin copy at `plugins/rad-orchestration/`). The canonical build output at `output/` is left untouched. Next run of this skill regenerates the marketplace and the plugin copy from `output/`."
+  - **Yes, clean up** — "Remove `{repoRoot}\greenfield\harness-installers\claude-plugin\dogfood-marketplace` (deletes both the marketplace.json and the plugin copy at `plugins/rad-orc/`). The canonical build output at `output/` is left untouched. Next run of this skill regenerates the marketplace and the plugin copy from `output/`."
   - **Leave it for another round** — "Keep the dogfood-marketplace dir so you can iterate. Re-running this skill after a rebuild refreshes the plugin copy. Print the cleanup command for later."
 
 If the user picks **clean up**:
@@ -160,10 +160,10 @@ If the user picks **clean up**:
 Remove-Item -Recurse -Force {repoRoot}\greenfield\harness-installers\claude-plugin\dogfood-marketplace
 ```
 
-Run it. Confirm the directory is gone. Print "Cleaned up the dogfood marketplace (marketplace.json + the plugin copy at `plugins/rad-orchestration/`). The greenfield plugin output at `greenfield/harness-installers/claude-plugin/output/` is untouched (rebuild via `node greenfield/harness-installers/claude-plugin/build-scripts/build.js` if needed). Re-run this skill to regenerate the dogfood marketplace."
+Run it. Confirm the directory is gone. Print "Cleaned up the dogfood marketplace (marketplace.json + the plugin copy at `plugins/rad-orc/`). The greenfield plugin output at `greenfield/harness-installers/claude-plugin/output/` is untouched (rebuild via `node greenfield/harness-installers/claude-plugin/build-scripts/build.js` if needed). Re-run this skill to regenerate the dogfood marketplace."
 
 If the user picks **leave it**:
 
-Print the cleanup command above so they can run it later. Also remind them that the user is still responsible for running `/plugin uninstall rad-orchestration` (and optionally `/plugin marketplace remove rad-orchestration-dogfood`) inside the test Claude Code session before switching back to the legacy `rad-test-plugin-release` channel.
+Print the cleanup command above so they can run it later. Also remind them that the user is still responsible for running `/plugin uninstall rad-orc` (and optionally `/plugin marketplace remove rad-orc-dogfood`) inside the test Claude Code session before switching back to the legacy `rad-test-plugin-release` channel.
 
 That ends the skill. Do not run tests, npm pack, or any other E2E validation — those belong in CI or a separate workflow.

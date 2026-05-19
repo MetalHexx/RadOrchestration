@@ -20,7 +20,7 @@ function makeMinimalOutput(version, opts = {}) {
   fs.writeFileSync(join(canonical, 'orchestrator.md'), 'Spawn **coder** agent.\n');
   fs.writeFileSync(join(canonical, 'coder.md'), 'x');
   fs.writeFileSync(join(out, 'agents/orchestrator.md'),
-    opts.namespaced ? 'Spawn **rad-orchestration:coder** agent.\n' : 'Spawn **coder** agent.\n');
+    opts.namespaced ? 'Spawn **rad-orc:coder** agent.\n' : 'Spawn **coder** agent.\n');
   fs.writeFileSync(join(out, 'agents/coder.md'), 'x');
   fs.mkdirSync(join(out, 'skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(out, 'skills/rad-orchestration/scripts/radorch.mjs'), '#!/usr/bin/env node\n');
@@ -53,7 +53,7 @@ test('gate 2: missing agent file aborts', () => {
 
 test('gate 3: missing namespaced token in orchestrator.md aborts', () => {
   const { out, inst, canonicalAgentsDir } = makeMinimalOutput('1.0.0', { namespaced: false });
-  assert.throws(() => validatePluginTree({ outputDir: out, canonicalAgentsDir }), /rad-orchestration:coder/);
+  assert.throws(() => validatePluginTree({ outputDir: out, canonicalAgentsDir }), /rad-orc:coder/);
 });
 
 test('gate 4: missing per-version manifest aborts', () => {

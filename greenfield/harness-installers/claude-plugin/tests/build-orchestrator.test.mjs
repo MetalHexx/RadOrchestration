@@ -44,7 +44,7 @@ function makeUpstream() {
   fs.writeFileSync(join(root, 'harness-installers/claude-plugin/hooks/AGENTS.md'), '# Hooks AGENTS\n');
   fs.mkdirSync(join(root, 'harness-installers/claude-plugin/.claude-plugin'), { recursive: true });
   fs.writeFileSync(join(root, 'harness-installers/claude-plugin/.claude-plugin/plugin.json'),
-    JSON.stringify({ name: 'rad-orchestration', version: '1.2.3' }, null, 2));
+    JSON.stringify({ name: 'rad-orc', version: '1.2.3' }, null, 2));
   fs.mkdirSync(join(root, 'harness-installers/claude-plugin/manifests'), { recursive: true });
   fs.writeFileSync(join(root, 'harness-installers/claude-plugin/manifests/v1.2.3.json'),
     JSON.stringify({ version: '1.2.3', files: [
@@ -89,7 +89,7 @@ test('destination tokens are substituted across body files', async () => {
     const orch = fs.readFileSync(join(out, 'agents/orchestrator.md'), 'utf8');
     assert.ok(orch.includes('${CLAUDE_PLUGIN_ROOT}/skills/rad-orchestration/SKILL.md'),
       '${SKILLS_ROOT} replaced with ${CLAUDE_PLUGIN_ROOT}/skills');
-    assert.ok(orch.includes('**rad-orchestration:coder**'),
+    assert.ok(orch.includes('**rad-orc:coder**'),
       'agent-namespacing applied');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

@@ -24,7 +24,7 @@ function run() {
   process.stdout.write(
     `[rad-orchestration drift] ~/.radorch/install.json is at version ${installedVersion}. ` +
     `The Claude Code plugin's bundled radorch is at version ${deliveringVersion}. ` +
-    `Recommend running \`/plugin update rad-orchestration\` to keep them in sync.\n`,
+    `Recommend running \`/plugin update rad-orc\` to keep them in sync.\n`,
   );
 }
 

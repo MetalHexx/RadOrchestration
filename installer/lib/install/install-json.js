@@ -102,17 +102,20 @@ export function detectChannelOverlap(harnesses, installKey) {
 
 /**
  * Channel-detection heuristic for migration: presence of
- * ~/.claude/plugins/rad-orchestration/ implies the plugin is loaded → 'plugin'.
- * Otherwise, if ~/.radorch/ exists, presume 'legacy-installer'. Fallback
- * 'unknown' if both signals absent.
+ * ~/.claude/plugins/rad-orc/ (greenfield plugin name) or
+ * ~/.claude/plugins/rad-orchestration/ (legacy plugin name) implies the
+ * plugin is loaded → 'plugin'. Otherwise, if ~/.radorch/ exists, presume
+ * 'legacy-installer'. Fallback 'unknown' if both signals absent.
  */
 export function detectChannelHeuristic(opts) {
   const home = (opts && opts.home) || os.homedir();
-  const pluginDir = path.join(home, '.claude', 'plugins', 'rad-orchestration');
-  try {
-    if (fs.existsSync(pluginDir)) return 'plugin';
-  } catch {
-    // ignore filesystem errors
+  const pluginsDir = path.join(home, '.claude', 'plugins');
+  for (const pluginName of ['rad-orc', 'rad-orchestration']) {
+    try {
+      if (fs.existsSync(path.join(pluginsDir, pluginName))) return 'plugin';
+    } catch {
+      // ignore filesystem errors
+    }
   }
   try {
     if (fs.existsSync(path.join(home, '.radorch'))) return 'legacy-installer';

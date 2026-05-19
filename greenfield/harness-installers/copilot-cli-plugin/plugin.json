@@ -1,5 +1,5 @@
 {
-  "name": "rad-orchestration-copilot-cli",
+  "name": "rad-orc",
   "description": "Document-driven, multi-agent orchestration loop for GitHub Copilot CLI.",
   "version": "1.0.0-alpha.1",
   "author": { "name": "metalhexx" },

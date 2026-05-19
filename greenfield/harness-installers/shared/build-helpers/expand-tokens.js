@@ -31,20 +31,23 @@ function substituteTokens(text, tokenMap) {
 
 function applyNamespacing(text, agentNames) {
   if (!agentNames || agentNames.length === 0) return text;
-  const ns = 'rad-orchestration:';
+  const ns = 'rad-orc:';
+  // Accept both the legacy `rad-orchestration:` prefix and the current `rad-orc:`
+  // prefix on input; both normalize to the current `ns` on output.
+  const legacyOrCurrent = '(?:rad-orchestration:|rad-orc:)?';
   const escaped = agentNames.slice().sort((a, b) => b.length - a.length).map(escapeRegex);
   const alt = escaped.join('|');
   let out = text;
   // 1. **<name>**
-  out = out.replace(new RegExp(`\\*\\*(?:rad-orchestration:)?(${alt})\\*\\*`, 'g'), `**${ns}$1**`);
+  out = out.replace(new RegExp(`\\*\\*${legacyOrCurrent}(${alt})\\*\\*`, 'g'), `**${ns}$1**`);
   // 4. Comma-separated dispatch lists closed by " spawn(s)" or " agent(s)".
-  const listEntry = `(?:rad-orchestration:)?(?:${alt})`;
+  const listEntry = `${legacyOrCurrent}(?:${alt})`;
   const listRegex = new RegExp(
     `(?<![\\w:-])(${listEntry}(?:,\\s+(?:and\\s+)?${listEntry})+)(?=\\s+(?:spawns?|agents?)\\b)`,
     'g',
   );
   out = out.replace(listRegex, (match) =>
-    match.replace(new RegExp(`(?<![\\w:-])(?:rad-orchestration:)?(${alt})\\b`, 'g'), `${ns}$1`),
+    match.replace(new RegExp(`(?<![\\w:-])${legacyOrCurrent}(${alt})\\b`, 'g'), `${ns}$1`),
   );
   // 2. <name> agent(s)
   out = out.replace(new RegExp(`(?<![\\w:-])(${alt})(?= agents?\\b)`, 'g'), `${ns}$1`);
@@ -52,7 +55,7 @@ function applyNamespacing(text, agentNames) {
   out = out.replace(new RegExp(`(?<![\\w:-])(${alt})(?= spawns?\\b)`, 'g'), `${ns}$1`);
   // 5. subagent_type: <name>
   out = out.replace(
-    new RegExp(`(subagent_type:\\s*)(?:rad-orchestration:)?(${alt})\\b`, 'g'),
+    new RegExp(`(subagent_type:\\s*)${legacyOrCurrent}(${alt})\\b`, 'g'),
     `$1${ns}$2`,
   );
   return out;

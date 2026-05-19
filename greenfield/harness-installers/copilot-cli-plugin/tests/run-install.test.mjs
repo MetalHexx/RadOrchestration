@@ -9,7 +9,7 @@ function makePluginRoot(version) {
   const dir = fs.mkdtempSync(join(os.tmpdir(), 'plugin-cli-'));
   fs.mkdirSync(join(dir, 'skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(dir, 'skills/rad-orchestration/scripts/radorch.mjs'), '#!/usr/bin/env node\n');
-  fs.writeFileSync(join(dir, 'plugin.json'), JSON.stringify({ name: 'rad-orchestration-copilot-cli', version }));
+  fs.writeFileSync(join(dir, 'plugin.json'), JSON.stringify({ name: 'rad-orc', version }));
   fs.writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: '@rad-orchestration/copilot-cli-plugin', version }));
   fs.writeFileSync(join(dir, 'orchestration.yml'), 'pipeline: {}\n');
   fs.mkdirSync(join(dir, 'templates'), { recursive: true });

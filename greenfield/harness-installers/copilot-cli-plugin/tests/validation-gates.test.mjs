@@ -8,7 +8,7 @@ import { validatePluginTree } from '../build-scripts/validate.js';
 function makeValidOutput(version, sizeBytes = 1024) {
   const root = fs.mkdtempSync(join(os.tmpdir(), 'val-cli-'));
   // Required artifacts at the Copilot-shape paths.
-  fs.writeFileSync(join(root, 'plugin.json'), JSON.stringify({ name: 'rad-orchestration-copilot-cli', version }));
+  fs.writeFileSync(join(root, 'plugin.json'), JSON.stringify({ name: 'rad-orc', version }));
   fs.writeFileSync(join(root, 'package.json'), JSON.stringify({ name: '@rad-orchestration/copilot-cli-plugin', version }));
   fs.mkdirSync(join(root, 'skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(root, 'skills/rad-orchestration/scripts/radorch.mjs'), '#!/usr/bin/env node\n');

@@ -1,10 +1,10 @@
 {
-  "name": "rad-orchestration-copilot-cli-marketplace",
+  "name": "rad-orc-marketplace",
   "owner": { "name": "metalhexx" },
   "description": "Rad-orchestration Copilot CLI marketplace catalog.",
   "plugins": [
     {
-      "name": "rad-orchestration-copilot-cli",
+      "name": "rad-orc",
       "source": { "source": "github", "repo": "MetalHexx/RadOrchestration", "path": ".", "ref": "branch-pinned-payload" },
       "description": "Document-driven, multi-agent orchestration loop for GitHub Copilot CLI.",
       "strict": true

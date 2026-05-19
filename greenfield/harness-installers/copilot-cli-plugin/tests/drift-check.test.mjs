@@ -10,7 +10,7 @@ const DRIFT_CHECK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 
 function makeCase(pluginVer, installedVer, markerStatus) {
   const pluginRoot = fs.mkdtempSync(join(os.tmpdir(), 'cli-dc-pr-'));
-  fs.writeFileSync(join(pluginRoot, 'plugin.json'), JSON.stringify({ name: 'rad-orchestration-copilot-cli', version: pluginVer }));
+  fs.writeFileSync(join(pluginRoot, 'plugin.json'), JSON.stringify({ name: 'rad-orc', version: pluginVer }));
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'cli-dc-rh-'));
   if (installedVer) {
     fs.writeFileSync(join(radHome, 'install.json'), JSON.stringify({

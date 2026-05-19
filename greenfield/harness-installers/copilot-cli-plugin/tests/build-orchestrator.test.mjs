@@ -44,7 +44,7 @@ function makeFixtureRoot() {
   fs.mkdirSync(join(installerDir, 'lib/install'), { recursive: true });
   fs.mkdirSync(join(installerDir, 'manifests'), { recursive: true });
   fs.writeFileSync(join(installerDir, 'plugin.json'), JSON.stringify({
-    name: 'rad-orchestration-copilot-cli',
+    name: 'rad-orc',
     version: '1.0.0-alpha.1',
     author: { name: 'metalhexx' },
     license: 'MIT',
@@ -111,9 +111,9 @@ test('expand-tokens substitutes destination tokens across agents+skills WITHOUT 
     const orch = fs.readFileSync(join(out, 'agents/orchestrator.agent.md'), 'utf8');
     assert.ok(orch.includes('${COPILOT_CLI_PLUGIN_ROOT}/skills/rad-x/SKILL.md'), '${SKILLS_ROOT} substituted (FR-27)');
     assert.ok(orch.includes('${COPILOT_CLI_PLUGIN_ROOT}/hooks/'), '${PLUGIN_ROOT} substituted (FR-27)');
-    assert.ok(!orch.includes('rad-orchestration:'), 'NO agent-namespacing transform (FR-3, AD-10)');
+    assert.ok(!orch.includes('rad-orc:'), 'NO agent-namespacing transform (FR-3, AD-10)');
     const refs = fs.readFileSync(join(out, 'skills/rad-x/references/r.md'), 'utf8');
-    assert.ok(!refs.includes('rad-orchestration:coder'), 'reference docs unchanged (NFR-13)');
+    assert.ok(!refs.includes('rad-orc:coder'), 'reference docs unchanged (NFR-13)');
     const skill = fs.readFileSync(join(out, 'skills/rad-x/SKILL.md'), 'utf8');
     assert.ok(skill.includes('subagent_type: coder'), 'subagent_type bare (no namespacing — AD-10)');
   } finally {
