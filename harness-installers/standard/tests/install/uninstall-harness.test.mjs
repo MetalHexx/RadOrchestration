@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/tests/install/uninstall-harness.test.mjs —
+// harness-installers/standard/tests/install/uninstall-harness.test.mjs —
 // End-to-end of the uninstall function. Each test installs a synthetic bundle
 // first, then asserts that uninstall removes the per-harness files + registry
 // entry but leaves ~/.radorch/ (orchestration.yml, projects/, etc.) untouched.

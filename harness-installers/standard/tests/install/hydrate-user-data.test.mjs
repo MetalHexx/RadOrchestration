@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/tests/install/hydrate-user-data.test.mjs —
+// harness-installers/standard/tests/install/hydrate-user-data.test.mjs —
 // RED-GREEN tests for hydrateUserData. Each test builds a synthetic tmp dir,
 // points HOME / USERPROFILE at a tmp home, and asserts on-disk results.
 

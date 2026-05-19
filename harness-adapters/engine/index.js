@@ -145,13 +145,13 @@ export async function translateSkill({ skillDir, adapter, outDir }) {
 }
 
 function defaultFilesRoot() {
-  return resolve('greenfield/harness-files');
+  return resolve('harness-files');
 }
 function defaultAdaptersRoot() {
-  return resolve('greenfield/harness-adapters/adapters');
+  return resolve('harness-adapters/adapters');
 }
 function defaultOutDir() {
-  return resolve('greenfield/harness-adapters/output');
+  return resolve('harness-adapters/output');
 }
 
 export async function build({

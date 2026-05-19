@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/lib/drift-hint.js — Cross-channel
+// harness-installers/standard/lib/drift-hint.js — Cross-channel
 // version-drift hint computed from ~/.radorch/install.json (AD-15, FR-9).
 //
 // AD-15 fixes the drift source: the standard installer and the plugin channel

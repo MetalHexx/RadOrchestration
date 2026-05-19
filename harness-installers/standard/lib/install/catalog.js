@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/lib/install/catalog.js —
+// harness-installers/standard/lib/install/catalog.js —
 // Per-harness manifest catalog reader. Each per-harness payload at
 // `output/<harness>/` carries a flat `manifests/` folder containing
 // `v<version>.json` for every shipped version (AD-4). Upgrade flows resolve

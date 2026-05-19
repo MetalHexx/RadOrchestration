@@ -2,7 +2,7 @@
 // and (optionally) agent-namespacing rewrite to every text-extension file in one
 // pass, copies binary files verbatim. Installer-blind: every installer-specific
 // value (token map, agent names) flows in as a parameter. The text-extension
-// list mirrors the engine's at greenfield/harness-adapters/engine/index.js:18
+// list mirrors the engine's at harness-adapters/engine/index.js:18
 // so the two stay in sync.
 
 import fs from 'node:fs';

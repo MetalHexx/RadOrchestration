@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/lib/install/expand-tokens.js —
+// harness-installers/standard/lib/install/expand-tokens.js —
 // Consumer-side helper that takes a templated destination path from a manifest
 // entry (e.g. "${HARNESS_ROOT}/skills/foo") and resolves the absolute path on
 // disk. Lifted verbatim from installer/lib/install/expand-tokens.js

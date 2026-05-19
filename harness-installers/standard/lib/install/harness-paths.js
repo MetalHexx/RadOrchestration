@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/lib/install/harness-paths.js —
+// harness-installers/standard/lib/install/harness-paths.js —
 // Maps a harness install-key to its home-relative install root.
 // `claude` → ~/.claude; both copilot variants → ~/.copilot.
 // Lifted verbatim from installer/lib/install/harness-paths.js (lines 8–18).

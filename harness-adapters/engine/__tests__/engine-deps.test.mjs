@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 test('engine package.json declares ESM, a single YAML runtime dep, and no TS / bundler tooling', () => {
-  const pkg = JSON.parse(readFileSync(resolve('greenfield/harness-adapters/engine/package.json'), 'utf8'));
+  const pkg = JSON.parse(readFileSync(resolve('harness-adapters/engine/package.json'), 'utf8'));
   assert.strictEqual(pkg.type, 'module', 'engine must be plain ESM (NFR-5)');
   const deps = Object.keys(pkg.dependencies ?? {});
   assert.strictEqual(deps.length, 1, 'exactly one runtime dependency allowed');

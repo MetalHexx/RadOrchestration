@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/lib/install/install-json.js —
+// harness-installers/standard/lib/install/install-json.js —
 // Reads/writes ~/.radorch/install.json (structural single-shape; no schema
 // version field). The standard installer writes structurally from the first
 // install (AD-1) — it never migrates from a prior shape.

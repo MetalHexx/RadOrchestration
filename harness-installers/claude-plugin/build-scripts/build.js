@@ -31,11 +31,11 @@ function step(name, fn) {
  *  (`harness-installers/`, `runtime-config/`, `harness-files/`, `harness-adapters/`).
  *  Per parent design Decision 10, repo-root folders `cli/` and `ui/` stay at
  *  the repo root for the duration of iteration 1 and are referenced directly.
- *  Unit tests construct a synthetic fixture without a `greenfield/` parent,
+ *  Unit tests construct a synthetic fixture without a parent folder,
  *  so they pass `greenfieldRel: '.'` to flatten the layout. */
 export async function runBuild(opts) {
   const root = path.resolve(opts.rootDir);
-  const greenfieldRel = opts.greenfieldRel ?? 'greenfield';
+  const greenfieldRel = opts.greenfieldRel ?? '.';
   const greenfield = path.join(root, greenfieldRel);
   const installerDir = path.join(greenfield, 'harness-installers/claude-plugin');
   const out = path.join(installerDir, 'output');

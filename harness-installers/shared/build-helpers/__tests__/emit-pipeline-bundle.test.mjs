@@ -28,6 +28,6 @@ test('emitPipelineBundle bundles each entry to <target>/<name>.js', async () => 
 });
 
 test('legacy bundle.mjs is gone from harness-files scripts', () => {
-  assert.ok(!fs.existsSync('greenfield/harness-files/skills/rad-orchestration/scripts/bundle.mjs'),
+  assert.ok(!fs.existsSync('harness-files/skills/rad-orchestration/scripts/bundle.mjs'),
     'in-source dev tool retired; logic centralized in emit-pipeline-bundle.js');
 });

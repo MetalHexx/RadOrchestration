@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// greenfield/harness-installers/standard/index.js — CLI entry for the standard
+// harness-installers/standard/index.js — CLI entry for the standard
 // installer.
 //
 // Surface:

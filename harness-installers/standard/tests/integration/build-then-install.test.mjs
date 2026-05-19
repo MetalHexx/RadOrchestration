@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/tests/integration/build-then-install.test.mjs —
+// harness-installers/standard/tests/integration/build-then-install.test.mjs —
 // End-to-end cross-phase integration test. Stages a synthetic greenfield tree
 // under a tmp dir, runs the real `runBuild` against it (with adapter-engine /
 // ui-runner / bootstrap skipped), and then drives `installHarness` and
@@ -30,8 +30,8 @@ function agentFilename(h, name) {
 /**
  * Stage a self-contained synthetic greenfield tree under `root`. Mirrors the
  * structure expected by `runBuild` with `greenfieldRel: '.'` — i.e. the
- * greenfield content lives at the root rather than under a `greenfield/`
- * subfolder. Returns nothing; everything is written to disk.
+ * greenfield content lives at the root rather than under a subfolder.
+ * Returns nothing; everything is written to disk.
  */
 function makeFixture(root) {
   // Per-harness adapter engine output — agents + skills with tokenized

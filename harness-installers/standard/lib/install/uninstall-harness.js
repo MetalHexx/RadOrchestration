@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/lib/install/uninstall-harness.js —
+// harness-installers/standard/lib/install/uninstall-harness.js —
 // Reverse of installHarness. Removes the per-harness on-disk files exactly
 // as recorded by the manifest that shipped with the user's installed version,
 // then drops the harnesses[<key>] entry from ~/.radorch/install.json. The

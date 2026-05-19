@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/tests/install/install-harness.test.mjs —
+// harness-installers/standard/tests/install/install-harness.test.mjs —
 // Action state-machine tests for `installHarness`. Each test builds a synthetic
 // bundle under a tmp dir, points HOME / USERPROFILE at a tmp home, and asserts
 // on the returned action plus the on-disk state of install.json and ~/.<harness>/.

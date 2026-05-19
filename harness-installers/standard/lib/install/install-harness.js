@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/lib/install/install-harness.js —
+// harness-installers/standard/lib/install/install-harness.js —
 // Top-level orchestrator for a single harness's install. Single-shape only
 // (AD-1) — there is no v5 union or migration logic; the standard installer
 // writes structurally from the first install.

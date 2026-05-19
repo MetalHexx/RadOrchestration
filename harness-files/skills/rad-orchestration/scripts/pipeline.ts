@@ -24,7 +24,7 @@ export function resolvePathContext(): PathContext {
   const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
   // templatesDir points at ~/.radorch/templates/ — the single canonical home
   // for both orchestration.yml and templates/ in the user-data root. The
-  // repo-side canonical source lives at greenfield/runtime-config/; the skill
+  // repo-side canonical source lives at runtime-config/; the skill
   // folder no longer hosts these files at any point in the pipeline.
   const templatesDir = path.join(os.homedir(), '.radorch', 'templates');
   const orchRoot = path.resolve(scriptsDir, '..', '..', '..');

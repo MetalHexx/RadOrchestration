@@ -11,7 +11,7 @@ const cases = [
 
 for (const { folder, expected } of cases) {
   test(`adapters/${folder}/adapter.js has the canonical three-field shape`, async () => {
-    const url = pathToFileURL(resolve(`greenfield/harness-adapters/adapters/${folder}/adapter.js`)).href;
+    const url = pathToFileURL(resolve(`harness-adapters/adapters/${folder}/adapter.js`)).href;
     const mod = await import(url);
     const keys = Object.keys(mod.adapter).sort();
     assert.deepStrictEqual(keys, ['bodyTokens', 'filenames', 'name'], `${folder} must expose exactly name/filenames/bodyTokens`);

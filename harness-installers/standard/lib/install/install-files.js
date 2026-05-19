@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/lib/install/install-files.js —
+// harness-installers/standard/lib/install/install-files.js —
 // Copies manifest entries to their per-entry destinationPath.
 //
 // AD-9: when `sharedRoot` is provided, entries whose bundlePath starts with

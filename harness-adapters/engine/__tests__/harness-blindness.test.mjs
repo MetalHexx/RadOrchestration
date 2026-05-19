@@ -1,4 +1,4 @@
-// Canary protocol: this test was validated against greenfield/harness-adapters/engine/index.js
+// Canary protocol: this test was validated against harness-adapters/engine/index.js
 // by temporarily adding "// CANARY: claude" to index.js line 1 and confirming the audit failed
 // with the expected error message, then removing the canary and confirming the audit returned to PASS.
 // This validates that the audit has teeth and will catch accidental harness-name literals (NFR-2).
@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-const ENGINE_ROOT = resolve('greenfield/harness-adapters/engine');
+const ENGINE_ROOT = resolve('harness-adapters/engine');
 const BANNED = ['claude', 'copilot-vscode', 'copilot-cli'];
 
 function walk(dir, acc = []) {

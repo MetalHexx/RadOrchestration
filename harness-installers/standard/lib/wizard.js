@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/lib/wizard.js — Interactive wizard
+// harness-installers/standard/lib/wizard.js — Interactive wizard
 // orchestrator. Single-select harness per run; install OR uninstall.
 //
 // Two-step picker:

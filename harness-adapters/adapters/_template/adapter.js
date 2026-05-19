@@ -1,5 +1,5 @@
 // Reference shape for new harness adapters. Copy this folder to
-// `greenfield/harness-adapters/adapters/<your-harness>/` and replace every
+// `harness-adapters/adapters/<your-harness>/` and replace every
 // placeholder. The underscore prefix excludes this folder from discovery.
 //
 // Contract: an adapter is a tiny data module exposing exactly three fields —
@@ -12,7 +12,7 @@
 // The contract is intentionally narrow: no tool dictionary, no model alias
 // map, no frontmatter projector, no destination, no manifest emitter. All
 // harness vocabulary lives in `<agent>.<your-harness>.yml` files alongside
-// each agent body in `greenfield/harness-files/agents/`.
+// each agent body in `harness-files/agents/`.
 
 export const adapter = {
   name: '_template',

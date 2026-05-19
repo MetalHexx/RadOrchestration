@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/lib/install/remove-files.js —
+// harness-installers/standard/lib/install/remove-files.js —
 // Removes manifest entries from their resolved destinations and prunes any
 // ancestor directories that end up empty (contents-aware): an ancestor that
 // still contains a user-authored file — anything not in the manifest — is

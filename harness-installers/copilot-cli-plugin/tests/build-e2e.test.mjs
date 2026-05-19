@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 test('repo-root .github/plugin/marketplace.json advertises the plugin under FR-34 name with strict: true and source: github (FR-33, FR-34, FR-35, AD-15, DD-7)', () => {
   const file = path.join(REPO_ROOT, '.github/plugin/marketplace.json');

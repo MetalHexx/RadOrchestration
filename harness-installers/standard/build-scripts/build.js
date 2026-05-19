@@ -47,11 +47,11 @@ function tokenMapFor(harness) {
  *            skipBootstrap?: boolean, greenfieldRel?: string }} opts
  *  `rootDir` is the repo root. `greenfieldRel` (default 'greenfield') names
  *  the relative folder under `rootDir` that hosts the new staged subsystems.
- *  Unit tests construct a synthetic fixture without a `greenfield/` parent,
+ *  Unit tests construct a synthetic fixture without a parent folder,
  *  so they pass `greenfieldRel: '.'` to flatten the layout. */
 export async function runBuild(opts) {
   const root = path.resolve(opts.rootDir);
-  const greenfieldRel = opts.greenfieldRel ?? 'greenfield';
+  const greenfieldRel = opts.greenfieldRel ?? '.';
   const greenfield = path.join(root, greenfieldRel);
   const installerDir = path.join(greenfield, 'harness-installers/standard');
   const out = path.join(installerDir, 'output');

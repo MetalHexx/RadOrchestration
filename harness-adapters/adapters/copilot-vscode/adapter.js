@@ -1,5 +1,5 @@
 // GitHub Copilot in VS Code adapter. Per-harness frontmatter is hand-authored
-// in lowercase Copilot vocabulary in greenfield/harness-files/agents/*.copilot-vscode.yml.
+// in lowercase Copilot vocabulary in harness-files/agents/*.copilot-vscode.yml.
 
 export const adapter = {
   name: 'copilot-vscode',

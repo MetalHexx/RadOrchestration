@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/lib/install/hydrate-user-data.js —
+// harness-installers/standard/lib/install/hydrate-user-data.js —
 // Writes user-data files under ~/.radorch/ with the following preservation rules
 // (AD-13 "sole-writer per file class"):
 //

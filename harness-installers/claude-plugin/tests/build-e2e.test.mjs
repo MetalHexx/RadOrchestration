@@ -5,17 +5,17 @@ import { execSync } from 'node:child_process';
 import path, { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 // The e2e harness drives the real build from repo root. The build invokes
 // the adapter engine first, then every helper. UI build is real;
 // expect ~10-30s for the full run. Skipped when SKIP_E2E=1.
 test('end-to-end build produces a valid plugin payload', { skip: process.env.SKIP_E2E === '1' }, () => {
   const repoRoot = REPO_ROOT;
-  execSync('node greenfield/harness-installers/claude-plugin/build-scripts/build.js', {
+  execSync('node harness-installers/claude-plugin/build-scripts/build.js', {
     cwd: repoRoot, stdio: 'inherit', shell: process.platform === 'win32',
   });
-  const out = join(repoRoot, 'greenfield/harness-installers/claude-plugin/output');
+  const out = join(repoRoot, 'harness-installers/claude-plugin/output');
   // Required surfaces present.
   for (const rel of [
     '.claude-plugin/plugin.json',

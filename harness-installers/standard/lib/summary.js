@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/lib/summary.js — Post-install summary
+// harness-installers/standard/lib/summary.js — Post-install summary
 // renderer for the standard installer. Mirrors the legacy installer's text
 // style (THEME tokens, BBS-style section headers, numbered next-steps) but
 // works from the new harness-aware structure produced by index.js.

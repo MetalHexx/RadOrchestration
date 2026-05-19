@@ -1,4 +1,4 @@
-// greenfield/harness-installers/standard/lib/install/user-data-paths.js —
+// harness-installers/standard/lib/install/user-data-paths.js —
 // Returns the canonical user-data paths under ~/.radorch/. The standard
 // installer never creates `runtime/` (the dashboard creates it lazily — FR-2)
 // and ships no `config.yml`, `registry.yml`, or `.harness` pointer (AD-1).

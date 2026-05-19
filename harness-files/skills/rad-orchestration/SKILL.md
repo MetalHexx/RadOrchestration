@@ -32,5 +32,5 @@ This skill bundles:
 
 Runtime user-data files (not shipped inside the skill folder):
 
-- **`~/.radorch/orchestration.yml`** — System configuration; provisioned to the user-data root at install time from `greenfield/runtime-config/orchestration.yml`
-- **`~/.radorch/templates/`** — The four review-intensity tier templates (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`); provisioned from `greenfield/runtime-config/templates/` at install time
+- **`~/.radorch/orchestration.yml`** — System configuration; provisioned to the user-data root at install time from `runtime-config/orchestration.yml`
+- **`~/.radorch/templates/`** — The four review-intensity tier templates (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`); provisioned from `runtime-config/templates/` at install time
