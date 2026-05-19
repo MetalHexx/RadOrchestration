@@ -127,14 +127,15 @@ const HARNESS_DISPLAY_NAME = {
 /**
  * Renders the post-uninstall summary. Mirrors `renderPostInstallSummary`'s
  * shape so the two flows feel cohesive: section header, the removed harness
- * with file count, a "Remaining harnesses" block read fresh from
- * `install.json`, and the workspace block with `(preserved)` suffixes that
- * make the safety contract visible at a glance.
+ * with file and directory counts, a "Remaining harnesses" block read fresh
+ * from `install.json`, and the workspace block with `(preserved)` suffixes
+ * that make the safety contract visible at a glance.
  *
  * @param {{
  *   harness: string,
  *   removedVersion: string,
  *   removedCount: number,
+ *   prunedDirs: number,
  *   remainingHarnesses: Record<string, { version: string }>,
  *   configPath: string,
  * }} opts
@@ -144,6 +145,7 @@ export function renderUninstallSummary({
   harness,
   removedVersion,
   removedCount,
+  prunedDirs,
   remainingHarnesses,
   configPath,
 }) {
@@ -164,8 +166,9 @@ export function renderUninstallSummary({
     /* unknown harness key — skip path line silently */
   }
   const filesWord = removedCount === 1 ? 'file' : 'files';
+  const dirsWord = prunedDirs === 1 ? 'directory' : 'directories';
   console.log(
-    '      ' + THEME.secondary(`${removedCount} ${filesWord} removed (directories preserved)`),
+    '      ' + THEME.secondary(`${removedCount} ${filesWord} removed, ${prunedDirs} empty ${dirsWord} pruned`),
   );
 
   console.log('');

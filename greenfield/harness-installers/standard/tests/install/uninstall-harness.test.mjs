@@ -101,21 +101,38 @@ test('uninstallHarness removes per-harness files and the registry entry; preserv
     assert.equal(result.action, 'uninstalled');
     assert.equal(result.removedVersion, '1.0.0-alpha.9');
     assert.equal(result.removedCount, 2);
-    assert.equal(result.prunedDirs, undefined, 'no directory pruning is reported (uninstall removes files only)');
+    assert.ok(result.prunedDirs >= 1, 'at least one empty installer subfolder was pruned');
 
     // Manifest files removed.
     assert.ok(!fs.existsSync(orchestratorPath), 'orchestrator.md removed');
     assert.ok(!fs.existsSync(radorchMjsPath), 'radorch.mjs removed');
 
-    // Directories that held removed files are preserved (residue, per user direction).
+    // User-authored file under agents/ keeps agents/ alive.
+    assert.ok(
+      fs.existsSync(path.join(harnessRootPath, 'agents/my-personal-agent.md')),
+      'user file under agents/ preserved',
+    );
     assert.ok(
       fs.existsSync(path.join(harnessRootPath, 'agents')),
-      'agents/ directory is preserved even after all rad files inside are gone',
+      'agents/ kept alive by the user-authored file inside',
+    );
+
+    // skills/ had no user files — the installer-created tree should be gone.
+    assert.ok(
+      !fs.existsSync(path.join(harnessRootPath, 'skills/rad-orchestration/scripts')),
+      'empty deep installer dir scripts/ was pruned',
     );
     assert.ok(
-      fs.existsSync(path.join(harnessRootPath, 'skills/rad-orchestration/scripts')),
-      'deep scripts/ directory is preserved even after radorch.mjs is removed',
+      !fs.existsSync(path.join(harnessRootPath, 'skills/rad-orchestration')),
+      'empty rad-orchestration/ was pruned',
     );
+    assert.ok(
+      !fs.existsSync(path.join(harnessRootPath, 'skills')),
+      'empty skills/ itself was pruned (no user content in there)',
+    );
+
+    // Harness root preserved no matter what.
+    assert.ok(fs.existsSync(harnessRootPath), 'harness root preserved');
 
     // User-created file under the harness root is preserved.
     assert.ok(

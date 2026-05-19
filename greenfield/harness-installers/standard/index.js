@@ -222,6 +222,7 @@ async function runUninstallFlow({ packageRoot, harness }) {
     harness,
     removedVersion: result.removedVersion,
     removedCount: result.removedCount,
+    prunedDirs: result.prunedDirs,
     remainingHarnesses: registry.harnesses ?? {},
     configPath: paths.orchestrationYml,
   });
