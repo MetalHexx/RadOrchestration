@@ -14,10 +14,10 @@ The legacy `/installer/` folder at the repo root remains untouched; it is not pa
 
 ## Inputs this layer consumes (but does not own)
 
-- `greenfield/harness-adapters/output/claude/` — compiled agents and skills produced by the adapter engine
-- `greenfield/runtime-config/` — `orchestration.yml` and `templates/` copied verbatim into each build output
+- `harness-adapters/output/claude/` — compiled agents and skills produced by the adapter engine
+- `runtime-config/` — `orchestration.yml` and `templates/` copied verbatim into each build output
 - `cli/` and `ui/` at the repo root — bundled into the plugin output by `emitCliBundle` and `emitUiBundle`
-- `greenfield/harness-files/skills/rad-orchestration/scripts/` — pipeline TypeScript source bundled by `emitPipelineBundle`
+- `harness-files/skills/rad-orchestration/scripts/` — pipeline TypeScript source bundled by `emitPipelineBundle`
 
 ## Coding conventions
 

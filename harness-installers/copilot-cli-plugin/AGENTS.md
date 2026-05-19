@@ -22,11 +22,11 @@ A self-contained npm package (`@rad-orchestration/copilot-cli-plugin-source`) wh
 
 ## Inputs this package reads but does not own
 
-- `greenfield/harness-adapters/output/copilot-cli/` — compiled agents and skills produced by the adapter engine; agent filenames carry the `.agent.md` suffix for the Copilot CLI harness
-- `greenfield/runtime-config/` — `orchestration.yml` and `templates/` copied verbatim
+- `harness-adapters/output/copilot-cli/` — compiled agents and skills produced by the adapter engine; agent filenames carry the `.agent.md` suffix for the Copilot CLI harness
+- `runtime-config/` — `orchestration.yml` and `templates/` copied verbatim
 - `cli/` and `ui/` at the repo root — bundled via `emitCliBundle` and `emitUiBundle`
-- `greenfield/harness-files/skills/rad-orchestration/scripts/*.ts` — pipeline TypeScript source bundled by `emitPipelineBundle`
-- `greenfield/harness-installers/shared/build-helpers/` — shared `emitCliBundle`, `emitPipelineBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens` helpers
+- `harness-files/skills/rad-orchestration/scripts/*.ts` — pipeline TypeScript source bundled by `emitPipelineBundle`
+- `harness-installers/shared/build-helpers/` — shared `emitCliBundle`, `emitPipelineBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens` helpers
 
 ## Deltas vs the claude-plugin
 
@@ -42,7 +42,7 @@ A self-contained npm package (`@rad-orchestration/copilot-cli-plugin-source`) wh
 
 ## Seams
 
-- **Upstream**: `greenfield/harness-adapters/` produces the agent and skill files this build copies. Changes to the adapter's output layout or filename conventions flow through here.
+- **Upstream**: `harness-adapters/` produces the agent and skill files this build copies. Changes to the adapter's output layout or filename conventions flow through here.
 - **Downstream**: `npm pack` against `output/` produces the tarball submitted to the Copilot CLI marketplace. The build is the sole writer of `output/`.
 
 ## Coding conventions
@@ -64,4 +64,4 @@ A self-contained npm package (`@rad-orchestration/copilot-cli-plugin-source`) wh
 - `hooks/AGENTS.md` — hook lifecycle and bundle/verbatim split
 - `lib/install/AGENTS.md` — install state machine modules
 - `build-scripts/AGENTS.md` — step sequence and validate gates
-- `greenfield/harness-installers/shared/build-helpers/AGENTS.md` — shared helper signatures
+- `harness-installers/shared/build-helpers/AGENTS.md` — shared helper signatures

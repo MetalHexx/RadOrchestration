@@ -10,7 +10,7 @@ Five mechanical helpers that installer build scripts use to emit bundles and run
 
 `opts: { source: string, target: string, tokenMap: Record<string,string>, agentNames?: string[] }`
 
-Walks `source` recursively. Text files (extensions in `TEXT_EXTS`: `.md .txt .js .mjs .cjs .ts .tsx .json .yml .yaml .sh .css .html`) get token substitution via `substituteTokens` and optional agent namespacing via `applyNamespacing`; binary files are copied verbatim. `agentNames` drives the namespacing rewrite that prefixes bare agent names with `rad-orc:` in dispatch contexts (`**<name>**`, `<name> agent(s)`, `<name> spawn(s)`, `subagent_type: <name>`, and comma-separated lists). For back-compat the rewrite also normalizes already-prefixed `rad-orchestration:<name>` occurrences to `rad-orc:<name>`. The `TEXT_EXTS` set mirrors the list in `greenfield/harness-adapters/engine/index.js` — keep the two in sync.
+Walks `source` recursively. Text files (extensions in `TEXT_EXTS`: `.md .txt .js .mjs .cjs .ts .tsx .json .yml .yaml .sh .css .html`) get token substitution via `substituteTokens` and optional agent namespacing via `applyNamespacing`; binary files are copied verbatim. `agentNames` drives the namespacing rewrite that prefixes bare agent names with `rad-orc:` in dispatch contexts (`**<name>**`, `<name> agent(s)`, `<name> spawn(s)`, `subagent_type: <name>`, and comma-separated lists). For back-compat the rewrite also normalizes already-prefixed `rad-orchestration:<name>` occurrences to `rad-orc:<name>`. The `TEXT_EXTS` set mirrors the list in `harness-adapters/engine/index.js` — keep the two in sync.
 
 **`emitCliBundle(opts)` — `emit-cli-bundle.js`**
 
@@ -54,7 +54,7 @@ All such values are supplied by the caller.
 
 ## Rules for making updates
 
-- Changing `TEXT_EXTS` in `expand-tokens.js` requires the same change in `greenfield/harness-adapters/engine/index.js` to keep token-processing scope in sync.
+- Changing `TEXT_EXTS` in `expand-tokens.js` requires the same change in `harness-adapters/engine/index.js` to keep token-processing scope in sync.
 - Adding a new entry to `RUNTIME_ENTRIES` in `emit-pipeline-bundle.js` causes both an additional bundle to be emitted and an additional artifact to validate in `claude-plugin/build-scripts/validate.js`; update both together.
 - `emitHookBundle`'s verbatim-copy list (`['drift-check.mjs', 'hooks.json', 'AGENTS.md']`) must match what `hooks/` actually ships; update here when adding new verbatim hook files.
 - Tests in `__tests__/` cover each helper; run them after any signature or behavior change.

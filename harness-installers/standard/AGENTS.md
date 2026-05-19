@@ -44,4 +44,4 @@ This folder is a self-contained npm package that produces the publishable `rad-o
 - **`~/.radorch/templates/`** — Review-intensity tier templates (refreshed on each install to pick up upstream improvements).
 - **`~/.radorch/ui/`** — Dashboard code (if user opted in).
 
-**Freeze rule on legacy `installer/`**: The original `installer/` directory at the repo root is frozen in place. No new code is added to it; the standard installer is the sole entry point for new installations and reinstalls. Legacy installer files are not deleted (for auditing and offline reference), but all forward development happens here in `greenfield/harness-installers/standard/`.
+**Freeze rule on legacy `installer/`**: The original `installer/` directory at the repo root is frozen in place. No new code is added to it; the standard installer is the sole entry point for new installations and reinstalls. Legacy installer files are not deleted (for auditing and offline reference), but all forward development happens here in `harness-installers/standard/`.
