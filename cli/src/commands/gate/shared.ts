@@ -1,13 +1,13 @@
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { processEvent } from '../../../../skills/rad-orchestration/scripts/lib/engine.js';
+import { processEvent } from '../../../../harness-files/skills/rad-orchestration/scripts/lib/engine.js';
 import {
   readState, writeState, readConfig, readDocument, ensureDirectories,
-} from '../../../../skills/rad-orchestration/scripts/lib/state-io.js';
+} from '../../../../harness-files/skills/rad-orchestration/scripts/lib/state-io.js';
 import type {
   IOAdapter, PathContext, PipelineResult,
-} from '../../../../skills/rad-orchestration/scripts/lib/types.js';
+} from '../../../../harness-files/skills/rad-orchestration/scripts/lib/types.js';
 
 export { processEvent };
 export type { PipelineResult };

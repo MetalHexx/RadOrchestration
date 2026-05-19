@@ -7,8 +7,8 @@ import {
   makeIO,
   autoResolveFinalReviewDocPath,
 } from './shared.js';
-import { readState } from '../../../../skills/rad-orchestration/scripts/lib/state-io.js';
-import type { PipelineResult } from '../../../../skills/rad-orchestration/scripts/lib/types.js';
+import { readState } from '../../../../harness-files/skills/rad-orchestration/scripts/lib/state-io.js';
+import type { PipelineResult } from '../../../../harness-files/skills/rad-orchestration/scripts/lib/types.js';
 
 export interface ApproveFinalOptions { projectDir: string }
 

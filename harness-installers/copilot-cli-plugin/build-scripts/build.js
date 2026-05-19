@@ -30,7 +30,7 @@ function step(name, fn) {
  *            skipBootstrap?: boolean, greenfieldRel?: string }} opts */
 export async function runBuild(opts) {
   const root = path.resolve(opts.rootDir);
-  const greenfieldRel = opts.greenfieldRel ?? 'greenfield';
+  const greenfieldRel = opts.greenfieldRel ?? '.';
   const greenfield = path.join(root, greenfieldRel);
   const installerDir = path.join(greenfield, 'harness-installers/copilot-cli-plugin');
   const out = path.join(installerDir, 'output');
