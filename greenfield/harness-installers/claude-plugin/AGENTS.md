@@ -17,7 +17,7 @@ A self-contained npm package (`@rad-orchestration/claude-plugin-source`) whose `
 7. **prune-scripts-sources** — removes `.ts` sources, tests, and tooling from `output/skills/rad-orchestration/scripts/`; retains only `.js`, `.mjs`, and `.gitignore`
 8. **emit-ui-bundle** — builds Next.js standalone via `emitUiBundle`
 9. **emit-hook-bundle** — bundles `hooks/bootstrap.mjs` and copies verbatim files via `emitHookBundle`
-10. **expand-tokens** — substitutes `${SKILLS_ROOT}` and `${PLUGIN_ROOT}` tokens and applies agent namespacing (`rad-orchestration:<name>`) via `expandTokens`; runs through a staging dir to avoid mid-walk read-after-write
+10. **expand-tokens** — substitutes `${SKILLS_ROOT}` and `${PLUGIN_ROOT}` tokens and applies agent namespacing (`rad-orc:<name>`) via `expandTokens`; runs through a staging dir to avoid mid-walk read-after-write
 11. **copy-plugin-manifest** — copies `.claude-plugin/plugin.json` verbatim
 12. **synthesize-package-json** — merges wrapper `package.json` with `plugin.json`; `plugin.json.version` always wins; writes to `output/package.json`
 13. **copy-manifest-catalog** — copies `manifests/v*.json` to `output/manifests/`
@@ -44,12 +44,12 @@ So the dogfood marketplace stages the plugin as a `./<subpath>` of its own root:
 ```
 dogfood-marketplace/
 ├── .claude-plugin/
-│   └── marketplace.json         # source: "./plugins/rad-orchestration"
+│   └── marketplace.json         # source: "./plugins/rad-orc"
 └── plugins/
-    └── rad-orchestration/       # copy of output/
+    └── rad-orc/                 # copy of output/
 ```
 
-The `.agents/skills/rad-test-claude-plugin/SKILL.md` skill is the operational entry point. It builds, copies `output/` into `plugins/rad-orchestration/`, writes `marketplace.json`, and hands off `/plugin marketplace add` + `/plugin install` commands. The layout intentionally matches the legacy `rad-test-plugin-release` prompt's layout so both dogfood channels feel the same.
+The `.agents/skills/rad-test-claude-plugin/SKILL.md` skill is the operational entry point. It builds, copies `output/` into `plugins/rad-orc/`, writes `marketplace.json`, and hands off `/plugin marketplace add` + `/plugin install` commands. The layout intentionally matches the legacy `rad-test-plugin-release` prompt's layout so both dogfood channels feel the same.
 
 The copy is per-skill-invocation. Iterating means re-running the skill after each build — `output/` is the truth, the marketplace tree is a derived snapshot.
 

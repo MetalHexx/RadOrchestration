@@ -59,7 +59,7 @@ A known issue: when `plugin.json` lives at `.github/plugin/plugin.json`, **direc
 - `agents` — `string | string[]`, default `agents/`. Path(s) to agent directories (`.agent.md` files).
 - `skills` — `string | string[]`, default `skills/`. Path(s) to skill directories (`SKILL.md` files).
 - `commands` — `string | string[]`, no documented default.
-- `hooks` — `string | object`. Path to a hooks config file, or an inline hooks object.
+- `hooks` — `string | object`. Path to a hooks config file, or an inline hooks object. When this field is absent, the CLI checks `hooks.json` and then `hooks/hooks.json` inside the plugin directory (both paths probed, in that order).
 - `mcpServers`, `lspServers` — `string | object`, conventional defaults `.mcp.json` and `lsp.json` respectively.
 
 ### What `plugin.json` is **not**
@@ -106,7 +106,7 @@ Empirically, when `plugin.json` is in a location the loader doesn't probe (issue
 ```
 
 - **At least one** of `bash`, `powershell`, or `command` must be present. `command` is the cross-platform fallback used when neither `bash` nor `powershell` is set.
-- `cwd` — optional working directory. **No documented default**; the safe planner-assumption is "behavior is undefined when `cwd` is omitted — always set it."
+- `cwd` — optional working directory. **No documented default**; the safe planner-assumption is "behavior is undefined when `cwd` is omitted — always set it." **Empirically confirmed:** `cwd` resolves relative to the CLI process's working directory (where the user launched the CLI), **not** the plugin install directory. Do not use `cwd` to locate bundled scripts — use `%COPILOT_PLUGIN_ROOT%` in the `command` string instead (see §4 below).
 - `env` — object, supports variable expansion.
 - `timeoutSec` — number, **default 30**.
 - **No** `failOnError` / `continueOnError` field is documented.
@@ -128,13 +128,16 @@ Both camelCase (native) and PascalCase (VS Code-compatible) variants are accepte
 | `sessionStart` | `SessionStart` | New or resumed interactive session. Docs note it "fires only for new interactive sessions… do not fire on resume" — verify empirically if you depend on resume behavior. |
 | `sessionEnd` | `SessionEnd` | Session terminates. |
 | `userPromptSubmitted` | `UserPromptSubmit` | User submits a prompt. Fires on every prompt; no "first prompt only" filter. |
-| `preToolUse` / `postToolUse` / `postToolUseFailure` | — | Tool lifecycle. |
-| `preCompact` | — | Before context compaction. |
-| `agentStop` | `Stop` | Agent terminates. |
-| `subagentStart` / `subagentStop` | — | Subagent lifecycle. |
-| `errorOccurred` | — | Error condition. |
-| `permissionRequest` | — | Permission gate. |
-| `notification` | — | User-facing notification. |
+| `preToolUse` | `PreToolUse` | Before a tool is invoked. Can return `permissionDecision` (`allow`/`deny`/`ask`) and `modifiedArgs`. |
+| `postToolUse` | `PostToolUse` | After a tool completes successfully. |
+| `postToolUseFailure` | `PostToolUseFailure` | After a tool invocation fails. |
+| `preCompact` | `PreCompact` | Before context compaction. |
+| `agentStop` | `Stop` | Agent terminates. Can return `decision` (`block`/`allow`) and `reason`. |
+| `subagentStart` | *(camelCase only)* | Subagent spawned. |
+| `subagentStop` | `SubagentStop` | Subagent completes. |
+| `errorOccurred` | `ErrorOccurred` | Error condition. |
+| `permissionRequest` | *(camelCase only, CLI only)* | Permission gate. Can return `behavior` (`allow`/`deny`), `message`, and `interrupt`. |
+| `notification` | *(camelCase only, CLI only)* | User-facing notification. |
 
 Stdin payload field-naming follows the convention used in the event name (camelCase keys vs `hook_event_name` PascalCase keys, ISO 8601 vs Unix-ms timestamps).
 
@@ -161,6 +164,31 @@ Each event receives a structured JSON document on stdin. A representative payloa
 ```
 
 `userPromptSubmitted` / `sessionStart` receive "timestamp, current working directory, and full prompt text." The PascalCase variant adds `hook_event_name` and uses ISO 8601 timestamps.
+
+### Concrete payload examples
+
+**`sessionStart` (camelCase):**
+```json
+{
+  "sessionId": "abc123",
+  "timestamp": 1704614400000,
+  "cwd": "/path/to/project",
+  "source": "startup",
+  "initialPrompt": "optional"
+}
+```
+
+`source` is one of `"startup"`, `"resume"`, or `"new"`. `initialPrompt` is optional.
+
+**`userPromptSubmitted` (camelCase):**
+```json
+{
+  "sessionId": "abc123",
+  "timestamp": 1704614400000,
+  "cwd": "/path/to/project",
+  "prompt": "The user's prompt text"
+}
+```
 
 ### Stdout: event-dependent decision protocol
 
@@ -191,13 +219,35 @@ The system is **fail-open**: a throwing script that exits non-zero (other than 2
 
 **Explicitly not supported as a live update.** A hook that rewrites its own `hooks.json` will not see the change take effect until the user starts a new session (or reinstalls/updates the plugin). The idempotent-marker-file pattern is the right design for one-shot bootstrap behaviors — keep the hook entry registered, and have the script fast-path to a no-op when a marker file is present.
 
-### No `COPILOT_PLUGIN_ROOT` env var
+### Injected environment variables
 
-There is **no documented env var pointing at the installed plugin's payload directory**. No analogue of Claude Code's `CLAUDE_PLUGIN_ROOT`. Bundled hook scripts must locate their own payload by:
-- The hook entry's `cwd` field, and/or
-- Script-relative paths computed from inside the script (`__dirname` for CJS, `path.dirname(fileURLToPath(import.meta.url))` for ESM, or `realpath "$(dirname "$0")"` for bash).
+**Empirically confirmed** (dumped via `cmd /c set` in a live `userPromptSubmitted` hook). Copilot CLI injects these into every hook process:
 
-This is the single largest porting hazard from Claude Code's plugin model.
+| Variable | Example value | Notes |
+|---|---|---|
+| `COPILOT_PLUGIN_ROOT` | `~/.copilot/installed-plugins/<marketplace>/<plugin>` | Plugin install directory. **Primary var for locating bundled scripts.** |
+| `PLUGIN_ROOT` | same as above | Alias; same value. |
+| `CLAUDE_PLUGIN_ROOT` | same as above | Cross-platform alias; same value. |
+| `COPILOT_PLUGIN_DATA` | `~/.copilot/plugin-data/<marketplace>/<plugin>` | Per-plugin persistent data directory. |
+| `COPILOT_PROJECT_DIR` | current project path | The project the user has open. |
+| `COPILOT_CLI` | `1` | Flag indicating CLI hook context. |
+| `COPILOT_CLI_BINARY_VERSION` | e.g., `1.0.48` | Running CLI version. |
+| `COPILOT_LOADER_PID` | process ID | PID of the CLI loader process. |
+
+**How to use `COPILOT_PLUGIN_ROOT` in hook commands (Windows):**
+
+Hook commands run through `cmd.exe` on Windows, so `%VAR%` expansion applies:
+
+```json
+{
+  "type": "command",
+  "command": "node \"%COPILOT_PLUGIN_ROOT%\\hooks\\bootstrap.mjs\""
+}
+```
+
+This resolves to the absolute path of the bundled script regardless of the user's working directory. **This is the correct pattern for all plugin-bundled hook scripts.**
+
+> **Note:** The `cwd` field is resolved relative to the CLI's working directory (NOT the plugin root), making it unreliable for locating plugin-bundled scripts. Use `%COPILOT_PLUGIN_ROOT%` in the `command` string instead.
 
 ### Permissions
 
@@ -329,7 +379,8 @@ A user-level file at `~/.copilot/agents/coder.md` will **shadow** a plugin-shipp
 
 ## 10. Behaviors that surprise developers porting from another plugin platform
 
-- **No plugin-root env var.** Hook scripts must locate their own payload via `cwd` + script-relative `dirname`. Largest porting delta from Claude Code.
+- **No nested `"hooks"` sub-array inside event entries.** Each event name maps directly to an array of hook objects: `{ "userPromptSubmitted": [{ "type": "command", ... }] }`. The Claude Code hooks format wraps entries in a `{ "hooks": [...] }` object — this structure is **invalid** in Copilot CLI and will cause the hooks to silently not fire. This is the most likely root cause when hooks appear wired up but never execute.
+- **`COPILOT_PLUGIN_ROOT` IS injected** — and so are `PLUGIN_ROOT`, `CLAUDE_PLUGIN_ROOT`, `COPILOT_PLUGIN_DATA`, and `COPILOT_PROJECT_DIR`. Use `%COPILOT_PLUGIN_ROOT%` in the hook `command` string (cmd.exe expands it on Windows) to reference bundled scripts by absolute path. The `cwd` field resolves relative to the CLI working directory (NOT the plugin root) and should not be used to locate plugin-bundled scripts.
 - **No mid-session reload.** Self-modifying-hook patterns are dead — use idempotent marker files.
 - **Fail-open on non-zero exit (other than 2).** A misbehaving hook does not break the user's session, but it also won't surface loudly. Persist failure state in a marker file if observability matters.
 - **`userPromptSubmitted` stdout is ignored.** Bootstrap hooks signal success/failure only via exit code and side effects.
@@ -347,7 +398,7 @@ A user-level file at `~/.copilot/agents/coder.md` will **shadow** a plugin-shipp
 
 These behaviors are silent or under-specified in the canonical docs. Smoke-test them against a throwaway plugin before locking a design that depends on the answer.
 
-1. **Default `cwd`** when omitted from a hook entry.
+1. **Default `cwd`** when omitted from a hook entry. **Empirically resolved:** `cwd` resolves relative to the CLI process's working directory (where the user launched the CLI). Omitting `cwd` is equivalent to `cwd: "."` relative to the CLI launch dir. Use `%COPILOT_PLUGIN_ROOT%` in the command string to reference plugin-bundled scripts.
 2. **Precedence** when both `.github/plugin/marketplace.json` and `.claude-plugin/marketplace.json` exist in the same repo.
 3. **`source: npm` end-to-end behavior:** does it support scoped packages, `dist-tags` (e.g., `version: "latest"`), private registries, postinstall scripts? What does Copilot do at install time with the fetched tarball?
 4. **`userPromptSubmitted` firing after `copilot plugin update`** — is it reliable on the user's first prompt of the next session, or only after a fresh `copilot` invocation?

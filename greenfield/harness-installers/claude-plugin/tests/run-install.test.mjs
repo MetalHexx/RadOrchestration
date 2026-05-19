@@ -143,6 +143,29 @@ test('fresh install copies ui/ tree to ~/.radorch/ui/', async () => {
   }
 });
 
+test('foreign harness entries in install.json are preserved — only own entry is updated', async () => {
+  const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-foreign-'));
+  const pluginRoot = makePluginRoot('1.0.0');
+  try {
+    fs.mkdirSync(radHome, { recursive: true });
+    fs.writeFileSync(join(radHome, 'install.json'), JSON.stringify({
+      harnesses: {
+        'copilot-cli-plugin': { version: '2.0.0', channel: 'copilot-cli-plugin', installed_at: 'x', last_writer_version: '2.0.0' },
+        'copilot-cli': { version: '1.5.0', channel: 'legacy-installer', installed_at: 'x', last_writer_version: '1.5.0' },
+      },
+    }));
+    await runInstall({ pluginRoot, radHome });
+    const ij = JSON.parse(fs.readFileSync(join(radHome, 'install.json'), 'utf8'));
+    assert.strictEqual(ij.harnesses['claude-plugin'].version, '1.0.0', 'own entry written');
+    assert.strictEqual(ij.harnesses['copilot-cli-plugin'].version, '2.0.0', 'copilot-cli-plugin entry preserved untouched');
+    assert.strictEqual(ij.harnesses['copilot-cli'].version, '1.5.0', 'legacy copilot-cli entry preserved untouched');
+  } finally {
+    fs.rmSync(radHome, { recursive: true, force: true });
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  }
+});
+
+
 test('hydration scope — no config.yml / registry.yml / .harness / .gitignore / runtime/ writes', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-ad8-'));
   const pluginRoot = makePluginRoot('1.0.0');

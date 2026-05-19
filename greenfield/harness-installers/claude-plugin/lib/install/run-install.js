@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { userDataPaths } from './user-data-paths.js';
 import {
-  readInstallJson, writeInstallJson, isCurrentShape, migrateInstallJson, buildClaudePluginEntry,
+  loadRegistry, writeInstallJson, buildClaudePluginEntry,
 } from './install-json.js';
 import { loadManifest } from './catalog.js';
 import { installManifestFiles } from './install-files.js';
@@ -54,11 +54,7 @@ export async function runInstall(opts) {
     fs.mkdirSync(paths.projects, { recursive: true });
     fs.mkdirSync(paths.logs, { recursive: true });
 
-    const rawIj = readInstallJson(paths.installJson);
-    // Lift legacy shapes (flat single-record or harnesses-keyed-with-version-field)
-    // into the current unversioned harnesses-keyed shape on first read. New writes
-    // never carry state_schema_version; shape is identified structurally.
-    const ij = rawIj ? migrateInstallJson(rawIj, INSTALL_KEY) : { harnesses: {} };
+    const ij = loadRegistry(paths.installJson);
     const prior = ij.harnesses[INSTALL_KEY];
     installedVersionBefore = prior?.version ?? null;
     const sentinelPresent = fs.existsSync(sentinel);

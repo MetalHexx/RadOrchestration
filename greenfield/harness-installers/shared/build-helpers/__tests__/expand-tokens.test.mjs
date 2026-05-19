@@ -33,13 +33,13 @@ test('expandTokens substitutes destination tokens and applies agent-namespacing 
       agentNames: ['coder', 'planner', 'reviewer'],
     });
     const orch = readFileSync(join(root, 'out/agents/orchestrator.md'), 'utf8');
-    assert.ok(orch.includes('**rad-orchestration:coder**'), 'bold dispatch token namespaced');
+    assert.ok(orch.includes('**rad-orc:coder**'), 'bold dispatch token namespaced');
     assert.ok(orch.includes('${CLAUDE_PLUGIN_ROOT}/skills/rad-x/SKILL.md'), '${SKILLS_ROOT} substituted');
     assert.ok(orch.includes('${CLAUDE_PLUGIN_ROOT}/hooks/'), '${PLUGIN_ROOT} substituted');
     const skill = readFileSync(join(root, 'out/skills/rad-x/SKILL.md'), 'utf8');
-    assert.ok(skill.includes('subagent_type: rad-orchestration:planner'), 'subagent_type namespaced');
+    assert.ok(skill.includes('subagent_type: rad-orc:planner'), 'subagent_type namespaced');
     const refs = readFileSync(join(root, 'out/skills/rad-x/references/r.md'), 'utf8');
-    assert.ok(refs.includes('rad-orchestration:coder, rad-orchestration:planner, and rad-orchestration:reviewer agents'),
+    assert.ok(refs.includes('rad-orc:coder, rad-orc:planner, and rad-orc:reviewer agents'),
       'comma-list dispatch namespaced');
     const bin = readFileSync(join(root, 'out/skills/rad-x/binary.png'));
     assert.deepStrictEqual([...bin], [0x89, 0x50, 0x4e, 0x47], 'binary file copied verbatim');

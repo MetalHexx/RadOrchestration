@@ -55,6 +55,22 @@ export function migrateInstallJson(ij, installKey) {
   };
 }
 
+/**
+ * Robust registry loader — always returns a valid `{ harnesses: {} }` shaped
+ * object. Returns empty harnesses for missing file, invalid JSON, or any
+ * non-conforming shape (aligns with standard installer's loadRegistry).
+ */
+export function loadRegistry(installJsonPath) {
+  try {
+    if (!fs.existsSync(installJsonPath)) return { harnesses: {} };
+    const ij = readInstallJson(installJsonPath);
+    if (!isCurrentShape(ij)) return { harnesses: {} };
+    return ij;
+  } catch {
+    return { harnesses: {} };
+  }
+}
+
 export function buildClaudePluginEntry(version) {
   return {
     version,

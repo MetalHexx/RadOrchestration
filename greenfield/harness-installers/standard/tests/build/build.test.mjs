@@ -186,11 +186,11 @@ test('runBuild produces output/<harness>/ per harness and shared output/ui/', as
     assert.ok(!orchClaude.includes('${PLUGIN_ROOT}'), 'claude: no unsubstituted ${PLUGIN_ROOT}');
     // AD-6: no namespacing rewrite — agent body still references bare names.
     assert.ok(orchClaude.includes('**coder**'),
-      'claude orchestrator.md: **coder** kept bare (no rad-orchestration: prefix)');
+      'claude orchestrator.md: **coder** kept bare (no rad-orc: prefix)');
     assert.ok(orchClaude.includes('**planner**'),
-      'claude orchestrator.md: **planner** kept bare (no rad-orchestration: prefix)');
-    assert.ok(!orchClaude.includes('rad-orchestration:coder'),
-      'claude: no rad-orchestration:coder namespacing applied (AD-6)');
+      'claude orchestrator.md: **planner** kept bare (no rad-orc: prefix)');
+    assert.ok(!orchClaude.includes('rad-orc:coder'),
+      'claude: no rad-orc:coder namespacing applied (AD-6)');
 
     // Copilot variants → ~/.copilot
     const copilotRoot = path.join(os.homedir(), '.copilot');
@@ -204,7 +204,7 @@ test('runBuild produces output/<harness>/ per harness and shared output/ui/', as
       assert.ok(!orch.includes('${SKILLS_ROOT}'), `${h}: no unsubstituted ${`\${SKILLS_ROOT}`}`);
       assert.ok(!orch.includes('${PLUGIN_ROOT}'), `${h}: no unsubstituted ${`\${PLUGIN_ROOT}`}`);
       assert.ok(orch.includes('**coder**'),
-        `${h} orchestrator.md: **coder** kept bare (no rad-orchestration: prefix)`);
+        `${h} orchestrator.md: **coder** kept bare (no rad-orc: prefix)`);
     }
 
     // Build no longer synthesizes a top-level output/package.json — the source-side
