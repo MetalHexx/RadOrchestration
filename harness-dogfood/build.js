@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// scripts/build.js — Dogfood build CLI. Stages adapter output into
+// harness-dogfood/build.js — Dogfood build CLI. Stages adapter output into
 // dist/staging/<harness>/ and deploys to user-level (~/.claude/, ~/.copilot/)
-// via the same manifest-driven library the installer uses.
+// via the in-folder manifest-driven library.
 //
 // Inner loop:
 //   - npm run build:claude         → ~/.claude/agents/*, ~/.claude/skills/rad-*
@@ -12,9 +12,7 @@
 // No repo-root `.claude/` or `.github/agents,skills/` produced. The CLI bundle
 // (radorch.mjs) and the UI standalone are NOT rebuilt here — only agents +
 // skills (the high-velocity dogfood surface). For a full rebuild that includes
-// CLI + UI + manifest catalogs, run `installer/scripts/sync-source.js` (or
-// invoke the installer end-to-end via `npx <tarball>` for a fresh-install
-// smoke test).
+// CLI + UI + manifest catalogs, drive the standard installer's build pipeline.
 //
 // Manifest-as-source-of-truth: each build saves the manifest it just deployed
 // to `dist/dogfood-prior-<harness>.json`. The next build reads that manifest
@@ -24,11 +22,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
-import { discoverAdapters } from '../adapters/discover.js';
-import { runAdapter } from '../adapters/run.js';
-import { installManifestFiles } from '../installer/lib/install/install-files.js';
-import { removeManifestFiles } from '../installer/lib/install/remove-files.js';
-import { ensureRuntimeBundled } from '../installer/scripts/sync-source.js';
+import {
+  discoverAdapters,
+  clearOutputForAdapter,
+  translateAgent,
+  translateSkill,
+} from '../harness-adapters/engine/index.js';
+import { emitManifest } from '../harness-installers/standard/build-scripts/emit-manifest.js';
+import { emitPipelineBundle } from '../harness-installers/shared/build-helpers/emit-pipeline-bundle.js';
+import { installManifestFiles } from './install-files.js';
+import { removeManifestFiles } from './remove-files.js';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -61,13 +64,15 @@ export function selectAdapters(adapters, { all, harness }) {
 function readVersion() {
   // Pipeline runtime version — single source of truth for the metadata
   // stream's `version` field — is sourced from the rad-orchestration
-  // skill's package.json. Falls back to the installer package.json if the
-  // canonical skill folder is absent (e.g., partial clone).
-  const pkgPath = path.join(repoRoot, 'skills', 'rad-orchestration', 'scripts', 'package.json');
+  // skill's package.json under harness-files/. Falls back to the standard
+  // installer's package.json if the canonical skill folder is absent.
+  const pkgPath = path.join(
+    repoRoot, 'harness-files', 'skills', 'rad-orchestration', 'scripts', 'package.json',
+  );
   try {
     return JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
   } catch {
-    const fallback = path.join(repoRoot, 'installer', 'package.json');
+    const fallback = path.join(repoRoot, 'harness-installers', 'standard', 'package.json');
     return JSON.parse(fs.readFileSync(fallback, 'utf8')).version;
   }
 }
@@ -117,12 +122,16 @@ function savePriorDogfoodManifest(harness, manifest) {
 
 async function main() {
   const opts = parseBuildArgs(process.argv.slice(2));
-  // Ensure every runtime `.ts` entry under skills/rad-orchestration/scripts/
-  // has a fresh `.js` bundle alongside it. Idempotent on warm clones; runs
-  // once before any adapter staging so the canonical-source copy that lands
-  // at ~/.claude/ (or ~/.copilot/) carries the bundles.
-  ensureRuntimeBundled(repoRoot);
-  const adapters = await discoverAdapters(path.join(repoRoot, 'adapters'));
+
+  // AD-2: the dogfood loop bundles via the shared helper directly, not
+  // through any installer's `sync-source.js`. Idempotent on warm clones.
+  await emitPipelineBundle({
+    source: path.join(repoRoot, 'harness-files', 'skills', 'rad-orchestration', 'scripts'),
+    target: path.join(repoRoot, 'harness-files', 'skills', 'rad-orchestration', 'scripts'),
+  });
+
+  const adaptersRoot = path.join(repoRoot, 'harness-adapters', 'adapters');
+  const adapters = await discoverAdapters(adaptersRoot);
   const selected = selectAdapters(adapters, opts);
   const version = readVersion();
 
@@ -135,53 +144,76 @@ async function main() {
     );
   }
 
+  const filesRoot = path.join(repoRoot, 'harness-files');
   const stagingRoot = path.join(repoRoot, 'dist', 'staging');
+  // Important: manifestDir lives OUTSIDE stagingRoot so (a) emitManifest's
+  // recursive walkDir does not pick up a previous run's manifests/v<old>.json
+  // as a "file to ship", and (b) the dogfood deploy step never copies a
+  // bogus manifests/ folder into ~/.claude/ or ~/.copilot/.
+  // clearOutputForAdapter only clears outDir/agents and outDir/skills, so
+  // an in-tree manifestDir would survive between builds and re-enter the
+  // next manifest.
+  const manifestsRoot = path.join(repoRoot, 'dist', 'dogfood-manifests');
 
   for (const adapter of selected) {
-    // Override the adapter's declared targetDir for staging so each harness
-    // lands in its own dist/staging/<harness>/ subpath. This avoids the
-    // shared-targetDir race (Copilot adapters both declare `.github/`) at the
-    // adapter layer. The manifest's destinationPath tokens still drive the
-    // final user-level destination during the deploy phase.
-    const stagingAdapter = { ...adapter, targetDir: adapter.name };
-    const { agentCount, skillCount } = await runAdapter(stagingAdapter, {
-      canonicalRoot: repoRoot,
-      outputRoot: stagingRoot,
-      version,
-      packageVersion: version,
-    });
+    const outDir = path.join(stagingRoot, adapter.name);
+    await clearOutputForAdapter(adapter, stagingRoot);
 
-    // The fresh manifest is at dist/staging/<harness>/manifests/v<version>.json.
-    const manifestPath = path.join(
-      stagingRoot, adapter.name, 'manifests', `v${version}.json`,
-    );
+    const agentsDir = path.join(filesRoot, 'agents');
+    const skillsDir = path.join(filesRoot, 'skills');
+    const agentBodies = fs.existsSync(agentsDir)
+      ? fs.readdirSync(agentsDir).filter((f) => f.endsWith('.md'))
+      : [];
+    const skillFolders = fs.existsSync(skillsDir)
+      ? fs.readdirSync(skillsDir, { withFileTypes: true })
+          .filter((e) => e.isDirectory()).map((e) => e.name)
+      : [];
+
+    for (const body of agentBodies) {
+      const name = body.replace(/\.md$/i, '');
+      await translateAgent({
+        bodyPath: path.join(agentsDir, body),
+        ymlPath: path.join(agentsDir, `${name}.${adapter.name}.yml`),
+        adapter,
+        outDir: stagingRoot,
+      });
+    }
+    for (const skill of skillFolders) {
+      await translateSkill({
+        skillDir: path.join(skillsDir, skill),
+        adapter,
+        outDir: stagingRoot,
+      });
+    }
+
+    // Emit the per-harness manifest from the freshly staged tree.
+    const manifestDir = path.join(manifestsRoot, adapter.name);
+    fs.mkdirSync(manifestDir, { recursive: true });
+    await emitManifest({
+      harnessOutputDir: outDir,
+      harness: adapter.name,
+      version,
+      manifestDir,
+    });
+    const manifestPath = path.join(manifestDir, `v${version}.json`);
     if (!fs.existsSync(manifestPath)) {
-      throw new Error(`Adapter ${adapter.name} did not emit a manifest at ${manifestPath}`);
+      throw new Error(`Adapter ${adapter.name} manifest not emitted at ${manifestPath}`);
     }
     const newManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 
-    // Remove prior dogfood files (manifest-driven; no hardcoded namespaces).
+    // Manifest-driven deploy as before (now via the in-folder library).
     const prior = loadPriorDogfoodManifest(adapter.name);
     let removedCount = 0;
     if (prior) {
-      const result = removeManifestFiles(prior, adapter.name);
-      removedCount = result.removedCount ?? 0;
+      removedCount = removeManifestFiles(prior, adapter.name).removedCount ?? 0;
     }
-
-    // Deploy new files to user-level. pluginRoot is the staging dir; the
-    // manifest only contains agents+skills entries (runAdapter scope), so
-    // installManifestFiles never needs to read from a separate sharedRoot.
-    const pluginRoot = path.join(stagingRoot, adapter.name);
-    const { copiedCount, skippedCount } = installManifestFiles(
-      newManifest, pluginRoot, adapter.name,
-    );
-
+    const { copiedCount, skippedCount } = installManifestFiles(newManifest, outDir, adapter.name);
     savePriorDogfoodManifest(adapter.name, newManifest);
 
+    // Counts are derived from what the engine actually staged this run.
     console.log(
-      `Built ${adapter.name}: ${agentCount} agents, ${skillCount} skills → ` +
-      `deployed ${copiedCount} (skipped ${skippedCount}, removed ${removedCount} stale) ` +
-      `to user-level`,
+      `Built ${adapter.name}: ${agentBodies.length} agents, ${skillFolders.length} skills → ` +
+      `deployed ${copiedCount} (skipped ${skippedCount}, removed ${removedCount} stale)`,
     );
   }
 }
