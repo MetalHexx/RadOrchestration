@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { userDataPaths } from './user-data-paths.js';
 import {
-  readInstallJson, writeInstallJson, isCurrentShape, migrateInstallJson, buildCopilotCliPluginEntry,
+  loadRegistry, writeInstallJson, buildCopilotCliPluginEntry,
 } from './install-json.js';
 import { loadManifest } from './catalog.js';
 import { installManifestFiles } from './install-files.js';
@@ -64,8 +64,7 @@ export async function runInstall(opts) {
     fs.mkdirSync(paths.projects, { recursive: true });
     fs.mkdirSync(paths.logs, { recursive: true });
 
-    const rawIj = readInstallJson(paths.installJson);
-    const ij = rawIj ? migrateInstallJson(rawIj, INSTALL_KEY) : { harnesses: {} };
+    const ij = loadRegistry(paths.installJson);
     const prior = ij.harnesses[INSTALL_KEY];
     installedVersionBefore = prior?.version ?? null;
     const sentinelPresent = fs.existsSync(sentinel);
@@ -88,28 +87,11 @@ export async function runInstall(opts) {
     }
 
     // Upgrade or fresh install — remove prior manifest entries (skip user-config), install new.
-    // Prefer the snapshot persisted at install time (the new plugin's bundle does not
-    // carry old-version manifests); fall back to loading from the current pluginRoot
-    // for backwards compatibility with installs that predate the snapshot. Validate the
-    // snapshot belongs to the recorded prior install before trusting it — a stale or
-    // wrong-channel snapshot could otherwise cause us to remove the wrong files.
     if (prior && installedVersionBefore !== deliveringVersion) {
-      let priorManifest = null;
       try {
-        if (fs.existsSync(paths.manifestSnapshot)) {
-          const snapshot = JSON.parse(fs.readFileSync(paths.manifestSnapshot, 'utf8'));
-          if (snapshot.version === installedVersionBefore && snapshot.channel === INSTALL_KEY) {
-            priorManifest = snapshot;
-          } else {
-            priorManifest = loadManifest(opts.pluginRoot, installedVersionBefore);
-          }
-        } else {
-          priorManifest = loadManifest(opts.pluginRoot, installedVersionBefore);
-        }
-      } catch { /* prior manifest may be unavailable — clobber install acceptable */ }
-      if (priorManifest) {
+        const priorManifest = loadManifest(opts.pluginRoot, installedVersionBefore);
         removeManifestFiles(priorManifest, { radHome: opts.radHome });
-      }
+      } catch { /* prior manifest may be unavailable — clobber install acceptable */ }
     }
     const manifest = loadManifest(opts.pluginRoot, deliveringVersion);
     installManifestFiles(manifest, opts.pluginRoot, { radHome: opts.radHome });
@@ -119,10 +101,6 @@ export async function runInstall(opts) {
       fs.rmSync(paths.ui, { recursive: true, force: true });
       fs.cpSync(pluginUiDir, paths.ui, { recursive: true });
     }
-
-    // Persist the active manifest so future upgrades can compute the remove set
-    // even when the new plugin bundle does not carry old-version manifest files.
-    fs.writeFileSync(paths.manifestSnapshot, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
 
     ij.harnesses[INSTALL_KEY] = buildCopilotCliPluginEntry(deliveringVersion);
     writeInstallJson(paths.installJson, ij);

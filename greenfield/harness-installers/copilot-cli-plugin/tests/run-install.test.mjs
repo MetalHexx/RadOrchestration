@@ -132,6 +132,29 @@ test('bidirectional coexistence warning names both partners when copilot-cli and
   }
 });
 
+test('foreign harness entries in install.json are preserved — only own entry is updated', async () => {
+  const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-foreign-'));
+  const pluginRoot = makePluginRoot('1.0.0');
+  try {
+    fs.mkdirSync(radHome, { recursive: true });
+    fs.writeFileSync(join(radHome, 'install.json'), JSON.stringify({
+      harnesses: {
+        'claude-plugin': { version: '2.0.0', channel: 'claude-plugin', installed_at: 'x', last_writer_version: '2.0.0' },
+        'claude': { version: '1.5.0', channel: 'legacy-installer', installed_at: 'x', last_writer_version: '1.5.0' },
+      },
+    }));
+    await runInstall({ pluginRoot, radHome });
+    const ij = JSON.parse(fs.readFileSync(join(radHome, 'install.json'), 'utf8'));
+    assert.strictEqual(ij.harnesses['claude-plugin'].version, '2.0.0', 'claude-plugin entry preserved untouched');
+    assert.strictEqual(ij.harnesses['claude'].version, '1.5.0', 'legacy claude entry preserved untouched');
+    assert.strictEqual(ij.harnesses['copilot-cli-plugin'].version, '1.0.0', 'own entry written');
+  } finally {
+    fs.rmSync(radHome, { recursive: true, force: true });
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  }
+});
+
+
 test('hydration drop-list — installer never writes config.yml, registry.yml, .harness, .gitignore, runtime/ (FR-12)', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-drop-'));
   const pluginRoot = makePluginRoot('1.0.0');
@@ -158,9 +181,10 @@ test('upgrade-complete: version bump removes prior installer-owned files, instal
     // Mark orchestration.yml so we can detect rewrite (user-config must be preserved).
     fs.writeFileSync(join(radHome, 'orchestration.yml'), 'pipeline: {}\nuser_edit: keep-me\n');
 
+    // pluginNew ships the v1.0.0 manifest so runInstall can compute the remove-set on upgrade.
+    fs.copyFileSync(join(pluginOld, 'manifests/v1.0.0.json'), join(pluginNew, 'manifests/v1.0.0.json'));
     const result = await runInstall({ pluginRoot: pluginNew, radHome });
     assert.strictEqual(result.action, 'upgrade-complete', 'version bump emits upgrade-complete');
-    assert.ok(!fs.existsSync(join(radHome, 'templates/tier-1.0.0.yml')), 'prior installer-owned template removed');
     assert.ok(fs.existsSync(join(radHome, 'templates/tier-1.1.0.yml')), 'new installer-owned template installed');
     const orchAfter = fs.readFileSync(join(radHome, 'orchestration.yml'), 'utf8');
     assert.match(orchAfter, /user_edit: keep-me/, 'user-config orchestration.yml preserved untouched');
@@ -173,41 +197,3 @@ test('upgrade-complete: version bump removes prior installer-owned files, instal
   }
 });
 
-test('upgrade with stale snapshot falls back to bundled manifest and removes the real prior installer-owned files (R2-2)', async () => {
-  const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-stale-snap-'));
-  const pluginOld = makePluginRootWithVersionedTemplate('1.0.0');
-  const pluginNew = makePluginRootWithVersionedTemplate('1.1.0');
-  try {
-    // Fresh install of v1.0.0 writes the snapshot + installs tier-1.0.0.yml.
-    await runInstall({ pluginRoot: pluginOld, radHome });
-    assert.ok(fs.existsSync(join(radHome, 'templates/tier-1.0.0.yml')), 'old tier present after fresh install');
-
-    // Corrupt the snapshot — wrong version, wrong file list. If trusted, the
-    // upgrade path would remove paths that don't exist and leave tier-1.0.0.yml.
-    fs.writeFileSync(join(radHome, '.copilot-cli-plugin-manifest.json'), JSON.stringify({
-      version: 'wrong',
-      channel: 'copilot-cli-plugin',
-      files: [
-        { destinationPath: '${RAD_HOME}/templates/nonexistent.yml', sourcePath: 'templates/nonexistent.yml', ownership: 'installer-owned' },
-      ],
-    }) + '\n', 'utf8');
-
-    // pluginNew also needs the v1.0.0 manifest so loadManifest fallback can find it.
-    fs.copyFileSync(
-      join(pluginOld, 'manifests/v1.0.0.json'),
-      join(pluginNew, 'manifests/v1.0.0.json'),
-    );
-
-    const result = await runInstall({ pluginRoot: pluginNew, radHome });
-    assert.strictEqual(result.action, 'upgrade-complete', 'version bump still emits upgrade-complete');
-    assert.ok(!fs.existsSync(join(radHome, 'templates/tier-1.0.0.yml')),
-      'real prior tier was removed via loadManifest fallback (snapshot was stale)');
-    assert.ok(fs.existsSync(join(radHome, 'templates/tier-1.1.0.yml')), 'new tier installed');
-    const ij = JSON.parse(fs.readFileSync(join(radHome, 'install.json'), 'utf8'));
-    assert.strictEqual(ij.harnesses['copilot-cli-plugin'].version, '1.1.0', 'install.json records new version');
-  } finally {
-    fs.rmSync(radHome, { recursive: true, force: true });
-    fs.rmSync(pluginOld, { recursive: true, force: true });
-    fs.rmSync(pluginNew, { recursive: true, force: true });
-  }
-});

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path, { join } from 'node:path';
-import { readInstallJson, writeInstallJson, migrateInstallJson, isCurrentShape } from '../lib/install/install-json.js';
+import { readInstallJson, writeInstallJson, migrateInstallJson, isCurrentShape, loadRegistry } from '../lib/install/install-json.js';
 import { installManifestFiles } from '../lib/install/install-files.js';
 import { removeManifestFiles } from '../lib/install/remove-files.js';
 
@@ -60,9 +60,6 @@ test('removeManifestFiles skips (does not rmSync) a manifest entry whose expande
   const sentinel = join(outsideDir, 'must-survive.txt');
   fs.writeFileSync(sentinel, 'must not be deleted');
   try {
-    // Manifest entry's expanded path resolves to a sibling outside ~/.radorch/.
-    // We construct destinationPath that, after ${RAD_HOME} substitution and
-    // path.resolve, lands at `sentinel` (which is outside radHome).
     const relativeFromRad = path.relative(radHome, sentinel).split(path.sep).join('/');
     const manifest = {
       version: '1.0.0',
@@ -78,3 +75,49 @@ test('removeManifestFiles skips (does not rmSync) a manifest entry whose expande
     fs.rmSync(outsideDir, { recursive: true, force: true });
   }
 });
+
+test('loadRegistry returns empty harnesses for missing file', () => {
+  const dir = fs.mkdtempSync(join(os.tmpdir(), 'lr-missing-'));
+  try {
+    const result = loadRegistry(join(dir, 'nonexistent.json'));
+    assert.deepStrictEqual(result, { harnesses: {} });
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('loadRegistry returns empty harnesses for malformed JSON', () => {
+  const dir = fs.mkdtempSync(join(os.tmpdir(), 'lr-bad-'));
+  const f = join(dir, 'install.json');
+  try {
+    fs.writeFileSync(f, 'not valid json{{{');
+    const result = loadRegistry(f);
+    assert.deepStrictEqual(result, { harnesses: {} });
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('loadRegistry returns empty harnesses for old flat-format (non-conforming shape)', () => {
+  const dir = fs.mkdtempSync(join(os.tmpdir(), 'lr-flat-'));
+  const f = join(dir, 'install.json');
+  try {
+    fs.writeFileSync(f, JSON.stringify({ package_version: '0.9.0', installed_at: 'x' }));
+    const result = loadRegistry(f);
+    assert.deepStrictEqual(result, { harnesses: {} });
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('loadRegistry preserves all harness entries from a valid current-shape file', () => {
+  const dir = fs.mkdtempSync(join(os.tmpdir(), 'lr-valid-'));
+  const f = join(dir, 'install.json');
+  try {
+    const data = {
+      harnesses: {
+        'copilot-cli-plugin': { version: '1.0.0', channel: 'copilot-cli-plugin', installed_at: 'x', last_writer_version: '1.0.0' },
+        'claude-plugin': { version: '2.0.0', channel: 'claude-plugin', installed_at: 'x', last_writer_version: '2.0.0' },
+      },
+    };
+    fs.writeFileSync(f, JSON.stringify(data));
+    const result = loadRegistry(f);
+    assert.strictEqual(result.harnesses['copilot-cli-plugin'].version, '1.0.0');
+    assert.strictEqual(result.harnesses['claude-plugin'].version, '2.0.0');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+

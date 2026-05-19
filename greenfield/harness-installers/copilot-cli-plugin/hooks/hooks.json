@@ -2,10 +2,10 @@
   "version": 1,
   "hooks": {
     "userPromptSubmitted": [
-      { "hooks": [{ "type": "command", "command": "node ./bootstrap.mjs", "cwd": "." }] }
+      { "type": "command", "command": "node hooks/launcher.cjs bootstrap.mjs" }
     ],
     "sessionStart": [
-      { "hooks": [{ "type": "command", "command": "node ./drift-check.mjs", "cwd": "." }] }
+      { "type": "command", "command": "node hooks/launcher.cjs drift-check.mjs" }
     ]
   }
 }

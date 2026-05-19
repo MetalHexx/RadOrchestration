@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.9",
   "channel": "copilot-cli-plugin",
   "files": [
     { "destinationPath": "${RAD_HOME}/orchestration.yml", "sourcePath": "orchestration.yml", "ownership": "user-config" },
