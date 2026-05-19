@@ -67,8 +67,14 @@ export function detectInstalledHarnesses(opts = {}) {
   return out;
 }
 
-function buildInstallChoices() {
-  return HARNESS_CHOICES.map(({ value, name }) => ({ value, name }));
+const EXIT_VALUE = '__exit__';
+
+function buildInstallChoices({ withCancel } = {}) {
+  const choices = HARNESS_CHOICES.map(({ value, name }) => ({ value, name }));
+  if (withCancel) {
+    choices.push({ value: EXIT_VALUE, name: 'Cancel' });
+  }
+  return choices;
 }
 
 function buildUninstallChoices(harnesses) {
@@ -173,7 +179,7 @@ function uninstallPromptLines(pick) {
  *   deliveringVersion?: string,
  *   forceAction?: 'install' | 'uninstall',
  * }} options
- * @returns {Promise<{ action: 'install' | 'uninstall', harnesses: string[], skipConfirmation: boolean }>}
+ * @returns {Promise<{ action: 'install' | 'uninstall' | 'exit', harnesses: string[], skipConfirmation: boolean }>}
  */
 export async function runWizard({
   skipConfirmation,
@@ -221,8 +227,10 @@ export async function runWizard({
   console.log('');
 
   // Step 1 — action picker. Only fires when the user has at least one
-  // harness installed AND the caller didn't already force an action.
+  // harness installed AND the caller didn't already force an action. The
+  // Exit row gives a clean way to end the wizard loop.
   let action;
+  let actionPickerShown = false;
   if (forceAction) {
     action = forceAction;
     if (action === 'uninstall' && installedCount === 0) {
@@ -231,26 +239,37 @@ export async function runWizard({
       throw err;
     }
   } else if (installedCount > 0) {
+    actionPickerShown = true;
     action = await select({
       message: 'What would you like to do?',
       theme: INQUIRER_THEME,
       choices: [
-        { value: 'install',   name: 'Install or reinstall a harness' },
-        { value: 'uninstall', name: 'Uninstall a harness' },
+        { value: 'install',     name: 'Install or reinstall a harness' },
+        { value: 'uninstall',   name: 'Uninstall a harness' },
+        { value: EXIT_VALUE,    name: 'Exit' },
       ],
     });
+    if (action === EXIT_VALUE) {
+      return { action: 'exit', harnesses: [], skipConfirmation };
+    }
   } else {
     action = 'install';
   }
 
-  // Step 2 — harness picker.
+  // Step 2 — harness picker. The install picker gains a 'Cancel' row only
+  // when it's reached directly (registry empty AND no action picker shown);
+  // otherwise the action picker's Exit row is the exit affordance and a
+  // duplicate here would be confusing.
   let pick;
   if (action === 'install') {
     pick = await select({
       message: 'Which harness do you want to install?',
       theme: INQUIRER_THEME,
-      choices: buildInstallChoices(),
+      choices: buildInstallChoices({ withCancel: !actionPickerShown }),
     });
+    if (pick === EXIT_VALUE) {
+      return { action: 'exit', harnesses: [], skipConfirmation };
+    }
     if (deliveringVersion) {
       await maybeConfirmInstallDestructive(harnesses, pick, deliveringVersion);
     }

@@ -32,7 +32,6 @@ import { loadRegistry, writeInstallJson } from './install-json.js';
  * @property {'uninstalled' | 'not-installed'} action
  * @property {string} [removedVersion]
  * @property {number} [removedCount]
- * @property {number} [prunedDirs]
  */
 
 /**
@@ -75,7 +74,7 @@ export async function uninstallHarness({ bundleRoot, harness }) {
     }
   }
 
-  const { removedCount, prunedDirs } = removeManifestFiles(manifest, harness);
+  const { removedCount } = removeManifestFiles(manifest, harness);
 
   // Drop the registry entry; keep the install.json file itself.
   delete registry.harnesses[harness];
@@ -85,6 +84,5 @@ export async function uninstallHarness({ bundleRoot, harness }) {
     action: 'uninstalled',
     removedVersion: installedVersion,
     removedCount,
-    prunedDirs: prunedDirs.length,
   };
 }

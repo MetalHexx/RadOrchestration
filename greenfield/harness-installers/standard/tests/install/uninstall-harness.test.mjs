@@ -101,11 +101,21 @@ test('uninstallHarness removes per-harness files and the registry entry; preserv
     assert.equal(result.action, 'uninstalled');
     assert.equal(result.removedVersion, '1.0.0-alpha.9');
     assert.equal(result.removedCount, 2);
-    assert.ok(result.prunedDirs >= 1, 'at least one empty parent dir was pruned');
+    assert.equal(result.prunedDirs, undefined, 'no directory pruning is reported (uninstall removes files only)');
 
     // Manifest files removed.
     assert.ok(!fs.existsSync(orchestratorPath), 'orchestrator.md removed');
     assert.ok(!fs.existsSync(radorchMjsPath), 'radorch.mjs removed');
+
+    // Directories that held removed files are preserved (residue, per user direction).
+    assert.ok(
+      fs.existsSync(path.join(harnessRootPath, 'agents')),
+      'agents/ directory is preserved even after all rad files inside are gone',
+    );
+    assert.ok(
+      fs.existsSync(path.join(harnessRootPath, 'skills/rad-orchestration/scripts')),
+      'deep scripts/ directory is preserved even after radorch.mjs is removed',
+    );
 
     // User-created file under the harness root is preserved.
     assert.ok(

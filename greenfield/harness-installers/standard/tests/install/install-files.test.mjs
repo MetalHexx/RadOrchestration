@@ -29,7 +29,7 @@ test('installManifestFiles copies entries to expanded destinationPath, skips pro
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 
-test('removeManifestFiles deletes every entry and prunes emptied parent dirs', () => {
+test('removeManifestFiles deletes every entry but leaves emptied parent dirs in place', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'std-rm-'));
   try {
     const home = path.join(tmp, 'home');
@@ -39,6 +39,6 @@ test('removeManifestFiles deletes every entry and prunes emptied parent dirs', (
     const manifest = { files: [ { bundlePath: 'agents/orchestrator.md', destinationPath: '${HARNESS_ROOT}/agents/orchestrator.md', sha256: 'x' } ] };
     removeManifestFiles(manifest, 'claude');
     assert.strictEqual(fs.existsSync(path.join(sub, 'orchestrator.md')), false);
-    assert.strictEqual(fs.existsSync(sub), false, 'AD-5: emptied parent dir pruned');
+    assert.strictEqual(fs.existsSync(sub), true, 'directory preserved even when empty after file removal');
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });

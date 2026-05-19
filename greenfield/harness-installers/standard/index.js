@@ -88,18 +88,44 @@ export async function main() {
     const ghWarn = checkGh();
     if (ghWarn) process.stderr.write((THEME.warning ? THEME.warning(`⚠  ${ghWarn}`) : `⚠  ${ghWarn}`) + '\n');
 
-    const cfg = await runWizard({ skipConfirmation, cliOverrides: options, deliveringVersion, forceAction });
-
-    if (!Array.isArray(cfg.harnesses) || cfg.harnesses.length === 0) {
-      throw new Error('Wizard returned no harnesses.');
-    }
-
-    if (cfg.action === 'uninstall') {
-      await runUninstallFlow({ packageRoot, harness: cfg.harnesses[0] });
+    if (skipConfirmation) {
+      // Headless: one-shot. No looping.
+      const cfg = await runWizard({ skipConfirmation, cliOverrides: options, deliveringVersion, forceAction });
+      if (!Array.isArray(cfg.harnesses) || cfg.harnesses.length === 0) {
+        throw new Error('Wizard returned no harnesses.');
+      }
+      if (cfg.action === 'uninstall') {
+        await runUninstallFlow({ packageRoot, harness: cfg.harnesses[0] });
+      } else {
+        await runInstallFlow({ packageRoot, sharedRoot, harnesses: cfg.harnesses });
+      }
       return;
     }
 
-    await runInstallFlow({ packageRoot, sharedRoot, harnesses: cfg.harnesses });
+    // Interactive: loop the wizard until the user picks Exit.
+    let firstIteration = true;
+    while (true) {
+      const cfg = await runWizard({
+        skipConfirmation,
+        cliOverrides: firstIteration ? options : {},
+        deliveringVersion,
+        forceAction: firstIteration ? forceAction : undefined,
+      });
+      if (cfg.action === 'exit') {
+        console.log('');
+        console.log(THEME.hint('Goodbye.'));
+        break;
+      }
+      if (!Array.isArray(cfg.harnesses) || cfg.harnesses.length === 0) {
+        throw new Error('Wizard returned no harnesses.');
+      }
+      if (cfg.action === 'uninstall') {
+        await runUninstallFlow({ packageRoot, harness: cfg.harnesses[0] });
+      } else {
+        await runInstallFlow({ packageRoot, sharedRoot, harnesses: cfg.harnesses });
+      }
+      firstIteration = false;
+    }
   } catch (err) {
     if (err && err.name === 'ExitPromptError') {
       console.log('');
@@ -196,7 +222,6 @@ async function runUninstallFlow({ packageRoot, harness }) {
     harness,
     removedVersion: result.removedVersion,
     removedCount: result.removedCount,
-    prunedDirs: result.prunedDirs,
     remainingHarnesses: registry.harnesses ?? {},
     configPath: paths.orchestrationYml,
   });
